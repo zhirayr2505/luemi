@@ -8,6 +8,7 @@ import {Onboarding} from './Onboarding';
 import {Discovery} from './Discovery';
 import {Likes,Chats,Chat} from './Social';
 import {ProfilePage} from './Profile';
+import {ProfileMotion} from './ProfileMotion';
 const SECTION_ORDER=['Знакомства','Симпатии','Чаты','Профиль','chat','profile'];
 export default function App(){
  const [state,setState]=useState(loadState),[tab,setTab]=useState('Знакомства'),[wizard,setWizard]=useState(false),[chat,setChat]=useState(''),[profile,setProfile]=useState<Profile|null>(null),[toast,setToast]=useState(''),[dialog,setDialog]=useState(''),[report,setReport]=useState('Спам'),[theme,setTheme]=useState('light');const toastTimer=useRef<ReturnType<typeof setTimeout>|null>(null),touch=useRef({x:0,y:0});
@@ -26,7 +27,7 @@ export default function App(){
   'Симпатии':<main className="content"><Likes {...props}/></main>,
   'Чаты':<main className="content"><Chats {...props}/></main>,
   'Профиль':<main className="content"><ProfilePage {...props} onRegister={()=>{if(state.onboarded)setState(s=>({...s,step:1}));setWizard(true);}}/></main>,
-  profile:shownProfile?<main className="content profile-detail"><PublicProfile profile={shownProfile}/>{shownProfile.id!=='self'&&<div className="profile-cta"><Button variant="primary wide" onClick={()=>{if(state.matches.includes(shownProfile.id))openChat(shownProfile.id);else{setTab('Знакомства');setProfile(null);setChat('');notify('Нажми «Нравится» под анкетой, чтобы проверить взаимный мэтч.');}}}>{state.matches.includes(shownProfile.id)?'Написать':'Перейти к знакомству'}</Button></div>}</main>:null,
+  profile:shownProfile?<main className="content profile-detail"><ProfileMotion profile={shownProfile} reducedMotion={state.reducedMotion}/>{shownProfile.id!=='self'&&<div className="profile-cta"><Button variant="primary wide" onClick={()=>{if(state.matches.includes(shownProfile.id))openChat(shownProfile.id);else{setTab('Знакомства');setProfile(null);setChat('');notify('Нажми «Нравится» под анкетой, чтобы проверить взаимный мэтч.');}}}>{state.matches.includes(shownProfile.id)?'Написать':'Перейти к знакомству'}</Button></div>}</main>:null,
   chat:<div className="chat-screen" onPointerDown={e=>{touch.current={x:e.clientX,y:e.clientY};}} onPointerUp={e=>{const dx=e.clientX-touch.current.x,dy=e.clientY-touch.current.y;if(dx>100&&Math.abs(dx)>Math.abs(dy)*1.5&&!((e.target as HTMLElement).closest('textarea,input,button'))){setChat('');}}}><Chat {...props}/></div>
  };
  return <MotionProvider reduced={state.reducedMotion}><div className={'app-frame '+(full?'full-screen':'')+(wizard?' wizard-frame':'')}>
