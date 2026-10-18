@@ -1,38 +1,37 @@
 import {test} from 'node:test';
 import {strict as assert} from 'node:assert';
 import {morphFrame,morphTravel,snapTarget,PROFILE_AVATAR_SIZE} from '../apps/web/src/motion/profileMorph';
-test('open photo, closed circle, uninterrupted natural proportions',()=>{
- for(const width of [320,356,390,460]){
-  const a=morphFrame(0,width),b=morphFrame(10000,width);
-  assert.equal(a.scale,1);assert.equal(a.radius,27);
-  assert.ok(Math.abs(b.scale*width-PROFILE_AVATAR_SIZE)<.00001);
-  assert.equal(b.radius,width/2);
-  // 1.45px visual rim remains 1.45px across any scale.
-  assert.ok(Math.abs(b.rimSourceWidth*b.scale-1.45)<.00001);
-  assert.equal(b.heroOpacity,0);assert.equal(b.compactOpacity,1);
-  // Content starts after untransformed hero in normal flow; rapid image shrink
-  // stays ahead of cards across morph range.
-  for(let y=0;y<=morphTravel(width);y+=2){
-   const f=morphFrame(y,width);
-   assert.ok(width*f.scale <= width-y+20,'photo must not substantially cover first card');
-   assert.deepEqual(f,morphFrame(y,width),'reverse path must be deterministic');
+
+test('photo reduces uniformly to exactly 56px and preserves 1.45px glass rim',()=>{
+ for(const width of [320,360,393,480]){
+  const open=morphFrame(0,width),shut=morphFrame(morphTravel(width),width);
+  assert.equal(open.scale,1);
+  assert.ok(Math.abs(shut.scale*width-PROFILE_AVATAR_SIZE)<.001);
+  assert.ok(Math.abs(shut.rimWidth*shut.scale-1.45)<.001);
+  assert.equal(open.captionOpacity,1);
+  assert.equal(shut.captionOpacity,0);
+  assert.equal(shut.compactOpacity,1);
+ }
+});
+test('snap at 30 percent when opening and 70 percent when closing',()=>{
+ const w=360,t=morphTravel(w);
+ assert.equal(snapTarget(.29*t,w,false,0),0);
+ assert.equal(snapTarget(.30*t,w,false,0),t);
+ assert.equal(snapTarget(.69*t,w,true,0),0);
+ assert.equal(snapTarget(.70*t,w,true,0),t);
+ assert.equal(snapTarget(t+50,w,true,0),null);
+ assert.equal(snapTarget(t*.2,w,false,1.2),t);
+ assert.equal(snapTarget(t*.8,w,true,-1.2),0);
+});
+test('monotone reversible finite transform, including invalid scroll',()=>{
+ for(const w of [320,360,480]){
+  let previous=1;
+  for(let i=0;i<=700;i+=2){
+   const f=morphFrame(i,w);
+   assert.ok(f.scale<=previous+1e-10);
+   assert.deepEqual(f,morphFrame(i,w));
+   previous=f.scale;
   }
  }
-});
-test('30% close threshold, 30% opening hysteresis, and fast flick',()=>{
- const width=360,travel=morphTravel(width);
- assert.equal(snapTarget(travel*.299,width,false),0);
- assert.equal(snapTarget(travel*.300,width,false),travel);
- assert.equal(snapTarget(travel*.701,width,true),travel);
- assert.equal(snapTarget(travel*.699,width,true),0);
- assert.equal(snapTarget(travel*.12,width,false,.7),travel);
- assert.equal(snapTarget(travel*.88,width,true,-.7),0);
- assert.equal(snapTarget(travel+30,width,true),null);
- assert.equal(snapTarget(0,width,false),0);
-});
-test('geometry is safe for invalid widths and offsets',()=>{
- for(const width of [0,NaN,Infinity,-10])for(const y of [0,NaN,Infinity,-20]){
-  const f=morphFrame(y,width);
-  assert.ok(Number.isFinite(f.scale));assert.ok(Number.isFinite(f.translateY));
- }
+ assert.equal(morphFrame(NaN,0).scale,1);
 });

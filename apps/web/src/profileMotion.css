@@ -1,152 +1,77 @@
-/* Profile Motion 2.0 — single authoritative stylesheet; uses LUEMI W12 glass layers. */
-.profile-morph-scrim{position:absolute;inset:47% 0 0;background:linear-gradient(to top,rgba(33,19,44,.78),transparent);pointer-events:none}
-.profile-morph-caption{position:absolute;left:20px;right:12px;bottom:23px;color:#fff;text-shadow:0 2px 18px rgba(28,12,39,.32);will-change:opacity}
-.profile-morph-name{display:flex;align-items:center;gap:9px;font-size:28px;font-weight:750;letter-spacing:-.6px;line-height:1.2}
-.profile-morph-city{font-size:12px;font-weight:520;line-height:1.45;margin-top:7px;color:#fff}
-/* Refraction, rim, gleam and tiny parallax share the original LUEMI logo island language. */
-.profile-morph-compact{
- --glass-light-x:32%;
- --glass-light-y:16%;
- position:absolute;
- left:78px;right:4px;top:6px;
- min-height:53px;padding:9px 13px;
- display:flex;flex-direction:column;justify-content:center;gap:2px;
- border:1px solid rgba(255,255,255,.56);
- border-radius:20px;
- background:linear-gradient(145deg,rgba(255,255,255,.31),rgba(242,227,251,.12) 53%,rgba(255,255,255,.19));
- color:var(--luemi-text);
- box-shadow:0 7px 25px rgba(77,44,99,.13),inset 0 1px 1px rgba(255,255,255,.8),inset 0 -1px 2px rgba(117,80,141,.15);
- opacity:0;will-change:opacity;overflow:hidden;
- white-space:nowrap;text-overflow:ellipsis;
- isolation:isolate;
- -webkit-backdrop-filter:blur(16px) saturate(1.52);
- backdrop-filter:blur(16px) saturate(1.52);
+/* PROFILE V3. Sole source of all portrait geometry. No legacy sticky styles. */
+.profile-detail-root{
+ --profile-hero-top:calc(80px + var(--luemi-safe-top));
+ --profile-side:16px;
+ position:relative;flex:1;min-height:0;min-width:0;isolation:isolate;
 }
-.profile-morph-compact:before{
- position:absolute;inset:1px;content:'';
- border-radius:inherit;pointer-events:none;
- background:radial-gradient(ellipse at var(--glass-light-x) var(--glass-light-y),rgba(255,255,255,.49),transparent 69%);
- box-shadow:inset 1px 0 1px rgba(255,255,255,.35),inset -1px 0 1px rgba(255,255,255,.18);
- z-index:0;
+.profile-detail-scroll{
+ position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+ padding:var(--profile-hero-top) var(--profile-side) max(22px,var(--luemi-safe-bottom));
+ overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;
+ scroll-behavior:auto;scrollbar-width:thin;scrollbar-color:#d3c1df transparent;
 }
-.profile-morph-compact:after{
- position:absolute;inset:0;content:'';
- pointer-events:none;border-radius:inherit;z-index:0;
- border:1px solid rgba(255,255,255,.25);
- background:linear-gradient(165deg,rgba(255,255,255,.11),transparent 52%,rgba(190,148,225,.05));
- -webkit-mask-image:linear-gradient(120deg,#000 0%,transparent 74%);
- mask-image:linear-gradient(120deg,#000 0%,transparent 74%);
+.profile-hero-spacer{width:100%;aspect-ratio:1/1;pointer-events:none;}
+.profile-motion-details{position:relative;padding-top:16px;padding-bottom:12px;}
+.profile-motion-details .section{margin:0 0 14px;border-radius:23px;padding:21px 19px;}
+.profile-motion-details .section h3{margin-bottom:11px}
+/* Stable overlay is never a child of the scrolling element. No counter-translation. */
+.profile-morph-overlay{
+ position:absolute;top:var(--profile-hero-top);left:var(--profile-side);right:var(--profile-side);
+ z-index:20;pointer-events:none;
 }
-.profile-morph-compact>strong,.profile-morph-compact>span{position:relative;z-index:1}
-[data-luemi-theme=dark] .profile-morph-compact{
- border-color:rgba(232,213,255,.29);
- background:linear-gradient(145deg,rgba(107,80,135,.34),rgba(48,34,65,.27) 54%,rgba(157,120,183,.2));
- box-shadow:0 7px 22px rgba(8,4,17,.25),inset 0 1px 1px rgba(248,235,255,.34),inset 0 -1px 2px rgba(16,7,27,.3);
-}
-[data-luemi-theme=dark] .profile-morph-compact:before{
- background:radial-gradient(ellipse at var(--glass-light-x) var(--glass-light-y),rgba(235,204,255,.23),transparent 70%);
-}
-@supports not ((backdrop-filter:blur(14px)) or (-webkit-backdrop-filter:blur(14px))){
- .profile-morph-compact{background:rgba(244,235,250,.94)}
- [data-luemi-theme=dark] .profile-morph-compact{background:rgba(55,40,70,.95)}
-}
-.profile-morph-compact strong{font-weight:720;letter-spacing:-.35px;font-size:16px;line-height:1.12;overflow:hidden;text-overflow:ellipsis}
-.profile-morph-compact span{font-size:11px;color:var(--luemi-text-muted);line-height:1.2;overflow:hidden;text-overflow:ellipsis}
-
-/* Release: approved profile geometry/snap/gallery. Replaces old sticky model
-   by specificity (legacy rules removed in GitHub patch). */
-.content.profile-detail{
- --profile-gap:14px;
- padding-top:var(--profile-gap);
- padding-inline:16px;
- padding-bottom:max(20px,var(--luemi-safe-bottom));
- scroll-padding-top:92px;
- overflow-y:auto;
- overflow-x:hidden;
- overscroll-behavior-y:contain;
- -webkit-overflow-scrolling:touch;
-}
-.public-profile--motion{
- padding:0;
- position:relative;
- /* Enough native scroll range for closed avatar even with short bios. */
- min-height:calc(var(--viewport-height) + 380px);
-}
-.profile-morph-stage{
- position:relative;
- top:auto;
- width:100%;
- aspect-ratio:1/1;
- margin:0;
- z-index:9;
- isolation:isolate;
- pointer-events:none;
-}
+.profile-morph-frame{position:relative;width:100%;aspect-ratio:1/1;isolation:isolate;pointer-events:none;}
 .profile-morph-photo{
- position:absolute;
- inset:0;
- border:0;
- overflow:hidden;
- border-radius:27px;
- transform-origin:top left;
- will-change:transform;
- backface-visibility:hidden;
- box-shadow:0 16px 34px rgba(55,24,76,.13),0 4px 10px rgba(48,35,71,.08);
- background:var(--luemi-surface);
- contain:paint;
+ position:absolute;inset:0;transform-origin:top left;border-radius:27px;
+ overflow:hidden;backface-visibility:hidden;will-change:transform;
+ box-shadow:0 15px 34px rgba(51,27,73,.15),0 4px 9px rgba(42,29,59,.06);
+ background:var(--luemi-surface);contain:paint;
 }
+/* Delicate profile-specific Liquid Glass rim stays ~1.45px after scaling. */
 .profile-morph-photo:before{
- position:absolute;inset:0;content:"";
- z-index:5;pointer-events:none;
+ content:"";position:absolute;inset:0;z-index:5;pointer-events:none;
  border-radius:inherit;
- background:linear-gradient(150deg,rgba(255,255,255,.19),transparent 21%,transparent 72%,rgba(207,154,246,.08));
+ background:linear-gradient(150deg,rgba(255,255,255,.17),transparent 21%,transparent 72%,rgba(207,154,246,.07));
 }
 .profile-morph-photo:after{
- position:absolute;inset:0;content:"";
- z-index:6;pointer-events:none;
+ content:"";position:absolute;inset:0;z-index:6;pointer-events:none;
  border-radius:inherit;
- box-shadow:inset 0 0 0 var(--profile-rim,1.45px) rgba(255,255,255,.78),inset 0 1.5px 4px rgba(255,255,255,.23);
+ box-shadow:inset 0 0 0 var(--profile-rim,1.45px) rgba(255,255,255,.79),inset 0 1.5px 4px rgba(255,255,255,.19);
 }
-[data-luemi-theme=dark] .profile-morph-photo:after{
- box-shadow:inset 0 0 0 var(--profile-rim,1.45px) rgba(244,220,255,.65),inset 0 1.5px 4px rgba(248,229,255,.18);
-}
+[data-luemi-theme=dark] .profile-morph-photo:after{box-shadow:inset 0 0 0 var(--profile-rim,1.45px) rgba(244,220,255,.66),inset 0 1.5px 4px rgba(248,229,255,.18)}
 .profile-morph-gallery{position:absolute;inset:0;overflow:hidden;touch-action:pan-y;pointer-events:auto}
-.profile-morph-strip{position:absolute;inset:0;width:100%;height:100%;display:flex;will-change:transform}
-.profile-morph-slide{position:relative;flex:0 0 100%;width:100%;height:100%;overflow:hidden}
-.profile-morph-slide>.portrait{width:100%;height:100%;border-radius:0}
-.profile-morph-slide>.portrait>img{position:absolute;inset:0;width:100%;height:100%;left:0;top:0;max-width:none;object-fit:cover;transform:none!important;will-change:auto}
-.profile-morph-scrim{z-index:2}
-.profile-morph-caption{z-index:3;pointer-events:none;bottom:22px}
-.profile-morph-photo-bars{
- position:absolute;
- display:flex;
- gap:5px;
- top:9px;
- left:11px;right:11px;
- height:17px;
- z-index:4;
- pointer-events:auto;
- will-change:opacity;
-}
-.profile-morph-photo-bars button{flex:1;position:relative;min-width:0;min-height:23px;padding:0 0 13px;background:transparent;pointer-events:auto}
-.profile-morph-photo-bars button>span{display:block;width:100%;height:3px;border-radius:99px;background:rgba(255,255,255,.46);box-shadow:0 0 2px rgba(25,8,35,.2)}
-.profile-morph-photo-bars button.active>span{background:#fff;box-shadow:0 1px 7px rgba(255,255,255,.36)}
-.profile-morph-stage[data-gallery-active=false] .profile-morph-gallery,
-.profile-morph-stage[data-gallery-active=false] .profile-morph-photo-bars{pointer-events:none}
+.profile-morph-strip{position:absolute;inset:0;display:flex;width:100%;height:100%;will-change:transform}
+.profile-morph-slide{position:relative;width:100%;height:100%;flex:0 0 100%;overflow:hidden}
+.profile-morph-slide>.portrait{height:100%;width:100%;border-radius:0;}
+.profile-morph-slide>.portrait>img{position:absolute;inset:0;width:100%;height:100%;left:0;top:0;max-width:none;object-fit:cover;transform:none!important}
+.profile-morph-scrim{position:absolute;inset:47% 0 0;z-index:2;pointer-events:none;background:linear-gradient(to top,rgba(33,19,44,.78),transparent)}
+.profile-morph-caption{position:absolute;z-index:3;left:20px;right:12px;bottom:22px;pointer-events:none;color:white;text-shadow:0 2px 18px rgba(28,12,39,.32);will-change:opacity}
+.profile-morph-name{display:flex;align-items:center;gap:9px;font-size:28px;font-weight:750;letter-spacing:-.6px;line-height:1.2}
+.profile-morph-city{font-size:12px;font-weight:520;line-height:1.45;margin-top:7px;color:#fff}
+.profile-morph-photo-bars{position:absolute;z-index:4;top:9px;left:11px;right:11px;height:23px;display:flex;gap:5px;pointer-events:auto;will-change:opacity}
+.profile-morph-photo-bars button{flex:1;min-width:0;min-height:23px;padding:0 0 13px;background:transparent}
+.profile-morph-photo-bars button span{display:block;width:100%;height:3px;border-radius:99px;background:rgba(255,255,255,.46);box-shadow:0 0 2px rgba(25,8,35,.2)}
+.profile-morph-photo-bars button.active span{background:white;box-shadow:0 1px 7px rgba(255,255,255,.36)}
+.profile-morph-frame[data-gallery-active=false] .profile-morph-gallery,.profile-morph-frame[data-gallery-active=false] .profile-morph-photo-bars{pointer-events:none}
+.profile-morph-photo-bars:empty{display:none}
+/* The compact plate is ALWAYS fixed at this coordinate, opacity alone changes. */
 .profile-morph-compact{
- top:3px;
- left:77px;
- min-height:51px;
- transform-origin:top left;
- will-change:transform,opacity;
- pointer-events:none;
+ --glass-light-x:32%;--glass-light-y:16%;
+ position:absolute;top:3px;left:77px;right:4px;
+ min-height:51px;padding:9px 13px;display:flex;flex-direction:column;justify-content:center;gap:2px;
+ border:1px solid rgba(255,255,255,.57);border-radius:20px;
+ background:linear-gradient(145deg,rgba(255,255,255,.33),rgba(242,227,251,.13) 53%,rgba(255,255,255,.19));
+ color:var(--luemi-text);box-shadow:0 7px 25px rgba(77,44,99,.13),inset 0 1px 1px rgba(255,255,255,.8),inset 0 -1px 2px rgba(117,80,141,.15);
+ opacity:0;will-change:opacity;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;isolation:isolate;pointer-events:none;
+ backdrop-filter:blur(16px) saturate(1.52);-webkit-backdrop-filter:blur(16px) saturate(1.52);
 }
-.profile-motion-details{padding-top:16px;padding-bottom:28px;position:relative;z-index:1}
-.profile-motion-details .section{margin-top:0;margin-bottom:14px;border-radius:23px;padding:21px 19px;position:relative}
-.profile-motion-details .section h3{margin-bottom:11px}
-@media(max-width:370px){.content.profile-detail{padding-inline:12px}.profile-morph-compact{left:75px}}
-@media(min-width:700px){.content.profile-detail{padding-top:var(--profile-gap)}}
+.profile-morph-compact:before{position:absolute;inset:1px;content:"";border-radius:inherit;pointer-events:none;background:radial-gradient(ellipse at var(--glass-light-x) var(--glass-light-y),rgba(255,255,255,.49),transparent 69%);box-shadow:inset 1px 0 1px rgba(255,255,255,.35),inset -1px 0 1px rgba(255,255,255,.18);z-index:0}
+.profile-morph-compact:after{position:absolute;inset:0;content:"";pointer-events:none;border-radius:inherit;z-index:0;border:1px solid rgba(255,255,255,.25);background:linear-gradient(165deg,rgba(255,255,255,.11),transparent 52%,rgba(190,148,225,.05))}
+.profile-morph-compact>strong,.profile-morph-compact>span{position:relative;z-index:1}
+.profile-morph-compact strong{font-weight:720;letter-spacing:-.35px;font-size:16px;line-height:1.12;overflow:hidden;text-overflow:ellipsis}
+.profile-morph-compact span{font-size:11px;color:var(--luemi-text-muted);line-height:1.2;overflow:hidden;text-overflow:ellipsis}
+[data-luemi-theme=dark] .profile-morph-compact{border-color:rgba(232,213,255,.29);background:linear-gradient(145deg,rgba(107,80,135,.34),rgba(48,34,65,.27) 54%,rgba(157,120,183,.2));box-shadow:0 7px 22px rgba(8,4,17,.25),inset 0 1px 1px rgba(248,235,255,.34),inset 0 -1px 2px rgba(16,7,27,.3)}
+[data-luemi-theme=dark] .profile-morph-compact:before{background:radial-gradient(ellipse at var(--glass-light-x) var(--glass-light-y),rgba(235,204,255,.23),transparent 70%)}
+@supports not ((backdrop-filter:blur(14px)) or (-webkit-backdrop-filter:blur(14px))){.profile-morph-compact{background:rgba(244,235,250,.95)}[data-luemi-theme=dark] .profile-morph-compact{background:rgba(55,40,70,.95)}}
+@media(max-width:370px){.profile-detail-root{--profile-side:12px}.profile-morph-compact{left:75px}.profile-morph-name{font-size:25px}}
 @media(prefers-reduced-motion:reduce){.profile-morph-strip{transition:none!important}}
 [data-reduced-motion=true] .profile-morph-strip{transition:none!important}
-/* Opacity/accessibility for one-photo profiles: no segmented bar. */
-.profile-morph-photo-bars:empty{display:none}

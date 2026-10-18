@@ -8,8 +8,8 @@ export function LiquidLogo(){
   let raf=0,x=50,y=25;
   const paint=()=>{raf=0;logo.style.setProperty('--light-x',`${x}%`);logo.style.setProperty('--light-y',`${y}%`);};
   const request=()=>{if(document.documentElement.dataset.reducedMotion==='true'||matchMedia('(prefers-reduced-motion: reduce)').matches)return;if(!raf)raf=requestAnimationFrame(paint);};
-  const pointer=(event:Event)=>{const e=event as PointerEvent,r=frame.getBoundingClientRect();x=15+(e.clientX-r.left)/Math.max(r.width,1)*70;y=8+(e.clientY-r.top)/Math.max(r.height,1)*55;request();};
-  const scroll=(event:Event)=>{const el=event.target;if(el instanceof HTMLElement){x=50+Math.sin(el.scrollTop/220)*30;y=22+Math.sin(el.scrollTop/360)*12;request();}};
+  const pointer=(event:Event)=>{const e=event as PointerEvent;if(frame.querySelector('.slide-pane[data-page="profile"][data-visible="true"]'))return;const r=frame.getBoundingClientRect();x=15+(e.clientX-r.left)/Math.max(r.width,1)*70;y=8+(e.clientY-r.top)/Math.max(r.height,1)*55;request();};
+  const scroll=(event:Event)=>{const el=event.target;if(el instanceof HTMLElement){if(el.closest('.profile-detail-root'))return; x=50+Math.sin(el.scrollTop/220)*30;y=22+Math.sin(el.scrollTop/360)*12;request();}};
   frame.addEventListener('pointermove',pointer,{passive:true});frame.addEventListener('scroll',scroll,{passive:true,capture:true});
   return()=>{frame.removeEventListener('pointermove',pointer);frame.removeEventListener('scroll',scroll,true);cancelAnimationFrame(raf);};
  },[]);
