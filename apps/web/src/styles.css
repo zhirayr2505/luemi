@@ -48,3 +48,11 @@
 /* Keep action icons theme-specific; avoid recoloring originals beyond existing design rules. */
 [data-luemi-theme=dark] .core-icon{filter:none}
 @supports (backdrop-filter:blur(16px)){.glass{backdrop-filter:blur(18px) saturate(1.25);-webkit-backdrop-filter:blur(18px) saturate(1.25)}}
+
+/* Actual W05/W07 theme-specific approved assets: never recolor approved raster/vector data. */
+.themed-icon{display:inline-flex;align-items:center;justify-content:center;flex:none}
+.icon-dark{display:none!important}
+[data-luemi-theme=dark] .icon-dark{display:inline-block!important}
+[data-luemi-theme=dark] .icon-light{display:none!important}
+.empty>img.icon-dark,.empty>img.icon-light{width:180px;height:150px;object-fit:contain}
+[data-luemi-theme=dark] .core-icon{filter:none}
