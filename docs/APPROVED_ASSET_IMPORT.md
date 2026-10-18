@@ -13,3 +13,6 @@ Source: original LUEMI W05 SVG icons preserved in LUEMI_SOURCE_2026-10-18.zip.
 Never silently replace the original logo with a newly drawn vector. Before using each binary asset, compare against SHA-256 from the immutable source package.
 
 Design pixel QA / mobile runtime visual acceptance remain pending. CI compilation does not equal design approval.
+
+## Validation
+The Stage 01 CI asserts that all 24 W05 SVGs exist and contain safe SVG roots, that the transparent preview WebP is byte-identical to the imported compressed asset, and that no source links use missing icon paths. This is structural asset QA, not pixel-perfect visual sign-off.
