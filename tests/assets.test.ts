@@ -14,7 +14,7 @@ test("all 24 W05 approved icons are present as independent theme-specific SVGs",
    assert.match(svg,/<svg xmlns="http:\/\/www.w3.org\/2000\/svg"/);
    assert.match(svg,/viewBox="0 0 24 24"/);
    assert.match(svg,/<title>.+<\/title>/);
-   assert.doesNotMatch(svg,/script|onload=|foreignObject|https?:\/\//i);
+   assert.doesNotMatch(svg,/<script\b|\sonload=|<foreignObject\b|<image\b|xlink:href=/i);
  }
 });
 test("W06 preview bytes retained; original brand remains recorded in handoff",()=>{
