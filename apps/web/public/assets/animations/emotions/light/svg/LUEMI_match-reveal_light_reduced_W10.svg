@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" class="luemi-reduced" role="img" aria-label="match-reveal">
+<style>@keyframes luemiLike{0%{transform:scale(.82);opacity:.55}45%{transform:scale(1.12);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes luemiEcho{0%{transform:scale(.72);opacity:.7}100%{transform:scale(1.5);opacity:0}}
+@keyframes luemiMatchL{0%{transform:translateX(-28px)}100%{transform:translateX(-6px)}}
+@keyframes luemiMatchR{0%{transform:translateX(28px)}100%{transform:translateX(6px)}}
+@keyframes luemiSparkle{0%,100%{transform:scale(.93);opacity:.72}50%{transform:scale(1.07);opacity:1}}
+@keyframes luemiGlow{0%,100%{filter:drop-shadow(0 0 1px rgba(200,150,240,.12))}50%{filter:drop-shadow(0 0 12px rgba(200,150,240,.58))}}
+.luemi-motion .like-core{animation:luemiLike 560ms cubic-bezier(.18,.9,.22,1) 1 both;transform-origin:120px 120px}
+.luemi-motion .like-ring{animation:luemiEcho 560ms ease-out 1 both;transform-origin:120px 120px}
+.luemi-motion .match-left{animation:luemiMatchL 1100ms ease-out 1 both}
+.luemi-motion .match-right{animation:luemiMatchR 1100ms ease-out 1 both}
+.luemi-motion .lume-core{animation:luemiSparkle 1800ms ease-in-out infinite;transform-origin:120px 120px}
+.luemi-motion .crown-core{animation:luemiGlow 2200ms ease-in-out infinite;transform-origin:120px 120px}
+@media (prefers-reduced-motion: reduce){.luemi-motion *{animation:none!important;transition:none!important;filter:none!important;transform:none!important}}
+.luemi-reduced *{animation:none!important;transition:none!important;filter:none!important;transform:none!important}
+</style><title>match-reveal - LUEMI W10</title><g><g class="match-left"><circle cx="88" cy="120" r="49" fill="none" stroke="#EC85BA" stroke-width="6"/>
+<circle cx="88" cy="108" r="15" fill="#EC85BA"/><path d="M62 145Q88 122 114 145" fill="#EC85BA"/></g>
+<g class="match-right"><circle cx="152" cy="120" r="49" fill="none" stroke="#AD7ADB" stroke-width="6"/>
+<circle cx="152" cy="108" r="15" fill="#AD7ADB"/><path d="M126 145Q152 122 178 145" fill="#AD7ADB"/></g>
+<path d="M120 102C111 91 95 107 120 127C145 107 129 91 120 102Z" fill="#EC85BA" stroke="#F6C5E2" stroke-width="3"/></g></svg>

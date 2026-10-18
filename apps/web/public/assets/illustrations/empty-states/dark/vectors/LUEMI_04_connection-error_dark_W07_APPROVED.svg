@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="300" viewBox="0 0 340 300" role="img" aria-label="Нет подключения"><desc>LUEMI W07: Нет подключения. Иллюстрация без UI-текста, одобрено владельцем. Темa: dark.</desc><defs><linearGradient id="pinkGrad" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#CEAAFF" /><stop offset=".56" stop-color="#F4A7D0" /><stop offset="1" stop-color="#F59BAF" /></linearGradient>
+    </defs><g><g><circle cx="170" cy="146" r="113" fill="#503361" fill-opacity="0.87" />
+      <circle cx="170" cy="146" r="132" stroke="#CEAAFF" stroke-opacity=".12" stroke-width="1.5" stroke-dasharray="2 11" fill="none" />
+      <circle cx="274" cy="73" r="7" fill="#F4A7D0" fill-opacity=".65" /><circle cx="65" cy="183" r="5" fill="#CEAAFF" fill-opacity=".40" />
+      <path d="M75 74v18 M66 83h18" stroke="#F4A7D0" stroke-width="3" stroke-linecap="round" opacity=".65" />
+      <path d="M270 206v16 M262 214h16" stroke="#CEAAFF" stroke-width="3" stroke-linecap="round" opacity=".65" /><path d="M106 190c-27 0-44-18-44-42 0-24 19-43 44-43 9-36 39-59 76-59 37 0 66 24 75 55 29 2 47 23 47 49 0 26-19 44-50 44" fill="#452F57" stroke="#BFA0EB" stroke-width="4" stroke-linecap="round" />
+        <path d="M112 155c38-31 90-32 128 0" stroke="#CEAAFF" stroke-width="7" fill="none" stroke-linecap="round" opacity=".58" />
+        <path d="M136 180c22-18 48-18 69 0" stroke="#CEAAFF" stroke-width="7" fill="none" stroke-linecap="round" opacity=".85" />
+        <circle cx="172" cy="205" r="8" fill="#F4A7D0" />
+        <path d="M232 118l-21 36h24l-29 44" stroke="#F4A7D0" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="82" cy="217" r="6" fill="#F4A7D0" opacity=".6" /></g></g></svg>
