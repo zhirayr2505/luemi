@@ -15,7 +15,7 @@ function GlassButton({children,onClick,kind="soft",disabled=false}:{children:Rea
 }
 function Brand({compact=false}:{compact?:boolean}) {
   return <div className={compact?"brand-island":"brand-banner"} aria-label="luemi">
-    <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi" onError={e=>{e.currentTarget.style.display="none";e.currentTarget.nextElementSibling?.classList.remove("fallback-hidden");}} />
+    <img src="/assets/brand/derivatives/wordmark_W06_preview.webp" alt="luemi" onError={e=>{e.currentTarget.style.display="none";e.currentTarget.nextElementSibling?.classList.remove("fallback-hidden");}} />
     <span className="brand-fallback fallback-hidden">luemi</span>
   </div>;
 }
