@@ -26,3 +26,9 @@ Automated tests verify progress bounds and reversibility. **Physical 60fps and s
 - Eliminated redundant location teaser above «О себе»; the first info card now follows the hero.
 - Rebuilt name/city capsule with matching LUEMI Liquid Glass optical layers (rim, backdrop refraction, light glare, themed transparency) without creating a second scroll or timing driver.
 - QA acceptance: at scrollTop=0 hero starts under logo, at scrollTop >= travel avatar and glass nameplate stay under logo; no overlay with back or '...' buttons, and no content obscuring UI at end of document.
+
+## Frame inspection follow-up · 2026-10-19
+- User supplied expanded and collapsed Galaxy A55 screenshots. In expanded mode, the sticky image's visual top was 48px beneath its layout origin because the scrollport had `padding-top:0`, which made «О себе» sit visually behind the photo. In collapsed mode the Liquid Glass name capsule touched the brand island.
+- Set **one shared token** `--profile-header-inset:64px` for **both** the native scroll container's `padding-top` and the sticky stage's `top`. The image and content now occupy the same initial coordinates in normal flow. Photo begins below brand island, with a visible gap. Capsule remains just underneath the header after scroll collapse.
+- Keep `profileMorph.ts`, `useProfilePhotoMorph.ts`, single RAF and Liquid Glass capsule unchanged. Slightly rebalance section spacing (8px internal lead, 10px first card margin) to reveal a comfortable gap before «О себе».
+- QA: open at scroll 0 (no card/image overlap), scroll slowly up and down (no jitter), inspect fully collapsed capsule/brand vertical separation, test narrow/safe area and dark theme; ask for screenshots if geometry still deviates.
