@@ -28,10 +28,6 @@ export function ProfileMotion({ profile, reducedMotion = false }: { profile: Pro
       </div>
     </div>
     <div className="profile-motion-details">
-      <div className="profile-motion-intro glass">
-        <span className="profile-motion-eyebrow">ЗНАКОМСТВО БЛИЖЕ</span>
-        <p>{profile.city ? `📍 ${profile.city}` : '📍 Место встречи ещё впереди'}{profile.goal && profile.goal !== 'Пока не определился' ? ` · ${profile.goal}` : ''}</p>
-      </div>
       <section className="glass section"><h3>О себе</h3><p>{profile.about || 'Здесь появится немного о тебе.'}</p></section>
       <section className="glass section"><h3>Интересы</h3><div className="chips colored">{profile.interests.length ? profile.interests.map((x, i) => <span key={x} style={{ '--chip-tone': i % 7 } as React.CSSProperties}>{x}</span>) : <p>Пока не указаны</p>}</div></section>
       <section className="glass section"><h3>Языки общения</h3><p>{profile.languages.join(' · ') || 'Не указаны'}</p></section>

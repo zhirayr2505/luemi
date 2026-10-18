@@ -20,3 +20,9 @@ Scope of this release: animated **expanded ↔ collapsed profile**, approved W12
 - Accessibility: profile name remains accessible, text contrast and button hit targets at least 44px, no phantom focus on offscreen pane.
 
 Automated tests verify progress bounds and reversibility. **Physical 60fps and screenshot pixel parity cannot be claimed without on-device QA.**
+## Video QA correction · 2026-10-19
+- User-provided 10s Galaxy A55 video revealed doubled vertical offset: +112px scroll-container padding and +112px sticky offset. The expanded photograph began too low, while the avatar persisted near the middle of the screen.
+- Fixed scroll-container top padding to **0px**, stage sticky inset to **48px**. Result targets an almost identical top Y for open photo and compact avatar immediately below the unchanged LUEMI logo island, without ever animating top/height.
+- Eliminated redundant location teaser above «О себе»; the first info card now follows the hero.
+- Rebuilt name/city capsule with matching LUEMI Liquid Glass optical layers (rim, backdrop refraction, light glare, themed transparency) without creating a second scroll or timing driver.
+- QA acceptance: at scrollTop=0 hero starts under logo, at scrollTop >= travel avatar and glass nameplate stay under logo; no overlay with back or '...' buttons, and no content obscuring UI at end of document.

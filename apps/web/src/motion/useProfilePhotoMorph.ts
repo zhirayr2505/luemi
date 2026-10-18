@@ -42,6 +42,9 @@ export function useProfilePhotoMorph(
       photo.style.borderRadius = `${f.radius.toFixed(2)}px`;
       caption.style.opacity = String(f.heroOpacity);
       compact.style.opacity = String(f.compactOpacity);
+      // Small LUEMI-style liquid highlight, synced to the existing scroll RAF.
+      compact.style.setProperty('--glass-light-x', `${(24 + f.eased * 42).toFixed(1)}%`);
+      compact.style.setProperty('--glass-light-y', `${(12 + f.eased * 15).toFixed(1)}%`);
       if (img) img.style.transform = `scale(${f.zoom.toFixed(4)})`;
       const nowCollapsed = f.progress >= .995;
       if (nowCollapsed !== collapsed) {
@@ -72,6 +75,8 @@ export function useProfilePhotoMorph(
       photo.style.borderRadius = '';
       caption.style.opacity = '';
       compact.style.opacity = '';
+      compact.style.removeProperty('--glass-light-x');
+      compact.style.removeProperty('--glass-light-y');
       if (img) img.style.transform = '';
       delete stage.dataset.collapsed;
     };
