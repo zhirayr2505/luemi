@@ -19,6 +19,7 @@
   },
   "include": [
     "apps",
+    "packages",
     "tests",
     "vite.config.ts"
   ]
