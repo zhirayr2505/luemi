@@ -1,6 +1,6 @@
 import {useRef,useState} from "react";
 import type {CSSProperties,ReactNode} from "react";
-import {Mars,Venus,Users,Languages,Check} from "lucide-react";
+import {UserRound,UserRoundCheck,Users,Languages,Check} from "lucide-react";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
 import {categories,InterestChip,tint} from "../ui/InterestCatalog";
 import {GeoPicker} from "./GeoPicker";
@@ -63,8 +63,8 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      <GlassField label="Год"><GlassTextInput ref={year} inputMode="numeric" autoComplete="bday-year" placeholder="ГГГГ" value={data.year} onChange={e=>date("year",e.target.value)}/></GlassField>
    </div>
    <ChoiceRow label="Пол">
-     <GlassChoice chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<Mars size={17}/>}>Мужчина</GlassChoice>
-     <GlassChoice chosen={data.gender==="woman"} onClick={()=>patch({gender:"woman"})} icon={<Venus size={17}/>}>Женщина</GlassChoice>
+     <GlassChoice chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<UserRound size={17}/>}>Мужчина</GlassChoice>
+     <GlassChoice chosen={data.gender==="woman"} onClick={()=>patch({gender:"woman"})} icon={<UserRoundCheck size={17}/>}>Женщина</GlassChoice>
      <GlassChoice chosen={data.gender==="other"} onClick={()=>patch({gender:"other"})} icon={<Users size={17}/>}>Другой вариант</GlassChoice>
    </ChoiceRow>
    <p className="hint">Только 18+. Правильность даты будет дополнительно проверяться на сервере перед публикацией.</p>
@@ -72,8 +72,8 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  if(step===3)return <div className="form-stack"><GeoPicker data={data} patch={patch}/></div>;
  if(step===4)return <div className="form-stack">
    <ChoiceRow label="Кого хочешь встретить?">
-     <GlassChoice chosen={data.audience==="women"} onClick={()=>patch({audience:"women"})} icon={<Venus size={17}/>}>Женщин</GlassChoice>
-     <GlassChoice chosen={data.audience==="men"} onClick={()=>patch({audience:"men"})} icon={<Mars size={17}/>}>Мужчин</GlassChoice>
+     <GlassChoice chosen={data.audience==="women"} onClick={()=>patch({audience:"women"})} icon={<UserRoundCheck size={17}/>}>Женщин</GlassChoice>
+     <GlassChoice chosen={data.audience==="men"} onClick={()=>patch({audience:"men"})} icon={<UserRound size={17}/>}>Мужчин</GlassChoice>
      <GlassChoice chosen={data.audience==="everyone"} onClick={()=>patch({audience:"everyone"})} icon={<Users size={17}/>}>Всех</GlassChoice>
    </ChoiceRow>
    <DoubleAgeRange min={data.ageMin} max={data.ageMax} onChange={(ageMin,ageMax)=>patch({ageMin,ageMax})}/>
