@@ -3,6 +3,7 @@ import {X,RotateCcw,SlidersHorizontal} from "lucide-react";
 import type {DiscoveryFilter} from "./model";
 import {defaultFilters} from "./model";
 import {goals} from "../registration/model";
+import {languages} from "../ui/Languages";
 import {positionAt,radiusAt} from "../registration/GeoPicker";
 import {DoubleAgeRange} from "../registration/Steps";
 import type {RegistrationDraft} from "../registration/model";
@@ -53,6 +54,12 @@ export function DiscoveryFilters({open,filter,draft,onClose,onApply}:Props){
          <select className="glass-control" value={working.goal} onChange={e=>set("goal",e.target.value as DiscoveryFilter["goal"])}>
            <option value="all">Любая цель</option>
            {goals.map(g=><option key={g.id} value={g.id}>{g.label}</option>)}
+         </select>
+       </fieldset>
+       <fieldset className="discovery-filter-group"><legend>Язык общения</legend>
+         <select className="glass-control" value={working.language} onChange={e=>set("language",e.target.value)}>
+           <option value="all">Любой язык</option>
+           {languages.map(lang=><option key={lang.id} value={lang.id}>{lang.name}</option>)}
          </select>
        </fieldset>
        <label className="discovery-filter-toggle">
