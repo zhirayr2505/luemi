@@ -10,7 +10,7 @@ const m=await load("apps/web/src/discovery/model.ts");
 const d=await load("apps/web/src/discovery/demo-people.ts");
 const draft={city:"Краснодар",countryCode:"ru",interests:["музыка","путешествия"]};
 const people=d.demoPeople;
-assert.equal(people.length,8,"eight deliberately illustrated synthetic demo profiles");
+assert.equal(people.length,6,"six deliberately illustrated synthetic demo profiles");
 assert.ok(people.every(p=>p.age>=18&&p.photos.length>=2&&p.photos.every(photo=>photo.src.startsWith("data:image/svg+xml"))));
 assert.equal(m.filterDemoPeople(people,m.defaultFilters,draft).length,8,"worldwide fixture results");
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,scope:"country"},draft).every(p=>p.countryCode==="ru"),true);
