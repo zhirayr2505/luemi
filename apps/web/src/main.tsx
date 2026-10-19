@@ -4,6 +4,7 @@ import App from './App';
 import './styles.css';
 import './logo.css';
 import './profileMotion.css';
+import './profileTabs.css';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
