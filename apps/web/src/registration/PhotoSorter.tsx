@@ -1,90 +1,122 @@
-import {useEffect,useRef,useState} from "react";
+import {useLayoutEffect,useRef,useState,useEffect} from "react";
 import type {PointerEvent as ReactPointerEvent,ChangeEvent} from "react";
+import {createPortal} from "react-dom";
 import {Plus,X,GripVertical,ArrowLeft,ArrowRight} from "lucide-react";
 export interface PhotoItem {id:string;src:string;file:File}
 interface Props {photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void}
-interface Drag {source:number;target:number;x:number;y:number}
-interface Gesture {index:number;x:number;y:number;pointerId:number;started:boolean;timer:number}
+interface Drag {id:string;source:number;target:number;x:number;y:number;width:number;height:number}
+interface Pending {id:string;pointer:number;x:number;y:number;timer:number;started:boolean}
+export const reorder=<T,>(items:T[],from:number,to:number)=>{
+ if(from<0||to<0||from>=items.length||to>=items.length)return items;
+ const next=[...items];const [value]=next.splice(from,1);next.splice(to,0,value);return next;
+};
 export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
- const input=useRef<HTMLInputElement>(null);
- const gesture=useRef<Gesture|null>(null);
+ const input=useRef<HTMLInputElement>(null),mosaic=useRef<HTMLDivElement>(null);
+ const pending=useRef<Pending|null>(null),dragRef=useRef<Drag|null>(null);
+ const itemRefs=useRef(new Map<string,HTMLDivElement>());
+ const rects=useRef(new Map<string,DOMRect>());
  const [drag,setDrag]=useState<Drag|null>(null);
- const [error,setError]=useState("");
- const dragRef=useRef<Drag|null>(null);
- const clear=()=>{
-   if(gesture.current)window.clearTimeout(gesture.current.timer);
-   gesture.current=null;dragRef.current=null;setDrag(null);
+ const display=drag?reorder(photos,drag.source,drag.target):photos;
+ const cancel=()=>{
+   if(pending.current)window.clearTimeout(pending.current.timer);
+   pending.current=null;dragRef.current=null;setDrag(null);
  };
- useEffect(()=>()=>{if(gesture.current)window.clearTimeout(gesture.current.timer);},[]);
- const onDown=(event:ReactPointerEvent<HTMLDivElement>,index:number)=>{
-   if(event.button!==0||!photos[index]||(event.target as HTMLElement).closest("button"))return;
-   if(gesture.current)clear();
-   const id=event.pointerId;
-   const g:Gesture={index,x:event.clientX,y:event.clientY,pointerId:id,started:false,timer:0};
-   g.timer=window.setTimeout(()=>{
-     if(gesture.current!==g)return;
-     g.started=true;
-     const initial={source:index,target:index,x:g.x,y:g.y};
-     dragRef.current=initial;setDrag(initial);
-     // Context menus and long press selection are suppressed on the slot only.
+ useEffect(()=>()=>{if(pending.current)window.clearTimeout(pending.current.timer);},[]);
+ useLayoutEffect(()=>{
+   // FLIP: old positions -> new positions; movable cards stay in one DOM tree.
+   const newRects=new Map<string,DOMRect>();
+   itemRefs.current.forEach((node,id)=>newRects.set(id,node.getBoundingClientRect()));
+   for(const [id,rect] of newRects){
+     const old=rects.current.get(id),node=itemRefs.current.get(id);
+     if(!old||!node||id===drag?.id)continue;
+     const x=old.left-rect.left,y=old.top-rect.top;
+     if(Math.abs(x)>1||Math.abs(y)>1){
+       node.getAnimations().forEach(animation=>animation.cancel());
+       node.animate([{transform:"translate3d("+x+"px,"+y+"px,0)"},{transform:"translate3d(0,0,0)"}],
+         {duration:230,easing:"cubic-bezier(.2,.8,.22,1)"});
+     }
+   }
+   rects.current=newRects;
+ },[display.map(x=>x.id).join("|"),drag?.id]);
+ const down=(event:ReactPointerEvent<HTMLDivElement>,id:string)=>{
+   if(event.pointerType==="mouse"&&event.button!==0)return;
+   if((event.target as HTMLElement).closest("button"))return;
+   cancel();
+   const element=itemRefs.current.get(id);
+   if(!element)return;
+   const pendingItem:Pending={id,pointer:event.pointerId,x:event.clientX,y:event.clientY,timer:0,started:false};
+   pendingItem.timer=window.setTimeout(()=>{
+     if(pending.current!==pendingItem)return;
+     const source=photos.findIndex(x=>x.id===id);
+     if(source<0)return;
+     pendingItem.started=true;
+     const rect=element.getBoundingClientRect();
+     const value={id,source,target:source,x:pendingItem.x,y:pendingItem.y,width:rect.width,height:rect.height};
+     dragRef.current=value;setDrag(value);
+     try{mosaic.current?.setPointerCapture(pendingItem.pointer);}catch{/* Telegram WebView fallback */}
+     window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
    },275);
-   gesture.current=g;
-   try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* unsupported client */}
+   pending.current=pendingItem;
  };
- const onMove=(event:ReactPointerEvent<HTMLDivElement>)=>{
-   const g=gesture.current;
-   if(!g||g.pointerId!==event.pointerId)return;
-   if(!g.started){
-     if(Math.hypot(event.clientX-g.x,event.clientY-g.y)>11)clear();
+ const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
+   const p=pending.current;
+   if(!p||p.pointer!==event.pointerId)return;
+   if(!p.started){
+     if(Math.hypot(event.clientX-p.x,event.clientY-p.y)>11)cancel();
      return;
    }
    event.preventDefault();
-   const element=document.elementFromPoint(event.clientX,event.clientY)?.closest("[data-slot]");
-   const target=element?.getAttribute("data-slot");
-   const n=target===null||target===undefined?g.index:Number(target);
-   const next:Drag={source:g.index,target:Number.isInteger(n)&&n>=0&&n<photos.length?n:g.index,x:event.clientX,y:event.clientY};
-   dragRef.current=next;setDrag(next);
+   const under=document.elementFromPoint(event.clientX,event.clientY)?.closest("[data-photo-slot]");
+   const index=under?.getAttribute("data-photo-slot");
+   const target=index===undefined||index===null?dragRef.current?.target??0:Number(index);
+   const current=dragRef.current;if(!current)return;
+   const updated:Drag={...current,x:event.clientX,y:event.clientY,
+     target:Number.isInteger(target)?Math.max(0,Math.min(photos.length-1,target)):current.target};
+   dragRef.current=updated;
+   setDrag(updated);
  };
- const onUp=(event:ReactPointerEvent<HTMLDivElement>)=>{
-   const g=gesture.current;
-   if(!g||g.pointerId!==event.pointerId)return;
-   const finished=dragRef.current;
-   clear();
-   if(finished&&finished.source!==finished.target)movePhoto(finished.source,finished.target);
+ const up=(event:ReactPointerEvent<HTMLDivElement>)=>{
+   const p=pending.current;if(!p||p.pointer!==event.pointerId)return;
+   const completed=dragRef.current;cancel();
+   try{mosaic.current?.releasePointerCapture(event.pointerId);}catch{/* ignore */}
+   if(completed&&completed.source!==completed.target)movePhoto(completed.source,completed.target);
  };
- const onInput=(e:ChangeEvent<HTMLInputElement>)=>{
-   const selected=Array.from(e.currentTarget.files??[]);
-   e.currentTarget.value="";
-   setError("");
-   if(selected.length) addPhotos(selected);
+ const onFile=(event:ChangeEvent<HTMLInputElement>)=>{
+   const snapshot=Array.from(event.currentTarget.files??[]);
+   event.currentTarget.value="";
+   if(snapshot.length)addPhotos(snapshot);
  };
  return <div className="photo-sorter">
-   <input ref={input} className="native-photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple
-     onChange={onInput} aria-label="Добавить фотографии"/>
-   <div className="mosaic" aria-label="Мозаика фотографий">{Array.from({length:6},(_,i)=>{
-     const photo=photos[i];
-     return <div key={photo?.id??"empty-"+i} data-slot={i}
-       className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.target===i&&drag.source!==i?" drop-target":"")+(drag?.source===i?" drag-source":"")}
-       onPointerDown={e=>onDown(e,i)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={clear}
-       onContextMenu={e=>e.preventDefault()}>
-       {photo?<><img src={photo.src} alt={"Фото "+(i+1)} draggable="false"/>
+   <input ref={input} className="native-photo-input" type="file" accept="image/jpeg,image/png,image/webp"
+     multiple onChange={onFile} aria-label="Добавить фотографии"/>
+   <div className="mosaic" ref={mosaic} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel}
+     onDragStart={event=>event.preventDefault()} aria-label="Порядок фотографий">
+     {Array.from({length:6},(_,i)=>{
+       const photo=display[i];
+       return <div key={photo?.id??"slot-"+i} data-photo-slot={i}
+         ref={photo?element=>{if(element)itemRefs.current.set(photo.id,element);else itemRefs.current.delete(photo.id);}:undefined}
+         onPointerDown={photo?event=>down(event,photo.id):undefined}
+         onContextMenu={event=>{if(photo)event.preventDefault();}}
+         className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.id===photo?.id?" drag-source":"")}>
+         {photo?<><img src={photo.src} alt={"Фото "+(i+1)} draggable={false}/>
            <span className="slot-index">{i+1}</span>
            {i===0&&<span className="primary-photo">Главное</span>}
-           <button className="remove-photo" type="button" aria-label={"Удалить фото "+(i+1)} onClick={()=>removePhoto(photo.id)}><X size={15}/></button>
+           <button className="remove-photo" type="button" onClick={()=>removePhoto(photo.id)} aria-label={"Удалить фото "+(i+1)}><X size={14}/></button>
            <div className="photo-reorder-buttons">
-             <button type="button" disabled={i===0} aria-label={"Фото "+(i+1)+": раньше"} onClick={()=>movePhoto(i,i-1)}><ArrowLeft size={13}/></button>
-             <button type="button" disabled={i===photos.length-1} aria-label={"Фото "+(i+1)+": позже"} onClick={()=>movePhoto(i,i+1)}><ArrowRight size={13}/></button>
+             <button type="button" disabled={i===0} onClick={()=>movePhoto(i,i-1)} aria-label={"Фото "+(i+1)+" раньше"}><ArrowLeft size={13}/></button>
+             <button type="button" disabled={i===photos.length-1} onClick={()=>movePhoto(i,i+1)} aria-label={"Фото "+(i+1)+" позже"}><ArrowRight size={13}/></button>
            </div>
-         </>:i===photos.length?
-         <button className="add-photo" type="button" onClick={()=>input.current?.click()} aria-label="Добавить фотографии"><Plus size={31}/></button>:
-         <span className="empty-number">{i+1}</span>}
-     </div>})}</div>
-   {drag&&photos[drag.source]&&<div className="photo-drag-ghost" style={{left:drag.x,top:drag.y}} aria-hidden="true">
-     <img src={photos[drag.source].src} alt=""/><GripVertical size={18}/>
-   </div>}
-   <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фото около 0,3 секунды, затем перенеси. Первое фото — главное.</span></div>
-   <p className="photo-count" role="status">Выбрано: {photos.length} из 6</p>
-   {error&&<p role="alert">{error}</p>}
-   <p className="hint">Для публикации потребуется 3–6 разрешённых модерацией фото. Сейчас они хранятся только в памяти открытого приложения.</p>
+         </>:i===photos.length?<button type="button" className="add-photo" onClick={()=>input.current?.click()} aria-label="Добавить фотографии"><Plus size={30}/></button>:
+           <span className="empty-number">{i+1}</span>}
+       </div>;
+     })}
+   </div>
+   {drag&&createPortal(<div className="photo-drag-ghost" aria-hidden="true"
+     style={{left:drag.x,top:drag.y,width:drag.width,height:drag.height}}>
+     <img src={photos[drag.source]?.src} alt=""/><GripVertical size={16}/>
+   </div>,document.body)}
+   <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Соседние фото освободят место.</span></div>
+   <p className="photo-count" role="status">Выбрано: {photos.length} / 6 · Первое фото главное</p>
+   <p className="hint">Это локальный предпросмотр. Для будущей публикации потребуется 3–6 фото и модерация.</p>
  </div>;
 }
