@@ -18,6 +18,6 @@ const reset=steps.indexOf('event.currentTarget.value=""',copy);
 const add=steps.indexOf("addPhotos(selected)",reset);
 verify("Native FileList snapped before picker reset",copy>=0&&reset>copy&&add>reset);
 verify("Preview supports touch photo swipes",steps.includes("onTouchStart={swipeStart}")&&steps.includes("onTouchEnd={swipeEnd}"));
-verify("Interest chips have per-interest icons and 7 tones",steps.includes("interestIcons:Record<string,string>")&&steps.includes("interestTone(item)")&&css.includes(".chip.tone-6"));
+verify("Interest chips have per-interest icons and 21 distinct gradients",steps.includes("interestIcons:Record<string,string>")&&steps.includes("interestGradient(item)")&&steps.includes("interestGradients")&&css.includes(".chip.toned"));
 verify("Block entry has short staggered motion",css.includes("@keyframes form-item-enter")&&css.includes("nth-child(3)"));
 console.log("LUEMI Stage02D contract smoke PASS");
