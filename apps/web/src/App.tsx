@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import { flushSync } from "react-dom";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
 import { RegistrationStep, type PhotoItem } from "./registration/Steps";
@@ -28,7 +30,7 @@ declare global {
 }
 
 type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "error";
-type ThemeChoice = "system" | "light" | "dark";
+type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 
 /** Decode the exact brand raster before showing a screen that depends on it. */
@@ -72,8 +74,8 @@ export function App() {
   const [photos,setPhotos] = useState<PhotoItem[]>([]);
   const ownedUrls = useRef<string[]>([]);
   const [error,setError] = useState("");
-  const [theme,setTheme] = useState<ThemeChoice>("system");
-  const activeTheme=theme==="system"?(window.Telegram?.WebApp?.colorScheme??"light"):theme;
+  const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
+  const activeTheme=theme;
   const patch = useCallback((change:Partial<RegistrationDraft>)=>{
     setDraft(prev=>({...prev,...change}));
     setError("");
@@ -195,24 +197,21 @@ export function App() {
     if(nextError){setError(nextError);return;}
     if(step<8)changeStep(step+1);
   };
-  const addPhotos=(files:FileList|null)=>{
-    if(!files?.length)return;
+  const addPhotos=(files:File[])=>{
+    if(!files.length)return;
+    const accepted:PhotoItem[]=[];
     let problem="";
-    setPhotos(prev=>{
-      const items=[...prev];
-      for(const file of Array.from(files)){
-        if(items.length>=6){problem="Максимум 6 фотографий.";break;}
-        if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>12*1024*1024){
-          problem="Разрешены JPEG, PNG, WebP не более 12 МБ на файл.";continue;
-        }
-        const url=URL.createObjectURL(file);
-        ownedUrls.current.push(url);
-        items.push({id:crypto.randomUUID(),src:url,file});
+    for(const file of files){
+      if(photos.length+accepted.length>=6){problem="Максимум 6 фотографий.";break;}
+      if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>12*1024*1024){
+        problem="Разрешены JPEG, PNG и WebP до 12 МБ. Для HEIC выбери JPEG.";continue;
       }
-      return items;
-    });
-    if(problem)setError(problem);
-    else setError("");
+      const url=URL.createObjectURL(file);
+      ownedUrls.current.push(url);
+      accepted.push({id:crypto.randomUUID(),src:url,file});
+    }
+    if(accepted.length)setPhotos(prev=>[...prev,...accepted].slice(0,6));
+    setError(problem);
   };
   const removePhoto=(id:string)=>{
     setPhotos(prev=>{
@@ -240,11 +239,23 @@ export function App() {
       transitionTimer.current=null;
     },280);
   };
-  const changeTheme=()=>setTheme(old=>old==="system"?"light":old==="light"?"dark":"system");
-  const themeName=theme==="system"?"Система":theme==="light"?"Светлая":"Тёмная";
+  const changeTheme=(event:ReactMouseEvent<HTMLButtonElement>)=>{
+    const bounds=event.currentTarget.getBoundingClientRect();
+    const doc=document as Document & {startViewTransition?:(update:()=>void)=>{ready:Promise<void>}};
+    const update=()=>setTheme(value=>value==="light"?"dark":"light");
+    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||!doc.startViewTransition){update();return;}
+    document.documentElement.style.setProperty("--theme-reveal-x",bounds.left+bounds.width/2+"px");
+    document.documentElement.style.setProperty("--theme-reveal-y",bounds.top+bounds.height/2+"px");
+    try{const t=doc.startViewTransition(()=>flushSync(update));void t.ready.catch(()=>{});}catch{update();}
+  };
+  const themeName=theme==="light"?"Тёмная":"Светлая";
   return <main className="luemi-shell" data-theme={activeTheme} data-phase={phase} data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
-    <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme} aria-label={"Тема: "+themeName+". Переключить"}>{themeName}</button></div>
+    <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme} aria-label={"Включить тему: "+themeName}>
+      {theme==="light"
+        ? <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M20.7 13.4A9 9 0 0 1 10.6 3.3a9 9 0 1 0 10.1 10.1Z"/></svg>
+        : <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>}
+    </button></div>
     {(auth!=="authorized"||phase==="welcome")?<section className={"entry-state"+(welcomeExiting?" exiting":"")} aria-live="polite">
       <div className="intro-mark">
         {brandReady
@@ -252,8 +263,6 @@ export function App() {
           : <span className="intro-placeholder" aria-hidden="true"/>}
       </div>
       <h1>Твоя история начинается здесь</h1>
-      {auth==="connecting"&&<div className="loading-track animated" role="progressbar" aria-label="Подготовка ресурсов и проверка входа Telegram"><span/></div>}
-      {auth==="connecting"&&<p>{brandReady?"Проверяем защищённый вход Telegram…":"Подготавливаем оформление LUEMI…"}</p>}
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>window.location.reload()}>Повторить</button></>}
@@ -264,7 +273,7 @@ export function App() {
       </div>}
     </section>:<section className="onboarding-screen">
       <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
-        <img src={logoSrc} alt="luemi" className="onboard-logo"/>
+        <div className="onboard-wordmark"><img src={logoSrc} alt="luemi" className="onboard-logo"/></div>
         <div className="progress-track" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={8} aria-label="Прогресс регистрации"><span style={{width:step/8*100+"%"}}/></div>
       </div>
       <header className="onboard-head">
