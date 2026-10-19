@@ -4,7 +4,7 @@ import {ArrowRight,Moon,Sun} from "lucide-react";
 import {GlassArrow} from "./ui/Glass";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
-import { RegistrationStep, type PhotoItem } from "./registration/Steps";
+import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registration/Steps";
 
 declare global {
   interface Window {
@@ -316,6 +316,8 @@ export function App() {
         <RegistrationStep data={draft} patch={patch} step={step} photos={photos}
           addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep}/>
       </div>
+      {step===5&&<SelectedInterests selected={draft.interests}
+        onChange={id=>patch({interests:draft.interests.filter(x=>x!==id)})}/>}
       <div className="onboard-footer">
         {error&&<p className="field-error" role="alert">{error}</p>}
         <div className="footer-controls">
