@@ -1,13 +1,13 @@
 :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#fffafc;color:#342b45; font-synthesis:none}
 *{box-sizing:border-box}html,body,#root{margin:0;min-height:100%;width:100%}button,input,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed}
-.luemi-shell{--bg:#fffbfd;--ink:#342b45;--subtle:#71667e;--panel:rgba(255,255,255,.66);--line:rgba(142,115,163,.2);--faint:rgba(224,206,242,.36);--mist-lavender:rgba(212,183,252,.31);--mist-blush:rgba(246,184,222,.24);min-height:100dvh;position:relative;isolation:isolate;background:var(--bg);color:var(--ink);overflow-x:hidden}
+.luemi-shell{--luemi-top:max(env(safe-area-inset-top, 0px),var(--tg-safe-area-inset-top, 0px),var(--tg-content-safe-area-inset-top, 0px));--luemi-bottom:max(env(safe-area-inset-bottom, 0px),var(--tg-safe-area-inset-bottom, 0px),var(--tg-content-safe-area-inset-bottom, 0px));--bg:#fffbfd;--ink:#342b45;--subtle:#71667e;--panel:rgba(255,255,255,.66);--line:rgba(142,115,163,.2);--faint:rgba(224,206,242,.36);--mist-lavender:rgba(212,183,252,.31);--mist-blush:rgba(246,184,222,.24);min-height:100dvh;position:relative;isolation:isolate;background:var(--bg);color:var(--ink);overflow-x:hidden}
 .luemi-shell[data-theme=dark]{--bg:#181320;--ink:#f8f1fc;--subtle:#c4b6cc;--panel:rgba(46,36,58,.7);--line:rgba(229,197,255,.22);--faint:rgba(143,102,169,.28);--mist-lavender:rgba(153,111,210,.22);--mist-blush:rgba(214,108,167,.16)}
 .milky-mist{position:fixed;z-index:-1;inset:-8%;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at 12% 9%,var(--mist-lavender),transparent 58%),radial-gradient(ellipse at 83% 84%,var(--mist-blush),transparent 59%)}
 .milky-mist::before,.milky-mist::after{content:"";position:absolute;inset:-12%;pointer-events:none;opacity:.56;transform:translate3d(0,0,0)}
 .milky-mist::before{background:radial-gradient(ellipse 56% 52% at 15% 23%,var(--mist-lavender),transparent 72%);animation:mist-lavender-drift 22s ease-in-out infinite alternate}
 .milky-mist::after{background:radial-gradient(ellipse 61% 45% at 79% 75%,var(--mist-blush),transparent 72%);animation:mist-rose-drift 27s ease-in-out infinite alternate}
 .luemi-shell[data-scene=form] .milky-mist::before,.luemi-shell[data-scene=form] .milky-mist::after{animation:none;opacity:.36}
-.theme-dock{position:fixed;top:calc(12px + env(safe-area-inset-top));right:calc(18px + env(safe-area-inset-right));z-index:6}
+.theme-dock{position:fixed;top:calc(12px + var(--luemi-top));right:calc(18px + env(safe-area-inset-right));z-index:6}
 .theme-switch{min-height:38px;border-radius:999px;border:1px solid var(--line);padding:7px 14px;color:var(--subtle);background:var(--panel);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:12px}
 .entry-state,.welcome-screen,.onboarding-screen{min-height:100dvh;width:100%;max-width:680px;margin:0 auto}
 .entry-state{padding:90px 25px 40px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px}
@@ -15,7 +15,7 @@
 .entry-state a{color:#a276cc}.intro-mark{width:min(53vw,205px);min-height:66px;display:grid;place-items:center;position:relative}.intro-logo{display:block;width:100%;height:auto;object-fit:contain;animation:logo-arrive .7s ease-out both}
 .intro-placeholder{display:block;width:88%;height:58px;border-radius:30px;background:linear-gradient(95deg,rgba(208,177,236,.12),rgba(235,188,219,.2),rgba(208,177,236,.12));background-size:170% 100%;animation:placeholder-shimmer 2.8s ease-in-out infinite}
 .loading-track{height:3px;width:min(44vw,180px);border-radius:10px;background:var(--line);overflow:hidden}.loading-track span{display:block;height:100%;width:38%;border-radius:10px;background:linear-gradient(90deg,#ae8be2,#e7a5ce)}.loading-track.animated span{animation:load 1.8s cubic-bezier(.45,0,.55,1) infinite}
-.welcome-screen{display:flex;flex-direction:column;justify-content:space-between;padding:calc(80px + env(safe-area-inset-top)) 24px calc(25px + env(safe-area-inset-bottom));text-align:center}
+.welcome-screen{display:flex;flex-direction:column;justify-content:space-between;padding:calc(80px + var(--luemi-top)) 24px calc(25px + var(--luemi-bottom));text-align:center}
 .welcome-art{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;gap:20px}
 .logo-aura{position:absolute;width:min(80vw,340px);height:170px;top:calc(50% - 130px);border-radius:50%;background:radial-gradient(ellipse,rgba(230,190,247,.45),transparent 65%);filter:blur(22px);z-index:-1}
 .welcome-logo-mark{width:min(70vw,300px);max-width:300px;position:relative;animation:logo-arrive .9s cubic-bezier(.2,.75,.25,1) both}
@@ -28,7 +28,14 @@
 .welcome-bottom{width:100%;padding-bottom:4px;animation:welcome-rise .8s .25s ease-out both}.stage-note{font-size:12px;line-height:1.45;color:var(--subtle);max-width:360px;margin:0 auto 18px}
 .primary-action{min-height:56px;width:100%;max-width:420px;border:0;border-radius:22px;background:linear-gradient(105deg,#ac80e6,#dea2d9 78%,#e9accf);color:#241631;font-size:17px;font-weight:700;box-shadow:0 12px 33px #b78dc047;display:flex;justify-content:center;align-items:center;gap:15px;margin-inline:auto}
 .primary-action:active{transform:scale(.985)}
-.onboarding-screen{padding:calc(66px + env(safe-area-inset-top)) 22px calc(125px + env(safe-area-inset-bottom));}
+.onboarding-screen{padding:calc(66px + var(--luemi-top)) 22px calc(125px + var(--luemi-bottom));animation:onboard-enter .34s cubic-bezier(.16,.8,.35,1) both}
+.onboard-brand{position:sticky;top:calc(48px + var(--luemi-top));z-index:5;isolation:isolate;margin:0 -10px 14px;padding:8px 10px 1px;border-radius:22px;border:1px solid rgba(255,255,255,.44);background:var(--panel);box-shadow:inset 0 1px rgba(255,255,255,.48),0 12px 30px rgba(94,66,121,.09);backdrop-filter:blur(20px) saturate(132%);-webkit-backdrop-filter:blur(20px) saturate(132%)}
+.luemi-shell[data-theme=dark] .onboard-brand{border-color:var(--line);box-shadow:inset 0 1px rgba(255,255,255,.13),0 12px 30px rgba(0,0,0,.18)}
+.onboard-brand .progress-track{margin:10px 0 14px}
+.onboard-head{padding-top:10px}
+.welcome-screen.exiting{pointer-events:none;animation:welcome-exit .28s ease-in both}
+@keyframes welcome-exit{to{opacity:0;transform:translateY(-10px) scale(.992)}}
+@keyframes onboard-enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .onboard-head{text-align:left}.onboard-logo{display:block;width:88px;height:auto;object-fit:contain;margin-bottom:18px}
 .progress-track{height:4px;background:var(--line);border-radius:999px;overflow:hidden;margin:12px 0 34px}
 .progress-track span{height:100%;display:block;background:linear-gradient(90deg,#a57ce1,#eaa1c7);border-radius:inherit;transition:width .3s ease}
@@ -99,3 +106,21 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #9667
 @keyframes reveal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.welcome-logo-mark::after{display:none}.intro-placeholder{background:var(--faint)}}
 @media(prefers-reduced-data:reduce){.milky-mist::before,.milky-mist::after,.welcome-logo-mark::after{animation:none}}
+
+
+/* Light, touch-friendly Liquid Glass polish; no positional changes to buttons or arrows. */
+.choice,.muted-button,.toggle-row,.nav-circle,.theme-switch,.check-line,.profile-preview{
+  backdrop-filter:blur(14px) saturate(125%);-webkit-backdrop-filter:blur(14px) saturate(125%);
+  box-shadow:inset 0 1px rgba(255,255,255,.55),0 5px 16px rgba(98,68,134,.055);
+}
+.field input:not([type=range]),.field textarea{
+  box-shadow:inset 0 1px rgba(255,255,255,.48),0 7px 22px rgba(100,73,121,.05)
+}
+.luemi-shell[data-theme=dark] .choice,.luemi-shell[data-theme=dark] .toggle-row,.luemi-shell[data-theme=dark] .onboard-brand{
+  box-shadow:inset 0 1px rgba(255,255,255,.11),0 8px 24px rgba(0,0,0,.13)
+}
+@media(prefers-reduced-transparency:reduce){
+ .choice,.muted-button,.toggle-row,.nav-circle,.theme-switch,.check-line,.profile-preview,.onboard-brand,.field input,.field textarea{
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg)
+ }
+}

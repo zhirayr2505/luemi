@@ -8,6 +8,11 @@ declare global {
     Telegram?: {
       WebApp?: {
         initData?: string;
+        version?: string;
+        isVersionAtLeast?: (version: string) => boolean;
+        requestFullscreen?: () => void;
+        setHeaderColor?: (color: string) => void;
+        setBackgroundColor?: (color: string) => void;
         colorScheme?: "dark" | "light";
         ready?: () => void;
         expand?: () => void;
@@ -58,6 +63,9 @@ function prepareBrandImage(signal: AbortSignal): Promise<void> {
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
   const [brandReady,setBrandReady] = useState(false);
+  const [introElapsed,setIntroElapsed] = useState(false);
+  const [welcomeExiting,setWelcomeExiting] = useState(false);
+  const transitionTimer = useRef<number | null>(null);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [step,setStep] = useState(1);
   const [draft,setDraft] = useState<RegistrationDraft>(()=>newDraft());
@@ -65,10 +73,41 @@ export function App() {
   const ownedUrls = useRef<string[]>([]);
   const [error,setError] = useState("");
   const [theme,setTheme] = useState<ThemeChoice>("system");
+  const activeTheme=theme==="system"?(window.Telegram?.WebApp?.colorScheme??"light"):theme;
   const patch = useCallback((change:Partial<RegistrationDraft>)=>{
     setDraft(prev=>({...prev,...change}));
     setError("");
   },[]);
+  useEffect(()=>{
+    // Telegram's native white loading screen must disappear as soon as the
+    // app shell can paint. The separate branded intro remains visible.
+    const webApp=window.Telegram?.WebApp;
+    const frame=window.requestAnimationFrame(()=>{
+      webApp?.ready?.();
+      webApp?.expand?.();
+      try {
+        if(webApp?.isVersionAtLeast?.("8.0")) webApp.requestFullscreen?.();
+      } catch {
+        // Unsupported clients retain Telegram's expanded, non-fullscreen UI.
+      }
+    });
+    const timer=window.setTimeout(()=>setIntroElapsed(true),1800);
+    return ()=>{
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
+    };
+  },[]);
+  useEffect(()=>{
+    const webApp=window.Telegram?.WebApp;
+    try{
+      const background=activeTheme==="dark"?"#181320":"#fffbfd";
+      webApp?.setHeaderColor?.(background);
+      webApp?.setBackgroundColor?.(background);
+    } catch {
+      // Older clients do not support every color-setting method.
+    }
+  },[activeTheme]);
   useEffect(()=>{
     const webApp = window.Telegram?.WebApp;
     const initData = webApp?.initData;
@@ -109,13 +148,13 @@ export function App() {
         } else {
           setDraft(current=>({...current,name:current.name||user.user.firstName}));
           setAuth("authorized");
-          webApp?.expand?.();
+          // Fullscreen and expand are requested when the shell first paints.
         }
       } catch {
         if(!disposed) setAuth("error");
       } finally {
         window.clearTimeout(timeoutId);
-        if(!disposed) webApp?.ready?.();
+        // Telegram.ready is sent immediately after the first app-shell paint.
       }
     })();
     return () => {
@@ -188,25 +227,37 @@ export function App() {
       const next=[...prev];const [item]=next.splice(from,1);next.splice(to,0,item);return next;
     });
   };
-  const activeTheme=theme==="system"?(window.Telegram?.WebApp?.colorScheme??"light"):theme;
+  const beginRegistration=()=>{
+    if(welcomeExiting)return;
+    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
+      setPhase("form");
+      return;
+    }
+    setWelcomeExiting(true);
+    transitionTimer.current=window.setTimeout(()=>{
+      setPhase("form");
+      setWelcomeExiting(false);
+      transitionTimer.current=null;
+    },280);
+  };
   const changeTheme=()=>setTheme(old=>old==="system"?"light":old==="light"?"dark":"system");
   const themeName=theme==="system"?"Система":theme==="light"?"Светлая":"Тёмная";
   return <main className="luemi-shell" data-theme={activeTheme} data-phase={phase} data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme} aria-label={"Тема: "+themeName+". Переключить"}>{themeName}</button></div>
-    {auth!=="authorized"?<section className="entry-state" role="status">
+    {(auth!=="authorized"||!introElapsed)?<section className="entry-state" role="status">
       <div className="intro-mark">
         {brandReady
           ? <img src={logoSrc} alt="luemi" className="intro-logo"/>
           : <span className="intro-placeholder" aria-hidden="true"/>}
       </div>
-      <h1>{auth==="connecting"?"Готовим твоё знакомство":"LUEMI"}</h1>
+      <h1>{auth==="connecting"?"Готовим твоё знакомство":auth==="authorized"?"Твоя история начинается здесь":"LUEMI"}</h1>
       {auth==="connecting"&&<div className="loading-track animated" role="progressbar" aria-label="Подготовка ресурсов и проверка входа Telegram"><span/></div>}
       {auth==="connecting"&&<p>{brandReady?"Проверяем защищённый вход Telegram…":"Подготавливаем оформление LUEMI…"}</p>}
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>window.location.reload()}>Повторить</button></>}
-    </section>: phase==="welcome"?<section className="welcome-screen">
+    </section>: phase==="welcome"?<section className={"welcome-screen"+(welcomeExiting?" exiting":"")}>
       <div className="welcome-art">
         <div className="logo-aura" aria-hidden="true"/>
         <div className="welcome-logo-mark"><img src={logoSrc} className="hero-logo" alt="luemi"/></div>
@@ -215,12 +266,14 @@ export function App() {
       </div>
       <div className="welcome-bottom">
         <p className="stage-note">Предпросмотр Stage 02 · данные остаются на устройстве до закрытия экрана</p>
-        <button className="primary-action" type="button" onClick={()=>setPhase("form")}>Начать <span aria-hidden="true">→</span></button>
+        <button className="primary-action" type="button" onClick={beginRegistration}>Начать <span aria-hidden="true">→</span></button>
       </div>
     </section>:<section className="onboarding-screen">
-      <header className="onboard-head">
+      <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
         <img src={logoSrc} alt="luemi" className="onboard-logo"/>
         <div className="progress-track" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={8} aria-label="Прогресс регистрации"><span style={{width:step/8*100+"%"}}/></div>
+      </div>
+      <header className="onboard-head">
         <h1>{steps[step-1].title}</h1>
         <p>{steps[step-1].subtitle}</p>
       </header>
