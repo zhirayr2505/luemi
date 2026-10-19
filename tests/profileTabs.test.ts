@@ -13,6 +13,25 @@ test('five LUEMI profile tabs are present and About keeps approved core fields',
   assert.match(tabs, /Интересы/);
   assert.match(tabs, /О себе/);
   assert.match(tabs, /Информация об аккаунте/);
+  assert.match(tabs, /Коротко/);
+  assert.match(tabs, /Общие интересы/);
+  assert.match(tabs, /Совпало/);
+  assert.match(tabs, /Добавь интересы в свою анкету, и здесь появятся общие/);
+  assert.match(tabs, /Все фото/);
+  assert.match(tabs, /profile\.photos\.slice\(0, 3\)/);
+});
+
+test('profile collections use true empty states and actions stay below the native scroller', () => {
+  const tabs = source('ProfileTabs.tsx');
+  const css = source('profileTabs.css');
+  const motion = source('ProfileMotion.tsx');
+  const motionCss = source('profileMotion.css');
+  assert.match(tabs, /profile-collection-ghosts/);
+  assert.match(tabs, /aria-hidden="true"/);
+  assert.doesNotMatch(css, /min-height:\s*340px/);
+  assert.match(motion, /<main[\s\S]*?<\/main>[\s\S]*?profile-action-bar/);
+  assert.match(motionCss, /\.has-profile-action \.profile-detail-scroll/);
+  assert.doesNotMatch(motionCss, /profile-cta\s*\{[^}]*scroll-snap-align/);
 });
 
 test('owner profile exposes a clear route to the shared five-tab profile viewer', () => {

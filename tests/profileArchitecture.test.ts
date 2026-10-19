@@ -7,7 +7,7 @@ const source = (path: string) => readFileSync(file(path), 'utf8');
 
 test('one native scroller, one physical photograph and photo-owned rim', () => {
   const component = source('ProfileMotion.tsx');
-  assert.match(component, /className="profile-detail-root"/);
+  assert.match(component, /profile-detail-root/);
   assert.match(component, /<main ref=\{scroller\} className="profile-detail-scroll"/);
   assert.match(component, /className="profile-morph-overlay"/);
   assert.doesNotMatch(component, /profile-morph-avatar|<Portrait/);

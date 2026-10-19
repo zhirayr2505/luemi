@@ -75,8 +75,23 @@
 .profile-motion-details h3 {
   margin-bottom: 11px;
 }
-.profile-detail-scroll .profile-cta {
-  scroll-snap-align: start;
+.profile-action-bar {
+  position: absolute;
+  z-index: 21;
+  inset: auto 0 0 0;
+  padding: 18px 16px max(12px, var(--luemi-safe-bottom));
+  background: linear-gradient(to top, var(--luemi-bg), transparent);
+  pointer-events: none;
+}
+.has-profile-action .profile-detail-scroll {
+  padding-bottom: calc(max(18px, var(--luemi-safe-bottom)) + 76px);
+}
+.profile-action-bar > * {
+  pointer-events: auto;
+}
+.profile-action-bar .profile-cta {
+  margin: 0;
+  padding: 0;
 }
 
 /* Fixed within the active profile pane: NEVER nested in the scroller. */

@@ -110,6 +110,7 @@ export default function App() {
           key={profileSession}
           profile={shownProfile}
           reducedMotion={state.reducedMotion}
+          viewerInterests={state.profile.interests}
           notify={notify}
           onPhotoAction={(action) => {
             if (action === 'report') setDialog('Пожаловаться');

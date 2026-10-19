@@ -17,13 +17,51 @@ function getTabIndex(value: number): ProfileTabIndex {
   return Math.min(4, Math.max(0, Math.round(value))) as ProfileTabIndex;
 }
 
-function AboutTab({ profile }: { profile: Profile }) {
-  const goal =
-    profile.goal && profile.goal !== 'Пока не определился'
-      ? profile.goal
-      : 'Пока не определилась цель';
+function AboutTab({
+  profile,
+  viewerInterests,
+  onOpenPhoto,
+  onShowAllPhotos,
+}: {
+  profile: Profile;
+  viewerInterests: string[];
+  onOpenPhoto: (index: number) => void;
+  onShowAllPhotos: () => void;
+}) {
+  const goal = profile.goal && profile.goal !== 'Пока не определился' ? profile.goal : '';
+  const age = ageAt(profile.birthDate);
+  const facts = [
+    { label: 'Возраст', value: Number.isFinite(age) ? `${age}` : '', icon: 'info' },
+    { label: 'Город', value: profile.city.trim(), icon: 'globe' },
+    { label: 'Языки', value: profile.languages.filter(Boolean).join(', '), icon: 'smile' },
+    { label: 'Ищет', value: goal, icon: 'tab-likes' },
+  ].filter((fact) => fact.value);
+  const viewerSet = new Set(viewerInterests.map((interest) => interest.trim().toLocaleLowerCase()));
+  const commonInterests = profile.interests.filter((interest) =>
+    viewerSet.has(interest.trim().toLocaleLowerCase()),
+  );
+  const shouldShowCommon = profile.id !== 'self';
   return (
     <div className="profile-tabs-stack">
+      {facts.length > 0 && (
+        <section className="glass section profile-tab-card profile-quick-card">
+          <span className="profile-card-eyebrow">В ДВУХ СЛОВАХ</span>
+          <h3>Коротко</h3>
+          <div className="profile-quick-grid">
+            {facts.map((fact) => (
+              <div className="profile-quick-fact" key={fact.label}>
+                <span aria-hidden="true">
+                  <Icon name={fact.icon} size={17} />
+                </span>
+                <div>
+                  <small>{fact.label}</small>
+                  <strong>{fact.value}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="glass section profile-tab-card">
         <span className="profile-card-eyebrow">ЗНАКОМСТВО</span>
         <h3>О себе</h3>
@@ -44,18 +82,67 @@ function AboutTab({ profile }: { profile: Profile }) {
           <p>Интересы пока не указаны.</p>
         )}
       </section>
-      <section className="glass section profile-tab-card profile-goal-card">
-        <span className="profile-card-eyebrow">ЧТО ИЩЕТ</span>
-        <div className="profile-goal-line">
-          <span className="profile-goal-icon" aria-hidden="true">
-            <Icon name="tab-likes" size={23} />
-          </span>
-          <div>
-            <h3>Цель знакомства</h3>
-            <p>{goal}</p>
+      {shouldShowCommon &&
+        (commonInterests.length > 0 ? (
+          <section className="glass section profile-tab-card profile-common-card">
+            <span className="profile-card-eyebrow">ВАС СБЛИЖАЕТ</span>
+            <h3>Общие интересы</h3>
+            <p>
+              Совпало {commonInterests.length} из {viewerInterests.length}
+            </p>
+            <div className="chips colored">
+              {commonInterests.map((interest, index) => (
+                <span key={interest} style={{ '--chip-tone': index % 7 } as CSSProperties}>
+                  {interest}
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <p className="profile-common-empty">
+            Добавь интересы в свою анкету, и здесь появятся общие
+          </p>
+        ))}
+      {goal && (
+        <section className="glass section profile-tab-card profile-goal-card">
+          <span className="profile-card-eyebrow">ЧТО ИЩЕТ</span>
+          <div className="profile-goal-line">
+            <span className="profile-goal-icon" aria-hidden="true">
+              <Icon name="tab-likes" size={23} />
+            </span>
+            <div>
+              <h3>Цель знакомства</h3>
+              <p>{goal}</p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+      {profile.photos.length > 0 && (
+        <section className="glass section profile-tab-card profile-about-photos">
+          <div className="profile-tab-section-head">
+            <div>
+              <span className="profile-card-eyebrow">ГАЛЕРЕЯ</span>
+              <h3>Фото</h3>
+            </div>
+            <button type="button" className="profile-all-photos" onClick={onShowAllPhotos}>
+              Все фото
+            </button>
+          </div>
+          <div className="profile-about-photo-grid">
+            {profile.photos.slice(0, 3).map((photo, index) => (
+              <button
+                type="button"
+                key={photo.id}
+                className="profile-about-photo"
+                aria-label={`Открыть фото ${index + 1} из ${profile.photos.length}`}
+                onClick={() => onOpenPhoto(index)}
+              >
+                <Portrait photo={photo} alt={`Фотография ${index + 1}`} />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -84,6 +171,14 @@ function EmptyCollection({
       </span>
       <h3>{title}</h3>
       <p>{description}</p>
+      <div
+        className={`profile-collection-ghosts profile-collection-ghosts--${kind}`}
+        aria-hidden="true"
+      >
+        <span />
+        <span />
+        <span />
+      </div>
       <div className="profile-collection-footnote">
         <Icon name="info" size={16} />
         <span>{footnote}</span>
@@ -217,9 +312,11 @@ function GiftsTab() {
 export function ProfileTabs({
   profile,
   onOpenPhoto,
+  viewerInterests = [],
 }: {
   profile: Profile;
   onOpenPhoto: (index: number) => void;
+  viewerInterests?: string[];
 }) {
   const [active, setActive] = useState<ProfileTabIndex>(0);
   const viewport = useRef<HTMLDivElement>(null);
@@ -320,7 +417,14 @@ export function ProfileTabs({
               data-index={index}
               aria-hidden="true"
             />
-            {index === 0 && <AboutTab profile={profile} />}
+            {index === 0 && (
+              <AboutTab
+                profile={profile}
+                viewerInterests={viewerInterests}
+                onOpenPhoto={onOpenPhoto}
+                onShowAllPhotos={() => activate(2)}
+              />
+            )}
             {index === 1 && <GlintsTab />}
             {index === 2 && <PhotosTab profile={profile} onOpenPhoto={onOpenPhoto} />}
             {index === 3 && <AccountTab profile={profile} />}

@@ -13,6 +13,7 @@ type Props = {
   children?: ReactNode;
   notify: (message: string) => void;
   onPhotoAction?: (action: PhotoAction) => void;
+  viewerInterests?: string[];
 };
 
 /** An independently composited header sits outside ONE native scrolling region. */
@@ -22,6 +23,7 @@ export function ProfileMotion({
   children,
   notify,
   onPhotoAction,
+  viewerInterests = [],
 }: Props) {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const scroller = useRef<HTMLElement>(null);
@@ -33,19 +35,23 @@ export function ProfileMotion({
   useProfilePhotoMorph(scroller, frame, photo, compact, caption, bars, profile.id, reducedMotion);
   const age = ageAt(profile.birthDate);
   const display = `${profile.name || 'Твоё имя'}${Number.isFinite(age) ? `, ${age}` : ''}`;
+  const tabsProps = { onOpenPhoto: setViewerIndex, viewerInterests };
 
   return (
-    <div className="profile-detail-root" data-reduced-motion={reducedMotion}>
+    <div
+      className={`profile-detail-root${children ? ' has-profile-action' : ''}`}
+      data-reduced-motion={reducedMotion}
+    >
       <main ref={scroller} className="profile-detail-scroll" aria-label={`Профиль ${display}`}>
         <div className="profile-hero-spacer" aria-hidden="true">
           <span className="profile-snap-open" />
           <span className="profile-snap-closed" />
         </div>
         <div className="profile-motion-details">
-          <ProfileTabs profile={profile} onOpenPhoto={setViewerIndex} />
+          <ProfileTabs profile={profile} {...tabsProps} />
         </div>
-        {children}
       </main>
+      {children && <div className="profile-action-bar">{children}</div>}
       <div className="profile-morph-overlay">
         <div className="profile-morph-frame" ref={frame}>
           <div ref={photo} className="profile-morph-photo" aria-label={`Фотографии: ${display}`}>

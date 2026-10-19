@@ -168,6 +168,104 @@
   line-height: 1.58;
   overflow-wrap: anywhere;
 }
+.profile-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 13px;
+}
+.profile-quick-fact {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+  padding: 10px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.62), rgba(239, 226, 247, 0.44));
+}
+.profile-quick-fact > span {
+  display: grid;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 11px;
+  color: #9467ae;
+  background: rgba(224, 200, 245, 0.38);
+}
+.profile-quick-fact > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+.profile-quick-fact small {
+  color: var(--luemi-text-muted);
+  font-size: 10px;
+}
+.profile-quick-fact strong {
+  overflow-wrap: anywhere;
+  color: var(--luemi-text);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+.profile-common-card > p {
+  margin: -4px 0 0;
+  color: var(--luemi-text-muted);
+  font-size: 12px;
+}
+.profile-common-card .chips {
+  margin-top: 10px;
+}
+.profile-common-empty {
+  margin: 0;
+  padding: 4px 7px;
+  color: var(--luemi-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.profile-about-photos .profile-tab-section-head {
+  margin-bottom: 13px;
+}
+.profile-all-photos {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(222, 199, 237, 0.75);
+  border-radius: 999px;
+  color: var(--luemi-icon);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.68), rgba(240, 225, 249, 0.56));
+  font-size: 12px;
+  font-weight: 650;
+}
+.profile-about-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.profile-about-photo {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 15px;
+  background: var(--luemi-surface);
+  box-shadow: 0 5px 14px rgba(60, 38, 79, 0.1);
+}
+.profile-about-photo .portrait,
+.profile-about-photo .portrait > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-about-photo .portrait > img {
+  left: 0;
+  top: 0;
+}
 .profile-card-eyebrow {
   display: block;
   margin-bottom: 10px;
@@ -216,8 +314,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 340px;
-  padding: 27px 21px 21px;
+  padding: 28px 21px 23px;
   border-radius: 26px;
   text-align: center;
   background: linear-gradient(
@@ -241,6 +338,26 @@
   font-size: 13px;
   line-height: 1.55;
   color: var(--luemi-text-muted);
+}
+.profile-collection-ghosts {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 5px 0 2px;
+}
+.profile-collection-ghosts > span {
+  display: block;
+  width: 47px;
+  height: 47px;
+  border: 1px dashed rgba(158, 127, 179, 0.48);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.25), rgba(213, 191, 231, 0.11));
+}
+.profile-collection-ghosts--glint > span {
+  border-radius: 50%;
+}
+.profile-collection-ghosts--gift > span {
+  border-radius: 14px;
 }
 .profile-collection-symbol {
   display: grid;
@@ -406,6 +523,23 @@
   box-shadow:
     inset 0 1px 1px rgba(255, 255, 255, 0.15),
     0 8px 22px rgba(11, 6, 19, 0.19);
+}
+[data-luemi-theme='dark'] .profile-quick-fact {
+  border-color: rgba(226, 198, 239, 0.2);
+  background: linear-gradient(145deg, rgba(104, 77, 125, 0.54), rgba(61, 45, 78, 0.46));
+}
+[data-luemi-theme='dark'] .profile-quick-fact > span {
+  color: #e2c3f6;
+  background: rgba(147, 100, 176, 0.3);
+}
+[data-luemi-theme='dark'] .profile-all-photos {
+  border-color: rgba(195, 151, 224, 0.34);
+  color: #e2c3f6;
+  background: linear-gradient(140deg, rgba(111, 82, 135, 0.64), rgba(70, 52, 89, 0.58));
+}
+[data-luemi-theme='dark'] .profile-collection-ghosts > span {
+  border-color: rgba(203, 168, 224, 0.38);
+  background: linear-gradient(145deg, rgba(195, 163, 217, 0.12), rgba(90, 66, 111, 0.16));
 }
 [data-luemi-theme='dark'] .profile-tabs-glass {
   border-color: rgba(238, 207, 255, 0.4);
