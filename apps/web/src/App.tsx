@@ -362,8 +362,7 @@ export function App() {
     <div className="milky-mist" aria-hidden="true"/>
     {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
     {demoOpen&&auth==="authorized"?<DiscoveryApp draft={draft} theme={theme} onTheme={changeTheme} onExit={exitDemo}/>:null}
-    {!demoOpen&&
-    {(auth!=="authorized"||phase==="welcome")?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
+    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
@@ -402,7 +401,6 @@ export function App() {
           <GlassArrow forward onClick={next} disabled={step===8}/>
         </div>
       </div>
-    </section>}
-    }
+    </section>)}
   </main>;
 }
