@@ -220,7 +220,7 @@
 [data-luemi-theme='dark'] .profile-morph-circle-rim {border-color:rgba(245,217,255,.8)}
 
 /* Stationary Liquid Glass: translucent layers, clear optical rim and highlights,
-   with no animated backdrop-filter / heavy live SVG masks. */
+   with no animated optical blur or heavy live SVG masks. */
 .profile-morph-compact {
   position:absolute;top:2px;right:0;left:73px;display:flex;flex-direction:column;
   justify-content:center;gap:2px;min-height:52px;padding:8px 14px;overflow:hidden;

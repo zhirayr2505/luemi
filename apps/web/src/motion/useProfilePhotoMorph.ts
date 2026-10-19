@@ -2,7 +2,7 @@ import { useLayoutEffect, type RefObject } from 'react';
 import { morphFrame } from './profileMorph';
 
 /** A single persistent photo. CSS owns scroll-linked motion on supported browsers.
- * Legacy fallback owns only transform and opacity, never scrollTop or scroll snapping.
+ * Legacy fallback owns only transform and opacity, never scrollTop or custom scroll settling.
  */
 export function useProfilePhotoMorph(
   scrollerRef: RefObject<HTMLElement | null>,

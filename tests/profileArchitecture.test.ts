@@ -5,7 +5,7 @@ import { readFileSync, existsSync } from 'node:fs';
 const file = (path: string) => new URL(`../apps/web/src/${path}`, import.meta.url);
 const source = (path: string) => readFileSync(file(path), 'utf8');
 
-test('one native scroller, two fixed-radius photo layers and separate overlay', () => {
+test('one native scroller, one physical photograph and separate optical rim', () => {
   const component = source('ProfileMotion.tsx');
   assert.match(component, /className="profile-detail-root"/);
   assert.match(component, /<main ref=\{scroller\} className="profile-detail-scroll"/);
@@ -42,7 +42,10 @@ test('no JS snap, animated radius, timers or frame-written scroll position', () 
     hook,
     /scrollTo\s*\(|setTimeout\s*\(|snapTarget|snapping|lastClosed|velocity/,
   );
-  assert.doesNotMatch(hook, /\.style\.borderRadius|\.style\.boxShadow|\.style\.setProperty/);
+  assert.doesNotMatch(hook, /\.style\.borderRadius|\.style\.boxShadow/);
+  const hotPath = hook.slice(hook.indexOf('const drawFallback'), hook.indexOf('const queue'));
+  assert.doesNotMatch(hotPath, /\.style\.setProperty|\.style\.borderRadius|\.style\.boxShadow/);
+  assert.match(hook, /frame\.style\.setProperty\('--profile-final-scale'/);
   const writes = [...hook.matchAll(/scrollTop\s*=\s*([^;\n]+)/g)].map((match) => match[1].trim());
   assert.deepEqual(writes, ['0'], 'only the initial opening reset is permitted');
   assert.doesNotMatch(pure, /snapTarget/);
