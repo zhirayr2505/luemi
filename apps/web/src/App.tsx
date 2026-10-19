@@ -110,6 +110,12 @@ export default function App() {
           key={profileSession}
           profile={shownProfile}
           reducedMotion={state.reducedMotion}
+          viewerInterests={state.profile.interests}
+          notify={notify}
+          onPhotoAction={(action) => {
+            if (action === 'report') setDialog('Пожаловаться');
+            if (action === 'block') setDialog('Заблокировать Алину?');
+          }}
         >
           {shownProfile.id !== 'self' && (
             <div className="profile-cta">

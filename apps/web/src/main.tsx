@@ -6,6 +6,7 @@ import './logo.css';
 import './profileMotion.css';
 import './profileTabs.css';
 import './profilePage.css';
+import './photoViewer.css';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };

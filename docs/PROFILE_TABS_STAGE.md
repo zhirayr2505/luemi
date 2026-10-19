@@ -1,27 +1,32 @@
-# LUEMI · Profile Tabs Stage · 2026-10-19
+# LUEMI · Profile Tabs · v5
 
-## Approved navigation, delivered in UI
-Five tabs directly after the expanded profile hero:
-1. **О себе** — biography, interest chips and relationship goal; languages moved to account facts.
-2. **Блики** — designed honest empty state for manually saved 24-hour moments; **no publishing, timer, database, reactions or fabricated stories**.
-3. **Фото** — real profile photos, responsive 2-column grid, fullscreen-on-tap enlarged preview with next/previous buttons.
-4. **Аккаунт** — non-sensitive facts: verification badge, city/country, age, language; no birth date, contact details, user IDs or invented signup dates.
-5. **Подарки** — designed honest empty collection state; no fake gifts, payment buttons or Telegram Stars purchases.
+## Approved navigation
+
+The five tabs remain directly below the expanded photo: **О себе**, **Блики**, **Фото**, **Аккаунт**, **Подарки**. The rail uses five equal-width cells and stays within the profile width. The selected tab keeps its existing accessible name and keyboard behavior (Left/Right/Home/End).
 
 ## Motion ownership
-- Keeps **the same stable, single-image** profile photo and its native vertical scroll timeline unchanged.
-- Tabs have their own **horizontal native overflow + CSS scroll-snap**, following a finger naturally. No JS pointer-driven physics, no touchmove interception and no second scrollTo snap animation.
-- IntersectionObserver updates active tab state only after a panel becomes >60% visible.
-- A horizontal button click is allowed to set horizontal `scrollLeft` once. It does not write vertical `scrollTop`, call `scrollTo`, or run motion in rAF.
-- ResizeObserver adjusts viewport height **only** after active content layout changes; vertical profile remains one scroller.
-- Tab bar sticks beneath the compact portrait header while scrolling. Soft Glass appearance uses static painted translucency, not animated backdrop-filter.
-- Tabs remain accessible by button, Left/Right/Home/End keys. Reduced-motion disables smooth programmed horizontal movement.
-- Previous native photo gallery still owns horizontal gestures **on the expanded hero image only**. Tabs own only gestures within panel body; no shared gesture handlers.
 
-## Verification / limits
-Gate: `npm run format:check`, `npm run check`, `npm test`, `npm run build`, `npm run smoke`; GitHub Actions and Render deploy verification after merge.
-Visual motion target: Samsung Galaxy A55 Chrome and Telegram WebView; **CI cannot prove FPS, scroll chaining or exact optical finish**. Request device screen capture for acceptance.
-Production notes: privacy, moderation and stored Bliki, Gifts/Stars, real user accounts and server data remain a separate implementation.
+- The profile still has one native vertical scroller and one continuous hero photo. Its scroll-snap anchors and CSS photo morph remain independent from horizontal tab navigation.
+- The tab panels use native horizontal overflow and mandatory scroll snap. The browser follows a finger and settles on a panel. IntersectionObserver updates the selected tab after a marker is visible; a pending click target prevents intermediate panels from taking selection during a programmatic tab change.
+- The viewport stretches every panel to the tallest panel. It has no active-panel ResizeObserver height writes. The vertical page scroll position is not changed when a tab is activated.
+- When a stranger profile has a fixed bottom action bar, the tab root receives matching trailing padding. That keeps its existing end snap area beyond the last card, so the CTA does not cover the final gallery row.
+- A single glass indicator sits in the rail. The horizontal viewport publishes the `--luemi-tabs-x` scroll timeline and CSS translates the indicator between the five cells. Reduced motion keeps its position movement but removes the elastic width stretch. Browsers without scroll-timeline support retain the static active-tab treatment.
+- The rail is opaque over its painted gradient and uses the profile background as its base. Its sticky offset accounts for the scroller's existing hero top padding, keeping it close to the compact photo header. The tab root's existing snap anchor uses a dynamic scroll margin so it aligns with the closed-photo marker; this removes the competing stop while retaining the existing anchor and mandatory snap model.
+- No pointer handlers, timers, animation frames, scrollTo calls, backdrop blur, blend modes, masks, or will-change declarations are used by the tab system.
+
+## Content and photo preview
+
+- **О себе** shows real profile facts, biography, interests, goal, shared interests when available, and up to three real photo thumbnails.
+- **Блики** and **Подарки** remain honest empty collections; no publication, gift inventory, purchase, or Stars action is enabled.
+- **Фото** opens the shared full-screen native-dialog viewer. The viewer has its own horizontal native snap strip, image counter, keyboard navigation, pinch/double-tap zoom, pan, downward dismiss gesture, and photo action sheet. Reports and blocks reuse the existing app dialogs.
+- The account tab only displays permitted public profile facts. It does not expose the birth date or service identifiers.
+
+## Verification and limits
+
+The repository checks cover formatting, types, source architecture, tests, build and API smoke. The profile browser workflow runs at 393×852 with mobile touch emulation. These checks do not prove actual finger tracking, scroll chaining, FPS, or optical finish on a Galaxy A55 in Chrome or Telegram WebView. Those need physical-device review.
+
+The existing vertical snap anchors and mandatory snap mode were retained; the tab-root snap area now aligns with the closed marker. Further changes to those anchors should wait for a physical-device recording if it shows a pause or jump.
 
 ## Boundaries
-No database or secret access required. Leave VEYRA, blotX, existing brand assets, and approved morph algorithm untouched.
+
+No new data model, database, dependency, secret, payment, Stars action, or server-side moderation behavior is introduced. Existing approved brand assets and the profile photo morph algorithm are retained. VEYRA and blotX are outside this work.

@@ -5,13 +5,13 @@ import { readFileSync, existsSync } from 'node:fs';
 const file = (path: string) => new URL(`../apps/web/src/${path}`, import.meta.url);
 const source = (path: string) => readFileSync(file(path), 'utf8');
 
-test('one native scroller, one physical photograph and separate optical rim', () => {
+test('one native scroller, one physical photograph and photo-owned rim', () => {
   const component = source('ProfileMotion.tsx');
-  assert.match(component, /className="profile-detail-root"/);
+  assert.match(component, /profile-detail-root/);
   assert.match(component, /<main ref=\{scroller\} className="profile-detail-scroll"/);
   assert.match(component, /className="profile-morph-overlay"/);
   assert.doesNotMatch(component, /profile-morph-avatar|<Portrait/);
-  assert.match(component, /className="profile-morph-circle-rim"/);
+  assert.doesNotMatch(component, /profile-morph-circle-rim/);
   assert.equal((component.match(/className="profile-morph-photo"/g) ?? []).length, 1);
   assert.doesNotMatch(source('ProfileGallery.tsx'), /onPhotoChange/);
   assert.ok(component.indexOf('className="profile-morph-overlay"') > component.indexOf('</main>'));
@@ -19,6 +19,9 @@ test('one native scroller, one physical photograph and separate optical rim', ()
 
 test('CSS-only native snap, finite travel and timeline-driven compositing', () => {
   const css = source('profileMotion.css');
+  assert.match(css, /\.profile-morph-photo::after/);
+  assert.match(css, /@keyframes luemi-photo-rim/);
+  assert.doesNotMatch(css, /profile-morph-circle-rim|luemi-reveal-rim/);
   assert.match(css, /scroll-snap-type:\s*y mandatory/);
   assert.match(css, /scroll-snap-stop:\s*always/);
   assert.match(css, /\.profile-snap-open/);
@@ -49,7 +52,9 @@ test('no JS snap, animated radius, timers or frame-written scroll position', () 
   const writes = [...hook.matchAll(/scrollTop\s*=\s*([^;\n]+)/g)].map((match) => match[1].trim());
   assert.deepEqual(writes, ['0'], 'only the initial opening reset is permitted');
   assert.doesNotMatch(pure, /snapTarget/);
-  assert.match(hook, /if \(!cssTimeline\) scroller\.addEventListener\('scroll'/);
+  assert.match(hook, /if \(!cssTimeline \|\| reducedMotion \|\| system\.matches\)/);
+  assert.match(hook, /if \(reducedClosed !== next\)/);
+  assert.match(hook, /scroller\.removeEventListener\('scroll', queue\)/);
   assert.match(hook, /galleryObserver\?\.disconnect\(\)/);
   assert.doesNotMatch(hook, /avatarRef|\.style\.opacity\s*=\s*String\(.*hero/i);
   assert.match(hook, /56 \/ width/);

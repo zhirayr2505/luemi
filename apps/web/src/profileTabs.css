@@ -4,27 +4,34 @@
 .profile-tabs-root {
   min-width: 0;
   scroll-snap-align: start;
+  scroll-margin-top: calc(100cqw - 2 * var(--profile-side) + 6px - var(--profile-travel));
+  timeline-scope: --luemi-tabs-x;
+}
+.has-profile-action .profile-tabs-root {
+  padding-bottom: 76px;
 }
 .profile-tabs-rail {
   position: sticky;
-  top: calc(var(--profile-hero-top) + var(--profile-avatar-size) + 12px);
+  /* The vertical scroller already offsets its content by --profile-hero-top. */
+  top: calc(var(--profile-avatar-size) + 12px);
   z-index: 8;
-  display: flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
   width: 100%;
   margin-bottom: 14px;
   padding: 5px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
+  overflow: visible;
   border: 1px solid rgba(226, 198, 239, 0.68);
   border-radius: 21px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(246, 234, 252, 0.78));
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.86),
-    0 8px 23px rgba(91, 52, 125, 0.07);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(246, 234, 252, 0.62)), var(--luemi-bg);
   overscroll-behavior-x: contain;
   isolation: isolate;
+  box-shadow:
+    0 -12px 0 var(--luemi-bg),
+    inset 0 1px 1px rgba(255, 255, 255, 0.86),
+    0 8px 23px rgba(91, 52, 125, 0.07);
 }
 .profile-tabs-rail::before {
   position: absolute;
@@ -39,23 +46,57 @@
   content: '';
   pointer-events: none;
 }
-.profile-tabs-rail::-webkit-scrollbar,
 .profile-tabs-viewport::-webkit-scrollbar {
   display: none;
 }
+.profile-tabs-glass {
+  position: absolute;
+  z-index: 0;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc((100% - 10px) / 5);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: 16px;
+  background: linear-gradient(
+    132deg,
+    rgba(255, 255, 255, 0.82),
+    rgba(229, 210, 247, 0.76) 54%,
+    rgba(249, 221, 238, 0.7)
+  );
+  box-shadow:
+    inset 0 1.2px 1.4px rgba(255, 255, 255, 0.88),
+    inset 1px 0 1px rgba(255, 255, 255, 0.4),
+    inset 0 -1px 1.5px rgba(151, 111, 177, 0.19),
+    0 3px 10px rgba(128, 81, 153, 0.1);
+  pointer-events: none;
+}
+.profile-tabs-glass::before {
+  position: absolute;
+  inset: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse 80% 90% at 17% -13%,
+    rgba(255, 255, 255, 0.62),
+    transparent 83%
+  );
+  content: '';
+}
 .profile-tabs-tab {
   position: relative;
-  flex: 0 0 auto;
+  z-index: 1;
+  min-width: 0;
   min-height: 44px;
-  padding: 0 15px;
+  padding: 0 2px;
   border-radius: 16px;
   color: var(--luemi-text-muted);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
+  transition: color 160ms ease;
+  text-align: center;
 }
 .profile-tabs-tab.is-active {
   color: #6e458e;
@@ -80,17 +121,18 @@
 }
 .profile-tabs-viewport {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   width: 100%;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
+  scroll-timeline: --luemi-tabs-x inline;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   scrollbar-width: none;
-  touch-action: auto;
+  touch-action: pan-x pan-y;
 }
 .profile-tabs-panel {
   position: relative;
@@ -100,7 +142,6 @@
   min-height: 0;
   padding: 0 1px 14px;
   scroll-snap-align: start;
-  scroll-snap-stop: always;
 }
 .profile-tabs-visibility-marker {
   position: absolute;
@@ -128,6 +169,104 @@
 .profile-tab-card p {
   line-height: 1.58;
   overflow-wrap: anywhere;
+}
+.profile-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 13px;
+}
+.profile-quick-fact {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+  padding: 10px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.62), rgba(239, 226, 247, 0.44));
+}
+.profile-quick-fact > span {
+  display: grid;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 11px;
+  color: #9467ae;
+  background: rgba(224, 200, 245, 0.38);
+}
+.profile-quick-fact > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+.profile-quick-fact small {
+  color: var(--luemi-text-muted);
+  font-size: 10px;
+}
+.profile-quick-fact strong {
+  overflow-wrap: anywhere;
+  color: var(--luemi-text);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+.profile-common-card > p {
+  margin: -4px 0 0;
+  color: var(--luemi-text-muted);
+  font-size: 12px;
+}
+.profile-common-card .chips {
+  margin-top: 10px;
+}
+.profile-common-empty {
+  margin: 0;
+  padding: 4px 7px;
+  color: var(--luemi-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.profile-about-photos .profile-tab-section-head {
+  margin-bottom: 13px;
+}
+.profile-all-photos {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(222, 199, 237, 0.75);
+  border-radius: 999px;
+  color: var(--luemi-icon);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.68), rgba(240, 225, 249, 0.56));
+  font-size: 12px;
+  font-weight: 650;
+}
+.profile-about-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.profile-about-photo {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 15px;
+  background: var(--luemi-surface);
+  box-shadow: 0 5px 14px rgba(60, 38, 79, 0.1);
+}
+.profile-about-photo .portrait,
+.profile-about-photo .portrait > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-about-photo .portrait > img {
+  left: 0;
+  top: 0;
 }
 .profile-card-eyebrow {
   display: block;
@@ -177,8 +316,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 340px;
-  padding: 27px 21px 21px;
+  padding: 28px 21px 23px;
   border-radius: 26px;
   text-align: center;
   background: linear-gradient(
@@ -202,6 +340,26 @@
   font-size: 13px;
   line-height: 1.55;
   color: var(--luemi-text-muted);
+}
+.profile-collection-ghosts {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 5px 0 2px;
+}
+.profile-collection-ghosts > span {
+  display: block;
+  width: 47px;
+  height: 47px;
+  border: 1px dashed rgba(158, 127, 179, 0.48);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.25), rgba(213, 191, 231, 0.11));
+}
+.profile-collection-ghosts--glint > span {
+  border-radius: 50%;
+}
+.profile-collection-ghosts--gift > span {
+  border-radius: 14px;
 }
 .profile-collection-symbol {
   display: grid;
@@ -310,30 +468,6 @@
   font-size: 12px !important;
   color: var(--luemi-text-muted);
 }
-.profile-photo-preview {
-  position: relative;
-  overflow: hidden;
-  max-height: 60dvh;
-  aspect-ratio: 3 / 4;
-  border-radius: 21px;
-  background: var(--luemi-surface);
-}
-.profile-photo-preview .portrait,
-.profile-photo-preview .portrait > img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.profile-photo-preview-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 13px;
-  color: var(--luemi-text-muted);
-  font-size: 12px;
-}
 .profile-account-list {
   display: flex;
   flex-direction: column;
@@ -386,10 +520,49 @@
 
 [data-luemi-theme='dark'] .profile-tabs-rail {
   border-color: rgba(195, 151, 224, 0.3);
-  background: linear-gradient(135deg, rgba(79, 56, 99, 0.96), rgba(56, 41, 73, 0.96));
+  background:
+    linear-gradient(135deg, rgba(79, 56, 99, 0.86), rgba(56, 41, 73, 0.82)), var(--luemi-bg);
   box-shadow:
+    0 -12px 0 var(--luemi-bg),
     inset 0 1px 1px rgba(255, 255, 255, 0.15),
     0 8px 22px rgba(11, 6, 19, 0.19);
+}
+[data-luemi-theme='dark'] .profile-quick-fact {
+  border-color: rgba(226, 198, 239, 0.2);
+  background: linear-gradient(145deg, rgba(104, 77, 125, 0.54), rgba(61, 45, 78, 0.46));
+}
+[data-luemi-theme='dark'] .profile-quick-fact > span {
+  color: #e2c3f6;
+  background: rgba(147, 100, 176, 0.3);
+}
+[data-luemi-theme='dark'] .profile-all-photos {
+  border-color: rgba(195, 151, 224, 0.34);
+  color: #e2c3f6;
+  background: linear-gradient(140deg, rgba(111, 82, 135, 0.64), rgba(70, 52, 89, 0.58));
+}
+[data-luemi-theme='dark'] .profile-collection-ghosts > span {
+  border-color: rgba(203, 168, 224, 0.38);
+  background: linear-gradient(145deg, rgba(195, 163, 217, 0.12), rgba(90, 66, 111, 0.16));
+}
+[data-luemi-theme='dark'] .profile-tabs-glass {
+  border-color: rgba(238, 207, 255, 0.4);
+  background: linear-gradient(
+    142deg,
+    rgba(147, 112, 171, 0.76),
+    rgba(106, 76, 132, 0.73) 54%,
+    rgba(113, 73, 119, 0.68)
+  );
+  box-shadow:
+    inset 0 1.2px 1.4px rgba(252, 228, 255, 0.4),
+    inset 0 -1px 1.5px rgba(14, 8, 29, 0.3),
+    0 3px 10px rgba(12, 5, 23, 0.25);
+}
+[data-luemi-theme='dark'] .profile-tabs-glass::before {
+  background: radial-gradient(
+    ellipse 80% 90% at 17% -13%,
+    rgba(255, 230, 255, 0.35),
+    transparent 83%
+  );
 }
 [data-luemi-theme='dark'] .profile-tabs-rail::before {
   background: radial-gradient(
@@ -400,8 +573,6 @@
 }
 [data-luemi-theme='dark'] .profile-tabs-tab.is-active {
   color: #f2d9ff;
-  background: linear-gradient(145deg, rgba(133, 91, 165, 0.67), rgba(113, 70, 135, 0.72));
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2);
 }
 [data-luemi-theme='dark'] .profile-goal-card {
   background: linear-gradient(130deg, rgba(95, 60, 113, 0.69), rgba(62, 43, 87, 0.72));
@@ -432,10 +603,101 @@
 }
 @media (max-width: 370px) {
   .profile-tabs-tab {
-    padding: 0 12px;
-    font-size: 12px;
+    font-size: 11.5px;
+    letter-spacing: -0.7px;
   }
   .profile-motion-details .section.profile-tab-card {
     padding: 18px 16px;
   }
+}
+
+@supports (animation-timeline: --luemi-tabs-x) {
+  .profile-tabs-glass {
+    animation: luemi-tab-glass 1s linear both;
+    animation-timeline: --luemi-tabs-x;
+  }
+  .profile-tabs-tab.is-active {
+    background: none;
+    box-shadow: none;
+  }
+  .profile-tabs-tab.is-active::after {
+    display: none;
+  }
+}
+@supports not (animation-timeline: --luemi-tabs-x) {
+  .profile-tabs-glass {
+    display: none;
+  }
+}
+@keyframes luemi-tab-glass {
+  0% {
+    transform: translateX(0) scaleX(1);
+  }
+  12.5% {
+    transform: translateX(50%) scaleX(1.16);
+  }
+  25% {
+    transform: translateX(100%) scaleX(1);
+  }
+  37.5% {
+    transform: translateX(150%) scaleX(1.16);
+  }
+  50% {
+    transform: translateX(200%) scaleX(1);
+  }
+  62.5% {
+    transform: translateX(250%) scaleX(1.16);
+  }
+  75% {
+    transform: translateX(300%) scaleX(1);
+  }
+  87.5% {
+    transform: translateX(350%) scaleX(1.16);
+  }
+  100% {
+    transform: translateX(400%) scaleX(1);
+  }
+}
+
+/* In reduced-motion environments Chromium may disable scroll timelines entirely.
+   Keep the glass selection visible using the already-settled aria-selected tab. */
+@media (prefers-reduced-motion: reduce) {
+  .profile-tabs-glass {
+    animation: none;
+  }
+  .profile-tabs-rail:has(#profile-tab-1.is-active) .profile-tabs-glass {
+    transform: translateX(100%);
+  }
+  .profile-tabs-rail:has(#profile-tab-2.is-active) .profile-tabs-glass {
+    transform: translateX(200%);
+  }
+  .profile-tabs-rail:has(#profile-tab-3.is-active) .profile-tabs-glass {
+    transform: translateX(300%);
+  }
+  .profile-tabs-rail:has(#profile-tab-4.is-active) .profile-tabs-glass {
+    transform: translateX(400%);
+  }
+}
+.profile-detail-root[data-reduced-motion='true'] .profile-tabs-glass {
+  animation: none;
+}
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-1.is-active)
+  .profile-tabs-glass {
+  transform: translateX(100%);
+}
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-2.is-active)
+  .profile-tabs-glass {
+  transform: translateX(200%);
+}
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-3.is-active)
+  .profile-tabs-glass {
+  transform: translateX(300%);
+}
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-4.is-active)
+  .profile-tabs-glass {
+  transform: translateX(400%);
 }

@@ -17,7 +17,6 @@ test('one continuous photograph ends at exactly 56px for each screen width', () 
     assert.equal(open.heroScale, 1);
     assert.ok(Math.abs(closed.heroScale * width - 56) < 0.00001);
     assert.equal(closed.compactOpacity, 1);
-    assert.equal(closed.circleRimOpacity, 1);
     assert.equal(closed.captionOpacity, 0);
   }
 });
@@ -35,12 +34,10 @@ test('morph always has a visible photograph, reversed gestures retrace one path'
   assert.equal(morphFrame(NaN, 0).progress, 0);
 });
 
-test('compact glass and circle rim do not cover a still-large portrait', () => {
+test('compact glass does not cover a still-large portrait', () => {
   const travel = 295;
   const at90 = morphFrame(travel * 0.9, travel, 0.16);
   assert.equal(at90.compactOpacity, 0);
-  assert.equal(at90.circleRimOpacity, 0);
   const shut = morphFrame(travel, travel, 0.16);
   assert.equal(shut.compactOpacity, 1);
-  assert.equal(shut.circleRimOpacity, 1);
 });

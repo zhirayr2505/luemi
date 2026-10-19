@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -9,7 +8,7 @@ import {
 } from 'react';
 import type { Profile } from '../../../packages/core/domain';
 import { ageAt } from '../../../packages/core/domain';
-import { Icon, IconButton, Modal, Portrait } from './ui';
+import { Icon, Portrait } from './ui';
 
 export const PROFILE_TAB_LABELS = ['О себе', 'Блики', 'Фото', 'Аккаунт', 'Подарки'] as const;
 type ProfileTabIndex = 0 | 1 | 2 | 3 | 4;
@@ -18,13 +17,51 @@ function getTabIndex(value: number): ProfileTabIndex {
   return Math.min(4, Math.max(0, Math.round(value))) as ProfileTabIndex;
 }
 
-function AboutTab({ profile }: { profile: Profile }) {
-  const goal =
-    profile.goal && profile.goal !== 'Пока не определился'
-      ? profile.goal
-      : 'Пока не определилась цель';
+function AboutTab({
+  profile,
+  viewerInterests,
+  onOpenPhoto,
+  onShowAllPhotos,
+}: {
+  profile: Profile;
+  viewerInterests: string[];
+  onOpenPhoto: (index: number) => void;
+  onShowAllPhotos: () => void;
+}) {
+  const goal = profile.goal && profile.goal !== 'Пока не определился' ? profile.goal : '';
+  const age = ageAt(profile.birthDate);
+  const facts = [
+    { label: 'Возраст', value: Number.isFinite(age) ? `${age}` : '', icon: 'info' },
+    { label: 'Город', value: profile.city.trim(), icon: 'globe' },
+    { label: 'Языки', value: profile.languages.filter(Boolean).join(', '), icon: 'smile' },
+    { label: 'Ищет', value: goal, icon: 'tab-likes' },
+  ].filter((fact) => fact.value);
+  const viewerSet = new Set(viewerInterests.map((interest) => interest.trim().toLocaleLowerCase()));
+  const commonInterests = profile.interests.filter((interest) =>
+    viewerSet.has(interest.trim().toLocaleLowerCase()),
+  );
+  const shouldShowCommon = profile.id !== 'self';
   return (
     <div className="profile-tabs-stack">
+      {facts.length > 0 && (
+        <section className="glass section profile-tab-card profile-quick-card">
+          <span className="profile-card-eyebrow">В ДВУХ СЛОВАХ</span>
+          <h3>Коротко</h3>
+          <div className="profile-quick-grid">
+            {facts.map((fact) => (
+              <div className="profile-quick-fact" key={fact.label}>
+                <span aria-hidden="true">
+                  <Icon name={fact.icon} size={17} />
+                </span>
+                <div>
+                  <small>{fact.label}</small>
+                  <strong>{fact.value}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="glass section profile-tab-card">
         <span className="profile-card-eyebrow">ЗНАКОМСТВО</span>
         <h3>О себе</h3>
@@ -45,18 +82,67 @@ function AboutTab({ profile }: { profile: Profile }) {
           <p>Интересы пока не указаны.</p>
         )}
       </section>
-      <section className="glass section profile-tab-card profile-goal-card">
-        <span className="profile-card-eyebrow">ЧТО ИЩЕТ</span>
-        <div className="profile-goal-line">
-          <span className="profile-goal-icon" aria-hidden="true">
-            <Icon name="tab-likes" size={23} />
-          </span>
-          <div>
-            <h3>Цель знакомства</h3>
-            <p>{goal}</p>
+      {shouldShowCommon &&
+        (commonInterests.length > 0 ? (
+          <section className="glass section profile-tab-card profile-common-card">
+            <span className="profile-card-eyebrow">ВАС СБЛИЖАЕТ</span>
+            <h3>Общие интересы</h3>
+            <p>
+              Совпало {commonInterests.length} из {viewerInterests.length}
+            </p>
+            <div className="chips colored">
+              {commonInterests.map((interest, index) => (
+                <span key={interest} style={{ '--chip-tone': index % 7 } as CSSProperties}>
+                  {interest}
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <p className="profile-common-empty">
+            Добавь интересы в свою анкету, и здесь появятся общие
+          </p>
+        ))}
+      {goal && (
+        <section className="glass section profile-tab-card profile-goal-card">
+          <span className="profile-card-eyebrow">ЧТО ИЩЕТ</span>
+          <div className="profile-goal-line">
+            <span className="profile-goal-icon" aria-hidden="true">
+              <Icon name="tab-likes" size={23} />
+            </span>
+            <div>
+              <h3>Цель знакомства</h3>
+              <p>{goal}</p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+      {profile.photos.length > 0 && (
+        <section className="glass section profile-tab-card profile-about-photos">
+          <div className="profile-tab-section-head">
+            <div>
+              <span className="profile-card-eyebrow">ГАЛЕРЕЯ</span>
+              <h3>Фото</h3>
+            </div>
+            <button type="button" className="profile-all-photos" onClick={onShowAllPhotos}>
+              Все фото
+            </button>
+          </div>
+          <div className="profile-about-photo-grid">
+            {profile.photos.slice(0, 3).map((photo, index) => (
+              <button
+                type="button"
+                key={photo.id}
+                className="profile-about-photo"
+                aria-label={`Открыть фото ${index + 1} из ${profile.photos.length}`}
+                onClick={() => onOpenPhoto(index)}
+              >
+                <Portrait photo={photo} alt={`Фотография ${index + 1}`} />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -85,6 +171,14 @@ function EmptyCollection({
       </span>
       <h3>{title}</h3>
       <p>{description}</p>
+      <div
+        className={`profile-collection-ghosts profile-collection-ghosts--${kind}`}
+        aria-hidden="true"
+      >
+        <span />
+        <span />
+        <span />
+      </div>
       <div className="profile-collection-footnote">
         <Icon name="info" size={16} />
         <span>{footnote}</span>
@@ -106,13 +200,14 @@ function GlintsTab() {
   );
 }
 
-function PhotosTab({ profile }: { profile: Profile }) {
-  const [selected, setSelected] = useState<number | null>(null);
-  useEffect(() => setSelected(null), [profile.id]);
+function PhotosTab({
+  profile,
+  onOpenPhoto,
+}: {
+  profile: Profile;
+  onOpenPhoto: (index: number) => void;
+}) {
   const total = profile.photos.length;
-  const previous = () =>
-    setSelected((index) => (index === null ? null : (index - 1 + total) % total));
-  const next = () => setSelected((index) => (index === null ? null : (index + 1) % total));
 
   return (
     <div className="profile-tabs-stack">
@@ -134,7 +229,7 @@ function PhotosTab({ profile }: { profile: Profile }) {
                 key={photo.id}
                 className="profile-photo-tile"
                 aria-label={`Открыть фото ${index + 1} из ${total}`}
-                onClick={() => setSelected(index)}
+                onClick={() => onOpenPhoto(index)}
               >
                 <Portrait photo={photo} alt={`Фотография ${index + 1}`} />
                 <span className="profile-photo-tile-number">
@@ -148,22 +243,6 @@ function PhotosTab({ profile }: { profile: Profile }) {
         )}
         <p className="profile-photo-note">Нажми на снимок, чтобы рассмотреть его поближе.</p>
       </section>
-      {selected !== null && profile.photos[selected] && (
-        <Modal title={`Фотография ${selected + 1} из ${total}`} onClose={() => setSelected(null)}>
-          <div className="profile-photo-preview">
-            <Portrait photo={profile.photos[selected]} alt={`Фото ${selected + 1} из ${total}`} />
-          </div>
-          {total > 1 && (
-            <div className="profile-photo-preview-actions">
-              <IconButton icon="back" label="Предыдущее фото" onClick={previous} />
-              <span>
-                {selected + 1} / {total}
-              </span>
-              <IconButton icon="next" label="Следующее фото" onClick={next} />
-            </div>
-          )}
-        </Modal>
-      )}
     </div>
   );
 }
@@ -230,13 +309,20 @@ function GiftsTab() {
   );
 }
 
-export function ProfileTabs({ profile }: { profile: Profile }) {
+export function ProfileTabs({
+  profile,
+  onOpenPhoto,
+  viewerInterests = [],
+}: {
+  profile: Profile;
+  onOpenPhoto: (index: number) => void;
+  viewerInterests?: string[];
+}) {
   const [active, setActive] = useState<ProfileTabIndex>(0);
   const viewport = useRef<HTMLDivElement>(null);
-  const rail = useRef<HTMLDivElement>(null);
-  const panels = useRef<Array<HTMLDivElement | null>>([]);
   const markers = useRef<Array<HTMLSpanElement | null>>([]);
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
+  const pending = useRef<number | null>(null);
 
   // Native scrolling owns motion. Observe 1px-height horizontal markers, not
   // whole panels: a tall panel could otherwise never intersect 60% of its area.
@@ -245,10 +331,14 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
     if (!element) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        const closest = entries
+        const visible = entries
           .filter((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.6)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (closest) setActive(getTabIndex(Number((closest.target as HTMLElement).dataset.index)));
+        if (!visible) return;
+        const index = getTabIndex(Number((visible.target as HTMLElement).dataset.index));
+        if (pending.current !== null && index !== pending.current) return;
+        pending.current = null;
+        setActive(index);
       },
       { root: element, threshold: [0.6, 0.8] },
     );
@@ -256,37 +346,16 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
     return () => observer.disconnect();
   }, [profile.id]);
 
-  // Only the visible tab's height occupies the vertical profile flow.
-  // ResizeObserver runs on layout change, never in a scroll or pointer handler.
-  useLayoutEffect(() => {
-    const container = viewport.current;
-    const panel = panels.current[active];
-    if (!container || !panel) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry)
-        container.style.height = `${Math.ceil(entry.borderBoxSize?.[0]?.blockSize ?? panel.offsetHeight)}px`;
-    });
-    observer.observe(panel);
-    return () => observer.disconnect();
-  }, [active, profile.id]);
-
-  // Keep the selected label in view without touching vertical profile scroll.
-  useEffect(() => {
-    const container = rail.current,
-      button = buttons.current[active];
-    if (!container || !button) return;
-    container.scrollLeft = Math.max(
-      0,
-      button.offsetLeft - (container.clientWidth - button.clientWidth) / 2,
-    );
-  }, [active]);
-
-  const activate = useCallback((index: number) => {
-    const next = getTabIndex(index);
-    setActive(next);
-    const element = viewport.current;
-    if (element) element.scrollLeft = next * element.clientWidth; // click only, never drag / RAF
-  }, []);
+  const activate = useCallback(
+    (index: number) => {
+      const next = getTabIndex(index);
+      pending.current = active === next ? null : next;
+      setActive(next);
+      const element = viewport.current;
+      if (element) element.scrollLeft = next * element.clientWidth; // click only, never drag / RAF
+    },
+    [active],
+  );
 
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     let next = active;
@@ -304,11 +373,11 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
     <section className="profile-tabs-root" aria-label="Разделы профиля">
       <div
         className="profile-tabs-rail"
-        ref={rail}
         role="tablist"
         aria-label="Разделы профиля"
         onKeyDown={keyDown}
       >
+        <span className="profile-tabs-glass" aria-hidden="true" />
         {PROFILE_TAB_LABELS.map((label, index) => (
           <button
             type="button"
@@ -333,9 +402,6 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
           <div
             key={label}
             id={`profile-panel-${index}`}
-            ref={(element) => {
-              panels.current[index] = element;
-            }}
             className="profile-tabs-panel"
             data-index={index}
             role="tabpanel"
@@ -351,9 +417,16 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
               data-index={index}
               aria-hidden="true"
             />
-            {index === 0 && <AboutTab profile={profile} />}
+            {index === 0 && (
+              <AboutTab
+                profile={profile}
+                viewerInterests={viewerInterests}
+                onOpenPhoto={onOpenPhoto}
+                onShowAllPhotos={() => activate(2)}
+              />
+            )}
             {index === 1 && <GlintsTab />}
-            {index === 2 && <PhotosTab profile={profile} />}
+            {index === 2 && <PhotosTab profile={profile} onOpenPhoto={onOpenPhoto} />}
             {index === 3 && <AccountTab profile={profile} />}
             {index === 4 && <GiftsTab />}
           </div>

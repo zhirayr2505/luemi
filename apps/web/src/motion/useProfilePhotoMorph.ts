@@ -22,7 +22,6 @@ export function useProfilePhotoMorph(
     const caption = captionRef.current,
       bars = barsRef.current;
     if (!scroller || !frame || !photo || !compact || !caption || !bars) return;
-    const rim = frame.querySelector<HTMLElement>('.profile-morph-circle-rim');
     const system = matchMedia('(prefers-reduced-motion: reduce)');
     const cssTimeline =
       typeof CSS !== 'undefined' && CSS.supports('animation-timeline: --luemi-profile-scroll');
@@ -30,7 +29,8 @@ export function useProfilePhotoMorph(
       raf = 0,
       travel = 220,
       finalScale = 0.16,
-      rounded = false;
+      rounded = false,
+      reducedClosed: boolean | null = null;
     scroller.scrollTop = 0; // only initial reset; never written during gestures.
 
     const drawFallback = () => {
@@ -45,7 +45,6 @@ export function useProfilePhotoMorph(
       compact.style.opacity = String(f.compactOpacity);
       caption.style.opacity = String(f.captionOpacity);
       bars.style.opacity = String(f.barsOpacity);
-      if (rim) rim.style.opacity = String(f.circleRimOpacity);
       // The legacy rounded-corner fallback switches the clipping once, only at the endpoint.
       const nextRounded = f.progress >= 0.9;
       if (nextRounded !== rounded) {
@@ -53,8 +52,23 @@ export function useProfilePhotoMorph(
         frame.classList.toggle('profile-shape-collapsed', rounded);
       }
     };
+    const updateReduced = () => {
+      if (!cssTimeline || disposed) return;
+      const enabled = reducedMotion || system.matches;
+      const next = enabled ? scroller.scrollTop >= travel / 2 : false;
+      // A single class change at the threshold, never a per-frame layout write.
+      if (reducedClosed !== next) {
+        reducedClosed = next;
+        frame.classList.toggle('profile-reduced-collapsed', next);
+      }
+    };
     const queue = () => {
-      if (!disposed && !cssTimeline && !raf) raf = requestAnimationFrame(drawFallback);
+      if (disposed) return;
+      if (cssTimeline) {
+        updateReduced();
+      } else if (!raf) {
+        raf = requestAnimationFrame(drawFallback);
+      }
     };
     const resize = () => {
       const width = frame.clientWidth;
@@ -80,23 +94,33 @@ export function useProfilePhotoMorph(
       );
       galleryObserver.observe(openMarker);
     }
-    if (!cssTimeline) scroller.addEventListener('scroll', queue, { passive: true });
-    system.addEventListener('change', queue);
+    if (!cssTimeline || reducedMotion || system.matches)
+      scroller.addEventListener('scroll', queue, { passive: true });
+    const onPreferenceChange = () => {
+      scroller.removeEventListener('scroll', queue);
+      if (!cssTimeline || reducedMotion || system.matches)
+        scroller.addEventListener('scroll', queue, { passive: true });
+      queue();
+    };
+    system.addEventListener('change', onPreferenceChange);
     resize();
     return () => {
       disposed = true;
       observer.disconnect();
       galleryObserver?.disconnect();
       scroller.removeEventListener('scroll', queue);
-      system.removeEventListener('change', queue);
+      system.removeEventListener('change', onPreferenceChange);
       if (raf) cancelAnimationFrame(raf);
       frame.style.removeProperty('--profile-final-scale');
-      frame.classList.remove('profile-gallery-closed', 'profile-shape-collapsed');
+      frame.classList.remove(
+        'profile-gallery-closed',
+        'profile-shape-collapsed',
+        'profile-reduced-collapsed',
+      );
       photo.style.transform = '';
       compact.style.opacity = '';
       caption.style.opacity = '';
       bars.style.opacity = '';
-      if (rim) rim.style.opacity = '';
     };
   }, [scrollerRef, frameRef, photoRef, compactRef, captionRef, barsRef, profileId, reducedMotion]);
 }

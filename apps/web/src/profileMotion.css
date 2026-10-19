@@ -63,7 +63,7 @@
 
 .profile-motion-details {
   position: relative;
-  padding-top: 14px;
+  padding-top: 6px;
 }
 .profile-motion-details .section {
   position: relative;
@@ -75,8 +75,23 @@
 .profile-motion-details h3 {
   margin-bottom: 11px;
 }
-.profile-detail-scroll .profile-cta {
-  scroll-snap-align: start;
+.profile-action-bar {
+  position: absolute;
+  z-index: 21;
+  inset: auto 0 0 0;
+  padding: 18px 16px max(12px, var(--luemi-safe-bottom));
+  background: linear-gradient(to top, var(--luemi-bg), transparent);
+  pointer-events: none;
+}
+.has-profile-action .profile-detail-scroll {
+  padding-bottom: calc(max(18px, var(--luemi-safe-bottom)) + 76px);
+}
+.profile-action-bar > * {
+  pointer-events: auto;
+}
+.profile-action-bar .profile-cta {
+  margin: 0;
+  padding: 0;
 }
 
 /* Fixed within the active profile pane: NEVER nested in the scroller. */
@@ -213,22 +228,17 @@
   pointer-events: none;
 }
 
-/* Static circular Liquid Glass RIM only; no second copy of the portrait. */
-.profile-morph-circle-rim {
+.profile-morph-photo::after {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: var(--profile-avatar-size);
-  height: var(--profile-avatar-size);
-  border: 1.5px solid rgba(255, 255, 255, 0.86);
-  border-radius: 50%;
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.45),
-    0 5px 14px rgba(64, 31, 90, 0.12);
+  z-index: 4;
+  inset: 0;
+  border: calc(1.5px / var(--profile-final-scale)) solid rgba(255, 255, 255, 0.86);
+  border-radius: inherit;
+  content: '';
   opacity: 0;
   pointer-events: none;
 }
-[data-luemi-theme='dark'] .profile-morph-circle-rim {
+[data-luemi-theme='dark'] .profile-morph-photo::after {
   border-color: rgba(245, 217, 255, 0.8);
 }
 
@@ -362,8 +372,8 @@
     animation-timeline: --luemi-profile-scroll;
     animation-range: 0px var(--profile-travel);
   }
-  .profile-morph-circle-rim {
-    animation: luemi-reveal-rim 1s linear both;
+  .profile-morph-photo::after {
+    animation: luemi-photo-rim 1s linear both;
     animation-timeline: --luemi-profile-scroll;
     animation-range: 0px var(--profile-travel);
   }
@@ -408,9 +418,9 @@
     opacity: 1;
   }
 }
-@keyframes luemi-reveal-rim {
+@keyframes luemi-photo-rim {
   0%,
-  96% {
+  50% {
     opacity: 0;
   }
   100% {
@@ -424,6 +434,10 @@
   .profile-shape-collapsed .profile-morph-photo {
     border-radius: 50%;
   }
+  .profile-shape-collapsed .profile-morph-photo::after {
+    opacity: 1;
+    transition: opacity 110ms ease-out;
+  }
 }
 
 @media (max-width: 370px) {
@@ -431,19 +445,41 @@
     --profile-side: 12px;
   }
 }
+
+/* Scroll-driven animations can be disabled by the browser in reduced-motion mode.
+   At the halfway threshold, a single class change switches to the final static
+   56px state. No scrolling physics, transitions, or per-frame style writes. */
+.profile-reduced-collapsed .profile-morph-photo {
+  transform: scale(var(--profile-final-scale));
+  border-radius: 50%;
+}
+.profile-reduced-collapsed .profile-morph-photo::after {
+  opacity: 1;
+}
+.profile-reduced-collapsed .profile-morph-caption,
+.profile-reduced-collapsed .profile-morph-photo-bars {
+  opacity: 0;
+}
+.profile-reduced-collapsed .profile-morph-compact {
+  opacity: 1;
+}
 @media (prefers-reduced-motion: reduce) {
   .profile-morph-photo,
+  .profile-morph-photo::after,
   .profile-morph-compact,
   .profile-morph-caption,
   .profile-morph-photo-bars {
-    animation-timing-function: steps(1, end);
+    animation: none;
+    transition: none;
     will-change: auto;
   }
 }
-[data-reduced-motion='true'] .profile-morph-photo,
-[data-reduced-motion='true'] .profile-morph-compact,
-[data-reduced-motion='true'] .profile-morph-caption,
-[data-reduced-motion='true'] .profile-morph-photo-bars {
-  animation-timing-function: steps(1, end);
+.profile-detail-root[data-reduced-motion='true'] .profile-morph-photo,
+.profile-detail-root[data-reduced-motion='true'] .profile-morph-photo::after,
+.profile-detail-root[data-reduced-motion='true'] .profile-morph-compact,
+.profile-detail-root[data-reduced-motion='true'] .profile-morph-caption,
+.profile-detail-root[data-reduced-motion='true'] .profile-morph-photo-bars {
+  animation: none;
+  transition: none;
   will-change: auto;
 }

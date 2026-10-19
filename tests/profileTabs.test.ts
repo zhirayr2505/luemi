@@ -13,6 +13,26 @@ test('five LUEMI profile tabs are present and About keeps approved core fields',
   assert.match(tabs, /Интересы/);
   assert.match(tabs, /О себе/);
   assert.match(tabs, /Информация об аккаунте/);
+  assert.match(tabs, /Коротко/);
+  assert.match(tabs, /Общие интересы/);
+  assert.match(tabs, /Совпало/);
+  assert.match(tabs, /Добавь интересы в свою анкету, и здесь появятся общие/);
+  assert.match(tabs, /Все фото/);
+  assert.match(tabs, /profile\.photos\.slice\(0, 3\)/);
+});
+
+test('profile collections use true empty states and actions stay below the native scroller', () => {
+  const tabs = source('ProfileTabs.tsx');
+  const css = source('profileTabs.css');
+  const motion = source('ProfileMotion.tsx');
+  const motionCss = source('profileMotion.css');
+  assert.match(tabs, /profile-collection-ghosts/);
+  assert.match(tabs, /aria-hidden="true"/);
+  assert.doesNotMatch(css, /min-height:\s*340px/);
+  assert.match(motion, /<main[\s\S]*?<\/main>[\s\S]*?profile-action-bar/);
+  assert.match(motionCss, /\.has-profile-action \.profile-detail-scroll/);
+  assert.match(css, /\.has-profile-action \.profile-tabs-root\s*\{\s*padding-bottom:\s*76px/);
+  assert.doesNotMatch(motionCss, /profile-cta\s*\{[^}]*scroll-snap-align/);
 });
 
 test('owner profile exposes a clear route to the shared five-tab profile viewer', () => {
@@ -32,7 +52,13 @@ test('native finger-following horizontal snap is independent of vertical profile
   assert.match(css, /overflow-x:\s*auto/);
   assert.match(css, /scroll-snap-align:\s*start/);
   assert.match(tabs, /new IntersectionObserver/);
-  assert.match(tabs, /new ResizeObserver/);
+  assert.doesNotMatch(tabs, /new ResizeObserver/);
+  assert.doesNotMatch(tabs, /style\.height/);
+  assert.match(tabs, /profile-tabs-glass/);
+  assert.match(css, /animation-timeline:\s*--luemi-tabs-x/);
+  assert.match(css, /@keyframes luemi-tab-glass/);
+  assert.match(css, /align-items:\s*stretch/);
+  assert.match(css, /scroll-margin-top:\s*calc\(100cqw - 2 \* var\(--profile-side\)/);
   assert.doesNotMatch(
     tabs,
     /onPointerMove|setPointerCapture|requestAnimationFrame|scrollTo\s*\(|setTimeout\s*\(/,
