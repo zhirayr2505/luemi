@@ -1,13 +1,13 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {Bookmark,X,Sparkles,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,ArrowRight,Sun,Moon,Layers3,Crown,MapPin} from "lucide-react";
+import {Bookmark,X,Sparkles,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,ArrowRight,Sun,Moon,Layers3,Crown} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {goals} from "../registration/model";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
 import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import {demoPeople} from "./demo-people";
-import {commonInterests,demoAct,demoUndo,filterDemoPeople,freshDemoState,defaultFilters} from "./model";
+import {demoAct,demoUndo,filterDemoPeople,freshDemoState,defaultFilters} from "./model";
 import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter,DemoPerson} from "./model";
 import {DiscoveryFilters} from "./Filters";
 import {DemoProfile} from "./DemoProfile";
