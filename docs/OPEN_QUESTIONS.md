@@ -22,3 +22,10 @@
 - Full registration persistence, consent/legal, secure photos and moderation remain separate open tasks. Real user accounts unavailable until server workflow approved.
 - Needs real Samsung Galaxy A55 motion/keyboard testing and separate iOS verification; do not infer smooth 60FPS from CI alone.
 - Real locale switching, expanded world flag set beyond locally vendored 66 and exhaustive accessibility audit remain follow-ups.
+
+## Stage 02F.1 open issues / acceptance
+- Actual device-only verification of Chrome/Telegram tap highlight in dark theme, photo reorder animation and pointer tracking, keyboard footer, geo/audience height and visual quality on Samsung Galaxy A55.
+- Browser-local drafts are not guaranteed if Telegram storage is cleared, in private mode or after origin changes; no synchronized/server draft. Photos are stored on the local device only.
+- Local FileReader progress is not a real upload indicator; no server image upload or moderation yet.
+- Full world geo search still depends on explicitly configured private Geoapify key. Do not misrepresent limited demo search.
+- Need separate iOS testing and security review before production rollout.
