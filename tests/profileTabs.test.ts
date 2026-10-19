@@ -47,7 +47,11 @@ test('panel selection observes a horizontal marker instead of tall panel area', 
   const tabs = source('ProfileTabs.tsx');
   const css = source('profileTabs.css');
   assert.match(tabs, /observer\.observe\(marker\)/);
-  assert.doesNotMatch(tabs, /observer\.observe\(panel\)/);
+  const visibilityObserver = tabs.slice(
+    tabs.indexOf('new IntersectionObserver'),
+    tabs.indexOf('// Only the visible tab'),
+  );
+  assert.doesNotMatch(visibilityObserver, /observer\.observe\(panel\)/);
   assert.match(tabs, /className="profile-tabs-visibility-marker"/);
   assert.match(css, /\.profile-tabs-visibility-marker/);
   assert.match(css, /height:\s*1px/);
