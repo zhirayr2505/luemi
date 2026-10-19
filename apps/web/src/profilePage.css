@@ -21,11 +21,7 @@
   border-radius: 28px;
   text-align: center;
   background:
-    radial-gradient(
-        ellipse 90% 45% at 50% 0,
-        rgba(255, 255, 255, 0.82),
-        transparent 100%
-      ),
+    radial-gradient(ellipse 90% 45% at 50% 0, rgba(255, 255, 255, 0.82), transparent 100%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.74), rgba(242, 230, 251, 0.68));
 }
 .own-avatar {
@@ -151,11 +147,7 @@
 
 [data-luemi-theme='dark'] .own-profile {
   background:
-    radial-gradient(
-        ellipse 90% 45% at 50% 0,
-        rgba(206, 172, 230, 0.14),
-        transparent 100%
-      ),
+    radial-gradient(ellipse 90% 45% at 50% 0, rgba(206, 172, 230, 0.14), transparent 100%),
     linear-gradient(145deg, rgba(58, 43, 73, 0.92), rgba(41, 32, 56, 0.92));
 }
 [data-luemi-theme='dark'] .own-avatar,
