@@ -1,4 +1,4 @@
-/* LUEMI Stage 02E — single source of visual truth. Avoid layering old CSS. */
+/* LUEMI Stage 02F — single source of visual truth. Avoid layering old CSS. */
 :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-synthesis:none;color:#372b46;background:#fffafd}
 *{box-sizing:border-box}html,body,#root{margin:0;padding:0;width:100%;height:100%;overflow:hidden}button,input,textarea{font:inherit}
 button{cursor:pointer}button:disabled{cursor:not-allowed}
@@ -28,10 +28,6 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .theme-switch{display:grid;place-items:center;width:45px;height:45px;border-radius:50%;border:1px solid var(--glass-edge);
  background:var(--panel);color:var(--ink);box-shadow:inset 0 1px rgba(255,255,255,.67),0 6px 17px var(--shadow);
  backdrop-filter:blur(12px) saturate(130%);-webkit-backdrop-filter:blur(12px) saturate(130%);}
-.luemi-shell.theme-pulsing::after{content:"";position:absolute;pointer-events:none;z-index:14;left:var(--pulse-x);top:var(--pulse-y);
- width:14px;height:14px;border-radius:50%;background:linear-gradient(130deg,rgba(197,159,244,.46),rgba(248,187,217,.28));
- transform:translate(-50%,-50%) scale(0);opacity:0;animation:theme-pulse .34s ease-out both}
-@keyframes theme-pulse{25%{opacity:.6}100%{transform:translate(-50%,-50%) scale(130);opacity:0}}
 .entry-state{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
  text-align:center;padding:100px 24px 140px;position:relative;gap:17px;}
 .intro-mark{width:min(54vw,205px);height:94px;display:flex;align-items:center;justify-content:center;position:relative}
@@ -57,14 +53,19 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 @keyframes screen-exit{to{opacity:0;transform:translateY(-10px)}}
 /* Keep header and footer structurally outside the one scroll container. */
 .onboarding-screen{width:100%;height:100%;max-width:680px;margin:0 auto;display:flex;flex-direction:column;
- padding:calc(var(--top-safe) + 92px) 22px var(--bottom-safe);min-height:0;animation:screen-enter .32s ease both}
-.onboard-brand{flex:none;margin:-12px 0 13px;padding:0 0 4px;position:relative;background:transparent}
+ padding:calc(var(--top-safe) + 76px) 22px var(--bottom-safe);min-height:0;animation:screen-enter .32s ease both}
+.onboard-brand{flex:none;margin:-12px 0 7px;padding:0 0 4px;position:relative;background:transparent}
 .onboard-wordmark{width:94px;height:43px;position:relative;display:flex;align-items:center}
-.onboard-logo{width:94px;height:auto;display:block;object-fit:contain;filter:drop-shadow(0 1px rgba(255,255,255,.25))}
-.onboard-wordmark::after{content:"";position:absolute;inset:0;pointer-events:none;
- background:linear-gradient(115deg,transparent,rgba(255,255,255,.46),transparent);
+.onboard-logo{width:94px;height:auto;display:block;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(101,69,137,.15))}
+.onboard-wordmark::after,.intro-mark::after{content:"";position:absolute;inset:0;pointer-events:none;
+ background:linear-gradient(110deg,transparent 12%,rgba(255,255,255,.79) 46%,rgba(244,186,225,.22) 55%,transparent 79%);
+ background-size:230% 100%;opacity:.46;
  -webkit-mask:url("/assets/brand/wordmark_original_raster_alpha_W06.webp") center/100% 100% no-repeat;
- mask:url("/assets/brand/wordmark_original_raster_alpha_W06.webp") center/100% 100% no-repeat;opacity:.26}
+ mask:url("/assets/brand/wordmark_original_raster_alpha_W06.webp") center/100% 100% no-repeat;
+ animation:brand-liquid 5.5s ease-in-out infinite}
+.intro-mark::after{opacity:0}
+.entry-state.visually-ready .intro-mark::after{opacity:.55;animation:brand-liquid 4.8s 1.2s ease-in-out infinite}
+@keyframes brand-liquid{0%,8%{background-position:100% center}54%{background-position:0% center}100%{background-position:0% center}}
 .progress-track{height:4px;border-radius:999px;background:var(--line);overflow:hidden;margin:7px 0 0}
 .progress-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#a57ce1,#eaa1c7);
  transition:width .24s ease}
@@ -72,7 +73,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .onboard-head h1{font-size:clamp(28px,7.1vw,39px);line-height:1.17;letter-spacing:-.044em;margin:0 0 7px}
 .onboard-head p{color:var(--subtle);font-size:14px;line-height:1.5;margin:0}
 .onboard-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:none;
- -webkit-overflow-scrolling:touch;padding:14px 2px 24px}
+ -webkit-overflow-scrolling:touch;padding:14px 7px 24px;margin-bottom:var(--keyboard-overlay,0px)}
 .onboard-body::-webkit-scrollbar{width:0}
 .form-stack{display:flex;flex-direction:column;gap:18px;min-height:min-content;padding:4px 0 26px}
 .form-stack>*{animation:block-enter .28s cubic-bezier(.2,.8,.3,1) both}
@@ -81,7 +82,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 @keyframes block-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes screen-enter{from{opacity:.2}to{opacity:1}}
 .onboard-footer{position:relative;flex:none;z-index:8;padding:11px 0 max(12px,var(--bottom-safe));
- background:linear-gradient(180deg,transparent,var(--bg) 27%,var(--bg));}
+ background:transparent;}
 .footer-controls{max-width:470px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .footer-hint{color:var(--subtle);font-size:11px;text-align:center}
 .nav-circle{width:57px;height:57px;flex:none;display:grid;place-items:center;border-radius:50%;
@@ -101,7 +102,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
  padding:14px 16px;color:var(--ink);background:var(--panel);font-size:16px;
  box-shadow:inset 0 1px rgba(255,255,255,.65),0 6px 16px var(--shadow);
  backdrop-filter:blur(11px) saturate(115%);-webkit-backdrop-filter:blur(11px) saturate(115%);transition:border-color .16s,box-shadow .16s}
-.glass-control:focus{border-color:rgba(172,121,218,.78);box-shadow:inset 0 1px rgba(255,255,255,.71),0 0 0 3px rgba(183,140,231,.15)}
+.glass-control:focus{border-color:rgba(172,121,218,.78);box-shadow:inset 0 1px rgba(255,255,255,.71),inset 0 0 0 2px rgba(183,140,231,.24)}
 .glass-control::placeholder{color:var(--subtle);opacity:.7}
 .glass-textarea{min-height:150px;resize:vertical;line-height:1.55}
 .glass-panel{background:var(--panel);border:1px solid var(--glass-edge);border-radius:20px;
@@ -183,9 +184,6 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .chip.toned{background:linear-gradient(135deg,var(--chip-from),var(--chip-to));color:#503a5e}
 .interest-chip svg{flex:none}
 .interest-chip.selected{border-color:#a879d3;box-shadow:0 3px 13px rgba(158,100,196,.16);font-weight:690}
-.selected-interests{display:flex;flex-direction:column;gap:12px;padding:14px 0 5px;
- border-top:1px solid var(--line)}
-.selected-interests strong{font-size:13px}
 .interest-choices{min-height:120px;align-content:flex-start}
 .luemi-shell[data-theme=dark] .chip.toned,.luemi-shell[data-theme=dark] .category-chip{filter:brightness(.88)}
 /* Photo sorter: only modern pointer gesture, no native HTML draggable. */
@@ -197,7 +195,6 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
  -webkit-touch-callout:none;touch-action:none}
 .mosaic-slot.mosaic-main{grid-column:span 2;grid-row:span 2}
 .mosaic-slot>img{width:100%;height:100%;object-fit:cover;pointer-events:none;user-select:none}
-.mosaic-slot.drop-target{outline:3px solid #b38bd9;outline-offset:-4px}
 .mosaic-slot.drag-source>img{opacity:.36}
 .slot-index{position:absolute;bottom:5px;left:7px;background:#fffbe9;color:#4c3462;border-radius:999px;
  padding:3px 7px;font-size:10px;font-weight:800}
@@ -210,24 +207,20 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .photo-reorder-buttons{position:absolute;bottom:5px;right:5px;display:flex;gap:3px}
 .photo-reorder-buttons button{display:grid;place-items:center;width:27px;height:27px;border:0;border-radius:50%;background:#fffd;color:#392c4b}
 .photo-reorder-buttons button:disabled{opacity:.35}
-.photo-drag-ghost{position:fixed;z-index:60;width:102px;height:122px;transform:translate(-50%,-50%) rotate(-3deg);
- border:3px solid #fff;border-radius:17px;overflow:hidden;box-shadow:0 14px 34px rgba(74,39,103,.33);
- pointer-events:none}
+.photo-drag-ghost{position:fixed;z-index:9999;transform:translate(-50%,-50%) rotate(-2deg) scale(1.04);
+ border:3px solid #fff;border-radius:17px;overflow:hidden;box-shadow:0 16px 38px rgba(74,39,103,.36);
+ pointer-events:none;contain:paint;animation:drag-rise .16s ease both}
+@keyframes drag-rise{from{opacity:.75;transform:translate(-50%,-50%) scale(.93)}to{opacity:1;transform:translate(-50%,-50%) rotate(-2deg) scale(1.04)}}
 .photo-drag-ghost img{width:100%;height:100%;object-fit:cover}
 .photo-drag-ghost svg{position:absolute;bottom:7px;right:7px;color:white}
 .sort-tip{display:flex;gap:9px;align-items:flex-start;color:var(--subtle);font-size:12px;line-height:1.5}
 .photo-count{font-size:13px;color:var(--subtle);margin:0}
 /* Shared preview carousel + profile */
 .preview-root{display:flex;flex-direction:column;gap:15px}
-.preview-tabs{display:flex;padding:5px;gap:6px;border-radius:18px;background:var(--panel);border:1px solid var(--glass-edge)}
-.preview-tabs button{display:flex;align-items:center;justify-content:center;flex:1;gap:8px;padding:12px 8px;
- border:0;border-radius:13px;background:transparent;color:var(--subtle)}
-.preview-tabs button.active{background:linear-gradient(125deg,rgba(214,183,241,.73),rgba(241,201,225,.64));color:var(--ink)}
 .preview-surface{border:1px solid var(--glass-edge);border-radius:24px;background:var(--panel);
  box-shadow:0 9px 24px var(--shadow);overflow:hidden}
 .carousel-frame{aspect-ratio:4/5;position:relative;overflow:hidden;background:linear-gradient(135deg,#d8c3ed,#f2c8df);
  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
-.preview-surface.card .carousel-frame{aspect-ratio:16/13}
 .carousel-track{height:100%;display:flex;will-change:transform}
 .carousel-track img{display:block;width:100%;height:100%;flex:0 0 100%;object-fit:cover;pointer-events:none}
 .profile-placeholder{height:100%;display:grid;place-items:center;text-align:center;padding:20px;color:#674d77}
@@ -236,27 +229,23 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .photo-progress{position:absolute;left:10px;right:10px;top:10px;display:flex;gap:4px}
 .photo-progress button{flex:1;height:4px;border:0;padding:0;border-radius:99px;background:rgba(255,255,255,.4)}
 .photo-progress button.current{background:#fff}
-.profile-facts,.profile-more{padding:15px;display:flex;flex-direction:column;gap:12px}
+.profile-facts{padding:16px;display:flex;flex-direction:column;gap:12px}
 .location-chip,.goal-badge{display:flex;align-items:center;gap:7px;font-size:13px}
 .goal-badge{width:max-content;padding:8px 11px;border-radius:99px;background:linear-gradient(120deg,#e6d4f7,#f4d6e8);
  color:#52396b}
 .preview-about{font-size:14px;line-height:1.5;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .preview-about.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.profile-more{border-top:1px solid var(--line)}.profile-more h3{margin:0;font-size:16px}.profile-more p{margin:0;line-height:1.5}
-.review-actions{display:flex;flex-wrap:wrap;gap:8px}
+
+
 .disabled-submit{width:100%;min-height:53px;border:0;border-radius:18px;background:var(--panel);color:var(--subtle)}
 @media (max-height:680px){.onboarding-screen{padding-top:calc(var(--top-safe) + 78px)}.onboard-head p{display:none}
  .entry-state{padding-top:64px;padding-bottom:105px}.intro-mark{height:74px}.intro-cta{bottom:calc(16px + var(--bottom-safe))}}
-.luemi-shell[data-keyboard=open] .onboarding-screen{padding-top:calc(var(--top-safe) + 70px)}
-.luemi-shell[data-keyboard=open] .onboard-head p{display:none}
-.luemi-shell[data-keyboard=open] .onboard-brand{margin-bottom:5px}
-.luemi-shell[data-keyboard=open] .onboard-wordmark{height:31px;width:80px}
-.luemi-shell[data-keyboard=open] .onboard-logo{width:80px}
-.luemi-shell[data-keyboard=open] .onboard-footer{padding-top:5px;padding-bottom:4px}
+.luemi-shell[data-keyboard=open] .onboard-footer{visibility:hidden;pointer-events:none}
+.luemi-shell[data-keyboard=open] .selected-interests-floating{visibility:hidden;pointer-events:none}
 @media(min-width:640px){.onboarding-screen{padding-left:45px;padding-right:45px}.mosaic{grid-template-rows:repeat(3,120px)}}
 @supports not (backdrop-filter:blur(1px)){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{background:var(--bg)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}
- .intro-logo,.entry-state h1{opacity:1;transform:none}}
+ .intro-logo,.entry-state h1{opacity:1;transform:none} .onboard-wordmark::after,.intro-mark::after{display:none}}
 @media(prefers-reduced-transparency:reduce){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{
  backdrop-filter:none!important;background:var(--bg)}}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #a577da;outline-offset:3px}
