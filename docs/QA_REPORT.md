@@ -43,3 +43,10 @@
 - TESTED by code/CI: age validator, city-ID requirement, input name filter, 15 interest cap, 750 bio, photo picker snapshots, local geocoding fallback and parser, auth regressions, build.
 - NOT YET VERIFIED: real Telegram in-app fullscreen typography/keyboard gesture (Galaxy A55 and iPhone), drag on Android context menu, gesture-driven carousel, animation FPS and blur performance, real geography provider, server-side registration, durable drafts, photo uploads/moderation, legal agreements.
 - No external paid service configured, and live migrations remain forbidden.
+
+## Stage 02F · QA and acceptance gate
+- Restore point `backup/pre-stage02f-20261019` created before modifying files. Feature branch and one active visual system.
+- Automated checks: GitHub Actions workflow `npm run check` covers ESLint, Stage02F structural regression smoke including 10 category cardinalities and 60 language count, API tests, web/API typechecks/build and same-origin smoke. Capture run SHA at release; never call this mobile QA.
+- Imported 66 valid, local circle-flags SVG assets under MIT license with original license preserved. No remote flag requests required.
+- Manual on Galaxy A55 Telegram STILL NEEDED: WebApp system header safe area, compact theme button, contrast on dark, keyboard stable footer and caret focus, 5000km log slider, custom location failure, 10 category selected bar, 60-language search, long-press/FLIP drag and snap carousel, reduced motion, swipe/scroll conflict and one preview.
+- Untested: device FPS, iPhone behavior, real provider API, offline/reconnect restoration, persisted draft/server-side validation for future publication, photo moderation. Preserve original app as backup until mobile acceptance.
