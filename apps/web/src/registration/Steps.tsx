@@ -21,7 +21,7 @@ function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChange:(min:
  const start=(min-18)/62*100,end=(max-18)/62*100;
  return <div className="age-range glass-panel">
    <div className="range-title"><span>Возраст</span><strong>{min}–{max}</strong></div>
-   <div className="double-age-range" onPointerDownCapture={e=>{
+   <div className="double-age-range" onPointerDownCapture={()=>{
      const f=document.activeElement;if(f instanceof HTMLInputElement&&f.type!=="range")f.blur();
    }}>
      <div className="double-range-track" aria-hidden="true"><span style={{left:start+"%",width:(end-start)+"%"}}/></div>
