@@ -43,6 +43,16 @@ test('native finger-following horizontal snap is independent of vertical profile
   assert.match(source('main.tsx'), /import '\.\/profileTabs\.css'/);
 });
 
+test('panel selection observes a horizontal marker instead of tall panel area', () => {
+  const tabs = source('ProfileTabs.tsx');
+  const css = source('profileTabs.css');
+  assert.match(tabs, /observer\.observe\(marker\)/);
+  assert.doesNotMatch(tabs, /observer\.observe\(panel\)/);
+  assert.match(tabs, /className="profile-tabs-visibility-marker"/);
+  assert.match(css, /\.profile-tabs-visibility-marker/);
+  assert.match(css, /height:\s*1px/);
+});
+
 test('tab navigation meets basic access needs and does not pretend feature launches', () => {
   const tabs = source('ProfileTabs.tsx');
   for (const role of ['tablist', 'tab', 'tabpanel']) assert.ok(tabs.includes(`role="${role}"`));

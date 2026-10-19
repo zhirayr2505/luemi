@@ -235,10 +235,11 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
   const viewport = useRef<HTMLDivElement>(null);
   const rail = useRef<HTMLDivElement>(null);
   const panels = useRef<Array<HTMLDivElement | null>>([]);
+  const markers = useRef<Array<HTMLSpanElement | null>>([]);
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
 
-  // The browser alone owns horizontal momentum and snap; IntersectionObserver
-  // only changes the selected label once a panel becomes mostly visible.
+  // Native scrolling owns motion. Observe 1px-height horizontal markers, not
+  // whole panels: a tall panel could otherwise never intersect 60% of its area.
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
@@ -251,7 +252,7 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
       },
       { root: element, threshold: [0.6, 0.8] },
     );
-    for (const panel of panels.current) if (panel) observer.observe(panel);
+    for (const marker of markers.current) if (marker) observer.observe(marker);
     return () => observer.disconnect();
   }, [profile.id]);
 
@@ -342,6 +343,14 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
             aria-hidden={active !== index}
             inert={active !== index}
           >
+            <span
+              ref={(element) => {
+                markers.current[index] = element;
+              }}
+              className="profile-tabs-visibility-marker"
+              data-index={index}
+              aria-hidden="true"
+            />
             {index === 0 && <AboutTab profile={profile} />}
             {index === 1 && <GlintsTab />}
             {index === 2 && <PhotosTab profile={profile} />}
