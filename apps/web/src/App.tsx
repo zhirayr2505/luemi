@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent,CSSProperties } from "react";
+
 import {ArrowRight,Moon,Sun} from "lucide-react";
 import {GlassArrow} from "./ui/Glass";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
@@ -14,6 +14,7 @@ declare global {
         version?: string;
         isVersionAtLeast?: (version: string) => boolean;
         requestFullscreen?: () => void;
+        disableVerticalSwipes?: () => void;
         setHeaderColor?: (color: string) => void;
         setBackgroundColor?: (color: string) => void;
         colorScheme?: "dark" | "light";
@@ -76,7 +77,6 @@ export function App() {
   const ownedUrls = useRef<string[]>([]);
   const [error,setError] = useState("");
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
-  const [themePulse,setThemePulse] = useState<{x:number;y:number}|null>(null);
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
   const activeTheme=theme;
@@ -93,6 +93,7 @@ export function App() {
       webApp?.expand?.();
       try {
         if(webApp?.isVersionAtLeast?.("8.0")) webApp.requestFullscreen?.();
+        webApp?.disableVerticalSwipes?.();
       } catch {
         // Unsupported clients retain Telegram's expanded, non-fullscreen UI.
       }
@@ -172,26 +173,34 @@ export function App() {
       controller.abort();
     };
   },[]);
-  // Telegram/Android keyboard resizes only the *scrollable form area*,
-  // never the whole window or a duplicate floating footer.
+  // Keep the *outer* Mini App at its original fullscreen height so its
+  // footer cannot jump above the keyboard. Only the form scroll area shrinks.
   useEffect(()=>{
     const vv=window.visualViewport;
-    let full=vv?.height??window.innerHeight;
+    let stableHeight=Math.max(window.innerHeight,vv?.height??0);
     const update=()=>{
-      const height=vv?.height??window.innerHeight;
-      if(height>full)full=height;
-      const isKeyboard=full-height>145;
-      rootRef.current?.style.setProperty("--app-height",height+"px");
-      rootRef.current?.setAttribute("data-keyboard",isKeyboard?"open":"closed");
+      const visible=vv?.height??window.innerHeight;
+      if(visible>stableHeight-30)stableHeight=Math.max(stableHeight,visible);
+      const overlay=Math.max(0,stableHeight-visible);
+      const keyboard=overlay>145;
+      rootRef.current?.style.setProperty("--app-height",stableHeight+"px");
+      rootRef.current?.style.setProperty("--keyboard-overlay",keyboard?overlay+"px":"0px");
+      rootRef.current?.setAttribute("data-keyboard",keyboard?"open":"closed");
     };
     update();
-    vv?.addEventListener("resize",update);
-    vv?.addEventListener("scroll",update);
+    const onFocus=(event:FocusEvent)=>{
+      if(!(event.target instanceof HTMLInputElement)&&!(event.target instanceof HTMLTextAreaElement))return;
+      window.setTimeout(()=>{
+        if(document.activeElement===event.target)event.target.scrollIntoView({block:"center",behavior:"smooth"});
+      },190);
+    };
+    vv?.addEventListener("resize",update);vv?.addEventListener("scroll",update);
     window.addEventListener("resize",update);
+    document.addEventListener("focusin",onFocus);
     return ()=>{
-      vv?.removeEventListener("resize",update);
-      vv?.removeEventListener("scroll",update);
+      vv?.removeEventListener("resize",update);vv?.removeEventListener("scroll",update);
       window.removeEventListener("resize",update);
+      document.removeEventListener("focusin",onFocus);
     };
   },[]);
   // Preview photos are local-only. Remove temporary browser URLs on unmount.
@@ -268,22 +277,16 @@ export function App() {
       transitionTimer.current=null;
     },280);
   };
-  const changeTheme=(event:ReactMouseEvent<HTMLButtonElement>)=>{
-    const rect=event.currentTarget.getBoundingClientRect();
-    const pulse={x:rect.left+rect.width/2,y:rect.top+rect.height/2};
-    if(!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
-      setThemePulse(pulse);
-      window.setTimeout(()=>setThemePulse(null),340);
-    }
-    setTheme(value=>value==="light"?"dark":"light");
-  };
+  const changeTheme=()=>setTheme(value=>value==="light"?"dark":"light");
   const themeName=theme==="light"?"Тёмная":"Светлая";
-  return <main ref={rootRef} className={"luemi-shell"+(themePulse?" theme-pulsing":"")} data-theme={activeTheme} data-phase={phase}
-    style={themePulse?{"--pulse-x":themePulse.x+"px","--pulse-y":themePulse.y+"px"} as CSSProperties:undefined}
+  const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
+    aria-label={"Включить тему: "+themeName}>
+    {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
+  </button>;
+  return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
-    <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme}
-      aria-label={"Включить тему: "+themeName}>{theme==="light"?<Moon size={22} strokeWidth={1.7}/>:<Sun size={22} strokeWidth={1.7}/>}</button></div>
+    {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
     {(auth!=="authorized"||phase==="welcome")?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
@@ -299,7 +302,10 @@ export function App() {
       </div>}
     </section>:<section className="onboarding-screen">
       <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
-        <div className="onboard-wordmark"><img src={logoSrc} alt="luemi" className="onboard-logo"/></div>
+        <div className="onboard-brand-row">
+          <div className="onboard-wordmark"><img src={logoSrc} alt="luemi" className="onboard-logo"/></div>
+          {themeButton}
+        </div>
         <div className="progress-track" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={8} aria-label="Прогресс регистрации"><span style={{width:step/8*100+"%"}}/></div>
       </div>
       <header className="onboard-head">
