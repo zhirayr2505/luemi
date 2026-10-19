@@ -1,0 +1,31 @@
+name: LUEMI format profile tabs once
+on:
+  push:
+    branches: [feat/profile-five-tabs-native-swipe]
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run format
+      - run: npm run format:check
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - name: Commit formatted tabs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/web/src/ProfileTabs.tsx apps/web/src/profileTabs.css apps/web/src/ProfileMotion.tsx apps/web/src/main.tsx tests/profileTabs.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m 'style(profile): format new tabs with Prettier'
+            git push origin HEAD:feat/profile-five-tabs-native-swipe
+          fi
