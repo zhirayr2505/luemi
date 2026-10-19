@@ -31,6 +31,7 @@ test('profile collections use true empty states and actions stay below the nativ
   assert.doesNotMatch(css, /min-height:\s*340px/);
   assert.match(motion, /<main[\s\S]*?<\/main>[\s\S]*?profile-action-bar/);
   assert.match(motionCss, /\.has-profile-action \.profile-detail-scroll/);
+  assert.match(css, /\.has-profile-action \.profile-tabs-root\s*\{\s*padding-bottom:\s*76px/);
   assert.doesNotMatch(motionCss, /profile-cta\s*\{[^}]*scroll-snap-align/);
 });
 
@@ -57,6 +58,7 @@ test('native finger-following horizontal snap is independent of vertical profile
   assert.match(css, /animation-timeline:\s*--luemi-tabs-x/);
   assert.match(css, /@keyframes luemi-tab-glass/);
   assert.match(css, /align-items:\s*stretch/);
+  assert.match(css, /scroll-margin-top:\s*calc\(100cqw - 2 \* var\(--profile-side\)/);
   assert.doesNotMatch(
     tabs,
     /onPointerMove|setPointerCapture|requestAnimationFrame|scrollTo\s*\(|setTimeout\s*\(/,

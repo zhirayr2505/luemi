@@ -4,11 +4,16 @@
 .profile-tabs-root {
   min-width: 0;
   scroll-snap-align: start;
+  scroll-margin-top: calc(100cqw - 2 * var(--profile-side) + 6px - var(--profile-travel));
   timeline-scope: --luemi-tabs-x;
+}
+.has-profile-action .profile-tabs-root {
+  padding-bottom: 76px;
 }
 .profile-tabs-rail {
   position: sticky;
-  top: calc(var(--profile-hero-top) + var(--profile-avatar-size) + 6px);
+  /* The vertical scroller already offsets its content by --profile-hero-top. */
+  top: calc(var(--profile-avatar-size) + 12px);
   z-index: 8;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -21,9 +26,6 @@
   border-radius: 21px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(246, 234, 252, 0.62)), var(--luemi-bg);
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.86),
-    0 8px 23px rgba(91, 52, 125, 0.07);
   overscroll-behavior-x: contain;
   isolation: isolate;
   box-shadow:
@@ -601,6 +603,7 @@
 @media (max-width: 370px) {
   .profile-tabs-tab {
     font-size: 11.5px;
+    letter-spacing: -0.7px;
   }
   .profile-motion-details .section.profile-tab-card {
     padding: 18px 16px;
