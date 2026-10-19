@@ -1,7 +1,11 @@
 name: LUEMI profile browser verification
 on:
-  push:
-    branches: [feat/profile-complete-2026-10-19]
+  pull_request:
+    paths:
+      - 'apps/web/src/**'
+      - 'tests/**'
+      - '.github/workflows/profile-browser-qa.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
