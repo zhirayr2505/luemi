@@ -242,8 +242,8 @@
   border-color: rgba(245, 217, 255, 0.8);
 }
 
-/* Stationary Liquid Glass: translucent layers, clear optical rim and highlights,
-   with no animated optical blur or heavy live SVG masks. */
+/* Stationary Liquid Glass: translucent layers, a restrained static backdrop separation,
+   clear optical rims and no animated blur or live SVG masks. */
 .profile-morph-compact {
   position: absolute;
   top: 2px;
@@ -262,10 +262,12 @@
   color: var(--luemi-text);
   background: linear-gradient(
     151deg,
-    rgba(255, 255, 255, 0.45),
-    rgba(241, 220, 255, 0.24) 48%,
-    rgba(225, 190, 241, 0.33)
+    rgba(255, 255, 255, 0.7),
+    rgba(241, 220, 255, 0.56) 48%,
+    rgba(225, 190, 241, 0.63)
   );
+  -webkit-backdrop-filter: blur(14px) saturate(132%);
+  backdrop-filter: blur(14px) saturate(132%);
   box-shadow:
     0 7px 24px rgba(73, 39, 93, 0.12),
     inset 0 1.5px 1.5px rgba(255, 255, 255, 0.75),
@@ -312,9 +314,9 @@
   border-color: rgba(238, 207, 255, 0.38);
   background: linear-gradient(
     154deg,
-    rgba(139, 105, 165, 0.41),
-    rgba(87, 61, 110, 0.36) 48%,
-    rgba(78, 53, 100, 0.55)
+    rgba(139, 105, 165, 0.66),
+    rgba(87, 61, 110, 0.6) 48%,
+    rgba(78, 53, 100, 0.72)
   );
   box-shadow:
     0 7px 22px rgba(12, 5, 23, 0.2),

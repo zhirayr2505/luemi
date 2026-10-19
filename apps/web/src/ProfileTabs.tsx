@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react';
 import type { Profile } from '../../../packages/core/domain';
 import { ageAt } from '../../../packages/core/domain';
@@ -15,6 +16,60 @@ type ProfileTabIndex = 0 | 1 | 2 | 3 | 4;
 
 function getTabIndex(value: number): ProfileTabIndex {
   return Math.min(4, Math.max(0, Math.round(value))) as ProfileTabIndex;
+}
+
+function InterestIcon({ interest }: { interest: string }) {
+  const value = interest.toLocaleLowerCase('ru-RU');
+  let glyph: ReactNode;
+
+  if (value.includes('коф') || value.includes('coffee')) {
+    glyph = (
+      <>
+        <path d="M5 9h12v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V9Z" />
+        <path d="M17 10h1a3 3 0 0 1 0 6h-2M8 5c0-1 1-1 1-2m4 2c0-1 1-1 1-2" />
+      </>
+    );
+  } else if (value.includes('путеше') || value.includes('travel')) {
+    glyph = <path d="m3 13 8-2-3-7 2-1 5 7 5-1 2 2-7 3-3 6-2 1 1-6-6 1-2-1Z" />;
+  } else if (value.includes('книг') || value.includes('book')) {
+    glyph = (
+      <>
+        <path d="M12 7c-2-2-5-2-8-1v13c3-1 6-1 8 1 2-2 5-2 8-1V6c-3-1-6-1-8 1Z" />
+        <path d="M12 7v13M7 9c1 0 2 0 3 .4m7-.4c-1 0-2 0-3 .4" />
+      </>
+    );
+  } else if (value.includes('мор') || value.includes('sea') || value.includes('океан')) {
+    glyph = (
+      <path d="M3 9c2 0 2-2 4-2s2 2 5 2 3-2 5-2 2 2 4 2M3 14c2 0 2-2 4-2s2 2 5 2 3-2 5-2 2 2 4 2m-18 5c2 0 2-2 4-2s2 2 5 2 3-2 5-2 2 2 4 2" />
+    );
+  } else if (value.includes('собак') || value.includes('dog')) {
+    glyph = (
+      <>
+        <ellipse cx="12" cy="15.5" rx="4.2" ry="3.3" />
+        <ellipse cx="5.5" cy="9" rx="1.8" ry="2.5" transform="rotate(-28 5.5 9)" />
+        <ellipse cx="10" cy="6.4" rx="1.8" ry="2.4" transform="rotate(-8 10 6.4)" />
+        <ellipse cx="15" cy="6.4" rx="1.8" ry="2.4" transform="rotate(8 15 6.4)" />
+        <ellipse cx="18.5" cy="9" rx="1.8" ry="2.5" transform="rotate(28 18.5 9)" />
+      </>
+    );
+  } else {
+    glyph = <path d="m12 3 1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8L12 3Z" />;
+  }
+
+  return (
+    <svg
+      className="interest-chip-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.65"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {glyph}
+    </svg>
+  );
 }
 
 function AboutTab({
@@ -74,6 +129,7 @@ function AboutTab({
           <div className="chips colored">
             {profile.interests.map((interest, index) => (
               <span key={interest} style={{ '--chip-tone': index % 7 } as CSSProperties}>
+                <InterestIcon interest={interest} />
                 {interest}
               </span>
             ))}
@@ -93,6 +149,7 @@ function AboutTab({
             <div className="chips colored">
               {commonInterests.map((interest, index) => (
                 <span key={interest} style={{ '--chip-tone': index % 7 } as CSSProperties}>
+                  <InterestIcon interest={interest} />
                   {interest}
                 </span>
               ))}
