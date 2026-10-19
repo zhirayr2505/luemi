@@ -19,3 +19,11 @@
 - Unified range preference, typed 750-character bio, name normalization and validation.
 - Pointer long-press photo order + main badge, swipe-follow carousel and two-mode preview.
 - No production data touched. Further mobile acceptance required.
+
+## 2026-10-19 · Stage 02F · Premium registration revision
+- Sequential glass wordmark shimmering and compact header theme control, no duplicate Telegram system back button.
+- New keyboard scroll bounds, hidden (not elevated) footer during text entry and inset input focus.
+- Geo-first location picker, alternative verified manual search, radius/country/world mode, nonlinear 5000km range.
+- Six illustrated goals, 10 rich interest categories + pinned selected panel, searchable 60-language catalogue with 66 MIT circular SVG flags.
+- Rewrote photo drag with client-viewport portal, animated FLIP rearrangement, auto-scroll, accessible movement; replaced old tabbed preview with one complete profile and single edit button.
+- Removed obsolete CSS selectors, old gesture implementation and previous goals/worldwide fields; staging only.
