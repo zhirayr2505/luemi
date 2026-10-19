@@ -70,8 +70,27 @@ export async function configureStagingTelegramBot(
     throw new Error("Another webhook is already installed; no settings changed");
   }
   const menu = await invoke<MenuButton>("getChatMenuButton");
-  if (menu.type === "web_app" && menu.web_app?.url !== config.origin) {
-    throw new Error("Bot menu points to another app; no settings changed");
+  // Telegram sometimes normalizes a Web App root URL with a final slash.
+  // Accept only the same HTTPS origin and the root path; other paths remain foreign.
+  let existingMenuMatches = false;
+  if (menu.type === "web_app") {
+    try {
+      const actualMenu = new URL(menu.web_app?.url ?? "");
+      const expectedMenu = new URL(config.origin);
+      existingMenuMatches = actualMenu.protocol === "https:" &&
+        actualMenu.origin === expectedMenu.origin &&
+        actualMenu.pathname === "/" &&
+        !actualMenu.search &&
+        !actualMenu.hash;
+    } catch {
+      existingMenuMatches = false;
+    }
+    if (!existingMenuMatches)
+      throw new Error("Bot menu points to another app; no settings changed");
+  }
+  // Fully configured bot: startup is idempotent, do not rewrite Telegram settings.
+  if (existingMenuMatches && webhook.url === webhookUrl) {
+    return { botUsername: me.username ?? "LuemiAppBot", webhookUrl, menuConfigured: true };
   }
 
   // All read-only checks have passed; customize the global bot menu button.

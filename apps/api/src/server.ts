@@ -27,10 +27,14 @@ async function start(): Promise<void> {
       try {
         const setup = await configureStagingTelegramBot(config);
         app.log.info({ botUsername: setup.botUsername }, "LUEMI staging Telegram bot configured");
-      } catch {
-        // Never log a fetch error or Telegram URL: Telegram's Bot API uses
-        // a secret token in the request URL. Do not expose that URL in logs.
-        app.log.error("LUEMI staging bot setup requires attention. No token details logged.");
+      } catch (error) {
+        // Only errors with explicitly-authored static messages may be logged.
+        // Never print fetched request URLs or Bot API data (token in URL).
+        const reason = error instanceof Error &&
+          /^(Telegram|Bot |Another|Invalid|staging|LUEMI)/.test(error.message)
+            ? error.message
+            : "Telegram setup request failed";
+        app.log.error({ reason }, "LUEMI staging bot setup requires attention. No token details logged.");
       }
     }
   } catch (error) {

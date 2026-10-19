@@ -73,3 +73,19 @@ test("refuses setup without bot credentials", async () => {
   await assert.rejects(configureStagingTelegramBot({ ...config, stagingOnly: true }, fake.fetcher));
   assert.equal(fake.calls.length, 0);
 });
+
+test("accepts existing Web App with normalized trailing slash without rewriting it", async () => {
+  const fake = fakeTelegram(
+    "LuemiAppBot",
+    "https://luemi-stage01.onrender.com/api/telegram/webhook",
+    "https://luemi-stage01.onrender.com/"
+  );
+  const result = await configureStagingTelegramBot(config, fake.fetcher);
+  assert.equal(result.botUsername, "LuemiAppBot");
+  assert.deepEqual(fake.calls, ["getMe", "getWebhookInfo", "getChatMenuButton"]);
+});
+test("refuses foreign paths on the same host", async () => {
+  const fake = fakeTelegram("LuemiAppBot", "", "https://luemi-stage01.onrender.com/another-app");
+  await assert.rejects(configureStagingTelegramBot(config, fake.fetcher));
+  assert.deepEqual(fake.calls, ["getMe", "getWebhookInfo", "getChatMenuButton"]);
+});
