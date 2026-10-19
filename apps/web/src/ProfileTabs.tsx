@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react';
 import type { Profile } from '../../../packages/core/domain';
 import { ageAt } from '../../../packages/core/domain';
 import { Icon, IconButton, Modal, Portrait } from './ui';
@@ -11,7 +19,10 @@ function getTabIndex(value: number): ProfileTabIndex {
 }
 
 function AboutTab({ profile }: { profile: Profile }) {
-  const goal = profile.goal && profile.goal !== 'Пока не определился' ? profile.goal : 'Пока не определилась цель';
+  const goal =
+    profile.goal && profile.goal !== 'Пока не определился'
+      ? profile.goal
+      : 'Пока не определилась цель';
   return (
     <div className="profile-tabs-stack">
       <section className="glass section profile-tab-card">
@@ -63,10 +74,15 @@ function EmptyCollection({
 }) {
   return (
     <div className="glass profile-collection-empty">
-      <div className={'profile-collection-symbol profile-collection-symbol--' + kind} aria-hidden="true">
+      <div
+        className={'profile-collection-symbol profile-collection-symbol--' + kind}
+        aria-hidden="true"
+      >
         {kind === 'gift' ? <Icon name="gift" size={39} /> : <span>✦</span>}
       </div>
-      <span className="profile-card-eyebrow">{kind === 'gift' ? 'ЗНАКИ ВНИМАНИЯ' : 'СОХРАНЁННЫЕ МГНОВЕНИЯ'}</span>
+      <span className="profile-card-eyebrow">
+        {kind === 'gift' ? 'ЗНАКИ ВНИМАНИЯ' : 'СОХРАНЁННЫЕ МГНОВЕНИЯ'}
+      </span>
       <h3>{title}</h3>
       <p>{description}</p>
       <div className="profile-collection-footnote">
@@ -94,7 +110,8 @@ function PhotosTab({ profile }: { profile: Profile }) {
   const [selected, setSelected] = useState<number | null>(null);
   useEffect(() => setSelected(null), [profile.id]);
   const total = profile.photos.length;
-  const previous = () => setSelected((index) => (index === null ? null : (index - 1 + total) % total));
+  const previous = () =>
+    setSelected((index) => (index === null ? null : (index - 1 + total) % total));
   const next = () => setSelected((index) => (index === null ? null : (index + 1) % total));
 
   return (
@@ -105,7 +122,9 @@ function PhotosTab({ profile }: { profile: Profile }) {
             <span className="profile-card-eyebrow">ГАЛЕРЕЯ</span>
             <h3>Фотографии</h3>
           </div>
-          <span className="profile-photo-count">{total} {'фото'}</span>
+          <span className="profile-photo-count">
+            {total} {'фото'}
+          </span>
         </div>
         {total ? (
           <div className="profile-photo-grid">
@@ -118,7 +137,9 @@ function PhotosTab({ profile }: { profile: Profile }) {
                 onClick={() => setSelected(index)}
               >
                 <Portrait photo={photo} alt={`Фотография ${index + 1}`} />
-                <span className="profile-photo-tile-number">{String(index + 1).padStart(2, '0')}</span>
+                <span className="profile-photo-tile-number">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
               </button>
             ))}
           </div>
@@ -135,7 +156,9 @@ function PhotosTab({ profile }: { profile: Profile }) {
           {total > 1 && (
             <div className="profile-photo-preview-actions">
               <IconButton icon="back" label="Предыдущее фото" onClick={previous} />
-              <span>{selected + 1} / {total}</span>
+              <span>
+                {selected + 1} / {total}
+              </span>
               <IconButton icon="next" label="Следующее фото" onClick={next} />
             </div>
           )}
@@ -148,7 +171,9 @@ function PhotosTab({ profile }: { profile: Profile }) {
 function AccountRow({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
     <div className="profile-account-row">
-      <span className="profile-account-icon" aria-hidden="true"><Icon name={icon} size={20} /></span>
+      <span className="profile-account-icon" aria-hidden="true">
+        <Icon name={icon} size={20} />
+      </span>
       <span className="profile-account-copy">
         <span>{label}</span>
         <strong>{value}</strong>
@@ -166,10 +191,22 @@ function AccountTab({ profile }: { profile: Profile }) {
         <span className="profile-card-eyebrow">ОБ АНКЕТЕ</span>
         <h3>Информация об аккаунте</h3>
         <div className="profile-account-list">
-          <AccountRow icon="shield" label="Проверка" value={profile.verified ? 'Анкета с отметкой проверки' : 'Отметки проверки пока нет'} />
+          <AccountRow
+            icon="shield"
+            label="Проверка"
+            value={profile.verified ? 'Анкета с отметкой проверки' : 'Отметки проверки пока нет'}
+          />
           <AccountRow icon="globe" label="Местоположение" value={region} />
-          <AccountRow icon="info" label="Возраст" value={Number.isFinite(age) ? `${age} лет · 18+` : 'Не указан'} />
-          <AccountRow icon="smile" label="Языки общения" value={profile.languages.join(', ') || 'Не указаны'} />
+          <AccountRow
+            icon="info"
+            label="Возраст"
+            value={Number.isFinite(age) ? `${age} лет · 18+` : 'Не указан'}
+          />
+          <AccountRow
+            icon="smile"
+            label="Языки общения"
+            value={profile.languages.join(', ') || 'Не указаны'}
+          />
         </div>
       </section>
       <div className="profile-account-privacy-note">
@@ -225,7 +262,8 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
     const panel = panels.current[active];
     if (!container || !panel) return;
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) container.style.height = `${Math.ceil(entry.borderBoxSize?.[0]?.blockSize ?? panel.offsetHeight)}px`;
+      if (entry)
+        container.style.height = `${Math.ceil(entry.borderBoxSize?.[0]?.blockSize ?? panel.offsetHeight)}px`;
     });
     observer.observe(panel);
     return () => observer.disconnect();
@@ -233,9 +271,13 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
 
   // Keep the selected label in view without touching vertical profile scroll.
   useEffect(() => {
-    const container = rail.current, button = buttons.current[active];
+    const container = rail.current,
+      button = buttons.current[active];
     if (!container || !button) return;
-    container.scrollLeft = Math.max(0, button.offsetLeft - (container.clientWidth - button.clientWidth) / 2);
+    container.scrollLeft = Math.max(
+      0,
+      button.offsetLeft - (container.clientWidth - button.clientWidth) / 2,
+    );
   }, [active]);
 
   const activate = useCallback((index: number) => {
@@ -259,12 +301,20 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
 
   return (
     <section className="profile-tabs-root" aria-label="Разделы профиля">
-      <div className="profile-tabs-rail" ref={rail} role="tablist" aria-label="Разделы профиля" onKeyDown={keyDown}>
+      <div
+        className="profile-tabs-rail"
+        ref={rail}
+        role="tablist"
+        aria-label="Разделы профиля"
+        onKeyDown={keyDown}
+      >
         {PROFILE_TAB_LABELS.map((label, index) => (
           <button
             type="button"
             key={label}
-            ref={(element) => { buttons.current[index] = element; }}
+            ref={(element) => {
+              buttons.current[index] = element;
+            }}
             id={`profile-tab-${index}`}
             role="tab"
             className={'profile-tabs-tab' + (active === index ? ' is-active' : '')}
@@ -282,7 +332,9 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
           <div
             key={label}
             id={`profile-panel-${index}`}
-            ref={(element) => { panels.current[index] = element; }}
+            ref={(element) => {
+              panels.current[index] = element;
+            }}
             className="profile-tabs-panel"
             data-index={index}
             role="tabpanel"

@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-const source = (path: string) => readFileSync(new URL(`../apps/web/src/${path}`, import.meta.url), 'utf8');
+const source = (path: string) =>
+  readFileSync(new URL(`../apps/web/src/${path}`, import.meta.url), 'utf8');
 
 test('five LUEMI profile tabs are present and About keeps approved core fields', () => {
   const tabs = source('ProfileTabs.tsx');
@@ -23,7 +24,10 @@ test('native finger-following horizontal snap is independent of vertical profile
   assert.match(css, /scroll-snap-align:\s*start/);
   assert.match(tabs, /new IntersectionObserver/);
   assert.match(tabs, /new ResizeObserver/);
-  assert.doesNotMatch(tabs, /onPointerMove|setPointerCapture|requestAnimationFrame|scrollTo\s*\(|setTimeout\s*\(/);
+  assert.doesNotMatch(
+    tabs,
+    /onPointerMove|setPointerCapture|requestAnimationFrame|scrollTo\s*\(|setTimeout\s*\(/,
+  );
   assert.match(profile, /<ProfileTabs profile=\{profile\}/);
   assert.equal((profile.match(/<ProfileGallery/g) ?? []).length, 1);
   assert.doesNotMatch(profile, /profile-morph-avatar|<Portrait/);
@@ -32,7 +36,7 @@ test('native finger-following horizontal snap is independent of vertical profile
 
 test('tab navigation meets basic access needs and does not pretend feature launches', () => {
   const tabs = source('ProfileTabs.tsx');
-  for(const role of ['tablist','tab','tabpanel']) assert.ok(tabs.includes(`role="${role}"`));
+  for (const role of ['tablist', 'tab', 'tabpanel']) assert.ok(tabs.includes(`role="${role}"`));
   assert.match(tabs, /aria-selected/);
   assert.match(tabs, /aria-controls/);
   assert.match(tabs, /aria-labelledby/);
