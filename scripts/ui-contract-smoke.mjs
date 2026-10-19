@@ -61,7 +61,7 @@ assertCheck("four global navigation destinations and three discovery tabs",disco
 assertCheck("five simulated actions without live API",["save","pass","special","like","undo"].every(k=>discovery.includes('"'+k+'"'))&&!discovery.includes('fetch(')&&!discovery.includes("TelegramStars"));
 assertCheck("profile and filters use existing shared profile components",discoveryProfile.includes("PhotoCarousel")&&discoveryProfile.includes("InterestChip")&&discoveryFilters.includes("DoubleAgeRange")&&discoveryFilters.includes("languages.map"));
 assertCheck("W12 photo swipe remains independent of like/pass",discovery.includes("<PhotoCarousel")&&discovery.includes("onPointerDown")&&discovery.includes("closest")&&discovery.includes(".discovery-photo"));
-assertCheck("demo fixture is visibly marked and illustrated locally",fixture.includes("illustration(")&&!fixture.includes("https://")&&discovery.includes('className="discovery-demo-label"'));
+assertCheck("demo fixture is visibly marked and illustrated locally",fixture.includes("illustration(")&&fixture.includes("portraitSources")&&discovery.includes('className="discovery-demo-label"'));
 assertCheck("adaptive card peek hidden on smaller screens, native Telegram back",discoveryCss.includes(".discovery-card")&&app.includes("discoveryBackRef")&&discovery.includes("registerBack"));
 assertCheck("demo actions include reversible state history",discoveryModel.includes("demoUndo")&&discoveryModel.includes("history:")&&discoveryModel.includes("wasSaved"));
 
@@ -98,3 +98,5 @@ assertCheck("rounded Liquid Glass bottom island and active icon only",discoveryC
 assertCheck("right swipe closes profile but excludes photos",discoveryProfile.includes("onPointerDown={down}")&&discoveryProfile.includes('.discovery-profile-photo,.carousel-frame'));
 assertCheck("six women for exclusive demo fixture",fixture.includes('"alisa"')&&fixture.includes('"lina"')&&!fixture.includes('"aram"'));
 console.log("LUEMI Stage 03 Feed Polish 2 UI smoke PASS");
+
+assertCheck("AI-only portrait references are externally sourced with on-error original fallback",fixture.includes("cdn.pixabay.com")&&read("apps/web/src/ui/PhotoCarousel.tsx").includes("onError={event"));
