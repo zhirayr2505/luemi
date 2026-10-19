@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
+import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
+import { RegistrationStep, type PhotoItem } from "./registration/Steps";
 
 declare global {
   interface Window {
@@ -9,66 +11,170 @@ declare global {
         colorScheme?: "dark" | "light";
         ready?: () => void;
         expand?: () => void;
+        BackButton?: {
+          show: () => void;
+          hide: () => void;
+          onClick: (handler: () => void) => void;
+          offClick: (handler: () => void) => void;
+        };
       };
     };
   }
 }
-type State = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "error";
+
+type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "error";
+type ThemeChoice = "system" | "light" | "dark";
+const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
+
 export function App() {
-  const [state, setState] = useState<State>("connecting");
-  const [name, setName] = useState("");
-  const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
-  useEffect(() => {
-    const webApp = window.Telegram?.WebApp;
-    const initData = webApp?.initData;
-    if (!initData) {
-      setState("outside-telegram");
-      webApp?.ready?.();
-      return;
-    }
-    const controller = new AbortController();
-    void (async () => {
+  const [auth,setAuth] = useState<AuthState>("connecting");
+  const [phase,setPhase] = useState<"welcome"|"form">("welcome");
+  const [step,setStep] = useState(1);
+  const [draft,setDraft] = useState<RegistrationDraft>(()=>newDraft());
+  const [photos,setPhotos] = useState<PhotoItem[]>([]);
+  const ownedUrls = useRef<string[]>([]);
+  const [error,setError] = useState("");
+  const [theme,setTheme] = useState<ThemeChoice>("system");
+  const patch = useCallback((change:Partial<RegistrationDraft>)=>{
+    setDraft(prev=>({...prev,...change}));
+    setError("");
+  },[]);
+  useEffect(()=>{
+    const webApp=window.Telegram?.WebApp;
+    const initData=webApp?.initData;
+    if(!initData){setAuth("outside-telegram");webApp?.ready?.();return;}
+    const controller=new AbortController();
+    void (async()=>{
       try {
-        const live = await fetch("/api/health/live", { signal: controller.signal });
-        if (!live.ok || ((await live.json()) as HealthResponse).status !== "ok") throw new Error("API unavailable");
-        const response = await fetch("/api/auth/telegram", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ initData }), signal: controller.signal
+        const live=await fetch("/api/health/live",{signal:controller.signal});
+        if(!live.ok||((await live.json()) as HealthResponse).status!=="ok")throw new Error("API unavailable");
+        const response=await fetch("/api/auth/telegram",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({initData}),
+          signal:controller.signal
         });
-        if (response.status === 503) { setState("needs-bot"); webApp?.ready?.(); return; }
-        if (!response.ok) throw new Error("Telegram authorization failed");
-        const body = (await response.json()) as BootstrapResponse;
-        setName(body.user.firstName);
-        setState("authorized");
+        if(response.status===503){setAuth("needs-bot");webApp?.ready?.();return;}
+        if(!response.ok)throw new Error("Telegram authorization failed");
+        const user=(await response.json()) as BootstrapResponse;
+        setDraft(current=>({...current,name:current.name||user.user.firstName}));
+        setAuth("authorized");
         webApp?.ready?.();
         webApp?.expand?.();
-      } catch {
-        if (!controller.signal.aborted) setState("error");
+      }catch{
+        if(!controller.signal.aborted)setAuth("error");
       }
     })();
-    return () => controller.abort();
-  }, []);
-  const active = theme === "system" ? (window.Telegram?.WebApp?.colorScheme ?? "light") : theme;
-  return (
-    <main className="app" data-theme={active}>
-      <div className="mist" aria-hidden="true" />
-      <section className="glass" aria-live="polite">
-        <p className="eyebrow">LUEMI · TELEGRAM MINI APP</p>
-        <img className="wordmark" src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi" width="280" height="105" />
-        <h1>{state === "authorized" ? `Привет, ${name}!` : "Твоя история начинается здесь"}</h1>
-        {state === "connecting" && <p>Подключаем защищённую сессию Telegram…</p>}
-        {state === "outside-telegram" && <p>Открой LUEMI кнопкой в Telegram-боте. Здесь приложение не запрашивает регистрацию вне Telegram.</p>}
-        {state === "authorized" && <p>Telegram подтвердил вход. Мы готовим регистрацию и знакомства для закрытой беты.</p>}
-        {state === "needs-bot" && <p role="status">Тестовая версия открылась в Telegram. Подтверждение входа подключим после безопасной настройки бота.</p>}
-        {state === "error" && <p role="alert">Не удалось подтвердить вход. Открой приложение снова через Telegram.</p>}
-        <div className="stage" aria-label="Статус разработки"><span className="dot" /> Stage 01 · Закрытая техническая версия</div>
-        <div className="themes" aria-label="Тема интерфейса">
-          {(["system","light","dark"] as const).map((value) => (
-            <button key={value} type="button" aria-pressed={theme === value}
-              onClick={() => setTheme(value)}>{value === "system" ? "Система" : value === "light" ? "Светлая" : "Тёмная"}</button>
-          ))}
+    return ()=>controller.abort();
+  },[]);
+  // Preview photos are local-only. Remove temporary browser URLs on unmount.
+  useEffect(()=>()=>{
+    for(const url of ownedUrls.current)URL.revokeObjectURL(url);
+    ownedUrls.current=[];
+  },[]);
+  const back=useCallback(()=>{
+    setError("");
+    if(phase==="form"){
+      if(step>1)setStep(step-1);
+      else setPhase("welcome");
+    }
+  },[phase,step]);
+  useEffect(()=>{
+    const button=window.Telegram?.WebApp?.BackButton;
+    if(!button)return;
+    if(phase==="form"&&auth==="authorized"){
+      button.show();
+      button.onClick(back);
+      return ()=>{button.offClick(back);button.hide();};
+    }
+    button.hide();
+  },[phase,auth,back]);
+  const changeStep=(target:number)=>{
+    setError("");
+    setStep(Math.max(1,Math.min(8,target)));
+    window.scrollTo({top:0,behavior:"instant"});
+  };
+  const next=()=>{
+    const nextError=validateStep(draft,step,photos.length);
+    if(nextError){setError(nextError);return;}
+    if(step<8)changeStep(step+1);
+  };
+  const addPhotos=(files:FileList|null)=>{
+    if(!files?.length)return;
+    let problem="";
+    setPhotos(prev=>{
+      const items=[...prev];
+      for(const file of Array.from(files)){
+        if(items.length>=6){problem="Максимум 6 фотографий.";break;}
+        if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>12*1024*1024){
+          problem="Разрешены JPEG, PNG, WebP не более 12 МБ на файл.";continue;
+        }
+        const url=URL.createObjectURL(file);
+        ownedUrls.current.push(url);
+        items.push({id:crypto.randomUUID(),src:url,file});
+      }
+      return items;
+    });
+    if(problem)setError(problem);
+    else setError("");
+  };
+  const removePhoto=(id:string)=>{
+    setPhotos(prev=>{
+      const item=prev.find(p=>p.id===id);
+      if(item){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
+      return prev.filter(p=>p.id!==id);
+    });
+  };
+  const movePhoto=(from:number,to:number)=>{
+    setPhotos(prev=>{
+      if(from<0||from>=prev.length||to<0||to>=prev.length)return prev;
+      const next=[...prev];const [item]=next.splice(from,1);next.splice(to,0,item);return next;
+    });
+  };
+  const activeTheme=theme==="system"?(window.Telegram?.WebApp?.colorScheme??"light"):theme;
+  const changeTheme=()=>setTheme(old=>old==="system"?"light":old==="light"?"dark":"system");
+  const themeName=theme==="system"?"Система":theme==="light"?"Светлая":"Тёмная";
+  return <main className="luemi-shell" data-theme={activeTheme} data-phase={phase}>
+    <div className="milky-mist" aria-hidden="true"/>
+    <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme} aria-label={"Тема: "+themeName+". Переключить"}>{themeName}</button></div>
+    {auth!=="authorized"?<section className="entry-state" role="status">
+      <img src={logoSrc} alt="luemi" className="intro-logo"/>
+      <h1>{auth==="connecting"?"Готовим твоё знакомство":"LUEMI"}</h1>
+      <div className={"loading-track"+(auth==="connecting"?" animated":"") } aria-label="Подключение к Telegram"><span/></div>
+      {auth==="connecting"&&<p>Проверяем защищённый вход Telegram…</p>}
+      {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
+      {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
+      {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>window.location.reload()}>Повторить</button></>}
+    </section>: phase==="welcome"?<section className="welcome-screen">
+      <div className="welcome-art">
+        <div className="logo-aura" aria-hidden="true"/>
+        <img src={logoSrc} className="hero-logo" alt="luemi"/>
+        <h1>Твоя история начинается здесь</h1>
+        <p>Больше общего. Ближе друг к другу. Знакомства по интересам и целям.</p>
+      </div>
+      <div className="welcome-bottom">
+        <p className="stage-note">Предпросмотр Stage 02 · данные остаются на устройстве до закрытия экрана</p>
+        <button className="primary-action" type="button" onClick={()=>setPhase("form")}>Начать <span aria-hidden="true">→</span></button>
+      </div>
+    </section>:<section className="onboarding-screen">
+      <header className="onboard-head">
+        <img src={logoSrc} alt="luemi" className="onboard-logo"/>
+        <div className="progress-track" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={8} aria-label="Прогресс регистрации"><span style={{width:step/8*100+"%"}}/></div>
+        <h1>{steps[step-1].title}</h1>
+        <p>{steps[step-1].subtitle}</p>
+      </header>
+      <div key={step} className="onboard-body">
+        <RegistrationStep data={draft} patch={patch} step={step} photos={photos}
+          addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep}/>
+      </div>
+      <div className="onboard-footer">
+        {error&&<p className="field-error" role="alert">{error}</p>}
+        <div className="footer-controls">
+          <button className="nav-circle" type="button" onClick={back} aria-label="Назад"><span aria-hidden="true">←</span></button>
+          <span className="footer-hint">{step===8?"Публикация пока закрыта":"Технический предпросмотр"}</span>
+          <button className="nav-circle forward" type="button" onClick={next} disabled={step===8} aria-label="Далее"><span aria-hidden="true">→</span></button>
         </div>
-      </section>
-    </main>
-  );
+      </div>
+    </section>}
+  </main>;
 }
