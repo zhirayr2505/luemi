@@ -49,3 +49,19 @@ assertCheck("selected languages show only accessible flags",lang.includes('class
 assertCheck("language search uses three columns",style.includes("grid-template-columns:repeat(3,minmax(0,1fr))"));
 assertCheck("name validation reports invalid characters visibly",forms.includes("name-input-hint")&&forms.includes("updateName"));
 console.log("LUEMI Stage 02G UI contracts PASS");
+
+const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
+const discoveryModel=read("apps/web/src/discovery/model.ts");
+const fixture=read("apps/web/src/discovery/demo-people.ts");
+const discoveryCss=read("apps/web/src/discovery/discovery.css");
+const discoveryProfile=read("apps/web/src/discovery/DemoProfile.tsx");
+const discoveryFilters=read("apps/web/src/discovery/Filters.tsx");
+assertCheck("separate Stage 03 demo does not change publication flow",app.includes("demoOpen")&&app.includes("<DiscoveryApp")&&preview.includes("Открыть демо-Ленту")&&preview.includes("Публикация анкеты пока закрыта"));
+assertCheck("four global navigation destinations and three discovery tabs",discovery.includes('["discover","Знакомства"')&&discovery.includes('["likes","Симпатии"')&&discovery.includes('["chats","Чаты"')&&discovery.includes('["profile","Профиль"')&&discovery.includes('["feed","Лента"')&&discovery.includes('["for-you","Для тебя"')&&discovery.includes('["nearby","Рядом"'));
+assertCheck("five simulated actions without live API",["save","pass","special","like","undo"].every(k=>discovery.includes('"'+k+'"'))&&!discovery.includes('fetch(')&&!discovery.includes("TelegramStars"));
+assertCheck("profile and filters use existing shared profile components",discoveryProfile.includes("PhotoCarousel")&&discoveryProfile.includes("InterestChip")&&discoveryFilters.includes("DoubleAgeRange"));
+assertCheck("W12 photo swipe remains independent of like/pass",discovery.includes("<PhotoCarousel")&&discovery.includes("onTouchStart")&&discovery.includes("closest")&&discovery.includes(".discovery-photo"));
+assertCheck("demo fixture is visibly marked and illustrated locally",fixture.includes("illustration(")&&!fixture.includes("https://")&&discovery.includes('className="discovery-demo-label"'));
+assertCheck("adaptive card peek hidden on smaller screens, native Telegram back",discoveryCss.includes(".discovery-card")&&discovery.includes("BackButton"));
+assertCheck("demo actions include reversible state history",discoveryModel.includes("demoUndo")&&discoveryModel.includes("history:")&&discoveryModel.includes("wasSaved"));
+console.log("LUEMI Stage 03 UI contract smoke PASS");
