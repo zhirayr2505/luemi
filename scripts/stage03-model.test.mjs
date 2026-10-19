@@ -11,7 +11,7 @@ const d=await load("apps/web/src/discovery/demo-people.ts");
 const draft={city:"Краснодар",countryCode:"ru",interests:["музыка","путешествия"]};
 const people=d.demoPeople;
 assert.equal(people.length,6,"six deliberately illustrated synthetic demo profiles");
-assert.ok(people.every(p=>p.age>=18&&p.photos.length>=2&&p.photos.every(photo=>photo.src.startsWith("data:image/svg+xml"))));
+assert.ok(people.every(p=>p.age>=18&&p.gender==="woman"&&p.photos.length>=2&&p.photos.every(photo=>photo.src.startsWith("https://cdn.pixabay.com/")&&photo.fallback?.startsWith("data:image/svg+xml"))));
 assert.equal(m.filterDemoPeople(people,m.defaultFilters,draft).length,6,"worldwide fixture results");
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,scope:"country"},draft).every(p=>p.countryCode==="ru"),true);
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,goal:"serious"},draft).every(p=>p.goal==="serious"),true);
