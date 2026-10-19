@@ -29,7 +29,7 @@
   overscroll-behavior-x: contain;
   isolation: isolate;
   box-shadow:
-    0 -6px 0 var(--luemi-bg),
+    0 -12px 0 var(--luemi-bg),
     inset 0 1px 1px rgba(255, 255, 255, 0.86),
     0 8px 23px rgba(91, 52, 125, 0.07);
 }
@@ -523,6 +523,7 @@
   background:
     linear-gradient(135deg, rgba(79, 56, 99, 0.86), rgba(56, 41, 73, 0.82)), var(--luemi-bg);
   box-shadow:
+    0 -12px 0 var(--luemi-bg),
     inset 0 1px 1px rgba(255, 255, 255, 0.15),
     0 8px 22px rgba(11, 6, 19, 0.19);
 }
@@ -657,40 +658,46 @@
     transform: translateX(400%) scaleX(1);
   }
 }
-@keyframes luemi-tab-glass-reduced {
-  0% {
-    transform: translateX(0);
+
+/* In reduced-motion environments Chromium may disable scroll timelines entirely.
+   Keep the glass selection visible using the already-settled aria-selected tab. */
+@media (prefers-reduced-motion: reduce) {
+  .profile-tabs-glass {
+    animation: none;
   }
-  12.5% {
-    transform: translateX(50%);
-  }
-  25% {
+  .profile-tabs-rail:has(#profile-tab-1.is-active) .profile-tabs-glass {
     transform: translateX(100%);
   }
-  37.5% {
-    transform: translateX(150%);
-  }
-  50% {
+  .profile-tabs-rail:has(#profile-tab-2.is-active) .profile-tabs-glass {
     transform: translateX(200%);
   }
-  62.5% {
-    transform: translateX(250%);
-  }
-  75% {
+  .profile-tabs-rail:has(#profile-tab-3.is-active) .profile-tabs-glass {
     transform: translateX(300%);
   }
-  87.5% {
-    transform: translateX(350%);
-  }
-  100% {
+  .profile-tabs-rail:has(#profile-tab-4.is-active) .profile-tabs-glass {
     transform: translateX(400%);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .profile-tabs-glass {
-    animation-name: luemi-tab-glass-reduced;
-  }
+.profile-detail-root[data-reduced-motion='true'] .profile-tabs-glass {
+  animation: none;
 }
-[data-reduced-motion='true'] .profile-tabs-glass {
-  animation-name: luemi-tab-glass-reduced;
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-1.is-active)
+  .profile-tabs-glass {
+  transform: translateX(100%);
+}
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-2.is-active)
+  .profile-tabs-glass {
+  transform: translateX(200%);
+}
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-3.is-active)
+  .profile-tabs-glass {
+  transform: translateX(300%);
+}
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-4.is-active)
+  .profile-tabs-glass {
+  transform: translateX(400%);
 }

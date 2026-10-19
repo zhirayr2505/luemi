@@ -52,7 +52,9 @@ test('no JS snap, animated radius, timers or frame-written scroll position', () 
   const writes = [...hook.matchAll(/scrollTop\s*=\s*([^;\n]+)/g)].map((match) => match[1].trim());
   assert.deepEqual(writes, ['0'], 'only the initial opening reset is permitted');
   assert.doesNotMatch(pure, /snapTarget/);
-  assert.match(hook, /if \(!cssTimeline\) scroller\.addEventListener\('scroll'/);
+  assert.match(hook, /if \(!cssTimeline \|\| reducedMotion \|\| system\.matches\)/);
+  assert.match(hook, /if \(reducedClosed !== next\)/);
+  assert.match(hook, /scroller\.removeEventListener\('scroll', queue\)/);
   assert.match(hook, /galleryObserver\?\.disconnect\(\)/);
   assert.doesNotMatch(hook, /avatarRef|\.style\.opacity\s*=\s*String\(.*hero/i);
   assert.match(hook, /56 \/ width/);

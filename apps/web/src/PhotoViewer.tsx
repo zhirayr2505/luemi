@@ -128,14 +128,17 @@ export function PhotoViewer({
   };
 
   const animateReset = (at: number, transition: 'returning' | 'leaving') => {
-    setPhase(reducedMotion ? 'idle' : transition);
+    // A CSS media preference can turn off transitions even when the in-app toggle is off.
+    // In that case transitionend will never fire, so finish synchronously.
+    const noTransition = reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setPhase(noTransition ? 'idle' : transition);
     const stage = stageRefs.current[at];
     if (transition === 'leaving') {
-      if (reducedMotion) onClose();
+      if (noTransition) onClose();
       else if (stage) stage.style.transform = 'translate3d(0, 160px, 0) scale(1)';
       return;
     }
-    if (reducedMotion) {
+    if (noTransition) {
       if (stage) stage.style.transform = 'translate3d(0, 0, 0) scale(1)';
       zoom.current = { scale: 1, x: 0, y: 0 };
       dialog.current?.classList.remove('is-zoomed');
