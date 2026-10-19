@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import type {TouchEvent as ReactTouchEvent} from "react";
 import {Bookmark,X,Sparkles,Heart,Undo2,SlidersHorizontal,MessageCircle,Images,MessagesSquare,UserRound,MapPin,ChevronDown,ArrowRight,Sun,Moon,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {goals} from "../registration/model";
@@ -82,12 +83,12 @@ export function DiscoveryApp({draft,theme,onTheme,onExit}:Props){
  };
  const chooseMain=(tab:MainTab)=>{setPersonOpen(null);setFilterOpen(false);setMainTab(tab);};
  const apply=(next:DiscoveryFilter)=>{setFilters(next);setFeed(freshDemoState());setFilterOpen(false);scrollArea.current?.scrollTo(0,0);indicate("Фильтры применены к демо-анкетам");};
- const onSwipeStart=(event:React.TouchEvent<HTMLDivElement>)=>{
+ const onSwipeStart=(event:ReactTouchEvent<HTMLDivElement>)=>{
   // The photo carousel, scrollable interests and bottom sheet own their gestures.
   if((event.target as HTMLElement).closest(".discovery-photo,.carousel-frame,.discovery-filter-sheet,.discovery-bottom-nav"))return;
   const touch=event.touches[0];if(touch)gesture.current={x:touch.clientX,y:touch.clientY,t:Date.now()};
  };
- const onSwipeEnd=(event:React.TouchEvent<HTMLDivElement>)=>{
+ const onSwipeEnd=(event:ReactTouchEvent<HTMLDivElement>)=>{
   const start=gesture.current;gesture.current=null;if(!start||mainTab!=="discover")return;
   const touch=event.changedTouches[0];if(!touch)return;
   const dx=touch.clientX-start.x,dy=touch.clientY-start.y;
