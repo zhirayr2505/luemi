@@ -680,15 +680,23 @@
 .profile-detail-root[data-reduced-motion='true'] .profile-tabs-glass {
   animation: none;
 }
-.profile-detail-root[data-reduced-motion='true'] .profile-tabs-rail:has(#profile-tab-1.is-active) .profile-tabs-glass {
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-1.is-active)
+  .profile-tabs-glass {
   transform: translateX(100%);
 }
-.profile-detail-root[data-reduced-motion='true'] .profile-tabs-rail:has(#profile-tab-2.is-active) .profile-tabs-glass {
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-2.is-active)
+  .profile-tabs-glass {
   transform: translateX(200%);
 }
-.profile-detail-root[data-reduced-motion='true'] .profile-tabs-rail:has(#profile-tab-3.is-active) .profile-tabs-glass {
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-3.is-active)
+  .profile-tabs-glass {
   transform: translateX(300%);
 }
-.profile-detail-root[data-reduced-motion='true'] .profile-tabs-rail:has(#profile-tab-4.is-active) .profile-tabs-glass {
+.profile-detail-root[data-reduced-motion='true']
+  .profile-tabs-rail:has(#profile-tab-4.is-active)
+  .profile-tabs-glass {
   transform: translateX(400%);
 }
