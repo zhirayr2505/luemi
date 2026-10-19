@@ -7,7 +7,7 @@ export interface StepProps {
   data: RegistrationDraft;
   patch: (change: Partial<RegistrationDraft>) => void;
   photos: PhotoItem[];
-  addPhotos: (files: FileList | null) => void;
+  addPhotos: (files: File[]) => void;
   removePhoto: (id: string) => void;
   movePhoto: (from: number, to: number) => void;
   editStep: (step: number) => void;
@@ -21,6 +21,30 @@ const interestCategories = [
   { name: "Досуг", items: ["Кофе", "Игры", "Природа", "Животные", "Языки"] }
 ];
 const languages = ["Русский", "English", "Հայերեն"];
+const interestIcons:Record<string,string>={
+ "Музыка":"♫","Путешествия":"✈","Кино":"▣","Кулинария":"♨","Спорт":"★","Книги":"▤",
+ "Фотография":"◉","Рисование":"✎","Танцы":"✧","Дизайн":"◇","Театр":"☷",
+ "Прогулки":"♧","Походы":"△","Фитнес":"↗","Йога":"☼","Плавание":"≈",
+ "Кофе":"☕","Игры":"♟","Природа":"❀","Животные":"♡","Языки":"✺"
+};
+const interestIndex=interestCategories.flatMap(c=>c.items);
+const interestTone=(item:string)=>"tone-"+(Math.max(0,interestIndex.indexOf(item))%7);
+const interestIcon=(item:string)=><span className="interest-icon" aria-hidden="true">{interestIcons[item]??"✦"}</span>;
+function dismissKeyboard(){
+  const current=document.activeElement;
+  if(current instanceof HTMLInputElement && !["range","checkbox","file"].includes(current.type))current.blur();
+  if(current instanceof HTMLTextAreaElement)current.blur();
+}
+function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChange:(min:number,max:number)=>void}){
+  const start=(min-18)/62*100;
+  const end=(max-18)/62*100;
+  return <div className="double-age-range" onPointerDownCapture={dismissKeyboard}>
+    <div className="double-range-track" aria-hidden="true"><span style={{left:start+"%",width:(end-start)+"%"}}/></div>
+    <input className="range-min" type="range" min="18" max="80" step="1" value={min} aria-label={"Минимальный возраст: "+min} onChange={e=>onChange(Math.min(Number(e.target.value),max),max)}/>
+    <input className="range-max" type="range" min="18" max="80" step="1" value={max} aria-label={"Максимальный возраст: "+max} onChange={e=>onChange(min,Math.max(Number(e.target.value),min))}/>
+    <div className="range-ends" aria-hidden="true"><span>18</span><span>80</span></div>
+  </div>;
+}
 
 function Field({label,children}:{label:string;children:ReactNode}) {
   return <label className="field"><span>{label}</span>{children}</label>;
@@ -30,9 +54,17 @@ function Choice({chosen, children, onClick}:{chosen:boolean; children:ReactNode;
 }
 function ProfilePreview({data,photos}:{data:RegistrationDraft;photos:PhotoItem[]}) {
   const [active,setActive] = useState(0);
+  const startX=useRef<number|null>(null);
+  const swipeStart=(event:React.TouchEvent)=>{startX.current=event.touches[0]?.clientX??null;};
+  const swipeEnd=(event:React.TouchEvent)=>{
+    if(startX.current===null||photos.length<2)return;
+    const distance=(event.changedTouches[0]?.clientX??startX.current)-startX.current;
+    if(Math.abs(distance)>35)setActive(index=>Math.max(0,Math.min(photos.length-1,index+(distance<0?1:-1))));
+    startX.current=null;
+  };
   const imageIndex=Math.min(active, Math.max(0,photos.length-1));
   return <div className="profile-preview">
-    <div className="profile-photo">
+    <div className="profile-photo" onTouchStart={swipeStart} onTouchEnd={swipeEnd}>
       {photos.length>0
         ? <img src={photos[imageIndex].src} alt="Фотография в предварительном просмотре" />
         : <div className="profile-placeholder">Здесь появится твоя фотография</div>}
@@ -43,7 +75,7 @@ function ProfilePreview({data,photos}:{data:RegistrationDraft;photos:PhotoItem[]
       <p className="profile-location">{[data.city,data.country].filter(Boolean).join(" · ")}</p>
       {data.goal&&<p>{({relationship:"Отношения",dates:"Свидания",friends:"Общение"} as const)[data.goal]}</p>}
       {data.about&&<p>{data.about}</p>}
-      {data.interests.length>0&&<div className="chips">{data.interests.map(item=><span className="chip" key={item}>{item}</span>)}</div>}
+      {data.interests.length>0&&<div className="chips">{data.interests.map(item=><span className={"chip "+interestTone(item)} key={item}>{interestIcon(item)}{item}</span>)}</div>}
       {data.languages.length>0&&<p>Языки: {data.languages.join(", ")}</p>}
     </div>
   </div>;
@@ -73,8 +105,10 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
       : data.interests.length<15?[...data.interests,item]:data.interests});
   };
   const onFiles=(event:ChangeEvent<HTMLInputElement>)=>{
-    addPhotos(event.target.files);
-    event.target.value="";
+    // FileList is live: snapshot synchronously before clearing the native picker.
+    const selected=Array.from(event.currentTarget.files??[]);
+    event.currentTarget.value="";
+    addPhotos(selected);
   };
   const drop=(event:DragEvent<HTMLDivElement>,index:number)=>{
     event.preventDefault();
@@ -104,7 +138,12 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
     <Field label="Страна"><input autoComplete="country-name" value={data.country} maxLength={72} placeholder="Например, Армения" onChange={e=>patch({country:e.target.value})}/></Field>
     <Field label="Город"><input autoComplete="address-level2" value={data.city} maxLength={72} placeholder="Начни вводить город" onChange={e=>patch({city:e.target.value})}/></Field>
     <button disabled className="muted-button" type="button" title="Точный поиск города будет подключён после настройки геосервиса">⌖ Моё местоположение · скоро</button>
-    <Field label={"Радиус поиска · "+data.radius+" км"}><input type="range" min={1} max={1000} step={1} value={data.radius} onChange={e=>patch({radius:Number(e.target.value)})}/></Field>
+    <div className="field range-field" onPointerDownCapture={dismissKeyboard}>
+      <span>Радиус поиска · {data.radius} км</span>
+      <div className="branded-slider" style={{"--range-pct":((data.radius-1)/999*100)+"%"} as React.CSSProperties}>
+        <input aria-label={"Радиус поиска "+data.radius+" километров"} type="range" min={1} max={1000} step={1} value={data.radius} onChange={e=>patch({radius:Number(e.target.value)})}/>
+      </div>
+    </div>
     <p className="hint">Сейчас доступен ручной ввод. Геолокация добровольная, точные координаты не публикуются.</p>
   </div>;
   if(step===4)return <div className="form-stack">
@@ -114,7 +153,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
       <Choice chosen={data.audience==="everyone"} onClick={()=>patch({audience:"everyone"})}>Всех</Choice>
     </div>
     <div className="field-label">Возраст от {data.ageMin} до {data.ageMax}</div>
-    <div className="age-sliders"><Field label="От"><input type="range" aria-label="Возраст от" min={18} max={80} value={data.ageMin} onChange={e=>patch({ageMin:Math.min(Number(e.target.value),data.ageMax)})}/></Field><Field label="До"><input type="range" aria-label="Возраст до" min={18} max={80} value={data.ageMax} onChange={e=>patch({ageMax:Math.max(Number(e.target.value),data.ageMin)})}/></Field></div>
+    <DoubleAgeRange min={data.ageMin} max={data.ageMax} onChange={(ageMin,ageMax)=>patch({ageMin,ageMax})}/>
     <div className="field-label">Цель знакомства</div><div className="choice-grid">
       <Choice chosen={data.goal==="relationship"} onClick={()=>patch({goal:"relationship"})}>Отношения</Choice>
       <Choice chosen={data.goal==="dates"} onClick={()=>patch({goal:"dates"})}>Свидания</Choice>
@@ -127,8 +166,8 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
     <div className="category-row" role="group" aria-label="Категории интересов">
       {interestCategories.map(c=><Choice key={c.name} chosen={category===c.name} onClick={()=>setCategory(c.name)}>{c.name}</Choice>)}
     </div>
-    <div className="chips interest-choices">{interestCategories.find(c=>c.name===category)?.items.map((item,i)=><button key={item} type="button" aria-pressed={data.interests.includes(item)} className={"chip selectable tone-"+(i%5)+(data.interests.includes(item)?" selected":"")} onClick={()=>toggleInterest(item)}>{item}</button>)}</div>
-    <div className="selected-interests"><strong>Выбрано · {data.interests.length} из 15</strong><div className="chips">{data.interests.length?data.interests.map(x=><button type="button" className="chip selected" onClick={()=>toggleInterest(x)} key={x}>{x} ×</button>):<span className="hint">Можно выбрать понравившиеся интересы</span>}</div></div>
+    <div className="chips interest-choices">{interestCategories.find(c=>c.name===category)?.items.map(item=><button key={item} type="button" aria-pressed={data.interests.includes(item)} className={"chip selectable "+interestTone(item)+(data.interests.includes(item)?" selected":"")} onClick={()=>toggleInterest(item)}>{interestIcon(item)}{item}</button>)}</div>
+    <div className="selected-interests"><strong>Выбрано · {data.interests.length} из 15</strong><div className="chips">{data.interests.length?data.interests.map(x=><button type="button" className={"chip selected "+interestTone(x)} onClick={()=>toggleInterest(x)} key={x}>{interestIcon(x)}{x} ×</button>):<span className="hint">Можно выбрать понравившиеся интересы</span>}</div></div>
   </div>;
   if(step===6)return <div className="form-stack">
     <Field label="Немного о себе"><textarea value={data.about} rows={6} maxLength={500} placeholder="Что тебя радует? Чем любишь заниматься?" onChange={e=>patch({about:e.target.value})}/></Field>
@@ -138,12 +177,13 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
     <p className="hint">Можно пропустить. Вопросы о привычках, ценностях и характере появятся позже в профиле.</p>
   </div>;
   if(step===7)return <div className="form-stack">
-    <input ref={fileRef} hidden type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={onFiles}/>
+    <input ref={fileRef} className="native-photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={onFiles}/>
     <div className="mosaic">{Array.from({length:6},(_,i)=>{
       const photo=photos[i];return <div className={"mosaic-slot"+(i===0?" mosaic-main":"")} key={photo?.id??"empty-"+i} draggable={!!photo} onDragStart={()=>setDragIndex(i)} onDragOver={e=>e.preventDefault()} onDrop={e=>drop(e,i)} onDragEnd={()=>setDragIndex(null)}>
         {photo?<><img src={photo.src} alt={"Фото "+(i+1)}/>{i===0&&<span className="primary-photo">Главное фото</span>}<button className="remove-photo" type="button" aria-label={"Удалить фото "+(i+1)} onClick={()=>removePhoto(photo.id)}>×</button><div className="photo-actions"><button type="button" disabled={i===0} onClick={()=>movePhoto(i,i-1)} aria-label="Переместить фото левее">←</button><button type="button" disabled={i===photos.length-1} onClick={()=>movePhoto(i,i+1)} aria-label="Переместить фото правее">→</button></div></>
           :i===photos.length?<button className="add-photo" type="button" onClick={pickPhoto} aria-label="Добавить фотографии">+</button>:<span className="empty-number">{i+1}</span>}
       </div>})}</div>
+    <p className="photo-count" role="status">Выбрано фотографий: {photos.length} / 6</p>
     <p className="hint">Для будущей публикации потребуется 3–6 фото и одобрение модератора. Сейчас файлы видны только на этом устройстве и никуда не загружаются.</p>
   </div>;
   return <div className="form-stack">
