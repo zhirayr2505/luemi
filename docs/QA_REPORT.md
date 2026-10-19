@@ -18,3 +18,9 @@
 - Review criterion: no invented loading percentages or minimum loader delay; show useful error and retry if network/logo fails.
 - Verify signed Telegram identity still works; overlay mask uses same W06 alpha raster and no redrawn logo; reduced motion disables decorative animation.
 - Real Android motion smoothness / battery / contrast and final comparison to W04 remain NOT TESTED until device QA.
+
+## Stage 02D1 — One-screen intro acceptance
+- Single welcome scene only: ensure old tagline, larger duplicate logo, obsolete welcome screen, and the extra preview disclaimer are absent from runtime.
+- First splash arrangement stays centered. The CTA appears on SAME splash after both auth/brand readiness and 1.8 s minimum; no hard-coded fake progress percentage.
+- Verify CTA leads directly to registration, with reduced-motion fallback; header/progress and circular arrows unchanged.
+- Actual Galaxy A55 in-Telegram review: NOT TESTED before owner checks new staging release.

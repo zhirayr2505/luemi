@@ -245,29 +245,23 @@ export function App() {
   return <main className="luemi-shell" data-theme={activeTheme} data-phase={phase} data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme} aria-label={"Тема: "+themeName+". Переключить"}>{themeName}</button></div>
-    {(auth!=="authorized"||!introElapsed)?<section className="entry-state" role="status">
+    {(auth!=="authorized"||phase==="welcome")?<section className={"entry-state"+(welcomeExiting?" exiting":"")} aria-live="polite">
       <div className="intro-mark">
         {brandReady
           ? <img src={logoSrc} alt="luemi" className="intro-logo"/>
           : <span className="intro-placeholder" aria-hidden="true"/>}
       </div>
-      <h1>{auth==="connecting"?"Готовим твоё знакомство":auth==="authorized"?"Твоя история начинается здесь":"LUEMI"}</h1>
+      <h1>Твоя история начинается здесь</h1>
       {auth==="connecting"&&<div className="loading-track animated" role="progressbar" aria-label="Подготовка ресурсов и проверка входа Telegram"><span/></div>}
       {auth==="connecting"&&<p>{brandReady?"Проверяем защищённый вход Telegram…":"Подготавливаем оформление LUEMI…"}</p>}
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>window.location.reload()}>Повторить</button></>}
-    </section>: phase==="welcome"?<section className={"welcome-screen"+(welcomeExiting?" exiting":"")}>
-      <div className="welcome-art">
-        <div className="logo-aura" aria-hidden="true"/>
-        <div className="welcome-logo-mark"><img src={logoSrc} className="hero-logo" alt="luemi"/></div>
-        <h1>Твоя история начинается здесь</h1>
-        <p>Больше общего. Ближе друг к другу. Знакомства по интересам и целям.</p>
-      </div>
-      <div className="welcome-bottom">
-        <p className="stage-note">Предпросмотр Stage 02 · данные остаются на устройстве до закрытия экрана</p>
-        <button className="primary-action" type="button" onClick={beginRegistration}>Начать <span aria-hidden="true">→</span></button>
-      </div>
+      {auth==="authorized"&&introElapsed&&<div className="intro-cta">
+        <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
+          Начать <span aria-hidden="true">→</span>
+        </button>
+      </div>}
     </section>:<section className="onboarding-screen">
       <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
         <img src={logoSrc} alt="luemi" className="onboard-logo"/>
