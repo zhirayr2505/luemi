@@ -239,8 +239,8 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .disabled-submit{width:100%;min-height:53px;border:0;border-radius:18px;background:var(--panel);color:var(--subtle)}
 @media (max-height:680px){.onboarding-screen{padding-top:calc(var(--top-safe) + 78px)}.onboard-head p{display:none}
  .entry-state{padding-top:64px;padding-bottom:105px}.intro-mark{height:74px}.intro-cta{bottom:calc(16px + var(--bottom-safe))}}
-.luemi-shell[data-keyboard=open] .onboard-footer{visibility:hidden;pointer-events:none}
-.luemi-shell[data-keyboard=open] .selected-interests-floating{visibility:hidden;pointer-events:none}
+.luemi-shell[data-keyboard=open] .onboard-footer{display:none}
+.luemi-shell[data-keyboard=open] .selected-interests-floating{display:none}
 @media(min-width:640px){.onboarding-screen{padding-left:45px;padding-right:45px}.mosaic{grid-template-rows:repeat(3,120px)}}
 @supports not (backdrop-filter:blur(1px)){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{background:var(--bg)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}
