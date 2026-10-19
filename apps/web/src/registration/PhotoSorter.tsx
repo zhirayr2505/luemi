@@ -66,6 +66,12 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      return;
    }
    event.preventDefault();
+   const scrollRegion=mosaic.current?.closest(".onboard-body");
+   if(scrollRegion){
+     const rect=scrollRegion.getBoundingClientRect(),edge=47;
+     if(event.clientY>rect.bottom-edge&&event.clientY<rect.bottom)scrollRegion.scrollBy(0,13);
+     else if(event.clientY<rect.top+edge&&event.clientY>rect.top)scrollRegion.scrollBy(0,-13);
+   }
    const under=document.elementFromPoint(event.clientX,event.clientY)?.closest("[data-photo-slot]");
    const index=under?.getAttribute("data-photo-slot");
    const target=index===undefined||index===null?dragRef.current?.target??0:Number(index);
