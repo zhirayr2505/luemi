@@ -33,6 +33,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const [dragX,setDragX]=useState(0);
  const [swiping,setSwiping]=useState(false);
  const gesture=useRef<Gesture|null>(null);
+ const clickBlockUntil=useRef(0);
  const pages=useRef<HTMLDivElement>(null);
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
@@ -115,10 +116,12 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
     const velocity=Math.abs(x)/elapsed;
     const target=Math.abs(x)>(pages.current?.clientWidth||320)*.18||velocity>.55
       ?g.index+(x<0?1:-1):g.index;
+    clickBlockUntil.current=performance.now()+260;
     if(target!==g.index)selectTab(target);
     setSwiping(false);setDragX(0);
   }
  };
+ const cancelSwipe=()=>{gesture.current=null;setSwiping(false);setDragX(0);};
  const apply=(next:DiscoveryFilter)=>{
   setFilters(next);setFeed(freshDemoState());setFilterOpen(false);
   indicate("Фильтры применены к демо-анкетам");
@@ -143,9 +146,9 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
    <div className="discovery-main-panels">
      <section className="discovery-panel" hidden={mainTab!=="discover"}>
        <div className="discovery-top-tabs" role="tablist" aria-label="Разделы знакомств"
-         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}>
          {topTabs.map(([value,label],i)=><button type="button" role="tab" key={value}
-           aria-selected={discoveryTab===value} onClick={()=>{if(!swiping)selectTab(i);}}
+           aria-selected={discoveryTab===value} onClick={()=>{if(performance.now()>=clickBlockUntil.current)selectTab(i);}}
            className={discoveryTab===value?"active":""}>{label}</button>)}
          <span className="discovery-tab-underline" aria-hidden="true" style={{
            transform:"translate3d(calc("+tabIndex*100+"% + "+dragX/3+"px),0,0)",
