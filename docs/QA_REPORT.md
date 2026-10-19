@@ -31,3 +31,8 @@
 - Code changes implemented, not yet physically verified: remove stripe markup and dead CSS; icon-only light/dark with radial theme reveal, lower control; remove logo island; glass buttons; gradient single/double ranges; blur text field on range pointer; 21 interest gradients and icon glyphs; immediate FileList snapshot and preview swiping; animated block entry.
 - Added `scripts/ui-contract-smoke.mjs`, driven by `npm run test:ui`. Render root `prebuild` runs lint, UI regression assertions and API tests before build. No claim of motion FPS or confirmed Android picker fix until new capture.
 - Pending post-merge verification: GitHub Actions full check, Render Live with verified bot, screenshots/videos of long scroll, slider drag, theme reveal and selecting 2–6 photos and swiping. WCAG AA full audit not done.
+
+## Stage 02D independent Render gate (2026-10-19)
+- Deployment `dep-dbb40c142hec738466m0` / `d3283f4d` — LIVE.
+- Render build logs: all 12 `scripts/ui-contract-smoke.mjs` assertions PASS; Node API suite 16 pass, 0 fail; ESLint no error; TypeScript/Vite production build success; Fastify startup and Telegram bot pairing successful.
+- GitHub Actions queue remained delayed. **Real-device effect rendering, touch thumbs, picker and swipe still not attested**, requires founder's new Galaxy A55 screen recording.
