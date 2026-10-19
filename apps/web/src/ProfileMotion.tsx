@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { ageAt, type Profile } from '../../../packages/core/domain';
-import { Icon, Portrait } from './ui';
+import { Icon } from './ui';
 import { ProfileGallery } from './ProfileGallery';
 import { useProfilePhotoMorph } from './motion/useProfilePhotoMorph';
 
@@ -11,17 +11,13 @@ export function ProfileMotion({ profile, reducedMotion = false, children }: Prop
   const scroller = useRef<HTMLElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const photo = useRef<HTMLDivElement>(null);
-  const avatar = useRef<HTMLDivElement>(null);
   const compact = useRef<HTMLDivElement>(null);
   const caption = useRef<HTMLDivElement>(null);
   const bars = useRef<HTMLDivElement>(null);
-  const [photoIndex, setPhotoIndex] = useState(0);
-  const onPhotoChange = useCallback((index: number) => setPhotoIndex(index), []);
   useProfilePhotoMorph(
     scroller,
     frame,
     photo,
-    avatar,
     compact,
     caption,
     bars,
@@ -71,7 +67,6 @@ export function ProfileMotion({ profile, reducedMotion = false, children }: Prop
               profile={profile}
               display={display}
               barsRef={bars}
-              onPhotoChange={onPhotoChange}
             />
             <div className="profile-morph-scrim" aria-hidden="true" />
             <div ref={caption} className="profile-morph-caption">
@@ -89,9 +84,7 @@ export function ProfileMotion({ profile, reducedMotion = false, children }: Prop
               </div>
             </div>
           </div>
-          <div ref={avatar} className="profile-morph-avatar" aria-hidden="true">
-            <Portrait photo={profile.photos[photoIndex]} alt="" />
-          </div>
+          <div className="profile-morph-circle-rim" aria-hidden="true" />
           <div className="profile-morph-compact" ref={compact} aria-hidden="true">
             <strong>{display}</strong>
             <span>

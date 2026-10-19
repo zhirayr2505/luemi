@@ -6,13 +6,12 @@ type GalleryProps = {
   profile: Profile;
   display: string;
   barsRef: RefObject<HTMLDivElement | null>;
-  onPhotoChange: (index: number) => void;
 };
 
 type Swipe = { id: number; x: number; y: number; time: number; horizontal: boolean };
 
 /** Horizontal gallery gestures never own vertical scrolling or profile morph. */
-export function ProfileGallery({ profile, display, barsRef, onPhotoChange }: GalleryProps) {
+export function ProfileGallery({ profile, display, barsRef }: GalleryProps) {
   const [index, setIndex] = useState(0);
   const strip = useRef<HTMLDivElement>(null);
   const selected = useRef(0);
@@ -29,7 +28,6 @@ export function ProfileGallery({ profile, display, barsRef, onPhotoChange }: Gal
     const value = Math.max(0, Math.min(total - 1, next));
     selected.current = value;
     setIndex(value);
-    onPhotoChange(value);
     position(0, true, value);
   };
   const down = (event: PointerEvent<HTMLDivElement>) => {
