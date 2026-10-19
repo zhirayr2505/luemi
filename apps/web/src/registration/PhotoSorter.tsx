@@ -67,7 +67,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
        className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.target===i&&drag.source!==i?" drop-target":"")+(drag?.source===i?" drag-source":"")}
        onPointerDown={e=>onDown(e,i)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={clear}
        onContextMenu={e=>e.preventDefault()}>
-       {photo?<><img src={photo.src} alt={"Фото "+(i+1)} draggable={false}/>
+       {photo?<><img src={photo.src} alt={"Фото "+(i+1)} draggable="false"/>
            <span className="slot-index">{i+1}</span>
            {i===0&&<span className="primary-photo">Главное</span>}
            <button className="remove-photo" type="button" aria-label={"Удалить фото "+(i+1)} onClick={()=>removePhoto(photo.id)}><X size={15}/></button>
