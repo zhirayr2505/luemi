@@ -28,10 +28,10 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
    itemRefs.current.forEach((node,id)=>newRects.set(id,node.getBoundingClientRect()));
    for(const [id,rect] of newRects){
      const old=rects.current.get(id),node=itemRefs.current.get(id);
-     if(!old||!node||id===drag?.id)continue;
+     if(!old||!node||id===drag?.id||!node.animate||window.matchMedia("(prefers-reduced-motion: reduce)").matches)continue;
      const x=old.left-rect.left,y=old.top-rect.top;
      if(Math.abs(x)>1||Math.abs(y)>1){
-       node.getAnimations().forEach(animation=>animation.cancel());
+       node.getAnimations?.().forEach(animation=>animation.cancel());
        node.animate([{transform:"translate3d("+x+"px,"+y+"px,0)"},{transform:"translate3d(0,0,0)"}],
          {duration:230,easing:"cubic-bezier(.2,.8,.22,1)"});
      }
