@@ -239,7 +239,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 @media(min-width:640px){.onboarding-screen{padding-left:45px;padding-right:45px}.mosaic{grid-template-rows:repeat(3,120px)}}
 @supports not (backdrop-filter:blur(1px)){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{background:var(--bg)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}
- .intro-logo,.entry-state h1{opacity:1;transform:none} .onboard-wordmark::after,.intro-mark::after{display:none}}
+ .intro-logo,.entry-state h1{opacity:1;transform:none}}
 @media(prefers-reduced-transparency:reduce){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{
  backdrop-filter:none!important;background:var(--bg)}}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #a577da;outline-offset:3px}
