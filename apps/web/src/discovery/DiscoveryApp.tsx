@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {Bookmark,X,Sparkles,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,ArrowRight,Sun,Moon,Layers3,Crown} from "lucide-react";
+import {Bookmark,X,Sparkles,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,Sun,Moon,Layers3,Crown} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {goals} from "../registration/model";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
@@ -10,6 +10,7 @@ import {demoPeople} from "./demo-people";
 import {demoAct,demoUndo,filterDemoPeople,freshDemoState,defaultFilters} from "./model";
 import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter,DemoPerson} from "./model";
 import {DiscoveryFilters} from "./Filters";
+import {DiscoveryInterestsSheet} from "./InterestsSheet";
 import {DemoProfile} from "./DemoProfile";
 import "./discovery.css";
 
@@ -17,8 +18,8 @@ const logoSrc="/assets/brand/wordmark_original_raster_alpha_W06.webp";
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 const actions=[
- ["save","Сохранить",Bookmark],["pass","Пропустить",X],["special","Особенная симпатия",Sparkles],
- ["like","Нравится",Heart],["undo","Отменить",Undo2]
+ ["undo","Отменить",Undo2],["pass","Пропустить",X],
+ ["special","Особенная симпатия",Sparkles],["like","Нравится",Heart]
 ] as const;
 type Gesture={id:number;x:number;y:number;started:number;tracking:boolean;index:number};
 function Placeholder({title,text}:{title:string;text:string}){
@@ -39,6 +40,10 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
  const [personOpen,setPersonOpen]=useState<string|null>(null);
+ const [interestOpen,setInterestOpen]=useState<string|null>(null);
+ const [transitionKind,setTransitionKind]=useState<DemoKind|null>(null);
+ const transitionRef=useRef<number|null>(null);
+ const locked=useRef(false);
  const [feed,setFeed]=useState(freshDemoState);
  const [toast,setToast]=useState("");
  const timer=useRef<number|null>(null);
@@ -53,15 +58,17 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
   setToast(message);
   timer.current=window.setTimeout(()=>setToast(""),2050);
  },[]);
- useEffect(()=>()=>{if(timer.current!==null)window.clearTimeout(timer.current);},[]);
+ useEffect(()=>()=>{if(timer.current!==null)window.clearTimeout(timer.current);
+  if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);},[]);
  const leave=useCallback(()=>{
   if(personOpen){setPersonOpen(null);return;}
+  if(interestOpen){setInterestOpen(null);return;}
   if(filterOpen){setFilterOpen(false);return;}
   if(savedOpen){setSavedOpen(false);return;}
   if(mainTab!=="discover"){setMainTab("discover");return;}
   if(discoveryTab!=="feed"){setDiscoveryTab("feed");return;}
   onExit();
- },[personOpen,filterOpen,savedOpen,mainTab,discoveryTab,onExit]);
+ },[personOpen,interestOpen,filterOpen,savedOpen,mainTab,discoveryTab,onExit]);
  useEffect(()=>{registerBack(leave);},[leave,registerBack]);
  useEffect(()=>{
   const key=(event:KeyboardEvent)=>{if(event.key==="Escape")leave();};
@@ -69,16 +76,29 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  },[leave]);
 
  const act=(kind:DemoKind|"undo")=>{
+  if(locked.current)return;
   if(kind==="undo"){
-   if(!feed.history.length)return;
-   setFeed(prev=>demoUndo(prev));indicate("Действие отменено · демо");return;
+    if(!feed.history.length)return;
+    setFeed(prev=>demoUndo(prev));indicate("Действие отменено · демо");return;
   }
   if(!person)return;
-  const saved=feed.saved.includes(person.id);
-  setFeed(prev=>demoAct(prev,ids,kind));
+  if(kind==="save"){
+    const saved=feed.saved.includes(person.id);
+    setFeed(prev=>demoAct(prev,ids,kind));
+    indicate(saved?"Убрано из сохранённых · демо":"Сохранено · демо");
+    window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
+    return;
+  }
+  locked.current=true;
+  setTransitionKind(kind);
+  const message=kind==="pass"?"Анкета пропущена · демо":
+   kind==="like"?"Симпатия · никому не отправлена":"Особенная симпатия · только демо";
   window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
-  indicate(kind==="save"?(saved?"Убрано из сохранённых · демо":"Сохранено · демо"):
-   kind==="pass"?"Анкета пропущена · демо":kind==="like"?"Симпатия · никому не отправлена":"Особенная симпатия · только демо");
+  transitionRef.current=window.setTimeout(()=>{
+    setFeed(prev=>demoAct(prev,ids,kind));
+    locked.current=false;setTransitionKind(null);transitionRef.current=null;
+    indicate(message);
+  },255);
  };
  const selectTab=(index:number)=>{
   setDiscoveryTab(topTabs[Math.max(0,Math.min(topTabs.length-1,index))][0]);
@@ -123,12 +143,15 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  };
  const cancelSwipe=()=>{gesture.current=null;setSwiping(false);setDragX(0);};
  const apply=(next:DiscoveryFilter)=>{
+  if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
+  transitionRef.current=null;locked.current=false;setTransitionKind(null);
   setFilters(next);setFeed(freshDemoState());setFilterOpen(false);
   indicate("Фильтры применены к демо-анкетам");
  };
  const openSaved=()=>{setSavedOpen(true);setFilterOpen(false);};
 
  function cardGoals(p:DemoPerson){
+  if(p.goal==="undecided")return null;
   const title=goals.find(g=>g.id===p.goal)?.label??"Знакомства";
   return <span className="discovery-goal-badge"><Heart size={13}/>{title}</span>;
  }
@@ -151,7 +174,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
            aria-selected={discoveryTab===value} onClick={()=>{if(performance.now()>=clickBlockUntil.current)selectTab(i);}}
            className={discoveryTab===value?"active":""}>{label}</button>)}
          <span className="discovery-tab-underline" aria-hidden="true" style={{
-           transform:"translate3d(calc("+tabIndex*100+"% + "+dragX/3+"px),0,0)",
+           transform:"translate3d(calc("+tabIndex*100+"% - "+dragX/3+"px),0,0)",
            transition:swiping?"none":undefined}}/>
        </div>
        <div className="discovery-pages" ref={pages} onPointerDown={down}
@@ -160,38 +183,53 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
            transform:"translate3d(calc(-"+tabIndex*100+"% + "+dragX+"px),0,0)",
            transition:swiping?"none":undefined}}>
            <section className="discovery-page" role="tabpanel" aria-label="Лента">
-             {person?<div className="discovery-card-stack" key={person.id}>
-               <article className="discovery-card">
-                 <div className="discovery-photo">
-                   <PhotoCarousel photos={person.photos} name={person.name} age={person.age}/>
-                   <span className="discovery-demo-label">Демо</span>
-                 </div>
-                 <div className="discovery-card-overlay">
-                   <div className="discovery-name-row">
-                     <button type="button" className="discovery-name-button" onClick={()=>setPersonOpen(person.id)}
-                       aria-label={"Посмотреть профиль "+person.name+", "+person.age}>
-                       <span>{person.name}, {person.age}</span><ArrowRight size={16}/>
+             {person?<div className={"discovery-card-stack"+(transitionKind?" deck-exiting":"")} key={person.id}>
+               {profiles[feed.index+1]&&<div className="discovery-deck-next" aria-hidden="true">
+                 <img src={profiles[feed.index+1].photos[0].src} alt=""/>
+               </div>}
+               <div className="discovery-deck-current">
+                 <article className="discovery-card">
+                   <div className="discovery-photo">
+                     <PhotoCarousel photos={person.photos} name={person.name} age={person.age}/>
+                     <span className="discovery-demo-label">Демо</span>
+                     <button type="button"
+                       className={"discovery-save-control"+(feed.saved.includes(person.id)?" is-saved":"")}
+                       aria-label={feed.saved.includes(person.id)?"Убрать из сохранённых":"Сохранить анкету"}
+                       aria-pressed={feed.saved.includes(person.id)}
+                       title="Сохранить · демо" onClick={()=>act("save")}>
+                       <Bookmark size={19} fill={feed.saved.includes(person.id)?"currentColor":"none"} strokeWidth={1.9}/>
                      </button>
-                     {person.premium&&<span className="discovery-premium" title="Тестовый Premium"><Crown size={12}/> Premium</span>}
-                     {cardGoals(person)}
                    </div>
-                   <div className="discovery-place"><Flag code={person.countryCode} size={19}/>{person.city}</div>
-                   <div className="discovery-interests">
-                     {person.interests.slice(0,3).map(id=><InterestChip key={id} id={id}/>)}
-                     {person.interests.length>3&&<button type="button" className="discovery-more"
-                       onClick={()=>setPersonOpen(person.id)}>+{person.interests.length-3}</button>}
+                   <div className="discovery-card-overlay">
+                     <div className="discovery-name-row">
+                       <button type="button" className="discovery-name-button" onClick={()=>setPersonOpen(person.id)}
+                         aria-label={"Посмотреть профиль "+person.name+", "+person.age}>
+                         <span>{person.name}, {person.age}</span>
+                       </button>
+                       {person.premium&&<span className="discovery-premium" title="Демо Premium" aria-label="Premium">
+                         <Crown size={19} strokeWidth={2} fill="#ffd878" color="#e8af35"/>
+                       </span>}
+                       {cardGoals(person)}
+                     </div>
+                     <div className="discovery-place"><Flag code={person.countryCode} size={19}/>{person.city}</div>
+                     <div className="discovery-interests">
+                       {person.interests.slice(0,3).map(id=><InterestChip key={id} id={id}/>)}
+                       {person.interests.length>3&&<button type="button" className="discovery-more"
+                         aria-label={"Показать все интересы "+person.name}
+                         onClick={()=>setInterestOpen(person.id)}>+{person.interests.length-3}</button>}
+                     </div>
+                     <p className="discovery-short-about">{person.about}</p>
                    </div>
-                   <p className="discovery-short-about">{person.about}</p>
-                   <div className="discovery-actions" aria-label="Демо-действия с анкетой">
-                     {actions.map(([kind,label,Icon])=><button key={kind} type="button"
-                       className={"discovery-action discovery-"+kind+(kind==="save"&&feed.saved.includes(person.id)?" selected":"")}
-                       aria-label={label} title={label} onClick={()=>act(kind)}
-                       disabled={kind==="undo"&&!feed.history.length}>
-                       <Icon size={kind==="like"?28:kind==="special"?24:20} strokeWidth={1.85}/>
-                     </button>)}
-                   </div>
+                 </article>
+                 <div className="discovery-actions" aria-label="Демо-действия с анкетой">
+                   {actions.map(([kind,label,Icon])=><button key={kind} type="button"
+                     className={"discovery-action discovery-"+kind}
+                     aria-label={label} title={label} onClick={()=>act(kind)}
+                     disabled={kind==="undo"&&!feed.history.length||!!transitionKind}>
+                     <Icon size={kind==="like"?28:kind==="special"?24:20} strokeWidth={1.85}/>
+                   </button>)}
                  </div>
-               </article>
+               </div>
                {profiles[feed.index+1]&&<div className="discovery-next-peek" aria-hidden="true">
                  <img src={profiles[feed.index+1].photos[0].src} alt=""/>
                </div>}
@@ -254,6 +292,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
        </div>
      </section>
    </div>}
+   {interestOpen&&(()=>{const p=demoPeople.find(x=>x.id===interestOpen);return p?<DiscoveryInterestsSheet name={p.name} ids={p.interests} onClose={()=>setInterestOpen(null)}/>:null;})()}
    {selectedPerson&&<DemoProfile person={selectedPerson} onClose={()=>setPersonOpen(null)}/>}
  </div>;
 }
