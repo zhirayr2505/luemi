@@ -65,11 +65,29 @@ jobs:
             for (let i = 0; i < labels.length; i++) {
               const tab = page.getByRole('tab', { name: labels[i], exact: true });
               await tab.click({ timeout: 7000 });
-              await page.waitForFunction(
-                (index) => document.querySelectorAll('.profile-tabs-tab')[index]?.getAttribute('aria-selected') === 'true',
-                i,
-                { timeout: 5000 },
-              );
+              console.log('TAB CLICK', i, labels[i]);
+              try {
+                await page.waitForFunction(
+                  (index) => document.querySelectorAll('.profile-tabs-tab')[index]?.getAttribute('aria-selected') === 'true',
+                  i,
+                  { timeout: 5000 },
+                );
+              } catch (error) {
+                const state = await page.evaluate(() => {
+                  const sc = document.querySelector('.profile-detail-scroll');
+                  const vp = document.querySelector('.profile-tabs-viewport');
+                  const rail = document.querySelector('.profile-tabs-rail');
+                  return {
+                    selected:[...document.querySelectorAll('.profile-tabs-tab')].map(x => x.getAttribute('aria-selected')),
+                    scroll:{x:vp?.scrollLeft,width:vp?.clientWidth,height:vp?.clientHeight,scrollWidth:vp?.scrollWidth,y:sc?.scrollTop},
+                    rail:rail?.getBoundingClientRect().toJSON(),
+                    panels:[...document.querySelectorAll('.profile-tabs-panel')].map(x => ({index:x.dataset.index,rect:x.getBoundingClientRect().toJSON(),inert:x.inert})),
+                  };
+                });
+                console.log('TAB FAIL DIAGNOSTIC', i, labels[i], JSON.stringify(state));
+                await page.screenshot({ path: 'qa-shots/tab-fail-' + i + '.png' });
+                throw error;
+              }
               const panel = page.locator('#profile-panel-' + i);
               if (!(await panel.innerText()).includes(expected[i])) throw Error('Missing tab content ' + labels[i]);
             }
