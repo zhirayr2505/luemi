@@ -1,20 +1,34 @@
-# LUEMI · Telegram Mini App launch guide
+# LUEMI · Telegram Mini App — @LuemiAppBot
 
-The user launches LUEMI from a Telegram bot. This is a Telegram Web App (Mini App) rendered in the Telegram in-app WebView, not a standalone browser registration app. The same HTTPS Render service serves the built React bundle and Fastify API.
+The user opens @LuemiAppBot in Telegram. The **Telegram in-app WebView** renders the same-origin React Mini App, served from https://luemi-stage01.onrender.com.
 
-## Implemented
-- Loads official Telegram WebApp SDK from https://telegram.org/js/telegram-web-app.js
-- Reads raw `Telegram.WebApp.initData` and verifies hash + timestamp server-side; rejects malformed or tampered payloads.
-- Secure optional bot webhook `POST /api/telegram/webhook` with `X-Telegram-Bot-Api-Secret-Token`; `/start` yields a Telegram `web_app` inline button pointing to APP_ORIGIN.
-- Works in staging without bot token ONLY in locked bootstrap mode; authentication returns HTTP 503 and explicitly shows pending status.
-- Does not register webhook or configure bot without owner-managed secrets.
+## Status (2026-10-19)
+- Test bot username provided by owner: `@LuemiAppBot`. Ownership and bot identity **NOT YET VERIFIED VIA GETME**.
+- Render staging service is live and separate from main.
+- Staging credentials are absent, so the app intentionally fails closed: no real authenticated users until configuration.
+- On-server setup is available but gated by secret environment settings. Before setting the Telegram webhook or global menu, it checks bot identity `LuemiAppBot`, existing webhook, and existing Web App menu. It refuses to overwrite other configured endpoints.
+- No real users, registration, payments or Supabase mutations.
 
-## Owner's manual Telegram steps when staging URL is verified
-1. Open @BotFather in Telegram. Create a separate LUEMI test bot via /newbot or select your existing LUEMI test bot via /mybots; DO NOT reconfigure an unrelated bot.
-2. Keep the bot token secret: enter it in the dedicated Render staging environment, never in GitHub/chat. Set `STAGING_BOOTSTRAP_ONLY=0`, `TELEGRAM_BOT_TOKEN`, `HEALTH_CHECK_KEY` and `TELEGRAM_WEBHOOK_SECRET` there. Use a long random token for webhook secret using ASCII letters/numbers/dashes/underscores.
-3. Once the backend supports credentials and the correct APP_ORIGIN, register webhook via Telegram Bot API `setWebhook` with URL `APP_ORIGIN/api/telegram/webhook` and `secret_token`; the method must be invoked in a trusted environment, never by inserting bot token into a public URL.
-4. Under @BotFather /mybots → select test bot → Bot Settings → Menu Button → Configure Menu Button, set verified `https://...` staging URL. Menu labels can use “Открыть LUEMI”.
-5. Open the bot within Telegram and tap the menu button. Validate real initData, UI safe areas, and login. /start sends an inline Web App button once webhook registered.
+## Owner's secure one-time setup (NEVER send credentials in chat)
+Open Render → `luemi-stage01` → Environment and configure:
 
-## Explicitly not implemented
-User registration, persistent login session, account persistence, discovery, real messages, payments, production switch, independent penetration testing and smartphone acceptance.
+- `TELEGRAM_BOT_TOKEN`: bot's BotFather token, put **only in Render Environment**.
+- `TELEGRAM_WEBHOOK_SECRET`: 24–256 random ASCII `A-Z a-z 0-9 _ -` characters, different from bot token.
+- `HEALTH_CHECK_KEY`: random 24+ character secret, different from webhook secret.
+- `EXPECTED_TELEGRAM_BOT_USERNAME=LuemiAppBot`
+- `TELEGRAM_SETUP_ON_START=1`
+- `STAGING_BOOTSTRAP_ONLY=0`
+- Keep `APP_ORIGIN=https://luemi-stage01.onrender.com`.
+
+After Render redeploy/startup, the server checks `getMe`, `getWebhookInfo`, and `getChatMenuButton`. If the bot is `LuemiAppBot` and no foreign webhook/menu is in use, the server uses Bot API `setChatMenuButton` and `setWebhook` to connect the in-Telegram menu and `/start` handler. The webhook header is validated with a constant-time comparison; requests without the correct secret are rejected. Bot tokens are not printed by this setup.
+
+For the prominent profile **Launch App** button (Main Mini App), use @BotFather → /mybots → @LuemiAppBot → Bot Settings → Configure Mini App → Main App and point it to the same staging URL. BotFather menu navigation may vary. The Bot API global menu button is separate from the profile Main Mini App.
+
+## Verification after secrets are entered
+1. Open https://t.me/LuemiAppBot inside Telegram on the Galaxy A55.
+2. Send `/start`; the bot should reply with a button `Открыть LUEMI 💜`.
+3. Open the Mini App; verify that Telegram initData is accepted and a verified first name appears.
+4. Check safe areas and light/dark theme.
+5. Never use real users/photos for Stage 01. For approval, report a screenshot (without token, personal data or initData).
+
+The app cannot directly modify BotFather settings without credentials. No token should be pasted into ChatGPT. An HTTPS URL alone doesn't register a bot.

@@ -3,6 +3,7 @@ import { resolve, dirname } from "node:path";
 import fastifyStatic from "@fastify/static";
 import { readConfig } from "./config.js";
 import { buildApp } from "./app.js";
+import { configureStagingTelegramBot } from "./telegram-setup.js";
 
 const config = readConfig();
 const app = buildApp(config);
@@ -22,6 +23,16 @@ async function start(): Promise<void> {
       });
     }
     await app.listen({ port: config.port, host: "0.0.0.0" });
+    if (config.setupOnStart) {
+      try {
+        const setup = await configureStagingTelegramBot(config);
+        app.log.info({ botUsername: setup.botUsername }, "LUEMI staging Telegram bot configured");
+      } catch {
+        // Never log a fetch error or Telegram URL: Telegram's Bot API uses
+        // a secret token in the request URL. Do not expose that URL in logs.
+        app.log.error("LUEMI staging bot setup requires attention. No token details logged.");
+      }
+    }
   } catch (error) {
     app.log.error(error);
     process.exitCode = 1;
