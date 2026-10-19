@@ -36,3 +36,10 @@
 - Deployment `dep-dbb40c142hec738466m0` / `d3283f4d` — LIVE.
 - Render build logs: all 12 `scripts/ui-contract-smoke.mjs` assertions PASS; Node API suite 16 pass, 0 fail; ESLint no error; TypeScript/Vite production build success; Fastify startup and Telegram bot pairing successful.
 - GitHub Actions queue remained delayed. **Real-device effect rendering, touch thumbs, picker and swipe still not attested**, requires founder's new Galaxy A55 screen recording.
+
+## Stage 02E automated acceptance
+- Approved specification Stage 02E source architecture and codes updated in feature branch; older CSS and HTML5 mobile drag removed in source, not overlaid.
+- 2026-10-19: GitHub Actions `39290830771` on `387b5795a1a1b86633b987f0f993bb141ceac74f`: SUCCESS; lint, Stage 02E UI contract smoke, TypeScript, Node tests, API build and Vite web build, local same-origin smoke.
+- TESTED by code/CI: age validator, city-ID requirement, input name filter, 15 interest cap, 750 bio, photo picker snapshots, local geocoding fallback and parser, auth regressions, build.
+- NOT YET VERIFIED: real Telegram in-app fullscreen typography/keyboard gesture (Galaxy A55 and iPhone), drag on Android context menu, gesture-driven carousel, animation FPS and blur performance, real geography provider, server-side registration, durable drafts, photo uploads/moderation, legal agreements.
+- No external paid service configured, and live migrations remain forbidden.
