@@ -1,6 +1,6 @@
 import {useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-interface Slide {id:string;src:string}
+interface Slide {id:string;src:string;fallback?:string}
 interface Props {photos:Slide[];name:string;age?:number}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number}
 export function PhotoCarousel({photos,name,age}:Props) {
@@ -43,7 +43,8 @@ export function PhotoCarousel({photos,name,age}:Props) {
  return <div className="carousel-frame" ref={frame} onPointerDown={start} onPointerMove={move} onPointerUp={end}
      onPointerCancel={end} onContextMenu={e=>e.preventDefault()}>
    {photos.length>0?<div className="carousel-track" style={{transform:"translate3d(calc(-"+active*100+"% + "+dx+"px),0,0)",transition:track.current?.horizontal?"none":"transform .31s cubic-bezier(.22,.77,.23,1)"}}>
-     {photos.map((p,i)=><img key={p.id} src={p.src} alt={"Фото "+(i+1)} draggable={false}/>)}
+     {photos.map((p,i)=><img key={p.id} src={p.src} alt={"Фото "+(i+1)} draggable={false}
+       onError={event=>{const fallback=p.fallback;if(fallback&&event.currentTarget.src!==fallback)event.currentTarget.src=fallback;}}/>)}
    </div>:<div className="profile-placeholder">Здесь будет твоё главное фото</div>}
    <div className="photo-progress" aria-label="Фотографии">{photos.map((p,i)=><button key={p.id} type="button"
        className={i===active?"current":""} aria-label={"Показать фото "+(i+1)} aria-current={i===active?"true":undefined} onClick={()=>{setIndex(i);setDx(0);}}/>)}</div>
