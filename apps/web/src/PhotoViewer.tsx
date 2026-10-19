@@ -130,8 +130,7 @@ export function PhotoViewer({
   const animateReset = (at: number, transition: 'returning' | 'leaving') => {
     // A CSS media preference can turn off transitions even when the in-app toggle is off.
     // In that case transitionend will never fire, so finish synchronously.
-    const noTransition =
-      reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const noTransition = reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
     setPhase(noTransition ? 'idle' : transition);
     const stage = stageRefs.current[at];
     if (transition === 'leaving') {
