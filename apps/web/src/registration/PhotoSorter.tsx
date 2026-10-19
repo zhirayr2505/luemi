@@ -29,6 +29,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      // Context menus and long press selection are suppressed on the slot only.
    },275);
    gesture.current=g;
+   try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* unsupported client */}
  };
  const onMove=(event:ReactPointerEvent<HTMLDivElement>)=>{
    const g=gesture.current;
