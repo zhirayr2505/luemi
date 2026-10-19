@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from "react";
+import type {CSSProperties} from "react";
 import {MapPin,Search,Globe2,LocateFixed,LoaderCircle} from "lucide-react";
 import {GlassCheckbox,GlassField} from "../ui/Glass";
 import type {RegistrationDraft} from "./model";
@@ -58,7 +59,7 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
    {coverage==="demo"&&<p className="hint">Тестовый справочник ограничен несколькими городами. Полный мировой поиск включится после настройки Geoapify.</p>}
    <div className={"radius-control"+(data.worldwide?" is-disabled":"")}>
      <div className="range-title"><span>Радиус поиска</span><strong>{data.radius} км</strong></div>
-     <div className="branded-slider" style={{"--range-pct":((data.radius-1)/999*100)+"%"} as React.CSSProperties}>
+     <div className="branded-slider" style={{"--range-pct":((data.radius-1)/999*100)+"%"} as CSSProperties}>
        <input type="range" min={1} max={1000} step={1} disabled={data.worldwide} aria-label="Радиус поиска, километры"
          value={data.radius} onChange={e=>patch({radius:Number(e.target.value)})}/>
      </div>
