@@ -5,6 +5,7 @@ import {GlassArrow} from "./ui/Glass";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
 import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registration/Steps";
+import {loadLocalDraft,loadLocalPhotos,saveLocalDraft,saveLocalPhotos,clearLocalDraft} from "./registration/local-draft";
 
 declare global {
   interface Window {
@@ -72,10 +73,14 @@ export function App() {
   const [welcomeExiting,setWelcomeExiting] = useState(false);
   const transitionTimer = useRef<number | null>(null);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
-  const [step,setStep] = useState(1);
-  const [draft,setDraft] = useState<RegistrationDraft>(()=>newDraft());
+  const [restored] = useState(()=>loadLocalDraft());
+  const [step,setStep] = useState(restored?.step??1);
+  const [draft,setDraft] = useState<RegistrationDraft>(()=>restored?.draft??newDraft());
   const [photos,setPhotos] = useState<PhotoItem[]>([]);
   const ownedUrls = useRef<string[]>([]);
+  const readers=useRef(new Map<string,FileReader>());
+  const [photosRestored,setPhotosRestored] = useState(false);
+  const lastSavedPhotoIds=useRef("");
   const [error,setError] = useState("");
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
   const rootRef=useRef<HTMLElement>(null);
@@ -205,8 +210,32 @@ export function App() {
       document.removeEventListener("focusin",onFocus);
     };
   },[]);
+  // Restore browser-local beta draft photos. Never upload photo bytes.
+  useEffect(()=>{
+    let disposed=false;
+    void loadLocalPhotos().then(saved=>{
+      if(disposed)return;
+      const restoredPhotos=saved.map(({id,file})=>{
+        const src=URL.createObjectURL(file);ownedUrls.current.push(src);
+        return {id,file,src,status:"ready" as const};
+      });
+      setPhotos(current=>current.length>0?current:restoredPhotos);
+      setPhotosRestored(true);
+    }).catch(()=>{if(!disposed)setPhotosRestored(true);});
+    return ()=>{disposed=true;};
+  },[]);
+  useEffect(()=>{saveLocalDraft(draft,step);},[draft,step]);
+  useEffect(()=>{
+    if(!photosRestored)return;
+    const signature=photos.map(photo=>photo.id).join(",");
+    if(signature===lastSavedPhotoIds.current)return;
+    lastSavedPhotoIds.current=signature;
+    void saveLocalPhotos(photos);
+  },[photos,photosRestored]);
   // Preview photos are local-only. Remove temporary browser URLs on unmount.
   useEffect(()=>()=>{
+    for(const reader of readers.current.values())if(reader.readyState===FileReader.LOADING)reader.abort();
+    readers.current.clear();
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
   },[]);
@@ -246,16 +275,46 @@ export function App() {
       if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>12*1024*1024){
         problem="Разрешены JPEG, PNG и WebP до 12 МБ. Для HEIC выбери JPEG.";continue;
       }
-      const url=URL.createObjectURL(file);
-      ownedUrls.current.push(url);
-      accepted.push({id:crypto.randomUUID(),src:url,file});
+      const src=URL.createObjectURL(file);
+      ownedUrls.current.push(src);
+      const id=crypto.randomUUID();
+      accepted.push({id,src,file,status:"reading",progress:0});
+      const reader=new FileReader();readers.current.set(id,reader);
+      reader.onprogress=(event)=>{
+        if(!event.lengthComputable)return;
+        const percent=Math.round(event.loaded/event.total*96);
+        setPhotos(current=>current.map(p=>p.id===id?{...p,progress:percent}:p));
+      };
+      reader.onload=()=>{
+        readers.current.delete(id);
+        const image=new Image();
+        const done=()=>{
+          setPhotos(current=>current.map(p=>p.id===id?{...p,status:"success",progress:100}:p));
+          window.setTimeout(()=>setPhotos(current=>current.map(p=>p.id===id?{...p,status:"ready"}:p)),850);
+        };
+        image.onload=done;
+        image.onerror=()=>{
+          setPhotos(current=>current.map(p=>p.id===id?{...p,status:"error"}:p));
+          setError("Не удалось прочитать одну из фотографий.");
+        };
+        image.src=src;
+      };
+      reader.onerror=()=>{
+        readers.current.delete(id);
+        setPhotos(current=>current.map(p=>p.id===id?{...p,status:"error"}:p));
+        setError("Не удалось обработать фотографию.");
+      };
     }
     if(accepted.length)setPhotos(prev=>[...prev,...accepted].slice(0,6));
+    for(const photo of accepted)readers.current.get(photo.id)?.readAsArrayBuffer(photo.file);
     setError(problem);
   };
   const removePhoto=(id:string)=>{
     setPhotos(prev=>{
       const item=prev.find(p=>p.id===id);
+      const reader=readers.current.get(id);
+      if(reader&&reader.readyState===FileReader.LOADING)reader.abort();
+      readers.current.delete(id);
       if(item){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
       return prev.filter(p=>p.id!==id);
     });
@@ -265,6 +324,15 @@ export function App() {
       if(from<0||from>=prev.length||to<0||to>=prev.length)return prev;
       const next=[...prev];const [item]=next.splice(from,1);next.splice(to,0,item);return next;
     });
+  };
+  const resetDraft=()=>{
+    if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
+    for(const reader of readers.current.values())if(reader.readyState===FileReader.LOADING)reader.abort();
+    readers.current.clear();
+    for(const url of ownedUrls.current)URL.revokeObjectURL(url);
+    ownedUrls.current=[];
+    setPhotos([]);setDraft(newDraft());setStep(1);setError("");
+    void clearLocalDraft();
   };
   const beginRegistration=()=>{
     if(welcomeExiting)return;
@@ -316,7 +384,7 @@ export function App() {
       </header>
       <div key={step} className="onboard-body" ref={contentRef}>
         <RegistrationStep data={draft} patch={patch} step={step} photos={photos}
-          addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep}/>
+          addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep} resetDraft={resetDraft}/>
       </div>
       {step===5&&<SelectedInterests selected={draft.interests}
         onChange={id=>patch({interests:draft.interests.filter(x=>x!==id)})}/>}
