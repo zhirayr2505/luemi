@@ -1,6 +1,6 @@
-import {useRef,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import type {CSSProperties,ReactNode} from "react";
-import {Check} from "lucide-react";
+import {Check,Info,Trash2} from "lucide-react";
 import {goals,goalIcons} from "../ui/Goals";
 import {LanguagePicker} from "./LanguagePicker";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
@@ -14,7 +14,7 @@ export type {PhotoItem} from "./PhotoSorter";
 export interface StepProps {
  data:RegistrationDraft;patch:(values:Partial<RegistrationDraft>)=>void;
  photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;
- movePhoto:(from:number,to:number)=>void;editStep:(step:number)=>void;step:number;
+ movePhoto:(from:number,to:number)=>void;editStep:(step:number)=>void;resetDraft:()=>void;step:number;
 }
 function GenderIcon({type}:{type:"man"|"woman"|"everyone"}){
  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -46,9 +46,21 @@ function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChange:(min:
 }
 
 
-export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,editStep,step}:StepProps){
+export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,editStep,resetDraft,step}:StepProps){
  const month=useRef<HTMLInputElement>(null),year=useRef<HTMLInputElement>(null);
  const [category,setCategory]=useState("Популярное");
+ const [nameHint,setNameHint]=useState(false);
+ const hintTimer=useRef<number|null>(null);
+ useEffect(()=>()=>{if(hintTimer.current!==null)window.clearTimeout(hintTimer.current);},[]);
+ const updateName=(raw:string)=>{
+   const clean=cleanName(raw);
+   patch({name:clean});
+   if(clean!==raw){
+     setNameHint(true);
+     if(hintTimer.current!==null)window.clearTimeout(hintTimer.current);
+     hintTimer.current=window.setTimeout(()=>setNameHint(false),2600);
+   }else setNameHint(false);
+ };
  const date=(field:"day"|"month"|"year",value:string)=>{
    const clean=value.replace(/\D/g,"").slice(0,field==="year"?4:2);
    patch({[field]:clean});
@@ -58,13 +70,15 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  };
  const toggleInterest=(value:string)=>patch({interests:data.interests.includes(value)
    ?data.interests.filter(x=>x!==value):data.interests.length>=15?data.interests:[...data.interests,value]});
- if(step===1)return <div className="form-stack">
+ if(step===1)return <div className="form-stack step-name">
    <GlassField label="Твоё имя"><GlassTextInput autoComplete="given-name" maxLength={48} value={data.name}
-     placeholder="Как тебя зовут?" onChange={e=>patch({name:cleanName(e.target.value)})}/></GlassField>
+     placeholder="Как тебя зовут?" onChange={e=>updateName(e.target.value)}/></GlassField>
+   {nameHint&&<div className="name-input-hint" role="status"><Info size={17} aria-hidden="true"/>Можно использовать только буквы, пробел, тире и апостроф.</div>}
    <GlassCheckbox checked={data.trialConsent} onChange={trialConsent=>patch({trialConsent})}>
      Я понимаю, что это тест интерфейса. Данные и фотографии не публикуются и не передаются на сервер.
    </GlassCheckbox>
-   <p className="hint">Для полноценной регистрации будут подготовлены отдельные условия использования и политика приватности.</p>
+   <p className="hint">Тестовый черновик сохраняется только на этом устройстве. Очистка данных Telegram удалит его.</p>
+   <button className="draft-clear-action" type="button" onClick={resetDraft}><Trash2 size={14}/> Очистить локальный черновик</button>
  </div>;
  if(step===2)return <div className="form-stack">
    <div className="field-label">Дата рождения</div>
@@ -80,21 +94,21 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    </ChoiceRow>
    <p className="hint">Только 18+. Правильность даты будет дополнительно проверяться на сервере перед публикацией.</p>
  </div>;
- if(step===3)return <div className="form-stack"><GeoPicker data={data} patch={patch}/></div>;
- if(step===4)return <div className="form-stack">
+ if(step===3)return <div className="form-stack compact-step"><GeoPicker data={data} patch={patch}/></div>;
+ if(step===4)return <div className="form-stack compact-step preferences-step">
    <ChoiceRow label="Кого хочешь встретить?">
      <GlassChoice chosen={data.audience==="women"} onClick={()=>patch({audience:"women"})} icon={<GenderIcon type="woman"/>}>Женщин</GlassChoice>
      <GlassChoice chosen={data.audience==="men"} onClick={()=>patch({audience:"men"})} icon={<GenderIcon type="man"/>}>Мужчин</GlassChoice>
      <GlassChoice chosen={data.audience==="everyone"} onClick={()=>patch({audience:"everyone"})} icon={<GenderIcon type="everyone"/>}>Всех</GlassChoice>
    </ChoiceRow>
    <DoubleAgeRange min={data.ageMin} max={data.ageMax} onChange={(ageMin,ageMax)=>patch({ageMin,ageMax})}/>
-   <ChoiceRow label="Цель знакомства">
+   <div className="goals-section"><ChoiceRow label="Цель знакомства">
      {goals.map(goal=>{
        const Icon=goalIcons[goal.id];
        return <GlassChoice key={goal.id} chosen={data.goal===goal.id} icon={<Icon size={17}/>}
          onClick={()=>patch({goal:goal.id})}>{goal.label}</GlassChoice>;
      })}
-   </ChoiceRow>
+   </ChoiceRow></div>
  </div>;
  if(step===5)return <div className="form-stack interests-step">
    <div className="category-row" role="group" aria-label="Категории интересов">
@@ -110,12 +124,12 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    </div>
  </div>;
  if(step===6)return <div className="form-stack">
-   <GlassField label="Немного о себе"><textarea className="glass-control glass-textarea" rows={6}
+   <GlassField label="Немного о себе"><textarea className="glass-control glass-textarea" rows={4}
       placeholder="Что тебя радует? Чем любишь заниматься?"
       value={data.about} maxLength={1500} onChange={e=>patch({about:[...e.target.value].slice(0,750).join("")})}/></GlassField>
    <p className="char-count">{[...data.about].length} / 750</p>
    <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}/>
-   <p className="hint"><Check size={14} aria-hidden="true"/> Этот шаг можно пропустить. Вопросы о характере и ценностях появятся после регистрации.</p>
+   <p className="hint"><Check size={14} aria-hidden="true"/> Этот шаг можно пропустить.</p>
  </div>;
  if(step===7)return <div className="form-stack"><PhotoSorter photos={photos} addPhotos={addPhotos}
    removePhoto={removePhoto} movePhoto={movePhoto}/></div>;
