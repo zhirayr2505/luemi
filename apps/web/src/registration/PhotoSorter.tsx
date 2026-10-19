@@ -1,8 +1,8 @@
 import {useLayoutEffect,useRef,useState,useEffect} from "react";
 import type {PointerEvent as ReactPointerEvent,ChangeEvent} from "react";
 import {createPortal} from "react-dom";
-import {Plus,X,GripVertical,ArrowLeft,ArrowRight} from "lucide-react";
-export interface PhotoItem {id:string;src:string;file:File}
+import {Plus,X,GripVertical,CheckCircle2} from "lucide-react";
+export interface PhotoItem {id:string;src:string;file:File;status?:"reading"|"success"|"ready"|"error";progress?:number}
 interface Props {photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void}
 interface Drag {id:string;source:number;target:number;x:number;y:number;width:number;height:number}
 interface Pending {id:string;pointer:number;x:number;y:number;timer:number;started:boolean}
@@ -103,15 +103,26 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
          ref={photo?element=>{if(element)itemRefs.current.set(photo.id,element);else itemRefs.current.delete(photo.id);}:undefined}
          onPointerDown={photo?event=>down(event,photo.id):undefined}
          onContextMenu={event=>{if(photo)event.preventDefault();}}
+         tabIndex={photo?0:undefined}
+         role={photo?"group":undefined}
+         aria-label={photo?"Фото "+(i+1)+(i===0?", главное":"")+". Alt+стрелки для перестановки":undefined}
+         onKeyDown={photo?event=>{
+           if(!event.altKey)return;
+           if(event.key==="ArrowLeft"||event.key==="ArrowUp"){event.preventDefault();movePhoto(i,Math.max(0,i-1));}
+           if(event.key==="ArrowRight"||event.key==="ArrowDown"){event.preventDefault();movePhoto(i,Math.min(photos.length-1,i+1));}
+         }:undefined}
          className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.id===photo?.id?" drag-source":"")}>
          {photo?<><img src={photo.src} alt={"Фото "+(i+1)} draggable={false}/>
            <span className="slot-index">{i+1}</span>
            {i===0&&<span className="primary-photo">Главное</span>}
            <button className="remove-photo" type="button" onClick={()=>removePhoto(photo.id)} aria-label={"Удалить фото "+(i+1)}><X size={14}/></button>
-           <div className="photo-reorder-buttons">
-             <button type="button" disabled={i===0} onClick={()=>movePhoto(i,i-1)} aria-label={"Фото "+(i+1)+" раньше"}><ArrowLeft size={13}/></button>
-             <button type="button" disabled={i===photos.length-1} onClick={()=>movePhoto(i,i+1)} aria-label={"Фото "+(i+1)+" позже"}><ArrowRight size={13}/></button>
-           </div>
+           {photo.status==="reading"&&<div className="photo-processing" aria-label="Подготовка фотографии">
+             <div className="photo-processing-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100}
+               aria-valuenow={photo.progress??0}><span style={{width:(photo.progress??0)+"%"}}/></div>
+             <small>Подготовка {photo.progress??0}%</small>
+           </div>}
+           {photo.status==="success"&&<div className="photo-processed" aria-label="Фотография готова"><CheckCircle2 size={25}/></div>}
+           {photo.status==="error"&&<span className="photo-processing-error">Ошибка фото</span>}
          </>:i===photos.length?<button type="button" className="add-photo" onClick={()=>input.current?.click()} aria-label="Добавить фотографии"><Plus size={30}/></button>:
            <span className="empty-number">{i+1}</span>}
        </div>;
@@ -121,7 +132,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      style={{left:drag.x,top:drag.y,width:drag.width,height:drag.height}}>
      <img src={photos[drag.source]?.src} alt=""/><GripVertical size={16}/>
    </div>,document.body)}
-   <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Соседние фото освободят место.</span></div>
+   <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Также доступно Alt + стрелки на клавиатуре. Индикатор показывает только локальную подготовку фото, не загрузку на сервер.</span></div>
    <p className="photo-count" role="status">Выбрано: {photos.length} / 6 · Первое фото главное</p>
    <p className="hint">Это локальный предпросмотр. Для будущей публикации потребуется 3–6 фото и модерация.</p>
  </div>;
