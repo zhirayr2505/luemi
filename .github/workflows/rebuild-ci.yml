@@ -4,6 +4,7 @@ on:
     branches:
       - 'rebuild/**'
       - 'staging/**'
+      - 'feat/stage02-*'
   pull_request:
     branches:
       - main
