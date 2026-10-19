@@ -61,3 +61,14 @@
 - Photos: replaced previous faulty preview drag using portal at client viewport pointer position, FLIP movement of surrounding slots, edge scrolling, accessible earlier/later buttons and 1+5 principal badge. Single public-like profile preview reuses photo carousel and all public data.
 - Old theme overlay, boxed header CSS, old scroll-attached interest panel, previous 2-tab profile preview, old slider limit, and original photo-drag implementation removed rather than layered.
 - **STAGING-ONLY QA**; not a public/complete registration. Device video review and availability of real worldwide geocoder remain open.
+
+## Stage 02F.1 / 02G feedback polish · 2026-10-19
+- Owner feedback from new 190.8-second recording `1000068622.mp4`: branded shimmer looked like duplicate white raster, header/logo low, theme icon too large with white disk, focus ring too strong, native Android blue tap flash, interest selection unclear, categories should remain fixed, language chips too large, photo arrows obsolete, photo processing progress missing, goal badge under-emphasized, draft lost after reopening Telegram.
+- Work branch `feat/stage02g-feedback-polish`; backup `backup/pre-stage02g-20261019` at `333e49fbddb7ac83cadc17f989dc9b857ddb24c8`.
+- Removed mask-based repeated logo glare altogether; original logo stays unchanged. Brand header raised 16px; tiny bare moon/sun glyph closer to wordmark.
+- Global tap highlight disabled, input focus redesigned as thin internal Liquid Glass treatment; typed disallowed name characters filtered and explained via inline accessible hint.
+- Geo and audience steps compacted. Interest categories fixed in the content area while only interests scroll; selection has small scale, gradient tick and clear elevation. Language area shows three compact columns and flag-only selected chips. Bio textarea reduced.
+- Photo reordering left intact with touch hold and FLIP; obsolete overlay arrow controls removed; accessible Alt+arrow fallback on focused slots. Photo FileReader progress is **local processing only** (not server upload), completion checkmark brief; first photo still Main.
+- Profile languages are flags only with accessible language titles; dating goal badge stronger.
+- Fixed restart-from-zero by local per-account draft (localStorage) + private local photo File storage (IndexedDB). Users can clear it from step 1. Does not upload user files or replace future encrypted server drafts.
+- Mobile visual approval, keyboard/fps testing still pending. No main, Supabase, VEYRA or blotX updates.
