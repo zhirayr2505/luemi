@@ -26,8 +26,38 @@ type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" 
 type ThemeChoice = "system" | "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 
+/** Decode the exact brand raster before showing a screen that depends on it. */
+function prepareBrandImage(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve,reject) => {
+    const image = new Image();
+    let finished = false;
+    const finish = (error?: Error) => {
+      if(finished) return;
+      finished = true;
+      image.onload = null;
+      image.onerror = null;
+      signal.removeEventListener("abort", abort);
+      if(error) reject(error);
+      else resolve();
+    };
+    const abort = () => finish(new Error("Brand preparation cancelled"));
+    if(signal.aborted) { abort(); return; }
+    signal.addEventListener("abort",abort,{once:true});
+    image.onload = () => {
+      if(typeof image.decode === "function") {
+        void image.decode().then(() => finish(), () => finish(new Error("Cannot decode LUEMI logo")));
+      } else {
+        finish();
+      }
+    };
+    image.onerror = () => finish(new Error("Cannot load LUEMI logo"));
+    image.src = logoSrc;
+  });
+}
+
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
+  const [brandReady,setBrandReady] = useState(false);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [step,setStep] = useState(1);
   const [draft,setDraft] = useState<RegistrationDraft>(()=>newDraft());
@@ -40,32 +70,59 @@ export function App() {
     setError("");
   },[]);
   useEffect(()=>{
-    const webApp=window.Telegram?.WebApp;
-    const initData=webApp?.initData;
-    if(!initData){setAuth("outside-telegram");webApp?.ready?.();return;}
-    const controller=new AbortController();
-    void (async()=>{
+    const webApp = window.Telegram?.WebApp;
+    const initData = webApp?.initData;
+    const controller = new AbortController();
+    let disposed = false;
+    // A failed network request must never leave a motionless endless loader.
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+    void (async () => {
       try {
-        const live=await fetch("/api/health/live",{signal:controller.signal});
-        if(!live.ok||((await live.json()) as HealthResponse).status!=="ok")throw new Error("API unavailable");
-        const response=await fetch("/api/auth/telegram",{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({initData}),
-          signal:controller.signal
-        });
-        if(response.status===503){setAuth("needs-bot");webApp?.ready?.();return;}
-        if(!response.ok)throw new Error("Telegram authorization failed");
-        const user=(await response.json()) as BootstrapResponse;
-        setDraft(current=>({...current,name:current.name||user.user.firstName}));
-        setAuth("authorized");
-        webApp?.ready?.();
-        webApp?.expand?.();
-      }catch{
-        if(!controller.signal.aborted)setAuth("error");
+        // The brand image, fonts and verified Telegram identity are actual
+        // critical resources. Run them in parallel, never invent a percentage.
+        const visualsReady = Promise.all([
+          prepareBrandImage(controller.signal),
+          document.fonts.ready
+        ]).then(() => {if(!disposed) setBrandReady(true);});
+        const identityReady: Promise<BootstrapResponse | null> = !initData
+          ? Promise.resolve(null)
+          : (async () => {
+              const live = await fetch("/api/health/live",{signal:controller.signal});
+              if(!live.ok || ((await live.json()) as HealthResponse).status!=="ok")
+                throw new Error("API unavailable");
+              const response = await fetch("/api/auth/telegram",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({initData}),
+                signal:controller.signal
+              });
+              if(response.status===503) return null;
+              if(!response.ok) throw new Error("Telegram authorization failed");
+              return (await response.json()) as BootstrapResponse;
+            })();
+        const [,user] = await Promise.all([visualsReady,identityReady]);
+        if(disposed) return;
+        if(!initData) {
+          setAuth("outside-telegram");
+        } else if(user===null) {
+          setAuth("needs-bot");
+        } else {
+          setDraft(current=>({...current,name:current.name||user.user.firstName}));
+          setAuth("authorized");
+          webApp?.expand?.();
+        }
+      } catch {
+        if(!disposed) setAuth("error");
+      } finally {
+        window.clearTimeout(timeoutId);
+        if(!disposed) webApp?.ready?.();
       }
     })();
-    return ()=>controller.abort();
+    return () => {
+      disposed = true;
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
   },[]);
   // Preview photos are local-only. Remove temporary browser URLs on unmount.
   useEffect(()=>()=>{
@@ -134,21 +191,25 @@ export function App() {
   const activeTheme=theme==="system"?(window.Telegram?.WebApp?.colorScheme??"light"):theme;
   const changeTheme=()=>setTheme(old=>old==="system"?"light":old==="light"?"dark":"system");
   const themeName=theme==="system"?"Система":theme==="light"?"Светлая":"Тёмная";
-  return <main className="luemi-shell" data-theme={activeTheme} data-phase={phase}>
+  return <main className="luemi-shell" data-theme={activeTheme} data-phase={phase} data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme} aria-label={"Тема: "+themeName+". Переключить"}>{themeName}</button></div>
     {auth!=="authorized"?<section className="entry-state" role="status">
-      <img src={logoSrc} alt="luemi" className="intro-logo"/>
+      <div className="intro-mark">
+        {brandReady
+          ? <img src={logoSrc} alt="luemi" className="intro-logo"/>
+          : <span className="intro-placeholder" aria-hidden="true"/>}
+      </div>
       <h1>{auth==="connecting"?"Готовим твоё знакомство":"LUEMI"}</h1>
-      <div className={"loading-track"+(auth==="connecting"?" animated":"") } aria-label="Подключение к Telegram"><span/></div>
-      {auth==="connecting"&&<p>Проверяем защищённый вход Telegram…</p>}
+      {auth==="connecting"&&<div className="loading-track animated" role="progressbar" aria-label="Подготовка ресурсов и проверка входа Telegram"><span/></div>}
+      {auth==="connecting"&&<p>{brandReady?"Проверяем защищённый вход Telegram…":"Подготавливаем оформление LUEMI…"}</p>}
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>window.location.reload()}>Повторить</button></>}
     </section>: phase==="welcome"?<section className="welcome-screen">
       <div className="welcome-art">
         <div className="logo-aura" aria-hidden="true"/>
-        <img src={logoSrc} className="hero-logo" alt="luemi"/>
+        <div className="welcome-logo-mark"><img src={logoSrc} className="hero-logo" alt="luemi"/></div>
         <h1>Твоя история начинается здесь</h1>
         <p>Больше общего. Ближе друг к другу. Знакомства по интересам и целям.</p>
       </div>

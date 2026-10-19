@@ -9,3 +9,8 @@
 - No real profiles created/published, no real photos uploaded, no Supabase mutation and no payments. Stage 02 complete only when these are implemented and verified.
 - W06 unchanged wordmark derivative present. Canonical W04 exact PNG still to import as verified binary.
 - VEYRA and blotX untouched. Production main untouched.
+
+## Stage 02B · Animated launch, 2026-10-19
+- New feature branch `feat/stage02-welcome-motion-v1` from staging commit `971c30e`. Startup loader checks real critical assets and Telegram; W12-style soft animated mist and subtle logo entry, motion preferences.
+- Stage 02A registration layout, positions of arrows, wordmark header and gradient progress stripe are unchanged.
+- Implementation pending CI, Render staging deployment and Galaxy A55 motion acceptance; not production-final.

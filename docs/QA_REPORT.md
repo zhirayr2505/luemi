@@ -13,3 +13,8 @@
 - Full accessibility WCAG 2.2 AA, localization, legal consent/privacy, dark theme visual comparison.
 - True published profile equivalence (Stage 03 not built).
 - No paid features.
+
+## Stage 02B animated welcome pending release checks
+- Review criterion: no invented loading percentages or minimum loader delay; show useful error and retry if network/logo fails.
+- Verify signed Telegram identity still works; overlay mask uses same W06 alpha raster and no redrawn logo; reduced motion disables decorative animation.
+- Real Android motion smoothness / battery / contrast and final comparison to W04 remain NOT TESTED until device QA.
