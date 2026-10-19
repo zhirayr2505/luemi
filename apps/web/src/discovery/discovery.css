@@ -75,8 +75,8 @@
 
 .discovery-next-peek{display:none;position:absolute;left:12px;right:12px;bottom:0;z-index:0;height:23px;overflow:hidden;pointer-events:none;border:1px solid rgba(255,255,255,.62);border-radius:0 0 20px 20px;opacity:.53;background:var(--panel)}
 .discovery-next-peek img{display:block;width:100%;height:58px;object-fit:cover;object-position:center 22%}
-@media(min-height:920px){.discovery-next-peek{display:block}}
-.discovery-bottom-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;gap:2px;flex:none;width:calc(100% - 26px);max-width:620px;margin:5px auto max(5px,env(safe-area-inset-bottom,0px));min-height:57px;padding:7px 6px;border-radius:29px;border:1px solid rgba(255,255,255,.75);background:linear-gradient(125deg,rgba(255,255,255,.53),rgba(235,206,255,.24));box-shadow:inset 0 2px rgba(255,255,255,.86),inset 0 -2px rgba(185,144,213,.11),0 8px 22px var(--shadow);backdrop-filter:blur(23px) saturate(165%);-webkit-backdrop-filter:blur(23px) saturate(165%);z-index:9}
+@media(min-height:710px) and (min-width:335px){.discovery-next-peek{display:block}}
+.discovery-bottom-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;gap:2px;flex:none;width:calc(100% - 26px);max-width:620px;margin:5px auto max(9px,var(--bottom-safe));min-height:57px;padding:7px 6px;border-radius:29px;border:1px solid rgba(255,255,255,.75);background:linear-gradient(125deg,rgba(255,255,255,.53),rgba(235,206,255,.24));box-shadow:inset 0 2px rgba(255,255,255,.86),inset 0 -2px rgba(185,144,213,.11),0 8px 22px var(--shadow);backdrop-filter:blur(23px) saturate(165%);-webkit-backdrop-filter:blur(23px) saturate(165%);z-index:9}
 .discovery-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;border:0;border-radius:17px;background:transparent;color:var(--subtle);padding:5px 1px;transition:color .16s ease,transform .14s ease}
 .discovery-nav-item.active{color:#aa76d8;background:transparent;font-weight:720}
 .discovery-nav-item.active svg{color:#a775d7}
