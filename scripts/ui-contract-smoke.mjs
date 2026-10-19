@@ -60,8 +60,28 @@ assertCheck("separate Stage 03 demo does not change publication flow",app.includ
 assertCheck("four global navigation destinations and three discovery tabs",discovery.includes('["discover","Знакомства"')&&discovery.includes('["likes","Симпатии"')&&discovery.includes('["chats","Чаты"')&&discovery.includes('["profile","Профиль"')&&discovery.includes('["feed","Лента"')&&discovery.includes('["for-you","Для тебя"')&&discovery.includes('["nearby","Рядом"'));
 assertCheck("five simulated actions without live API",["save","pass","special","like","undo"].every(k=>discovery.includes('"'+k+'"'))&&!discovery.includes('fetch(')&&!discovery.includes("TelegramStars"));
 assertCheck("profile and filters use existing shared profile components",discoveryProfile.includes("PhotoCarousel")&&discoveryProfile.includes("InterestChip")&&discoveryFilters.includes("DoubleAgeRange")&&discoveryFilters.includes("languages.map"));
-assertCheck("W12 photo swipe remains independent of like/pass",discovery.includes("<PhotoCarousel")&&discovery.includes("onTouchStart")&&discovery.includes("closest")&&discovery.includes(".discovery-photo"));
+assertCheck("W12 photo swipe remains independent of like/pass",discovery.includes("<PhotoCarousel")&&discovery.includes("onPointerDown")&&discovery.includes("closest")&&discovery.includes(".discovery-photo"));
 assertCheck("demo fixture is visibly marked and illustrated locally",fixture.includes("illustration(")&&!fixture.includes("https://")&&discovery.includes('className="discovery-demo-label"'));
 assertCheck("adaptive card peek hidden on smaller screens, native Telegram back",discoveryCss.includes(".discovery-card")&&app.includes("discoveryBackRef")&&discovery.includes("registerBack"));
 assertCheck("demo actions include reversible state history",discoveryModel.includes("demoUndo")&&discoveryModel.includes("history:")&&discoveryModel.includes("wasSaved"));
-console.log("LUEMI Stage 03 UI contract smoke PASS");
+
+assertCheck("single viewport Feed without legacy scroll wrapper",discoveryCss.includes(".discovery-pages{flex:1;min-height:0;overflow:hidden")
+ && discoveryCss.includes(".discovery-page{height:100%")&&!discoveryCss.includes(".discovery-feed-scroller")
+ && !discovery.includes("discovery-filter-row"));
+assertCheck("logo and exactly three icon-only controls inside its width",discovery.includes("discovery-header-controls")
+ && discoveryCss.includes(".discovery-header-controls{width:117px")
+ && discovery.includes("aria-label=\"Сохранённые анкеты\"")
+ && discovery.includes("aria-label=\"Фильтры\""));
+assertCheck("moving page AND underline follow same gesture",discovery.includes("dragX/3")&&discovery.includes('+"px),0,0)"')
+ && discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
+assertCheck("all profile facts and five separate action buttons inside photo card",discovery.indexOf('className="discovery-card-overlay"')>0
+ && discovery.indexOf('className="discovery-actions"')>discovery.indexOf('className="discovery-card-overlay"')
+ && discovery.indexOf('className="discovery-actions"')<discovery.indexOf('</article>'));
+assertCheck("no old standalone glass action tray",!discoveryCss.includes(".discovery-card-facts")
+ && !discoveryCss.includes(".discovery-action-hint") && !discoveryCss.includes(".discovery-city"));
+assertCheck("real finger-tracking photo carousel retained with full-width bars",discoveryCss.includes(".discovery-photo .photo-progress")
+ && discoveryCss.includes("left:11px;right:11px") && read("apps/web/src/ui/PhotoCarousel.tsx").includes("setDx"));
+assertCheck("premium simulated account and capped interests",discovery.includes("person.premium")
+ && discovery.includes("Crown")&&discovery.includes("person.interests.slice(0,3)")
+ && fixture.includes("premium:index===0"));
+console.log("LUEMI Stage 03 Feed Polish UI contracts PASS");
