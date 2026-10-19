@@ -4,9 +4,10 @@
 .app[data-theme=dark]{--bg:#171320;--ink:#f5effc;--glass:rgba(50,43,66,.7);--line:rgba(218,187,255,.2)}
 .mist{position:absolute;inset:-15%;z-index:-1;background:radial-gradient(ellipse at 10% 12%,#e6d4ff7d,transparent 55%),radial-gradient(ellipse at 90% 90%,#ffcbde77,transparent 50%);animation:float 14s ease-in-out infinite alternate;pointer-events:none}
 .glass{width:min(100%,450px);padding:clamp(24px,6vw,42px);background:var(--glass);border:1px solid var(--line);border-radius:32px;box-shadow:0 18px 65px #9e85b21f;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
-.eyebrow{font-size:12px;letter-spacing:.18em;font-weight:700;color:#9770bd}.glass h1{font-size:clamp(28px,7vw,42px);letter-spacing:-.04em;line-height:1.12;margin:16px 0 22px}.glass p:not(.eyebrow){font-size:16px;line-height:1.65}
+.eyebrow{font-size:11px;letter-spacing:.17em;font-weight:700;color:#9770bd}.wordmark{display:block;width:clamp(132px,43vw,210px);height:auto;object-fit:contain;object-position:center;margin:4px auto 10px}
+.glass h1{font-size:clamp(27px,7vw,40px);letter-spacing:-.04em;line-height:1.15;margin:12px 0 18px;text-align:center}.glass p:not(.eyebrow){font-size:16px;line-height:1.65}
 .stage{display:flex;align-items:center;gap:10px;font-size:13px;margin-top:28px;color:var(--ink);opacity:.8}
-.dot{width:8px;height:8px;border-radius:50%;background:#ad84de}
+.dot{width:8px;height:8px;flex:0 0 auto;border-radius:50%;background:#ad84de}
 .themes{display:flex;gap:5px;margin-top:25px;padding:5px;border-radius:16px;border:1px solid var(--line)}
 .themes button{flex:1;min-height:44px;border:0;background:transparent;color:var(--ink);border-radius:12px;cursor:pointer}
 .themes button[aria-pressed=true]{background:#b58ade45;outline:1px solid var(--line)}

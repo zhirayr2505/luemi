@@ -5,6 +5,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import type { ApiConfig } from "./config.js";
 import { validateTelegramInitData } from "./telegram-auth.js";
+import { registerTelegramWebhook } from "./telegram-webhook.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -32,14 +33,14 @@ export function buildApp(config: ApiConfig) {
   });
 
   app.get("/api/health/live", async (): Promise<HealthResponse> => ({ status: "ok" }));
-  // Internal readiness endpoint reveals no configuration and requires a secret header.
   app.get("/api/health/ready", async (request, reply) => {
     const secret = request.headers["x-health-key"];
-    if (typeof secret !== "string" || !equalSecret(secret, config.healthKey))
+    if (!config.healthKey || typeof secret !== "string" || !equalSecret(secret, config.healthKey))
       return reply.code(404).send({ error: "not_found" });
     return { status: "ready", database: "not_connected", stage: "01" };
   });
   app.post<{ Body: { initData?: unknown } }>("/api/auth/telegram", async (request, reply) => {
+    if (!config.botToken) return reply.code(503).send({ error: "service_unavailable" });
     const raw = request.body?.initData;
     if (typeof raw !== "string") return reply.code(401).send({ error: "invalid_init_data" });
     const identity = validateTelegramInitData(raw, config.botToken);
@@ -50,5 +51,6 @@ export function buildApp(config: ApiConfig) {
     };
     return response;
   });
+  registerTelegramWebhook(app, config);
   return app;
 }

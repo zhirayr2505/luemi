@@ -13,7 +13,7 @@ declare global {
     };
   }
 }
-type State = "connecting" | "outside-telegram" | "authorized" | "error";
+type State = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "error";
 export function App() {
   const [state, setState] = useState<State>("connecting");
   const [name, setName] = useState("");
@@ -35,6 +35,7 @@ export function App() {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ initData }), signal: controller.signal
         });
+        if (response.status === 503) { setState("needs-bot"); webApp?.ready?.(); return; }
         if (!response.ok) throw new Error("Telegram authorization failed");
         const body = (await response.json()) as BootstrapResponse;
         setName(body.user.firstName);
@@ -52,13 +53,15 @@ export function App() {
     <main className="app" data-theme={active}>
       <div className="mist" aria-hidden="true" />
       <section className="glass" aria-live="polite">
-        <p className="eyebrow">LUEMI · FOUNDATION 01</p>
+        <p className="eyebrow">LUEMI · TELEGRAM MINI APP</p>
+        <img className="wordmark" src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi" width="280" height="105" />
         <h1>{state === "authorized" ? `Привет, ${name}!` : "Твоя история начинается здесь"}</h1>
         {state === "connecting" && <p>Подключаем защищённую сессию Telegram…</p>}
-        {state === "outside-telegram" && <p>Откройте LUEMI через Telegram-бота, чтобы подтвердить вход. Демонстрационных анкет здесь нет.</p>}
-        {state === "authorized" && <p>Telegram подтвердил вход. Регистрация и знакомства появятся после отдельного этапа разработки и модерации.</p>}
-        {state === "error" && <p role="alert">Не удалось подтвердить вход. Откройте приложение заново через Telegram.</p>}
-        <div className="stage" aria-label="Статус разработки"><span className="dot" /> Этап 01: безопасное подключение</div>
+        {state === "outside-telegram" && <p>Открой LUEMI кнопкой в Telegram-боте. Здесь приложение не запрашивает регистрацию вне Telegram.</p>}
+        {state === "authorized" && <p>Telegram подтвердил вход. Мы готовим регистрацию и знакомства для закрытой беты.</p>}
+        {state === "needs-bot" && <p role="status">Тестовая версия открылась в Telegram. Подтверждение входа подключим после безопасной настройки бота.</p>}
+        {state === "error" && <p role="alert">Не удалось подтвердить вход. Открой приложение снова через Telegram.</p>}
+        <div className="stage" aria-label="Статус разработки"><span className="dot" /> Stage 01 · Закрытая техническая версия</div>
         <div className="themes" aria-label="Тема интерфейса">
           {(["system","light","dark"] as const).map((value) => (
             <button key={value} type="button" aria-pressed={theme === value}

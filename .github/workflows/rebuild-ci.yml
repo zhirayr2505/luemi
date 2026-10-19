@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - 'rebuild/**'
+      - 'staging/**'
   pull_request:
     branches:
       - main
