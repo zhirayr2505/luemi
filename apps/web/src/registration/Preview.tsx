@@ -6,13 +6,13 @@ import {InterestChip} from "../ui/InterestCatalog";
 import {Flag} from "../ui/Flag";
 import {languages} from "../ui/Languages";
 import type {PhotoItem} from "./PhotoSorter";
-interface Props {data:RegistrationDraft;photos:PhotoItem[];editStep:(step:number)=>void}
+interface Props {data:RegistrationDraft;photos:PhotoItem[];editStep:(step:number)=>void;openDemo:()=>void}
 function ageOf(d:RegistrationDraft):number|undefined{
  if(!birthDateValid(d.day,d.month,d.year))return undefined;
  const today=new Date(),year=Number(d.year),month=Number(d.month),day=Number(d.day);
  return today.getFullYear()-year-(today.getMonth()+1<month||today.getMonth()+1===month&&today.getDate()<day?1:0);
 }
-export function RegistrationPreview({data,photos,editStep}:Props) {
+export function RegistrationPreview({data,photos,editStep,openDemo}:Props) {
  const goal=goals.find(x=>x.id===data.goal);
  return <div className="preview-root">
    <p className="hint">Так другие увидят твою анкету после проверки. Пока это локальный предпросмотр.</p>
@@ -38,6 +38,8 @@ export function RegistrationPreview({data,photos,editStep}:Props) {
    </article>
    <button className="glass-choice edit-profile-action" type="button" onClick={()=>editStep(7)}><Pencil size={18}/> Изменить анкету</button>
    {photos.length<3&&<p className="hint">Для будущей публикации нужно ещё {3-photos.length} фото.</p>}
-   <button type="button" className="disabled-submit" disabled>Начать знакомства · скоро</button>
+   <button type="button" className="primary-action" onClick={openDemo}>Открыть демо-Ленту <span aria-hidden="true">→</span></button>
+   <p className="hint">Демо-анкеты вымышлены. Действия ничего не публикуют и никому не отправляются.</p>
+   <button type="button" className="disabled-submit" disabled>Публикация анкеты пока закрыта</button>
  </div>;
 }
