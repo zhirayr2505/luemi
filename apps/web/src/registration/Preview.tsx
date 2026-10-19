@@ -30,7 +30,7 @@ export function RegistrationPreview({data,photos,editStep}:Props) {
        {data.languages.length>0&&<section className="profile-section">
          <h3><Languages size={16}/> Языки общения</h3>
          <div className="chips">{data.languages.map(id=>{
-           const l=languages.find(x=>x.id===id);return l?<span className="language-summary" key={id}><Flag code={l.flag} size={18}/>{l.name}</span>:null;
+           const l=languages.find(x=>x.id===id);return l?<span className="language-summary" key={id} title={l.name} aria-label={l.name}><Flag code={l.flag} size={24} title={l.name}/></span>:null;
          })}</div>
        </section>}
        <div className="preview-trust"><ShieldCheck size={18}/><span>Видимость анкеты откроется только после реальной регистрации и модерации.</span></div>
