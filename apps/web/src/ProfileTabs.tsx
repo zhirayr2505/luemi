@@ -30,9 +30,7 @@ function InterestIcon({ interest }: { interest: string }) {
       </>
     );
   } else if (value.includes('путеше') || value.includes('travel')) {
-    glyph = (
-      <path d="m3 13 8-2-3-7 2-1 5 7 5-1 2 2-7 3-3 6-2 1 1-6-6 1-2-1Z" />
-    );
+    glyph = <path d="m3 13 8-2-3-7 2-1 5 7 5-1 2 2-7 3-3 6-2 1 1-6-6 1-2-1Z" />;
   } else if (value.includes('книг') || value.includes('book')) {
     glyph = (
       <>
