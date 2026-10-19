@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -233,10 +232,9 @@ function GiftsTab() {
 export function ProfileTabs({ profile }: { profile: Profile }) {
   const [active, setActive] = useState<ProfileTabIndex>(0);
   const viewport = useRef<HTMLDivElement>(null);
-  const rail = useRef<HTMLDivElement>(null);
-  const panels = useRef<Array<HTMLDivElement | null>>([]);
   const markers = useRef<Array<HTMLSpanElement | null>>([]);
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
+  const pending = useRef<number | null>(null);
 
   // Native scrolling owns motion. Observe 1px-height horizontal markers, not
   // whole panels: a tall panel could otherwise never intersect 60% of its area.
@@ -245,10 +243,14 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
     if (!element) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        const closest = entries
+        const visible = entries
           .filter((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.6)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (closest) setActive(getTabIndex(Number((closest.target as HTMLElement).dataset.index)));
+        if (!visible) return;
+        const index = getTabIndex(Number((visible.target as HTMLElement).dataset.index));
+        if (pending.current !== null && index !== pending.current) return;
+        pending.current = null;
+        setActive(index);
       },
       { root: element, threshold: [0.6, 0.8] },
     );
@@ -256,37 +258,16 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
     return () => observer.disconnect();
   }, [profile.id]);
 
-  // Only the visible tab's height occupies the vertical profile flow.
-  // ResizeObserver runs on layout change, never in a scroll or pointer handler.
-  useLayoutEffect(() => {
-    const container = viewport.current;
-    const panel = panels.current[active];
-    if (!container || !panel) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry)
-        container.style.height = `${Math.ceil(entry.borderBoxSize?.[0]?.blockSize ?? panel.offsetHeight)}px`;
-    });
-    observer.observe(panel);
-    return () => observer.disconnect();
-  }, [active, profile.id]);
-
-  // Keep the selected label in view without touching vertical profile scroll.
-  useEffect(() => {
-    const container = rail.current,
-      button = buttons.current[active];
-    if (!container || !button) return;
-    container.scrollLeft = Math.max(
-      0,
-      button.offsetLeft - (container.clientWidth - button.clientWidth) / 2,
-    );
-  }, [active]);
-
-  const activate = useCallback((index: number) => {
-    const next = getTabIndex(index);
-    setActive(next);
-    const element = viewport.current;
-    if (element) element.scrollLeft = next * element.clientWidth; // click only, never drag / RAF
-  }, []);
+  const activate = useCallback(
+    (index: number) => {
+      const next = getTabIndex(index);
+      pending.current = active === next ? null : next;
+      setActive(next);
+      const element = viewport.current;
+      if (element) element.scrollLeft = next * element.clientWidth; // click only, never drag / RAF
+    },
+    [active],
+  );
 
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     let next = active;
@@ -304,11 +285,11 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
     <section className="profile-tabs-root" aria-label="Разделы профиля">
       <div
         className="profile-tabs-rail"
-        ref={rail}
         role="tablist"
         aria-label="Разделы профиля"
         onKeyDown={keyDown}
       >
+        <span className="profile-tabs-glass" aria-hidden="true" />
         {PROFILE_TAB_LABELS.map((label, index) => (
           <button
             type="button"
@@ -333,9 +314,6 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
           <div
             key={label}
             id={`profile-panel-${index}`}
-            ref={(element) => {
-              panels.current[index] = element;
-            }}
             className="profile-tabs-panel"
             data-index={index}
             role="tabpanel"

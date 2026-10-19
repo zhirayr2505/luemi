@@ -32,7 +32,12 @@ test('native finger-following horizontal snap is independent of vertical profile
   assert.match(css, /overflow-x:\s*auto/);
   assert.match(css, /scroll-snap-align:\s*start/);
   assert.match(tabs, /new IntersectionObserver/);
-  assert.match(tabs, /new ResizeObserver/);
+  assert.doesNotMatch(tabs, /new ResizeObserver/);
+  assert.doesNotMatch(tabs, /style\.height/);
+  assert.match(tabs, /profile-tabs-glass/);
+  assert.match(css, /animation-timeline:\s*--luemi-tabs-x/);
+  assert.match(css, /@keyframes luemi-tab-glass/);
+  assert.match(css, /align-items:\s*stretch/);
   assert.doesNotMatch(
     tabs,
     /onPointerMove|setPointerCapture|requestAnimationFrame|scrollTo\s*\(|setTimeout\s*\(/,
