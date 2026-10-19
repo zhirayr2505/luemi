@@ -1,6 +1,8 @@
 import {useRef,useState} from "react";
 import type {CSSProperties,ReactNode} from "react";
-import {UserRound,UserRoundCheck,Users,Languages,Check} from "lucide-react";
+import {Check} from "lucide-react";
+import {goals,goalIcons} from "../ui/Goals";
+import {LanguagePicker} from "./LanguagePicker";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
 import {categories,InterestChip,tint} from "../ui/InterestCatalog";
 import {GeoPicker} from "./GeoPicker";
@@ -14,6 +16,14 @@ export interface StepProps {
  photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;editStep:(step:number)=>void;step:number;
 }
+function GenderIcon({type}:{type:"man"|"woman"|"everyone"}){
+ return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+   strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+   {type==="everyone"?<><circle cx="8" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><path d="M2.5 20v-3a5.5 5.5 0 0 1 11 0v3m-2-3a5.5 5.5 0 0 1 10.5 0v3"/></>:
+    type==="man"?<><circle cx="10" cy="14" r="6"/><path d="M14.5 9.5 21 3m-6 0h6v6"/></>:
+    <><circle cx="12" cy="9" r="6"/><path d="M12 15v7m-4-3.5h8"/></>}
+ </svg>;
+}
 function ChoiceRow({label,children}:{label:string;children:ReactNode}){
  return <div className="choice-section"><div className="field-label">{label}</div><div className="choice-grid">{children}</div></div>;
 }
@@ -21,6 +31,7 @@ function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChange:(min:
  const start=(min-18)/62*100,end=(max-18)/62*100;
  return <div className="age-range glass-panel">
    <div className="range-title"><span>Возраст</span><strong>{min}–{max}</strong></div>
+   <p className="age-caption">Выбери возраст людей, с которыми хочешь знакомиться</p>
    <div className="double-age-range" onPointerDownCapture={()=>{
      const f=document.activeElement;if(f instanceof HTMLInputElement&&f.type!=="range")f.blur();
    }}>
@@ -33,7 +44,7 @@ function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChange:(min:
    </div>
  </div>;
 }
-const languageNames=["Русский","English","Հայերեն"];
+
 
 export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,editStep,step}:StepProps){
  const month=useRef<HTMLInputElement>(null),year=useRef<HTMLInputElement>(null);
@@ -63,42 +74,39 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      <GlassField label="Год"><GlassTextInput ref={year} inputMode="numeric" autoComplete="bday-year" placeholder="ГГГГ" value={data.year} onChange={e=>date("year",e.target.value)}/></GlassField>
    </div>
    <ChoiceRow label="Пол">
-     <GlassChoice chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<UserRound size={17}/>}>Мужчина</GlassChoice>
-     <GlassChoice chosen={data.gender==="woman"} onClick={()=>patch({gender:"woman"})} icon={<UserRoundCheck size={17}/>}>Женщина</GlassChoice>
-     <GlassChoice chosen={data.gender==="other"} onClick={()=>patch({gender:"other"})} icon={<Users size={17}/>}>Другой вариант</GlassChoice>
+     <GlassChoice chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<GenderIcon type="man"/>}>Мужчина</GlassChoice>
+     <GlassChoice chosen={data.gender==="woman"} onClick={()=>patch({gender:"woman"})} icon={<GenderIcon type="woman"/>}>Женщина</GlassChoice>
+     <GlassChoice chosen={data.gender==="other"} onClick={()=>patch({gender:"other"})} icon={<GenderIcon type="everyone"/>}>Другой вариант</GlassChoice>
    </ChoiceRow>
    <p className="hint">Только 18+. Правильность даты будет дополнительно проверяться на сервере перед публикацией.</p>
  </div>;
  if(step===3)return <div className="form-stack"><GeoPicker data={data} patch={patch}/></div>;
  if(step===4)return <div className="form-stack">
    <ChoiceRow label="Кого хочешь встретить?">
-     <GlassChoice chosen={data.audience==="women"} onClick={()=>patch({audience:"women"})} icon={<UserRoundCheck size={17}/>}>Женщин</GlassChoice>
-     <GlassChoice chosen={data.audience==="men"} onClick={()=>patch({audience:"men"})} icon={<UserRound size={17}/>}>Мужчин</GlassChoice>
-     <GlassChoice chosen={data.audience==="everyone"} onClick={()=>patch({audience:"everyone"})} icon={<Users size={17}/>}>Всех</GlassChoice>
+     <GlassChoice chosen={data.audience==="women"} onClick={()=>patch({audience:"women"})} icon={<GenderIcon type="woman"/>}>Женщин</GlassChoice>
+     <GlassChoice chosen={data.audience==="men"} onClick={()=>patch({audience:"men"})} icon={<GenderIcon type="man"/>}>Мужчин</GlassChoice>
+     <GlassChoice chosen={data.audience==="everyone"} onClick={()=>patch({audience:"everyone"})} icon={<GenderIcon type="everyone"/>}>Всех</GlassChoice>
    </ChoiceRow>
    <DoubleAgeRange min={data.ageMin} max={data.ageMax} onChange={(ageMin,ageMax)=>patch({ageMin,ageMax})}/>
    <ChoiceRow label="Цель знакомства">
-     <GlassChoice chosen={data.goal==="relationship"} onClick={()=>patch({goal:"relationship"})}>Отношения</GlassChoice>
-     <GlassChoice chosen={data.goal==="dates"} onClick={()=>patch({goal:"dates"})}>Свидания</GlassChoice>
-     <GlassChoice chosen={data.goal==="friends"} onClick={()=>patch({goal:"friends"})}>Общение</GlassChoice>
+     {goals.map(goal=>{
+       const Icon=goalIcons[goal.id];
+       return <GlassChoice key={goal.id} chosen={data.goal===goal.id} icon={<Icon size={17}/>}
+         onClick={()=>patch({goal:goal.id})}>{goal.label}</GlassChoice>;
+     })}
    </ChoiceRow>
  </div>;
  if(step===5)return <div className="form-stack interests-step">
    <div className="category-row" role="group" aria-label="Категории интересов">
-     {categories.map(x=><button type="button" key={x.name}
-       className={"category-chip"+(x.name===category?" selected":"")} style={tint(x.colors) as CSSProperties}
-       onClick={()=>setCategory(x.name)} aria-pressed={x.name===category}>
-       <x.icon size={17} strokeWidth={1.8}/>{x.name}
+     {categories.map(entry=><button type="button" key={entry.name}
+       className={"category-chip"+(entry.name===category?" selected":"")} style={tint(entry.colors) as CSSProperties}
+       onClick={()=>setCategory(entry.name)} aria-pressed={entry.name===category}>
+       <entry.icon size={17} strokeWidth={1.8}/>{entry.name}
      </button>)}
    </div>
    <div className="chips interest-choices">
-     {categories.find(x=>x.name===category)?.items.map(x=>
-       <InterestChip key={x.name} name={x.name} selected={data.interests.includes(x.name)} onClick={()=>toggleInterest(x.name)}/>)}
-   </div>
-   <div className="selected-interests">
-     <strong>Выбрано · {data.interests.length} из 15</strong>
-     <div className="chips">{data.interests.length?data.interests.map(x=>
-       <InterestChip key={x} name={x} selected onClick={()=>toggleInterest(x)}/>):<span className="hint">Пока ничего не выбрано</span>}</div>
+     {categories.find(x=>x.name===category)?.items.map(item=>
+       <InterestChip key={item.id} id={item.id} selected={data.interests.includes(item.id)} onClick={()=>toggleInterest(item.id)}/>)}
    </div>
  </div>;
  if(step===6)return <div className="form-stack">
@@ -106,14 +114,19 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
       placeholder="Что тебя радует? Чем любишь заниматься?"
       value={data.about} maxLength={1500} onChange={e=>patch({about:[...e.target.value].slice(0,750).join("")})}/></GlassField>
    <p className="char-count">{[...data.about].length} / 750</p>
-   <ChoiceRow label="Языки общения">
-     {languageNames.map(name=><GlassChoice key={name} chosen={data.languages.includes(name)}
-       icon={<Languages size={16}/>} onClick={()=>patch({languages:data.languages.includes(name)
-         ?data.languages.filter(x=>x!==name):[...data.languages,name]})}>{name}</GlassChoice>)}
-   </ChoiceRow>
+   <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}/>
    <p className="hint"><Check size={14} aria-hidden="true"/> Этот шаг можно пропустить. Вопросы о характере и ценностях появятся после регистрации.</p>
  </div>;
  if(step===7)return <div className="form-stack"><PhotoSorter photos={photos} addPhotos={addPhotos}
    removePhoto={removePhoto} movePhoto={movePhoto}/></div>;
  return <div className="form-stack"><RegistrationPreview data={data} photos={photos} editStep={editStep}/></div>;
+}
+
+export function SelectedInterests({selected,onChange}:{selected:string[];onChange:(id:string)=>void}){
+ return <section className="selected-interests-floating" aria-label="Выбранные интересы">
+   <div className="selected-interest-head"><strong>Выбрано</strong><span>{selected.length} / 15</span></div>
+   <div className="selected-interest-strip">{selected.length?selected.map(id=>
+     <InterestChip key={id} id={id} selected onClick={()=>onChange(id)}/>):
+     <span className="hint">Выбирай интересы выше · до 15</span>}</div>
+ </section>;
 }
