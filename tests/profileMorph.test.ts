@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { clamp01, morphFrame, morphTravel, PROFILE_AVATAR_SIZE, PROFILE_SNAP_THRESHOLD } from '../apps/web/src/motion/profileMorph';
+import {
+  clamp01,
+  morphFrame,
+  morphTravel,
+  PROFILE_AVATAR_SIZE,
+  PROFILE_SNAP_THRESHOLD,
+} from '../apps/web/src/motion/profileMorph';
 
 test('uniform 56px avatar uses independent fixed circular layer', () => {
   assert.equal(PROFILE_AVATAR_SIZE, 56);

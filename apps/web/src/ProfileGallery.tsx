@@ -34,7 +34,8 @@ export function ProfileGallery({ profile, display, barsRef, onPhotoChange }: Gal
   };
   const down = (event: PointerEvent<HTMLDivElement>) => {
     const frame = event.currentTarget.closest('.profile-morph-frame');
-    if (event.button !== 0 || total < 2 || frame?.classList.contains('profile-gallery-closed')) return;
+    if (event.button !== 0 || total < 2 || frame?.classList.contains('profile-gallery-closed'))
+      return;
     swipe.current = {
       id: event.pointerId,
       x: event.clientX,
@@ -75,7 +76,8 @@ export function ProfileGallery({ profile, display, barsRef, onPhotoChange }: Gal
     const dx = event.clientX - gesture.x;
     const elapsed = Math.max(25, performance.now() - gesture.time);
     const width = strip.current?.clientWidth || 360;
-    const direction = Math.abs(dx) > width * 0.22 || Math.abs(dx / elapsed) > 0.55 ? Math.sign(dx) : 0;
+    const direction =
+      Math.abs(dx) > width * 0.22 || Math.abs(dx / elapsed) > 0.55 ? Math.sign(dx) : 0;
     choose(selected.current - direction);
   };
 
@@ -96,20 +98,25 @@ export function ProfileGallery({ profile, display, barsRef, onPhotoChange }: Gal
               </div>
             ))
           ) : (
-            <div className="profile-morph-slide"><Portrait alt="Нет фото" /></div>
+            <div className="profile-morph-slide">
+              <Portrait alt="Нет фото" />
+            </div>
           )}
         </div>
       </div>
       <div className="profile-morph-photo-bars" ref={barsRef} aria-label="Фотографии профиля">
-        {total > 1 && profile.photos.map((photo, i) => (
-          <button
-            key={photo.id}
-            aria-label={`Фото ${i + 1} из ${total}`}
-            aria-current={index === i ? 'true' : undefined}
-            className={index === i ? 'active' : ''}
-            onClick={() => choose(i)}
-          ><span /></button>
-        ))}
+        {total > 1 &&
+          profile.photos.map((photo, i) => (
+            <button
+              key={photo.id}
+              aria-label={`Фото ${i + 1} из ${total}`}
+              aria-current={index === i ? 'true' : undefined}
+              className={index === i ? 'active' : ''}
+              onClick={() => choose(i)}
+            >
+              <span />
+            </button>
+          ))}
       </div>
     </>
   );

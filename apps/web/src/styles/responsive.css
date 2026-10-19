@@ -1,3 +1,76 @@
-@media(min-width:700px){body{padding:20px 0;background:radial-gradient(ellipse at 20% 30%,#e3d8ed,transparent 60%),radial-gradient(ellipse at 90% 70%,#f4dee8,transparent 50%),#f7f3f8}.app-frame{height:calc(var(--viewport-height) - 40px);border-radius:35px;border:1px solid #ffffffc9;min-height:600px}.profile-card{height:clamp(340px,calc(var(--viewport-height) - 370px),570px)}}
-@media(max-width:370px){.content{padding-left:12px;padding-right:12px}.app-header{left:8px;right:8px}.profile-name{font-size:25px}.profile-overlay{padding:15px}.action-circle{width:44px;height:44px}.action-circle.special{width:52px;height:52px}.action-bar>div>span{font-size:9px}.wizard-scroll{padding-left:19px;padding-right:19px}.wizard h1{font-size:25px}.photo-mosaic{grid-template-rows:95px 95px 90px}.bottom-nav>button{font-size:9px}.compose-row{gap:4px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}[data-reduced-motion=true] *,[data-reduced-motion=true] *:before,[data-reduced-motion=true] *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+@media (min-width: 700px) {
+  body {
+    padding: 20px 0;
+    background:
+      radial-gradient(ellipse at 20% 30%, #e3d8ed, transparent 60%),
+      radial-gradient(ellipse at 90% 70%, #f4dee8, transparent 50%), #f7f3f8;
+  }
+  .app-frame {
+    height: calc(var(--viewport-height) - 40px);
+    border-radius: 35px;
+    border: 1px solid #ffffffc9;
+    min-height: 600px;
+  }
+  .profile-card {
+    height: clamp(340px, calc(var(--viewport-height) - 370px), 570px);
+  }
+}
+@media (max-width: 370px) {
+  .content {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .app-header {
+    left: 8px;
+    right: 8px;
+  }
+  .profile-name {
+    font-size: 25px;
+  }
+  .profile-overlay {
+    padding: 15px;
+  }
+  .action-circle {
+    width: 44px;
+    height: 44px;
+  }
+  .action-circle.special {
+    width: 52px;
+    height: 52px;
+  }
+  .action-bar > div > span {
+    font-size: 9px;
+  }
+  .wizard-scroll {
+    padding-left: 19px;
+    padding-right: 19px;
+  }
+  .wizard h1 {
+    font-size: 25px;
+  }
+  .photo-mosaic {
+    grid-template-rows: 95px 95px 90px;
+  }
+  .bottom-nav > button {
+    font-size: 9px;
+  }
+  .compose-row {
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+[data-reduced-motion='true'] *,
+[data-reduced-motion='true'] *:before,
+[data-reduced-motion='true'] *:after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}

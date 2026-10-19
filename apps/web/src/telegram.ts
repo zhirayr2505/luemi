@@ -21,7 +21,11 @@ type TelegramWebApp = {
   offEvent: (name: string, callback: () => void) => void;
 };
 
-declare global { interface Window { Telegram?: { WebApp?: TelegramWebApp } } }
+declare global {
+  interface Window {
+    Telegram?: { WebApp?: TelegramWebApp };
+  }
+}
 
 export function getTelegram() {
   const app = window.Telegram?.WebApp;
@@ -42,14 +46,19 @@ export function useTelegramBridge(full: boolean, onBack: () => void, theme: stri
     const resize = () => {
       const candidate = tg?.viewportStableHeight || window.innerHeight;
       const focused = document.activeElement;
-      const typing = focused instanceof HTMLElement && !!focused.closest('input,textarea,[contenteditable="true"]');
+      const typing =
+        focused instanceof HTMLElement &&
+        !!focused.closest('input,textarea,[contenteditable="true"]');
       const rotated = window.innerWidth !== width;
       // Browser toolbar animation must not cause a moving profile viewport.
       if (tg || rotated || typing || Math.abs(candidate - stableHeight) > 155) {
         stableHeight = candidate;
         width = window.innerWidth;
       }
-      document.documentElement.style.setProperty('--viewport-height', `${Math.max(280, stableHeight)}px`);
+      document.documentElement.style.setProperty(
+        '--viewport-height',
+        `${Math.max(280, stableHeight)}px`,
+      );
     };
     if (tg) {
       tg.ready();

@@ -95,5 +95,15 @@ export function useProfilePhotoMorph(
       bars.style.opacity = '';
       frame.classList.remove('profile-gallery-closed');
     };
-  }, [scrollerRef, frameRef, photoRef, avatarRef, compactRef, captionRef, barsRef, profileId, reducedMotion]);
+  }, [
+    scrollerRef,
+    frameRef,
+    photoRef,
+    avatarRef,
+    compactRef,
+    captionRef,
+    barsRef,
+    profileId,
+    reducedMotion,
+  ]);
 }

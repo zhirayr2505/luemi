@@ -31,7 +31,10 @@ test('CSS-only native snap, finite travel and timeline-driven compositing', () =
 test('no JS snap, animated radius, timers or frame-written scroll position', () => {
   const hook = source('motion/useProfilePhotoMorph.ts');
   const pure = source('motion/profileMorph.ts');
-  assert.doesNotMatch(hook, /scrollTo\s*\(|setTimeout\s*\(|snapTarget|snapping|lastClosed|velocity/);
+  assert.doesNotMatch(
+    hook,
+    /scrollTo\s*\(|setTimeout\s*\(|snapTarget|snapping|lastClosed|velocity/,
+  );
   assert.doesNotMatch(hook, /\.style\.borderRadius|\.style\.boxShadow|\.style\.setProperty/);
   const writes = [...hook.matchAll(/scrollTop\s*=\s*([^;\n]+)/g)].map((match) => match[1].trim());
   assert.deepEqual(writes, ['0'], 'only the initial opening reset is permitted');
@@ -60,7 +63,10 @@ test('navigation and BackButton do not attach on every render', () => {
 
 test('old dead CSS absent and separate current style owners', () => {
   assert.equal(existsSync(file('style.css')), false);
-  assert.doesNotMatch(source('styles.css'), /\.logo-island-glass|\.liquid-logo-body|\.profile-morph-stage/);
+  assert.doesNotMatch(
+    source('styles.css'),
+    /\.logo-island-glass|\.liquid-logo-body|\.profile-morph-stage/,
+  );
   assert.match(source('main.tsx'), /import '\.\/logo\.css'/);
   assert.match(source('main.tsx'), /import '\.\/profileMotion\.css'/);
 });

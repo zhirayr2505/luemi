@@ -1,10 +1,20 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { AnimationBatch, SLIDE_DURATION, SLIDE_EASING, slideDirection, slideFrames } from './slide';
 
 const ReducedMotion = createContext(false);
 
 export function MotionProvider({ reduced, children }: { reduced: boolean; children: ReactNode }) {
-  const [system, setSystem] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [system, setSystem] = useState(
+    () => matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
   useEffect(() => {
     const mq = matchMedia('(prefers-reduced-motion: reduce)');
     const change = () => setSystem(mq.matches);
@@ -42,7 +52,9 @@ export function SlideDeck({ active, order, pages, className = '', flow = false }
     const viewport = to.parentElement;
     if (!viewport) return;
     const viewportWidth = viewport.getBoundingClientRect().width;
-    const fromOffset = from ? from.getBoundingClientRect().left - viewport.getBoundingClientRect().left : 0;
+    const fromOffset = from
+      ? from.getBoundingClientRect().left - viewport.getBoundingClientRect().left
+      : 0;
     batch.current.cancel();
     last.current = active;
 
@@ -60,7 +72,13 @@ export function SlideDeck({ active, order, pages, className = '', flow = false }
     };
     const focused = document.activeElement;
     if (from && focused instanceof HTMLElement && from.contains(focused)) focused.blur();
-    if (reduced || !from || previous === active || !viewportWidth || typeof to.animate !== 'function') {
+    if (
+      reduced ||
+      !from ||
+      previous === active ||
+      !viewportWidth ||
+      typeof to.animate !== 'function'
+    ) {
       settle();
       return;
     }
@@ -69,22 +87,29 @@ export function SlideDeck({ active, order, pages, className = '', flow = false }
     const profileTransition = active === 'profile' || previous === 'profile';
     if (profileTransition) {
       const options: KeyframeAnimationOptions = { duration: 170, easing: 'ease-out', fill: 'both' };
-      batch.current.run([
-        from.animate([{ opacity: 1 }, { opacity: 0 }], options),
-        to.animate([{ opacity: 0 }, { opacity: 1 }], options),
-      ], settle);
+      batch.current.run(
+        [
+          from.animate([{ opacity: 1 }, { opacity: 0 }], options),
+          to.animate([{ opacity: 0 }, { opacity: 1 }], options),
+        ],
+        settle,
+      );
       return;
     }
 
     const direction = slideDirection(previous, active, order);
     const frames = slideFrames(direction, viewportWidth, fromOffset);
-    const options: KeyframeAnimationOptions = { duration: SLIDE_DURATION, easing: SLIDE_EASING, fill: 'both' };
+    const options: KeyframeAnimationOptions = {
+      duration: SLIDE_DURATION,
+      easing: SLIDE_EASING,
+      fill: 'both',
+    };
     from.style.willChange = 'transform';
     to.style.willChange = 'transform';
-    batch.current.run([
-      from.animate(frames.outgoing, options),
-      to.animate(frames.incoming, options),
-    ], settle);
+    batch.current.run(
+      [from.animate(frames.outgoing, options), to.animate(frames.incoming, options)],
+      settle,
+    );
     const observer = new ResizeObserver(() => {
       if (viewport.getBoundingClientRect().width !== viewportWidth) {
         batch.current.cancel();
@@ -109,14 +134,22 @@ export function SlideDeck({ active, order, pages, className = '', flow = false }
             if (el) elements.current.set(key, el);
             else elements.current.delete(key);
           }}
-        >{pages[key]}</div>
+        >
+          {pages[key]}
+        </div>
       ))}
     </div>
   );
 }
 
 /** Maintains the nested tab state without a second transition controller. */
-export function SlideSwap({ active, order, children, className = '', flow = true }: {
+export function SlideSwap({
+  active,
+  order,
+  children,
+  className = '',
+  flow = true,
+}: {
   active: string;
   order: readonly string[];
   children: ReactNode;
@@ -125,5 +158,13 @@ export function SlideSwap({ active, order, children, className = '', flow = true
 }) {
   const cache = useRef<Record<string, ReactNode>>({});
   cache.current[active] = children;
-  return <SlideDeck active={active} order={order} pages={cache.current} className={className} flow={flow} />;
+  return (
+    <SlideDeck
+      active={active}
+      order={order}
+      pages={cache.current}
+      className={className}
+      flow={flow}
+    />
+  );
 }
