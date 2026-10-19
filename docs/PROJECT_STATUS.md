@@ -50,3 +50,14 @@
 - Intro logo decodes before staged title fade, CTA after visual readiness; only light/dark, lightweight radial accent, stable header/footer around scroll-only form.
 - Name Latin/Armenian/Cyrillic etc allowed with spaces, apostrophes, hyphens only; 18+ and 15 interests client-gated; 750 bio; photo mosaic 1+5 reordered by touch hold; preview has card/profile tabs sharing photo carousel.
 - **STAGING PREVIEW ONLY:** photos remain local, user data not persisted, no public accounts, no moderation or payments, no production gate passed. Real-device video confirmation still pending.
+
+## Stage 02F · Approved premium refinement · 2026-10-19
+- Approved by owner: radius 1–5000 km; radius/country/world search scopes; six one-select goals including “Пока не определился”; 10 categories with 12–16 interests each; 60 searchable languages; 66 bundled round SVG flags; single full-profile preview and one edit action.
+- Backup: `backup/pre-stage02f-20261019` at `b6aacb68186a10e2bfa40e2ffb5b475622f3b952`. Feature: `feat/stage02f-premium-finish`.
+- Telegram system BackButton remains native; NO application-made upper back button. Compact theme toggle moved beside small brand image under Telegram controls. Logo uses unchanged W06 raster with continuously looping masked highlight.
+- Keyboard: stable outside shell height, visible form area shrinks, footer is hidden rather than elevated over the keyboard; focus outline is inset and fully visible. Background beneath footer is transparent.
+- Geography: geo-first CTA/manual morph, exact ID selection, three exclusive search scopes and non-linear 5000 km range. Without a configured GEOAPIFY_API_KEY worldwide city autocomplete remains LIMITED DEMO and reverse location reports unavailable; never claim world dataset connected.
+- Interests: 10 categories (12–13 items each), 119 unique IDs, selected 15 maximum. Pinned selected-chips region is outside the scrollable form. Languages: 60 entries with search and self-hosted SVG flag badges; language flag representative only.
+- Photos: replaced previous faulty preview drag using portal at client viewport pointer position, FLIP movement of surrounding slots, edge scrolling, accessible earlier/later buttons and 1+5 principal badge. Single public-like profile preview reuses photo carousel and all public data.
+- Old theme overlay, boxed header CSS, old scroll-attached interest panel, previous 2-tab profile preview, old slider limit, and original photo-drag implementation removed rather than layered.
+- **STAGING-ONLY QA**; not a public/complete registration. Device video review and availability of real worldwide geocoder remain open.
