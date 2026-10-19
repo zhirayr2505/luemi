@@ -1,0 +1,27 @@
+name: LUEMI v5 production browser smoke (QA only)
+on:
+  push:
+    branches: [qa/profile-v5-prod-20261019]
+permissions:
+  contents: read
+jobs:
+  production-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm install --no-save playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Verify live Render health, morph and photo viewer
+        run: node qa/profile-v5-production.mjs
+      - name: Upload production screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: luemi-v5-production-screenshots
+          path: qa-shots/
+          if-no-files-found: ignore
