@@ -1,7 +1,7 @@
 import {useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import type {PhotoItem} from "../registration/PhotoSorter";
-interface Props {photos:PhotoItem[];name:string;age?:number}
+interface Slide {id:string;src:string}
+interface Props {photos:Slide[];name:string;age?:number}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number}
 export function PhotoCarousel({photos,name,age}:Props) {
  const [index,setIndex]=useState(0);
