@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { ChangeEvent, DragEvent, ReactNode } from "react";
+import type { ChangeEvent, DragEvent, ReactNode, TouchEvent, CSSProperties } from "react";
 import { birthDateValid, type RegistrationDraft } from "./model";
 
 export interface PhotoItem { id: string; src: string; file: File }
@@ -55,7 +55,7 @@ function Choice({chosen, children, onClick}:{chosen:boolean; children:ReactNode;
 function ProfilePreview({data,photos}:{data:RegistrationDraft;photos:PhotoItem[]}) {
   const [active,setActive] = useState(0);
   const startX=useRef<number|null>(null);
-  const swipeStart=(event:React.TouchEvent)=>{startX.current=event.touches[0]?.clientX??null;};
+  const swipeStart=(event:TouchEvent)=>{startX.current=event.touches[0]?.clientX??null;};
   const swipeEnd=(event:React.TouchEvent)=>{
     if(startX.current===null||photos.length<2)return;
     const distance=(event.changedTouches[0]?.clientX??startX.current)-startX.current;
@@ -140,7 +140,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
     <button disabled className="muted-button" type="button" title="Точный поиск города будет подключён после настройки геосервиса">⌖ Моё местоположение · скоро</button>
     <div className="field range-field" onPointerDownCapture={dismissKeyboard}>
       <span>Радиус поиска · {data.radius} км</span>
-      <div className="branded-slider" style={{"--range-pct":((data.radius-1)/999*100)+"%"} as React.CSSProperties}>
+      <div className="branded-slider" style={{"--range-pct":((data.radius-1)/999*100)+"%"} as CSSProperties}>
         <input aria-label={"Радиус поиска "+data.radius+" километров"} type="range" min={1} max={1000} step={1} value={data.radius} onChange={e=>patch({radius:Number(e.target.value)})}/>
       </div>
     </div>
