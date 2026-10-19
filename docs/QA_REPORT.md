@@ -50,3 +50,9 @@
 - Imported 66 valid, local circle-flags SVG assets under MIT license with original license preserved. No remote flag requests required.
 - Manual on Galaxy A55 Telegram STILL NEEDED: WebApp system header safe area, compact theme button, contrast on dark, keyboard stable footer and caret focus, 5000km log slider, custom location failure, 10 category selected bar, 60-language search, long-press/FLIP drag and snap carousel, reduced motion, swipe/scroll conflict and one preview.
 - Untested: device FPS, iPhone behavior, real provider API, offline/reconnect restoration, persisted draft/server-side validation for future publication, photo moderation. Preserve original app as backup until mobile acceptance.
+
+## Stage 02F.1 / 02G follow-up QA
+- Source: uploaded `1000068622.mp4`, 190.8 seconds / 1080 × 2340. Reviewed actual frame contact sheet at 6-second intervals and detail around intro, date, geo, interests, languages, photos and profile. Observed original dated issues as described by owner.
+- Tests now additionally assert: no old brand-liquid selector; input focus narrow glass effect; local IndexedDB photo persistence; truthful FileReader progress + completion check; no visible photo arrows; tap highlights disabled; pinned interests categories; selected language flags only; three columns, named input hint. Existing Stage 02F structural regression checks remain.
+- GitHub Actions check completed SUCCESS on code commit `85099c711f90b64e30c967373923e7fb6af6fe7f`, run `39307669207`.
+- Real-device QA still needed: photo FileReader progress/check timing, complete reopen/recovery with 3 photos, font/keyboard positioning, dark/light theme tap flash, interest subscroll, Geopicker compactness. Do not claim production UI approval until new Galaxy A55 capture.
