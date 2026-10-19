@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import type { Profile } from '../../../packages/core/domain';
 import { ageAt } from '../../../packages/core/domain';
 import { Icon, IconButton, Modal, Portrait } from './ui';
@@ -105,7 +105,7 @@ function PhotosTab({ profile }: { profile: Profile }) {
             <span className="profile-card-eyebrow">ГАЛЕРЕЯ</span>
             <h3>Фотографии</h3>
           </div>
-          <span className="profile-photo-count">{total} {total === 1 ? 'фото' : 'фото'}</span>
+          <span className="profile-photo-count">{total} {'фото'}</span>
         </div>
         {total ? (
           <div className="profile-photo-grid">
@@ -218,6 +218,19 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
     return () => observer.disconnect();
   }, [profile.id]);
 
+  // Only the visible tab's height occupies the vertical profile flow.
+  // ResizeObserver runs on layout change, never in a scroll or pointer handler.
+  useLayoutEffect(() => {
+    const container = viewport.current;
+    const panel = panels.current[active];
+    if (!container || !panel) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) container.style.height = `${Math.ceil(entry.borderBoxSize?.[0]?.blockSize ?? panel.offsetHeight)}px`;
+    });
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [active, profile.id]);
+
   // Keep the selected label in view without touching vertical profile scroll.
   useEffect(() => {
     const container = rail.current, button = buttons.current[active];
@@ -232,7 +245,7 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
     if (element) element.scrollLeft = next * element.clientWidth; // click only, never drag / RAF
   }, []);
 
-  const keyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     let next = active;
     if (event.key === 'ArrowRight') next = getTabIndex(active + 1);
     else if (event.key === 'ArrowLeft') next = getTabIndex(active - 1);

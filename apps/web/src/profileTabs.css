@@ -50,6 +50,7 @@
 }
 .profile-tabs-viewport {
   display: flex;
+  align-items: flex-start;
   width: 100%;
   min-width: 0;
   overflow-x: auto;

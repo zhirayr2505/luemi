@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from 'react';
 import { ageAt, type Profile } from '../../../packages/core/domain';
 import { Icon } from './ui';
 import { ProfileGallery } from './ProfileGallery';
+import { ProfileTabs } from './ProfileTabs';
 import { useProfilePhotoMorph } from './motion/useProfilePhotoMorph';
 
 type Props = { profile: Profile; reducedMotion?: boolean; children?: ReactNode };
@@ -26,28 +27,7 @@ export function ProfileMotion({ profile, reducedMotion = false, children }: Prop
           <span className="profile-snap-closed" />
         </div>
         <div className="profile-motion-details">
-          <section className="glass section">
-            <h3>О себе</h3>
-            <p>{profile.about || 'Здесь появится немного о тебе.'}</p>
-          </section>
-          <section className="glass section">
-            <h3>Интересы</h3>
-            <div className="chips colored">
-              {profile.interests.length ? (
-                profile.interests.map((interest, i) => (
-                  <span key={interest} style={{ '--chip-tone': i % 7 } as React.CSSProperties}>
-                    {interest}
-                  </span>
-                ))
-              ) : (
-                <p>Пока не указаны</p>
-              )}
-            </div>
-          </section>
-          <section className="glass section">
-            <h3>Языки общения</h3>
-            <p>{profile.languages.join(' · ') || 'Не указаны'}</p>
-          </section>
+          <ProfileTabs profile={profile} />
         </div>
         {children}
       </main>
