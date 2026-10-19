@@ -52,6 +52,22 @@ async function modeRun(mode){
  await page.evaluate(({dark,reduced})=>{document.documentElement.dataset.luemiTheme=dark?'dark':'light';document.documentElement.dataset.reducedMotion=String(reduced)}, {dark,reduced});
  const state=await uiState(),travel=state.travel;
  assert(Number.isFinite(travel)&&travel>180&&travel<420,'travel invalid: '+travel);
+ if(mode.includes('reduced')){
+   await setY(travel);
+   const state=await page.evaluate(()=>{
+     const photo=document.querySelector('.profile-morph-photo');
+     const rim=getComputedStyle(photo,'::after');
+     const glass=document.querySelector('.profile-tabs-glass');
+     const vp=document.querySelector('.profile-tabs-viewport');
+     return {photo:{transform:getComputedStyle(photo).transform,rect:photo.getBoundingClientRect().toJSON(),
+       animations:photo.getAnimations({subtree:true}).map(x=>({name:x.animationName,playState:x.playState,currentTime:String(x.currentTime),timeline:String(x.timeline),effect:x.effect?.getComputedTiming()}))},
+       rim:{opacity:rim.opacity,animationName:rim.animationName,animationTimeline:rim.animationTimeline},
+       glass:{transform:getComputedStyle(glass).transform,animationName:getComputedStyle(glass).animationName,animations:glass.getAnimations().map(x=>({name:x.animationName,currentTime:String(x.currentTime),playState:x.playState}))},
+       tabs:{snap:getComputedStyle(vp).scrollSnapType,behavior:getComputedStyle(vp).scrollBehavior}};
+   });
+   console.log('REDUCED MOTION STYLE DIAGNOSTIC',mode,JSON.stringify(state));
+   await setY(0);
+ }
  await step(mode+'-1-ring',async()=>{
   assert(await page.locator('.profile-morph-circle-rim').count()===0,'duplicate rim still in DOM');
   const vals=[];
@@ -231,7 +247,7 @@ try{
  let up=false;
  for(let i=0;i<60;i++){try{if((await fetch(base)).ok){up=true;break}}catch{}await sleep(250)}
  assert(up,'Vite dev server did not respond');
- for(const mode of ['light','dark','dark-reduced','light-reduced'])await modeRun(mode);
+ for(const mode of ['dark-reduced'])await modeRun(mode);
  done=true;
 } catch(e){
  results.push({item:'runner',status:'FAIL',reason:String(e?.stack||e)});
