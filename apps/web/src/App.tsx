@@ -6,6 +6,7 @@ import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
 import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registration/Steps";
 import {loadLocalDraft,loadLocalPhotos,saveLocalDraft,saveLocalPhotos,clearLocalDraft} from "./registration/local-draft";
+import {DiscoveryApp} from "./discovery/DiscoveryApp";
 
 declare global {
   interface Window {
@@ -73,6 +74,7 @@ export function App() {
   const [welcomeExiting,setWelcomeExiting] = useState(false);
   const transitionTimer = useRef<number | null>(null);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
+  const [demoOpen,setDemoOpen] = useState(false);
   const [restored] = useState(()=>loadLocalDraft());
   const [step,setStep] = useState(restored?.step??1);
   const [draft,setDraft] = useState<RegistrationDraft>(()=>restored?.draft??newDraft());
@@ -249,13 +251,13 @@ export function App() {
   useEffect(()=>{
     const button=window.Telegram?.WebApp?.BackButton;
     if(!button)return;
-    if(phase==="form"&&auth==="authorized"){
+    if(phase==="form"&&auth==="authorized"&&!demoOpen){
       button.show();
       button.onClick(back);
       return ()=>{button.offClick(back);button.hide();};
     }
     button.hide();
-  },[phase,auth,back]);
+  },[phase,auth,back,demoOpen]);
   const changeStep=(target:number)=>{
     setError("");
     setStep(Math.max(1,Math.min(8,target)));
@@ -349,6 +351,8 @@ export function App() {
   };
   const changeTheme=()=>setTheme(value=>value==="light"?"dark":"light");
   const themeName=theme==="light"?"Тёмная":"Светлая";
+  const beginDemo=()=>{setDemoOpen(true);setError("");};
+  const exitDemo=()=>{setDemoOpen(false);setPhase("form");setStep(8);};
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
@@ -357,6 +361,8 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
+    {demoOpen&&auth==="authorized"?<DiscoveryApp draft={draft} theme={theme} onTheme={changeTheme} onExit={exitDemo}/>:null}
+    {!demoOpen&&
     {(auth!=="authorized"||phase==="welcome")?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
@@ -384,7 +390,7 @@ export function App() {
       </header>
       <div key={step} className="onboard-body" ref={contentRef}>
         <RegistrationStep data={draft} patch={patch} step={step} photos={photos}
-          addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep} resetDraft={resetDraft}/>
+          addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep} resetDraft={resetDraft} openDemo={beginDemo}/>
       </div>
       {step===5&&<SelectedInterests selected={draft.interests}
         onChange={id=>patch({interests:draft.interests.filter(x=>x!==id)})}/>}
@@ -397,5 +403,6 @@ export function App() {
         </div>
       </div>
     </section>}
+    }
   </main>;
 }
