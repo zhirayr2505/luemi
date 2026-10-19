@@ -2,7 +2,7 @@ import type {RegistrationDraft} from "../registration/model";
 export type MainTab="discover"|"likes"|"chats"|"profile";
 export type DiscoveryTab="feed"|"for-you"|"nearby";
 export type DemoKind="save"|"pass"|"like"|"special";
-export interface DemoPhoto {id:string;src:string}
+export interface DemoPhoto {id:string;src:string;fallback?:string}
 export interface DemoPerson {
  id:string;name:string;age:number;gender:"woman"|"man"|"other";city:string;country:string;countryCode:string;
  goal:Exclude<RegistrationDraft["goal"],"">;interests:string[];languages:string[];
