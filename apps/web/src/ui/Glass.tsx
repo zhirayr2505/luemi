@@ -1,4 +1,4 @@
-import type {ReactNode,InputHTMLAttributes} from "react";
+import type {ReactNode,ComponentPropsWithRef} from "react";
 import {Check,ArrowLeft,ArrowRight} from "lucide-react";
 export function GlassField({label,children,hint}:{label:string;children:ReactNode;hint?:string}){
  return <label className="glass-field"><span className="glass-field-label">{label}</span>{children}{hint&&<small>{hint}</small>}</label>;
@@ -18,6 +18,6 @@ export function GlassArrow({forward=false,disabled=false,onClick}:{forward?:bool
    {forward?<ArrowRight size={26} strokeWidth={1.9}/>:<ArrowLeft size={26} strokeWidth={1.9}/>}
  </button>;
 }
-export function GlassTextInput(props:InputHTMLAttributes<HTMLInputElement>){
+export function GlassTextInput(props:ComponentPropsWithRef<"input">){
  return <input {...props} className={"glass-control "+(props.className??"")}/>;
 }
