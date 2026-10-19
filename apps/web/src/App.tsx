@@ -41,7 +41,7 @@ export function App() {
         setState("authorized");
         webApp?.ready?.();
         webApp?.expand?.();
-      } catch (error) {
+      } catch {
         if (!controller.signal.aborted) setState("error");
       }
     })();
