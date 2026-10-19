@@ -24,6 +24,10 @@ function illustration(index:number,variation:number):string{
  </svg>`;
  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
+/** Six AI-generated reference portraits, royalty-free Pixabay Content License.
+ * These are NOT real LUEMI users or actual people. Remote images are only for
+ * the staging demo; fall back to original in-repo illustrated avatars offline. */
+const portraitSources=["https://cdn.pixabay.com/photo/2024/12/05/15/18/ai-generated-9246846_1280.jpg","https://cdn.pixabay.com/photo/2025/04/18/05/26/ai-generated-9541651_1280.jpg","https://cdn.pixabay.com/photo/2026/01/01/12/33/ai-generated-10046459_1280.jpg","https://cdn.pixabay.com/photo/2026/02/07/12/42/atal07-ultra-realistic-portrait-10109677_1280.jpg","https://cdn.pixabay.com/photo/2023/12/09/19/09/ai-generated-8439990_1280.jpg","https://cdn.pixabay.com/photo/2023/10/21/08/58/ai-generated-8331057_1280.jpg"];
 const base=[
  ["mira","Мира",25,"woman","Краснодар","Россия","ru","relationship","Музыка|Путешествия|Фотография|Кофе|Книги","ru|en","Люблю уютные кофейни, море и длинные разговоры. Ценю искренних и добрых людей."],
  ["sofia","София",27,"woman","Тбилиси","Грузия","ge","serious","Книги|Живопись|Кофе|Танцы","ru|en","Вдохновение нахожу в маленьких кафе, старых улочках и встречах с близкими."],
@@ -36,5 +40,8 @@ export const demoPeople:DemoPerson[]=base.map((p,index)=>({
  id:p[0],name:p[1],age:p[2],gender:p[3] as DemoPerson["gender"],city:p[4],country:p[5],countryCode:p[6],
  goal:p[7] as DemoPerson["goal"],premium:index===0||index===3,interests:p[8].split("|").map(x=>x.toLocaleLowerCase("ru").replace(/\s+/g,"-")),
  languages:p[9].split("|"),about:p[10],
- photos:[{id:p[0]+"-1",src:illustration(index,0)},{id:p[0]+"-2",src:illustration(index,1)}]
+ photos:[
+ {id:p[0]+"-1",src:portraitSources[index],fallback:illustration(index,0)},
+ {id:p[0]+"-2",src:portraitSources[index],fallback:illustration(index,1)}
+ ]
 }));
