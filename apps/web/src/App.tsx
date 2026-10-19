@@ -64,7 +64,6 @@ function prepareBrandImage(signal: AbortSignal): Promise<void> {
 
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
-  const [brandReady,setBrandReady] = useState(false);
   const [introElapsed,setIntroElapsed] = useState(false);
   const [welcomeExiting,setWelcomeExiting] = useState(false);
   const transitionTimer = useRef<number | null>(null);
@@ -124,7 +123,7 @@ export function App() {
         const visualsReady = Promise.all([
           prepareBrandImage(controller.signal),
           document.fonts.ready
-        ]).then(() => {if(!disposed) setBrandReady(true);});
+        ]);
         const identityReady: Promise<BootstrapResponse | null> = !initData
           ? Promise.resolve(null)
           : (async () => {
