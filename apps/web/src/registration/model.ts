@@ -1,6 +1,15 @@
 export type Gender = "" | "man" | "woman" | "other";
 export type Audience = "" | "women" | "men" | "everyone";
-export type Goal = "" | "relationship" | "dates" | "friends";
+export type Goal = "" | "serious" | "relationship" | "dates" | "friendship" | "communication" | "undecided";
+export type SearchScope = "radius" | "country" | "world";
+export const goals = [
+ {id:"serious",label:"Серьёзные отношения"},
+ {id:"relationship",label:"Отношения"},
+ {id:"dates",label:"Свидания"},
+ {id:"friendship",label:"Дружба"},
+ {id:"communication",label:"Общение"},
+ {id:"undecided",label:"Пока не определился"}
+] as const;
 export interface CitySelection {
   id: string;
   city: string;
@@ -12,13 +21,13 @@ export interface RegistrationDraft {
   name: string; trialConsent: boolean;
   day: string; month: string; year: string; gender: Gender;
   country: string; city: string; placeId: string; countryCode: string;
-  radius: number; worldwide: boolean;
+  radius: number; searchScope: SearchScope;
   audience: Audience; ageMin: number; ageMax: number; goal: Goal;
   interests: string[]; about: string; languages: string[];
 }
 export const newDraft=(name=""):RegistrationDraft=>({
   name,trialConsent:false,day:"",month:"",year:"",gender:"",
-  country:"",city:"",placeId:"",countryCode:"",radius:100,worldwide:false,
+  country:"",city:"",placeId:"",countryCode:"",radius:100,searchScope:"radius",
   audience:"",ageMin:18,ageMax:35,goal:"",
   interests:[],about:"",languages:[]
 });
@@ -53,9 +62,9 @@ export function validateStep(d:RegistrationDraft,step:number,count:number,today=
       return d.gender?null:"Выбери вариант пола.";
     case 3:
       if(!selectedCityValid(d))return "Выбери город из предложенного списка.";
-      return Number.isInteger(d.radius)&&d.radius>=1&&d.radius<=1000?null:"Радиус: от 1 до 1000 км.";
+      return ["radius","country","world"].includes(d.searchScope)&&Number.isInteger(d.radius)&&d.radius>=1&&d.radius<=5000?null:"Радиус: от 1 до 5000 км.";
     case 4:
-      if(!d.audience||!d.goal)return "Выбери предпочтения и цель знакомства.";
+      if(!d.audience||!goals.some(g=>g.id===d.goal))return "Выбери предпочтения и цель знакомства.";
       return d.ageMin>=18&&d.ageMax<=80&&d.ageMin<=d.ageMax?null:"Проверь диапазон возраста.";
     case 5:return d.interests.length<=15?null:"Максимум 15 интересов.";
     case 6:return [...d.about].length<=750?null:"Максимум 750 символов.";
