@@ -68,8 +68,25 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
    <GlassCheckbox checked={data.worldwide} onChange={worldwide=>patch({worldwide})}>
      <Globe2 size={17} aria-hidden="true"/> Искать по всему миру
    </GlassCheckbox>
-   <button className="glass-choice location-button" disabled type="button" title="Включим с подтверждённым reverse geocoding">
-     <LocateFixed size={18}/> Моё местоположение · скоро
+   <button className="glass-choice location-button" type="button" disabled={loading}
+     onClick={()=>{
+       if(!navigator.geolocation){setError("Это устройство не поддерживает геолокацию.");return;}
+       setLoading(true);setError("");
+       navigator.geolocation.getCurrentPosition(async position=>{
+         try {
+           const response=await fetch("/api/geo/reverse",{method:"POST",
+             headers:{"Content-Type":"application/json"},
+             body:JSON.stringify({lat:position.coords.latitude,lon:position.coords.longitude})});
+           if(!response.ok)throw Error("Сейчас геолокация недоступна. Выбери город вручную.");
+           const data=await response.json() as {result?:Place};
+           if(!data.result)throw Error("Город не найден. Введи название вручную.");
+           select(data.result);
+         }catch(e){setError(e instanceof Error?e.message:"Не удалось найти город.");}
+         finally{setLoading(false);}
+       },()=>{setError("Нет разрешения на геолокацию. Можно выбрать город вручную.");setLoading(false);},
+       {enableHighAccuracy:false,timeout:8000,maximumAge:120000});
+     }}>
+     <LocateFixed size={18}/> Моё местоположение
    </button>
    <p className="hint">Геолокация только по разрешению. Точный адрес не публикуется.</p>
  </div>;
