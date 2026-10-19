@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent,CSSProperties } from "react";
 import {ArrowRight,Moon,Sun} from "lucide-react";
 import {GlassArrow} from "./ui/Glass";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
@@ -66,6 +66,7 @@ function prepareBrandImage(signal: AbortSignal): Promise<void> {
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
   const [introElapsed,setIntroElapsed] = useState(false);
+  const [visualReady,setVisualReady] = useState(false);
   const [welcomeExiting,setWelcomeExiting] = useState(false);
   const transitionTimer = useRef<number | null>(null);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
@@ -96,13 +97,16 @@ export function App() {
         // Unsupported clients retain Telegram's expanded, non-fullscreen UI.
       }
     });
-    const timer=window.setTimeout(()=>setIntroElapsed(true),1800);
     return ()=>{
       window.cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
       if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
     };
   },[]);
+  useEffect(()=>{
+    if(!visualReady)return;
+    const timer=window.setTimeout(()=>setIntroElapsed(true),1950);
+    return ()=>window.clearTimeout(timer);
+  },[visualReady]);
   useEffect(()=>{
     const webApp=window.Telegram?.WebApp;
     try{
@@ -127,7 +131,7 @@ export function App() {
         const visualsReady = Promise.all([
           prepareBrandImage(controller.signal),
           document.fonts.ready
-        ]);
+        ]).then(()=>{if(!disposed)setVisualReady(true);});
         const identityReady: Promise<BootstrapResponse | null> = !initData
           ? Promise.resolve(null)
           : (async () => {
@@ -275,12 +279,12 @@ export function App() {
   };
   const themeName=theme==="light"?"Тёмная":"Светлая";
   return <main ref={rootRef} className={"luemi-shell"+(themePulse?" theme-pulsing":"")} data-theme={activeTheme} data-phase={phase}
-    style={themePulse?{"--pulse-x":themePulse.x+"px","--pulse-y":themePulse.y+"px"} as React.CSSProperties:undefined}
+    style={themePulse?{"--pulse-x":themePulse.x+"px","--pulse-y":themePulse.y+"px"} as CSSProperties:undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme}
       aria-label={"Включить тему: "+themeName}>{theme==="light"?<Moon size={22} strokeWidth={1.7}/>:<Sun size={22} strokeWidth={1.7}/>}</button></div>
-    {(auth!=="authorized"||phase==="welcome")?<section className={"entry-state"+(welcomeExiting?" exiting":"")} aria-live="polite">
+    {(auth!=="authorized"||phase==="welcome")?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
@@ -288,7 +292,7 @@ export function App() {
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>window.location.reload()}>Повторить</button></>}
-      {auth==="authorized"&&introElapsed&&<div className="intro-cta">
+      {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
         <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
           Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
         </button>
