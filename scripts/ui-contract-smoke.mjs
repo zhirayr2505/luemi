@@ -69,14 +69,14 @@ assertCheck("single viewport Feed without legacy scroll wrapper",discoveryCss.in
  && discoveryCss.includes(".discovery-page{height:100%")&&!discoveryCss.includes(".discovery-feed-scroller")
  && !discovery.includes("discovery-filter-row"));
 assertCheck("logo and exactly three icon-only controls inside its width",discovery.includes("discovery-header-controls")
- && discoveryCss.includes(".discovery-header-controls{width:117px")
+ && discoveryCss.includes(".discovery-header-controls{width:105px")
  && discovery.includes("aria-label=\"Сохранённые анкеты\"")
  && discovery.includes("aria-label=\"Фильтры\""));
 assertCheck("moving page AND underline follow same gesture",discovery.includes("dragX/3")&&discovery.includes('+"px),0,0)"')
  && discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
 assertCheck("all profile facts and five separate action buttons inside photo card",discovery.indexOf('className="discovery-card-overlay"')>0
  && discovery.indexOf('className="discovery-actions"')>discovery.indexOf('className="discovery-card-overlay"')
- && discovery.indexOf('className="discovery-actions"')<discovery.indexOf('</article>'));
+ && discovery.indexOf('className="discovery-actions"')>discovery.indexOf('</article>'));
 assertCheck("no old standalone glass action tray",!discoveryCss.includes(".discovery-card-facts")
  && !discoveryCss.includes(".discovery-action-hint") && !discoveryCss.includes(".discovery-city"));
 assertCheck("real finger-tracking photo carousel retained with full-width bars",discoveryCss.includes(".discovery-photo .photo-progress")
@@ -85,3 +85,16 @@ assertCheck("premium simulated account and capped interests",discovery.includes(
  && discovery.includes("Crown")&&discovery.includes("person.interests.slice(0,3)")
  && fixture.includes("premium:index===0"));
 console.log("LUEMI Stage 03 Feed Polish UI contracts PASS");
+
+const interestSheet=read("apps/web/src/discovery/InterestsSheet.tsx");
+assertCheck("saved moved onto top-right card and filled when selected",discovery.includes('className={"discovery-save-control"')&&discovery.includes('fill={feed.saved.includes(person.id)?'));
+assertCheck("four separate footer actions and a top bookmark",discovery.includes('["undo","Отменить"')&&discovery.includes('["special","Особенная симпатия"')&&!discovery.includes('["save","Сохранить",Bookmark]'));
+assertCheck("hidden undecided goal on feed AND public profile",discovery.includes('p.goal==="undecided"')&&discoveryProfile.includes('person.goal==="undecided"'));
+assertCheck("gradient registration interests remain enabled",discoveryCss.includes(".discovery-interests>.chip")&&!discoveryCss.includes("background:rgba(244,230,255,.85)!important"));
+assertCheck("interests +N opens sheet, not full profile",discovery.includes('setInterestOpen(person.id)')&&interestSheet.includes('className="discovery-interests-sheet"'));
+assertCheck("Deck Lift uses one locked timed action",discovery.includes("locked.current=true")&&discovery.includes("deck-exiting")&&discoveryCss.includes(".deck-exiting .discovery-deck-current"));
+assertCheck("correct inverse tracking of page and line",discovery.includes('tabIndex*100+"% - "+dragX/3'));
+assertCheck("rounded Liquid Glass bottom island and active icon only",discoveryCss.includes(".discovery-bottom-nav{")&&discoveryCss.includes("border-radius:29px")&&discoveryCss.includes(".discovery-nav-item.active{color:#aa76d8;background:transparent"));
+assertCheck("right swipe closes profile but excludes photos",discoveryProfile.includes("onPointerDown={down}")&&discoveryProfile.includes('.discovery-profile-photo,.carousel-frame'));
+assertCheck("six women for exclusive demo fixture",fixture.includes('"alisa"')&&fixture.includes('"lina"')&&!fixture.includes('"aram"'));
+console.log("LUEMI Stage 03 Feed Polish 2 UI smoke PASS");
