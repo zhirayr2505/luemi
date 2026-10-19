@@ -5,37 +5,42 @@ import {
   morphFrame,
   morphTravel,
   PROFILE_AVATAR_SIZE,
-  PROFILE_SNAP_THRESHOLD,
 } from '../apps/web/src/motion/profileMorph';
 
-test('uniform 56px avatar uses independent fixed circular layer', () => {
+test('one continuous photograph ends at exactly 56px for each screen width', () => {
   assert.equal(PROFILE_AVATAR_SIZE, 56);
-  assert.equal(PROFILE_SNAP_THRESHOLD, 0.3);
   for (const width of [320, 360, 393, 480]) {
-    const travel = morphTravel(width);
-    assert.ok(travel >= 220 && travel <= 325);
-    const open = morphFrame(0, travel);
-    const closed = morphFrame(travel, travel);
+    const travel = morphTravel(width),
+      scale = 56 / width;
+    const open = morphFrame(0, travel, scale),
+      closed = morphFrame(travel, travel, scale);
     assert.equal(open.heroScale, 1);
-    assert.equal(open.heroOpacity, 1);
-    assert.equal(open.avatarOpacity, 0);
-    assert.equal(closed.heroOpacity, 0);
-    assert.equal(closed.avatarOpacity, 1);
+    assert.ok(Math.abs(closed.heroScale * width - 56) < 0.00001);
     assert.equal(closed.compactOpacity, 1);
+    assert.equal(closed.circleRimOpacity, 1);
+    assert.equal(closed.captionOpacity, 0);
   }
 });
-
-test('read-only motion mapping is reversible, clamped and monotone', () => {
+test('morph always has a visible photograph, reversed gestures retrace one path', () => {
   for (const travel of [220, 295, 325]) {
-    let previous = 1;
-    for (let position = 0; position < travel + 200; position += 3) {
-      const frame = morphFrame(position, travel);
-      assert.deepEqual(frame, morphFrame(position, travel));
-      assert.ok(frame.heroScale <= previous + 1e-10);
-      assert.ok(frame.compactOpacity >= 0 && frame.compactOpacity <= 1);
-      previous = frame.heroScale;
+    let prev = 1;
+    for (let y = 0; y <= travel + 120; y += 3) {
+      const f = morphFrame(y, travel, 0.14);
+      assert.ok(f.heroScale > 0 && f.heroScale <= prev + 1e-9);
+      assert.deepEqual(f, morphFrame(y, travel, 0.14));
+      prev = f.heroScale;
     }
   }
   assert.equal(clamp01(NaN), 0);
   assert.equal(morphFrame(NaN, 0).progress, 0);
+});
+
+test('compact glass and circle rim do not cover a still-large portrait', () => {
+  const travel = 295;
+  const at90 = morphFrame(travel * 0.9, travel, 0.16);
+  assert.equal(at90.compactOpacity, 0);
+  assert.equal(at90.circleRimOpacity, 0);
+  const shut = morphFrame(travel, travel, 0.16);
+  assert.equal(shut.compactOpacity, 1);
+  assert.equal(shut.circleRimOpacity, 1);
 });
