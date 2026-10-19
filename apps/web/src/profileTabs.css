@@ -29,7 +29,7 @@
   overscroll-behavior-x: contain;
   isolation: isolate;
   box-shadow:
-    0 -6px 0 var(--luemi-bg),
+    0 -12px 0 var(--luemi-bg),
     inset 0 1px 1px rgba(255, 255, 255, 0.86),
     0 8px 23px rgba(91, 52, 125, 0.07);
 }
@@ -656,4 +656,39 @@
   100% {
     transform: translateX(400%) scaleX(1);
   }
+}
+
+/* In reduced-motion environments Chromium may disable scroll timelines entirely.
+   Keep the glass selection visible using the already-settled aria-selected tab. */
+@media (prefers-reduced-motion: reduce) {
+  .profile-tabs-glass {
+    animation: none;
+  }
+  .profile-tabs-rail:has(#profile-tab-1.is-active) .profile-tabs-glass {
+    transform: translateX(100%);
+  }
+  .profile-tabs-rail:has(#profile-tab-2.is-active) .profile-tabs-glass {
+    transform: translateX(200%);
+  }
+  .profile-tabs-rail:has(#profile-tab-3.is-active) .profile-tabs-glass {
+    transform: translateX(300%);
+  }
+  .profile-tabs-rail:has(#profile-tab-4.is-active) .profile-tabs-glass {
+    transform: translateX(400%);
+  }
+}
+.profile-detail-root[data-reduced-motion='true'] .profile-tabs-glass {
+  animation: none;
+}
+.profile-detail-root[data-reduced-motion='true'] .profile-tabs-rail:has(#profile-tab-1.is-active) .profile-tabs-glass {
+  transform: translateX(100%);
+}
+.profile-detail-root[data-reduced-motion='true'] .profile-tabs-rail:has(#profile-tab-2.is-active) .profile-tabs-glass {
+  transform: translateX(200%);
+}
+.profile-detail-root[data-reduced-motion='true'] .profile-tabs-rail:has(#profile-tab-3.is-active) .profile-tabs-glass {
+  transform: translateX(300%);
+}
+.profile-detail-root[data-reduced-motion='true'] .profile-tabs-rail:has(#profile-tab-4.is-active) .profile-tabs-glass {
+  transform: translateX(400%);
 }
