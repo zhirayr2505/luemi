@@ -657,40 +657,4 @@
     transform: translateX(400%) scaleX(1);
   }
 }
-@keyframes luemi-tab-glass-reduced {
-  0% {
-    transform: translateX(0);
-  }
-  12.5% {
-    transform: translateX(50%);
-  }
-  25% {
-    transform: translateX(100%);
-  }
-  37.5% {
-    transform: translateX(150%);
-  }
-  50% {
-    transform: translateX(200%);
-  }
-  62.5% {
-    transform: translateX(250%);
-  }
-  75% {
-    transform: translateX(300%);
-  }
-  87.5% {
-    transform: translateX(350%);
-  }
-  100% {
-    transform: translateX(400%);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .profile-tabs-glass {
-    animation-name: luemi-tab-glass-reduced;
-  }
-}
-[data-reduced-motion='true'] .profile-tabs-glass {
-  animation-name: luemi-tab-glass-reduced;
-}
+

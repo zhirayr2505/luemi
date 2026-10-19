@@ -445,7 +445,15 @@
     --profile-side: 12px;
   }
 }
+/* Reduced-motion keeps the rim's final state reachable without an animated fade. */
+@keyframes luemi-photo-rim-reduced {
+  0%, 49% { opacity: 0; }
+  51%, 100% { opacity: 1; }
+}
 @media (prefers-reduced-motion: reduce) {
+  .profile-morph-photo::after {
+    animation-name: luemi-photo-rim-reduced;
+  }
   .profile-morph-photo,
   .profile-morph-compact,
   .profile-morph-caption,
@@ -453,6 +461,9 @@
     animation-timing-function: steps(1, end);
     will-change: auto;
   }
+}
+[data-reduced-motion='true'] .profile-morph-photo::after {
+  animation-name: luemi-photo-rim-reduced;
 }
 [data-reduced-motion='true'] .profile-morph-photo,
 [data-reduced-motion='true'] .profile-morph-compact,
