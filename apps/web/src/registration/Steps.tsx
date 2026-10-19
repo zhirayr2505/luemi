@@ -49,7 +49,7 @@ function ProfilePreview({data,photos}:{data:RegistrationDraft;photos:PhotoItem[]
   </div>;
 }
 function ageOf(d:RegistrationDraft):number {
-  const today=new Date();let age=today.getFullYear()-Number(d.year);
+  const today=new Date();const age=today.getFullYear()-Number(d.year);
   const notYet=today.getMonth()+1<Number(d.month)||(today.getMonth()+1===Number(d.month)&&today.getDate()<Number(d.day));
   return age-(notYet?1:0);
 }
