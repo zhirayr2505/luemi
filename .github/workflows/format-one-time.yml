@@ -1,0 +1,30 @@
+name: LUEMI one-time Prettier cleanup
+on:
+  push:
+    branches: [refactor/profile-native-scroll-v4]
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run format
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - name: Commit formatting and synced npm lock
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps packages tests scripts package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'style: format LUEMI source with Prettier'
+            git push origin HEAD:refactor/profile-native-scroll-v4
+          fi
