@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { alina, type DemoState, type Profile } from '../../../packages/core/domain';
-import { Button, Empty, Icon, IconButton, Modal, Portrait, PublicProfile } from './ui';
+import { Button, Empty, Icon, IconButton, Modal, Portrait } from './ui';
 import { clearMedia } from './storage';
 type Props = {
   state: DemoState;
@@ -31,8 +31,9 @@ export function ProfilePage({ state, setState, onRegister, openProfile, notify }
           {p.name ? 'Редактировать анкету' : 'Создать анкету'}
         </Button>
         {p.name && (
-          <button className="text-button" onClick={() => openProfile(p)}>
-            Как меня увидят другие
+          <button className="text-button profile-preview-link" onClick={() => openProfile(p)}>
+            <span>Открыть профиль и разделы</span>
+            <small>О себе · Блики · Фото · Аккаунт · Подарки</small>
           </button>
         )}
       </div>
@@ -42,8 +43,12 @@ export function ProfilePage({ state, setState, onRegister, openProfile, notify }
         tabIndex={0}
         onClick={() => setPage('LUEMI Premium')}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') setPage('LUEMI Premium');
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setPage('LUEMI Premium');
+          }
         }}
+        aria-haspopup="dialog"
       >
         <>
           <img

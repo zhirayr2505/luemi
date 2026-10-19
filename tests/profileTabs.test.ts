@@ -15,6 +15,15 @@ test('five LUEMI profile tabs are present and About keeps approved core fields',
   assert.match(tabs, /Информация об аккаунте/);
 });
 
+test('owner profile exposes a clear route to the shared five-tab profile viewer', () => {
+  const ownProfile = source('Profile.tsx');
+  const entry = source('main.tsx');
+  assert.match(ownProfile, /Открыть профиль и разделы/);
+  for (const name of ['О себе', 'Блики', 'Фото', 'Аккаунт', 'Подарки'])
+    assert.ok(ownProfile.includes(name), name);
+  assert.match(entry, /import '\.\/profilePage\.css'/);
+});
+
 test('native finger-following horizontal snap is independent of vertical profile morph', () => {
   const css = source('profileTabs.css');
   const tabs = source('ProfileTabs.tsx');

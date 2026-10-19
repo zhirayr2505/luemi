@@ -1,0 +1,180 @@
+/* Owner profile home: the account controls remain separate from the shared
+   full profile viewer, but use the same quiet Soft Glass surface language. */
+.profile-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.profile-title h1 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.own-profile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  padding: 25px 20px 19px;
+  border-radius: 28px;
+  text-align: center;
+  background:
+    radial-gradient(
+        ellipse 90% 45% at 50% 0,
+        rgba(255, 255, 255, 0.82),
+        transparent 100%
+      ),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.74), rgba(242, 230, 251, 0.68));
+}
+.own-avatar {
+  width: 92px;
+  height: 92px;
+  margin-bottom: 3px;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  box-shadow: 0 8px 24px rgba(86, 53, 110, 0.16);
+}
+.own-profile h2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 20px;
+}
+.own-profile > p {
+  max-width: 290px;
+  color: var(--luemi-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.own-profile > .button {
+  width: 100%;
+  margin-top: 4px;
+}
+.profile-preview-link {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 5px 8px;
+}
+.profile-preview-link small {
+  color: var(--luemi-text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.premium-banner,
+.wallet-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 23px;
+  box-shadow: 0 9px 27px rgba(69, 43, 88, 0.09);
+}
+.premium-banner {
+  cursor: pointer;
+  background: linear-gradient(125deg, rgba(229, 214, 249, 0.91), rgba(249, 226, 239, 0.88));
+}
+.premium-banner > img,
+.wallet-row > img {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+.premium-banner > div,
+.wallet-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.premium-banner h2 {
+  font-size: 15px;
+  letter-spacing: -0.2px;
+}
+.premium-banner p,
+.wallet-row p {
+  margin-top: 3px;
+  color: var(--luemi-text-muted);
+  font-size: 11px;
+}
+.premium-banner > .icon {
+  color: var(--luemi-icon);
+}
+.wallet-row {
+  background: var(--glass);
+}
+.wallet-row strong {
+  font-size: 14px;
+}
+.profile-menu {
+  overflow: hidden;
+  margin-top: 14px;
+  padding: 4px 14px;
+  border-radius: 23px;
+}
+.profile-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 53px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.profile-menu > button:last-child {
+  border-bottom: 0;
+}
+.profile-menu > button > .icon:first-child {
+  color: var(--luemi-icon);
+}
+.profile-menu > button > span {
+  flex: 1;
+  min-width: 0;
+}
+.profile-menu > button > small {
+  color: var(--luemi-text-muted);
+}
+.profile-menu > button > .icon:last-child {
+  color: var(--luemi-text-muted);
+}
+.pause-switch {
+  margin: 8px 2px 20px;
+}
+.pause-switch strong {
+  font-size: 13px;
+}
+
+[data-luemi-theme='dark'] .own-profile {
+  background:
+    radial-gradient(
+        ellipse 90% 45% at 50% 0,
+        rgba(206, 172, 230, 0.14),
+        transparent 100%
+      ),
+    linear-gradient(145deg, rgba(58, 43, 73, 0.92), rgba(41, 32, 56, 0.92));
+}
+[data-luemi-theme='dark'] .own-avatar,
+[data-luemi-theme='dark'] .premium-banner,
+[data-luemi-theme='dark'] .wallet-row {
+  border-color: rgba(223, 192, 241, 0.26);
+}
+[data-luemi-theme='dark'] .premium-banner {
+  background: linear-gradient(125deg, rgba(82, 59, 108, 0.9), rgba(83, 48, 72, 0.88));
+}
+
+@media (max-width: 370px) {
+  .own-profile {
+    padding-right: 15px;
+    padding-left: 15px;
+  }
+  .premium-banner,
+  .wallet-row {
+    gap: 10px;
+    padding: 13px;
+  }
+}
