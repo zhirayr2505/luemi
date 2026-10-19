@@ -10,7 +10,10 @@ test('one native scroller, two fixed-radius photo layers and separate overlay', 
   assert.match(component, /className="profile-detail-root"/);
   assert.match(component, /<main ref=\{scroller\} className="profile-detail-scroll"/);
   assert.match(component, /className="profile-morph-overlay"/);
-  assert.match(component, /className="profile-morph-avatar"/);
+  assert.doesNotMatch(component, /profile-morph-avatar|<Portrait/);
+  assert.match(component, /className="profile-morph-circle-rim"/);
+  assert.equal((component.match(/className="profile-morph-photo"/g) ?? []).length, 1);
+  assert.doesNotMatch(source('ProfileGallery.tsx'), /onPhotoChange/);
   assert.ok(component.indexOf('className="profile-morph-overlay"') > component.indexOf('</main>'));
 });
 
@@ -26,6 +29,10 @@ test('CSS-only native snap, finite travel and timeline-driven compositing', () =
   assert.doesNotMatch(css, /position:\s*sticky/);
   assert.doesNotMatch(css, /backdrop-filter|mix-blend-mode|mask-image|@property/);
   assert.doesNotMatch(css, /will-change:\s*[^;]*border-radius/);
+  assert.match(css, /@keyframes luemi-single-photo-morph/);
+  assert.doesNotMatch(css, /profile-morph-avatar|luemi-fade-compact/);
+  assert.match(css, /\.profile-morph-compact::before/);
+  assert.match(css, /\.profile-morph-compact::after/);
 });
 
 test('no JS snap, animated radius, timers or frame-written scroll position', () => {
@@ -41,6 +48,8 @@ test('no JS snap, animated radius, timers or frame-written scroll position', () 
   assert.doesNotMatch(pure, /snapTarget/);
   assert.match(hook, /if \(!cssTimeline\) scroller\.addEventListener\('scroll'/);
   assert.match(hook, /galleryObserver\?\.disconnect\(\)/);
+  assert.doesNotMatch(hook, /avatarRef|\.style\.opacity\s*=\s*String\(.*hero/i);
+  assert.match(hook, /56 \/ width/);
 });
 
 test('logo is static raster with no animated filter/listeners', () => {
