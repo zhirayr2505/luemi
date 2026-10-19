@@ -9,6 +9,7 @@ on:
       - 'feat/stage02e-*'
       - 'feat/stage02f-*'
       - 'feat/stage02g-*'
+      - 'feat/stage03-*'
   pull_request:
     branches:
       - main
