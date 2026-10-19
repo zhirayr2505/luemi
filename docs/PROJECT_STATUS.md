@@ -40,3 +40,13 @@
 - Server startup confirmed, `LuemiAppBot` staging setup confirmed.
 - Manual Galaxy A55 UI verification of new design/photo swipes/themes still pending. GitHub Actions runner had queued jobs at time of release; Render build independently validated.
 - `main`, Supabase, VEYRA, blotX untouched.
+
+## Stage 02E · Premium Registration Master · 2026-10-19
+- Owner APPROVED 7 decisions: sequential brand/text/CTA (~1.95s), lavender-pink glass CTA, uniform soft glass, one validated country+city picker, 750-character bio, 275ms photo hold/reorder, card+profile preview tabs.
+- Restoration ref: `backup/pre-stage02e-20261019` at `9b4556d6b9c0ff3ddc185109d267e99c8bfff537`.
+- Feature branch: `feat/stage02e-premium-registration`; GitHub CI for `387b5795a1a1b86633b987f0f993bb141ceac74f`: SUCCESS (Actions run 39290830771).
+- Replaced legacy registration Steps.tsx and the entire accumulated styles.css; installed lucide-react; shared Glass, InterestCatalog, GeoPicker, PhotoSorter, PhotoCarousel and Preview.
+- Country/city validates ID + ISO country code; server `/api/geo/search` and explicit opt-in `/api/geo/reverse` route created. **Without Geoapify key:** only a small labeled DEMO subset of verified cities is available. Do NOT claim full world provider active.
+- Intro logo decodes before staged title fade, CTA after visual readiness; only light/dark, lightweight radial accent, stable header/footer around scroll-only form.
+- Name Latin/Armenian/Cyrillic etc allowed with spaces, apostrophes, hyphens only; 18+ and 15 interests client-gated; 750 bio; photo mosaic 1+5 reordered by touch hold; preview has card/profile tabs sharing photo carousel.
+- **STAGING PREVIEW ONLY:** photos remain local, user data not persisted, no public accounts, no moderation or payments, no production gate passed. Real-device video confirmation still pending.
