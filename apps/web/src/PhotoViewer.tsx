@@ -40,6 +40,7 @@ export function PhotoViewer({
   const stageRefs = useRef<Array<HTMLDivElement | null>>([]);
   const metrics = useRef<ImageMetrics[]>([]);
   const points = useRef(new Map<number, Point>());
+  const pinching = useRef(false);
   const gesture = useRef<Gesture | null>(null);
   const zoom = useRef({ scale: 1, x: 0, y: 0 });
   const pinch = useRef({ distance: 0, scale: 1, x: 0, y: 0 });
@@ -131,20 +132,45 @@ export function PhotoViewer({
     // A CSS media preference can turn off transitions even when the in-app toggle is off.
     // In that case transitionend will never fire, so finish synchronously.
     const noTransition = reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setPhase(noTransition ? 'idle' : transition);
     const stage = stageRefs.current[at];
+    const backdrop = dialog.current?.querySelector<HTMLElement>('.pv-backdrop');
     if (transition === 'leaving') {
       if (noTransition) onClose();
-      else if (stage) stage.style.transform = 'translate3d(0, 160px, 0) scale(1)';
+      else {
+        setPhase('leaving');
+        if (stage) {
+          stage.style.transition = 'transform 180ms cubic-bezier(0.25, 0.72, 0.3, 1)';
+          stage.style.transform = 'translate3d(0, 160px, 0) scale(1)';
+        }
+        if (backdrop) {
+          backdrop.style.transition = 'opacity 180ms ease-out';
+          backdrop.style.opacity = '0';
+        }
+      }
       return;
     }
     if (noTransition) {
+      setPhase('idle');
       if (stage) stage.style.transform = 'translate3d(0, 0, 0) scale(1)';
+      if (stage) stage.style.transition = '';
+      if (backdrop) {
+        backdrop.style.opacity = '';
+        backdrop.style.transition = '';
+      }
       zoom.current = { scale: 1, x: 0, y: 0 };
       dialog.current?.classList.remove('is-zoomed');
     } else {
-      if (stage) stage.style.transform = 'translate3d(0, 0, 0) scale(1)';
+      setPhase('returning');
+      if (stage) {
+        stage.style.transition = 'transform 200ms cubic-bezier(0.2, 0.72, 0.2, 1)';
+        stage.style.transform = 'translate3d(0, 0, 0) scale(1)';
+      }
+      if (backdrop) {
+        backdrop.style.transition = 'opacity 200ms cubic-bezier(0.2, 0.72, 0.2, 1)';
+        backdrop.style.opacity = '1';
+      }
     }
+    dialog.current?.classList.remove('is-zoomed');
   };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>, at: number) => {
@@ -163,6 +189,7 @@ export function PhotoViewer({
       swipeDown: false,
     };
     if (points.current.size >= 2) {
+      pinching.current = true;
       const [first, second] = [...points.current.values()];
       const rect = event.currentTarget.getBoundingClientRect();
       pinch.current = {
@@ -240,6 +267,11 @@ export function PhotoViewer({
     }
     if (points.current.size === 1) {
       gesture.current = null;
+      return;
+    }
+    if (pinching.current) {
+      pinching.current = false;
+      animateReset(at, 'returning');
       return;
     }
     const activeGesture = gesture.current;
@@ -373,6 +405,16 @@ export function PhotoViewer({
           <Icon name="more" size={22} />
         </button>
       </header>
+      <div className="pv-progress" aria-hidden="true">
+        {photos.map((photo, at) => (
+          <span
+            className={index === at ? 'is-active' : at < index ? 'is-complete' : ''}
+            key={photo.id}
+          >
+            <i />
+          </span>
+        ))}
+      </div>
       <div className="pv-strip" ref={strip} aria-label="Галерея фотографий">
         {photos.map((photo, at) => (
           <div className="pv-slide" key={photo.id} data-index={at}>
@@ -392,8 +434,12 @@ export function PhotoViewer({
                 if (phase === 'leaving') onClose();
                 if (phase === 'returning') {
                   setPhase('idle');
+                  event.currentTarget.style.transition = '';
                   const backdrop = dialog.current?.querySelector<HTMLElement>('.pv-backdrop');
-                  if (backdrop) backdrop.style.opacity = '';
+                  if (backdrop) {
+                    backdrop.style.opacity = '';
+                    backdrop.style.transition = '';
+                  }
                   zoom.current = { scale: 1, x: 0, y: 0 };
                   dialog.current?.classList.remove('is-zoomed');
                 }
