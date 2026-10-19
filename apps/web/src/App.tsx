@@ -87,6 +87,7 @@ export function App() {
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
+  const discoveryBackRef=useRef<()=>void>(()=>{});
   const activeTheme=theme;
   const patch = useCallback((change:Partial<RegistrationDraft>)=>{
     setDraft(prev=>({...prev,...change}));
@@ -241,6 +242,7 @@ export function App() {
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
   },[]);
+  const registerDiscoveryBack=useCallback((handler:()=>void)=>{discoveryBackRef.current=handler;},[]);
   const back=useCallback(()=>{
     setError("");
     if(phase==="form"){
@@ -251,10 +253,10 @@ export function App() {
   useEffect(()=>{
     const button=window.Telegram?.WebApp?.BackButton;
     if(!button)return;
-    if(phase==="form"&&auth==="authorized"&&!demoOpen){
-      button.show();
-      button.onClick(back);
-      return ()=>{button.offClick(back);button.hide();};
+    if(auth==="authorized"&&(demoOpen||phase==="form")){
+      const handle=demoOpen?()=>discoveryBackRef.current():back;
+      button.show();button.onClick(handle);
+      return ()=>{button.offClick(handle);button.hide();};
     }
     button.hide();
   },[phase,auth,back,demoOpen]);
@@ -361,7 +363,7 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
-    {demoOpen&&auth==="authorized"?<DiscoveryApp draft={draft} theme={theme} onTheme={changeTheme} onExit={exitDemo}/>:null}
+    {demoOpen&&auth==="authorized"?<DiscoveryApp draft={draft} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
