@@ -45,3 +45,18 @@
 - Stage 03E: `Рядом` as proximity **feed**, no map/radar, geo-privacy first.
 - Stage 03F: full cleanup, mobile visual acceptance, final documentation.
 - Actual user registration, moderation, safe photos, interactions, matches and chats require independent backend approvals.
+
+## 2026-10-20 · STAGE 03 Feed Polish (owner approved)
+
+Design freeze: owner explicitly approved last AI visual concept with precise adjustments: three icon-only buttons under wordmark within wordmark width; full-width photo progress; zero vertical Feed scroll; large portrait card with all visible details and five separate floating glass buttons ON the card; like button largest, special second; goal at right of name, Premium crown badge beside name, maximum three interest chips plus +N, bio two lines, Demo indicator in test only; same-height page and tab underline must follow finger.
+
+Implemented in `feat/stage03-feed-polish` from `05933c34034b335bd4910e191281ab553ef2136a`. Recovery copy `backup/pre-stage03-feed-polish-20261020`.
+
+- Entire `apps/web/src/discovery/discovery.css` replaced with one canonical stylesheet, not appended conflicting overrides. Removed original .discovery-feed-scroller, .discovery-filter-row, .discovery-card-facts, and separate .discovery-actions below card; all elements are now integrated on a height-constrained, overflow-hidden card.
+- Brand placed higher, centered; filter, moon/sun and bookmark buttons fit precisely inside logo's width, no chat duplicate.
+- Implemented 3-page horizontal pager with pixel drag tracking and coordinated underline displacement; PhotoCarousel retains independent per-photo drag, no like/pass card swipe.
+- Card's illustration fills its available viewport. Text and glass actions overlay the photo; Premium shown only for synthetic fixtures; Demo remains shown to tester. 3 chips and +N, city flag, two-line about.
+- Separate Saved sheet replaces old quick jump to profile; four-tab bottom nav and the 03A–03C demo data/logic retained.
+- Adaptive peeking only on tall viewports, theme colors inherited, reduced-motion handled.
+- Runtime still demo-only: no backend likes, matches, publishing, Stars or real Premium entitlements.
+- **Visual acceptance pending** Galaxy A55 in Telegram. CI/build is not proof of image quality or device framerate.
