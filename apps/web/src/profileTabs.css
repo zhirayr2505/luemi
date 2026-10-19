@@ -349,30 +349,6 @@
   font-size: 12px !important;
   color: var(--luemi-text-muted);
 }
-.profile-photo-preview {
-  position: relative;
-  overflow: hidden;
-  max-height: 60dvh;
-  aspect-ratio: 3 / 4;
-  border-radius: 21px;
-  background: var(--luemi-surface);
-}
-.profile-photo-preview .portrait,
-.profile-photo-preview .portrait > img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.profile-photo-preview-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 13px;
-  color: var(--luemi-text-muted);
-  font-size: 12px;
-}
 .profile-account-list {
   display: flex;
   flex-direction: column;

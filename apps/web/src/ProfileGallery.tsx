@@ -6,12 +6,13 @@ type GalleryProps = {
   profile: Profile;
   display: string;
   barsRef: RefObject<HTMLDivElement | null>;
+  onOpen: (index: number) => void;
 };
 
 type Swipe = { id: number; x: number; y: number; time: number; horizontal: boolean };
 
 /** Horizontal gallery gestures never own vertical scrolling or profile morph. */
-export function ProfileGallery({ profile, display, barsRef }: GalleryProps) {
+export function ProfileGallery({ profile, display, barsRef, onOpen }: GalleryProps) {
   const [index, setIndex] = useState(0);
   const strip = useRef<HTMLDivElement>(null);
   const selected = useRef(0);
@@ -32,7 +33,7 @@ export function ProfileGallery({ profile, display, barsRef }: GalleryProps) {
   };
   const down = (event: PointerEvent<HTMLDivElement>) => {
     const frame = event.currentTarget.closest('.profile-morph-frame');
-    if (event.button !== 0 || total < 2 || frame?.classList.contains('profile-gallery-closed'))
+    if (event.button !== 0 || total < 1 || frame?.classList.contains('profile-gallery-closed'))
       return;
     swipe.current = {
       id: event.pointerId,
@@ -45,6 +46,7 @@ export function ProfileGallery({ profile, display, barsRef }: GalleryProps) {
   const move = (event: PointerEvent<HTMLDivElement>) => {
     const gesture = swipe.current;
     if (gesture.id !== event.pointerId) return;
+    if (total < 2) return;
     const dx = event.clientX - gesture.x;
     const dy = event.clientY - gesture.y;
     if (!gesture.horizontal) {
@@ -68,6 +70,20 @@ export function ProfileGallery({ profile, display, barsRef }: GalleryProps) {
     if (gesture.id !== event.pointerId) return;
     gesture.id = -1;
     if (!gesture.horizontal || cancelled) {
+      const frame = event.currentTarget.closest('.profile-morph-frame');
+      const dx = event.clientX - gesture.x;
+      const dy = event.clientY - gesture.y;
+      if (
+        !cancelled &&
+        !gesture.horizontal &&
+        Math.abs(dx) < 8 &&
+        Math.abs(dy) < 8 &&
+        performance.now() - gesture.time < 300 &&
+        !frame?.classList.contains('profile-gallery-closed') &&
+        total > 0
+      ) {
+        onOpen(selected.current);
+      }
       position(0, true);
       return;
     }

@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { Profile } from '../../../packages/core/domain';
 import { ageAt } from '../../../packages/core/domain';
-import { Icon, IconButton, Modal, Portrait } from './ui';
+import { Icon, Portrait } from './ui';
 
 export const PROFILE_TAB_LABELS = ['О себе', 'Блики', 'Фото', 'Аккаунт', 'Подарки'] as const;
 type ProfileTabIndex = 0 | 1 | 2 | 3 | 4;
@@ -105,13 +105,14 @@ function GlintsTab() {
   );
 }
 
-function PhotosTab({ profile }: { profile: Profile }) {
-  const [selected, setSelected] = useState<number | null>(null);
-  useEffect(() => setSelected(null), [profile.id]);
+function PhotosTab({
+  profile,
+  onOpenPhoto,
+}: {
+  profile: Profile;
+  onOpenPhoto: (index: number) => void;
+}) {
   const total = profile.photos.length;
-  const previous = () =>
-    setSelected((index) => (index === null ? null : (index - 1 + total) % total));
-  const next = () => setSelected((index) => (index === null ? null : (index + 1) % total));
 
   return (
     <div className="profile-tabs-stack">
@@ -133,7 +134,7 @@ function PhotosTab({ profile }: { profile: Profile }) {
                 key={photo.id}
                 className="profile-photo-tile"
                 aria-label={`Открыть фото ${index + 1} из ${total}`}
-                onClick={() => setSelected(index)}
+                onClick={() => onOpenPhoto(index)}
               >
                 <Portrait photo={photo} alt={`Фотография ${index + 1}`} />
                 <span className="profile-photo-tile-number">
@@ -147,22 +148,6 @@ function PhotosTab({ profile }: { profile: Profile }) {
         )}
         <p className="profile-photo-note">Нажми на снимок, чтобы рассмотреть его поближе.</p>
       </section>
-      {selected !== null && profile.photos[selected] && (
-        <Modal title={`Фотография ${selected + 1} из ${total}`} onClose={() => setSelected(null)}>
-          <div className="profile-photo-preview">
-            <Portrait photo={profile.photos[selected]} alt={`Фото ${selected + 1} из ${total}`} />
-          </div>
-          {total > 1 && (
-            <div className="profile-photo-preview-actions">
-              <IconButton icon="back" label="Предыдущее фото" onClick={previous} />
-              <span>
-                {selected + 1} / {total}
-              </span>
-              <IconButton icon="next" label="Следующее фото" onClick={next} />
-            </div>
-          )}
-        </Modal>
-      )}
     </div>
   );
 }
@@ -229,7 +214,13 @@ function GiftsTab() {
   );
 }
 
-export function ProfileTabs({ profile }: { profile: Profile }) {
+export function ProfileTabs({
+  profile,
+  onOpenPhoto,
+}: {
+  profile: Profile;
+  onOpenPhoto: (index: number) => void;
+}) {
   const [active, setActive] = useState<ProfileTabIndex>(0);
   const viewport = useRef<HTMLDivElement>(null);
   const markers = useRef<Array<HTMLSpanElement | null>>([]);
@@ -331,7 +322,7 @@ export function ProfileTabs({ profile }: { profile: Profile }) {
             />
             {index === 0 && <AboutTab profile={profile} />}
             {index === 1 && <GlintsTab />}
-            {index === 2 && <PhotosTab profile={profile} />}
+            {index === 2 && <PhotosTab profile={profile} onOpenPhoto={onOpenPhoto} />}
             {index === 3 && <AccountTab profile={profile} />}
             {index === 4 && <GiftsTab />}
           </div>
