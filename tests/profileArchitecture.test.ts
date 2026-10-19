@@ -1,37 +1,65 @@
-import {test} from 'node:test';
-import {strict as assert} from 'node:assert';
-import {readFileSync,existsSync} from 'node:fs';
+import { test } from 'node:test';
+import { strict as assert } from 'node:assert';
+import { readFileSync, existsSync } from 'node:fs';
 
-const path=(name:string)=>new URL('../apps/web/src/'+name,import.meta.url);
-const source=(name:string)=>readFileSync(path(name),'utf8');
+const file = (path: string) => new URL(`../apps/web/src/${path}`, import.meta.url);
+const source = (path: string) => readFileSync(file(path), 'utf8');
 
-test('Profile motion has one scroller and one independent overlay',()=>{
- const profile=source('ProfileMotion.tsx');
- assert.match(profile,/className="profile-detail-root"/);
- assert.match(profile,/<main ref=\{scroller\} className="profile-detail-scroll"/);
- assert.match(profile,/className="profile-morph-overlay"/);
- const scrollStart=profile.indexOf('className="profile-detail-scroll"');
- const scrollEnd=profile.indexOf('</main>',scrollStart);
- const overlayStart=profile.indexOf('className="profile-morph-overlay"');
- assert.ok(scrollStart>=0&&scrollEnd>scrollStart&&overlayStart>scrollEnd,'overlay must be a sibling outside native scroll');
+test('one native scroller, two fixed-radius photo layers and separate overlay', () => {
+  const component = source('ProfileMotion.tsx');
+  assert.match(component, /className="profile-detail-root"/);
+  assert.match(component, /<main ref=\{scroller\} className="profile-detail-scroll"/);
+  assert.match(component, /className="profile-morph-overlay"/);
+  assert.match(component, /className="profile-morph-avatar"/);
+  assert.ok(component.indexOf('className="profile-morph-overlay"') > component.indexOf('</main>'));
 });
-test('No competing RAF scroll writer or counter-translation',()=>{
- const code=source('motion/useProfilePhotoMorph.ts');
- const frame=code.slice(code.indexOf('const draw='),code.indexOf('const queue='));
- assert.ok(frame.length>100);
- assert.doesNotMatch(frame,/scrollTop\s*=|scrollTo\s*\(/,'no scrollTop writes in compositor RAF');
- assert.doesNotMatch(frame,/translateY|translate3d\([^\n]*f\.translateY/,'no inverse scroll Y compensation');
- assert.match(code,/addEventListener\('scrollend'/);
- assert.match(code,/if\(snapping\)\{snapping=false/);
+
+test('CSS-only native snap, finite travel and timeline-driven compositing', () => {
+  const css = source('profileMotion.css');
+  assert.match(css, /scroll-snap-type:\s*y mandatory/);
+  assert.match(css, /scroll-snap-stop:\s*always/);
+  assert.match(css, /\.profile-snap-open/);
+  assert.match(css, /\.profile-snap-closed/);
+  assert.match(css, /scroll-timeline-name:\s*--luemi-profile-scroll/);
+  assert.match(css, /animation-timeline:\s*--luemi-profile-scroll/);
+  assert.match(css, /profile-detail-scroll::after/);
+  assert.doesNotMatch(css, /position:\s*sticky/);
+  assert.doesNotMatch(css, /backdrop-filter|mix-blend-mode|mask-image|@property/);
+  assert.doesNotMatch(css, /will-change:\s*[^;]*border-radius/);
 });
-test('Profile styles have one owner, no legacy stylesheet',()=>{
- assert.equal(existsSync(path('style.css')),false,'delete dead v0 stylesheet');
- const css=source('profileMotion.css');
- assert.match(css,/\.profile-morph-overlay/);
- assert.match(css,/\.profile-detail-scroll/);
- assert.doesNotMatch(css,/position:\s*sticky/i);
- assert.doesNotMatch(source('styles.css'),/\.profile-morph-stage\{/);
+
+test('no JS snap, animated radius, timers or frame-written scroll position', () => {
+  const hook = source('motion/useProfilePhotoMorph.ts');
+  const pure = source('motion/profileMorph.ts');
+  assert.doesNotMatch(hook, /scrollTo\s*\(|setTimeout\s*\(|snapTarget|snapping|lastClosed|velocity/);
+  assert.doesNotMatch(hook, /\.style\.borderRadius|\.style\.boxShadow|\.style\.setProperty/);
+  assert.doesNotMatch(hook, /scrollTop\s*=\s*(?!0;)/);
+  assert.doesNotMatch(pure, /snapTarget/);
+  assert.match(hook, /if \(!cssTimeline\) scroller\.addEventListener\('scroll'/);
+  assert.match(hook, /galleryObserver\?\.disconnect\(\)/);
 });
-test('Logo does not animate its glare on profile scroll',()=>{
- assert.match(source('LiquidLogo.tsx'),/el\.closest\('\.profile-detail-root'\)/);
+
+test('logo is static raster with no animated filter/listeners', () => {
+  const logo = source('LiquidLogo.tsx');
+  const css = source('logo.css');
+  assert.match(logo, /wordmark_static_rim_W06\.webp/);
+  assert.doesNotMatch(logo, /feMorphology|mask-image|pointermove|scroll|useEffect|useId/);
+  assert.doesNotMatch(css, /backdrop-filter|mask-image|mix-blend-mode|filter:/);
+});
+
+test('navigation and BackButton do not attach on every render', () => {
+  const tg = source('telegram.ts');
+  assert.match(tg, /const back = useRef\(onBack\)/);
+  assert.match(tg, /\}, \[\]\);/);
+  assert.match(tg, /\}, \[full\]\);/);
+  const deck = source('motion/SlideDeck.tsx');
+  assert.match(deck, /profileTransition/);
+  assert.doesNotMatch(deck, /setVisited\(\[\.\.\.visited/);
+});
+
+test('old dead CSS absent and separate current style owners', () => {
+  assert.equal(existsSync(file('style.css')), false);
+  assert.doesNotMatch(source('styles.css'), /\.logo-island-glass|\.liquid-logo-body|\.profile-morph-stage/);
+  assert.match(source('main.tsx'), /import '\.\/logo\.css'/);
+  assert.match(source('main.tsx'), /import '\.\/profileMotion\.css'/);
 });

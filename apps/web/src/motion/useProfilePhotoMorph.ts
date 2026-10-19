@@ -1,96 +1,99 @@
-import {useLayoutEffect,type RefObject} from 'react';
-import {morphFrame,morphTravel,snapTarget} from './profileMorph';
+import { useEffect, useLayoutEffect, type RefObject } from 'react';
+import { morphFrame } from './profileMorph';
 
 /**
- * Motion controller v3. Photo is in a stable overlay OUTSIDE the native scroller:
- * no compensate-translateY, no coupled scrolling/floating geometry.
- * Snap runs only after the browser emits scrollend (native momentum complete).
- * No requestAnimationFrame scrollTop writer, no oscillating debounce timers.
+ * CSS scroll-timeline is the sole motion owner in supported browsers.
+ * On older browsers one RAF paints transform and opacity only; never scrollTop.
+ * Snapping belongs exclusively to the browser's native CSS scroll-snap engine.
  */
 export function useProfilePhotoMorph(
- scrollerRef:RefObject<HTMLElement|null>,frameRef:RefObject<HTMLDivElement|null>,
- photoRef:RefObject<HTMLDivElement|null>,compactRef:RefObject<HTMLDivElement|null>,
- captionRef:RefObject<HTMLDivElement|null>,barsRef:RefObject<HTMLDivElement|null>,
- profileId:string,reducedMotion:boolean,
-){
- useLayoutEffect(()=>{
-  const scroller=scrollerRef.current,frame=frameRef.current,photo=photoRef.current;
-  const compact=compactRef.current,caption=captionRef.current,bars=barsRef.current;
-  if(!scroller||!frame||!photo||!compact||!caption||!bars)return;
-  const system=window.matchMedia('(prefers-reduced-motion: reduce)');
-  const reduce=()=>reducedMotion||system.matches;
-  let width=frame.clientWidth,raf=0,disposed=false;
-  let lastClosed=false,snapping=false,dragging=false;
-  let touchY=0,touchAt=0,velocity=0;
-  let fallback:ReturnType<typeof setTimeout>|undefined;
-  const hasScrollEnd='onscrollend' in scroller;
-  const cancelFallback=()=>{if(fallback!==undefined){clearTimeout(fallback);fallback=undefined;}};
-  const draw=()=>{
-   raf=0;if(disposed||width<=0)return;
-   const raw=morphFrame(scroller.scrollTop,width);
-   const f=reduce()?morphFrame(raw.progress>=.5?morphTravel(width):0,width):raw;
-   photo.style.transform=`translate3d(${f.x.toFixed(2)}px,0,0) scale(${f.scale.toFixed(6)})`;
-   photo.style.borderRadius=`${f.radius.toFixed(2)}px`;
-   photo.style.setProperty('--profile-rim',`${f.rimWidth.toFixed(2)}px`);
-   caption.style.opacity=String(f.captionOpacity);
-   compact.style.opacity=String(f.compactOpacity);
-   bars.style.opacity=String(f.barsOpacity);
-   frame.dataset.galleryActive=String(f.expanded);
-   frame.dataset.collapsed=String(f.progress>=.995);
-  };
-  const queue=()=>{if(!disposed&&!raf)raf=requestAnimationFrame(draw);};
-  const settle=()=>{
-   if(disposed||dragging||snapping)return;
-   const y=scroller.scrollTop,target=snapTarget(y,width,lastClosed,velocity);
-   velocity=0;
-   if(target===null){lastClosed=true;return;}
-   if(Math.abs(target-y)<1){lastClosed=target>0;return;}
-   snapping=true;lastClosed=target>0;
-   // ONE browser-native smooth scroll; browser owns deceleration and cancellation.
-   scroller.scrollTo({top:target,behavior:reduce()?'auto':'smooth'});
-   // No timeout-driven competing animator. scrollend ends the native motion.
-  };
-  const onScrollEnd=()=>{
-   cancelFallback();
-   if(snapping){snapping=false;velocity=0;lastClosed=scroller.scrollTop>=morphTravel(width)*.92;return;}
-   settle();
-  };
-  const scheduleFallback=()=>{
-   if(hasScrollEnd||dragging||snapping)return;
-   cancelFallback();fallback=setTimeout(onScrollEnd,200);
-  };
-  const onScroll=()=>{queue();scheduleFallback();};
-  const onDown=(e:PointerEvent)=>{
-   dragging=true;cancelFallback();
-   if(snapping){snapping=false;scroller.scrollTo({top:scroller.scrollTop,behavior:'instant' as ScrollBehavior});}
-   touchY=e.clientY;touchAt=performance.now();velocity=0;
-  };
-  const onUp=(e:PointerEvent)=>{
-   if(!dragging)return;dragging=false;
-   const pixels=touchY-e.clientY,dt=Math.max(30,performance.now()-touchAt);
-   velocity=Math.abs(pixels)>15?pixels/dt:0;
-   scheduleFallback();
-  };
-  const onWheel=()=>{velocity=0;if(snapping){snapping=false;scroller.scrollTo({top:scroller.scrollTop,behavior:'instant' as ScrollBehavior});}};
-  const resize=()=>{const next=frame.clientWidth;if(width!==next){width=next;queue();}};
-  const ro=new ResizeObserver(resize);ro.observe(frame);
-  scroller.scrollTop=0;draw();
-  scroller.addEventListener('scroll',onScroll,{passive:true});
-  scroller.addEventListener('pointerdown',onDown,{passive:true});
-  window.addEventListener('pointerup',onUp,{passive:true});
-  window.addEventListener('pointercancel',onUp,{passive:true});
-  scroller.addEventListener('wheel',onWheel,{passive:true});
-  if(hasScrollEnd)scroller.addEventListener('scrollend',onScrollEnd,{passive:true});
-  system.addEventListener('change',queue);
-  return()=>{
-   disposed=true;cancelFallback();if(raf)cancelAnimationFrame(raf);ro.disconnect();
-   scroller.removeEventListener('scroll',onScroll);scroller.removeEventListener('pointerdown',onDown);
-   window.removeEventListener('pointerup',onUp);window.removeEventListener('pointercancel',onUp);
-   scroller.removeEventListener('wheel',onWheel);
-   if(hasScrollEnd)scroller.removeEventListener('scrollend',onScrollEnd);
-   system.removeEventListener('change',queue);
-   photo.style.transform='';photo.style.borderRadius='';photo.style.removeProperty('--profile-rim');
-   compact.style.opacity='';caption.style.opacity='';bars.style.opacity='';
-  };
- },[scrollerRef,frameRef,photoRef,compactRef,captionRef,barsRef,profileId,reducedMotion]);
+  scrollerRef: RefObject<HTMLElement | null>,
+  frameRef: RefObject<HTMLDivElement | null>,
+  photoRef: RefObject<HTMLDivElement | null>,
+  avatarRef: RefObject<HTMLDivElement | null>,
+  compactRef: RefObject<HTMLDivElement | null>,
+  captionRef: RefObject<HTMLDivElement | null>,
+  barsRef: RefObject<HTMLDivElement | null>,
+  profileId: string,
+  reducedMotion: boolean,
+) {
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    const frame = frameRef.current;
+    const photo = photoRef.current;
+    const avatar = avatarRef.current;
+    const compact = compactRef.current;
+    const caption = captionRef.current;
+    const bars = barsRef.current;
+    if (!scroller || !frame || !photo || !avatar || !compact || !caption || !bars) return;
+
+    let disposed = false;
+    let raf = 0;
+    let travel = 220;
+    const cssTimeline = CSS.supports('animation-timeline: --luemi-profile-scroll');
+    const system = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    // Reset a newly opened profile before exposing it; never animate scrollTop.
+    scroller.scrollTop = 0;
+    const updateGeometry = () => {
+      // Layout is sampled ONLY in ResizeObserver, never during scrolling/RAF.
+      const marker = scroller.querySelector<HTMLElement>('.profile-snap-closed');
+      if (!marker) return;
+      const start = scroller.querySelector<HTMLElement>('.profile-snap-open');
+      travel = Math.max(1, marker.offsetTop - (start?.offsetTop ?? 0));
+      queue();
+    };
+    const drawFallback = () => {
+      raf = 0;
+      if (disposed || cssTimeline) return;
+      const f = morphFrame(scroller.scrollTop, travel);
+      const reduced = reducedMotion || system.matches;
+      const atEnd = f.progress >= 0.5;
+      const progress = reduced ? morphFrame(atEnd ? travel : 0, travel) : f;
+      photo.style.transform = `scale(${progress.heroScale})`;
+      photo.style.opacity = String(progress.heroOpacity);
+      avatar.style.opacity = String(progress.avatarOpacity);
+      compact.style.opacity = String(progress.compactOpacity);
+      caption.style.opacity = String(progress.captionOpacity);
+      bars.style.opacity = String(progress.barsOpacity);
+    };
+    const queue = () => {
+      if (!disposed && !cssTimeline && !raf) raf = requestAnimationFrame(drawFallback);
+    };
+
+    const ro = new ResizeObserver(updateGeometry);
+    ro.observe(frame);
+    const gallerySentinel = scroller.querySelector('.profile-snap-open');
+    let galleryObserver: IntersectionObserver | undefined;
+    if (gallerySentinel) {
+      galleryObserver = new IntersectionObserver(
+        (entries) => {
+          if (disposed) return;
+          frame.classList.toggle('profile-gallery-closed', !entries[0].isIntersecting);
+        },
+        { root: scroller, threshold: 0 },
+      );
+      galleryObserver.observe(gallerySentinel);
+    }
+
+    // The listener is added only when no native CSS scroll timeline exists.
+    if (!cssTimeline) scroller.addEventListener('scroll', queue, { passive: true });
+    system.addEventListener('change', queue);
+    updateGeometry();
+    return () => {
+      disposed = true;
+      ro.disconnect();
+      galleryObserver?.disconnect();
+      scroller.removeEventListener('scroll', queue);
+      system.removeEventListener('change', queue);
+      if (raf) cancelAnimationFrame(raf);
+      photo.style.transform = '';
+      photo.style.opacity = '';
+      avatar.style.opacity = '';
+      compact.style.opacity = '';
+      caption.style.opacity = '';
+      bars.style.opacity = '';
+      frame.classList.remove('profile-gallery-closed');
+    };
+  }, [scrollerRef, frameRef, photoRef, avatarRef, compactRef, captionRef, barsRef, profileId, reducedMotion]);
 }

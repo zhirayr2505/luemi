@@ -1,6 +1,6 @@
 import {useTelegramBridge} from './telegram';
 import {MotionProvider,SlideDeck} from './motion/SlideDeck';
-import {useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {type Profile,alina} from '../../../packages/core/domain';
 import {loadState,saveState} from './storage';
 import {Button,Icon,IconButton,Logo,Modal} from './ui';
@@ -13,25 +13,25 @@ const SECTION_ORDER=['Знакомства','Симпатии','Чаты','Пр�
 export default function App(){
  const [state,setState]=useState(loadState),[tab,setTab]=useState('Знакомства'),[wizard,setWizard]=useState(false),[chat,setChat]=useState(''),[profile,setProfile]=useState<Profile|null>(null),[toast,setToast]=useState(''),[dialog,setDialog]=useState(''),[report,setReport]=useState('Спам'),[theme,setTheme]=useState('light');const toastTimer=useRef<ReturnType<typeof setTimeout>|null>(null),touch=useRef({x:0,y:0});
  const [profileSession,setProfileSession]=useState(0);
- function openProfile(p:Profile){setProfileSession(i=>i+1);setProfile(p);}
- function notify(message:string){setToast(message);if(toastTimer.current)clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),4500);}
+ const openProfile=useCallback((p:Profile)=>{setProfileSession(i=>i+1);setProfile(p);},[]);
+ const notify=useCallback((message:string)=>{setToast(message);if(toastTimer.current)clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),4500);},[]);
  useEffect(()=>{if(!saveState(state))notify('Хранилище устройства заполнено. Последние изменения могут не сохраниться.');},[state]);
  useEffect(()=>{const mq=matchMedia('(prefers-color-scheme: dark)');const apply=()=>{const v=state.theme==='system'?(mq.matches?'dark':'light'):state.theme;setTheme(v);document.documentElement.dataset.luemiTheme=v;document.documentElement.dataset.reducedMotion=String(state.reducedMotion);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',v==='dark'?'#191422':'#f8f3fa');};apply();mq.addEventListener('change',apply);return()=>mq.removeEventListener('change',apply);},[state.theme,state.reducedMotion]);
  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){if(profile)setProfile(null);else if(chat)setChat('');}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[profile,chat]);
- function openChat(id:string){setTab('Чаты');setChat(id);setProfile(null);}
- function back(){if(profile)setProfile(null);else setChat('');}
- const props={state,setState,openChat,openProfile,notify};
+ const openChat=useCallback((id:string)=>{setTab('Чаты');setChat(id);setProfile(null);},[]);
+ const back=useCallback(()=>{if(profile)setProfile(null);else setChat('');},[profile]);
+ const props=useMemo(()=>({state,setState,openChat,openProfile,notify}),[state,openChat,openProfile,notify]);
  const full=!!chat||!!profile;
  useTelegramBridge(full,back,theme);
- const lastProfile=useRef<Profile|null>(null);if(profile)lastProfile.current=profile;const shownProfile=profile||lastProfile.current;
- const sectionPages={
+ const shownProfile=profile; // Closed profiles unmount; hidden animations and listeners cannot remain alive.
+ const sectionPages=useMemo(()=>({
   'Знакомства':<main className="content"><Discovery {...props}/></main>,
   'Симпатии':<main className="content"><Likes {...props}/></main>,
   'Чаты':<main className="content"><Chats {...props}/></main>,
   'Профиль':<main className="content"><ProfilePage {...props} onRegister={()=>{if(state.onboarded)setState(s=>({...s,step:1}));setWizard(true);}}/></main>,
   profile:shownProfile?<ProfileMotion key={profileSession} profile={shownProfile} reducedMotion={state.reducedMotion}>{shownProfile.id!=='self'&&<div className="profile-cta"><Button variant="primary wide" onClick={()=>{if(state.matches.includes(shownProfile.id))openChat(shownProfile.id);else{setTab('Знакомства');setProfile(null);setChat('');notify('Нажми «Нравится» под анкетой, чтобы проверить взаимный мэтч.');}}}>{state.matches.includes(shownProfile.id)?'Написать':'Перейти к знакомству'}</Button></div>}</ProfileMotion>:null,
   chat:<div className="chat-screen" onPointerDown={e=>{touch.current={x:e.clientX,y:e.clientY};}} onPointerUp={e=>{const dx=e.clientX-touch.current.x,dy=e.clientY-touch.current.y;if(dx>100&&Math.abs(dx)>Math.abs(dy)*1.5&&!((e.target as HTMLElement).closest('textarea,input,button'))){setChat('');}}}><Chat {...props}/></div>
- };
+ }),[props,state.onboarded,state.reducedMotion,state.matches,profile,profileSession,openChat,notify]);
  return <MotionProvider reduced={state.reducedMotion}><div className={'app-frame '+(full?'full-screen':'')+(wizard?' wizard-frame':'')}>
  {wizard?<Onboarding state={state} setState={setState} onClose={()=>{setWizard(false);setTab('Профиль');}} notify={notify}/>:<>
  <button className="demo-ribbon" onClick={()=>setDialog('О демоверсии')}><span/> Закрытая демоверсия <span className="ribbon-dot">·</span> данные на устройстве <Icon name="info" size={13}/></button>
