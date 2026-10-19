@@ -6,6 +6,7 @@ import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import type { ApiConfig } from "./config.js";
 import { validateTelegramInitData } from "./telegram-auth.js";
 import { registerTelegramWebhook } from "./telegram-webhook.js";
+import { registerGeography } from "./geo-routes.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -52,5 +53,6 @@ export function buildApp(config: ApiConfig) {
     return response;
   });
   registerTelegramWebhook(app, config);
+  registerGeography(app);
   return app;
 }

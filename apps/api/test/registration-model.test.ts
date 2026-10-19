@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { birthDateValid, newDraft, validateStep } from "../../web/src/registration/model.js";
+import { birthDateValid, cleanName, nameValid, newDraft, validateStep } from "../../web/src/registration/model.js";
 
 test("accepts real adult dates and rejects underage, future and invalid calendar dates",()=>{
   const now=new Date("2026-10-19T12:00:00Z");
@@ -30,4 +30,23 @@ test("interest limit and age boundaries validated",()=>{
   assert.equal(validateStep(d,5,0),null);
   d.audience="everyone";d.goal="relationship";d.ageMin=50;d.ageMax=30;
   assert.notEqual(validateStep(d,4,0),null);
+});
+
+test("name filter keeps letters, hyphen and apostrophe, rejects digits/punctuation",()=>{
+  assert.equal(cleanName("Анна-Մարի 123.!"),"Анна-Մարի ");
+  assert.equal(nameValid("Анна-Մари"),true);
+  assert.equal(nameValid("O'Connor"),true);
+  assert.equal(nameValid("Анна."),false);
+  assert.equal(nameValid("---"),false);
+});
+test("city requires selected verified identity",()=>{
+  const d=newDraft("Анна");
+  d.city="Краснодарчик";d.country="Россия";
+  assert.notEqual(validateStep(d,3,0),null);
+  d.city="Краснодар";d.placeId="offline:ru:krasnodar";d.countryCode="RU";
+  assert.equal(validateStep(d,3,0),null);
+  d.about="Ж".repeat(750);
+  assert.equal(validateStep(d,6,0),null);
+  d.about+="А";
+  assert.notEqual(validateStep(d,6,0),null);
 });
