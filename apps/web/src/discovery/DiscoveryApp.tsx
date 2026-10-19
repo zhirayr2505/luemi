@@ -23,8 +23,8 @@ function Placeholder({title,text}:{title:string;text:string}){
  return <div className="discovery-placeholder"><Layers3 size={36} strokeWidth={1.2}/>
  <h2>{title}</h2><p>{text}</p><span>Следующий этап LUEMI</span></div>;
 }
-interface Props {draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void}
-export function DiscoveryApp({draft,theme,onTheme,onExit}:Props){
+interface Props {draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void}
+export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
@@ -52,13 +52,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit}:Props){
   if(discoveryTab!=="feed"){setDiscoveryTab("feed");return;}
   onExit();
  },[personOpen,filterOpen,mainTab,discoveryTab,onExit]);
- useEffect(()=>{
-  const back=window.Telegram?.WebApp?.BackButton;
-  if(!back)return;
-  back.show();
-  back.onClick(leave);
-  return ()=>{back.offClick(leave);back.hide();};
- },[leave]);
+ useEffect(()=>{registerBack(leave);},[leave,registerBack]);
  useEffect(()=>{
   const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape")leave();};
   window.addEventListener("keydown",onKey);
