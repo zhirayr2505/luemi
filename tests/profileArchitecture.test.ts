@@ -33,7 +33,7 @@ test('CSS-only native snap, finite travel and timeline-driven compositing', () =
   // The static compact name island intentionally uses the owner's approved Liquid Glass blur.
   // Do not reintroduce animated blur, moving masks or layout-driven optical effects.
   assert.doesNotMatch(css, /mix-blend-mode|mask-image|@property/);
-  assert.match(css, /\\.profile-morph-compact \\{[\\s\\S]*?backdrop-filter: blur\\(14px\\)/);
+  assert.match(css, /\.profile-morph-compact \{[\s\S]*?backdrop-filter: blur\(14px\)/);
   assert.equal((css.match(/backdrop-filter:/g) ?? []).length, 2);
   assert.doesNotMatch(css, /will-change:\s*[^;]*border-radius/);
   assert.match(css, /@keyframes luemi-single-photo-morph/);
