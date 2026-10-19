@@ -28,7 +28,12 @@ const interestIcons:Record<string,string>={
  "Кофе":"☕","Игры":"♟","Природа":"❀","Животные":"♡","Языки":"✺"
 };
 const interestIndex=interestCategories.flatMap(c=>c.items);
-const interestTone=(item:string)=>"tone-"+(Math.max(0,interestIndex.indexOf(item))%7);
+const interestGradients:ReadonlyArray<readonly [string,string]>=[["#e1cbf6","#f3dcef"],["#f6d6ea","#f7c6df"],["#d8e3ff","#eddcf8"],["#ffe6d5","#f8d6e2"],["#def0e5","#dbe9ff"],["#e5dafa","#f5e0f5"],["#f9dce7","#f8e7d8"],["#d9defb","#e7d7f7"],["#fde3e7","#f5d8f7"],["#dcecf6","#d7dffb"],["#ead9ef","#d8e8f9"],["#f6e5d4","#f4d6ec"],["#e2ecdb","#d8e4fa"],["#ece1f9","#e9d7ed"],["#e3eff4","#d3e8f0"],["#f5e0e0","#f8dfea"],["#e0e5fc","#f1dff7"],["#f6e6d4","#f3dce7"],["#d7efe4","#e4e8fa"],["#f6dce3","#eadcf8"],["#ddf0f0","#e0e4fa"]];
+const interestGradient=(item:string):CSSProperties=>{
+  const [from,to]=interestGradients[Math.max(0,interestIndex.indexOf(item))]??interestGradients[0];
+  return {"--chip-from":from,"--chip-to":to} as CSSProperties;
+};
+
 const interestIcon=(item:string)=><span className="interest-icon" aria-hidden="true">{interestIcons[item]??"✦"}</span>;
 function dismissKeyboard(){
   const current=document.activeElement;
@@ -75,7 +80,7 @@ function ProfilePreview({data,photos}:{data:RegistrationDraft;photos:PhotoItem[]
       <p className="profile-location">{[data.city,data.country].filter(Boolean).join(" · ")}</p>
       {data.goal&&<p>{({relationship:"Отношения",dates:"Свидания",friends:"Общение"} as const)[data.goal]}</p>}
       {data.about&&<p>{data.about}</p>}
-      {data.interests.length>0&&<div className="chips">{data.interests.map(item=><span className={"chip "+interestTone(item)} key={item}>{interestIcon(item)}{item}</span>)}</div>}
+      {data.interests.length>0&&<div className="chips">{data.interests.map(item=><span className="chip toned" style={interestGradient(item)} key={item}>{interestIcon(item)}{item}</span>)}</div>}
       {data.languages.length>0&&<p>Языки: {data.languages.join(", ")}</p>}
     </div>
   </div>;
@@ -166,8 +171,8 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
     <div className="category-row" role="group" aria-label="Категории интересов">
       {interestCategories.map(c=><Choice key={c.name} chosen={category===c.name} onClick={()=>setCategory(c.name)}>{c.name}</Choice>)}
     </div>
-    <div className="chips interest-choices">{interestCategories.find(c=>c.name===category)?.items.map(item=><button key={item} type="button" aria-pressed={data.interests.includes(item)} className={"chip selectable "+interestTone(item)+(data.interests.includes(item)?" selected":"")} onClick={()=>toggleInterest(item)}>{interestIcon(item)}{item}</button>)}</div>
-    <div className="selected-interests"><strong>Выбрано · {data.interests.length} из 15</strong><div className="chips">{data.interests.length?data.interests.map(x=><button type="button" className={"chip selected "+interestTone(x)} onClick={()=>toggleInterest(x)} key={x}>{interestIcon(x)}{x} ×</button>):<span className="hint">Можно выбрать понравившиеся интересы</span>}</div></div>
+    <div className="chips interest-choices">{interestCategories.find(c=>c.name===category)?.items.map(item=><button key={item} type="button" aria-pressed={data.interests.includes(item)} className={"chip toned selectable"+(data.interests.includes(item)?" selected":"")} style={interestGradient(item)} onClick={()=>toggleInterest(item)}>{interestIcon(item)}{item}</button>)}</div>
+    <div className="selected-interests"><strong>Выбрано · {data.interests.length} из 15</strong><div className="chips">{data.interests.length?data.interests.map(x=><button type="button" className="chip toned selected" style={interestGradient(x)} onClick={()=>toggleInterest(x)} key={x}>{interestIcon(x)}{x} ×</button>):<span className="hint">Можно выбрать понравившиеся интересы</span>}</div></div>
   </div>;
   if(step===6)return <div className="form-stack">
     <Field label="Немного о себе"><textarea value={data.about} rows={6} maxLength={500} placeholder="Что тебя радует? Чем любишь заниматься?" onChange={e=>patch({about:e.target.value})}/></Field>
