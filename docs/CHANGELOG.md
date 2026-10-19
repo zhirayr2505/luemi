@@ -35,3 +35,8 @@
 - Bio textarea shortened, languages displayed as three-across search results with flags-only chosen row; profile languages flags only and goal badge stronger.
 - Removed photo reorder arrow overlays, replaced with keyboard Alt-arrow fallback, real local FileReader progress and transient completion check.
 - New device-local registration restoration across Mini App opens, including IndexedDB-backed photo File objects and explicit reset control.
+
+## 2026-10-20 · LUEMI Stage 03 Feed Polish
+- Approved visually: full-height single-screen demo discovery interface (not scrolling), compact icon-only filter/theme/bookmarks, elevated central logo, full-width photo-progress bars, expanded photo and overlaid bio/info/goal/Premium/chips and five independent Liquid Glass action buttons with largest heart.
+- Tab content and indicator now track horizontal finger movement. Photo gesture remains isolated, not like/pass. Dedicated Saved overlay.
+- Removed obsolete discovery scroll region, location/filter row, below-card facts and detached actions, replaced old CSS in-place rather than layering. Original Stage 02 registration untouched.
