@@ -1,0 +1,84 @@
+[data-luemi-theme='dark'] {
+  --glass: rgba(43, 33, 55, 0.92);
+  --soft: #352b43;
+  --line: #554561;
+  --accent: #c6a3ec;
+  background: #140f1b;
+}
+[data-luemi-theme='dark'] .app-frame {
+  background:
+    radial-gradient(ellipse at top left, #342344, transparent 66%),
+    radial-gradient(ellipse at bottom right, #3c273c, transparent 65%), #191422;
+}
+[data-luemi-theme='dark'] .glass {
+  border-color: #4a3855;
+}
+[data-luemi-theme='dark'] .core-icon {
+  filter: brightness(1.7) saturate(0.8);
+}
+[data-luemi-theme='dark'] .gradient .core-icon,
+[data-luemi-theme='dark'] .special .core-icon {
+  filter: brightness(0) invert(1);
+}
+[data-luemi-theme='dark'] .action-circle {
+  background: #392a48;
+  border-color: #665075;
+}
+[data-luemi-theme='dark'] .action-circle.like {
+  background: #4a2b40;
+}
+[data-luemi-theme='dark'] .action-circle.special {
+  background: linear-gradient(155deg, #9c76d4, #c779a7);
+}
+[data-luemi-theme='dark'] .mine .message {
+  background: #513664;
+  border-color: #694a7a;
+}
+[data-luemi-theme='dark'] .message {
+  border-color: #46334f;
+}
+[data-luemi-theme='dark'] .message blockquote {
+  background: #2b2039;
+  color: #c9b5d8;
+}
+[data-luemi-theme='dark'] .reaction {
+  background: #513664;
+  border-color: #806093;
+}
+[data-luemi-theme='dark'] .premium-banner,
+[data-luemi-theme='dark'] .recommendation-banner {
+  background: linear-gradient(120deg, #473158, #573444);
+  border-color: #6a4b73;
+}
+[data-luemi-theme='dark'] .premium-banner p,
+[data-luemi-theme='dark'] .recommendation-banner p {
+  color: #dac3e8;
+}
+[data-luemi-theme='dark'] .collection {
+  background: #3e304b;
+}
+[data-luemi-theme='dark'] .collection-1 {
+  background: #503140;
+}
+[data-luemi-theme='dark'] .collection-2 {
+  background: #284640;
+}
+[data-luemi-theme='dark'] .selected {
+  background: #62417b !important;
+  color: #fff !important;
+}
+[data-luemi-theme='dark'] .colored > span,
+[data-luemi-theme='dark'] .colored > button {
+  background: #473153;
+  color: #dcc3ef;
+}
+[data-luemi-theme='dark'] .photo-slot {
+  background: #30233f;
+}
+[data-luemi-theme='dark'] .progress {
+  background: #483052;
+}
+[data-luemi-theme='dark'] .category-tabs .active {
+  background: #62417b;
+  color: #fff;
+}

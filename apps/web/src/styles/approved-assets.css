@@ -1,0 +1,40 @@
+/* Actual approved portraits cropped from original reference, no screenshot/UI repeated. */
+.portrait-main img,
+.portrait-sunset img,
+.portrait-dog img {
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  object-fit: cover;
+}
+/* Keep action icons theme-specific; avoid recoloring originals beyond existing design rules. */
+[data-luemi-theme='dark'] .core-icon {
+  filter: none;
+}
+
+/* Actual W05/W07 theme-specific approved assets: never recolor approved raster/vector data. */
+.themed-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.icon-dark {
+  display: none !important;
+}
+[data-luemi-theme='dark'] .icon-dark {
+  display: inline-block !important;
+}
+[data-luemi-theme='dark'] .icon-light {
+  display: none !important;
+}
+.empty > img.icon-dark,
+.empty > img.icon-light {
+  width: 180px;
+  height: 150px;
+  object-fit: contain;
+}
+[data-luemi-theme='dark'] .core-icon {
+  filter: none;
+}

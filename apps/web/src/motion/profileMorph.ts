@@ -1,30 +1,26 @@
-/** Pure geometry. One render transform and one native scroll offset. */
-export const PROFILE_AVATAR_SIZE=56;
-export const PROFILE_RADIUS=27;
-export const SNAP_THRESHOLD=.30;
-export const clamp01=(n:number)=>Number.isFinite(n)?Math.max(0,Math.min(1,n)):0;
-export function morphTravel(width:number){return Number.isFinite(width)&&width>0?Math.min(325,Math.max(220,width*.78)):220;}
-export function morphFrame(scroll:number,width:number){
- const size=Number.isFinite(width)&&width>56?width:56;
- const progress=clamp01(scroll/morphTravel(width));
- const ease=progress*(2-progress);
- const scale=1+(PROFILE_AVATAR_SIZE/size-1)*ease;
- return {
-  progress,scale,
-  x:7*ease,
-  radius:PROFILE_RADIUS+(size/2-PROFILE_RADIUS)*ease,
-  rimWidth:1.45/scale,
-  captionOpacity:clamp01(1-progress*3.75),
-  compactOpacity:clamp01((progress-.50)/.28),
-  barsOpacity:clamp01(1-progress*5),
-  expanded:progress<.025,
- };
+/** Profile geometry used by browsers that do not support CSS scroll timelines. */
+export const PROFILE_AVATAR_SIZE = 56;
+export const PROFILE_SNAP_THRESHOLD = 0.3;
+
+export function clamp01(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 }
-export function snapTarget(scroll:number,width:number,lastClosed:boolean,velocity:number){
- const travel=morphTravel(width),fraction=clamp01(scroll/travel);
- if(scroll<=1)return 0;
- if(scroll>travel+24)return null; // navigating content, do not pull back
- if(velocity>.6&&scroll>18&&scroll<travel-18)return travel;
- if(velocity<-.6&&scroll>18&&scroll<travel-18)return 0;
- return fraction>=(lastClosed?.70:SNAP_THRESHOLD)?travel:0;
+
+export function morphTravel(containerWidth: number): number {
+  if (!Number.isFinite(containerWidth) || containerWidth <= 0) return 220;
+  return Math.min(325, Math.max(220, containerWidth * 0.78));
+}
+
+export function morphFrame(scrollTop: number, travel: number) {
+  const progress = clamp01(scrollTop / (travel > 0 ? travel : 220));
+  // Compositing only: opacity and transform. No radius, blur or box-shadow changes.
+  return {
+    progress,
+    heroScale: 1 - progress * 0.84,
+    heroOpacity: clamp01((0.78 - progress) / 0.28),
+    avatarOpacity: clamp01((progress - 0.55) / 0.28),
+    captionOpacity: clamp01((0.38 - progress) / 0.3),
+    compactOpacity: clamp01((progress - 0.55) / 0.28),
+    barsOpacity: clamp01((0.3 - progress) / 0.25),
+  };
 }

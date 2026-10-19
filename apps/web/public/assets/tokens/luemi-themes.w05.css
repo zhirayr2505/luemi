@@ -1,65 +1,86 @@
 /* LUEMI W05 — icon/theme candidate tokens, NOT final Brand Master HEX. */
-:root, [data-luemi-theme="light"] {
-  --luemi-bg: #FFFBF7;
-  --luemi-surface: #FFFFFF;
-  --luemi-surface-soft: #F4EFFB;
+:root,
+[data-luemi-theme='light'] {
+  --luemi-bg: #fffbf7;
+  --luemi-surface: #ffffff;
+  --luemi-surface-soft: #f4effb;
   --luemi-text: #292234;
-  --luemi-text-muted: #5E536D;
-  --luemi-icon: #7146A9;
-  --luemi-icon-strong: #7146A9;
-  --luemi-icon-like: #B84B8D;
-  --luemi-icon-special: #8752BE;
-  --luemi-border: #D7C6E3;
-  --luemi-cta-bg: #7146A9;
-  --luemi-cta-text: #FFFFFF;
-  --luemi-glass-fallback: #F4EFFB;
-  --luemi-focus-ring: #7146A9;
+  --luemi-text-muted: #5e536d;
+  --luemi-icon: #7146a9;
+  --luemi-icon-strong: #7146a9;
+  --luemi-icon-like: #b84b8d;
+  --luemi-icon-special: #8752be;
+  --luemi-border: #d7c6e3;
+  --luemi-cta-bg: #7146a9;
+  --luemi-cta-text: #ffffff;
+  --luemi-glass-fallback: #f4effb;
+  --luemi-focus-ring: #7146a9;
   --luemi-icon-size: 24px;
   --luemi-hit-area: 44px;
   --luemi-icon-stroke: 1.8;
   color-scheme: light;
 }
-[data-luemi-theme="dark"] {
+[data-luemi-theme='dark'] {
   --luemi-bg: #191422;
-  --luemi-surface: #271F34;
-  --luemi-surface-soft: #352B43;
-  --luemi-text: #F9F5FC;
-  --luemi-text-muted: #C8BBD6;
-  --luemi-icon: #D5B7FF;
-  --luemi-icon-strong: #D5B7FF;
-  --luemi-icon-like: #F5A1C3;
-  --luemi-icon-special: #D5B7FF;
+  --luemi-surface: #271f34;
+  --luemi-surface-soft: #352b43;
+  --luemi-text: #f9f5fc;
+  --luemi-text-muted: #c8bbd6;
+  --luemi-icon: #d5b7ff;
+  --luemi-icon-strong: #d5b7ff;
+  --luemi-icon-like: #f5a1c3;
+  --luemi-icon-special: #d5b7ff;
   --luemi-border: #554561;
-  --luemi-cta-bg: #D5B7FF;
+  --luemi-cta-bg: #d5b7ff;
   --luemi-cta-text: #191422;
-  --luemi-glass-fallback: #352B43;
-  --luemi-focus-ring: #D5B7FF;
+  --luemi-glass-fallback: #352b43;
+  --luemi-focus-ring: #d5b7ff;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-luemi-theme="light"]):not([data-luemi-theme="dark"]) {
+  :root:not([data-luemi-theme='light']):not([data-luemi-theme='dark']) {
     --luemi-bg: #191422;
-    --luemi-surface: #271F34;
-    --luemi-surface-soft: #352B43;
-    --luemi-text: #F9F5FC;
-    --luemi-text-muted: #C8BBD6;
-    --luemi-icon: #D5B7FF;
-    --luemi-icon-strong: #D5B7FF;
-    --luemi-icon-like: #F5A1C3;
-    --luemi-icon-special: #D5B7FF;
+    --luemi-surface: #271f34;
+    --luemi-surface-soft: #352b43;
+    --luemi-text: #f9f5fc;
+    --luemi-text-muted: #c8bbd6;
+    --luemi-icon: #d5b7ff;
+    --luemi-icon-strong: #d5b7ff;
+    --luemi-icon-like: #f5a1c3;
+    --luemi-icon-special: #d5b7ff;
     --luemi-border: #554561;
-    --luemi-cta-bg: #D5B7FF;
+    --luemi-cta-bg: #d5b7ff;
     --luemi-cta-text: #191422;
-    --luemi-glass-fallback: #352B43;
-    --luemi-focus-ring: #D5B7FF;
+    --luemi-glass-fallback: #352b43;
+    --luemi-focus-ring: #d5b7ff;
     color-scheme: dark;
   }
 }
 /* Disabled is communicated by aria-disabled and text/tooltips, never only by color. */
-.luemi-icon { width: var(--luemi-icon-size); height: var(--luemi-icon-size); flex: none; }
-.luemi-icon-hit { min-width:var(--luemi-hit-area);min-height:var(--luemi-hit-area);display:inline-flex;align-items:center;justify-content:center; }
-.luemi-icon-hit:focus-visible { outline: 3px solid var(--luemi-focus-ring);outline-offset:3px; }
-.luemi-icon-hit[aria-disabled="true"] { opacity:.5; cursor:not-allowed; }
+.luemi-icon {
+  width: var(--luemi-icon-size);
+  height: var(--luemi-icon-size);
+  flex: none;
+}
+.luemi-icon-hit {
+  min-width: var(--luemi-hit-area);
+  min-height: var(--luemi-hit-area);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.luemi-icon-hit:focus-visible {
+  outline: 3px solid var(--luemi-focus-ring);
+  outline-offset: 3px;
+}
+.luemi-icon-hit[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 @media (prefers-reduced-motion: reduce) {
-  .luemi-icon, .luemi-icon-hit {animation:none!important;transition:none!important;}
+  .luemi-icon,
+  .luemi-icon-hit {
+    animation: none !important;
+    transition: none !important;
+  }
 }

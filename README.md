@@ -34,3 +34,7 @@ npm run dev
 5. Визуальное сравнение с утверждёнными PNG и проверка на Galaxy A55 внутри Telegram.
 
 Подробности: [docs/STAGE_00.md](docs/STAGE_00.md).
+
+## Обязательные правила разработки
+
+Перед любыми изменениями читать [docs/DEVELOPMENT_RULES.md](docs/DEVELOPMENT_RULES.md), а для механики профиля — [docs/PROFILE_AUDIT_V4.md](docs/PROFILE_AUDIT_V4.md). `npm run format:check` выполняется в CI.
