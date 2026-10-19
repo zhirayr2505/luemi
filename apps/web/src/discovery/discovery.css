@@ -172,3 +172,7 @@
 .discovery-all-interests{overflow-y:auto;padding:9px 2px 15px;display:flex;flex-wrap:wrap;gap:8px}
 .discovery-all-interests .chip{flex:none;max-width:100%}
 @media(prefers-reduced-motion:reduce){.discovery-deck-current,.discovery-deck-next,.discovery-save-control{transition:none}}
+
+/* Second demo frame shows another crop of the same artificial character. */
+.discovery-photo .carousel-track img:nth-child(2){object-position:50% 22%;transform:scale(1.095)}
+.discovery-profile-photo .carousel-track img:nth-child(2){object-position:50% 22%;transform:scale(1.075)}
