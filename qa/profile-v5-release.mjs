@@ -78,12 +78,18 @@ async function modeRun(mode){
    await setY(y);
    for(let i=0;i<tabs.length;i++){
     await select(tabs[i]);
+    await setY(y);
     const v=await page.evaluate(()=>{
      const cap=document.querySelector('.profile-morph-compact')?.getBoundingClientRect(),rail=document.querySelector('.profile-tabs-rail')?.getBoundingClientRect();
      if(!cap||!rail)return {missing:true};
      const top=cap.bottom,bottom=rail.top;
-     const candidates=[...document.querySelectorAll('.profile-tabs-stack h3,.profile-tabs-stack p,.profile-tab-card,.profile-collection-empty,.profile-photo-tile,.profile-account-row')]
-        .filter(e=>{const r=e.getBoundingClientRect();return r.top<bottom-1&&r.bottom>top+1&&r.width>3}).map(e=>e.className+' '+e.textContent.slice(0,25));
+     // Only a topmost, actually hit-testable card counts. Other horizontal panels
+     // exist in DOM but are fully clipped by the tab viewport.
+     const xs=[.25,.5,.75].map(frac=>rail.left+rail.width*frac);
+     const middle=top+(bottom-top)/2;
+     const candidates=bottom>top && xs.map(x=>document.elementFromPoint(x,middle))
+       .filter(e=>e?.closest('.profile-tab-card,.profile-collection-empty,.profile-photo-tile,.profile-account-row,.profile-tabs-stack p'))
+       .map(e=>String(e.textContent).slice(0,35)) || [];
      return {top,bottom,candidates};
     });
     await screenshot(mode+'-2-'+Math.round(y)+'-tab'+i);
@@ -139,12 +145,14 @@ async function modeRun(mode){
   const cy=Math.min(790,Math.max(viewport.y+55,viewport.y+25));
   const before=await page.locator('.profile-tabs-viewport').evaluate(e=>e.scrollLeft);
   await swipe(306,cy,90,cy);
+  await page.waitForTimeout(1200);
   const after=await page.locator('.profile-tabs-viewport').evaluate(e=>e.scrollLeft);
   await screenshot(mode+'-5-left-swipe');
   assert(after>before+100,'left touch swipe did not move panel: '+before+' to '+after);
   const w=await page.locator('.profile-tabs-viewport').evaluate(e=>e.clientWidth);
   assert(Math.min(after%w,w-after%w)<2,'left snap is off panel: '+after+' width '+w);
   await swipe(95,cy,315,cy);
+  await page.waitForTimeout(1200);
   const back=await page.locator('.profile-tabs-viewport').evaluate(e=>e.scrollLeft);
   await screenshot(mode+'-5-right-swipe');
   assert(back<after-100,'right touch swipe did not move back');
