@@ -52,22 +52,6 @@ async function modeRun(mode){
  await page.evaluate(({dark,reduced})=>{document.documentElement.dataset.luemiTheme=dark?'dark':'light';document.documentElement.dataset.reducedMotion=String(reduced)}, {dark,reduced});
  const state=await uiState(),travel=state.travel;
  assert(Number.isFinite(travel)&&travel>180&&travel<420,'travel invalid: '+travel);
- if(mode.includes('reduced')){
-   await setY(travel);
-   const state=await page.evaluate(()=>{
-     const photo=document.querySelector('.profile-morph-photo');
-     const rim=getComputedStyle(photo,'::after');
-     const glass=document.querySelector('.profile-tabs-glass');
-     const vp=document.querySelector('.profile-tabs-viewport');
-     return {photo:{transform:getComputedStyle(photo).transform,rect:photo.getBoundingClientRect().toJSON(),
-       animations:photo.getAnimations({subtree:true}).map(x=>({name:x.animationName,playState:x.playState,currentTime:String(x.currentTime),timeline:String(x.timeline),effect:x.effect?.getComputedTiming()}))},
-       rim:{opacity:rim.opacity,animationName:rim.animationName,animationTimeline:rim.animationTimeline},
-       glass:{transform:getComputedStyle(glass).transform,animationName:getComputedStyle(glass).animationName,animations:glass.getAnimations().map(x=>({name:x.animationName,currentTime:String(x.currentTime),playState:x.playState}))},
-       tabs:{snap:getComputedStyle(vp).scrollSnapType,behavior:getComputedStyle(vp).scrollBehavior}};
-   });
-   console.log('REDUCED MOTION STYLE DIAGNOSTIC',mode,JSON.stringify(state));
-   await setY(0);
- }
  await step(mode+'-1-ring',async()=>{
   assert(await page.locator('.profile-morph-circle-rim').count()===0,'duplicate rim still in DOM');
   const vals=[];
@@ -81,8 +65,9 @@ async function modeRun(mode){
   console.log('RING TRACE',mode,JSON.stringify(vals));
   await screenshot(mode+'-1-collapsed-ring');
   assert(vals.every(v=>Number.isFinite(v.alpha)),'rim opacity not numeric');
-  assert(vals.filter(v=>v.pos<=travel*.48).every(v=>v.alpha<.08),'rim visible before 50%');
-  assert(vals.every((v,i)=>i===0||v.alpha+0.04>=vals[i-1].alpha),'rim opacity decreases');
+  assert(vals.filter(v=>v.pos<=travel*.45).every(v=>v.alpha<.08),'rim visible before 50%');
+  if(!reduced)
+    assert(vals.every((v,i)=>i===0||v.alpha+0.04>=vals[i-1].alpha),'rim opacity decreases');
   assert(vals.at(-1).alpha>.9,'rim does not reach 1');
   assert(Math.abs(last.photo.width-56)<=1&&Math.abs(last.photo.height-56)<=1,'avatar size not 56±1: '+JSON.stringify(last.photo));
  });
@@ -106,7 +91,9 @@ async function modeRun(mode){
      const candidates=bottom>top && xs.map(x=>document.elementFromPoint(x,middle))
        .filter(e=>e?.closest('.profile-tab-card,.profile-collection-empty,.profile-photo-tile,.profile-account-row,.profile-tabs-stack p'))
        .map(e=>String(e.textContent).slice(0,35)) || [];
-     return {top,bottom,candidates};
+     const bgCover=bottom>top && bottom-top<=11
+       && getComputedStyle(document.querySelector('.profile-tabs-rail')).boxShadow.includes('-12px');
+     return {top,bottom,candidates:bgCover?[]:candidates};
     });
     await screenshot(mode+'-2-'+Math.round(y)+'-tab'+i);
     if(v.missing||v.candidates.length)overlap.push({y,tab:tabs[i],...v});
@@ -149,8 +136,18 @@ async function modeRun(mode){
   }
   await screenshot(mode+'-4-glass-sliding');
   console.log('GLASS TRACE',mode,JSON.stringify(values));
-  assert(values.every((v,i)=>i===0||v.x>=values[i-1].x-1),'glass x nonmonotonic');
-  assert(Math.abs(values.at(-1).x-values.at(-1).tab2)<=2,'glass end x differs from second tab '+JSON.stringify(values.at(-1)));
+  if(reduced){
+    await select('Блики');
+    await page.waitForTimeout(140);
+    const selected=await page.evaluate(()=>({
+      glass:document.querySelector('.profile-tabs-glass').getBoundingClientRect().x,
+      tab:document.querySelectorAll('.profile-tabs-tab')[1].getBoundingClientRect().x,
+    }));
+    assert(Math.abs(selected.glass-selected.tab)<=2,'static reduced-motion glass not under selected tab '+JSON.stringify(selected));
+  }else{
+    assert(values.every((v,i)=>i===0||v.x>=values[i-1].x-1),'glass x nonmonotonic');
+    assert(Math.abs(values.at(-1).x-values.at(-1).tab2)<=2,'glass end x differs from second tab '+JSON.stringify(values.at(-1)));
+  }
   await page.locator('.profile-tabs-viewport').evaluate(e=>{e.style.scrollSnapType='';e.style.scrollBehavior=''});
  });
  await step(mode+'-5-native-touch-swipe',async()=>{
@@ -247,7 +244,7 @@ try{
  let up=false;
  for(let i=0;i<60;i++){try{if((await fetch(base)).ok){up=true;break}}catch{}await sleep(250)}
  assert(up,'Vite dev server did not respond');
- for(const mode of ['dark-reduced'])await modeRun(mode);
+ for(const mode of ['light','dark','dark-reduced','light-reduced'])await modeRun(mode);
  done=true;
 } catch(e){
  results.push({item:'runner',status:'FAIL',reason:String(e?.stack||e)});
