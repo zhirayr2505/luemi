@@ -258,9 +258,7 @@ export function App() {
     </button></div>
     {(auth!=="authorized"||phase==="welcome")?<section className={"entry-state"+(welcomeExiting?" exiting":"")} aria-live="polite">
       <div className="intro-mark">
-        {brandReady
-          ? <img src={logoSrc} alt="luemi" className="intro-logo"/>
-          : <span className="intro-placeholder" aria-hidden="true"/>}
+        <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
       <h1>Твоя история начинается здесь</h1>
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
