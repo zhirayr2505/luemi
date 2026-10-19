@@ -24,3 +24,10 @@
 - First splash arrangement stays centered. The CTA appears on SAME splash after both auth/brand readiness and 1.8 s minimum; no hard-coded fake progress percentage.
 - Verify CTA leads directly to registration, with reduced-motion fallback; header/progress and circular arrows unchanged.
 - Actual Galaxy A55 in-Telegram review: NOT TESTED before owner checks new staging release.
+
+## Stage 02D video QA & regression gates
+- Source evidence: full 68.0-second 1080×2340 Android Telegram video; inspected contact frames at 4s and high-density 1s checks of range/interests/photos.
+- Observed: old single-purpose loading stripe briefly flashes before approved intro; theme control collides with Telegram chrome; gradient age inputs are two independent sliders; selection in Android system photo picker leaves mosaic empty; interest chips lack icons and color variety; back/forward navigation too flat; slider keyboard appears after radius interaction.
+- Code changes implemented, not yet physically verified: remove stripe markup and dead CSS; icon-only light/dark with radial theme reveal, lower control; remove logo island; glass buttons; gradient single/double ranges; blur text field on range pointer; 21 interest gradients and icon glyphs; immediate FileList snapshot and preview swiping; animated block entry.
+- Added `scripts/ui-contract-smoke.mjs`, driven by `npm run test:ui`. Render root `prebuild` runs lint, UI regression assertions and API tests before build. No claim of motion FPS or confirmed Android picker fix until new capture.
+- Pending post-merge verification: GitHub Actions full check, Render Live with verified bot, screenshots/videos of long scroll, slider drag, theme reveal and selecting 2–6 photos and swiping. WCAG AA full audit not done.
