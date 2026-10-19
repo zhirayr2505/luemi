@@ -20,3 +20,16 @@
 - Intro stays visible at least 1.8 s; after verified Telegram login, same screen reveals animated bottom “Начать” button. Tap transitions to step 1 in 280 ms (or immediately when reduced-motion is active).
 - Existing registration logo/gradient strip and round arrows, Telegram fullscreen, and secure auth remain untouched.
 - This is a test-preview UI; Stage 02 remains incomplete until persistent signed drafts, photo moderation and approvals.
+
+## Stage 02D · Major UI + photo repair (2026-10-19)
+- Based on 68-second Galaxy A55 Telegram recording `1000068619.mp4`. User approved maintaining single intro and existing firm gradient branding.
+- Removed legacy launch-bar markup/CSS, obsolete placeholder animation and unused state, leaving exactly one branded intro and CTA on same screen.
+- Theme: light/dark only, 43px sun/moon glass button lowered beneath Telegram controls; native View Transition circular reveal with reduced-motion fallback.
+- Registration shell: removed boxed logo island, transparent sticky header with original raster logo and light refraction masked to its exact silhouette; retained gradient progress indicator.
+- Navigation: unchanged 56px button placement with new translucent white back and branded lavender-pink gradient forward Liquid Glass faces.
+- Distance: branded gradient single range, prior text input explicitly blurred on touch to avoid unintended keyboard. Ages: one overlaid double-thumb 18–80 range with gradient fill.
+- Interests: 21 unique pastel gradients + one icon per interest, provisional catalog remains unchanged.
+- Photos: reproduced video symptom (selected images in Android Photos but none added to mosaic); FileList is now copied synchronously before input reset, bypassing emptied live FileList in deferred React state. Adds count and swipe in local preview.
+- Form blocks enter from below with short stagger. Obsolete styling was deleted, not overlaid.
+- CI contract-smoke added. Render `prebuild` now runs lint, regression smoke and API tests, then compiles. GitHub Actions queue may be delayed.
+- Scope: feature branch `feat/stage02d-major-ui-polish`, staging only after build gate. Production main, Supabase schema/storage and other projects unchanged. Real user registration and photo publishing disabled. Real-device post-deploy acceptance pending.
