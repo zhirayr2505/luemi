@@ -1,0 +1,31 @@
+name: LUEMI temporary format single-photo fix
+on:
+  push:
+    branches: [fix/single-photo-continuous-liquid-glass]
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npm run format
+      - run: npm run format:check
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - name: Commit formatted patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/web/src/ProfileMotion.tsx apps/web/src/ProfileGallery.tsx apps/web/src/motion/useProfilePhotoMorph.ts apps/web/src/motion/profileMorph.ts apps/web/src/profileMotion.css tests/profileArchitecture.test.ts tests/profileMorph.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m 'style(profile): format continuous photo fix'
+            git push origin HEAD:fix/single-photo-continuous-liquid-glass
+          fi
