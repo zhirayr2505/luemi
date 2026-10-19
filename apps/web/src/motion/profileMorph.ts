@@ -11,7 +11,6 @@ export function morphFrame(scrollTop: number, travel: number, finalScale = 0.16)
     progress,
     heroScale: 1 - (1 - clamp01(finalScale)) * progress,
     compactOpacity: clamp01((progress - 0.94) / 0.06),
-    circleRimOpacity: clamp01((progress - 0.96) / 0.04),
     captionOpacity: clamp01((0.38 - progress) / 0.3),
     barsOpacity: clamp01((0.3 - progress) / 0.25),
   };

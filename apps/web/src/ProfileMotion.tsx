@@ -51,7 +51,6 @@ export function ProfileMotion({ profile, reducedMotion = false, children }: Prop
               </div>
             </div>
           </div>
-          <div className="profile-morph-circle-rim" aria-hidden="true" />
           <div className="profile-morph-compact" ref={compact} aria-hidden="true">
             <strong>{display}</strong>
             <span>

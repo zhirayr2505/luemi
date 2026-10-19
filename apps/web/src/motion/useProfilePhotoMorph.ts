@@ -22,7 +22,6 @@ export function useProfilePhotoMorph(
     const caption = captionRef.current,
       bars = barsRef.current;
     if (!scroller || !frame || !photo || !compact || !caption || !bars) return;
-    const rim = frame.querySelector<HTMLElement>('.profile-morph-circle-rim');
     const system = matchMedia('(prefers-reduced-motion: reduce)');
     const cssTimeline =
       typeof CSS !== 'undefined' && CSS.supports('animation-timeline: --luemi-profile-scroll');
@@ -45,7 +44,6 @@ export function useProfilePhotoMorph(
       compact.style.opacity = String(f.compactOpacity);
       caption.style.opacity = String(f.captionOpacity);
       bars.style.opacity = String(f.barsOpacity);
-      if (rim) rim.style.opacity = String(f.circleRimOpacity);
       // The legacy rounded-corner fallback switches the clipping once, only at the endpoint.
       const nextRounded = f.progress >= 0.9;
       if (nextRounded !== rounded) {
@@ -96,7 +94,6 @@ export function useProfilePhotoMorph(
       compact.style.opacity = '';
       caption.style.opacity = '';
       bars.style.opacity = '';
-      if (rim) rim.style.opacity = '';
     };
   }, [scrollerRef, frameRef, photoRef, compactRef, captionRef, barsRef, profileId, reducedMotion]);
 }

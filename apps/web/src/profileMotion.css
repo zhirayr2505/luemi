@@ -213,22 +213,17 @@
   pointer-events: none;
 }
 
-/* Static circular Liquid Glass RIM only; no second copy of the portrait. */
-.profile-morph-circle-rim {
+.profile-morph-photo::after {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: var(--profile-avatar-size);
-  height: var(--profile-avatar-size);
-  border: 1.5px solid rgba(255, 255, 255, 0.86);
-  border-radius: 50%;
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.45),
-    0 5px 14px rgba(64, 31, 90, 0.12);
+  z-index: 4;
+  inset: 0;
+  border: calc(1.5px / var(--profile-final-scale)) solid rgba(255, 255, 255, 0.86);
+  border-radius: inherit;
+  content: '';
   opacity: 0;
   pointer-events: none;
 }
-[data-luemi-theme='dark'] .profile-morph-circle-rim {
+[data-luemi-theme='dark'] .profile-morph-photo::after {
   border-color: rgba(245, 217, 255, 0.8);
 }
 
@@ -362,8 +357,8 @@
     animation-timeline: --luemi-profile-scroll;
     animation-range: 0px var(--profile-travel);
   }
-  .profile-morph-circle-rim {
-    animation: luemi-reveal-rim 1s linear both;
+  .profile-morph-photo::after {
+    animation: luemi-photo-rim 1s linear both;
     animation-timeline: --luemi-profile-scroll;
     animation-range: 0px var(--profile-travel);
   }
@@ -408,9 +403,9 @@
     opacity: 1;
   }
 }
-@keyframes luemi-reveal-rim {
+@keyframes luemi-photo-rim {
   0%,
-  96% {
+  50% {
     opacity: 0;
   }
   100% {
@@ -423,6 +418,10 @@
   }
   .profile-shape-collapsed .profile-morph-photo {
     border-radius: 50%;
+  }
+  .profile-shape-collapsed .profile-morph-photo::after {
+    opacity: 1;
+    transition: opacity 110ms ease-out;
   }
 }
 
