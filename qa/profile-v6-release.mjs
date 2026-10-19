@@ -271,7 +271,7 @@ async function modeRun(mode){
   assert(state.logo.w>=105&&state.logo.w<=123,'logo island not compact '+JSON.stringify(state.logo));
   assert(state.mark.w>=65&&state.mark.w<=78,'wordmark incorrect width '+JSON.stringify(state.mark));
   assert(Math.abs(state.logo.center-state.mark.center)<1.6,'wordmark not centered in island');
-  assert(/blur\\(14px\\)/.test(state.nameBlur)||/blur\\(14px\\)/.test(state.nameWebkit),'nameplate blur missing '+state.nameBlur);
+  assert(/blur\(14px\)/.test(state.nameBlur)||/blur\(14px\)/.test(state.nameWebkit),'nameplate blur missing '+state.nameBlur);
   assert(state.icons.length>=5&&state.icons.slice(0,5).every(x=>x.icons===1),'missing interest icons '+JSON.stringify(state.icons));
   assert(state.railShadow.includes('inset'),'rail glass stroke absent');
   assert(!/0px 8px|0px -12px/.test(state.railShadow),'old tabs halo persists '+state.railShadow);
