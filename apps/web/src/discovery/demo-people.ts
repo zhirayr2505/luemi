@@ -25,7 +25,7 @@ function illustration(index:number,variation:number):string{
  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
 const base=[
- ["mira","Мира",25,"woman","Краснодар","Россия","ru","relationship","Музыка|Путешествия|Фотография","ru|en","Люблю уютные кофейни, море и длинные разговоры."],
+ ["mira","Мира",25,"woman","Краснодар","Россия","ru","relationship","Музыка|Путешествия|Фотография|Кофе|Книги","ru|en","Люблю уютные кофейни, море и длинные разговоры."],
  ["aram","Арам",29,"man","Ереван","Армения","am","serious","Путешествия|Кулинария|Горы","hy|ru","Мечтаю однажды объехать мир. А пока готовлю лучший кофе для друзей."],
  ["sofia","София",27,"woman","Тбилиси","Грузия","ge","friendship","Искусственный интеллект|Живопись|Книги","en|ru","Люблю находить маленькие приключения в обычных днях."],
  ["levon","Левон",30,"man","Москва","Россия","ru","dates","Футбол|Музыка|Кино","ru|hy","Живая музыка, прогулки и хорошее чувство юмора."],
@@ -36,7 +36,7 @@ const base=[
 ] as const;
 export const demoPeople:DemoPerson[]=base.map((p,index)=>({
  id:p[0],name:p[1],age:p[2],gender:p[3] as DemoPerson["gender"],city:p[4],country:p[5],countryCode:p[6],
- goal:p[7] as DemoPerson["goal"],interests:p[8].split("|").map(x=>x.toLocaleLowerCase("ru").replace(/\s+/g,"-")),
+ goal:p[7] as DemoPerson["goal"],premium:index===0||index===5,interests:p[8].split("|").map(x=>x.toLocaleLowerCase("ru").replace(/\s+/g,"-")),
  languages:p[9].split("|"),about:p[10],
  photos:[{id:p[0]+"-1",src:illustration(index,0)},{id:p[0]+"-2",src:illustration(index,1)}]
 }));
