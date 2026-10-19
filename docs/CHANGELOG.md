@@ -10,3 +10,12 @@
 - Added Telegram BackButton handling; preserved signed Telegram bootstrap.
 - Added unit tests for age/date and interest limits; GitHub CI passed for feature head d365dd32.
 - **Not yet implemented:** saving drafts to backend, photo moderation, publish, true shared Stage 03 profile, actual compliant consents/geocoding.
+
+## 2026-10-19 · Stage 02E premium UI replacement (PREVIEW)
+- Recreated glass design tokens and registration primitives, replaced old stylesheet.
+- Sequential brand→headline→CTA, native Telegram shell safe-area layout, low-cost circle theme pulse.
+- Accessible gradient checkbox, Lucide SVG icons, 21 gradient interest chips grouped by colored icon categories.
+- Worldwide flag relocated to geo step, validated location IDs and optional Geoapify search/reverse proxy.
+- Unified range preference, typed 750-character bio, name normalization and validation.
+- Pointer long-press photo order + main badge, swipe-follow carousel and two-mode preview.
+- No production data touched. Further mobile acceptance required.
