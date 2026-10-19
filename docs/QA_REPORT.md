@@ -56,3 +56,10 @@
 - Tests now additionally assert: no old brand-liquid selector; input focus narrow glass effect; local IndexedDB photo persistence; truthful FileReader progress + completion check; no visible photo arrows; tap highlights disabled; pinned interests categories; selected language flags only; three columns, named input hint. Existing Stage 02F structural regression checks remain.
 - GitHub Actions check completed SUCCESS on code commit `85099c711f90b64e30c967373923e7fb6af6fe7f`, run `39307669207`.
 - Real-device QA still needed: photo FileReader progress/check timing, complete reopen/recovery with 3 photos, font/keyboard positioning, dark/light theme tap flash, interest subscroll, Geopicker compactness. Do not claim production UI approval until new Galaxy A55 capture.
+
+## Stage 03 Feed Polish test gate
+- Separate recovery branch `backup/pre-stage03-feed-polish-20261020` created before changes.
+- Structural regression checks require one-screen flex content, no .discovery-feed-scroller / old city row / below-card actions, three icon controls within logo width, finger tracking of pager and underline, full-width carousel progress, synthetic Premium and +N.
+- GitHub CI verifies eslint/typecheck/web+API build, API tests, demo feed model and smoke contracts. User Galaxy A55 acceptance pending.
+- Manual tests: system Telegram BackButton, top safe-area at Galaxy A55, non-scroll Feed at multiple font sizes, all five buttons never clipped, snap/threshold of all three tabs and full-width photo swipe bars, no tab switch when swiping a photo, selected Saved overlay/goal + Premium badge, quick dark/light switch, keyboard-safe filter sheet, reduced-motion, slow image decode, next peek only at high viewport.
+- Note: temporary synthetic portraits remain illustrated and do not replicate photoreal imagery shown in the visual concept. They are labeled Demo, not real users.
