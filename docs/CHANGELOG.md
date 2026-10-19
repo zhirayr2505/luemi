@@ -27,3 +27,11 @@
 - Six illustrated goals, 10 rich interest categories + pinned selected panel, searchable 60-language catalogue with 66 MIT circular SVG flags.
 - Rewrote photo drag with client-viewport portal, animated FLIP rearrangement, auto-scroll, accessible movement; replaced old tabbed preview with one complete profile and single edit button.
 - Removed obsolete CSS selectors, old gesture implementation and previous goals/worldwide fields; staging only.
+
+## 2026-10-19 · Stage 02F.1 feedback polish
+- Removed bright repeated raster-mask logo glow; compact bare theme icon and raised wordmark.
+- Thinner inner focus rings, helper annotation on filtered name chars, transparent WebKit tap highlight.
+- Non-scrolling interest category bar, high-contrast selected interests; compact geo/audience screens.
+- Bio textarea shortened, languages displayed as three-across search results with flags-only chosen row; profile languages flags only and goal badge stronger.
+- Removed photo reorder arrow overlays, replaced with keyboard Alt-arrow fallback, real local FileReader progress and transient completion check.
+- New device-local registration restoration across Mini App opens, including IndexedDB-backed photo File objects and explicit reset control.
