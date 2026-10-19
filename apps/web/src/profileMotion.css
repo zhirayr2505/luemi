@@ -398,17 +398,16 @@
 }
 @keyframes luemi-reveal-compact {
   0%,
-  58% {
+  94% {
     opacity: 0;
   }
-  95%,
   100% {
     opacity: 1;
   }
 }
 @keyframes luemi-reveal-rim {
   0%,
-  75% {
+  96% {
     opacity: 0;
   }
   100% {

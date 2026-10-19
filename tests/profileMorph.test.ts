@@ -34,3 +34,13 @@ test('morph always has a visible photograph, reversed gestures retrace one path'
   assert.equal(clamp01(NaN), 0);
   assert.equal(morphFrame(NaN, 0).progress, 0);
 });
+
+test('compact glass and circle rim do not cover a still-large portrait', () => {
+  const travel = 295;
+  const at90 = morphFrame(travel * .90, travel, .16);
+  assert.equal(at90.compactOpacity, 0);
+  assert.equal(at90.circleRimOpacity, 0);
+  const shut = morphFrame(travel, travel, .16);
+  assert.equal(shut.compactOpacity, 1);
+  assert.equal(shut.circleRimOpacity, 1);
+});
