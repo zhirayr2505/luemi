@@ -523,6 +523,7 @@
   background:
     linear-gradient(135deg, rgba(79, 56, 99, 0.86), rgba(56, 41, 73, 0.82)), var(--luemi-bg);
   box-shadow:
+    0 -12px 0 var(--luemi-bg),
     inset 0 1px 1px rgba(255, 255, 255, 0.15),
     0 8px 22px rgba(11, 6, 19, 0.19);
 }
