@@ -16,3 +16,9 @@
 - Final product profile/feed screens need to reuse Stage 02E shared carousel/preview components; still only local-preview implementations.
 - Real draft persistence, consent/legal, moderation, private image upload and API-side city-ID verification are NOT built. A user-provided fake ID must never be accepted by a future publishing endpoint.
 - Full multilingual localization and accessibility audit, official canonical W04 binary import still open.
+
+## Stage 02F pending follow-ups
+- Actual full-world city service needs server-side GEOAPIFY_API_KEY (only after service/free-tier/privacy confirmation). Built-in sample cities are explicitly DEMO; cannot claim comprehensive global data.
+- Full registration persistence, consent/legal, secure photos and moderation remain separate open tasks. Real user accounts unavailable until server workflow approved.
+- Needs real Samsung Galaxy A55 motion/keyboard testing and separate iOS verification; do not infer smooth 60FPS from CI alone.
+- Real locale switching, expanded world flag set beyond locally vendored 66 and exhaustive accessibility audit remain follow-ups.
