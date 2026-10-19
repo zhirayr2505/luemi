@@ -30,12 +30,14 @@ export function ProfilePage({ state, setState, onRegister, openProfile, notify }
           <Icon name="edit" size={18} />
           {p.name ? 'Редактировать анкету' : 'Создать анкету'}
         </Button>
-        {p.name && (
-          <button className="text-button profile-preview-link" onClick={() => openProfile(p)}>
-            <span>Открыть профиль и разделы</span>
-            <small>О себе · Блики · Фото · Аккаунт · Подарки</small>
-          </button>
-        )}
+        <button
+          type="button"
+          className="text-button profile-preview-link"
+          onClick={() => openProfile(p)}
+        >
+          <span>{p.name ? 'Открыть профиль и разделы' : 'Посмотреть разделы профиля'}</span>
+          <small>О себе · Блики · Фото · Аккаунт · Подарки</small>
+        </button>
       </div>
       <div
         className="premium-banner"
