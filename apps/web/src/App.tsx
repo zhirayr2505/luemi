@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { flushSync } from "react-dom";
+import {ArrowRight,Moon,Sun} from "lucide-react";
+import {GlassArrow} from "./ui/Glass";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
 import { RegistrationStep, type PhotoItem } from "./registration/Steps";
@@ -74,6 +75,9 @@ export function App() {
   const ownedUrls = useRef<string[]>([]);
   const [error,setError] = useState("");
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
+  const [themePulse,setThemePulse] = useState<{x:number;y:number}|null>(null);
+  const rootRef=useRef<HTMLElement>(null);
+  const contentRef=useRef<HTMLDivElement>(null);
   const activeTheme=theme;
   const patch = useCallback((change:Partial<RegistrationDraft>)=>{
     setDraft(prev=>({...prev,...change}));
@@ -164,6 +168,28 @@ export function App() {
       controller.abort();
     };
   },[]);
+  // Telegram/Android keyboard resizes only the *scrollable form area*,
+  // never the whole window or a duplicate floating footer.
+  useEffect(()=>{
+    const vv=window.visualViewport;
+    let full=vv?.height??window.innerHeight;
+    const update=()=>{
+      const height=vv?.height??window.innerHeight;
+      if(height>full)full=height;
+      const isKeyboard=full-height>145;
+      rootRef.current?.style.setProperty("--app-height",height+"px");
+      rootRef.current?.setAttribute("data-keyboard",isKeyboard?"open":"closed");
+    };
+    update();
+    vv?.addEventListener("resize",update);
+    vv?.addEventListener("scroll",update);
+    window.addEventListener("resize",update);
+    return ()=>{
+      vv?.removeEventListener("resize",update);
+      vv?.removeEventListener("scroll",update);
+      window.removeEventListener("resize",update);
+    };
+  },[]);
   // Preview photos are local-only. Remove temporary browser URLs on unmount.
   useEffect(()=>()=>{
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
@@ -189,7 +215,7 @@ export function App() {
   const changeStep=(target:number)=>{
     setError("");
     setStep(Math.max(1,Math.min(8,target)));
-    window.scrollTo({top:0,behavior:"instant"});
+    contentRef.current?.scrollTo({top:0,behavior:"auto"});
   };
   const next=()=>{
     const nextError=validateStep(draft,step,photos.length);
@@ -239,22 +265,21 @@ export function App() {
     },280);
   };
   const changeTheme=(event:ReactMouseEvent<HTMLButtonElement>)=>{
-    const bounds=event.currentTarget.getBoundingClientRect();
-    const doc=document as Document & {startViewTransition?:(update:()=>void)=>{ready:Promise<void>}};
-    const update=()=>setTheme(value=>value==="light"?"dark":"light");
-    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||!doc.startViewTransition){update();return;}
-    document.documentElement.style.setProperty("--theme-reveal-x",bounds.left+bounds.width/2+"px");
-    document.documentElement.style.setProperty("--theme-reveal-y",bounds.top+bounds.height/2+"px");
-    try{const t=doc.startViewTransition(()=>flushSync(update));void t.ready.catch(()=>{});}catch{update();}
+    const rect=event.currentTarget.getBoundingClientRect();
+    const pulse={x:rect.left+rect.width/2,y:rect.top+rect.height/2};
+    if(!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
+      setThemePulse(pulse);
+      window.setTimeout(()=>setThemePulse(null),340);
+    }
+    setTheme(value=>value==="light"?"dark":"light");
   };
   const themeName=theme==="light"?"Тёмная":"Светлая";
-  return <main className="luemi-shell" data-theme={activeTheme} data-phase={phase} data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
+  return <main ref={rootRef} className={"luemi-shell"+(themePulse?" theme-pulsing":"")} data-theme={activeTheme} data-phase={phase}
+    style={themePulse?{"--pulse-x":themePulse.x+"px","--pulse-y":themePulse.y+"px"} as React.CSSProperties:undefined}
+    data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
-    <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme} aria-label={"Включить тему: "+themeName}>
-      {theme==="light"
-        ? <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M20.7 13.4A9 9 0 0 1 10.6 3.3a9 9 0 1 0 10.1 10.1Z"/></svg>
-        : <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>}
-    </button></div>
+    <div className="theme-dock"><button className="theme-switch" type="button" onClick={changeTheme}
+      aria-label={"Включить тему: "+themeName}>{theme==="light"?<Moon size={22} strokeWidth={1.7}/>:<Sun size={22} strokeWidth={1.7}/>}</button></div>
     {(auth!=="authorized"||phase==="welcome")?<section className={"entry-state"+(welcomeExiting?" exiting":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
@@ -265,7 +290,7 @@ export function App() {
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>window.location.reload()}>Повторить</button></>}
       {auth==="authorized"&&introElapsed&&<div className="intro-cta">
         <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
-          Начать <span aria-hidden="true">→</span>
+          Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
         </button>
       </div>}
     </section>:<section className="onboarding-screen">
@@ -277,16 +302,16 @@ export function App() {
         <h1>{steps[step-1].title}</h1>
         <p>{steps[step-1].subtitle}</p>
       </header>
-      <div key={step} className="onboard-body">
+      <div key={step} className="onboard-body" ref={contentRef}>
         <RegistrationStep data={draft} patch={patch} step={step} photos={photos}
           addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep}/>
       </div>
       <div className="onboard-footer">
         {error&&<p className="field-error" role="alert">{error}</p>}
         <div className="footer-controls">
-          <button className="nav-circle" type="button" onClick={back} aria-label="Назад"><span aria-hidden="true">←</span></button>
+          <GlassArrow onClick={back}/>
           <span className="footer-hint">{step===8?"Публикация пока закрыта":"Технический предпросмотр"}</span>
-          <button className="nav-circle forward" type="button" onClick={next} disabled={step===8} aria-label="Далее"><span aria-hidden="true">→</span></button>
+          <GlassArrow forward onClick={next} disabled={step===8}/>
         </div>
       </div>
     </section>}
