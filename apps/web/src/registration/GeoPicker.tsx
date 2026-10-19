@@ -101,7 +101,10 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
    </div>
    <div className={"radius-control"+(data.searchScope!=="radius"?" is-disabled":"")}>
      <div className="range-title"><span>Радиус поиска</span><strong>{data.radius.toLocaleString("ru")} км</strong></div>
-     <div className="branded-slider" style={{"--range-pct":positionAt(data.radius)+"%"} as CSSProperties}>
+     <div className="branded-slider" onPointerDownCapture={()=>{
+       const field=document.activeElement;
+       if(field instanceof HTMLInputElement&&field.type!=="range")field.blur();
+     }} style={{"--range-pct":positionAt(data.radius)+"%"} as CSSProperties}>
        <input type="range" min="0" max="100" step="1" disabled={data.searchScope!=="radius"}
          value={positionAt(data.radius)} aria-label="Радиус поиска, километры"
          onChange={e=>patch({radius:radiusAt(Number(e.target.value))})}/>
