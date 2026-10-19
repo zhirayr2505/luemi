@@ -1,10 +1,16 @@
-@import url('/assets/tokens/luemi-themes.w05.css');
-@import './styles/foundation.css';
-@import './styles/discovery.css';
-@import './styles/components.css';
-@import './styles/onboarding.css';
-@import './styles/social.css';
-@import './styles/themes.css';
-@import './styles/navigation.css';
-@import './styles/responsive.css';
-@import './styles/approved-assets.css';
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#392f47;background:#fffafc}
+*{box-sizing:border-box}body{margin:0}button{font:inherit}
+.app{--bg:#fffafc;--ink:#392f47;--glass:rgba(255,255,255,.67);--line:rgba(135,110,171,.2);min-height:100dvh;position:relative;isolation:isolate;display:grid;place-items:center;overflow:hidden;padding:calc(24px + env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));color:var(--ink);background:var(--bg)}
+.app[data-theme=dark]{--bg:#171320;--ink:#f5effc;--glass:rgba(50,43,66,.7);--line:rgba(218,187,255,.2)}
+.mist{position:absolute;inset:-15%;z-index:-1;background:radial-gradient(ellipse at 10% 12%,#e6d4ff7d,transparent 55%),radial-gradient(ellipse at 90% 90%,#ffcbde77,transparent 50%);animation:float 14s ease-in-out infinite alternate;pointer-events:none}
+.glass{width:min(100%,450px);padding:clamp(24px,6vw,42px);background:var(--glass);border:1px solid var(--line);border-radius:32px;box-shadow:0 18px 65px #9e85b21f;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.eyebrow{font-size:12px;letter-spacing:.18em;font-weight:700;color:#9770bd}.glass h1{font-size:clamp(28px,7vw,42px);letter-spacing:-.04em;line-height:1.12;margin:16px 0 22px}.glass p:not(.eyebrow){font-size:16px;line-height:1.65}
+.stage{display:flex;align-items:center;gap:10px;font-size:13px;margin-top:28px;color:var(--ink);opacity:.8}
+.dot{width:8px;height:8px;border-radius:50%;background:#ad84de}
+.themes{display:flex;gap:5px;margin-top:25px;padding:5px;border-radius:16px;border:1px solid var(--line)}
+.themes button{flex:1;min-height:44px;border:0;background:transparent;color:var(--ink);border-radius:12px;cursor:pointer}
+.themes button[aria-pressed=true]{background:#b58ade45;outline:1px solid var(--line)}
+.themes button:focus-visible{outline:3px solid #9b63d8;outline-offset:2px}
+@keyframes float{from{transform:translate3d(0,0,0)}to{transform:translate3d(1%,1%,0)}}
+@media(prefers-reduced-motion:reduce){.mist{animation:none}}
+@supports not (backdrop-filter:blur(1px)){.glass{background:var(--bg)}}
