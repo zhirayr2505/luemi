@@ -33,7 +33,8 @@ test('no JS snap, animated radius, timers or frame-written scroll position', () 
   const pure = source('motion/profileMorph.ts');
   assert.doesNotMatch(hook, /scrollTo\s*\(|setTimeout\s*\(|snapTarget|snapping|lastClosed|velocity/);
   assert.doesNotMatch(hook, /\.style\.borderRadius|\.style\.boxShadow|\.style\.setProperty/);
-  assert.doesNotMatch(hook, /scrollTop\s*=\s*(?!0;)/);
+  const writes = [...hook.matchAll(/scrollTop\s*=\s*([^;\n]+)/g)].map((match) => match[1].trim());
+  assert.deepEqual(writes, ['0'], 'only the initial opening reset is permitted');
   assert.doesNotMatch(pure, /snapTarget/);
   assert.match(hook, /if \(!cssTimeline\) scroller\.addEventListener\('scroll'/);
   assert.match(hook, /galleryObserver\?\.disconnect\(\)/);
