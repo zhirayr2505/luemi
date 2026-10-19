@@ -6,7 +6,7 @@ export interface DemoPhoto {id:string;src:string}
 export interface DemoPerson {
  id:string;name:string;age:number;gender:"woman"|"man"|"other";city:string;country:string;countryCode:string;
  goal:Exclude<RegistrationDraft["goal"],"">;interests:string[];languages:string[];
- about:string;photos:DemoPhoto[];
+ about:string;photos:DemoPhoto[];premium?:boolean;
 }
 export interface DiscoveryFilter {
  audience:"everyone"|"women"|"men";minAge:number;maxAge:number;
