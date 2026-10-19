@@ -10,9 +10,9 @@ export interface DemoPerson {
 }
 export interface DiscoveryFilter {
  audience:"everyone"|"women"|"men";minAge:number;maxAge:number;
- scope:"radius"|"country"|"world";radius:number;goal:"all"|DemoPerson["goal"];commonOnly:boolean;
+ scope:"radius"|"country"|"world";radius:number;goal:"all"|DemoPerson["goal"];language:string;commonOnly:boolean;
 }
-export const defaultFilters:DiscoveryFilter={audience:"everyone",minAge:18,maxAge:80,scope:"world",radius:5000,goal:"all",commonOnly:false};
+export const defaultFilters:DiscoveryFilter={audience:"everyone",minAge:18,maxAge:80,scope:"world",radius:5000,goal:"all",language:"all",commonOnly:false};
 export function commonInterests(person:DemoPerson,draft:RegistrationDraft):string[]{
  return person.interests.filter(id=>draft.interests.includes(id));
 }
@@ -29,6 +29,7 @@ export function filterDemoPeople(people:DemoPerson[],filter:DiscoveryFilter,draf
   if(filter.audience==="women"&&p.gender!=="woman")return false;
   if(filter.audience==="men"&&p.gender!=="man")return false;
   if(filter.goal!=="all"&&p.goal!==filter.goal)return false;
+  if(filter.language!=="all"&&!p.languages.includes(filter.language))return false;
   if(filter.commonOnly&&!commonInterests(p,draft).length)return false;
   if(filter.scope==="country"&&draft.countryCode&&draft.countryCode!==p.countryCode)return false;
   if(filter.scope==="radius"&&draft.city){
