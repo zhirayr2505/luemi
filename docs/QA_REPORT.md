@@ -1,19 +1,13 @@
-# QA report · 2026-10-19
+# QA Report · 2026-10-19
 
-## Sources
-- W04 original raster logo SHA-256 verified against canonical 4600f49935f180d44adee7a2dfe327ea45dece1760d60ac4d1f40456ef0debcc.
-- Three W04 APPROVED screen hashes verified against source manifest.
-- W12 Mobile: 467/467 manifest checksums verified, no mismatches. This is a file-integrity check, not Mini App runtime QA.
+## Source integrity
+W12 Mobile archive 467/467 checksum records matched; exact W04 original logo and three approved light-screen PNG hashes verified. This proves source-file integrity only.
 
-## Implementation
-- GitHub Actions commit e6087996801d1324daf6b6bd03a2eae31459270d: **SUCCESS**.
-- Run: https://github.com/zhirayr2505/luemi/actions/runs/39254284779
-- Verified CI steps: npm install; ESLint; TypeScript checks; API auth/security unit tests; API and frontend builds.
-- An earlier intermediate CI run failed because of an unused catch binding. Corrected in e608799, final CI passed.
-- Local development runtime: NOT TESTED.
-- Render staging deployment of rebuild branch: NOT DEPLOYED.
-- Live Telegram Mini App bootstrap: NOT TESTED.
-- Galaxy A55 acceptance: NOT TESTED.
-- Full WCAG 2.2 AA review: NOT CERTIFIED.
-
-No claims about production or payment readiness.
+## CI and runtime
+- GitHub Actions for staging commit `5a27ecae830bc513082b231890e2611ee0afa1c3`: SUCCESS, https://github.com/zhirayr2505/luemi/actions/runs/39256565233.
+- TypeScript, ESLint, API HMAC tests, webhook unsigned-request tests, builds: PASSED.
+- Render `luemi-stage01` deploy `dep-dbb19hlg1s2s73dt3d6g`: LIVE; logs show successful build and application startup.
+- Local HTTP smoke test added to subsequent staging CI for root HTML, static logo, health, fail-closed auth and blocked webhook. Pending new commit CI.
+- External live HTTP route response: NOT VERIFIED (direct fetch unavailable from connected reader).
+- Actual Telegram bot interaction, initData inside Telegram WebView, Galaxy A55, cross-device layout, WCAG 2.2 AA: NOT TESTED.
+- Actual paid features and production readiness: NOT TESTED/NOT IMPLEMENTED.

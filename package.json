@@ -3,19 +3,15 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "engines": { "node": ">=22" },
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "check": "npm run lint && npm run build -w @luemi/contracts && npm run typecheck -w @luemi/api && npm run test -w @luemi/api && npm run typecheck -w @luemi/web && npm run build -w @luemi/api && npm run build -w @luemi/web",
+    "lint": "eslint .",
+    "check": "npm run lint && npm run build -w @luemi/contracts && npm run typecheck -w @luemi/api && npm run test -w @luemi/api && npm run typecheck -w @luemi/web && npm run build -w @luemi/api && npm run build -w @luemi/web && npm run smoke",
+    "smoke": "node scripts/staging-smoke.mjs",
     "dev:api": "npm run dev -w @luemi/api",
     "dev:web": "npm run dev -w @luemi/web",
-    "build": "npm run build -w @luemi/contracts && npm run build -w @luemi/api && npm run build -w @luemi/web",
-    "lint": "eslint ."
+    "build": "npm run build -w @luemi/contracts && npm run build -w @luemi/api && npm run build -w @luemi/web"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
