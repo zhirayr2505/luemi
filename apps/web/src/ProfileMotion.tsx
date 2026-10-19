@@ -14,16 +14,7 @@ export function ProfileMotion({ profile, reducedMotion = false, children }: Prop
   const compact = useRef<HTMLDivElement>(null);
   const caption = useRef<HTMLDivElement>(null);
   const bars = useRef<HTMLDivElement>(null);
-  useProfilePhotoMorph(
-    scroller,
-    frame,
-    photo,
-    compact,
-    caption,
-    bars,
-    profile.id,
-    reducedMotion,
-  );
+  useProfilePhotoMorph(scroller, frame, photo, compact, caption, bars, profile.id, reducedMotion);
   const age = ageAt(profile.birthDate);
   const display = `${profile.name || 'Твоё имя'}${Number.isFinite(age) ? `, ${age}` : ''}`;
 
@@ -63,11 +54,7 @@ export function ProfileMotion({ profile, reducedMotion = false, children }: Prop
       <div className="profile-morph-overlay">
         <div className="profile-morph-frame" ref={frame}>
           <div ref={photo} className="profile-morph-photo" aria-label={`Фотографии: ${display}`}>
-            <ProfileGallery
-              profile={profile}
-              display={display}
-              barsRef={bars}
-            />
+            <ProfileGallery profile={profile} display={display} barsRef={bars} />
             <div className="profile-morph-scrim" aria-hidden="true" />
             <div ref={caption} className="profile-morph-caption">
               <div className="profile-morph-name">

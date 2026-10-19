@@ -15,30 +15,39 @@ export function useProfilePhotoMorph(
   reducedMotion: boolean,
 ) {
   useLayoutEffect(() => {
-    const scroller = scrollerRef.current, frame = frameRef.current;
-    const photo = photoRef.current, compact = compactRef.current;
-    const caption = captionRef.current, bars = barsRef.current;
+    const scroller = scrollerRef.current,
+      frame = frameRef.current;
+    const photo = photoRef.current,
+      compact = compactRef.current;
+    const caption = captionRef.current,
+      bars = barsRef.current;
     if (!scroller || !frame || !photo || !compact || !caption || !bars) return;
     const rim = frame.querySelector<HTMLElement>('.profile-morph-circle-rim');
     const system = matchMedia('(prefers-reduced-motion: reduce)');
-    const cssTimeline = typeof CSS !== 'undefined' &&
-      CSS.supports('animation-timeline: --luemi-profile-scroll');
-    let disposed = false, raf = 0, travel = 220, finalScale = .16, rounded = false;
+    const cssTimeline =
+      typeof CSS !== 'undefined' && CSS.supports('animation-timeline: --luemi-profile-scroll');
+    let disposed = false,
+      raf = 0,
+      travel = 220,
+      finalScale = 0.16,
+      rounded = false;
     scroller.scrollTop = 0; // only initial reset; never written during gestures.
 
     const drawFallback = () => {
       raf = 0;
       if (disposed || cssTimeline) return;
       const raw = morphFrame(scroller.scrollTop, travel, finalScale);
-      const f = reducedMotion || system.matches
-        ? morphFrame(raw.progress >= .5 ? travel : 0, travel, finalScale) : raw;
+      const f =
+        reducedMotion || system.matches
+          ? morphFrame(raw.progress >= 0.5 ? travel : 0, travel, finalScale)
+          : raw;
       photo.style.transform = `scale(${f.heroScale})`;
       compact.style.opacity = String(f.compactOpacity);
       caption.style.opacity = String(f.captionOpacity);
       bars.style.opacity = String(f.barsOpacity);
       if (rim) rim.style.opacity = String(f.circleRimOpacity);
       // The legacy rounded-corner fallback switches the clipping once, only at the endpoint.
-      const nextRounded = f.progress >= .9;
+      const nextRounded = f.progress >= 0.9;
       if (nextRounded !== rounded) {
         rounded = nextRounded;
         frame.classList.toggle('profile-shape-collapsed', rounded);
@@ -64,7 +73,8 @@ export function useProfilePhotoMorph(
     if (openMarker) {
       galleryObserver = new IntersectionObserver(
         (entries) => {
-          if (!disposed) frame.classList.toggle('profile-gallery-closed', !entries[0].isIntersecting);
+          if (!disposed)
+            frame.classList.toggle('profile-gallery-closed', !entries[0].isIntersecting);
         },
         { root: scroller, threshold: 0 },
       );
@@ -81,7 +91,7 @@ export function useProfilePhotoMorph(
       system.removeEventListener('change', queue);
       if (raf) cancelAnimationFrame(raf);
       frame.style.removeProperty('--profile-final-scale');
-      frame.classList.remove('profile-gallery-closed','profile-shape-collapsed');
+      frame.classList.remove('profile-gallery-closed', 'profile-shape-collapsed');
       photo.style.transform = '';
       compact.style.opacity = '';
       caption.style.opacity = '';
