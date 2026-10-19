@@ -150,6 +150,9 @@ export function DiscoveryApp({draft,theme,onTheme,onExit}:Props){
                title={label}><Icon size={kind==="special"?26:22} strokeWidth={1.8}/></button>)}
            </div>
            <p className="discovery-action-hint">Все действия демонстрационные — реальные пользователи их не получают</p>
+           {profiles[feed.index+1]&&<div className="discovery-next-peek" aria-label="Следующая демо-анкета">
+             <img src={profiles[feed.index+1].photos[0].src} alt=""/><span>Далее · {profiles[feed.index+1].name}</span>
+           </div>}
          </div>:<div className="discovery-empty">
            <Heart size={38}/><h2>{profiles.length?"Ты посмотрел все демо-анкеты":"По этим фильтрам нет демо-анкет"}</h2>
            <p>Настоящие пользователи пока не подключены.</p>
