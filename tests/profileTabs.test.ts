@@ -15,6 +15,15 @@ test('five LUEMI profile tabs are present and About keeps approved core fields',
   assert.match(tabs, /Информация об аккаунте/);
 });
 
+test('owner profile exposes a clear route to the shared five-tab profile viewer', () => {
+  const ownProfile = source('Profile.tsx');
+  const entry = source('main.tsx');
+  assert.match(ownProfile, /Открыть профиль и разделы/);
+  for (const name of ['О себе', 'Блики', 'Фото', 'Аккаунт', 'Подарки'])
+    assert.ok(ownProfile.includes(name), name);
+  assert.match(entry, /import '\.\/profilePage\.css'/);
+});
+
 test('native finger-following horizontal snap is independent of vertical profile morph', () => {
   const css = source('profileTabs.css');
   const tabs = source('ProfileTabs.tsx');
@@ -32,6 +41,20 @@ test('native finger-following horizontal snap is independent of vertical profile
   assert.equal((profile.match(/<ProfileGallery/g) ?? []).length, 1);
   assert.doesNotMatch(profile, /profile-morph-avatar|<Portrait/);
   assert.match(source('main.tsx'), /import '\.\/profileTabs\.css'/);
+});
+
+test('panel selection observes a horizontal marker instead of tall panel area', () => {
+  const tabs = source('ProfileTabs.tsx');
+  const css = source('profileTabs.css');
+  assert.match(tabs, /observer\.observe\(marker\)/);
+  const visibilityObserver = tabs.slice(
+    tabs.indexOf('new IntersectionObserver'),
+    tabs.indexOf('// Only the visible tab'),
+  );
+  assert.doesNotMatch(visibilityObserver, /observer\.observe\(panel\)/);
+  assert.match(tabs, /className="profile-tabs-visibility-marker"/);
+  assert.match(css, /\.profile-tabs-visibility-marker/);
+  assert.match(css, /height:\s*1px/);
 });
 
 test('tab navigation meets basic access needs and does not pretend feature launches', () => {

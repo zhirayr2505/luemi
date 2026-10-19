@@ -1,0 +1,142 @@
+name: LUEMI profile browser verification
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/**'
+      - 'tests/**'
+      - '.github/workflows/profile-browser-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm install --no-save playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Test mobile profile routes and tabs
+        run: |
+          mkdir -p qa-shots
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          import { spawn } from 'node:child_process';
+          import { setTimeout as wait } from 'node:timers/promises';
+
+          const server = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '4173'], { stdio: 'pipe' });
+          server.stdout.on('data', (chunk) => process.stdout.write(chunk));
+          server.stderr.on('data', (chunk) => process.stderr.write(chunk));
+          const base = 'http://127.0.0.1:4173';
+          let browser;
+          try {
+            let running = false;
+            for (let attempt = 0; attempt < 50; attempt++) {
+              try { const response = await fetch(base); if (response.ok) { running = true; break; } }
+              catch {}
+              await wait(250);
+            }
+            if (!running) throw Error('Vite did not start');
+            browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage({
+              viewport: { width: 393, height: 852 },
+              isMobile: true,
+              hasTouch: true,
+              deviceScaleFactor: 1,
+            });
+            page.setDefaultTimeout(7000);
+            const errors = [];
+            page.on('pageerror', (err) => errors.push(err.message));
+            await page.goto(base, { waitUntil: 'networkidle' });
+
+            // Missing-name owner profile must still show an entry to the real 5-tab viewer.
+            await page.locator('.bottom-nav button').filter({ hasText: 'Профиль' }).click();
+            const entry = page.locator('.profile-preview-link');
+            await entry.waitFor({ state: 'visible' });
+            if (!(await entry.innerText()).includes('Посмотреть разделы профиля')) throw Error('No preview entry for blank profile');
+            await entry.click();
+            await page.locator('.profile-detail-root').waitFor({ state: 'visible' });
+            if (await page.locator('.profile-tabs-tab').count() !== 5) throw Error('Missing one or more profile tabs');
+            const scroller = page.locator('.profile-detail-scroll');
+            await scroller.evaluate((el) => { el.scrollTop = 800; });
+            await wait(250);
+
+            const labels = ['О себе', 'Блики', 'Фото', 'Аккаунт', 'Подарки'];
+            const expected = ['Цель знакомства', 'Пока нет бликов', 'Фотографии', 'Информация об аккаунте', 'Здесь будет коллекция подарков'];
+            for (let i = 0; i < labels.length; i++) {
+              const tab = page.getByRole('tab', { name: labels[i], exact: true });
+              await tab.click({ timeout: 7000 });
+              console.log('TAB CLICK', i, labels[i]);
+              try {
+                await page.waitForFunction(
+                  (index) => document.querySelectorAll('.profile-tabs-tab')[index]?.getAttribute('aria-selected') === 'true',
+                  i,
+                  { timeout: 5000 },
+                );
+              } catch (error) {
+                const state = await page.evaluate(() => {
+                  const sc = document.querySelector('.profile-detail-scroll');
+                  const vp = document.querySelector('.profile-tabs-viewport');
+                  const rail = document.querySelector('.profile-tabs-rail');
+                  return {
+                    selected:[...document.querySelectorAll('.profile-tabs-tab')].map(x => x.getAttribute('aria-selected')),
+                    scroll:{x:vp?.scrollLeft,width:vp?.clientWidth,height:vp?.clientHeight,scrollWidth:vp?.scrollWidth,y:sc?.scrollTop},
+                    rail:rail?.getBoundingClientRect().toJSON(),
+                    panels:[...document.querySelectorAll('.profile-tabs-panel')].map(x => ({index:x.dataset.index,rect:x.getBoundingClientRect().toJSON(),inert:x.inert})),
+                  };
+                });
+                console.log('TAB FAIL DIAGNOSTIC', i, labels[i], JSON.stringify(state));
+                await page.screenshot({ path: 'qa-shots/tab-fail-' + i + '.png' });
+                throw error;
+              }
+              const panel = page.locator('#profile-panel-' + i);
+              if (!(await panel.innerText()).includes(expected[i])) throw Error('Missing tab content ' + labels[i]);
+            }
+            const tabGeometry = await page.locator('.profile-tabs-rail').evaluate((el) => {
+              const b = el.getBoundingClientRect();
+              return { x:b.x, y:b.y, width:b.width, height:b.height, viewportHeight:window.innerHeight };
+            });
+            if (tabGeometry.width < 200 || tabGeometry.height < 35) throw Error('Tab rail has invalid size ' + JSON.stringify(tabGeometry));
+            console.log('OWNER PROFILE TABS PASS', JSON.stringify(tabGeometry));
+            await page.screenshot({ path: 'qa-shots/owner-gifts-mobile.png' });
+
+            console.log('QA: owner section checks finished; opening demo profile');
+            // Alina's real profile must show those same tabs, plus real photos/preview.
+            await page.getByRole('button', { name: 'Назад' }).first().click();
+            await page.locator('.bottom-nav button').filter({ hasText: 'Знакомства' }).click();
+            await page.locator('.slide-pane[data-page="Знакомства"] .profile-name').first().click();
+            await page.locator('.profile-detail-root').waitFor();
+            if (await page.locator('.profile-tabs-tab').count() !== 5) throw Error('Alina tabs missing');
+            await page.locator('.profile-detail-scroll').evaluate((el) => { el.scrollTop = 700; });
+            await page.getByRole('tab', { name: 'Фото' }).click();
+            const photos = page.locator('.profile-photo-tile');
+            if (await photos.count() !== 3) throw Error('Expected 3 actual Alina photos');
+            console.log('QA: verified Alina photos', await photos.count());
+            await photos.first().click();
+            if (!(await page.locator('dialog').isVisible())) throw Error('Photo viewer did not open');
+            await page.screenshot({ path: 'qa-shots/alina-photo-preview-mobile.png' });
+            await page.getByRole('button', { name: 'Закрыть' }).click();
+            await page.getByRole('tab', { name: 'О себе' }).click();
+            await page.screenshot({ path: 'qa-shots/alina-about-mobile.png' });
+            if (errors.length) throw Error('Browser exceptions: ' + errors.join(' | '));
+            console.log('MOBILE BROWSER QA PASS: owner entry, 5 tabs, Alina gallery, modal, no uncaught JS errors');
+          } finally {
+            await browser?.close();
+            server.kill('SIGTERM');
+            server.stdout.destroy();
+            server.stderr.destroy();
+          }
+          // Vite's grandchild retains npm's pipe descriptors; exit explicitly after successful checks.
+          process.exit(0);
+          NODE
+      - name: Upload browser QA screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: luemi-profile-browser-qa
+          path: qa-shots/
+          if-no-files-found: ignore

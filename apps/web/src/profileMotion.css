@@ -162,13 +162,16 @@
 .profile-morph-name {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 9px;
   font-size: 28px;
   font-weight: 750;
   letter-spacing: -0.6px;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 .profile-morph-city {
+  overflow-wrap: anywhere;
   margin-top: 7px;
   font-size: 12px;
   font-weight: 520;
@@ -438,7 +441,7 @@
   }
 }
 [data-reduced-motion='true'] .profile-morph-photo,
-[data-reduced-motion='true'] [data-reduced-motion='true'] .profile-morph-compact,
+[data-reduced-motion='true'] .profile-morph-compact,
 [data-reduced-motion='true'] .profile-morph-caption,
 [data-reduced-motion='true'] .profile-morph-photo-bars {
   animation-timing-function: steps(1, end);

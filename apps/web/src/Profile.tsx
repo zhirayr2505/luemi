@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { alina, type DemoState, type Profile } from '../../../packages/core/domain';
-import { Button, Empty, Icon, IconButton, Modal, Portrait, PublicProfile } from './ui';
+import { Button, Empty, Icon, IconButton, Modal, Portrait } from './ui';
 import { clearMedia } from './storage';
 type Props = {
   state: DemoState;
@@ -30,11 +30,14 @@ export function ProfilePage({ state, setState, onRegister, openProfile, notify }
           <Icon name="edit" size={18} />
           {p.name ? 'Редактировать анкету' : 'Создать анкету'}
         </Button>
-        {p.name && (
-          <button className="text-button" onClick={() => openProfile(p)}>
-            Как меня увидят другие
-          </button>
-        )}
+        <button
+          type="button"
+          className="text-button profile-preview-link"
+          onClick={() => openProfile(p)}
+        >
+          <span>{p.name ? 'Открыть профиль и разделы' : 'Посмотреть разделы профиля'}</span>
+          <small>О себе · Блики · Фото · Аккаунт · Подарки</small>
+        </button>
       </div>
       <div
         className="premium-banner"
@@ -42,8 +45,12 @@ export function ProfilePage({ state, setState, onRegister, openProfile, notify }
         tabIndex={0}
         onClick={() => setPage('LUEMI Premium')}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') setPage('LUEMI Premium');
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setPage('LUEMI Premium');
+          }
         }}
+        aria-haspopup="dialog"
       >
         <>
           <img
