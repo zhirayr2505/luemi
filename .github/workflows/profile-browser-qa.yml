@@ -44,6 +44,7 @@ jobs:
               hasTouch: true,
               deviceScaleFactor: 1,
             });
+            page.setDefaultTimeout(7000);
             const errors = [];
             page.on('pageerror', (err) => errors.push(err.message));
             await page.goto(base, { waitUntil: 'networkidle' });
@@ -99,6 +100,7 @@ jobs:
             console.log('OWNER PROFILE TABS PASS', JSON.stringify(tabGeometry));
             await page.screenshot({ path: 'qa-shots/owner-gifts-mobile.png' });
 
+            console.log('QA: owner section checks finished; opening demo profile');
             // Alina's real profile must show those same tabs, plus real photos/preview.
             await page.getByRole('button', { name: 'Назад' }).first().click();
             await page.locator('.bottom-nav button').filter({ hasText: 'Знакомства' }).click();
@@ -109,6 +111,7 @@ jobs:
             await page.getByRole('tab', { name: 'Фото' }).click();
             const photos = page.locator('.profile-photo-tile');
             if (await photos.count() !== 3) throw Error('Expected 3 actual Alina photos');
+            console.log('QA: verified Alina photos', await photos.count());
             await photos.first().click();
             if (!(await page.locator('dialog').isVisible())) throw Error('Photo viewer did not open');
             await page.screenshot({ path: 'qa-shots/alina-photo-preview-mobile.png' });
@@ -120,7 +123,11 @@ jobs:
           } finally {
             await browser?.close();
             server.kill('SIGTERM');
+            server.stdout.destroy();
+            server.stderr.destroy();
           }
+          // Vite's grandchild retains npm's pipe descriptors; exit explicitly after successful checks.
+          process.exit(0);
           NODE
       - name: Upload browser QA screenshots
         uses: actions/upload-artifact@v4
