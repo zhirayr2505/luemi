@@ -1,6 +1,6 @@
 import {useRef,useState} from "react";
 import type {CSSProperties,ReactNode} from "react";
-import {Mars,Venus,Users,Languages,Check,Globe2} from "lucide-react";
+import {Mars,Venus,Users,Languages,Check} from "lucide-react";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
 import {categories,InterestChip,tint} from "../ui/InterestCatalog";
 import {GeoPicker} from "./GeoPicker";
