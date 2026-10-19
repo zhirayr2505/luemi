@@ -1,76 +1,75 @@
 export type Gender = "" | "man" | "woman" | "other";
 export type Audience = "" | "women" | "men" | "everyone";
 export type Goal = "" | "relationship" | "dates" | "friends";
-
-export interface RegistrationDraft {
-  name: string;
-  trialConsent: boolean;
-  day: string;
-  month: string;
-  year: string;
-  gender: Gender;
-  country: string;
+export interface CitySelection {
+  id: string;
   city: string;
-  radius: number;
-  audience: Audience;
-  ageMin: number;
-  ageMax: number;
-  goal: Goal;
-  worldwide: boolean;
-  interests: string[];
-  about: string;
-  languages: string[];
+  country: string;
+  countryCode: string;
+  region?: string;
 }
-export const newDraft = (name = ""): RegistrationDraft => ({
-  name, trialConsent: false, day: "", month: "", year: "", gender: "",
-  country: "", city: "", radius: 100, audience: "", ageMin: 18, ageMax: 35,
-  goal: "", worldwide: false, interests: [], about: "", languages: []
+export interface RegistrationDraft {
+  name: string; trialConsent: boolean;
+  day: string; month: string; year: string; gender: Gender;
+  country: string; city: string; placeId: string; countryCode: string;
+  radius: number; worldwide: boolean;
+  audience: Audience; ageMin: number; ageMax: number; goal: Goal;
+  interests: string[]; about: string; languages: string[];
+}
+export const newDraft=(name=""):RegistrationDraft=>({
+  name,trialConsent:false,day:"",month:"",year:"",gender:"",
+  country:"",city:"",placeId:"",countryCode:"",radius:100,worldwide:false,
+  audience:"",ageMin:18,ageMax:35,goal:"",
+  interests:[],about:"",languages:[]
 });
-export function birthDateValid(day: string, month: string, year: string, today = new Date()): boolean {
-  if (!/^\d{1,2}$/.test(day) || !/^\d{1,2}$/.test(month) || !/^\d{4}$/.test(year)) return false;
-  const y = Number(year), m = Number(month), d = Number(day);
-  if (y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return false;
-  const date = new Date(Date.UTC(y, m - 1, d));
-  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return false;
-  const cutoff = new Date(Date.UTC(today.getUTCFullYear() - 18, today.getUTCMonth(), today.getUTCDate()));
-  return date.getTime() <= cutoff.getTime();
+export const cleanName=(name:string):string=>
+  name.normalize("NFC").replace(/[^\p{L}\p{M}'’\- ]/gu,"").slice(0,48);
+export function nameValid(name:string):boolean {
+  const value=name.trim();
+  return value.length>=2&&value.length<=48 &&
+    /^[\p{L}\p{M}]+(?:[ '\u2019-][\p{L}\p{M}]+)*$/u.test(value);
 }
-export function validateStep(d: RegistrationDraft, step: number, photoCount: number, today = new Date()): string | null {
+export function birthDateValid(day:string,month:string,year:string,today=new Date()):boolean {
+  if(!/^\d{1,2}$/.test(day)||!/^\d{1,2}$/.test(month)||!/^\d{4}$/.test(year))return false;
+  const y=Number(year),m=Number(month),d=Number(day);
+  if(y<1900||m<1||m>12||d<1||d>31)return false;
+  const date=new Date(Date.UTC(y,m-1,d));
+  if(date.getUTCFullYear()!==y||date.getUTCMonth()!==m-1||date.getUTCDate()!==d)return false;
+  const cutoff=new Date(Date.UTC(today.getUTCFullYear()-18,today.getUTCMonth(),today.getUTCDate()));
+  return date.getTime()<=cutoff.getTime();
+}
+export function selectedCityValid(data:RegistrationDraft):boolean {
+  return /^[a-z0-9:_-]{3,180}$/i.test(data.placeId)&&/^[A-Z]{2}$/.test(data.countryCode)&&
+    data.country.trim().length>1&&data.city.trim().length>1;
+}
+export function validateStep(d:RegistrationDraft,step:number,count:number,today=new Date()):string|null {
   switch(step) {
     case 1:
-      if (!/^[\p{L}\p{M}'’\- ]{2,48}$/u.test(d.name.trim())) return "Укажи имя от 2 до 48 букв. Допустимы пробелы, дефис и апостроф.";
-      if (!d.trialConsent) return "Подтверди условия тестового режима.";
+      if(!nameValid(d.name))return "Имя: 2–48 букв, разрешены пробелы, дефис и апостроф.";
+      if(!d.trialConsent)return "Подтверди условия тестового режима.";
       return null;
     case 2:
-      if (!birthDateValid(d.day, d.month, d.year, today)) return "Укажи настоящую дату рождения. LUEMI доступен только с 18 лет.";
-      if (!d.gender) return "Выбери вариант пола.";
-      return null;
+      if(!birthDateValid(d.day,d.month,d.year,today))return "Укажи настоящую дату рождения. LUEMI доступен с 18 лет.";
+      return d.gender?null:"Выбери вариант пола.";
     case 3:
-      if (d.country.trim().length < 2 || d.city.trim().length < 2) return "Укажи страну и город вручную.";
-      if (!Number.isFinite(d.radius) || d.radius < 1 || d.radius > 1000) return "Радиус должен быть от 1 до 1000 км.";
-      return null;
+      if(!selectedCityValid(d))return "Выбери город из предложенного списка.";
+      return Number.isInteger(d.radius)&&d.radius>=1&&d.radius<=1000?null:"Радиус: от 1 до 1000 км.";
     case 4:
-      if (!d.audience || !d.goal) return "Выбери, кого хочешь встретить, и цель знакомства.";
-      if (d.ageMin < 18 || d.ageMin > d.ageMax || d.ageMax > 80) return "Проверь желаемый возраст.";
-      return null;
-    case 5:
-      return d.interests.length > 15 ? "Можно выбрать не более 15 интересов." : null;
-    case 6:
-      return d.about.length > 500 ? "Короткое описание не должно превышать 500 символов в тестовой версии." : null;
-    case 7:
-      // 3 photos are required for publication, not for a saved draft or preview.
-      return photoCount > 6 ? "Можно выбрать не более 6 фотографий." : null;
-    default:
-      return null;
+      if(!d.audience||!d.goal)return "Выбери предпочтения и цель знакомства.";
+      return d.ageMin>=18&&d.ageMax<=80&&d.ageMin<=d.ageMax?null:"Проверь диапазон возраста.";
+    case 5:return d.interests.length<=15?null:"Максимум 15 интересов.";
+    case 6:return [...d.about].length<=750?null:"Максимум 750 символов.";
+    case 7:return count<=6?null:"В регистрации доступно до шести фотографий.";
+    default:return null;
   }
 }
-export const steps = [
-  {title:"Как тебя зовут?", subtitle:"Начнём с самого приятного — знакомства."},
-  {title:"Расскажи о себе", subtitle:"Дата рождения и пол помогают сделать поиск безопаснее."},
-  {title:"Где будем искать?", subtitle:"Точное местоположение никому не показываем."},
-  {title:"Кого ты ищешь?", subtitle:"Знакомства начинаются с общих намерений."},
-  {title:"Что тебе нравится?", subtitle:"Выбери то, что действительно тебе близко."},
-  {title:"Пару слов о себе", subtitle:"Без длинных анкет и сложных вопросов."},
-  {title:"Твои фотографии", subtitle:"Одна главная фотография и ещё пять мест."},
-  {title:"Посмотри на себя", subtitle:"Предварительный вид анкеты до публикации."}
+export const steps=[
+  {title:"Как тебя зовут?",subtitle:"Начнём с самого приятного — знакомства."},
+  {title:"Расскажи о себе",subtitle:"Дата рождения и пол помогают сделать поиск безопаснее."},
+  {title:"Где будем искать?",subtitle:"Точное местоположение никому не показываем."},
+  {title:"Кого ты ищешь?",subtitle:"Знакомства начинаются с общих намерений."},
+  {title:"Что тебе нравится?",subtitle:"Выбери то, что действительно тебе близко."},
+  {title:"Пару слов о себе",subtitle:"Без длинных анкет и сложных вопросов."},
+  {title:"Твои фотографии",subtitle:"Одна главная фотография и ещё пять мест."},
+  {title:"Посмотри на себя",subtitle:"Предварительный вид анкеты до публикации."}
 ] as const;
