@@ -151,3 +151,10 @@
  .discovery-app{max-width:820px;margin:0 auto}}
 @media(prefers-reduced-motion:reduce){.discovery-card-stack,.discovery-toast{animation:none}
  .discovery-tab-underline,.discovery-action,.discovery-nav-item{transition:none}}
+
+/* Only tall viewports have spare height for an unobtrusive next-card fragment. */
+.discovery-next-peek{display:none;overflow:hidden;pointer-events:none;gap:12px;align-items:center;height:45px;
+ border-radius:17px 17px 0 0;border:1px solid var(--glass-edge);background:var(--panel);
+ box-shadow:0 6px 20px var(--shadow);font-size:11px;color:var(--subtle);opacity:.82}
+.discovery-next-peek img{width:55px;height:60px;align-self:flex-start;object-fit:cover}
+@media (min-height:920px) and (min-width:350px){.discovery-next-peek{display:flex}}
