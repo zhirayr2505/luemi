@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
+import {readFileSync,readdirSync} from "node:fs";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const app=read("apps/web/src/App.tsx"),steps=read("apps/web/src/registration/Steps.tsx");
 const style=read("apps/web/src/styles.css"),sorter=read("apps/web/src/registration/PhotoSorter.tsx");
@@ -23,4 +23,16 @@ assertCheck("portal drag renders at actual viewport finger coordinates",sorter.i
 assertCheck("photo reorder has FLIP animation and main label",sorter.includes("node.animate(")&&sorter.includes("Главное"));
 assertCheck("single profile preview and single edit button",preview.includes("Изменить анкету")&&!preview.includes("preview-tabs")&&!preview.includes("Изменить имя")&&!preview.includes("Изменить фото"));
 assertCheck("local images remain local only",sorter.includes("snapshot")&&!app.includes("uploadPhoto"));
+
+const catalogSource=catalog.match(/const source=(\[.*?\]);\s*export const categories/s);
+assertCheck("catalog contains exactly ten 12–16 item categories",Boolean(catalogSource) && (() => {
+ const all=JSON.parse(catalogSource[1]);return all.length===10 && all.every(c=>c.items.length>=12&&c.items.length<=16);
+})());
+const listSource=languages.match(/export const languages:LanguageOption\[\]=(\[.*?\]);\s*export function/s);
+assertCheck("language catalog contains exactly sixty distinct BCP47 codes",Boolean(listSource)&&(()=>{
+ const all=JSON.parse(listSource[1]);return all.length===60&&new Set(all.map(x=>x.id)).size===60;
+})());
+const flags=readdirSync(new URL("../apps/web/public/assets/flags/",import.meta.url)).filter(x=>/^[a-z]{2}\.svg$/.test(x));
+assertCheck("66 genuine circular SVG flags shipped locally",flags.length===66);
+assertCheck("no stale duplicated theme/header or obsolete two-tab preview",!style.includes(".preview-tabs{")&&!style.includes(".review-actions{")&&!style.includes(".theme-pulsing")&&!app.includes("startViewTransition"));
 console.log("LUEMI Stage 02F UI contracts PASS");
