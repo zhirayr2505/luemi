@@ -15,6 +15,7 @@ declare global {
         isVersionAtLeast?: (version: string) => boolean;
         requestFullscreen?: () => void;
         disableVerticalSwipes?: () => void;
+        HapticFeedback?: {selectionChanged?:()=>void};
         setHeaderColor?: (color: string) => void;
         setBackgroundColor?: (color: string) => void;
         colorScheme?: "dark" | "light";
@@ -189,9 +190,10 @@ export function App() {
     };
     update();
     const onFocus=(event:FocusEvent)=>{
-      if(!(event.target instanceof HTMLInputElement)&&!(event.target instanceof HTMLTextAreaElement))return;
+      const field=event.target;
+      if(!(field instanceof HTMLInputElement)&&!(field instanceof HTMLTextAreaElement))return;
       window.setTimeout(()=>{
-        if(document.activeElement===event.target)event.target.scrollIntoView({block:"center",behavior:"smooth"});
+        if(document.activeElement===field)field.scrollIntoView({block:"center",behavior:"smooth"});
       },190);
     };
     vv?.addEventListener("resize",update);vv?.addEventListener("scroll",update);
