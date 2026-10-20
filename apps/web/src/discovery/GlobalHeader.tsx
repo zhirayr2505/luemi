@@ -52,7 +52,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    lastScroll.current=0;manual.current=false;
    host.current?.setAttribute("data-profile-dragging","false");
    host.current?.style.setProperty("--lh-contrast","0");
-   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-compact","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-text-x","-8px");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
+   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
   }
  }),[mode]);
  const toggleIsland=()=>{
@@ -60,7 +60,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   if(lastScroll.current<12)return;
   manual.current=!manual.current;paintTools(lastScroll.current);
  };
- return <header ref={host} className={"lh-header lh-"+mode} style={{"--lh-p":0,"--lh-compact":0,"--lh-impact":0} as React.CSSProperties}>
+ return <header ref={host} className={"lh-header lh-"+mode} style={{"--lh-p":0,"--lh-impact":0} as React.CSSProperties}>
   
   <div className="lh-center">
    <button className="lh-island" type="button" ref={island} onClick={toggleIsland}
