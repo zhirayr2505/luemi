@@ -15,6 +15,7 @@ type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
  onScrollMotion?:(progress:number,hero:DOMRect,scrollTop:number,photo:string|null)=>void;
+ active?:boolean;
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
@@ -62,7 +63,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMotion}:Props){
+export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMotion,active=true}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
@@ -118,6 +119,13 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
   window.addEventListener("resize",measure);
   return ()=>{observer.disconnect();window.removeEventListener("resize",measure);};
  },[paintScroll]);
+ // Hidden tab can retain a deep scroll position. Repaint the shared header
+ // only after this profile becomes the visible tab again.
+ useEffect(()=>{
+   if(!active)return;
+   const id=window.requestAnimationFrame(paintScroll);
+   return ()=>window.cancelAnimationFrame(id);
+ },[active,paintScroll]);
  useEffect(()=>()=>{if(scrollFrame.current!==null)cancelAnimationFrame(scrollFrame.current);
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);},[]);
  const settleCollapse=()=>{
