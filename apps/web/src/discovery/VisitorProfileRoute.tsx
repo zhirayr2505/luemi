@@ -90,7 +90,6 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
    revealUnderlay(false);
   };
  // One route lifetime: launch once, clean when route unmounts.
- // eslint-disable-next-line react-hooks/exhaustive-deps
  },[]);
 
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
