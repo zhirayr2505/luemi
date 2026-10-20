@@ -139,7 +139,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
  text-align:left;color:var(--ink);background:transparent}
 .geo-results button:last-child{border:0}
 .geo-results button span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:2px}
-.geo-results small{font-size:12px;color:var(--subtle)}.geo-flag{font-size:25px}
+.geo-results small{font-size:12px;color:var(--subtle)}
 .geo-selected{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--subtle)}
 .radius-control{display:flex;flex-direction:column;gap:10px}.radius-control.is-disabled{opacity:.43}
 .range-title{display:flex;justify-content:space-between;align-items:center;font-size:14px}
@@ -295,7 +295,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .edit-profile-action{width:100%;min-height:54px;background:linear-gradient(120deg,rgba(205,169,238,.79),rgba(241,190,222,.65))}
 .preview-trust{display:flex;align-items:flex-start;gap:9px;border-radius:16px;padding:12px;background:var(--panel);color:var(--subtle);font-size:12px}
 .language-summary{display:inline-flex;align-items:center;gap:7px;border-radius:99px;background:var(--panel);padding:8px 11px;border:1px solid var(--line)}
-.goal-badge.neutral{background:var(--panel);border:1px solid var(--line);color:var(--ink)}
+
 @media(max-height:680px){.onboarding-screen{padding-top:calc(var(--top-safe) + 65px)}}
 
 /* Stage 02G — compact, contained layouts with no duplicated legacy overlays */
