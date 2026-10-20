@@ -8,13 +8,13 @@ import {goals} from "../registration/model";
 import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
+import {BlikViewer} from "./BlikViewer";
 import "./profile-master.css";
 
 type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
 type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
- onScrollMotion?:(progress:number,hero:DOMRect,scrollTop:number,photo:string|null)=>void;
  active?:boolean;
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
@@ -63,10 +63,12 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMotion,active=true}:Props){
+export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
+ const [blikOpen,setBlikOpen]=useState(false);
+ const [collapsed,setCollapsed]=useState(false);
  const [mainId,setMainId]=useState<string|null>(null);
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]);
  const photos=useMemo(()=>{
@@ -76,72 +78,92 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
  },[mainId,view.photos]);
  const [activePhoto,setActivePhoto]=useState(0);
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
- const scroll=useRef<HTMLDivElement>(null),shell=useRef<HTMLElement>(null);
+ const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null);
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
- const scrollFrame=useRef<number|null>(null),dragFrame=useRef<number|null>(null);
+ const dragFrame=useRef<number|null>(null);
  const photoSwipe=useRef<Swipe|null>(null),tabSwipe=useRef<Swipe|null>(null);
- const clickBlocked=useRef(0),collapseDistance=useRef(270);
- const collapse=useRef(0),scrollTopLast=useRef(0),scrollTime=useRef(0);
+ const clickBlocked=useRef(0),expandedY=useRef(385),collapsedRef=useRef(false);
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const selectedIndex=tabs.findIndex(x=>x[0]===tab);
  const setTransform=(idx:number,delta=0)=>{
   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
  };
- const paintScroll=useCallback(()=>{
-  scrollFrame.current=null;
-  const node=scroll.current,host=shell.current,frame=hero.current;
-  if(!node||!host||!frame)return;
-  const y=node.scrollTop,range=collapseDistance.current,p=Math.min(1,Math.max(0,y/Math.max(1,range)));
-  collapse.current=p;
-  const eased=1-Math.pow(1-p,1.55);
-  // Preserve source photo; the independent small crop carries the morph.
-  host.style.setProperty("--pm-p",String(eased));
-  if(active)onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null);
- },[onScrollMotion,current?.src,active]);
- const onScroll=()=>{
-  if(scrollFrame.current!==null)return;
-  scrollFrame.current=requestAnimationFrame(paintScroll);
- };
+ const settleSheet=useCallback((next:boolean)=>{
+  collapsedRef.current=next;
+  const pane=sheet.current;
+  if(pane){
+   pane.style.transition="";
+   pane.style.setProperty("--pm-sheet-y",(next?0:expandedY.current)+"px");
+  }
+  setCollapsed(next);
+ },[]);
  useLayoutEffect(()=>{
   const measure=()=>{
-   collapseDistance.current=Math.max(180,(hero.current?.offsetHeight??340)-65);
-   const max=Math.max(...contentPages.current.map(e=>e?.scrollHeight||0),0,Math.max(350,(scroll.current?.clientHeight??440)-128));
-   pages.current?.style.setProperty("--pm-panel-height",max+"px");
-   paintScroll();
+   const frame=hero.current,pane=sheet.current;
+   if(!frame||!pane)return;
+   expandedY.current=Math.max(180,frame.getBoundingClientRect().height-43);
+   pane.style.setProperty("--pm-sheet-y",(collapsedRef.current?0:expandedY.current)+"px");
   };
-  measure();const observer=new ResizeObserver(measure);
-  if(hero.current)observer.observe(hero.current);
-  for(const node of contentPages.current)if(node)observer.observe(node);
+  measure();
+  const ro=new ResizeObserver(measure);
+  if(hero.current)ro.observe(hero.current);
+  if(shell.current)ro.observe(shell.current);
   window.addEventListener("resize",measure);
-  return ()=>{observer.disconnect();window.removeEventListener("resize",measure);};
- },[paintScroll]);
- // Hidden tab can retain a deep scroll position. Repaint the shared header
- // only after this profile becomes the visible tab again.
+  return ()=>{ro.disconnect();window.removeEventListener("resize",measure);};
+ },[]);
  useEffect(()=>{
-   if(!active)return;
-   const id=window.requestAnimationFrame(paintScroll);
-   return ()=>window.cancelAnimationFrame(id);
- },[active,paintScroll]);
- useEffect(()=>()=>{if(scrollFrame.current!==null)cancelAnimationFrame(scrollFrame.current);
-  if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);},[]);
- const settleCollapse=()=>{
-  const node=scroll.current;if(!node)return;
-  const distance=collapseDistance.current,offset=node.scrollTop;
-  if(offset<8||offset>distance+18)return;
-  const p=offset/distance;
-  const now=performance.now(),velocity=(offset-scrollTopLast.current)/Math.max(1,now-scrollTime.current);
-  // Snap only inside the hero zone. Keep native flings and deep reading intact.
-  if(Math.abs(velocity)>1.4)return;
-  node.scrollTo({top:p>=.33||velocity>.28?distance:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
- };
+  const pane=sheet.current;if(!pane)return;
+  type SheetGesture={x:number;y:number;start:number;down:boolean;scrollTop:number;dragging:boolean;blocked:boolean};
+  let gesture:SheetGesture|null=null;
+  const start=(e:TouchEvent)=>{
+   if(e.touches.length!==1)return;
+   const t=e.touches[0];
+   gesture={x:t.clientX,y:t.clientY,start:performance.now(),
+    down:collapsedRef.current,scrollTop:contentPages.current[selectedIndex]?.scrollTop||0,
+    dragging:false,blocked:false};
+  };
+  const move=(e:TouchEvent)=>{
+   const g=gesture;if(!g||e.touches.length!==1)return;
+   const t=e.touches[0],dx=t.clientX-g.x,dy=t.clientY-g.y;
+   if(g.blocked)return;
+   if(Math.abs(dx)>Math.abs(dy)*1.15&&Math.abs(dx)>8){g.blocked=true;return;}
+   if(Math.abs(dy)<7)return;
+   if(g.down?(g.scrollTop>1||dy<0):dy>0)return;
+   if(e.cancelable)e.preventDefault();
+   g.dragging=true;
+   const distance=expandedY.current;
+   const offset=g.down?Math.max(0,Math.min(distance,dy)):
+     Math.max(0,Math.min(distance,distance+dy));
+   pane.style.transition="none";
+   pane.style.setProperty("--pm-sheet-y",offset+"px");
+  };
+  const end=(e:TouchEvent)=>{
+   const g=gesture;gesture=null;if(!g||!g.dragging)return;
+   const t=e.changedTouches[0];const dy=t.clientY-g.y,dt=Math.max(1,performance.now()-g.start);
+   const threshold=Math.min(90,Math.max(65,expandedY.current*.2));
+   const commit=g.down?(dy>threshold||dy/dt>.65):(dy< -threshold||dy/dt<-.65);
+   settleSheet(g.down?!commit:commit);
+  };
+  const cancel=()=>{const g=gesture;gesture=null;if(g?.dragging)settleSheet(g.down);};
+  pane.addEventListener("touchstart",start,{passive:true});
+  pane.addEventListener("touchmove",move,{passive:false});
+  pane.addEventListener("touchend",end,{passive:true});
+  pane.addEventListener("touchcancel",cancel,{passive:true});
+  return ()=>{
+   pane.removeEventListener("touchstart",start);pane.removeEventListener("touchmove",move);
+   pane.removeEventListener("touchend",end);pane.removeEventListener("touchcancel",cancel);
+  };
+ },[selectedIndex,settleSheet]);
+ useEffect(()=>()=>{if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);},[]);
  const closeTop=useCallback(():boolean=>{
   if(viewer){if(viewerBack.current)return viewerBack.current();setViewer(null);return true;}
   if(preview){setPreview(false);return true;}
+  if(blikOpen){setBlikOpen(false);return true;}
   if(onClose){onClose();return true;}
   return false;
- },[viewer,preview,onClose]);
+ },[viewer,preview,blikOpen,onClose]);
  useEffect(()=>{registerBack?.(closeTop);return ()=>registerBack?.(null);},[closeTop,registerBack]);
  const openPhoto=(index:number,element:HTMLElement|null)=>{
   if(performance.now()<clickBlocked.current||!photos[index])return;
@@ -219,16 +241,10 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
   if(g.axis==="x")clickBlocked.current=performance.now()+240;
   chooseTab(next);
  };
- const openMyPhotos=()=>{
-  chooseTab(2);
-  // Scroll to the actual gallery; merely changing an offscreen tab is not enough.
-  window.requestAnimationFrame(()=>{
-   const pane=scroll.current,bar=tabBar.current;
-   if(!pane||!bar)return;
-   const offset=bar.getBoundingClientRect().top-pane.getBoundingClientRect().top;
-   pane.scrollTo({top:Math.max(0,pane.scrollTop+offset-56+58),
-    behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
-  });
+ const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
+ const openAvatar=()=>{
+  if(view.profile.activeBlik){setBlikOpen(true);return;}
+  settleSheet(false);
  };
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
