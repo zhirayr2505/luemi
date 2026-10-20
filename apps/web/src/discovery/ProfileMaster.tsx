@@ -219,6 +219,17 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
   if(g.axis==="x")clickBlocked.current=performance.now()+240;
   chooseTab(next);
  };
+ const openMyPhotos=()=>{
+  chooseTab(2);
+  // Scroll to the actual gallery; merely changing an offscreen tab is not enough.
+  window.requestAnimationFrame(()=>{
+   const pane=scroll.current,bar=tabBar.current;
+   if(!pane||!bar)return;
+   const offset=bar.getBoundingClientRect().top-pane.getBoundingClientRect().top;
+   pane.scrollTo({top:Math.max(0,pane.scrollTop+offset-56),
+    behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
+  });
+ };
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
  const goal=view.profile.goal&&view.profile.goal!=="undecided"?goals.find(x=>x.id===view.profile.goal):null;
@@ -247,7 +258,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
      {goal&&<span className="pm-goal-chip"><Heart size={14}/>{goal.label}</span>}
     </div>
     {mode==="owner"&&<div className="pm-owner-actions">
-     <button type="button" onClick={()=>chooseTab(2)}><Images size={17}/> Мои фото</button>
+     <button type="button" onClick={openMyPhotos}><Images size={17}/> Мои фото</button>
      <button type="button" className="pm-owner-edit" onClick={onEdit}><PenLine size={17}/> Изменить</button>
      <button type="button" onClick={()=>setPreview(true)}><Eye size={17}/> Как видят</button>
     </div>}
