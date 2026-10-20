@@ -1,58 +1,88 @@
-/* Stage 03G.2: one stationary, screen-independent LUEMI chrome.
-   Motion is driven by native scroll containers; no React render per frame. */
+/* LUEMI Stage 03G.3 — the logo FLOATS over every screen.
+   This chrome reserves zero layout height. There is NO logo capsule. */
 .lh-header{
- --lh-p:0;--lh-compact:0;--lh-impact:0;
- position:relative;isolation:isolate;z-index:35;flex:none;
- height:calc(var(--top-safe) + 72px);min-height:87px;
- color:var(--ink);pointer-events:none;
+ --lh-p:0;--lh-compact:0;--lh-impact:0;--lh-glow:0;--lh-scrim:0;
+ position:absolute;inset:0 0 auto;z-index:70;height:0;min-height:0;
+ pointer-events:none;color:var(--ink);isolation:isolate;
+}
+.lh-header.lh-profile::before{
+ content:"";position:absolute;top:0;left:0;right:0;z-index:0;pointer-events:none;
+ height:calc(max(52px,var(--top-safe)) + 22px);
+ background:linear-gradient(to bottom,var(--bg) 0%,var(--bg) 48%,transparent 100%);
+ opacity:var(--lh-scrim);will-change:opacity;
 }
 .lh-header button{font:inherit;cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent}
-.lh-center{position:absolute;left:50%;top:max(3px,calc(var(--top-safe) - 13px));transform:translateX(-50%);height:74px;width:122px;pointer-events:none}
+.lh-center{
+ position:absolute;top:max(6px,calc(var(--top-safe) - 12px));left:50%;
+ transform:translateX(-50%);height:83px;width:130px;pointer-events:none;
+}
 .lh-island{
- position:absolute;left:50%;top:0;transform:translateX(-50%) scaleX(calc(1 + var(--lh-impact)));
- width:115px;height:38px;padding:1px 8px;display:grid;place-items:center;z-index:2;
- border-radius:24px;border:1px solid rgba(255,255,255,.59);
- background:linear-gradient(145deg,rgba(255,255,255,.37),rgba(217,173,244,.15));
- box-shadow:inset 0 1px rgba(255,255,255,.68),0 3px 13px rgba(133,91,162,.12);
- backdrop-filter:blur(10px) saturate(130%);-webkit-backdrop-filter:blur(10px) saturate(130%);
- transform-origin:center;will-change:transform;
+ position:absolute;left:50%;top:0;z-index:4;transform:translateX(-50%) scale(calc(1 + var(--lh-impact)));
+ display:grid;place-items:center;width:124px;height:44px;padding:0;border:0;
+ border-radius:0;background:transparent;box-shadow:none;
+ backdrop-filter:none;-webkit-backdrop-filter:none;transform-origin:center;
 }
-.lh-island img{display:block;width:100px;height:34px;max-width:100%;object-fit:contain;pointer-events:none}
-.lh-tools{position:absolute;top:44px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;z-index:1}
-.lh-tool,.lh-profile-theme,.lh-back{
+.lh-island img{
+ display:block;width:113px;height:42px;max-width:100%;object-fit:contain;
+ pointer-events:none;filter:drop-shadow(0 1px 2px rgba(29,12,40,.20));
+}
+.lh-island::before{
+ content:"";position:absolute;inset:-18px -23px;z-index:-1;pointer-events:none;
+ background:radial-gradient(ellipse,rgba(196,129,252,.85),rgba(235,173,255,.36) 38%,transparent 73%);
+ opacity:var(--lh-glow);transform:scale(calc(1 + var(--lh-glow) * .12));
+}
+.lh-tools{
+ position:absolute;top:48px;left:50%;transform:translateX(-50%);
+ display:flex;align-items:center;gap:8px;z-index:1;pointer-events:auto;
+}
+.lh-tool,.lh-profile-theme{
  display:grid;place-items:center;flex:none;width:30px;height:30px;padding:0;
- border-radius:50%;border:1px solid rgba(255,255,255,.69);
- background:linear-gradient(140deg,rgba(255,255,255,.43),rgba(228,189,247,.21));
- color:var(--ink);box-shadow:inset 0 1px rgba(255,255,255,.72),0 4px 12px var(--shadow);
- backdrop-filter:blur(8px) saturate(125%);-webkit-backdrop-filter:blur(8px) saturate(125%);
+ border-radius:50%;border:1px solid rgba(255,255,255,.70);
+ background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(243,225,253,.61));
+ color:#704b8e;box-shadow:0 3px 13px rgba(44,19,72,.12);
+ backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
 }
-.lh-tool{opacity:var(--lh-control-opacity,1);transform-origin:center;
+.lh-tool{
+ opacity:var(--lh-control-opacity,1);transform-origin:center;
  transform:translate3d(var(--lh-x,0px),var(--lh-control-y,0px),0) scale(var(--lh-control-scale,1)) scaleY(var(--lh-control-stretch,1));
- will-change:transform,opacity}
+ will-change:transform,opacity;
+}
 .lh-tool-filter{--lh-x:var(--lh-left-x,0px)}
 .lh-tool-saved{--lh-x:var(--lh-right-x,0px)}
 .lh-header[data-tools-merged=true] .lh-tools{pointer-events:none;visibility:hidden}
 .lh-header[data-tools-merged=true] .lh-tool{pointer-events:none}
-.lh-header button:focus-visible{outline:2px solid #b789e4;outline-offset:3px}
-.lh-header.lh-profile{height:calc(var(--top-safe) + 48px);min-height:56px}
-.lh-profile .lh-center{height:42px}
+.lh-header button:focus-visible{outline:2px solid #bc80eb;outline-offset:3px}
 .lh-profile-info{
- position:absolute;left:12px;top:max(7px,calc(var(--top-safe) - 8px));
- width:calc(50% - 80px);min-width:0;display:flex;flex-direction:column;gap:3px;
- opacity:var(--lh-compact);transform:translate3d(var(--lh-text-x,-8px),0,0);
- pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ position:absolute;top:max(9px,calc(var(--top-safe) - 9px));left:12px;
+ width:calc(50% - 80px);min-width:0;max-width:160px;padding:6px 7px;
+ display:flex;flex-direction:column;gap:2px;border-radius:13px;
+ background:rgba(255,253,255,.86);color:#4c3763;box-shadow:0 3px 15px rgba(39,16,51,.11);
+ opacity:var(--lh-compact);transform:translate3d(var(--lh-text-x,-9px),0,0);
+ pointer-events:none;white-space:nowrap;overflow:hidden;
 }
-.lh-profile-info strong{font-size:13px;line-height:16px;overflow:hidden;text-overflow:ellipsis}
-.lh-profile-info small{font-size:10px;line-height:14px;color:var(--subtle);overflow:hidden;text-overflow:ellipsis}
-.lh-profile-theme{position:absolute;top:max(7px,calc(var(--top-safe) - 8px));left:calc(50% + 66px);width:29px;height:29px}
-.lh-back{position:absolute;top:max(7px,calc(var(--top-safe) - 8px));left:12px;width:31px;height:31px;z-index:2}
-.lh-header:has(.lh-back) .lh-profile-info{left:47px;width:calc(50% - 114px)}
-.lh-droplet{position:fixed;top:0;left:0;z-index:55;opacity:0;pointer-events:none;
- overflow:hidden;transform-origin:top left;backface-visibility:hidden;
- box-shadow:0 1px 8px rgba(78,41,106,.15);will-change:transform,opacity}
-.lh-droplet img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 25%;pointer-events:none}
-.luemi-shell[data-theme=dark] .lh-island{border-color:rgba(238,208,255,.29);background:linear-gradient(140deg,rgba(103,77,128,.55),rgba(72,50,95,.3));box-shadow:inset 0 1px rgba(255,255,255,.2),0 3px 13px rgba(0,0,0,.17)}
-.luemi-shell[data-theme=dark] .lh-tool,.luemi-shell[data-theme=dark] .lh-back,.luemi-shell[data-theme=dark] .lh-profile-theme{border-color:rgba(230,199,255,.27);background:linear-gradient(145deg,rgba(111,79,142,.5),rgba(65,44,94,.32))}
-
-@media(prefers-reduced-motion:reduce){.lh-island,.lh-droplet,.lh-tool{will-change:auto}.lh-droplet{display:none}}
-@media(prefers-reduced-transparency:reduce){.lh-island,.lh-tool,.lh-back,.lh-profile-theme{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}}
+.lh-profile-info strong{font-size:12px;line-height:15px;overflow:hidden;text-overflow:ellipsis}
+.lh-profile-info small{font-size:9px;line-height:13px;color:#7c678f;overflow:hidden;text-overflow:ellipsis}
+.lh-profile-theme{
+ position:absolute;top:max(10px,calc(var(--top-safe) - 8px));left:calc(50% + 69px);
+ width:31px;height:31px;z-index:5;
+}
+/* Small brief liquid fragment: no avatar border, no background capsule. */
+.lh-droplet{
+ position:fixed;top:0;left:0;z-index:3;width:34px;height:34px;opacity:0;pointer-events:none;
+ overflow:hidden;transform-origin:center;backface-visibility:hidden;
+ border:0;border-radius:70% 7% 70% 70% / 72% 7% 72% 72%;
+ box-shadow:0 0 8px 3px rgba(204,135,253,.35),0 0 21px rgba(214,148,255,.25);
+ will-change:transform,opacity;contain:paint;
+}
+.lh-droplet img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 24%;pointer-events:none}
+.luemi-shell[data-theme=dark] .lh-island{background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+.luemi-shell[data-theme=dark] .lh-profile-info{background:rgba(43,28,56,.85);color:#f9efff}
+.luemi-shell[data-theme=dark] .lh-profile-info small{color:#ceb7dd}
+.luemi-shell[data-theme=dark] .lh-tool,.luemi-shell[data-theme=dark] .lh-profile-theme{
+ border-color:rgba(225,197,248,.44);background:rgba(65,41,85,.71);color:#f6e6ff
+}
+@media(prefers-reduced-motion:reduce){
+ .lh-island,.lh-droplet,.lh-tool{will-change:auto}
+ .lh-droplet{display:none}
+}
+@media(prefers-reduced-transparency:reduce){.lh-tool,.lh-profile-theme{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}}

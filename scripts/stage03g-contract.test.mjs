@@ -46,7 +46,7 @@ assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki"
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
 assert.ok(profile.includes("requestAnimationFrame(paintScroll)")&&
  profile.includes("frame.getBoundingClientRect()")&&profile.includes("onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null)")&&
- read("apps/web/src/discovery/GlobalHeader.tsx").includes("heroRect.top+scrollTop"),
+ read("apps/web/src/discovery/GlobalHeader.tsx").includes("heroRect.top+heroRect.height*.57"),
  "scroll-driven shared photo uses fixed layout origin, without every-frame React renders");
 assert.ok(profile.includes("requestAnimationFrame(()=>{dragFrame.current=null;paintTabs"),
  "tabs follow finger on compositor transform");
@@ -81,5 +81,19 @@ assert.ok(headerCss.includes(".lh-droplet")&&headerCss.includes(".lh-profile-the
  "obsolete duplicate profile header and local morph removed");
 console.log("✓ Stage 03G.2 unified chrome and liquid motion contracts");
 
-assert.ok(headerCss.includes("top:max(3px,calc(var(--top-safe) - 13px))"),
+assert.ok(headerCss.includes("top:max(6px,calc(var(--top-safe) - 12px))"),
  "LUEMI logo Y anchor must match original Feed vertical placement on every screen");
+
+assert.ok(headerCss.includes("position:absolute;inset:0 0 auto")&&
+ headerCss.includes("background:transparent;box-shadow:none")&&
+ css.includes(".pm-profile-sheet")&&css.includes("margin-top:-43px"),
+ "profile uses full-bleed hero below transparent, layout-free wordmark");
+assert.ok(!profile.includes("photoTrack.current.style.opacity")&&
+ profile.includes('className="pm-identity"')&&
+ profile.includes("onClick={openMyPhotos}")&&profile.includes("pane.scrollTo("),
+ "hero never blanks during scroll; identity/actions are present and functional");
+console.log("✓ Stage 03G.3: full-screen photo and overlay-only logo contracts");
+
+assert.ok(header.includes("const diameter=34*(1-t)+2.5*t")&&
+ headerCss.includes("width:34px;height:34px")&&!header.includes("node.style.width="),
+ "small liquid fragment scales on GPU without per-scroll geometry mutations");

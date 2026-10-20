@@ -1,0 +1,36 @@
+name: LUEMI Stage 03G.3 visual QA
+on:
+  push:
+    branches: ['feat/stage03g3-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Install browser test tooling
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install chromium --with-deps
+      - name: Render actual React profile and capture screenshots
+        run: |
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-vite-qa.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/stage03g3-visual-qa.mjs
+      - name: Preserve screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luemi-stage03g3-profile-393px
+          path: stage03g3-*.jpg
+          if-no-files-found: ignore

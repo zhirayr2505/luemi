@@ -287,11 +287,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
- return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"}>
+ return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"} data-profile-mode={profileMode?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>
    <GlobalHeader ref={globalHeader} mode={profileMode?"profile":"browse"} theme={theme}
      onTheme={onTheme} onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
-     onBack={selectedPerson?()=>setPersonOpen(null):undefined}
      name={headerName} location={headerLocation}/>
    <div className="discovery-main-panels">
      <section className="discovery-panel" hidden={mainTab!=="discover"}>
