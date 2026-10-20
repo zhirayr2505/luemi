@@ -72,3 +72,7 @@
 - Profile languages are flags only with accessible language titles; dating goal badge stronger.
 - Fixed restart-from-zero by local per-account draft (localStorage) + private local photo File storage (IndexedDB). Users can clear it from step 1. Does not upload user files or replace future encrypted server drafts.
 - Mobile visual approval, keyboard/fps testing still pending. No main, Supabase, VEYRA or blotX updates.
+
+
+## Stage 03D · owner video feedback (pending decisions, 2026-10-20)
+- See [`STAGE03D_VIDEO_FEEDBACK_20261020.md`](STAGE03D_VIDEO_FEEDBACK_20261020.md): missing wordmark on full profile, flashing discovery tabs, portrait-area vertical scroll lock, performance/jank, future portrait shared-element transition. No code changes authorized by this documentation update.

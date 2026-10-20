@@ -33,3 +33,7 @@ Validate horizontally scrollable portrait rows vs discover pager, return from pr
 ## 2026-10-20 · Integration with current staging
 
 The previously developed branch diverged from staging, which contains 22 newer feed and motion commits. This integration is based on staging HEAD `ef765d1`, preserving `FeedCard.tsx` and all 22 newer commits, and importing only isolated Stage 03D components and narrowly-scoped DiscoveryApp wiring. Full QA and staging visual acceptance remain separate gates. No real data, geolocation, payments, or Nearby features added.
+
+
+## Stage 03D · owner video feedback (pending decisions, 2026-10-20)
+- See [`STAGE03D_VIDEO_FEEDBACK_20261020.md`](STAGE03D_VIDEO_FEEDBACK_20261020.md): missing wordmark on full profile, flashing discovery tabs, portrait-area vertical scroll lock, performance/jank, future portrait shared-element transition. No code changes authorized by this documentation update.
