@@ -119,12 +119,14 @@ assertCheck("all ephemeral visual toasts removed but announcements accessible",
  discovery.includes('discovery-sr-status')&&discovery.includes('aria-live="polite"'));
 assertCheck("restart label not misleading and controls remain local-only",
  discovery.includes('onRestart={restartFeed}')&&discovery.includes('indicate("Демо-Лента начата заново")'));
-assertCheck("public profile photo morph uses shared global overlay and native scroll",
- discoveryProfile.includes("onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null)")
- && globalHeader.includes("heroRect.top+heroRect.height*.57")&&globalHeader.includes("setProfileMorph")
- && globalHeaderCss.includes(".lh-droplet")&&!discoveryProfile.includes("pm-morph-photo"));
-console.log("LUEMI Stage 03 video motion-regression contracts PASS");
-
+assertCheck("full profile sheet anchors identity and scrolls only selected tab content",
+ discoveryProfile.includes("data-sheet-state={collapsed")&&
+ discoveryProfile.includes('className="pm-mini-avatar"')===false&&
+ discoveryProfile.includes('className={"pm-mini-avatar"')&&
+ discoveryProfile.includes("settleSheet(")&&globalHeader.includes("setScrollTop")&&
+ !globalHeader.includes("setProfileMorph")&&
+ !globalHeaderCss.includes(".lh-droplet")&&
+ read("apps/web/src/discovery/profile-master.css").includes(".pm-page{min-height:0"));
 assertCheck("deck controls hidden until incoming profile starts motion",
  discoveryCss.includes(".deck-queued .discovery-actions")&&
  discoveryCss.includes(".deck-entering .discovery-actions")&&
@@ -147,7 +149,7 @@ assertCheck("single atomic Deck Lift commit synchronized with exit animation",
 assertCheck("profile gestures follow finger while vertically scrolling natively",
  discoveryProfile.includes("setPointerCapture")&&
  discoveryProfile.includes("paintTabs(g.index")&&
- discoveryProfile.includes("requestAnimationFrame(paintScroll)")&&
+ discoveryProfile.includes('pane.addEventListener("touchmove",move,{passive:false})')&&
  read("apps/web/src/discovery/profile-master.css").includes("touch-action:pan-y")&&
  !discoveryProfile.includes("setDragX"));
 console.log("LUEMI Stage 03 motion v2 regression checks PASS");
