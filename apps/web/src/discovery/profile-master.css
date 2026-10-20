@@ -70,7 +70,7 @@
  overflow:hidden;border:0;border-radius:0;isolation:isolate;
  background:linear-gradient(150deg,#c7b0e4,#9a80cb);touch-action:pan-y;
 }
-.pm-photo-track{height:100%;width:100%;display:flex;transition:transform 300ms cubic-bezier(.2,.76,.22,1)}
+.pm-photo-track{height:100%;width:100%;display:flex;transform:translate3d(0,0,0);transition:transform 300ms cubic-bezier(.2,.76,.22,1)}
 .pm-photo-slide{height:100%;min-width:100%;flex:0 0 100%;overflow:hidden;touch-action:pan-y}
 .pm-photo-slide img{
  display:block;width:100%;height:100%;object-fit:cover;object-position:center 20%;
@@ -78,7 +78,7 @@
 }
 .pm-photo-blur{
  position:absolute;inset:0;z-index:1;opacity:0;overflow:hidden;pointer-events:none;
- transition:opacity 360ms cubic-bezier(.22,.79,.22,1);will-change:opacity;
+ transition:opacity 360ms cubic-bezier(.22,.79,.22,1);
 }
 .pm-photo-blur img{
  display:block;width:100%;height:100%;object-fit:cover;object-position:center 20%;
@@ -114,7 +114,9 @@
  background:var(--bg);box-shadow:0 -5px 20px rgba(56,30,73,.052);
  transform:translate3d(0,var(--pm-sheet-y,430px),0);
  transition:transform 360ms cubic-bezier(.22,.79,.22,1);
- backface-visibility:hidden;-webkit-backface-visibility:hidden;
+ /* A single paint boundary contains the five native scroll panes while the
+    outer surface moves. Avoid backface-visibility texture flips on Android. */
+ contain:paint;isolation:isolate;
 }
 .pm-sheet-grab{
  position:absolute;z-index:2;top:6px;left:50%;transform:translateX(-50%);
@@ -200,19 +202,18 @@
  background:linear-gradient(90deg,#a67cdb,#e5a2d7);pointer-events:none;
  transition:transform 280ms cubic-bezier(.22,.77,.23,1);
 }
-.pm-pages{position:relative;flex:1;min-height:0;height:0;overflow:hidden;touch-action:pan-y}
+.pm-pages{position:relative;flex:1;min-height:0;height:0;overflow:hidden;touch-action:pan-y;contain:paint}
 .pm-pages-track{
  display:flex;align-items:stretch;width:100%;height:100%;min-height:0;
+ transform:translate3d(0,0,0);
  transition:transform 295ms cubic-bezier(.22,.77,.23,1);
- backface-visibility:hidden;-webkit-backface-visibility:hidden;
 }
-.pm-pages-track.is-finger-tracking{will-change:transform;transition:none}
 .pm-page{
  box-sizing:border-box;flex:0 0 100%;min-width:100%;height:100%;min-height:0;
  padding:15px 13px calc(58px + var(--pm-collapsed-top,45px));
  overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;
  touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none;
- overflow-anchor:none;
+ overflow-anchor:none;contain:layout paint;
 }
 .pm-page::-webkit-scrollbar{display:none}
 .pm-shell[data-sheet-state=expanded] .pm-page{overflow-y:hidden}
