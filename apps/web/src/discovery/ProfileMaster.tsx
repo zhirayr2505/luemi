@@ -17,6 +17,11 @@ type Props={
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
 };
+// Android WebView can produce detached rectangular tiles when a translated,
+// rounded ancestor owns several nested native scrolling panes. Keep the
+// existing composited motion on other platforms; use layout-positioned sheet
+// movement on Android to avoid cross-layer tile invalidation.
+const androidSafeSheet=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
 type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number};
@@ -313,7 +318,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
  const goal=view.profile.goal&&view.profile.goal!=="undecided"?goals.find(x=>x.id===view.profile.goal):null;
- return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} className={"pm-shell "+(mode==="owner"?"pm-inline":"pm-dialog")} role={mode==="owner"?undefined:"dialog"}
+ return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer={androidSafeSheet?"layout":"compositor"} className={"pm-shell "+(mode==="owner"?"pm-inline":"pm-dialog")} role={mode==="owner"?undefined:"dialog"}
    aria-modal={mode==="owner"?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
   {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
