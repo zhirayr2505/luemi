@@ -49,12 +49,14 @@ console.log("✓ Stage 03D integration: preserved FeedCard, isolated gestures, v
 const forYou=readFileSync(new URL("../apps/web/src/discovery/ForYou.tsx",import.meta.url),"utf8");
 const forYouCss=readFileSync(new URL("../apps/web/src/discovery/for-you.css",import.meta.url),"utf8");
 const discoveryStyles=readFileSync(new URL("../apps/web/src/discovery/discovery.css",import.meta.url),"utf8");
-const demoProfile=readFileSync(new URL("../apps/web/src/discovery/DemoProfile.tsx",import.meta.url),"utf8");
+const demoProfile=readFileSync(new URL("../apps/web/src/discovery/ProfileMaster.tsx",import.meta.url),"utf8");
+const globalHeader=readFileSync(new URL("../apps/web/src/discovery/GlobalHeader.tsx",import.meta.url),"utf8");
+const headerCss=readFileSync(new URL("../apps/web/src/discovery/global-header.css",import.meta.url),"utf8");
 const feedCard=readFileSync(new URL("../apps/web/src/discovery/FeedCard.tsx",import.meta.url),"utf8");
 assert.ok(!forYouCss.includes("touch-action:pan-x;")&&forYouCss.includes("touch-action:pan-x pan-y"),"portraits allow native vertical panning");
 assert.ok(forYou.includes("list.slice(0,6)")&&forYou.includes("memo(function ForYou"),"bounded collections and memoized page");
-assert.ok(demoProfile.includes("discovery-profile-wordmark")&&demoProfile.includes("wordmark_original_raster_alpha_W06.webp"),"original LUEMI logo in full profile");
-assert.ok(discoveryStyles.includes("grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)"),"profile logo independently centered");
+assert.ok(globalHeader.includes("lh-island")&&globalHeader.includes("wordmark_original_raster_alpha_W06.webp"),"original LUEMI logo in full profile");
+assert.ok(headerCss.includes(".lh-center")&&headerCss.includes("left:50%")&&demoProfile.includes("onScrollMotion"),"profile logo independently centered");
 assert.ok(discoveryStyles.includes(".discovery-page-track.is-finger-tracking")&&discoveryStyles.includes("font-weight:700"),"steady active-tab typography");
 assert.ok(active.includes("onPointerCancel={cancelSwipe}")&&active.includes("requestAnimationFrame")&&!active.includes("setDragX"),"gesture cancellation and rAF updates");
 assert.ok(feedCard.includes("discovery-deck-current")&&active.includes('event.animationName==="luemi-deck-leave"'),"Feed animation preserved");
