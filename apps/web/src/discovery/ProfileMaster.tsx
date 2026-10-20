@@ -248,6 +248,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    tabViewport.current=Math.max(1,pages.current?.clientWidth||bar.clientWidth);
    if(ink.current&&tabMetrics.current.length)
     ink.current.style.width=tabMetrics.current[0].width+"px";
+   // Geometry is stable across tab selection. Do not re-run an in-flight transition.
    paintTabs(tabs.findIndex(v=>v[0]===tab));
   };
   measure();
@@ -255,7 +256,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   ro.observe(bar);
   if(pages.current)ro.observe(pages.current);
   return ()=>ro.disconnect();
- },[active,tab]);
+ },[active]);
  const chooseTab=(newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
@@ -266,7 +267,6 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   const bar=tabBar.current,button=bar?.querySelectorAll<HTMLButtonElement>(".pm-tab")[i];
   if(button&&bar)bar.scrollTo({left:Math.max(0,button.offsetLeft+button.offsetWidth/2-bar.clientWidth/2),behavior:"smooth"});
  };
- useLayoutEffect(()=>{paintTabs(selectedIndex);},[selectedIndex]);
  const tabDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if((e.target as HTMLElement).closest("button,.pm-photos-grid,.pm-gift-grid")||(e.pointerType==="mouse"&&e.button!==0))return;
   tabSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",index:selectedIndex,width:pages.current?.clientWidth||innerWidth};
@@ -310,7 +310,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
-    {photos.length?<div className="pm-photo-track" ref={photoTrack} style={{transform:`translate3d(-${activePhoto*100}%,0,0)`}}>
+    {photos.length?<div className="pm-photo-track" ref={photoTrack}>
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
@@ -354,7 +354,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    </div>
    <div className="pm-pages" ref={pages} onPointerDown={tabDown} onPointerMove={tabMove}
      onPointerUp={e=>tabEnd(e)} onPointerCancel={e=>tabEnd(e,true)}>
-    <div className="pm-pages-track" ref={pageTrack} style={{transform:`translate3d(-${selectedIndex*100}%,0,0)`}}>
+    <div className="pm-pages-track" ref={pageTrack}>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[0]=e;}}><About view={view}/></div>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[1]=e;}}><Bliki/></div>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[2]=e;}}>
