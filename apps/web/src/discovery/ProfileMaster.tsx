@@ -96,12 +96,10 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
   const y=node.scrollTop,range=collapseDistance.current,p=Math.min(1,Math.max(0,y/Math.max(1,range)));
   collapse.current=p;
   const eased=1-Math.pow(1-p,1.55);
-  // One stationary global header owns the shared portrait and compact title.
-  const alpha=Math.max(0,Math.min(1,1-p/.065));
-  if(photoTrack.current)photoTrack.current.style.opacity=String(alpha);
+  // Preserve source photo; the independent small crop carries the morph.
   host.style.setProperty("--pm-p",String(eased));
-  onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null);
- },[onScrollMotion,current?.src]);
+  if(active)onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null);
+ },[onScrollMotion,current?.src,active]);
  const onScroll=()=>{
   if(scrollFrame.current!==null)return;
   scrollFrame.current=requestAnimationFrame(paintScroll);
@@ -222,7 +220,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
   chooseTab(next);
  };
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
- const location=<>{view.profile.city||view.profile.country?<><MapPin size={15}/>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")} {view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}</>:"Город не указан"}</>;
+ const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
+ const goal=view.profile.goal&&view.profile.goal!=="undecided"?goals.find(x=>x.id===view.profile.goal):null;
  return <section ref={shell} className={"pm-shell "+(mode==="owner"?"pm-inline":"pm-dialog")} role={mode==="owner"?undefined:"dialog"}
    aria-modal={mode==="owner"?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
   <div className="pm-scroll" ref={scroll} onScroll={onScroll}
@@ -235,20 +234,23 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
-    <div className="pm-hero-gradient"/>
-    <div className="pm-hero-info">
-     <h2>{nameLine} {view.profile.premium&&<span className="pm-premium">◆</span>}{view.profile.verified&&<ShieldCheck size={18}/>}</h2>
-     <p>{location}</p>
-    </div>
+    <div className="pm-hero-gradient" aria-hidden="true"/>
     {photos.length>1&&<div className="pm-photo-progress" aria-label="Фотографии">{photos.map((p,i)=>
      <button type="button" key={p.id} aria-label={"Фото "+(i+1)} aria-current={i===activePhoto?"true":undefined}
        className={i===activePhoto?"active":""} onClick={()=>{setTransform(i);setActivePhoto(i);}}/>)}</div>}
     {view.profile.source!=="server"&&<span className="pm-hero-demo">{view.profile.source==="fixture"?"Демо":"Черновик"}</span>}
    </div>
-   {mode==="owner"&&<div className="pm-owner-actions">
-    <button type="button" onClick={onEdit}><PenLine size={16}/> Редактировать профиль</button>
-    <button type="button" onClick={()=>setPreview(true)}><Eye size={16}/> Глазами других</button>
-   </div>}
+   <div className="pm-profile-sheet">
+    <div className="pm-identity">
+     <h2>{nameLine} {view.profile.premium&&<span className="pm-premium">◆</span>}{view.profile.verified&&<ShieldCheck size={19} aria-label="Подтверждён"/>}</h2>
+     <p className="pm-identity-location">{location}</p>
+     {goal&&<span className="pm-goal-chip"><Heart size={14}/>{goal.label}</span>}
+    </div>
+    {mode==="owner"&&<div className="pm-owner-actions">
+     <button type="button" onClick={()=>chooseTab(2)}><Images size={17}/> Мои фото</button>
+     <button type="button" className="pm-owner-edit" onClick={onEdit}><PenLine size={17}/> Изменить</button>
+     <button type="button" onClick={()=>setPreview(true)}><Eye size={17}/> Как видят</button>
+    </div>}
    <div className="pm-tabs" ref={tabBar} role="tablist" aria-label="Разделы профиля">
     {tabs.map(([id,label,Icon],i)=><button type="button" key={id} className={"pm-tab"+(id===tab?" active":"")} role="tab"
       aria-selected={id===tab} onClick={()=>chooseTab(i)}><Icon size={16}/><span>{label}</span></button>)}
@@ -270,6 +272,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
      <div className="pm-page" ref={e=>{if(e)contentPages.current[4]=e;}}><Meta view={view}/></div>
     </div>
    </div>
+  </div>
   </div>
   {viewer&&<PhotoViewer view={view} photos={photos} initial={viewer.index} source={viewer.source}
     onClose={()=>setViewer(null)} registerBack={handler=>{viewerBack.current=handler;}} onMain={id=>{if(view.canReorderMain)setMainId(id);}}
