@@ -51,15 +51,15 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    const root=host.current,target=island.current,node=droplet.current,img=portrait.current;
    if(!root||!target||!node||!img)return;
    const p=clamp(progress);
-   const compact=smooth(clamp((p-.47)/.32));
+   const compact=smooth(clamp((p-.55)/.33));
    const goal=target.getBoundingClientRect();
    root.style.setProperty("--lh-compact",String(compact));
    root.style.setProperty("--lh-text-x",(-9*(1-compact))+"px");
    // A temporary soft halo, never a permanent pill surrounding the logo.
-   const impact=Math.exp(-Math.pow((p-.91)/.075,2));
-   root.style.setProperty("--lh-glow",String(impact*.74));
+   const impact=Math.exp(-Math.pow((p-.88)/.075,2));
+   root.style.setProperty("--lh-glow",String(impact*.88));
    root.style.setProperty("--lh-impact",String(impact*.035));
-   if(!photo||p<=.37||p>=.995){
+   if(!photo||p<=.46||p>=.995){
      node.style.opacity="0";
      return;
    }
@@ -67,18 +67,20 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    // An intentionally SMALL crop of the original photo forms the droplet.
    // The hero itself stays fully visible and scrolls naturally; there is no
    // duplicate full-size rectangle and no empty gradient beneath the morph.
-   const t=smooth(clamp((p-.38)/.57));
-   const diameter=78*(1-t)+3*t;
-   const sourceX=heroRect.left+heroRect.width/2-39;
-   const sourceY=Math.max(goal.bottom+43,Math.min(heroRect.top+heroRect.height*.53,heroRect.bottom-95));
-   const targetX=goal.left+goal.width/2, targetY=goal.top+goal.height/2;
-   const left=(sourceX+39)*(1-t)+targetX*t-diameter/2;
-   const top=(sourceY+39)*(1-t)+targetY*t-diameter/2;
-   node.style.width=diameter+"px";node.style.height=diameter+"px";
-   node.style.transform=`translate3d(${left}px,${top}px,0) rotate(${Math.sin(Math.PI*t)*13}deg) scaleX(${1+.16*Math.sin(Math.PI*t)})`;
-   node.style.borderRadius=`${50-7*Math.sin(Math.PI*t)}% ${50+5*Math.sin(Math.PI*t)}% 50% 50%`;
-   const appear=smooth(clamp((p-.38)/.08));
-   const vanish=1-smooth(clamp((p-.85)/.13));
+   // A tapered 46px liquid fragment, never a freestanding 78px avatar.
+   // Its tip points towards the stationary LUEMI mark.
+   const t=smooth(clamp((p-.46)/.48));
+   const diameter=46*(1-t)+3*t;
+   const sourceX=heroRect.left+heroRect.width/2;
+   const sourceY=Math.max(goal.bottom+38,Math.min(heroRect.top+heroRect.height*.57,heroRect.bottom-32));
+   const targetX=goal.left+goal.width/2,targetY=goal.top+goal.height/2;
+   const left=sourceX*(1-t)+targetX*t-diameter/2;
+   const top=sourceY*(1-t)+targetY*t-diameter/2;
+   node.style.transform=`translate3d(${left}px,${top}px,0) rotate(-45deg) scaleY(${1+.28*Math.sin(Math.PI*t)}) scale(${diameter/46})`;
+   // Transform-based scaling avoids recomputing a layer's width/height on scroll.
+   node.style.borderRadius="70% 7% 70% 70% / 72% 7% 72% 72%";
+   const appear=smooth(clamp((p-.46)/.07));
+   const vanish=1-smooth(clamp((p-.80)/.14));
    node.style.opacity=String(appear*vanish);
   },
   reset:()=>{
