@@ -94,6 +94,6 @@ assert.ok(!profile.includes("photoTrack.current.style.opacity")&&
  "hero never blanks during scroll; identity/actions are present and functional");
 console.log("✓ Stage 03G.3: full-screen photo and overlay-only logo contracts");
 
-assert.ok(header.includes("const diameter=46*(1-t)+3*t")&&
- headerCss.includes("width:46px;height:46px")&&!header.includes("node.style.width="),
+assert.ok(header.includes("const diameter=34*(1-t)+2.5*t")&&
+ headerCss.includes("width:34px;height:34px")&&!header.includes("node.style.width="),
  "small liquid fragment scales on GPU without per-scroll geometry mutations");
