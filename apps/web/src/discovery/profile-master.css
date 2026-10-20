@@ -227,6 +227,29 @@
 .luemi-shell[data-theme=dark] .pm-goal-chip{
  color:#e8bbfa;background:rgba(133,72,175,.27);
 }
+/* Stage 03G.7 — Android WebView tile-safety path.
+   03G.6's transformed paint-contained scrolling sheet was confirmed in
+   Galaxy A55 capture to split into rectangular/rasterized fragments.
+   Position it in layout space instead of translating a five-pane native
+   scroller as a single GPU texture. Only the Android renderer uses this path;
+   other platforms retain their transform-composited motion. */
+.pm-shell[data-sheet-renderer=layout] .pm-profile-sheet{
+ top:var(--pm-sheet-y,430px);bottom:auto;transform:none;
+ transition:top 360ms cubic-bezier(.22,.79,.22,1);
+ contain:layout;isolation:isolate;
+ backface-visibility:visible;-webkit-backface-visibility:visible;
+}
+.pm-shell[data-sheet-renderer=layout] .pm-pages{
+ contain:none;isolation:isolate;
+}
+.pm-shell[data-sheet-renderer=layout] .pm-pages-track{
+ position:relative;left:0;transform:none!important;
+ transition:left 295ms cubic-bezier(.22,.77,.23,1);
+ backface-visibility:visible;-webkit-backface-visibility:visible;
+}
+.pm-shell[data-sheet-renderer=layout] .pm-page{
+ contain:none;
+}
 @media(max-width:370px){
  .pm-hero{min-height:390px;height:56svh}
  .pm-profile-sheet{border-radius:31px 31px 0 0}
