@@ -1,0 +1,49 @@
+name: LUEMI source export for independent audit
+on:
+  push:
+    branches:
+      - 'audit/claude-stage03f-20261020'
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout snapshot source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Export exact approved staging source, no secrets or node_modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha="8b21c272b822411ca905f490bb8244487f408b8b"
+          mkdir -p upload/LUEMI_SOURCE
+          git cat-file -e "${source_sha}^{commit}"
+          git archive --format=tar "${source_sha}" | tar -xf - -C upload/LUEMI_SOURCE
+
+          # Abort if any real secret-looking file was ever committed to the source tree.
+          if find upload/LUEMI_SOURCE -type f \( -name '.env' -o -name '.env.local' -o -name '.env.production' -o -name '*.pem' -o -name '*.p12' -o -name '*.key' -o -name 'id_rsa' -o -name 'credentials.json' \) | grep -q .; then
+            echo "Sensitive file path found. Refusing to export." >&2
+            exit 1
+          fi
+          mkdir -p upload/AUDIT_INFO
+          cp audit/REVIEW_README.md upload/AUDIT_INFO/README_FIRST.md
+          printf '%s\n' "${source_sha}" > upload/AUDIT_INFO/SOURCE_COMMIT.txt
+          find upload/LUEMI_SOURCE -type f | LC_ALL=C sort > upload/AUDIT_INFO/FILE_MANIFEST.txt
+          find upload/LUEMI_SOURCE -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > upload/AUDIT_INFO/SHA256SUMS.txt
+          echo "Archived tracked files: $(find upload/LUEMI_SOURCE -type f | wc -l)"
+          test -f upload/LUEMI_SOURCE/apps/web/src/discovery/DiscoveryApp.tsx
+          test -f upload/LUEMI_SOURCE/apps/web/src/discovery/ForYou.tsx
+          test -f upload/LUEMI_SOURCE/apps/web/src/discovery/nearby.css
+          test -f upload/LUEMI_SOURCE/docs/STAGE03F_FINAL_POLISH.md
+          test -f upload/LUEMI_SOURCE/apps/web/public/assets/brand/wordmark_original_raster_alpha_W06.webp
+      - name: Upload snapshot ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: LUEMI_SOURCE_STAGE03F_8b21c27
+          path: upload/
+          retention-days: 30
+          if-no-files-found: error
+          compression-level: 6
