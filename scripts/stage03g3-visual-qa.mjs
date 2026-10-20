@@ -45,7 +45,7 @@ try{
  const scroll=await page.screenshot({type:"jpeg",quality:61,path:"stage03g3-scrolled.jpg"});
  console.log("QA_SCROLLED "+JSON.stringify(state));
  console.log("VISUAL_QA_SCROLL_JPEG="+scroll.toString("base64"));
- await page.getByRole("button",{name:"Мои фото"}).click();
+ await page.getByRole("button",{name:"Мои фото"}).tap();
  await page.waitForTimeout(850);
  const photosState=await page.evaluate(()=>{
   const pane=document.querySelector(".pm-scroll"),tab=document.querySelector(".pm-tab.active");
