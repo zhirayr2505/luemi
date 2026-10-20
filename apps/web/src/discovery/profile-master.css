@@ -78,7 +78,7 @@
 }
 .pm-photo-blur{
  position:absolute;inset:0;z-index:1;opacity:0;overflow:hidden;pointer-events:none;
- transition:opacity 380ms cubic-bezier(.2,.76,.22,1);will-change:opacity;
+ transition:opacity 360ms cubic-bezier(.22,.79,.22,1);will-change:opacity;
 }
 .pm-photo-blur img{
  display:block;width:100%;height:100%;object-fit:cover;object-position:center 20%;
