@@ -89,7 +89,7 @@
  background:linear-gradient(to bottom,rgba(31,17,45,.08),transparent 27%,transparent 72%,rgba(28,13,42,.13));
 }
 .pm-photo-progress{
- position:absolute;z-index:5;top:max(59px,calc(var(--top-safe) + 39px));left:50%;right:auto;
+ position:absolute;z-index:5;top:var(--pm-dots-top,calc(var(--top-safe) + 86px));left:50%;right:auto;
  transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:4px;
  max-width:calc(100% - 110px);width:max-content;pointer-events:auto;
 }
