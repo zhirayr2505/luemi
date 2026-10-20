@@ -1,5 +1,5 @@
 import {X,MapPin,Heart,Languages,ShieldCheck,Crown} from "lucide-react";
-import {useRef,useState} from "react";
+import {useRef} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import type {DemoPerson} from "./model";
 import {goals} from "../registration/model";
@@ -10,7 +10,9 @@ import {PhotoCarousel} from "../ui/PhotoCarousel";
 export function DemoProfile({person,onClose}:{person:DemoPerson;onClose:()=>void}){
  const goal=person.goal==="undecided"?undefined:goals.find(g=>g.id===person.goal);
  const pointer=useRef<{id:number;x:number;y:number;t:number;dragging:boolean}|null>(null);
- const [offset,setOffset]=useState(0);
+ // Keep native vertical scrolling untouched. Only a deliberate horizontal
+ // swipe outside the photo area navigates back, without transforming the page
+ // during a vertical scroll (the source of the observed jumping).
  const down=(event:ReactPointerEvent<HTMLElement>)=>{
    if(event.pointerType==="mouse"&&event.button!==0)return;
    if((event.target as HTMLElement).closest(".discovery-profile-photo,.carousel-frame,button"))return;
@@ -19,24 +21,16 @@ export function DemoProfile({person,onClose}:{person:DemoPerson;onClose:()=>void
  const move=(event:ReactPointerEvent<HTMLElement>)=>{
    const p=pointer.current;if(!p||p.id!==event.pointerId)return;
    const dx=event.clientX-p.x,dy=event.clientY-p.y;
-   if(!p.dragging){
-     if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)){pointer.current=null;return;}
-     if(dx<9||dx<Math.abs(dy)*1.25)return;
-     p.dragging=true;try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* WebView fallback */}
-   }
-   event.preventDefault();setOffset(Math.max(0,Math.min(window.innerWidth,dx)));
+   if(Math.abs(dy)>13&&Math.abs(dy)>Math.abs(dx)*.65)pointer.current=null;
  };
  const up=(event:ReactPointerEvent<HTMLElement>)=>{
    const p=pointer.current;pointer.current=null;
    if(!p||p.id!==event.pointerId)return;
-   const dx=event.clientX-p.x,velocity=dx/Math.max(1,performance.now()-p.t);
-   setOffset(0);
-   if(p.dragging&&(dx>85||velocity>.6))onClose();
+   const dx=event.clientX-p.x,dy=event.clientY-p.y;
+   if(dx>92&&dx>Math.abs(dy)*1.55)onClose();
  };
  return <section role="dialog" aria-modal="true" aria-label={"Демо-профиль "+person.name} className="discovery-profile-overlay" onPointerDown={down} onPointerMove={move}
-   onPointerUp={up} onPointerCancel={()=>{pointer.current=null;setOffset(0);}}
-   style={{transform:offset?"translate3d("+offset+"px,0,0)":undefined,
-      transition:offset?"none":"transform .23s cubic-bezier(.2,.8,.2,1)"}}>
+   onPointerUp={up} onPointerCancel={()=>{pointer.current=null;}}>
    <header className="discovery-profile-top"><span className="discovery-demo-label">Демо-профиль</span>
      <button type="button" onClick={onClose} className="discovery-icon-action" aria-label="Закрыть профиль"><X size={21}/></button></header>
    <div className="discovery-profile-scroll">
