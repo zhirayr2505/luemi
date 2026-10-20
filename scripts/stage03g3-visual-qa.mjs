@@ -33,10 +33,48 @@ try{
    dropletWidth:droplet.getBoundingClientRect().width,logoBox:getComputedStyle(document.querySelector(".lh-island")).backgroundColor};
  });
  assert.equal(state.photoOpacity,"1","scroll cannot expose empty gradient behind original photo");
- assert.ok(state.dropletWidth<=85,"droplet is not the old giant square");
+ assert.ok(state.dropletWidth<=65,"small morph never creates a giant or avatar-sized square");
+ const dropletStyle=await page.locator(".lh-droplet").evaluate(el=>({
+  border:getComputedStyle(el).borderWidth,radius:getComputedStyle(el).borderRadius,
+  opacity:getComputedStyle(el).opacity
+ }));
+ assert.equal(dropletStyle.border,"0px","droplet has no circular avatar ring");
+ assert.ok(dropletStyle.radius.includes("7%"),"droplet silhouette is tapered");
+ console.log("QA_LIQUID "+JSON.stringify(dropletStyle));
  const scroll=await page.screenshot({type:"jpeg",quality:61,path:"stage03g3-scrolled.jpg"});
  console.log("QA_SCROLLED "+JSON.stringify(state));
  console.log("VISUAL_QA_SCROLL_JPEG="+scroll.toString("base64"));
+ await page.getByRole("button",{name:"Мои фото"}).click();
+ await page.waitForTimeout(850);
+ const photosState=await page.evaluate(()=>{
+  const pane=document.querySelector(".pm-scroll"),tab=document.querySelector(".pm-tab.active");
+  const bar=document.querySelector(".pm-tabs"),scrollRect=pane.getBoundingClientRect();
+  return {activeTab:tab?.textContent?.trim(),scrollTop:pane.scrollTop,
+   tabTop:bar.getBoundingClientRect().top-scrollRect.top,
+   galleryVisible:!!document.querySelector(".pm-photos-grid")};
+ });
+ assert.equal(photosState.activeTab,"Фото","My Photos selects the real Photos tab");
+ assert.ok(photosState.galleryVisible,"gallery is rendered");
+ assert.ok(photosState.scrollTop>290,"My Photos scrolls into the gallery rather than only switching an offscreen tab");
+ assert.ok(photosState.tabTop>=-4&&photosState.tabTop<120,"selected tabs near top of visible profile");
+ const gallery=await page.screenshot({type:"jpeg",quality:61,path:"stage03g3-gallery.jpg"});
+ console.log("QA_GALLERY "+JSON.stringify(photosState));
+ console.log("VISUAL_QA_GALLERY_JPEG="+gallery.toString("base64"));
+ await page.getByRole("button",{name:"Тёмная тема"}).click();
+ assert.equal(await page.locator(".luemi-shell").getAttribute("data-theme"),"dark","profile theme switch updates app theme");
+ await page.screenshot({path:"stage03g3-dark.jpg"});
+ await page.setViewportSize({width:360,height:780});
+ await page.evaluate(()=>{document.querySelector(".pm-scroll").scrollTop=0});
+ await page.waitForTimeout(120);
+ const narrow=await page.evaluate(()=>{
+  const actions=[...document.querySelectorAll(".pm-owner-actions button")].map(el=>el.getBoundingClientRect());
+  const sheet=document.querySelector(".pm-profile-sheet").getBoundingClientRect();
+  return {width:window.innerWidth,overflow:actions.some(x=>x.left<0||x.right>window.innerWidth),
+   bottom:actions[0]?.bottom,sheetTop:sheet.top};
+ });
+ assert.equal(narrow.overflow,false,"all three actions fit 360px mobile width");
+ await page.screenshot({path:"stage03g3-360.jpg"});
+ console.log("QA_360 "+JSON.stringify(narrow));
  assert.deepEqual(errors,[],"no runtime React exceptions");
  console.log("PASS: real React profile screenshot QA 393x852");
 }finally{await browser.close()}
