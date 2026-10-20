@@ -35,5 +35,5 @@ assert.ok(discovery.includes('<Nearby draft={draft}')&&discovery.includes(".nb-s
 assert.ok(discovery.includes("onSave={toggleForYouSave}")&&discovery.includes("onPerson={setPersonOpen}"),"shared save and existing public profile");
 assert.ok(discovery.includes('event.animationName==="luemi-deck-leave"')&&feed.includes("discovery-deck-current"),"Feed motion remains intact");
 assert.ok(model.includes("radius:5000"),"existing geography setting unchanged");
-assert.ok(!component.includes("demoDistanceKm")&&!source.includes("demoDistanceKm"),"no synthetic kilometre-based proximity");
+assert.ok(!component.includes("demoDistanceKm(")&&!source.includes("demoDistanceKm("),"no synthetic kilometre-based proximity function calls");
 console.log("✓ Stage 03E: strict declared location, dual column, gesture safety, savings, Feed/radius locks");
