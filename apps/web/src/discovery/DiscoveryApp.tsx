@@ -95,11 +95,25 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const headerPerson=selectedPerson?fromDemoPerson(selectedPerson):ownProfile;
  const headerName=(headerPerson.name||"Имя")+(headerPerson.age!==null?", "+headerPerson.age:"");
  const headerLocation=[headerPerson.city,headerPerson.country].filter(Boolean).join(", ");
- const reportPageScroll=useCallback((top:number)=>globalHeader.current?.setScrollTop(top),[]);
+ const savedScroll=useRef({"for-you":0,nearby:0});
+ const reportForYouScroll=useCallback((top:number)=>{
+   savedScroll.current["for-you"]=top;
+   if(mainTab==="discover"&&discoveryTab==="for-you"&&!personOpen)globalHeader.current?.setScrollTop(top);
+ },[mainTab,discoveryTab,personOpen]);
+ const reportNearbyScroll=useCallback((top:number)=>{
+   savedScroll.current.nearby=top;
+   if(mainTab==="discover"&&discoveryTab==="nearby"&&!personOpen)globalHeader.current?.setScrollTop(top);
+ },[mainTab,discoveryTab,personOpen]);
  const reportProfileScroll=useCallback((p:number,rect:DOMRect,top:number,src:string|null)=>{
    globalHeader.current?.setProfileMorph(p,rect,top,src);
  },[]);
- useEffect(()=>{globalHeader.current?.reset();},[mainTab,discoveryTab,personOpen]);
+ useEffect(()=>{
+   globalHeader.current?.reset();
+   if(mainTab==="discover"&&!personOpen){
+     globalHeader.current?.setScrollTop(discoveryTab==="for-you"?savedScroll.current["for-you"]:
+       discoveryTab==="nearby"?savedScroll.current.nearby:0);
+   }
+ },[mainTab,discoveryTab,personOpen]);
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
@@ -323,12 +337,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
              </div>}
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Для тебя">
-             <ForYou draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportPageScroll} onSave={toggleForYouSave}
+             <ForYou draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportForYouScroll} onSave={toggleForYouSave}
                onPerson={setPersonOpen} expanded={forYouCollection} onExpanded={setForYouCollection}
                settingsOpen={forYouSettings} onSettingsOpen={setForYouSettings}/>
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Рядом">
-             {nearbyPrepared&&<Nearby draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportPageScroll} onSave={toggleForYouSave}
+             {nearbyPrepared&&<Nearby draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportNearbyScroll} onSave={toggleForYouSave}
                onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>}
            </section>
          </div>
@@ -341,7 +355,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
      </section>
      <section className="discovery-panel" hidden={mainTab!=="profile"}>
-       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} onScrollMotion={reportProfileScroll}/>
+       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} onScrollMotion={reportProfileScroll} active={mainTab==="profile"}/>
      </section>
    {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"
      onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack} onScrollMotion={reportProfileScroll}/>}
