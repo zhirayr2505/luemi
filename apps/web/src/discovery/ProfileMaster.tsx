@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {ArrowLeft,PenLine,Eye,FileText,Sparkles,Images,Gift,UserRound,MapPin,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
+import {PenLine,Eye,FileText,Sparkles,Images,Gift,UserRound,MapPin,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
 import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import {languages} from "../ui/Languages";
@@ -14,10 +14,10 @@ type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
 type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
+ onScrollMotion?:(progress:number,hero:DOMRect,scrollTop:number,photo:string|null)=>void;
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
-const logo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
 type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number};
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
  return <img src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
@@ -62,7 +62,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
+export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMotion}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
@@ -76,7 +76,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
  const [activePhoto,setActivePhoto]=useState(0);
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
  const scroll=useRef<HTMLDivElement>(null),shell=useRef<HTMLElement>(null);
- const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null),morph=useRef<HTMLDivElement>(null);
+ const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
  const scrollFrame=useRef<number|null>(null),dragFrame=useRef<number|null>(null);
@@ -90,26 +90,17 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
  };
  const paintScroll=useCallback(()=>{
   scrollFrame.current=null;
-  const node=scroll.current,host=shell.current,frame=hero.current,avatar=morph.current;
-  if(!node||!host||!frame||!avatar)return;
+  const node=scroll.current,host=shell.current,frame=hero.current;
+  if(!node||!host||!frame)return;
   const y=node.scrollTop,range=collapseDistance.current,p=Math.min(1,Math.max(0,y/Math.max(1,range)));
   collapse.current=p;
-  const rect=frame.getBoundingClientRect(),parent=host.getBoundingClientRect();
-  // Stable geometry independent of each content page's scrollHeight.
-  const left=rect.left-parent.left, top=rect.top-parent.top+y;
-  // Use the hero's layout origin, not its moving viewport top: otherwise the
-  // avatar briefly exits above the header halfway through a fast collapse.
-  const w=frame.offsetWidth,h=frame.offsetHeight;
-  const targetX=16,targetY=9,size=54;
-  const easing=1-Math.pow(1-p,1.55);
-  const x=left+(targetX-left)*easing, yy=top+(targetY-top)*easing;
-  avatar.style.width=w+"px";avatar.style.height=h+"px";
-  avatar.style.transform=`translate3d(${x}px,${yy}px,0) scale(${(w+(size-w)*easing)/Math.max(1,w)},${(h+(size-h)*easing)/Math.max(1,h)})`;
-  avatar.style.borderRadius=(24+easing*76)+"px";
-  avatar.style.opacity=p>.035?"1":"0";
-  photoTrack.current?.style.setProperty("opacity",p>.035?"0":"1");
-  host.style.setProperty("--pm-p",String(easing));
- },[]);
+  const eased=1-Math.pow(1-p,1.55);
+  // One stationary global header owns the shared portrait and compact title.
+  const alpha=Math.max(0,Math.min(1,1-p/.065));
+  if(photoTrack.current)photoTrack.current.style.opacity=String(alpha);
+  host.style.setProperty("--pm-p",String(eased));
+  onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null);
+ },[onScrollMotion,current?.src]);
  const onScroll=()=>{
   if(scrollFrame.current!==null)return;
   scrollFrame.current=requestAnimationFrame(paintScroll);
@@ -226,17 +217,10 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
  const location=<>{view.profile.city||view.profile.country?<><MapPin size={15}/>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")} {view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}</>:"Город не указан"}</>;
  return <section ref={shell} className={"pm-shell "+(mode==="owner"?"pm-inline":"pm-dialog")} role={mode==="owner"?undefined:"dialog"}
    aria-modal={mode==="owner"?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
-  {mode!=="owner"&&<header className="pm-global-header">
-   <button type="button" onClick={()=>{if(viewer){setViewer(null);}else onClose?.();}} aria-label="Назад"><ArrowLeft size={21}/></button>
-   <img src={logo} alt="LUEMI"/><span className="pm-global-label">{mode==="preview"?"Предпросмотр":"Демо"}</span></header>}
-  <div className="pm-compact"><div className="pm-compact-avatar-space"/><div className="pm-compact-details">
-   <strong title={view.profile.name}>{nameLine} {view.profile.premium&&<span className="pm-premium" aria-label="Premium">◆</span>}
-    {view.profile.verified&&<ShieldCheck size={16} aria-label="Подтверждённый профиль"/>}</strong>
-   <small>{location}</small></div></div>
-  <div className="pm-morph-photo" ref={morph} aria-hidden="true" style={current?{backgroundImage:`url("${current.src}")`}:undefined}/>
   <div className="pm-scroll" ref={scroll} onScroll={onScroll}
     onTouchStart={()=>{scrollTopLast.current=scroll.current?.scrollTop??0;scrollTime.current=performance.now();}}
     onTouchEnd={()=>window.setTimeout(settleCollapse,60)}>
+    {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
     {photos.length?<div className="pm-photo-track" ref={photoTrack} style={{transform:`translate3d(-${activePhoto*100}%,0,0)`}}>
@@ -282,6 +266,6 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
   {viewer&&<PhotoViewer view={view} photos={photos} initial={viewer.index} source={viewer.source}
     onClose={()=>setViewer(null)} registerBack={handler=>{viewerBack.current=handler;}} onMain={id=>{if(view.canReorderMain)setMainId(id);}}
     />}
-  {preview&&<ProfileMaster data={data} mode="preview" onClose={()=>setPreview(false)} registerBack={registerBack}/>}
+  {preview&&<ProfileMaster data={data} mode="preview" onClose={()=>setPreview(false)} registerBack={registerBack} onScrollMotion={onScrollMotion}/>}
  </section>;
 }
