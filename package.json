@@ -19,7 +19,7 @@
     "build": "npm run build -w @luemi/contracts && npm run build -w @luemi/api && npm run build -w @luemi/web",
     "test:ui": "node scripts/ui-contract-smoke.mjs",
     "prebuild": "npm run lint && npm run test:ui && npm run test -w @luemi/api",
-    "test:discovery": "node scripts/stage03-model.test.mjs"
+    "test:discovery": "node scripts/stage03-model.test.mjs && node scripts/stage03d-contract.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
