@@ -91,6 +91,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const person=profiles[feed.index];
  const selectedPerson=forYouDemoPeople.find(p=>p.id===personOpen);
  const globalHeader=useRef<HeaderMotion>(null);
+ const reportProfileMotion=useCallback((progress:number,dragging:boolean)=>globalHeader.current?.setProfileProgress(progress,dragging),[]);
  const profileMode=mainTab==="profile"||!!selectedPerson;
  const savedScroll=useRef({"for-you":0,nearby:0});
  const reportForYouScroll=useCallback((top:number)=>{
@@ -348,10 +349,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
      </section>
      <section className="discovery-panel" hidden={mainTab!=="profile"}>
-       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"}/>
+       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"} onMotionProgress={reportProfileMotion}/>
      </section>
    {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"
-     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack}/>}
+     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack} onMotionProgress={reportProfileMotion}/>}
    </div>
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
