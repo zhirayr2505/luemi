@@ -48,6 +48,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const [interestOpen,setInterestOpen]=useState<string|null>(null);
  const [leaving,setLeaving]=useState<string|null>(null);
  const transitionRef=useRef<number|null>(null);
+ const pendingCommit=useRef<(()=>void)|null>(null);
  const locked=useRef(false);
  const [feed,setFeed]=useState(freshDemoState);
  const [announcement,setAnnouncement]=useState("");
@@ -58,16 +59,26 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
- useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);},[]);
+ // Commit only after the outgoing full card completes its own animation.
+ // Timeout is a safety fallback for backgrounded or reduced-motion WebViews.
+ const finishDeck=useCallback(()=>{
+   const commit=pendingCommit.current;
+   if(!commit)return;
+   pendingCommit.current=null;
+   if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
+   transitionRef.current=null;
+   commit();
+ },[]);
+ useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);pendingCommit.current=null;},[]);
  const leave=useCallback(()=>{
   if(personOpen){setPersonOpen(null);return;}
   if(interestOpen){setInterestOpen(null);return;}
   if(filterOpen){setFilterOpen(false);return;}
   if(savedOpen){setSavedOpen(false);return;}
-  if(mainTab!=="discover"){setMainTab("discover");return;}
+  if(mainTab!=="discover"){if(locked.current)finishDeck();setMainTab("discover");return;}
   if(discoveryTab!=="feed"){setDiscoveryTab("feed");return;}
   onExit();
- },[personOpen,interestOpen,filterOpen,savedOpen,mainTab,discoveryTab,onExit]);
+ },[personOpen,interestOpen,filterOpen,savedOpen,mainTab,discoveryTab,onExit,finishDeck]);
  useEffect(()=>{registerBack(leave);},[leave,registerBack]);
  useEffect(()=>{
   const key=(event:KeyboardEvent)=>{if(event.key==="Escape")leave();};
@@ -94,12 +105,13 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
   window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
   const message=kind==="pass"?"Анкета пропущена · демо":
     kind==="like"?"Симпатия · никому не отправлена":"Особенная симпатия · только демо";
-  transitionRef.current=window.setTimeout(()=>{
+  pendingCommit.current=()=>{
     setFeed(prev=>demoAct(prev,ids,kind));
     setLeaving(null);
-    locked.current=false;transitionRef.current=null;
+    locked.current=false;
     indicate(message);
-  },290);
+  };
+  transitionRef.current=window.setTimeout(finishDeck,440);
  };
  const selectTab=(index:number)=>{
   setDiscoveryTab(topTabs[Math.max(0,Math.min(topTabs.length-1,index))][0]);
@@ -145,22 +157,28 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const cancelSwipe=()=>{gesture.current=null;setSwiping(false);setDragX(0);};
  const apply=(next:DiscoveryFilter)=>{
   if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
-  transitionRef.current=null;locked.current=false;setLeaving(null);
+  transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);
   setFilters(next);setFeed(freshDemoState());setFilterOpen(false);
   indicate("Фильтры применены к демо-анкетам");
  };
  const openSaved=()=>{setSavedOpen(true);setFilterOpen(false);};
+ const selectMainTab=(tab:MainTab)=>{
+  if(tab===mainTab)return;
+  // End an in-flight Deck Lift in the same React batch before hiding Feed.
+  if(locked.current)finishDeck();
+  setMainTab(tab);
+ };
 
  const restartFeed=()=>{
    if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
-   transitionRef.current=null;locked.current=false;setLeaving(null);
+   transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);
    setFilters(defaultFilters);setFeed(freshDemoState());
    indicate("Демо-Лента начата заново");
  };
  return <div className="discovery-app">
    <div className="discovery-ambient" aria-hidden="true"/>
    <header className="discovery-header">
-     <img className="discovery-brand" src={logoSrc} alt="luemi"/>
+     <img className="discovery-brand" src={logoSrc} alt="luemi" decoding="sync" fetchPriority="high"/>
      <div className="discovery-header-controls" aria-label="Инструменты Ленты">
        <button type="button" className="discovery-icon-action" onClick={()=>setFilterOpen(true)} aria-label="Фильтры" title="Фильтры"><SlidersHorizontal size={17}/></button>
        <button type="button" className="discovery-icon-action" onClick={onTheme} aria-label={theme==="light"?"Тёмная тема":"Светлая тема"} title="Сменить тему">
@@ -187,7 +205,9 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
            <section className="discovery-page" role="tabpanel" aria-label="Лента">
              {<div className="discovery-deck-stage">
                {person&&<div key={person.id}
-                 className={"discovery-deck-layer"+(leaving?" deck-leaving":" deck-active")}>
+                 className={"discovery-deck-layer"+(leaving?" deck-leaving":" deck-active")}
+                 onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
+                   event.animationName==="luemi-deck-leave")finishDeck();}}>
                  <FeedCard person={person} saved={feed.saved.includes(person.id)}
                    canUndo={feed.history.length>0} active={true}
                    onAction={act} onOpenProfile={()=>setPersonOpen(person.id)}
@@ -239,7 +259,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
        className={"discovery-nav-item"+(mainTab===value?" active":"")}
-       aria-current={mainTab===value?"page":undefined} onClick={()=>setMainTab(value)}>
+       aria-current={mainTab===value?"page":undefined} onClick={()=>selectMainTab(value)}>
        <Icon size={22} strokeWidth={1.75}/><span>{label}</span></button>)}
    </nav>
    <span className="discovery-sr-status" role="status" aria-live="polite">{announcement}</span>
