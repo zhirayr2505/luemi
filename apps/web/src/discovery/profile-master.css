@@ -102,11 +102,12 @@
  border-radius:36px 36px 0 0;background:var(--bg);
  padding:46px 0 0;
  transform:translate3d(0,var(--pm-sheet-y,430px),0);
- transition:transform 390ms cubic-bezier(.20,.80,.20,1);
+ transition:transform 390ms cubic-bezier(.20,.80,.20,1),border-radius 390ms cubic-bezier(.20,.80,.20,1);
  box-shadow:0 -5px 22px rgba(56,30,73,.055);
  contain:layout;
  touch-action:pan-y;
 }
+.pm-shell[data-sheet-state=collapsed] .pm-profile-sheet{border-radius:0}
 .pm-sheet-grab{
  position:absolute;z-index:2;top:7px;left:50%;transform:translateX(-50%);
  display:grid;place-items:center;width:64px;height:27px;padding:0;border:0;background:transparent;
