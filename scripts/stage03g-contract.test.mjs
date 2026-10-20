@@ -149,3 +149,18 @@ assert.ok(header.includes("pendingTop.current=top")&&
  header.includes("cancelAnimationFrame(toolsFrame.current)"),
  "browse logo controls are coalesced to one frame and stale paints are cancelled");
 console.log("✓ Stage 03G.6 flicker regressions: single transform owner, passive native scroll, stable paint boundaries");
+
+assert.ok(profile.includes('const androidSafeSheet=typeof navigator')&&
+ profile.includes('data-sheet-renderer={androidSafeSheet?"layout":"compositor"}'),
+ "Android must select compositor-safe layout positioning rather than nested translated GPU texture");
+assert.ok(profile.includes("if(androidSafeSheet)pageTrack.current.style.left=offset;")&&
+ profile.includes('androidSafeSheet?"left":"transform"'),
+ "native scrolling pager must be moved through left property only in WebView safe renderer");
+assert.ok(css.includes(".pm-shell[data-sheet-renderer=layout] .pm-profile-sheet{")&&
+ css.includes("transition:top 360ms")&&
+ css.includes("contain:layout;isolation:isolate;")&&
+ css.includes(".pm-shell[data-sheet-renderer=layout] .pm-pages-track{")&&
+ css.includes("transition:left 295ms")&&
+ css.includes(".pm-shell[data-sheet-renderer=layout] .pm-page{\n contain:none;"),
+ "Android uses layout top/left to avoid raster fragments; nested paint containment disabled");
+console.log("✓ Stage 03G.7 Android WebView sheet/tabs use layout positioning with no nested GPU crop");
