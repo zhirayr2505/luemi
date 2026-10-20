@@ -6,6 +6,7 @@ const logo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
 export type HeaderMode="browse"|"profile";
 export type HeaderMotion={
   setScrollTop:(top:number)=>void;
+  setProfileProgress:(progress:number,dragging:boolean)=>void;
   reset:()=>void;
 };
 type Props={
@@ -41,9 +42,17 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    if(Math.abs(top-lastScroll.current)>.5)manual.current=false;
    lastScroll.current=top;paintTools(top);
   },
+  setProfileProgress:(progress:number,dragging:boolean)=>{
+   if(mode!=="profile"||!host.current)return;
+   const p=clamp(progress);
+   host.current.setAttribute("data-profile-dragging",dragging?"true":"false");
+   host.current.style.setProperty("--lh-contrast",String(p*.83));
+  },
   reset:()=>{
    lastScroll.current=0;manual.current=false;
-   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-compact","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-text-x","-8px");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
+   host.current?.setAttribute("data-profile-dragging","false");
+   host.current?.style.setProperty("--lh-contrast","0");
+   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
   }
  }),[mode]);
  const toggleIsland=()=>{
@@ -51,22 +60,23 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   if(lastScroll.current<12)return;
   manual.current=!manual.current;paintTools(lastScroll.current);
  };
- return <header ref={host} className={"lh-header lh-"+mode} style={{"--lh-p":0,"--lh-compact":0,"--lh-impact":0} as React.CSSProperties}>
+ return <header ref={host} className={"lh-header lh-"+mode} style={{"--lh-p":0,"--lh-impact":0} as React.CSSProperties}>
   
   <div className="lh-center">
    <button className="lh-island" type="button" ref={island} onClick={toggleIsland}
      aria-label={mode==="browse"?"Раскрыть инструменты LUEMI":"LUEMI"} title="LUEMI">
     <img src={logo} alt="luemi" decoding="sync" fetchPriority="high"/>
+    {mode==="profile"&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="sync"/>}
    </button>
+   {mode==="profile"&&<button type="button" className="lh-profile-theme" onClick={onTheme}
+      aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>
+       {theme==="light"?<Moon size={15}/>:<Sun size={15}/>}
+     </button>}
    {mode==="browse"&&<div className="lh-tools" aria-label="Инструменты LUEMI">
     <button type="button" className="lh-tool lh-tool-filter" onClick={onFilters} aria-label="Фильтры"><SlidersHorizontal size={17}/></button>
     <button type="button" className="lh-tool lh-tool-theme" onClick={onTheme} aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>{theme==="light"?<Moon size={17}/>:<Sun size={17}/>}</button>
     <button type="button" className="lh-tool lh-tool-saved" onClick={onSaved} aria-label="Сохранённые анкеты"><Bookmark size={17}/></button>
    </div>}
   </div>
-  {mode==="profile"&&<button type="button" className="lh-profile-theme" onClick={onTheme}
-     aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>
-      {theme==="light"?<Moon size={16}/>:<Sun size={16}/>}
-    </button>}
  </header>;
 });

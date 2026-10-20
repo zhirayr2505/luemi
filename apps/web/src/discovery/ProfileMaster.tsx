@@ -15,7 +15,7 @@ type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
 type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
- active?:boolean;
+ active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
@@ -63,7 +63,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
+export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
@@ -78,33 +78,61 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
  },[mainId,view.photos]);
  const [activePhoto,setActivePhoto]=useState(0);
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
- const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null);
+ const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
+ const tabMetrics=useRef<Array<{left:number;width:number}>>([]);
+ const tabViewport=useRef(1);
  const dragFrame=useRef<number|null>(null);
  const photoSwipe=useRef<Swipe|null>(null),tabSwipe=useRef<Swipe|null>(null);
- const clickBlocked=useRef(0),expandedY=useRef(385),collapsedRef=useRef(false);
+ const clickBlocked=useRef(0),expandedY=useRef(385),collapsedY=useRef(46),collapsedRef=useRef(false);
+ const sheetProgress=useRef(0);
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const selectedIndex=tabs.findIndex(x=>x[0]===tab);
  const setTransform=(idx:number,delta=0)=>{
   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
  };
+ const paintSheet=useCallback((offset:number,dragging=false)=>{
+  const pane=sheet.current;
+  if(!pane)return;
+  const top=collapsedY.current,bottom=expandedY.current;
+  const next=Math.max(top,Math.min(bottom,offset));
+  const progress=Math.max(0,Math.min(1,(bottom-next)/Math.max(1,bottom-top)));
+  sheetProgress.current=progress;
+  pane.style.setProperty("--pm-sheet-y",next+"px");
+  const layer=blurLayer.current;
+  if(layer){
+   layer.style.transitionProperty=dragging?"none":"opacity";
+   layer.style.opacity=String(progress*.9);
+  }
+  if(active)onMotionProgress?.(progress,dragging);
+ },[active,onMotionProgress]);
  const settleSheet=useCallback((next:boolean)=>{
   collapsedRef.current=next;
-  const pane=sheet.current;
-  if(pane){
-   pane.style.transition="";
-   pane.style.setProperty("--pm-sheet-y",(next?0:expandedY.current)+"px");
-  }
+  if(sheet.current)sheet.current.style.transition="";
+  paintSheet(next?collapsedY.current:expandedY.current,false);
   setCollapsed(next);
- },[]);
+ },[paintSheet]);
  useLayoutEffect(()=>{
   const measure=()=>{
-   const frame=hero.current,pane=sheet.current;
-   if(!frame||!pane)return;
-   expandedY.current=Math.max(180,frame.getBoundingClientRect().height-43);
-   pane.style.setProperty("--pm-sheet-y",(collapsedRef.current?0:expandedY.current)+"px");
+   const frame=hero.current,pane=sheet.current,root=shell.current;
+   if(!frame||!pane||!root)return;
+   const shellRect=root.getBoundingClientRect();
+   const logo=document.querySelector<HTMLElement>(".lh-header .lh-island img");
+   const imageRect=logo?.getBoundingClientRect();
+   // Physically overlap 10-12% of the *visible* W06 logo, not its wrapper.
+   // The crop is kept above the compact identity, below Telegram chrome.
+   const logoBottom=imageRect?
+    imageRect.bottom-shellRect.top-imageRect.height*.11:
+    48;
+   collapsedY.current=Math.max(38,Math.min(root.clientHeight*.24,logoBottom));
+   expandedY.current=Math.max(collapsedY.current+185,frame.getBoundingClientRect().bottom-shellRect.top-43);
+   pane.style.setProperty("--pm-collapsed-top",collapsedY.current+"px");
+   // Dots always sit *below* the actual wordmark, never over the letters.
+   root.style.setProperty("--pm-dots-top",((imageRect?.bottom??(shellRect.top+108))-shellRect.top+8)+"px");
+   // Initial layout: do not transition a newly measured sheet from the top.
+   paintSheet(collapsedRef.current?collapsedY.current:expandedY.current,false);
   };
   measure();
   const ro=new ResizeObserver(measure);
@@ -112,7 +140,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
   if(shell.current)ro.observe(shell.current);
   window.addEventListener("resize",measure);
   return ()=>{ro.disconnect();window.removeEventListener("resize",measure);};
- },[]);
+ },[paintSheet]);
+ useEffect(()=>{if(active)onMotionProgress?.(sheetProgress.current,false);},[active,onMotionProgress]);
  useEffect(()=>{
   const pane=sheet.current;if(!pane)return;
   type SheetGesture={x:number;y:number;start:number;down:boolean;scrollTop:number;dragging:boolean;blocked:boolean};
@@ -137,7 +166,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
    const offset=g.down?Math.max(0,Math.min(distance,dy)):
      Math.max(0,Math.min(distance,distance+dy));
    pane.style.transition="none";
-   pane.style.setProperty("--pm-sheet-y",offset+"px");
+   paintSheet(offset,true);
   };
   const end=(e:TouchEvent)=>{
    const g=gesture;gesture=null;if(!g||!g.dragging)return;
@@ -155,7 +184,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
    pane.removeEventListener("touchstart",start);pane.removeEventListener("touchmove",move);
    pane.removeEventListener("touchend",end);pane.removeEventListener("touchcancel",cancel);
   };
- },[selectedIndex,settleSheet]);
+ },[selectedIndex,settleSheet,paintSheet]);
  useEffect(()=>()=>{if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);},[]);
  const closeTop=useCallback(():boolean=>{
   if(viewer){if(viewerBack.current)return viewerBack.current();setViewer(null);return true;}
@@ -188,7 +217,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
  const photoEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=photoSwipe.current;if(!g||g.id!==e.pointerId)return;
   photoSwipe.current=null;
-  if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
+  if(g.axis!=="x")return;
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
   const target=!cancel&&g.axis==="x"&&(Math.abs(dx)>g.width*.2||Math.abs(dx)/dt>.55)?
    Math.max(0,Math.min(photos.length-1,g.index+(dx<0?1:-1))):g.index;
@@ -197,20 +227,40 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
   if(g.axis==="x")clickBlocked.current=performance.now()+280;
  };
  const paintTabs=(i:number,dx=0)=>{
-  const track=pageTrack.current;if(track)track.style.transform=`translate3d(calc(-${i*100}% + ${dx}px),0,0)`;
-  const bar=tabBar.current,indicator=ink.current;if(!bar||!indicator)return;
-  const btns=bar.querySelectorAll<HTMLButtonElement>(".pm-tab");
-  const a=btns[i],b=btns[Math.max(0,Math.min(btns.length-1,i+(dx<0?1:-1)))];
-  if(!a||!b)return;
-  const fraction=Math.min(1,Math.abs(dx)/(pages.current?.clientWidth||innerWidth));
-  const lx=a.offsetLeft+(b.offsetLeft-a.offsetLeft)*fraction;
-  const width=a.offsetWidth+(b.offsetWidth-a.offsetWidth)*fraction;
-  indicator.style.width=width+"px";indicator.style.transform=`translate3d(${lx}px,0,0)`;
+  if(pageTrack.current)pageTrack.current.style.transform=`translate3d(calc(-${i*100}% + ${dx}px),0,0)`;
+  const indicator=ink.current,metrics=tabMetrics.current;
+  if(!indicator||!metrics.length)return;
+  const first=metrics[Math.max(0,Math.min(metrics.length-1,i))];
+  const other=metrics[Math.max(0,Math.min(metrics.length-1,i+(dx<0?1:-1)))];
+  if(!first||!other)return;
+  const ratio=Math.min(1,Math.abs(dx)/Math.max(1,tabViewport.current));
+  const x=first.left+(other.left-first.left)*ratio;
+  const width=first.width+(other.width-first.width)*ratio;
+  // Only compositor transforms during horizontal dragging: no width/layout reads.
+  indicator.style.transform=`translate3d(${x}px,0,0) scaleX(${width/Math.max(1,tabMetrics.current[0]?.width??1)})`;
  };
+ useLayoutEffect(()=>{
+  const bar=tabBar.current;
+  if(!bar)return;
+  const measure=()=>{
+   const btns=bar.querySelectorAll<HTMLButtonElement>(".pm-tab");
+   tabMetrics.current=Array.from(btns).map(el=>({left:el.offsetLeft,width:el.offsetWidth}));
+   tabViewport.current=Math.max(1,pages.current?.clientWidth||bar.clientWidth);
+   if(ink.current&&tabMetrics.current.length)
+    ink.current.style.width=tabMetrics.current[0].width+"px";
+   paintTabs(tabs.findIndex(v=>v[0]===tab));
+  };
+  measure();
+  const ro=new ResizeObserver(measure);
+  ro.observe(bar);
+  if(pages.current)ro.observe(pages.current);
+  return ()=>ro.disconnect();
+ },[active,tab]);
  const chooseTab=(newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
-  if(pageTrack.current)pageTrack.current.style.transition="transform 310ms cubic-bezier(.22,.77,.23,1)";
+  if(pageTrack.current)pageTrack.current.style.transition="transform 295ms cubic-bezier(.22,.77,.23,1)";
+  if(ink.current)ink.current.style.transition="";
   paintTabs(i);
   setTab(tabs[i][0]);
   const bar=tabBar.current,button=bar?.querySelectorAll<HTMLButtonElement>(".pm-tab")[i];
@@ -228,6 +278,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
   if(g.axis!=="x")return;
   if(e.cancelable)e.preventDefault();
   if(pageTrack.current)pageTrack.current.style.transition="none";
+  if(ink.current)ink.current.style.transition="none";
   const edge=(g.index===0&&dx>0)||(g.index===4&&dx<0);
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
   dragFrame.current=requestAnimationFrame(()=>{dragFrame.current=null;paintTabs(g.index,edge?dx*.2:dx);});
@@ -235,10 +286,15 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
  const tabEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
   tabSwipe.current=null;
+  // Vertical native page scroll must NOT reset the horizontal pager/underline.
+  // The previous implementation called chooseTab on every vertical touch-up,
+  // causing flicker and redundant scrolling of the tab bar.
+  if(g.axis!=="x")return;
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
-  const next=!cancel&&g.axis==="x"&&(Math.abs(dx)>g.width*.17||Math.abs(dx)/dt>.52)?
+  const next=!cancel&&(Math.abs(dx)>g.width*.17||Math.abs(dx)/dt>.52)?
    g.index+(dx<0?1:-1):g.index;
-  if(g.axis==="x")clickBlocked.current=performance.now()+240;
+  clickBlocked.current=performance.now()+240;
   chooseTab(next);
  };
  const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
@@ -258,10 +314,15 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
+     <div className="pm-photo-blur" ref={blurLayer} aria-hidden="true">
+      {current&&<PhotoImage photo={current} alt="" loading="eager"/>}
+     </div>
     <div className="pm-hero-gradient" aria-hidden="true"/>
-    {photos.length>1&&<div className="pm-photo-progress" aria-label="Фотографии">{photos.map((p,i)=>
-     <button type="button" key={p.id} aria-label={"Фото "+(i+1)} aria-current={i===activePhoto?"true":undefined}
-       className={i===activePhoto?"active":""} onClick={()=>{setTransform(i);setActivePhoto(i);}}/>)}</div>}
+    {photos.length>1&&<div className="pm-photo-progress" role="group" aria-label="Фотографии профиля">{photos.map((p,i)=>
+     <button type="button" key={p.id} aria-label={"Фото "+(i+1)+" из "+photos.length}
+       aria-current={i===activePhoto?"true":undefined}
+       className={i===activePhoto?"active":""}
+       onClick={()=>{if(photoTrack.current)photoTrack.current.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";setTransform(i);setActivePhoto(i);}}/>)}</div>}
     {view.profile.source!=="server"&&<span className="pm-hero-demo">{view.profile.source==="fixture"?"Демо":"Черновик"}</span>}
    </div>
    <div className="pm-profile-sheet" ref={sheet}>

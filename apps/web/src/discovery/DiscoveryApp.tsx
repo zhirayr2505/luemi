@@ -91,6 +91,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const person=profiles[feed.index];
  const selectedPerson=forYouDemoPeople.find(p=>p.id===personOpen);
  const globalHeader=useRef<HeaderMotion>(null);
+ const reportProfileMotion=useCallback((progress:number,dragging:boolean)=>globalHeader.current?.setProfileProgress(progress,dragging),[]);
  const profileMode=mainTab==="profile"||!!selectedPerson;
  const savedScroll=useRef({"for-you":0,nearby:0});
  const reportForYouScroll=useCallback((top:number)=>{
@@ -102,12 +103,15 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    if(mainTab==="discover"&&discoveryTab==="nearby"&&!personOpen)globalHeader.current?.setScrollTop(top);
  },[mainTab,discoveryTab,personOpen]);
  useEffect(()=>{
+   // The active profile paints its own scroll progress; resetting the header
+   // after child effects would flash the contrast shadow to zero on return.
+   if(profileMode)return;
    globalHeader.current?.reset();
    if(mainTab==="discover"&&!personOpen){
      globalHeader.current?.setScrollTop(discoveryTab==="for-you"?savedScroll.current["for-you"]:
        discoveryTab==="nearby"?savedScroll.current.nearby:0);
    }
- },[mainTab,discoveryTab,personOpen]);
+ },[mainTab,discoveryTab,personOpen,profileMode]);
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
@@ -348,10 +352,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
      </section>
      <section className="discovery-panel" hidden={mainTab!=="profile"}>
-       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"}/>
+       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"} onMotionProgress={reportProfileMotion}/>
      </section>
    {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"
-     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack}/>}
+     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack} onMotionProgress={reportProfileMotion}/>}
    </div>
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}

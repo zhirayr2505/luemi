@@ -101,4 +101,30 @@ assert.ok(profile.includes('onClick={openMyPhotos}')&&profile.includes('settleSh
  profile.includes("BlikViewer")&&profile.includes("view.profile.activeBlik"),
  "gallery shortcut and future published story routing remain functional");
 console.log("✓ Stage 03G.4: independent scroll and pinned controls, no liquid morph");
+assert.equal((css.match(/^\.pm-profile-sheet\{/gm)||[]).length,1,
+ "profile sheet has one authoritative CSS definition, not multiple overriding generations");
+assert.ok(!css.includes("border-radius 390ms")&&css.includes("border-radius:34px 34px 0 0"),
+ "sheet keeps stable rounded corners while moving on compositor");
+assert.ok(css.includes(".pm-photo-blur")&&css.includes("filter:blur(11px)")&&
+ css.includes("opacity 360ms"),"blur is fixed-cost and crossfaded, not recalculated each scroll event");
+assert.ok(profile.includes("imageRect.height*.11")&&
+ profile.includes('pane.style.setProperty("--pm-collapsed-top"'),
+ "collapsed top overlaps lower 11% of measured actual logo instead of system controls");
+assert.ok(profile.includes("const paintSheet=useCallback(")&&
+ profile.includes('if(active)onMotionProgress?.(progress,dragging)')&&
+ header.includes("setProfileProgress")&&headerCss.includes(".lh-logo-contrast"),
+ "portrait blur and logo readability use the same sheet progress");
+assert.ok(profile.includes("tabMetrics.current")&&
+ profile.includes('if(g.axis!=="x")return;')&&
+ !profile.includes("indicator.style.width=width+"),
+ "tab swipe does not read offsets/width every frame or replay horizontal motion on vertical scroll");
+assert.ok(css.includes("flex-direction:row;")&&
+ css.includes(".pm-tab.active{color:#a86ddd;background:transparent"),
+ "tabs have horizontal label/icon and no selected rectangle");
+assert.ok(css.includes(".pm-photo-progress button::before")&&
+ css.includes(".pm-photo-progress button.active::before")&&
+ css.includes("width:64px;height:64px"),
+ "photo dots replace progress bars; rounded profile avatar is 64px");
+console.log("✓ Stage 03G.5: stable safe-area sheet, synchronized blur and logo, compositor tabs and dot pager");
+
 
