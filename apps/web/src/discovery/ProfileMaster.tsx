@@ -237,7 +237,11 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
    aria-modal={mode==="owner"?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
   <div className="pm-scroll" ref={scroll} onScroll={onScroll}
     onTouchStart={()=>{scrollTopLast.current=scroll.current?.scrollTop??0;scrollTime.current=performance.now();}}
-    onTouchEnd={()=>window.setTimeout(settleCollapse,60)}>
+    onTouchEnd={event=>{
+     // Avoid launching scroll-snap at the same time as a tapped gallery action.
+     if((event.target as HTMLElement).closest("button,.pm-photos-grid,.pm-tabs"))return;
+     window.setTimeout(settleCollapse,60);
+    }}>
     {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
