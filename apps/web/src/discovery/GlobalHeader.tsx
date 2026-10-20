@@ -37,6 +37,8 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   el?.style.setProperty("--lh-control-y",(-31*v)+"px");
   el?.style.setProperty("--lh-left-x",(38*v)+"px");
   el?.style.setProperty("--lh-right-x",(-38*v)+"px");
+  el?.style.setProperty("--lh-control-stretch",String(1+.24*Math.sin(Math.PI*v)));
+  el?.style.setProperty("--lh-impact",String(.036*Math.sin(Math.PI*clamp((v-.66)/.34))));
   host.current?.setAttribute("data-tools-merged",!manual.current&&p>.96?"true":"false");
  };
  useImperativeHandle(ref,()=>({
@@ -68,13 +70,14 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    node.style.transform=`translate3d(${x}px,${y}px,0) scale(${w/Math.max(w0,1)},${h/Math.max(h0,1)})`;
    // Oval, continuously rounded liquid silhouette. Never render an
    // intermediate square and never move the actual brand wordmark.
-   const radius=24+e*70;
-   node.style.borderRadius=`${radius}% ${radius*.88}% ${radius}% ${radius*.72}% / ${radius*.84}% ${radius}% ${radius*.8}% ${radius}%`;
+   const radiusX=(25/Math.max(w0,1)*100)*(1-e)+50*e;
+   const radiusY=(25/Math.max(h0,1)*100)*(1-e)+50*e;
+   node.style.borderRadius=`${radiusX}% ${radiusX*.93}% ${radiusX}% ${radiusX*.89}% / ${radiusY*.92}% ${radiusY}% ${radiusY*.9}% ${radiusY}%`;
    node.style.opacity=String(clamp((p-.008)/.045)*clamp((1-p)/.105));
   },
   reset:()=>{
    lastScroll.current=0;manual.current=false;
-   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-compact","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-text-x","-8px");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.setAttribute("data-tools-merged","false");}
+   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-compact","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-text-x","-8px");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
    if(droplet.current)droplet.current.style.opacity="0";
   }
  }),[mode]);
