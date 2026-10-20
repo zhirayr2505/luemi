@@ -20,7 +20,7 @@ function walk(dir){
  }
 }
 sourceRoots.forEach(p=>walk(path.join(root,p)));
-const all=new Set(code),lookup=new Map(code.map(f=>[normalize(f),f]));
+const all=new Set(code);
 const reachable=new Set(),missing=[];
 function resolve(from,relative){
  const base=path.resolve(path.dirname(from),relative);
@@ -57,7 +57,7 @@ const css=code.filter(f=>f.endsWith(".css"));
 const unusedSelectors=[];
 for(const file of css){
  const contents=fs.readFileSync(file,"utf8");
- const classes=[...new Set([...contents.matchAll(/\.([a-z][a-z0-9_-]+)(?=[\s:{>,.#\[])/gi)].map(m=>m[1]))];
+ const classes=[...new Set([...contents.matchAll(/\.([a-z][a-z0-9_-]+)(?=[\s:{>,.#])/gi)].map(m=>m[1]))];
  for(const name of classes){
   if(!appJS.includes(name)&&!["active","selected","hidden","current","disabled"].includes(name))
    unusedSelectors.push(normalize(file)+": ."+name);
