@@ -21,6 +21,7 @@ import "./discovery.css";
 
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
+const androidWebView=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 
 type Gesture={id:number;x:number;y:number;started:number;tracking:boolean;index:number;width:number};
 function Placeholder({title,text}:{title:string;text:string}){
@@ -290,13 +291,13 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
- return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"} data-profile-mode={profileMode?"true":"false"}>
+ return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"} data-profile-from-feed={androidWebView&&selectedPerson&&mainTab==="discover"&&discoveryTab==="feed"?"true":"false"} data-profile-mode={profileMode?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>
    <GlobalHeader ref={globalHeader} mode={profileMode?"profile":"browse"} theme={theme}
      onTheme={onTheme} onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
     />
    <div className="discovery-main-panels">
-     <section className="discovery-panel" hidden={mainTab!=="discover"}>
+     <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
        <div className="discovery-top-tabs" role="tablist" aria-label="Разделы знакомств"
          onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}>
          {topTabs.map(([value,label],i)=><button type="button" role="tab" key={value}
