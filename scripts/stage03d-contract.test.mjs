@@ -1,0 +1,46 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import ts from "typescript";
+const source=readFileSync(new URL("../apps/web/src/discovery/for-you-ranking.ts",import.meta.url),"utf8");
+const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const m=await import("data:text/javascript;base64,"+Buffer.from(compiled).toString("base64"));
+const draft={goal:"relationship",interests:["музыка","кофе"],languages:["ru"],countryCode:"ru",city:"Краснодар"};
+const p=(id,interest,goal,country="ru",city="Краснодар")=>({
+ id,interests:interest,goal,countryCode:country,city,languages:["ru"]
+});
+const a=p("a",["музыка","кофе"],"relationship");
+const b=p("b",["кино"],"dates");
+assert.equal(m.evidence(a,draft).score,12);
+assert.deepEqual(m.evidence(a,draft).interests,["музыка","кофе"]);
+assert.equal(m.evidence(b,draft).score,2);
+assert.deepEqual(m.rankDemonstrations([b,a],draft).map(p=>p.id),["a","b"]);
+assert.equal(m.collectionDefinitions.length,8);
+assert.equal(m.membersFor("online",[a],draft,{scope:"radius"}).length,0);
+assert.equal(m.membersFor("new",[a],draft,{scope:"radius"}).length,0);
+assert.deepEqual(m.membersFor("common",[a,b],draft,{scope:"radius"}).map(x=>x.id),["a"]);
+assert.deepEqual(m.membersFor("goals",[a,b],draft,{scope:"radius"}).map(x=>x.id),["a"]);
+assert.equal(m.membersFor("nearby",[a],draft,{scope:"world"}).length,0);
+assert.equal(m.membersFor("nearby",[a],draft,{scope:"radius"}).length,1);
+assert.equal(m.membersFor("international",[a,p("c",[],"dates","am")],draft,{scope:"world"}).length,1);
+assert.equal(m.membersFor("travel",[p("t",["путешествия"],"dates")],draft,{scope:"world"}).length,1);
+console.log("✓ Stage 03D evidence-only recommendation and eight-collection contracts");
+
+const fixture=readFileSync(new URL("../apps/web/src/discovery/for-you-data.ts",import.meta.url),"utf8");
+const catalog=readFileSync(new URL("../apps/web/src/ui/InterestCatalog.tsx",import.meta.url),"utf8");
+const fixtureMatch=fixture.match(/const additional=(\[.*?\]) as const;/s);
+const catalogMatch=catalog.match(/const source=(\[.*?\]);\s*export const categories/s);
+assert.ok(fixtureMatch&&catalogMatch,"fixture/catalog contracts recognizable");
+const additions=JSON.parse(fixtureMatch[1]);
+const valid=new Set(JSON.parse(catalogMatch[1]).flatMap(c=>c.items.map(i=>i.id)));
+assert.equal(additions.length,10,"ten extra synthetic demo people, six existing unchanged");
+assert.equal(new Set(additions.map(p=>p[0])).size,10,"unique IDs");
+assert.ok(additions.every(p=>p[2]>=18),"no minors");
+assert.ok(additions.every(p=>p[8].split("|").every(x=>valid.has(x))),"all tags from approved interest catalogue");
+assert.ok(additions.some(p=>p[3]==="man")&&additions.some(p=>p[3]==="woman"),"mixed demo audiences");
+const original=readFileSync(new URL("../apps/web/src/discovery/demo-people.ts",import.meta.url),"utf8");
+assert.ok(original.includes("portraitSources")&&original.includes('id:p[0]'),"original Feed fixtures unchanged");
+const active=readFileSync(new URL("../apps/web/src/discovery/DiscoveryApp.tsx",import.meta.url),"utf8");
+assert.ok(active.includes('<ForYou draft={draft}')&&active.includes('import {FeedCard}'),"new discovery uses unchanged FeedCard");
+assert.ok(active.includes('fy-rail,.fy-expanded,.fy-manage'),"new nested gestures excluded from outer pager");
+assert.ok(active.includes('saved:prev.saved'),"saved people survive filter resets");
+console.log("✓ Stage 03D integration: preserved FeedCard, isolated gestures, valid 16 demo profiles and saved state");

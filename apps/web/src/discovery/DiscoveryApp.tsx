@@ -4,6 +4,9 @@ import {Bookmark,X,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
 import {demoPeople} from "./demo-people";
+import {forYouDemoPeople} from "./for-you-data";
+import type {CollectionId} from "./for-you-ranking";
+import {ForYou} from "./ForYou";
 import {demoAct,demoUndo,filterDemoPeople,freshDemoState,defaultFilters} from "./model";
 import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter} from "./model";
 import {DiscoveryFilters} from "./Filters";
@@ -46,6 +49,8 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const [savedOpen,setSavedOpen]=useState(false);
  const [personOpen,setPersonOpen]=useState<string|null>(null);
  const [interestOpen,setInterestOpen]=useState<string|null>(null);
+ const [forYouCollection,setForYouCollection]=useState<CollectionId|"best"|null>(null);
+ const [forYouSettings,setForYouSettings]=useState(false);
  const [leaving,setLeaving]=useState<string|null>(null);
  const transitionRef=useRef<number|null>(null);
  const pendingCommit=useRef<(()=>void)|null>(null);
@@ -55,7 +60,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const profiles=useMemo(()=>filterDemoPeople(demoPeople,filters,draft),[filters,draft]);
  const ids=useMemo(()=>profiles.map(p=>p.id),[profiles]);
  const person=profiles[feed.index];
- const selectedPerson=demoPeople.find(p=>p.id===personOpen);
+ const selectedPerson=forYouDemoPeople.find(p=>p.id===personOpen);
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
@@ -73,12 +78,14 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const leave=useCallback(()=>{
   if(personOpen){setPersonOpen(null);return;}
   if(interestOpen){setInterestOpen(null);return;}
+  if(forYouSettings){setForYouSettings(false);return;}
+  if(forYouCollection){setForYouCollection(null);return;}
   if(filterOpen){setFilterOpen(false);return;}
   if(savedOpen){setSavedOpen(false);return;}
   if(mainTab!=="discover"){if(locked.current)finishDeck();setMainTab("discover");return;}
   if(discoveryTab!=="feed"){setDiscoveryTab("feed");return;}
   onExit();
- },[personOpen,interestOpen,filterOpen,savedOpen,mainTab,discoveryTab,onExit,finishDeck]);
+ },[personOpen,interestOpen,forYouSettings,forYouCollection,filterOpen,savedOpen,mainTab,discoveryTab,onExit,finishDeck]);
  useEffect(()=>{registerBack(leave);},[leave,registerBack]);
  useEffect(()=>{
   const key=(event:KeyboardEvent)=>{if(event.key==="Escape")leave();};
@@ -122,7 +129,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  // PhotoCarousel owns its own pointer gesture. No Tinder-style card swipes.
  const down=(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(event.pointerType==="mouse"&&event.button!==0)return;
-  if((event.target as HTMLElement).closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet"))return;
+  if((event.target as HTMLElement).closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
   gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,started:performance.now(),tracking:false,index:tabIndex};
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
@@ -158,10 +165,17 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const apply=(next:DiscoveryFilter)=>{
   if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
   transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);
-  setFilters(next);setFeed(freshDemoState());setFilterOpen(false);
+  setFilters(next);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));setFilterOpen(false);
   indicate("Фильтры применены к демо-анкетам");
  };
  const openSaved=()=>{setSavedOpen(true);setFilterOpen(false);};
+ const toggleForYouSave=(id:string)=>{
+  if(!forYouDemoPeople.some(p=>p.id===id))return;
+  const already=feed.saved.includes(id);
+  setFeed(prev=>({...prev,saved:prev.saved.includes(id)?prev.saved.filter(value=>value!==id):[...prev.saved,id]}));
+  indicate(already?"Убрано из сохранённых · демо":"Сохранено · демо");
+  window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
+ };
  const selectMainTab=(tab:MainTab)=>{
   if(tab===mainTab)return;
   // End an in-flight Deck Lift in the same React batch before hiding Feed.
@@ -172,7 +186,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const restartFeed=()=>{
    if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
    transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);
-   setFilters(defaultFilters);setFeed(freshDemoState());
+   setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
  return <div className="discovery-app">
@@ -229,7 +243,9 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
              </div>}
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Для тебя">
-             <Placeholder title="Для тебя" text="Персональные подборки появятся в следующем пакете Stage 03."/>
+             <ForYou draft={draft} filters={filters} saved={feed.saved} onSave={toggleForYouSave}
+               onPerson={setPersonOpen} expanded={forYouCollection} onExpanded={setForYouCollection}
+               settingsOpen={forYouSettings} onSettingsOpen={setForYouSettings}/>
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Рядом">
              <Placeholder title="Рядом" text="Здесь будет лента людей поблизости — без карты и радара."/>
@@ -272,7 +288,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
        </header>
        <div className="discovery-saved-list">
          {feed.saved.length?feed.saved.map(id=>{
-           const p=demoPeople.find(x=>x.id===id);
+           const p=forYouDemoPeople.find(x=>x.id===id);
            return p?<button className="discovery-saved" key={id} type="button" onClick={()=>{setSavedOpen(false);setPersonOpen(id);}}>
              <img src={p.photos[0].src} alt=""/><span>{p.name}, {p.age}</span><ArrowRight size={17}/>
            </button>:null;
