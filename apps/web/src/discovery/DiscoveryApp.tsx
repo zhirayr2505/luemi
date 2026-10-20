@@ -351,7 +351,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"}/>
      </section>
    {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"
-     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack} onScrollMotion={reportProfileScroll}/>}
+     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack}/>}
    </div>
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
