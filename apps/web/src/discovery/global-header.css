@@ -27,7 +27,7 @@
  backdrop-filter:blur(8px) saturate(125%);-webkit-backdrop-filter:blur(8px) saturate(125%);
 }
 .lh-tool{opacity:var(--lh-control-opacity,1);transform-origin:center;
- transform:translate3d(var(--lh-x,0px),var(--lh-control-y,0px),0) scale(var(--lh-control-scale,1));
+ transform:translate3d(var(--lh-x,0px),var(--lh-control-y,0px),0) scale(var(--lh-control-scale,1)) scaleY(var(--lh-control-stretch,1));
  will-change:transform,opacity}
 .lh-tool-filter{--lh-x:var(--lh-left-x,0px)}
 .lh-tool-saved{--lh-x:var(--lh-right-x,0px)}
