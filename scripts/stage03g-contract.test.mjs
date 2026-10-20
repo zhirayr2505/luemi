@@ -29,6 +29,16 @@ assert.equal(m.canMakeMain(server,"b"),true);
 assert.equal(m.canMakeMain(server,"a"),false,"draft photo cannot become public main");
 assert.equal(m.displayPhotoDate({id:"x",src:"",status:"published"}),"Дата добавления недоступна");
 assert.equal(m.draftAge({day:"30",month:"2",year:"2000"},new Date("2026-10-20")),null);
+const futureBlik={id:"published-blik",src:"https://example.com/real-story.jpg",kind:"image",
+ expiresAt:new Date(Date.now()+3600_000).toISOString()};
+assert.equal(m.projectProfile({...base,activeBlik:futureBlik},"visitor").profile.activeBlik,null,
+ "local draft must not advertise an active Blik");
+assert.equal(m.projectProfile({...base,source:"server",activeBlik:futureBlik},"visitor").profile.activeBlik?.id,
+ "published-blik","verified server Blik can be opened through circular avatar");
+assert.equal(m.projectProfile({...base,source:"server",activeBlik:{...futureBlik,expiresAt:"2025-01-01T00:00:00Z"}},"visitor").profile.activeBlik,
+ null,"expired story cannot be shown as active");
+assert.equal(m.projectProfile({...base,source:"server",activeBlik:{...futureBlik,src:"javascript:alert(1)"}},"visitor").profile.activeBlik,
+ null,"story media links must use HTTPS");
 console.log("✓ Stage 03G.A: public projection, unpublished photo guards, demo badges, owner/preview permission boundaries");
 
 assert.deepEqual(visitor.profile.photos.map(p=>p.id),["b"],"nested projection cannot carry private images");
