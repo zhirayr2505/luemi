@@ -77,3 +77,8 @@
 ## 2026-10-20 · Stage 03D.1 approved
 - Owner accepted finger-following flicker-free tabs, fixed centered logo in public profiles, natural vertical pan on For You cards, adaptive performance without visible downgrade. Photo shared-element transition deferred.
 - Work isolated in feat/stage03d1-smoothness from staging 1ae4d9f. Feed Polish 2, distance radius and Stage 03E remain locked. Device QA pending.
+
+
+## Stage 03E · Nearby · 2026-10-20
+- Owner approved two-column 4:5 portrait grid, compact geography glass panel, name/age/city on photo, one truly shared interest below, bookmark-only action, no map/radar. Current radius 1–5000 km locked.
+- Feature branch feat/stage03e-nearby based on staging 1eb930b; cross-shared saves & DemoProfile, honest city/country/world fixture filtering, no fake distances or actual GPS. Production, database and other projects untouched. CI and post-deploy Galaxy A55 review are separate gates.

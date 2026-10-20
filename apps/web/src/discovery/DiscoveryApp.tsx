@@ -8,6 +8,7 @@ import {demoPeople} from "./demo-people";
 import {forYouDemoPeople} from "./for-you-data";
 import type {CollectionId} from "./for-you-ranking";
 import {ForYou} from "./ForYou";
+import {Nearby} from "./Nearby";
 import {demoAct,demoUndo,filterDemoPeople,freshDemoState,defaultFilters} from "./model";
 import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter} from "./model";
 import {DiscoveryFilters} from "./Filters";
@@ -146,7 +147,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  useEffect(()=>()=>{if(swipeFrame.current!==null)window.cancelAnimationFrame(swipeFrame.current);},[]);
  const down=(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(event.pointerType==="mouse"&&event.button!==0)return;
-  if((event.target as HTMLElement).closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
+  if((event.target as HTMLElement).closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-scroll,.nb-card"))return;
   gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,started:performance.now(),tracking:false,index:tabIndex};
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
@@ -187,6 +188,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
   indicate("Фильтры применены к демо-анкетам");
  };
  const openSaved=()=>{setSavedOpen(true);setFilterOpen(false);};
+ const openNearbyFilters=useCallback(()=>setFilterOpen(true),[]);
  const toggleForYouSave=useCallback((id:string)=>{
   if(!forYouDemoPeople.some(p=>p.id===id))return;
   const already=feed.saved.includes(id);
@@ -264,7 +266,8 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
                settingsOpen={forYouSettings} onSettingsOpen={setForYouSettings}/>
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Рядом">
-             <Placeholder title="Рядом" text="Здесь будет лента людей поблизости — без карты и радара."/>
+             <Nearby draft={draft} filters={filters} saved={feed.saved} onSave={toggleForYouSave}
+               onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>
            </section>
          </div>
        </div>

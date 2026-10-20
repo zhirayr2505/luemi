@@ -1,0 +1,73 @@
+/* Stage 03E: isolated two-column Nearby screen. Never modify accepted Feed/For You styling. */
+.nb-root{height:100%;min-height:0;flex:1;width:100%;position:relative;isolation:isolate}
+.nb-scroll{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior-y:contain;
+ -webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+ padding:5px 1px max(29px,env(safe-area-inset-bottom))}
+.nb-scroll>*{max-width:620px;margin-left:auto;margin-right:auto}
+.nb-location{width:100%;min-height:65px;display:flex;align-items:center;gap:10px;
+ padding:10px 12px;border:1px solid var(--glass-edge);border-radius:21px;
+ background:linear-gradient(128deg,rgba(249,242,255,.75),rgba(249,221,246,.38)),var(--panel);
+ color:var(--ink);box-shadow:inset 0 1px rgba(255,255,255,.67),0 7px 22px var(--shadow);
+ backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);text-align:left}
+.nb-location-icon{width:42px;height:42px;border-radius:15px;display:grid;place-items:center;flex:none;
+ color:#9869be;background:linear-gradient(135deg,rgba(209,174,244,.42),rgba(244,194,228,.37));
+ border:1px solid rgba(255,255,255,.53)}
+.nb-location-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.nb-location-copy strong{font-size:15px;font-weight:790;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nb-location-copy>span{font-size:10px;color:var(--subtle);line-height:1.25}
+.nb-location-edit{width:32px;height:32px;flex:none;border-radius:12px;display:grid;place-items:center;
+ color:#9266b6;background:rgba(255,255,255,.26);border:1px solid var(--glass-edge)}
+.nb-head{padding:17px 2px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.nb-head h2{font-size:clamp(17px,4.6vw,21px);font-weight:800;line-height:1.24;letter-spacing:-.03em;margin:0 0 5px}
+.nb-head p{font-size:11px;line-height:1.4;color:var(--subtle);margin:0}
+.nb-count{white-space:nowrap;flex:none;border-radius:999px;background:var(--panel);
+ border:1px solid var(--glass-edge);font-size:10px;font-weight:710;color:var(--subtle);padding:6px 8px}
+.nb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;
+ column-gap:10px;row-gap:17px;min-width:0}
+.nb-card{position:relative;display:flex;flex-direction:column;min-width:0;gap:7px;touch-action:pan-y}
+.nb-photo{position:relative;display:block;width:100%;aspect-ratio:4/5;overflow:hidden;
+ border-radius:23px;border:1px solid rgba(255,255,255,.64);background:var(--panel);
+ box-shadow:inset 0 1px rgba(255,255,255,.58),0 7px 18px var(--shadow);
+ padding:0;color:white;text-align:left;touch-action:pan-y}
+.nb-photo img{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.nb-photo-shade{position:absolute;inset:42% 0 0;pointer-events:none;
+ background:linear-gradient(to bottom,transparent,rgba(22,15,32,.16) 24%,rgba(26,14,37,.79) 100%)}
+.nb-demo{position:absolute;left:8px;top:8px;pointer-events:none;border-radius:999px;
+ padding:4px 7px;font-size:9px;font-weight:780;color:#6a467b;border:1px solid rgba(255,255,255,.64);
+ background:rgba(251,233,255,.89)}
+.nb-person{position:absolute;bottom:10px;left:9px;right:7px;pointer-events:none;
+ display:flex;flex-direction:column;gap:4px;text-shadow:0 1px 5px rgba(20,12,31,.33)}
+.nb-person strong{font-size:clamp(14px,4vw,18px);font-weight:780;line-height:1.2;white-space:nowrap;
+ overflow:hidden;text-overflow:ellipsis;letter-spacing:-.025em}
+.nb-person>span{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:650;min-width:0}
+.nb-person>span>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nb-bookmark{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:34px;height:34px;
+ border-radius:50%;border:1px solid rgba(255,255,255,.73);background:rgba(255,255,255,.25);
+ color:white;box-shadow:0 3px 10px rgba(31,19,46,.18);
+ backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.nb-bookmark.is-saved{color:white;background:linear-gradient(135deg,#9c79d6,#da93bf)}
+.nb-bookmark:active{transform:scale(.95)}
+.nb-interest{min-width:0;min-height:26px;max-width:100%;align-self:flex-start;
+ display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+ border:1px solid var(--glass-edge);border-radius:999px;
+ background:linear-gradient(120deg,rgba(214,187,246,.30),rgba(245,203,230,.36)),var(--panel);
+ color:var(--ink);font-size:10px;font-weight:670}
+.nb-interest>span:last-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nb-interest>span:first-child{color:#a87acf}
+.nb-empty{padding:36px 22px;display:flex;flex-direction:column;align-items:center;gap:11px;text-align:center;
+ background:var(--panel);border:1px solid var(--glass-edge);border-radius:25px}
+.nb-empty>svg{color:#b386d8}
+.nb-empty h3{font-size:19px;line-height:1.25;margin:0}
+.nb-empty p{font-size:12px;line-height:1.55;color:var(--subtle);margin:0;max-width:280px}
+.nb-empty button,.nb-more button{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:44px;border-radius:16px;padding:9px 16px;border:1px solid rgba(255,255,255,.7);
+ background:linear-gradient(120deg,#b18de0,#dfa4ce);color:#fff;font-size:12px;font-weight:750}
+.nb-more{padding:15px 8px;display:flex;justify-content:center}
+.nb-footer{text-align:center;color:var(--subtle);font-size:10px;line-height:1.45;padding:17px 4px 24px}
+.luemi-shell[data-theme=dark] .nb-location{background:linear-gradient(120deg,rgba(119,70,150,.22),rgba(75,42,100,.14)),var(--panel)}
+.luemi-shell[data-theme=dark] .nb-location-icon{color:#dfb9fc;background:rgba(170,120,202,.27);border-color:rgba(243,212,255,.18)}
+.luemi-shell[data-theme=dark] .nb-location-edit{color:#dfb9fc;background:rgba(205,153,241,.12)}
+.luemi-shell[data-theme=dark] .nb-demo{background:rgba(220,184,235,.88)}
+@media(max-width:350px){.nb-location{padding:9px 8px}.nb-grid{column-gap:8px}
+ .nb-photo{border-radius:19px}.nb-person strong{font-size:14px}.nb-interest{font-size:9px;padding:5px 8px}}
+@media(prefers-reduced-motion:reduce){.nb-bookmark:active{transform:none}}
