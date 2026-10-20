@@ -90,6 +90,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const sheetProgress=useRef(0);
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const selectedIndex=tabs.findIndex(x=>x[0]===tab);
+ const tabSelectionRef=useRef<TabId>(tab);
+ tabSelectionRef.current=tab;
  const setTransform=(idx:number,delta=0)=>{
   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
  };
@@ -255,7 +257,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    if(ink.current&&tabMetrics.current.length)
     ink.current.style.width=tabMetrics.current[0].width+"px";
    // Geometry is stable across tab selection. Do not re-run an in-flight transition.
-   paintTabs(tabs.findIndex(v=>v[0]===tab));
+   paintTabs(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
   };
   measure();
   const ro=new ResizeObserver(measure);
