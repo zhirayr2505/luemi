@@ -96,7 +96,9 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
   collapse.current=p;
   const rect=frame.getBoundingClientRect(),parent=host.getBoundingClientRect();
   // Stable geometry independent of each content page's scrollHeight.
-  const left=rect.left-parent.left, top=rect.top-parent.top;
+  const left=rect.left-parent.left, top=rect.top-parent.top+y;
+  // Use the hero's layout origin, not its moving viewport top: otherwise the
+  // avatar briefly exits above the header halfway through a fast collapse.
   const w=frame.offsetWidth,h=frame.offsetHeight;
   const targetX=16,targetY=9,size=54;
   const easing=1-Math.pow(1-p,1.55);
