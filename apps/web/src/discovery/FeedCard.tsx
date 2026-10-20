@@ -25,11 +25,11 @@ export function FeedCard({person,saved,canUndo,active,onAction,onOpenProfile,onI
      <div className="discovery-photo">
        <PhotoCarousel photos={person.photos} name={person.name} age={person.age}/>
        <span className="discovery-demo-label">Демо</span>
-       {<button type="button" disabled={!active} className={"discovery-save-control"+(saved?" is-saved":"")}
+       <button type="button" disabled={!active} className={"discovery-save-control"+(saved?" is-saved":"")}
          aria-label={saved?"Убрать из сохранённых":"Сохранить анкету"}
          aria-pressed={saved} title="Сохранить · демо" onClick={()=>onAction("save")}>
          <Bookmark size={19} fill={saved?"currentColor":"none"} strokeWidth={1.9}/>
-       </button>}
+       </button>
      </div>
      <div className="discovery-card-overlay">
        <div className="discovery-name-row">
@@ -53,12 +53,12 @@ export function FeedCard({person,saved,canUndo,active,onAction,onOpenProfile,onI
        <p className="discovery-short-about">{person.about}</p>
      </div>
    </article>
-   {<div className="discovery-actions" aria-label="Демо-действия с анкетой">
+   <div className="discovery-actions" aria-label="Демо-действия с анкетой">
      {buttons.map(([kind,label,Icon])=><button type="button" key={kind}
        className={"discovery-action discovery-"+kind} aria-label={label} title={label}
        onClick={()=>onAction(kind)} disabled={!active||(kind==="undo"&&!canUndo)}>
        <Icon size={kind==="like"?28:kind==="special"?24:20} strokeWidth={1.85}/>
      </button>)}
-   </div>}
+   </div>
  </div>;
 }
