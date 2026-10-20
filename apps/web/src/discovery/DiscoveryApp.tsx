@@ -178,7 +178,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
                {person&&<div key={person.id}
                  className={"discovery-deck-layer"+(leaving?" deck-leaving":" deck-active")}>
                  <FeedCard person={person} saved={feed.saved.includes(person.id)}
-                   canUndo={feed.history.length>0} active={leaving===null}
+                   canUndo={feed.history.length>0} active={true}
                    onAction={act} onOpenProfile={()=>setPersonOpen(person.id)}
                    onInterests={()=>setInterestOpen(person.id)}/>
                </div>}
