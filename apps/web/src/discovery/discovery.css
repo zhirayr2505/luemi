@@ -27,6 +27,8 @@
  transform:translate3d(calc(var(--luemi-tab-offset,0%) + var(--luemi-drag,0px)),0,0);
  transition:transform .3s cubic-bezier(.2,.77,.21,1)}
 .discovery-page-track.is-finger-tracking,.discovery-tab-underline.is-finger-tracking{transition:none;will-change:transform}
+/* Keep transform composition until the settle transition actually completes. */
+.discovery-page-track.is-settling,.discovery-tab-underline.is-settling{will-change:transform}
 .discovery-page{height:100%;min-height:0;min-width:100%;flex:0 0 100%;display:flex;flex-direction:column;
  padding:6px 13px 6px;overflow:hidden}
 
