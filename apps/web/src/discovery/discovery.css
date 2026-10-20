@@ -136,23 +136,6 @@
 .discovery-sheet-footer>button{min-height:48px;border-radius:17px;font-weight:720}
 .discovery-reset{display:flex;gap:7px;align-items:center;background:var(--panel);border:1px solid var(--glass-edge);color:var(--ink);padding:0 14px}
 .discovery-apply{flex:1;background:linear-gradient(115deg,#b58ae3,#ebaad0);color:#452f5f;border:1px solid rgba(255,255,255,.6)}
-.discovery-profile-overlay{position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;min-height:0;overflow:hidden;
- background:transparent;touch-action:pan-y}
-.discovery-profile-swipe-surface{display:flex;flex-direction:column;flex:1;height:100%;width:100%;min-height:0;overflow:hidden;
- touch-action:pan-y;background:var(--bg);box-shadow:-10px 0 28px rgba(30,17,40,.12);will-change:transform}
-.discovery-profile-top{padding:calc(var(--top-safe) + 62px) 17px 8px;display:grid;
- grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:5px;flex:none;min-height:70px}
-.discovery-profile-top>.discovery-demo-label{justify-self:start;min-width:0;font-size:10px;padding:5px 7px}
-.discovery-profile-wordmark{width:105px;height:38px;object-fit:contain;display:block;max-width:100%;filter:drop-shadow(0 1px 2px rgba(130,81,161,.11))}
-.discovery-profile-top>.discovery-icon-action{justify-self:end}
-.discovery-profile-scroll{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;overflow-anchor:none;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:6px 17px 30px}
-.discovery-profile-photo{max-width:590px;margin:0 auto;border-radius:24px;overflow:hidden;min-height:0;contain:layout}
-.discovery-profile-photo .carousel-frame{height:clamp(310px,46svh,570px);min-height:310px;aspect-ratio:auto;touch-action:pan-y}
-.discovery-profile-facts{display:flex;flex-direction:column;gap:12px;align-items:flex-start;max-width:590px;margin:0 auto;padding:16px 4px 25px;min-height:0}
-.discovery-profile-facts h3{font-size:16px;margin:10px 0 0;display:flex;align-items:center;gap:8px}
-.discovery-profile-facts>p{margin:0;line-height:1.6}
-.discovery-language-flags{display:flex;gap:7px}
-.discovery-notice{display:flex;align-items:start;gap:8px;color:var(--subtle);font-size:12px}
 @media(max-height:700px){.discovery-top-tabs{height:40px}.discovery-page{padding:3px 11px}.discovery-card-overlay{gap:5px;padding:8px 10px 8px;bottom:51px}.discovery-action{--diameter:clamp(37px,10.5vw,43px)}.discovery-action.discovery-special{--diameter:clamp(43px,12vw,50px)}.discovery-action.discovery-like{--diameter:clamp(50px,15vw,59px)}.discovery-nav-item{gap:2px}.discovery-bottom-nav{min-height:51px;padding:4px 5px}}
 @media(max-width:360px){
  .discovery-premium{font-size:9px;padding:4px}
@@ -167,7 +150,6 @@
  .discovery-tab-underline,.discovery-page-track,.discovery-icon-action,.discovery-action,.discovery-nav-item{transition:none}
 }
 
-.discovery-profile-premium{display:inline-flex;align-items:center;gap:7px;color:var(--ink);font-size:13px;font-weight:720}
 
 
 
@@ -209,7 +191,6 @@
 
 /* Second demo frame shows another crop of the same artificial character. */
 .discovery-photo .carousel-track img:nth-child(2){object-position:50% 22%;transform:scale(1.095)}
-.discovery-profile-photo .carousel-track img:nth-child(2){object-position:50% 22%;transform:scale(1.075)}
 
 /* Dark-theme optical glass, using the same application theme rather than a second theme state. */
 .luemi-shell[data-theme=dark] .discovery-bottom-nav{background:linear-gradient(130deg,rgba(75,58,96,.68),rgba(55,40,76,.5));border-color:rgba(231,201,255,.28);box-shadow:inset 0 2px rgba(255,255,255,.12),0 8px 24px rgba(0,0,0,.24)}
