@@ -1,9 +1,9 @@
-import {useRef,useState} from "react";
+import {memo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 interface Slide {id:string;src:string;fallback?:string}
 interface Props {photos:Slide[];name:string;age?:number}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number}
-export function PhotoCarousel({photos,name,age}:Props) {
+function PhotoCarouselImpl({photos,name,age}:Props) {
  const [index,setIndex]=useState(0);
  const [dx,setDx]=useState(0);
  const track=useRef<Tracking|null>(null);
@@ -51,3 +51,6 @@ export function PhotoCarousel({photos,name,age}:Props) {
    <div className="carousel-caption">{name||"Твоё имя"}{age!==undefined?", "+age:""}</div>
  </div>;
 }
+
+/** Keep loaded images and swipe progress mounted across unrelated tab/theme updates. */
+export const PhotoCarousel=memo(PhotoCarouselImpl);
