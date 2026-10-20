@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import type {CSSProperties} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {Bookmark,X,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,ArrowRight,Sun,Moon,Layers3} from "lucide-react";
+import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
 import {demoPeople} from "./demo-people";
@@ -14,10 +14,11 @@ import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter} from "./model";
 import {DiscoveryFilters} from "./Filters";
 import {DiscoveryInterestsSheet} from "./InterestsSheet";
 import {ProfileMaster} from "./ProfileMaster";
+import {GlobalHeader} from "./GlobalHeader";
+import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import "./discovery.css";
 
-const logoSrc="/assets/brand/wordmark_original_raster_alpha_W06.webp";
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 
@@ -89,6 +90,16 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const ids=useMemo(()=>profiles.map(p=>p.id),[profiles]);
  const person=profiles[feed.index];
  const selectedPerson=forYouDemoPeople.find(p=>p.id===personOpen);
+ const globalHeader=useRef<HeaderMotion>(null);
+ const profileMode=mainTab==="profile"||!!selectedPerson;
+ const headerPerson=selectedPerson?fromDemoPerson(selectedPerson):ownProfile;
+ const headerName=(headerPerson.profile.name||"Имя")+(headerPerson.profile.age!==null?", "+headerPerson.profile.age:"");
+ const headerLocation=[headerPerson.profile.city,headerPerson.profile.country].filter(Boolean).join(", ");
+ const reportPageScroll=useCallback((top:number)=>globalHeader.current?.setScrollTop(top),[]);
+ const reportProfileScroll=useCallback((p:number,rect:DOMRect,top:number,src:string|null)=>{
+   globalHeader.current?.setProfileMorph(p,rect,top,src);
+ },[]);
+ useEffect(()=>{globalHeader.current?.reset();},[mainTab,discoveryTab,personOpen]);
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
@@ -262,17 +273,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
- return <div className="discovery-app">
+ return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>
-   <header className="discovery-header">
-     <img className="discovery-brand" src={logoSrc} alt="luemi" decoding="sync" fetchPriority="high"/>
-     <div className="discovery-header-controls" aria-label="Инструменты Ленты">
-       <button type="button" className="discovery-icon-action" onClick={()=>setFilterOpen(true)} aria-label="Фильтры" title="Фильтры"><SlidersHorizontal size={17}/></button>
-       <button type="button" className="discovery-icon-action" onClick={onTheme} aria-label={theme==="light"?"Тёмная тема":"Светлая тема"} title="Сменить тему">
-         {theme==="light"?<Moon size={17}/>:<Sun size={17}/>}</button>
-       <button type="button" className="discovery-icon-action" onClick={openSaved} aria-label="Сохранённые анкеты" title="Сохранённые"><Bookmark size={17}/></button>
-     </div>
-   </header>
+   <GlobalHeader ref={globalHeader} mode={profileMode?"profile":"browse"} theme={theme}
+     onTheme={onTheme} onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
+     onBack={selectedPerson?()=>setPersonOpen(null):undefined}
+     name={headerName} location={headerLocation}/>
    <div className="discovery-main-panels">
      <section className="discovery-panel" hidden={mainTab!=="discover"}>
        <div className="discovery-top-tabs" role="tablist" aria-label="Разделы знакомств"
@@ -317,12 +323,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
              </div>}
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Для тебя">
-             <ForYou draft={draft} filters={filters} saved={feed.saved} onSave={toggleForYouSave}
+             <ForYou draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportPageScroll} onSave={toggleForYouSave}
                onPerson={setPersonOpen} expanded={forYouCollection} onExpanded={setForYouCollection}
                settingsOpen={forYouSettings} onSettingsOpen={setForYouSettings}/>
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Рядом">
-             {nearbyPrepared&&<Nearby draft={draft} filters={filters} saved={feed.saved} onSave={toggleForYouSave}
+             {nearbyPrepared&&<Nearby draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportPageScroll} onSave={toggleForYouSave}
                onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>}
            </section>
          </div>
@@ -335,8 +341,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
      </section>
      <section className="discovery-panel" hidden={mainTab!=="profile"}>
-       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack}/>
+       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} onScrollMotion={reportProfileScroll}/>
      </section>
+   {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"
+     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack} onScrollMotion={reportProfileScroll}/>}
    </div>
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
@@ -363,6 +371,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
      </section>
    </div>}
    {interestOpen&&(()=>{const p=demoPeople.find(x=>x.id===interestOpen);return p?<DiscoveryInterestsSheet name={p.name} ids={p.interests} onClose={()=>setInterestOpen(null)}/>:null;})()}
-   {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor" onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack}/>}
+
  </div>;
 }
