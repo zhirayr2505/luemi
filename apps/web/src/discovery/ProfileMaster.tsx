@@ -226,7 +226,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,onScrollMot
    const pane=scroll.current,bar=tabBar.current;
    if(!pane||!bar)return;
    const offset=bar.getBoundingClientRect().top-pane.getBoundingClientRect().top;
-   pane.scrollTo({top:Math.max(0,pane.scrollTop+offset-56),
+   pane.scrollTo({top:Math.max(0,pane.scrollTop+offset-56+58),
     behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
   });
  };
