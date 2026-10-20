@@ -15,7 +15,7 @@ type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
 type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
- active?:boolean;
+ active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
@@ -63,7 +63,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
+export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
@@ -78,33 +78,59 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
  },[mainId,view.photos]);
  const [activePhoto,setActivePhoto]=useState(0);
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
- const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null);
+ const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
+ const tabMetrics=useRef<Array<{left:number;width:number}>>([]);
+ const tabViewport=useRef(1);
  const dragFrame=useRef<number|null>(null);
  const photoSwipe=useRef<Swipe|null>(null),tabSwipe=useRef<Swipe|null>(null);
- const clickBlocked=useRef(0),expandedY=useRef(385),collapsedRef=useRef(false);
+ const clickBlocked=useRef(0),expandedY=useRef(385),collapsedY=useRef(46),collapsedRef=useRef(false);
+ const sheetProgress=useRef(0);
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const selectedIndex=tabs.findIndex(x=>x[0]===tab);
  const setTransform=(idx:number,delta=0)=>{
   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
  };
+ const paintSheet=useCallback((offset:number,dragging=false)=>{
+  const pane=sheet.current;
+  if(!pane)return;
+  const top=collapsedY.current,bottom=expandedY.current;
+  const next=Math.max(top,Math.min(bottom,offset));
+  const progress=Math.max(0,Math.min(1,(bottom-next)/Math.max(1,bottom-top)));
+  sheetProgress.current=progress;
+  pane.style.setProperty("--pm-sheet-y",next+"px");
+  const layer=blurLayer.current;
+  if(layer){
+   layer.style.transitionProperty=dragging?"none":"opacity";
+   layer.style.opacity=String(progress*.9);
+  }
+  if(active)onMotionProgress?.(progress,dragging);
+ },[active,onMotionProgress]);
  const settleSheet=useCallback((next:boolean)=>{
   collapsedRef.current=next;
-  const pane=sheet.current;
-  if(pane){
-   pane.style.transition="";
-   pane.style.setProperty("--pm-sheet-y",(next?0:expandedY.current)+"px");
-  }
+  if(sheet.current)sheet.current.style.transition="";
+  paintSheet(next?collapsedY.current:expandedY.current,false);
   setCollapsed(next);
- },[]);
+ },[paintSheet]);
  useLayoutEffect(()=>{
   const measure=()=>{
-   const frame=hero.current,pane=sheet.current;
-   if(!frame||!pane)return;
-   expandedY.current=Math.max(180,frame.getBoundingClientRect().height-43);
-   pane.style.setProperty("--pm-sheet-y",(collapsedRef.current?0:expandedY.current)+"px");
+   const frame=hero.current,pane=sheet.current,root=shell.current;
+   if(!frame||!pane||!root)return;
+   const shellRect=root.getBoundingClientRect();
+   const logo=document.querySelector<HTMLElement>(".lh-header .lh-island img");
+   const imageRect=logo?.getBoundingClientRect();
+   // Physically overlap 10-12% of the *visible* W06 logo, not its wrapper.
+   // The crop is kept above the compact identity, below Telegram chrome.
+   const logoBottom=imageRect?
+    imageRect.bottom-shellRect.top-imageRect.height*.11:
+    48;
+   collapsedY.current=Math.max(38,Math.min(root.clientHeight*.24,logoBottom));
+   expandedY.current=Math.max(collapsedY.current+185,frame.getBoundingClientRect().bottom-shellRect.top-43);
+   pane.style.setProperty("--pm-collapsed-top",collapsedY.current+"px");
+   // Initial layout: do not transition a newly measured sheet from the top.
+   paintSheet(collapsedRef.current?collapsedY.current:expandedY.current,false);
   };
   measure();
   const ro=new ResizeObserver(measure);
@@ -112,7 +138,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
   if(shell.current)ro.observe(shell.current);
   window.addEventListener("resize",measure);
   return ()=>{ro.disconnect();window.removeEventListener("resize",measure);};
- },[]);
+ },[paintSheet]);
+ useEffect(()=>{if(active)onMotionProgress?.(sheetProgress.current,false);},[active,onMotionProgress]);
  useEffect(()=>{
   const pane=sheet.current;if(!pane)return;
   type SheetGesture={x:number;y:number;start:number;down:boolean;scrollTop:number;dragging:boolean;blocked:boolean};
@@ -137,7 +164,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
    const offset=g.down?Math.max(0,Math.min(distance,dy)):
      Math.max(0,Math.min(distance,distance+dy));
    pane.style.transition="none";
-   pane.style.setProperty("--pm-sheet-y",offset+"px");
+   paintSheet(offset,true);
   };
   const end=(e:TouchEvent)=>{
    const g=gesture;gesture=null;if(!g||!g.dragging)return;
@@ -155,7 +182,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
    pane.removeEventListener("touchstart",start);pane.removeEventListener("touchmove",move);
    pane.removeEventListener("touchend",end);pane.removeEventListener("touchcancel",cancel);
   };
- },[selectedIndex,settleSheet]);
+ },[selectedIndex,settleSheet,paintSheet]);
  useEffect(()=>()=>{if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);},[]);
  const closeTop=useCallback(():boolean=>{
   if(viewer){if(viewerBack.current)return viewerBack.current();setViewer(null);return true;}
