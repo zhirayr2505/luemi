@@ -121,7 +121,7 @@ assertCheck("restart label not misleading and controls remain local-only",
  discovery.includes('onRestart={restartFeed}')&&discovery.includes('indicate("Демо-Лента начата заново")'));
 assertCheck("public profile photo morph uses shared global overlay and native scroll",
  discoveryProfile.includes("onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null)")
- && globalHeader.includes("heroRect.top+heroRect.height*.53")&&globalHeader.includes("setProfileMorph")
+ && globalHeader.includes("heroRect.top+heroRect.height*.57")&&globalHeader.includes("setProfileMorph")
  && globalHeaderCss.includes(".lh-droplet")&&!discoveryProfile.includes("pm-morph-photo"));
 console.log("LUEMI Stage 03 video motion-regression contracts PASS");
 
