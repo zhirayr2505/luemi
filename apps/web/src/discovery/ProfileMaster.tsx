@@ -266,7 +266,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
    </div>
    <div className="pm-profile-sheet" ref={sheet}>
     <button type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsed)}
-      aria-label={collapsed?"Раскрыть фото профиля":"Развернуть анкету"}><span/></button>
+      tabIndex={collapsed?-1:0} aria-label={collapsed?"Потянуть панель вниз":"Развернуть анкету"}><span/></button>
     <div className="pm-identity">
      <div className="pm-identity-core">
       <div className="pm-identity-text">
