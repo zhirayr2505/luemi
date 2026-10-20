@@ -240,7 +240,11 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   if(g.axis==="x")clickBlocked.current=performance.now()+280;
  };
  const paintTabs=(i:number,dx=0)=>{
-  if(pageTrack.current)pageTrack.current.style.transform=`translate3d(calc(-${i*100}% + ${dx}px),0,0)`;
+  if(pageTrack.current){
+   const offset=`calc(-${i*100}% + ${dx}px)`;
+   if(androidSafeSheet)pageTrack.current.style.left=offset;
+   else pageTrack.current.style.transform=`translate3d(${offset},0,0)`;
+  }
   const indicator=ink.current,metrics=tabMetrics.current;
   if(!indicator||!metrics.length)return;
   const first=metrics[Math.max(0,Math.min(metrics.length-1,i))];
@@ -273,7 +277,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const chooseTab=(newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
-  if(pageTrack.current)pageTrack.current.style.transition="transform 295ms cubic-bezier(.22,.77,.23,1)";
+  if(pageTrack.current)pageTrack.current.style.transition=(androidSafeSheet?"left":"transform")+" 295ms cubic-bezier(.22,.77,.23,1)";
   if(ink.current)ink.current.style.transition="";
   paintTabs(i);
   setTab(tabs[i][0]);
