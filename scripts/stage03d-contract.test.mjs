@@ -56,7 +56,7 @@ const feedCard=readFileSync(new URL("../apps/web/src/discovery/FeedCard.tsx",imp
 assert.ok(!forYouCss.includes("touch-action:pan-x;")&&forYouCss.includes("touch-action:pan-x pan-y"),"portraits allow native vertical panning");
 assert.ok(forYou.includes("list.slice(0,6)")&&forYou.includes("memo(function ForYou"),"bounded collections and memoized page");
 assert.ok(globalHeader.includes("lh-island")&&globalHeader.includes("wordmark_original_raster_alpha_W06.webp"),"original LUEMI logo in full profile");
-assert.ok(headerCss.includes(".lh-center")&&headerCss.includes("left:50%")&&demoProfile.includes("onScrollMotion"),"profile logo independently centered");
+assert.ok(headerCss.includes(".lh-center")&&headerCss.includes("left:50%")&&demoProfile.includes("data-sheet-state={collapsed")&&!globalHeader.includes("setProfileMorph"),"profile logo independently centered");
 assert.ok(discoveryStyles.includes(".discovery-page-track.is-finger-tracking")&&discoveryStyles.includes("font-weight:700"),"steady active-tab typography");
 assert.ok(active.includes("onPointerCancel={cancelSwipe}")&&active.includes("requestAnimationFrame")&&!active.includes("setDragX"),"gesture cancellation and rAF updates");
 assert.ok(feedCard.includes("discovery-deck-current")&&active.includes('event.animationName==="luemi-deck-leave"'),"Feed animation preserved");

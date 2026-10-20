@@ -92,9 +92,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const selectedPerson=forYouDemoPeople.find(p=>p.id===personOpen);
  const globalHeader=useRef<HeaderMotion>(null);
  const profileMode=mainTab==="profile"||!!selectedPerson;
- const headerPerson=selectedPerson?fromDemoPerson(selectedPerson):ownProfile;
- const headerName=(headerPerson.name||"Имя")+(headerPerson.age!==null?", "+headerPerson.age:"");
- const headerLocation=[headerPerson.city,headerPerson.country].filter(Boolean).join(", ");
  const savedScroll=useRef({"for-you":0,nearby:0});
  const reportForYouScroll=useCallback((top:number)=>{
    savedScroll.current["for-you"]=top;
@@ -104,9 +101,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    savedScroll.current.nearby=top;
    if(mainTab==="discover"&&discoveryTab==="nearby"&&!personOpen)globalHeader.current?.setScrollTop(top);
  },[mainTab,discoveryTab,personOpen]);
- const reportProfileScroll=useCallback((p:number,rect:DOMRect,top:number,src:string|null)=>{
-   globalHeader.current?.setProfileMorph(p,rect,top,src);
- },[]);
  useEffect(()=>{
    globalHeader.current?.reset();
    if(mainTab==="discover"&&!personOpen){
@@ -291,7 +285,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    <div className="discovery-ambient" aria-hidden="true"/>
    <GlobalHeader ref={globalHeader} mode={profileMode?"profile":"browse"} theme={theme}
      onTheme={onTheme} onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
-     name={headerName} location={headerLocation}/>
+    />
    <div className="discovery-main-panels">
      <section className="discovery-panel" hidden={mainTab!=="discover"}>
        <div className="discovery-top-tabs" role="tablist" aria-label="Разделы знакомств"
@@ -354,10 +348,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
      </section>
      <section className="discovery-panel" hidden={mainTab!=="profile"}>
-       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} onScrollMotion={reportProfileScroll} active={mainTab==="profile"}/>
+       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"}/>
      </section>
    {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"
-     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack} onScrollMotion={reportProfileScroll}/>}
+     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack}/>}
    </div>
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}

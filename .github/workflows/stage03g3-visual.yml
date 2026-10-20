@@ -1,7 +1,7 @@
-name: LUEMI Stage 03G.3 visual QA
+name: LUEMI Stage 03G.4 adaptive sheet visual QA
 on:
   push:
-    branches: ['feat/stage03g3-*']
+    branches: ['feat/stage03g3-*', 'feat/stage03g4-*']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,11 +26,11 @@ jobs:
             if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then break; fi
             sleep 1
           done
-          node scripts/stage03g3-visual-qa.mjs
+          node scripts/stage03g4-visual-qa.mjs
       - name: Preserve screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: luemi-stage03g3-profile-393px
-          path: stage03g3-*.jpg
+          name: luemi-stage03g4-adaptive-sheet
+          path: stage03g4-*.jpg
           if-no-files-found: ignore

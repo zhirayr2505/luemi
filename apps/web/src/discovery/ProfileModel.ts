@@ -5,11 +5,13 @@ import type {DemoPerson} from "./model";
 export type ProfileMode="visitor"|"owner"|"preview";
 export type Publication="published"|"draft"|"pending"|"hidden"|"rejected";
 export interface ProfilePhoto {id:string;src:string;fallback?:string;status:Publication;addedAt?:string}
+/** Future published, server-verified story media. No fixture or local draft claims active Bliki. */
+export interface ActiveBlik {id:string;src:string;kind:"image"|"video";expiresAt:string;durationMs?:number}
 export interface ProfileMasterData {
  id:string|null; source:"fixture"|"local-draft"|"server";
  name:string;age:number|null;city:string;country:string;countryCode:string;
  goal:string|null;about:string;interests:string[];languages:string[];
- photos:ProfilePhoto[];verified:boolean;premium:boolean;
+ photos:ProfilePhoto[];verified:boolean;premium:boolean;activeBlik?:ActiveBlik|null;
  registeredAt:string|null;updatedAt:string|null;
 }
 export interface ProfileView {
@@ -37,6 +39,8 @@ export function projectProfile(profile:ProfileMasterData,mode:ProfileMode):Profi
   languages:[...profile.languages],
   photos,
   premium:published&&profile.premium,
+  activeBlik:published&&profile.activeBlik&&Date.parse(profile.activeBlik.expiresAt)>Date.now()&&
+   /^https:\/\//.test(profile.activeBlik.src)?{...profile.activeBlik}:null,
   verified:published&&profile.verified,
   registeredAt:published?profile.registeredAt:null,
   updatedAt:published?profile.updatedAt:null

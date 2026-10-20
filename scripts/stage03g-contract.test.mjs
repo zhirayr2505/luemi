@@ -29,6 +29,16 @@ assert.equal(m.canMakeMain(server,"b"),true);
 assert.equal(m.canMakeMain(server,"a"),false,"draft photo cannot become public main");
 assert.equal(m.displayPhotoDate({id:"x",src:"",status:"published"}),"Дата добавления недоступна");
 assert.equal(m.draftAge({day:"30",month:"2",year:"2000"},new Date("2026-10-20")),null);
+const futureBlik={id:"published-blik",src:"https://example.com/real-story.jpg",kind:"image",
+ expiresAt:new Date(Date.now()+3600_000).toISOString()};
+assert.equal(m.projectProfile({...base,activeBlik:futureBlik},"visitor").profile.activeBlik,null,
+ "local draft must not advertise an active Blik");
+assert.equal(m.projectProfile({...base,source:"server",activeBlik:futureBlik},"visitor").profile.activeBlik?.id,
+ "published-blik","verified server Blik can be opened through circular avatar");
+assert.equal(m.projectProfile({...base,source:"server",activeBlik:{...futureBlik,expiresAt:"2025-01-01T00:00:00Z"}},"visitor").profile.activeBlik,
+ null,"expired story cannot be shown as active");
+assert.equal(m.projectProfile({...base,source:"server",activeBlik:{...futureBlik,src:"javascript:alert(1)"}},"visitor").profile.activeBlik,
+ null,"story media links must use HTTPS");
 console.log("✓ Stage 03G.A: public projection, unpublished photo guards, demo badges, owner/preview permission boundaries");
 
 assert.deepEqual(visitor.profile.photos.map(p=>p.id),["b"],"nested projection cannot carry private images");
@@ -44,10 +54,10 @@ const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki","Блики"')&&
  profile.includes('["photos","Фото"')&&profile.includes('["gifts","Подарки"')&&
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
-assert.ok(profile.includes("requestAnimationFrame(paintScroll)")&&
- profile.includes("frame.getBoundingClientRect()")&&profile.includes("onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null)")&&
- read("apps/web/src/discovery/GlobalHeader.tsx").includes("heroRect.top+heroRect.height*.57"),
- "scroll-driven shared photo uses fixed layout origin, without every-frame React renders");
+assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:false})')&&
+ profile.includes('pane.style.setProperty("--pm-sheet-y"')&&
+ profile.includes('contentPages.current[selectedIndex]?.scrollTop'),
+ "two-layer adaptive sheet uses native tab scroll, swipe boundaries and transform-only drag");
 assert.ok(profile.includes("requestAnimationFrame(()=>{dragFrame.current=null;paintTabs"),
  "tabs follow finger on compositor transform");
 assert.ok(profile.includes("tabEnd(e,true)")&&profile.includes("photoEnd(e,true)"),
@@ -70,30 +80,25 @@ assert.ok(css.includes("@media(prefers-reduced-motion:reduce)")&&
  "motion fallback, accessible tab bar and 3-column gallery exist");
 assert.ok(carousel.includes("frameId.current=window.requestAnimationFrame"),
  "locked discovery PhotoCarousel stays compositor-driven");
-console.log("✓ Stage 03G.B–G: single profile shell, morph, five tabs, viewer, native back and Discovery lock");
+console.log("✓ Stage 03G profile projection, gestures, viewer, and safe public data");
 
 const header=read("apps/web/src/discovery/GlobalHeader.tsx");
 const headerCss=read("apps/web/src/discovery/global-header.css");
-assert.ok(discovery.includes("<GlobalHeader")&&header.includes("setProfileMorph")&&header.includes("setScrollTop"),
- "one global header owns both merged tools and shared photo morph");
-assert.ok(headerCss.includes(".lh-droplet")&&headerCss.includes(".lh-profile-theme")&&
- !css.includes(".pm-global-header")&&!css.includes(".pm-morph-photo"),
- "obsolete duplicate profile header and local morph removed");
-console.log("✓ Stage 03G.2 unified chrome and liquid motion contracts");
-
+assert.ok(discovery.includes("<GlobalHeader")&&header.includes("setScrollTop")&&
+ !header.includes("setProfileMorph")&&!headerCss.includes(".lh-droplet")&&
+ !headerCss.includes(".lh-profile-info")&&!profile.includes("onScrollMotion"),
+ "global W06 wordmark is unboxed, with no liquid/avatar or duplicated floating identity");
 assert.ok(headerCss.includes("top:max(6px,calc(var(--top-safe) - 12px))"),
- "LUEMI logo Y anchor must match original Feed vertical placement on every screen");
-
+ "fixed global logo Y anchor across screens");
 assert.ok(headerCss.includes("position:absolute;inset:0 0 auto")&&
  headerCss.includes("background:transparent;box-shadow:none")&&
- css.includes(".pm-profile-sheet")&&css.includes("margin-top:-43px"),
- "profile uses full-bleed hero below transparent, layout-free wordmark");
-assert.ok(!profile.includes("photoTrack.current.style.opacity")&&
- profile.includes('className="pm-identity"')&&
- profile.includes("onClick={openMyPhotos}")&&profile.includes("pane.scrollTo("),
- "hero never blanks during scroll; identity/actions are present and functional");
-console.log("✓ Stage 03G.3: full-screen photo and overlay-only logo contracts");
+ css.includes(".pm-profile-sheet")&&css.includes("transform:translate3d(0,var(--pm-sheet-y"),
+ "full-bleed hero with independent lifting white sheet under transparent logo");
+assert.ok(profile.includes('className="pm-mini-avatar"')||
+ profile.includes('className={"pm-mini-avatar"'),
+ "small photo appears only in collapsed profile");
+assert.ok(profile.includes('onClick={openMyPhotos}')&&profile.includes('settleSheet(true)')&&
+ profile.includes("BlikViewer")&&profile.includes("view.profile.activeBlik"),
+ "gallery shortcut and future published story routing remain functional");
+console.log("✓ Stage 03G.4: independent scroll and pinned controls, no liquid morph");
 
-assert.ok(header.includes("const diameter=34*(1-t)+2.5*t")&&
- headerCss.includes("width:34px;height:34px")&&!header.includes("node.style.width="),
- "small liquid fragment scales on GPU without per-scroll geometry mutations");
