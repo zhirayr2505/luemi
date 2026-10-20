@@ -253,7 +253,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   ro.observe(bar);
   if(pages.current)ro.observe(pages.current);
   return ()=>ro.disconnect();
- },[active]);
+ },[active,tab]);
  const chooseTab=(newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
