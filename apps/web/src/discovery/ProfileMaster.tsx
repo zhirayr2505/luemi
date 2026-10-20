@@ -93,6 +93,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const photoSwipe=useRef<Swipe|null>(null),tabSwipe=useRef<Swipe|null>(null);
  const clickBlocked=useRef(0),expandedY=useRef(385),collapsedY=useRef(46),collapsedRef=useRef(false);
  const sheetProgress=useRef(0);
+ const measuredOnce=useRef(false);
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const selectedIndex=tabs.findIndex(x=>x[0]===tab);
  const tabSelectionRef=useRef<TabId>(tab);
@@ -125,6 +126,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   const measure=()=>{
    const frame=hero.current,pane=sheet.current,root=shell.current;
    if(!frame||!pane||!root)return;
+   if(!frame.offsetHeight || !root.clientWidth) return;
+   const firstPaint = !measuredOnce.current; measuredOnce.current = true;
    const shellRect=root.getBoundingClientRect();
    const logo=document.querySelector<HTMLElement>(".lh-header .lh-island img");
    const imageRect=logo?.getBoundingClientRect();
@@ -139,7 +142,9 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    // Dots always sit *below* the actual wordmark, never over the letters.
    root.style.setProperty("--pm-dots-top",((imageRect?.bottom??(shellRect.top+108))-shellRect.top+8)+"px");
    // Initial layout: do not transition a newly measured sheet from the top.
+   if(firstPaint) pane.style.transition = "none";
    paintSheet(collapsedRef.current?collapsedY.current:expandedY.current,false);
+   if(firstPaint){ void pane.offsetHeight; pane.style.transition = ""; }
   };
   measure();
   const ro=new ResizeObserver(measure);
