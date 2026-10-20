@@ -205,3 +205,8 @@
 
 /* Visitor profile is inside the content panel; the stationary header remains above it. */
 .discovery-app[data-profile-overlay=true] .discovery-bottom-nav{display:none}
+/* On Android WebView the two full-bleed Feed cards behind a visitor's profile
+   can keep their own rounded/image compositor layers alive. Suppress the
+   entirely occluded browse surface only for Feed-origin visitors. Visibility
+   preserves the mounted card, its state and pager position for returning. */
+.discovery-app[data-profile-from-feed=true] .discovery-browse-panel{visibility:hidden}
