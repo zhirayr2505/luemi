@@ -49,6 +49,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const pageTrack=useRef<HTMLDivElement>(null);
  const underline=useRef<HTMLSpanElement>(null);
  const swipeFrame=useRef<number|null>(null);
+ const pagerSettleTimer=useRef<number|null>(null);
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
@@ -141,13 +142,29 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const flushDrag=()=>{
   if(swipeFrame.current!==null){window.cancelAnimationFrame(swipeFrame.current);swipeFrame.current=null;}
  };
- const settleDrag=()=>{
+ const finishPagerSettle=()=>{
+  if(pagerSettleTimer.current!==null){window.clearTimeout(pagerSettleTimer.current);pagerSettleTimer.current=null;}
+  pageTrack.current?.classList.remove("is-settling");
+  underline.current?.classList.remove("is-settling");
+ };
+ // Commit final transform and underline offset in the same JS event before
+ // React changes the active tab. Do not animate back to the old index first.
+ const settleDrag=(targetIndex:number)=>{
   flushDrag();
+  if(pagerSettleTimer.current!==null)window.clearTimeout(pagerSettleTimer.current);
+  pageTrack.current?.classList.add("is-settling");
+  underline.current?.classList.add("is-settling");
   pageTrack.current?.classList.remove("is-finger-tracking");
   underline.current?.classList.remove("is-finger-tracking");
+  pageTrack.current?.style.setProperty("--luemi-tab-offset",(-targetIndex*100)+"%");
+  underline.current?.style.setProperty("--luemi-tab-offset",(targetIndex*100)+"%");
   paintDrag(0);
+  // transitionend is primary; this only frees the layer if WebView drops the event.
+  pagerSettleTimer.current=window.setTimeout(finishPagerSettle,380);
  };
- useEffect(()=>()=>{if(swipeFrame.current!==null)window.cancelAnimationFrame(swipeFrame.current);},[]);
+ useEffect(()=>()=>{flushDrag();
+  if(pagerSettleTimer.current!==null)window.clearTimeout(pagerSettleTimer.current);
+ },[]);
  const down=(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(event.pointerType==="mouse"&&event.button!==0)return;
   if((event.target as HTMLElement).closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-card,.nb-location"))return;
@@ -178,13 +195,17 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
   if(!g.tracking)return;
   const x=event.clientX-g.x,elapsed=Math.max(1,performance.now()-g.started);
   const velocity=Math.abs(x)/elapsed;
-  const target=Math.abs(x)>g.width*.18||velocity>.55
+  const rawTarget=Math.abs(x)>g.width*.18||velocity>.55
     ?g.index+(x<0?1:-1):g.index;
+  const target=Math.max(0,Math.min(topTabs.length-1,rawTarget));
   clickBlockUntil.current=performance.now()+260;
-  settleDrag();
+  settleDrag(target);
   if(target!==g.index)selectTab(target);
  };
- const cancelSwipe=()=>{gesture.current=null;settleDrag();};
+ const cancelSwipe=()=>{
+  const g=gesture.current;gesture.current=null;
+  if(g?.tracking)settleDrag(g.index);
+ };
  const apply=(next:DiscoveryFilter)=>{
   if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
   transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);
@@ -237,6 +258,9 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
        <div className="discovery-pages" ref={pages} onPointerDown={down}
          onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}>
          <div className="discovery-page-track" ref={pageTrack}
+           onTransitionEnd={event=>{
+             if(event.target===event.currentTarget&&event.propertyName==="transform")finishPagerSettle();
+           }}
            style={{"--luemi-tab-offset":(-tabIndex*100)+"%"} as CSSProperties}>
            <section className="discovery-page" role="tabpanel" aria-label="Лента">
              {<div className="discovery-deck-stage">
