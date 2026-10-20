@@ -126,7 +126,8 @@ assertCheck("full profile sheet anchors identity and scrolls only selected tab c
  discoveryProfile.includes("settleSheet(")&&globalHeader.includes("setScrollTop")&&
  !globalHeader.includes("setProfileMorph")&&
  !globalHeaderCss.includes(".lh-droplet")&&
- read("apps/web/src/discovery/profile-master.css").includes(".pm-page{min-height:0"));
+ read("apps/web/src/discovery/profile-master.css").includes(".pm-page{")&&
+ read("apps/web/src/discovery/profile-master.css").includes("overflow-y:auto"));
 assertCheck("deck controls hidden until incoming profile starts motion",
  discoveryCss.includes(".deck-queued .discovery-actions")&&
  discoveryCss.includes(".deck-entering .discovery-actions")&&
