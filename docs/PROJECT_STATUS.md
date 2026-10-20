@@ -94,3 +94,13 @@
 - Video review found large rectangular disappearance of multiple tiles (For You 6.6, 8.4s and Nearby 19.9s); source cause unproven without GPU trace.
 - Feature branch isolates mitigation: no scroll-triggered blur topology changes; atomic pager settle, idle Nearby prep, stable saves, compositor-driven photo gestures and pointercancel guard.
 - Do not claim the bug resolved until owner checks A55 Telegram after green CI staging deploy. Trace and FPS unavailable from the code environment.
+
+
+## Stage 03G · Profile Master · 2026-10-20
+- Baseline: staging `c0dd00a` (verified at branch creation), backed up as `backup/pre-stage03g-profile-master-20261020`. Work isolated in `feat/stage03g-profile-master`; **main and staging unchanged** during feature implementation.
+- Visual direction: approved owner reference `1000068661.png` from handoff ZIP, interpreted as mobile layout/UX inspiration, never imported as photographs or status graphics. Brand W06 logo unchanged.
+- Shared typed `ProfileModel` / `ProfileMaster` renders **owner / visitor / private public-preview** with photo publication filtering. Draft and demo data have no real Premium / verification / timestamps / user IDs.
+- Implemented 5 tabs: About, Bliki (placeholder), Photos, Gifts (visibly labeled demo), Profile metadata. Hero photo tracking and circle collapse, scoped light/dark CSS, fullscreen photo portal with swipe, 1× pinch reset, metadata fallback and role-specific controls.
+- Owner entry shows actual local registration photo draft and routes Edit to existing safe registration flow. Public preview uses the same renderer and excludes unpublished local photos; no server user was created.
+- New contracts `scripts/stage03g-contract.test.mjs` plus existing `npm run check`. Refer to `docs/STAGE03G_PROFILE_MASTER.md` and `docs/STAGE03G_BLIKI_FUTURE.md` for exact implementation and unapproved future scope.
+- CI must be green at final feature HEAD before any staging promotion. Real Galaxy A55 Telegram recording, smoothness/performance verification, accessibility checks, production backend integration and real moderation remain **open**; do not mark Stage 03G as device accepted until those gates are satisfied.
