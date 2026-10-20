@@ -80,3 +80,6 @@ assert.ok(headerCss.includes(".lh-droplet")&&headerCss.includes(".lh-profile-the
  !css.includes(".pm-global-header")&&!css.includes(".pm-morph-photo"),
  "obsolete duplicate profile header and local morph removed");
 console.log("✓ Stage 03G.2 unified chrome and liquid motion contracts");
+
+assert.ok(headerCss.includes("top:max(3px,calc(var(--top-safe) - 13px))"),
+ "LUEMI logo Y anchor must match original Feed vertical placement on every screen");
