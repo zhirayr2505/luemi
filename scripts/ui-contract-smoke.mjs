@@ -111,7 +111,36 @@ assertCheck("all ephemeral visual toasts removed but announcements accessible",
  discovery.includes('discovery-sr-status')&&discovery.includes('aria-live="polite"'));
 assertCheck("restart label not misleading and controls remain local-only",
  discovery.includes('onRestart={restartFeed}')&&discovery.includes('indicate("Демо-Лента начата заново")'));
-assertCheck("public profile uses stable svh and native vertical scroll without whole-overlay transforms",
+assertCheck("public profile follows horizontal drag on inner surface, without transforming scroll container",
  discoveryCss.includes("46svh")&&discoveryCss.includes("overflow-anchor:none")&&
- !discoveryProfile.includes('setOffset')&&!discoveryProfile.includes('setPointerCapture'));
+ discoveryCss.includes(".discovery-profile-swipe-surface")&&
+ discoveryProfile.includes("surface.current")&&discoveryProfile.includes("translate3d(")&&
+ !discoveryProfile.includes("setOffset")&&
+ discoveryProfile.includes('.discovery-profile-photo,.carousel-frame,button'));
 console.log("LUEMI Stage 03 video motion-regression contracts PASS");
+
+assertCheck("deck controls hidden until incoming profile starts motion",
+ discoveryCss.includes(".deck-queued .discovery-actions")&&
+ discoveryCss.includes(".deck-entering .discovery-actions")&&
+ discoveryCss.includes("luemi-controls-with-card")&&
+ discoveryCss.includes("var(--deck-motion,290ms)"));
+assertCheck("single fade gradient extends to very bottom of card; no rectangular overlay edge",
+ discoveryCss.includes(".discovery-card::after{")&&
+ discoveryCss.includes("rgba(31,18,41,.79) 100%")&&
+ discoveryCss.includes("background:none;pointer-events:none"));
+assertCheck("stable tab geometry while switching Chats and Discover",
+ discoveryCss.includes(".discovery-main-panels{position:relative")&&
+ discoveryCss.includes(".discovery-panel{position:absolute;inset:0")&&
+ discovery.includes("selectMainTab(value)")&&
+ discovery.includes("decoding=\"sync\" fetchPriority=\"high\""));
+assertCheck("single atomic Deck Lift commit synchronized with exit animation",
+ discovery.includes("onAnimationEnd={event=>")&&
+ discovery.includes('event.animationName==="luemi-deck-leave"')&&
+ discovery.includes("pendingCommit.current")&&
+ discovery.includes("finishDeck()"));
+assertCheck("gesture isolation: content surface follows finger; scroll remains native",
+ discoveryProfile.includes('touch-action')===false&&
+ discoveryProfile.includes("setPointerCapture")&&
+ discoveryCss.includes("touch-action:pan-y")&&
+ discoveryProfile.includes('element.style.transform="translate3d("+Math.min'));
+console.log("LUEMI Stage 03 motion v2 regression checks PASS");
