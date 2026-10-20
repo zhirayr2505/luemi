@@ -129,6 +129,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    collapsedY.current=Math.max(38,Math.min(root.clientHeight*.24,logoBottom));
    expandedY.current=Math.max(collapsedY.current+185,frame.getBoundingClientRect().bottom-shellRect.top-43);
    pane.style.setProperty("--pm-collapsed-top",collapsedY.current+"px");
+   // Dots always sit *below* the actual wordmark, never over the letters.
+   root.style.setProperty("--pm-dots-top",((imageRect?.bottom??(shellRect.top+108))-shellRect.top+8)+"px");
    // Initial layout: do not transition a newly measured sheet from the top.
    paintSheet(collapsedRef.current?collapsedY.current:expandedY.current,false);
   };
