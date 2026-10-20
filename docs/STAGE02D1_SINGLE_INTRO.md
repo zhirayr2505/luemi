@@ -1,3 +1,0 @@
-# Stage 02D1 · Approved single LUEMI intro
-
-Owner’s decision based on two Galaxy A55 screenshots 2026-10-19: KEEP first intro frame (centered compact raster wordmark, title and moving Milky Mist), REMOVE distinct larger-logo, long-tagline welcome screen. Reveal a premium gradient “Начать” CTA on that SAME first frame once minimum 1800ms visual intro and genuine authentication/preload finish. No separate second screen. Tap leads to existing first registration step with motion-safe fade. Preserve existing pinned registration logo and gradient progress indicator, circular arrows, themes, Telegram fullscreen, HMAC and server behavior. No data storage or Supabase change. Confirm in Telegram after CI, Render and owner’s mobile QA.
