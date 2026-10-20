@@ -28,6 +28,7 @@ interface Props{
  onSave:(id:string)=>void;onPerson:(id:string)=>void;
  expanded:CollectionId|"best"|null;onExpanded:(id:CollectionId|"best"|null)=>void;
  settingsOpen:boolean;onSettingsOpen:(b:boolean)=>void;
+ onScrollTop?:(top:number)=>void;
 }
 function reason(p:DemoPerson,d:RegistrationDraft){
  const ev=evidence(p,d);
@@ -68,7 +69,7 @@ function emptyMessage(id:CollectionId){
   default:return "В этой теме пока нет подходящих демо-анкет. Попробуй изменить фильтры.";
  }
 }
-export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,settingsOpen,onSettingsOpen}:Props){
+export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,settingsOpen,onSettingsOpen,onScrollTop}:Props){
  const [prefs,setPrefs]=useState<Prefs>(savedPrefs);
  const scroll=useRef<HTMLDivElement>(null), first=useRef<HTMLElement>(null);
  useEffect(()=>{try{localStorage.setItem(storeKey,JSON.stringify(prefs));}catch{/* restricted Telegram storage */}},[prefs]);
@@ -106,7 +107,7 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
   </section>;
  };
  return <div className="fy-root">
-  <div className="fy-scroll" ref={scroll}>
+  <div className="fy-scroll" ref={scroll} onScroll={event=>onScrollTop?.(event.currentTarget.scrollTop)}>
    <div className="fy-hero">
     <div className="fy-hero-glow" aria-hidden="true"/><div className="fy-hero-mark" aria-hidden="true"><Heart size={89} strokeWidth={.85}/><Sparkles size={29}/></div>
     <div className="fy-hero-copy">
@@ -132,7 +133,7 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
   {expanded&&<section className="fy-expanded" role="region" aria-label={"Полная подборка: "+viewTitle}>
    <header><button type="button" onClick={()=>onExpanded(null)} aria-label="Назад к подборкам" className="fy-back"><ArrowLeft size={20}/></button>
     <div><h2>{viewTitle}</h2><p>Полная подборка · демо</p></div></header>
-   {expandedPeople.length?<div className="fy-grid">{expandedPeople.map(one)}</div>:<Empty text={expanded==="best"?"Нет подходящих тестовых анкет. Измени фильтры.":emptyMessage(expanded)}/>}
+   {expandedPeople.length?<div className="fy-grid" onScroll={event=>onScrollTop?.(event.currentTarget.scrollTop)}>{expandedPeople.map(one)}</div>:<Empty text={expanded==="best"?"Нет подходящих тестовых анкет. Измени фильтры.":emptyMessage(expanded)}/>}
   </section>}
   {settingsOpen&&<section className="fy-manage" role="dialog" aria-modal="true" aria-label="Управление подборками">
    <header><div><h2>Мои подборки</h2><p>Избранное, порядок и видимость тематических блоков.</p></div>
