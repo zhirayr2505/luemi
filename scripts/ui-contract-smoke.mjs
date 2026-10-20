@@ -81,7 +81,7 @@ assertCheck("entire profile and action controls share a single keyed card",read(
 assertCheck("no old standalone glass action tray",!discoveryCss.includes(".discovery-card-facts")
  && !discoveryCss.includes(".discovery-action-hint") && !discoveryCss.includes(".discovery-city"));
 assertCheck("real finger-tracking photo carousel retained with full-width bars",discoveryCss.includes(".discovery-photo .photo-progress")
- && discoveryCss.includes("left:11px;right:11px") && read("apps/web/src/ui/PhotoCarousel.tsx").includes("setDx"));
+ && discoveryCss.includes("left:11px;right:11px") && read("apps/web/src/ui/PhotoCarousel.tsx").includes("requestAnimationFrame"));
 assertCheck("premium simulated account and capped interests",read("apps/web/src/discovery/FeedCard.tsx").includes("person.premium")
  && read("apps/web/src/discovery/FeedCard.tsx").includes("Crown")
  && read("apps/web/src/discovery/FeedCard.tsx").includes("person.interests.slice(0,3)")&&fixture.includes("premium:index===0"));

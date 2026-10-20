@@ -39,4 +39,4 @@ assert.ok(!component.includes("demoDistanceKm(")&&!source.includes("demoDistance
 console.log("✓ Stage 03E: strict declared location, dual column, gesture safety, savings, Feed/radius locks");
 
 assert.ok(discovery.includes('nearbyPrepared&&<Nearby draft={draft}'),"Nearby prepared only on demand");
-assert.ok(discovery.includes("if(bounded>0)setNearbyPrepared(true)"),"middle and right tabs warm Nearby before swipe");
+assert.ok(discovery.includes("if(bounded===2)setNearbyPrepared(true)")&&discovery.includes("requestIdleCallback"),"Nearby prewarmed only outside the critical For You transition");

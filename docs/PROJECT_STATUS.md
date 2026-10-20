@@ -88,3 +88,9 @@
 - Approved priority: smooth scroll/gestures; adaptive motion-only miniature glass optimization with unchanged static Premium visuals.
 - Isolated code branch `feat/stage03f-discovery-polish` from staging `878a66b`, plan in `docs/STAGE03F_FINAL_POLISH.md`.
 - Strict locks: Feed Polish 2, For You/Nearby aesthetics, radius 1–5000km, branding, public profile, production main.
+
+
+## Stage 03F.2 — White flash / smoothness · 2026-10-20
+- Video review found large rectangular disappearance of multiple tiles (For You 6.6, 8.4s and Nearby 19.9s); source cause unproven without GPU trace.
+- Feature branch isolates mitigation: no scroll-triggered blur topology changes; atomic pager settle, idle Nearby prep, stable saves, compositor-driven photo gestures and pointercancel guard.
+- Do not claim the bug resolved until owner checks A55 Telegram after green CI staging deploy. Trace and FPS unavailable from the code environment.
