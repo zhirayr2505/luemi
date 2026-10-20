@@ -43,6 +43,24 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
  // Prepare Nearby when For You becomes current or Nearby is selected; keep it mounted thereafter.
  const [nearbyPrepared,setNearbyPrepared]=useState(false);
+ // Prewarm Nearby only after For You's first pager transition, during an idle
+ // interval. A direct first visit to Nearby still mounts synchronously.
+ useEffect(()=>{
+  if(nearbyPrepared||discoveryTab!=="for-you"||mainTab!=="discover")return;
+  let cancelled=false;
+  let idleId:number|null=null;
+  const timer=window.setTimeout(()=>{
+   if("requestIdleCallback" in window){
+    idleId=window.requestIdleCallback(()=>{
+     if(!cancelled)setNearbyPrepared(true);
+    },{timeout:1800});
+   }else if(!cancelled)setNearbyPrepared(true);
+  },450);
+  return ()=>{
+   cancelled=true;window.clearTimeout(timer);
+   if(idleId!==null&&"cancelIdleCallback" in window)window.cancelIdleCallback(idleId);
+  };
+ },[nearbyPrepared,discoveryTab,mainTab]);
  const gesture=useRef<Gesture|null>(null);
  const clickBlockUntil=useRef(0);
  const pages=useRef<HTMLDivElement>(null);
@@ -129,7 +147,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const selectTab=(index:number)=>{
   const bounded=Math.max(0,Math.min(topTabs.length-1,index));
   if(topTabs[bounded][0]===discoveryTab)return;
-  if(bounded>0)setNearbyPrepared(true);
+  if(bounded===2)setNearbyPrepared(true);
   setDiscoveryTab(topTabs[bounded][0]);
   window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
  };
