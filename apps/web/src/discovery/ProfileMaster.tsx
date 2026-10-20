@@ -230,11 +230,12 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   if(!indicator||!metrics.length)return;
   const first=metrics[Math.max(0,Math.min(metrics.length-1,i))];
   const other=metrics[Math.max(0,Math.min(metrics.length-1,i+(dx<0?1:-1)))];
+  if(!first||!other)return;
   const ratio=Math.min(1,Math.abs(dx)/Math.max(1,tabViewport.current));
   const x=first.left+(other.left-first.left)*ratio;
   const width=first.width+(other.width-first.width)*ratio;
   // Only compositor transforms during horizontal dragging: no width/layout reads.
-  indicator.style.transform=`translate3d(${x}px,0,0) scaleX(${width/Math.max(1,tabMetrics.current[0].width)})`;
+  indicator.style.transform=`translate3d(${x}px,0,0) scaleX(${width/Math.max(1,tabMetrics.current[0]?.width??1)})`;
  };
  useLayoutEffect(()=>{
   const bar=tabBar.current;
