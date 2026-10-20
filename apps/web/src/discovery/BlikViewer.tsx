@@ -10,16 +10,18 @@ export function BlikViewer({blik,name,onClose}:Props){
  const video=useRef<HTMLVideoElement>(null);
  const duration=Math.max(2500,Math.min(30000,blik.durationMs||6000));
  const paused=useRef(false);
+ const closeRef=useRef(onClose);
+ useEffect(()=>{closeRef.current=onClose;},[onClose]);
  useEffect(()=>{
   if(blik.kind==="video")return;
   const start=performance.now();let raf=0;
   const tick=(now:number)=>{
    if(paused.current){raf=requestAnimationFrame(tick);return;}
    const value=Math.min(1,(now-start)/duration);
-   setProgress(value);if(value>=1)onClose();else raf=requestAnimationFrame(tick);
+   setProgress(value);if(value>=1)closeRef.current();else raf=requestAnimationFrame(tick);
   };
   raf=requestAnimationFrame(tick);return ()=>cancelAnimationFrame(raf);
- },[blik.kind,duration,onClose]);
+ },[blik.kind,duration]);
  useEffect(()=>{
   const key=(e:KeyboardEvent)=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();onClose();}};
   window.addEventListener("keydown",key,true);
