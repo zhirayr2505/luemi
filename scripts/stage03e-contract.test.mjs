@@ -31,7 +31,7 @@ assert.ok(component.includes("draft.interests.find(id=>person.interests.includes
 assert.ok(component.includes("loading=\"lazy\"")&&component.includes("IntersectionObserver"),"lazy media and bounded incremental rendering");
 assert.ok(css.includes("grid-template-columns:repeat(2,minmax(0,1fr))"),"two-column portrait grid");
 assert.ok(css.includes("touch-action:pan-y")&&css.includes("aspect-ratio:4/5"),"vertical scroll from photos, 4:5 geometry");
-assert.ok(discovery.includes('<Nearby draft={draft}')&&discovery.includes(".nb-scroll,.nb-card"),"wired into existing tabs with gesture isolation");
+assert.ok(discovery.includes('<Nearby draft={draft}')&&discovery.includes(".nb-card,.nb-location")&&!discovery.includes(".nb-scroll,.nb-card"),"background horizontal swipes are preserved while photo and geography controls are isolated");
 assert.ok(discovery.includes("onSave={toggleForYouSave}")&&discovery.includes("onPerson={setPersonOpen}"),"shared save and existing public profile");
 assert.ok(discovery.includes('event.animationName==="luemi-deck-leave"')&&feed.includes("discovery-deck-current"),"Feed motion remains intact");
 assert.ok(model.includes("radius:5000"),"existing geography setting unchanged");
