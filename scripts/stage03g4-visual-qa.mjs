@@ -19,7 +19,7 @@ try{
   console.log("QA_SNAPSHOT_"+label.toUpperCase()+"="+jpeg.toString("base64"));
  };
  const state=()=>page.evaluate(()=>{
-  const root=document.querySelector(".pm-shell:not(.pm-shell .pm-shell)");
+  const root=document.querySelector(".pm-dialog")||document.querySelector(".pm-inline");
   const sheet=root?.querySelector(".pm-profile-sheet"),hero=root?.querySelector(".pm-hero");
   const avatar=root?.querySelector(".pm-mini-avatar"),page=root?.querySelector(".pm-tab.active");
   return {mode:root?.getAttribute("data-sheet-state"),heroTop:hero?.getBoundingClientRect().top,
