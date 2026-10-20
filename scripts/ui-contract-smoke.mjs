@@ -110,7 +110,7 @@ assertCheck("all ephemeral visual toasts removed but announcements accessible",
  !discoveryCss.includes(".discovery-toast")&&!discovery.includes('className="discovery-toast"')&&
  discovery.includes('discovery-sr-status')&&discovery.includes('aria-live="polite"'));
 assertCheck("restart label not misleading and controls remain local-only",
- discovery.includes('onClick={restartFeed}')&&discovery.includes('indicate("Демо-Лента начата заново")'));
+ discovery.includes('onRestart={restartFeed}')&&discovery.includes('indicate("Демо-Лента начата заново")'));
 assertCheck("public profile uses stable svh and native vertical scroll without whole-overlay transforms",
  discoveryCss.includes("46svh")&&discoveryCss.includes("overflow-anchor:none")&&
  !discoveryProfile.includes('setOffset')&&!discoveryProfile.includes('setPointerCapture'));
