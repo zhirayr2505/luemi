@@ -26,7 +26,7 @@ const icons={online:Users,common:Heart,goals:Sparkles,new:Sparkles,nearby:MapPin
 interface Props{
  draft:RegistrationDraft;filters:DiscoveryFilter;saved:string[];
  onSave:(id:string)=>void;onPerson:(id:string)=>void;
- expanded:CollectionId|null;onExpanded:(id:CollectionId|null)=>void;
+ expanded:CollectionId|"best"|null;onExpanded:(id:CollectionId|"best"|null)=>void;
  settingsOpen:boolean;onSettingsOpen:(b:boolean)=>void;
 }
 function reason(p:DemoPerson,d:RegistrationDraft){
@@ -87,7 +87,8 @@ export function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,
   const order=[...p.order],a=order.indexOf(id),b=a+n;if(b<0||b>=order.length)return p;
   [order[a],order[b]]=[order[b],order[a]];return {...p,order};
  });
- const viewTitle=collectionDefinitions.find(c=>c.id===expanded)?.title;
+ const viewTitle=expanded==="best"?"Лучшие совпадения сегодня":collectionDefinitions.find(c=>c.id===expanded)?.title;
+ const expandedPeople=expanded==="best"?ranked:expanded?members[expanded]:[];
  const jump=()=>{
   if(!scroll.current||!first.current)return;
   const s=scroll.current;
@@ -119,7 +120,8 @@ export function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,
     <button type="button" onClick={()=>onSettingsOpen(true)}><Settings2 size={16}/> Настроить</button></div>
    <section className="fy-section" ref={first} aria-label="Лучшие совпадения сегодня">
     <div className="fy-section-header"><div><h3><Sparkles size={18}/>Лучшие совпадения сегодня</h3>
-     <p>Подборка-пример по интересам, целям и языкам</p></div></div>
+     <p>Подборка-пример по интересам, целям и языкам</p></div>
+     {ranked.length>0&&<button type="button" onClick={()=>onExpanded("best")}>Смотреть всех <ArrowRight size={14}/></button>}</div>
     {ranked.length?rail(ranked,"Персональные рекомендации · демо"):<Empty text="По выбранным фильтрам нет тестовых анкет. Измени параметры поиска."/>}
    </section>
    {shown.includes("common")&&section("common")}
@@ -130,7 +132,7 @@ export function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,
   {expanded&&<section className="fy-expanded" role="region" aria-label={"Полная подборка: "+viewTitle}>
    <header><button type="button" onClick={()=>onExpanded(null)} aria-label="Назад к подборкам" className="fy-back"><ArrowLeft size={20}/></button>
     <div><h2>{viewTitle}</h2><p>Полная подборка · демо</p></div></header>
-   {members[expanded].length?<div className="fy-grid">{members[expanded].map(one)}</div>:<Empty text={emptyMessage(expanded)}/>}
+   {expandedPeople.length?<div className="fy-grid">{expandedPeople.map(one)}</div>:<Empty text={expanded==="best"?"Нет подходящих тестовых анкет. Измени фильтры.":emptyMessage(expanded)}/>}
   </section>}
   {settingsOpen&&<section className="fy-manage" role="dialog" aria-modal="true" aria-label="Управление подборками">
    <header><div><h2>Мои подборки</h2><p>Избранное, порядок и видимость тематических блоков.</p></div>

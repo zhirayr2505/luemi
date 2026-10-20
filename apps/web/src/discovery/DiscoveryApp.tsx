@@ -44,7 +44,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const [savedOpen,setSavedOpen]=useState(false);
  const [personOpen,setPersonOpen]=useState<string|null>(null);
  const [interestOpen,setInterestOpen]=useState<string|null>(null);
- const [forYouCollection,setForYouCollection]=useState<CollectionId|null>(null);
+ const [forYouCollection,setForYouCollection]=useState<CollectionId|"best"|null>(null);
  const [forYouSettings,setForYouSettings]=useState(false);
  const [transitionKind,setTransitionKind]=useState<DemoKind|null>(null);
  const transitionRef=useRef<number|null>(null);
