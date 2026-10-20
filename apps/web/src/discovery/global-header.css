@@ -17,9 +17,16 @@
  backdrop-filter:none;-webkit-backdrop-filter:none;transform-origin:center;
 }
 .lh-island img{
- display:block;width:113px;height:42px;max-width:100%;object-fit:contain;
+ display:block;grid-area:1/1;width:113px;height:42px;max-width:100%;object-fit:contain;
  pointer-events:none;filter:drop-shadow(0 1px 2px rgba(29,12,40,.20));
 }
+.lh-island .lh-logo-contrast{
+ opacity:var(--lh-contrast,0);
+ filter:drop-shadow(0 1px 1px rgba(41,18,60,.46))
+        drop-shadow(0 2px 4px rgba(75,34,99,.55));
+ transition:opacity 360ms cubic-bezier(.22,.79,.22,1);
+}
+.lh-header[data-profile-dragging=true] .lh-logo-contrast{transition:none}
 .lh-tools{
  position:absolute;top:48px;left:50%;transform:translateX(-50%);
  display:flex;align-items:center;gap:8px;z-index:1;pointer-events:auto;
@@ -42,8 +49,13 @@
 .lh-header[data-tools-merged=true] .lh-tool{pointer-events:none}
 .lh-header button:focus-visible{outline:2px solid #bc80eb;outline-offset:3px}
 .lh-profile-theme{
- position:absolute;top:max(10px,calc(var(--top-safe) - 8px));left:calc(50% + 69px);
- width:31px;height:31px;z-index:5;
+ position:absolute;top:8px;left:calc(50% + 62px);
+ width:28px;height:28px;z-index:5;padding:0;
+ border-color:rgba(255,255,255,.48);
+ box-shadow:0 2px 7px rgba(44,19,72,.09),inset 0 1px rgba(255,255,255,.65);
+}
+.lh-profile-theme::before{
+ content:"";position:absolute;inset:-6px;pointer-events:auto;
 }
 .luemi-shell[data-theme=dark] .lh-island{background:transparent;border:0;box-shadow:none;backdrop-filter:none}
 .luemi-shell[data-theme=dark] .lh-tool,.luemi-shell[data-theme=dark] .lh-profile-theme{
