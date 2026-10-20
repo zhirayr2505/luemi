@@ -6,10 +6,10 @@ import type {ProfilePhoto,ProfileView} from "./ProfileModel";
 import {canMakeMain,displayPhotoDate} from "./ProfileModel";
 
 type Props={view:ProfileView;photos:ProfilePhoto[];initial:number;source:HTMLElement|null;
- onClose:()=>void;onMain?:(id:string)=>void};
+ onClose:()=>void;onMain?:(id:string)=>void;registerBack?:(handler:(()=>boolean)|null)=>void};
 type Gesture={id:number;x:number;y:number;time:number;axis:""|"x"|"y";startIndex:number;pinch:boolean};
 const duration=240;
-export function PhotoViewer({view,photos,initial,source,onClose,onMain}:Props){
+export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerBack}:Props){
  const [index,setIndex]=useState(Math.min(initial,Math.max(0,photos.length-1)));
  const [menu,setMenu]=useState(false);
  const [message,setMessage]=useState("");
@@ -70,6 +70,12 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain}:Props){
   animate(true);
   cleanup.current=window.setTimeout(onClose,matchMedia("(prefers-reduced-motion: reduce)").matches?0:duration+30);
  };
+ useEffect(()=>{
+  if(!registerBack)return;
+  const handle=()=>{requestClose();return true;};
+  registerBack(handle);
+  return ()=>registerBack(null);
+ },[menu,registerBack]);
  const resetGesture=()=>{
   gesture.current=null;pointer.current.clear();zoom.current=1;
   if(image.current){image.current.style.transition="transform 230ms cubic-bezier(.2,.75,.2,1)";image.current.style.transform="none";}
