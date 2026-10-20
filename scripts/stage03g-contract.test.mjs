@@ -106,7 +106,7 @@ assert.equal((css.match(/^\.pm-profile-sheet\{/gm)||[]).length,1,
 assert.ok(!css.includes("border-radius 390ms")&&css.includes("border-radius:34px 34px 0 0"),
  "sheet keeps stable rounded corners while moving on compositor");
 assert.ok(css.includes(".pm-photo-blur")&&css.includes("filter:blur(11px)")&&
- css.includes("opacity 380ms"),"blur is fixed-cost and crossfaded, not recalculated each scroll event");
+ css.includes("opacity 360ms"),"blur is fixed-cost and crossfaded, not recalculated each scroll event");
 assert.ok(profile.includes("imageRect.height*.11")&&
  profile.includes('pane.style.setProperty("--pm-collapsed-top"'),
  "collapsed top overlaps lower 11% of measured actual logo instead of system controls");
