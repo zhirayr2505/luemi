@@ -1,5 +1,5 @@
 import {forwardRef,useImperativeHandle,useRef} from "react";
-import {ArrowLeft,Bookmark,Moon,SlidersHorizontal,Sun} from "lucide-react";
+import {Bookmark,Moon,SlidersHorizontal,Sun} from "lucide-react";
 import "./global-header.css";
 
 const logo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
@@ -11,14 +11,14 @@ export type HeaderMotion={
 };
 type Props={
   mode:HeaderMode;theme:"light"|"dark";onTheme:()=>void;
-  onFilters:()=>void;onSaved:()=>void;onBack?:()=>void;
+  onFilters:()=>void;onSaved:()=>void;
   name?:string;location?:string;
 };
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 const smooth=(p:number)=>p*p*(3-2*p);
 
 export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
- {mode,theme,onTheme,onFilters,onSaved,onBack,name,location},ref
+ {mode,theme,onTheme,onFilters,onSaved,name,location},ref
 ){
  const host=useRef<HTMLElement>(null);
  const island=useRef<HTMLButtonElement>(null);
@@ -46,39 +46,44 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    if(Math.abs(top-lastScroll.current)>.5)manual.current=false;
    lastScroll.current=top;paintTools(top);
   },
-  setProfileMorph:(progress:number,heroRect:DOMRect,scrollTop:number,photo:string|null)=>{
+  setProfileMorph:(progress:number,heroRect:DOMRect,_scrollTop:number,photo:string|null)=>{
    if(mode!=="profile")return;
-   const node=droplet.current,img=portrait.current,target=island.current,root=host.current;
-   if(!node||!img||!target||!root)return;
-   // Read layout before mutating animated styles to avoid forced reflow.
+   const root=host.current,target=island.current,node=droplet.current,img=portrait.current;
+   if(!root||!target||!node||!img)return;
+   const p=clamp(progress);
+   const compact=smooth(clamp((p-.47)/.32));
    const goal=target.getBoundingClientRect();
-   const p=clamp(progress),e=1-Math.pow(1-p,1.65);
-   const compact=smooth(clamp((p-.26)/.52));
    root.style.setProperty("--lh-compact",String(compact));
-   root.style.setProperty("--lh-text-x",(-8*(1-compact))+"px");
-   const impulse=Math.exp(-Math.pow((p-.87)/.095,2))*.057;
-   root.style.setProperty("--lh-impact",String(impulse));
-   if(!photo||p<.008||p>=1){node.style.opacity="0";return;}
+   root.style.setProperty("--lh-text-x",(-9*(1-compact))+"px");
+   // A temporary soft halo, never a permanent pill surrounding the logo.
+   const impact=Math.exp(-Math.pow((p-.91)/.075,2));
+   root.style.setProperty("--lh-glow",String(impact*.74));
+   root.style.setProperty("--lh-impact",String(impact*.035));
+   if(!photo||p<=.37||p>=.995){
+     node.style.opacity="0";
+     return;
+   }
    if(imageSrc.current!==photo){img.src=photo;imageSrc.current=photo;}
-   // Source is measured in viewport coordinates and restored to its
-   // unscrolled origin; the shared element lives outside the clipping scroll.
-   const x0=heroRect.left,y0=heroRect.top+scrollTop;
-   const w0=heroRect.width,h0=heroRect.height;
-   const goalX=goal.left+goal.width*.5-9,goalY=goal.top+goal.height*.5-9;
-   const x=x0+(goalX-x0)*e,y=y0+(goalY-y0)*e;
-   const w=w0+(18-w0)*e,h=h0+(18-h0)*e;
-   node.style.width=w0+"px";node.style.height=h0+"px";
-   node.style.transform=`translate3d(${x}px,${y}px,0) scale(${w/Math.max(w0,1)},${h/Math.max(h0,1)})`;
-   // Oval, continuously rounded liquid silhouette. Never render an
-   // intermediate square and never move the actual brand wordmark.
-   const radiusX=(25/Math.max(w0,1)*100)*(1-e)+50*e;
-   const radiusY=(25/Math.max(h0,1)*100)*(1-e)+50*e;
-   node.style.borderRadius=`${radiusX}% ${radiusX*.93}% ${radiusX}% ${radiusX*.89}% / ${radiusY*.92}% ${radiusY}% ${radiusY*.9}% ${radiusY}%`;
-   node.style.opacity=String(clamp((p-.008)/.045)*clamp((1-p)/.105));
+   // An intentionally SMALL crop of the original photo forms the droplet.
+   // The hero itself stays fully visible and scrolls naturally; there is no
+   // duplicate full-size rectangle and no empty gradient beneath the morph.
+   const t=smooth(clamp((p-.38)/.57));
+   const diameter=78*(1-t)+3*t;
+   const sourceX=heroRect.left+heroRect.width/2-39;
+   const sourceY=Math.max(goal.bottom+43,Math.min(heroRect.top+heroRect.height*.53,heroRect.bottom-95));
+   const targetX=goal.left+goal.width/2, targetY=goal.top+goal.height/2;
+   const left=(sourceX+39)*(1-t)+targetX*t-diameter/2;
+   const top=(sourceY+39)*(1-t)+targetY*t-diameter/2;
+   node.style.width=diameter+"px";node.style.height=diameter+"px";
+   node.style.transform=`translate3d(${left}px,${top}px,0) rotate(${Math.sin(Math.PI*t)*13}deg) scaleX(${1+.16*Math.sin(Math.PI*t)})`;
+   node.style.borderRadius=`${50-7*Math.sin(Math.PI*t)}% ${50+5*Math.sin(Math.PI*t)}% 50% 50%`;
+   const appear=smooth(clamp((p-.38)/.08));
+   const vanish=1-smooth(clamp((p-.85)/.13));
+   node.style.opacity=String(appear*vanish);
   },
   reset:()=>{
    lastScroll.current=0;manual.current=false;
-   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-compact","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-text-x","-8px");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
+   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-compact","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-glow","0");host.current.style.setProperty("--lh-text-x","-8px");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
    if(droplet.current)droplet.current.style.opacity="0";
   }
  }),[mode]);
@@ -88,7 +93,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   manual.current=!manual.current;paintTools(lastScroll.current);
  };
  return <header ref={host} className={"lh-header lh-"+mode} style={{"--lh-p":0,"--lh-compact":0,"--lh-impact":0} as React.CSSProperties}>
-  {mode==="profile"&&onBack&&<button className="lh-back" type="button" onClick={onBack} aria-label="Назад"><ArrowLeft size={19}/></button>}
+  
   <div className="lh-center">
    <button className="lh-island" type="button" ref={island} onClick={toggleIsland}
      aria-label={mode==="browse"?"Раскрыть инструменты LUEMI":"LUEMI"} title="LUEMI">
