@@ -46,7 +46,6 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const gesture=useRef<Gesture|null>(null);
  const clickBlockUntil=useRef(0);
  const pages=useRef<HTMLDivElement>(null);
- const discoveryRoot=useRef<HTMLDivElement>(null);
  const pageTrack=useRef<HTMLDivElement>(null);
  const underline=useRef<HTMLSpanElement>(null);
  const swipeFrame=useRef<number|null>(null);
@@ -70,28 +69,6 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
- // The scrolling lists own their native scroll. Temporarily reduce only repeated
- // small-card backdrop layers while moving; no React state or rerender per scroll event.
- useEffect(()=>{
-  const root=discoveryRoot.current;if(!root)return;
-  let idleTimer:number|null=null;
-  const onScroll=(event:Event)=>{
-   if(!(event.target instanceof Element)||
-      !event.target.matches(".fy-scroll,.fy-grid,.fy-rail,.nb-scroll"))return;
-   root.classList.add("is-discovery-scrolling");
-   if(idleTimer!==null)window.clearTimeout(idleTimer);
-   idleTimer=window.setTimeout(()=>{
-    root.classList.remove("is-discovery-scrolling");
-    idleTimer=null;
-   },160);
-  };
-  root.addEventListener("scroll",onScroll,{capture:true,passive:true});
-  return ()=>{
-   root.removeEventListener("scroll",onScroll,true);
-   if(idleTimer!==null)window.clearTimeout(idleTimer);
-   root.classList.remove("is-discovery-scrolling");
-  };
- },[]);
  // Commit only after the outgoing full card completes its own animation.
  // Timeout is a safety fallback for backgrounded or reduced-motion WebViews.
  const finishDeck=useCallback(()=>{
@@ -168,7 +145,6 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
   flushDrag();
   pageTrack.current?.classList.remove("is-finger-tracking");
   underline.current?.classList.remove("is-finger-tracking");
-  discoveryRoot.current?.classList.remove("is-discovery-moving");
   paintDrag(0);
  };
  useEffect(()=>()=>{if(swipeFrame.current!==null)window.cancelAnimationFrame(swipeFrame.current);},[]);
@@ -187,7 +163,6 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
     g.tracking=true;
     pageTrack.current?.classList.add("is-finger-tracking");
     underline.current?.classList.add("is-finger-tracking");
-    discoveryRoot.current?.classList.add("is-discovery-moving");
     try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older Telegram WebView */}
   }
   if(event.cancelable)event.preventDefault();
@@ -238,7 +213,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
    setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
- return <div className="discovery-app" ref={discoveryRoot}>
+ return <div className="discovery-app">
    <div className="discovery-ambient" aria-hidden="true"/>
    <header className="discovery-header">
      <img className="discovery-brand" src={logoSrc} alt="luemi" decoding="sync" fetchPriority="high"/>

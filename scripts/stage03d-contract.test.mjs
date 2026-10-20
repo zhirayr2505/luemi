@@ -64,8 +64,8 @@ const polishedDiscovery=readFileSync(new URL("../apps/web/src/discovery/Discover
 const polishedForYou=readFileSync(new URL("../apps/web/src/discovery/ForYou.tsx",import.meta.url),"utf8");
 const polishedCss=readFileSync(new URL("../apps/web/src/discovery/discovery.css",import.meta.url),"utf8");
 assert.ok(polishedForYou.includes("const PersonTile=memo(function PersonTile"),"repeated For You portrait tiles memoized");
-assert.ok(polishedDiscovery.includes('root.addEventListener("scroll",onScroll,{capture:true,passive:true})'),"passive native scroll observer");
+assert.ok(!polishedDiscovery.includes("is-discovery-scrolling")&&!polishedDiscovery.includes("is-discovery-moving"),"motion-class switching removed to keep glass layers stable");
 assert.ok(polishedDiscovery.includes('width:pages.current?.clientWidth||window.innerWidth')&&polishedDiscovery.includes("const width=g.width"),"gesture width cached on pointer down, no layout read on movement");
-assert.ok(polishedCss.includes("is-discovery-scrolling")&&polishedCss.includes(".nb-bookmark")&&polishedCss.includes("backdrop-filter:none"),"motion-only blur reduction for repeated badges");
+assert.ok(!polishedCss.includes("is-discovery-scrolling")&&!polishedCss.includes("is-discovery-moving"),"do not toggle GPU backdrop-filter topology on scroll");
 assert.ok(!polishedDiscovery.includes("setDragX"),"pointer movement remains outside React state");
-console.log("✓ Stage 03F: native scroll, cached gesture geometry, reusable cards, adaptive glass");
+console.log("✓ Stage 03F/03F.2: native scroll, cached geometry, reusable cards, stable glass layers");
