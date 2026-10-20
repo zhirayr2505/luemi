@@ -152,6 +152,12 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    gesture={x:t.clientX,y:t.clientY,start:performance.now(),
     down:collapsedRef.current,scrollTop:contentPages.current[selectedIndex]?.scrollTop||0,
     dragging:false,blocked:false};
+   // Critical: an always-mounted non-passive touchmove listener on the whole
+   // sheet blocks Chrome's compositor scrolling of EVERY tab on Android.
+   // A touch starting deep in tab content needs only a passive listener;
+   // one starting at the edge may need preventDefault to drag the sheet.
+   pane.removeEventListener("touchmove",move);
+   pane.addEventListener("touchmove",move,{passive:!gesture.down||gesture.scrollTop<=1?false:true});
   };
   const move=(e:TouchEvent)=>{
    const g=gesture;if(!g||e.touches.length!==1)return;
@@ -169,15 +175,15 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    paintSheet(offset,true);
   };
   const end=(e:TouchEvent)=>{
+   pane.removeEventListener("touchmove",move);
    const g=gesture;gesture=null;if(!g||!g.dragging)return;
    const t=e.changedTouches[0];const dy=t.clientY-g.y,dt=Math.max(1,performance.now()-g.start);
    const threshold=Math.min(90,Math.max(65,expandedY.current*.2));
    const commit=g.down?(dy>threshold||dy/dt>.65):(dy< -threshold||dy/dt<-.65);
    settleSheet(g.down?!commit:commit);
   };
-  const cancel=()=>{const g=gesture;gesture=null;if(g?.dragging)settleSheet(g.down);};
+  const cancel=()=>{pane.removeEventListener("touchmove",move);const g=gesture;gesture=null;if(g?.dragging)settleSheet(g.down);};
   pane.addEventListener("touchstart",start,{passive:true});
-  pane.addEventListener("touchmove",move,{passive:false});
   pane.addEventListener("touchend",end,{passive:true});
   pane.addEventListener("touchcancel",cancel,{passive:true});
   return ()=>{
