@@ -20,6 +20,7 @@ on:
       - 'feat/stage03g3-*'
       - 'feat/stage03g4-*'
       - 'feat/stage03g5-*'
+      - 'feat/stage03g6-*'
       - 'fix/stage03-*'
   pull_request:
     branches:
