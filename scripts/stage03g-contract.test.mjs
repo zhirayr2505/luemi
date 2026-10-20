@@ -143,4 +143,9 @@ assert.ok(css.includes('contain:paint;isolation:isolate;')&&
  css.includes('overflow-anchor:none;contain:layout paint;')&&
  !css.includes('.pm-pages-track.is-finger-tracking'),
  "compositor paint boundaries contain content and obsolete dead styles are removed");
+assert.ok(header.includes("pendingTop.current=top")&&
+ header.includes("toolsFrame.current=requestAnimationFrame")&&
+ header.includes("lastControlsValue.current=v")&&
+ header.includes("cancelAnimationFrame(toolsFrame.current)"),
+ "browse logo controls are coalesced to one frame and stale paints are cancelled");
 console.log("✓ Stage 03G.6 flicker regressions: single transform owner, passive native scroll, stable paint boundaries");
