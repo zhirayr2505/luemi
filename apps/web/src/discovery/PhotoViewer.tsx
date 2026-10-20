@@ -19,7 +19,7 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
  const gesture=useRef<Gesture|null>(null);
  const zoom=useRef(1);
  const closing=useRef(false);
- const suppress=useRef(false);
+ const pinch=useRef<{distance:number;cx:number;cy:number}|null>(null);
  const sourceRef=useRef(source);
  const cleanup=useRef<number|null>(null);
  const show=photos[index];
@@ -65,7 +65,7 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
   if(menu){setMenu(false);return;}
   if(closing.current)return;
   closing.current=true;
-  pointer.current.clear();zoom.current=1;
+  pointer.current.clear();pinch.current=null;zoom.current=1;
   const img=image.current;if(img){img.style.transition=`transform ${duration}ms cubic-bezier(.2,.8,.2,1)`;img.style.transform="none";}
   animate(true);
   cleanup.current=window.setTimeout(onClose,matchMedia("(prefers-reduced-motion: reduce)").matches?0:duration+30);
@@ -77,7 +77,7 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
   return ()=>registerBack(null);
  },[menu,registerBack]);
  const resetGesture=()=>{
-  gesture.current=null;pointer.current.clear();zoom.current=1;
+  gesture.current=null;pointer.current.clear();pinch.current=null;zoom.current=1;
   if(image.current){image.current.style.transition="transform 230ms cubic-bezier(.2,.75,.2,1)";image.current.style.transform="none";}
   if(stage.current)stage.current.style.opacity="1";
  };
@@ -88,7 +88,9 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
    gesture.current={id:e.pointerId,x:e.clientX,y:e.clientY,time:performance.now(),axis:"",startIndex:index,pinch:false};
   } else if(pointer.current.size===2){
    const g=gesture.current;if(g)g.pinch=true;
-   suppress.current=true;
+   const [a,b]=[...pointer.current.values()];
+   pinch.current={distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),
+    cx:(a.x+b.x)/2,cy:(a.y+b.y)/2};
   }
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
@@ -97,14 +99,18 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
   const active=[...pointer.current.values()];
   if(active.length>=2){
    const g=gesture.current;if(g)g.pinch=true;
+   const origin=pinch.current;if(!origin)return;
    const dist=Math.hypot(active[0].x-active[1].x,active[0].y-active[1].y);
-   const start=gesture.current;
-   // The first two distances establish a baseline; no React renders during zoom.
-   if(start){
-    const base=(stage.current as HTMLDivElement & {__distance?:number})?.__distance;
-    if(!base){if(stage.current)(stage.current as HTMLDivElement & {__distance?:number}).__distance=dist;return;}
-    zoom.current=Math.max(1,Math.min(3.2,dist/Math.max(1,base)));
-    if(image.current){image.current.style.transition="none";image.current.style.transform=`scale(${zoom.current})`;}
+   const cx=(active[0].x+active[1].x)/2,cy=(active[0].y+active[1].y)/2;
+   zoom.current=Math.max(1,Math.min(3.2,dist/origin.distance));
+   const maxX=(zoom.current-1)*innerWidth/2;
+   const maxY=(zoom.current-1)*innerHeight/2;
+   const x=Math.max(-maxX,Math.min(maxX,cx-origin.cx));
+   const y=Math.max(-maxY,Math.min(maxY,cy-origin.cy));
+   // Pan stays inside the scaled image. Return to 1× after the last finger lifts.
+   if(image.current){
+    image.current.style.transition="none";
+    image.current.style.transform=`translate3d(${x}px,${y}px,0) scale(${zoom.current})`;
    }
    return;
   }
@@ -127,17 +133,16 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
   pointer.current.delete(e.pointerId);
   const g=gesture.current;
   if(pointer.current.size){return;}
-  if(stage.current)(stage.current as HTMLDivElement & {__distance?:number}).__distance=undefined;
+  pinch.current=null;
   if(!g){resetGesture();return;}
   gesture.current=null;
-  if(g.pinch||zoom.current!==1){suppress.current=true;resetGesture();return;}
+  if(g.pinch||zoom.current!==1){resetGesture();return;}
   const dx=e.clientX-g.x,dy=e.clientY-g.y,elapsed=Math.max(1,performance.now()-g.time);
   if(!cancel&&g.axis==="y"&&(Math.abs(dy)>110||Math.abs(dy)/elapsed>.8)){requestClose();return;}
   if(!cancel&&g.axis==="x"&&(Math.abs(dx)>innerWidth*.17||Math.abs(dx)/elapsed>.52)){
    const newIndex=Math.min(photos.length-1,Math.max(0,g.startIndex+(dx<0?1:-1)));
    if(newIndex!==index){sourceRef.current=null;setIndex(newIndex);}
   }
-  suppress.current=g.axis!=="";
   resetGesture();
  };
  const action=(kind:"main"|"link"|"share"|"report")=>{
@@ -150,7 +155,7 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}
     onPointerUp={e=>finish(e,false)} onPointerCancel={e=>finish(e,true)}>
    <img ref={image} className="pm-viewer-image" src={show.src} alt={"Фото "+(index+1)} draggable={false}
-    onError={e=>{if(show.fallback)e.currentTarget.src=show.fallback;}}/>
+    onError={e=>{if(show.fallback&&e.currentTarget.src!==show.fallback)e.currentTarget.src=show.fallback;}}/>
   </div>
   <header className="pm-viewer-top">
    <button type="button" onClick={requestClose} aria-label="Закрыть просмотр"><X size={22}/></button>
