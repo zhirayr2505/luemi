@@ -19,18 +19,31 @@ export interface ProfileView {
 const publicOnly=(photos:ProfilePhoto[])=>photos.filter(p=>p.status==="published");
 const present=(value:string)=>value.trim();
 export function projectProfile(profile:ProfileMasterData,mode:ProfileMode):ProfileView {
- const owner=mode==="owner", published=profile.source==="server";
+ const owner=mode==="owner",published=profile.source==="server";
  const photos=owner?profile.photos.filter(p=>p.status!=="hidden"&&p.status!=="rejected"):publicOnly(profile.photos);
- return {mode,photos,profile:{
-   ...profile,
-   // Only a trusted backend projection can attest to account entitlements.
-   premium:published&&profile.premium,verified:published&&profile.verified,
-   registeredAt:published?profile.registeredAt:null,updatedAt:published?profile.updatedAt:null,
-   id:published?profile.id:null,
-   name:present(profile.name),city:present(profile.city),country:present(profile.country),
-   about:present(profile.about),
- },canEdit:owner,canReorderMain:owner&&published&&photos.some(p=>p.status==="published"),
- canReport:mode==="visitor"&&published,published};
+ // Explicit allow-list is intentional: runtime input may contain future private fields.
+ // The public/preview projection must not carry unpublished photo records anywhere.
+ const exposed:ProfileMasterData={
+  id:published?profile.id:null,
+  source:profile.source,
+  name:present(profile.name),
+  age:profile.age,
+  city:present(profile.city),
+  country:present(profile.country),
+  countryCode:profile.countryCode,
+  goal:profile.goal,
+  about:present(profile.about),
+  interests:[...profile.interests],
+  languages:[...profile.languages],
+  photos,
+  premium:published&&profile.premium,
+  verified:published&&profile.verified,
+  registeredAt:published?profile.registeredAt:null,
+  updatedAt:published?profile.updatedAt:null
+ };
+ return {mode,photos,profile:exposed,canEdit:owner,
+  canReorderMain:owner&&published&&photos.some(p=>p.status==="published"),
+  canReport:mode==="visitor"&&published,published};
 }
 /** Deliberate fixtures contain no verified status, purchase, real join date, or photo timestamp. */
 export function fromDemoPerson(person:DemoPerson):ProfileMasterData {
