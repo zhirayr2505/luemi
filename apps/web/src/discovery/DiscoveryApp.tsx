@@ -41,6 +41,9 @@ interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:str
 
 export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
+ const profileBackRef=useRef<(()=>boolean)|null>(null);
+ const registerProfileBack=useCallback((handler:(()=>boolean)|null)=>{profileBackRef.current=handler;},[]);
+ const ownProfile=useMemo(()=>fromLocalDraft(draft,photos),[draft,photos]);
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
  // Prepare Nearby when For You becomes current or Nearby is selected; keep it mounted thereafter.
  const [nearbyPrepared,setNearbyPrepared]=useState(false);
@@ -101,6 +104,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  },[]);
  useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);pendingCommit.current=null;},[]);
  const leave=useCallback(()=>{
+  if(profileBackRef.current?.())return;
   if(personOpen){setPersonOpen(null);return;}
   if(interestOpen){setInterestOpen(null);return;}
   if(forYouSettings){setForYouSettings(false);return;}
