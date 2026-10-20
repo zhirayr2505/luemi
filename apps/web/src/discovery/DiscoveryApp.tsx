@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import type {CSSProperties} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {Bookmark,X,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,Sun,Moon,Layers3} from "lucide-react";
+import {Bookmark,X,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,ArrowRight,Sun,Moon,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
 import {demoPeople} from "./demo-people";
