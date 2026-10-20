@@ -41,6 +41,7 @@ try{
  assert.equal(dropletStyle.border,"0px","droplet has no circular avatar ring");
  assert.ok(dropletStyle.radius.includes("7%"),"droplet silhouette is tapered");
  console.log("QA_LIQUID "+JSON.stringify(dropletStyle));
+ assert.ok(Number(dropletStyle.opacity)<=.05,"middle scroll has no detached mini-avatar floating over photo");
  const scroll=await page.screenshot({type:"jpeg",quality:61,path:"stage03g3-scrolled.jpg"});
  console.log("QA_SCROLLED "+JSON.stringify(state));
  console.log("VISUAL_QA_SCROLL_JPEG="+scroll.toString("base64"));
@@ -75,6 +76,19 @@ try{
  assert.equal(narrow.overflow,false,"all three actions fit 360px mobile width");
  await page.screenshot({path:"stage03g3-360.jpg"});
  console.log("QA_360 "+JSON.stringify(narrow));
+ await page.getByRole("button",{name:"Светлая тема"}).click();
+ await page.evaluate(()=>{document.querySelector(".pm-scroll").scrollTop=310});
+ await page.waitForTimeout(160);
+ const liquid=await page.evaluate(()=>{
+  const drop=document.querySelector(".lh-droplet");
+  return {opacity:Number(getComputedStyle(drop).opacity),width:drop.getBoundingClientRect().width,
+   scrim:parseFloat(getComputedStyle(document.querySelector(".lh-header"),"::before").opacity)};
+ });
+ assert.ok(liquid.opacity>.2&&liquid.opacity<.8,"liquid fragment appears only during final approach");
+ assert.ok(liquid.width<44,"liquid image is no longer avatar sized");
+ const absorbing=await page.screenshot({type:"jpeg",quality:70,path:"stage03g3-absorbing.jpg"});
+ console.log("QA_ABSORB "+JSON.stringify(liquid));
+ console.log("VISUAL_QA_ABSORB_JPEG="+absorbing.toString("base64"));
  assert.deepEqual(errors,[],"no runtime React exceptions");
  console.log("PASS: real React profile screenshot QA 393x852");
 }finally{await browser.close()}
