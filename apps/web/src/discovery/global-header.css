@@ -1,9 +1,15 @@
 /* LUEMI Stage 03G.3 — the logo FLOATS over every screen.
    This chrome reserves zero layout height. There is NO logo capsule. */
 .lh-header{
- --lh-p:0;--lh-compact:0;--lh-impact:0;--lh-glow:0;
+ --lh-p:0;--lh-compact:0;--lh-impact:0;--lh-glow:0;--lh-scrim:0;
  position:absolute;inset:0 0 auto;z-index:70;height:0;min-height:0;
  pointer-events:none;color:var(--ink);isolation:isolate;
+}
+.lh-header.lh-profile::before{
+ content:"";position:absolute;top:0;left:0;right:0;z-index:0;pointer-events:none;
+ height:calc(max(52px,var(--top-safe)) + 22px);
+ background:linear-gradient(to bottom,var(--bg) 0%,var(--bg) 48%,transparent 100%);
+ opacity:var(--lh-scrim);will-change:opacity;
 }
 .lh-header button{font:inherit;cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent}
 .lh-center{
@@ -60,10 +66,9 @@
  position:absolute;top:max(10px,calc(var(--top-safe) - 8px));left:calc(50% + 69px);
  width:31px;height:31px;z-index:5;
 }
-/* The moving photo fragment is permanently 46px and tapered:
-   a tiny pearl-like tear, NOT a circular avatar with a border. */
+/* Small brief liquid fragment: no avatar border, no background capsule. */
 .lh-droplet{
- position:fixed;top:0;left:0;z-index:3;width:46px;height:46px;opacity:0;pointer-events:none;
+ position:fixed;top:0;left:0;z-index:3;width:34px;height:34px;opacity:0;pointer-events:none;
  overflow:hidden;transform-origin:center;backface-visibility:hidden;
  border:0;border-radius:70% 7% 70% 70% / 72% 7% 72% 72%;
  box-shadow:0 0 8px 3px rgba(204,135,253,.35),0 0 21px rgba(214,148,255,.25);
