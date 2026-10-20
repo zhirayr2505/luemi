@@ -61,6 +61,4 @@
 .luemi-shell[data-theme=dark] .lh-tool,.luemi-shell[data-theme=dark] .lh-profile-theme{
  border-color:rgba(225,197,248,.44);background:rgba(65,41,85,.71);color:#f6e6ff
 }
-@media(prefers-reduced-motion:reduce){
-}
 @media(prefers-reduced-transparency:reduce){.lh-tool,.lh-profile-theme{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}}

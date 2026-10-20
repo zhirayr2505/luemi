@@ -1,4 +1,4 @@
-import {forwardRef,useImperativeHandle,useRef} from "react";
+import {forwardRef,useLayoutEffect,useImperativeHandle,useRef} from "react";
 import {Bookmark,Moon,SlidersHorizontal,Sun} from "lucide-react";
 import "./global-header.css";
 
@@ -23,10 +23,19 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  const island=useRef<HTMLButtonElement>(null);
  const lastScroll=useRef(0);
  const manual=useRef(false);
+ const pendingTop=useRef(0),toolsFrame=useRef<number|null>(null);
+ const lastControlsValue=useRef(Number.NaN);
+ // Cancel queued browsing paints before switching to profile chrome.
+ // Layout-effect cleanup executes before the next visual frame.
+ useLayoutEffect(()=>()=>{if(toolsFrame.current!==null){
+  cancelAnimationFrame(toolsFrame.current);toolsFrame.current=null;
+ }},[mode]);
  const paintTools=(top:number)=>{
   if(mode==="profile")return;
   const p=smooth(clamp(top/105));
   const v=manual.current?0:p,el=host.current;
+  if(Math.abs(v-lastControlsValue.current)<.001)return;
+  lastControlsValue.current=v;
   el?.style.setProperty("--lh-p",String(v));
   el?.style.setProperty("--lh-control-opacity",String(1-v));
   el?.style.setProperty("--lh-control-scale",String(1-.84*v));
@@ -40,7 +49,12 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  useImperativeHandle(ref,()=>({
   setScrollTop:(top:number)=>{
    if(Math.abs(top-lastScroll.current)>.5)manual.current=false;
-   lastScroll.current=top;paintTools(top);
+   lastScroll.current=top;pendingTop.current=top;
+   if(toolsFrame.current!==null)return;
+   toolsFrame.current=requestAnimationFrame(()=>{
+    toolsFrame.current=null;
+    paintTools(pendingTop.current);
+   });
   },
   setProfileProgress:(progress:number,dragging:boolean)=>{
    if(mode!=="profile"||!host.current)return;
@@ -49,6 +63,9 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    host.current.style.setProperty("--lh-contrast",String(p*.83));
   },
   reset:()=>{
+   if(toolsFrame.current!==null){cancelAnimationFrame(toolsFrame.current);toolsFrame.current=null;}
+   lastControlsValue.current=Number.NaN;
+   pendingTop.current=0;
    lastScroll.current=0;manual.current=false;
    host.current?.setAttribute("data-profile-dragging","false");
    host.current?.style.setProperty("--lh-contrast","0");
@@ -58,7 +75,9 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  const toggleIsland=()=>{
   if(mode==="profile")return;
   if(lastScroll.current<12)return;
-  manual.current=!manual.current;paintTools(lastScroll.current);
+  manual.current=!manual.current;
+  if(toolsFrame.current!==null){cancelAnimationFrame(toolsFrame.current);toolsFrame.current=null;}
+  lastControlsValue.current=Number.NaN;paintTools(lastScroll.current);
  };
  return <header ref={host} className={"lh-header lh-"+mode} style={{"--lh-p":0,"--lh-impact":0} as React.CSSProperties}>
   

@@ -54,7 +54,7 @@ const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki","Блики"')&&
  profile.includes('["photos","Фото"')&&profile.includes('["gifts","Подарки"')&&
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
-assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:false})')&&
+assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.down||gesture.scrollTop<=1?false:true})')&&
  profile.includes('pane.style.setProperty("--pm-sheet-y"')&&
  profile.includes('contentPages.current[selectedIndex]?.scrollTop'),
  "two-layer adaptive sheet uses native tab scroll, swipe boundaries and transform-only drag");
@@ -128,3 +128,24 @@ assert.ok(css.includes(".pm-photo-progress button::before")&&
 console.log("✓ Stage 03G.5: stable safe-area sheet, synchronized blur and logo, compositor tabs and dot pager");
 
 
+
+assert.ok(!profile.includes('style={{transform:`translate3d(')&&
+ profile.includes('className="pm-pages-track" ref={pageTrack}')&&
+ profile.includes('className="pm-photo-track" ref={photoTrack}'),
+ "React cannot override imperative touch animation transforms on either photo or profile tabs");
+assert.ok(profile.includes('},[active]);\n const chooseTab=')&&
+ !profile.includes('},[active,tab]);\n const chooseTab='),
+ "ResizeObserver must not detach and re-measure during every tab change");
+assert.ok(profile.includes('pane.removeEventListener("touchmove",move);')&&
+ profile.includes('passive:!gesture.down||gesture.scrollTop<=1?false:true'),
+ "native tab scroll avoids permanent scroll-blocking nonpassive ancestor listener");
+assert.ok(css.includes('contain:paint;isolation:isolate;')&&
+ css.includes('overflow-anchor:none;contain:layout paint;')&&
+ !css.includes('.pm-pages-track.is-finger-tracking'),
+ "compositor paint boundaries contain content and obsolete dead styles are removed");
+assert.ok(header.includes("pendingTop.current=top")&&
+ header.includes("toolsFrame.current=requestAnimationFrame")&&
+ header.includes("lastControlsValue.current=v")&&
+ header.includes("cancelAnimationFrame(toolsFrame.current)"),
+ "browse logo controls are coalesced to one frame and stale paints are cancelled");
+console.log("✓ Stage 03G.6 flicker regressions: single transform owner, passive native scroll, stable paint boundaries");

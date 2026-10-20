@@ -90,6 +90,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const sheetProgress=useRef(0);
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const selectedIndex=tabs.findIndex(x=>x[0]===tab);
+ const tabSelectionRef=useRef<TabId>(tab);
+ tabSelectionRef.current=tab;
  const setTransform=(idx:number,delta=0)=>{
   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
  };
@@ -152,6 +154,12 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    gesture={x:t.clientX,y:t.clientY,start:performance.now(),
     down:collapsedRef.current,scrollTop:contentPages.current[selectedIndex]?.scrollTop||0,
     dragging:false,blocked:false};
+   // Critical: an always-mounted non-passive touchmove listener on the whole
+   // sheet blocks Chrome's compositor scrolling of EVERY tab on Android.
+   // A touch starting deep in tab content needs only a passive listener;
+   // one starting at the edge may need preventDefault to drag the sheet.
+   pane.removeEventListener("touchmove",move);
+   pane.addEventListener("touchmove",move,{passive:!gesture.down||gesture.scrollTop<=1?false:true});
   };
   const move=(e:TouchEvent)=>{
    const g=gesture;if(!g||e.touches.length!==1)return;
@@ -169,15 +177,15 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    paintSheet(offset,true);
   };
   const end=(e:TouchEvent)=>{
+   pane.removeEventListener("touchmove",move);
    const g=gesture;gesture=null;if(!g||!g.dragging)return;
    const t=e.changedTouches[0];const dy=t.clientY-g.y,dt=Math.max(1,performance.now()-g.start);
    const threshold=Math.min(90,Math.max(65,expandedY.current*.2));
    const commit=g.down?(dy>threshold||dy/dt>.65):(dy< -threshold||dy/dt<-.65);
    settleSheet(g.down?!commit:commit);
   };
-  const cancel=()=>{const g=gesture;gesture=null;if(g?.dragging)settleSheet(g.down);};
+  const cancel=()=>{pane.removeEventListener("touchmove",move);const g=gesture;gesture=null;if(g?.dragging)settleSheet(g.down);};
   pane.addEventListener("touchstart",start,{passive:true});
-  pane.addEventListener("touchmove",move,{passive:false});
   pane.addEventListener("touchend",end,{passive:true});
   pane.addEventListener("touchcancel",cancel,{passive:true});
   return ()=>{
@@ -248,14 +256,15 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    tabViewport.current=Math.max(1,pages.current?.clientWidth||bar.clientWidth);
    if(ink.current&&tabMetrics.current.length)
     ink.current.style.width=tabMetrics.current[0].width+"px";
-   paintTabs(tabs.findIndex(v=>v[0]===tab));
+   // Geometry is stable across tab selection. Do not re-run an in-flight transition.
+   paintTabs(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
   };
   measure();
   const ro=new ResizeObserver(measure);
   ro.observe(bar);
   if(pages.current)ro.observe(pages.current);
   return ()=>ro.disconnect();
- },[active,tab]);
+ },[active]);
  const chooseTab=(newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
@@ -266,7 +275,6 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   const bar=tabBar.current,button=bar?.querySelectorAll<HTMLButtonElement>(".pm-tab")[i];
   if(button&&bar)bar.scrollTo({left:Math.max(0,button.offsetLeft+button.offsetWidth/2-bar.clientWidth/2),behavior:"smooth"});
  };
- useLayoutEffect(()=>{paintTabs(selectedIndex);},[selectedIndex]);
  const tabDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if((e.target as HTMLElement).closest("button,.pm-photos-grid,.pm-gift-grid")||(e.pointerType==="mouse"&&e.button!==0))return;
   tabSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",index:selectedIndex,width:pages.current?.clientWidth||innerWidth};
@@ -310,7 +318,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
-    {photos.length?<div className="pm-photo-track" ref={photoTrack} style={{transform:`translate3d(-${activePhoto*100}%,0,0)`}}>
+    {photos.length?<div className="pm-photo-track" ref={photoTrack}>
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
@@ -354,7 +362,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
    </div>
    <div className="pm-pages" ref={pages} onPointerDown={tabDown} onPointerMove={tabMove}
      onPointerUp={e=>tabEnd(e)} onPointerCancel={e=>tabEnd(e,true)}>
-    <div className="pm-pages-track" ref={pageTrack} style={{transform:`translate3d(-${selectedIndex*100}%,0,0)`}}>
+    <div className="pm-pages-track" ref={pageTrack}>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[0]=e;}}><About view={view}/></div>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[1]=e;}}><Bliki/></div>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[2]=e;}}>

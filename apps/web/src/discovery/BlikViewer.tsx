@@ -9,14 +9,12 @@ export function BlikViewer({blik,name,onClose}:Props){
  const [muted,setMuted]=useState(true),[progress,setProgress]=useState(0);
  const video=useRef<HTMLVideoElement>(null);
  const duration=Math.max(2500,Math.min(30000,blik.durationMs||6000));
- const paused=useRef(false);
  const closeRef=useRef(onClose);
  useEffect(()=>{closeRef.current=onClose;},[onClose]);
  useEffect(()=>{
   if(blik.kind==="video")return;
   const start=performance.now();let raf=0;
   const tick=(now:number)=>{
-   if(paused.current){raf=requestAnimationFrame(tick);return;}
    const value=Math.min(1,(now-start)/duration);
    setProgress(value);if(value>=1)closeRef.current();else raf=requestAnimationFrame(tick);
   };
