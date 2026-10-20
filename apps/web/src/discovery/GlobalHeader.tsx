@@ -56,7 +56,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
     paintTools(pendingTop.current);
    });
   },
-  setProfileProgress:(progress:number,dragging:boolean)=>{
+  setProfileProgress:(progress:number,_dragging:boolean)=>{
    if(mode!=="profile"||!host.current)return;
    const p=clamp(progress);
    host.current.style.setProperty("--lh-contrast",String(p*.83));
