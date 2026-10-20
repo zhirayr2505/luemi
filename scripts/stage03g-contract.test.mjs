@@ -90,7 +90,7 @@ assert.ok(headerCss.includes("position:absolute;inset:0 0 auto")&&
  "profile uses full-bleed hero below transparent, layout-free wordmark");
 assert.ok(!profile.includes("photoTrack.current.style.opacity")&&
  profile.includes('className="pm-identity"')&&
- profile.includes("onClick={()=>chooseTab(2)}"),
+ profile.includes("onClick={openMyPhotos}")&&profile.includes("pane.scrollTo("),
  "hero never blanks during scroll; identity/actions are present and functional");
 console.log("✓ Stage 03G.3: full-screen photo and overlay-only logo contracts");
 
