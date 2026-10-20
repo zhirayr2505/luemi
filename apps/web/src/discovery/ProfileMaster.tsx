@@ -278,7 +278,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
    </div>
   </div>
   {viewer&&<PhotoViewer view={view} photos={photos} initial={viewer.index} source={viewer.source}
-    onClose={()=>setViewer(null)} onMain={id=>{if(view.canReorderMain)setMainId(id);}}
+    onClose={()=>setViewer(null)} registerBack={handler=>{viewerBack.current=handler;}} onMain={id=>{if(view.canReorderMain)setMainId(id);}}
     />}
   {preview&&<ProfileMaster data={data} mode="preview" onClose={()=>setPreview(false)} registerBack={registerBack}/>}
  </section>;
