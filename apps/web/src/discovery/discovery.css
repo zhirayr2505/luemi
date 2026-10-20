@@ -204,9 +204,27 @@
 
 
 /* Visitor profile is inside the content panel; the stationary header remains above it. */
-.discovery-app[data-profile-overlay=true] .discovery-bottom-nav{display:none}
+.discovery-app[data-profile-overlay=true] .discovery-bottom-nav{visibility:hidden}
+.discovery-app[data-profile-overlay=true][data-route-revealing=true] .discovery-bottom-nav{visibility:visible}
 /* On Android WebView the two full-bleed Feed cards behind a visitor's profile
    can keep their own rounded/image compositor layers alive. Suppress the
    entirely occluded browse surface only for Feed-origin visitors. Visibility
    preserves the mounted card, its state and pager position for returning. */
 .discovery-app[data-profile-from-feed=true] .discovery-browse-panel{visibility:hidden}
+.discovery-app[data-profile-from-feed=true][data-route-revealing=true] .discovery-browse-panel{visibility:visible}
+
+/* Only the rectangular navigation layer slides. The profile sheet keeps its
+   already-verified stationary scroll renderer and five independent pages. */
+.discovery-visitor-route{
+ position:absolute;inset:0;z-index:80;width:100%;height:100%;
+ background:var(--bg);transform:translate3d(100%,0,0);
+ box-shadow:-8px 0 24px rgba(30,17,44,.13);
+}
+.discovery-visitor-route>.pm-shell{position:absolute;inset:0}
+.discovery-visitor-back-edge{
+ position:absolute;inset:0 auto 0 0;width:26px;z-index:90;
+ touch-action:none;user-select:none;-webkit-user-select:none;
+}
+@media(prefers-reduced-motion:reduce){
+ .discovery-visitor-route{transition:none!important}
+}
