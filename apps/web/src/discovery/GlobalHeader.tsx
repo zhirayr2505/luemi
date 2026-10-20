@@ -1,4 +1,4 @@
-import {forwardRef,useEffect,useImperativeHandle,useRef} from "react";
+import {forwardRef,useLayoutEffect,useImperativeHandle,useRef} from "react";
 import {Bookmark,Moon,SlidersHorizontal,Sun} from "lucide-react";
 import "./global-header.css";
 
@@ -25,7 +25,11 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  const manual=useRef(false);
  const pendingTop=useRef(0),toolsFrame=useRef<number|null>(null);
  const lastControlsValue=useRef(Number.NaN);
- useEffect(()=>()=>{if(toolsFrame.current!==null)cancelAnimationFrame(toolsFrame.current);},[]);
+ // Cancel queued browsing paints before switching to profile chrome.
+ // Layout-effect cleanup executes before the next visual frame.
+ useLayoutEffect(()=>()=>{if(toolsFrame.current!==null){
+  cancelAnimationFrame(toolsFrame.current);toolsFrame.current=null;
+ }},[mode]);
  const paintTools=(top:number)=>{
   if(mode==="profile")return;
   const p=smooth(clamp(top/105));
