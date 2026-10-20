@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import type {CSSProperties} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {Bookmark,X,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,ArrowRight,Sun,Moon,Layers3} from "lucide-react";
+import {Bookmark,X,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,Sun,Moon,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
 import {demoPeople} from "./demo-people";
@@ -13,7 +13,8 @@ import {demoAct,demoUndo,filterDemoPeople,freshDemoState,defaultFilters} from ".
 import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter} from "./model";
 import {DiscoveryFilters} from "./Filters";
 import {DiscoveryInterestsSheet} from "./InterestsSheet";
-import {DemoProfile} from "./DemoProfile";
+import {ProfileMaster} from "./ProfileMaster";
+import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import "./discovery.css";
 
 const logoSrc="/assets/brand/wordmark_original_raster_alpha_W06.webp";
@@ -36,9 +37,9 @@ function EmptyFeed({hasProfiles,canUndo,onUndo,onRestart}:{hasProfiles:boolean;c
    <button type="button" className="discovery-glass-button" onClick={onRestart}>Начать заново</button>
  </div>;
 }
-interface Props {draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void}
+interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:string}>;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void}
 
-export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
+export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
  // Prepare Nearby when For You becomes current or Nearby is selected; keep it mounted thereafter.
@@ -330,16 +331,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
        <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
      </section>
      <section className="discovery-panel" hidden={mainTab!=="profile"}>
-       <div className="discovery-own-profile">
-         <h2>Мой профиль <span className="discovery-demo-label">Черновик</span></h2>
-         <p><strong>{draft.name||"Имя не указано"}</strong></p>
-         <p>{draft.city?draft.city+", "+draft.country:"Город не выбран"}</p>
-         <div className="discovery-own-buttons">
-           <button type="button" className="discovery-glass-button" onClick={onExit}>Вернуться к регистрации <ArrowRight size={15}/></button>
-           <button type="button" className="discovery-glass-button" onClick={openSaved}><Bookmark size={15}/> Сохранённые · демо ({feed.saved.length})</button>
-         </div>
-         <p className="hint">Твоя анкета ещё не опубликована.</p>
-       </div>
+       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack}/>
      </section>
    </div>
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
@@ -367,6 +359,6 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
      </section>
    </div>}
    {interestOpen&&(()=>{const p=demoPeople.find(x=>x.id===interestOpen);return p?<DiscoveryInterestsSheet name={p.name} ids={p.interests} onClose={()=>setInterestOpen(null)}/>:null;})()}
-   {selectedPerson&&<DemoProfile person={selectedPerson} onClose={()=>setPersonOpen(null)}/>}
+   {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor" onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack}/>}
  </div>;
 }
