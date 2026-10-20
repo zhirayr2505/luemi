@@ -49,3 +49,20 @@ CI proves code/build contracts only. Galaxy A55 / Telegram QA remains necessary:
 10. Demo flags/settings remain isolated from real users and private data.
 
 No Supabase or real user server actions were introduced. `main`, VEYRA and blotX untouched.
+
+## 2026-10-20 · Galaxy A55 video corrections / Motion v2
+
+Approval: user explicitly approved correcting all observed motion and navigation defects, with an extra constraint: next-card actions **start appearing together with the next profile during its lift**, never after the card arrives.
+
+Working branch: `fix/stage03-motion-v2-20261020`, recovery `backup/pre-stage03-motion-v2-20261020` at `a3bf178d594984fe8b6e2d41eb16bed1532d7de2`.
+
+Corrections:
+- Replaced old short rectangular `.discovery-card-overlay` gradient with a single full-height `.discovery-card::after` scrim. Image to bottom stays continuous; dark text area and action area merge without a hard horizontal edge.
+- Queued card shows only a shallow photo peek: photo story bars, save icon, info overlay and all four action buttons are hidden. During `.deck-entering` those elements start the **same ~290 ms animation** as the incoming photo and reach final opacity together. Old standalone buttons/overlays were not reintroduced.
+- Enlarged Glass action buttons around 10% for normal-height screens; trimmed overly expensive blur/saturation to reduce Telegram WebView compositing load without removing Liquid Glass.
+- Deck state commit now listens to actual **outgoing animationend**; a 440ms fallback only covers throttled/reduced-motion execution. No fixed 290ms DOM swap before CSS finishes. Existing full keyed FeedCard remains single source of photo, text and actions.
+- Profile right-back swipe now moves only `.discovery-profile-swipe-surface` with finger, while the outer modal layout remains fixed and its inner scroll remains native. Photocarousel gestures are excluded. Below threshold returns smoothly; above threshold slides away.
+- Global-tab panels became absolute within a stable constrained stage. This prevents Feed's flex height from changing on Chats/Discover and reduces logo/viewport hopping.
+- Shared PhotoCarousel memoized so unchanged images do not rerender/repaint on unrelated navigation or theme state.
+- No production `main`, Supabase, VEYRA or blotX edits, no real user interactions.
+- **Device signoff still pending**. Review deck exit/entry under rapid tapping, long captions, dark/light contrast, hidden next card controls, profile right-swipe tracking, vertical scroll and image swipes, Chat→Discover 10 repeats, image load over 4G.
