@@ -74,11 +74,12 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    const sourceX=heroRect.left+heroRect.width/2;
    const sourceY=Math.max(goal.bottom+38,Math.min(heroRect.top+heroRect.height*.57,heroRect.bottom-32));
    const targetX=goal.left+goal.width/2,targetY=goal.top+goal.height/2;
-   const left=sourceX*(1-t)+targetX*t-diameter/2;
-   const top=sourceY*(1-t)+targetY*t-diameter/2;
+   // Transform-origin stays at the center of the 46px layer even as it
+   // scales to 3px, so keep the *unscaled* half size in positioning.
+   const left=sourceX*(1-t)+targetX*t-23;
+   const top=sourceY*(1-t)+targetY*t-23;
    node.style.transform=`translate3d(${left}px,${top}px,0) rotate(-45deg) scaleY(${1+.28*Math.sin(Math.PI*t)}) scale(${diameter/46})`;
    // Transform-based scaling avoids recomputing a layer's width/height on scroll.
-   node.style.borderRadius="70% 7% 70% 70% / 72% 7% 72% 72%";
    const appear=smooth(clamp((p-.46)/.07));
    const vanish=1-smooth(clamp((p-.80)/.14));
    node.style.opacity=String(appear*vanish);
