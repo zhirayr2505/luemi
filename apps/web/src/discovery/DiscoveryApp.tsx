@@ -356,7 +356,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
      <section className="discovery-panel" hidden={mainTab!=="chats"}>
        <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
      </section>
-     <section className="discovery-panel" hidden={mainTab!=="profile"}>
+     <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
        {profilePrepared&&<ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"&&!selectedPerson} onMotionProgress={reportProfileMotion}/>}
      </section>
    {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor" key={selectedPerson.id}
