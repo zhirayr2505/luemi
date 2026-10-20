@@ -43,7 +43,6 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain}:Props){
   const id=requestAnimationFrame(()=>requestAnimationFrame(()=>animate(false)));
   return ()=>cancelAnimationFrame(id);
  // Source is intentionally captured at opening.
- // eslint-disable-next-line react-hooks/exhaustive-deps
  },[]);
  useEffect(()=>{
   const old=document.body.style.overflow;
@@ -56,7 +55,6 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain}:Props){
   window.addEventListener("keydown",key,true);
   return ()=>{document.body.style.overflow=old;window.removeEventListener("keydown",key,true);
    if(cleanup.current!==null)clearTimeout(cleanup.current);};
- // eslint-disable-next-line react-hooks/exhaustive-deps
  },[index,menu]);
  useEffect(()=>{
   for(const i of [index-1,index+1])if(photos[i]){
