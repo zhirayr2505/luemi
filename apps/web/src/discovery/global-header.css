@@ -26,11 +26,11 @@
  color:var(--ink);box-shadow:inset 0 1px rgba(255,255,255,.72),0 4px 12px var(--shadow);
  backdrop-filter:blur(8px) saturate(125%);-webkit-backdrop-filter:blur(8px) saturate(125%);
 }
-.lh-tool{opacity:calc(1 - var(--lh-p));transform-origin:center;
- transform:translate3d(var(--lh-x,0px),calc(-31px * var(--lh-p)),0) scale(calc(1 - .84 * var(--lh-p)));
+.lh-tool{opacity:var(--lh-control-opacity,1);transform-origin:center;
+ transform:translate3d(var(--lh-x,0px),var(--lh-control-y,0px),0) scale(var(--lh-control-scale,1));
  will-change:transform,opacity}
-.lh-tool-filter{--lh-x:calc(38px * var(--lh-p))}
-.lh-tool-saved{--lh-x:calc(-38px * var(--lh-p))}
+.lh-tool-filter{--lh-x:var(--lh-left-x,0px)}
+.lh-tool-saved{--lh-x:var(--lh-right-x,0px)}
 .lh-header[data-tools-merged=true] .lh-tools{pointer-events:none;visibility:hidden}
 .lh-header[data-tools-merged=true] .lh-tool{pointer-events:none}
 .lh-header button:focus-visible{outline:2px solid #b789e4;outline-offset:3px}
@@ -39,7 +39,7 @@
 .lh-profile-info{
  position:absolute;left:12px;top:calc(var(--top-safe) + 7px);
  width:calc(50% - 80px);min-width:0;display:flex;flex-direction:column;gap:3px;
- opacity:var(--lh-compact);transform:translate3d(calc(-8px * (1 - var(--lh-compact))),0,0);
+ opacity:var(--lh-compact);transform:translate3d(var(--lh-text-x,-8px),0,0);
  pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .lh-profile-info strong{font-size:13px;line-height:16px;overflow:hidden;text-overflow:ellipsis}
