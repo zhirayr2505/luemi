@@ -93,8 +93,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const globalHeader=useRef<HeaderMotion>(null);
  const profileMode=mainTab==="profile"||!!selectedPerson;
  const headerPerson=selectedPerson?fromDemoPerson(selectedPerson):ownProfile;
- const headerName=(headerPerson.profile.name||"Имя")+(headerPerson.profile.age!==null?", "+headerPerson.profile.age:"");
- const headerLocation=[headerPerson.profile.city,headerPerson.profile.country].filter(Boolean).join(", ");
+ const headerName=(headerPerson.name||"Имя")+(headerPerson.age!==null?", "+headerPerson.age:"");
+ const headerLocation=[headerPerson.city,headerPerson.country].filter(Boolean).join(", ");
  const reportPageScroll=useCallback((top:number)=>globalHeader.current?.setScrollTop(top),[]);
  const reportProfileScroll=useCallback((p:number,rect:DOMRect,top:number,src:string|null)=>{
    globalHeader.current?.setProfileMorph(p,rect,top,src);
