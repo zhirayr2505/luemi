@@ -24,7 +24,13 @@ const all=new Set(code),lookup=new Map(code.map(f=>[normalize(f),f]));
 const reachable=new Set(),missing=[];
 function resolve(from,relative){
  const base=path.resolve(path.dirname(from),relative);
- for(const f of [base,...allowed.map(ext=>base+ext),...allowed.map(ext=>path.join(base,"index"+ext))]){
+ // NodeNext TypeScript sources intentionally import their compiled .js names.
+ const sourceBase=base.endsWith(".js")?base.slice(0,-3):base;
+ for(const f of [
+  base,sourceBase+".ts",sourceBase+".tsx",
+  ...allowed.map(ext=>base+ext),
+  ...allowed.map(ext=>path.join(base,"index"+ext))
+ ]){
   if(all.has(f))return f;
  }
  return null;
