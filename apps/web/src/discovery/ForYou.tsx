@@ -74,8 +74,10 @@ export function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,
  useEffect(()=>{try{localStorage.setItem(storeKey,JSON.stringify(prefs));}catch{/* restricted Telegram storage */}},[prefs]);
  const eligible=useMemo(()=>filterDemoPeople(forYouDemoPeople,filters,draft),[filters,draft]);
  const ranked=useMemo(()=>rankDemonstrations(eligible,draft),[eligible,draft]);
- const members=useMemo(()=>Object.fromEntries(collectionDefinitions.map(c=>[c.id,membersFor(c.id,ranked,draft,filters)]))
-  as Record<CollectionId,DemoPerson[]>,[ranked,draft,filters]);
+ const members=useMemo<Record<CollectionId,DemoPerson[]>>(()=>{
+  const entries=collectionDefinitions.map(c=>[c.id,membersFor(c.id,ranked,draft,filters)] as const);
+  return Object.fromEntries(entries) as Record<CollectionId,DemoPerson[]>;
+ },[ranked,draft,filters]);
  const shown=useMemo(()=>prefs.order.filter(id=>!prefs.hidden.includes(id))
   .sort((a,b)=>Number(prefs.favorites.includes(b))-Number(prefs.favorites.includes(a))),[prefs]);
  const one=(p:DemoPerson)=><PersonTile key={p.id} person={p} draft={draft} saved={saved.includes(p.id)} onSave={onSave} onPerson={onPerson}/>;
