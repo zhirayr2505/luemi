@@ -249,16 +249,9 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
  const goal=view.profile.goal&&view.profile.goal!=="undecided"?goals.find(x=>x.id===view.profile.goal):null;
- return <section ref={shell} className={"pm-shell "+(mode==="owner"?"pm-inline":"pm-dialog")} role={mode==="owner"?undefined:"dialog"}
+ return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} className={"pm-shell "+(mode==="owner"?"pm-inline":"pm-dialog")} role={mode==="owner"?undefined:"dialog"}
    aria-modal={mode==="owner"?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
-  <div className="pm-scroll" ref={scroll} onScroll={onScroll}
-    onTouchStart={()=>{scrollTopLast.current=scroll.current?.scrollTop??0;scrollTime.current=performance.now();}}
-    onTouchEnd={event=>{
-     // Avoid launching scroll-snap at the same time as a tapped gallery action.
-     if((event.target as HTMLElement).closest("button,.pm-photos-grid,.pm-tabs"))return;
-     window.setTimeout(settleCollapse,60);
-    }}>
-    {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
+  {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
     {photos.length?<div className="pm-photo-track" ref={photoTrack} style={{transform:`translate3d(-${activePhoto*100}%,0,0)`}}>
@@ -271,10 +264,21 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
        className={i===activePhoto?"active":""} onClick={()=>{setTransform(i);setActivePhoto(i);}}/>)}</div>}
     {view.profile.source!=="server"&&<span className="pm-hero-demo">{view.profile.source==="fixture"?"Демо":"Черновик"}</span>}
    </div>
-   <div className="pm-profile-sheet">
+   <div className="pm-profile-sheet" ref={sheet}>
+    <button type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsed)}
+      aria-label={collapsed?"Раскрыть фото профиля":"Развернуть анкету"}><span/></button>
     <div className="pm-identity">
-     <h2>{nameLine} {view.profile.premium&&<span className="pm-premium">◆</span>}{view.profile.verified&&<ShieldCheck size={19} aria-label="Подтверждён"/>}</h2>
-     <p className="pm-identity-location">{location}</p>
+     <div className="pm-identity-core">
+      <div className="pm-identity-text">
+       <h2>{nameLine} {view.profile.premium&&<span className="pm-premium">◆</span>}{view.profile.verified&&<ShieldCheck size={19} aria-label="Подтверждён"/>}</h2>
+       <p className="pm-identity-location">{location}</p>
+      </div>
+      {current&&<button type="button" className={"pm-mini-avatar"+(view.profile.activeBlik?" has-blik":"")}
+         onClick={openAvatar} tabIndex={collapsed?0:-1} aria-hidden={!collapsed}
+         aria-label={view.profile.activeBlik?"Открыть активный блик":"Раскрыть фото профиля"}>
+         <PhotoImage photo={current} alt="" loading="eager"/>
+       </button>}
+     </div>
      {goal&&<span className="pm-goal-chip"><Heart size={14}/>{goal.label}</span>}
     </div>
     {mode==="owner"&&<div className="pm-owner-actions">
@@ -304,10 +308,10 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
     </div>
    </div>
   </div>
-  </div>
   {viewer&&<PhotoViewer view={view} photos={photos} initial={viewer.index} source={viewer.source}
     onClose={()=>setViewer(null)} registerBack={handler=>{viewerBack.current=handler;}} onMain={id=>{if(view.canReorderMain)setMainId(id);}}
     />}
-  {preview&&<ProfileMaster data={data} mode="preview" onClose={()=>setPreview(false)} registerBack={registerBack} onScrollMotion={onScrollMotion}/>}
+  {blikOpen&&view.profile.activeBlik&&<BlikViewer blik={view.profile.activeBlik} name={view.profile.name} onClose={()=>setBlikOpen(false)}/>}
+  {preview&&<ProfileMaster data={data} mode="preview" onClose={()=>setPreview(false)} registerBack={registerBack}/>}
  </section>;
 }
