@@ -101,7 +101,7 @@ assert.ok(profile.includes('onClick={openMyPhotos}')&&profile.includes('settleSh
  profile.includes("BlikViewer")&&profile.includes("view.profile.activeBlik"),
  "gallery shortcut and future published story routing remain functional");
 console.log("✓ Stage 03G.4: independent scroll and pinned controls, no liquid morph");
-assert.equal((css.match(/^\\.pm-profile-sheet\\{/gm)||[]).length,1,
+assert.equal((css.match(/^\.pm-profile-sheet\{/gm)||[]).length,1,
  "profile sheet has one authoritative CSS definition, not multiple overriding generations");
 assert.ok(!css.includes("border-radius 390ms")&&css.includes("border-radius:34px 34px 0 0"),
  "sheet keeps stable rounded corners while moving on compositor");
