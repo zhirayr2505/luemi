@@ -37,7 +37,7 @@ function reason(p:DemoPerson,d:RegistrationDraft){
  if(ev.languages.length)return "Общий язык общения";
  return "Анкета · демо";
 }
-function PersonTile({person,draft,saved,onSave,onPerson}:{person:DemoPerson;draft:RegistrationDraft;saved:boolean;onSave:(id:string)=>void;onPerson:(id:string)=>void}){
+const PersonTile=memo(function PersonTile({person,draft,saved,onSave,onPerson}:{person:DemoPerson;draft:RegistrationDraft;saved:boolean;onSave:(id:string)=>void;onPerson:(id:string)=>void}){
  const pic=person.photos[0];
  return <article className="fy-tile">
   <button className="fy-tile-photo" type="button" onClick={()=>onPerson(person.id)} aria-label={"Открыть демо-профиль "+person.name+", "+person.age}>
@@ -55,7 +55,7 @@ function PersonTile({person,draft,saved,onSave,onPerson}:{person:DemoPerson;draf
   </button>
   <p className="fy-tile-reason">{reason(person,draft)}</p>
  </article>;
-}
+});
 function Empty({text}:{text:string}){return <div className="fy-empty"><Sparkles size={19}/><span>{text}</span></div>;}
 function emptyMessage(id:CollectionId){
  switch(id){

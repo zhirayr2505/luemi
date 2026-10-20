@@ -37,3 +37,6 @@ assert.ok(discovery.includes('event.animationName==="luemi-deck-leave"')&&feed.i
 assert.ok(model.includes("radius:5000"),"existing geography setting unchanged");
 assert.ok(!component.includes("demoDistanceKm(")&&!source.includes("demoDistanceKm("),"no synthetic kilometre-based proximity function calls");
 console.log("✓ Stage 03E: strict declared location, dual column, gesture safety, savings, Feed/radius locks");
+
+assert.ok(discovery.includes('nearbyPrepared&&<Nearby draft={draft}'),"Nearby prepared only on demand");
+assert.ok(discovery.includes("if(bounded>0)setNearbyPrepared(true)"),"middle and right tabs warm Nearby before swipe");

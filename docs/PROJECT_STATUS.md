@@ -82,3 +82,9 @@
 ## Stage 03E · Nearby · 2026-10-20
 - Owner approved two-column 4:5 portrait grid, compact geography glass panel, name/age/city on photo, one truly shared interest below, bookmark-only action, no map/radar. Current radius 1–5000 km locked.
 - Feature branch feat/stage03e-nearby based on staging 1eb930b; cross-shared saves & DemoProfile, honest city/country/world fixture filtering, no fake distances or actual GPS. Production, database and other projects untouched. CI and post-deploy Galaxy A55 review are separate gates.
+
+
+## Stage 03F — Discovery Final Polish · 2026-10-20
+- Approved priority: smooth scroll/gestures; adaptive motion-only miniature glass optimization with unchanged static Premium visuals.
+- Isolated code branch `feat/stage03f-discovery-polish` from staging `878a66b`, plan in `docs/STAGE03F_FINAL_POLISH.md`.
+- Strict locks: Feed Polish 2, For You/Nearby aesthetics, radius 1–5000km, branding, public profile, production main.

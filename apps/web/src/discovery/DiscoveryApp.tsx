@@ -20,7 +20,7 @@ const logoSrc="/assets/brand/wordmark_original_raster_alpha_W06.webp";
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 
-type Gesture={id:number;x:number;y:number;started:number;tracking:boolean;index:number};
+type Gesture={id:number;x:number;y:number;started:number;tracking:boolean;index:number;width:number};
 function Placeholder({title,text}:{title:string;text:string}){
  return <div className="discovery-placeholder"><Layers3 size={35} strokeWidth={1.4}/>
  <h2>{title}</h2><p>{text}</p><span>Следующий этап LUEMI</span></div>;
@@ -41,9 +41,12 @@ interface Props {draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;o
 export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
+ // Prepare Nearby when For You becomes current or Nearby is selected; keep it mounted thereafter.
+ const [nearbyPrepared,setNearbyPrepared]=useState(false);
  const gesture=useRef<Gesture|null>(null);
  const clickBlockUntil=useRef(0);
  const pages=useRef<HTMLDivElement>(null);
+ const discoveryRoot=useRef<HTMLDivElement>(null);
  const pageTrack=useRef<HTMLDivElement>(null);
  const underline=useRef<HTMLSpanElement>(null);
  const swipeFrame=useRef<number|null>(null);
@@ -67,6 +70,28 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
+ // The scrolling lists own their native scroll. Temporarily reduce only repeated
+ // small-card backdrop layers while moving; no React state or rerender per scroll event.
+ useEffect(()=>{
+  const root=discoveryRoot.current;if(!root)return;
+  let idleTimer:number|null=null;
+  const onScroll=(event:Event)=>{
+   if(!(event.target instanceof Element)||
+      !event.target.matches(".fy-scroll,.fy-grid,.fy-rail,.nb-scroll"))return;
+   root.classList.add("is-discovery-scrolling");
+   if(idleTimer!==null)window.clearTimeout(idleTimer);
+   idleTimer=window.setTimeout(()=>{
+    root.classList.remove("is-discovery-scrolling");
+    idleTimer=null;
+   },160);
+  };
+  root.addEventListener("scroll",onScroll,{capture:true,passive:true});
+  return ()=>{
+   root.removeEventListener("scroll",onScroll,true);
+   if(idleTimer!==null)window.clearTimeout(idleTimer);
+   root.classList.remove("is-discovery-scrolling");
+  };
+ },[]);
  // Commit only after the outgoing full card completes its own animation.
  // Timeout is a safety fallback for backgrounded or reduced-motion WebViews.
  const finishDeck=useCallback(()=>{
@@ -126,6 +151,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const selectTab=(index:number)=>{
   const bounded=Math.max(0,Math.min(topTabs.length-1,index));
   if(topTabs[bounded][0]===discoveryTab)return;
+  if(bounded>0)setNearbyPrepared(true);
   setDiscoveryTab(topTabs[bounded][0]);
   window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
  };
@@ -142,13 +168,15 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
   flushDrag();
   pageTrack.current?.classList.remove("is-finger-tracking");
   underline.current?.classList.remove("is-finger-tracking");
+  discoveryRoot.current?.classList.remove("is-discovery-moving");
   paintDrag(0);
  };
  useEffect(()=>()=>{if(swipeFrame.current!==null)window.cancelAnimationFrame(swipeFrame.current);},[]);
  const down=(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(event.pointerType==="mouse"&&event.button!==0)return;
   if((event.target as HTMLElement).closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-card,.nb-location"))return;
-  gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,started:performance.now(),tracking:false,index:tabIndex};
+  gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,started:performance.now(),tracking:false,index:tabIndex,
+   width:pages.current?.clientWidth||window.innerWidth};
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==event.pointerId)return;
@@ -159,10 +187,11 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
     g.tracking=true;
     pageTrack.current?.classList.add("is-finger-tracking");
     underline.current?.classList.add("is-finger-tracking");
+    discoveryRoot.current?.classList.add("is-discovery-moving");
     try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older Telegram WebView */}
   }
   if(event.cancelable)event.preventDefault();
-  const width=pages.current?.clientWidth||window.innerWidth;
+  const width=g.width;
   const limited=(g.index===0&&x>0)||(g.index===2&&x<0);
   const shift=limited?x*.22:Math.max(-width,Math.min(width,x));
   flushDrag();
@@ -174,7 +203,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
   if(!g.tracking)return;
   const x=event.clientX-g.x,elapsed=Math.max(1,performance.now()-g.started);
   const velocity=Math.abs(x)/elapsed;
-  const target=Math.abs(x)>(pages.current?.clientWidth||320)*.18||velocity>.55
+  const target=Math.abs(x)>g.width*.18||velocity>.55
     ?g.index+(x<0?1:-1):g.index;
   clickBlockUntil.current=performance.now()+260;
   settleDrag();
@@ -209,7 +238,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
    setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
- return <div className="discovery-app">
+ return <div className="discovery-app" ref={discoveryRoot}>
    <div className="discovery-ambient" aria-hidden="true"/>
    <header className="discovery-header">
      <img className="discovery-brand" src={logoSrc} alt="luemi" decoding="sync" fetchPriority="high"/>
@@ -266,8 +295,8 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
                settingsOpen={forYouSettings} onSettingsOpen={setForYouSettings}/>
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Рядом">
-             <Nearby draft={draft} filters={filters} saved={feed.saved} onSave={toggleForYouSave}
-               onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>
+             {nearbyPrepared&&<Nearby draft={draft} filters={filters} saved={feed.saved} onSave={toggleForYouSave}
+               onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>}
            </section>
          </div>
        </div>

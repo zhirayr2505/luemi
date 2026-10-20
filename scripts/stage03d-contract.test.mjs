@@ -59,3 +59,13 @@ assert.ok(discoveryStyles.includes(".discovery-page-track.is-finger-tracking")&&
 assert.ok(active.includes("onPointerCancel={cancelSwipe}")&&active.includes("requestAnimationFrame")&&!active.includes("setDragX"),"gesture cancellation and rAF updates");
 assert.ok(feedCard.includes("discovery-deck-current")&&active.includes('event.animationName==="luemi-deck-leave"'),"Feed animation preserved");
 console.log("✓ Stage 03D.1 animation, scroll, logo and Feed regression contracts");
+
+const polishedDiscovery=readFileSync(new URL("../apps/web/src/discovery/DiscoveryApp.tsx",import.meta.url),"utf8");
+const polishedForYou=readFileSync(new URL("../apps/web/src/discovery/ForYou.tsx",import.meta.url),"utf8");
+const polishedCss=readFileSync(new URL("../apps/web/src/discovery/discovery.css",import.meta.url),"utf8");
+assert.ok(polishedForYou.includes("const PersonTile=memo(function PersonTile"),"repeated For You portrait tiles memoized");
+assert.ok(polishedDiscovery.includes('root.addEventListener("scroll",onScroll,{capture:true,passive:true})'),"passive native scroll observer");
+assert.ok(polishedDiscovery.includes('width:pages.current?.clientWidth||window.innerWidth')&&polishedDiscovery.includes("const width=g.width"),"gesture width cached on pointer down, no layout read on movement");
+assert.ok(polishedCss.includes("is-discovery-scrolling")&&polishedCss.includes(".nb-bookmark")&&polishedCss.includes("backdrop-filter:none"),"motion-only blur reduction for repeated badges");
+assert.ok(!polishedDiscovery.includes("setDragX"),"pointer movement remains outside React state");
+console.log("✓ Stage 03F: native scroll, cached gesture geometry, reusable cards, adaptive glass");

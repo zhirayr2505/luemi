@@ -219,3 +219,10 @@
 .luemi-shell[data-theme=dark] .discovery-nav-item.active svg{color:#c493f1}
 
 .deck-entering .discovery-action:disabled{opacity:1}
+
+/* Stage 03F: motion-time glass optimization. Never alter approved static appearance.
+   Only repeated tiny overlays lose their costly backdrop sample while moving;
+   persistent header, navigation, photographs and full-screen profile remain intact. */
+.discovery-app:is(.is-discovery-scrolling,.is-discovery-moving) :is(.fy-save,.fy-tile-demo,.nb-bookmark){
+ backdrop-filter:none;-webkit-backdrop-filter:none
+}
