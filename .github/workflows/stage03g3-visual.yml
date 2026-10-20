@@ -1,7 +1,7 @@
 name: LUEMI Stage 03G.5 profile polish visual QA
 on:
   push:
-    branches: ['feat/stage03g3-*', 'feat/stage03g4-*', 'feat/stage03g5-*']
+    branches: ['feat/stage03g3-*', 'feat/stage03g4-*', 'feat/stage03g5-*', 'feat/stage03g6-*']
   workflow_dispatch:
 permissions:
   contents: read
