@@ -58,7 +58,14 @@ try{
  assert.ok(Math.abs(x.identityY-pin.identity)<2&&Math.abs(x.tabsY-pin.tabs)<2,
   "identity and tabs stay pinned during content scroll");
  await snap("tab-scroll");
- // Return tab content to its top. The NEXT separate swipe reveals the photo.
+ // A swipe started while tab content is scrolled must NOT expand the sheet,
+ // even if that swipe returns the content to the top.
+ await page.evaluate(()=>{document.querySelector(".pm-page:nth-child(4)").scrollTop=100});
+ await swipe(195,610,150);
+ x=await state();assert.equal(x.mode,"collapsed","first downward swipe scrolls content, not the sheet");
+ const returned=await page.evaluate(()=>document.querySelector(".pm-page:nth-child(4)").scrollTop);
+ assert.ok(returned<100,"native tab scroller moves towards top before the next gesture");
+ // Only a separate new gesture may bring back the large profile photograph.
  await page.evaluate(()=>{document.querySelector(".pm-page:nth-child(4)").scrollTop=0});
  await swipe(195,630,145);
  x=await state();assert.equal(x.mode,"expanded","downward swipe at tab top reopens photo");
