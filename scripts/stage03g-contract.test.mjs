@@ -46,7 +46,7 @@ assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki"
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
 assert.ok(profile.includes("requestAnimationFrame(paintScroll)")&&
  profile.includes("frame.getBoundingClientRect()")&&profile.includes("onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null)")&&
- read("apps/web/src/discovery/GlobalHeader.tsx").includes("heroRect.top+heroRect.height*.53"),
+ read("apps/web/src/discovery/GlobalHeader.tsx").includes("heroRect.top+heroRect.height*.57"),
  "scroll-driven shared photo uses fixed layout origin, without every-frame React renders");
 assert.ok(profile.includes("requestAnimationFrame(()=>{dragFrame.current=null;paintTabs"),
  "tabs follow finger on compositor transform");
@@ -93,3 +93,7 @@ assert.ok(!profile.includes("photoTrack.current.style.opacity")&&
  profile.includes("onClick={()=>chooseTab(2)}"),
  "hero never blanks during scroll; identity/actions are present and functional");
 console.log("✓ Stage 03G.3: full-screen photo and overlay-only logo contracts");
+
+assert.ok(header.includes("const diameter=46*(1-t)+3*t")&&
+ headerCss.includes("width:46px;height:46px")&&!header.includes("node.style.width="),
+ "small liquid fragment scales on GPU without per-scroll geometry mutations");
