@@ -256,7 +256,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const chooseTab=(newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
-  if(pageTrack.current)pageTrack.current.style.transition="transform 310ms cubic-bezier(.22,.77,.23,1)";
+  if(pageTrack.current)pageTrack.current.style.transition="transform 295ms cubic-bezier(.22,.77,.23,1)";
+  if(ink.current)ink.current.style.transition="";
   paintTabs(i);
   setTab(tabs[i][0]);
   const bar=tabBar.current,button=bar?.querySelectorAll<HTMLButtonElement>(".pm-tab")[i];
@@ -274,6 +275,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   if(g.axis!=="x")return;
   if(e.cancelable)e.preventDefault();
   if(pageTrack.current)pageTrack.current.style.transition="none";
+  if(ink.current)ink.current.style.transition="none";
   const edge=(g.index===0&&dx>0)||(g.index===4&&dx<0);
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
   dragFrame.current=requestAnimationFrame(()=>{dragFrame.current=null;paintTabs(g.index,edge?dx*.2:dx);});
