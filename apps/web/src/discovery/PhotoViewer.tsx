@@ -158,8 +158,8 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
     onError={e=>{if(show.fallback&&e.currentTarget.src!==show.fallback)e.currentTarget.src=show.fallback;}}/>
   </div>
   <header className="pm-viewer-top">
+   <span className="pm-viewer-topspacer"/><span>{index+1} / {photos.length}</span>
    <button type="button" onClick={requestClose} aria-label="Закрыть просмотр"><X size={22}/></button>
-   <span>{index+1} / {photos.length}</span><span className="pm-viewer-topspacer"/>
   </header>
   <footer className="pm-viewer-bottom">
    <span>{displayPhotoDate(show)}</span>

@@ -45,7 +45,8 @@ assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki"
  profile.includes('["photos","Фото"')&&profile.includes('["gifts","Подарки"')&&
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
 assert.ok(profile.includes("requestAnimationFrame(paintScroll)")&&
- profile.includes("frame.getBoundingClientRect()")&&profile.includes("rect.top-parent.top+y"),
+ profile.includes("frame.getBoundingClientRect()")&&profile.includes("onScrollMotion?.(p,frame.getBoundingClientRect(),y,current?.src??null)")&&
+ read("apps/web/src/discovery/GlobalHeader.tsx").includes("heroRect.top+scrollTop"),
  "scroll-driven shared photo uses fixed layout origin, without every-frame React renders");
 assert.ok(profile.includes("requestAnimationFrame(()=>{dragFrame.current=null;paintTabs"),
  "tabs follow finger on compositor transform");
@@ -70,3 +71,12 @@ assert.ok(css.includes("@media(prefers-reduced-motion:reduce)")&&
 assert.ok(carousel.includes("frameId.current=window.requestAnimationFrame"),
  "locked discovery PhotoCarousel stays compositor-driven");
 console.log("✓ Stage 03G.B–G: single profile shell, morph, five tabs, viewer, native back and Discovery lock");
+
+const header=read("apps/web/src/discovery/GlobalHeader.tsx");
+const headerCss=read("apps/web/src/discovery/global-header.css");
+assert.ok(discovery.includes("<GlobalHeader")&&header.includes("setProfileMorph")&&header.includes("setScrollTop"),
+ "one global header owns both merged tools and shared photo morph");
+assert.ok(headerCss.includes(".lh-droplet")&&headerCss.includes(".lh-profile-theme")&&
+ !css.includes(".pm-global-header")&&!css.includes(".pm-morph-photo"),
+ "obsolete duplicate profile header and local morph removed");
+console.log("✓ Stage 03G.2 unified chrome and liquid motion contracts");

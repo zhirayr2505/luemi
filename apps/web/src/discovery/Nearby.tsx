@@ -17,6 +17,7 @@ interface Props{
  onPerson:(id:string)=>void;
  onFilters:()=>void;
  onEditLocation:()=>void;
+ onScrollTop?:(top:number)=>void;
 }
 const pageSize=8;
 
@@ -50,7 +51,7 @@ function PersonCard({person,draft,saved,onSave,onPerson}:{
 }
 const MemoCard=memo(PersonCard);
 
-export const Nearby=memo(function Nearby({draft,filters,saved,onSave,onPerson,onFilters,onEditLocation}:Props){
+export const Nearby=memo(function Nearby({draft,filters,saved,onSave,onPerson,onFilters,onEditLocation,onScrollTop}:Props){
  const [visible,setVisible]=useState(pageSize);
  const scroller=useRef<HTMLDivElement>(null);
  const sentinel=useRef<HTMLDivElement>(null);
@@ -78,7 +79,7 @@ export const Nearby=memo(function Nearby({draft,filters,saved,onSave,onPerson,on
   scope==="country"?"Показываем только анкеты с указанной страной, не реальную геопозицию.":
   "Совпадает заявленный город. Расстояния между людьми не вычисляются.";
  return <section className="nb-root" aria-label="Рядом · демонстрационный каталог">
-   <div className="nb-scroll" ref={scroller}>
+   <div className="nb-scroll" ref={scroller} onScroll={event=>onScrollTop?.(event.currentTarget.scrollTop)}>
      <button className="nb-location" type="button" onClick={onFilters} aria-label={"Настройки географического поиска: "+heading}>
        <span className="nb-location-icon">{scope==="world"?<Globe2 size={23}/>:<MapPin size={23}/>}</span>
        <span className="nb-location-copy"><strong>{heading}</strong><span>{subline}</span></span>
