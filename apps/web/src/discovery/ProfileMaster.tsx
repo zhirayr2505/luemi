@@ -224,16 +224,34 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   if(g.axis==="x")clickBlocked.current=performance.now()+280;
  };
  const paintTabs=(i:number,dx=0)=>{
-  const track=pageTrack.current;if(track)track.style.transform=`translate3d(calc(-${i*100}% + ${dx}px),0,0)`;
-  const bar=tabBar.current,indicator=ink.current;if(!bar||!indicator)return;
-  const btns=bar.querySelectorAll<HTMLButtonElement>(".pm-tab");
-  const a=btns[i],b=btns[Math.max(0,Math.min(btns.length-1,i+(dx<0?1:-1)))];
-  if(!a||!b)return;
-  const fraction=Math.min(1,Math.abs(dx)/(pages.current?.clientWidth||innerWidth));
-  const lx=a.offsetLeft+(b.offsetLeft-a.offsetLeft)*fraction;
-  const width=a.offsetWidth+(b.offsetWidth-a.offsetWidth)*fraction;
-  indicator.style.width=width+"px";indicator.style.transform=`translate3d(${lx}px,0,0)`;
+  if(pageTrack.current)pageTrack.current.style.transform=`translate3d(calc(-${i*100}% + ${dx}px),0,0)`;
+  const indicator=ink.current,metrics=tabMetrics.current;
+  if(!indicator||!metrics.length)return;
+  const first=metrics[Math.max(0,Math.min(metrics.length-1,i))];
+  const other=metrics[Math.max(0,Math.min(metrics.length-1,i+(dx<0?1:-1)))];
+  const ratio=Math.min(1,Math.abs(dx)/Math.max(1,tabViewport.current));
+  const x=first.left+(other.left-first.left)*ratio;
+  const width=first.width+(other.width-first.width)*ratio;
+  // Only compositor transforms during horizontal dragging: no width/layout reads.
+  indicator.style.transform=`translate3d(${x}px,0,0) scaleX(${width/Math.max(1,tabMetrics.current[0].width)})`;
  };
+ useLayoutEffect(()=>{
+  const bar=tabBar.current;
+  if(!bar)return;
+  const measure=()=>{
+   const btns=bar.querySelectorAll<HTMLButtonElement>(".pm-tab");
+   tabMetrics.current=Array.from(btns).map(el=>({left:el.offsetLeft,width:el.offsetWidth}));
+   tabViewport.current=Math.max(1,pages.current?.clientWidth||bar.clientWidth);
+   if(ink.current&&tabMetrics.current.length)
+    ink.current.style.width=tabMetrics.current[0].width+"px";
+   paintTabs(tabs.findIndex(v=>v[0]===tab));
+  };
+  measure();
+  const ro=new ResizeObserver(measure);
+  ro.observe(bar);
+  if(pages.current)ro.observe(pages.current);
+  return ()=>ro.disconnect();
+ },[active]);
  const chooseTab=(newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
@@ -285,10 +303,15 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
+     <div className="pm-photo-blur" ref={blurLayer} aria-hidden="true">
+      {current&&<PhotoImage photo={current} alt="" loading="eager"/>}
+     </div>
     <div className="pm-hero-gradient" aria-hidden="true"/>
-    {photos.length>1&&<div className="pm-photo-progress" aria-label="Фотографии">{photos.map((p,i)=>
-     <button type="button" key={p.id} aria-label={"Фото "+(i+1)} aria-current={i===activePhoto?"true":undefined}
-       className={i===activePhoto?"active":""} onClick={()=>{setTransform(i);setActivePhoto(i);}}/>)}</div>}
+    {photos.length>1&&<div className="pm-photo-progress" role="group" aria-label="Фотографии профиля">{photos.map((p,i)=>
+     <button type="button" key={p.id} aria-label={"Фото "+(i+1)+" из "+photos.length}
+       aria-current={i===activePhoto?"true":undefined}
+       className={i===activePhoto?"active":""}
+       onClick={()=>{if(photoTrack.current)photoTrack.current.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";setTransform(i);setActivePhoto(i);}}/>)}</div>}
     {view.profile.source!=="server"&&<span className="pm-hero-demo">{view.profile.source==="fixture"?"Демо":"Черновик"}</span>}
    </div>
    <div className="pm-profile-sheet" ref={sheet}>
