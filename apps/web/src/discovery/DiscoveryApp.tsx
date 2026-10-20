@@ -103,12 +103,15 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    if(mainTab==="discover"&&discoveryTab==="nearby"&&!personOpen)globalHeader.current?.setScrollTop(top);
  },[mainTab,discoveryTab,personOpen]);
  useEffect(()=>{
+   // The active profile paints its own scroll progress; resetting the header
+   // after child effects would flash the contrast shadow to zero on return.
+   if(profileMode)return;
    globalHeader.current?.reset();
    if(mainTab==="discover"&&!personOpen){
      globalHeader.current?.setScrollTop(discoveryTab==="for-you"?savedScroll.current["for-you"]:
        discoveryTab==="nearby"?savedScroll.current.nearby:0);
    }
- },[mainTab,discoveryTab,personOpen]);
+ },[mainTab,discoveryTab,personOpen,profileMode]);
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
