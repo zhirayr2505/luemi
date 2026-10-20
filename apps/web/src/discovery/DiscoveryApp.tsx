@@ -20,6 +20,17 @@ function Placeholder({title,text}:{title:string;text:string}){
  return <div className="discovery-placeholder"><Layers3 size={35} strokeWidth={1.4}/>
  <h2>{title}</h2><p>{text}</p><span>Следующий этап LUEMI</span></div>;
 }
+function EmptyFeed({hasProfiles,canUndo,onUndo,onRestart}:{hasProfiles:boolean;canUndo:boolean;
+ onUndo:()=>void;onRestart:()=>void}){
+ return <div className="discovery-empty discovery-deck-finish">
+   <Heart size={38}/><h2>{hasProfiles?"Все демо-анкеты просмотрены":"Подходящих демо-анкет нет"}</h2>
+   <p>Это тестовые персонажи, а не реальные пользователи.</p>
+   {canUndo&&<button type="button" className="discovery-glass-button" onClick={onUndo}>
+     <Undo2 size={16}/> Отменить
+   </button>}
+   <button type="button" className="discovery-glass-button" onClick={onRestart}>Начать заново</button>
+ </div>;
+}
 interface Props {draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void}
 
 export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
@@ -174,7 +185,7 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
            transform:"translate3d(calc(-"+tabIndex*100+"% + "+dragX+"px),0,0)",
            transition:swiping?"none":undefined}}>
            <section className="discovery-page" role="tabpanel" aria-label="Лента">
-             {(person||leaving)?<div className="discovery-deck-stage">
+             {<div className="discovery-deck-stage">
                {person&&<div key={person.id}
                  className={"discovery-deck-layer"+(leaving?" deck-leaving":" deck-active")}>
                  <FeedCard person={person} saved={feed.saved.includes(person.id)}
@@ -189,19 +200,12 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
                    onOpenProfile={()=>setPersonOpen(profiles[feed.index+1].id)}
                    onInterests={()=>setInterestOpen(profiles[feed.index+1].id)}/>
                </div>}
-               {!profiles[feed.index+1]&&leaving&&<div key="deck-complete"
-                 className="discovery-deck-layer deck-entering">
-                 <div className="discovery-empty discovery-deck-finish"><Heart size={38}/>
-                   <h2>Все демо-анкеты просмотрены</h2>
-                   <p>Это тестовые персонажи, а не реальные пользователи.</p>
-                 </div>
+               {!profiles[feed.index+1]&&<div key="deck-complete"
+                 className={"discovery-deck-layer"+(leaving?" deck-entering":" deck-active")}
+                 aria-hidden={!!person&&!leaving}>
+                 <EmptyFeed hasProfiles={profiles.length>0} canUndo={feed.history.length>0}
+                   onUndo={()=>act("undo")} onRestart={restartFeed}/>
                </div>}
-             </div>:<div className="discovery-empty">
-               <Heart size={38}/><h2>{profiles.length?"Все демо-анкеты просмотрены":"Подходящих демо-анкет нет"}</h2>
-               <p>Это тестовые персонажи, а не реальные пользователи.</p>
-               {feed.history.length>0&&<button type="button" className="discovery-glass-button"
-                 onClick={()=>act("undo")}><Undo2 size={16}/> Отменить</button>}
-               <button type="button" className="discovery-glass-button" onClick={restartFeed}>Начать заново</button>
              </div>}
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Для тебя">
