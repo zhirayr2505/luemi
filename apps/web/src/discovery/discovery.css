@@ -185,7 +185,7 @@
 .discovery-interests-heading h2{display:flex;align-items:center;gap:8px;font-size:18px;margin:0}
 .discovery-all-interests{overflow-y:auto;padding:9px 2px 15px;display:flex;flex-wrap:wrap;gap:8px}
 .discovery-all-interests .chip{flex:none;max-width:100%}
-@media(prefers-reduced-motion:reduce){.discovery-deck-current,.discovery-deck-next,.discovery-save-control{transition:none}}
+@media(prefers-reduced-motion:reduce){.discovery-deck-layer,.discovery-save-control{transition:none;animation:none}}
 
 /* Second demo frame shows another crop of the same artificial character. */
 .discovery-photo .carousel-track img:nth-child(2){object-position:50% 22%;transform:scale(1.095)}
@@ -196,3 +196,5 @@
 .luemi-shell[data-theme=dark] .discovery-icon-action{background:linear-gradient(140deg,rgba(105,77,132,.5),rgba(68,47,96,.3));border-color:rgba(224,191,253,.25);box-shadow:inset 0 1px rgba(255,255,255,.18),0 5px 14px rgba(0,0,0,.2)}
 .luemi-shell[data-theme=dark] .discovery-nav-item.active{color:#d8aaf7}
 .luemi-shell[data-theme=dark] .discovery-nav-item.active svg{color:#c493f1}
+
+.deck-entering .discovery-action:disabled{opacity:1}
