@@ -50,6 +50,8 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    if(mode!=="profile")return;
    const node=droplet.current,img=portrait.current,target=island.current,root=host.current;
    if(!node||!img||!target||!root)return;
+   // Read layout before mutating animated styles to avoid forced reflow.
+   const goal=target.getBoundingClientRect();
    const p=clamp(progress),e=1-Math.pow(1-p,1.65);
    const compact=smooth(clamp((p-.26)/.52));
    root.style.setProperty("--lh-compact",String(compact));
@@ -62,7 +64,6 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    // unscrolled origin; the shared element lives outside the clipping scroll.
    const x0=heroRect.left,y0=heroRect.top+scrollTop;
    const w0=heroRect.width,h0=heroRect.height;
-   const goal=target.getBoundingClientRect();
    const goalX=goal.left+goal.width*.5-9,goalY=goal.top+goal.height*.5-9;
    const x=x0+(goalX-x0)*e,y=y0+(goalY-y0)*e;
    const w=w0+(18-w0)*e,h=h0+(18-h0)*e;
