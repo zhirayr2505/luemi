@@ -49,6 +49,7 @@ const profile=read("apps/web/src/discovery/ProfileMaster.tsx");
 const viewer=read("apps/web/src/discovery/PhotoViewer.tsx");
 const css=read("apps/web/src/discovery/profile-master.css");
 const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
+const visitorRoute=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 const app=read("apps/web/src/App.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki","Блики"')&&
@@ -72,7 +73,7 @@ assert.ok(viewer.includes("canMakeMain(view,show.id)")&&
  viewer.includes("Дата добавления недоступна")===false,
  "make-main is guarded; date originates exclusively from model");
 assert.ok(discovery.includes('<ProfileMaster data={ownProfile} mode="owner"')&&
- discovery.includes('<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"'),
+ discovery.includes("<VisitorProfileRoute")&&visitorRoute.includes('<ProfileMaster data={data} mode="visitor"'),
  "both profile destinations use one shared implementation");
 assert.ok(app.includes('photos={readyPhotos}')&&
  app.includes('photos.filter(p=>p.status==="ready"||p.status==="success")'),
