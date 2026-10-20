@@ -30,7 +30,13 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  const paintTools=(top:number)=>{
   if(mode==="profile")return;
   const p=smooth(clamp(top/105));
-  host.current?.style.setProperty("--lh-p",String(manual.current?0:p));
+  const v=manual.current?0:p,el=host.current;
+  el?.style.setProperty("--lh-p",String(v));
+  el?.style.setProperty("--lh-control-opacity",String(1-v));
+  el?.style.setProperty("--lh-control-scale",String(1-.84*v));
+  el?.style.setProperty("--lh-control-y",(-31*v)+"px");
+  el?.style.setProperty("--lh-left-x",(38*v)+"px");
+  el?.style.setProperty("--lh-right-x",(-38*v)+"px");
   host.current?.setAttribute("data-tools-merged",!manual.current&&p>.96?"true":"false");
  };
  useImperativeHandle(ref,()=>({
@@ -43,7 +49,9 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    const node=droplet.current,img=portrait.current,target=island.current,root=host.current;
    if(!node||!img||!target||!root)return;
    const p=clamp(progress),e=1-Math.pow(1-p,1.65);
-   root.style.setProperty("--lh-compact",String(smooth(clamp((p-.26)/.52))));
+   const compact=smooth(clamp((p-.26)/.52));
+   root.style.setProperty("--lh-compact",String(compact));
+   root.style.setProperty("--lh-text-x",(-8*(1-compact))+"px");
    const impulse=Math.exp(-Math.pow((p-.87)/.095,2))*.057;
    root.style.setProperty("--lh-impact",String(impulse));
    if(!photo||p<.008||p>=1){node.style.opacity="0";return;}
@@ -66,7 +74,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   },
   reset:()=>{
    lastScroll.current=0;manual.current=false;
-   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-compact","0");host.current.style.setProperty("--lh-impact","0");}
+   if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-compact","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-text-x","-8px");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.setAttribute("data-tools-merged","false");}
    if(droplet.current)droplet.current.style.opacity="0";
   }
  }),[mode]);
