@@ -215,7 +215,8 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const photoEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=photoSwipe.current;if(!g||g.id!==e.pointerId)return;
   photoSwipe.current=null;
-  if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
+  if(g.axis!=="x")return;
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
   const target=!cancel&&g.axis==="x"&&(Math.abs(dx)>g.width*.2||Math.abs(dx)/dt>.55)?
    Math.max(0,Math.min(photos.length-1,g.index+(dx<0?1:-1))):g.index;
@@ -280,10 +281,15 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const tabEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
   tabSwipe.current=null;
+  // Vertical native page scroll must NOT reset the horizontal pager/underline.
+  // The previous implementation called chooseTab on every vertical touch-up,
+  // causing flicker and redundant scrolling of the tab bar.
+  if(g.axis!=="x")return;
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
-  const next=!cancel&&g.axis==="x"&&(Math.abs(dx)>g.width*.17||Math.abs(dx)/dt>.52)?
+  const next=!cancel&&(Math.abs(dx)>g.width*.17||Math.abs(dx)/dt>.52)?
    g.index+(dx<0?1:-1):g.index;
-  if(g.axis==="x")clickBlocked.current=performance.now()+240;
+  clickBlocked.current=performance.now()+240;
   chooseTab(next);
  };
  const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
