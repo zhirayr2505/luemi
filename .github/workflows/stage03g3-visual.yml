@@ -1,7 +1,7 @@
-name: LUEMI Stage 03G.5 profile polish visual QA
+name: LUEMI 03G profile visual QA (Android-safe rendering)
 on:
   push:
-    branches: ['feat/stage03g3-*', 'feat/stage03g4-*', 'feat/stage03g5-*', 'feat/stage03g6-*']
+    branches: ['feat/stage03g3-*', 'feat/stage03g4-*', 'feat/stage03g5-*', 'feat/stage03g6-*', 'feat/stage03g7-*']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,7 +26,9 @@ jobs:
             if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then break; fi
             sleep 1
           done
-          if [[ "$GITHUB_REF_NAME" == feat/stage03g6-* ]]; then
+          if [[ "$GITHUB_REF_NAME" == feat/stage03g7-* ]]; then
+            node scripts/stage03g7-android-visual-qa.mjs
+          elif [[ "$GITHUB_REF_NAME" == feat/stage03g6-* ]]; then
             node scripts/stage03g6-visual-qa.mjs
           else
             node scripts/stage03g5-visual-qa.mjs
@@ -37,4 +39,5 @@ jobs:
         with:
           name: luemi-stage03g5-profile-polish
           path: |\n            stage03g5-*.jpg\n            stage03g6-*.jpg
+            stage03g7-*.jpg
           if-no-files-found: ignore
