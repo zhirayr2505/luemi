@@ -10,6 +10,7 @@ on:
       - 'feat/stage02f-*'
       - 'feat/stage02g-*'
       - 'feat/stage03-*'
+      - 'fix/stage03-*'
   pull_request:
     branches:
       - main
