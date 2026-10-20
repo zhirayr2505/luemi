@@ -9,18 +9,12 @@
 .pm-photo-slide{height:100%;min-width:100%;flex:0 0 100%;touch-action:pan-y;overflow:hidden}
 .pm-photo-slide img{display:block;height:100%;width:100%;object-fit:cover;object-position:center 25%;user-select:none;-webkit-user-select:none}
 .pm-hero-gradient{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(to bottom,transparent 42%,rgba(20,9,34,.05) 56%,rgba(20,9,34,.54) 88%,rgba(20,9,34,.74))}
-.pm-hero-info{position:absolute;z-index:4;bottom:18px;left:16px;right:13px;color:#fff;pointer-events:none;opacity:calc(1 - var(--pm-p));transition:none}
-.pm-hero-info h2{display:flex;align-items:center;gap:6px;font-size:clamp(21px,5.8vw,27px);line-height:1.2;letter-spacing:-.035em;margin:0 0 7px;text-shadow:0 2px 9px rgba(0,0,0,.36)}
-.pm-hero-info p{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:650;margin:0;text-shadow:0 1px 6px rgba(0,0,0,.3)}
 .pm-hero-demo{position:absolute;z-index:4;left:12px;top:13px;border-radius:99px;padding:5px 9px;color:#56386a;background:rgba(246,225,255,.93);font-size:10px;font-weight:750}
 .pm-hero-no-photo{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;color:#fff;font-size:13px}
 .pm-photo-progress{position:absolute;z-index:5;top:12px;left:12px;right:12px;display:flex;gap:5px}
 .pm-photo-progress button{flex:1;min-width:0;height:3px;padding:0;border:0;border-radius:99px;background:rgba(255,255,255,.48)}
 .pm-photo-progress button.active{background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.32)}
 .pm-premium{font-size:17px;color:#f6d579;flex:none}
-.pm-owner-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 13px 5px}
-.pm-owner-actions button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:43px;padding:7px 6px;border-radius:16px;border:1px solid var(--glass-edge);background:var(--panel);color:var(--ink);font-size:11px;font-weight:700;box-shadow:inset 0 1px rgba(255,255,255,.3)}
-.pm-owner-actions svg{flex:none}
 .pm-tabs{position:sticky;top:0;z-index:10;display:flex;align-items:stretch;width:100%;height:64px;gap:1px;padding:5px 8px 7px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;background:var(--bg);border-bottom:1px solid var(--line);touch-action:pan-x}
 .pm-tabs::-webkit-scrollbar{display:none}
 .pm-tab{position:relative;z-index:2;flex:1 0 67px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;padding:4px 3px 7px;white-space:nowrap;min-width:0;background:transparent;border:0;border-radius:12px;color:var(--subtle);font-size:clamp(9px,2.35vw,11px);font-weight:700}
@@ -88,3 +82,78 @@
 /* Preview is a full content panel under the same persistent header, not a second app chrome. */
 .pm-preview-toolbar{display:flex;justify-content:flex-end;padding:8px 14px 1px}
 .pm-preview-toolbar button{font:inherit;font-size:12px;color:var(--ink);border:1px solid var(--glass-edge);background:var(--panel);border-radius:99px;padding:8px 12px}
+
+/* Stage 03G.3 — full-bleed portrait and floating LUEMI logo.
+   The profile owns the entire content viewport; no header spacer is mounted. */
+.pm-shell{background:var(--bg);overflow:hidden}
+.pm-scroll{background:var(--bg);overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;scrollbar-width:none;scroll-padding-top:0}
+.pm-hero{
+ position:relative;margin:0;width:100%;max-width:none;
+ height:clamp(405px,61svh,680px);min-height:405px;
+ border:0;border-radius:0;overflow:hidden;
+ background:linear-gradient(150deg,#c7b0e4,#9a80cb);
+ isolation:isolate;touch-action:pan-y;
+}
+.pm-photo-track{height:100%;opacity:1!important}
+.pm-photo-slide img{object-position:center 20%}
+.pm-hero-gradient{
+ background:linear-gradient(to bottom,rgba(31,17,45,.08) 0%,transparent 23%,transparent 75%,rgba(28,13,42,.13) 100%);
+}
+.pm-photo-progress{top:calc(var(--top-safe) + 74px);left:17px;right:17px;gap:5px}
+.pm-hero-demo{top:auto;bottom:61px;left:18px;background:rgba(248,238,255,.87)}
+.pm-profile-sheet{
+ position:relative;z-index:6;margin-top:-43px;
+ padding:0 0 24px;border-radius:38px 38px 0 0;
+ background:var(--bg);box-shadow:0 -5px 22px rgba(56,30,73,.055);
+ min-height:370px;isolation:isolate;
+}
+.pm-identity{padding:45px 23px 18px;display:flex;flex-direction:column;align-items:flex-start;gap:9px;min-height:152px}
+.pm-identity h2{
+ display:flex;align-items:center;gap:7px;max-width:100%;margin:0;
+ font-size:clamp(23px,6.2vw,29px);font-weight:850;line-height:1.2;letter-spacing:-.035em;
+ overflow-wrap:anywhere;color:var(--ink);
+}
+.pm-identity-location{margin:0;display:flex;align-items:center;gap:8px;color:var(--subtle);font-size:14px;font-weight:650;min-height:21px}
+.pm-identity-location img,.pm-identity-location svg{flex:none}
+.pm-goal-chip{
+ display:inline-flex;align-items:center;gap:7px;padding:8px 13px;
+ font-size:12px;font-weight:720;color:#854aa9;border-radius:13px;
+ border:1px solid rgba(216,164,243,.19);
+ background:linear-gradient(115deg,rgba(209,151,241,.19),rgba(237,177,238,.13));
+ box-shadow:0 3px 14px rgba(120,67,170,.06);
+}
+.pm-owner-actions{
+ display:grid;grid-template-columns:1fr 1.26fr 1fr;gap:8px;
+ padding:5px 15px 26px;align-items:stretch;
+}
+.pm-owner-actions button{
+ display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;
+ padding:9px 5px;min-width:0;min-height:53px;
+ font-size:clamp(10px,2.8vw,12px);font-weight:750;white-space:nowrap;
+ border-radius:22px;border:1px solid var(--glass-edge);
+ color:#8359a3;background:var(--panel);
+ box-shadow:inset 0 1px rgba(255,255,255,.72),0 5px 15px rgba(67,29,104,.06);
+}
+.pm-owner-actions button svg{flex:none}
+.pm-owner-actions button.pm-owner-edit{
+ color:#fff;border-color:rgba(171,90,238,.45);
+ background:linear-gradient(110deg,#bb74f2,#9634de);
+ box-shadow:0 6px 18px rgba(148,67,225,.23),inset 0 1px rgba(255,255,255,.22);
+}
+.pm-owner-actions button:active{transform:scale(.98)}
+.pm-tabs{position:sticky;top:0;z-index:10;height:59px;margin:0 7px;gap:2px;padding:4px 2px 8px;border-bottom:1px solid var(--line)}
+.pm-tab{font-size:clamp(9px,2.35vw,11px);flex:1 0 62px}
+.pm-pages{min-height:var(--pm-panel-height,390px)}
+.pm-page{padding-top:16px;padding-bottom:40px}
+.pm-preview-toolbar{position:absolute;z-index:12;right:14px;top:calc(var(--top-safe) + 76px)}
+.pm-preview-toolbar button{background:rgba(255,255,255,.78);backdrop-filter:blur(8px)}
+.luemi-shell[data-theme=dark] .pm-profile-sheet{background:var(--bg)}
+.luemi-shell[data-theme=dark] .pm-goal-chip{color:#e8bbfa;background:rgba(133,72,175,.27)}
+@media(max-width:370px){
+ .pm-hero{min-height:395px;height:61svh;margin:0}
+ .pm-identity{padding:42px 19px 16px}
+ .pm-owner-actions{gap:6px;padding-left:10px;padding-right:10px}
+ .pm-owner-actions button{font-size:10px;gap:4px;padding-left:3px;padding-right:3px;border-radius:19px}
+ .pm-owner-actions button svg{width:15px;height:15px}
+ .pm-profile-sheet{border-radius:32px 32px 0 0}
+}
