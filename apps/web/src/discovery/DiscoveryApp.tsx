@@ -42,6 +42,9 @@ interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:str
 
 export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
+ const [profilePrepared,setProfilePrepared]=useState(false);
+ const visitorBackRef=useRef<(()=>boolean)|null>(null);
+ const registerVisitorBack=useCallback((handler:(()=>boolean)|null)=>{visitorBackRef.current=handler;},[]);
  const profileBackRef=useRef<(()=>boolean)|null>(null);
  const registerProfileBack=useCallback((handler:(()=>boolean)|null)=>{profileBackRef.current=handler;},[]);
  const ownProfile=useMemo(()=>fromLocalDraft(draft,photos),[draft,photos]);
@@ -127,7 +130,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  },[]);
  useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);pendingCommit.current=null;},[]);
  const leave=useCallback(()=>{
-  if(profileBackRef.current?.())return;
+  if(personOpen&&visitorBackRef.current?.())return;
+  if(mainTab==="profile"&&profileBackRef.current?.())return;
   if(personOpen){setPersonOpen(null);return;}
   if(interestOpen){setInterestOpen(null);return;}
   if(forYouSettings){setForYouSettings(false);return;}
@@ -276,6 +280,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   if(tab===mainTab)return;
   // End an in-flight Deck Lift in the same React batch before hiding Feed.
   if(locked.current)finishDeck();
+  if(tab==="profile")setProfilePrepared(true);
   setMainTab(tab);
  };
 
@@ -339,7 +344,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
                settingsOpen={forYouSettings} onSettingsOpen={setForYouSettings}/>
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Рядом">
-             {nearbyPrepared&&<Nearby draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportNearbyScroll} onSave={toggleForYouSave}
+             {nearbyPrepared&&<Nearby active={mainTab==="discover"&&discoveryTab==="nearby"&&!selectedPerson} draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportNearbyScroll} onSave={toggleForYouSave}
                onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>}
            </section>
          </div>
@@ -352,10 +357,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
      </section>
      <section className="discovery-panel" hidden={mainTab!=="profile"}>
-       <ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"} onMotionProgress={reportProfileMotion}/>
+       {profilePrepared&&<ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"&&!selectedPerson} onMotionProgress={reportProfileMotion}/>}
      </section>
-   {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"
-     onClose={()=>setPersonOpen(null)} registerBack={registerProfileBack} onMotionProgress={reportProfileMotion}/>}
+   {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor" key={selectedPerson.id}
+     onClose={()=>setPersonOpen(null)} registerBack={registerVisitorBack} onMotionProgress={reportProfileMotion}/>}
    </div>
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}

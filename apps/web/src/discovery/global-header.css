@@ -24,9 +24,8 @@
  opacity:var(--lh-contrast,0);
  filter:drop-shadow(0 1px 1px rgba(41,18,60,.46))
         drop-shadow(0 2px 4px rgba(75,34,99,.55));
- transition:opacity 360ms cubic-bezier(.22,.79,.22,1);
 }
-.lh-header[data-profile-dragging=true] .lh-logo-contrast{transition:none}
+.lh-browse .lh-logo-contrast{opacity:0}
 .lh-tools{
  position:absolute;top:48px;left:50%;transform:translateX(-50%);
  display:flex;align-items:center;gap:8px;z-index:1;pointer-events:auto;

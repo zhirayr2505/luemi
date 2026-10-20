@@ -22,6 +22,7 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
  const pinch=useRef<{distance:number;cx:number;cy:number}|null>(null);
  const sourceRef=useRef(source);
  const cleanup=useRef<number|null>(null);
+ const openFrames=useRef<number[]>([]);
  const show=photos[index];
  const animate=(out:boolean)=>{
   const layer=stage.current,img=image.current;if(!layer||!img)return;
@@ -40,31 +41,36 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
   if(!layer||!img)return;
   layer.style.opacity="0";
   if(sourceRef.current?.isConnected)animate(true);
-  const id=requestAnimationFrame(()=>requestAnimationFrame(()=>animate(false)));
-  return ()=>cancelAnimationFrame(id);
+  openFrames.current.push(requestAnimationFrame(()=>{
+   openFrames.current.push(requestAnimationFrame(()=>{if(!closing.current)animate(false);}));
+  }));
+  return ()=>{openFrames.current.forEach(cancelAnimationFrame);openFrames.current=[];};
  // Source is intentionally captured at opening.
  },[]);
  useEffect(()=>{
-  const old=document.body.style.overflow;
-  document.body.style.overflow="hidden";
   const key=(event:KeyboardEvent)=>{
    if(event.key==="Escape"){event.stopImmediatePropagation();event.preventDefault();requestClose();}
    if(event.key==="ArrowRight"&&index<photos.length-1)setIndex(i=>i+1);
    if(event.key==="ArrowLeft"&&index>0)setIndex(i=>i-1);
   };
   window.addEventListener("keydown",key,true);
-  return ()=>{document.body.style.overflow=old;window.removeEventListener("keydown",key,true);
-   if(cleanup.current!==null)clearTimeout(cleanup.current);};
+  return ()=>window.removeEventListener("keydown",key,true);
  },[index,menu]);
  useEffect(()=>{
-  for(const i of [index-1,index+1])if(photos[i]){
-   const prefetch=new Image();prefetch.src=photos[i].src;
-  }
+  const old=document.body.style.overflow;document.body.style.overflow="hidden";
+  return ()=>{document.body.style.overflow=old;if(cleanup.current!==null)clearTimeout(cleanup.current);};
+ },[]);
+ useEffect(()=>{
+  const neighbors=[index-1,index+1].filter(i=>photos[i]).map(i=>{
+   const prefetch=new Image();prefetch.decoding="async";prefetch.src=photos[i].src;return prefetch;
+  });
+  return ()=>{for(const neighbor of neighbors)neighbor.src="";};
  },[index,photos]);
  const requestClose=()=>{
   if(menu){setMenu(false);return;}
   if(closing.current)return;
   closing.current=true;
+  openFrames.current.forEach(cancelAnimationFrame);openFrames.current=[];
   pointer.current.clear();pinch.current=null;zoom.current=1;
   const img=image.current;if(img){img.style.transition=`transform ${duration}ms cubic-bezier(.2,.8,.2,1)`;img.style.transform="none";}
   animate(true);
@@ -153,7 +159,7 @@ export function PhotoViewer({view,photos,initial,source,onClose,onMain,registerB
  if(!show)return null;
  return createPortal(<section className="pm-viewer" role="dialog" aria-modal="true" aria-label="Просмотр фото">
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}
-    onPointerUp={e=>finish(e,false)} onPointerCancel={e=>finish(e,true)}>
+    onPointerUp={e=>finish(e,false)} onPointerCancel={e=>{if(pointer.current.has(e.pointerId))resetGesture();}}>
    <img ref={image} className="pm-viewer-image" src={show.src} alt={"Фото "+(index+1)} draggable={false}
     onError={e=>{if(show.fallback&&e.currentTarget.src!==show.fallback)e.currentTarget.src=show.fallback;}}/>
   </div>

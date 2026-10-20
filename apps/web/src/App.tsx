@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {ArrowRight,Moon,Sun} from "lucide-react";
 import {GlassArrow} from "./ui/Glass";
@@ -6,6 +6,7 @@ import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
 import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registration/Steps";
 import {loadLocalDraft,loadLocalPhotos,saveLocalDraft,saveLocalPhotos,clearLocalDraft} from "./registration/local-draft";
+import {preparePhotoPreview} from "./registration/photo-preview";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 
 declare global {
@@ -13,6 +14,9 @@ declare global {
     Telegram?: {
       WebApp?: {
         initData?: string;
+        onEvent?: (event:string,handler:()=>void) => void;
+        offEvent?: (event:string,handler:()=>void) => void;
+        viewportStableHeight?: number;
         version?: string;
         isVersionAtLeast?: (version: string) => boolean;
         requestFullscreen?: () => void;
@@ -80,7 +84,11 @@ export function App() {
   const [draft,setDraft] = useState<RegistrationDraft>(()=>restored?.draft??newDraft());
   const [photos,setPhotos] = useState<PhotoItem[]>([]);
   const ownedUrls = useRef<string[]>([]);
-  const readers=useRef(new Map<string,FileReader>());
+  const photoJobs=useRef(new Map<string,AbortController>());
+  const photoTimers=useRef(new Map<string,number>());
+  const photoQueue=useRef<Promise<void>>(Promise.resolve());
+  const photoIds=useRef(new Set<string>());
+  const photoGeneration=useRef(0);
   const [photosRestored,setPhotosRestored] = useState(false);
   const lastSavedPhotoIds=useRef("");
   const [error,setError] = useState("");
@@ -186,10 +194,14 @@ export function App() {
   // footer cannot jump above the keyboard. Only the form scroll area shrinks.
   useEffect(()=>{
     const vv=window.visualViewport;
-    let stableHeight=Math.max(window.innerHeight,vv?.height??0);
+    let stableHeight=Math.max(window.innerHeight,vv?.height??0),stableWidth=window.innerWidth;
+    let focusTimer:number|null=null;
+    const webApp=window.Telegram?.WebApp;
     const update=()=>{
       const visible=vv?.height??window.innerHeight;
-      if(visible>stableHeight-30)stableHeight=Math.max(stableHeight,visible);
+      if(Math.abs(window.innerWidth-stableWidth)>40){
+        stableWidth=window.innerWidth;stableHeight=webApp?.viewportStableHeight||window.innerHeight;
+      }else if(visible>stableHeight-30)stableHeight=Math.max(stableHeight,visible);
       const overlay=Math.max(0,stableHeight-visible);
       const keyboard=overlay>145;
       rootRef.current?.style.setProperty("--app-height",stableHeight+"px");
@@ -200,45 +212,73 @@ export function App() {
     const onFocus=(event:FocusEvent)=>{
       const field=event.target;
       if(!(field instanceof HTMLInputElement)&&!(field instanceof HTMLTextAreaElement))return;
-      window.setTimeout(()=>{
+      if(focusTimer!==null)window.clearTimeout(focusTimer);
+      focusTimer=window.setTimeout(()=>{
+        focusTimer=null;
         if(document.activeElement===field)field.scrollIntoView({block:"center",behavior:"smooth"});
       },190);
     };
     vv?.addEventListener("resize",update);vv?.addEventListener("scroll",update);
     window.addEventListener("resize",update);
+    webApp?.onEvent?.("viewportChanged",update);
     document.addEventListener("focusin",onFocus);
     return ()=>{
       vv?.removeEventListener("resize",update);vv?.removeEventListener("scroll",update);
       window.removeEventListener("resize",update);
+      webApp?.offEvent?.("viewportChanged",update);
+      if(focusTimer!==null)window.clearTimeout(focusTimer);
       document.removeEventListener("focusin",onFocus);
     };
   },[]);
-  // Restore browser-local beta draft photos. Never upload photo bytes.
+  // Decode at most one new/legacy original at a time. Every screen shares
+  // the same bounded preview URL; IndexedDB retains the untouched original.
   useEffect(()=>{
     let disposed=false;
-    void loadLocalPhotos().then(saved=>{
-      if(disposed)return;
-      const restoredPhotos=saved.map(({id,file})=>{
-        const src=URL.createObjectURL(file);ownedUrls.current.push(src);
-        return {id,file,src,status:"ready" as const};
-      });
-      setPhotos(current=>current.length>0?current:restoredPhotos);
-      setPhotosRestored(true);
+    const controller=new AbortController(),generation=photoGeneration.current;
+    void loadLocalPhotos().then(async saved=>{
+      const restoredPhotos:PhotoItem[]=[];
+      for(const item of saved){
+        if(disposed||generation!==photoGeneration.current)break;
+        let preview=item.preview;
+        if(!preview){
+          const job=photoQueue.current.then(async()=>{preview=await preparePhotoPreview(item.file,controller.signal);});
+          photoQueue.current=job.catch(()=>{});
+          try{await job;}catch{
+            if(disposed||controller.signal.aborted)break;
+            // Keep a recoverable record and the original even if decoding fails.
+            restoredPhotos.push({...item,src:"",status:"error"});continue;
+          }
+        }
+        if(disposed||generation!==photoGeneration.current)break;
+        const src=URL.createObjectURL(preview!);ownedUrls.current.push(src);
+        restoredPhotos.push({...item,preview,src,status:"ready"});
+      }
+      if(disposed||generation!==photoGeneration.current||photoIds.current.size){
+        for(const photo of restoredPhotos)if(photo.src){
+          URL.revokeObjectURL(photo.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==photo.src);
+        }
+        if(!disposed)setPhotosRestored(true);
+        return;
+      }
+      photoIds.current=new Set(restoredPhotos.map(p=>p.id));
+      setPhotos(restoredPhotos);setPhotosRestored(true);
     }).catch(()=>{if(!disposed)setPhotosRestored(true);});
-    return ()=>{disposed=true;};
+    return ()=>{disposed=true;controller.abort();};
   },[]);
   useEffect(()=>{saveLocalDraft(draft,step);},[draft,step]);
   useEffect(()=>{
     if(!photosRestored)return;
-    const signature=photos.map(photo=>photo.id).join(",");
+    const signature=photos.map(photo=>photo.id+":"+(photo.preview?.size??0)).join(",");
     if(signature===lastSavedPhotoIds.current)return;
     lastSavedPhotoIds.current=signature;
     void saveLocalPhotos(photos);
   },[photos,photosRestored]);
-  // Preview photos are local-only. Remove temporary browser URLs on unmount.
   useEffect(()=>()=>{
-    for(const reader of readers.current.values())if(reader.readyState===FileReader.LOADING)reader.abort();
-    readers.current.clear();
+    photoGeneration.current++;
+    for(const job of photoJobs.current.values())job.abort();
+    photoJobs.current.clear();
+    for(const timer of photoTimers.current.values())window.clearTimeout(timer);
+    photoTimers.current.clear();
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
   },[]);
@@ -275,53 +315,45 @@ export function App() {
     const accepted:PhotoItem[]=[];
     let problem="";
     for(const file of files){
-      if(photos.length+accepted.length>=6){problem="Максимум 6 фотографий.";break;}
+      if(photoIds.current.size>=6){problem="Максимум 6 фотографий.";break;}
       if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>12*1024*1024){
         problem="Разрешены JPEG, PNG и WebP до 12 МБ. Для HEIC выбери JPEG.";continue;
       }
-      const src=URL.createObjectURL(file);
-      ownedUrls.current.push(src);
       const id=crypto.randomUUID();
-      accepted.push({id,src,file,status:"reading",progress:0});
-      const reader=new FileReader();readers.current.set(id,reader);
-      reader.onprogress=(event)=>{
-        if(!event.lengthComputable)return;
-        const percent=Math.round(event.loaded/event.total*96);
-        setPhotos(current=>current.map(p=>p.id===id?{...p,progress:percent}:p));
-      };
-      reader.onload=()=>{
-        readers.current.delete(id);
-        const image=new Image();
-        const done=()=>{
-          setPhotos(current=>current.map(p=>p.id===id?{...p,status:"success",progress:100}:p));
-          window.setTimeout(()=>setPhotos(current=>current.map(p=>p.id===id?{...p,status:"ready"}:p)),850);
-        };
-        image.onload=done;
-        image.onerror=()=>{
-          setPhotos(current=>current.map(p=>p.id===id?{...p,status:"error"}:p));
-          setError("Не удалось прочитать одну из фотографий.");
-        };
-        image.src=src;
-      };
-      reader.onerror=()=>{
-        readers.current.delete(id);
-        setPhotos(current=>current.map(p=>p.id===id?{...p,status:"error"}:p));
-        setError("Не удалось обработать фотографию.");
-      };
+      photoIds.current.add(id);
+      accepted.push({id,src:"",file,status:"reading",progress:0});
     }
-    if(accepted.length)setPhotos(prev=>[...prev,...accepted].slice(0,6));
-    for(const photo of accepted)readers.current.get(photo.id)?.readAsArrayBuffer(photo.file);
+    if(accepted.length)setPhotos(prev=>[...prev,...accepted]);
+    for(const photo of accepted){
+      const controller=new AbortController();photoJobs.current.set(photo.id,controller);
+      photoQueue.current=photoQueue.current.then(async()=>{
+        try{
+          const preview=await preparePhotoPreview(photo.file,controller.signal);
+          if(controller.signal.aborted)return;
+          const src=URL.createObjectURL(preview);ownedUrls.current.push(src);
+          setPhotos(current=>current.map(p=>p.id===photo.id?{...p,src,preview,status:"success",progress:100}:p));
+          photoTimers.current.set(photo.id,window.setTimeout(()=>{
+            photoTimers.current.delete(photo.id);
+            if(!controller.signal.aborted)setPhotos(current=>current.map(p=>p.id===photo.id?{...p,status:"ready"}:p));
+          },850));
+        }catch{
+          if(!controller.signal.aborted){
+            setPhotos(current=>current.map(p=>p.id===photo.id?{...p,status:"error"}:p));
+            setError("Не удалось обработать фотографию.");
+          }
+        }finally{photoJobs.current.delete(photo.id);}
+      });
+    }
     setError(problem);
   };
   const removePhoto=(id:string)=>{
-    setPhotos(prev=>{
-      const item=prev.find(p=>p.id===id);
-      const reader=readers.current.get(id);
-      if(reader&&reader.readyState===FileReader.LOADING)reader.abort();
-      readers.current.delete(id);
-      if(item){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
-      return prev.filter(p=>p.id!==id);
-    });
+    photoJobs.current.get(id)?.abort();photoJobs.current.delete(id);
+    const timer=photoTimers.current.get(id);
+    if(timer!==undefined)window.clearTimeout(timer);
+    photoTimers.current.delete(id);photoIds.current.delete(id);
+    const item=photos.find(p=>p.id===id);
+    if(item?.src){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
+    setPhotos(prev=>prev.filter(p=>p.id!==id));
   };
   const movePhoto=(from:number,to:number)=>{
     setPhotos(prev=>{
@@ -331,12 +363,15 @@ export function App() {
   };
   const resetDraft=()=>{
     if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
-    for(const reader of readers.current.values())if(reader.readyState===FileReader.LOADING)reader.abort();
-    readers.current.clear();
+    photoGeneration.current++;
+    for(const job of photoJobs.current.values())job.abort();
+    photoJobs.current.clear();photoIds.current.clear();
+    for(const timer of photoTimers.current.values())window.clearTimeout(timer);
+    photoTimers.current.clear();lastSavedPhotoIds.current="";
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
     setPhotos([]);setDraft(newDraft());setStep(1);setError("");
-    void clearLocalDraft();
+    void clearLocalDraft();setPhotosRestored(true);
   };
   const beginRegistration=()=>{
     if(welcomeExiting)return;
@@ -351,10 +386,11 @@ export function App() {
       transitionTimer.current=null;
     },280);
   };
-  const changeTheme=()=>setTheme(value=>value==="light"?"dark":"light");
+  const changeTheme=useCallback(()=>setTheme(value=>value==="light"?"dark":"light"),[]);
   const themeName=theme==="light"?"Тёмная":"Светлая";
   const beginDemo=()=>{setDemoOpen(true);setError("");};
-  const exitDemo=()=>{setDemoOpen(false);setPhase("form");setStep(8);};
+  const exitDemo=useCallback(()=>{setDemoOpen(false);setPhase("form");setStep(8);},[]);
+  const readyPhotos=useMemo(()=>photos.filter(p=>p.status==="ready"||p.status==="success").map(p=>({id:p.id,src:p.src})),[photos]);
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
@@ -363,7 +399,7 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
-    {demoOpen&&auth==="authorized"?<DiscoveryApp draft={draft} photos={photos.filter(p=>p.status==="ready"||p.status==="success").map(p=>({id:p.id,src:p.src}))} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/>:null}
+    {demoOpen&&auth==="authorized"?<DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>

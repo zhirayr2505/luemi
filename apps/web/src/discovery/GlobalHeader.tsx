@@ -6,7 +6,7 @@ const logo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
 export type HeaderMode="browse"|"profile";
 export type HeaderMotion={
   setScrollTop:(top:number)=>void;
-  setProfileProgress:(progress:number,dragging:boolean)=>void;
+  setProfileProgress:(progress:number,_dragging:boolean)=>void;
   reset:()=>void;
 };
 type Props={
@@ -59,7 +59,6 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   setProfileProgress:(progress:number,dragging:boolean)=>{
    if(mode!=="profile"||!host.current)return;
    const p=clamp(progress);
-   host.current.setAttribute("data-profile-dragging",dragging?"true":"false");
    host.current.style.setProperty("--lh-contrast",String(p*.83));
   },
   reset:()=>{
@@ -67,7 +66,6 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    lastControlsValue.current=Number.NaN;
    pendingTop.current=0;
    lastScroll.current=0;manual.current=false;
-   host.current?.setAttribute("data-profile-dragging","false");
    host.current?.style.setProperty("--lh-contrast","0");
    if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
   }
@@ -79,13 +77,13 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   if(toolsFrame.current!==null){cancelAnimationFrame(toolsFrame.current);toolsFrame.current=null;}
   lastControlsValue.current=Number.NaN;paintTools(lastScroll.current);
  };
- return <header ref={host} className={"lh-header lh-"+mode} style={{"--lh-p":0,"--lh-impact":0} as React.CSSProperties}>
+ return <header ref={host} className={"lh-header lh-"+mode}>
   
   <div className="lh-center">
    <button className="lh-island" type="button" ref={island} onClick={toggleIsland}
      aria-label={mode==="browse"?"Раскрыть инструменты LUEMI":"LUEMI"} title="LUEMI">
     <img src={logo} alt="luemi" decoding="sync" fetchPriority="high"/>
-    {mode==="profile"&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="sync"/>}
+    <img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="sync"/>
    </button>
    {mode==="profile"&&<button type="button" className="lh-profile-theme" onClick={onTheme}
       aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>

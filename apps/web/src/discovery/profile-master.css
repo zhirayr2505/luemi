@@ -60,13 +60,14 @@
    No legacy 03G.3/4 overrides and NO animated border-radius. */
 .pm-shell{
  position:relative;display:block;width:100%;height:100%;min-height:0;overflow:hidden;
+ --pm-hero-height:clamp(390px,56svh,640px);
  color:var(--ink);background:var(--bg);isolation:isolate;
 }
 .pm-dialog{position:absolute;inset:0;z-index:50}
 .pm-inline{flex:1}
 .pm-hero{
  position:absolute;inset:0 0 auto;width:100%;margin:0;max-width:none;
- height:clamp(390px,56svh,640px);min-height:390px;
+ height:var(--pm-hero-height);min-height:390px;
  overflow:hidden;border:0;border-radius:0;isolation:isolate;
  background:linear-gradient(150deg,#c7b0e4,#9a80cb);touch-action:pan-y;
 }
@@ -78,7 +79,6 @@
 }
 .pm-photo-blur{
  position:absolute;inset:0;z-index:1;opacity:0;overflow:hidden;pointer-events:none;
- transition:opacity 360ms cubic-bezier(.22,.79,.22,1);
 }
 .pm-photo-blur img{
  display:block;width:100%;height:100%;object-fit:cover;object-position:center 20%;
@@ -107,16 +107,19 @@
  width:15px;background:#f7d8ff;box-shadow:0 1px 5px rgba(60,25,80,.28);
 }
 .pm-hero-demo{top:auto;bottom:61px;left:18px;background:rgba(248,238,255,.87)}
+/* Motion is a scroll offset in a stationary rectangular viewport.
+   Rounded background and native page scrollers are no longer clipped into a
+   translated/paint-contained texture. No layout property changes per frame. */
+.pm-sheet-viewport{
+ position:absolute;inset:0;z-index:6;overflow:hidden;overflow-anchor:none;
+ pointer-events:none;scroll-behavior:auto;overscroll-behavior:none;
+}
+.pm-sheet-spacer{height:var(--pm-expanded-y,calc(var(--pm-hero-height) - 43px));pointer-events:none}
 .pm-profile-sheet{
- position:absolute;inset:0;z-index:6;width:100%;height:100%;min-height:0;
- display:flex;flex-direction:column;overflow:hidden;
+ position:relative;width:100%;height:100%;min-height:0;pointer-events:auto;
+ display:flex;flex-direction:column;overflow:visible;
  padding:32px 0 0;border-radius:34px 34px 0 0;
  background:var(--bg);box-shadow:0 -5px 20px rgba(56,30,73,.052);
- transform:translate3d(0,var(--pm-sheet-y,430px),0);
- transition:transform 360ms cubic-bezier(.22,.79,.22,1);
- /* A single paint boundary contains the five native scroll panes while the
-    outer surface moves. Avoid backface-visibility texture flips on Android. */
- contain:paint;isolation:isolate;
 }
 .pm-sheet-grab{
  position:absolute;z-index:2;top:6px;left:50%;transform:translateX(-50%);
@@ -200,20 +203,18 @@
  position:absolute;bottom:1px;left:0;height:3px;z-index:3;
  border-radius:99px;transform-origin:left center;
  background:linear-gradient(90deg,#a67cdb,#e5a2d7);pointer-events:none;
- transition:transform 280ms cubic-bezier(.22,.77,.23,1);
 }
-.pm-pages{position:relative;flex:1;min-height:0;height:0;overflow:hidden;touch-action:pan-y;contain:paint}
+.pm-pages{position:relative;flex:1;min-height:0;height:0;overflow:hidden;touch-action:pan-y;
+ scroll-behavior:auto;overflow-anchor:none;overscroll-behavior-x:none}
 .pm-pages-track{
  display:flex;align-items:stretch;width:100%;height:100%;min-height:0;
- transform:translate3d(0,0,0);
- transition:transform 295ms cubic-bezier(.22,.77,.23,1);
 }
 .pm-page{
  box-sizing:border-box;flex:0 0 100%;min-width:100%;height:100%;min-height:0;
  padding:15px 13px calc(58px + var(--pm-collapsed-top,45px));
  overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;
  touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none;
- overflow-anchor:none;contain:layout paint;
+ overflow-anchor:none;
 }
 .pm-page::-webkit-scrollbar{display:none}
 .pm-shell[data-sheet-state=expanded] .pm-page{overflow-y:hidden}
@@ -227,31 +228,8 @@
 .luemi-shell[data-theme=dark] .pm-goal-chip{
  color:#e8bbfa;background:rgba(133,72,175,.27);
 }
-/* Stage 03G.7 — Android WebView tile-safety path.
-   03G.6's transformed paint-contained scrolling sheet was confirmed in
-   Galaxy A55 capture to split into rectangular/rasterized fragments.
-   Position it in layout space instead of translating a five-pane native
-   scroller as a single GPU texture. Only the Android renderer uses this path;
-   other platforms retain their transform-composited motion. */
-.pm-shell[data-sheet-renderer=layout] .pm-profile-sheet{
- top:var(--pm-sheet-y,430px);bottom:auto;transform:none;
- transition:top 360ms cubic-bezier(.22,.79,.22,1);
- contain:layout;isolation:isolate;
- backface-visibility:visible;-webkit-backface-visibility:visible;
-}
-.pm-shell[data-sheet-renderer=layout] .pm-pages{
- contain:none;isolation:isolate;
-}
-.pm-shell[data-sheet-renderer=layout] .pm-pages-track{
- position:relative;left:0;transform:none!important;
- transition:left 295ms cubic-bezier(.22,.77,.23,1);
- backface-visibility:visible;-webkit-backface-visibility:visible;
-}
-.pm-shell[data-sheet-renderer=layout] .pm-page{
- contain:none;
-}
 @media(max-width:370px){
- .pm-hero{min-height:390px;height:56svh}
+ .pm-shell{--pm-hero-height:max(390px,56svh)}
  .pm-profile-sheet{border-radius:31px 31px 0 0}
  .pm-identity{padding-left:17px;padding-right:17px}
  .pm-tab{font-size:10px;padding:0 5px 3px;gap:4px}

@@ -37,7 +37,7 @@ function database():Promise<IDBDatabase|null>{
  return new Promise(resolve=>{
    if(!("indexedDB" in window)){resolve(null);return;}
    let finished=false;
-   const done=(db:IDBDatabase|null)=>{if(finished)return;finished=true;resolve(db);};
+   const done=(db:IDBDatabase|null)=>{if(finished){db?.close();return;}finished=true;resolve(db);};
    try{
      const request=indexedDB.open(DB_NAME,1);
      request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STORE))request.result.createObjectStore(STORE);};
@@ -47,7 +47,7 @@ function database():Promise<IDBDatabase|null>{
    }catch{done(null);}
  });
 }
-interface SavedPhoto {id:string;file:File}
+interface SavedPhoto {id:string;file:File;preview?:Blob}
 export async function loadLocalPhotos():Promise<SavedPhoto[]>{
  const scope=localScope();if(!scope)return [];
  const db=await database();if(!db)return [];
@@ -65,22 +65,33 @@ export async function loadLocalPhotos():Promise<SavedPhoto[]>{
    }catch{finish([]);}
  });
 }
-export async function saveLocalPhotos(photos:PhotoItem[]):Promise<void>{
- const scope=localScope();if(!scope)return;
+// Serialize photo writes and clears so a slower old save cannot restore deleted data.
+let photoWrites:Promise<void>=Promise.resolve();
+export function saveLocalPhotos(photos:PhotoItem[]):Promise<void>{
+ const scope=localScope();if(!scope)return Promise.resolve();
+ const snapshot=photos.map(({id,file,preview})=>({id,file,preview}));
+ photoWrites=photoWrites.catch(()=>{}).then(()=>writeLocalPhotos(scope,snapshot));
+ return photoWrites;
+}
+async function writeLocalPhotos(scope:string,photos:SavedPhoto[]):Promise<void>{
  const db=await database();if(!db)return;
  await new Promise<void>(resolve=>{
    try {
      const tx=db.transaction(STORE,"readwrite");
-     tx.objectStore(STORE).put({photos:photos.map(({id,file})=>({id,file})),updated:Date.now()},scope);
+     tx.objectStore(STORE).put({photos,updated:Date.now()},scope);
      tx.oncomplete=()=>{db.close();resolve();};
      tx.onerror=()=>{db.close();resolve();};
      tx.onabort=()=>{db.close();resolve();};
    }catch{db.close();resolve();}
  });
 }
-export async function clearLocalDraft():Promise<void>{
- const scope=localScope();if(!scope)return;
+export function clearLocalDraft():Promise<void>{
+ const scope=localScope();if(!scope)return Promise.resolve();
  try{localStorage.removeItem(PREFIX+scope);}catch{/* storage restricted */}
+ photoWrites=photoWrites.catch(()=>{}).then(()=>clearLocalPhotos(scope));
+ return photoWrites;
+}
+async function clearLocalPhotos(scope:string):Promise<void>{
  const db=await database();if(!db)return;
  await new Promise<void>(resolve=>{
    try{

@@ -54,12 +54,13 @@ const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki","Блики"')&&
  profile.includes('["photos","Фото"')&&profile.includes('["gifts","Подарки"')&&
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
-assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.down||gesture.scrollTop<=1?false:true})')&&
- profile.includes('pane.style.setProperty("--pm-sheet-y"')&&
- profile.includes('contentPages.current[selectedIndex]?.scrollTop'),
- "two-layer adaptive sheet uses native tab scroll, swipe boundaries and transform-only drag");
-assert.ok(profile.includes("requestAnimationFrame(()=>{dragFrame.current=null;paintTabs"),
- "tabs follow finger on compositor transform");
+assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.blocking})')&&
+ profile.includes('viewport.current.scrollTop=expandedY.current-next')&&
+ profile.includes('g.origin+dy')&&profile.includes('contentPages.current['),
+ "sheet follows its actual origin while each tab retains native vertical scrolling");
+assert.ok(profile.includes('if(g.axis==="x")paintTabs(g.index,dx)')&&
+ profile.includes('frame=requestAnimationFrame'),
+ "touch pager paints once per frame");
 assert.ok(profile.includes("tabEnd(e,true)")&&profile.includes("photoEnd(e,true)"),
  "pointer cancellation must never commit a new photo or tab");
 assert.ok(profile.includes('mode="preview"')&&profile.includes("projectProfile(data,mode)"),
@@ -73,8 +74,9 @@ assert.ok(viewer.includes("canMakeMain(view,show.id)")&&
 assert.ok(discovery.includes('<ProfileMaster data={ownProfile} mode="owner"')&&
  discovery.includes('<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"'),
  "both profile destinations use one shared implementation");
-assert.ok(app.includes('photos={photos.filter(p=>p.status==="ready"||p.status==="success")'),
- "local photos routed only through authenticated owner draft");
+assert.ok(app.includes('photos={readyPhotos}')&&
+ app.includes('photos.filter(p=>p.status==="ready"||p.status==="success")'),
+ "only prepared local photos enter authenticated owner profiles");
 assert.ok(css.includes("@media(prefers-reduced-motion:reduce)")&&
  css.includes(".pm-tab-ink")&&css.includes(".pm-photo-tile"),
  "motion fallback, accessible tab bar and 3-column gallery exist");
@@ -92,8 +94,8 @@ assert.ok(headerCss.includes("top:max(6px,calc(var(--top-safe) - 12px))"),
  "fixed global logo Y anchor across screens");
 assert.ok(headerCss.includes("position:absolute;inset:0 0 auto")&&
  headerCss.includes("background:transparent;box-shadow:none")&&
- css.includes(".pm-profile-sheet")&&css.includes("transform:translate3d(0,var(--pm-sheet-y"),
- "full-bleed hero with independent lifting white sheet under transparent logo");
+ css.includes(".pm-profile-sheet")&&css.includes(".pm-sheet-viewport"),
+ "full-bleed hero and rounded sheet keep independent stationary chrome");
 assert.ok(profile.includes('className="pm-mini-avatar"')||
  profile.includes('className={"pm-mini-avatar"'),
  "small photo appears only in collapsed profile");
@@ -106,14 +108,15 @@ assert.equal((css.match(/^\.pm-profile-sheet\{/gm)||[]).length,1,
 assert.ok(!css.includes("border-radius 390ms")&&css.includes("border-radius:34px 34px 0 0"),
  "sheet keeps stable rounded corners while moving on compositor");
 assert.ok(css.includes(".pm-photo-blur")&&css.includes("filter:blur(11px)")&&
- css.includes("opacity 360ms"),"blur is fixed-cost and crossfaded, not recalculated each scroll event");
+ profile.includes('blurLayer.current.style.opacity=String(progress*.9)'),
+ "fixed blur opacity follows the sheet controller");
 assert.ok(profile.includes("imageRect.height*.11")&&
  profile.includes('pane.style.setProperty("--pm-collapsed-top"'),
  "collapsed top overlaps lower 11% of measured actual logo instead of system controls");
 assert.ok(profile.includes("const paintSheet=useCallback(")&&
- profile.includes('if(active)onMotionProgress?.(progress,dragging)')&&
+ profile.includes('if(motionActive)motionCallback.current?.(progress,dragging)')&&
  header.includes("setProfileProgress")&&headerCss.includes(".lh-logo-contrast"),
- "portrait blur and logo readability use the same sheet progress");
+ "only the visible profile drives blur and logo from the same progress");
 assert.ok(profile.includes("tabMetrics.current")&&
  profile.includes('if(g.axis!=="x")return;')&&
  !profile.includes("indicator.style.width=width+"),
@@ -133,16 +136,16 @@ assert.ok(!profile.includes('style={{transform:`translate3d(')&&
  profile.includes('className="pm-pages-track" ref={pageTrack}')&&
  profile.includes('className="pm-photo-track" ref={photoTrack}'),
  "React cannot override imperative touch animation transforms on either photo or profile tabs");
-assert.ok(profile.includes('},[active]);\n const chooseTab=')&&
- !profile.includes('},[active,tab]);\n const chooseTab='),
- "ResizeObserver must not detach and re-measure during every tab change");
+assert.ok(profile.includes('},[motionActive,paintTabs]);')&&
+ profile.includes('if(!first&&!changed)return;'),
+ "tab geometry is measured only on activation or actual size changes");
 assert.ok(profile.includes('pane.removeEventListener("touchmove",move);')&&
- profile.includes('passive:!gesture.down||gesture.scrollTop<=1?false:true'),
- "native tab scroll avoids permanent scroll-blocking nonpassive ancestor listener");
-assert.ok(css.includes('contain:paint;isolation:isolate;')&&
- css.includes('overflow-anchor:none;contain:layout paint;')&&
+ profile.includes('passive:!gesture.blocking'),
+ "native tab scroll avoids a permanent blocking touchmove listener");
+assert.ok(css.includes('overflow-anchor:none;')&&
+ css.includes('.pm-sheet-viewport')&&!css.includes('contain:layout paint')&&
  !css.includes('.pm-pages-track.is-finger-tracking'),
- "compositor paint boundaries contain content and obsolete dead styles are removed");
+ "native profile scroll surfaces have no nested transformed paint containment");
 assert.ok(header.includes("pendingTop.current=top")&&
  header.includes("toolsFrame.current=requestAnimationFrame")&&
  header.includes("lastControlsValue.current=v")&&
@@ -150,17 +153,13 @@ assert.ok(header.includes("pendingTop.current=top")&&
  "browse logo controls are coalesced to one frame and stale paints are cancelled");
 console.log("✓ Stage 03G.6 flicker regressions: single transform owner, passive native scroll, stable paint boundaries");
 
-assert.ok(profile.includes('const androidSafeSheet=typeof navigator')&&
- profile.includes('data-sheet-renderer={androidSafeSheet?"layout":"compositor"}'),
- "Android must select compositor-safe layout positioning rather than nested translated GPU texture");
-assert.ok(profile.includes("if(androidSafeSheet)pageTrack.current.style.left=offset;")&&
- profile.includes('androidSafeSheet?"left":"transform"'),
- "native scrolling pager must be moved through left property only in WebView safe renderer");
-assert.ok(css.includes(".pm-shell[data-sheet-renderer=layout] .pm-profile-sheet{")&&
- css.includes("transition:top 360ms")&&
- css.includes("contain:layout;isolation:isolate;")&&
- css.includes(".pm-shell[data-sheet-renderer=layout] .pm-pages-track{")&&
- css.includes("transition:left 295ms")&&
- css.includes(".pm-shell[data-sheet-renderer=layout] .pm-page{\n contain:none;"),
- "Android uses layout top/left to avoid raster fragments; nested paint containment disabled");
-console.log("✓ Stage 03G.7 Android WebView sheet/tabs use layout positioning with no nested GPU crop");
+assert.ok(profile.includes('data-sheet-renderer="scroll"')&&!profile.includes("androidSafeSheet"),
+ "one scroll renderer replaces divergent platform motion implementations");
+assert.ok(profile.includes('pages.current.scrollLeft=position*tabViewport.current')&&
+ !profile.includes('pageTrack.current.style.left'),
+ "horizontal movement uses a stationary scroll viewport without animated left");
+assert.ok(css.includes(".pm-sheet-viewport")&&
+ !css.includes("transition:top")&&!css.includes("transition:left")&&
+ !css.includes("data-sheet-renderer=layout"),
+ "profile has no legacy layout-property animations or Android override cascade");
+console.log("✓ Profile scroll motion replaces legacy top/left and transformed clipping");

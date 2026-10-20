@@ -10,6 +10,7 @@ import {nearbyTitle,selectNearbyDemos} from "./nearby-logic";
 import "./nearby.css";
 
 interface Props{
+ active?:boolean;
  draft:RegistrationDraft;
  filters:DiscoveryFilter;
  saved:string[];
@@ -51,7 +52,7 @@ function PersonCard({person,draft,saved,onSave,onPerson}:{
 }
 const MemoCard=memo(PersonCard);
 
-export const Nearby=memo(function Nearby({draft,filters,saved,onSave,onPerson,onFilters,onEditLocation,onScrollTop}:Props){
+export const Nearby=memo(function Nearby({active=true,draft,filters,saved,onSave,onPerson,onFilters,onEditLocation,onScrollTop}:Props){
  const [visible,setVisible]=useState(pageSize);
  const scroller=useRef<HTMLDivElement>(null);
  const sentinel=useRef<HTMLDivElement>(null);
@@ -62,13 +63,13 @@ export const Nearby=memo(function Nearby({draft,filters,saved,onSave,onPerson,on
  const shown=people.slice(0,visible);
  const hasMore=shown.length<people.length;
  useEffect(()=>{
-  if(!hasMore||!sentinel.current||!scroller.current||typeof IntersectionObserver==="undefined")return;
+  if(!active||!hasMore||!sentinel.current||!scroller.current||typeof IntersectionObserver==="undefined")return;
   const observer=new IntersectionObserver(entries=>{
    if(entries.some(entry=>entry.isIntersecting))setVisible(previous=>Math.min(previous+pageSize,people.length));
   },{root:scroller.current,rootMargin:"160px 0px",threshold:0});
   observer.observe(sentinel.current);
   return ()=>observer.disconnect();
- },[hasMore,people.length]);
+ },[active,hasMore,people.length]);
 
  const scope=filters.scope;
  const hasArea=scope==="world"||(scope==="country"?!!draft.countryCode:!!draft.countryCode&&!!draft.city);

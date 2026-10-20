@@ -40,7 +40,7 @@ const draftStore=read("apps/web/src/registration/local-draft.ts");
 const lang=read("apps/web/src/registration/LanguagePicker.tsx");
 const forms=read("apps/web/src/registration/Steps.tsx");
 assertCheck("device-local registration data and photos survive Telegram reopening",app.includes("loadLocalDraft")&&app.includes("loadLocalPhotos")&&app.includes("saveLocalPhotos")&&draftStore.includes("indexedDB"));
-assertCheck("photo upload progress is authentic local FileReader progress",app.includes("FileReader")&&app.includes("onprogress")&&sorter.includes("photo-processing-bar"));
+assertCheck("photo preparation completes after the bounded screen copy is ready",app.includes("preparePhotoPreview")&&app.includes('status:"success",progress:100')&&sorter.includes("photo-processing-bar"));
 assertCheck("no redundant arrow photo controls",!sorter.includes("photo-reorder-buttons")&&sorter.includes('event.altKey'));
 assertCheck("native tap highlight disabled globally",style.includes("-webkit-tap-highlight-color:transparent"));
 assertCheck("selected interest chips have visible increased feedback",style.includes("transform:scale(1.055)")&&style.includes(".interest-chip.selected::after"));
@@ -150,7 +150,7 @@ assertCheck("single atomic Deck Lift commit synchronized with exit animation",
 assertCheck("profile gestures follow finger while vertically scrolling natively",
  discoveryProfile.includes("setPointerCapture")&&
  discoveryProfile.includes("paintTabs(g.index")&&
- discoveryProfile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.down||gesture.scrollTop<=1?false:true})')&&
+ discoveryProfile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.blocking})')&&
  read("apps/web/src/discovery/profile-master.css").includes("touch-action:pan-y")&&
  !discoveryProfile.includes("setDragX"));
 console.log("LUEMI Stage 03 motion v2 regression checks PASS");

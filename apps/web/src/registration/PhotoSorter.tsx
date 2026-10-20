@@ -2,7 +2,7 @@ import {useLayoutEffect,useRef,useState,useEffect} from "react";
 import type {PointerEvent as ReactPointerEvent,ChangeEvent} from "react";
 import {createPortal} from "react-dom";
 import {Plus,X,GripVertical,CheckCircle2} from "lucide-react";
-export interface PhotoItem {id:string;src:string;file:File;status?:"reading"|"success"|"ready"|"error";progress?:number}
+export interface PhotoItem {id:string;src:string;file:File;preview?:Blob;status?:"reading"|"success"|"ready"|"error";progress?:number}
 interface Props {photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void}
 interface Drag {id:string;source:number;target:number;x:number;y:number;width:number;height:number}
 interface Pending {id:string;pointer:number;x:number;y:number;timer:number;started:boolean}
@@ -15,13 +15,23 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
  const pending=useRef<Pending|null>(null),dragRef=useRef<Drag|null>(null);
  const itemRefs=useRef(new Map<string,HTMLDivElement>());
  const rects=useRef(new Map<string,DOMRect>());
+ const ghost=useRef<HTMLDivElement>(null),moveFrame=useRef<number|null>(null);
+ const scrollBounds=useRef<{node:Element;top:number;bottom:number}|null>(null);
  const [drag,setDrag]=useState<Drag|null>(null);
  const display=drag?reorder(photos,drag.source,drag.target):photos;
  const cancel=()=>{
    if(pending.current)window.clearTimeout(pending.current.timer);
-   pending.current=null;dragRef.current=null;setDrag(null);
+   if(moveFrame.current!==null){cancelAnimationFrame(moveFrame.current);moveFrame.current=null;}
+   pending.current=null;dragRef.current=null;scrollBounds.current=null;setDrag(null);
  };
- useEffect(()=>()=>{if(pending.current)window.clearTimeout(pending.current.timer);},[]);
+ useEffect(()=>()=>{if(pending.current)window.clearTimeout(pending.current.timer);
+  if(moveFrame.current!==null)cancelAnimationFrame(moveFrame.current);
+ },[]);
+ useLayoutEffect(()=>{
+  if(ghost.current&&dragRef.current){
+   ghost.current.style.translate=dragRef.current.x+"px "+dragRef.current.y+"px";
+  }
+ },[drag?.id]);
  useLayoutEffect(()=>{
    // FLIP: old positions -> new positions; movable cards stay in one DOM tree.
    const newRects=new Map<string,DOMRect>();
@@ -52,6 +62,8 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      pendingItem.started=true;
      const rect=element.getBoundingClientRect();
      const value={id,source,target:source,x:pendingItem.x,y:pendingItem.y,width:rect.width,height:rect.height};
+     const region=mosaic.current?.closest(".onboard-body"),bounds=region?.getBoundingClientRect();
+     scrollBounds.current=region&&bounds?{node:region,top:bounds.top,bottom:bounds.bottom}:null;
      dragRef.current=value;setDrag(value);
      try{mosaic.current?.setPointerCapture(pendingItem.pointer);}catch{/* Telegram WebView fallback */}
      window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
@@ -66,24 +78,34 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      return;
    }
    event.preventDefault();
-   const scrollRegion=mosaic.current?.closest(".onboard-body");
-   if(scrollRegion){
-     const rect=scrollRegion.getBoundingClientRect(),edge=47;
-     if(event.clientY>rect.bottom-edge&&event.clientY<rect.bottom)scrollRegion.scrollBy(0,13);
-     else if(event.clientY<rect.top+edge&&event.clientY>rect.top)scrollRegion.scrollBy(0,-13);
+   const clientX=event.clientX,clientY=event.clientY;
+   if(moveFrame.current!==null)cancelAnimationFrame(moveFrame.current);
+   moveFrame.current=requestAnimationFrame(()=>{
+   moveFrame.current=null;
+   if(!pending.current?.started)return;
+   const bounds=scrollBounds.current;
+   if(bounds){
+     const edge=47;
+     if(clientY>bounds.bottom-edge&&clientY<bounds.bottom)bounds.node.scrollBy(0,13);
+     else if(clientY<bounds.top+edge&&clientY>bounds.top)bounds.node.scrollBy(0,-13);
    }
-   const under=document.elementFromPoint(event.clientX,event.clientY)?.closest("[data-photo-slot]");
+   const under=document.elementFromPoint(clientX,clientY)?.closest("[data-photo-slot]");
    const index=under?.getAttribute("data-photo-slot");
    const target=index===undefined||index===null?dragRef.current?.target??0:Number(index);
    const current=dragRef.current;if(!current)return;
-   const updated:Drag={...current,x:event.clientX,y:event.clientY,
+   const updated:Drag={...current,x:clientX,y:clientY,
      target:Number.isInteger(target)?Math.max(0,Math.min(photos.length-1,target)):current.target};
    dragRef.current=updated;
-   setDrag(updated);
+   if(ghost.current)ghost.current.style.translate=clientX+"px "+clientY+"px";
+   if(updated.target!==current.target)setDrag(updated);
+   });
  };
  const up=(event:ReactPointerEvent<HTMLDivElement>)=>{
    const p=pending.current;if(!p||p.pointer!==event.pointerId)return;
-   const completed=dragRef.current;cancel();
+   const completed=dragRef.current;
+   const slot=document.elementFromPoint(event.clientX,event.clientY)?.closest("[data-photo-slot]")?.getAttribute("data-photo-slot");
+   if(completed&&slot!==undefined&&slot!==null)completed.target=Math.max(0,Math.min(photos.length-1,Number(slot)));
+   cancel();
    try{mosaic.current?.releasePointerCapture(event.pointerId);}catch{/* ignore */}
    if(completed&&completed.source!==completed.target)movePhoto(completed.source,completed.target);
  };
@@ -112,7 +134,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
            if(event.key==="ArrowRight"||event.key==="ArrowDown"){event.preventDefault();movePhoto(i,Math.min(photos.length-1,i+1));}
          }:undefined}
          className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.id===photo?.id?" drag-source":"")}>
-         {photo?<><img src={photo.src} alt={"Фото "+(i+1)} draggable={false}/>
+         {photo?<>{photo.src&&<img src={photo.src} alt={"Фото "+(i+1)} draggable={false} decoding="async"/>}
            <span className="slot-index">{i+1}</span>
            {i===0&&<span className="primary-photo">Главное</span>}
            <button className="remove-photo" type="button" onClick={()=>removePhoto(photo.id)} aria-label={"Удалить фото "+(i+1)}><X size={14}/></button>
@@ -128,8 +150,8 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
        </div>;
      })}
    </div>
-   {drag&&createPortal(<div className="photo-drag-ghost" aria-hidden="true"
-     style={{left:drag.x,top:drag.y,width:drag.width,height:drag.height}}>
+   {drag&&createPortal(<div className="photo-drag-ghost" ref={ghost} aria-hidden="true"
+     style={{left:0,top:0,width:drag.width,height:drag.height}}>
      <img src={photos[drag.source]?.src} alt=""/><GripVertical size={16}/>
    </div>,document.body)}
    <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Также доступно Alt + стрелки на клавиатуре. Индикатор показывает только локальную подготовку фото, не загрузку на сервер.</span></div>

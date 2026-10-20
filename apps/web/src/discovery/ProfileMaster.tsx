@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
+import {memo,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {PenLine,Eye,FileText,Sparkles,Images,Gift,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
 import {Flag} from "../ui/Flag";
@@ -9,6 +9,7 @@ import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
 import {BlikViewer} from "./BlikViewer";
+import {animateValue} from "../ui/motion";
 import "./profile-master.css";
 
 type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
@@ -17,11 +18,6 @@ type Props={
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
 };
-// Android WebView can produce detached rectangular tiles when a translated,
-// rounded ancestor owns several nested native scrolling panes. Keep the
-// existing composited motion on other platforms; use layout-positioned sheet
-// movement on Android to avoid cross-layer tile invalidation.
-const androidSafeSheet=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
 type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number};
@@ -68,7 +64,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress}:Props){
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
@@ -83,6 +79,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  },[mainId,view.photos]);
  const [activePhoto,setActivePhoto]=useState(0);
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
+ const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
@@ -92,126 +89,91 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const dragFrame=useRef<number|null>(null);
  const photoSwipe=useRef<Swipe|null>(null),tabSwipe=useRef<Swipe|null>(null);
  const clickBlocked=useRef(0),expandedY=useRef(385),collapsedY=useRef(46),collapsedRef=useRef(false);
- const sheetProgress=useRef(0);
- const measuredOnce=useRef(false);
+ const sheetY=useRef(385);
+ const stopSheet=useRef<()=>void>(()=>{}),stopTabs=useRef<()=>void>(()=>{});
+ const cancelSheetGesture=useRef<()=>void>(()=>{});
+ const motionCallback=useRef(onMotionProgress);
+ motionCallback.current=onMotionProgress;
+ const motionActive=active&&!preview;
+ const previewBack=useRef<(()=>boolean)|null>(null);
+ const registerPreviewBack=useCallback((handler:(()=>boolean)|null)=>{previewBack.current=handler;},[]);
+ const registerViewerBack=useCallback((handler:(()=>boolean)|null)=>{viewerBack.current=handler;},[]);
  const viewerBack=useRef<(()=>boolean)|null>(null);
- const selectedIndex=tabs.findIndex(x=>x[0]===tab);
  const tabSelectionRef=useRef<TabId>(tab);
  tabSelectionRef.current=tab;
  const setTransform=(idx:number,delta=0)=>{
   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
  };
+ // The stationary viewport owns vertical scroll. The rounded surface itself
+ // has no transform, animated top, paint containment or clipping ancestor.
  const paintSheet=useCallback((offset:number,dragging=false)=>{
-  const pane=sheet.current;
-  if(!pane)return;
-  const top=collapsedY.current,bottom=expandedY.current;
-  const next=Math.max(top,Math.min(bottom,offset));
-  const progress=Math.max(0,Math.min(1,(bottom-next)/Math.max(1,bottom-top)));
-  sheetProgress.current=progress;
-  pane.style.setProperty("--pm-sheet-y",next+"px");
-  const layer=blurLayer.current;
-  if(layer){
-   layer.style.transitionProperty=dragging?"none":"opacity";
-   layer.style.opacity=String(progress*.9);
-  }
-  if(active)onMotionProgress?.(progress,dragging);
- },[active,onMotionProgress]);
+  const next=Math.max(collapsedY.current,Math.min(expandedY.current,offset));
+  sheetY.current=next;
+  const progress=(expandedY.current-next)/Math.max(1,expandedY.current-collapsedY.current);
+  if(viewport.current)viewport.current.scrollTop=expandedY.current-next;
+  if(blurLayer.current)blurLayer.current.style.opacity=String(progress*.9);
+  if(motionActive)motionCallback.current?.(progress,dragging);
+ },[motionActive]);
  const settleSheet=useCallback((next:boolean)=>{
+  stopSheet.current();
   collapsedRef.current=next;
-  if(sheet.current)sheet.current.style.transition="";
-  paintSheet(next?collapsedY.current:expandedY.current,false);
   setCollapsed(next);
+  stopSheet.current=animateValue(sheetY.current,next?collapsedY.current:expandedY.current,
+   360,[.22,.79,.22,1],value=>paintSheet(value,true));
  },[paintSheet]);
  useLayoutEffect(()=>{
+  if(!motionActive)return;
+  let first=true;
   const measure=()=>{
    const frame=hero.current,pane=sheet.current,root=shell.current;
-   if(!frame||!pane||!root)return;
-   if(!frame.offsetHeight || !root.clientWidth) return;
-   const firstPaint = !measuredOnce.current; measuredOnce.current = true;
+   if(!frame||!pane||!root||!root.clientWidth||!root.clientHeight)return;
+   // Batch reads before writes. Hidden owner profiles are never measured.
    const shellRect=root.getBoundingClientRect();
-   const logo=document.querySelector<HTMLElement>(".lh-header .lh-island img");
-   const imageRect=logo?.getBoundingClientRect();
-   // Physically overlap 10-12% of the *visible* W06 logo, not its wrapper.
-   // The crop is kept above the compact identity, below Telegram chrome.
-   const logoBottom=imageRect?
-    imageRect.bottom-shellRect.top-imageRect.height*.11:
-    48;
-   collapsedY.current=Math.max(38,Math.min(root.clientHeight*.24,logoBottom));
-   expandedY.current=Math.max(collapsedY.current+185,frame.getBoundingClientRect().bottom-shellRect.top-43);
-   pane.style.setProperty("--pm-collapsed-top",collapsedY.current+"px");
-   // Dots always sit *below* the actual wordmark, never over the letters.
-   root.style.setProperty("--pm-dots-top",((imageRect?.bottom??(shellRect.top+108))-shellRect.top+8)+"px");
-   // Initial layout: do not transition a newly measured sheet from the top.
-   if(firstPaint) pane.style.transition = "none";
-   paintSheet(collapsedRef.current?collapsedY.current:expandedY.current,false);
-   if(firstPaint){ void pane.offsetHeight; pane.style.transition = ""; }
+   const imageRect=document.querySelector<HTMLElement>(".lh-header .lh-island img")?.getBoundingClientRect();
+   const logoBottom=imageRect?imageRect.bottom-shellRect.top-imageRect.height*.11:48;
+   const top=Math.max(38,Math.min(root.clientHeight*.24,logoBottom));
+   const bottom=Math.max(top+185,frame.offsetHeight-43);
+   const dots=(imageRect?.bottom??(shellRect.top+108))-shellRect.top+8;
+   if(!first&&Math.abs(top-collapsedY.current)<.5&&Math.abs(bottom-expandedY.current)<.5)return;
+   first=false;
+   cancelSheetGesture.current();
+   stopSheet.current();
+   collapsedY.current=top;expandedY.current=bottom;
+   root.style.setProperty("--pm-expanded-y",bottom+"px");
+   pane.style.setProperty("--pm-collapsed-top",top+"px");
+   root.style.setProperty("--pm-dots-top",dots+"px");
+   // Activation and geometry changes are synchronous, never a new animation.
+   paintSheet(collapsedRef.current?top:bottom,true);
   };
   measure();
   const ro=new ResizeObserver(measure);
   if(hero.current)ro.observe(hero.current);
   if(shell.current)ro.observe(shell.current);
+  const anchor=document.querySelector<HTMLElement>(".lh-header .lh-center");
+  if(anchor)ro.observe(anchor);
+  const webApp=window.Telegram?.WebApp;
   window.addEventListener("resize",measure);
-  return ()=>{ro.disconnect();window.removeEventListener("resize",measure);};
- },[paintSheet]);
- useEffect(()=>{if(active)onMotionProgress?.(sheetProgress.current,false);},[active,onMotionProgress]);
- useEffect(()=>{
-  const pane=sheet.current;if(!pane)return;
-  type SheetGesture={x:number;y:number;start:number;down:boolean;scrollTop:number;dragging:boolean;blocked:boolean};
-  let gesture:SheetGesture|null=null;
-  const start=(e:TouchEvent)=>{
-   if(e.touches.length!==1)return;
-   const t=e.touches[0];
-   gesture={x:t.clientX,y:t.clientY,start:performance.now(),
-    down:collapsedRef.current,scrollTop:contentPages.current[selectedIndex]?.scrollTop||0,
-    dragging:false,blocked:false};
-   // Critical: an always-mounted non-passive touchmove listener on the whole
-   // sheet blocks Chrome's compositor scrolling of EVERY tab on Android.
-   // A touch starting deep in tab content needs only a passive listener;
-   // one starting at the edge may need preventDefault to drag the sheet.
-   pane.removeEventListener("touchmove",move);
-   pane.addEventListener("touchmove",move,{passive:!gesture.down||gesture.scrollTop<=1?false:true});
-  };
-  const move=(e:TouchEvent)=>{
-   const g=gesture;if(!g||e.touches.length!==1)return;
-   const t=e.touches[0],dx=t.clientX-g.x,dy=t.clientY-g.y;
-   if(g.blocked)return;
-   if(Math.abs(dx)>Math.abs(dy)*1.15&&Math.abs(dx)>8){g.blocked=true;return;}
-   if(Math.abs(dy)<7)return;
-   if(g.down?(g.scrollTop>1||dy<0):dy>0)return;
-   if(e.cancelable)e.preventDefault();
-   g.dragging=true;
-   const distance=expandedY.current;
-   const offset=g.down?Math.max(0,Math.min(distance,dy)):
-     Math.max(0,Math.min(distance,distance+dy));
-   pane.style.transition="none";
-   paintSheet(offset,true);
-  };
-  const end=(e:TouchEvent)=>{
-   pane.removeEventListener("touchmove",move);
-   const g=gesture;gesture=null;if(!g||!g.dragging)return;
-   const t=e.changedTouches[0];const dy=t.clientY-g.y,dt=Math.max(1,performance.now()-g.start);
-   const threshold=Math.min(90,Math.max(65,expandedY.current*.2));
-   const commit=g.down?(dy>threshold||dy/dt>.65):(dy< -threshold||dy/dt<-.65);
-   settleSheet(g.down?!commit:commit);
-  };
-  const cancel=()=>{pane.removeEventListener("touchmove",move);const g=gesture;gesture=null;if(g?.dragging)settleSheet(g.down);};
-  pane.addEventListener("touchstart",start,{passive:true});
-  pane.addEventListener("touchend",end,{passive:true});
-  pane.addEventListener("touchcancel",cancel,{passive:true});
+  webApp?.onEvent?.("safeAreaChanged",measure);
+  webApp?.onEvent?.("contentSafeAreaChanged",measure);
+  webApp?.onEvent?.("viewportChanged",measure);
   return ()=>{
-   pane.removeEventListener("touchstart",start);pane.removeEventListener("touchmove",move);
-   pane.removeEventListener("touchend",end);pane.removeEventListener("touchcancel",cancel);
+   stopSheet.current();ro.disconnect();window.removeEventListener("resize",measure);
+   webApp?.offEvent?.("safeAreaChanged",measure);
+   webApp?.offEvent?.("contentSafeAreaChanged",measure);
+   webApp?.offEvent?.("viewportChanged",measure);
   };
- },[selectedIndex,settleSheet,paintSheet]);
- useEffect(()=>()=>{if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);},[]);
+ },[motionActive,paintSheet]);
+ useEffect(()=>()=>{stopSheet.current();stopTabs.current();
+  if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
+ },[]);
  const closeTop=useCallback(():boolean=>{
   if(viewer){if(viewerBack.current)return viewerBack.current();setViewer(null);return true;}
-  if(preview){setPreview(false);return true;}
+  if(preview){if(previewBack.current?.())return true;setPreview(false);return true;}
   if(blikOpen){setBlikOpen(false);return true;}
   if(onClose){onClose();return true;}
   return false;
  },[viewer,preview,blikOpen,onClose]);
- useEffect(()=>{registerBack?.(closeTop);return ()=>registerBack?.(null);},[closeTop,registerBack]);
+ useEffect(()=>{if(!active)return;registerBack?.(closeTop);return ()=>registerBack?.(null);},[active,closeTop,registerBack]);
  const openPhoto=(index:number,element:HTMLElement|null)=>{
   if(performance.now()<clickBlocked.current||!photos[index])return;
   setViewer({index,source:element});
@@ -244,81 +206,164 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
   setTransform(target);setActivePhoto(target);
   if(g.axis==="x")clickBlocked.current=performance.now()+280;
  };
- const paintTabs=(i:number,dx=0)=>{
-  if(pageTrack.current){
-   const offset=`calc(-${i*100}% + ${dx}px)`;
-   if(androidSafeSheet)pageTrack.current.style.left=offset;
-   else pageTrack.current.style.transform=`translate3d(${offset},0,0)`;
-  }
+ const paintTabs=useCallback((i:number,dx=0)=>{
+  const position=Math.max(0,Math.min(4,i-dx/Math.max(1,tabViewport.current)));
+  if(pages.current)pages.current.scrollLeft=position*tabViewport.current;
   const indicator=ink.current,metrics=tabMetrics.current;
-  if(!indicator||!metrics.length)return;
-  const first=metrics[Math.max(0,Math.min(metrics.length-1,i))];
-  const other=metrics[Math.max(0,Math.min(metrics.length-1,i+(dx<0?1:-1)))];
-  if(!first||!other)return;
-  const ratio=Math.min(1,Math.abs(dx)/Math.max(1,tabViewport.current));
+  const left=Math.floor(position),right=Math.min(4,left+1),ratio=position-left;
+  const first=metrics[left],other=metrics[right];
+  if(!indicator||!first||!other)return;
   const x=first.left+(other.left-first.left)*ratio;
   const width=first.width+(other.width-first.width)*ratio;
-  // Only compositor transforms during horizontal dragging: no width/layout reads.
-  indicator.style.transform=`translate3d(${x}px,0,0) scaleX(${width/Math.max(1,tabMetrics.current[0]?.width??1)})`;
- };
+  indicator.style.transform=`translate3d(${x}px,0,0) scaleX(${width/Math.max(1,metrics[0].width)})`;
+ },[]);
  useLayoutEffect(()=>{
   const bar=tabBar.current;
-  if(!bar)return;
+  if(!motionActive||!bar)return;
+  let first=true;
   const measure=()=>{
-   const btns=bar.querySelectorAll<HTMLButtonElement>(".pm-tab");
-   tabMetrics.current=Array.from(btns).map(el=>({left:el.offsetLeft,width:el.offsetWidth}));
-   tabViewport.current=Math.max(1,pages.current?.clientWidth||bar.clientWidth);
-   if(ink.current&&tabMetrics.current.length)
-    ink.current.style.width=tabMetrics.current[0].width+"px";
-   // Geometry is stable across tab selection. Do not re-run an in-flight transition.
+   if(!bar.clientWidth)return;
+   const metrics=Array.from(bar.querySelectorAll<HTMLButtonElement>(".pm-tab")).map(el=>({left:el.offsetLeft,width:el.offsetWidth}));
+   const width=pages.current?.clientWidth||bar.clientWidth;
+   const changed=width!==tabViewport.current||metrics.some((m,i)=>m.left!==tabMetrics.current[i]?.left||m.width!==tabMetrics.current[i]?.width);
+   if(!first&&!changed)return;
+   first=false;
+   stopTabs.current();tabSwipe.current=null;
+   tabMetrics.current=metrics;tabViewport.current=width;
+   if(ink.current&&metrics.length)ink.current.style.width=metrics[0].width+"px";
    paintTabs(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
   };
   measure();
   const ro=new ResizeObserver(measure);
   ro.observe(bar);
+  bar.querySelectorAll(".pm-tab").forEach(button=>ro.observe(button));
   if(pages.current)ro.observe(pages.current);
-  return ()=>ro.disconnect();
- },[active]);
- const chooseTab=(newIndex:number)=>{
+  return ()=>{ro.disconnect();stopTabs.current();};
+ },[motionActive,paintTabs]);
+ const chooseTab=useCallback((newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
-  if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
-  if(pageTrack.current)pageTrack.current.style.transition=(androidSafeSheet?"left":"transform")+" 295ms cubic-bezier(.22,.77,.23,1)";
-  if(ink.current)ink.current.style.transition="";
-  paintTabs(i);
+  stopTabs.current();
+  const from=(pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
+  tabSelectionRef.current=tabs[i][0];
   setTab(tabs[i][0]);
-  const bar=tabBar.current,button=bar?.querySelectorAll<HTMLButtonElement>(".pm-tab")[i];
-  if(button&&bar)bar.scrollTo({left:Math.max(0,button.offsetLeft+button.offsetWidth/2-bar.clientWidth/2),behavior:"smooth"});
- };
+  stopTabs.current=animateValue(from,i,295,[.22,.77,.23,1],value=>paintTabs(value));
+  const bar=tabBar.current,metric=tabMetrics.current[i];
+  if(bar&&metric)bar.scrollTo({left:Math.max(0,metric.left+metric.width/2-bar.clientWidth/2),
+   behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
+ },[paintTabs]);
+ // Touch gestures have one axis owner. Mouse/pen horizontal dragging uses
+ // Pointer Events; touch is handled below so it cannot run both mechanisms.
  const tabDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
-  if((e.target as HTMLElement).closest("button,.pm-photos-grid,.pm-gift-grid")||(e.pointerType==="mouse"&&e.button!==0))return;
-  tabSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",index:selectedIndex,width:pages.current?.clientWidth||innerWidth};
+  if(e.pointerType==="touch"||(e.pointerType==="mouse"&&e.button!==0))return;
+  stopTabs.current();
+  tabSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",
+   index:(pages.current?.scrollLeft??0)/tabViewport.current,width:tabViewport.current};
  };
  const tabMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
   const dx=e.clientX-g.x,dy=e.clientY-g.y;
-  if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<8)return;g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";}
+  if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";}
   if(g.axis!=="x")return;
   if(e.cancelable)e.preventDefault();
-  if(pageTrack.current)pageTrack.current.style.transition="none";
-  if(ink.current)ink.current.style.transition="none";
-  const edge=(g.index===0&&dx>0)||(g.index===4&&dx<0);
-  if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
-  dragFrame.current=requestAnimationFrame(()=>{dragFrame.current=null;paintTabs(g.index,edge?dx*.2:dx);});
+  try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
+  paintTabs(g.index,dx);
  };
  const tabEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
   tabSwipe.current=null;
-  // Vertical native page scroll must NOT reset the horizontal pager/underline.
-  // The previous implementation called chooseTab on every vertical touch-up,
-  // causing flicker and redundant scrolling of the tab bar.
   if(g.axis!=="x")return;
-  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
   const next=!cancel&&(Math.abs(dx)>g.width*.17||Math.abs(dx)/dt>.52)?
-   g.index+(dx<0?1:-1):g.index;
+   Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
   clickBlocked.current=performance.now()+240;
   chooseTab(next);
  };
+ useEffect(()=>{
+  const pane=sheet.current;if(!motionActive||!pane)return;
+  type SheetGesture={x:number;y:number;start:number;down:boolean;scrollTop:number;
+   origin:number;axis:""|"x"|"y"|"native";inPages:boolean;index:number;
+   lastY:number;lastTime:number;velocity:number;blocking:boolean};
+  let gesture:SheetGesture|null=null,frame:number|null=null;
+  const flush=()=>{if(frame!==null){cancelAnimationFrame(frame);frame=null;}};
+  const abort=()=>{
+   pane.removeEventListener("touchmove",move);flush();gesture=null;
+  };
+  cancelSheetGesture.current=abort;
+  const start=(e:TouchEvent)=>{
+   if(e.touches.length!==1){cancel();return;}
+   const target=e.target as HTMLElement;
+   if(target.closest(".pm-tabs"))return;
+   const t=e.touches[0],inPages=!!target.closest(".pm-pages");
+   const scrollTop=inPages?(contentPages.current[tabs.findIndex(v=>v[0]===tabSelectionRef.current)]?.scrollTop||0):0;
+   stopSheet.current();
+   if(inPages)stopTabs.current();
+   const now=performance.now();
+   gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
+    origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
+    lastY:t.clientY,lastTime:now,velocity:0,blocking:!collapsedRef.current||scrollTop<=1};
+   pane.removeEventListener("touchmove",move);
+   pane.addEventListener("touchmove",move,{passive:!gesture.blocking});
+  };
+  const move=(e:TouchEvent)=>{
+   const g=gesture;if(!g||e.touches.length!==1)return;
+   const t=e.touches[0],dx=t.clientX-g.x,dy=t.clientY-g.y;
+   if(!g.axis){
+    if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
+    if(Math.abs(dx)>Math.abs(dy)*1.18)g.axis=g.inPages?"x":"native";
+    else g.axis=(dy>0?(g.scrollTop<=1&&g.origin<expandedY.current-.5):g.origin>collapsedY.current+.5)?"y":"native";
+   }
+   if(g.axis==="native")return;
+   if(g.blocking&&e.cancelable)e.preventDefault();
+   const now=performance.now(),dt=now-g.lastTime;
+   if(dt>0){g.velocity=(t.clientY-g.lastY)/dt;g.lastY=t.clientY;g.lastTime=now;}
+   flush();
+   frame=requestAnimationFrame(()=>{
+    frame=null;
+    if(g.axis==="x")paintTabs(g.index,dx);
+    else paintSheet(g.origin+dy,true);
+   });
+  };
+  const finish=(e:TouchEvent,cancelled:boolean)=>{
+   const g=gesture;abort();if(!g)return;
+   const t=e.changedTouches[0];if(!t)return;
+   const dx=t.clientX-g.x,dy=t.clientY-g.y;
+   if(g.axis==="x"){
+    const dt=Math.max(1,performance.now()-g.start);
+    const next=!cancelled&&(Math.abs(dx)>tabViewport.current*.17||Math.abs(dx)/dt>.52)?
+     Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
+    clickBlocked.current=performance.now()+260;chooseTab(next);
+   }else if(g.axis==="y"){
+    if(!cancelled)paintSheet(g.origin+dy,true);
+    const velocity=performance.now()-g.lastTime<90?g.velocity:0;
+    const threshold=Math.min(90,Math.max(65,(expandedY.current-collapsedY.current)*.2));
+    const commit=g.down?(dy>threshold||velocity>.65):(dy< -threshold||velocity<-.65);
+    clickBlocked.current=performance.now()+260;
+    settleSheet(cancelled?g.down:g.down?!commit:commit);
+   }else if(!g.axis){
+    // A tap during settling resumes from the frozen position.
+    settleSheet(g.down);
+    const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
+    if(g.inPages&&Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
+   }else if(g.axis==="native"&&g.inPages){
+    const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
+    if(Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
+   }
+  };
+  const end=(e:TouchEvent)=>finish(e,false);
+  const cancel=()=>{
+   const g=gesture;abort();if(!g)return;
+   if(g.axis==="x")chooseTab(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
+   else settleSheet(g.down);
+  };
+  pane.addEventListener("touchstart",start,{passive:true});
+  pane.addEventListener("touchend",end,{passive:true});
+  pane.addEventListener("touchcancel",cancel,{passive:true});
+  return ()=>{
+   abort();cancelSheetGesture.current=()=>{};
+   pane.removeEventListener("touchstart",start);pane.removeEventListener("touchend",end);
+   pane.removeEventListener("touchcancel",cancel);
+  };
+ },[motionActive,paintSheet,paintTabs,settleSheet,chooseTab]);
  const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
  const openAvatar=()=>{
   if(view.profile.activeBlik){setBlikOpen(true);return;}
@@ -327,7 +372,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
  const goal=view.profile.goal&&view.profile.goal!=="undecided"?goals.find(x=>x.id===view.profile.goal):null;
- return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer={androidSafeSheet?"layout":"compositor"} className={"pm-shell "+(mode==="owner"?"pm-inline":"pm-dialog")} role={mode==="owner"?undefined:"dialog"}
+ return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer="scroll" className={"pm-shell "+(mode==="owner"?"pm-inline":"pm-dialog")} role={mode==="owner"?undefined:"dialog"}
    aria-modal={mode==="owner"?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
   {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
@@ -347,7 +392,11 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
        onClick={()=>{if(photoTrack.current)photoTrack.current.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";setTransform(i);setActivePhoto(i);}}/>)}</div>}
     {view.profile.source!=="server"&&<span className="pm-hero-demo">{view.profile.source==="fixture"?"Демо":"Черновик"}</span>}
    </div>
-   <div className="pm-profile-sheet" ref={sheet}>
+   <div className="pm-sheet-viewport" ref={viewport}>
+    <div className="pm-sheet-spacer" aria-hidden="true"/>
+   <div className="pm-profile-sheet" ref={sheet} onClickCapture={e=>{
+    if(performance.now()<clickBlocked.current){e.preventDefault();e.stopPropagation();}
+   }}>
     <button type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsed)}
       tabIndex={collapsed?-1:0} aria-label={collapsed?"Потянуть панель вниз":"Развернуть анкету"}><span/></button>
     <div className="pm-identity">
@@ -382,7 +431,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
      <div className="pm-page" ref={e=>{if(e)contentPages.current[2]=e;}}>
       {photos.length?<div className="pm-photos-grid">{photos.map((p,i)=><button type="button" key={p.id} className="pm-photo-tile"
        onClick={e=>openPhoto(i,e.currentTarget.querySelector("img"))} aria-label={"Открыть фото "+(i+1)}>
-       <PhotoImage photo={p} alt="" loading={i<9?"eager":"lazy"}/>{p.status!=="published"&&<span>{p.status==="draft"?"Черновик":"Проверка"}</span>}
+       <PhotoImage photo={p} alt="" loading="lazy"/>{p.status!=="published"&&<span>{p.status==="draft"?"Черновик":"Проверка"}</span>}
        </button>)}</div>:<div className="pm-empty"><Images size={38}/><h3>Пока нет опубликованных фото</h3>
         <p>Фото на модерации и приватные снимки не видны другим.</p></div>}
      </div>
@@ -391,10 +440,11 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true
     </div>
    </div>
   </div>
+  </div>
   {viewer&&<PhotoViewer view={view} photos={photos} initial={viewer.index} source={viewer.source}
-    onClose={()=>setViewer(null)} registerBack={handler=>{viewerBack.current=handler;}} onMain={id=>{if(view.canReorderMain)setMainId(id);}}
+    onClose={()=>setViewer(null)} registerBack={registerViewerBack} onMain={id=>{if(view.canReorderMain)setMainId(id);}}
     />}
   {blikOpen&&view.profile.activeBlik&&<BlikViewer blik={view.profile.activeBlik} name={view.profile.name} onClose={()=>setBlikOpen(false)}/>}
-  {preview&&<ProfileMaster data={data} mode="preview" onClose={()=>setPreview(false)} registerBack={registerBack}/>}
+  {preview&&<ProfileMaster data={data} mode="preview" onClose={()=>setPreview(false)} registerBack={registerPreviewBack} active={active} onMotionProgress={onMotionProgress}/>}
  </section>;
-}
+});
