@@ -26,11 +26,15 @@ jobs:
             if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then break; fi
             sleep 1
           done
-          node scripts/stage03g5-visual-qa.mjs
+          if [[ "$GITHUB_REF_NAME" == feat/stage03g6-* ]]; then
+            node scripts/stage03g6-visual-qa.mjs
+          else
+            node scripts/stage03g5-visual-qa.mjs
+          fi
       - name: Preserve screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: luemi-stage03g5-profile-polish
-          path: stage03g5-*.jpg
+          path: |\n            stage03g5-*.jpg\n            stage03g6-*.jpg
           if-no-files-found: ignore
