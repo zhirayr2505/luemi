@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import type {PointerEvent as ReactPointerEvent,CSSProperties} from "react";
-import {X,ArrowLeft,PenLine,Eye,FileText,Sparkles,Images,Gift,UserRound,MapPin,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
+import type {PointerEvent as ReactPointerEvent} from "react";
+import {ArrowLeft,PenLine,Eye,FileText,Sparkles,Images,Gift,UserRound,MapPin,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
 import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import {languages} from "../ui/Languages";
@@ -76,7 +76,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
  const [activePhoto,setActivePhoto]=useState(0);
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
  const scroll=useRef<HTMLDivElement>(null),shell=useRef<HTMLElement>(null);
- const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null),morph=useRef<HTMLImageElement>(null);
+ const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null),morph=useRef<HTMLDivElement>(null);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
  const scrollFrame=useRef<number|null>(null),dragFrame=useRef<number|null>(null);
@@ -85,7 +85,6 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
  const collapse=useRef(0),scrollTopLast=useRef(0),scrollTime=useRef(0);
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const selectedIndex=tabs.findIndex(x=>x[0]===tab);
- const rootView=mode==="owner";
  const setTransform=(idx:number,delta=0)=>{
   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
  };
@@ -232,7 +231,7 @@ export function ProfileMaster({data,mode,onClose,onEdit,registerBack}:Props){
    <strong title={view.profile.name}>{nameLine} {view.profile.premium&&<span className="pm-premium" aria-label="Premium">◆</span>}
     {view.profile.verified&&<ShieldCheck size={16} aria-label="Подтверждённый профиль"/>}</strong>
    <small>{location}</small></div></div>
-  {current&&<div className="pm-morph-photo" ref={morph} aria-hidden="true" style={{backgroundImage:`url("${current.src}")`}}/>}
+  <div className="pm-morph-photo" ref={morph} aria-hidden="true" style={current?{backgroundImage:`url("${current.src}")`}:undefined}/>
   <div className="pm-scroll" ref={scroll} onScroll={onScroll}
     onTouchStart={()=>{scrollTopLast.current=scroll.current?.scrollTop??0;scrollTime.current=performance.now();}}
     onTouchEnd={()=>window.setTimeout(settleCollapse,60)}>
