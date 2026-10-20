@@ -150,7 +150,7 @@ assertCheck("single atomic Deck Lift commit synchronized with exit animation",
 assertCheck("profile gestures follow finger while vertically scrolling natively",
  discoveryProfile.includes("setPointerCapture")&&
  discoveryProfile.includes("paintTabs(g.index")&&
- discoveryProfile.includes('pane.addEventListener("touchmove",move,{passive:false})')&&
+ discoveryProfile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.down||gesture.scrollTop<=1?false:true})')&&
  read("apps/web/src/discovery/profile-master.css").includes("touch-action:pan-y")&&
  !discoveryProfile.includes("setDragX"));
 console.log("LUEMI Stage 03 motion v2 regression checks PASS");
