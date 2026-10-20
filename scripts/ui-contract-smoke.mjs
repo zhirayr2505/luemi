@@ -72,8 +72,9 @@ assertCheck("logo and exactly three icon-only controls inside its width",discove
  && discoveryCss.includes(".discovery-header-controls{width:105px")
  && discovery.includes("aria-label=\"Сохранённые анкеты\"")
  && discovery.includes("aria-label=\"Фильтры\""));
-assertCheck("moving page AND underline follow same gesture",discovery.includes("dragX/3")&&discovery.includes('+"px),0,0)"')
- && discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
+assertCheck("moving page and underline share a compositor-driven gesture",
+ discovery.includes("paintDrag(shift)")&&discovery.includes("requestAnimationFrame")&&discovery.includes("pageTrack.current")
+ && discovery.includes("underline.current")&&!discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
 assertCheck("entire profile and action controls share a single keyed card",read("apps/web/src/discovery/FeedCard.tsx").includes('className="discovery-card-overlay"')
  && read("apps/web/src/discovery/FeedCard.tsx").includes('className="discovery-actions"')
  && discovery.includes('<FeedCard person={person}')&&discovery.includes('<FeedCard person={profiles[feed.index+1]}'));
@@ -93,7 +94,9 @@ assertCheck("hidden undecided goal on feed AND public profile",read("apps/web/sr
 assertCheck("gradient registration interests remain enabled",discoveryCss.includes(".discovery-interests>.chip")&&!discoveryCss.includes("background:rgba(244,230,255,.85)!important"));
 assertCheck("interests +N opens sheet, not full profile",discovery.includes('setInterestOpen(person.id)')&&read("apps/web/src/discovery/FeedCard.tsx").includes("onInterests")&&interestSheet.includes('className="discovery-interests-sheet"'));
 assertCheck("Deck Lift uses one locked timed action",discovery.includes("locked.current=true")&&discovery.includes("deck-leaving")&&discoveryCss.includes(".deck-leaving")&&discoveryCss.includes(".deck-entering"));
-assertCheck("correct inverse tracking of page and line",discovery.includes('tabIndex*100+"% - "+dragX/3'));
+assertCheck("correct inverse tracking of page and line",discovery.includes("(-value/3)")
+ && discovery.includes("tabIndex*100")&&discovery.includes("(-tabIndex*100)")
+ && discoveryCss.includes("--luemi-underline-drag")&&discoveryCss.includes("--luemi-drag"));
 assertCheck("rounded Liquid Glass bottom island and active icon only",discoveryCss.includes(".discovery-bottom-nav{")&&discoveryCss.includes("border-radius:29px")&&discoveryCss.includes(".discovery-nav-item.active{color:#aa76d8;background:transparent"));
 assertCheck("right swipe closes profile but excludes photos",discoveryProfile.includes("onPointerDown={down}")&&discoveryProfile.includes('.discovery-profile-photo,.carousel-frame'));
 assertCheck("six women for exclusive demo fixture",fixture.includes('"alisa"')&&fixture.includes('"lina"')&&!fixture.includes('"aram"'));

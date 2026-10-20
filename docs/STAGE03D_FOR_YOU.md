@@ -33,3 +33,12 @@ Validate horizontally scrollable portrait rows vs discover pager, return from pr
 ## 2026-10-20 · Integration with current staging
 
 The previously developed branch diverged from staging, which contains 22 newer feed and motion commits. This integration is based on staging HEAD `ef765d1`, preserving `FeedCard.tsx` and all 22 newer commits, and importing only isolated Stage 03D components and narrowly-scoped DiscoveryApp wiring. Full QA and staging visual acceptance remain separate gates. No real data, geolocation, payments, or Nearby features added.
+
+
+## Stage 03D.1 — Smoothness & Gesture Polish · owner-approved 2026-10-20
+- Top tabs and underline follow the finger without flashing; compositor variables updated once per animation frame, no React setState on pointermove; cancelled gestures do not commit a page change.
+- Public full profile shows the unchanged original LUEMI centered wordmark, with demo badge on left and close action on right.
+- Vertical scrolling must originate over For You portrait photos and coexist with horizontal carousel gestures and tap-to-open.
+- Keep Premium Liquid Glass; use memoized For You and show at most six tiles per visible carousel, with full sets via See All.
+- Feed Polish 2, its animation engine, radius, and Stage 03E Nearby unchanged. Shared-element photo-to-profile transition explicitly deferred.
+- GitHub CI and Galaxy A55 in-Telegram visual acceptance required; avoid claiming verified FPS before measurement.

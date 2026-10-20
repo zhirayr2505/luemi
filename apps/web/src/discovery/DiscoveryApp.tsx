@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import type {CSSProperties} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {Bookmark,X,Heart,Undo2,SlidersHorizontal,Images,MessagesSquare,UserRound,ArrowRight,Sun,Moon,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
@@ -39,11 +40,12 @@ interface Props {draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;o
 export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
- const [dragX,setDragX]=useState(0);
- const [swiping,setSwiping]=useState(false);
  const gesture=useRef<Gesture|null>(null);
  const clickBlockUntil=useRef(0);
  const pages=useRef<HTMLDivElement>(null);
+ const pageTrack=useRef<HTMLDivElement>(null);
+ const underline=useRef<HTMLSpanElement>(null);
+ const swipeFrame=useRef<number|null>(null);
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
@@ -121,12 +123,27 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
   transitionRef.current=window.setTimeout(finishDeck,440);
  };
  const selectTab=(index:number)=>{
-  setDiscoveryTab(topTabs[Math.max(0,Math.min(topTabs.length-1,index))][0]);
+  const bounded=Math.max(0,Math.min(topTabs.length-1,index));
+  if(topTabs[bounded][0]===discoveryTab)return;
+  setDiscoveryTab(topTabs[bounded][0]);
   window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
  };
-
- // A single horizontal gesture owner for the discovery pages AND the tabs.
- // PhotoCarousel owns its own pointer gesture. No Tinder-style card swipes.
+ // Pointer movement updates only CSS compositor variables in one animation frame.
+ // React must not render all profile cards on every move.
+ const paintDrag=(value:number)=>{
+  pageTrack.current?.style.setProperty("--luemi-drag",value+"px");
+  underline.current?.style.setProperty("--luemi-underline-drag",(-value/3)+"px");
+ };
+ const flushDrag=()=>{
+  if(swipeFrame.current!==null){window.cancelAnimationFrame(swipeFrame.current);swipeFrame.current=null;}
+ };
+ const settleDrag=()=>{
+  flushDrag();
+  pageTrack.current?.classList.remove("is-finger-tracking");
+  underline.current?.classList.remove("is-finger-tracking");
+  paintDrag(0);
+ };
+ useEffect(()=>()=>{if(swipeFrame.current!==null)window.cancelAnimationFrame(swipeFrame.current);},[]);
  const down=(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(event.pointerType==="mouse"&&event.button!==0)return;
   if((event.target as HTMLElement).closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
@@ -139,29 +156,30 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
     if(Math.abs(y)>12&&Math.abs(y)>Math.abs(x)){gesture.current=null;return;}
     if(Math.abs(x)<6||Math.abs(x)<Math.abs(y)*1.2)return;
     g.tracking=true;
+    pageTrack.current?.classList.add("is-finger-tracking");
+    underline.current?.classList.add("is-finger-tracking");
     try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older Telegram WebView */}
-    setSwiping(true);
   }
-  event.preventDefault();
+  if(event.cancelable)event.preventDefault();
   const width=pages.current?.clientWidth||window.innerWidth;
   const limited=(g.index===0&&x>0)||(g.index===2&&x<0);
-  setDragX(limited?x*.22:Math.max(-width,Math.min(width,x)));
+  const shift=limited?x*.22:Math.max(-width,Math.min(width,x));
+  flushDrag();
+  swipeFrame.current=window.requestAnimationFrame(()=>{swipeFrame.current=null;paintDrag(shift);});
  };
  const up=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==event.pointerId)return;
   gesture.current=null;
-  if(g.tracking){
-    const x=event.clientX-g.x;
-    const elapsed=Math.max(1,performance.now()-g.started);
-    const velocity=Math.abs(x)/elapsed;
-    const target=Math.abs(x)>(pages.current?.clientWidth||320)*.18||velocity>.55
-      ?g.index+(x<0?1:-1):g.index;
-    clickBlockUntil.current=performance.now()+260;
-    if(target!==g.index)selectTab(target);
-    setSwiping(false);setDragX(0);
-  }
+  if(!g.tracking)return;
+  const x=event.clientX-g.x,elapsed=Math.max(1,performance.now()-g.started);
+  const velocity=Math.abs(x)/elapsed;
+  const target=Math.abs(x)>(pages.current?.clientWidth||320)*.18||velocity>.55
+    ?g.index+(x<0?1:-1):g.index;
+  clickBlockUntil.current=performance.now()+260;
+  settleDrag();
+  if(target!==g.index)selectTab(target);
  };
- const cancelSwipe=()=>{gesture.current=null;setSwiping(false);setDragX(0);};
+ const cancelSwipe=()=>{gesture.current=null;settleDrag();};
  const apply=(next:DiscoveryFilter)=>{
   if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
   transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);
@@ -169,13 +187,13 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
   indicate("Фильтры применены к демо-анкетам");
  };
  const openSaved=()=>{setSavedOpen(true);setFilterOpen(false);};
- const toggleForYouSave=(id:string)=>{
+ const toggleForYouSave=useCallback((id:string)=>{
   if(!forYouDemoPeople.some(p=>p.id===id))return;
   const already=feed.saved.includes(id);
   setFeed(prev=>({...prev,saved:prev.saved.includes(id)?prev.saved.filter(value=>value!==id):[...prev.saved,id]}));
   indicate(already?"Убрано из сохранённых · демо":"Сохранено · демо");
   window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
- };
+ },[feed.saved,indicate]);
  const selectMainTab=(tab:MainTab)=>{
   if(tab===mainTab)return;
   // End an in-flight Deck Lift in the same React batch before hiding Feed.
@@ -207,15 +225,13 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
          {topTabs.map(([value,label],i)=><button type="button" role="tab" key={value}
            aria-selected={discoveryTab===value} onClick={()=>{if(performance.now()>=clickBlockUntil.current)selectTab(i);}}
            className={discoveryTab===value?"active":""}>{label}</button>)}
-         <span className="discovery-tab-underline" aria-hidden="true" style={{
-           transform:"translate3d(calc("+tabIndex*100+"% - "+dragX/3+"px),0,0)",
-           transition:swiping?"none":undefined}}/>
+         <span className="discovery-tab-underline" ref={underline} aria-hidden="true"
+           style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
        </div>
        <div className="discovery-pages" ref={pages} onPointerDown={down}
-         onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
-         <div className="discovery-page-track" style={{
-           transform:"translate3d(calc(-"+tabIndex*100+"% + "+dragX+"px),0,0)",
-           transition:swiping?"none":undefined}}>
+         onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}>
+         <div className="discovery-page-track" ref={pageTrack}
+           style={{"--luemi-tab-offset":(-tabIndex*100)+"%"} as CSSProperties}>
            <section className="discovery-page" role="tabpanel" aria-label="Лента">
              {<div className="discovery-deck-stage">
                {person&&<div key={person.id}

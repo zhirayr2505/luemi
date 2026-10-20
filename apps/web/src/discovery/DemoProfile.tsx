@@ -8,6 +8,8 @@ import {languages} from "../ui/Languages";
 import {Flag} from "../ui/Flag";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
 
+const originalLogo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
+
 type Swipe={id:number;x:number;y:number;time:number;horizontal:boolean};
 
 /** Telegram-like swipe-to-close: only transform the inner page, never the
@@ -69,6 +71,7 @@ export function DemoProfile({person,onClose}:{person:DemoPerson;onClose:()=>void
    onPointerUp={up} onPointerCancel={reset}>
    <div className="discovery-profile-swipe-surface" ref={surface}>
      <header className="discovery-profile-top"><span className="discovery-demo-label">Демо-профиль</span>
+       <img className="discovery-profile-wordmark" src={originalLogo} alt="LUEMI" decoding="async"/>
        <button type="button" onClick={onClose} className="discovery-icon-action" aria-label="Закрыть профиль"><X size={21}/></button>
      </header>
      <div className="discovery-profile-scroll">

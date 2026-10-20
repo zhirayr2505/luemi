@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useRef,useState} from "react";
+import {memo,useEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Bookmark,Check,ChevronDown,ChevronUp,Globe2,Heart,MapPin,Music2,Plane,Settings2,Sparkles,Users,X} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {Flag} from "../ui/Flag";
@@ -68,7 +68,7 @@ function emptyMessage(id:CollectionId){
   default:return "В этой теме пока нет подходящих демо-анкет. Попробуй изменить фильтры.";
  }
 }
-export function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,settingsOpen,onSettingsOpen}:Props){
+export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,settingsOpen,onSettingsOpen}:Props){
  const [prefs,setPrefs]=useState<Prefs>(savedPrefs);
  const scroll=useRef<HTMLDivElement>(null), first=useRef<HTMLElement>(null);
  useEffect(()=>{try{localStorage.setItem(storeKey,JSON.stringify(prefs));}catch{/* restricted Telegram storage */}},[prefs]);
@@ -81,7 +81,7 @@ export function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,
  const shown=useMemo(()=>prefs.order.filter(id=>!prefs.hidden.includes(id))
   .sort((a,b)=>Number(prefs.favorites.includes(b))-Number(prefs.favorites.includes(a))),[prefs]);
  const one=(p:DemoPerson)=><PersonTile key={p.id} person={p} draft={draft} saved={saved.includes(p.id)} onSave={onSave} onPerson={onPerson}/>;
- const rail=(list:DemoPerson[],name:string)=><div className="fy-rail" role="group" aria-label={name} onPointerDown={e=>e.stopPropagation()}>{list.map(one)}</div>;
+ const rail=(list:DemoPerson[],name:string)=><div className="fy-rail" role="group" aria-label={name} onPointerDown={e=>e.stopPropagation()}>{list.slice(0,6).map(one)}</div>;
  const flip=(id:CollectionId,field:"hidden"|"favorites")=>setPrefs(p=>({...p,[field]:p[field].includes(id)?p[field].filter(x=>x!==id):[...p[field],id]}));
  const shift=(id:CollectionId,n:number)=>setPrefs(p=>{
   const order=[...p.order],a=order.indexOf(id),b=a+n;if(b<0||b>=order.length)return p;
@@ -153,4 +153,4 @@ export function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,
     <button type="button" onClick={()=>onSettingsOpen(false)}>Готово</button></footer>
   </section>}
  </div>;
-}
+});

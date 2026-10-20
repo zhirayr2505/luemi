@@ -72,3 +72,8 @@
 - Profile languages are flags only with accessible language titles; dating goal badge stronger.
 - Fixed restart-from-zero by local per-account draft (localStorage) + private local photo File storage (IndexedDB). Users can clear it from step 1. Does not upload user files or replace future encrypted server drafts.
 - Mobile visual approval, keyboard/fps testing still pending. No main, Supabase, VEYRA or blotX updates.
+
+
+## 2026-10-20 · Stage 03D.1 approved
+- Owner accepted finger-following flicker-free tabs, fixed centered logo in public profiles, natural vertical pan on For You cards, adaptive performance without visible downgrade. Photo shared-element transition deferred.
+- Work isolated in feat/stage03d1-smoothness from staging 1ae4d9f. Feed Polish 2, distance radius and Stage 03E remain locked. Device QA pending.

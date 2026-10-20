@@ -44,3 +44,18 @@ assert.ok(active.includes('<ForYou draft={draft}')&&active.includes('import {Fee
 assert.ok(active.includes('fy-rail,.fy-expanded,.fy-manage'),"new nested gestures excluded from outer pager");
 assert.ok(active.includes('saved:prev.saved'),"saved people survive filter resets");
 console.log("✓ Stage 03D integration: preserved FeedCard, isolated gestures, valid 16 demo profiles and saved state");
+
+// Stage 03D.1 interaction and visual guards.
+const forYou=readFileSync(new URL("../apps/web/src/discovery/ForYou.tsx",import.meta.url),"utf8");
+const forYouCss=readFileSync(new URL("../apps/web/src/discovery/for-you.css",import.meta.url),"utf8");
+const discoveryStyles=readFileSync(new URL("../apps/web/src/discovery/discovery.css",import.meta.url),"utf8");
+const demoProfile=readFileSync(new URL("../apps/web/src/discovery/DemoProfile.tsx",import.meta.url),"utf8");
+const feedCard=readFileSync(new URL("../apps/web/src/discovery/FeedCard.tsx",import.meta.url),"utf8");
+assert.ok(!forYouCss.includes("touch-action:pan-x;")&&forYouCss.includes("touch-action:pan-x pan-y"),"portraits allow native vertical panning");
+assert.ok(forYou.includes("list.slice(0,6)")&&forYou.includes("memo(function ForYou"),"bounded collections and memoized page");
+assert.ok(demoProfile.includes("discovery-profile-wordmark")&&demoProfile.includes("wordmark_original_raster_alpha_W06.webp"),"original LUEMI logo in full profile");
+assert.ok(discoveryStyles.includes("grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)"),"profile logo independently centered");
+assert.ok(discoveryStyles.includes(".discovery-page-track.is-finger-tracking")&&discoveryStyles.includes("font-weight:700"),"steady active-tab typography");
+assert.ok(active.includes("onPointerCancel={cancelSwipe}")&&active.includes("requestAnimationFrame")&&!active.includes("setDragX"),"gesture cancellation and rAF updates");
+assert.ok(feedCard.includes("discovery-deck-current")&&active.includes('event.animationName==="luemi-deck-leave"'),"Feed animation preserved");
+console.log("✓ Stage 03D.1 animation, scroll, logo and Feed regression contracts");
