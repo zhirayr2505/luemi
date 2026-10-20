@@ -89,6 +89,34 @@ try{
  const absorbing=await page.screenshot({type:"jpeg",quality:70,path:"stage03g3-absorbing.jpg"});
  console.log("QA_ABSORB "+JSON.stringify(liquid));
  console.log("VISUAL_QA_ABSORB_JPEG="+absorbing.toString("base64"));
+ // The same unboxed logo and edge-to-edge hero must survive a route
+ // transition to the public (visitor) profile, not just the owner tab.
+ await page.getByRole("button",{name:"Знакомства",exact:true}).click();
+ await page.getByRole("tab",{name:"Для тебя"}).click();
+ await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
+ const visitor=await page.evaluate(()=>{
+  const hero=document.querySelector(".pm-dialog .pm-hero");
+  const logo=document.querySelector(".lh-island");
+  const dialog=document.querySelector(".pm-dialog");
+  const sheet=document.querySelector(".pm-dialog .pm-profile-sheet");
+  const nav=document.querySelector(".discovery-bottom-nav");
+  return {
+   present:!!dialog&&!!hero&&!!logo&&!!sheet,
+   heroTop:hero?.getBoundingClientRect().top,
+   logoTop:logo?.getBoundingClientRect().top,
+   logoBackground:logo?getComputedStyle(logo).backgroundColor:"",
+   navDisplay:nav?getComputedStyle(nav).display:"",
+   sheetTop:sheet?.getBoundingClientRect().top
+  };
+ });
+ assert.ok(visitor.present,"visitor profile opens with real shared ProfileMaster");
+ assert.ok(visitor.heroTop<=2,"public photo also starts behind the logo at the top edge");
+ assert.equal(visitor.logoBackground,"rgba(0, 0, 0, 0)","visitor logo is unboxed");
+ assert.equal(visitor.logoTop,initial.logoTop,"global logo does not jump between owner and visitor");
+ assert.equal(visitor.navDisplay,"none","navigation should be hidden while visitor profile is open");
+ const visitorShot=await page.screenshot({type:"jpeg",quality:62,path:"stage03g3-visitor.jpg"});
+ console.log("QA_VISITOR "+JSON.stringify(visitor));
+ console.log("VISUAL_QA_VISITOR_JPEG="+visitorShot.toString("base64"));
  assert.deepEqual(errors,[],"no runtime React exceptions");
  console.log("PASS: real React profile screenshot QA 393x852");
 }finally{await browser.close()}
