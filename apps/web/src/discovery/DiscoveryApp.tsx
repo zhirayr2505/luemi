@@ -201,8 +201,8 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
                    onInterests={()=>setInterestOpen(profiles[feed.index+1].id)}/>
                </div>}
                {!profiles[feed.index+1]&&<div key="deck-complete"
-                 className={"discovery-deck-layer"+(leaving?" deck-entering":" deck-active")}
-                 aria-hidden={!!person&&!leaving}>
+                 className={"discovery-deck-layer"+(leaving?" deck-entering":person?" deck-queued":" deck-active")}
+                 aria-hidden={!!person}>
                  <EmptyFeed hasProfiles={profiles.length>0} canUndo={feed.history.length>0}
                    onUndo={()=>act("undo")} onRestart={restartFeed}/>
                </div>}
