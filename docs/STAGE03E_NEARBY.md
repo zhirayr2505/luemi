@@ -32,3 +32,8 @@
 - npm run check (UI/discovery contracts, lint, types, builds, API tests).
 - In-device Telegram Galaxy A55: portrait-start vertical scroll, bookmarks, opening/closing with exact scroll retention, world/country/city/empty states, tabs and dark theme.
 - Render deployment explicitly forbidden before green CI. Production main must remain untouched; manual on-device visual acceptance separate.
+
+## 2026-10-20 · Owner-approved visual finish & future behavior
+- Owner reviewed and accepted Stage 03E visual screen as good; no immediate refactor of approved demo requested.
+- Future Nearby 2.0 backlog: global nearest-first ordering (only with trustworthy permissioned server location), premium-only, last-7-days-new-only, true stable cursor pagination, early prefetch, never wait at bottom. See [STAGE03E_NEARBY_FUTURE.md](STAGE03E_NEARBY_FUTURE.md).
+- These real-data/backend capabilities are **deferred** and must not be represented as working in Stage 03E demo.
