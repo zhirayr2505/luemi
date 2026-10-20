@@ -83,7 +83,7 @@
 .pm-viewer .pm-viewer-menu button:last-child{justify-content:center;margin-top:6px;background:#393442}
 .pm-viewer-message{position:absolute;left:20px;right:20px;bottom:88px;z-index:8;text-align:center;padding:11px 13px;border-radius:14px;color:#fff;background:rgba(61,47,75,.94);font-size:12px;line-height:1.5}
 @media(max-width:370px){.pm-hero{margin-left:10px;margin-right:10px}.pm-tab{flex-basis:66px;font-size:9px}.pm-page{padding-left:10px;padding-right:10px}.pm-owner-actions{padding-left:10px;padding-right:10px;gap:6px}.pm-owner-actions button{font-size:10px}}
-@media(prefers-reduced-motion:reduce){.pm-photo-track,.pm-pages-track,.pm-tab-ink,.pm-viewer-stage,.pm-viewer-image{transition:none!important} .pm-morph-photo{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.pm-photo-track,.pm-pages-track,.pm-tab-ink,.pm-viewer-stage,.pm-viewer-image{transition:none!important}}
 
 /* Preview is a full content panel under the same persistent header, not a second app chrome. */
 .pm-preview-toolbar{display:flex;justify-content:flex-end;padding:8px 14px 1px}
