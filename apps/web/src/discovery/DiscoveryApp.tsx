@@ -214,13 +214,18 @@ export function DiscoveryApp({draft,theme,onTheme,onExit,registerBack}:Props){
  };
  const openSaved=()=>{setSavedOpen(true);setFilterOpen(false);};
  const openNearbyFilters=useCallback(()=>setFilterOpen(true),[]);
+ const savedRef=useRef(feed.saved);
+ savedRef.current=feed.saved;
  const toggleForYouSave=useCallback((id:string)=>{
   if(!forYouDemoPeople.some(p=>p.id===id))return;
-  const already=feed.saved.includes(id);
+  // A stable callback lets unchanged memoized For You/Nearby tiles stay mounted.
+  // Update the ref immediately so two rapid taps use the latest bookmark state.
+  const wasSaved=savedRef.current.includes(id);
+  savedRef.current=wasSaved?savedRef.current.filter(value=>value!==id):[...savedRef.current,id];
   setFeed(prev=>({...prev,saved:prev.saved.includes(id)?prev.saved.filter(value=>value!==id):[...prev.saved,id]}));
-  indicate(already?"Убрано из сохранённых · демо":"Сохранено · демо");
+  indicate(wasSaved?"Убрано из сохранённых · демо":"Сохранено · демо");
   window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
- },[feed.saved,indicate]);
+ },[indicate]);
  const selectMainTab=(tab:MainTab)=>{
   if(tab===mainTab)return;
   // End an in-flight Deck Lift in the same React batch before hiding Feed.
