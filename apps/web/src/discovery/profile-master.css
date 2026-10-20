@@ -89,7 +89,7 @@
 .pm-scroll{background:var(--bg);overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;scrollbar-width:none;scroll-padding-top:0}
 .pm-hero{
  position:relative;margin:0;width:100%;max-width:none;
- height:clamp(405px,61svh,680px);min-height:405px;
+ height:clamp(390px,56svh,640px);min-height:390px;
  border:0;border-radius:0;overflow:hidden;
  background:linear-gradient(150deg,#c7b0e4,#9a80cb);
  isolation:isolate;touch-action:pan-y;
@@ -150,7 +150,7 @@
 .luemi-shell[data-theme=dark] .pm-profile-sheet{background:var(--bg)}
 .luemi-shell[data-theme=dark] .pm-goal-chip{color:#e8bbfa;background:rgba(133,72,175,.27)}
 @media(max-width:370px){
- .pm-hero{min-height:395px;height:61svh;margin:0}
+ .pm-hero{min-height:390px;height:56svh;margin:0}
  .pm-identity{padding:42px 19px 16px}
  .pm-owner-actions{gap:6px;padding-left:10px;padding-right:10px}
  .pm-owner-actions button{font-size:10px;gap:4px;padding-left:3px;padding-right:3px;border-radius:19px}
