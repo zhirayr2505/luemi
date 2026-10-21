@@ -204,6 +204,39 @@ async function deckCase(browser,{throwing=true,reduced=false}={}){
   console.log("REM01A_DECK_HAPTIC_PASS "+JSON.stringify({throwing,reduced,final:await name()}));
  }finally{await ctx.close()}
 }
+async function restoredLegacyAndFlag(browser){
+ const ctx=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,userAgent:UA});
+ await ctx.addInitScript(()=>{
+  window.Telegram={WebApp:{initData:"user="+encodeURIComponent(JSON.stringify({id:12345678}))}};
+ });
+ const page=await ctx.newPage(),errors=recordPageErrors(page);
+ try{
+  await page.goto(BASE+"/geo-qa.html");
+  const known=page.locator('[data-testid="flag-qa"] img[alt="QA known flag"]');
+  await known.waitFor({state:"visible"});
+  assert.ok((await known.getAttribute("src"))?.endsWith("/assets/flags/ru.svg"),"legacy mixed-case uses existing ISO flag asset");
+  assert.equal(await page.locator('[data-testid="flag-qa"] .flag-fallback[aria-label="QA unsupported flag"]').count(),1,
+   "unsupported country cannot display an unrelated flag");
+  const restored=await page.evaluate(async()=>{
+   const scope="12345678",draft={
+    name:"QA Legacy",trialConsent:true,day:"1",month:"1",year:"1990",gender:"man",
+    city:"Краснодар",country:"Россия",countryCode:" ru ",placeId:"offline:ru:krasnodar",
+    searchScope:"country",radius:100,audience:"everyone",ageMin:18,ageMax:35,goal:"undecided",
+    interests:[],about:"",languages:["ru"]
+   };
+   localStorage.setItem("luemi:registration-draft:v1:"+scope,JSON.stringify({version:1,step:3,draft,updated:Date.now()}));
+   const {loadLocalDraft}=await import("/src/registration/local-draft.ts");
+   return loadLocalDraft();
+  });
+  assert.equal(restored?.step,3);
+  assert.equal(restored?.draft?.countryCode,"RU");
+  assert.equal(restored?.draft?.city,"Краснодар");
+  assert.equal(restored?.draft?.placeId,"offline:ru:krasnodar");
+  assert.equal(restored?.draft?.searchScope,"country","legacy restore never changes user's geography preference");
+  assert.deepEqual(errors,[]);
+  console.log("REM01A_LEGACY_RESTORE_AND_FLAG_PASS");
+ }finally{await ctx.close()}
+}
 async function sorterCase(browser){
  const ctx=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,userAgent:UA});
  await ctx.addInitScript(()=>{window.Telegram={WebApp:{HapticFeedback:{selectionChanged(){throw new Error("test-only haptic throw")}}}}});
@@ -228,6 +261,7 @@ async function sorterCase(browser){
 }
 const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
 try{
+ await restoredLegacyAndFlag(browser);
  await geoRaces(browser);
  await geoDenial(browser);
  await geoTimeout(browser);

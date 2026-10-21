@@ -16,7 +16,7 @@ async function load(path){
  }
  return import("data:text/javascript;base64,"+Buffer.from(js).toString("base64"));
 }
-for(const [value,expected] of [["RU","RU"],["ru","RU"],["  rU  ","RU"],["AM","AM"],[" us ","US"],["",""],[null,""],[undefined,""],["RUS",""],["R1",""],["яя",""],[2,""]])
+for(const [value,expected] of [["RU","RU"],["ru","RU"],["  rU  ","RU"],["AM","AM"],[" us ","US"],["",""],[null,""],[undefined,""],["RUS",""],["R1",""],["яя",""],["ß",""],["ıı",""],[2,""]])
  assert.equal(normalizeCountryCode(value)??"",expected,"canonical country for "+String(value));
 const [model,ranking,nearby,people,extra,profile,reg]=await Promise.all([
  load("apps/web/src/discovery/model.ts"),load("apps/web/src/discovery/for-you-ranking.ts"),

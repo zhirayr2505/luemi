@@ -2,6 +2,7 @@
 import React,{useState} from "react";
 import {createRoot} from "react-dom/client";
 import {GeoPicker} from "./registration/GeoPicker";
+import {Flag} from "./ui/Flag";
 import {PhotoSorter,type PhotoItem} from "./registration/PhotoSorter";
 import {newDraft,type RegistrationDraft} from "./registration/model";
 import "./styles.css";
@@ -23,6 +24,7 @@ function GeoFixture(){
    <header className="onboard-head"><h1>Геолокация · тест</h1></header>
    <div className="onboard-body">
     <button type="button" onClick={()=>setMounted(false)}>Убрать шаг геолокации</button>
+    <aside data-testid="flag-qa"><Flag code=" ru " title="QA known flag"/><Flag code="ZZ" title="QA unsupported flag"/></aside>
     <output data-testid="geo-current">{JSON.stringify({city:draft.city,country:draft.country,countryCode:draft.countryCode,placeId:draft.placeId,scope:draft.searchScope,radius:draft.radius})}</output>
     {mounted&&<GeoPicker data={draft} patch={patch}/>}
    </div>
