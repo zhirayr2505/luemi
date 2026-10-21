@@ -94,6 +94,7 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
   const fail=(message:string)=>{
    if(!gate.current.isCurrent(token))return;
    clearGpsDeadline();setManual(true);setActivity("error");setError(message);
+   gate.current.cancel(token); // also abort a pending reverse fetch
   };
   // Independent deadline protects against browser geolocation callbacks that never fire.
   gpsDeadline.current=window.setTimeout(()=>fail("Не удалось определить местоположение. Выбери город вручную."),11000);
@@ -103,7 +104,6 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
     clearGpsDeadline();setActivity("resolving");
     const signal=gate.current.attach(token);
     const deadline=window.setTimeout(()=>{
-     if(gate.current.isCurrent(token))gate.current.cancel(token); // timeout invalidates reverse result
      fail("Автоматическое определение сейчас недоступно. Выбери город вручную.");
     },6500);
     try {
