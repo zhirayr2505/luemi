@@ -183,27 +183,40 @@ export function saveDraftSnapshot(
   if(!scopeOk(scope))return failure("scope",false);
   const db=await database();if(isFailure(db))return db;
   const outcome=await new Promise<SaveResult>(resolve=>{
-   let done=false,conflict=false;
+   let done=false,abortReason:StorageCode|null=null;
    const finish=(r:SaveResult)=>{if(done)return;done=true;resolve(r);};
    try{
     const tx=db.transaction(STORE,"readwrite"),store=tx.objectStore(STORE);
     const previous=store.get(key(scope));
     previous.onsuccess=()=>{
-     const record:unknown=previous.result;
-     if(isObject(record)&&record.schemaVersion===2&&
-      typeof record.revision==="number"&&record.revision>=revision){
-      conflict=true;tx.abort();return;
+     try{
+      const record:unknown=previous.result;
+      if(record!==undefined&&(!isObject(record)||record.schemaVersion!==2||
+       (record.deleted!==true&&!parseEnvelope(record,scope).ok))){
+       abortReason="invalid";tx.abort();return;
+      }
+      if(isObject(record)&&record.schemaVersion===2&&record.deleted!==true){
+       const old=record as unknown as DraftEnvelope;
+       if(!isExpired(old.updatedAt)){
+        // A separate current draft must never be overwritten silently.
+        if(old.draftId!==draftId||old.revision>=revision){
+         abortReason="conflict";tx.abort();return;
+        }
+       }else{
+        // A valid expired draft stays recoverable in an archive, with all Blobs.
+        store.put(record,key(scope)+":expired:"+String(old.updatedAt));
+       }
+      }
+      store.put(snapshot,key(scope));
+     }catch(error){
+      abortReason=classify(error);
+      try{tx.abort();}catch{/* Transaction may already have aborted. */}
      }
-     if(isObject(record)&&record.schemaVersion===2&&record.deleted!==true&&
-      typeof record.updatedAt==="number"&&isExpired(record.updatedAt)){
-      // Expired drafts are archived, not silently destroyed by fresh registration.
-      store.put(record,key(scope)+":expired:"+String(record.updatedAt));
-     }
-     store.put(snapshot,key(scope));
     };
+    previous.onerror=()=>{abortReason=classify(previous.error);};
     tx.oncomplete=()=>finish({ok:true,revision});
-    tx.onerror=()=>finish(failure(classify(tx.error)));
-    tx.onabort=()=>finish(conflict?failure("conflict",true):failure(classify(tx.error)));
+    tx.onerror=()=>finish(failure(abortReason??classify(tx.error)));
+    tx.onabort=()=>finish(failure(abortReason??classify(tx.error),abortReason!=="invalid"));
    }catch(e){finish(failure(classify(e)));}
   });
   if(!outcome.ok){db.close();return outcome;}
