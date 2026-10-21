@@ -44,14 +44,14 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
  };
  // StrictMode runs setup→cleanup→setup in development. An unmounted browser GPS
  // callback cannot update this component OR its still-mounted parent draft.
- useEffect(()=>{gate.current.resume();return ()=>{gate.current.dispose();clearGpsDeadline();};},[]);
+ useEffect(()=>{const current=gate.current;current.resume();return ()=>{current.dispose();clearGpsDeadline();};},[]);
  const selectedLabel=data.placeId?data.city+", "+data.country:"";
  useEffect(()=>{
   if(!manual)return; // GPS remains owned by the detect operation.
   if(!editing||query.trim().length<2){
    setResults([]);setDemo(false);setActivity("idle");return;
   }
-  const token=gate.current.begin(),signal=gate.current.attach(token);
+  const current=gate.current,token=current.begin(),signal=current.attach(token);
   setActivity("idle");setResults([]);setError("");
   const timer=window.setTimeout(async()=>{
    if(!gate.current.isCurrent(token))return;
@@ -66,13 +66,13 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
     if(!gate.current.isCurrent(token))return;
     setResults(places as Place[]);
     setDemo(json.coverage==="demo");setError("");setActivity("success");
-   }catch(e){
+   }catch{
     if(!gate.current.isCurrent(token))return;
     setResults([]);setActivity("error");
     setError("Не удалось найти города. Повтори попытку.");
    }
   },250);
-  return ()=>{window.clearTimeout(timer);gate.current.cancel(token);};
+  return ()=>{window.clearTimeout(timer);current.cancel(token);};
  },[manual,editing,query]);
  const choose=(place:Place,expected?:number)=>{
   if(expected!==undefined&&!gate.current.isCurrent(expected))return;
