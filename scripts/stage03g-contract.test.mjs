@@ -164,3 +164,21 @@ assert.ok(css.includes(".pm-sheet-viewport")&&
  !css.includes("data-sheet-renderer=layout"),
  "profile has no legacy layout-property animations or Android override cascade");
 console.log("✓ Profile scroll motion replaces legacy top/left and transformed clipping");
+
+const discoveryCss=read("apps/web/src/discovery/discovery.css");
+assert.ok(discovery.includes("data-profile-renderer=")&&
+ discoveryCss.includes("[data-profile-renderer=android][data-profile-overlay=true]")&&
+ discoveryCss.includes(":not([data-route-revealing=true])")&&
+ discoveryCss.includes(">.lh-header")&&
+ !discovery.includes("data-profile-from-feed"),
+ "all Android browsing sources share one hidden underlay, restored during route transitions");
+assert.ok(header.includes("androidProfileChrome")&&
+ header.includes("!androidProfileChrome&&<img")&&
+ profile.includes("if(Math.abs(value-destination)<.05)setCollapsed(next)")&&
+ profile.includes("miniAvatar.current.style.opacity=")&&
+ profile.includes("grab.current.style.opacity="),
+ "Android single-raster header and progress-driven sheet controls avoid duplicate paints");
+assert.ok(!profile.includes('ro.observe(button)')&&
+ profile.includes("document.fonts.ready.then"),
+ "tab metrics are not repeatedly reset by individual button resize observers");
+console.log("✓ Android occluded browse layers, stable logo and sheet progress guards");
