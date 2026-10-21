@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.16.0 <23",
+    "npm": ">=10.9.2 <11"
   },
   "workspaces": [
     "apps/*",
@@ -12,7 +13,7 @@
   ],
   "scripts": {
     "lint": "eslint .",
-    "check": "npm run lint && npm run test:ui && npm run test:discovery && npm run build -w @luemi/contracts && npm run typecheck -w @luemi/api && npm run test -w @luemi/api && npm run typecheck -w @luemi/web && npm run build -w @luemi/api && npm run build -w @luemi/web && npm run smoke",
+    "check": "npm run lint:hooks:baseline && npm run lint && npm run typecheck && npm run test:source-contracts && npm run test:api:isolated && npm run build && npm run smoke",
     "smoke": "node scripts/staging-smoke.mjs",
     "dev:api": "npm run dev -w @luemi/api",
     "dev:web": "npm run dev -w @luemi/web",
@@ -20,12 +21,20 @@
     "test:ui": "node scripts/runtime-audit.mjs && node scripts/ui-contract-smoke.mjs",
     "audit:code": "node scripts/runtime-audit.mjs",
     "prebuild": "npm run lint && npm run test:ui && npm run test -w @luemi/api",
-    "test:discovery": "node scripts/stage03-model.test.mjs && node scripts/stage03d-contract.test.mjs && node scripts/stage03e-contract.test.mjs && node scripts/stage03f2-contract.test.mjs && node scripts/stage03g-contract.test.mjs"
+    "test:discovery": "node scripts/stage03-model.test.mjs && node scripts/stage03d-contract.test.mjs && node scripts/stage03e-contract.test.mjs && node scripts/stage03f2-contract.test.mjs && node scripts/stage03g-contract.test.mjs",
+    "lint:hooks:baseline": "node scripts/rem-00b-hooks-baseline.mjs",
+    "test:source-contracts": "npm run test:ui && npm run test:discovery",
+    "typecheck": "npm run build -w @luemi/contracts && npm run typecheck -w @luemi/api && npm run typecheck -w @luemi/web",
+    "test:api:isolated": "npm run build -w @luemi/contracts && npm run test -w @luemi/api",
+    "test:ci-contract": "node scripts/rem-00b-dependency-contract.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
     "eslint": "^9.38.0",
     "globals": "^16.4.0",
-    "typescript-eslint": "^8.46.0"
-  }
+    "typescript-eslint": "^8.46.0",
+    "playwright": "1.58.2",
+    "eslint-plugin-react-hooks": "5.2.0"
+  },
+  "packageManager": "npm@10.9.2"
 }
