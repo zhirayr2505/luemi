@@ -2,12 +2,19 @@ name: LUEMI 03G profile visual QA (Android-safe rendering)
 on:
   push:
     branches:
+      - main
+      - 'staging/**'
+      - 'remediation/**'
       - 'feat/stage03g3-*'
       - 'feat/stage03g4-*'
       - 'feat/stage03g5-*'
       - 'feat/stage03g6-*'
       - 'feat/stage03g7-*'
-      - 'remediation/rem-00a-*'
+  pull_request:
+    branches:
+      - main
+      - 'staging/**'
+      - 'remediation/**'
   workflow_dispatch:
     inputs:
       scenario:
@@ -24,7 +31,7 @@ permissions:
 jobs:
   foundation:
     name: Foundation checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -33,14 +40,18 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Install workspace dependencies
-        run: npm install --no-audit --no-fund
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Use pinned npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
       - name: Run existing foundation gate
         run: npm run check
   browser-profile:
-    name: Browser profile QA
-    runs-on: ubuntu-latest
+    name: Browser profile QA (historical; REM-00C pending)
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -49,13 +60,15 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Install workspace dependencies
-        run: npm install --no-audit --no-fund
-      - name: Install existing browser tooling
-        run: |
-          npm install --no-save --no-audit --no-fund playwright
-          npx playwright install chromium --with-deps
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Use pinned npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install pinned browser revision
+        run: npx --no-install playwright install chromium --with-deps
       - name: Run explicitly selected historical visual scenario
         shell: bash
         env:
@@ -68,7 +81,7 @@ jobs:
             stage03g5) script=scripts/stage03g5-visual-qa.mjs ;;
             *) echo "Unsupported QA scenario: $QA_SCENARIO" >&2; exit 2 ;;
           esac
-          echo "Selected visual scenario: $script"
+          echo "Selected historical visual scenario: $script"
           npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-vite-qa.log 2>&1 &
           vite_pid=$!
           trap 'kill "$vite_pid" 2>/dev/null || true' EXIT

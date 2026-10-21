@@ -2,8 +2,10 @@ name: LUEMI clean foundation CI
 on:
   push:
     branches:
-      - 'rebuild/**'
+      - main
       - 'staging/**'
+      - 'remediation/**'
+      - 'rebuild/**'
       - 'feat/stage02-*'
       - 'feat/stage02d-*'
       - 'feat/stage02e-*'
@@ -26,15 +28,59 @@ on:
   pull_request:
     branches:
       - main
+      - 'staging/**'
+      - 'remediation/**'
 permissions:
   contents: read
 jobs:
   validation:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.gate }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        gate:
+          - lint-hooks
+          - type-contracts
+          - source-marker-contracts
+          - api-isolated
+          - build
+          - local-smoke
+    env:
+      STAGING_BOOTSTRAP_ONLY: '1'
+      TELEGRAM_BOT_TOKEN: ''
+      TELEGRAM_WEBHOOK_SECRET: ''
+      HEALTH_CHECK_KEY: ''
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - run: npm install --no-audit --no-fund
-      - run: npm run check
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pin npm toolchain
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          node --version
+          npm --version
+      - name: Install exact lock graph
+        run: npm ci --no-audit --no-fund
+      - name: Run isolated quality gate
+        shell: bash
+        env:
+          GATE: ${{ matrix.gate }}
+        run: |
+          set -euo pipefail
+          case "$GATE" in
+            lint-hooks) npm run lint:hooks:baseline; npm run lint ;;
+            type-contracts) npm run typecheck ;;
+            source-marker-contracts) npm run test:source-contracts ;;
+            api-isolated) npm run test:api:isolated ;;
+            build) npm run build ;;
+            local-smoke) npm run build && npm run smoke ;;
+            *) echo "Unknown required gate: $GATE" >&2; exit 2 ;;
+          esac
