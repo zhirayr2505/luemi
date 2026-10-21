@@ -30,6 +30,6 @@ export const productStages = [
  * Never infer a user's country or mutate free-form city/country labels. */
 export function normalizeCountryCode(value:unknown):string|null {
  if(typeof value!=="string")return null;
- const candidate=value.trim().toUpperCase();
- return /^[A-Z]{2}$/.test(candidate)?candidate:null;
+ const candidate=value.trim();
+ return /^[a-zA-Z]{2}$/.test(candidate)?candidate.toUpperCase():null;
 }
