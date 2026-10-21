@@ -106,10 +106,12 @@ async function qaProfile(browser){
   const geometry=await page.locator(".pm-inline .pm-profile-sheet").boundingBox();
   assert.ok(geometry&&geometry.height>80,"sheet must be measurable");
   const x=geometry.x+geometry.width*.52,y=Math.min(geometry.y+geometry.height-30,706);
+  console.log("QA_TOUCH_CONTEXT "+JSON.stringify({geometry,x,y,element:await page.evaluate(([x,y])=>{const el=document.elementFromPoint(x,y);return el?.outerHTML.slice(0,280)??"none"},[x,y])}));
   const samples=[];
   await touch(page,{x,y,dy:-215,onStep:async i=>{
    if([4,8,12].includes(i))samples.push(await readState(page));
   }});
+  console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,scroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
   assert.equal(samples.length,3);
   assert.ok(samples.every(s=>Number.isFinite(s.scrollTop)&&Number.isFinite(s.blurOpacity)),"physical samples finite");
   assert.ok(samples.some(s=>s.scrollTop>expanded.scrollTop+5),"touch must move native sheet scroll");
