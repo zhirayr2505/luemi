@@ -170,6 +170,24 @@ async function geoTimeout(browser){
   console.log("REM01A_GEO_REVERSE_TIMEOUT_PASS");
  }finally{await ctx.close()}
 }
+async function gpsNeverCallsBack(browser){
+ const s=await geoPage(browser),{ctx,page,reverse,errors}=s;
+ try{
+  await page.getByRole("button",{name:"Моё местоположение"}).click();
+  await wait(async()=>await page.evaluate(()=>window.__REM01A_GPS__.count())===1,"GPS callback retained");
+  // Real browser timeout, no fake clock or forced state mutation.
+  await page.getByRole("alert").waitFor({state:"visible",timeout:14000});
+  assert.match(await page.getByRole("alert").innerText(),/Не удалось определить местоположение/);
+  assert.equal(await page.getByRole("combobox").count(),1,"no GPS callback must restore manual recovery");
+  const before=await page.evaluate(()=>window.__REM01A_FIXTURE__.patches.length);
+  await page.evaluate(()=>window.__REM01A_GPS__.success(0));
+  await sleep(140);
+  assert.equal(reverse.length,0,"GPS callback after logical deadline cannot call reverse");
+  assert.equal(await page.evaluate(()=>window.__REM01A_FIXTURE__.patches.length),before);
+  assert.deepEqual(errors,[]);
+  console.log("REM01A_GEO_NEVER_CALLBACK_TIMEOUT_PASS");
+ }finally{await ctx.close()}
+}
 async function deckCase(browser,{throwing=true,reduced=false}={}){
  const ctx=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,userAgent:UA,...(reduced?{reducedMotion:"reduce"}:{})});
  if(throwing)await ctx.addInitScript(()=>{
@@ -265,6 +283,7 @@ try{
  await geoRaces(browser);
  await geoDenial(browser);
  await geoTimeout(browser);
+ await gpsNeverCallsBack(browser);
  await deckCase(browser,{throwing:true});
  await deckCase(browser,{throwing:false});
  await deckCase(browser,{throwing:true,reduced:true});
