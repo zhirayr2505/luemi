@@ -127,6 +127,64 @@ try{
   });
   assert.deepEqual(result,{ok:false,code:"invalid",legacyStillPresent:true});
  });
+ await run("malformed JSON and future timestamps recover without destructive reset",async()=>{
+  const result=await page.evaluate(async()=>{
+   const q=window.__REM01B_QA__;
+   q.setAccount(91010);
+   const scope=q.scope(),key="luemi:registration-draft:v1:"+scope;
+   localStorage.setItem(key,'{"version":1,"draft":');
+   const broken=await q.load(),original=localStorage.getItem(key);
+   localStorage.setItem(key,JSON.stringify({
+    version:1,step:1,updated:Date.now()+1200000,draft:q.makeDraft("Future")
+   }));
+   const future=await q.load(),futureOriginal=localStorage.getItem(key);
+   q.setAccount(91011);
+   const newScope=q.scope(),db=await new Promise((resolve,reject)=>{
+    const req=indexedDB.open("luemi-local-photo-preview-v1",1);
+    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+   });
+   const farFuture=Date.now()+2000000;
+   await new Promise((resolve,reject)=>{
+    const tx=db.transaction("drafts","readwrite");
+    tx.objectStore("drafts").put({
+     schemaVersion:2,scope:newScope,draftId:"future",revision:1,step:1,
+     updatedAt:farFuture,expiresAt:farFuture+q.ttl,
+     draft:q.makeDraft("Future"),photos:[]
+    },"registration-v2:"+newScope);
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+   });db.close();
+   const v2Future=await q.load();
+   return {brokenCode:broken.code,originalRetained:original?.startsWith('{"version":1'),
+    futureCode:future.code,futureRetained:!!futureOriginal,v2Code:v2Future.code};
+  });
+  assert.deepEqual(result,{brokenCode:"invalid",originalRetained:true,
+   futureCode:"invalid",futureRetained:true,v2Code:"invalid"});
+ });
+ await run("expired text cannot import fresh legacy photos and blocked open is explicit",async()=>{
+  const result=await page.evaluate(async()=>{
+   const q=window.__REM01B_QA__;q.setAccount(91012);const scope=q.scope();
+   localStorage.setItem("luemi:registration-draft:v1:"+scope,JSON.stringify({
+    version:1,step:1,draft:q.makeDraft("Old"),updated:Date.now()-q.ttl-2000
+   }));
+   const db=await new Promise((resolve,reject)=>{
+    const req=indexedDB.open("luemi-local-photo-preview-v1",1);
+    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+   });
+   await new Promise((resolve,reject)=>{
+    const tx=db.transaction("drafts","readwrite");
+    tx.objectStore("drafts").put({photos:[{id:"fresh",file:q.makePhoto("fresh").file}],updated:Date.now()},scope);
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+   });db.close();
+   const expired=await q.load();
+   const orig=IDBFactory.prototype.open;
+   IDBFactory.prototype.open=function(){throw new DOMException("blocked","InvalidStateError");};
+   let blocked;try{blocked=await q.load();}
+   finally{IDBFactory.prototype.open=orig;}
+   return {expired:expired.source,photos:expired.snapshot?.photos.length??0,
+    blocked:blocked.code};
+  });
+  assert.deepEqual(result,{expired:"expired",photos:0,blocked:"blocked"});
+ });
  await run("invalid v2 record fails safely, never falls through to unrelated legacy",async()=>{
   const result=await page.evaluate(async()=>{
    const q=window.__REM01B_QA__;q.setAccount(91004);const scope=q.scope();
