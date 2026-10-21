@@ -1,3 +1,4 @@
+import {normalizeCountryCode} from "@luemi/contracts";
 export type Gender = "" | "man" | "woman" | "other";
 export type Audience = "" | "women" | "men" | "everyone";
 export type Goal = "" | "serious" | "relationship" | "dates" | "friendship" | "communication" | "undecided";
@@ -48,7 +49,7 @@ export function birthDateValid(day:string,month:string,year:string,today=new Dat
   return date.getTime()<=cutoff.getTime();
 }
 export function selectedCityValid(data:RegistrationDraft):boolean {
-  return /^[a-z0-9:_-]{3,180}$/i.test(data.placeId)&&/^[A-Z]{2}$/.test(data.countryCode)&&
+  return /^[a-z0-9:_-]{3,180}$/i.test(data.placeId)&&normalizeCountryCode(data.countryCode)!==null&&
     data.country.trim().length>1&&data.city.trim().length>1;
 }
 export function validateStep(d:RegistrationDraft,step:number,count:number,today=new Date()):string|null {

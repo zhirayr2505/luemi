@@ -25,3 +25,11 @@ export const productStages = [
   "08-premium",
   "09-public-release"
 ] as const;
+
+/** ISO 3166-1 alpha-2 representation at all domain boundaries; null means unspecified/invalid.
+ * Never infer a user's country or mutate free-form city/country labels. */
+export function normalizeCountryCode(value:unknown):string|null {
+ if(typeof value!=="string")return null;
+ const candidate=value.trim().toUpperCase();
+ return /^[A-Z]{2}$/.test(candidate)?candidate:null;
+}

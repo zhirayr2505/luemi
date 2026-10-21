@@ -1,4 +1,5 @@
 import type {RegistrationDraft} from "../registration/model";
+import {normalizeCountryCode} from "@luemi/contracts";
 import type {DemoPerson} from "./model";
 
 /** A public profile is an explicit projection. Never spread raw registrations or API records into it. */
@@ -32,7 +33,7 @@ export function projectProfile(profile:ProfileMasterData,mode:ProfileMode):Profi
   age:profile.age,
   city:present(profile.city),
   country:present(profile.country),
-  countryCode:profile.countryCode,
+  countryCode:normalizeCountryCode(profile.countryCode)??"",
   goal:profile.goal,
   about:present(profile.about),
   interests:[...profile.interests],
@@ -52,7 +53,7 @@ export function projectProfile(profile:ProfileMasterData,mode:ProfileMode):Profi
 /** Deliberate fixtures contain no verified status, purchase, real join date, or photo timestamp. */
 export function fromDemoPerson(person:DemoPerson):ProfileMasterData {
  return {id:null,source:"fixture",name:person.name,age:person.age,
-  city:person.city,country:person.country,countryCode:person.countryCode,
+  city:person.city,country:person.country,countryCode:normalizeCountryCode(person.countryCode)??"",
   goal:person.goal,about:person.about,interests:[...person.interests],languages:[...person.languages],
   photos:person.photos.map(p=>({...p,status:"published" as const})),
   premium:false,verified:false,registeredAt:null,updatedAt:null};
@@ -68,7 +69,7 @@ export function draftAge(draft:RegistrationDraft,today=new Date()):number|null {
 }
 export function fromLocalDraft(draft:RegistrationDraft,photos:ReadonlyArray<{id:string;src:string}>):ProfileMasterData {
  return {id:null,source:"local-draft",name:draft.name,age:draftAge(draft),
-  city:draft.city,country:draft.country,countryCode:draft.countryCode.toLowerCase(),
+  city:draft.city,country:draft.country,countryCode:normalizeCountryCode(draft.countryCode)??"",
   goal:draft.goal||null,about:draft.about,interests:[...draft.interests],languages:[...draft.languages],
   photos:photos.map(p=>({id:p.id,src:p.src,status:"draft"})),
   premium:false,verified:false,registeredAt:null,updatedAt:null};

@@ -1,4 +1,5 @@
 import type {DemoPerson} from "./model";
+import {normalizeCountryCode} from "@luemi/contracts";
 /** Deliberately illustrated ORIGINAL fictional characters, never photographs of real users. */
 function illustration(index:number,variation:number):string{
  const palette=[["#d7c6f0","#f1c9db","#51334f","#c88666"],["#badedc","#efd8e3","#392c49","#b57f66"],["#e4c9f4","#ffd9c6","#352b47","#946044"],["#ced8f6","#e6bcd7","#3b293b","#c08467"],["#d6e8d7","#f9cadd","#412f36","#ad765a"],["#d1c3ea","#f1dfbc","#4a354e","#996a54"],["#e2d3f5","#bedede","#332b46","#ba8762"],["#e7cfce","#d4dcf5","#422e40","#c28d65"]];
@@ -37,7 +38,7 @@ const base=[
  ["lina","Лина",29,"woman","Берлин","Германия","de","undecided","Технологии|Путешествия|Кулинария|Кино","de|en","Умею замечать красивые мелочи. Мне нравится узнавать новые культуры и людей."]
 ] as const;
 export const demoPeople:DemoPerson[]=base.map((p,index)=>({
- id:p[0],name:p[1],age:p[2],gender:p[3] as DemoPerson["gender"],city:p[4],country:p[5],countryCode:p[6],
+ id:p[0],name:p[1],age:p[2],gender:p[3] as DemoPerson["gender"],city:p[4],country:p[5],countryCode:normalizeCountryCode(p[6])??"",
  goal:p[7] as DemoPerson["goal"],premium:index===0||index===3,interests:p[8].split("|").map(x=>x.toLocaleLowerCase("ru").replace(/\s+/g,"-")),
  languages:p[9].split("|"),about:p[10],
  photos:[

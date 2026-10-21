@@ -1,4 +1,5 @@
 import type {RegistrationDraft} from "./model";
+import {normalizeCountryCode} from "@luemi/contracts";
 import type {PhotoItem} from "./PhotoSorter";
 
 /** Device-local beta drafts, separated per Telegram account where possible.
@@ -24,7 +25,7 @@ export function loadLocalDraft():StoredDraft|null {
    if(record.version!==1||typeof record.step!=="number"||!record.draft)return null;
    if(Date.now()-(record.updated??0)>30*24*3600000)return null;
    return {version:1,step:Math.max(1,Math.min(8,Math.round(record.step))),
-     draft:record.draft as RegistrationDraft,updated:record.updated??0};
+     draft:{...record.draft as RegistrationDraft,countryCode:normalizeCountryCode((record.draft as RegistrationDraft).countryCode)??""},updated:record.updated??0};
  }catch{return null;}
 }
 export function saveLocalDraft(draft:RegistrationDraft,step:number):void{
