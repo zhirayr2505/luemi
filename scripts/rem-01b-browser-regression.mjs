@@ -181,7 +181,7 @@ try{
    const descriptor=Object.getOwnPropertyDescriptor(window,"indexedDB");
    Object.defineProperty(window,"indexedDB",{configurable:true,value:undefined});
    let unavailable;try{unavailable=await q.load();}
-   finally{if(descriptor)Object.defineProperty(window,"indexedDB",descriptor);}
+   finally{if(descriptor)Object.defineProperty(window,"indexedDB",descriptor);else delete window.indexedDB;}
    q.setAccount(91002);const original=await q.load();
    return {missing:missing.source,cross:cross.code,unavailable:unavailable.code,original:original.snapshot?.draft.name};
   });
