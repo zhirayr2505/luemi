@@ -242,12 +242,19 @@ async function appBootstrap(browser){
  });
  try{
   await page.goto(BASE+"/",{waitUntil:"domcontentloaded"});
+  console.log("QA_BOOTSTRAP_INIT "+JSON.stringify(await page.evaluate(()=>({
+   mockPresent:!!window.__QA_TELEGRAM_MOCK__,telegramPresent:!!window.Telegram,
+   initData:window.Telegram?.WebApp?.initData,webappKeys:Object.keys(window.Telegram?.WebApp||{}).slice(0,20),
+   scripts:[...document.scripts].map(x=>x.getAttribute("src")).filter(Boolean)
+  }))));
   await page.getByRole("button",{name:"Начать",exact:true}).waitFor({state:"visible",timeout:9000}).catch(async error=>{
    const diagnostics=await page.evaluate(()=>({
     text:document.querySelector(".entry-state")?.textContent?.slice(0,450),
     authScene:document.querySelector(".luemi-shell")?.getAttribute("data-scene"),
     phase:document.querySelector(".luemi-shell")?.getAttribute("data-phase"),
-    bridgeCalls:window.__QA_TELEGRAM_MOCK__?.calls.map(x=>x.name)||[]
+    bridgeCalls:window.__QA_TELEGRAM_MOCK__?.calls.map(x=>x.name)||[],
+    telegramPresent:!!window.Telegram,initData:window.Telegram?.WebApp?.initData,
+    webappKeys:Object.keys(window.Telegram?.WebApp||{}).slice(0,20)
    }));
    throw new Error("REM-00C mocked App did not become authorized: "+JSON.stringify({calls,diagnostics,errors}),{cause:error});
   });
