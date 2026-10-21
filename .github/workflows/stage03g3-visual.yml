@@ -1,43 +1,98 @@
 name: LUEMI 03G profile visual QA (Android-safe rendering)
 on:
   push:
-    branches: ['feat/stage03g3-*', 'feat/stage03g4-*', 'feat/stage03g5-*', 'feat/stage03g6-*', 'feat/stage03g7-*']
+    branches:
+      - 'feat/stage03g3-*'
+      - 'feat/stage03g4-*'
+      - 'feat/stage03g5-*'
+      - 'feat/stage03g6-*'
+      - 'feat/stage03g7-*'
+      - 'remediation/rem-00a-*'
   workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Choose a historical visual script; current assertions will be rebuilt in REM-00C'
+        type: choice
+        required: true
+        default: stage03g7
+        options:
+          - stage03g7
+          - stage03g6
+          - stage03g5
 permissions:
   contents: read
 jobs:
-  browser-profile:
+  foundation:
+    name: Foundation checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
-      - name: Install browser test tooling
+      - name: Install workspace dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run existing foundation gate
+        run: npm run check
+  browser-profile:
+    name: Browser profile QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install workspace dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install existing browser tooling
         run: |
           npm install --no-save --no-audit --no-fund playwright
           npx playwright install chromium --with-deps
-      - name: Render actual React profile and capture screenshots
+      - name: Run explicitly selected historical visual scenario
+        shell: bash
+        env:
+          QA_SCENARIO: ${{ inputs.scenario || 'stage03g7' }}
         run: |
+          set -euo pipefail
+          case "$QA_SCENARIO" in
+            stage03g7) script=scripts/stage03g7-android-visual-qa.mjs ;;
+            stage03g6) script=scripts/stage03g6-visual-qa.mjs ;;
+            stage03g5) script=scripts/stage03g5-visual-qa.mjs ;;
+            *) echo "Unsupported QA scenario: $QA_SCENARIO" >&2; exit 2 ;;
+          esac
+          echo "Selected visual scenario: $script"
           npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-vite-qa.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          ready=0
           for i in $(seq 1 40); do
-            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then break; fi
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then ready=1; break; fi
+            if ! kill -0 "$vite_pid" 2>/dev/null; then break; fi
             sleep 1
           done
-          if [[ "$GITHUB_REF_NAME" == feat/stage03g7-* ]]; then
-            node scripts/stage03g7-android-visual-qa.mjs
-          elif [[ "$GITHUB_REF_NAME" == feat/stage03g6-* ]]; then
-            node scripts/stage03g6-visual-qa.mjs
-          else
-            node scripts/stage03g5-visual-qa.mjs
+          if [[ "$ready" -ne 1 ]]; then
+            cat /tmp/luemi-vite-qa.log >&2
+            echo "Profile QA server did not become ready" >&2
+            exit 1
           fi
-      - name: Preserve screenshots
+          node "$script"
+      - name: Preserve browser screenshots and server diagnostics
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: luemi-stage03g5-profile-polish
-          path: |\n            stage03g5-*.jpg\n            stage03g6-*.jpg
+          name: luemi-stage03g-visual-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            stage03g5-*.jpg
+            stage03g6-*.jpg
             stage03g7-*.jpg
-          if-no-files-found: ignore
+            /tmp/luemi-vite-qa.log
+          if-no-files-found: warn
