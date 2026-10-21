@@ -90,7 +90,7 @@ export function App() {
   const photoIds=useRef(new Set<string>());
   const photoGeneration=useRef(0);
   const [photosRestored,setPhotosRestored] = useState(false);
-  const draftId=useRef(crypto.randomUUID());
+  const draftId=useRef<string>(crypto.randomUUID());
   const revision=useRef(0);
   const saveSequence=useRef(0);
   const persistEnabled=useRef(false);
