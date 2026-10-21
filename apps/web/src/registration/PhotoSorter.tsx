@@ -1,6 +1,7 @@
 import {useLayoutEffect,useRef,useState,useEffect} from "react";
 import type {PointerEvent as ReactPointerEvent,ChangeEvent} from "react";
 import {createPortal} from "react-dom";
+import {selectionHaptic} from "../ui/haptic";
 import {Plus,X,GripVertical,CheckCircle2} from "lucide-react";
 export interface PhotoItem {id:string;src:string;file:File;preview?:Blob;status?:"reading"|"success"|"ready"|"error";progress?:number}
 interface Props {photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void}
@@ -66,7 +67,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      scrollBounds.current=region&&bounds?{node:region,top:bounds.top,bottom:bounds.bottom}:null;
      dragRef.current=value;setDrag(value);
      try{mosaic.current?.setPointerCapture(pendingItem.pointer);}catch{/* Telegram WebView fallback */}
-     window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
+     selectionHaptic();
    },275);
    pending.current=pendingItem;
  };

@@ -1,3 +1,4 @@
+import {normalizeCountryCode} from "@luemi/contracts";
 /** Normalized place identity, never infer a valid city from free text. */
 export interface GeoPlace {
   id:string;city:string;country:string;countryCode:string;region?:string;
@@ -42,8 +43,8 @@ export function normalizeGeoapify(input:unknown):GeoPlace[] {
        typeof x.country_code!=="string"||typeof x.country!=="string")continue;
     const city=typeof x.city==="string"?x.city:typeof x.name==="string"?x.name:"";
     if(!city||!x.place_id||!x.country)continue;
-    const code=x.country_code.toUpperCase();
-    if(!/^[A-Z]{2}$/.test(code))continue;
+    const code=normalizeCountryCode(x.country_code);
+    if(!code)continue;
     normalized.push({id:"geo:"+x.place_id,city,country:x.country,countryCode:code,
       ...(typeof x.state==="string"?{region:x.state}:{})});
   }

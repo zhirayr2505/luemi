@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const source=read("apps/web/src/discovery/ProfileModel.ts");
-const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replaceAll('"@luemi/contracts"',JSON.stringify(new URL("../packages/contracts/dist/index.js",import.meta.url).href));
 const m=await import("data:text/javascript;base64,"+Buffer.from(js).toString("base64"));
 const base={id:"internal-telegram-identifier",source:"local-draft",name:" Тест ",age:25,
  city:"Город",country:"Страна",countryCode:"ru",goal:null,about:"Обо мне",interests:["музыка"],

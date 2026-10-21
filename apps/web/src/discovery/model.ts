@@ -1,4 +1,5 @@
 import type {RegistrationDraft} from "../registration/model";
+import {normalizeCountryCode} from "@luemi/contracts";
 export type MainTab="discover"|"likes"|"chats"|"profile";
 export type DiscoveryTab="feed"|"for-you"|"nearby";
 export type DemoKind="save"|"pass"|"like"|"special";
@@ -31,7 +32,7 @@ export function filterDemoPeople(people:DemoPerson[],filter:DiscoveryFilter,draf
   if(filter.goal!=="all"&&p.goal!==filter.goal)return false;
   if(filter.language!=="all"&&!p.languages.includes(filter.language))return false;
   if(filter.commonOnly&&!commonInterests(p,draft).length)return false;
-  if(filter.scope==="country"&&draft.countryCode&&draft.countryCode!==p.countryCode)return false;
+  if(filter.scope==="country"&&normalizeCountryCode(draft.countryCode)!==null&&normalizeCountryCode(draft.countryCode)!==normalizeCountryCode(p.countryCode))return false;
   if(filter.scope==="radius"&&draft.city){
    const distance=demoDistanceKm(p,draft);if(distance!==null&&distance>filter.radius)return false;
   }

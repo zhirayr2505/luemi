@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {selectionHaptic} from "../ui/haptic";
 import type {CSSProperties} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
@@ -131,7 +132,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    transitionRef.current=null;
    commit();
  },[]);
- useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);pendingCommit.current=null;},[]);
+ useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
+  transitionRef.current=null;pendingCommit.current=null;locked.current=false;},[]);
  const leave=useCallback(()=>{
   if(personOpen&&visitorBackRef.current?.())return;
   if(mainTab==="profile"&&profileBackRef.current?.())return;
@@ -162,13 +164,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
     const wasSaved=feed.saved.includes(person.id);
     setFeed(prev=>demoAct(prev,ids,kind));
     indicate(wasSaved?"Убрано из сохранённых · демо":"Сохранено · демо");
-    window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();return;
+    selectionHaptic();return;
   }
   // Both full cards, including name, photo, interests and actions, already exist
   // in the same keyed deck before motion begins. This prevents the photo-only flash.
   locked.current=true;
   setLeaving(person.id);
-  window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
   const message=kind==="pass"?"Анкета пропущена · демо":
     kind==="like"?"Симпатия · никому не отправлена":"Особенная симпатия · только демо";
   pendingCommit.current=()=>{
@@ -177,14 +178,18 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
     locked.current=false;
     indicate(message);
   };
-  transitionRef.current=window.setTimeout(finishDeck,440);
+  // The completion callback and fallback are installed before optional bridge work.
+  // Reduced-motion clients never wait for a transition they intentionally omit.
+  if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
+  else transitionRef.current=window.setTimeout(finishDeck,440);
+  selectionHaptic();
  };
  const selectTab=(index:number)=>{
   const bounded=Math.max(0,Math.min(topTabs.length-1,index));
   if(topTabs[bounded][0]===discoveryTab)return;
   if(bounded===2)setNearbyPrepared(true);
   setDiscoveryTab(topTabs[bounded][0]);
-  window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
+  selectionHaptic();
  };
  // Pointer movement updates only CSS compositor variables in one animation frame.
  // React must not render all profile cards on every move.
@@ -277,7 +282,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   savedRef.current=wasSaved?savedRef.current.filter(value=>value!==id):[...savedRef.current,id];
   setFeed(prev=>({...prev,saved:prev.saved.includes(id)?prev.saved.filter(value=>value!==id):[...prev.saved,id]}));
   indicate(wasSaved?"Убрано из сохранённых · демо":"Сохранено · демо");
-  window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
+  selectionHaptic();
  },[indicate]);
  const selectMainTab=(tab:MainTab)=>{
   if(tab===mainTab)return;

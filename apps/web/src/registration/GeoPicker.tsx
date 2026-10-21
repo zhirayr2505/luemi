@@ -1,11 +1,13 @@
 import {useEffect,useRef,useState} from "react";
 import type {CSSProperties} from "react";
 import {MapPin,Search,LocateFixed,LoaderCircle,ChevronDown} from "lucide-react";
+import {normalizeCountryCode} from "@luemi/contracts";
 import {GlassField} from "../ui/Glass";
 import {Flag} from "../ui/Flag";
+import {createGeoOperationGate,type GeoOperation} from "./geo-operation";
 import type {RegistrationDraft,SearchScope} from "./model";
 export interface Place {id:string;city:string;country:string;countryCode:string;region?:string}
-interface SearchResult {results?:Place[];coverage?:"demo"|"world"}
+interface SearchResult {results?:unknown;coverage?:"demo"|"world"}
 const scopeOptions:[SearchScope,string,string][]=[
  ["radius","По радиусу","В пределах выбранного расстояния"],
  ["country","В своей стране","Без ограничения по километрам"],
@@ -13,54 +15,120 @@ const scopeOptions:[SearchScope,string,string][]=[
 ];
 export const radiusAt=(p:number)=>Math.round(1+4999*Math.pow(Math.max(0,Math.min(p,100))/100,2));
 export const positionAt=(km:number)=>Math.round(100*Math.sqrt((Math.max(1,Math.min(km,5000))-1)/4999));
+function asPlace(value:unknown):Place|null {
+ if(!value||typeof value!=="object")return null;
+ const v=value as Record<string,unknown>,countryCode=normalizeCountryCode(v.countryCode);
+ if(!countryCode||typeof v.id!=="string"||v.id.trim().length<3||
+    typeof v.city!=="string"||v.city.trim().length<2||
+    typeof v.country!=="string"||v.country.trim().length<2)return null;
+ return {id:v.id,city:v.city,country:v.country,countryCode,
+  ...(typeof v.region==="string"?{region:v.region}:{})};
+}
 export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Partial<RegistrationDraft>)=>void}){
  const [manual,setManual]=useState(!!data.placeId);
  const [query,setQuery]=useState(data.placeId?data.city+", "+data.country:"");
+ const [editing,setEditing]=useState(false);
  const [results,setResults]=useState<Place[]>([]);
- const [loading,setLoading]=useState(false);
+ const [activity,setActivity]=useState<GeoOperation>("idle");
  const [error,setError]=useState("");
  const [demo,setDemo]=useState(false);
  const [scopeOpen,setScopeOpen]=useState(false);
- const controller=useRef<AbortController|null>(null);
+ const gate=useRef(createGeoOperationGate());
+ const gpsDeadline=useRef<number|null>(null);
+ const clearGpsDeadline=()=>{
+  if(gpsDeadline.current!==null){window.clearTimeout(gpsDeadline.current);gpsDeadline.current=null;}
+ };
+ const cancelPending=()=>{
+  gate.current.cancel();
+  clearGpsDeadline();
+ };
+ // StrictMode runs setup→cleanup→setup in development. An unmounted browser GPS
+ // callback cannot update this component OR its still-mounted parent draft.
+ useEffect(()=>{const current=gate.current;current.resume();return ()=>{current.dispose();clearGpsDeadline();};},[]);
+ const selectedLabel=data.placeId?data.city+", "+data.country:"";
  useEffect(()=>{
-   if(!manual||query.trim().length<2||data.placeId){setResults([]);return;}
-   const ac=new AbortController();controller.current=ac;
-   const timer=window.setTimeout(()=>{
-     setLoading(true);
-     fetch("/api/geo/search?q="+encodeURIComponent(query.trim()),{signal:ac.signal})
-       .then(async r=>{if(!r.ok)throw new Error("Поиск сейчас недоступен");return await r.json() as SearchResult;})
-       .then(value=>{if(ac.signal.aborted)return;setResults(value.results??[]);setDemo(value.coverage==="demo");setError("");})
-       .catch(()=>{if(!ac.signal.aborted){setError("Не удалось найти города. Повтори попытку.");setResults([]);}})
-       .finally(()=>{if(!ac.signal.aborted)setLoading(false);});
-   },250);
-   return ()=>{clearTimeout(timer);ac.abort();};
- },[manual,query,data.placeId]);
- useEffect(()=>()=>controller.current?.abort(),[]);
- const choose=(place:Place)=>{
-   patch({city:place.city,country:place.country,placeId:place.id,countryCode:place.countryCode});
-   setQuery(place.city+", "+place.country);setResults([]);setError("");
+  if(!manual)return; // GPS remains owned by the detect operation.
+  if(!editing||query.trim().length<2){
+   setResults([]);setDemo(false);setActivity("idle");return;
+  }
+  const current=gate.current,token=current.begin(),signal=current.attach(token);
+  setActivity("idle");setResults([]);setError("");
+  const timer=window.setTimeout(async()=>{
+   if(!gate.current.isCurrent(token))return;
+   setActivity("searching");
+   try{
+    const response=await fetch("/api/geo/search?q="+encodeURIComponent(query.trim()),{signal});
+    if(!response.ok)throw new Error("Поиск сейчас недоступен");
+    const json=await response.json() as SearchResult;
+    if(!Array.isArray(json?.results))throw new Error("Некорректный ответ поиска");
+    const places=json.results.map(asPlace);
+    if(places.some(place=>place===null))throw new Error("Некорректный ответ поиска");
+    if(!gate.current.isCurrent(token))return;
+    setResults(places as Place[]);
+    setDemo(json.coverage==="demo");setError("");setActivity("success");
+   }catch{
+    if(!gate.current.isCurrent(token))return;
+    setResults([]);setActivity("error");
+    setError("Не удалось найти города. Повтори попытку.");
+   }
+  },250);
+  return ()=>{window.clearTimeout(timer);current.cancel(token);};
+ },[manual,editing,query]);
+ const choose=(place:Place,expected?:number)=>{
+  if(expected!==undefined&&!gate.current.isCurrent(expected))return;
+  const normalized=asPlace(place);
+  if(!normalized){setError("Не удалось определить город. Выбери его вручную.");setActivity("error");return;}
+  cancelPending();
+  patch({city:normalized.city,country:normalized.country,placeId:normalized.id,countryCode:normalized.countryCode});
+  setQuery(normalized.city+", "+normalized.country);setEditing(false);
+  setResults([]);setError("");setActivity("success");
  };
  const detect=()=>{
-   setManual(false);
-   if(!navigator.geolocation){setError("Геолокация недоступна. Выбери город вручную.");return;}
-   setLoading(true);setError("");
+  cancelPending();
+  const token=gate.current.begin();
+  setManual(false);setEditing(false);setResults([]);setError("");
+  if(!navigator.geolocation){
+   setManual(true);setActivity("error");setError("Геолокация недоступна. Выбери город вручную.");return;
+  }
+  setActivity("locating");
+  const fail=(message:string)=>{
+   if(!gate.current.isCurrent(token))return;
+   clearGpsDeadline();setManual(true);setActivity("error");setError(message);
+   gate.current.cancel(token); // also abort a pending reverse fetch
+  };
+  // Independent deadline protects against browser geolocation callbacks that never fire.
+  gpsDeadline.current=window.setTimeout(()=>fail("Не удалось определить местоположение. Выбери город вручную."),11000);
+  try{
    navigator.geolocation.getCurrentPosition(async pos=>{
-     try{
-       const response=await fetch("/api/geo/reverse",{method:"POST",headers:{"Content-Type":"application/json"},
-         body:JSON.stringify({lat:pos.coords.latitude,lon:pos.coords.longitude})});
-       if(!response.ok)throw new Error("Автоматическое определение сейчас недоступно. Выбери город вручную.");
-       const result=await response.json() as {result?:Place};
-       if(!result.result)throw new Error("Не удалось определить город.");
-       choose(result.result);
-     }catch(e){setManual(true);setError(e instanceof Error?e.message:"Не удалось определить местоположение.");}
-     finally{setLoading(false);}
-   },()=>{setManual(true);setError("Доступ к геолокации не предоставлен. Выбери город вручную.");setLoading(false);},
+    if(!gate.current.isCurrent(token))return;
+    clearGpsDeadline();setActivity("resolving");
+    const signal=gate.current.attach(token);
+    const deadline=window.setTimeout(()=>{
+     fail("Автоматическое определение сейчас недоступно. Выбери город вручную.");
+    },6500);
+    try {
+     const response=await fetch("/api/geo/reverse",{method:"POST",headers:{"Content-Type":"application/json"},
+       body:JSON.stringify({lat:pos.coords.latitude,lon:pos.coords.longitude}),signal});
+     if(!response.ok)throw new Error("Автоматическое определение сейчас недоступно. Выбери город вручную.");
+     const result=await response.json() as {result?:unknown};
+     if(!gate.current.isCurrent(token))return;
+     const place=asPlace(result?.result);
+     if(!place)throw new Error("Не удалось определить город.");
+     choose(place,token);
+    }catch(e){
+     if(gate.current.isCurrent(token))
+      fail(e instanceof Error?e.message:"Не удалось определить местоположение.");
+    }finally{window.clearTimeout(deadline);}
+   },()=>fail("Доступ к геолокации не предоставлен. Выбери город вручную."),
    {enableHighAccuracy:false,timeout:9000,maximumAge:120000});
+  }catch {fail("Геолокация недоступна. Выбери город вручную.");}
  };
  const switchMode=()=>{
-   if(manual){setManual(false);setError("");}
-   else{setManual(true);setError("");}
+  cancelPending();setActivity("cancelled");setError("");setResults([]);setDemo(false);setEditing(false);
+  setManual(value=>!value);
+  setQuery(selectedLabel);
  };
+ const loading=activity==="searching"||activity==="locating"||activity==="resolving";
  const selectedScope=scopeOptions.find(x=>x[0]===data.searchScope)??scopeOptions[0];
  return <div className="geo-stack">
    {!manual?<button className="geo-location-primary" type="button" onClick={detect} disabled={loading}>
@@ -72,19 +140,19 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
        <input className="glass-control geo-input" role="combobox" autoComplete="off"
          aria-expanded={results.length>0} aria-controls="luemi-geo-results" aria-autocomplete="list"
          maxLength={80} placeholder="Введи город или страну" value={query}
-         onChange={e=>{setQuery(e.target.value);patch({placeId:"",city:"",country:"",countryCode:""});setError("");}}/>
+         onChange={e=>{cancelPending();setQuery(e.target.value);setEditing(true);setError("");setResults([]);setActivity("idle");}}/>
        {loading&&<LoaderCircle className="spin" size={18}/>}
      </div>
    </GlassField>}
    {!manual?<button type="button" className="geo-mode-toggle" onClick={switchMode}>Выбрать город вручную</button>:
      <button type="button" className="geo-mode-toggle" onClick={switchMode}><LocateFixed size={15}/> Определить моё местоположение</button>}
-   {manual&&!data.placeId&&results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
+   {manual&&editing&&results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
      {results.map(place=><button key={place.id} type="button" role="option" aria-selected={false} onClick={()=>choose(place)}>
        <Flag code={place.countryCode} title={"Флаг "+place.country}/><span><strong>{place.city}</strong><small>{place.country}{place.region?", "+place.region:""}</small></span><MapPin size={17}/>
      </button>)}
    </div>}
    {data.placeId&&<div className="geo-selected"><Flag code={data.countryCode}/><MapPin size={15}/><strong>{data.city}</strong><span>{data.country}</span></div>}
-   {manual&&query.trim().length>1&&!loading&&!data.placeId&&!results.length&&!error&&<p className="hint">Выбери реальный город из подсказок. Свободный текст не сохраняется.</p>}
+   {manual&&editing&&query.trim().length>1&&!loading&&!results.length&&!error&&<p className="hint">Выбери реальный город из подсказок. Свободный текст не сохраняется.</p>}
    {error&&<p className="field-warning" role="alert">{error}</p>}
    {demo&&<p className="hint">Тестовый справочник ограничен. Полный мировой поиск требует настройки провайдера.</p>}
    <div className="geo-scope">

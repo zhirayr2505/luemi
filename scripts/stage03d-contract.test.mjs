@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
+const contractsUrl=new URL("../packages/contracts/dist/index.js",import.meta.url).href;
+
 const source=readFileSync(new URL("../apps/web/src/discovery/for-you-ranking.ts",import.meta.url),"utf8");
-const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replaceAll('"@luemi/contracts"',JSON.stringify(contractsUrl));
 const m=await import("data:text/javascript;base64,"+Buffer.from(compiled).toString("base64"));
 const draft={goal:"relationship",interests:["музыка","кофе"],languages:["ru"],countryCode:"ru",city:"Краснодар"};
 const p=(id,interest,goal,country="ru",city="Краснодар")=>({

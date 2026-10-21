@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
+const contractsUrl=new URL("../packages/contracts/dist/index.js",import.meta.url).href;
+
 const load=async(path)=>{
  const source=readFileSync(new URL("../"+path,import.meta.url),"utf8");
- const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+ const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replaceAll('"@luemi/contracts"',JSON.stringify(contractsUrl));
  return await import("data:text/javascript;base64,"+Buffer.from(js).toString("base64"));
 };
 const m=await load("apps/web/src/discovery/model.ts");
@@ -13,7 +15,7 @@ const people=d.demoPeople;
 assert.equal(people.length,6,"six deliberately illustrated synthetic demo profiles");
 assert.ok(people.every(p=>p.age>=18&&p.gender==="woman"&&p.photos.length>=2&&p.photos.every(photo=>photo.src.startsWith("https://cdn.pixabay.com/")&&photo.fallback?.startsWith("data:image/svg+xml"))));
 assert.equal(m.filterDemoPeople(people,m.defaultFilters,draft).length,6,"worldwide fixture results");
-assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,scope:"country"},draft).every(p=>p.countryCode==="ru"),true);
+assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,scope:"country"},draft).every(p=>p.countryCode==="RU"),true);
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,goal:"serious"},draft).every(p=>p.goal==="serious"),true);
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,language:"hy"},draft).every(p=>p.languages.includes("hy")),true);
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,minAge:29,maxAge:30},draft).every(p=>p.age>=29&&p.age<=30),true);

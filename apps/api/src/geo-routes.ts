@@ -1,4 +1,5 @@
 import type {FastifyInstance} from "fastify";
+import {normalizeCountryCode} from "@luemi/contracts";
 import {localSearch,normalizeGeoapify} from "./geo-data.js";
 export function registerGeography(app:FastifyInstance,apiKey=process.env.GEOAPIFY_API_KEY):void {
   app.get<{Querystring:{q?:string}}>("/api/geo/search",async(request,reply)=>{
@@ -45,8 +46,8 @@ export function registerGeography(app:FastifyInstance,apiKey=process.env.GEOAPIF
       const first=content.results?.find(x=>typeof x.city==="string"&&typeof x.country==="string"&&
         typeof x.country_code==="string"&&typeof x.place_id==="string");
       if(!first)return reply.code(404).send({error:"city_not_found"});
-      const code=String(first.country_code).toUpperCase();
-      if(!/^[A-Z]{2}$/.test(code))return reply.code(404).send({error:"city_not_found"});
+      const code=normalizeCountryCode(first.country_code);
+      if(!code)return reply.code(404).send({error:"city_not_found"});
       return {result:{id:"geo:"+String(first.place_id),city:String(first.city),
         country:String(first.country),countryCode:code,
         ...(typeof first.state==="string"?{region:first.state}:{})}};

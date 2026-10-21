@@ -1,4 +1,5 @@
 import type {RegistrationDraft} from "../registration/model";
+import {normalizeCountryCode} from "@luemi/contracts";
 import type {DemoPerson,DiscoveryFilter} from "./model";
 
 /** Only observable fixture fields; there is no invented percentage or AI claim. */
@@ -29,9 +30,9 @@ export function membersFor(id:CollectionId,people:DemoPerson[],draft:Registratio
   case "common":return people.filter(p=>evidence(p,draft).interests.length>0);
   case "goals":return people.filter(p=>!!draft.goal&&draft.goal!=="undecided"&&p.goal===draft.goal);
   case "nearby":return filter.scope==="world"||!draft.city?[]:
-   people.filter(p=>p.countryCode===draft.countryCode&&p.city.toLocaleLowerCase("ru")===draft.city.toLocaleLowerCase("ru"));
+   people.filter(p=>normalizeCountryCode(draft.countryCode)!==null&&normalizeCountryCode(p.countryCode)===normalizeCountryCode(draft.countryCode)&&p.city.toLocaleLowerCase("ru")===draft.city.toLocaleLowerCase("ru"));
   case "travel":return people.filter(p=>p.interests.includes("путешествия"));
   case "music":return people.filter(p=>p.interests.includes("музыка"));
-  case "international":return people.filter(p=>!!draft.countryCode&&p.countryCode!==draft.countryCode);
+  case "international":return people.filter(p=>normalizeCountryCode(draft.countryCode)!==null&&normalizeCountryCode(p.countryCode)!==null&&normalizeCountryCode(p.countryCode)!==normalizeCountryCode(draft.countryCode));
  }
 }

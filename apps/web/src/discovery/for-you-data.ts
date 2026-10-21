@@ -1,4 +1,5 @@
 import type {DemoPerson} from "./model";
+import {normalizeCountryCode} from "@luemi/contracts";
 import {demoPeople} from "./demo-people";
 
 /** Original synthetic SVG portraits: consistent faces between a profile's two photographs.
@@ -54,7 +55,7 @@ const additional=[
 ] as const;
 
 export const extraDemoPeople:DemoPerson[]=additional.map((p,i)=>({
- id:p[0],name:p[1],age:p[2],gender:p[3] as DemoPerson["gender"],city:p[4],country:p[5],countryCode:p[6],
+ id:p[0],name:p[1],age:p[2],gender:p[3] as DemoPerson["gender"],city:p[4],country:p[5],countryCode:normalizeCountryCode(p[6])??"",
  goal:p[7] as DemoPerson["goal"],interests:p[8].split("|"),languages:p[9].split("|"),about:p[10],
  photos:[{id:p[0]+"-1",src:avatar(i,0,p[3] as DemoPerson["gender"])},
          {id:p[0]+"-2",src:avatar(i,1,p[3] as DemoPerson["gender"])}]
