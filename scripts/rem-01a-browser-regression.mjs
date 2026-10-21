@@ -27,7 +27,7 @@ const places={
 function recordPageErrors(page){
  const errors=[];page.on("pageerror",e=>errors.push(e.message));return errors;
 }
-async function geoPage(browser,{permission="granted"}={}){
+async function geoPage(browser){
  const ctx=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,userAgent:UA});
  await ctx.addInitScript(()=>{
   const captures=[];
