@@ -20,7 +20,7 @@
     "build": "npm run build -w @luemi/contracts && npm run build -w @luemi/api && npm run build -w @luemi/web",
     "test:ui": "node scripts/runtime-audit.mjs && node scripts/ui-contract-smoke.mjs",
     "audit:code": "node scripts/runtime-audit.mjs",
-    "prebuild": "npm run lint && npm run test:ui && npm run test -w @luemi/api",
+    "prebuild": "npm run build -w @luemi/contracts && npm run lint && npm run test:ui && npm run test -w @luemi/api",
     "test:discovery": "node scripts/stage03-model.test.mjs && node scripts/stage03d-contract.test.mjs && node scripts/stage03e-contract.test.mjs && node scripts/stage03f2-contract.test.mjs && node scripts/stage03g-contract.test.mjs && node scripts/rem-01a-country.test.mjs",
     "lint:hooks:baseline": "node scripts/rem-00b-hooks-baseline.mjs",
     "test:source-contracts": "npm run build -w @luemi/contracts && npm run test:ui && npm run test:discovery",
