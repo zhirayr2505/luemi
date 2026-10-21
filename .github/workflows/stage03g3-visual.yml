@@ -65,6 +65,8 @@ jobs:
         run: npm install --global npm@10.9.2 --no-audit --no-fund
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+      - name: Build runtime shared domain contracts
+        run: npm run build -w @luemi/contracts
       - name: Install pinned browser revision
         run: npx --no-install playwright install chromium --with-deps
       - name: Run current REM-00C behavioral scenario
