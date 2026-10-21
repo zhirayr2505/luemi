@@ -20,11 +20,12 @@ export function localScope():string|null {
 }
 export interface LegacyDraft {version:1;step:number;draft:RegistrationDraft;updated:number}
 export type StorageCode = "scope"|"unavailable"|"blocked"|"quota"|"abort"|"invalid"|"expired"|"conflict"|"io";
-export type SaveResult = {ok:true;revision:number} | {ok:false;code:StorageCode;retryable:boolean};
+export type StorageFailure = {ok:false;code:StorageCode;retryable:boolean};
+export type SaveResult = {ok:true;revision:number} | StorageFailure;
 export type LoadResult =
  {ok:true;source:"v2"|"legacy"|"empty"|"expired"|"deleted";snapshot:DraftEnvelope|null} |
  {ok:false;code:StorageCode;retryable:boolean};
-const failure=(code:StorageCode,retryable=true):SaveResult=>({ok:false,code,retryable});
+const failure=(code:StorageCode,retryable=true):StorageFailure=>({ok:false,code,retryable});
 const classify=(error:unknown):StorageCode=>{
  const name=error instanceof DOMException?error.name:"";
  if(name==="QuotaExceededError")return "quota";
@@ -62,7 +63,7 @@ function openDatabase():Promise<IDBDatabase>{
   }catch(e){done(e instanceof Error?e:new Error("io"));}
  });
 }
-async function database():Promise<IDBDatabase|SaveResult>{
+async function database():Promise<IDBDatabase|StorageFailure>{
  try{return await openDatabase();}
  catch(e){
   if(e instanceof Error&&(e.message==="blocked"||e.message==="unavailable"))
@@ -70,11 +71,11 @@ async function database():Promise<IDBDatabase|SaveResult>{
   return failure(classify(e));
  }
 }
-const isFailure=(db:IDBDatabase|SaveResult):db is SaveResult=>!("transaction" in db);
-function readKey(db:IDBDatabase,recordKey:string):Promise<{ok:true;value:unknown}|SaveResult>{
+const isFailure=(db:IDBDatabase|StorageFailure):db is StorageFailure=>!("transaction" in db);
+function readKey(db:IDBDatabase,recordKey:string):Promise<{ok:true;value:unknown}|StorageFailure>{
  return new Promise(resolve=>{
   let finished=false,record:unknown;
-  const done=(result:{ok:true;value:unknown}|SaveResult)=>{
+  const done=(result:{ok:true;value:unknown}|StorageFailure)=>{
    if(finished)return;finished=true;resolve(result);
   };
   try{
@@ -88,7 +89,7 @@ function readKey(db:IDBDatabase,recordKey:string):Promise<{ok:true;value:unknown
   }catch(e){done(failure(classify(e)));}
  });
 }
-function legacyDraft(scope:string):{ok:true;value:LegacyDraft|null}|SaveResult{
+function legacyDraft(scope:string):{ok:true;value:LegacyDraft|null}|StorageFailure{
  let json:string|null;
  try{json=localStorage.getItem(PREFIX+scope);}catch(e){return failure(classify(e));}
  if(!json)return {ok:true,value:null};
