@@ -39,7 +39,7 @@ assertCheck("no stale duplicated theme/header or obsolete two-tab preview",!styl
 const draftStore=read("apps/web/src/registration/local-draft.ts");
 const lang=read("apps/web/src/registration/LanguagePicker.tsx");
 const forms=read("apps/web/src/registration/Steps.tsx");
-assertCheck("device-local registration data and photos survive Telegram reopening",app.includes("loadLocalDraft")&&app.includes("loadLocalPhotos")&&app.includes("saveLocalPhotos")&&draftStore.includes("indexedDB"));
+assertCheck("device-local registration data and photos survive Telegram reopening",app.includes("loadDraftSnapshot")&&app.includes("saveDraftSnapshot")&&app.includes("clearDraftSnapshot")&&draftStore.includes("indexedDB")&&draftStore.includes('transaction(STORE,"readwrite")')&&draftStore.includes("parseEnvelope"));
 assertCheck("photo preparation completes after the bounded screen copy is ready",app.includes("preparePhotoPreview")&&app.includes('status:"success",progress:100')&&sorter.includes("photo-processing-bar"));
 assertCheck("no redundant arrow photo controls",!sorter.includes("photo-reorder-buttons")&&sorter.includes('event.altKey'));
 assertCheck("native tap highlight disabled globally",style.includes("-webkit-tap-highlight-color:transparent"));
