@@ -74,9 +74,9 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
   if(normalized===null)return fail("country-code");
   d.countryCode=normalized;
  }
- if(d.day&&!/^\\d{1,2}$/.test(d.day))return fail("day");
- if(d.month&&!/^\\d{1,2}$/.test(d.month))return fail("month");
- if(d.year&&!/^\\d{1,4}$/.test(d.year))return fail("year");
+ if(d.day&&!/^\d{1,2}$/.test(d.day))return fail("day");
+ if(d.month&&!/^\d{1,2}$/.test(d.month))return fail("month");
+ if(d.year&&!/^\d{1,4}$/.test(d.year))return fail("year");
  return {ok:true,value:d};
 }
 export function parsePhotos(value:unknown):Parsed<StoredPhoto[]> {
