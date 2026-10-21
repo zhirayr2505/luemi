@@ -31,7 +31,13 @@ assert.ok(component.includes("draft.interests.find(id=>person.interests.includes
 assert.ok(component.includes("loading=\"lazy\"")&&component.includes("IntersectionObserver"),"lazy media and bounded incremental rendering");
 assert.ok(css.includes("grid-template-columns:repeat(2,minmax(0,1fr))"),"two-column portrait grid");
 assert.ok(css.includes("touch-action:pan-y")&&css.includes("aspect-ratio:4/5"),"vertical scroll from photos, 4:5 geometry");
-assert.ok(discovery.includes('<Nearby draft={draft}')&&discovery.includes(".nb-card,.nb-location")&&!discovery.includes(".nb-scroll,.nb-card"),"background horizontal swipes are preserved while photo and geography controls are isolated");
+// Source contract guards ownership boundaries; actual pointer/touch behavior is
+// exercised in rem-00c-browser-behavior.mjs (required browser CI lane).
+assert.match(discovery, /<Nearby\\b[^>]*\\bdraft=\\{draft\\}/, "Nearby must receive real draft with any additional props");
+const downSource=discovery.slice(discovery.indexOf("const down="),discovery.indexOf("const move="));
+assert.ok(downSource.includes(".nb-card,.nb-location"), "card and location controls retain child gesture ownership");
+assert.ok(!downSource.includes(".nb-scroll,.nb-card"), "Nearby background must be eligible for parent pager gesture");
+
 assert.ok(discovery.includes("onSave={toggleForYouSave}")&&discovery.includes("onPerson={setPersonOpen}"),"shared save and existing public profile");
 assert.ok(discovery.includes('event.animationName==="luemi-deck-leave"')&&feed.includes("discovery-deck-current"),"Feed motion remains intact");
 assert.ok(model.includes("radius:5000"),"existing geography setting unchanged");
