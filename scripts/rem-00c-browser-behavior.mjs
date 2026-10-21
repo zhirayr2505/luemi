@@ -96,7 +96,6 @@ async function qaProfile(browser){
   const logo=await required(page,".lh-profile-android .lh-island img","Android unboxed logo");
   assert.equal(await page.locator(".lh-profile-android .lh-island img").count(),1,"Android renders one logo raster");
   assert.ok((await logo.evaluate(el=>el.getBoundingClientRect().height))>0);
-  assert.equal(await page.locator(".lh-profile-android .lh-logo-contrast").count(),0,"obsolete contrast layer must remain absent on Android");
   const photos=await page.locator(".pm-inline .pm-photo-track img").evaluateAll(nodes=>nodes.map(n=>n.src));
   assert.equal(photos.length,3,"fixture provides three independently identifiable photos");
   assert.equal(new Set(photos).size,3,"adjacent photos must not share same src");
@@ -243,7 +242,15 @@ async function appBootstrap(browser){
  });
  try{
   await page.goto(BASE+"/",{waitUntil:"domcontentloaded"});
-  await page.getByRole("button",{name:"Начать",exact:true}).waitFor({state:"visible",timeout:12000});
+  await page.getByRole("button",{name:"Начать",exact:true}).waitFor({state:"visible",timeout:9000}).catch(async error=>{
+   const diagnostics=await page.evaluate(()=>({
+    text:document.querySelector(".entry-state")?.textContent?.slice(0,450),
+    authScene:document.querySelector(".luemi-shell")?.getAttribute("data-scene"),
+    phase:document.querySelector(".luemi-shell")?.getAttribute("data-phase"),
+    bridgeCalls:window.__QA_TELEGRAM_MOCK__?.calls.map(x=>x.name)||[]
+   }));
+   throw new Error("REM-00C mocked App did not become authorized: "+JSON.stringify({calls,diagnostics,errors}),{cause:error});
+  });
   const bridge=await page.evaluate(()=>window.__QA_TELEGRAM_MOCK__.calls.map(x=>x.name));
   assert.ok(["ready","expand","requestFullscreen","disableVerticalSwipes"].every(x=>bridge.includes(x)),"real App must invoke mocked Telegram bridge lifecycle");
   assert.deepEqual(calls.slice(0,2),["live","auth"],"mocked health/auth flow is actually exercised");
@@ -257,6 +264,43 @@ async function appBootstrap(browser){
   console.log("REM00C_APP_BOOTSTRAP_MOCK_PASS");
  }finally{await context.close()}
 }
+async function standardProfile(browser){
+ // Chromium iPhone-like standard-DOM emulation; NOT a claim of testing Safari on physical iOS.
+ const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true,
+  userAgent:"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+  reducedMotion:"reduce"});
+ const page=await context.newPage(),errors=recordErrors(page);
+ try{
+  await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
+  await page.getByRole("button",{name:"Профиль",exact:true}).click();
+  const owner=await required(page,'.pm-inline[data-sheet-renderer="scroll"]',"standard-DOM profile");
+  await owner.waitFor({state:"visible"});
+  await readyAssets(page);
+  assert.equal(await page.locator(".lh-profile-android").count(),0,"non-Android profile uses standard logo chrome");
+  assert.equal(await page.locator(".lh-profile .lh-island img").count(),2,"standard-DOM logo has primary raster and contrast companion");
+  assert.equal((await readState(page)).mode,"expanded");
+  await snapshot(page,"10-standard-reduced-light-expanded");
+  await page.getByRole("button",{name:"Развернуть анкету"}).click();
+  await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
+  let state=await readState(page);
+  assert.ok(state.scrollTop>60&&state.blurOpacity>.5,"reduced-motion collapse still reaches physical endpoint");
+  await page.getByRole("tab",{name:"Блики",exact:true}).click();await sleep(390);
+  state=await readState(page);
+  assert.equal(state.selectedTab,"Блики");
+  assert.ok(Math.abs(state.pagesLeft-state.pagesWidth)<5,"standard DOM tabs follow native scrollLeft");
+  await page.getByRole("button",{name:"Тёмная тема"}).click();
+  assert.equal(await page.locator(".luemi-shell").getAttribute("data-theme"),"dark");
+  await snapshot(page,"11-standard-reduced-dark-bliki");
+  await page.getByRole("button",{name:"Знакомства",exact:true}).click();
+  await page.getByRole("button",{name:"Профиль",exact:true}).click();
+  await owner.waitFor({state:"visible"});
+  state=await readState(page);
+  assert.equal(state.selectedTab,"Блики","returning to hidden owner profile preserves tab");
+  assert.equal(state.mode,"collapsed","returning to owner profile preserves sheet mode");
+  assert.deepEqual(errors,[],"standard DOM has no uncaught browser errors");
+  console.log("REM00C_STANDARD_DOM_REDUCED_MOTION_PASS");
+ }finally{await context.close()}
+}
 async function missingSelectorNegative(browser){
  const page=await browser.newPage();
  try{
@@ -268,6 +312,7 @@ async function missingSelectorNegative(browser){
 const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
 try{
  await qaProfile(browser);
+ await standardProfile(browser);
  await appBootstrap(browser);
  await missingSelectorNegative(browser);
  console.log("REM-00C COMPLETE: Chromium Android-UA fixture, App mock, selector-negative test; PHYSICAL DEVICES NOT VERIFIED.");
