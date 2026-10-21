@@ -180,12 +180,14 @@ async function qaProfile(browser){
   const location=await required(page,".nb-location","Nearby location control");
   await location.click();
   await page.getByRole("dialog",{name:/Фильтры|Настройки/}).waitFor({state:"visible",timeout:2000}).catch(e=>fail("geography control did not open filter dialog",e));
-  await page.keyboard.press("Escape");
-  await sleep(150);
+  await page.getByRole("button",{name:"Закрыть фильтры"}).click();
+  await page.getByRole("dialog",{name:"Фильтры знакомств"}).waitFor({state:"hidden",timeout:2500});
+  assert.equal(await page.getByRole("tab",{name:"Рядом",exact:true}).getAttribute("aria-selected"),"true","closing geography controls leaves nearby selected");
   const bg=await page.locator(".nb-head").boundingBox();assert.ok(bg,"Nearby non-card background present");
   await touch(page,{x:bg.x+bg.width*.7,y:bg.y+Math.min(35,bg.height*.5),dx:-235});
   await sleep(420);
   const selected=await page.getByRole("tab",{name:"Рядом",exact:true}).getAttribute("aria-selected");
+  console.log("QA_NEARBY_BACKGROUND_SWIPE "+JSON.stringify({selected,tabText:await page.locator(".discovery-top-tabs").innerText()}));
   assert.equal(selected,"true","edge swipe on last tab stays bounded; no overshoot or crash");
   await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
   assert.equal(await page.getByRole("tab",{name:"Для тебя",exact:true}).getAttribute("aria-selected"),"true");
