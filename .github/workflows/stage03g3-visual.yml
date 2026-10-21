@@ -96,6 +96,7 @@ jobs:
           fi
           node "$script"
           node scripts/rem-01a-browser-regression.mjs
+          node scripts/rem-01b-browser-regression.mjs
       - name: Preserve browser screenshots and server diagnostics
         if: always()
         continue-on-error: true
@@ -105,5 +106,6 @@ jobs:
           path: |
             qa-artifacts/rem-00c/**/*.png
             qa-artifacts/rem-01a/**/*.png
+            qa-artifacts/rem-01b/**/*.png
             /tmp/luemi-vite-qa.log
           if-no-files-found: error
