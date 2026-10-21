@@ -130,7 +130,7 @@
  display:grid;place-items:center;width:64px;height:25px;padding:0;border:0;background:transparent;
 }
 .pm-sheet-grab span{display:block;width:33px;height:4px;border-radius:99px;background:rgba(149,118,170,.22)}
-.pm-shell[data-sheet-state=collapsed]>.pm-sheet-viewport>.pm-profile-sheet>.pm-sheet-grab{opacity:0;pointer-events:none}
+/* Grab visibility is driven by the same physical sheet motion frame. */
 .pm-identity{
  flex:none;padding:0 21px 14px;display:flex;flex-direction:column;gap:9px;min-width:0;
 }
@@ -158,16 +158,14 @@
  border-radius:50%;border:2px solid rgba(204,164,237,.45);overflow:hidden;
  background:var(--panel);box-shadow:0 3px 12px rgba(84,45,118,.11);
  opacity:0;pointer-events:none;transform:translate3d(0,4px,0) scale(.9);
- transition:opacity 230ms ease,transform 255ms cubic-bezier(.22,.77,.23,1);
+ /* paintSheet owns these properties; CSS transitions would trail every frame. */
 }
 .pm-mini-avatar img{width:100%;height:100%;display:block;object-fit:cover}
 .pm-mini-avatar.has-blik{
  border:2px solid #ac62eb;
  box-shadow:0 0 0 2px var(--bg),0 0 0 4px rgba(198,119,243,.54);
 }
-.pm-shell[data-sheet-state=collapsed]>.pm-sheet-viewport>.pm-profile-sheet .pm-mini-avatar{
- opacity:1;pointer-events:auto;transform:translate3d(0,0,0) scale(1);
-}
+/* Avatar appearance is a continuous sheet progress, not a discrete state flip. */
 .pm-owner-actions{
  flex:none;display:grid;grid-template-columns:1fr 1.26fr 1fr;gap:8px;
  padding:4px 14px 17px;
