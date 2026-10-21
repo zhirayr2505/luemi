@@ -1,4 +1,4 @@
-name: LUEMI 03G profile visual QA (Android-safe rendering)
+name: LUEMI REM-00C profile behavioral and visual QA
 on:
   push:
     branches:
@@ -67,7 +67,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Install pinned browser revision
         run: npx --no-install playwright install chromium --with-deps
-      - name: Run explicitly selected historical visual scenario
+      - name: Run current REM-00C behavioral scenario
         shell: bash
         env:
           QA_SCENARIO: ${{ inputs.scenario || 'stage03g7' }}
