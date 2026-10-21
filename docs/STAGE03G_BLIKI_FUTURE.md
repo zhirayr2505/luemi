@@ -1,13 +1,26 @@
-# LUEMI · «Блики» — future product discovery (not approved)
+# LUEMI 💜 · «Блики»: статус и исторический контекст
 
-**Stage 03G:** only the user-visible empty state is in scope. The owner explicitly deferred the full feature, so the following are **questions**, not implementation decisions.
+**Статус продуктовой концепции:** УТВЕРЖДЕНА 21.10.2026.  
+**Основная действующая спецификация:** [LUEMI_BLIKI_MASTER_SPEC.md](./LUEMI_BLIKI_MASTER_SPEC.md).  
+**Статус разработки:** функция ещё НЕ реализована. Утверждение документации не разрешает изменять код, сервер, БД или инфраструктуру.
 
-## Proposed concept to discuss later
+## Состояние в Stage 03G
 
-“Блики” could be optional short moments or stories that express who a person is beyond their profile photos. Candidate surfaces: short caption with a photo, time-limited lightweight moment, pinning a few meaningful moments, small visual transitions. None of these formats, limits or lifetimes is approved.
+На момент завершения Stage 03G в ProfileMaster существует только честное пустое состояние вкладки «Блики»: «Пока нет бликов / Функция готовится». Нет настоящих публикаций, выдачи медиа, реакций, просмотров, Premium-комментариев или мировых рекомендаций.
 
-Before engineering: separately approve media formats, size and quota; default privacy and audience; age gate and visibility; automatic expiry vs permanent storage; moderation/reporting and safety; archival/deletion; responses and contact consent; accessibility/reduced motion; server model and operational cost; gift/payment relationship (if any). Never add an implicit account activity score from Bliki without consent and an explicit product decision.
+Этот файл изначально фиксировал, что функциональность отложена. После утверждения 20 продуктовых решений и отдельного направления «Мой круг → Мир ✦» он служит **исторической точкой входа** к полноценному паспорту выше. Старое обозначение «not approved» более не отражает статус концепции, но отсутствие её реализации остаётся актуальным.
 
-## Active Stage 03G rule
+## Границы и будущие согласования
 
-The ProfileMaster `bliki` tab shows an elegant **“Пока нет бликов / Функция готовится”** placeholder. It does not upload, publish, fake content, charge, notify, or infer account activity. Existing discovery and avatar animations remain unaffected.
+Перед разработкой по-прежнему необходимы отдельные решения по:
+- форматам и максимальным размерам файлов, обработке/хранению медиа;
+- серверной публикации, модерации и удалению;
+- аудитории, consent, 18+ и защите просмотра приватного контента;
+- точному правилу зачёта просмотров и сроку хранения списка зрителей;
+- схемам данных/API, стоимости инфраструктуры и масштабированию;
+- профилю нагрузки Android WebView, motion-таймингам и доступности;
+- срокам выпуска и платёжной инфраструктуре Premium.
+
+Блики не должны создавать скрытый рейтинг пользовательской активности и не должны автоматически присваивать реальные функции, права или деньги демонстрационным экранам.
+
+**Итог:** продуктовая спецификация утверждена; начало реализации требует нового явного разрешения владельца.
