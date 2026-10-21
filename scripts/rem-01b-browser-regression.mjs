@@ -267,6 +267,7 @@ try{
   });
   const app=await ui.newPage(),runtimeErrors=[];
   app.on("pageerror",e=>runtimeErrors.push(e.message));
+  await app.route("https://telegram.org/js/telegram-web-app.js",route=>route.fulfill({status:200,contentType:"application/javascript",body:"/* REM01B test bridge stub */"}));
   await app.route("**/api/health/live",route=>route.fulfill({
    status:200,contentType:"application/json",body:JSON.stringify({status:"ok"})
   }));
@@ -276,7 +277,12 @@ try{
   }));
   try{
    await app.goto(base+"/",{waitUntil:"domcontentloaded"});
-   await app.getByRole("button",{name:"Начать",exact:true}).waitFor({state:"visible",timeout:12000});
+   await app.getByRole("button",{name:"Начать",exact:true}).waitFor({state:"visible",timeout:12000}).catch(async cause=>{
+    const diagnostic=await app.evaluate(()=>({scene:document.querySelector(".luemi-shell")?.getAttribute("data-scene"),
+     entry:document.querySelector(".entry-state")?.textContent?.slice(0,300),hasBridge:!!window.Telegram?.WebApp,
+     hasInitData:!!window.Telegram?.WebApp?.initData}));
+    throw new Error("REM01B App auth did not finish "+JSON.stringify({diagnostic,runtimeErrors}),{cause});
+   });
    await app.getByRole("button",{name:"Начать",exact:true}).click();
    await app.getByPlaceholder("Как тебя зовут?").waitFor({state:"visible"});
    await app.evaluate(()=>{
