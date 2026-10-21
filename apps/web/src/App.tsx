@@ -5,7 +5,7 @@ import {GlassArrow} from "./ui/Glass";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
 import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registration/Steps";
-import {loadLocalDraft,loadLocalPhotos,saveLocalDraft,saveLocalPhotos,clearLocalDraft} from "./registration/local-draft";
+import {localScope,loadDraftSnapshot,saveDraftSnapshot,clearDraftSnapshot,type StorageCode} from "./registration/local-draft";
 import {preparePhotoPreview} from "./registration/photo-preview";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 
@@ -79,9 +79,9 @@ export function App() {
   const transitionTimer = useRef<number | null>(null);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [demoOpen,setDemoOpen] = useState(false);
-  const [restored] = useState(()=>loadLocalDraft());
-  const [step,setStep] = useState(restored?.step??1);
-  const [draft,setDraft] = useState<RegistrationDraft>(()=>restored?.draft??newDraft());
+  const [scope] = useState(()=>localScope());
+  const [step,setStep] = useState(1);
+  const [draft,setDraft] = useState<RegistrationDraft>(()=>newDraft());
   const [photos,setPhotos] = useState<PhotoItem[]>([]);
   const ownedUrls = useRef<string[]>([]);
   const photoJobs=useRef(new Map<string,AbortController>());
@@ -90,7 +90,15 @@ export function App() {
   const photoIds=useRef(new Set<string>());
   const photoGeneration=useRef(0);
   const [photosRestored,setPhotosRestored] = useState(false);
-  const lastSavedPhotoIds=useRef("");
+  const draftId=useRef(crypto.randomUUID());
+  const revision=useRef(0);
+  const saveSequence=useRef(0);
+  const persistEnabled=useRef(false);
+  const retryKind=useRef<"load"|"save"|"clear">("load");
+  const [loadRetry,setLoadRetry]=useState(0);
+  const [saveRetry,setSaveRetry]=useState(0);
+  const [storageState,setStorageState]=useState<"loading"|"idle"|"dirty"|"saving"|"saved"|"error">("loading");
+  const [storageCode,setStorageCode]=useState<StorageCode|null>(null);
   const [error,setError] = useState("");
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
   const rootRef=useRef<HTMLElement>(null);
@@ -98,6 +106,8 @@ export function App() {
   const discoveryBackRef=useRef<()=>void>(()=>{});
   const activeTheme=theme;
   const patch = useCallback((change:Partial<RegistrationDraft>)=>{
+    persistEnabled.current=true;
+    setStorageState("dirty");
     setDraft(prev=>({...prev,...change}));
     setError("");
   },[]);
@@ -230,14 +240,27 @@ export function App() {
       document.removeEventListener("focusin",onFocus);
     };
   },[]);
-  // Decode at most one new/legacy original at a time. Every screen shares
-  // the same bounded preview URL; IndexedDB retains the untouched original.
+  // Restore text and photo manifest from the same validated revision.
+  // Legacy import is read-only until a complete v2 write has committed.
   useEffect(()=>{
     let disposed=false;
     const controller=new AbortController(),generation=photoGeneration.current;
-    void loadLocalPhotos().then(async saved=>{
+    if(!scope){retryKind.current="load";setStorageState("error");setStorageCode("scope");return;}
+    setStorageState("loading");
+    void loadDraftSnapshot(scope).then(async result=>{
+      if(disposed)return;
+      if(!result.ok){
+        retryKind.current="load";setStorageCode(result.code);setStorageState("error");return;
+      }
+      const snapshot=result.snapshot;
+      if(snapshot){
+        draftId.current=snapshot.draftId;
+        revision.current=snapshot.revision;
+        setDraft(snapshot.draft);
+        setStep(snapshot.step);
+      }
       const restoredPhotos:PhotoItem[]=[];
-      for(const item of saved){
+      for(const item of snapshot?.photos??[]){
         if(disposed||generation!==photoGeneration.current)break;
         let preview=item.preview;
         if(!preview){
@@ -245,7 +268,6 @@ export function App() {
           photoQueue.current=job.catch(()=>{});
           try{await job;}catch{
             if(disposed||controller.signal.aborted)break;
-            // Keep a recoverable record and the original even if decoding fails.
             restoredPhotos.push({...item,src:"",status:"error"});continue;
           }
         }
@@ -255,24 +277,44 @@ export function App() {
       }
       if(disposed||generation!==photoGeneration.current||photoIds.current.size){
         for(const photo of restoredPhotos)if(photo.src){
-          URL.revokeObjectURL(photo.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==photo.src);
+          URL.revokeObjectURL(photo.src);
+          ownedUrls.current=ownedUrls.current.filter(url=>url!==photo.src);
         }
-        if(!disposed)setPhotosRestored(true);
+        if(!disposed){setPhotosRestored(true);setStorageState("idle");}
         return;
       }
       photoIds.current=new Set(restoredPhotos.map(p=>p.id));
-      setPhotos(restoredPhotos);setPhotosRestored(true);
-    }).catch(()=>{if(!disposed)setPhotosRestored(true);});
+      setPhotos(restoredPhotos);
+      // Only a validated legacy pair needs automatic migration.
+      persistEnabled.current=result.source==="legacy";
+      setStorageCode(null);
+      setStorageState(result.source==="legacy"?"dirty":"idle");
+      setPhotosRestored(true);
+    }).catch(()=>{
+      if(!disposed){retryKind.current="load";setStorageCode("io");setStorageState("error");}
+    });
     return ()=>{disposed=true;controller.abort();};
-  },[]);
-  useEffect(()=>{saveLocalDraft(draft,step);},[draft,step]);
+  },[scope,loadRetry]);
   useEffect(()=>{
-    if(!photosRestored)return;
-    const signature=photos.map(photo=>photo.id+":"+(photo.preview?.size??0)).join(",");
-    if(signature===lastSavedPhotoIds.current)return;
-    lastSavedPhotoIds.current=signature;
-    void saveLocalPhotos(photos);
-  },[photos,photosRestored]);
+    if(!photosRestored||!scope||!persistEnabled.current)return;
+    const current=++saveSequence.current;
+    const newRevision=++revision.current;
+    setStorageState("dirty");
+    const timer=window.setTimeout(()=>{
+      if(current!==saveSequence.current)return;
+      setStorageState("saving");
+      void saveDraftSnapshot(scope,draftId.current,newRevision,draft,step,photos).then(result=>{
+        if(current!==saveSequence.current)return;
+        if(result.ok){setStorageState("saved");setStorageCode(null);}
+        else{retryKind.current="save";setStorageCode(result.code);setStorageState("error");}
+      }).catch(()=>{
+        if(current===saveSequence.current){
+          retryKind.current="save";setStorageCode("io");setStorageState("error");
+        }
+      });
+    },160);
+    return ()=>window.clearTimeout(timer);
+  },[scope,photosRestored,draft,step,photos,saveRetry]);
   useEffect(()=>()=>{
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
@@ -301,6 +343,8 @@ export function App() {
     button.hide();
   },[phase,auth,back,demoOpen]);
   const changeStep=(target:number)=>{
+    persistEnabled.current=true;
+    setStorageState("dirty");
     setError("");
     setStep(Math.max(1,Math.min(8,target)));
     contentRef.current?.scrollTo({top:0,behavior:"auto"});
@@ -312,6 +356,7 @@ export function App() {
   };
   const addPhotos=(files:File[])=>{
     if(!files.length)return;
+    persistEnabled.current=true;setStorageState("dirty");
     const accepted:PhotoItem[]=[];
     let problem="";
     for(const file of files){
@@ -347,6 +392,7 @@ export function App() {
     setError(problem);
   };
   const removePhoto=(id:string)=>{
+    persistEnabled.current=true;setStorageState("dirty");
     photoJobs.current.get(id)?.abort();photoJobs.current.delete(id);
     const timer=photoTimers.current.get(id);
     if(timer!==undefined)window.clearTimeout(timer);
@@ -356,6 +402,7 @@ export function App() {
     setPhotos(prev=>prev.filter(p=>p.id!==id));
   };
   const movePhoto=(from:number,to:number)=>{
+    persistEnabled.current=true;setStorageState("dirty");
     setPhotos(prev=>{
       if(from<0||from>=prev.length||to<0||to>=prev.length)return prev;
       const next=[...prev];const [item]=next.splice(from,1);next.splice(to,0,item);return next;
@@ -367,11 +414,42 @@ export function App() {
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();photoIds.current.clear();
     for(const timer of photoTimers.current.values())window.clearTimeout(timer);
-    photoTimers.current.clear();lastSavedPhotoIds.current="";
+    photoTimers.current.clear();
+    persistEnabled.current=false;
+    const clearSequence=++saveSequence.current;
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
+    draftId.current=crypto.randomUUID();revision.current=0;
     setPhotos([]);setDraft(newDraft());setStep(1);setError("");
-    void clearLocalDraft();setPhotosRestored(true);
+    setStorageState("saving");setStorageCode(null);
+    if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
+    void clearDraftSnapshot(scope).then(result=>{
+      if(clearSequence!==saveSequence.current)return;
+      if(result.ok){setStorageState("idle");setStorageCode(null);}
+      else{retryKind.current="clear";setStorageCode(result.code);setStorageState("error");}
+    }).catch(()=>{
+      if(clearSequence===saveSequence.current){retryKind.current="clear";setStorageCode("io");setStorageState("error");}
+    });
+    setPhotosRestored(true);
+  };
+  const retryStorage=()=>{
+    if(retryKind.current==="load"){
+      setStorageCode(null);setStorageState("loading");setLoadRetry(value=>value+1);return;
+    }
+    if(retryKind.current==="clear"){
+      if(!scope){setStorageCode("scope");return;}
+      const token=++saveSequence.current;
+      setStorageState("saving");
+      void clearDraftSnapshot(scope).then(result=>{
+        if(token!==saveSequence.current)return;
+        if(result.ok){setStorageCode(null);setStorageState("idle");}
+        else{setStorageCode(result.code);setStorageState("error");}
+      }).catch(()=>{if(token===saveSequence.current){setStorageCode("io");setStorageState("error");}});
+      return;
+    }
+    persistEnabled.current=true;
+    setStorageCode(null);setStorageState("dirty");
+    setSaveRetry(value=>value+1);
   };
   const beginRegistration=()=>{
     if(welcomeExiting)return;
@@ -433,6 +511,13 @@ export function App() {
         onChange={id=>patch({interests:draft.interests.filter(x=>x!==id)})}/>}
       <div className="onboard-footer">
         {error&&<p className="field-error" role="alert">{error}</p>}
+        {storageState==="error"&&<p className="field-error" role="alert">
+          Не удалось сохранить или восстановить черновик на устройстве ({storageCode??"io"}).
+          Данные не удалены. <button type="button" onClick={retryStorage}>Повторить</button>
+        </p>}
+        {(storageState==="saving"||storageState==="dirty")&&
+          <p className="footer-hint" role="status">Сохранение черновика…</p>}
+        {storageState==="saved"&&<p className="footer-hint" role="status">Черновик сохранён на устройстве</p>}
         <div className="footer-controls">
           <GlassArrow onClick={back}/>
           <span className="footer-hint">{step===8?"Публикация пока закрыта":"Технический предпросмотр"}</span>
