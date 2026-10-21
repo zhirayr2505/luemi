@@ -26,7 +26,7 @@ const oneOf = (value:unknown,choices:readonly string[]):value is string =>
 const integer = (value:unknown,min:number,max:number):value is number =>
   typeof value==="number"&&Number.isSafeInteger(value)&&value>=min&&value<=max;
 const finiteTimestamp = (value:unknown,now:number):value is number =>
-  integer(value,1,now+5*60*1000);
+  integer(value,1,now+DRAFT_TTL_MS+5*60*1000);
 const plainStrings = (value:unknown,maxItems:number,maxChars:number):value is string[] =>
   Array.isArray(value)&&value.length<=maxItems&&
   value.every(item=>text(item,maxChars)&&item.length>0)&&new Set(value).size===value.length;
@@ -41,7 +41,7 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
   name:48,day:2,month:2,year:4,country:120,city:120,placeId:180,countryCode:8,about:750
  } as const;
  for(const key of Object.keys(strings) as Array<keyof typeof strings>){
-  const value=raw[key]??defaults[key];
+  const value=raw[key]===undefined?defaults[key]:raw[key];
   if(!text(value,strings[key]))return fail("field-"+key);
   d[key]=value;
  }
@@ -53,19 +53,19 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
   goal:["","serious","relationship","dates","friendship","communication","undecided"]
  } as const;
  for(const key of Object.keys(enums) as Array<keyof typeof enums>){
-  const value=raw[key]??defaults[key];
+  const value=raw[key]===undefined?defaults[key]:raw[key];
   if(!oneOf(value,enums[key]))return fail("enum-"+key);
   (d as unknown as Record<string,unknown>)[key]=value;
  }
  const numbers={radius:[1,5000],ageMin:[18,80],ageMax:[18,80]} as const;
  for(const key of Object.keys(numbers) as Array<keyof typeof numbers>){
-  const value=raw[key]??defaults[key];
+  const value=raw[key]===undefined?defaults[key]:raw[key];
   if(!integer(value,numbers[key][0],numbers[key][1]))return fail("number-"+key);
   d[key]=value;
  }
  if(d.ageMin>d.ageMax)return fail("age-range");
  for(const key of ["interests","languages"] as const){
-  const value=raw[key]??defaults[key];
+  const value=raw[key]===undefined?defaults[key]:raw[key];
   if(!plainStrings(value,key==="interests"?15:30,80))return fail("array-"+key);
   d[key]=value;
  }
