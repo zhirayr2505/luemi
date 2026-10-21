@@ -105,7 +105,9 @@ async function qaProfile(browser){
   // Real native touch gesture: take intermediate sheet frames without faking CSS state.
   const geometry=await page.locator(".pm-inline .pm-profile-sheet").boundingBox();
   assert.ok(geometry&&geometry.height>80,"sheet must be measurable");
-  const x=geometry.x+geometry.width*.52,y=Math.min(geometry.y+geometry.height-30,706);
+  const identityBox=await page.locator(".pm-inline .pm-identity").boundingBox();
+  assert.ok(identityBox&&identityBox.height>30,"profile identity provides real sheet gesture surface");
+  const x=identityBox.x+identityBox.width*.48,y=identityBox.y+Math.min(identityBox.height*.45,50);
   console.log("QA_TOUCH_CONTEXT "+JSON.stringify({geometry,x,y,element:await page.evaluate(([x,y])=>{const el=document.elementFromPoint(x,y);return el?.outerHTML.slice(0,280)??"none"},[x,y])}));
   const samples=[];
   await touch(page,{x,y,dy:-215,onStep:async i=>{
