@@ -51,6 +51,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const registerProfileBack=useCallback((handler:(()=>boolean)|null)=>{profileBackRef.current=handler;},[]);
  const ownProfile=useMemo(()=>fromLocalDraft(draft,photos),[draft,photos]);
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
+ const [personOpen,setPersonOpen]=useState<string|null>(null);
  // Prepare Nearby when For You becomes current or Nearby is selected; keep it mounted thereafter.
  const [nearbyPrepared,setNearbyPrepared]=useState(false);
  // Prewarm Nearby only after For You's first pager transition, during an idle
@@ -81,7 +82,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
- const [personOpen,setPersonOpen]=useState<string|null>(null);
  const [interestOpen,setInterestOpen]=useState<string|null>(null);
  const [forYouCollection,setForYouCollection]=useState<CollectionId|"best"|null>(null);
  const [forYouSettings,setForYouSettings]=useState(false);
