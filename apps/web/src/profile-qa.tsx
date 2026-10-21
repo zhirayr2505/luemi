@@ -8,7 +8,7 @@ import "./styles.css";
 const base=newDraft("ZHIIIRRO");
 const draft={...base,trialConsent:true,day:"12",month:"5",year:"1998",gender:"man" as const,
  country:"Россия",city:"Краснодар",countryCode:"RU",placeId:"qa-krasnodar",
- goal:"communication" as const,audience:"women" as const,about:"Одна история — тысяча возможностей.",
+ goal:"communication" as const,audience:"women" as const,about:("Одна история — тысяча возможностей. "+("Кадр тестового описания и проверка независимого вертикального скролла. ").repeat(8)).slice(0,700),
  interests:["кино","спорт","фотография"],languages:["ru"]};
 // Three distinct deterministic *local* fixture images. This developer-only
 // entry is not the production index.html and does not change real user photos.

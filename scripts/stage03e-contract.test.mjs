@@ -33,7 +33,7 @@ assert.ok(css.includes("grid-template-columns:repeat(2,minmax(0,1fr))"),"two-col
 assert.ok(css.includes("touch-action:pan-y")&&css.includes("aspect-ratio:4/5"),"vertical scroll from photos, 4:5 geometry");
 // Source contract guards ownership boundaries; actual pointer/touch behavior is
 // exercised in rem-00c-browser-behavior.mjs (required browser CI lane).
-assert.match(discovery, /<Nearby\\b[^>]*\\bdraft=\\{draft\\}/, "Nearby must receive real draft with any additional props");
+assert.match(discovery, /<Nearby\b[^>]*\bdraft=\{draft\}/, "Nearby must receive real draft with any additional props");
 const downSource=discovery.slice(discovery.indexOf("const down="),discovery.indexOf("const move="));
 assert.ok(downSource.includes(".nb-card,.nb-location"), "card and location controls retain child gesture ownership");
 assert.ok(!downSource.includes(".nb-scroll,.nb-card"), "Nearby background must be eligible for parent pager gesture");
