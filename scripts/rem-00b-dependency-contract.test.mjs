@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
+import {isDeepStrictEqual} from "node:util";
 import {readFileSync} from "node:fs";
 
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const pkg=JSON.parse(read("package.json")),lock=JSON.parse(read("package-lock.json"));
-const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const same=(a,b)=>isDeepStrictEqual(a,b);
 function assertWorkspaceLock(manifest,locked){
  assert.equal(locked.lockfileVersion,3,"npm lock v3 required");
  assert.equal(locked.name,manifest.name);
