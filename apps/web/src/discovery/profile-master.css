@@ -71,6 +71,10 @@
  overflow:hidden;border:0;border-radius:0;isolation:isolate;
  background:linear-gradient(150deg,#c7b0e4,#9a80cb);touch-action:pan-y;
 }
+.pm-photo-motion{
+  position:absolute;inset:0;width:100%;height:100%;
+  transform-origin:center center;transform:translate3d(0,0,0) scale(1);
+}
 .pm-photo-track{height:100%;width:100%;display:flex;transform:translate3d(0,0,0);transition:transform 300ms cubic-bezier(.2,.76,.22,1)}
 .pm-photo-slide{height:100%;min-width:100%;flex:0 0 100%;overflow:hidden;touch-action:pan-y}
 .pm-photo-slide img{
@@ -217,7 +221,8 @@
  overflow-anchor:none;
 }
 .pm-page::-webkit-scrollbar{display:none}
-.pm-shell[data-sheet-state=expanded]>.pm-sheet-viewport>.pm-profile-sheet>.pm-pages>.pm-pages-track>.pm-page{overflow-y:hidden}
+/* Keep page overflow geometry identical at both snap points. During a
+   sheet gesture its touch recognizer owns vertical movement. */
 .pm-preview-toolbar{position:absolute;z-index:15;right:14px;top:calc(var(--top-safe) + 76px)}
 .pm-preview-toolbar button{
  font:inherit;font-size:12px;color:var(--ink);
