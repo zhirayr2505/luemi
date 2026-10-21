@@ -100,6 +100,12 @@ async function qaProfile(browser){
   assert.equal(photos.length,3,"fixture provides three independently identifiable photos");
   assert.equal(new Set(photos).size,3,"adjacent photos must not share same src");
   await snapshot(page,"01-owner-expanded");
+  const dots=page.locator(".pm-inline .pm-photo-progress button");
+  assert.equal(await dots.count(),3,"all three real fixture photo indicators render");
+  await dots.nth(1).click();
+  assert.equal(await dots.nth(1).getAttribute("aria-current"),"true","photo 2 click changes current photo, not just CSS");
+  await dots.first().click();
+  assert.equal(await dots.first().getAttribute("aria-current"),"true","photo index can return to first");
   const expanded=state;
   // Real native touch gesture: take intermediate sheet frames without faking CSS state.
   const geometry=await page.locator(".pm-inline .pm-profile-sheet").boundingBox();
@@ -188,6 +194,26 @@ async function qaProfile(browser){
   const selected=await page.getByRole("tab",{name:"Рядом",exact:true}).getAttribute("aria-selected");
   console.log("QA_NEARBY_BACKGROUND_SWIPE "+JSON.stringify({selected,tabText:await page.locator(".discovery-top-tabs").innerText()}));
   assert.equal(selected,"true","edge swipe on last tab stays bounded; no overshoot or crash");
+  // Real positive gesture: a swipe across the Nearby heading must switch the
+  // parent discovery tab; empty/no-op touch handlers would fail this assertion.
+  await touch(page,{x:bg.x+Math.min(70,bg.width*.22),y:bg.y+Math.min(35,bg.height*.5),dx:210});
+  await sleep(430);
+  assert.equal(await page.getByRole("tab",{name:"Для тебя",exact:true}).getAttribute("aria-selected"),"true",
+    "Nearby empty heading grants horizontal swipe to parent discovery pager");
+  await page.getByRole("tab",{name:"Рядом",exact:true}).click();
+  // A card retains its tap/swipe surface and must not unexpectedly page.
+  await page.locator(".nb-location").click();
+  const filters=page.getByRole("dialog",{name:"Фильтры знакомств"});
+  await filters.getByRole("button",{name:"Весь мир"}).click();
+  await filters.getByRole("button",{name:"Показать анкеты"}).click();
+  await filters.waitFor({state:"hidden",timeout:2500});
+  await (await required(page,".nb-card","deterministic world fixture")).waitFor({state:"visible"});
+  const card=await page.locator(".nb-card").first().boundingBox();
+  assert.ok(card&&card.width>90);
+  await touch(page,{x:card.x+card.width*.76,y:card.y+Math.min(90,card.height*.3),dx:-Math.min(110,card.width*.48)});
+  await sleep(400);
+  assert.equal(await page.getByRole("tab",{name:"Рядом",exact:true}).getAttribute("aria-selected"),"true",
+   "child Nearby person-card gesture never changes discovery tab");
   await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
   assert.equal(await page.getByRole("tab",{name:"Для тебя",exact:true}).getAttribute("aria-selected"),"true");
   await page.getByRole("tab",{name:"Рядом",exact:true}).click();
