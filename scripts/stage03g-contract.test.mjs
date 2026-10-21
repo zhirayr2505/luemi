@@ -56,7 +56,7 @@ assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki"
  profile.includes('["photos","Фото"')&&profile.includes('["gifts","Подарки"')&&
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
 assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.blocking})')&&
- profile.includes('viewport.current.scrollTop=expandedY.current-next')&&
+ profile.includes('viewport.current.scrollTop=Math.max(0,expandedY.current-Math.min(next,expandedY.current))')&&
  profile.includes('g.origin+dy')&&profile.includes('contentPages.current['),
  "sheet follows its actual origin while each tab retains native vertical scrolling");
 assert.ok(profile.includes('if(g.axis==="x")paintTabs(g.index,dx)')&&
