@@ -56,7 +56,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  // Prewarm Nearby only after For You's first pager transition, during an idle
  // interval. A direct first visit to Nearby still mounts synchronously.
  useEffect(()=>{
-  if(nearbyPrepared||discoveryTab!=="for-you"||mainTab!=="discover")return;
+  if(nearbyPrepared||discoveryTab!=="for-you"||mainTab!=="discover"||personOpen)return;
   let cancelled=false;
   let idleId:number|null=null;
   const timer=window.setTimeout(()=>{
@@ -70,7 +70,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    cancelled=true;window.clearTimeout(timer);
    if(idleId!==null&&"cancelIdleCallback" in window)window.cancelIdleCallback(idleId);
   };
- },[nearbyPrepared,discoveryTab,mainTab]);
+ },[nearbyPrepared,discoveryTab,mainTab,personOpen]);
  const gesture=useRef<Gesture|null>(null);
  const clickBlockUntil=useRef(0);
  const pages=useRef<HTMLDivElement>(null);
