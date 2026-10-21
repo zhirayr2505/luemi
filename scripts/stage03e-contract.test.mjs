@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
+const contractsUrl=new URL("../packages/contracts/dist/index.js",import.meta.url).href;
+
 const source=readFileSync(new URL("../apps/web/src/discovery/nearby-logic.ts",import.meta.url),"utf8");
-const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replaceAll('"@luemi/contracts"',JSON.stringify(contractsUrl));
 const m=await import("data:text/javascript;base64,"+Buffer.from(js).toString("base64"));
 const draft={city:"Краснодар",countryCode:"ru",interests:["музыка"],languages:["ru"]};
 const mk=(id,city,countryCode,interests=[])=>({id,city,countryCode,interests,age:25,gender:"woman",goal:"friendship",languages:["ru"]});
