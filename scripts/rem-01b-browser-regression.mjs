@@ -9,7 +9,7 @@ page.on("pageerror",error=>errors.push(error.message));
 const run=async(name,fn)=>{await fn();console.log("REM01B_PASS "+name);};
 try{
  await page.goto(base+"/rem-01b-qa.html",{waitUntil:"domcontentloaded"});
- await page.locator("#ready").getByText("ready").waitFor();
+ await page.locator("#ready").filter({hasText:"ready"}).waitFor();
  await run("structural validator rejects malformed and accepts incomplete step 1",async()=>{
   const result=await page.evaluate(()=>{
    const q=window.__REM01B_QA__,base=q.makeDraft("");
@@ -41,7 +41,7 @@ try{
   assert.deepEqual([result.source,result.revision,result.name,result.files,result.fileBytes,result.id],
    ["v2",1,"Анна",1,5,"new-file"]);
   await page.reload();
-  await page.locator("#ready").getByText("ready").waitFor();
+  await page.locator("#ready").filter({hasText:"ready"}).waitFor();
   const again=await page.evaluate(async()=>{const a=await window.__REM01B_QA__.load();return {source:a.source,revision:a.snapshot?.revision,photoCount:a.snapshot?.photos.length};});
   assert.deepEqual(again,{source:"v2",revision:1,photoCount:1});
  });
