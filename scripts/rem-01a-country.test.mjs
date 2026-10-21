@@ -7,6 +7,13 @@ async function load(path){
  const text=readFileSync(new URL("../"+path,import.meta.url),"utf8");
  const js=ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}})
   .outputText.replaceAll('"@luemi/contracts"',JSON.stringify(contractsUrl));
+ if(path.endsWith("for-you-data.ts")){
+  const demoText=readFileSync(new URL("../apps/web/src/discovery/demo-people.ts",import.meta.url),"utf8");
+  const demoJs=ts.transpileModule(demoText,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}})
+   .outputText.replaceAll('"@luemi/contracts"',JSON.stringify(contractsUrl));
+  const demoUrl="data:text/javascript;base64,"+Buffer.from(demoJs).toString("base64");
+  return import("data:text/javascript;base64,"+Buffer.from(js.replace('"./demo-people"',JSON.stringify(demoUrl))).toString("base64"));
+ }
  return import("data:text/javascript;base64,"+Buffer.from(js).toString("base64"));
 }
 for(const [value,expected] of [["RU","RU"],["ru","RU"],["  rU  ","RU"],["AM","AM"],[" us ","US"],["",""],[null,""],[undefined,""],["RUS",""],["R1",""],["яя",""],[2,""]])
