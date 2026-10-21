@@ -24,7 +24,6 @@ const snapshot=async(page,name)=>{
  await writeFile(OUT+"/"+name+".png",buffer);
  console.log("QA_SNAPSHOT "+JSON.stringify({name,sha256:hash,viewport:{width:w,height:h},timestamp:Date.now()}));
 };
-const now=()=>Date.now();
 const readState=async(page,selector=".pm-inline")=>page.evaluate(selector=>{
  const root=document.querySelector(selector);
  if(!(root instanceof HTMLElement))throw new Error("REQUIRED PROFILE DOM MISSING "+selector);

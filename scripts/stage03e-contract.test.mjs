@@ -44,5 +44,5 @@ assert.ok(model.includes("radius:5000"),"existing geography setting unchanged");
 assert.ok(!component.includes("demoDistanceKm(")&&!source.includes("demoDistanceKm("),"no synthetic kilometre-based proximity function calls");
 console.log("✓ Stage 03E: strict declared location, dual column, gesture safety, savings, Feed/radius locks");
 
-assert.ok(discovery.includes('nearbyPrepared&&<Nearby draft={draft}'),"Nearby prepared only on demand");
+assert.match(discovery, /nearbyPrepared\\s*&&\\s*<Nearby\\b[^>]*\\bdraft=\\{draft\\}/, "Nearby is rendered only when prepared, with real draft passed");
 assert.ok(discovery.includes("if(bounded===2)setNearbyPrepared(true)")&&discovery.includes("requestIdleCallback"),"Nearby prewarmed only outside the critical For You transition");
