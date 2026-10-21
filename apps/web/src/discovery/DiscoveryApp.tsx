@@ -293,7 +293,9 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
- return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"} data-profile-from-feed={androidWebView&&selectedPerson&&mainTab==="discover"&&discoveryTab==="feed"?"true":"false"} data-profile-mode={profileMode?"true":"false"}>
+ return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"}
+   data-profile-renderer={androidWebView?"android":"standard"}
+   data-profile-mode={profileMode?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>
    <GlobalHeader ref={globalHeader} mode={backgroundHeaderMode} theme={theme}
      onTheme={onTheme} onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
