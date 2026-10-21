@@ -83,6 +83,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
+ const grab=useRef<HTMLButtonElement>(null),miniAvatar=useRef<HTMLButtonElement>(null);
  const photoMotion=useRef<HTMLDivElement>(null),rubberY=useRef(0);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
@@ -127,14 +128,32 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    photoMotion.current.style.transform=`translate3d(0,${y.toFixed(2)}px,0) scale(${scale.toFixed(4)})`;
   }
   if(blurLayer.current)blurLayer.current.style.opacity=String(progress*.9);
+  // Reconcile the grab and avatar in the same motion frame, instead of
+  // triggering two CSS opacity transitions by toggling data-sheet-state.
+  const avatarT=Math.max(0,Math.min(1,(progress-.72)/.24));
+  if(miniAvatar.current){
+   miniAvatar.current.style.opacity=String(avatarT);
+   miniAvatar.current.style.transform=`translate3d(0,${(4*(1-avatarT)).toFixed(2)}px,0) scale(${(.9+.1*avatarT).toFixed(3)})`;
+   miniAvatar.current.style.pointerEvents=progress>.96?"auto":"none";
+  }
+  if(grab.current){
+   const grabT=Math.max(0,Math.min(1,(progress-.86)/.12));
+   grab.current.style.opacity=String(1-grabT);
+   grab.current.style.pointerEvents=progress>.98?"none":"auto";
+  }
   if(motionActive)motionCallback.current?.(progress,dragging);
  },[motionActive]);
  const settleSheet=useCallback((next:boolean)=>{
   stopSheet.current();
   collapsedRef.current=next;
-  setCollapsed(next);
-  stopSheet.current=animateValue(sheetY.current,next?collapsedY.current:expandedY.current,
-   sheetY.current>expandedY.current?240:335,[.22,.79,.22,1],value=>paintSheet(value,true));
+  const destination=next?collapsedY.current:expandedY.current;
+  stopSheet.current=animateValue(sheetY.current,destination,
+   sheetY.current>expandedY.current?240:335,[.22,.79,.22,1],value=>{
+    paintSheet(value,true);
+    // React's state/ARIA update occurs only AFTER the last motion frame.
+    // The avatar and grab visuals already follow continuous progress.
+    if(Math.abs(value-destination)<.05)setCollapsed(next);
+   });
  },[paintSheet]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
@@ -256,9 +275,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   measure();
   const ro=new ResizeObserver(measure);
   ro.observe(bar);
-  bar.querySelectorAll(".pm-tab").forEach(button=>ro.observe(button));
   if(pages.current)ro.observe(pages.current);
-  return ()=>{ro.disconnect();stopTabs.current();};
+  // The bar has fixed dimensions; individual button observers can emit
+  // repeated compositor-invalidating measurements during font settling.
+  let cancelled=false;
+  void document.fonts.ready.then(()=>{if(!cancelled)measure();});
+  return ()=>{cancelled=true;ro.disconnect();stopTabs.current();};
  },[motionActive,paintTabs]);
  const chooseTab=useCallback((newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
@@ -439,7 +461,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    <div className="pm-profile-sheet" ref={sheet} onClickCapture={e=>{
     if(performance.now()<clickBlocked.current){e.preventDefault();e.stopPropagation();}
    }}>
-    <button type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsed)}
+    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsedRef.current)}
       tabIndex={collapsed?-1:0} aria-label={collapsed?"Потянуть панель вниз":"Развернуть анкету"}><span/></button>
     <div className="pm-identity">
      <div className="pm-identity-core">
@@ -447,7 +469,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
        <h2>{nameLine} {view.profile.premium&&<span className="pm-premium">◆</span>}{view.profile.verified&&<ShieldCheck size={19} aria-label="Подтверждён"/>}</h2>
        <p className="pm-identity-location">{location}</p>
       </div>
-      {current&&<button type="button" className={"pm-mini-avatar"+(view.profile.activeBlik?" has-blik":"")}
+      {current&&<button ref={miniAvatar} type="button" className={"pm-mini-avatar"+(view.profile.activeBlik?" has-blik":"")}
          onClick={openAvatar} tabIndex={collapsed?0:-1} aria-hidden={!collapsed}
          aria-label={view.profile.activeBlik?"Открыть активный блик":"Раскрыть фото профиля"}>
          <PhotoImage photo={current} alt="" loading="eager"/>
