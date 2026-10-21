@@ -233,6 +233,9 @@ async function appBootstrap(browser){
     onClick:f=>listeners.set("back",f),offClick:f=>{if(listeners.get("back")===f)listeners.delete("back")}}
   }};
  });
+ await page.route("https://telegram.org/js/telegram-web-app.js",async route=>{
+  await route.fulfill({status:200,contentType:"application/javascript",body:"/* REM-00C test-only Telegram SDK stub; bridge is supplied by addInitScript */"});
+ });
  await page.route("**/api/health/live",async route=>{calls.push("live");await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({status:"ok"})})});
  await page.route("**/api/auth/telegram",async route=>{
   const body=JSON.parse(route.request().postData()||"{}");
