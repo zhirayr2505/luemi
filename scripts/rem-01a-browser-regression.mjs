@@ -36,7 +36,7 @@ async function geoPage(browser){
   }});
   window.__REM01A_GPS__={
    count:()=>captures.length,
-   success:(i)=>captures[i].success({coords:{latitude:45.0393,longitude:38.9872}}),
+   success:(i)=>{void captures[i].success({coords:{latitude:45.0393,longitude:38.9872}});},
    deny:(i)=>captures[i].error({code:1,message:"permission denied"})
   };
  });
