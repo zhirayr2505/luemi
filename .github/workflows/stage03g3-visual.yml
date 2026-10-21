@@ -1,4 +1,4 @@
-name: LUEMI 03G profile visual QA (Android-safe rendering)
+name: LUEMI REM-00C profile behavioral and visual QA
 on:
   push:
     branches:
@@ -18,14 +18,12 @@ on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: 'Choose a historical visual script; current assertions will be rebuilt in REM-00C'
+        description: 'Current REM-00C Android-UA browser behavioral regression (Chrome emulation)'
         type: choice
         required: true
         default: stage03g7
         options:
           - stage03g7
-          - stage03g6
-          - stage03g5
 permissions:
   contents: read
 jobs:
@@ -50,7 +48,7 @@ jobs:
       - name: Run existing foundation gate
         run: npm run check
   browser-profile:
-    name: Browser profile QA (historical; REM-00C pending)
+    name: Browser profile QA (REM-00C behavioral)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -69,7 +67,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Install pinned browser revision
         run: npx --no-install playwright install chromium --with-deps
-      - name: Run explicitly selected historical visual scenario
+      - name: Run current REM-00C behavioral scenario
         shell: bash
         env:
           QA_SCENARIO: ${{ inputs.scenario || 'stage03g7' }}
@@ -77,11 +75,9 @@ jobs:
           set -euo pipefail
           case "$QA_SCENARIO" in
             stage03g7) script=scripts/stage03g7-android-visual-qa.mjs ;;
-            stage03g6) script=scripts/stage03g6-visual-qa.mjs ;;
-            stage03g5) script=scripts/stage03g5-visual-qa.mjs ;;
             *) echo "Unsupported QA scenario: $QA_SCENARIO" >&2; exit 2 ;;
           esac
-          echo "Selected historical visual scenario: $script"
+          echo "Selected current behavioral scenario: $script"
           npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-vite-qa.log 2>&1 &
           vite_pid=$!
           trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
@@ -104,8 +100,6 @@ jobs:
         with:
           name: luemi-stage03g-visual-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            stage03g5-*.jpg
-            stage03g6-*.jpg
-            stage03g7-*.jpg
+            qa-artifacts/rem-00c/**/*.png
             /tmp/luemi-vite-qa.log
-          if-no-files-found: warn
+          if-no-files-found: error

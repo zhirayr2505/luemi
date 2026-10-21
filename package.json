@@ -26,7 +26,8 @@
     "test:source-contracts": "npm run test:ui && npm run test:discovery",
     "typecheck": "npm run build -w @luemi/contracts && npm run typecheck -w @luemi/api && npm run typecheck -w @luemi/web",
     "test:api:isolated": "npm run build -w @luemi/contracts && npm run test -w @luemi/api",
-    "test:ci-contract": "node scripts/rem-00b-dependency-contract.test.mjs"
+    "test:ci-contract": "node scripts/rem-00b-dependency-contract.test.mjs",
+    "test:browser:behavior": "node scripts/stage03g7-android-visual-qa.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
