@@ -263,7 +263,7 @@ async function appBootstrap(browser){
   });
   const bridge=await page.evaluate(()=>window.__QA_TELEGRAM_MOCK__.calls.map(x=>x.name));
   assert.ok(["ready","expand","requestFullscreen","disableVerticalSwipes"].every(x=>bridge.includes(x)),"real App must invoke mocked Telegram bridge lifecycle");
-  assert.deepEqual(calls.slice(0,2),["live","auth"],"mocked health/auth flow is actually exercised");
+  assert.ok(calls.includes("live")&&calls.includes("auth")&&calls.indexOf("live")<calls.indexOf("auth"),"mocked health precedes authorization, including React StrictMode effect reruns");
   await snapshot(page,"08-app-intro-mocked-telegram");
   await page.getByRole("button",{name:"Начать",exact:true}).click();
   const progress=await required(page,'[role="progressbar"][aria-label="Прогресс регистрации"]',"real App onboarding");
