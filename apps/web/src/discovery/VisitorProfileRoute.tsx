@@ -140,8 +140,11 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
    if(g.source==="tabs"&&tabStrip&&tabStrip.scrollLeft>1)return;
    g.claimed=true;
    cancelProfileGesture.current?.();
+   // Read the interpolated position BEFORE disabling CSS transition:
+   // doing it in the opposite order can snap a mid-entry gesture to zero.
+   const frozenX=currentX();
    clearTimer();
-   if(route.current){route.current.style.transition="none";g.origin=currentX();}
+   if(route.current){route.current.style.transition="none";setX(frozenX);g.origin=frozenX;}
    revealUnderlay(true);
    try{route.current?.setPointerCapture(e.pointerId);}catch{/* older WebView */}
   }
