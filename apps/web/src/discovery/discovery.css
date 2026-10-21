@@ -221,10 +221,8 @@
  box-shadow:-8px 0 24px rgba(30,17,44,.13);
 }
 .discovery-visitor-route>.pm-shell{position:absolute;inset:0}
-.discovery-visitor-back-edge{
- position:absolute;inset:0 auto 0 0;width:26px;z-index:90;
- touch-action:none;user-select:none;-webkit-user-select:none;
-}
+/* Expanded portraits are reserved for photo swipes. Collapsed profiles
+   and the expanded white sheet own horizontal back gestures via the route. */
 @media(prefers-reduced-motion:reduce){
  .discovery-visitor-route{transition:none!important}
 }
