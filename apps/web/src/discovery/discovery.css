@@ -204,9 +204,33 @@
 
 
 /* Visitor profile is inside the content panel; the stationary header remains above it. */
-.discovery-app[data-profile-overlay=true] .discovery-bottom-nav{display:none}
-/* On Android WebView the two full-bleed Feed cards behind a visitor's profile
-   can keep their own rounded/image compositor layers alive. Suppress the
-   entirely occluded browse surface only for Feed-origin visitors. Visibility
-   preserves the mounted card, its state and pager position for returning. */
-.discovery-app[data-profile-from-feed=true] .discovery-browse-panel{visibility:hidden}
+.discovery-app[data-profile-overlay=true] .discovery-bottom-nav{visibility:hidden}
+.discovery-app[data-profile-overlay=true][data-route-revealing=true] .discovery-bottom-nav{visibility:visible}
+/* Android Telegram: the mounted Feed, For You and Nearby galleries share
+   one costly transformed pager under the opened visitor route. Suppress ALL
+   of that pager only once the route has fully arrived. The route explicitly
+   reveals it BEFORE any swipe-back / close begins, so the returning scene is
+   already rasterized when the overlay moves. Visibility retains DOM state,
+   scroll positions and browser-sized layout (display:none would not). */
+.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true]) .discovery-browse-panel{
+ visibility:hidden;
+}
+/* The persistent browse header is a second full logo (plus translucent tools)
+   behind the visitor's own header; suppress its Android raster layer as well. */
+.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true])>.lh-header{
+ visibility:hidden;
+}
+
+/* Only the rectangular navigation layer slides. The profile sheet keeps its
+   already-verified stationary scroll renderer and five independent pages. */
+.discovery-visitor-route{
+ position:absolute;inset:0;z-index:80;width:100%;height:100%;
+ background:var(--bg);transform:translate3d(100%,0,0);
+ box-shadow:-8px 0 24px rgba(30,17,44,.13);
+}
+.discovery-visitor-route>.pm-shell{position:absolute;inset:0}
+/* Expanded portraits are reserved for photo swipes. Collapsed profiles
+   and the expanded white sheet own horizontal back gestures via the route. */
+@media(prefers-reduced-motion:reduce){
+ .discovery-visitor-route{transition:none!important}
+}

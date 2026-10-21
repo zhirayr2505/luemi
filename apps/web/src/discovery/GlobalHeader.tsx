@@ -19,6 +19,8 @@ const smooth=(p:number)=>p*p*(3-2*p);
 export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  {mode,theme,onTheme,onFilters,onSaved},ref
 ){
+ // Avoid a second filtered logo raster on Android Telegram WebView.
+ const androidProfileChrome=mode==="profile"&&typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
  const host=useRef<HTMLElement>(null);
  const island=useRef<HTMLButtonElement>(null);
  const lastScroll=useRef(0);
@@ -57,7 +59,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    });
   },
   setProfileProgress:(progress:number,_dragging:boolean)=>{
-   if(mode!=="profile"||!host.current)return;
+   if(mode!=="profile"||androidProfileChrome||!host.current)return;
    const p=clamp(progress);
    host.current.style.setProperty("--lh-contrast",String(p*.83));
   },
@@ -77,13 +79,13 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   if(toolsFrame.current!==null){cancelAnimationFrame(toolsFrame.current);toolsFrame.current=null;}
   lastControlsValue.current=Number.NaN;paintTools(lastScroll.current);
  };
- return <header ref={host} className={"lh-header lh-"+mode}>
+ return <header ref={host} className={"lh-header lh-"+mode+(androidProfileChrome?" lh-profile-android":"")}>
   
   <div className="lh-center">
    <button className="lh-island" type="button" ref={island} onClick={toggleIsland}
      aria-label={mode==="browse"?"Раскрыть инструменты LUEMI":"LUEMI"} title="LUEMI">
     <img src={logo} alt="luemi" decoding="sync" fetchPriority="high"/>
-    <img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="sync"/>
+    {!androidProfileChrome&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="sync"/>}
    </button>
    {mode==="profile"&&<button type="button" className="lh-profile-theme" onClick={onTheme}
       aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>

@@ -49,13 +49,14 @@ const profile=read("apps/web/src/discovery/ProfileMaster.tsx");
 const viewer=read("apps/web/src/discovery/PhotoViewer.tsx");
 const css=read("apps/web/src/discovery/profile-master.css");
 const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
+const visitorRoute=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 const app=read("apps/web/src/App.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki","Блики"')&&
  profile.includes('["photos","Фото"')&&profile.includes('["gifts","Подарки"')&&
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
 assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.blocking})')&&
- profile.includes('viewport.current.scrollTop=expandedY.current-next')&&
+ profile.includes('viewport.current.scrollTop=Math.max(0,expandedY.current-Math.min(next,expandedY.current))')&&
  profile.includes('g.origin+dy')&&profile.includes('contentPages.current['),
  "sheet follows its actual origin while each tab retains native vertical scrolling");
 assert.ok(profile.includes('if(g.axis==="x")paintTabs(g.index,dx)')&&
@@ -72,7 +73,7 @@ assert.ok(viewer.includes("canMakeMain(view,show.id)")&&
  viewer.includes("Дата добавления недоступна")===false,
  "make-main is guarded; date originates exclusively from model");
 assert.ok(discovery.includes('<ProfileMaster data={ownProfile} mode="owner"')&&
- discovery.includes('<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor"'),
+ discovery.includes("<VisitorProfileRoute")&&visitorRoute.includes('<ProfileMaster data={data} mode="visitor"'),
  "both profile destinations use one shared implementation");
 assert.ok(app.includes('photos={readyPhotos}')&&
  app.includes('photos.filter(p=>p.status==="ready"||p.status==="success")'),
@@ -163,3 +164,21 @@ assert.ok(css.includes(".pm-sheet-viewport")&&
  !css.includes("data-sheet-renderer=layout"),
  "profile has no legacy layout-property animations or Android override cascade");
 console.log("✓ Profile scroll motion replaces legacy top/left and transformed clipping");
+
+const discoveryCss=read("apps/web/src/discovery/discovery.css");
+assert.ok(discovery.includes("data-profile-renderer=")&&
+ discoveryCss.includes("[data-profile-renderer=android][data-profile-overlay=true]")&&
+ discoveryCss.includes(":not([data-route-revealing=true])")&&
+ discoveryCss.includes(">.lh-header")&&
+ !discovery.includes("data-profile-from-feed"),
+ "all Android browsing sources share one hidden underlay, restored during route transitions");
+assert.ok(header.includes("androidProfileChrome")&&
+ header.includes("!androidProfileChrome&&<img")&&
+ profile.includes("if(Math.abs(value-destination)<.05)setCollapsed(next)")&&
+ profile.includes("miniAvatar.current.style.opacity=")&&
+ profile.includes("grab.current.style.opacity="),
+ "Android single-raster header and progress-driven sheet controls avoid duplicate paints");
+assert.ok(!profile.includes('ro.observe(button)')&&
+ profile.includes("document.fonts.ready.then"),
+ "tab metrics are not repeatedly reset by individual button resize observers");
+console.log("✓ Android occluded browse layers, stable logo and sheet progress guards");

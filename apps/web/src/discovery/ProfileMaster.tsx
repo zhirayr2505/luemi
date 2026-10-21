@@ -17,6 +17,7 @@ type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
+ registerRouteGestureCancel?:(handler:(()=>void)|null)=>void;
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
@@ -64,7 +65,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress}:Props){
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
@@ -82,6 +83,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
+ const grab=useRef<HTMLButtonElement>(null),miniAvatar=useRef<HTMLButtonElement>(null);
+ const photoMotion=useRef<HTMLDivElement>(null),rubberY=useRef(0);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
  const tabMetrics=useRef<Array<{left:number;width:number}>>([]);
@@ -107,19 +110,50 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  // The stationary viewport owns vertical scroll. The rounded surface itself
  // has no transform, animated top, paint containment or clipping ancestor.
  const paintSheet=useCallback((offset:number,dragging=false)=>{
-  const next=Math.max(collapsedY.current,Math.min(expandedY.current,offset));
+  // Normal motion uses the stationary native scroll viewport. Only the
+  // limited elastic pull moves the white surface; portrait pixels don't warp.
+  const elastic=Math.max(0,Math.min(28,offset-expandedY.current));
+  const next=Math.max(collapsedY.current,Math.min(expandedY.current+28,offset));
   sheetY.current=next;
-  const progress=(expandedY.current-next)/Math.max(1,expandedY.current-collapsedY.current);
-  if(viewport.current)viewport.current.scrollTop=expandedY.current-next;
+  const progress=Math.max(0,Math.min(1,(expandedY.current-next)/
+   Math.max(1,expandedY.current-collapsedY.current)));
+  if(viewport.current)viewport.current.scrollTop=Math.max(0,expandedY.current-Math.min(next,expandedY.current));
+  if(sheet.current&&Math.abs(elastic-rubberY.current)>.05){
+   sheet.current.style.transform=elastic>0.05?`translate3d(0,${elastic.toFixed(2)}px,0)`:"";
+   rubberY.current=elastic;
+  }
+  if(photoMotion.current){
+   const y=-10*progress+elastic*.22;
+   const scale=1+.025*progress+elastic*.001;
+   photoMotion.current.style.transform=`translate3d(0,${y.toFixed(2)}px,0) scale(${scale.toFixed(4)})`;
+  }
   if(blurLayer.current)blurLayer.current.style.opacity=String(progress*.9);
+  // Reconcile the grab and avatar in the same motion frame, instead of
+  // triggering two CSS opacity transitions by toggling data-sheet-state.
+  const avatarT=Math.max(0,Math.min(1,(progress-.72)/.24));
+  if(miniAvatar.current){
+   miniAvatar.current.style.opacity=String(avatarT);
+   miniAvatar.current.style.transform=`translate3d(0,${(4*(1-avatarT)).toFixed(2)}px,0) scale(${(.9+.1*avatarT).toFixed(3)})`;
+   miniAvatar.current.style.pointerEvents=progress>.96?"auto":"none";
+  }
+  if(grab.current){
+   const grabT=Math.max(0,Math.min(1,(progress-.86)/.12));
+   grab.current.style.opacity=String(1-grabT);
+   grab.current.style.pointerEvents=progress>.98?"none":"auto";
+  }
   if(motionActive)motionCallback.current?.(progress,dragging);
  },[motionActive]);
  const settleSheet=useCallback((next:boolean)=>{
   stopSheet.current();
   collapsedRef.current=next;
-  setCollapsed(next);
-  stopSheet.current=animateValue(sheetY.current,next?collapsedY.current:expandedY.current,
-   360,[.22,.79,.22,1],value=>paintSheet(value,true));
+  const destination=next?collapsedY.current:expandedY.current;
+  stopSheet.current=animateValue(sheetY.current,destination,
+   sheetY.current>expandedY.current?240:335,[.22,.79,.22,1],value=>{
+    paintSheet(value,true);
+    // React's state/ARIA update occurs only AFTER the last motion frame.
+    // The avatar and grab visuals already follow continuous progress.
+    if(Math.abs(value-destination)<.05)setCollapsed(next);
+   });
  },[paintSheet]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
@@ -129,12 +163,15 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(!frame||!pane||!root||!root.clientWidth||!root.clientHeight)return;
    // Batch reads before writes. Hidden owner profiles are never measured.
    const shellRect=root.getBoundingClientRect();
-   const imageRect=document.querySelector<HTMLElement>(".lh-header .lh-island img")?.getBoundingClientRect();
+   const headerScope=root.closest(".discovery-visitor-route")??root.closest(".discovery-app");
+   const imageRect=headerScope?.querySelector<HTMLElement>(".lh-header .lh-island img")?.getBoundingClientRect();
    const logoBottom=imageRect?imageRect.bottom-shellRect.top-imageRect.height*.11:48;
    const top=Math.max(38,Math.min(root.clientHeight*.24,logoBottom));
    const bottom=Math.max(top+185,frame.offsetHeight-43);
    const dots=(imageRect?.bottom??(shellRect.top+108))-shellRect.top+8;
    if(!first&&Math.abs(top-collapsedY.current)<.5&&Math.abs(bottom-expandedY.current)<.5)return;
+   const oldProgress=first?(collapsedRef.current?1:0):
+    Math.max(0,Math.min(1,(expandedY.current-sheetY.current)/Math.max(1,expandedY.current-collapsedY.current)));
    first=false;
    cancelSheetGesture.current();
    stopSheet.current();
@@ -142,14 +179,16 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    root.style.setProperty("--pm-expanded-y",bottom+"px");
    pane.style.setProperty("--pm-collapsed-top",top+"px");
    root.style.setProperty("--pm-dots-top",dots+"px");
-   // Activation and geometry changes are synchronous, never a new animation.
-   paintSheet(collapsedRef.current?top:bottom,true);
+   // Preserve visible progress on resize instead of snapping the panel straight
+   // to its target, which could flash the logo and tabs at the endpoint.
+   paintSheet(bottom-(bottom-top)*oldProgress,true);
   };
   measure();
   const ro=new ResizeObserver(measure);
   if(hero.current)ro.observe(hero.current);
   if(shell.current)ro.observe(shell.current);
-  const anchor=document.querySelector<HTMLElement>(".lh-header .lh-center");
+  const anchor=(shell.current?.closest(".discovery-visitor-route")??shell.current?.closest(".discovery-app"))
+   ?.querySelector<HTMLElement>(".lh-header .lh-center");
   if(anchor)ro.observe(anchor);
   const webApp=window.Telegram?.WebApp;
   window.addEventListener("resize",measure);
@@ -236,9 +275,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   measure();
   const ro=new ResizeObserver(measure);
   ro.observe(bar);
-  bar.querySelectorAll(".pm-tab").forEach(button=>ro.observe(button));
   if(pages.current)ro.observe(pages.current);
-  return ()=>{ro.disconnect();stopTabs.current();};
+  // The bar has fixed dimensions; individual button observers can emit
+  // repeated compositor-invalidating measurements during font settling.
+  let cancelled=false;
+  void document.fonts.ready.then(()=>{if(!cancelled)measure();});
+  return ()=>{cancelled=true;ro.disconnect();stopTabs.current();};
  },[motionActive,paintTabs]);
  const chooseTab=useCallback((newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
@@ -310,7 +352,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(!g.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
     if(Math.abs(dx)>Math.abs(dy)*1.18)g.axis=g.inPages?"x":"native";
-    else g.axis=(dy>0?(g.scrollTop<=1&&g.origin<expandedY.current-.5):g.origin>collapsedY.current+.5)?"y":"native";
+    else g.axis=(dy>0?(g.scrollTop<=1&&g.origin<=expandedY.current+28):
+    g.origin>collapsedY.current+.5)?"y":"native";
    }
    if(g.axis==="native")return;
    if(g.blocking&&e.cancelable)e.preventDefault();
@@ -320,7 +363,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    frame=requestAnimationFrame(()=>{
     frame=null;
     if(g.axis==="x")paintTabs(g.index,dx);
-    else paintSheet(g.origin+dy,true);
+    else {
+     const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
+     paintSheet(raw>expandedY.current?
+      expandedY.current+28*(1-Math.exp(-extra/48)):raw,true);
+    }
    });
   };
   const finish=(e:TouchEvent,cancelled:boolean)=>{
@@ -333,7 +380,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
      Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
     clickBlocked.current=performance.now()+260;chooseTab(next);
    }else if(g.axis==="y"){
-    if(!cancelled)paintSheet(g.origin+dy,true);
+    if(!cancelled){
+      const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
+      paintSheet(raw>expandedY.current?
+       expandedY.current+28*(1-Math.exp(-extra/48)):raw,true);
+     }
     const velocity=performance.now()-g.lastTime<90?g.velocity:0;
     const threshold=Math.min(90,Math.max(65,(expandedY.current-collapsedY.current)*.2));
     const commit=g.down?(dy>threshold||velocity>.65):(dy< -threshold||velocity<-.65);
@@ -364,6 +415,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    pane.removeEventListener("touchcancel",cancel);
   };
  },[motionActive,paintSheet,paintTabs,settleSheet,chooseTab]);
+ useLayoutEffect(()=>{
+  if(!registerRouteGestureCancel)return;
+  const cancel=()=>{
+   photoSwipe.current=null;tabSwipe.current=null;
+   cancelSheetGesture.current();
+   stopSheet.current();stopTabs.current();
+   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
+  };
+  registerRouteGestureCancel(cancel);
+  return ()=>registerRouteGestureCancel(null);
+ },[registerRouteGestureCancel]);
  const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
  const openAvatar=()=>{
   if(view.profile.activeBlik){setBlikOpen(true);return;}
@@ -377,10 +439,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
+    <div className="pm-photo-motion" ref={photoMotion}>
     {photos.length?<div className="pm-photo-track" ref={photoTrack}>
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
+     </div>
      <div className="pm-photo-blur" ref={blurLayer} aria-hidden="true">
       {current&&<PhotoImage photo={current} alt="" loading="eager"/>}
      </div>
@@ -397,7 +461,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    <div className="pm-profile-sheet" ref={sheet} onClickCapture={e=>{
     if(performance.now()<clickBlocked.current){e.preventDefault();e.stopPropagation();}
    }}>
-    <button type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsed)}
+    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsedRef.current)}
       tabIndex={collapsed?-1:0} aria-label={collapsed?"Потянуть панель вниз":"Развернуть анкету"}><span/></button>
     <div className="pm-identity">
      <div className="pm-identity-core">
@@ -405,7 +469,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
        <h2>{nameLine} {view.profile.premium&&<span className="pm-premium">◆</span>}{view.profile.verified&&<ShieldCheck size={19} aria-label="Подтверждён"/>}</h2>
        <p className="pm-identity-location">{location}</p>
       </div>
-      {current&&<button type="button" className={"pm-mini-avatar"+(view.profile.activeBlik?" has-blik":"")}
+      {current&&<button ref={miniAvatar} type="button" className={"pm-mini-avatar"+(view.profile.activeBlik?" has-blik":"")}
          onClick={openAvatar} tabIndex={collapsed?0:-1} aria-hidden={!collapsed}
          aria-label={view.profile.activeBlik?"Открыть активный блик":"Раскрыть фото профиля"}>
          <PhotoImage photo={current} alt="" loading="eager"/>

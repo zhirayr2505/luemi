@@ -14,6 +14,7 @@ import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter} from "./model";
 import {DiscoveryFilters} from "./Filters";
 import {DiscoveryInterestsSheet} from "./InterestsSheet";
 import {ProfileMaster} from "./ProfileMaster";
+import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {GlobalHeader} from "./GlobalHeader";
 import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
@@ -50,12 +51,13 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const registerProfileBack=useCallback((handler:(()=>boolean)|null)=>{profileBackRef.current=handler;},[]);
  const ownProfile=useMemo(()=>fromLocalDraft(draft,photos),[draft,photos]);
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
+ const [personOpen,setPersonOpen]=useState<string|null>(null);
  // Prepare Nearby when For You becomes current or Nearby is selected; keep it mounted thereafter.
  const [nearbyPrepared,setNearbyPrepared]=useState(false);
  // Prewarm Nearby only after For You's first pager transition, during an idle
  // interval. A direct first visit to Nearby still mounts synchronously.
  useEffect(()=>{
-  if(nearbyPrepared||discoveryTab!=="for-you"||mainTab!=="discover")return;
+  if(nearbyPrepared||discoveryTab!=="for-you"||mainTab!=="discover"||personOpen)return;
   let cancelled=false;
   let idleId:number|null=null;
   const timer=window.setTimeout(()=>{
@@ -69,7 +71,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    cancelled=true;window.clearTimeout(timer);
    if(idleId!==null&&"cancelIdleCallback" in window)window.cancelIdleCallback(idleId);
   };
- },[nearbyPrepared,discoveryTab,mainTab]);
+ },[nearbyPrepared,discoveryTab,mainTab,personOpen]);
  const gesture=useRef<Gesture|null>(null);
  const clickBlockUntil=useRef(0);
  const pages=useRef<HTMLDivElement>(null);
@@ -80,7 +82,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
- const [personOpen,setPersonOpen]=useState<string|null>(null);
  const [interestOpen,setInterestOpen]=useState<string|null>(null);
  const [forYouCollection,setForYouCollection]=useState<CollectionId|"best"|null>(null);
  const [forYouSettings,setForYouSettings]=useState(false);
@@ -97,6 +98,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const globalHeader=useRef<HeaderMotion>(null);
  const reportProfileMotion=useCallback((progress:number,dragging:boolean)=>globalHeader.current?.setProfileProgress(progress,dragging),[]);
  const profileMode=mainTab==="profile"||!!selectedPerson;
+ const backgroundHeaderMode=mainTab==="profile"?"profile":"browse";
  const savedScroll=useRef({"for-you":0,nearby:0});
  const reportForYouScroll=useCallback((top:number)=>{
    savedScroll.current["for-you"]=top;
@@ -291,9 +293,11 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
- return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"} data-profile-from-feed={androidWebView&&selectedPerson&&mainTab==="discover"&&discoveryTab==="feed"?"true":"false"} data-profile-mode={profileMode?"true":"false"}>
+ return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"}
+   data-profile-renderer={androidWebView?"android":"standard"}
+   data-profile-mode={profileMode?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>
-   <GlobalHeader ref={globalHeader} mode={profileMode?"profile":"browse"} theme={theme}
+   <GlobalHeader ref={globalHeader} mode={backgroundHeaderMode} theme={theme}
      onTheme={onTheme} onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
     />
    <div className="discovery-main-panels">
@@ -360,9 +364,9 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
      <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
        {profilePrepared&&<ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"&&!selectedPerson} onMotionProgress={reportProfileMotion}/>}
      </section>
-   {selectedPerson&&<ProfileMaster data={fromDemoPerson(selectedPerson)} mode="visitor" key={selectedPerson.id}
-     onClose={()=>setPersonOpen(null)} registerBack={registerVisitorBack} onMotionProgress={reportProfileMotion}/>}
    </div>
+   {selectedPerson&&<VisitorProfileRoute key={selectedPerson.id} data={fromDemoPerson(selectedPerson)}
+     theme={theme} onTheme={onTheme} onExit={()=>setPersonOpen(null)} registerBack={registerVisitorBack}/>}
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
        className={"discovery-nav-item"+(mainTab===value?" active":"")}
