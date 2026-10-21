@@ -93,6 +93,7 @@ jobs:
             exit 1
           fi
           node "$script"
+          node scripts/rem-01a-browser-regression.mjs
       - name: Preserve browser screenshots and server diagnostics
         if: always()
         continue-on-error: true
@@ -101,5 +102,6 @@ jobs:
           name: luemi-stage03g-visual-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             qa-artifacts/rem-00c/**/*.png
+            qa-artifacts/rem-01a/**/*.png
             /tmp/luemi-vite-qa.log
           if-no-files-found: error
