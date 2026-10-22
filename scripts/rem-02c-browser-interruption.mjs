@@ -107,6 +107,40 @@ try{
  const diagonal=await scan(browseTrack);
  near(diagonal.x,before.x,1);
  pass("vertical-dominant diagonal preserves native owner, browse pixels unchanged");
+ // Both physical pager limits: outward swipes retain their own page, no wrap.
+ for(const edge of [{index:0,dx:70},{index:2,dx:-70}]){
+  await top.nth(edge.index).click();await sleep(355);
+  await page.mouse.move(bx,by);await page.mouse.down();
+  await page.mouse.move(bx+edge.dx,by,{steps:5});await page.mouse.up();
+  await sleep(340);
+  assert.equal(await top.nth(edge.index).getAttribute("aria-selected"),"true");
+  near((await scan(browseTrack)).x,-edge.index*box.width,1);
+ }
+ pass("first/last browse pager edges never wrap; terminal DOM position ≤1px");
+ // Slow below-threshold horizontal motion does not switch; a larger slow
+ // motion does. Both cases use exact original .18 distance / .55 velocity.
+ await top.first().click();await sleep(350);
+ await page.mouse.move(bx,by);await page.mouse.down();
+ await page.mouse.move(bx-22,by,{steps:7});await sleep(245);await page.mouse.up();
+ await sleep(340);
+ assert.equal(await top.first().getAttribute("aria-selected"),"true");
+ await page.mouse.move(bx,by);await page.mouse.down();
+ await page.mouse.move(bx-110,by,{steps:8});await sleep(270);await page.mouse.up();
+ await sleep(345);
+ assert.equal(await top.nth(1).getAttribute("aria-selected"),"true");
+ near((await scan(browseTrack)).x,-box.width,1);
+ pass("slow swipes preserve original distance threshold; first small tap stays and larger drag commits once");
+ // Cancellation must not leave a second active RAF or a stale semantic tab.
+ await top.first().click();await sleep(355);
+ await page.mouse.move(bx,by);await page.mouse.down();
+ await page.mouse.move(bx-95,by,{steps:6});
+ await page.locator(".discovery-top-tabs").evaluate(el=>el.dispatchEvent(
+  new PointerEvent("pointercancel",{bubbles:true,cancelable:true,pointerId:1,pointerType:"mouse",isPrimary:true})
+ ));
+ await page.mouse.up();await sleep(345);
+ assert.equal(await top.first().getAttribute("aria-selected"),"true");
+ near((await scan(browseTrack)).x,0,1);
+ pass("real DOM pointercancel is terminal and settles without double page commit");
  // Real CDP touch on scrolled page content: a passive-start horizontal-looking
  // diagonal must remain native; no competing JS pages.scrollLeft write.
  await page.getByRole("button",{name:"Профиль",exact:true}).click();
