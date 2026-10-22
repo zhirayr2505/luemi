@@ -316,6 +316,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    g.width=hero.current?.clientWidth||g.width;
    g.index=fractionalTrack(photoTrack.current,g.width,activePhoto);
    if(photoTrack.current){
+    // The exact capture frame is inspectable by real Chromium gesture QA.
+    photoTrack.current.dataset.motionFrozenX=String(-g.index*g.width);
     photoTrack.current.style.transition="none";
     setTransform(g.index);
    }
