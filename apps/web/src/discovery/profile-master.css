@@ -52,6 +52,17 @@
 .pm-viewer-menu{display:flex;flex-direction:column;gap:4px;width:100%;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0;background:#23202e}
 .pm-viewer .pm-viewer-menu button{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;height:46px;padding:0 14px;font-size:14px;text-align:left;border-radius:12px;background:#302c3a;border:0}
 .pm-viewer .pm-viewer-menu button:last-child{justify-content:center;margin-top:6px;background:#393442}
+/* REM-03A resource state: keeps the approved full-screen geometry intact. */
+.pm-viewer-media-status{
+ position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:14px;
+ color:rgba(255,255,255,.84);font-size:13px;text-align:center;
+ pointer-events:none;
+}
+.pm-viewer .pm-viewer-media-status .pm-viewer-retry{
+ pointer-events:auto;width:auto;height:38px;padding:0 16px;border-radius:20px;
+ font-size:13px;
+}
 .pm-viewer-message{position:absolute;left:20px;right:20px;bottom:88px;z-index:8;text-align:center;padding:11px 13px;border-radius:14px;color:#fff;background:rgba(61,47,75,.94);font-size:12px;line-height:1.5}
 
 /* Preview is a full content panel under the same persistent header, not a second app chrome. */
