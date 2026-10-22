@@ -1,4 +1,4 @@
-import {useLayoutEffect,useRef} from "react";
+import {memo,useLayoutEffect,useRef} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {ProfileMaster} from "./ProfileMaster";
 import {GlobalHeader} from "./GlobalHeader";
@@ -24,7 +24,7 @@ const CLOSE_DURATION=230;
 const EASING="cubic-bezier(.2,.82,.24,1)";
 
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
-export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Props){
+export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Props){
  const route=useRef<HTMLDivElement>(null);
  const motionAuthority=useRef(createProfileMotionAuthority());
  const gestures=useRef(new GestureArbiter()).current;
@@ -287,4 +287,4 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
    <GlobalHeader ref={header} mode="profile" theme={theme} onTheme={onTheme}
      onFilters={()=>{}} onSaved={()=>{}}/>
   </div>;
-}
+});
