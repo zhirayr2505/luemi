@@ -60,7 +60,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  if(!gestureArbiter.current)gestureArbiter.current=new GestureArbiter();
  const runner=useRef<GeometryMotion|null>(null);
  if(!runner.current||runner.current.isDisposed())
-  runner.current=new GeometryMotion("hero",()=>performance.now(),requestAnimationFrame,cancelAnimationFrame,0);
+  runner.current=new GeometryMotion("hero",()=>performance.now(),cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),0);
  const surfaceOwner=useRef<MotionController|null>(null);
  if(!surfaceOwner.current||surfaceOwner.current.snapshot().disposed)
   surfaceOwner.current=new MotionController("route",scheduler);
@@ -151,7 +151,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(!outer||!layer)return;
   // React StrictMode may run setup again after a provisional cleanup.
   if(!runner.current||runner.current.isDisposed())
-   runner.current=new GeometryMotion("hero",()=>performance.now(),requestAnimationFrame,cancelAnimationFrame,0);
+   runner.current=new GeometryMotion("hero",()=>performance.now(),cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),0);
   if(!surfaceOwner.current||surfaceOwner.current.snapshot().disposed)
    surfaceOwner.current=new MotionController("route",scheduler);
   if(!gestureArbiter.current)gestureArbiter.current=new GestureArbiter();
