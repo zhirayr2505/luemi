@@ -44,6 +44,11 @@ export class GeometryMotion {
   return a.from+(a.target-a.from)*bounded(advanced,0,1);
  }
  private easing:Easing|null=null;
+ /** Visible pixels per millisecond from the very same unchanged easing curve. */
+ private velocityAt(now:number):number{
+  if(!this.active)return 0;
+  return (this.evaluate(now+.5)-this.evaluate(now-.5));
+ }
  snapshot():GeometryMotionSnapshot{
   const a=this.active,now=this.clock();
   const remaining=a?Math.max(0,a.remaining-(now-a.start)):this.frozen?.remaining??0;
@@ -51,7 +56,7 @@ export class GeometryMotion {
    current:a?this.evaluate(now):this.current,target:a?.target??this.current,
    from:a?.from??this.current,revision:this.revision,
    elapsed:a?a.duration-remaining:0,remaining,duration:a?.duration??this.frozen?.duration??0,
-   velocity:a?.velocity??0,generation:this.controller.snapshot().generation};
+   velocity:a?this.velocityAt(now):0,generation:this.controller.snapshot().generation};
  }
  /** Sample at the actual frame boundary, not the last RAF write. */
  sample():number{return this.active?this.evaluate(this.clock()):this.current;}
@@ -108,7 +113,7 @@ export class GeometryMotion {
    this.frozen?.progress??0;
   const callbacks=a?{paint:a.paint,commit:a.commit}:this.frozen?
    {paint:this.frozen.paint,commit:this.frozen.commit}:null;
-  const velocity=a?(value-this.current)/Math.max(1,now-a.start):0;
+  const velocity=a?this.velocityAt(now):0;
   this.stopFrame();this.active=null;this.current=value;this.revision=revision;
   this.controller.rebase(revision,value,target);
   if(!callbacks)return;
