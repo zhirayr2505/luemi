@@ -19,7 +19,9 @@ assert.ok(app.includes("settleDrag(target);")&&app.includes("if(target!==tabInde
  "pager paints the new target once, and only after exclusive motion/gesture cancellation");
 assert.ok(style.includes(".discovery-page-track.is-settling,.discovery-tab-underline.is-settling"),"GPU hint scoped to track settle only");
 assert.ok(app.includes('event.propertyName==="transform"')&&app.includes("finishPagerSettle()"),"remove compositor hint on real transitionend");
-assert.ok(app.includes("window.setTimeout(finishPagerSettle,380)"),"WebView fallback for missed transition end");
+assert.ok(app.includes("},380)")&&app.includes("finishPagerSettle(token)")&&
+ app.includes("browseMotion.current.owns(token)")&&app.includes("window.setTimeout(()=>finishPagerSettle(token),80)"),
+ "WebView fallback retains original 380ms budget, one tokenized terminal commit and checks computed endpoint");
 assert.ok(app.includes("if(bounded===2)setNearbyPrepared(true)")&&app.includes("requestIdleCallback"),
  "For You's first critical frame does not synchronously mount Nearby");
 assert.ok(near.includes("const pageSize=8")&&near.includes("IntersectionObserver"),"Nearby pagination intact");
