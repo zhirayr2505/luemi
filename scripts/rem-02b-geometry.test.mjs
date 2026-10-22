@@ -27,6 +27,8 @@ for(const percent of [.25,.5,.9]){
  f.motion.start(385,46,335,[.22,.79,.22,1],v=>pixels.y=v,()=>commits.push(f.clock()));
  f.advance(335*percent);
  const before=f.motion.sample();
+ const speed=f.motion.snapshot().velocity;
+ assert.ok(Number.isFinite(speed)&&speed<0,"settling velocity must reflect actual live easing derivative");
  close(pixels.y,before,1);
  const left=335*(1-percent);
  f.motion.rebase(1,before+7,60);
