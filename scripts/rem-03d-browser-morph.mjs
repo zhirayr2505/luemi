@@ -89,6 +89,17 @@ try{
  await close();
  pass("photo navigation invalidates old miniature identity: close falls back safely");
  await media("change","reset");await setSource("hero");
+ await open("qa-alpha");await waitReady("qa-alpha");await sleep(280);
+ const stage=await viewer().locator(".pm-viewer-stage").boundingBox();assert.ok(stage);
+ const startX=stage.x+stage.width*.78,startY=stage.y+stage.height*.4;
+ await page.mouse.move(startX,startY);await page.mouse.down();
+ await page.mouse.move(startX-190,startY,{steps:12});await page.mouse.up();
+ await waitReady("qa-beta");await sleep(250);
+ await viewer().getByRole("button",{name:"Закрыть просмотр"}).click();
+ assert.equal((await state()).active,"false","swiped-to neighbor cannot return to opening miniature");
+ await viewer().waitFor({state:"detached",timeout:3500});
+ pass("real pointer swipe invalidates original photoId source and closes through fade");
+ await media("change","reset");await setSource("hero");
  await open("qa-alpha");await waitReady("qa-alpha");await sleep(265);
  await media("change","reorder");await page.waitForFunction(()=>
   document.querySelector(".pm-viewer-image")?.dataset.photoId==="qa-alpha");
@@ -112,6 +123,17 @@ try{
  assert.equal((await state()).active,"false","offscreen must not morph");
  await close();await setSource("hero");
  pass("source outside viewport skips morph and restores image");
+ await setSource("hero");await open("qa-alpha");
+ assert.equal((await state()).active,"true");
+ await page.locator(".pm-qa-photo-source").evaluate(el=>{
+  el.style.transform="translateY(36px)";
+  document.dispatchEvent(new Event("scroll",{bubbles:true}));
+ });
+ await page.waitForFunction(()=>document.querySelector(".pm-viewer")?.dataset.morphActive==="false");
+ await viewer().getByRole("button",{name:"Закрыть просмотр"}).click();
+ await viewer().waitFor({state:"detached",timeout:3500});
+ await page.locator(".pm-qa-photo-source").evaluate(el=>{el.style.transform="";});
+ pass("moving background source cancels inconsistent morph without a hidden photo leak");
  await open("qa-alpha");await waitReady("qa-alpha");await sleep(265);
  await page.setViewportSize({width:430,height:780});await sleep(60);
  assert.equal(Math.round((await state()).height),780);
