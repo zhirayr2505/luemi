@@ -27,7 +27,8 @@ export function projectProfile(profile:ProfileMasterData,mode:ProfileMode):Profi
  // from visitor/public-preview; those remain strictly published-only.
  const localSelf=mode==="local-self-preview"&&profile.source==="local-draft";
  const photos=owner?profile.photos.filter(p=>p.status!=="hidden"&&p.status!=="rejected"):
-  localSelf?profile.photos.filter(p=>p.status==="draft"&&p.src.trim().length>0):publicOnly(profile.photos);
+  localSelf?profile.photos.filter(p=>p.status==="draft"&&p.src.trim().length>0):
+  profile.source==="local-draft"?[]:publicOnly(profile.photos);
  // Explicit allow-list is intentional: runtime input may contain future private fields.
  // Public and visitor projection must not carry unpublished records; the explicit
  // local-self-preview capability receives ONLY source=local-draft ready photo records.
