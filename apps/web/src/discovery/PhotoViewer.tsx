@@ -104,8 +104,10 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   }
  },[photos,photoId,committedPhotoId]);
  useEffect(()=>{
+  // If the last accessible photo disappears while its menu is open, first
+  // dismiss the menu and then terminate the viewer on the following render.
   if(photoId===null)handlers.current.close();
- },[photoId]);
+ },[photoId,menu]);
  // The preloader's decode is only a cache hint. The actual displayed img
  // must decode under the same generation/key before its pixels are exposed.
  useEffect(()=>{
