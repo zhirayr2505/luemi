@@ -10,6 +10,7 @@ import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
 import {BlikViewer} from "./BlikViewer";
 import {animateValue} from "../ui/motion";
+import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
 import "./profile-master.css";
 
 type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
@@ -72,6 +73,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const [blikOpen,setBlikOpen]=useState(false);
  const [collapsed,setCollapsed]=useState(false);
  const [mainId,setMainId]=useState<string|null>(null);
+ // 02A: exclusive paint-path ownership only. Gestures and physics unchanged.
+ const motionAuthority=useRef(createProfileMotionAuthority());
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]);
  const photos=useMemo(()=>{
   if(!mainId)return view.photos;
@@ -105,11 +108,14 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const tabSelectionRef=useRef<TabId>(tab);
  tabSelectionRef.current=tab;
  const setTransform=(idx:number,delta=0)=>{
-  if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
+  motionAuthority.current.run("hero",PROFILE_MOTION_WRITER_TABLE.hero,()=>{
+   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
+  });
  };
  // The stationary viewport owns vertical scroll. The rounded surface itself
  // has no transform, animated top, paint containment or clipping ancestor.
  const paintSheet=useCallback((offset:number,dragging=false)=>{
+  motionAuthority.current.run("sheet",PROFILE_MOTION_WRITER_TABLE.sheet,()=>{
   // Normal motion uses the stationary native scroll viewport. Only the
   // limited elastic pull moves the white surface; portrait pixels don't warp.
   const elastic=Math.max(0,Math.min(28,offset-expandedY.current));
@@ -142,6 +148,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    grab.current.style.pointerEvents=progress>.98?"none":"auto";
   }
   if(motionActive)motionCallback.current?.(progress,dragging);
+  });
  },[motionActive]);
  const settleSheet=useCallback((next:boolean)=>{
   stopSheet.current();
@@ -246,6 +253,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(g.axis==="x")clickBlocked.current=performance.now()+280;
  };
  const paintTabs=useCallback((i:number,dx=0)=>{
+  motionAuthority.current.run("tabs",PROFILE_MOTION_WRITER_TABLE.tabs,()=>{
   const position=Math.max(0,Math.min(4,i-dx/Math.max(1,tabViewport.current)));
   if(pages.current)pages.current.scrollLeft=position*tabViewport.current;
   const indicator=ink.current,metrics=tabMetrics.current;
@@ -255,6 +263,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const x=first.left+(other.left-first.left)*ratio;
   const width=first.width+(other.width-first.width)*ratio;
   indicator.style.transform=`translate3d(${x}px,0,0) scaleX(${width/Math.max(1,metrics[0].width)})`;
+  });
  },[]);
  useLayoutEffect(()=>{
   const bar=tabBar.current;
