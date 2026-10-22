@@ -161,7 +161,7 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
    if(g.source==="photo"){
     const track=route.current?.querySelector<HTMLElement>(".pm-photo-track");
     const hero=route.current?.querySelector<HTMLElement>(".pm-hero");
-    if(fractionalTrack(track,hero?.clientWidth??0,0)>.015)return;
+    if(fractionalTrack(track??null,hero?.clientWidth??0,0)>.015)return;
    }
    if(g.source==="pages"){
     const page=route.current?.querySelector<HTMLElement>(".pm-pages");
