@@ -81,7 +81,7 @@ try{
  await close();await change("count-6");await open("qa-alpha");await ready("qa-alpha");
  let snap=await state();
  assert.equal(snap.slides,3);assert.equal(snap.width,393);
- let {x,y,points}=await drag(134);
+ const {points}=await drag(134);
  for(const p of points)assert.ok(Math.abs(p.x+p.dx)<=1,
   "interior track displacement must be <= 1 CSS px; "+JSON.stringify(p));
  const next=page.locator(".pm-viewer-slide[data-slot=next] img");
@@ -95,8 +95,7 @@ try{
  assert.ok(Math.abs((await state()).currentX)<1,"recenter leaves arrival at same viewport point");
  pass("6 photos, real DOM 1:1 measured CSS matrix, progressive neighbor, keyed node preserved through no-jump recenter");
 
- const start=await state();
- const small=await drag(55);
+ await drag(55);
  await page.mouse.up();await sleep(270);
  assert.equal((await state()).id,"qa-beta","short drag rolls back");
  assert.ok(Math.abs((await state()).offset)<1);
