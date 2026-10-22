@@ -79,9 +79,16 @@ try{
  await visitor().getByRole("button",{name:"Развернуть анкету"}).click();
  await sleep(95);
  await routeDrag(47,{hold:225});
+ const early=await visitor().evaluate(el=>({
+  x:new DOMMatrixReadOnly(getComputedStyle(el).transform).m41,
+  width:el.clientWidth,transform:getComputedStyle(el).transform
+ }));
+ console.log("REM02D_DIAG_FIRST_ROLLBACK",JSON.stringify(early));
  await sleep(410);
- assert.equal(await visitor().count(),1);
+ assert.equal(await visitor().count(),1,"route must not close for below-threshold release");
  near(await translation(),0,1);
+ await sleep(380);
+ assert.equal(await visitor().count(),1,"no delayed stale route exit after rollback");
  await settleSheet();
  pass("sheet settling -> route claim -> rollback restores exact child endpoint");
  // After collapse, the tab page can be settling independently: restore its
