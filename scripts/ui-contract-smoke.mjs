@@ -76,8 +76,10 @@ assertCheck("one stationary global LUEMI header with exactly three expandable co
  && globalHeader.includes("lh-tool-saved")&&!discovery.includes("discovery-header-controls")
  && globalHeaderCss.includes(".lh-island")&&globalHeaderCss.includes(".lh-tools"));
 assertCheck("moving page and underline share a compositor-driven gesture",
- discovery.includes("paintDrag(shift)")&&discovery.includes("requestAnimationFrame")&&discovery.includes("pageTrack.current")
- && discovery.includes("underline.current")&&!discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
+ discovery.includes("browseMotion.current.schedulePaint(g.token,trackX")&&
+ discovery.includes("paintBrowse(trackX,inkX)")&&discovery.includes("frozenBrowse()")&&
+ discovery.includes("motionAuthority.current.run(\"browse\"")&&discovery.includes("pageTrack.current")&&
+ discovery.includes("underline.current")&&!discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
 assertCheck("entire profile and action controls share a single keyed card",read("apps/web/src/discovery/FeedCard.tsx").includes('className="discovery-card-overlay"')
  && read("apps/web/src/discovery/FeedCard.tsx").includes('className="discovery-actions"')
  && discovery.includes('<FeedCard person={person}')&&discovery.includes('<FeedCard person={profiles[feed.index+1]}'));
