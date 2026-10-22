@@ -58,7 +58,12 @@ try{
  s=await state();assert.equal(s.active,"false");
  assert.equal(s.sourceVisible,"visible");assert.equal(s.mainVisible,"visible");
  assert.equal(s.focus,"Закрыть просмотр");
- await close();
+ await viewer().getByRole("button",{name:"Закрыть просмотр"}).click();
+ const closing=await state();
+ assert.equal(closing.active,"true","reverse source morph must use same valid thumbnail");
+ assert.equal(closing.sourceVisible,"hidden");
+ assert.ok(Math.abs(closing.m11-closing.m22)<1e-5,"closing image must never distort");
+ await viewer().waitFor({state:"detached",timeout:3500});
  assert.equal(await page.evaluate(()=>document.body.style.overflow),originalOverflow);
  assert.equal(await source().evaluate(el=>getComputedStyle(el).visibility),"visible");
  assert.equal(await page.locator(".pm-qa-focus").evaluate(el=>document.activeElement===el),true);
@@ -117,6 +122,43 @@ try{
  s=await state();assert.equal(s.pvTop,"22px");assert.equal(s.pvBottom,"15px");
  assert.equal(s.id,before.id);
  pass("portal live theme + safe/content-area max insets, 63px preserved; no viewer remount on update");
+ // Browser fallback above was exercised without Telegram SDK. Now introduce
+ // an isolated explicit Telegram safe/content overlap fixture; no double sum.
+ await page.evaluate(()=>{
+  const callbacks={};
+  window.Telegram={WebApp:{
+   safeAreaInset:{top:21,right:12,bottom:18,left:8},
+   contentSafeAreaInset:{top:48,right:4,bottom:34,left:9},
+   onEvent:(name,cb)=>(callbacks[name]??=[]).push(cb),
+   offEvent:(name,cb)=>callbacks[name]=(callbacks[name]??[]).filter(x=>x!==cb)
+  }};
+  window.__qaSafeEmit=()=>{for(const cb of callbacks.contentSafeAreaChanged??[])cb();};
+ });
+ await viewer().getByRole("button",{name:"Закрыть просмотр"}).click();
+ await viewer().waitFor({state:"detached",timeout:3500});
+ await open("qa-alpha");
+ await page.waitForFunction(()=>document.querySelector(".pm-viewer")?.style.getPropertyValue("--pv-safe-top")==="48px");
+ s=await state();assert.equal(s.pvBottom,"34px");
+ await page.evaluate(()=>{
+  window.Telegram.WebApp.contentSafeAreaInset.top=53;
+  window.__qaSafeEmit();
+ });
+ await page.waitForFunction(()=>document.querySelector(".pm-viewer")?.style.getPropertyValue("--pv-safe-top")==="53px");
+ const routeBefore=await state();
+ await page.evaluate(()=>{
+  const shell=document.querySelector(".luemi-shell");
+  shell.style.setProperty("--viewport-offset-top","9px");
+  shell.style.setProperty("--app-height","731px");
+ });
+ await page.waitForFunction(()=>parseFloat(document.querySelector(".pm-viewer")?.style.getPropertyValue("--pv-visual-bottom"))>50);
+ s=await state();assert.equal(s.id,routeBefore.id);
+ assert.ok(parseFloat(s.bottomPadding)>=20+34+80,"Telegram fullscreen exit keeps menu above visible frame");
+ await page.evaluate(()=>{
+  const shell=document.querySelector(".luemi-shell");
+  shell.style.setProperty("--viewport-offset-top","0px");
+  shell.style.setProperty("--app-height","852px");
+ });
+ pass("Telegram safe/content max overlap and fullscreen exit change insets live without reopening viewer");
  const prevCount=(await media("stats")).closeCommits;
  await viewer().getByRole("button",{name:"Действия с фото"}).click();
  assert.equal(await viewer().getByRole("menu").isVisible(),true);
@@ -131,6 +173,15 @@ try{
  await open("qa-alpha");await waitReady("qa-alpha");await sleep(270);
  await close();assert.equal(await media("back"),false);
  pass("Escape, X, no duplicate close, StrictMode reopen preserved");
+ await page.setViewportSize({width:852,height:393});await open("qa-alpha");await waitReady("qa-alpha");
+ await sleep(70);
+ const rotated=await state();
+ assert.ok(rotated.height>350&&rotated.height<450);
+ assert.ok(parseFloat(rotated.topPadding)>=63,"landscape controls retain 63px base");
+ const closeBounds=await viewer().getByRole("button",{name:"Закрыть просмотр"}).boundingBox();
+ assert.ok(closeBounds&&closeBounds.y>=0&&closeBounds.y+closeBounds.height<393);
+ await close();await page.setViewportSize({width:393,height:852});
+ pass("landscape viewer controls remain inside actual viewport, no source morph stretch");
  await open("qa-alpha");
  await page.evaluate(()=>{
   Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"hidden"});
