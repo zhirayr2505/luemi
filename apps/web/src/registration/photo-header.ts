@@ -76,7 +76,7 @@ function webp(data:DataView):PhotoHeader{
  const riffSize=u32(data,4,true);
  if(riffSize<22||riffSize+8<30)throw corrupt();
  const kind=u32(data,12,true),size=u32(data,16,true);
- if(size>riffSize-12||size+20>data.byteLength)throw corrupt();
+ if(size>riffSize-12)throw corrupt();
  let width=0,height=0;
  if(kind===0x58385056){ // VP8X
   if(size<10)throw corrupt();
@@ -109,5 +109,9 @@ export async function inspectPhoto(file:Blob,signal:AbortSignal):Promise<PhotoHe
    !["image/jpeg","image/png","image/webp"].includes(file.type))throw corrupt();
  const bytes=await file.slice(0,MAX_HEADER_BYTES).arrayBuffer();
  signal.throwIfAborted();
+ if(file.type==="image/webp"&&bytes.byteLength>=12){
+  const riff=new DataView(bytes);
+  if(riff.getUint32(0,true)===0x46464952&&riff.getUint32(4,true)+8>file.size)throw corrupt();
+ }
  return parsePhotoHeader(bytes,file.type);
 }
