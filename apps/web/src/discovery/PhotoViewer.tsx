@@ -13,10 +13,13 @@ import {GeometryMotion} from "./geometry-motion";
 import {GestureArbiter} from "../ui/gesture-arbiter";
 import {MotionController} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
+import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixTransform,
+ localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
 
 type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:ViewerSource|null;contextId:string;
  onClose:()=>void;onMain?:(id:string)=>boolean|Promise<boolean>;
  registerBack?:(handler:(()=>boolean)|null)=>void};
+type EndPointer={pointerId:number;clientX:number;clientY:number;currentTarget:HTMLDivElement};
 type Gesture={id:number;x:number;y:number;startX:number;startY:number;time:number;
  axis:""|"x"|"y";origin:number;serial:number|null;startPhotoId:string|null;
  pinch:boolean;captured:boolean;samples:{x:number;t:number}[];interruptedTarget:number|null};
@@ -45,10 +48,13 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const track=useRef<HTMLDivElement>(null);
  const image=useRef<HTMLImageElement|null>(null);
  const pointer=useRef(new Map<number,{x:number;y:number}>());
+ const pendingCaptureLoss=useRef(new Map<number,number>());
  const gesture=useRef<Gesture|null>(null);
- const zoom=useRef(1);
+ const mediaPose=useRef<MediaTransform>(identityMedia());
+ const pinchSession=useRef(false);
+ const pinch=useRef<PinchAnchor|null>(null);
+ const pan=useRef<{id:number;at:Point;pose:MediaTransform}|null>(null);
  const closing=useRef(false);
- const pinch=useRef<{distance:number;cx:number;cy:number}|null>(null);
  const sourceRef=useRef(source);
  const contextRef=useRef(contextId);contextRef.current=contextId;
  const width=useRef(viewportWidth(window.innerWidth));
@@ -70,6 +76,93 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const handlers=useRef<{close:(force?:boolean)=>void;navigate:(target:NavigationRequest,origin:NavigationOrigin)=>boolean}>({
   close:()=>{},navigate:()=>false
  });
+ const viewSize=()=>({
+  width:Math.max(1,surface.current?.clientWidth??stage.current?.clientWidth??width.current),
+  height:Math.max(1,surface.current?.clientHeight??stage.current?.clientHeight??window.innerHeight)
+ });
+ const naturalSize=()=>({
+  width:Math.max(1,image.current?.naturalWidth??1),
+  height:Math.max(1,image.current?.naturalHeight??1)
+ });
+ const localPoint=(p:Point):Point=>{
+  const box=(surface.current??stage.current)?.getBoundingClientRect();
+  return box?localFromClient(p,box,viewSize()):p;
+ };
+ const paintMedia=(pose:MediaTransform)=>{
+  mediaPose.current=pose;
+  if(image.current){
+   image.current.style.transition="none";
+   image.current.style.transform="translate3d("+pose.x+"px,"+pose.y+"px,0) scale("+pose.scale+")";
+  }
+ };
+ const freezeMedia=():MediaTransform=>{
+  if(!image.current)return mediaPose.current;
+  const pose=matrixTransform(getComputedStyle(image.current).transform);
+  paintMedia(pose);
+  return pose;
+ };
+ const resetMedia=(animate=true)=>{
+  mediaPose.current=identityMedia();
+  if(image.current){
+   image.current.style.transition=animate?
+    "transform 230ms cubic-bezier(.2,.75,.2,1)":"none";
+   image.current.style.transform="none";
+  }
+ };
+ const restoreVertical=(animate=true)=>{
+  if(surface.current){
+   surface.current.style.transition=animate?
+    "transform 230ms cubic-bezier(.2,.75,.2,1)":"none";
+   surface.current.style.transform="none";
+  }
+  if(stage.current){
+   stage.current.style.transition=animate?
+    "opacity 230ms cubic-bezier(.2,.75,.2,1)":"none";
+   stage.current.style.opacity="1";
+  }
+ };
+ const releasePointers=()=>{
+  for(const timer of pendingCaptureLoss.current.values())clearTimeout(timer);
+  pendingCaptureLoss.current.clear();
+  gesture.current=null;pointer.current.clear();
+  pinch.current=null;pan.current=null;pinchSession.current=false;
+  gestureArbiter.current?.cancel();
+ };
+ const cancelPinchSession=(animate=false)=>{
+  const wasTracking=pinchSession.current||pointer.current.size>0;
+  releasePointers();resetMedia(animate);restoreVertical(animate);
+  if(wasTracking&&!closing.current&&Math.abs(trackX.current)>.1){
+   const motion=runner.current;
+   const frozen=motion?.cancel()??trackX.current;
+   // A cancelled pinch cannot leave a half-visible neighboring slide.
+   motion?.start(frozen,0,duration,easing,paintTrack,()=>{},geometryRevision.current);
+  }
+  if(!closing.current&&phase.current!=="settling")phase.current="idle";
+ };
+ const beginPair=(target:HTMLElement)=>{
+  const ids=[...pointer.current.keys()];
+  if(ids.length<2)return;
+  const first=ids[0],second=ids[1];
+  const a=pointer.current.get(first),b=pointer.current.get(second);
+  if(!a||!b)return;
+  gestureArbiter.current?.secondFinger();
+  if(gesture.current)gesture.current.pinch=true;
+  pinchSession.current=true;pan.current=null;
+  const pose=freezeMedia();
+  pinch.current=beginPinch([first,second],localPoint(a),localPoint(b),pose,viewSize());
+  phase.current="pinching";
+  for(const id of [first,second]){
+   try{if(!target.hasPointerCapture(id))target.setPointerCapture(id);}catch{/* WebView fallback */}
+  }
+ };
+ // Effects attach just once; their handlers resolve the current render's
+ // geometry and gesture callbacks via this stable ref (StrictMode-safe).
+ const lifecycleActions=useRef<{
+  cancel:(animate?:boolean)=>void;
+  freeze:()=>MediaTransform;
+  local:(point:Point)=>Point;
+  reset:()=>void;
+ }>({cancel:()=>{},freeze:identityMedia,local:point=>point,reset:()=>{}});
  const paintTrack=(x:number)=>{
   trackX.current=x;
   if(track.current){
@@ -164,7 +257,12 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   layer.style.transition="none";layer.style.transform=terminal?"none":morphTransform();
   phase.current=terminal?"closing":"opening";
   surfaceHandler.current(terminal);
+  const captureLossTimers=pendingCaptureLoss.current;
   return ()=>{
+   // Capture this exact timer map at effect setup; no stale ref cleanup and
+   // no timer can terminate a later StrictMode viewer generation.
+   for(const timer of captureLossTimers.values())clearTimeout(timer);
+   captureLossTimers.clear();
    runner.current?.dispose();gestureArbiter.current?.dispose();
    surfaceOwner.current?.dispose();
   };
@@ -220,6 +318,13 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   });
  },[]);
  const currentRef=useCallback((node:HTMLImageElement|null)=>{image.current=node;},[]);
+ // A switched/removed/resource-replaced photo must not inherit the previous
+ // DOM image's zoom matrix or live pointer ownership.
+ const activeMediaKey=show?resourceIdentity(show):null;
+ useLayoutEffect(()=>{
+  if(pinchSession.current)lifecycleActions.current.cancel(false);
+  else mediaPose.current=identityMedia();
+ },[activeMediaKey]);
  const imageError=useCallback((photo:ProfilePhoto)=>{
   mediaRef.current?.reportDisplayFailure(photo,"display-decode-failed");
  },[]);
@@ -240,12 +345,38 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     paintTrack(x);
     if(gesture.current){gesture.current.origin=resizeOffset(gesture.current.origin,old,measured);}
    }
+   if(mediaPose.current.scale>1.0001||pinchSession.current){
+    const view=viewSize(),natural=naturalSize();
+    const pose=clampPan(lifecycleActions.current.freeze(),view,natural);
+    // Keep the legacy maxY assertion meaningful, now based on the actual
+    // object-fit:contain content height, not a viewport-only approximation.
+    const fit=contentFit(view,natural);
+    const maxY=Math.max(0,(fit.height*pose.scale-view.height)/2);
+    paintMedia({...pose,y:Math.max(-maxY,Math.min(maxY,pose.y))});
+    if(pinch.current){
+     const [a,b]=pinch.current.ids.map(id=>pointer.current.get(id));
+     if(a&&b)pinch.current=beginPinch(pinch.current.ids,
+      lifecycleActions.current.local(a),lifecycleActions.current.local(b),pose,viewSize());
+    }
+    if(pan.current){
+     const at=pointer.current.get(pan.current.id);
+     if(at)pan.current={id:pan.current.id,at:lifecycleActions.current.local(at),pose};
+    }
+   }
   });
   observer.observe(outer);return ()=>observer.disconnect();
  },[]);
+ useEffect(()=>{
+  // Window focus loss is not necessarily accompanied by visibilitychange.
+  // End only this viewer's pointer session, using the same lifecycle contract.
+  const blur=()=>lifecycleActions.current.cancel(false);
+  window.addEventListener("blur",blur);
+  return ()=>window.removeEventListener("blur",blur);
+ },[]);
  useEffect(()=>bindMotionLifecycle(()=>{
-  const g=gesture.current;
-  if(g){pointer.current.clear();gesture.current=null;gestureArbiter.current?.cancel();}
+  // Background and Telegram deactivation terminate all active pointer IDs;
+  // a late lostpointercapture cannot reopen a previously disposed session.
+  lifecycleActions.current.cancel(false);
   const motion=runner.current;
   if(motion?.snapshot().phase==="settling")motion.suspend();
   const stageNode=stage.current,layer=surface.current;
@@ -258,7 +389,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    const snap=motion.snapshot();
    motion.reveal(snap.revision+1,snap.current,snap.target);
   }
-  if(gesture.current===null&&phase.current==="draggingY")resetGesture();
+  if(gesture.current===null&&phase.current==="draggingY")lifecycleActions.current.reset();
  }),[]);
  const settle=(target:0|-1|1,settleMs=duration)=>{
   const motion=runner.current;if(!motion||closing.current)return;
@@ -280,10 +411,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   },geometryRevision.current);
  };
  const requestNavigation=(request:NavigationRequest,_origin:NavigationOrigin):boolean=>{
-  if(closing.current)return false;
+  if(closing.current||pinchSession.current)return false;
   const selected=latest.current,target=navigatePhoto(selected.photoId,selected.photos,request);
   if(!target||target===selected.photoId)return false;
   if(gesture.current){gesture.current=null;pointer.current.clear();gestureArbiter.current?.cancel();}
+  resetMedia(false);
   const nextIndex=photoIndex(selected.photos,target),shift=nextIndex-selected.index;
   if(Math.abs(shift)!==1){
    // Nonadjacent internal navigation is a non-animated, explicit rebase.
@@ -297,8 +429,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(menu&&!force){setMenu(false);return;}
   if(closing.current)return;
   closing.current=true;phase.current="closing";
-  gesture.current=null;pointer.current.clear();pinch.current=null;zoom.current=1;
-  gestureArbiter.current?.cancel();
+  releasePointers();resetMedia(false);
   const motion=runner.current;
   if(motion){
    const x=motion.cancel();
@@ -313,18 +444,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   registerBack(handle);return ()=>registerBack(null);
  },[registerBack]);
  const resetGesture=()=>{
-  gesture.current=null;pointer.current.clear();pinch.current=null;zoom.current=1;
-  gestureArbiter.current?.cancel();
-  if(image.current){image.current.style.transition="transform 230ms cubic-bezier(.2,.75,.2,1)";image.current.style.transform="none";}
-  if(surface.current){
-   surface.current.style.transition="transform 230ms cubic-bezier(.2,.75,.2,1)";
-   surface.current.style.transform="none";
-  }
-  if(stage.current){
-   stage.current.style.transition="opacity 230ms cubic-bezier(.2,.75,.2,1)";
-   stage.current.style.opacity="1";
-  }
+  releasePointers();resetMedia(true);restoreVertical(true);
   if(!closing.current&&phase.current!=="settling")phase.current="idle";
+ };
+ lifecycleActions.current={
+  cancel:cancelPinchSession,freeze:freezeMedia,local:localPoint,reset:resetGesture
  };
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(closing.current||menu||(e.pointerType==="mouse"&&e.button!==0))return;
@@ -334,6 +458,15 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    const snap=runner.current?.snapshot();
    const frozen=runner.current?.cancel()??trackX.current;
    paintTrack(frozen);
+   const pose=freezeMedia();
+   if(pose.scale>1.0001){
+    // Re-touch mid media-reset transition: sample current DOMMatrix.
+    pinchSession.current=true;phase.current="pinching";
+    pan.current={id:e.pointerId,at:localPoint({x:e.clientX,y:e.clientY}),pose};
+    gesture.current=null;gestureArbiter.current?.cancel();
+    try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* WebView fallback */}
+    return;
+   }
    const serial=gestureArbiter.current?.begin("pointer",e.pointerId,"hero")??null;
    gesture.current={id:e.pointerId,x:e.clientX,y:e.clientY,
     startX:e.clientX,startY:e.clientY,time:performance.now(),axis:"",
@@ -341,53 +474,48 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     samples:[{x:e.clientX,t:performance.now()}],
     interruptedTarget:snap?.phase==="settling"?snap.target:null};
   }else if(pointer.current.size===2){
-   gestureArbiter.current?.secondFinger();
-   const g=gesture.current;if(g)g.pinch=true;
-   const [a,b]=[...pointer.current.values()];
-   pinch.current={distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),
-    cx:(a.x+b.x)/2,cy:(a.y+b.y)/2};phase.current="pinching";
+   const wasVertical=gesture.current?.axis==="y";
+   beginPair(e.currentTarget);
+   if(wasVertical)restoreVertical(true);
   }
+  // Third+ contact is recorded for deterministic release, never selected
+  // over the first two while those active pair IDs both exist.
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(!pointer.current.has(e.pointerId)||closing.current||menu)return;
   pointer.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  const active=[...pointer.current.values()];
-  if(active.length>=2){
-   const g=gesture.current;if(g)g.pinch=true;
-   const origin=pinch.current;if(!origin)return;
-   const dist=Math.hypot(active[0].x-active[1].x,active[0].y-active[1].y);
-   const cx=(active[0].x+active[1].x)/2,cy=(active[0].y+active[1].y)/2;
-   zoom.current=Math.max(1,Math.min(3.2,dist/origin.distance));
-   const maxX=(zoom.current-1)*innerWidth/2,maxY=(zoom.current-1)*innerHeight/2;
-   const x=Math.max(-maxX,Math.min(maxX,cx-origin.cx)),y=Math.max(-maxY,Math.min(maxY,cy-origin.cy));
-   if(image.current){
-    image.current.style.transition="none";
-    image.current.style.transform="translate3d("+x+"px,"+y+"px,0) scale("+zoom.current+")";
+  if(pinchSession.current){
+   if(e.cancelable)e.preventDefault();
+   const pair=pinch.current;
+   if(pair){
+    const a=pointer.current.get(pair.ids[0]),b=pointer.current.get(pair.ids[1]);
+    if(a&&b&&(pair.ids[0]===e.pointerId||pair.ids[1]===e.pointerId))
+     paintMedia(pinchFrame(pair,localPoint(a),localPoint(b),viewSize(),naturalSize()));
+   }else if(pan.current?.id===e.pointerId){
+    const current=localPoint({x:e.clientX,y:e.clientY}),anchor=pan.current;
+    paintMedia(panFrame(anchor.pose,{x:current.x-anchor.at.x,y:current.y-anchor.at.y},
+     viewSize(),naturalSize()));
    }
    return;
   }
-  const g=gesture.current;if(!g||g.id!==e.pointerId||g.pinch)return;
+  const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   const dx=e.clientX-g.startX,dy=e.clientY-g.startY;
   if(!g.axis){
    if(Math.max(Math.abs(dx),Math.abs(dy))<9)return;
    g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";
    if(g.serial!==null)gestureArbiter.current?.claim("hero",g.serial);
-   // One capture per session: repeated capture calls can race implicit
-   // release and UA pointercancel while the next finger session begins.
    try{e.currentTarget.setPointerCapture(e.pointerId);g.captured=true;}catch{/* WebView fallback */}
    phase.current=g.axis==="x"?"draggingX":"draggingY";
    if(g.axis==="y"&&Math.abs(trackX.current)>.1)settle(0);
   }
   if(e.cancelable)e.preventDefault();
   if(g.axis==="x"){
-   // No global 0.55 factor; CSS-pixel equality until first/last edge overscroll.
    const hasPrev=latest.current.index>0,hasNext=latest.current.index<latest.current.photos.length-1;
-   const x=allowedOffset(g.origin+dx,width.current,hasPrev,hasNext);
-   paintTrack(x);
+   paintTrack(allowedOffset(g.origin+dx,width.current,hasPrev,hasNext));
    const t=performance.now();g.samples.push({x:e.clientX,t});
    if(g.samples.length>10)g.samples.shift();
   }else{
-   // Same vertical baseline; surface and opacity write in the same pointer frame.
+   // LU-03: same pointer frame writes surface Y and correlated opacity.
    const y=dy*.78,scale=Math.max(.85,1-Math.abs(dy)/2300);
    if(surface.current){
     surface.current.style.transition="none";
@@ -399,27 +527,49 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    }
   }
  };
- const finish=(e:ReactPointerEvent<HTMLDivElement>,cancel:boolean)=>{
+ const finish=(e:EndPointer,cancel:boolean)=>{
+  const deferred=pendingCaptureLoss.current.get(e.pointerId);
+  if(deferred!==undefined){clearTimeout(deferred);pendingCaptureLoss.current.delete(e.pointerId);}
   if(!pointer.current.has(e.pointerId))return;
   pointer.current.delete(e.pointerId);
-  const g=gesture.current;if(pointer.current.size)return;
-  pinch.current=null;
+  if(pinchSession.current){
+   // A pair cannot change merely because a third finger is added; it is
+   // replaced only when an existing pair member actually releases.
+   if(pinch.current?.ids.includes(e.pointerId))pinch.current=null;
+   if(pointer.current.size>=2){
+    if(!pinch.current)beginPair(e.currentTarget);
+   }else if(pointer.current.size===1){
+    const [id,position]=[...pointer.current.entries()][0];
+    const pose=freezeMedia();
+    pan.current={id,at:localPoint(position),pose};
+    phase.current="pinching";
+    try{if(!e.currentTarget.hasPointerCapture(id))e.currentTarget.setPointerCapture(id);}catch{/* WebView fallback */}
+   }else{
+    releasePointers();resetMedia(!cancel);restoreVertical(!cancel);
+    if(Math.abs(trackX.current)>.1)settle(0);
+    else if(!closing.current)phase.current="idle";
+   }
+   return;
+  }
+  const g=gesture.current;
+  if(pointer.current.size)return;
   if(!g){resetGesture();return;}
   gesture.current=null;gestureArbiter.current?.cancel();
-  if(g.pinch||zoom.current!==1){resetGesture();return;}
   const dx=e.clientX-g.startX,dy=e.clientY-g.startY;
   const elapsed=Math.max(1,performance.now()-g.time);
-  if(!cancel&&g.axis==="y"&&(Math.abs(dy)>110||Math.abs(dy)/elapsed>.8)){requestClose();return;}
+  // Vertical dismiss is allowed only in pure 1x single-pointer mode.
+  if(!cancel&&g.axis==="y"&&mediaPose.current.scale<=1.0001&&
+   (Math.abs(dy)>110||Math.abs(dy)/elapsed>.8)){
+   requestClose();return;
+  }
   if(g.axis==="x"){
    const t=performance.now(),samples=[...g.samples,{x:e.clientX,t}];
    const v=recentVelocity(samples);
-   const x=trackX.current;
-   const target=cancel?0:destination(x,width.current,v,latest.current.index>0,
-    latest.current.index<latest.current.photos.length-1);
-   const continueTarget=g.axis==="x"&&Math.abs(dx)<8&&g.interruptedTarget!==null?
+   const target=cancel?0:destination(trackX.current,width.current,v,
+    latest.current.index>0,latest.current.index<latest.current.photos.length-1);
+   const continueTarget=!cancel&&Math.abs(dx)<8&&g.interruptedTarget!==null?
     (g.interruptedTarget<0?-1:g.interruptedTarget>0?1:0):target;
-   settle(continueTarget);
-   return;
+   settle(continueTarget);return;
   }
   if(Math.abs(trackX.current)>.1)settle(0);
   resetGesture();
@@ -444,14 +594,29 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    kind==="link"?"Постоянная ссылка пока недоступна":"Публикация и отправка ссылки пока недоступны");
  };
  const onLostPointer=(e:ReactPointerEvent<HTMLDivElement>)=>{
-  if(pointer.current.has(e.pointerId))finish(e,true);
+  if(!pointer.current.has(e.pointerId))return;
+  if(e.buttons!==0){finish(e,true);return;}
+  // Chromium may dispatch lostpointercapture BEFORE the ordinary pointerup
+  // for the same released touch. A synchronous cancel would erase the legal
+  // 110px/.8px-ms vertical exit (also the normal x settle).
+  // Defer terminal classification one browser task. pointerup clears the
+  // timer; genuinely lost capture still cancels and cannot commit a swipe.
+  const id=e.pointerId,x=e.clientX,y=e.clientY,target=e.currentTarget;
+  if(pendingCaptureLoss.current.has(id))return;
+  const timer=window.setTimeout(()=>{
+   pendingCaptureLoss.current.delete(id);
+   if(pointer.current.has(id)&&!closing.current)
+    finish({pointerId:id,clientX:x,clientY:y,currentTarget:target},true);
+  },0);
+  pendingCaptureLoss.current.set(id,timer);
  };
  const phaseKey=phase.current;
  return createPortal(<section className="pm-viewer" role="dialog" aria-modal="true" aria-label="Просмотр фото"
    data-motion-phase={phaseKey} data-semantic-commits={commitCount.current}>
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}
-   onPointerUp={e=>finish(e,false)} onPointerCancel={e=>onLostPointer(e)}
-   onLostPointerCapture={onLostPointer}>
+   onPointerUp={e=>finish(e,false)} onPointerCancel={e=>finish(e,true)}
+   onLostPointerCapture={onLostPointer}
+   onTouchCancel={()=>cancelPinchSession(false)}>
    <div className="pm-viewer-surface" ref={surface}>
     <div className="pm-viewer-track" ref={track} data-offset="0">
      {slots.map(slot=><PhotoViewerSlide key={slot.photo?resourceIdentity(slot.photo):"empty-"+slot.role}

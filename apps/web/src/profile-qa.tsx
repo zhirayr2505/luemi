@@ -55,6 +55,20 @@ function MediaQA(){
     {id:"qa-epsilon",src:qaSvg("EPSILON","#ae8b42"),status:"published" as const,addedAt:"2026-05-06"},
     {id:"qa-zeta",src:qaSvg("ZETA","#7b65ad"),status:"published" as const,addedAt:"2026-06-07"}
    ];
+   if(operation==="aspect-portrait"||operation==="aspect-landscape"||
+    operation==="aspect-panorama"||operation==="aspect-tall"){
+    const sizes:Record<string,[number,number]>={
+     "aspect-portrait":[720,960],"aspect-landscape":[1600,650],
+     "aspect-panorama":[3000,300],"aspect-tall":[480,1500]
+    };
+    const [w,h]=sizes[operation];
+    const src="data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(
+     '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+
+     '" viewBox="0 0 '+w+' '+h+'"><rect width="'+w+'" height="'+h+
+     '" fill="#ad83d4"/><circle cx="'+(w/2)+'" cy="'+(h/2)+
+     '" r="'+Math.min(w,h)/7+'" fill="white"/></svg>');
+    return fixturePhotos.map(p=>p.id==="qa-alpha"?{...p,src,version:operation}:p);
+   }
    if(operation==="reset")return [...fixturePhotos];
    if(operation==="reorder")return [...current].reverse();
    if(operation==="remove-current"){
