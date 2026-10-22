@@ -37,8 +37,15 @@ export class GestureArbiter {
   // Pointer and Touch callbacks from one physical touch join the same logical
   // candidate instead of opening two independently painting gesture sessions.
   if(this.identity===null){
+   // React StrictMode performs a provisional effect cleanup; reconstruct the
+   // isolated REM-02A controller on the next real input, never revive its old
+   // disposed generation or a stale callback from the first mount.
+   if(this.motion.snapshot().disposed)this.motion=new MotionController("route",{
+    frame:cb=>requestAnimationFrame(cb),cancelFrame:id=>cancelAnimationFrame(id)
+   });
    this.session++;this.identity=id;this.claimed=null;this.candidates.clear();
-   this.blockedNative=false;this.motion.begin(0);
+   this.blockedNative=false;
+   if(!this.motion.begin(0))return null;
   }else if(this.claimed!==null)return null;
   this.candidates.add(owner);
   void kind;
