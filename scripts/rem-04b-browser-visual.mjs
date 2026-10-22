@@ -67,10 +67,24 @@ try{
  await delay(55);await snapshot("theme-during-hero-settle",true);
  await page.getByRole("button",{name:"Знакомства",exact:true}).click();
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
- await page.locator(".fy-tile-photo").first().click();
+ // Set a real inner-scroll offset before overlay; a programmatic DOM click
+ // avoids Playwright's scroll-into-view altering that measured offset.
+ await page.locator(".fy-scroll").evaluate(el=>{el.scrollTop=132;});
+ await delay(45);
+ const savedScroll=await page.locator(".fy-scroll").evaluate(el=>el.scrollTop);
+ assert.ok(savedScroll>1,"ForYou fixture actually scrolls");
+ await page.locator(".fy-tile-photo").first().evaluate(el=>el.click());
  await page.locator(".discovery-visitor-route").waitFor();
  await delay(390);const covered=await snapshot("for-you-covered");
  assert.equal(covered.browseVisibility,"hidden");
+ // REM-03B/03D nested Viewer should leave the same hero/blur gallery and
+ // underlay untouched when its own modal returns to profile.
+ await page.locator(".discovery-visitor-route .pm-photo-slide").first().evaluate(el=>el.click());
+ await page.locator(".pm-viewer").waitFor();
+ await page.keyboard.press("Escape");
+ await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
+ const viewerReturn=await snapshot("viewer-return-to-profile",true);
+ assert.ok(viewerReturn.route,"Viewer Back must not close the containing profile");
  assert.equal(covered.browseDisplay,"flex","mounted underlay remains layout alive");
  await page.evaluate(()=>document.querySelector(".discovery-browse-panel .discovery-deck-layer")?.classList.add("deck-entering"));
  const leak=await snapshot("deck-entering-under-covered-route");
@@ -83,8 +97,22 @@ try{
  assert.equal(returned.route,false);
  assert.equal(await page.evaluate(()=>window.__rem04bBrowse===document.querySelector(".discovery-browse-panel")),true,
    "underlay DOM is not remounted");
+ near(await page.locator(".fy-scroll").evaluate(el=>el.scrollTop),savedScroll,1);
  await page.getByRole("tab",{name:"Рядом",exact:true}).click();await delay(80);
  await snapshot("nearby-mounted");
+ await page.locator(".nb-photo").first().evaluate(el=>el.click());
+ await page.locator(".discovery-visitor-route").waitFor();await delay(370);
+ const nearbyCovered=await snapshot("nearby-covered");
+ assert.equal(nearbyCovered.browseVisibility,"hidden");
+ await page.evaluate(()=>window.__luemiQaBack?.());
+ await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3200});
+ await page.getByRole("tab",{name:"Лента",exact:true}).click();
+ await page.locator(".discovery-deck-layer.deck-active .discovery-name-button").first().evaluate(el=>el.click());
+ await page.locator(".discovery-visitor-route").waitFor();await delay(350);
+ const feedCovered=await snapshot("feed-covered");
+ assert.equal(feedCovered.browseVisibility,"hidden");
+ await page.evaluate(()=>window.__luemiQaBack?.());
+ await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3200});
  await page.evaluate(()=>{
   const app=document.querySelector(".discovery-app");app?.setAttribute("data-profile-overlay","true");
   app?.removeAttribute("data-route-revealing");
