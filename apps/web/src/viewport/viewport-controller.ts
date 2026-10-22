@@ -112,11 +112,15 @@ export function installViewportController(
  };
  const schedule=(reason:ViewportReason)=>{
   if(disposed)return;
-  // A same-frame stable Telegram callback must not be overwritten by generic
-  // visualViewport resize; orientation changes take precedence over staleness.
-  if(reason==="telegram-stable"||reason==="orientation"||
-     pendingReason!=="telegram-stable"&&pendingReason!=="orientation")
-   pendingReason=reason;
+  // Real window/orientation changes rebase stale stableHeight. Browser VisualViewport
+  // also emits resize for the same event; it must not steal the window reason.
+  // Confirmed Telegram stable measurements remain authoritative for that frame.
+  const priority:Record<ViewportReason,number>={
+   initial:0,focus:1,blur:1,"safe-area":1,visual:2,
+   "telegram-moving":3,fullscreen:4,window:5,orientation:6,
+   "telegram-stable":7
+  };
+  if(priority[reason]>=priority[pendingReason])pendingReason=reason;
   if(frame===null)frame=win.requestAnimationFrame(flush);
  };
  update("initial");
