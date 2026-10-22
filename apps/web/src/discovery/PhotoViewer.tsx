@@ -56,6 +56,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const openSourceRect=useRef<Rect|null>(null);
  const openedBy=useRef<HTMLElement|null>(null);
  const morphActive=useRef(false);
+ const morphGeometry=useRef<CropMorph|null>(null);
  const track=useRef<HTMLDivElement>(null);
  const image=useRef<HTMLImageElement|null>(null);
  const pointer=useRef(new Map<number,{x:number;y:number}>());
@@ -187,6 +188,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  };
  const clearMorph=()=>{
   morphActive.current=false;
+  morphGeometry.current=null;
   if(modal.current)modal.current.dataset.morphActive="false";
   if(morphClip.current){morphClip.current.style.display="none";morphClip.current.style.transition="none";}
   if(morphImage.current)morphImage.current.style.transition="none";
@@ -236,6 +238,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    {left:0,top:0,width:window.innerWidth,height:window.innerHeight});
   clip.style.display="block";clip.style.opacity="1";
   morphActive.current=true;
+  morphGeometry.current=m;
   if(modal.current)modal.current.dataset.morphActive="true";
   visibleSource.current={node:el,visibility:el.style.visibility};
   el.style.visibility="hidden";
@@ -270,7 +273,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const doMorph=prepareMorph(closingPhase);
   const target="none";
   const clip=morphClip.current,pixels=morphImage.current;
-  const geom=doMorph?getMorph(closingPhase)?.geometry:null;
+  const geom=doMorph?morphGeometry.current:null;
   const clipFinal=geom?insetClip(geom.sourceClip,
    {left:0,top:0,width:window.innerWidth,height:window.innerHeight}):"inset(0px)";
   const completed=()=>{
@@ -338,6 +341,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   surfaceHandler.current(terminal);
   const captureLossTimers=pendingCaptureLoss.current;
   return ()=>{
+   clearMorph();
    // Capture this exact timer map at effect setup; no stale ref cleanup and
    // no timer can terminate a later StrictMode viewer generation.
    for(const timer of captureLossTimers.values())clearTimeout(timer);
@@ -348,7 +352,24 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  },[]);
  useEffect(()=>{
   const key=(event:KeyboardEvent)=>{
-   if(event.key==="Escape"){event.stopImmediatePropagation();event.preventDefault();handlers.current.close();}
+   if(event.key==="Tab"){
+    const root=modal.current;
+    if(!root)return;
+    const items=[...root.querySelectorAll<HTMLElement>(
+     'button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')]
+     .filter(node=>node.getClientRects().length>0);
+    if(!items.length){event.preventDefault();root.focus({preventScroll:true});return;}
+    const first=items[0],last=items[items.length-1];
+    if(event.shiftKey&&(document.activeElement===first||!root.contains(document.activeElement))){
+     event.preventDefault();last.focus({preventScroll:true});
+    }else if(!event.shiftKey&&(document.activeElement===last||!root.contains(document.activeElement))){
+     event.preventDefault();first.focus({preventScroll:true});
+    }
+    return;
+   }
+   if(event.key==="Escape"||(event.key==="Backspace"&&
+     !(document.activeElement instanceof HTMLInputElement)&&
+     !(document.activeElement instanceof HTMLTextAreaElement))){event.stopImmediatePropagation();event.preventDefault();handlers.current.close();}
    else if(event.key==="ArrowRight"||event.key==="ArrowLeft"){
     event.stopImmediatePropagation();event.preventDefault();
     handlers.current.navigate({direction:event.key==="ArrowRight"?1:-1},"keyboard");
@@ -356,6 +377,22 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   };
   window.addEventListener("keydown",key,true);
   return ()=>window.removeEventListener("keydown",key,true);
+ },[]);
+ useLayoutEffect(()=>{
+  const root=modal.current;
+  if(!root)return;
+  if(openedBy.current===null&&document.activeElement instanceof HTMLElement&&
+   !root.contains(document.activeElement))openedBy.current=document.activeElement;
+  closeButton.current?.focus({preventScroll:true});
+  const detach=bindViewerViewport(root);
+  return ()=>{
+   detach();
+   clearMorph();
+   // Closing the portal must restore the exact focus owner, with no document
+   // scroll into view or route/profile navigation.
+   const previous=openedBy.current;
+   if(previous?.isConnected)previous.focus({preventScroll:true});
+  };
  },[]);
  useEffect(()=>{
   const old=document.body.style.overflow;document.body.style.overflow="hidden";
@@ -456,6 +493,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   // Background and Telegram deactivation terminate all active pointer IDs;
   // a late lostpointercapture cannot reopen a previously disposed session.
   lifecycleActions.current.cancel(false);
+  // Background invalidates source hit-testing; unhide the miniature so the
+  // retained profile never leaks a hidden original if this viewer is discarded.
+  clearMorph();
   const motion=runner.current;
   if(motion?.snapshot().phase==="settling")motion.suspend();
   const stageNode=stage.current,layer=surface.current;
@@ -690,7 +730,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   pendingCaptureLoss.current.set(id,timer);
  };
  const phaseKey=phase.current;
- return createPortal(<section className="pm-viewer" role="dialog" aria-modal="true" aria-label="Просмотр фото"
+ return createPortal(<section className="pm-viewer" ref={modal} role="dialog" aria-modal="true" aria-label="Просмотр фото"
+   tabIndex={-1} data-morph-active="false"
    data-motion-phase={phaseKey} data-semantic-commits={commitCount.current}>
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}
    onPointerUp={e=>finish(e,false)} onPointerCancel={e=>finish(e,true)}
@@ -711,9 +752,12 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
      </>:null}
    </div>}
   </div>
+  <div className="pm-viewer-morph-clip" ref={morphClip} aria-hidden="true">
+   <img className="pm-viewer-morph-image" ref={morphImage} alt="" draggable={false}/>
+  </div>
   <header className="pm-viewer-top">
    <span className="pm-viewer-topspacer"/><span>{index>=0?index+1:0} / {photos.length}</span>
-   <button type="button" onClick={()=>handlers.current.close()} aria-label="Закрыть просмотр"><X size={22}/></button>
+   <button type="button" ref={closeButton} onClick={()=>handlers.current.close()} aria-label="Закрыть просмотр"><X size={22}/></button>
   </header>
   <footer className="pm-viewer-bottom">
    <span>{show?displayPhotoDate(show):"Дата не указана"}</span>
