@@ -17,7 +17,7 @@ export type ViewerInsets={insets:Insets;visualTop:number;visualBottom:number;the
 export function readViewerInsets(shell:HTMLElement|null,root:HTMLElement,
  snapshot:ViewportSnapshot|null=null):ViewerInsets{
  const style=shell?getComputedStyle(shell):null;
- const telegram=window.Telegram?.WebApp;
+ const telegram=window.Telegram?.WebApp as ({safeAreaInset?:Partial<Insets>;contentSafeAreaInset?:Partial<Insets>;onEvent?:(name:string,cb:()=>void)=>void;offEvent?:(name:string,cb:()=>void)=>void})|undefined;
  const insets=combineInsets(snapshot?.safeInsets??telegram?.safeAreaInset??zero,
   snapshot?.contentInsets??telegram?.contentSafeAreaInset??zero,
   {top:value(style?.getPropertyValue("--viewport-safe-top")??""),
