@@ -16,7 +16,7 @@ const sample=async label=>{
   const hero=p?.querySelector(".pm-hero"),track=p?.querySelector(".pm-photo-track");
   const motion=p?.querySelector(".pm-photo-motion"),blur=p?.querySelector(".pm-photo-blur");
   const clear=track?.querySelectorAll(".pm-photo-slide img")??[];
-  const b=blur?.querySelector("img");const s=hero?.getBoundingClientRect();
+  const b=blur?.querySelector("img");
   const t=track?new DOMMatrixReadOnly(getComputedStyle(track).transform):null;
   const scene=document.querySelector(".discovery-app"),browse=scene?.querySelector(".discovery-browse-panel");
   const descendant=browse?.querySelector(".deck-entering .photo-progress");
@@ -48,7 +48,7 @@ const sample=async label=>{
  if(label!=="initial")await page.screenshot({path:out+"/"+String(samples.length).padStart(2,"0")+"-"+label+".png"});
  return m;
 };
-const stopTrace=async()=>{try{await ctx.tracing.stop({path:out+"/trace.zip"});}catch{}};
+const stopTrace=async()=>{try{await ctx.tracing.stop({path:out+"/trace.zip"});}catch{/* trace may not have been started */}};
 try{
  await ctx.tracing.start({screenshots:true,snapshots:true,sources:false});
  await page.goto("http://127.0.0.1:5173/profile-qa.html",{waitUntil:"domcontentloaded"});
