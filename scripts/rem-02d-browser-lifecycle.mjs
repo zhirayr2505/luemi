@@ -46,9 +46,6 @@ const routeDrag=async(dx,{hold=200,cancel=false,lost=false}={})=>{
  const p=await point();
  await page.mouse.move(p.x,p.y);await page.mouse.down();
  await page.mouse.move(p.x+dx,p.y,{steps:7});
- if(dx>=150&&await visitor().count())console.log("REM02D_DIAG_INFLIGHT",JSON.stringify({
-  dx,liveX:await translation(),candidate:p
- }));
  await sleep(hold);
  if(lost)await visitor().evaluate(el=>el.dispatchEvent(
   new PointerEvent("lostpointercapture",{bubbles:true,pointerId:1,pointerType:"mouse",isPrimary:true})
@@ -103,11 +100,6 @@ try{
  await visitor().getByRole("button",{name:"Развернуть анкету"}).click();
  await sleep(95);
  await routeDrag(47,{hold:225});
- const early=await visitor().evaluate(el=>({
-  x:new DOMMatrixReadOnly(getComputedStyle(el).transform).m41,
-  width:el.clientWidth,transform:getComputedStyle(el).transform
- }));
- console.log("REM02D_DIAG_FIRST_ROLLBACK",JSON.stringify(early));
  await sleep(410);
  assert.equal(await visitor().count(),1,"route must not close for below-threshold release");
  near(await translation(),0,1);
@@ -165,18 +157,7 @@ try{
  await settleSheet();
  pass("background while sheet settling preserves target and resumes one child animation");
  // Route back successful close, then immediate reopen proves no stale cleanup callback.
- const closingPoint=await point();
- console.log("REM02D_DIAG_CLOSE_SURFACE",JSON.stringify(await page.evaluate(({x,y})=>{
-  const hit=document.elementFromPoint(x,y);
-  return {hit:hit?.className,hasSheet:!!hit?.closest(".pm-profile-sheet"),
-   viewport:{width:innerWidth,height:innerHeight},sheet:document.querySelector(".pm-dialog")?.dataset.sheetState};
- },closingPoint)));
  await routeDrag(180,{hold:20});
- if(await visitor().count())console.log("REM02D_DIAG_AFTER_CLOSE",JSON.stringify(await visitor().evaluate(el=>({
-  x:new DOMMatrixReadOnly(getComputedStyle(el).transform).m41,width:el.clientWidth,
-  lastEnd:el.dataset.rem02dLastEnd||null,
-  touchTarget:document.elementFromPoint(15,180)?.className
- }))));
  await sleep(420);assert.equal(await visitor().count(),0,"claimed route swipe must unmount once");
  await open();await sleep(390);
  near(await translation(),0,1);
