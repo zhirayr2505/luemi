@@ -37,7 +37,7 @@
 .pm-meta-item span{color:var(--subtle);font-size:12px}
 .pm-meta-item strong{font-size:13px;overflow-wrap:anywhere}
 .pm-viewer{position:fixed;inset:0;z-index:10000;overflow:hidden;isolation:isolate;background:#09080f;color:#fff;touch-action:none}
-.pm-viewer-stage{position:absolute;inset:0;overflow:hidden;touch-action:none;opacity:1;transition:opacity 240ms ease}
+.pm-viewer-stage{position:absolute;inset:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;opacity:1;transition:opacity 240ms ease}
 /* REM-03B: three independent viewport-width media slots. Track is the
    ONLY horizontal property writer; surface owns vertical/open/close; IMG owns zoom. */
 .pm-viewer-surface{position:absolute;inset:0;overflow:hidden;transform-origin:center;transform:none;will-change:transform}
