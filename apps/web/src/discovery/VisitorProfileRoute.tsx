@@ -9,6 +9,7 @@ import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import type {ProfileRouteMotionHandle} from "./ProfileMaster";
 import type {HeaderMotion} from "./GlobalHeader";
 import type {ProfileMasterData} from "./ProfileModel";
+import {QaProfiler} from "./qa-profiler";
 
 type Props={
  data:ProfileMasterData;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;
@@ -278,11 +279,11 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
     onPointerDownCapture={down} onPointerMoveCapture={move}
     onPointerUpCapture={e=>end(e)} onPointerCancelCapture={e=>end(e,true)}
     onLostPointerCapture={e=>{if(e.target===e.currentTarget)end(e,true);}}>
-   <ProfileMaster data={data} mode="visitor" onClose={close}
+   <QaProfiler id="ProfileMaster"><ProfileMaster data={data} mode="visitor" onClose={close}
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
      registerRouteGestureCancel={cb=>{cancelProfileGesture.current=cb;}}
-     onMotionProgress={reportMotion}/>
+     onMotionProgress={reportMotion}/></QaProfiler>
    <GlobalHeader ref={header} mode="profile" theme={theme} onTheme={onTheme}
      onFilters={()=>{}} onSaved={()=>{}}/>
   </div>;
