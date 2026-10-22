@@ -94,6 +94,7 @@ jobs:
             echo "Profile QA server did not become ready" >&2
             exit 1
           fi
+          node scripts/rem-03b-debug-close.mjs
           node "$script"
           node scripts/rem-01a-browser-regression.mjs
           node scripts/rem-01b-browser-regression.mjs
