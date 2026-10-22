@@ -666,7 +666,13 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    tabsSettling:tabsState?.phase==="settling"||tabsState?.phase==="suspended"
   };
   cancelSheetGesture.current();
+  const photoId=photoSwipe.current?.id,tabId=tabSwipe.current?.id;
   photoSwipe.current=null;tabSwipe.current=null;sheetDragActive.current=false;
+  // Lost native cancel events must not leave hidden pointer capture behind.
+  try{if(photoId!==undefined&&hero.current?.hasPointerCapture(photoId))
+   hero.current.releasePointerCapture(photoId);}catch{/* WebView capture may already be gone */}
+  try{if(tabId!==undefined&&pages.current?.hasPointerCapture(tabId))
+   pages.current.releasePointerCapture(tabId);}catch{/* implicit release */}
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   sheetRunner.current?.suspend();tabsRunner.current?.suspend();
   paintSheet(sheetValue,true);paintTabs(tabsValue);
