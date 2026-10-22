@@ -33,7 +33,7 @@ const landscape={width:3000,height:500};
 let t=math.clampPan({scale:3,x:3000,y:500},view,landscape);
 assert.equal(t.y,0,"short content axis must always remain centered");
 assert.ok(t.x>0&&t.x<3000);
-const portrait={width:500,height:2400};
+const portrait={width:300,height:2400};
 t=math.clampPan({scale:3,x:500,y:3000},view,portrait);
 assert.equal(t.x,0,"narrow portrait axis must remain centered even at 3x");
 const original={scale:2.1,x:23,y:-44};
