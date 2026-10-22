@@ -32,7 +32,7 @@ assert.equal(mod.destination(-393*.16,393,-.49,true,true),0);
 assert.equal(mod.destination(-393*.8,393,-.8,false,false),0,"no transition past boundaries");
 assert.equal(mod.destination(393*.8,393,.8,false,true),0);
 assert.equal(mod.destination(-393*.8,393,-.8,true,false),0);
-assert.equal(mod.resizeOffset(-393*.4,393,430),-172);
+assert.ok(Math.abs(mod.resizeOffset(-393*.4,393,430)+172)<1e-9,"viewport rebase preserves fractional pixel offset");
 assert.equal(mod.recenterOffset(-393,1,393),0);
 assert.equal(mod.recenterOffset(393,-1,393),0);
 const trace=[{x:0,t:0},{x:60,t:150},{x:60,t:200},{x:35,t:230},{x:5,t:245}];
