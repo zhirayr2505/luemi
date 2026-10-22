@@ -79,7 +79,7 @@ try{
  pass("portrait off-center pinch preserves actual DOMMatrix focal point under moving midpoint");
  const zoomed=s,commits=s.commits;
  // Remaining finger pans rather than starting horizontal navigation or dismiss.
- await send("touchEnd",[first]);
+ await send("touchEnd",[second]);
  const oneLeft=await state();
  first=p(11,first.x+30,first.y+29);await send("touchMove",[first]);
  s=await state();
@@ -99,13 +99,13 @@ try{
  await send("touchMove",[first,second,third]);s=await state();
  near(s.scale,beforeThird.scale,.02);near(s.tx,beforeThird.tx,.8);near(s.ty,beforeThird.ty,.8);
  // Third finger remains, active first is released; remaining pair safely rebases.
- await send("touchEnd",[second,third]);const afterPromote=await state();
+ await send("touchEnd",[first]);const afterPromote=await state();
  near(afterPromote.scale,beforeThird.scale,.02);
  second=p(13,330,530);await send("touchMove",[second,third]);s=await state();
  assert.ok(s.scale>=1&&s.scale<=3.2);bounds(s);
- await send("touchEnd",[third]);third=p(14,300,700);
+ await send("touchEnd",[second]);third=p(14,300,700);
  await send("touchMove",[third]);bounds(await state());
- await send("touchEnd",[]);await sleep(280);
+ await send("touchEnd",[third]);await sleep(280);
  s=await state();near(s.scale,1,.015);near(s.tx,0,.7);near(s.ty,0,.7);
  assert.equal(s.id,"qa-alpha");assert.equal(s.commits,commits);
  pass("1→2→1→2, third ignored while first pair intact, first-finger release, pan, final reset");
@@ -114,10 +114,10 @@ try{
  first=p(21,160,389);second=p(22,230,464);
  await send("touchStart",[first]);await send("touchStart",[first,second]);
  first=p(21,100,340);second=p(22,290,520);await send("touchMove",[first,second]);
- await send("touchEnd",[first]);const poseBefore=await state();
+ await send("touchEnd",[second]);const poseBefore=await state();
  first=p(21,116,375);await send("touchMove",[first]);const poseAfter=await state();
  assert.ok(Math.abs(poseAfter.tx-poseBefore.tx)+Math.abs(poseAfter.ty-poseBefore.ty)>2);
- await send("touchEnd",[]);await sleep(280);
+ await send("touchEnd",[first]);await sleep(280);
  near((await state()).scale,1,.02);
  pass("second finger released first: primary pointer continues pan, no geometry jump");
 
@@ -137,14 +137,14 @@ try{
    assert.ok(t.scale<=3.201&&t.scale>=1);
   }
   // Strong pan towards all borders cannot expose forbidden empty content.
-  await send("touchEnd",[first]);
+  await send("touchEnd",[second]);
   for(const d of [[-220,-270],[250,290],[-190,360],[300,-380]]){
    first=p(31,first.x+d[0],first.y+d[1]);
    // Browser pointer positions can leave viewport; alternate small in-bounds moves.
    if(first.x<1||first.x>391||first.y<1||first.y>850)continue;
    await send("touchMove",[first]);bounds(await state());
   }
-  await send("touchEnd",[]);await sleep(250);
+  await send("touchEnd",[first]);await sleep(250);
  }
  pass("portrait/landscape/panorama/tall: actual natural sizes and zoomed content rect bound pan on both axes");
 
@@ -154,11 +154,11 @@ try{
  await send("touchStart",[first]);await send("touchStart",[first,second]);
  first=p(41,100,342);second=p(42,305,545);await send("touchMove",[first,second]);
  const pre=await state();
- await send("touchEnd",[first]);
+ await send("touchEnd",[second]);
  first=p(41,60,600);await send("touchMove",[first]);
  s=await state();assert.equal(s.id,"qa-alpha");assert.equal(s.commits,pre.commits);
  assert.equal(s.open,true);
- await send("touchEnd",[]);await sleep(270);
+ await send("touchEnd",[first]);await sleep(270);
  pass("zoomed pan cannot switch neighbor or initiate vertical dismiss");
 
  // Viewport change while pointer session is active maintains safe fit bounds.
@@ -168,7 +168,7 @@ try{
  await page.setViewportSize({width:430,height:780});await sleep(80);
  s=await state();bounds(s);near(s.viewport[0],430,.5);
  first=p(51,104,355);second=p(52,292,525);await send("touchMove",[first,second]);
- bounds(await state());await send("touchEnd",[]);await sleep(260);
+ bounds(await state());await send("touchEnd",[first,second]);await sleep(260);
  pass("viewport resizing midpinch rebases actual content fit and pointer focal anchor");
  await page.setViewportSize({width:393,height:852});await sleep(65);
 
@@ -209,14 +209,14 @@ try{
  first=p(81,200,410);await send("touchStart",[first]);
  first=p(81,200,470);await send("touchMove",[first]);
  s=await state();assert.ok(s.surfaceY>10&&s.stageOpacity<1);
- await sleep(190);await send("touchEnd",[]);await sleep(260);
+ await sleep(190);await send("touchEnd",[first]);await sleep(260);
  s=await state();assert.equal(s.open,true);near(s.surfaceY,0,.9);near(s.stageOpacity,1,.03);
  assert.equal((await stats()).closeCommits,base);
  pass("cancelled vertical dismiss restores surface Y and opacity synchronously at 1x");
  // Preserve previously accepted either-direction vertical dismiss (upward).
  first=p(82,200,510);await send("touchStart",[first]);
  first=p(82,200,350);await send("touchMove",[first]);
- await send("touchEnd",[]);
+ await send("touchEnd",[first]);
  await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
  assert.equal((await stats()).closeCommits,base+1);
  await sleep(320);assert.equal((await stats()).closeCommits,base+1);
