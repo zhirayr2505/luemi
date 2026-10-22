@@ -9,8 +9,9 @@ import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
 import {BlikViewer} from "./BlikViewer";
-import {animateValue} from "../ui/motion";
-import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
+import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
+import {GeometryMotion} from "./geometry-motion";
+import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
 import "./profile-master.css";
 
 type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
@@ -22,7 +23,7 @@ type Props={
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
-type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number};
+type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number;lastX?:number;revision?:number};
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
  return <img src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
    onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
@@ -91,13 +92,19 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
  const tabMetrics=useRef<Array<{left:number;width:number}>>([]);
- const tabViewport=useRef(1);
+ const tabViewport=useRef(1),tabLastPosition=useRef(0);
  const dragFrame=useRef<number|null>(null);
  const photoSwipe=useRef<Swipe|null>(null),tabSwipe=useRef<Swipe|null>(null);
  const clickBlocked=useRef(0),expandedY=useRef(385),collapsedY=useRef(46),collapsedRef=useRef(false);
  const sheetY=useRef(385);
  const stopSheet=useRef<()=>void>(()=>{}),stopTabs=useRef<()=>void>(()=>{});
  const cancelSheetGesture=useRef<()=>void>(()=>{});
+ const rebaseSheetGesture=useRef<(relativeY:number,revision:number)=>void>(()=>{});
+ const rebaseTabsGesture=useRef<(position:number,revision:number)=>void>(()=>{});
+ const sheetRunner=useRef<GeometryMotion|null>(null),tabsRunner=useRef<GeometryMotion|null>(null);
+ const sheetRevision=useRef(0),tabsRevision=useRef(0);
+ const sheetIntent=useRef<boolean|null>(null),sheetRootTop=useRef<number|null>(null);
+ const sheetDragActive=useRef(false);
  const motionCallback=useRef(onMotionProgress);
  motionCallback.current=onMotionProgress;
  const motionActive=active&&!preview;
@@ -150,25 +157,44 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(motionActive)motionCallback.current?.(progress,dragging);
   });
  },[motionActive]);
+ const ensureSheetRunner=()=>{
+  if(!sheetRunner.current)sheetRunner.current=new GeometryMotion("sheet",()=>performance.now(),
+   cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),sheetY.current,sheetRevision.current);
+  return sheetRunner.current;
+ };
+ const ensureTabsRunner=()=>{
+  if(!tabsRunner.current)tabsRunner.current=new GeometryMotion("tabs",()=>performance.now(),
+   cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),
+   (pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current),tabsRevision.current);
+  return tabsRunner.current;
+ };
  const settleSheet=useCallback((next:boolean)=>{
   stopSheet.current();
-  collapsedRef.current=next;
+  const driver=ensureSheetRunner();
+  const from=driver.snapshot().phase==="idle"?sheetY.current:driver.cancel();
   const destination=next?collapsedY.current:expandedY.current;
-  stopSheet.current=animateValue(sheetY.current,destination,
-   sheetY.current>expandedY.current?240:335,[.22,.79,.22,1],value=>{
-    paintSheet(value,true);
-    // React's state/ARIA update occurs only AFTER the last motion frame.
-    // The avatar and grab visuals already follow continuous progress.
-    if(Math.abs(value-destination)<.05)setCollapsed(next);
-   });
+  sheetIntent.current=next;
+  // Original endpoint/curve/duration unchanged. A geometry rebase will spend
+  // only the remaining time rather than restarting the 335/240ms interval.
+  driver.start(from,destination,from>expandedY.current?240:335,[.22,.79,.22,1],
+   value=>paintSheet(value,true),()=>{
+    collapsedRef.current=next;
+    setCollapsed(next);
+    sheetIntent.current=null;
+   },sheetRevision.current);
+  stopSheet.current=()=>{const frozen=driver.cancel();paintSheet(frozen,true);};
  },[paintSheet]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
-  let first=true;
+  let first=true,hidden=false;
   const measure=()=>{
    const frame=hero.current,pane=sheet.current,root=shell.current;
-   if(!frame||!pane||!root||!root.clientWidth||!root.clientHeight)return;
-   // Batch reads before writes. Hidden owner profiles are never measured.
+   if(!frame||!pane||!root)return;
+   if(!root.clientWidth||!root.clientHeight||!frame.offsetHeight){
+    hidden=true;sheetRunner.current?.suspend();return;
+   }
+   // Read all rectangles first. Cached old root top is essential when the
+   // visual viewport moves the entire profile between two frames.
    const shellRect=root.getBoundingClientRect();
    const headerScope=root.closest(".discovery-visitor-route")??root.closest(".discovery-app");
    const imageRect=headerScope?.querySelector<HTMLElement>(".lh-header .lh-island img")?.getBoundingClientRect();
@@ -176,19 +202,45 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const top=Math.max(38,Math.min(root.clientHeight*.24,logoBottom));
    const bottom=Math.max(top+185,frame.offsetHeight-43);
    const dots=(imageRect?.bottom??(shellRect.top+108))-shellRect.top+8;
-   if(!first&&Math.abs(top-collapsedY.current)<.5&&Math.abs(bottom-expandedY.current)<.5)return;
-   const oldProgress=first?(collapsedRef.current?1:0):
-    Math.max(0,Math.min(1,(expandedY.current-sheetY.current)/Math.max(1,expandedY.current-collapsedY.current)));
-   first=false;
-   cancelSheetGesture.current();
-   stopSheet.current();
+   if(!first&&!hidden&&Math.abs(top-collapsedY.current)<.5&&
+      Math.abs(bottom-expandedY.current)<.5&&
+      Math.abs((sheetRootTop.current??shellRect.top)-shellRect.top)<.5)return;
+   const driver=sheetRunner.current;
+   const phase=driver?.snapshot().phase??"idle";
+   const oldValue=phase==="settling"||phase==="suspended"?driver!.sample():sheetY.current;
+   const oldTop=sheetRootTop.current??shellRect.top;
+   const mapped=remapSheetPixel(oldValue,oldTop,shellRect.top,top,bottom);
+   // Explicit measurable exception: an old pixel can be outside the new
+   // physically reachable interval. Do not silently claim ≤1px continuity.
+   if(mapped.clamped){
+    root.dataset.geometryClampReason="outside-new-sheet-endpoints";
+    root.dataset.geometryClampPx=Math.abs(mapped.unclamped-mapped.local).toFixed(2);
+   }else{
+    delete root.dataset.geometryClampReason;
+    delete root.dataset.geometryClampPx;
+   }
+   const visible=mapped.local;
+   // Clamping is unavoidable only when the old absolute position no longer
+   // exists in the new viewport. Never scale touch movement by the new height.
+   const next=first&&phase!=="suspended"?(collapsedRef.current?top:bottom):
+    phase==="idle"&&sheetIntent.current===null&&!sheetDragActive.current?
+     (collapsedRef.current?top:bottom):visible;
+   first=false;hidden=false;sheetRootTop.current=shellRect.top;
+   sheetRevision.current++;
    collapsedY.current=top;expandedY.current=bottom;
    root.style.setProperty("--pm-expanded-y",bottom+"px");
    pane.style.setProperty("--pm-collapsed-top",top+"px");
    root.style.setProperty("--pm-dots-top",dots+"px");
-   // Preserve visible progress on resize instead of snapping the panel straight
-   // to its target, which could flash the logo and tabs at the endpoint.
-   paintSheet(bottom-(bottom-top)*oldProgress,true);
+   // Rebase active touch anchors without cancelling the user's finger session.
+   rebaseSheetGesture.current(next,sheetRevision.current);
+   const intent=sheetIntent.current;
+   if(driver&&phase!=="idle"&&intent!==null){
+    const destination=intent?top:bottom;
+    if(phase==="suspended")driver.reveal(sheetRevision.current,next,destination);
+    else driver.rebase(sheetRevision.current,next,destination);
+   }
+   paintSheet(next,true);
+   // Physical state is committed by settle completion, never merely by a target.
   };
   measure();
   const ro=new ResizeObserver(measure);
@@ -198,18 +250,26 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    ?.querySelector<HTMLElement>(".lh-header .lh-center");
   if(anchor)ro.observe(anchor);
   const webApp=window.Telegram?.WebApp;
+  const detachViewport=bindMotionViewport(window,()=>measure());
+  const visual=window.visualViewport;
   window.addEventListener("resize",measure);
+  visual?.addEventListener("resize",measure);
+  visual?.addEventListener("scroll",measure);
   webApp?.onEvent?.("safeAreaChanged",measure);
   webApp?.onEvent?.("contentSafeAreaChanged",measure);
   webApp?.onEvent?.("viewportChanged",measure);
   return ()=>{
-   stopSheet.current();ro.disconnect();window.removeEventListener("resize",measure);
+   sheetRunner.current?.suspend();ro.disconnect();detachViewport();
+   window.removeEventListener("resize",measure);
+   visual?.removeEventListener("resize",measure);
+   visual?.removeEventListener("scroll",measure);
    webApp?.offEvent?.("safeAreaChanged",measure);
    webApp?.offEvent?.("contentSafeAreaChanged",measure);
    webApp?.offEvent?.("viewportChanged",measure);
   };
  },[motionActive,paintSheet]);
  useEffect(()=>()=>{stopSheet.current();stopTabs.current();
+  sheetRunner.current?.dispose();tabsRunner.current?.dispose();
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
  },[]);
  const closeTop=useCallback(():boolean=>{
@@ -255,6 +315,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const paintTabs=useCallback((i:number,dx=0)=>{
   motionAuthority.current.run("tabs",PROFILE_MOTION_WRITER_TABLE.tabs,()=>{
   const position=Math.max(0,Math.min(4,i-dx/Math.max(1,tabViewport.current)));
+  tabLastPosition.current=position;
   if(pages.current)pages.current.scrollLeft=position*tabViewport.current;
   const indicator=ink.current,metrics=tabMetrics.current;
   const left=Math.floor(position),right=Math.min(4,left+1),ratio=position-left;
@@ -268,36 +329,55 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  useLayoutEffect(()=>{
   const bar=tabBar.current;
   if(!motionActive||!bar)return;
-  let first=true;
+  let first=true,hidden=false;
   const measure=()=>{
-   if(!bar.clientWidth)return;
-   const metrics=Array.from(bar.querySelectorAll<HTMLButtonElement>(".pm-tab")).map(el=>({left:el.offsetLeft,width:el.offsetWidth}));
-   const width=pages.current?.clientWidth||bar.clientWidth;
-   const changed=width!==tabViewport.current||metrics.some((m,i)=>m.left!==tabMetrics.current[i]?.left||m.width!==tabMetrics.current[i]?.width);
+   const rawWidth=pages.current?.clientWidth??0;
+   if(!bar.clientWidth||!rawWidth){hidden=true;tabsRunner.current?.suspend();return;}
+   const metrics=Array.from(bar.querySelectorAll<HTMLButtonElement>(".pm-tab"))
+    .map(el=>({left:el.offsetLeft,width:el.offsetWidth}));
+   if(!metrics.length||metrics.some(m=>m.width<=0))return;
+   const changed=hidden||rawWidth!==tabViewport.current||
+    metrics.some((m,i)=>m.left!==tabMetrics.current[i]?.left||m.width!==tabMetrics.current[i]?.width);
    if(!first&&!changed)return;
-   first=false;
-   stopTabs.current();tabSwipe.current=null;
-   tabMetrics.current=metrics;tabViewport.current=width;
-   if(ink.current&&metrics.length)ink.current.style.width=metrics[0].width+"px";
-   paintTabs(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
+   // Snapshot the FRACTIONAL page before width and tab metrics are replaced.
+   const runner=tabsRunner.current,phase=runner?.snapshot().phase??"idle";
+   const fraction=phase==="settling"||phase==="suspended"?runner!.sample():tabLastPosition.current;
+   first=false;hidden=false;tabsRevision.current++;
+   tabMetrics.current=metrics;tabViewport.current=rawWidth;
+   if(ink.current)ink.current.style.width=metrics[0].width+"px";
+   rebaseTabsGesture.current(fraction,tabsRevision.current);
+   if(tabSwipe.current){
+    const g=tabSwipe.current;
+    g.index=reanchorPage(fraction,g.x,g.lastX??g.x,rawWidth);
+    g.width=rawWidth;g.revision=tabsRevision.current;
+   }
+   // Do not paintTabs(selected): that destroys fractional position mid-settle.
+   const destination=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
+   if(runner&&phase!=="idle"){
+    if(phase==="suspended")runner.reveal(tabsRevision.current,fraction,destination);
+    else runner.rebase(tabsRevision.current,fraction,destination);
+   }
+   paintTabs(fraction);
   };
   measure();
   const ro=new ResizeObserver(measure);
   ro.observe(bar);
   if(pages.current)ro.observe(pages.current);
-  // The bar has fixed dimensions; individual button observers can emit
-  // repeated compositor-invalidating measurements during font settling.
   let cancelled=false;
   void document.fonts.ready.then(()=>{if(!cancelled)measure();});
-  return ()=>{cancelled=true;ro.disconnect();stopTabs.current();};
+  const detachViewport=bindMotionViewport(window,()=>measure());
+  return ()=>{cancelled=true;ro.disconnect();detachViewport();tabsRunner.current?.suspend();};
  },[motionActive,paintTabs]);
  const chooseTab=useCallback((newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   stopTabs.current();
-  const from=(pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
+  const runner=ensureTabsRunner();
+  const from=runner.snapshot().phase==="idle"?tabLastPosition.current:runner.cancel();
   tabSelectionRef.current=tabs[i][0];
   setTab(tabs[i][0]);
-  stopTabs.current=animateValue(from,i,295,[.22,.77,.23,1],value=>paintTabs(value));
+  runner.start(from,i,295,[.22,.77,.23,1],value=>paintTabs(value),()=>paintTabs(i),
+   tabsRevision.current);
+  stopTabs.current=()=>{const frozen=runner.cancel();paintTabs(frozen);};
   const bar=tabBar.current,metric=tabMetrics.current[i];
   if(bar&&metric)bar.scrollTo({left:Math.max(0,metric.left+metric.width/2-bar.clientWidth/2),
    behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
@@ -308,10 +388,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(e.pointerType==="touch"||(e.pointerType==="mouse"&&e.button!==0))return;
   stopTabs.current();
   tabSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",
-   index:(pages.current?.scrollLeft??0)/tabViewport.current,width:tabViewport.current};
+   index:(pages.current?.scrollLeft??0)/tabViewport.current,width:tabViewport.current,
+   lastX:e.clientX,revision:tabsRevision.current};
  };
  const tabMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
+  g.lastX=e.clientX;
   const dx=e.clientX-g.x,dy=e.clientY-g.y;
   if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";}
   if(g.axis!=="x")return;
@@ -333,11 +415,22 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const pane=sheet.current;if(!motionActive||!pane)return;
   type SheetGesture={x:number;y:number;start:number;down:boolean;scrollTop:number;
    origin:number;axis:""|"x"|"y"|"native";inPages:boolean;index:number;
-   lastY:number;lastTime:number;velocity:number;blocking:boolean};
+   lastY:number;lastX:number;lastTime:number;velocity:number;blocking:boolean;revision:number};
   let gesture:SheetGesture|null=null,frame:number|null=null;
   const flush=()=>{if(frame!==null){cancelAnimationFrame(frame);frame=null;}};
   const abort=()=>{
    pane.removeEventListener("touchmove",move);flush();gesture=null;
+   sheetDragActive.current=false;
+  };
+  rebaseSheetGesture.current=(newValue,revision)=>{
+   const g=gesture;if(!g)return;
+   flush();g.origin=reanchorSheet(newValue,g.y,g.lastY);
+   g.revision=revision;
+  };
+  rebaseTabsGesture.current=(position,revision)=>{
+   const g=gesture;if(!g||!g.inPages)return;
+   flush();g.index=reanchorPage(position,g.x,g.lastX,tabViewport.current);
+   g.revision=revision;
   };
   cancelSheetGesture.current=abort;
   const start=(e:TouchEvent)=>{
@@ -347,17 +440,20 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const t=e.touches[0],inPages=!!target.closest(".pm-pages");
    const scrollTop=inPages?(contentPages.current[tabs.findIndex(v=>v[0]===tabSelectionRef.current)]?.scrollTop||0):0;
    stopSheet.current();
+   sheetIntent.current=null;sheetDragActive.current=true;
    if(inPages)stopTabs.current();
    const now=performance.now();
    gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
-    lastY:t.clientY,lastTime:now,velocity:0,blocking:!collapsedRef.current||scrollTop<=1};
+    lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
+    revision:sheetRevision.current,blocking:!collapsedRef.current||scrollTop<=1};
    pane.removeEventListener("touchmove",move);
    pane.addEventListener("touchmove",move,{passive:!gesture.blocking});
   };
   const move=(e:TouchEvent)=>{
    const g=gesture;if(!g||e.touches.length!==1)return;
    const t=e.touches[0],dx=t.clientX-g.x,dy=t.clientY-g.y;
+   g.lastX=t.clientX;
    if(!g.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
     if(Math.abs(dx)>Math.abs(dy)*1.18)g.axis=g.inPages?"x":"native";
@@ -367,10 +463,13 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(g.axis==="native")return;
    if(g.blocking&&e.cancelable)e.preventDefault();
    const now=performance.now(),dt=now-g.lastTime;
-   if(dt>0){g.velocity=(t.clientY-g.lastY)/dt;g.lastY=t.clientY;g.lastTime=now;}
+   if(dt>0){g.velocity=(t.clientY-g.lastY)/dt;g.lastTime=now;}
+   g.lastY=t.clientY;
    flush();
+   const rev=g.revision;
    frame=requestAnimationFrame(()=>{
     frame=null;
+    if(gesture!==g||rev!==g.revision)return;
     if(g.axis==="x")paintTabs(g.index,dx);
     else {
      const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
@@ -420,6 +519,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   pane.addEventListener("touchcancel",cancel,{passive:true});
   return ()=>{
    abort();cancelSheetGesture.current=()=>{};
+   rebaseSheetGesture.current=()=>{};rebaseTabsGesture.current=()=>{};
    pane.removeEventListener("touchstart",start);pane.removeEventListener("touchend",end);
    pane.removeEventListener("touchcancel",cancel);
   };

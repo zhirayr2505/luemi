@@ -177,7 +177,8 @@ assert.ok(discovery.includes("data-profile-renderer=")&&
  "all Android browsing sources share one hidden underlay, restored during route transitions");
 assert.ok(header.includes("androidProfileChrome")&&
  header.includes("!androidProfileChrome&&<img")&&
- profile.includes("if(Math.abs(value-destination)<.05)setCollapsed(next)")&&
+ profile.includes("collapsedRef.current=next;")&&profile.includes("sheetIntent.current=null;")&&
+ profile.includes("driver.rebase(sheetRevision.current,next,destination)")&&
  profile.includes("miniAvatar.current.style.opacity=")&&
  profile.includes("grab.current.style.opacity="),
  "Android single-raster header and progress-driven sheet controls avoid duplicate paints");
