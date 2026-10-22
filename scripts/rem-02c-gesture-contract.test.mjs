@@ -76,7 +76,7 @@ globalThis.DOMMatrixReadOnly=class{constructor(matrix){
 globalThis.getComputedStyle=el=>({transform:el.transform});
 assert.equal(mod.computedTranslation({transform:"matrix(1,0,0,1,-162.5,0)"}),-162.5);
 assert.equal(mod.fractionalTrack({transform:"matrix(1,0,0,1,-162.5,0)"},325,0),.5);
-assert.equal(mod.fractionalTrack({transform:"none"},325,2),0);
+assert.ok(Math.abs(mod.fractionalTrack({transform:"none"},325,2))<1e-9,"matrix none is coordinate zero, signed zero allowed");
 assert.equal(mod.fractionalTrack(null,0,2),2);
 globalThis.DOMMatrixReadOnly=prevMatrix;
 globalThis.getComputedStyle=prevCSS;
