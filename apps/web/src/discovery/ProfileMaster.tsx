@@ -369,13 +369,14 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  },[motionActive,paintSheet]);
  useEffect(()=>{
   const opticalFrame=blurSampleFrame,opticalSession=blurSession;
+  const localArbiter=localGestures.current;
   return ()=>{
    opticalSession.current++;
    if(opticalFrame.current!==null)cancelAnimationFrame(opticalFrame.current);
    opticalFrame.current=null;
    stopSheet.current();stopTabs.current();
    sheetRunner.current?.dispose();tabsRunner.current?.dispose();
-   localGestures.current.dispose();
+   localArbiter.dispose();
    if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
   };
  },[]);
@@ -471,7 +472,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const done=()=>{if(token===blurSession.current)finishBlurTracking(index);};
    const ended=(event:TransitionEvent)=>{
     if(event.target===track&&event.propertyName==="transform"){
-     track.removeEventListener("transitionend",ended);done();
+     track?.removeEventListener("transitionend",ended);done();
     }
    };
    track?.addEventListener("transitionend",ended);
