@@ -318,36 +318,55 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  useLayoutEffect(()=>{
   const bar=tabBar.current;
   if(!motionActive||!bar)return;
-  let first=true;
+  let first=true,hidden=false;
   const measure=()=>{
-   if(!bar.clientWidth)return;
-   const metrics=Array.from(bar.querySelectorAll<HTMLButtonElement>(".pm-tab")).map(el=>({left:el.offsetLeft,width:el.offsetWidth}));
-   const width=pages.current?.clientWidth||bar.clientWidth;
-   const changed=width!==tabViewport.current||metrics.some((m,i)=>m.left!==tabMetrics.current[i]?.left||m.width!==tabMetrics.current[i]?.width);
+   const rawWidth=pages.current?.clientWidth??0;
+   if(!bar.clientWidth||!rawWidth){hidden=true;tabsRunner.current?.suspend();return;}
+   const metrics=Array.from(bar.querySelectorAll<HTMLButtonElement>(".pm-tab"))
+    .map(el=>({left:el.offsetLeft,width:el.offsetWidth}));
+   if(!metrics.length||metrics.some(m=>m.width<=0))return;
+   const changed=hidden||rawWidth!==tabViewport.current||
+    metrics.some((m,i)=>m.left!==tabMetrics.current[i]?.left||m.width!==tabMetrics.current[i]?.width);
    if(!first&&!changed)return;
-   first=false;
-   stopTabs.current();tabSwipe.current=null;
-   tabMetrics.current=metrics;tabViewport.current=width;
-   if(ink.current&&metrics.length)ink.current.style.width=metrics[0].width+"px";
-   paintTabs(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
+   // Snapshot the FRACTIONAL page before width and tab metrics are replaced.
+   const runner=tabsRunner.current,phase=runner?.snapshot().phase??"idle";
+   const fraction=runner?.sample()??(pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
+   first=false;hidden=false;tabsRevision.current++;
+   tabMetrics.current=metrics;tabViewport.current=rawWidth;
+   if(ink.current)ink.current.style.width=metrics[0].width+"px";
+   rebaseTabsGesture.current(fraction,tabsRevision.current);
+   if(tabSwipe.current){
+    const g=tabSwipe.current;
+    g.index=fraction+((g.lastX??g.x)-g.x)/Math.max(1,rawWidth);
+    g.width=rawWidth;g.revision=tabsRevision.current;
+   }
+   // Do not paintTabs(selected): that destroys fractional position mid-settle.
+   const destination=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
+   if(runner&&phase!=="idle"){
+    if(phase==="suspended")runner.reveal(tabsRevision.current,fraction,destination);
+    else runner.rebase(tabsRevision.current,fraction,destination);
+   }
+   paintTabs(fraction);
   };
   measure();
   const ro=new ResizeObserver(measure);
   ro.observe(bar);
   if(pages.current)ro.observe(pages.current);
-  // The bar has fixed dimensions; individual button observers can emit
-  // repeated compositor-invalidating measurements during font settling.
   let cancelled=false;
   void document.fonts.ready.then(()=>{if(!cancelled)measure();});
-  return ()=>{cancelled=true;ro.disconnect();stopTabs.current();};
+  const detachViewport=bindMotionViewport(window,()=>measure());
+  return ()=>{cancelled=true;ro.disconnect();detachViewport();tabsRunner.current?.suspend();};
  },[motionActive,paintTabs]);
  const chooseTab=useCallback((newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   stopTabs.current();
-  const from=(pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
+  const runner=ensureTabsRunner();
+  const from=runner.cancel();
   tabSelectionRef.current=tabs[i][0];
   setTab(tabs[i][0]);
-  stopTabs.current=animateValue(from,i,295,[.22,.77,.23,1],value=>paintTabs(value));
+  runner.start(from,i,295,[.22,.77,.23,1],value=>paintTabs(value),()=>paintTabs(i),
+   tabsRevision.current);
+  stopTabs.current=()=>{const frozen=runner.cancel();paintTabs(frozen);};
   const bar=tabBar.current,metric=tabMetrics.current[i];
   if(bar&&metric)bar.scrollTo({left:Math.max(0,metric.left+metric.width/2-bar.clientWidth/2),
    behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
