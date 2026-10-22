@@ -103,6 +103,42 @@ assert.equal(c.finish(t,{paint:consumer}),false);
 assert.equal(pending.size,0);
 console.log("REM02A_UNIT_PASS dispose drains pending RAF/external timers and invalidates tokens");
 
+const adversarial=new Map();let serial=0;
+const unreliable={
+ frame:cb=>{const next=++serial;adversarial.set(next,cb);return next;},
+ // Intentionally let a cancelled callback run later as a hostile scheduler.
+ cancelFrame:()=>{}
+};
+const raced=new motion.MotionController("tabs",unreliable,0,0);
+let first=raced.begin(0);raced.claim(first);
+const observed=[];
+raced.schedulePaint(first,13,n=>observed.push("stale-"+n));
+const late=adversarial.get(1);
+const interrupted=raced.interrupt(first,"interrupted");
+const restarted=raced.resume(interrupted,"dragging");
+raced.schedulePaint(restarted,37,n=>observed.push("fresh-"+n));
+late();
+assert.equal(raced.snapshot().current,0,"late RAF must not update current");
+assert.deepEqual(observed,[],"late RAF must not paint");
+assert.ok(adversarial.has(2),"late RAF must not clear pending new generation");
+adversarial.get(2)();
+assert.deepEqual(observed,["fresh-37"]);
+assert.equal(raced.snapshot().current,37);
+first=raced.begin(37);
+raced.settle(first,80);
+const nested=[];
+raced.track(first,()=>nested.push(raced.finish(first,{paint:()=>nested.push("bad cleanup")})));
+assert.equal(raced.finish(first,{paint:n=>{
+ nested.push("paint-"+n);
+ nested.push(raced.finish(first,{paint:()=>nested.push("bad paint")}));
+},onCommit:()=>nested.push("commit")}),true);
+assert.deepEqual(nested,[false,"paint-80",false,"commit"],
+ "cleanup and synchronous pixel write cannot re-enter completion");
+assert.equal(raced.finish(first,{paint:()=>{}}),false);
+raced.dispose();
+console.log("REM02A_UNIT_PASS hostile late RAF cannot steal fresh frame; reentrant finish rejected atomically");
+
+
 let s=motion.createMotionSnapshot("hero",0,0);
 const initial=s;
 s=motion.reduceMotion(s,{type:"finish",token:motion.motionToken(s)});
