@@ -129,6 +129,7 @@ export class MotionController {
  private state:MotionSnapshot;
  private frameId:number|null=null;
  private frameOwner:MotionToken|null=null;
+ private frameEpoch=0;
  private pendingPaint:{token:MotionToken;value:number;velocity:number;paint:(v:number)=>void}|null=null;
  private releases=new Set<()=>void>();
  constructor(owner:MotionOwner,private scheduler:MotionScheduler,current=0,revision=0){
@@ -138,6 +139,7 @@ export class MotionController {
  token():MotionToken{return motionToken(this.state);}
  owns(token:MotionToken):boolean{return isMotionToken(this.state,token);}
  private abortResources(){
+  this.frameEpoch++;
   if(this.frameId!==null)this.scheduler.cancelFrame(this.frameId);
   this.frameId=null;this.frameOwner=null;this.pendingPaint=null;
   const releases=[...this.releases];this.releases.clear();
@@ -146,7 +148,7 @@ export class MotionController {
  begin(value:number,revision?:number):MotionToken|null{
   const next=reduceMotion(this.state,{type:"begin",value,revision});
   if(next===this.state)return null;
-  this.abortResources();this.state=next;return this.token();
+  this.state=next;this.abortResources();return this.token();
  }
  claim(token:MotionToken):boolean{
   const next=reduceMotion(this.state,{type:"claim",token});
@@ -164,7 +166,11 @@ export class MotionController {
   this.pendingPaint={token,value,velocity,paint};
   if(this.frameId!==null)return true;
   this.frameOwner=token;
+  const epoch=++this.frameEpoch;
   const tick=()=>{
+   // Even a cancelled frame may arrive late in a misbehaving WebView/scheduler.
+   // It must never clear or flush a newer generation's queued paint.
+   if(epoch!==this.frameEpoch||this.frameOwner!==token||!this.owns(token))return;
    this.frameId=null;this.frameOwner=null;
    const pending=this.pendingPaint;this.pendingPaint=null;
    if(pending)this.paint(pending.token,pending.value,pending.paint,pending.velocity);
@@ -178,16 +184,18 @@ export class MotionController {
   const next=reduceMotion(this.state,{type:closing?"close":"settle",token,target});
   if(next===this.state)return false;
   // A queued finger frame is no longer allowed to paint over the settle endpoint.
-  this.abortResources();this.state=next;return true;
+  this.state=next;this.abortResources();return true;
  }
  /** Exactly once; endpoint write happens before any React semantic commit. */
  finish(token:MotionToken,writer:MotionWriter):boolean{
   if(!this.owns(token)||(this.state.phase!=="settling"&&this.state.phase!=="closing"))return false;
-  this.abortResources();
   const next=reduceMotion(this.state,{type:"finish",token});
   if(next===this.state)return false;
-  writer.paint(next.current);
+  // Mark terminal BEFORE cancelling external resources or painting: either can
+  // synchronously trigger another transitionend/finish and must not double commit.
   this.state=next;
+  this.abortResources();
+  writer.paint(next.current);
   writer.onCommit?.(next.current);
   return true;
  }
@@ -200,22 +208,22 @@ export class MotionController {
  private pause(token:MotionToken,reason:MotionCancelReason,suspended:boolean):MotionToken|null{
   const next=reduceMotion(this.state,{type:suspended?"suspend":"interrupt",token,reason});
   if(next===this.state)return null;
-  this.abortResources();this.state=next;return this.token();
+  this.state=next;this.abortResources();return this.token();
  }
  resume(token:MotionToken,phase:"dragging"|"settling",target?:number):MotionToken|null{
   const next=reduceMotion(this.state,{type:"resume",token,phase,target});
   if(next===this.state)return null;
-  this.abortResources();this.state=next;return this.token();
+  this.state=next;this.abortResources();return this.token();
  }
  rebase(revision:number,value?:number,target?:number):MotionToken|null{
   const next=reduceMotion(this.state,{type:"rebase",revision,value,target});
   if(next===this.state)return null;
-  this.abortResources();this.state=next;return this.token();
+  this.state=next;this.abortResources();return this.token();
  }
  cancel(token:MotionToken,reason:MotionCancelReason="gesture-cancel"):boolean{
   const next=reduceMotion(this.state,{type:"cancel",token,reason});
   if(next===this.state)return false;
-  this.abortResources();this.state=next;return true;
+  this.state=next;this.abortResources();return true;
  }
  /** Register external CSS transition timer / existing animateValue cancellation. */
  track(token:MotionToken,release:()=>void):boolean{
@@ -224,6 +232,6 @@ export class MotionController {
  }
  dispose():void{
   if(this.state.disposed)return;
-  this.abortResources();this.state=reduceMotion(this.state,{type:"dispose"});
+  this.state=reduceMotion(this.state,{type:"dispose"});this.abortResources();
  }
 }
