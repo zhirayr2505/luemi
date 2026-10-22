@@ -115,6 +115,11 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const ids=useMemo(()=>profiles.map(p=>p.id),[profiles]);
  const person=profiles[feed.index];
  const selectedPerson=forYouDemoPeople.find(p=>p.id===personOpen);
+ // The fixture list is a stable module-owned dataset; only its selected
+ // identity or changed data may project new profile/photos. Avoid rebuilding
+ // the whole view during theme, scroll, saves or unrelated parent commits.
+ const selectedProfile=useMemo(()=>selectedPerson?fromDemoPerson(selectedPerson):null,[selectedPerson]);
+ const exitVisitorProfile=useCallback(()=>setPersonOpen(null),[]);
  const globalHeader=useRef<HeaderMotion>(null);
  const reportProfileMotion=useCallback((progress:number,dragging:boolean)=>globalHeader.current?.setProfileProgress(progress,dragging),[]);
  const profileMode=mainTab==="profile"||!!selectedPerson;
@@ -485,8 +490,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        {profilePrepared&&<ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"&&!selectedPerson} onMotionProgress={reportProfileMotion}/>}
      </section>
    </div>
-   {selectedPerson&&<QaProfiler id="VisitorProfileRoute"><VisitorProfileRoute key={selectedPerson.id} data={fromDemoPerson(selectedPerson)}
-     theme={theme} onTheme={onTheme} onExit={()=>setPersonOpen(null)} registerBack={registerVisitorBack}/></QaProfiler>}
+   {selectedPerson&&selectedProfile&&<QaProfiler id="VisitorProfileRoute"><VisitorProfileRoute key={selectedPerson.id} data={selectedProfile}
+     theme={theme} onTheme={onTheme} onExit={exitVisitorProfile} registerBack={registerVisitorBack}/></QaProfiler>}
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
        className={"discovery-nav-item"+(mainTab===value?" active":"")}
