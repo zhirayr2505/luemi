@@ -14,7 +14,9 @@ assert.ok(!style.includes(".discovery-app:is(.is-discovery-scrolling"),"P0: neve
 assert.ok(forYouCss.includes("backdrop-filter:blur(17px)")&&forYouCss.includes("backdrop-filter:blur(14px)"),"accepted Premium Glass intact at rest and in motion");
 assert.ok(app.includes('pageTrack.current?.style.setProperty("--luemi-tab-offset"')&&
  app.includes('underline.current?.style.setProperty("--luemi-tab-offset"'),"both pager variables commit atomically before state selection");
-assert.ok(app.includes("settleDrag(target);")&&app.includes("if(target!==g.index)selectTab(target)"));
+assert.ok(app.includes("settleDrag(target);")&&app.includes("if(target!==tabIndex)selectTab(target)")&&
+ app.includes("browseMotion.current.cancel(g.token")&&app.includes("inputOwnership.current.finish(\"browse\",g.serial)"),
+ "pager paints the new target once, and only after exclusive motion/gesture cancellation");
 assert.ok(style.includes(".discovery-page-track.is-settling,.discovery-tab-underline.is-settling"),"GPU hint scoped to track settle only");
 assert.ok(app.includes('event.propertyName==="transform"')&&app.includes("finishPagerSettle()"),"remove compositor hint on real transitionend");
 assert.ok(app.includes("window.setTimeout(finishPagerSettle,380)"),"WebView fallback for missed transition end");
