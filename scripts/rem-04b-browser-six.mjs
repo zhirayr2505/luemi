@@ -107,7 +107,7 @@ try{
  await dot(0);await pause(340);await dot(5);
  await frameTrace("dark-theme");
  const final=await snapshot();
- writeFileSync(dir+"/summary.json",JSON.stringify({records:records.map(({samples,...rest})=>rest),final,errors},null,2));
+ writeFileSync(dir+"/summary.json",JSON.stringify({records:records.map(r=>({label:r.label,frames:r.frames,issueCount:r.issueCount,issues:r.issues,maxDrift:r.maxDrift,peakBlur:r.peakBlur})),final,errors},null,2));
  const issueCount=records.reduce((n,r)=>n+r.issueCount,0);
  assert.equal(errors.length,0,"No runtime browser errors");
  assert.ok(records.every(r=>r.maxDrift<=1),"Clear/blur CSS matrices drift");
