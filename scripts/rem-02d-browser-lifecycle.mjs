@@ -17,9 +17,30 @@ const open=async()=>{
  await visitor().waitFor({state:"visible"});
 };
 const point=async()=>{
- const b=await visitor().locator(".pm-identity").boundingBox();
- assert.ok(b&&b.width>150&&b.height>25);
- return {x:b.x+Math.min(48,b.width*.2),y:b.y+Math.min(45,b.height*.46)};
+ // Use an actually hit-testable white-sheet coordinate. While expanded,
+ // the global header may cover the identity's DOM bounding rect even though
+ // the element still exists. A hidden hit target is NOT proof of a route bug.
+ const p=await visitor().evaluate(root=>{
+  const identity=root.querySelector(".pm-identity"),sheet=root.querySelector(".pm-profile-sheet");
+  if(!identity||!sheet)return null;
+  const i=identity.getBoundingClientRect(),s=sheet.getBoundingClientRect();
+  const preferred={x:i.x+Math.min(48,i.width*.2),y:i.y+Math.min(45,i.height*.46)};
+  const eligible=({x,y})=>{
+   const el=document.elementFromPoint(x,y);
+   return !!el&&el.closest(".pm-profile-sheet")===sheet&&
+    !el.closest(".pm-pages,.pm-tabs,.pm-viewer,.pm-blik-viewer,.pm-preview-toolbar");
+  };
+  if(eligible(preferred))return preferred;
+  for(let y=Math.max(115,s.top+10);y<Math.min(s.bottom,innerHeight-45);y+=12){
+   for(const x of [s.left+12,s.left+24,s.left+40,s.left+60]){
+    const candidate={x,y};
+    if(eligible(candidate))return candidate;
+   }
+  }
+  return null;
+ });
+ assert.ok(p,"route back requires a physically hit-testable exposed white-sheet region");
+ return p;
 };
 const routeDrag=async(dx,{hold=200,cancel=false,lost=false}={})=>{
  const p=await point();
