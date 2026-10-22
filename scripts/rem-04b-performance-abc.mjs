@@ -16,7 +16,6 @@ const median=a=>{const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)
 const round=x=>Math.round(x*100000)/100000;
 const metrics=rows=>Object.fromEntries(rows.map(m=>[m.name,m.value]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const unique=(a)=>[...new Set(a)];
 async function run(variant,trial){
  const ctx=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
   userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Mobile Safari/537.36"});
