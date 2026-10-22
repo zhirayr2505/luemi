@@ -7,20 +7,6 @@
       "line": 74,
       "column": 5,
       "message": "React Hook useImperativeHandle has missing dependencies: 'androidProfileChrome' and 'paintTools'. Either include them or remove the dependency array."
-    },
-    {
-      "file": "apps/web/src/discovery/PhotoViewer.tsx",
-      "rule": "react-hooks/exhaustive-deps",
-      "line": 58,
-      "column": 4,
-      "message": "React Hook useEffect has missing dependencies: 'photos.length' and 'requestClose'. Either include them or remove the dependency array."
-    },
-    {
-      "file": "apps/web/src/discovery/PhotoViewer.tsx",
-      "rule": "react-hooks/exhaustive-deps",
-      "line": 84,
-      "column": 4,
-      "message": "React Hook useEffect has a missing dependency: 'requestClose'. Either include it or remove the dependency array."
     }
   ]
 }
