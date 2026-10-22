@@ -46,7 +46,6 @@ export class GeometryMotion {
  private easing:Easing|null=null;
  snapshot():GeometryMotionSnapshot{
   const a=this.active,now=this.clock();
-  const progress=a?bounded((now-a.start)/Math.max(.001,a.remaining),0,1):0;
   const remaining=a?Math.max(0,a.remaining-(now-a.start)):this.frozen?.remaining??0;
   return {phase:a?"settling":this.frozen?"suspended":"idle",
    current:a?this.evaluate(now):this.current,target:a?.target??this.current,
