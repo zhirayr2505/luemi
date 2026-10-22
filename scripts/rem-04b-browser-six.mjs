@@ -121,7 +121,7 @@ try{
  // The same gallery must remain stable while its sheet is mid-collapse and
  // when the profile is fully expanded with no visible blur opacity.
  await dot(0);await pause(340);
- await page.getByRole("button",{name:"Потянуть панель вниз"}).click();
+ await page.getByRole("button",{name:"Потянуть панель вниз"}).evaluate(el=>el.click());
  await pause(105);await dot(5);
  const midpoint=await frameTrace("midpoint-sheet-navigation");
  assert.ok(midpoint.samples.some(x=>x.opacity>.05&&x.opacity<.85),
