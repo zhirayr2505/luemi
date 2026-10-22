@@ -135,7 +135,7 @@ try{
  await settleSheet();await tabEndpoint("Фото");
  pass("background while dragging, viewport height change, resume and child geometry converge");
  // Background a child sheet settle without route claim.
- await visitor().getByRole("button",{name:"Потянуть панель вниз"}).click();
+ await visitor().getByRole("button",{name:"Раскрыть фото профиля"}).click();
  await sleep(75);
  await setBackground(true);await sleep(120);await setBackground(false);
  await settleSheet();
