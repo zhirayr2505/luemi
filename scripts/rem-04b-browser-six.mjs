@@ -13,7 +13,7 @@ const page=await context.newPage(),errors=[],records=[];
 page.on("pageerror",e=>errors.push(e.message));
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 const snapshot=()=>page.evaluate(()=>{
- const root=document.querySelector(".pm-inline .pm-shell")??document.querySelector(".pm-dialog .pm-shell");
+ const root=document.querySelector(".pm-shell");
  const hero=root?.querySelector(".pm-hero"),clear=root?.querySelector(".pm-photo-track"),
   blur=root?.querySelector(".pm-photo-blur-track"),layer=root?.querySelector(".pm-photo-blur");
  const rect=e=>{const r=e?.getBoundingClientRect();return r?{x:r.left,y:r.top,w:r.width,h:r.height,right:r.right,bottom:r.bottom}:null;};
@@ -46,7 +46,7 @@ const frameTrace=async(label,ms=365)=>{
  const samples=await page.evaluate(async(ms)=>{
   const result=[];
   const sample=()=>{
-   const root=document.querySelector(".pm-inline .pm-shell")??document.querySelector(".pm-dialog .pm-shell");
+   const root=document.querySelector(".pm-shell");
    const hero=root?.querySelector(".pm-hero"),clear=root?.querySelector(".pm-photo-track"),
     blur=root?.querySelector(".pm-photo-blur-track"),layer=root?.querySelector(".pm-photo-blur");
    const hr=hero?.getBoundingClientRect(),w=hr?.width??1;
@@ -84,13 +84,13 @@ const frameTrace=async(label,ms=365)=>{
  await page.screenshot({path:dir+"/"+label+".png"});
  return result;
 };
-const dot=async n=>page.locator(".pm-inline .pm-photo-progress button").nth(n).evaluate(el=>el.click());
+const dot=async n=>page.locator(".pm-shell .pm-photo-progress button").nth(n).evaluate(el=>el.click());
 try{
  await context.tracing.start({screenshots:true,snapshots:true,sources:false});
  await page.goto("http://127.0.0.1:5173/rem-01e-qa.html?mode=local&kind=six",{waitUntil:"domcontentloaded"});
- await page.locator(".pm-inline .pm-photo-slide img").first().waitFor({state:"attached"});
+ await page.locator(".pm-shell .pm-photo-slide img").first().waitFor({state:"attached"});
  const fixture=await page.evaluate(()=>{
-  const host=document.querySelector(".pm-inline"),hero=host?.querySelector(".pm-hero");
+  const host=document.querySelector(".pm-shell"),hero=host?.querySelector(".pm-hero");
   return {photos:host?.querySelectorAll(".pm-photo-slide img").length,
    host:host?.getBoundingClientRect().toJSON(),hero:hero?.getBoundingClientRect().toJSON()};
  });
