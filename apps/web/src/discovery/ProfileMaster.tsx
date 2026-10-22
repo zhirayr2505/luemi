@@ -12,6 +12,7 @@ import {BlikViewer} from "./BlikViewer";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
 import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
+import {GestureArbiter,fractionalTrack,preservePhotoId} from "../ui/gesture-arbiter";
 import "./profile-master.css";
 
 type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
@@ -20,10 +21,11 @@ type Props={
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
  registerRouteGestureCancel?:(handler:(()=>void)|null)=>void;
+ gestureArbiter?:GestureArbiter;
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
-type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number;lastX?:number;revision?:number};
+type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number;lastX?:number;revision?:number;serial?:number;claimed?:boolean};
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
  return <img src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
    onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
@@ -67,7 +69,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel}:Props){
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel,gestureArbiter}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
@@ -83,6 +85,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   return selected?[selected,...view.photos.filter(p=>p.id!==mainId)]:view.photos;
  },[mainId,view.photos]);
  const [activePhoto,setActivePhoto]=useState(0);
+ const activePhotoId=useRef<string|null>(photos[0]?.id??null);
+ const previousPhotos=useRef(photos);
+ const localGestures=useRef(new GestureArbiter());
+ const gestures=gestureArbiter??localGestures.current;
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
  const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
@@ -284,34 +290,96 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(performance.now()<clickBlocked.current||!photos[index])return;
   setViewer({index,source:element});
  };
+ // The visible CSS matrix (not activePhoto's integer) is the starting frame
+ // when a new pointer interrupts a 290ms CSS track transition.
  const photoStart=(e:ReactPointerEvent<HTMLDivElement>)=>{
+  if(!e.isPrimary){gestures.secondFinger();photoSwipe.current=null;return;}
   if((e.target as HTMLElement).closest("button")||(e.pointerType==="mouse"&&e.button!==0))return;
-  photoSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",index:activePhoto,width:hero.current?.clientWidth||innerWidth};
+  const serial=gestures.begin("pointer",e.pointerId,"hero");
+  if(serial===null)return;
+  photoSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),
+   axis:"",index:activePhoto,width:hero.current?.clientWidth||innerWidth,serial};
  };
  const photoMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=photoSwipe.current;if(!g||g.id!==e.pointerId)return;
   const dx=e.clientX-g.x,dy=e.clientY-g.y;
-  if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<8)return;g.axis=Math.abs(dx)>Math.abs(dy)*1.2?"x":"y";}
+  if(!g.axis){
+   if(Math.max(Math.abs(dx),Math.abs(dy))<8)return;
+   g.axis=Math.abs(dx)>Math.abs(dy)*1.2?"x":"y";
+   if(g.axis!=="x"){gestures.nativeScroll(g.serial!);return;}
+  }
   if(g.axis!=="x")return;
+  if(!g.claimed){
+   if(!gestures.claim("hero",g.serial!))return;
+   g.claimed=true;
+   g.width=hero.current?.clientWidth||g.width;
+   g.index=fractionalTrack(photoTrack.current,g.width,activePhoto);
+   if(photoTrack.current){
+    photoTrack.current.style.transition="none";
+    setTransform(g.index);
+   }
+   try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
+  }
+  if(!gestures.owns("hero",g.serial!))return;
   if(e.cancelable)e.preventDefault();
-  try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* fallback */}
-  if(photoTrack.current)photoTrack.current.style.transition="none";
-  const edge=(g.index===0&&dx>0)||(g.index===photos.length-1&&dx<0);
+  const atFirst=g.index<=.001&&dx>0;
+  const atLast=g.index>=photos.length-1-.001&&dx<0;
+  const edge=atFirst||atLast;
+  const shift=edge?dx*.18:dx;
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
-  dragFrame.current=requestAnimationFrame(()=>{dragFrame.current=null;setTransform(g.index,edge?dx*.18:dx);});
+  dragFrame.current=requestAnimationFrame(()=>{
+   dragFrame.current=null;
+   if(photoSwipe.current!==g||!gestures.owns("hero",g.serial!))return;
+   setTransform(g.index,shift);
+  });
+ };
+ const choosePhoto=(index:number)=>{
+  if(index<0||index>=photos.length)return;
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
+  const track=photoTrack.current,width=hero.current?.clientWidth||1;
+  const currentFraction=fractionalTrack(track,width,activePhoto);
+  if(track){
+   track.style.transition="none";setTransform(currentFraction);
+   // Flush once only on navigation boundaries, never on pointermove.
+   void track.offsetWidth;
+   track.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";
+  }
+  setTransform(index);
+  activePhotoId.current=photos[index].id;
+  setActivePhoto(index);
  };
  const photoEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=photoSwipe.current;if(!g||g.id!==e.pointerId)return;
   photoSwipe.current=null;
-  if(g.axis!=="x")return;
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
+  if(!g.claimed||!gestures.owns("hero",g.serial!)){
+   if(g.axis==="y"&&gestures.owns("native",g.serial!))gestures.finish("native",g.serial!);
+   else gestures.finishCandidate(g.serial!);
+   return;
+  }
+  gestures.finish("hero",g.serial!);
+  try{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);}catch{/* implicit release */}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
-  const target=!cancel&&g.axis==="x"&&(Math.abs(dx)>g.width*.2||Math.abs(dx)/dt>.55)?
-   Math.max(0,Math.min(photos.length-1,g.index+(dx<0?1:-1))):g.index;
-  if(photoTrack.current)photoTrack.current.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";
-  setTransform(target);setActivePhoto(target);
-  if(g.axis==="x")clickBlocked.current=performance.now()+280;
+  const target=!cancel&&(Math.abs(dx)>g.width*.2||Math.abs(dx)/dt>.55)?
+   Math.max(0,Math.min(photos.length-1,Math.round(g.index)+(dx<0?1:-1))):
+   Math.max(0,Math.min(photos.length-1,Math.round(g.index)));
+  choosePhoto(target);
+  clickBlocked.current=performance.now()+280;
  };
+ useLayoutEffect(()=>{
+  const list=previousPhotos.current;
+  if(list===photos)return;
+  previousPhotos.current=photos;
+  const index=preservePhotoId(list,photos,activePhotoId.current,activePhoto);
+  activePhotoId.current=photos[index]?.id??null;
+  photoSwipe.current=null;
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
+  if(photoTrack.current){
+   photoTrack.current.style.transition="none";
+   setTransform(index);
+  }
+  if(index!==activePhoto)setActivePhoto(index);
+ },[photos,activePhoto]);
  const paintTabs=useCallback((i:number,dx=0)=>{
   motionAuthority.current.run("tabs",PROFILE_MOTION_WRITER_TABLE.tabs,()=>{
   const position=Math.max(0,Math.min(4,i-dx/Math.max(1,tabViewport.current)));
@@ -549,7 +617,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    aria-modal={mode==="owner"||embeddedSelf?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="local-self-preview"?"Локальный предпросмотр черновика":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
   {(mode==="preview"||mode==="local-self-preview"&&!!onClose)&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
-    onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
+    onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}
+     onLostPointerCapture={e=>photoEnd(e,true)}>
     <div className="pm-photo-motion" ref={photoMotion}>
     {photos.length?<div className="pm-photo-track" ref={photoTrack}>
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
@@ -564,7 +633,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
      <button type="button" key={p.id} aria-label={"Фото "+(i+1)+" из "+photos.length}
        aria-current={i===activePhoto?"true":undefined}
        className={i===activePhoto?"active":""}
-       onClick={()=>{if(photoTrack.current)photoTrack.current.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";setTransform(i);setActivePhoto(i);}}/>)}</div>}
+       onClick={()=>choosePhoto(i)}/>)}</div>}
     {view.profile.source!=="server"&&<span className="pm-hero-demo">{view.profile.source==="fixture"?"Демо":"Черновик"}</span>}
    </div>
    <div className="pm-sheet-viewport" ref={viewport}>
