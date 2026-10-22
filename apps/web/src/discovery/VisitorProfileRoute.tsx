@@ -269,7 +269,12 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   const dx=Math.max(0,e.clientX-g.startX);
   const dt=Math.max(1,performance.now()-g.started);
   const x=currentX();
-  if(!cancelled&&(x>width()*.32||(dx>35&&dx/dt>.58)))close();
+  const willClose=!cancelled&&(x>width()*.32||(dx>35&&dx/dt>.58));
+  // Temporary DOM-only diagnostic for real Chromium interrupted-close trace.
+  if(route.current)route.current.dataset.rem02dLastEnd=JSON.stringify({
+   cancelled,dx,dt,x,width:width(),willClose,source:g.source
+  });
+  if(willClose)close();
   else rollback();
  };
  return <div className="discovery-visitor-route" ref={route}
