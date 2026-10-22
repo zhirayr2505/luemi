@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useLayoutEffect,useRef,useState} from "react";
+import type {CSSProperties} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import {X,MoreHorizontal,ChevronLeft,ChevronRight,Lock,Star,Share2,Link2,Flag as ReportIcon} from "lucide-react";
@@ -15,6 +16,8 @@ import {MotionController} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixTransform,
  localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
+import {computeMorph,isVisibleSource,geometryStyles,type MorphGeometry} from "./photo-viewer-morph";
+import {readViewerInsets,watchViewerInsets,type ViewerInsets} from "./photo-viewer-safe-area";
 
 type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:ViewerSource|null;contextId:string;
  onClose:()=>void;onMain?:(id:string)=>boolean|Promise<boolean>;
@@ -42,6 +45,15 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const [decoded,setDecoded]=useState<Record<string,string>>({});
  const displayReady=!!readyKey&&decoded[show?.id??""]===readyKey;
  const [menu,setMenu]=useState(false);
+ const menuOpen=useRef(false);
+ menuOpen.current=menu;
+ const [safeInsets,setSafeInsets]=useState<ViewerInsets>({top:0,bottom:0,left:0,right:0});
+ const viewerRoot=useRef<HTMLElement>(null);
+ const closeButton=useRef<HTMLButtonElement>(null);
+ const oldFocus=useRef<HTMLElement|null>(null);
+ const morphLayer=useRef<HTMLDivElement>(null);
+ const morphImage=useRef<HTMLImageElement>(null);
+ const morphRelease=useRef<(()=>void)|null>(null);
  const [message,setMessage]=useState("");
  const stage=useRef<HTMLDivElement>(null);
  const surface=useRef<HTMLDivElement>(null);
