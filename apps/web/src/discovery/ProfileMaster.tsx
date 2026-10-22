@@ -92,7 +92,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
  const tabMetrics=useRef<Array<{left:number;width:number}>>([]);
- const tabViewport=useRef(1);
+ const tabViewport=useRef(1),tabLastPosition=useRef(0);
  const dragFrame=useRef<number|null>(null);
  const photoSwipe=useRef<Swipe|null>(null),tabSwipe=useRef<Swipe|null>(null);
  const clickBlocked=useRef(0),expandedY=useRef(385),collapsedY=useRef(46),collapsedRef=useRef(false);
@@ -306,6 +306,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const paintTabs=useCallback((i:number,dx=0)=>{
   motionAuthority.current.run("tabs",PROFILE_MOTION_WRITER_TABLE.tabs,()=>{
   const position=Math.max(0,Math.min(4,i-dx/Math.max(1,tabViewport.current)));
+  tabLastPosition.current=position;
   if(pages.current)pages.current.scrollLeft=position*tabViewport.current;
   const indicator=ink.current,metrics=tabMetrics.current;
   const left=Math.floor(position),right=Math.min(4,left+1),ratio=position-left;
@@ -331,8 +332,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(!first&&!changed)return;
    // Snapshot the FRACTIONAL page before width and tab metrics are replaced.
    const runner=tabsRunner.current,phase=runner?.snapshot().phase??"idle";
-   const fraction=phase==="settling"||phase==="suspended"?runner!.sample():
-    (pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
+   const fraction=phase==="settling"||phase==="suspended"?runner!.sample():tabLastPosition.current;
    first=false;hidden=false;tabsRevision.current++;
    tabMetrics.current=metrics;tabViewport.current=rawWidth;
    if(ink.current)ink.current.style.width=metrics[0].width+"px";
@@ -363,8 +363,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const i=Math.min(4,Math.max(0,newIndex));
   stopTabs.current();
   const runner=ensureTabsRunner();
-  const from=runner.snapshot().phase==="idle"?
-   (pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current):runner.cancel();
+  const from=runner.snapshot().phase==="idle"?tabLastPosition.current:runner.cancel();
   tabSelectionRef.current=tabs[i][0];
   setTab(tabs[i][0]);
   runner.start(from,i,295,[.22,.77,.23,1],value=>paintTabs(value),()=>paintTabs(i),
