@@ -7,6 +7,7 @@ const logo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
 const once=(name)=>console.log("REM04A_STARTUP_BROWSER_PASS "+name);
 async function scenario({name,fontHang=false,logoError=false,auth="success",health="success",retry=false}){
  const p=await context.newPage();p.on("pageerror",e=>failures.push(e.message));
+ await p.route("https://telegram.org/js/telegram-web-app.js",route=>route.fulfill({status:200,contentType:"application/javascript",body:""}));
  await p.addInitScript(({fontHang})=>{
   window.Telegram={WebApp:{initData:"REM04A_TELEGRAM_ID",colorScheme:"light",ready(){},expand(){},
    isVersionAtLeast(){return false;},disableVerticalSwipes(){},setHeaderColor(){},setBackgroundColor(){}}};
