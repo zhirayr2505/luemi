@@ -36,6 +36,7 @@ function MediaQA(){
  const [openId,setOpenId]=useState<string|null>(null);
  const [sourceMode,setSourceMode]=useState<"none"|"hero"|"grid"|"offscreen">("none");
  const sourceImage=useRef<HTMLImageElement|null>(null);
+ const mediaBack=useRef<(()=>boolean)|null>(null);
  const [viewerSource,setViewerSource]=useState<ViewerSource|null>(null);
  const closed=useRef(0);
  const profile:ProfileMasterData={
@@ -57,6 +58,7 @@ function MediaQA(){
  (window as Window&{__luemiQaMedia?:unknown}).__luemiQaMedia={
   open:openMedia,close:()=>setOpenId(null),
   setSource:(mode:"none"|"hero"|"grid"|"offscreen")=>setSourceMode(mode),
+  back:()=>mediaBack.current?.()??false,
   stats:()=>({closeCommits:closed.current,photoCount:items.length,openId}),
   change:(operation:string)=>setItems(current=>{
    if(operation==="count-0")return [];
@@ -104,7 +106,7 @@ function MediaQA(){
  };
  return <>
   {sourceMode!=="none"&&origin&&<div className="pm-qa-photo-source"
-    style={{position:"absolute",zIndex:8,
+    style={{position:"absolute",zIndex:9000,
      top:sourceMode==="offscreen"?"180vh":sourceMode==="grid"?"170px":"108px",
      left:sourceMode==="grid"?"22px":"14px",
      width:sourceMode==="grid"?"204px":"340px",
@@ -113,8 +115,10 @@ function MediaQA(){
      style={{width:"100%",height:"100%",display:"block",objectFit:"cover",
       objectPosition:sourceMode==="hero"?"22% 70%":"50% 50%"}} draggable={false}/>
   </div>}
+  <button className="pm-qa-focus" type="button" style={{position:"absolute",top:8,left:10,zIndex:5}}>QA focus</button>
   {openId&&<PhotoViewer view={view} photos={view.photos} initialPhotoId={openId}
    contextId={viewerPhotoContext(view)} source={viewerSource}
+   registerBack={handler=>{mediaBack.current=handler;}}
    onClose={()=>{closed.current++;setOpenId(null);}}/>}
  </>;
 }
