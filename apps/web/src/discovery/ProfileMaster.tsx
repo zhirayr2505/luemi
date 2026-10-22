@@ -40,6 +40,17 @@ function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;lo
    onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
 }
 type BlurWindowWriter=(indices:number[]|null)=>void;
+/** Heavy blurred pixels remain in the accepted keyed slide. A window shift
+ * only renders slides whose enabled/media state changes; unaffected slots
+ * reuse both React work and the already decoded <img> DOM node. No extra media.
+ */
+const ProfileBlurSlide=memo(function ProfileBlurSlide({photo,enabled}:{
+ photo:ProfilePhoto;enabled:boolean;
+}){
+ return <div className="pm-photo-blur-slide" data-blur-photo-id={photo.id}>
+  {enabled&&<PhotoImage photo={photo} alt="" loading="eager"/>}
+ </div>;
+});
 /** Memoized media-only renderer: moving the 3 blur peers may NOT rerender the
  * whole profile, native scroll tabs or the accepted hero track controller.
  */
@@ -64,9 +75,7 @@ const ProfileBlurTrack=memo(function ProfileBlurTrack({
   return new Set(list);
  },[activePhoto,blurFrom,photos,windowIndices]);
  return <div className="pm-photo-blur-track" ref={trackRef}>
-  {photos.map((photo,i)=><div className="pm-photo-blur-slide" key={photo.id} data-blur-photo-id={photo.id}>
-   {indices.has(i)&&<PhotoImage photo={photo} alt="" loading="eager"/>}
-  </div>)}
+  {photos.map((photo,i)=><ProfileBlurSlide key={photo.id} photo={photo} enabled={indices.has(i)}/>)}
  </div>;
 });
 function About({view}:{view:ProfileView}){
