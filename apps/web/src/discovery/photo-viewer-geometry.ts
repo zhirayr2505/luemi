@@ -33,11 +33,12 @@ export function allowedOffset(x:number,width:number,hasPrevious:boolean,hasNext:
 export function recentVelocity(samples:readonly {x:number;t:number}[]):number{
  if(samples.length<2)return 0;
  const last=samples[samples.length-1];
- let first=samples[0];
+ let first=last;
  for(let i=samples.length-2;i>=0;i--){
   if(last.t-samples[i].t>80)break;
   first=samples[i];
  }
+ // Finger held still for >80ms must NOT use old high-speed drag samples.
  return last.t>first.t?(last.x-first.x)/(last.t-first.t):0;
 }
 export function destination(x:number,width:number,velocity:number,hasPrevious:boolean,hasNext:boolean):0|-1|1{
