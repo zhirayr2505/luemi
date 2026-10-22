@@ -43,7 +43,8 @@ const drag=async(delta)=>{
  const initial=await state();const points=[];
  for(const dx of [22,55,97,134].filter(d=>d<=Math.abs(delta))){
   await page.mouse.move(x-Math.sign(delta)*dx,y);
-  points.push({dx,x:(await state()).offset});
+  const sample=await state();
+  points.push({dx,x:sample.offset,tx:sample.tx,width:sample.width});
  }
  return {x,y,initial,points};
 };
@@ -88,8 +89,12 @@ try{
  let snap=await state();
  assert.equal(snap.slides,3);assert.equal(snap.width,393);
  const {points}=await drag(134);
- for(const p of points)assert.ok(Math.abs(p.x+p.dx)<=1,
-  "interior track displacement must be <= 1 CSS px; "+JSON.stringify(p));
+ for(const p of points){
+  assert.ok(Math.abs(p.x+p.dx)<=1,
+   "interior track displacement must be <= 1 CSS px; "+JSON.stringify(p));
+  assert.ok(Math.abs(p.tx+p.width+p.dx)<=1,
+   "REAL computed DOMMatrix translation must follow pointer within <=1 CSS px; "+JSON.stringify(p));
+ }
  const next=page.locator(".pm-viewer-slide[data-slot=next] img");
  const arriving=await next.elementHandle();assert.ok(arriving);
  const rect=await page.locator(".pm-viewer-slide[data-slot=next]").boundingBox();
@@ -141,8 +146,10 @@ try{
   await swipe(sign,183,4);
   const expected=["qa-alpha","qa-beta","qa-gamma","qa-delta","qa-epsilon","qa-zeta"][idx+(sign===1?1:-1)];
   await settle(expected);
+  const after=await state();
+  assert.equal(after.commits,before.commits+1,"exactly one semantic photo commit per swipe "+i);
  }
- pass("20 consecutive real gestures always settle with correct stable photo identity");
+ pass("20 consecutive real gestures settle with correct ID and exactly one semantic commit each");
 
  await change("reorder");await ready((await state()).id);
  await change("remove-current");
