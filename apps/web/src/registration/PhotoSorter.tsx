@@ -1,4 +1,4 @@
-import {useLayoutEffect,useRef,useState,useEffect} from "react";
+import {useLayoutEffect,useRef,useState,useEffect,useCallback} from "react";
 import type {PointerEvent as ReactPointerEvent,ChangeEvent} from "react";
 import {createPortal} from "react-dom";
 import {selectionHaptic} from "../ui/haptic";
@@ -25,11 +25,12 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
  const scrollBounds=useRef<{node:Element}|null>(null);
  const [drag,setDrag]=useState<Drag|null>(null);
  const display=drag?reorder(photos,drag.source,drag.target):photos;
- const stopFrame=()=>{
+ const displaySignature=display.map(x=>x.id).join("|");
+ const stopFrame=useCallback(()=>{
   if(scrollFrame.current!==null){cancelAnimationFrame(scrollFrame.current);scrollFrame.current=null;}
   lastFrameTime.current=0;
- };
- const cancel=(reason:"idle"|"cancelled"="cancelled")=>{
+ },[]);
+ const cancel=useCallback((reason:"idle"|"cancelled"="cancelled")=>{
   const active=pending.current;
   if(active)window.clearTimeout(active.timer);
   stopFrame();
@@ -38,12 +39,12 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
   if(active&&mosaic.current?.hasPointerCapture(active.pointer)){
    try{mosaic.current.releasePointerCapture(active.pointer);}catch{/* detached element */}
   }
- };
+ },[stopFrame]);
  const idsSignature=photos.map(item=>item.id).join("|");
  useEffect(()=>{
   const p=pending.current;
   if(p&&!photos.some(item=>item.id===p.id))cancel();
- },[idsSignature,photos]);
+ },[idsSignature,photos,cancel]);
  useEffect(()=>{
   const node=mosaic.current;
   if(!node)return;
@@ -57,7 +58,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
   };
   node.addEventListener("touchmove",handle,{capture:true,passive:false});
   return ()=>node.removeEventListener("touchmove",handle,true);
- },[]);
+ },[cancel]);
  useEffect(()=>()=>{if(pending.current)window.clearTimeout(pending.current.timer);
   if(scrollFrame.current!==null)cancelAnimationFrame(scrollFrame.current);
  },[]);
@@ -81,7 +82,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      }
    }
    rects.current=newRects;
- },[display.map(x=>x.id).join("|"),drag?.id]);
+ },[displaySignature,drag?.id]);
  // Hit-testing uses viewport client coordinates; no stale rect cache after scroll.
  const hitTarget=(x:number,y:number,current:Drag):number=>{
   const hit=document.elementFromPoint(x,y)?.closest("[data-photo-slot]");
