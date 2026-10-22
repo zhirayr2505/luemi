@@ -125,7 +125,14 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   gestureArbiter.current?.cancel();
  };
  const cancelPinchSession=(animate=false)=>{
+  const wasPinching=pinchSession.current;
   releasePointers();resetMedia(animate);restoreVertical(animate);
+  if(wasPinching&&!closing.current&&Math.abs(trackX.current)>.1){
+   const motion=runner.current;
+   const frozen=motion?.cancel()??trackX.current;
+   // A cancelled pinch cannot leave a half-visible neighboring slide.
+   motion?.start(frozen,0,duration,easing,paintTrack,()=>{},geometryRevision.current);
+  }
   if(!closing.current&&phase.current!=="settling")phase.current="idle";
  };
  const beginPair=(target:HTMLElement)=>{
