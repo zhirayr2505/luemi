@@ -55,7 +55,8 @@ const settle=async(id)=>{
    return !!v&&!!t&&Math.abs(Number(t.dataset.offset))<.25;
   },null,{timeout:4000});
  }catch(error){
-  console.log("REM03B_SETTLE_DIAG",JSON.stringify({expected:id,state:await state(),errors}));
+  console.log("REM03B_SETTLE_DIAG",JSON.stringify({expected:id,state:await state(),errors,
+   events:await page.evaluate(()=>window.__pvEvents?.slice(-55)??[])}));
   throw error;
  }
 };
@@ -68,6 +69,17 @@ try{
  await page.route("**/qa-media-broken.png",route=>route.fulfill({status:404,body:"missing"}));
  await page.goto("http://127.0.0.1:5173/profile-qa.html",{waitUntil:"domcontentloaded"});
  await page.waitForFunction(()=>!!window.__luemiQaMedia);
+ await page.evaluate(()=>{
+  window.__pvEvents=[];
+  for(const name of ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture"]){
+   document.addEventListener(name,e=>{
+    if(!(e.target instanceof Element)||!e.target.closest(".pm-viewer"))return;
+    window.__pvEvents.push({name,x:Math.round(e.clientX),y:Math.round(e.clientY),
+     buttons:e.buttons,id:e.pointerId,type:e.pointerType,time:Math.round(e.timeStamp)});
+    if(window.__pvEvents.length>100)window.__pvEvents.shift();
+   },true);
+  }
+ });
  await change("count-0");await open("qa-alpha");
  await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
  await change("count-1");await open("qa-alpha");await ready("qa-alpha");
