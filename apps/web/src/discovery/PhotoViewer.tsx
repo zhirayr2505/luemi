@@ -294,6 +294,13 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   });
  },[]);
  const currentRef=useCallback((node:HTMLImageElement|null)=>{image.current=node;},[]);
+ // A switched/removed/resource-replaced photo must not inherit the previous
+ // DOM image's zoom matrix or live pointer ownership.
+ const activeMediaKey=show?resourceIdentity(show):null;
+ useLayoutEffect(()=>{
+  if(pinchSession.current)cancelPinchSession(false);
+  else mediaPose.current=identityMedia();
+ },[activeMediaKey]);
  const imageError=useCallback((photo:ProfilePhoto)=>{
   mediaRef.current?.reportDisplayFailure(photo,"display-decode-failed");
  },[]);
@@ -314,12 +321,26 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     paintTrack(x);
     if(gesture.current){gesture.current.origin=resizeOffset(gesture.current.origin,old,measured);}
    }
+   if(mediaPose.current.scale>1.0001||pinchSession.current){
+    const pose=clampPan(freezeMedia(),viewSize(),naturalSize());
+    paintMedia(pose);
+    if(pinch.current){
+     const [a,b]=pinch.current.ids.map(id=>pointer.current.get(id));
+     if(a&&b)pinch.current=beginPinch(pinch.current.ids,
+      localPoint(a),localPoint(b),pose,viewSize());
+    }
+    if(pan.current){
+     const at=pointer.current.get(pan.current.id);
+     if(at)pan.current={id:pan.current.id,at:localPoint(at),pose};
+    }
+   }
   });
   observer.observe(outer);return ()=>observer.disconnect();
  },[]);
  useEffect(()=>bindMotionLifecycle(()=>{
-  const g=gesture.current;
-  if(g){pointer.current.clear();gesture.current=null;gestureArbiter.current?.cancel();}
+  // Background and Telegram deactivation terminate all active pointer IDs;
+  // a late lostpointercapture cannot reopen a previously disposed session.
+  cancelPinchSession(false);
   const motion=runner.current;
   if(motion?.snapshot().phase==="settling")motion.suspend();
   const stageNode=stage.current,layer=surface.current;
@@ -354,10 +375,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   },geometryRevision.current);
  };
  const requestNavigation=(request:NavigationRequest,_origin:NavigationOrigin):boolean=>{
-  if(closing.current)return false;
+  if(closing.current||pinchSession.current)return false;
   const selected=latest.current,target=navigatePhoto(selected.photoId,selected.photos,request);
   if(!target||target===selected.photoId)return false;
   if(gesture.current){gesture.current=null;pointer.current.clear();gestureArbiter.current?.cancel();}
+  resetMedia(false);
   const nextIndex=photoIndex(selected.photos,target),shift=nextIndex-selected.index;
   if(Math.abs(shift)!==1){
    // Nonadjacent internal navigation is a non-animated, explicit rebase.
@@ -538,7 +560,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    data-motion-phase={phaseKey} data-semantic-commits={commitCount.current}>
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}
    onPointerUp={e=>finish(e,false)} onPointerCancel={e=>onLostPointer(e)}
-   onLostPointerCapture={onLostPointer}>
+   onLostPointerCapture={onLostPointer}
+   onTouchCancel={()=>cancelPinchSession(false)}>
    <div className="pm-viewer-surface" ref={surface}>
     <div className="pm-viewer-track" ref={track} data-offset="0">
      {slots.map(slot=><PhotoViewerSlide key={slot.photo?resourceIdentity(slot.photo):"empty-"+slot.role}
