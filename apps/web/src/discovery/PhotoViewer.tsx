@@ -271,6 +271,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    stopMorph();
   });
  };
+ const morphLifecycle=useRef<{stop:()=>void;freeze:()=>void}>({stop:()=>{},freeze:()=>{}});
+ morphLifecycle.current={stop:stopMorph,freeze:()=>stopSurface()};
  const surfaceHandler=useRef<(closingPhase:boolean)=>void>(()=>{});
  surfaceHandler.current=surfaceTransition;
  useLayoutEffect(()=>{
@@ -300,7 +302,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    captureLossTimers.clear();
    runner.current?.dispose();gestureArbiter.current?.dispose();
    surfaceOwner.current?.dispose();
-   stopMorph();
+   morphLifecycle.current.stop();
   };
  },[]);
  useLayoutEffect(()=>{
@@ -446,7 +448,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(motion?.snapshot().phase==="settling")motion.suspend();
   const stageNode=stage.current,layer=surface.current;
   if(stageNode&&layer&&phase.current==="opening"){
-   stopSurface();phase.current="idle";
+   morphLifecycle.current.freeze();phase.current="idle";
   }
  },()=>{
   const motion=runner.current;
