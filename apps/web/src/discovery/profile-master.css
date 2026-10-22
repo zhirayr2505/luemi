@@ -49,8 +49,8 @@
 .pm-viewer-slide-placeholder{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:13px;text-align:center;color:rgba(255,255,255,.84);pointer-events:none}
 
 .pm-viewer-top,.pm-viewer-bottom{position:absolute;z-index:3;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-left:19px;padding-right:19px;pointer-events:none}
-.pm-viewer-top{top:0;padding-top:calc(env(safe-area-inset-top,0px) + 63px)}
-.pm-viewer-bottom{bottom:0;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);font-size:12px;text-shadow:0 2px 6px #000}
+.pm-viewer-top{top:0;padding-top:calc(var(--pm-viewer-safe-top,0px) + 63px)}
+.pm-viewer-bottom{bottom:0;padding-bottom:calc(var(--pm-viewer-safe-bottom,0px) + 20px);font-size:12px;text-shadow:0 2px 6px #000}
 .pm-viewer-top>* ,.pm-viewer-bottom>*{pointer-events:auto}
 .pm-viewer-top>span{font-size:13px;font-weight:750}
 .pm-viewer-topspacer{width:37px}
@@ -58,7 +58,7 @@
 .pm-viewer button:disabled{opacity:.25}
 .pm-viewer-actions{display:flex;gap:7px}
 .pm-viewer-menu-backdrop{position:absolute;inset:0;z-index:5;display:flex;align-items:flex-end;background:rgba(0,0,0,.45)}
-.pm-viewer-menu{display:flex;flex-direction:column;gap:4px;width:100%;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0;background:#23202e}
+.pm-viewer-menu{display:flex;flex-direction:column;gap:4px;width:100%;padding:12px 14px calc(14px + var(--pm-viewer-safe-bottom,0px));border-radius:22px 22px 0 0;background:#23202e}
 .pm-viewer .pm-viewer-menu button{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;height:46px;padding:0 14px;font-size:14px;text-align:left;border-radius:12px;background:#302c3a;border:0}
 .pm-viewer .pm-viewer-menu button:last-child{justify-content:center;margin-top:6px;background:#393442}
 /* REM-03A resource state: keeps the approved full-screen geometry intact. */
@@ -269,3 +269,14 @@
  .pm-profile-sheet,.pm-photo-blur,.pm-mini-avatar,.pm-photo-track,.pm-pages-track,
  .pm-tab-ink,.pm-viewer-stage,.pm-viewer-image{transition:none!important}
 }
+
+/* REM-03D: only this detached morph layer clips/reveals the uniformly scaled
+ * image; track/media pan and viewer surface retain their own motion owners. */
+.pm-viewer-morph{position:absolute;inset:0;z-index:2;display:none;overflow:hidden;
+ pointer-events:none;will-change:clip-path;isolation:isolate}
+.pm-viewer-morph img{position:absolute;display:block;max-width:none;max-height:none;
+ object-fit:fill;transform-origin:0 0;will-change:transform;pointer-events:none}
+.pm-viewer-top,.pm-viewer-bottom{padding-inline-start:calc(19px + var(--pm-viewer-safe-left,0px));
+ padding-inline-end:calc(19px + var(--pm-viewer-safe-right,0px))}
+.pm-viewer-menu{padding-inline-start:calc(14px + var(--pm-viewer-safe-left,0px));
+ padding-inline-end:calc(14px + var(--pm-viewer-safe-right,0px))}
