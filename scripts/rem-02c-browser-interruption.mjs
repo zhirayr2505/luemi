@@ -82,8 +82,12 @@ try{
   await page.mouse.move(bx-16,by,{steps:2});await sleep(45);
   const [track,ink]=await Promise.all([scan(browseTrack),scan(browseInk)]);
   assert.ok(Number.isFinite(track.frozen)&&Number.isFinite(ink.frozen));
-  near(track.x,track.frozen-16,1);
-  near(ink.x,ink.frozen+16/3,1);
+  // By 250ms the selected LAST browse page may already be physically at
+  // its edge. Preserve the approved .22 elastic/1:3 ink behavior.
+  const isLast=-track.frozen/box.width>=2-.001;
+  const shift=isLast?16*.22:16;
+  near(track.x,track.frozen-shift,1);
+  near(ink.x,ink.frozen+shift/3,1);
   await page.mouse.move(bx-45,by,{steps:3});await page.mouse.up();
   await sleep(350);
   const selected=await top.evaluateAll(nodes=>nodes.filter(n=>n.getAttribute("aria-selected")==="true").length);
