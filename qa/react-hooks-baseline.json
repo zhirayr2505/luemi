@@ -25,7 +25,7 @@
     {
       "file": "apps/web/src/discovery/VisitorProfileRoute.tsx",
       "rule": "react-hooks/exhaustive-deps",
-      "line": 112,
+      "line": 118,
       "column": 4,
       "message": "React Hook useLayoutEffect has a missing dependency: 'moveTo'. Either include it or remove the dependency array."
     }

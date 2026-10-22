@@ -2,6 +2,7 @@ import {useLayoutEffect,useRef} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {ProfileMaster} from "./ProfileMaster";
 import {GlobalHeader} from "./GlobalHeader";
+import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
 import type {HeaderMotion} from "./GlobalHeader";
 import type {ProfileMasterData} from "./ProfileModel";
 
@@ -20,6 +21,7 @@ const EASING="cubic-bezier(.2,.82,.24,1)";
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
 export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Props){
  const route=useRef<HTMLDivElement>(null);
+ const motionAuthority=useRef(createProfileMotionAuthority());
  const header=useRef<HeaderMotion>(null);
  const gesture=useRef<RouteDrag|null>(null);
  const cancelProfileGesture=useRef<(()=>void)|null>(null);
@@ -29,9 +31,11 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
  const finishMotion=useRef<(()=>void)|null>(null);
 
  const revealUnderlay=(visible:boolean)=>{
-  const app=route.current?.closest<HTMLElement>(".discovery-app");
-  if(visible)app?.setAttribute("data-route-revealing","true");
-  else app?.removeAttribute("data-route-revealing");
+  motionAuthority.current.run("route",PROFILE_MOTION_WRITER_TABLE.route,()=>{
+   const app=route.current?.closest<HTMLElement>(".discovery-app");
+   if(visible)app?.setAttribute("data-route-revealing","true");
+   else app?.removeAttribute("data-route-revealing");
+  });
  };
  const clearTimer=()=>{
   if(timer.current!==null){window.clearTimeout(timer.current);timer.current=null;}
@@ -49,7 +53,9 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
  };
  const width=()=>route.current?.clientWidth||window.innerWidth;
  const setX=(x:number)=>{
-  if(route.current)route.current.style.transform="translate3d("+x+"px,0,0)";
+  motionAuthority.current.run("route",PROFILE_MOTION_WRITER_TABLE.route,()=>{
+   if(route.current)route.current.style.transform="translate3d("+x+"px,0,0)";
+  });
  };
  const finish=()=>{
   const callback=finishMotion.current;

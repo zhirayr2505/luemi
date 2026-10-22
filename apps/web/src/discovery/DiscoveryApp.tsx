@@ -17,6 +17,7 @@ import {DiscoveryInterestsSheet} from "./InterestsSheet";
 import {ProfileMaster} from "./ProfileMaster";
 import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {GlobalHeader} from "./GlobalHeader";
+import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
 import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import "./discovery.css";
@@ -80,6 +81,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const underline=useRef<HTMLSpanElement>(null);
  const swipeFrame=useRef<number|null>(null);
  const pagerSettleTimer=useRef<number|null>(null);
+ const motionAuthority=useRef(createProfileMotionAuthority());
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
@@ -194,8 +196,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  // Pointer movement updates only CSS compositor variables in one animation frame.
  // React must not render all profile cards on every move.
  const paintDrag=(value:number)=>{
-  pageTrack.current?.style.setProperty("--luemi-drag",value+"px");
-  underline.current?.style.setProperty("--luemi-underline-drag",(-value/3)+"px");
+  motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse,()=>{
+   pageTrack.current?.style.setProperty("--luemi-drag",value+"px");
+   underline.current?.style.setProperty("--luemi-underline-drag",(-value/3)+"px");
+  });
  };
  const flushDrag=()=>{
   if(swipeFrame.current!==null){window.cancelAnimationFrame(swipeFrame.current);swipeFrame.current=null;}
@@ -214,8 +218,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   underline.current?.classList.add("is-settling");
   pageTrack.current?.classList.remove("is-finger-tracking");
   underline.current?.classList.remove("is-finger-tracking");
-  pageTrack.current?.style.setProperty("--luemi-tab-offset",(-targetIndex*100)+"%");
-  underline.current?.style.setProperty("--luemi-tab-offset",(targetIndex*100)+"%");
+  motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse,()=>{
+   pageTrack.current?.style.setProperty("--luemi-tab-offset",(-targetIndex*100)+"%");
+   underline.current?.style.setProperty("--luemi-tab-offset",(targetIndex*100)+"%");
+  });
   paintDrag(0);
   // transitionend is primary; this only frees the layer if WebView drops the event.
   pagerSettleTimer.current=window.setTimeout(finishPagerSettle,380);
