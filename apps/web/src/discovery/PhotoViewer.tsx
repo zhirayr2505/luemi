@@ -198,10 +198,13 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    // React reconciles slots by resource key, so the arriving DOM img is MOVED,
    // not recreated. Shift track by an equivalent viewport width before paint.
    pendingCommit.current=null;
-   paintTrack(0);
+   // New window is translated by exactly one viewport relative to old window.
+   // Rebase the SAME motion runner to zero too, not only the DOM matrix:
+   // otherwise the next pointerdown would sample stale ±W and jump.
+   runner.current?.start(0,0,0,easing,paintTrack,()=>{},geometryRevision.current);
    phase.current="idle";
   }else if(priorSignature.current!==signature||photoId!==committedPhotoId){
-   runner.current?.cancel();paintTrack(0);
+   runner.current?.start(0,0,0,easing,paintTrack,()=>{},geometryRevision.current);
    pendingCommit.current=null;
    if(phase.current==="settling"||phase.current==="draggingX")phase.current="idle";
   }
