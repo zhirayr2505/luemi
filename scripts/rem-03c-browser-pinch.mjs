@@ -78,7 +78,7 @@ try{
  await send("touchStart",[first,second]);
  s=await state();near(s.scale,beforeRepeat.scale,.02);
  // Third finger may move without replacing original active pair.
- const third=p(14,80,165);await send("touchStart",[first,second,third]);
+ let third=p(14,80,165);await send("touchStart",[first,second,third]);
  const beforeThird=await state();third=p(14,320,710);
  await send("touchMove",[first,second,third]);s=await state();
  near(s.scale,beforeThird.scale,.02);near(s.tx,beforeThird.tx,.8);near(s.ty,beforeThird.ty,.8);
