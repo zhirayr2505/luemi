@@ -423,6 +423,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    g.claimed=true;
    g.width=hero.current?.clientWidth||g.width;
    g.index=fractionalTrack(photoTrack.current,g.width,activePhoto);
+   stopBlurTracking(); // pointer now owns sampled fraction, not old dot target
    if(photoTrack.current){
     // The exact capture frame is inspectable by real Chromium gesture QA.
     photoTrack.current.dataset.motionFrozenX=String(-g.index*g.width);
@@ -442,6 +443,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   dragFrame.current=requestAnimationFrame(()=>{
    dragFrame.current=null;
    if(photoSwipe.current!==g||!gestures.owns("hero",g.serial!))return;
+   if(blurWindowRef.current){
+    const fractional=g.index-shift/Math.max(1,g.width);
+    showBlurWindow(blurWindowAt(fractional,fractional+(shift>=0?-1:1)));
+   }
    setTransform(g.index,shift);
   });
  };
