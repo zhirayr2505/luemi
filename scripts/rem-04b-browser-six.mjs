@@ -103,6 +103,10 @@ try{
  for(const [from,to,label] of [[0,5,"0-5"],[5,0,"5-0"],[0,3,"0-3"],[3,1,"3-1"],[1,4,"1-4"],[4,2,"4-2"],[2,5,"2-5"]]){
   await dot(from);await pause(335);await dot(to);
   await frameTrace(label);
+  const settled=await snapshot();
+  const actual=settled.pairs.filter(p=>p.blurExists).map(p=>p.index).sort((a,b)=>a-b);
+  const expected=[to,to-1,to+1].filter(i=>i>=0&&i<6).sort((a,b)=>a-b);
+  assert.deepEqual(actual,expected,label+": release old blurFrom and retain only the selected photo plus neighbors");
  }
  await dot(0);await pause(340);await dot(5);await pause(85);await dot(1);
  await frameTrace("retarget-0-5-1");
@@ -114,6 +118,38 @@ try{
  await page.evaluate(()=>document.querySelector(".luemi-shell")?.setAttribute("data-theme","dark"));
  await dot(0);await pause(340);await dot(5);
  await frameTrace("dark-theme");
+ // An actual viewer opening during a distant gallery transition must
+ // point to the selected photo ID, and closing must not corrupt the underlay.
+ await dot(0);await pause(340);await dot(5);await pause(55);
+ await page.locator(".pm-shell .pm-photo-slide").nth(5).evaluate(el=>el.click());
+ await page.locator(".pm-viewer").waitFor({state:"attached",timeout:3500});
+ assert.equal(await page.locator(".pm-viewer-image").getAttribute("data-photo-id"),"photo-5");
+ await page.keyboard.press("Escape");
+ await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
+ await pause(350);
+ assert.ok((await snapshot()).activeBlur<=3);
+ console.log("REM04B_SIX_VIEWER_PASS viewer source and return remain photoId consistent");
+ // Exercise the actual 1/2/3/4/6 image cardinalities; never synthesize
+ // phantom slides or mount more than 3 full-size blur images.
+ for(const item of [{mode:"local",kind:"one",count:1},{mode:"visitor",kind:"six",count:2},
+  {mode:"server",kind:"six",count:3},{mode:"owner",kind:"mixed",count:4},
+  {mode:"local",kind:"six",count:6}]){
+  await page.goto("http://127.0.0.1:5173/rem-01e-qa.html?mode="+item.mode+"&kind="+item.kind,
+   {waitUntil:"domcontentloaded"});
+  await page.locator(".pm-shell").waitFor({state:"visible"});
+  assert.equal(await page.locator(".pm-shell .pm-photo-slide").count(),item.count);
+  await page.getByRole("button",{name:"Развернуть анкету"}).click();
+  await pause(380);
+  if(item.count>1){
+   await dot(item.count-1);await frameTrace("count-"+item.count+"-last");
+   await dot(0);await frameTrace("count-"+item.count+"-first");
+  }
+  const v=await snapshot();
+  assert.ok(v.activeBlur<=3);
+  assert.ok(v.pairs.filter(p=>p.blurExists).every(p=>p.blurId===p.id),
+   "all mounted blur media retain the correct photoId");
+ }
+ console.log("REM04B_SIX_CARDINALITY_PASS real 1/2/3/4/6-photo ProfileMaster modes");
  const final=await snapshot();
  writeFileSync(dir+"/summary.json",JSON.stringify({records:records.map(r=>({label:r.label,frames:r.frames,issueCount:r.issueCount,issues:r.issues,maxDrift:r.maxDrift,peakBlur:r.peakBlur})),final,errors},null,2));
  const issueCount=records.reduce((n,r)=>n+r.issueCount,0);
