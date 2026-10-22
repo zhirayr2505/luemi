@@ -350,6 +350,13 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   });
   observer.observe(outer);return ()=>observer.disconnect();
  },[]);
+ useEffect(()=>{
+  // Window focus loss is not necessarily accompanied by visibilitychange.
+  // End only this viewer's pointer session, using the same lifecycle contract.
+  const blur=()=>lifecycleActions.current.cancel(false);
+  window.addEventListener("blur",blur);
+  return ()=>window.removeEventListener("blur",blur);
+ },[]);
  useEffect(()=>bindMotionLifecycle(()=>{
   // Background and Telegram deactivation terminate all active pointer IDs;
   // a late lostpointercapture cannot reopen a previously disposed session.
@@ -518,7 +525,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     const pose=freezeMedia();
     pan.current={id,at:localPoint(position),pose};
     phase.current="pinching";
-    try{e.currentTarget.setPointerCapture(id);}catch{/* WebView fallback */}
+    try{if(!e.currentTarget.hasPointerCapture(id))e.currentTarget.setPointerCapture(id);}catch{/* WebView fallback */}
    }else{
     releasePointers();resetMedia(!cancel);restoreVertical(!cancel);
     if(Math.abs(trackX.current)>.1)settle(0);
