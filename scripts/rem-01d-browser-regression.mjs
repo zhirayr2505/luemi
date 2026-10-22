@@ -133,7 +133,6 @@ try{
  });
  await settle();data=await info();
  const safe=await page.locator(".luemi-shell").evaluate(el=>{
-  const style=getComputedStyle(el);
   const probe=document.createElement("div");probe.style.height="var(--bottom-safe)";el.append(probe);
   const value=probe.getBoundingClientRect().height;probe.remove();
   return value;
