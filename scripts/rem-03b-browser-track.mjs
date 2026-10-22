@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {chromium} from "playwright";
-const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
+const browser=await chromium.launch({headless:true,channel:"chrome",args:["--no-sandbox"]});
 const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
  userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Mobile Safari/537.36"});
 const page=await context.newPage();
