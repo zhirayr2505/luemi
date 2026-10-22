@@ -195,7 +195,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    outer.style.transition="none";outer.style.opacity=opacity;
   }
   const t=owner?.token();
-  if(t&&interrupted)owner?.interrupt(t,"interrupted");
+  if(t&&interrupted){owner?.interrupt(t,"interrupted");releaseMorph();}
  };
  const releaseMorph=()=>{
   morphLayer.current?.style.setProperty("display","none");
@@ -249,6 +249,12 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const imageNode=morphImage.current;
   const geometry=reduce?null:prepareMorph();
   const morph=!!geometry&&!!imageNode;
+  if(closingPhase&&morph&&imageNode){
+   // At close the overlay starts at the destination contain rect, then
+   // returns to the currently matching source crop (not vice versa).
+   imageNode.style.transform="none";
+   imageNode.style.clipPath="inset(0px)";
+  }
   // The track (REM-03B) and zoomed IMG (REM-03C) are NEVER distorted.
   // Morph imagery owns its own uniform transform and crop clipping.
   layer.style.transform="none";
@@ -330,12 +336,16 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    captureLossTimers.clear();
    runner.current?.dispose();gestureArbiter.current?.dispose();
    surfaceOwner.current?.dispose();
+   releaseMorph();
   };
  },[]);
  useEffect(()=>{
   const key=(event:KeyboardEvent)=>{
-   if(event.key==="Escape"){event.stopImmediatePropagation();event.preventDefault();handlers.current.close();}
-   else if(event.key==="ArrowRight"||event.key==="ArrowLeft"){
+   if(event.key==="Escape"||event.key==="Backspace"){
+    if(event.key==="Backspace"&&(event.target instanceof HTMLInputElement||
+     event.target instanceof HTMLTextAreaElement))return;
+    event.stopImmediatePropagation();event.preventDefault();handlers.current.close();
+   }else if(event.key==="ArrowRight"||event.key==="ArrowLeft"){
     event.stopImmediatePropagation();event.preventDefault();
     handlers.current.navigate({direction:event.key==="ArrowRight"?1:-1},"keyboard");
    }
@@ -372,7 +382,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   }
   priorSignature.current=signature;
   previousIds.current=photos.map(p=>p.id);
-  if(photoId!==committedPhotoId){sourceRef.current=null;setCommittedPhotoId(photoId);}
+  if(photoId!==committedPhotoId){releaseMorph();sourceRef.current=null;setCommittedPhotoId(photoId);}
  },[signature,photoId,committedPhotoId,photos]);
  useEffect(()=>{if(photoId===null)handlers.current.close(true);},[photoId,menu]);
  const decodedCallback=useCallback((id:string,key:string,ok:boolean)=>{
@@ -480,6 +490,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const selected=latest.current,target=navigatePhoto(selected.photoId,selected.photos,request);
   if(!target||target===selected.photoId)return false;
   if(gesture.current){gesture.current=null;pointer.current.clear();gestureArbiter.current?.cancel();}
+  releaseMorph();
   resetMedia(false);
   const nextIndex=photoIndex(selected.photos,target),shift=nextIndex-selected.index;
   if(Math.abs(shift)!==1){
@@ -491,7 +502,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   settle(shift===1?-1:1,_origin==="swipe"?duration:0);return true;
  };
  const requestClose=(force=false)=>{
-  if(menu&&!force){setMenu(false);return;}
+  if(menuOpen.current&&!force){menuOpen.current=false;setMenu(false);return;}
   if(closing.current)return;
   closing.current=true;phase.current="closing";
   releasePointers();resetMedia(false);
@@ -508,6 +519,38 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const handle=()=>{handlers.current.close();return true;};
   registerBack(handle);return ()=>registerBack(null);
  },[registerBack]);
+ useLayoutEffect(()=>{
+  oldFocus.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  closeButton.current?.focus({preventScroll:true});
+  return ()=>{
+   const previous=oldFocus.current;
+   if(previous?.isConnected)previous.focus({preventScroll:true});
+  };
+ },[]);
+ useLayoutEffect(()=>{
+  const shell=sourceRef.current?.resolveElement()?.closest<HTMLElement>(".luemi-shell")??
+   document.querySelector<HTMLElement>(".luemi-shell");
+  return watchViewerInsets(shell,setSafeInsets);
+ },[]);
+ useEffect(()=>{
+  const root=viewerRoot.current;
+  if(!root)return;
+  const trap=(event:KeyboardEvent)=>{
+   if(event.key!=="Tab")return;
+   const activeMenu=menuOpen.current?root.querySelector<HTMLElement>(".pm-viewer-menu"):root;
+   if(!activeMenu)return;
+   const buttons=[...activeMenu.querySelectorAll<HTMLElement>('button:not(:disabled),[tabindex="0"]')]
+    .filter(el=>el.getClientRects().length>0);
+   if(!buttons.length){event.preventDefault();return;}
+   const first=buttons[0],last=buttons[buttons.length-1],current=document.activeElement;
+   if((event.shiftKey&&current===first)||(!event.shiftKey&&current===last)||
+    !activeMenu.contains(current)){
+    event.preventDefault();(event.shiftKey?last:first).focus({preventScroll:true});
+   }
+  };
+  root.addEventListener("keydown",trap);
+  return ()=>root.removeEventListener("keydown",trap);
+ },[]);
  const resetGesture=()=>{
   releasePointers();resetMedia(true);restoreVertical(true);
   if(!closing.current&&phase.current!=="settling")phase.current="idle";
@@ -677,7 +720,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  };
  const phaseKey=phase.current;
  return createPortal(<section className="pm-viewer" role="dialog" aria-modal="true" aria-label="Просмотр фото"
-   data-motion-phase={phaseKey} data-semantic-commits={commitCount.current}>
+   ref={viewerRoot} data-motion-phase={phaseKey} data-semantic-commits={commitCount.current}
+   style={{"--viewer-safe-top":safeInsets.top+"px","--viewer-safe-bottom":safeInsets.bottom+"px",
+    "--viewer-safe-left":safeInsets.left+"px","--viewer-safe-right":safeInsets.right+"px"} as CSSProperties}>
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}
    onPointerUp={e=>finish(e,false)} onPointerCancel={e=>finish(e,true)}
    onLostPointerCapture={onLostPointer}
@@ -697,9 +742,12 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
      </>:null}
    </div>}
   </div>
+  <div className="pm-viewer-morph" ref={morphLayer} style={{display:"none"}} aria-hidden="true">
+   <img ref={morphImage} alt="" draggable={false}/>
+  </div>
   <header className="pm-viewer-top">
    <span className="pm-viewer-topspacer"/><span>{index>=0?index+1:0} / {photos.length}</span>
-   <button type="button" onClick={()=>handlers.current.close()} aria-label="Закрыть просмотр"><X size={22}/></button>
+   <button type="button" ref={closeButton} onClick={()=>handlers.current.close()} aria-label="Закрыть просмотр"><X size={22}/></button>
   </header>
   <footer className="pm-viewer-bottom">
    <span>{show?displayPhotoDate(show):"Дата не указана"}</span>
