@@ -58,11 +58,11 @@ try{
  assert.ok(mid.opacity>.1&&mid.opacity<.9);
  await delay(400);const collapsed=await snapshot("owner-collapsed",true);
  near(collapsed.opacity,.9,.03);
- await page.locator(".pm-inline .pm-photo-progress button").nth(1).click();
+ await page.locator(".pm-inline .pm-photo-progress button").nth(1).evaluate(el=>el.click());
  await delay(70);const move=await snapshot("hero-fractional-settle",true);
  assert.ok(move.trackX<-.2&&move.trackX>-393,"interpolated track not integer");
  await delay(320);await snapshot("hero-endpoint",true);
- await page.locator(".pm-inline .pm-photo-progress button").nth(0).click();
+ await page.locator(".pm-inline .pm-photo-progress button").nth(0).evaluate(el=>el.click());
  await delay(60);await page.evaluate(()=>window.__luemiQaPerf.theme());
  await delay(55);await snapshot("theme-during-hero-settle",true);
  await page.getByRole("button",{name:"Знакомства",exact:true}).click();
