@@ -193,7 +193,8 @@ export function App() {
       }
     });
     return ()=>{
-      if(isCurrent())startupGeneration.current++;
+      // The coordinator synchronously invalidates every late continuation.
+      // A retry increments the generation on its next setup.
       run.dispose();
     };
   },[connectAttempt]);
