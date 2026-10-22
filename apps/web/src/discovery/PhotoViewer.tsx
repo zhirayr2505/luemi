@@ -244,7 +244,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     onPointerUp={e=>finish(e,false)} onPointerCancel={e=>{if(pointer.current.has(e.pointerId))resetGesture();}}>
    <img ref={image} key={readyKey??resourceKey??"no-photo"}
     data-photo-id={photoId??undefined} data-media-key={readyKey??undefined}
-    className="pm-viewer-image" src={media?.phase==="ready"?media.src??undefined:undefined}
+    className="pm-viewer-image" src={media?.phase==="ready"?media.src??undefined:show?.src}
     style={{opacity:displayReady?1:0}} alt={show?"Фото "+(index+1):"Фото недоступно"}
     draggable={false} onError={()=>{if(show)mediaRef.current?.reportDisplayFailure(show,"display-load-failed");}}/>
    {!displayReady&&<div className="pm-viewer-media-status" role="status" data-photo-id={photoId??undefined}
