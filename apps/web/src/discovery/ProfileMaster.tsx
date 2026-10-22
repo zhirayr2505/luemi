@@ -210,6 +210,15 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const oldValue=phase==="settling"||phase==="suspended"?driver!.sample():sheetY.current;
    const oldTop=sheetRootTop.current??shellRect.top;
    const mapped=remapSheetPixel(oldValue,oldTop,shellRect.top,top,bottom);
+   // Explicit measurable exception: an old pixel can be outside the new
+   // physically reachable interval. Do not silently claim ≤1px continuity.
+   if(mapped.clamped){
+    root.dataset.geometryClampReason="outside-new-sheet-endpoints";
+    root.dataset.geometryClampPx=Math.abs(mapped.unclamped-mapped.local).toFixed(2);
+   }else{
+    delete root.dataset.geometryClampReason;
+    delete root.dataset.geometryClampPx;
+   }
    const visible=mapped.local;
    // Clamping is unavoidable only when the old absolute position no longer
    // exists in the new viewport. Never scale touch movement by the new height.
