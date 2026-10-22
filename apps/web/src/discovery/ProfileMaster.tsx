@@ -298,6 +298,16 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const openPhoto=(index:number,element:HTMLElement|null)=>{
   const photo=photos[index];
   if(performance.now()<clickBlocked.current||!photo)return;
+  // REM-03D: freeze the accepted REM-02 motion owners BEFORE the thumbnail
+  // geometry is captured. A settle running under a portal must not drag the
+  // source miniaturized image to another on-screen rectangle.
+  stopSheet.current();stopTabs.current();
+  if(photoTrack.current){
+   const frozen=getComputedStyle(photoTrack.current).transform;
+   photoTrack.current.style.transition="none";
+   photoTrack.current.style.transform=frozen==="none"?"none":frozen;
+  }
+  photoSwipe.current=null;tabSwipe.current=null;
   const contextId=viewerPhotoContext(view);
   const source:ViewerSource|null=element?{
    photoId:photo.id,contextId,resourceKey:resourceIdentity(photo),
