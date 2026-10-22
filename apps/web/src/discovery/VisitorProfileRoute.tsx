@@ -166,8 +166,10 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   if(paused.current)return;
   paused.current=true;
   // Terminal single-owner cancellation precedes any prospective new gestures.
-  const wasDragging=!!gesture.current?.claimed;
+  const wasDragging=!!gesture.current?.claimed,oldPointer=gesture.current?.id;
   gesture.current=null;detachSuppression.current();gestures.cancel();
+  try{if(oldPointer!==undefined&&route.current?.hasPointerCapture(oldPointer))
+   route.current.releasePointerCapture(oldPointer);}catch{/* WebView implicit loss */}
   if(entranceFrame.current!==null){cancelAnimationFrame(entranceFrame.current);entranceFrame.current=null;}
   childMotion.current?.suspendForBackground();
   const el=route.current;
