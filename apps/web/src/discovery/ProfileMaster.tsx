@@ -1,4 +1,5 @@
 import {memo,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
+import {flushSync} from "react-dom";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {PenLine,Eye,FileText,Sparkles,Images,Gift,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
 import {Flag} from "../ui/Flag";
@@ -90,6 +91,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const photos=view.photos;
  const [activePhoto,setActivePhoto]=useState(0);
  const [blurFrom,setBlurFrom]=useState(0);
+ const [blurWindow,setBlurWindow]=useState<number[]|null>(null);
+ const blurWindowRef=useRef<number[]|null>(null);
+ const blurSampleFrame=useRef<number|null>(null);
+ const blurSession=useRef(0);
  const activePhotoId=useRef<string|null>(photos[0]?.id??null);
  const previousPhotos=useRef(photos);
  const localGestures=useRef(new GestureArbiter());
@@ -98,12 +103,13 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  // At most three actual blur images are mounted, including the outgoing frame
  // if a progress-dot jump spans more than one slide.
  const blurIndices=useMemo(()=>{
+  if(blurWindow)return new Set(blurWindow);
   const indices=[activePhoto];
   if(blurFrom!==activePhoto&&photos[blurFrom])indices.push(blurFrom);
   for(const neighbor of [activePhoto-1,activePhoto+1])
    if(indices.length<3&&photos[neighbor]&&!indices.includes(neighbor))indices.push(neighbor);
   return new Set(indices);
- },[activePhoto,blurFrom,photos]);
+ },[activePhoto,blurFrom,blurWindow,photos]);
  const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null),blurTrack=useRef<HTMLDivElement>(null);
@@ -138,6 +144,47 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const tabSelectionRef=useRef<TabId>(tab);
  tabSelectionRef.current=tab;
+ // The accepted hero Motion Authority owns BOTH transform writers.
+ // This only tracks which <=3 blur media are already staged at the actual
+ // sampled CSS fraction; no competing timeline or motion controller.
+ const blurWindowAt=(position:number,toward:number):number[]=>{
+  const f=Math.max(0,Math.min(photos.length-1,position));
+  const left=Math.floor(f),right=Math.ceil(f),dir=toward<f?-1:1;
+  const candidates=[left,right,dir>0?right+1:left-1,dir>0?left-1:right+1];
+  const result:number[]=[];
+  for(const n of candidates)if(n>=0&&n<photos.length&&!result.includes(n)&&result.length<3)
+   result.push(n);
+  return result;
+ };
+ const showBlurWindow=(indices:number[])=>{
+  const old=blurWindowRef.current;
+  if(old&&indices.length===old.length&&indices.every(i=>old.includes(i)))return;
+  blurWindowRef.current=indices;
+  flushSync(()=>setBlurWindow(indices));
+ };
+ const stopBlurTracking=()=>{
+  blurSession.current++;
+  if(blurSampleFrame.current!==null)cancelAnimationFrame(blurSampleFrame.current);
+  blurSampleFrame.current=null;
+ };
+ const finishBlurTracking=(target:number)=>{
+  stopBlurTracking();blurWindowRef.current=null;
+  flushSync(()=>{setBlurWindow(null);setBlurFrom(target);});
+ };
+ const followBlurPosition=(target:number)=>{
+  stopBlurTracking();
+  const generation=blurSession.current;let stable=0;
+  const tick=()=>{
+   if(generation!==blurSession.current)return;
+   const width=Math.max(1,hero.current?.clientWidth??1);
+   const at=fractionalTrack(photoTrack.current,width,target);
+   showBlurWindow(blurWindowAt(at,target));
+   stable=Math.abs(at-target)<.004?stable+1:0;
+   if(stable>=2){finishBlurTracking(target);return;}
+   blurSampleFrame.current=requestAnimationFrame(tick);
+  };
+  blurSampleFrame.current=requestAnimationFrame(tick);
+ };
  const setTransform=useCallback((idx:number,delta=0)=>{
   motionAuthority.current.run("hero",PROFILE_MOTION_WRITER_TABLE.hero,()=>{
    const value=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
@@ -370,6 +417,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   const track=photoTrack.current,width=hero.current?.clientWidth||1;
   const currentFraction=fractionalTrack(track,width,activePhoto);
+  stopBlurTracking();
+  const far=Math.abs(index-currentFraction)>1.01;
+  if(far||blurWindowRef.current)showBlurWindow(blurWindowAt(currentFraction,index));
   if(track){
    track.style.transition="none";
    if(blurTrack.current)blurTrack.current.style.transition="none";
@@ -383,6 +433,19 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   activePhotoId.current=photos[index].id;
   setBlurFrom(Math.max(0,Math.min(photos.length-1,Math.round(currentFraction))));
   setActivePhoto(index);
+  if(far||blurWindowRef.current)followBlurPosition(index);
+  else {
+   const token=++blurSession.current;
+   const done=()=>{if(token===blurSession.current)finishBlurTracking(index);};
+   const ended=(event:TransitionEvent)=>{
+    if(event.target===track&&event.propertyName==="transform"){
+     track.removeEventListener("transitionend",ended);done();
+    }
+   };
+   track?.addEventListener("transitionend",ended);
+   // Cleanup fallback only: the unchanged physical CSS settle is 290 ms.
+   window.setTimeout(()=>{track?.removeEventListener("transitionend",ended);done();},330);
+  }
  };
  const photoEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=photoSwipe.current;if(!g||g.id!==e.pointerId)return;
