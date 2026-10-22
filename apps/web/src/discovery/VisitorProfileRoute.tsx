@@ -118,6 +118,10 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   revealUnderlay(true);
   moveTo(width(),onExit,"closing");
  };
+ // Keep lifecycle listeners mounted once; resolve latest handlers through a
+ // stable ref so a React render cannot detach/reinstall them mid-gesture.
+ const motionActions=useRef({moveTo,rollback,onExit});
+ motionActions.current={moveTo,rollback,onExit};
  const reportMotion=(progress:number,dragging:boolean)=>{
   header.current?.setProfileProgress(progress,dragging);
  };
@@ -147,7 +151,7 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   attachSuppression.current=suppress;
   entranceFrame.current=requestAnimationFrame(()=>{
    entranceFrame.current=null;
-   if(!closing.current)moveTo(0,()=>revealUnderlay(false),"opening");
+   if(!closing.current)motionActions.current.moveTo(0,()=>revealUnderlay(false),"opening");
   });
   return ()=>{
    if(entranceFrame.current!==null)cancelAnimationFrame(entranceFrame.current);
@@ -179,11 +183,11 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   void window.visualViewport?.height;
   paused.current=false;
   if(closing.current||intent.current==="closing"){
-   moveTo(width(),onExit,"closing");
+   motionActions.current.moveTo(width(),motionActions.current.onExit,"closing");
   }else if(intent.current==="opening"){
-   moveTo(0,()=>{childMotion.current?.resumeFromBackground();revealUnderlay(false);},"opening");
-  }else rollback();
- }),[]);
+   motionActions.current.moveTo(0,()=>{childMotion.current?.resumeFromBackground();revealUnderlay(false);},"opening");
+  }else motionActions.current.rollback();
+ }),[gestures]);
 
  // Expanded: only gestures originating on the white sheet may close.
  // Collapsed: the complete profile is a back-swipe surface. The photo hero
