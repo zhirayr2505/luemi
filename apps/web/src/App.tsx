@@ -10,6 +10,7 @@ import {preparePhotoPreview} from "./registration/photo-preview";
 import {installViewportController} from "./viewport/viewport-controller";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
+import {startStartup} from "./startup/startup-coordinator";
 
 declare global {
   interface Window {
@@ -76,6 +77,8 @@ function prepareBrandImage(signal: AbortSignal): Promise<void> {
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
   const [introElapsed,setIntroElapsed] = useState(false);
+  const [connectAttempt,setConnectAttempt]=useState(0);
+  const startupGeneration=useRef(0);
   const [visualReady,setVisualReady] = useState(false);
   const [welcomeExiting,setWelcomeExiting] = useState(false);
   const transitionTimer = useRef<number | null>(null);
@@ -148,60 +151,52 @@ export function App() {
     }
   },[activeTheme]);
   useEffect(()=>{
-    const webApp = window.Telegram?.WebApp;
-    const initData = webApp?.initData;
-    const controller = new AbortController();
-    let disposed = false;
-    // A failed network request must never leave a motionless endless loader.
-    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
-    void (async () => {
-      try {
-        // The brand image, fonts and verified Telegram identity are actual
-        // critical resources. Run them in parallel, never invent a percentage.
-        const visualsReady = Promise.all([
-          prepareBrandImage(controller.signal),
-          document.fonts.ready
-        ]).then(()=>{if(!disposed)setVisualReady(true);});
-        const identityReady: Promise<BootstrapResponse | null> = !initData
-          ? Promise.resolve(null)
-          : (async () => {
-              const live = await fetch("/api/health/live",{signal:controller.signal});
-              if(!live.ok || ((await live.json()) as HealthResponse).status!=="ok")
-                throw new Error("API unavailable");
-              const response = await fetch("/api/auth/telegram",{
-                method:"POST",
-                headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({initData}),
-                signal:controller.signal
-              });
-              if(response.status===503) return null;
-              if(!response.ok) throw new Error("Telegram authorization failed");
-              return (await response.json()) as BootstrapResponse;
-            })();
-        const [,user] = await Promise.all([visualsReady,identityReady]);
-        if(disposed) return;
-        if(!initData) {
-          setAuth("outside-telegram");
-        } else if(user===null) {
-          setAuth("needs-bot");
-        } else {
-          setDraft(current=>({...current,name:current.name||user.user.firstName}));
-          setAuth("authorized");
-          // Fullscreen and expand are requested when the shell first paints.
-        }
-      } catch {
-        if(!disposed) setAuth("error");
-      } finally {
-        window.clearTimeout(timeoutId);
-        // Telegram.ready is sent immediately after the first app-shell paint.
+    const initData=window.Telegram?.WebApp?.initData;
+    // Every retry and StrictMode setup has a distinct generation.
+    // An expired, aborted or disposed attempt can never change this instance.
+    const generation=++startupGeneration.current;
+    const isCurrent=()=>generation===startupGeneration.current;
+    const run=startStartup<BootstrapResponse|null>({
+      deadlineMs:15000,
+      optionalBudgetMs:650,
+      critical:async signal=>{
+        if(!initData)return null;
+        const live=await fetch("/api/health/live",{signal});
+        if(!live.ok||((await live.json()) as HealthResponse).status!=="ok")
+          throw new Error("API unavailable");
+        const response=await fetch("/api/auth/telegram",{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({initData}),signal
+        });
+        if(response.status===503)return null;
+        if(!response.ok)throw new Error("Telegram authorization failed");
+        return (await response.json()) as BootstrapResponse;
+      },
+      // Fonts and the original LUEMI logo are optional *render preparation*,
+      // never an authentication prerequisite. Keep the exact original asset
+      // in the DOM; if preload hangs or fails the existing system font and
+      // preserved-size image placeholder remain. No replacement branding.
+      optional:async signal=>{
+        await Promise.all([prepareBrandImage(signal),document.fonts.ready]);
+      },
+      onOptionalReady:()=>{
+        if(isCurrent())setVisualReady(true);
+      },
+      onCritical:result=>{
+        if(!isCurrent())return;
+        if(result.kind==="error"){setAuth("error");return;}
+        if(!initData){setAuth("outside-telegram");return;}
+        const user=result.value;
+        if(!user){setAuth("needs-bot");return;}
+        setDraft(current=>({...current,name:current.name||user.user.firstName}));
+        setAuth("authorized");
       }
-    })();
-    return () => {
-      disposed = true;
-      window.clearTimeout(timeoutId);
-      controller.abort();
+    });
+    return ()=>{
+      if(isCurrent())startupGeneration.current++;
+      run.dispose();
     };
-  },[]);
+  },[connectAttempt]);
   // LU-22: one frame-coalesced source of truth. The shell tracks the *visible*
   // viewport while the footer remains in the flex layout above the keyboard.
   // No modal/route motion code is changed by this stage.
@@ -455,7 +450,7 @@ export function App() {
       <h1>Твоя история начинается здесь</h1>
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
-      {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>window.location.reload()}>Повторить</button></>}
+      {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button></>}
       {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
         <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
           Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
