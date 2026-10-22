@@ -101,6 +101,18 @@ export class PhotoReadiness{
   if(!e||e.state.phase!=="error"||this.disposed)return false;
   this.start(e);return true;
  }
+ /** Actual displayed DOM image failed to decode: a preloader was not enough. */
+ reportDisplayFailure(photo:ProfilePhoto,reason="display-decode-failed"):void{
+  const entry=this.entries.get(resourceIdentity(photo));
+  if(!entry||entry.state.phase!=="ready"||this.disposed)return;
+  const fallback=photo.fallback?.trim();
+  if(!entry.state.fallback&&fallback&&fallback!==photo.src.trim()){
+   this.start(entry,true);return;
+  }
+  this.detachImage(entry);
+  this.publish(entry,{phase:"error",src:null,width:0,height:0,reason});
+ }
+ isDisposed():boolean{return this.disposed;}
  size():number{return this.entries.size;}
  dispose(){
   if(this.disposed)return;this.disposed=true;
