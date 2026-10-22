@@ -1,6 +1,7 @@
 /** Developer-only Vite HTML entry. Not referenced by production index.html. */
 import React,{useCallback,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
+import {QaProfiler} from "./discovery/qa-profiler";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 import {PhotoViewer} from "./discovery/PhotoViewer";
 import {projectProfile,type ProfileMasterData,type ProfilePhoto} from "./discovery/ProfileModel";
@@ -124,16 +125,25 @@ function MediaQA(){
 }
 function VisualQA(){
  const [theme,setTheme]=useState<"light"|"dark">("light");
+ const [unrelated,setUnrelated]=useState(0);
+ const toggleTheme=useCallback(()=>setTheme(value=>value==="light"?"dark":"light"),[]);
+ (window as Window&{__luemiQaPerf?:unknown}).__luemiQaPerf={
+  theme:toggleTheme,bump:()=>setUnrelated(v=>v+1),
+  current:()=>({theme,unrelated}),
+  clear:()=>{window.__luemiRem04aTrace=[];},
+  summary:()=>window.__luemiRem04aTrace??[]
+ };
  // Developer fixture: exercise the exact DiscoveryApp callback registered by
  // Telegram BackButton without requiring a production WebApp mock.
  const registerBack=useCallback((handler:()=>void)=>{
   (window as Window & {__luemiQaBack?:()=>void}).__luemiQaBack=handler;
  },[]);
  return <main className="luemi-shell" data-theme={theme} data-phase="form">
-  <DiscoveryApp draft={draft} photos={qaPhotos}
-   theme={theme} onTheme={()=>setTheme(value=>value==="light"?"dark":"light")}
-   onExit={()=>{}} registerBack={registerBack}/>
+  <QaProfiler id="DiscoveryApp"><DiscoveryApp draft={draft} photos={qaPhotos}
+   theme={theme} onTheme={toggleTheme}
+   onExit={()=>{}} registerBack={registerBack}/></QaProfiler>
   <MediaQA/>
+ <span data-qa-unrelated={unrelated} hidden/>
  </main>;
 }
 createRoot(document.getElementById("root")!).render(

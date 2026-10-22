@@ -1,0 +1,88 @@
+name: LUEMI REM-04A focused lifecycle QA
+on:
+  push:
+    branches:
+      - remediation/rem-04a-react-startup-20261022
+  pull_request:
+    branches:
+      - remediation/rem-03d-source-morph-modal-20261022
+jobs:
+  rem04a-chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Install lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Build shared contracts
+        run: npm run build -w @luemi/contracts
+      # GitHub Ubuntu runner preinstalls Chrome; Playwright channel=chrome uses
+      # the actual Chromium engine without network-dependent system apt downloads.
+      - name: Focused REM-04A physical DOM/lifecycle regression (additional, not a substitute for full behavioral suite)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-rem04a-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then ready=1; break; fi
+            if ! kill -0 "$vite_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-rem04a-vite.log >&2; exit 1; fi
+          REM04A_BASELINE=0 node scripts/rem-04a-browser-measure.mjs
+          node scripts/rem-04a-browser-startup.mjs
+
+  baseline-evidence:
+    name: Accepted REM-03D startup baseline (read-only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 94d8c10d0049b80861f837dd1c5327bc9d0347c8
+          path: accepted-rem03d
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build unchanged accepted contracts
+        run: npm run build -w @luemi/contracts
+      - name: Run accepted startup with never-resolving font, correct auth, and virtual deadline
+        shell: bash
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem03d/node_modules"
+          (cd accepted-rem03d && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174) >/tmp/luemi-rem04a-accepted-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5174/ >/dev/null; then ready=1; break; fi
+            if ! kill -0 "$vite_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-rem04a-accepted-vite.log >&2; exit 1; fi
+          REM04A_BASE_URL=http://127.0.0.1:5174 node scripts/rem-04a-browser-startup-baseline.mjs

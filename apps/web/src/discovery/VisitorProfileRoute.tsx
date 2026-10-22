@@ -1,4 +1,4 @@
-import {useLayoutEffect,useRef} from "react";
+import {memo,useLayoutEffect,useRef} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {ProfileMaster} from "./ProfileMaster";
 import {GlobalHeader} from "./GlobalHeader";
@@ -9,6 +9,7 @@ import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import type {ProfileRouteMotionHandle} from "./ProfileMaster";
 import type {HeaderMotion} from "./GlobalHeader";
 import type {ProfileMasterData} from "./ProfileModel";
+import {QaProfiler} from "./qa-profiler";
 
 type Props={
  data:ProfileMasterData;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;
@@ -23,7 +24,7 @@ const CLOSE_DURATION=230;
 const EASING="cubic-bezier(.2,.82,.24,1)";
 
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
-export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Props){
+export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Props){
  const route=useRef<HTMLDivElement>(null);
  const motionAuthority=useRef(createProfileMotionAuthority());
  const gestures=useRef(new GestureArbiter()).current;
@@ -278,12 +279,12 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
     onPointerDownCapture={down} onPointerMoveCapture={move}
     onPointerUpCapture={e=>end(e)} onPointerCancelCapture={e=>end(e,true)}
     onLostPointerCapture={e=>{if(e.target===e.currentTarget)end(e,true);}}>
-   <ProfileMaster data={data} mode="visitor" onClose={close}
+   <QaProfiler id="ProfileMaster"><ProfileMaster data={data} mode="visitor" onClose={close}
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
      registerRouteGestureCancel={cb=>{cancelProfileGesture.current=cb;}}
-     onMotionProgress={reportMotion}/>
+     onMotionProgress={reportMotion}/></QaProfiler>
    <GlobalHeader ref={header} mode="profile" theme={theme} onTheme={onTheme}
      onFilters={()=>{}} onSaved={()=>{}}/>
   </div>;
-}
+});
