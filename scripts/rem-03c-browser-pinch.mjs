@@ -53,6 +53,17 @@ const close=()=>page.evaluate(()=>window.__luemiQaMedia.close());
 try{
  await page.goto("http://127.0.0.1:5173/profile-qa.html",{waitUntil:"domcontentloaded"});
  await page.waitForFunction(()=>!!window.__luemiQaMedia);
+ await page.evaluate(()=>{
+  window.__rem03cEvents=[];
+  for(const name of ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture"]){
+   document.addEventListener(name,e=>{
+    if(!(e.target instanceof Element)||!e.target.closest(".pm-viewer"))return;
+    window.__rem03cEvents.push({event:name,id:e.pointerId,x:e.clientX,y:e.clientY,
+     buttons:e.buttons,time:Math.round(e.timeStamp)});
+    if(window.__rem03cEvents.length>120)window.__rem03cEvents.shift();
+   },true);
+  }
+ });
  await change("aspect-portrait");await open("qa-alpha");await ready("qa-alpha");
  await sleep(280);
  let s=await state();near(s.scale,1,.01);bounds(s);
@@ -69,8 +80,13 @@ try{
  const zoomed=s,commits=s.commits;
  // Remaining finger pans rather than starting horizontal navigation or dismiss.
  await send("touchEnd",[first]);
+ const oneLeft=await state();
  first=p(11,first.x+30,first.y+29);await send("touchMove",[first]);
- s=await state();assert.ok(Math.abs(s.tx-zoomed.tx)+Math.abs(s.ty-zoomed.ty)>3);
+ s=await state();
+ if(Math.abs(s.tx-zoomed.tx)+Math.abs(s.ty-zoomed.ty)<=3)
+  console.log("REM03C_DIAG_ONE_FINGER",JSON.stringify({zoomed,oneLeft,after:s,
+   events:await page.evaluate(()=>window.__rem03cEvents.slice(-30))}));
+ assert.ok(Math.abs(s.tx-zoomed.tx)+Math.abs(s.ty-zoomed.ty)>3);
  bounds(s);assert.equal(s.commits,commits);
  pass("2→1 keeps zoom and remaining finger pans actual contained photo");
 
