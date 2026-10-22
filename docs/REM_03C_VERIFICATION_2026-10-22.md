@@ -42,7 +42,24 @@ Keep the approved bi-directional vertical dismiss semantics. Thresholds remain *
 - Additive pure math unit: `scripts/rem-03c-pinch.test.mjs` appended to `npm run test:source-contracts`. Covers focal q across 4 image aspects × 4 off-center points, landscape/portrait axis-fit centering, clamp limits, scale boundaries, local coordinate mapping and pan rebase.
 - Real Chromium CDP multitouch: `scripts/rem-03c-browser-pinch.mjs`. Uses native Chrome CDP `Input.dispatchTouchEvent` for simultaneous 2/3-pointer sequences. Asserts actual DOMMatrix focal conservation before clamping, pan of surviving finger, 1→2→1→2 sequences, first/second finger release order, stable third pointer policy, portrait/landscape/panorama, content bounds, zoom-based navigation and dismiss exclusion, viewport resize midpinch, native touchCancel/pointercancel/lostpointercapture, visibility/background, vertical cancel and upward terminal dismiss, StrictMode/reopen/keyboard regression, no duplicate close commit.
 - The full Behavioral workflow appends the new Chromium test **after** all unchanged REM-00–03B scripts. New focused REM-03C workflow is additive only. No assertion or previous test may be weakened, skipped or removed.
-- **Final exact-SHA CI:** PENDING until all required Foundation, full Behavioral PR and Push, and focused REM-03C runs complete SUCCESS. Do not substitute older-SHA evidence.
+- **Verified code revision:** `46753b3c4cf58cc9f24b1836ac1031d323a59b47` (before this documentation-only update). [Foundation CI 39800777922](https://github.com/zhirayr2505/luemi/actions/runs/39800777922), [full Behavioral QA 39800778088](https://github.com/zhirayr2505/luemi/actions/runs/39800778088), and [focused REM-03C 39800777928](https://github.com/zhirayr2505/luemi/actions/runs/39800777928) executed against that identical implementation; real Chromium browser logs confirm every REM-00–03C suite passes.
+- **Final report-HEAD CI:** Because a documentation-only commit changes the SHA, the exact final commit and its own post-report CI are tracked in the [Draft PR #44](https://github.com/zhirayr2505/luemi/pull/44) QA closure. All mandatory CI must be green on that exact SHA before owner acceptance; a green predecessor alone is not enough.
+
+## LU-04 corrective investigation and verified terminal arbitration
+
+Chromium CDP evidence exposed a native event-order race at terminal vertical swipe: `lostpointercapture` (buttons=0) can precede the legitimate `pointerup` for that same pointer. Previously the former ended the gesture as **cancelled**, silently restoring Y/opacity and suppressing the accepted up-or-down dismiss despite a 160 CSS px gesture. The final `PhotoViewer` implementation:
+
+1. Preserves the legal `pointerup` path by temporarily deferring classification of **lost capture only** for the current pointer ID. A matching `pointerup` synchronously cancels the pending loss fallback; if `pointerup` never arrives, the loss cancels safely with no navigation/close commit.
+2. Treats genuine `pointercancel` **immediately** and separately, and handles `touchcancel`, loss of focus, native Telegram/background transitions and unmount through idempotent cleanup.
+3. Clears the capture-loss timer map at session termination and React StrictMode effect cleanup, capturing the exact map used by that mount so no leaked callback can mutate a replacement viewer.
+4. Leaves both accepted vertical directions, thresholds (`110 px / 0.8 px/ms`), horizontal swipe physics (`17% / 0.52 px/ms`), duration/easing, and `GeometryMotion` ownership unchanged.
+
+The real CDP test initially submitted incorrect `touchEnd` changed-touch lists and failed to wait for the **actual** browser `touchmove`; those QA-only causes were independently traced to browser events and corrected, with the original strict assertions preserved. There are no sleep/delay workarounds in production motion code.
+
+On `46753b3c4cf58cc9f24b1836ac1031d323a59b47`:
+- REM-03C focused logs explicitly PASS off-center DOMMatrix focal lock, 2→1→2 transitions, both finger release orders, third-finger pinning, all four real intrinsic aspect ratios, contained-pan bounds, cancel/blur/resize/background scenarios, fractional track rollback, cancelled Y dismiss, **upward Y dismiss exactly once**, and reopen/navigation.
+- Full Behavioral browser logs explicitly PASS the prior REM-03A readiness and REM-03B twenty-swipe 1:1 track/node-identity suites, then all REM-03C CDP tests, without exclusions.
+- All prior automated gates remain intact; the only added workflow is `rem03c-focused.yml`, supplemental to the locked pinned-Chromium full matrix.
 
 ## Restricted operations / physical device gate
 
