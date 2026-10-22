@@ -166,6 +166,32 @@ try{
  });
  near(endpoint.y,endpoint.state==="collapsed"?endpoint.top:endpoint.bottom,1);
  pass("second real touch cancels one-finger custom drag and settles to consistent DOM/React endpoint");
+ // Visitor route itself has role="dialog", but must be allowed to own an
+ // eligible horizontal back gesture; nested modals remain protected.
+ await page.getByRole("button",{name:"Знакомства",exact:true}).click();
+ await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
+ await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
+ const visitor=page.locator(".discovery-visitor-route");
+ await visitor.waitFor({state:"visible"});
+ await sleep(370);
+ const identity=await visitor.locator(".pm-identity").boundingBox();
+ assert.ok(identity&&identity.width>=160&&identity.height>=25,"visitor route sheet back surface");
+ const rx=identity.x+Math.min(54,identity.width*.2),ry=identity.y+Math.min(48,identity.height*.45);
+ const eligible=await visitor.locator(".pm-identity").evaluate(async element=>{
+  const {gestureCapabilities}=await import("/src/ui/gesture-arbiter.ts");
+  return gestureCapabilities(element,true);
+ });
+ assert.equal(eligible.modalBlocked,false,"visitor shell is allowed back surface despite dialog role");
+ assert.equal(eligible.canBack,true);
+ await page.mouse.move(rx,ry);await page.mouse.down();
+ await page.mouse.move(rx+165,ry,{steps:6});
+ await sleep(45);
+ const routeMotion=await visitor.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
+ assert.ok(routeMotion>10,"route actually claims horizontal back while child profile dialog mounted");
+ await page.mouse.up();
+ await sleep(370);
+ assert.equal(await visitor.count(),0,"claimed route-back exits after original 230ms");
+ pass("visitor route retains horizontal back gesture, scoped nested modal protection and one terminal close");
  assert.deepEqual(errors,[],"no browser exceptions");
  console.log("REM-02C BROWSER INTERRUPTION QA PASS · Chromium Android UA only; physical A55/iOS NOT VERIFIED");
 }finally{await context.close();await browser.close();}
