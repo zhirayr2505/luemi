@@ -89,14 +89,24 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]);
  const photos=view.photos;
  const [activePhoto,setActivePhoto]=useState(0);
+ const [blurFrom,setBlurFrom]=useState(0);
  const activePhotoId=useRef<string|null>(photos[0]?.id??null);
  const previousPhotos=useRef(photos);
  const localGestures=useRef(new GestureArbiter());
  const gestures=gestureArbiter??localGestures.current;
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
+ // At most three actual blur images are mounted, including the outgoing frame
+ // if a progress-dot jump spans more than one slide.
+ const blurIndices=useMemo(()=>{
+  const indices=[activePhoto];
+  if(blurFrom!==activePhoto&&photos[blurFrom])indices.push(blurFrom);
+  for(const neighbor of [activePhoto-1,activePhoto+1])
+   if(indices.length<3&&photos[neighbor]&&!indices.includes(neighbor))indices.push(neighbor);
+  return new Set(indices);
+ },[activePhoto,blurFrom,photos]);
  const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
- const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
+ const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null),blurTrack=useRef<HTMLDivElement>(null);
  const grab=useRef<HTMLButtonElement>(null),miniAvatar=useRef<HTMLButtonElement>(null);
  const photoMotion=useRef<HTMLDivElement>(null),rubberY=useRef(0);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
@@ -130,7 +140,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  tabSelectionRef.current=tab;
  const setTransform=useCallback((idx:number,delta=0)=>{
   motionAuthority.current.run("hero",PROFILE_MOTION_WRITER_TABLE.hero,()=>{
-   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
+   const value=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
+   if(photoTrack.current)photoTrack.current.style.transform=value;
+   if(blurTrack.current)blurTrack.current.style.transform=value;
   });
  },[]);
  // The stationary viewport owns vertical scroll. The rounded surface itself
@@ -335,6 +347,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     // The exact capture frame is inspectable by real Chromium gesture QA.
     photoTrack.current.dataset.motionFrozenX=String(-g.index*g.width);
     photoTrack.current.style.transition="none";
+    if(blurTrack.current)blurTrack.current.style.transition="none";
     setTransform(g.index);
    }
    try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
@@ -358,13 +371,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const track=photoTrack.current,width=hero.current?.clientWidth||1;
   const currentFraction=fractionalTrack(track,width,activePhoto);
   if(track){
-   track.style.transition="none";setTransform(currentFraction);
+   track.style.transition="none";
+   if(blurTrack.current)blurTrack.current.style.transition="none";
+   setTransform(currentFraction);
    // Flush once only on navigation boundaries, never on pointermove.
    void track.offsetWidth;
    track.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";
+   if(blurTrack.current)blurTrack.current.style.transition=track.style.transition;
   }
   setTransform(index);
   activePhotoId.current=photos[index].id;
+  setBlurFrom(Math.max(0,Math.min(photos.length-1,Math.round(currentFraction))));
   setActivePhoto(index);
  };
  const photoEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
@@ -395,6 +412,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   if(photoTrack.current){
    photoTrack.current.style.transition="none";
+   if(blurTrack.current)blurTrack.current.style.transition="none";
    setTransform(index);
   }
   if(index!==activePhoto)setActivePhoto(index);
@@ -766,9 +784,14 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
-     </div>
      <div className="pm-photo-blur" ref={blurLayer} aria-hidden="true">
-      {current&&<PhotoImage photo={current} alt="" loading="eager"/>}
+      <div className="pm-photo-blur-track" ref={blurTrack}>
+       {photos.map((photo,i)=><div className="pm-photo-blur-slide" key={photo.id}
+         data-blur-photo-id={photo.id}>
+         {blurIndices.has(i)&&<PhotoImage photo={photo} alt="" loading="eager"/>}
+       </div>)}
+      </div>
+     </div>
      </div>
     <div className="pm-hero-gradient" aria-hidden="true"/>
     {photos.length>1&&<div className="pm-photo-progress" role="group" aria-label="Фотографии профиля">{photos.map((p,i)=>
