@@ -298,6 +298,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if((e.target as HTMLElement).closest("button")||(e.pointerType==="mouse"&&e.button!==0))return;
   const serial=gestures.begin("pointer",e.pointerId,"hero");
   if(serial===null)return;
+  gestures.begin("pointer",e.pointerId,"native");
   photoSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),
    axis:"",index:activePhoto,width:hero.current?.clientWidth||innerWidth,serial};
  };
