@@ -13,7 +13,7 @@ import {GeometryMotion} from "./geometry-motion";
 import {GestureArbiter} from "../ui/gesture-arbiter";
 import {MotionController} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
-import {beginPinch,pinchFrame,panFrame,clampPan,identityMedia,matrixTransform,
+import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixTransform,
  localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
 
 type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:ViewerSource|null;contextId:string;
@@ -144,6 +144,14 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    try{if(!target.hasPointerCapture(id))target.setPointerCapture(id);}catch{/* WebView fallback */}
   }
  };
+ // Effects attach just once; their handlers resolve the current render's
+ // geometry and gesture callbacks via this stable ref (StrictMode-safe).
+ const lifecycleActions=useRef<{
+  cancel:(animate?:boolean)=>void;
+  freeze:()=>MediaTransform;
+  local:(point:Point)=>Point;
+  reset:()=>void;
+ }>({cancel:()=>{},freeze:identityMedia,local:point=>point,reset:()=>{}});
  const paintTrack=(x:number)=>{
   trackX.current=x;
   if(track.current){
@@ -298,7 +306,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  // DOM image's zoom matrix or live pointer ownership.
  const activeMediaKey=show?resourceIdentity(show):null;
  useLayoutEffect(()=>{
-  if(pinchSession.current)cancelPinchSession(false);
+  if(pinchSession.current)lifecycleActions.current.cancel(false);
   else mediaPose.current=identityMedia();
  },[activeMediaKey]);
  const imageError=useCallback((photo:ProfilePhoto)=>{
@@ -322,16 +330,21 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     if(gesture.current){gesture.current.origin=resizeOffset(gesture.current.origin,old,measured);}
    }
    if(mediaPose.current.scale>1.0001||pinchSession.current){
-    const pose=clampPan(freezeMedia(),viewSize(),naturalSize());
-    paintMedia(pose);
+    const view=viewSize(),natural=naturalSize();
+    const pose=clampPan(lifecycleActions.current.freeze(),view,natural);
+    // Keep the legacy maxY assertion meaningful, now based on the actual
+    // object-fit:contain content height, not a viewport-only approximation.
+    const fit=contentFit(view,natural);
+    const maxY=Math.max(0,(fit.height*pose.scale-view.height)/2);
+    paintMedia({...pose,y:Math.max(-maxY,Math.min(maxY,pose.y))});
     if(pinch.current){
      const [a,b]=pinch.current.ids.map(id=>pointer.current.get(id));
      if(a&&b)pinch.current=beginPinch(pinch.current.ids,
-      localPoint(a),localPoint(b),pose,viewSize());
+      lifecycleActions.current.local(a),lifecycleActions.current.local(b),pose,viewSize());
     }
     if(pan.current){
      const at=pointer.current.get(pan.current.id);
-     if(at)pan.current={id:pan.current.id,at:localPoint(at),pose};
+     if(at)pan.current={id:pan.current.id,at:lifecycleActions.current.local(at),pose};
     }
    }
   });
@@ -340,7 +353,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  useEffect(()=>bindMotionLifecycle(()=>{
   // Background and Telegram deactivation terminate all active pointer IDs;
   // a late lostpointercapture cannot reopen a previously disposed session.
-  cancelPinchSession(false);
+  lifecycleActions.current.cancel(false);
   const motion=runner.current;
   if(motion?.snapshot().phase==="settling")motion.suspend();
   const stageNode=stage.current,layer=surface.current;
@@ -353,7 +366,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    const snap=motion.snapshot();
    motion.reveal(snap.revision+1,snap.current,snap.target);
   }
-  if(gesture.current===null&&phase.current==="draggingY")resetGesture();
+  if(gesture.current===null&&phase.current==="draggingY")lifecycleActions.current.reset();
  }),[]);
  const settle=(target:0|-1|1,settleMs=duration)=>{
   const motion=runner.current;if(!motion||closing.current)return;
@@ -410,6 +423,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const resetGesture=()=>{
   releasePointers();resetMedia(true);restoreVertical(true);
   if(!closing.current&&phase.current!=="settling")phase.current="idle";
+ };
+ lifecycleActions.current={
+  cancel:cancelPinchSession,freeze:freezeMedia,local:localPoint,reset:resetGesture
  };
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(closing.current||menu||(e.pointerType==="mouse"&&e.button!==0))return;
