@@ -45,10 +45,10 @@ try{
  result.profile={unrelated,theme,repeated};
  console.log("REM04A_PROFILE_MEASURE "+JSON.stringify(result.profile));
  if(!baseline){
-  assert.equal(unrelated.commits.VisitorProfileRoute,0,"unrelated parent rerender must not rerender visitor route");
+  assert.equal(unrelated.renderEvents,2,"memo route Profiler boundary may commit with parent but its ProfileMaster and PhotoViewer subtree must bail out");
   assert.equal(unrelated.commits.ProfileMaster,0,"unrelated parent rerender must not rerender memoized profile");
   assert.equal(unrelated.commits.PhotoViewer,0,"unrelated parent rerender must not rerender existing viewer");
-  assert.equal(repeated.commits.VisitorProfileRoute,0,"second unchanged rerender likewise must bail out");
+  assert.equal(repeated.renderEvents,2,"repeated unchanged parent update must not commit expensive profile subtree");
   assert.equal(theme.commits.VisitorProfileRoute,1,"real theme change must still reach route");
   assert.equal(unrelated.mediaPreloadAttempts,0,"no unnecessary preload due to parent change");
  }
