@@ -106,21 +106,24 @@ const ProfileBlurTrack=memo(function ProfileBlurTrack({
   }
  };
  const writerRef=useRef<BlurWindowWriter>(()=>{});
- writerRef.current=indices=>{overrideRef.current=indices;updateWindow();};
+ const applyRef=useRef<()=>void>(()=>{});
+ applyRef.current=updateWindow;
+ writerRef.current=indices=>{overrideRef.current=indices;applyRef.current();};
  useLayoutEffect(()=>{
+  const peers=liveRef.current;
   const bridge:BlurWindowWriter=indices=>writerRef.current(indices);
   bindWriter(bridge);
   // Initial media are present on the first layout frame.
   bridge(null);
   return ()=>{
    bindWriter(null);
-   for(const peer of liveRef.current.values()){
+   for(const peer of peers.values()){
     peer.node.onerror=null;peer.node.remove();
    }
-   liveRef.current.clear();overrideRef.current=null;
+   peers.clear();overrideRef.current=null;
   };
  },[bindWriter]);
- useLayoutEffect(()=>{updateWindow();},[photos,activePhoto,blurFrom]);
+ useLayoutEffect(()=>{applyRef.current();},[photos,activePhoto,blurFrom]);
  return <div className="pm-photo-blur-track" ref={trackRef}>
   {photos.map(photo=><div className="pm-photo-blur-slide" key={photo.id} data-blur-photo-id={photo.id}/>)}
  </div>;
