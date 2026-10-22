@@ -12,6 +12,7 @@ import {BlikViewer} from "./BlikViewer";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
 import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
+import {GestureArbiter,fractionalTrack,preservePhotoId} from "../ui/gesture-arbiter";
 import "./profile-master.css";
 
 type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
@@ -20,10 +21,11 @@ type Props={
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
  registerRouteGestureCancel?:(handler:(()=>void)|null)=>void;
+ gestureArbiter?:GestureArbiter;
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
-type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number;lastX?:number;revision?:number};
+type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number;lastX?:number;revision?:number;serial?:number;claimed?:boolean};
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
  return <img src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
    onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
@@ -67,7 +69,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel}:Props){
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel,gestureArbiter}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
@@ -83,6 +85,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   return selected?[selected,...view.photos.filter(p=>p.id!==mainId)]:view.photos;
  },[mainId,view.photos]);
  const [activePhoto,setActivePhoto]=useState(0);
+ const activePhotoId=useRef<string|null>(photos[0]?.id??null);
+ const previousPhotos=useRef(photos);
+ const localGestures=useRef(new GestureArbiter());
+ const gestures=gestureArbiter??localGestures.current;
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
  const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
@@ -114,11 +120,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const tabSelectionRef=useRef<TabId>(tab);
  tabSelectionRef.current=tab;
- const setTransform=(idx:number,delta=0)=>{
+ const setTransform=useCallback((idx:number,delta=0)=>{
   motionAuthority.current.run("hero",PROFILE_MOTION_WRITER_TABLE.hero,()=>{
    if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
   });
- };
+ },[]);
  // The stationary viewport owns vertical scroll. The rounded surface itself
  // has no transform, animated top, paint containment or clipping ancestor.
  const paintSheet=useCallback((offset:number,dragging=false)=>{
@@ -270,6 +276,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  },[motionActive,paintSheet]);
  useEffect(()=>()=>{stopSheet.current();stopTabs.current();
   sheetRunner.current?.dispose();tabsRunner.current?.dispose();
+  localGestures.current.dispose();
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
  },[]);
  const closeTop=useCallback(():boolean=>{
@@ -284,34 +291,99 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(performance.now()<clickBlocked.current||!photos[index])return;
   setViewer({index,source:element});
  };
+ // The visible CSS matrix (not activePhoto's integer) is the starting frame
+ // when a new pointer interrupts a 290ms CSS track transition.
  const photoStart=(e:ReactPointerEvent<HTMLDivElement>)=>{
+  if(!e.isPrimary){gestures.secondFinger();photoSwipe.current=null;return;}
   if((e.target as HTMLElement).closest("button")||(e.pointerType==="mouse"&&e.button!==0))return;
-  photoSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",index:activePhoto,width:hero.current?.clientWidth||innerWidth};
+  const serial=gestures.begin("pointer",e.pointerId,"hero");
+  if(serial===null)return;
+  gestures.begin("pointer",e.pointerId,"native");
+  photoSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),
+   axis:"",index:activePhoto,width:hero.current?.clientWidth||innerWidth,serial};
  };
  const photoMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=photoSwipe.current;if(!g||g.id!==e.pointerId)return;
   const dx=e.clientX-g.x,dy=e.clientY-g.y;
-  if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<8)return;g.axis=Math.abs(dx)>Math.abs(dy)*1.2?"x":"y";}
+  if(!g.axis){
+   if(Math.max(Math.abs(dx),Math.abs(dy))<8)return;
+   g.axis=Math.abs(dx)>Math.abs(dy)*1.2?"x":"y";
+   if(g.axis!=="x"){gestures.nativeScroll(g.serial!);return;}
+  }
   if(g.axis!=="x")return;
+  if(!g.claimed){
+   if(!gestures.claim("hero",g.serial!))return;
+   g.claimed=true;
+   g.width=hero.current?.clientWidth||g.width;
+   g.index=fractionalTrack(photoTrack.current,g.width,activePhoto);
+   if(photoTrack.current){
+    // The exact capture frame is inspectable by real Chromium gesture QA.
+    photoTrack.current.dataset.motionFrozenX=String(-g.index*g.width);
+    photoTrack.current.style.transition="none";
+    setTransform(g.index);
+   }
+   try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
+  }
+  if(!gestures.owns("hero",g.serial!))return;
   if(e.cancelable)e.preventDefault();
-  try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* fallback */}
-  if(photoTrack.current)photoTrack.current.style.transition="none";
-  const edge=(g.index===0&&dx>0)||(g.index===photos.length-1&&dx<0);
+  const atFirst=g.index<=.001&&dx>0;
+  const atLast=g.index>=photos.length-1-.001&&dx<0;
+  const edge=atFirst||atLast;
+  const shift=edge?dx*.18:dx;
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
-  dragFrame.current=requestAnimationFrame(()=>{dragFrame.current=null;setTransform(g.index,edge?dx*.18:dx);});
+  dragFrame.current=requestAnimationFrame(()=>{
+   dragFrame.current=null;
+   if(photoSwipe.current!==g||!gestures.owns("hero",g.serial!))return;
+   setTransform(g.index,shift);
+  });
+ };
+ const choosePhoto=(index:number)=>{
+  if(index<0||index>=photos.length)return;
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
+  const track=photoTrack.current,width=hero.current?.clientWidth||1;
+  const currentFraction=fractionalTrack(track,width,activePhoto);
+  if(track){
+   track.style.transition="none";setTransform(currentFraction);
+   // Flush once only on navigation boundaries, never on pointermove.
+   void track.offsetWidth;
+   track.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";
+  }
+  setTransform(index);
+  activePhotoId.current=photos[index].id;
+  setActivePhoto(index);
  };
  const photoEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=photoSwipe.current;if(!g||g.id!==e.pointerId)return;
   photoSwipe.current=null;
-  if(g.axis!=="x")return;
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
+  if(!g.claimed||!gestures.owns("hero",g.serial!)){
+   if(g.axis==="y"&&gestures.owns("native",g.serial!))gestures.finish("native",g.serial!);
+   else gestures.finishCandidate(g.serial!);
+   return;
+  }
+  gestures.finish("hero",g.serial!);
+  try{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);}catch{/* implicit release */}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
-  const target=!cancel&&g.axis==="x"&&(Math.abs(dx)>g.width*.2||Math.abs(dx)/dt>.55)?
-   Math.max(0,Math.min(photos.length-1,g.index+(dx<0?1:-1))):g.index;
-  if(photoTrack.current)photoTrack.current.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";
-  setTransform(target);setActivePhoto(target);
-  if(g.axis==="x")clickBlocked.current=performance.now()+280;
+  const target=!cancel&&(Math.abs(dx)>g.width*.2||Math.abs(dx)/dt>.55)?
+   Math.max(0,Math.min(photos.length-1,Math.round(g.index)+(dx<0?1:-1))):
+   Math.max(0,Math.min(photos.length-1,Math.round(g.index)));
+  choosePhoto(target);
+  clickBlocked.current=performance.now()+280;
  };
+ useLayoutEffect(()=>{
+  const list=previousPhotos.current;
+  if(list===photos)return;
+  previousPhotos.current=photos;
+  const index=preservePhotoId(list,photos,activePhotoId.current,activePhoto);
+  activePhotoId.current=photos[index]?.id??null;
+  photoSwipe.current=null;
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
+  if(photoTrack.current){
+   photoTrack.current.style.transition="none";
+   setTransform(index);
+  }
+  if(index!==activePhoto)setActivePhoto(index);
+ },[photos,activePhoto,setTransform]);
  const paintTabs=useCallback((i:number,dx=0)=>{
   motionAuthority.current.run("tabs",PROFILE_MOTION_WRITER_TABLE.tabs,()=>{
   const position=Math.max(0,Math.min(4,i-dx/Math.max(1,tabViewport.current)));
@@ -382,29 +454,52 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(bar&&metric)bar.scrollTo({left:Math.max(0,metric.left+metric.width/2-bar.clientWidth/2),
    behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
  },[paintTabs]);
- // Touch gestures have one axis owner. Mouse/pen horizontal dragging uses
- // Pointer Events; touch is handled below so it cannot run both mechanisms.
+ // Mouse/pen tab input must use the SAME exclusive gesture owner as native
+ // sheet Touch and the visitor route. Candidate input must not stop settling.
  const tabDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
-  if(e.pointerType==="touch"||(e.pointerType==="mouse"&&e.button!==0))return;
-  stopTabs.current();
+  if(e.pointerType==="touch")return;
+  if(!e.isPrimary){gestures.secondFinger();tabSwipe.current=null;return;}
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  const serial=gestures.begin("pointer",e.pointerId,"tabs");
+  if(serial===null)return;
+  gestures.begin("pointer",e.pointerId,"native");
   tabSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",
    index:(pages.current?.scrollLeft??0)/tabViewport.current,width:tabViewport.current,
-   lastX:e.clientX,revision:tabsRevision.current};
+   lastX:e.clientX,revision:tabsRevision.current,serial,claimed:false};
  };
  const tabMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
   g.lastX=e.clientX;
   const dx=e.clientX-g.x,dy=e.clientY-g.y;
-  if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";}
+  if(!g.axis){
+   if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
+   g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";
+   if(g.axis!=="x"){gestures.nativeScroll(g.serial!);return;}
+  }
   if(g.axis!=="x")return;
+  if(!g.claimed){
+   if(!gestures.claim("tabs",g.serial!))return;
+   g.claimed=true;
+   stopTabs.current();
+   // REM-02B fractional position survives the unclaimed candidate period.
+   g.index=(pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
+   g.width=tabViewport.current;
+   try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
+  }
+  if(!gestures.owns("tabs",g.serial!))return;
   if(e.cancelable)e.preventDefault();
-  try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
   paintTabs(g.index,dx);
  };
  const tabEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
   tabSwipe.current=null;
-  if(g.axis!=="x")return;
+  if(!g.claimed||!gestures.owns("tabs",g.serial!)){
+   if(g.axis==="y"&&gestures.owns("native",g.serial!))gestures.finish("native",g.serial!);
+   else gestures.finishCandidate(g.serial!);
+   return;
+  }
+  gestures.finish("tabs",g.serial!);
+  try{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);}catch{/* implicit release */}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
   const next=!cancel&&(Math.abs(dx)>g.width*.17||Math.abs(dx)/dt>.52)?
    Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
@@ -415,7 +510,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const pane=sheet.current;if(!motionActive||!pane)return;
   type SheetGesture={x:number;y:number;start:number;down:boolean;scrollTop:number;
    origin:number;axis:""|"x"|"y"|"native";inPages:boolean;index:number;
-   lastY:number;lastX:number;lastTime:number;velocity:number;blocking:boolean;revision:number};
+   lastY:number;lastX:number;lastTime:number;velocity:number;blocking:boolean;revision:number;
+   serial:number;claimed:boolean};
   let gesture:SheetGesture|null=null,frame:number|null=null;
   const flush=()=>{if(frame!==null){cancelAnimationFrame(frame);frame=null;}};
   const abort=()=>{
@@ -434,19 +530,24 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   };
   cancelSheetGesture.current=abort;
   const start=(e:TouchEvent)=>{
-   if(e.touches.length!==1){cancel();return;}
+   if(e.touches.length!==1){gestures.secondFinger();cancel();return;}
    const target=e.target as HTMLElement;
    if(target.closest(".pm-tabs"))return;
    const t=e.touches[0],inPages=!!target.closest(".pm-pages");
+   const serial=gestures.begin("touch",t.identifier,"sheet");
+   if(serial===null)return;
+   // One physical touch can be observed by pointer and native Touch adapters.
+   gestures.begin("touch",t.identifier,"tabs");
+   gestures.begin("touch",t.identifier,"native");
    const scrollTop=inPages?(contentPages.current[tabs.findIndex(v=>v[0]===tabSelectionRef.current)]?.scrollTop||0):0;
-   stopSheet.current();
-   sheetIntent.current=null;sheetDragActive.current=true;
-   if(inPages)stopTabs.current();
+   // A candidate does not stop an existing settle or the browser native scroll.
+   sheetDragActive.current=false;
    const now=performance.now();
    gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
     lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
-    revision:sheetRevision.current,blocking:!collapsedRef.current||scrollTop<=1};
+    revision:sheetRevision.current,blocking:inPages?scrollTop<=1:!collapsedRef.current,
+    serial,claimed:false};
    pane.removeEventListener("touchmove",move);
    pane.addEventListener("touchmove",move,{passive:!gesture.blocking});
   };
@@ -456,11 +557,23 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    g.lastX=t.clientX;
    if(!g.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
-    if(Math.abs(dx)>Math.abs(dy)*1.18)g.axis=g.inPages?"x":"native";
+    // A page already scrolled vertically keeps native control in either axis,
+    // including vertical diagonals; no custom sheet or tabs writer may claim.
+    if(g.inPages&&g.scrollTop>1){g.axis="native";gestures.nativeScroll(g.serial);return;}
+    // If the listener started passive, it must NEVER take over native scroll
+    // mid-session, even when the diagonal later resembles a horizontal drag.
+    if(Math.abs(dx)>Math.abs(dy)*1.18)
+     g.axis=g.inPages&&g.blocking&&e.cancelable?"x":"native";
     else g.axis=(dy>0?(g.scrollTop<=1&&g.origin<=expandedY.current+28):
-    g.origin>collapsedY.current+.5)?"y":"native";
+     g.origin>collapsedY.current+.5)?"y":"native";
+    if(g.axis==="native"){gestures.nativeScroll(g.serial);return;}
+    const owner=g.axis==="x"?"tabs":"sheet";
+    if(!gestures.claim(owner,g.serial)){g.axis="native";return;}
+    g.claimed=true;
+    if(g.axis==="x")stopTabs.current();
+    else {stopSheet.current();sheetIntent.current=null;sheetDragActive.current=true;}
    }
-   if(g.axis==="native")return;
+   if(g.axis==="native"||!gestures.owns(g.axis==="x"?"tabs":"sheet",g.serial))return;
    if(g.blocking&&e.cancelable)e.preventDefault();
    const now=performance.now(),dt=now-g.lastTime;
    if(dt>0){g.velocity=(t.clientY-g.lastY)/dt;g.lastTime=now;}
@@ -469,7 +582,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const rev=g.revision;
    frame=requestAnimationFrame(()=>{
     frame=null;
-    if(gesture!==g||rev!==g.revision)return;
+    if(gesture!==g||rev!==g.revision||!gestures.owns(g.axis==="x"?"tabs":"sheet",g.serial))return;
     if(g.axis==="x")paintTabs(g.index,dx);
     else {
      const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
@@ -480,14 +593,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   };
   const finish=(e:TouchEvent,cancelled:boolean)=>{
    const g=gesture;abort();if(!g)return;
+   if(g.claimed)gestures.finish(g.axis==="x"?"tabs":"sheet",g.serial);
+   else if(g.axis==="native")gestures.finish("native",g.serial);
+   else gestures.finishCandidate(g.serial);
    const t=e.changedTouches[0];if(!t)return;
    const dx=t.clientX-g.x,dy=t.clientY-g.y;
-   if(g.axis==="x"){
+   if(g.axis==="x"&&g.claimed){
     const dt=Math.max(1,performance.now()-g.start);
     const next=!cancelled&&(Math.abs(dx)>tabViewport.current*.17||Math.abs(dx)/dt>.52)?
      Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
     clickBlocked.current=performance.now()+260;chooseTab(next);
-   }else if(g.axis==="y"){
+   }else if(g.axis==="y"&&g.claimed){
     if(!cancelled){
       const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
       paintSheet(raw>expandedY.current?
@@ -503,16 +619,16 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     settleSheet(g.down);
     const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
     if(g.inPages&&Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
-   }else if(g.axis==="native"&&g.inPages){
-    const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
-    if(Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
-   }
+   } // Native scroll is exclusive; never repair pages.scrollLeft from its touchend.
   };
   const end=(e:TouchEvent)=>finish(e,false);
   const cancel=()=>{
    const g=gesture;abort();if(!g)return;
-   if(g.axis==="x")chooseTab(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
-   else settleSheet(g.down);
+   if(g.claimed)gestures.finish(g.axis==="x"?"tabs":"sheet",g.serial);
+   else if(g.axis==="native")gestures.finish("native",g.serial);
+   else gestures.finishCandidate(g.serial);
+   if(g.axis==="x"&&g.claimed)chooseTab(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
+   else if(g.axis==="y"&&g.claimed)settleSheet(g.down);
   };
   pane.addEventListener("touchstart",start,{passive:true});
   pane.addEventListener("touchend",end,{passive:true});
@@ -523,7 +639,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    pane.removeEventListener("touchstart",start);pane.removeEventListener("touchend",end);
    pane.removeEventListener("touchcancel",cancel);
   };
- },[motionActive,paintSheet,paintTabs,settleSheet,chooseTab]);
+ },[motionActive,paintSheet,paintTabs,settleSheet,chooseTab,gestures]);
  useLayoutEffect(()=>{
   if(!registerRouteGestureCancel)return;
   const cancel=()=>{
@@ -549,7 +665,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    aria-modal={mode==="owner"||embeddedSelf?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="local-self-preview"?"Локальный предпросмотр черновика":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
   {(mode==="preview"||mode==="local-self-preview"&&!!onClose)&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
-    onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
+    onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}
+     onLostPointerCapture={e=>photoEnd(e,true)}>
     <div className="pm-photo-motion" ref={photoMotion}>
     {photos.length?<div className="pm-photo-track" ref={photoTrack}>
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
@@ -564,7 +681,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
      <button type="button" key={p.id} aria-label={"Фото "+(i+1)+" из "+photos.length}
        aria-current={i===activePhoto?"true":undefined}
        className={i===activePhoto?"active":""}
-       onClick={()=>{if(photoTrack.current)photoTrack.current.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";setTransform(i);setActivePhoto(i);}}/>)}</div>}
+       onClick={()=>choosePhoto(i)}/>)}</div>}
     {view.profile.source!=="server"&&<span className="pm-hero-demo">{view.profile.source==="fixture"?"Демо":"Черновик"}</span>}
    </div>
    <div className="pm-sheet-viewport" ref={viewport}>
@@ -599,7 +716,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     <span className="pm-tab-ink" ref={ink} aria-hidden="true"/>
    </div>
    <div className="pm-pages" ref={pages} onPointerDown={tabDown} onPointerMove={tabMove}
-     onPointerUp={e=>tabEnd(e)} onPointerCancel={e=>tabEnd(e,true)}>
+     onPointerUp={e=>tabEnd(e)} onPointerCancel={e=>tabEnd(e,true)}
+     onLostPointerCapture={e=>tabEnd(e,true)}>
     <div className="pm-pages-track" ref={pageTrack}>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[0]=e;}}><About view={view}/></div>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[1]=e;}}><Bliki/></div>

@@ -76,8 +76,10 @@ assertCheck("one stationary global LUEMI header with exactly three expandable co
  && globalHeader.includes("lh-tool-saved")&&!discovery.includes("discovery-header-controls")
  && globalHeaderCss.includes(".lh-island")&&globalHeaderCss.includes(".lh-tools"));
 assertCheck("moving page and underline share a compositor-driven gesture",
- discovery.includes("paintDrag(shift)")&&discovery.includes("requestAnimationFrame")&&discovery.includes("pageTrack.current")
- && discovery.includes("underline.current")&&!discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
+ discovery.includes("browseMotion.current.schedulePaint(g.token,trackX")&&
+ discovery.includes("paintBrowse(trackX,inkX)")&&discovery.includes("frozenBrowse()")&&
+ discovery.includes("motionAuthority.current.run(\"browse\"")&&discovery.includes("pageTrack.current")&&
+ discovery.includes("underline.current")&&!discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
 assertCheck("entire profile and action controls share a single keyed card",read("apps/web/src/discovery/FeedCard.tsx").includes('className="discovery-card-overlay"')
  && read("apps/web/src/discovery/FeedCard.tsx").includes('className="discovery-actions"')
  && discovery.includes('<FeedCard person={person}')&&discovery.includes('<FeedCard person={profiles[feed.index+1]}'));
@@ -97,7 +99,7 @@ assertCheck("hidden undecided goal on feed AND public profile",read("apps/web/sr
 assertCheck("gradient registration interests remain enabled",discoveryCss.includes(".discovery-interests>.chip")&&!discoveryCss.includes("background:rgba(244,230,255,.85)!important"));
 assertCheck("interests +N opens sheet, not full profile",discovery.includes('setInterestOpen(person.id)')&&read("apps/web/src/discovery/FeedCard.tsx").includes("onInterests")&&interestSheet.includes('className="discovery-interests-sheet"'));
 assertCheck("Deck Lift uses one locked timed action",discovery.includes("locked.current=true")&&discovery.includes("deck-leaving")&&discoveryCss.includes(".deck-leaving")&&discoveryCss.includes(".deck-entering"));
-assertCheck("correct inverse tracking of page and line",discovery.includes("(-value/3)")
+assertCheck("correct inverse tracking of page and line",discovery.includes("g.originInk-shift/3")&&discovery.includes("trackX=g.originTrack+shift")
  && discovery.includes("tabIndex*100")&&discovery.includes("(-tabIndex*100)")
  && discoveryCss.includes("--luemi-underline-drag")&&discoveryCss.includes("--luemi-drag"));
 assertCheck("rounded Liquid Glass bottom island and active icon only",discoveryCss.includes(".discovery-bottom-nav{")&&discoveryCss.includes("border-radius:29px")&&discoveryCss.includes(".discovery-nav-item.active{color:#aa76d8;background:transparent"));

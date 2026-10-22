@@ -3,6 +3,7 @@ import type {PointerEvent as ReactPointerEvent} from "react";
 import {ProfileMaster} from "./ProfileMaster";
 import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
+import {GestureArbiter,gestureCapabilities,fractionalTrack} from "../ui/gesture-arbiter";
 import type {HeaderMotion} from "./GlobalHeader";
 import type {ProfileMasterData} from "./ProfileModel";
 
@@ -11,7 +12,7 @@ type Props={
  registerBack:(handler:(()=>boolean)|null)=>void;
 };
 type RouteDrag={
- id:number;startX:number;startY:number;started:number;origin:number;claimed:boolean;
+ id:number;startX:number;startY:number;started:number;origin:number;claimed:boolean;serial:number;
  source:"photo"|"pages"|"tabs"|"sheet";
 };
 const OPEN_DURATION=260;
@@ -22,6 +23,9 @@ const EASING="cubic-bezier(.2,.82,.24,1)";
 export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Props){
  const route=useRef<HTMLDivElement>(null);
  const motionAuthority=useRef(createProfileMotionAuthority());
+ const gestures=useRef(new GestureArbiter()).current;
+ const detachSuppression=useRef<()=>void>(()=>{});
+ const attachSuppression=useRef<()=>void>(()=>{});
  const header=useRef<HeaderMotion>(null);
  const gesture=useRef<RouteDrag|null>(null);
  const cancelProfileGesture=useRef<(()=>void)|null>(null);
@@ -93,16 +97,26 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
  useLayoutEffect(()=>{
   revealUnderlay(true);
   const el=route.current;
-  // Suppress nested touch recognizers only AFTER navigation actually claims
-  // a horizontal gesture. Vertical scrolling and ordinary taps stay native.
+  // No non-passive capture listeners during candidate/native scrolling.
+  // Install route touch suppression only AFTER a valid exclusive claim.
   const suppressClaimedTouch=(event:TouchEvent)=>{
-   if(!gesture.current?.claimed)return;
+   if(!gesture.current?.claimed||gestures.owner()!=="route")return;
    if(event.cancelable)event.preventDefault();
    event.stopPropagation();
   };
-  el?.addEventListener("touchmove",suppressClaimedTouch,{capture:true,passive:false});
-  el?.addEventListener("touchend",suppressClaimedTouch,{capture:true,passive:false});
-  el?.addEventListener("touchcancel",suppressClaimedTouch,{capture:true,passive:false});
+  const suppress=()=>{
+   if(!el)return;
+   el.addEventListener("touchmove",suppressClaimedTouch,{capture:true,passive:false});
+   el.addEventListener("touchend",suppressClaimedTouch,{capture:true,passive:false});
+   el.addEventListener("touchcancel",suppressClaimedTouch,{capture:true,passive:false});
+   detachSuppression.current=()=>{
+    el.removeEventListener("touchmove",suppressClaimedTouch,true);
+    el.removeEventListener("touchend",suppressClaimedTouch,true);
+    el.removeEventListener("touchcancel",suppressClaimedTouch,true);
+    detachSuppression.current=()=>{};
+   };
+  };
+  attachSuppression.current=suppress;
   entranceFrame.current=requestAnimationFrame(()=>{
    entranceFrame.current=null;
    if(!closing.current)moveTo(0,()=>revealUnderlay(false));
@@ -110,27 +124,31 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   return ()=>{
    if(entranceFrame.current!==null)cancelAnimationFrame(entranceFrame.current);
    clearTimer();
-   el?.removeEventListener("touchmove",suppressClaimedTouch,true);
-   el?.removeEventListener("touchend",suppressClaimedTouch,true);
-   el?.removeEventListener("touchcancel",suppressClaimedTouch,true);
+   detachSuppression.current();attachSuppression.current=()=>{};
+   gestures.dispose();
    revealUnderlay(false);
   };
- },[]);
+ },[gestures]);
 
  // Expanded: only gestures originating on the white sheet may close.
  // Collapsed: the complete profile is a back-swipe surface. The photo hero
  // never becomes a back-swipe surface while expanded, even on photo #1.
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
-  if(closing.current||(e.pointerType==="mouse"&&e.button!==0)||!e.isPrimary)return;
+  if(!e.isPrimary){gestures.secondFinger();gesture.current=null;detachSuppression.current();return;}
+  if(closing.current||(e.pointerType==="mouse"&&e.button!==0))return;
   const target=e.target as HTMLElement;
   if(target.closest(".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar"))return;
+  const capabilities=gestureCapabilities(target,true);
+  if(capabilities.modalBlocked||capabilities.canScrollY)return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
   const collapsed=shell?.dataset.sheetState==="collapsed";
   if(!collapsed&&!target.closest(".pm-profile-sheet"))return;
   const source:RouteDrag["source"]=target.closest(".pm-hero")?"photo":
    target.closest(".pm-tabs")?"tabs":target.closest(".pm-pages")?"pages":"sheet";
+  const serial=gestures.begin("pointer",e.pointerId,"route");
+  if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
-   origin:currentX(),claimed:false,source};
+   origin:currentX(),claimed:false,source,serial};
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
@@ -140,11 +158,20 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
    if(dx<9||dx<Math.abs(dy)*1.28)return;
    // Preserve the existing gallery and tab pager until their first item;
    // a page with remaining content always owns its own right swipe.
-   if(g.source==="photo"&&route.current?.querySelector(".pm-photo-progress button.active")?.previousElementSibling)return;
-   if(g.source==="pages"&&route.current?.querySelector(".pm-tab.active")?.previousElementSibling)return;
+   if(g.source==="photo"){
+    const track=route.current?.querySelector<HTMLElement>(".pm-photo-track");
+    const hero=route.current?.querySelector<HTMLElement>(".pm-hero");
+    if(fractionalTrack(track??null,hero?.clientWidth??0,0)>.015)return;
+   }
+   if(g.source==="pages"){
+    const page=route.current?.querySelector<HTMLElement>(".pm-pages");
+    if(page&&page.scrollLeft>1)return;
+   }
    const tabStrip=route.current?.querySelector<HTMLElement>(".pm-tabs");
    if(g.source==="tabs"&&tabStrip&&tabStrip.scrollLeft>1)return;
+   if(!gestures.claim("route",g.serial))return;
    g.claimed=true;
+   attachSuppression.current();
    cancelProfileGesture.current?.();
    // Read the interpolated position BEFORE disabling CSS transition:
    // doing it in the opposite order can snap a mid-entry gesture to zero.
@@ -154,6 +181,7 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
    revealUnderlay(true);
    try{route.current?.setPointerCapture(e.pointerId);}catch{/* older WebView */}
   }
+  if(!gestures.owns("route",g.serial))return;
   if(e.cancelable)e.preventDefault();
   e.stopPropagation();
   setX(Math.max(0,Math.min(width(),g.origin+dx)));
@@ -161,7 +189,9 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
  const end=(e:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   gesture.current=null;
-  if(!g.claimed)return;
+  if(!g.claimed){gestures.finishCandidate(g.serial);return;}
+  if(!gestures.finish("route",g.serial))return;
+  detachSuppression.current();
   if(e.cancelable)e.preventDefault();
   e.stopPropagation();
   try{if(route.current?.hasPointerCapture(e.pointerId))route.current.releasePointerCapture(e.pointerId);}catch{/* old WebView */}
@@ -174,9 +204,11 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
  return <div className="discovery-visitor-route" ref={route}
     onTransitionEnd={e=>{if(e.target===e.currentTarget&&e.propertyName==="transform")finish();}}
     onPointerDownCapture={down} onPointerMoveCapture={move}
-    onPointerUpCapture={e=>end(e)} onPointerCancelCapture={e=>end(e,true)}>
+    onPointerUpCapture={e=>end(e)} onPointerCancelCapture={e=>end(e,true)}
+    onLostPointerCapture={e=>end(e,true)}>
    <ProfileMaster data={data} mode="visitor" onClose={close}
-     registerBack={registerBack} registerRouteGestureCancel={cb=>{cancelProfileGesture.current=cb;}}
+     registerBack={registerBack} gestureArbiter={gestures}
+     registerRouteGestureCancel={cb=>{cancelProfileGesture.current=cb;}}
      onMotionProgress={reportMotion}/>
    <GlobalHeader ref={header} mode="profile" theme={theme} onTheme={onTheme}
      onFilters={()=>{}} onSaved={()=>{}}/>
