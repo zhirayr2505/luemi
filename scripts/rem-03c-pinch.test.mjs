@@ -1,0 +1,53 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import ts from "typescript";
+const source=readFileSync(new URL("../apps/web/src/discovery/photo-viewer-zoom.ts",import.meta.url),"utf8");
+const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const math=await import("data:text/javascript;base64,"+Buffer.from(compiled).toString("base64"));
+const close=(a,b,eps=1e-8)=>assert.ok(Math.abs(a-b)<=eps,a+" differs from "+b);
+const view={width:393,height:852};
+const naturalCases=[{width:720,height:960},{width:1600,height:650},{width:480,height:1500},{width:3000,height:300}];
+for(const natural of naturalCases){
+ const fit=math.contentFit(view,natural);
+ assert.ok(fit.width<=view.width+1e-6&&fit.height<=view.height+1e-6);
+ close(fit.cx,view.width/2);close(fit.cy,view.height/2);
+ close(fit.width/fit.height,natural.width/natural.height);
+ for(const f of [{x:95,y:160},{x:291,y:590},{x:12,y:30},{x:380,y:820}]){
+  const a={x:f.x-40,y:f.y-20},b={x:f.x+40,y:f.y+20};
+  const initial={scale:1.6,x:0,y:0};
+  const anchored=math.beginPinch([7,12],a,b,initial,view);
+  const nextA={x:a.x-15,y:a.y-10},nextB={x:b.x+33,y:b.y+24};
+  const raw=math.focalSolve(anchored,nextA,nextB,view);
+  const before=math.focalContentAt(f,initial,view);
+  const after=math.focalContentAt(math.midpoint(nextA,nextB),raw,view);
+  close(before.x,after.x);close(before.y,after.y);
+  const t=math.pinchFrame(anchored,nextA,nextB,view,natural);
+  assert.ok(t.scale>=1&&t.scale<=3.2);
+  const fit2=math.contentFit(view,natural);
+  const boundX=Math.max(0,(fit2.width*t.scale-view.width)/2);
+  const boundY=Math.max(0,(fit2.height*t.scale-view.height)/2);
+  assert.ok(Math.abs(t.x)<=boundX+1e-7&&Math.abs(t.y)<=boundY+1e-7);
+ }
+}
+const landscape={width:3000,height:500};
+let t=math.clampPan({scale:3,x:3000,y:500},view,landscape);
+assert.equal(t.y,0,"short content axis must always remain centered");
+assert.ok(t.x>0&&t.x<3000);
+const portrait={width:500,height:2400};
+t=math.clampPan({scale:3,x:500,y:3000},view,portrait);
+assert.equal(t.x,0,"narrow portrait axis must remain centered even at 3x");
+const original={scale:2.1,x:23,y:-44};
+const p=math.panFrame(original,{x:20,y:30},view,{width:720,height:960});
+close(p.x,Math.min((math.contentFit(view,{width:720,height:960}).width*2.1-view.width)/2,43));
+close(p.y,-14);
+assert.equal(math.clampScale(.5),1);
+assert.equal(math.clampScale(5),3.2);
+assert.deepEqual(math.identityMedia(),{scale:1,x:0,y:0});
+const moved=math.localFromClient({x:300,y:420},{left:100,top:200,width:200,height:400},{width:400,height:800});
+close(moved.x,400);close(moved.y,440);
+const pair=math.beginPinch([4,9],{x:80,y:120},{x:180,y:240},original,view);
+assert.deepEqual(pair.ids,[4,9]);
+const extended=math.focalSolve(pair,{x:25,y:130},{x:260,y:250},view);
+assert.ok(extended.scale>original.scale,"spread pair increases scale");
+assert.equal(math.distance({x:0,y:0},{x:3,y:4}),5);
+console.log("REM03C_UNIT_PASS 4 content aspects, 4 off-center focal anchors per aspect, all edges, real contain pan bounds, scale clamp, transformed-local coordinates, remaining-finger pan");
