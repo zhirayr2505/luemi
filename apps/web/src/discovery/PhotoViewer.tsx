@@ -397,6 +397,24 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   };
  },[]);
  useEffect(()=>{
+  // Any actual background movement invalidates captured source geometry;
+  // never animate back to a now-moved/occluded thumbnail. Passive read only.
+  const sourceMoved=()=>{
+   if(!morphActive.current||!openSourceRect.current)return;
+   const node=sourceRef.current?.resolveElement();
+   const r=node?.getBoundingClientRect(),old=openSourceRect.current;
+   if(!r||Math.abs(r.left-old.left)>2||Math.abs(r.top-old.top)>2||
+    Math.abs(r.width-old.width)>2||Math.abs(r.height-old.height)>2)
+    morphCleanup.current();
+  };
+  document.addEventListener("scroll",sourceMoved,true);
+  window.addEventListener("resize",sourceMoved);
+  return ()=>{
+   document.removeEventListener("scroll",sourceMoved,true);
+   window.removeEventListener("resize",sourceMoved);
+  };
+ },[]);
+ useEffect(()=>{
   const old=document.body.style.overflow;document.body.style.overflow="hidden";
   return ()=>{document.body.style.overflow=old;mediaRef.current?.dispose();};
  },[]);
@@ -422,6 +440,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    runner.current?.start(0,0,0,easing,paintTrack,()=>{},geometryRevision.current);
    pendingCommit.current=null;
    if(phase.current==="settling"||phase.current==="draggingX")phase.current="idle";
+  }
+  // Reorder or resource substitution invalidates the original thumbnail
+  // even if the committed photoId survived unchanged.
+  if(priorSignature.current!==signature){
+   morphCleanup.current();sourceRef.current=null;
   }
   priorSignature.current=signature;
   previousIds.current=photos.map(p=>p.id);
@@ -755,7 +778,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    </div>}
   </div>
   <div className="pm-viewer-morph-clip" ref={morphClip} aria-hidden="true">
-   <img className="pm-viewer-morph-image" ref={morphImage} alt="" draggable={false}/>
+   <img className="pm-viewer-morph-image" ref={morphImage} alt="" draggable={false}
+    onError={()=>morphCleanup.current()}/>
   </div>
   <header className="pm-viewer-top">
    <span className="pm-viewer-topspacer"/><span>{index>=0?index+1:0} / {photos.length}</span>
