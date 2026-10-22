@@ -13,6 +13,8 @@ import {GeometryMotion} from "./geometry-motion";
 import {GestureArbiter} from "../ui/gesture-arbiter";
 import {MotionController} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
+import {beginPinch,pinchFrame,panFrame,clampPan,identityMedia,matrixTransform,
+ localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
 
 type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:ViewerSource|null;contextId:string;
  onClose:()=>void;onMain?:(id:string)=>boolean|Promise<boolean>;
@@ -46,9 +48,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const image=useRef<HTMLImageElement|null>(null);
  const pointer=useRef(new Map<number,{x:number;y:number}>());
  const gesture=useRef<Gesture|null>(null);
- const zoom=useRef(1);
+ const mediaPose=useRef<MediaTransform>(identityMedia());
+ const pinchSession=useRef(false);
+ const pinch=useRef<PinchAnchor|null>(null);
+ const pan=useRef<{id:number;at:Point;pose:MediaTransform}|null>(null);
  const closing=useRef(false);
- const pinch=useRef<{distance:number;cx:number;cy:number}|null>(null);
  const sourceRef=useRef(source);
  const contextRef=useRef(contextId);contextRef.current=contextId;
  const width=useRef(viewportWidth(window.innerWidth));
@@ -70,6 +74,76 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const handlers=useRef<{close:(force?:boolean)=>void;navigate:(target:NavigationRequest,origin:NavigationOrigin)=>boolean}>({
   close:()=>{},navigate:()=>false
  });
+ const viewSize=()=>({
+  width:Math.max(1,surface.current?.clientWidth??stage.current?.clientWidth??width.current),
+  height:Math.max(1,surface.current?.clientHeight??stage.current?.clientHeight??window.innerHeight)
+ });
+ const naturalSize=()=>({
+  width:Math.max(1,image.current?.naturalWidth??1),
+  height:Math.max(1,image.current?.naturalHeight??1)
+ });
+ const localPoint=(p:Point):Point=>{
+  const box=(surface.current??stage.current)?.getBoundingClientRect();
+  return box?localFromClient(p,box,viewSize()):p;
+ };
+ const paintMedia=(pose:MediaTransform)=>{
+  mediaPose.current=pose;
+  if(image.current){
+   image.current.style.transition="none";
+   image.current.style.transform="translate3d("+pose.x+"px,"+pose.y+"px,0) scale("+pose.scale+")";
+  }
+ };
+ const freezeMedia=():MediaTransform=>{
+  if(!image.current)return mediaPose.current;
+  const pose=matrixTransform(getComputedStyle(image.current).transform);
+  paintMedia(pose);
+  return pose;
+ };
+ const resetMedia=(animate=true)=>{
+  mediaPose.current=identityMedia();
+  if(image.current){
+   image.current.style.transition=animate?
+    "transform 230ms cubic-bezier(.2,.75,.2,1)":"none";
+   image.current.style.transform="none";
+  }
+ };
+ const restoreVertical=(animate=true)=>{
+  if(surface.current){
+   surface.current.style.transition=animate?
+    "transform 230ms cubic-bezier(.2,.75,.2,1)":"none";
+   surface.current.style.transform="none";
+  }
+  if(stage.current){
+   stage.current.style.transition=animate?
+    "opacity 230ms cubic-bezier(.2,.75,.2,1)":"none";
+   stage.current.style.opacity="1";
+  }
+ };
+ const releasePointers=()=>{
+  gesture.current=null;pointer.current.clear();
+  pinch.current=null;pan.current=null;pinchSession.current=false;
+  gestureArbiter.current?.cancel();
+ };
+ const cancelPinchSession=(animate=false)=>{
+  releasePointers();resetMedia(animate);restoreVertical(animate);
+  if(!closing.current&&phase.current!=="settling")phase.current="idle";
+ };
+ const beginPair=(target:HTMLElement)=>{
+  const ids=[...pointer.current.keys()];
+  if(ids.length<2)return;
+  const first=ids[0],second=ids[1];
+  const a=pointer.current.get(first),b=pointer.current.get(second);
+  if(!a||!b)return;
+  gestureArbiter.current?.secondFinger();
+  if(gesture.current)gesture.current.pinch=true;
+  pinchSession.current=true;pan.current=null;
+  const pose=freezeMedia();
+  pinch.current=beginPinch([first,second],localPoint(a),localPoint(b),pose,viewSize());
+  phase.current="pinching";
+  for(const id of [first,second]){
+   try{if(!target.hasPointerCapture(id))target.setPointerCapture(id);}catch{/* WebView fallback */}
+  }
+ };
  const paintTrack=(x:number)=>{
   trackX.current=x;
   if(track.current){
@@ -297,8 +371,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(menu&&!force){setMenu(false);return;}
   if(closing.current)return;
   closing.current=true;phase.current="closing";
-  gesture.current=null;pointer.current.clear();pinch.current=null;zoom.current=1;
-  gestureArbiter.current?.cancel();
+  releasePointers();resetMedia(false);
   const motion=runner.current;
   if(motion){
    const x=motion.cancel();
@@ -313,17 +386,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   registerBack(handle);return ()=>registerBack(null);
  },[registerBack]);
  const resetGesture=()=>{
-  gesture.current=null;pointer.current.clear();pinch.current=null;zoom.current=1;
-  gestureArbiter.current?.cancel();
-  if(image.current){image.current.style.transition="transform 230ms cubic-bezier(.2,.75,.2,1)";image.current.style.transform="none";}
-  if(surface.current){
-   surface.current.style.transition="transform 230ms cubic-bezier(.2,.75,.2,1)";
-   surface.current.style.transform="none";
-  }
-  if(stage.current){
-   stage.current.style.transition="opacity 230ms cubic-bezier(.2,.75,.2,1)";
-   stage.current.style.opacity="1";
-  }
+  releasePointers();resetMedia(true);restoreVertical(true);
   if(!closing.current&&phase.current!=="settling")phase.current="idle";
  };
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
