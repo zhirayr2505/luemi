@@ -42,5 +42,4 @@ jobs:
             sleep 1
           done
           if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-rem03b-vite.log >&2; exit 1; fi
-          node scripts/rem-03b-debug-close.mjs
           node scripts/rem-03b-browser-track.mjs
