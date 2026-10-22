@@ -2,6 +2,9 @@
 import React,{useCallback,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
+import {PhotoViewer} from "./discovery/PhotoViewer";
+import {projectProfile,type ProfileMasterData,type ProfilePhoto} from "./discovery/ProfileModel";
+import {viewerPhotoContext} from "./discovery/photo-viewer-state";
 import {newDraft} from "./registration/model";
 import "./styles.css";
 
@@ -20,6 +23,47 @@ const qaPhotos=[
   {id:"qa-photo-rose",src:qaSvg("LUEMI QA 2","#c471a0")},
   {id:"qa-photo-indigo",src:qaSvg("LUEMI QA 3","#5863a8")}
 ];
+
+/** REM-03A only — isolated, deterministic PhotoViewer identity/media QA fixture.
+ * Never included in the production entrypoint or persisted to IndexedDB. */
+const fixturePhotos:ProfilePhoto[]=[
+ {id:"qa-alpha",src:qaSvg("ALPHA","#ab85dd"),status:"published",addedAt:"2026-01-02T12:00:00Z"},
+ {id:"qa-beta",src:qaSvg("BETA","#db779d"),status:"published",addedAt:"2026-02-03T12:00:00Z"},
+ {id:"qa-gamma",src:qaSvg("GAMMA","#667ed8"),status:"published",addedAt:"2026-03-04T12:00:00Z"}
+];
+function MediaQA(){
+ const [items,setItems]=useState<ProfilePhoto[]>(fixturePhotos);
+ const [openId,setOpenId]=useState<string|null>(null);
+ const profile:ProfileMasterData={
+  id:"qa-media-profile",source:"server",name:"QA Media",age:28,
+  city:"Краснодар",country:"Россия",countryCode:"RU",goal:null,about:"",
+  interests:[],languages:[],photos:items,verified:false,premium:false,
+  registeredAt:null,updatedAt:null
+ };
+ const view=projectProfile(profile,"owner");
+ (window as Window&{__luemiQaMedia?:unknown}).__luemiQaMedia={
+  open:(id:string)=>setOpenId(id),close:()=>setOpenId(null),
+  change:(operation:string)=>setItems(current=>{
+   if(operation==="reset")return [...fixturePhotos];
+   if(operation==="reorder")return [...current].reverse();
+   if(operation==="remove-current"&&openId)return current.filter(p=>p.id!==openId);
+   if(operation==="remove-last")return current.slice(0,-1);
+   if(operation==="remove-all")return [];
+   if(operation==="revoke-beta")return current.map(p=>p.id==="qa-beta"?{...p,status:"hidden" as const}:p);
+   if(operation==="replace-beta")return current.map(p=>p.id==="qa-beta"?
+    {...p,src:qaSvg("BETA VERSION TWO","#2c9a7b"),version:"v2"}:p);
+   if(operation==="cold-beta")return current.map(p=>p.id==="qa-beta"?
+    {...p,src:"/qa-media-cold.png",version:"cold"}:p);
+   if(operation==="broken-beta")return current.map(p=>p.id==="qa-beta"?
+    {...p,src:"/qa-media-broken.png",fallback:qaSvg("BETA FALLBACK","#d9a456"),version:"broken"}:p);
+   if(operation==="error-beta")return current.map(p=>p.id==="qa-beta"?
+    {...p,src:"/qa-media-broken.png",fallback:undefined,version:"error"}:p);
+   return current;
+  })
+ };
+ return openId?<PhotoViewer view={view} photos={view.photos} initialPhotoId={openId}
+  contextId={viewerPhotoContext(view)} source={null} onClose={()=>setOpenId(null)}/>:null;
+}
 function VisualQA(){
  const [theme,setTheme]=useState<"light"|"dark">("light");
  // Developer fixture: exercise the exact DiscoveryApp callback registered by
@@ -31,6 +75,7 @@ function VisualQA(){
   <DiscoveryApp draft={draft} photos={qaPhotos}
    theme={theme} onTheme={()=>setTheme(value=>value==="light"?"dark":"light")}
    onExit={()=>{}} registerBack={registerBack}/>
+  <MediaQA/>
  </main>;
 }
 createRoot(document.getElementById("root")!).render(
