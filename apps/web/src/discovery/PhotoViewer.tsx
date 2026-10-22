@@ -125,9 +125,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   gestureArbiter.current?.cancel();
  };
  const cancelPinchSession=(animate=false)=>{
-  const wasPinching=pinchSession.current;
+  const wasTracking=pinchSession.current||pointer.current.size>0;
   releasePointers();resetMedia(animate);restoreVertical(animate);
-  if(wasPinching&&!closing.current&&Math.abs(trackX.current)>.1){
+  if(wasTracking&&!closing.current&&Math.abs(trackX.current)>.1){
    const motion=runner.current;
    const frozen=motion?.cancel()??trackX.current;
    // A cancelled pinch cannot leave a half-visible neighboring slide.
