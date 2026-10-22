@@ -96,11 +96,14 @@ try{
  pass("6 photos, real DOM 1:1 measured CSS matrix, progressive neighbor, keyed node preserved through no-jump recenter");
 
  await drag(55);
+ await sleep(190); // deliberate held/slow release: not a flick
  await page.mouse.up();await sleep(270);
- assert.equal((await state()).id,"qa-beta","short drag rolls back");
+ assert.equal((await state()).id,"qa-beta","short slow drag rolls back");
  assert.ok(Math.abs((await state()).offset)<1);
  await swipe(1,190);await settle("qa-gamma");
- pass("short swipe rollback and long swipe commit with original .17 viewport threshold");
+ await swipe(1,55,1);await settle("qa-delta"); // fast under 17%, but >0.52 px/ms
+ await page.keyboard.press("ArrowLeft");await settle("qa-gamma");
+ pass("short slow rollback, long commit and short fast flick with baseline .17 / .52 thresholds");
 
  // Retouch during a 240ms settle must freeze the sampled interpolated position,
  // not reset the track to an integer slot.
