@@ -48,9 +48,9 @@ const sample=async label=>{
  if(label!=="initial")await page.screenshot({path:out+"/"+String(samples.length).padStart(2,"0")+"-"+label+".png"});
  return m;
 };
-const stopTrace=async()=>{try{await page.tracing.stop({path:out+"/trace.zip"});}catch{}};
+const stopTrace=async()=>{try{await ctx.tracing.stop({path:out+"/trace.zip"});}catch{}};
 try{
- await page.tracing.start({screenshots:true,snapshots:true,sources:false});
+ await ctx.tracing.start({screenshots:true,snapshots:true,sources:false});
  await page.goto("http://127.0.0.1:5173/profile-qa.html",{waitUntil:"domcontentloaded"});
  await page.waitForFunction(()=>!!window.__luemiQaPerf);
  await sample("initial");
