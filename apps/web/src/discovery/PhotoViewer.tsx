@@ -50,6 +50,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const dialog=useRef<HTMLElement>(null);
  const previousFocus=useRef<HTMLElement|null>(null);
  const morphLayer=useRef<HTMLDivElement>(null),morphImg=useRef<HTMLImageElement>(null);
+ const portalBounds=useRef({width:window.innerWidth,height:window.innerHeight});
  const [portalViewport,setPortalViewport]=useState<ViewerViewport>(()=>({
   width:window.innerWidth,height:window.innerHeight,
   safe:{top:0,bottom:0,left:0,right:0},revision:0
@@ -209,7 +210,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  };
  const prepareMorph=(closingPhase:boolean)=>{
   stopMorph();
-  const match=captureSource(sourceRef.current,latest.current.show,contextRef.current,document);
+  // A failed or pending displayed decode cannot borrow pixels from a source thumbnail on close.
+  const match=closingPhase&&!latest.current.displayReady?null:
+   captureSource(sourceRef.current,latest.current.show,contextRef.current,document);
   const host=morphLayer.current,visual=morphImg.current;
   if(!match||!host||!visual)return null;
   const {node,url,geometry:g}=match;
@@ -315,6 +318,10 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  useEffect(()=>{
   const update=(snapshot:ViewportSnapshot|null)=>{
    const next=readPortalViewport(document,snapshot);
+   if(morphLayer.current?.style.display==="block"&&
+    (next.width!==portalBounds.current.width||next.height!==portalBounds.current.height))
+    morphLifecycle.current.stop(); // geometry changed: safe fade; never reuse old crop
+   portalBounds.current={width:next.width,height:next.height};
    setPortalViewport(old=>sameViewerViewport(old,next)?old:next);
   };
   update(null);
