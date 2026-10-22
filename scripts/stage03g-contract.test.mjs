@@ -41,8 +41,8 @@ assert.equal(m.projectProfile({...base,source:"server",activeBlik:{...futureBlik
  null,"story media links must use HTTPS");
 console.log("✓ Stage 03G.A: public projection, unpublished photo guards, demo badges, owner/preview permission boundaries");
 
-assert.deepEqual(visitor.profile.photos.map(p=>p.id),["b"],"nested projection cannot carry private images");
-assert.deepEqual(preview.profile.photos.map(p=>p.id),["b"],"nested preview is public-only");
+assert.deepEqual(visitor.profile.photos.map(p=>p.id),[],"nested visitor projection cannot carry any local-draft photo, even forged published flags");
+assert.deepEqual(preview.profile.photos.map(p=>p.id),[],"nested public preview cannot carry any local-draft photo");
 assert.equal(Object.hasOwn(m.projectProfile({...base,privateToken:"secret"},"visitor").profile,"privateToken"),false,
  "unknown future private fields cannot spread through public profile");
 const profile=read("apps/web/src/discovery/ProfileMaster.tsx");
