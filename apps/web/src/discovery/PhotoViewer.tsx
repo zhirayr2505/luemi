@@ -51,7 +51,6 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const pinch=useRef<{distance:number;cx:number;cy:number}|null>(null);
  const sourceRef=useRef(source);
  const contextRef=useRef(contextId);contextRef.current=contextId;
- const cleanup=useRef<number|null>(null);
  const width=useRef(viewportWidth(window.innerWidth));
  const geometryRevision=useRef(0);
  const trackX=useRef(0);
@@ -141,6 +140,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    clearTimeout(timer);cancelAnimationFrame(frame);
   });
  };
+ const surfaceHandler=useRef<(closingPhase:boolean)=>void>(()=>{});
+ surfaceHandler.current=surfaceTransition;
  useLayoutEffect(()=>{
   const outer=stage.current,layer=surface.current;
   if(!outer||!layer)return;
@@ -155,10 +156,10 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   outer.style.opacity="0";outer.style.transition="none";
   layer.style.transition="none";layer.style.transform=morphTransform();
   phase.current="opening";
-  surfaceTransition(false);
+  surfaceHandler.current(false);
   return ()=>{
    runner.current?.dispose();gestureArbiter.current?.dispose();
-   surfaceOwner.current?.dispose();if(cleanup.current!==null)clearTimeout(cleanup.current);
+   surfaceOwner.current?.dispose();
   };
  },[]);
  useEffect(()=>{
@@ -249,7 +250,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   }
   if(gesture.current===null&&phase.current==="draggingY")resetGesture();
  }),[]);
- const settle=(target:0|-1|1)=>{
+ const settle=(target:0|-1|1,settleMs=duration)=>{
   const motion=runner.current;if(!motion||closing.current)return;
   const start=motion.cancel(),w=width.current;
   const hasTarget=target===0||!!latest.current.photos[latest.current.index-target];
@@ -257,14 +258,14 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   phase.current="settling";
   const selected=latest.current;
   const targetPhoto=target===0?null:selected.photos[selected.index-target];
-  motion.start(start,target*w,duration,easing,paintTrack,()=>{
+  motion.start(start,target*w,settleMs,easing,paintTrack,()=>{
    if(closing.current)return;
    if(!targetPhoto||target===0){phase.current="idle";return;}
    // One semantic commit per settle generation, after painting its endpoint.
    const valid=navigatePhoto(latest.current.photoId,latest.current.photos,{photoId:targetPhoto.id});
    if(!valid||valid!==targetPhoto.id){paintTrack(0);phase.current="idle";return;}
    sourceRef.current=null;setMenu(false);setMessage("");commitCount.current++;
-   pendingCommit.current={id:targetPhoto.id,shift:target};
+   pendingCommit.current={id:targetPhoto.id,shift:target===-1?-1:1};
    setCommittedPhotoId(targetPhoto.id);
   },geometryRevision.current);
  };
@@ -280,7 +281,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    setMenu(false);setMessage("");setCommittedPhotoId(target);return true;
   }
   if(phase.current==="opening"){stopSurface();phase.current="idle";}
-  settle(shift===1?-1:1);return true;
+  settle(shift===1?-1:1,_origin==="swipe"?duration:0);return true;
  };
  const requestClose=(force=false)=>{
   if(menu&&!force){setMenu(false);return;}
