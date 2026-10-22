@@ -1,0 +1,45 @@
+name: LUEMI REM-03C focused lifecycle QA
+on:
+  push:
+    branches:
+      - remediation/rem-03c-pinch-pan-20261022
+  pull_request:
+    branches:
+      - remediation/rem-03b-continuous-viewer-20261022
+jobs:
+  rem03c-chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Install lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Build shared contracts
+        run: npm run build -w @luemi/contracts
+      # GitHub Ubuntu runner preinstalls Chrome; Playwright channel=chrome uses
+      # the actual Chromium engine without network-dependent system apt downloads.
+      - name: Focused REM-03C physical DOM/lifecycle regression (additional, not a substitute for full behavioral suite)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-rem03c-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then ready=1; break; fi
+            if ! kill -0 "$vite_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-rem03c-vite.log >&2; exit 1; fi
+          node scripts/rem-03c-browser-pinch.mjs
