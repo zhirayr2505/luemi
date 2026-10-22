@@ -281,7 +281,7 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
     onTransitionEnd={e=>{if(e.target===e.currentTarget&&e.propertyName==="transform")finish();}}
     onPointerDownCapture={down} onPointerMoveCapture={move}
     onPointerUpCapture={e=>end(e)} onPointerCancelCapture={e=>end(e,true)}
-    onLostPointerCapture={e=>end(e,true)}>
+    onLostPointerCapture={e=>{if(e.target===e.currentTarget)end(e,true);}}>
    <ProfileMaster data={data} mode="visitor" onClose={close}
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
