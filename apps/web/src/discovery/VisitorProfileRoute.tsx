@@ -193,7 +193,12 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
  // Collapsed: the complete profile is a back-swipe surface. The photo hero
  // never becomes a back-swipe surface while expanded, even on photo #1.
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
-  if(!e.isPrimary){gestures.secondFinger();gesture.current=null;detachSuppression.current();return;}
+  if(!e.isPrimary){
+   const claimed=!!gesture.current?.claimed;
+   gestures.secondFinger();gesture.current=null;detachSuppression.current();
+   if(claimed)rollback();
+   return;
+  }
   if(paused.current||closing.current||(e.pointerType==="mouse"&&e.button!==0))return;
   const target=e.target as HTMLElement;
   if(target.closest(".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar"))return;
@@ -213,7 +218,10 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   const dx=e.clientX-g.startX,dy=e.clientY-g.startY;
   if(!g.claimed){
-   if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)){gesture.current=null;return;}
+   if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)){
+    // No route writer, and no orphaned candidate after native pan-y wins.
+    gestures.finishCandidate(g.serial);gesture.current=null;return;
+   }
    if(dx<9||dx<Math.abs(dy)*1.28)return;
    // Preserve the existing gallery and tab pager until their first item;
    // a page with remaining content always owns its own right swipe.
