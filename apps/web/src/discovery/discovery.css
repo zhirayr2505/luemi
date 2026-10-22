@@ -206,14 +206,16 @@
 /* Visitor profile is inside the content panel; the stationary header remains above it. */
 .discovery-app[data-profile-overlay=true] .discovery-bottom-nav{visibility:hidden}
 .discovery-app[data-profile-overlay=true][data-route-revealing=true] .discovery-bottom-nav{visibility:visible}
-/* Android Telegram: the mounted Feed, For You and Nearby galleries share
-   one costly transformed pager under the opened visitor route. Suppress ALL
-   of that pager only once the route has fully arrived. The route explicitly
-   reveals it BEFORE any swipe-back / close begins, so the returning scene is
-   already rasterized when the overlay moves. Visibility retains DOM state,
-   scroll positions and browser-sized layout (display:none would not). */
-.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true]) .discovery-browse-panel{
- visibility:hidden;
+/* REM-04B LU-14: preserve mounted Feed/ForYou/Nearby DOM and scroll while
+   the route covers the browser. The visible flag is NOT a raster-readiness
+   guarantee: Blink may discard cached paint/GPU tiles while hidden.
+   The route enables the underlay BEFORE sliding back; no artificial delay
+   or full-screen bitmap placeholder is introduced. On covered screens,
+   descendants from the animated deck may explicitly say visibility:visible,
+   so the complete subtree must be scoped to the same visibility owner. */
+.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true]) .discovery-browse-panel,
+.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true]) .discovery-browse-panel *{
+ visibility:hidden!important;
 }
 /* The persistent browse header is a second full logo (plus translucent tools)
    behind the visitor's own header; suppress its Android raster layer as well. */
