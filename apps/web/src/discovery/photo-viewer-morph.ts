@@ -7,7 +7,6 @@ export type Natural={width:number;height:number};
 export type Position={x:number;y:number};
 export type CropMorph={sourceClip:Rect;sourceImage:Rect;destination:Rect;
  uniformScale:number;translateX:number;translateY:number};
-const finite=(n:number)=>Number.isFinite(n)?n:0;
 export function intersect(a:Rect,b:Rect):Rect|null{
  const l=Math.max(a.left,b.left),t=Math.max(a.top,b.top);
  const r=Math.min(a.left+a.width,b.left+b.width),d=Math.min(a.top+a.height,b.top+b.height);
