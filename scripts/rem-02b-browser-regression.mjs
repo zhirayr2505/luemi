@@ -92,6 +92,9 @@ try{
  assert.ok(Math.abs(reversed.pagesLeft-2*reversed.pageWidth)<=1);
  pass("rapid settle reversal does not restart stale tab target");
  // Actual pointer input: resize while the horizontal tab swipe is held.
+ // Keep the actual pager onscreen: expanded sheet intentionally shows only its header.
+ await page.getByRole("button",{name:"Развернуть анкету"}).click();
+ await sleep(385);
  await page.getByRole("tab",{name:"О себе",exact:true}).click();await sleep(360);
  const area=await page.locator(".pm-inline .pm-pages").boundingBox();
  assert.ok(area&&area.height>10,"tab pager must be physically measurable");
@@ -113,6 +116,8 @@ try{
  assert.ok(Math.abs(pointerFinal.pagesLeft-pointerFinal.pageWidth)<=1);
  pass("pointer dragging preserves fractional location at width revision, commits new tab ≤1px");
  // Native touch: preserve sheet absolute position during height-only resize.
+ await page.getByRole("button",{name:"Раскрыть фото профиля"}).click();
+ await sleep(385);
  const identity=await page.locator(".pm-inline .pm-identity").boundingBox();
  assert.ok(identity&&identity.height>25);
  const tx=identity.x+identity.width*.45,ty=identity.y+identity.height*.45;
