@@ -1,0 +1,176 @@
+name: LUEMI REM-04B focused hero and underlay QA
+on:
+  push:
+    branches:
+      - remediation/rem-04b-hero-blur-underlay-20261022
+  pull_request:
+    branches:
+      - remediation/rem-04a-react-startup-20261022
+jobs:
+  rem04b-chromium:
+    name: Focused real Chromium visual layers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Install unchanged lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Build shared contracts
+        run: npm run build -w @luemi/contracts
+      - name: Measure real browser matrices, photo identity, hidden descendants and regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-rem04b-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-rem04b-vite.log >&2; exit 1; fi
+          node scripts/rem-04b-browser-visual.mjs
+          node scripts/rem-04b-browser-six.mjs
+      - name: Save after screenshots and trace regardless of result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem-04b-after-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04b/after/**
+            qa-artifacts/rem-04b/six/**
+            /tmp/luemi-rem04b-vite.log
+          if-no-files-found: warn
+
+  compare-accepted:
+    name: Accepted REM-04A vs REM-04B browser cost comparison
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 561145925efe04199235070e4d0c56be295ef2a4
+          path: accepted-rem04a
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Use pinned npm and locked dependencies
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+      - name: Run identical Chrome DOM/motion/CPU timing baseline and optimized fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem04a/node_modules"
+          (cd accepted-rem04a && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174) >/tmp/luemi-rem04b-accepted-vite.log 2>&1 &
+          old_pid=$!
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-rem04b-current-vite.log 2>&1 &
+          new_pid=$!
+          trap 'kill "$old_pid" "$new_pid" 2>/dev/null || true' EXIT
+          old_ready=0;new_ready=0
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5174/profile-qa.html >/dev/null; then old_ready=1; fi
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then new_ready=1; fi
+            if [[ "$old_ready" -eq 1 && "$new_ready" -eq 1 ]]; then break; fi
+            sleep 1
+          done
+          if [[ "$old_ready" -ne 1 || "$new_ready" -ne 1 ]]; then
+            cat /tmp/luemi-rem04b-accepted-vite.log /tmp/luemi-rem04b-current-vite.log >&2
+            exit 1
+          fi
+          node scripts/rem-04b-browser-cost.mjs
+          node scripts/rem-04b-browser-six-cost.mjs
+      - name: Preserve same-environment comparison screenshots, traces, metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem-04b-compare-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04b/compare/**
+            qa-artifacts/rem-04b/compare-six/**
+            /tmp/luemi-rem04b-accepted-vite.log
+            /tmp/luemi-rem04b-current-vite.log
+          if-no-files-found: warn
+
+  profile-a-b-c:
+    name: Identical A/B/C Chrome CPU/layout and resource profile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 561145925efe04199235070e4d0c56be295ef2a4
+          path: accepted-rem04a
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 95be2d18f7a94dc5deb897e02cb5d1b9c106a5d0
+          path: before-rem04b
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install pinned app dependencies
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+      - name: Measure A/B/C on one browser with pinned immutable code snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem04a/node_modules"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/before-rem04b/node_modules"
+          (cd accepted-rem04a && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174) >/tmp/rem04b-A.log 2>&1 &
+          old_pid=$!
+          (cd before-rem04b && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5175) >/tmp/rem04b-B.log 2>&1 &
+          pre_pid=$!
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/rem04b-C.log 2>&1 &
+          cur_pid=$!
+          trap 'kill "$old_pid" "$pre_pid" "$cur_pid" 2>/dev/null || true' EXIT
+          for port in 5173 5174 5175; do
+            ready=0
+            for i in $(seq 1 40); do
+              if curl -fsS "http://127.0.0.1:$port/rem-01e-qa.html" >/dev/null; then ready=1; break; fi
+              sleep 1
+            done
+            if [[ "$ready" -ne 1 ]]; then cat /tmp/rem04b-{A,B,C}.log >&2; exit 1; fi
+          done
+          node scripts/rem-04b-performance-abc.mjs
+      - name: Preserve actual CPU profiles, rAF and layout comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem-04b-abc-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04b/performance-abc/**
+            /tmp/rem04b-A.log
+            /tmp/rem04b-B.log
+            /tmp/rem04b-C.log
+          if-no-files-found: warn

@@ -25,9 +25,26 @@ const log=s=>console.log("REM01D_BROWSER_PASS "+s);
 try{
  await page.goto(base+"/rem-01d-viewport-qa.html",{waitUntil:"domcontentloaded"});
  await page.waitForFunction(()=>!!window.__REM01D_QA__?.snapshot());
+ // The controller coalesces Telegram/VisualViewport updates into one browser RAF.
+ // A fixed wall-clock sleep cannot prove the commit happened on a busy CI runner.
+ const initialRevision=await page.evaluate(()=>window.__REM01D_QA__.snapshot().revision);
  await page.evaluate(()=>{const q=window.__REM01D_QA__;q.telegram.viewportHeight=852;q.telegram.viewportStableHeight=852;q.emit("viewportChanged",{isStateStable:true});});
+ try{
+  await page.waitForFunction(rev=>window.__REM01D_QA__?.snapshot()?.revision>rev,
+   initialRevision,{polling:"raf",timeout:3000});
+ }catch(error){
+  const diagnostic=await page.evaluate(()=>({snapshot:window.__REM01D_QA__?.snapshot(),
+   innerHeight:innerHeight,visualHeight:visualViewport?.height}));
+  console.error("REM01D_INITIAL_VIEWPORT_TIMEOUT",JSON.stringify(diagnostic));
+  throw error;
+ }
  await settle();
  let data=await info();
+ console.log("REM01D_INITIAL_VIEWPORT_PROOF",JSON.stringify({
+  revisionBefore:initialRevision,revisionAfter:data.revision,
+  shellHeight:data.snapshot.shellHeight,layoutHeight:data.snapshot.layoutHeight,
+  visualHeight:data.snapshot.visualHeight,acceptedStableHeight:data.snapshot.acceptedStableHeight
+ }));
  assert.equal(data.snapshot.shellHeight,852);
  assert.equal(data.snapshot.keyboardState,"closed");
  assert.equal(data.footerDisplay,"block");

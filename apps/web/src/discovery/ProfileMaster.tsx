@@ -38,6 +38,96 @@ function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;lo
  return <img data-photo-id={photo.id} src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
    onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
 }
+type BlurWindowWriter=(indices:number[]|null)=>void;
+/** LU-13 media-window owner. React owns the six stable keyed slot wrappers,
+ * not the changing set of at most three decoded image nodes. The ONLY hero
+ * transform writer remains PROFILE_MOTION_WRITER_TABLE.hero. This bounded
+ * writer changes img membership synchronously before the next paint, with no
+ * React render/commit per fractional-window change and no new motion clock.
+ */
+const ProfileBlurTrack=memo(function ProfileBlurTrack({
+ photos,activePhoto,blurFrom,trackRef,bindWriter
+}:{
+ photos:ProfilePhoto[];activePhoto:number;blurFrom:number;
+ trackRef:{current:HTMLDivElement|null};
+ bindWriter:(writer:BlurWindowWriter|null)=>void;
+}){
+ type Peer={node:HTMLImageElement;resource:string};
+ const liveRef=useRef(new Map<number,Peer>());
+ const overrideRef=useRef<number[]|null>(null);
+ const prevPhotosRef=useRef(photos);
+ const propsRef=useRef({photos,activePhoto,blurFrom});
+ propsRef.current={photos,activePhoto,blurFrom};
+ // A photo reorder or src/version replacement must invalidate numeric
+ // window slots and never reuse another photo's decoded DOM image.
+ if(prevPhotosRef.current!==photos){
+  prevPhotosRef.current=photos;
+  overrideRef.current=null;
+ }
+ const updateWindow=()=>{
+  const {photos,activePhoto,blurFrom}=propsRef.current;
+  const track=trackRef.current;
+  if(!track)return;
+  const slots=track.children;
+  const from=overrideRef.current;
+  const requested=from??(()=>{
+   const list=[activePhoto];
+   if(blurFrom!==activePhoto&&photos[blurFrom])list.push(blurFrom);
+   for(const neighbor of [activePhoto-1,activePhoto+1])
+    if(list.length<3&&photos[neighbor]&&!list.includes(neighbor))list.push(neighbor);
+   return list;
+  })();
+  const wanted:number[]=[];
+  for(const index of requested){
+   if(index>=0&&index<photos.length&&!wanted.includes(index)&&wanted.length<3)wanted.push(index);
+  }
+  // Remove peers that left first; <=3 image nodes at every mutation step.
+  for(const [index,peer] of liveRef.current){
+   const photo=photos[index],slot=slots[index];
+   const identity=photo?resourceIdentity(photo)+"|"+(photo.fallback??""):null;
+   if(!wanted.includes(index)||peer.resource!==identity||peer.node.parentElement!==slot){
+    peer.node.onerror=null;peer.node.remove();liveRef.current.delete(index);
+   }
+  }
+  for(const index of wanted){
+   if(liveRef.current.has(index))continue;
+   const photo=photos[index],slot=slots[index];
+   if(!photo||!slot)continue;
+   const node=document.createElement("img");
+   node.dataset.photoId=photo.id;
+   node.alt="";node.draggable=false;node.loading="eager";node.decoding="async";
+   const fallback=photo.fallback;
+   if(fallback)node.onerror=()=>{
+    if(node.src!==fallback)node.src=fallback;
+   };
+   node.src=photo.src;
+   slot.appendChild(node);
+   liveRef.current.set(index,{node,resource:resourceIdentity(photo)+"|"+(fallback??"")});
+  }
+ };
+ const writerRef=useRef<BlurWindowWriter>(()=>{});
+ const applyRef=useRef<()=>void>(()=>{});
+ applyRef.current=updateWindow;
+ writerRef.current=indices=>{overrideRef.current=indices;applyRef.current();};
+ useLayoutEffect(()=>{
+  const peers=liveRef.current;
+  const bridge:BlurWindowWriter=indices=>writerRef.current(indices);
+  bindWriter(bridge);
+  // Initial media are present on the first layout frame.
+  bridge(null);
+  return ()=>{
+   bindWriter(null);
+   for(const peer of peers.values()){
+    peer.node.onerror=null;peer.node.remove();
+   }
+   peers.clear();overrideRef.current=null;
+  };
+ },[bindWriter]);
+ useLayoutEffect(()=>{applyRef.current();},[photos,activePhoto,blurFrom]);
+ return <div className="pm-photo-blur-track" ref={trackRef}>
+  {photos.map(photo=><div className="pm-photo-blur-slide" key={photo.id} data-blur-photo-id={photo.id}/>)}
+ </div>;
+});
 function About({view}:{view:ProfileView}){
  const p=view.profile,goal=p.goal&&p.goal!=="undecided"?goals.find(g=>g.id===p.goal):null;
  return <div className="pm-card-stack">
@@ -89,14 +179,24 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]);
  const photos=view.photos;
  const [activePhoto,setActivePhoto]=useState(0);
+ const [blurFrom,setBlurFrom]=useState(0);
+ const blurWriterRef=useRef<BlurWindowWriter>(()=>{});
+ const bindBlurWriter=useCallback((writer:BlurWindowWriter|null)=>{
+  blurWriterRef.current=writer??(()=>{});
+ },[]);
+ const blurWindowRef=useRef<number[]|null>(null);
+ const blurSampleFrame=useRef<number|null>(null);
+ const blurSession=useRef(0);
  const activePhotoId=useRef<string|null>(photos[0]?.id??null);
  const previousPhotos=useRef(photos);
  const localGestures=useRef(new GestureArbiter());
  const gestures=gestureArbiter??localGestures.current;
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
+ // At most three actual blur images are mounted, including the outgoing frame
+ // if a progress-dot jump spans more than one slide.
  const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
- const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
+ const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null),blurTrack=useRef<HTMLDivElement>(null);
  const grab=useRef<HTMLButtonElement>(null),miniAvatar=useRef<HTMLButtonElement>(null);
  const photoMotion=useRef<HTMLDivElement>(null),rubberY=useRef(0);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
@@ -128,9 +228,60 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const tabSelectionRef=useRef<TabId>(tab);
  tabSelectionRef.current=tab;
+ // The accepted hero Motion Authority owns BOTH transform writers.
+ // This only tracks which <=3 blur media are already staged at the actual
+ // sampled CSS fraction; no competing timeline or motion controller.
+ const blurWindowAt=(position:number,toward:number):number[]=>{
+  const f=Math.max(0,Math.min(photos.length-1,position));
+  const left=Math.floor(f),right=Math.ceil(f),dir=toward<f?-1:1;
+  const candidates=[left,right,dir>0?right+1:left-1,dir>0?right+2:left-2,dir>0?left-1:right+1];
+  const result:number[]=[];
+  for(const n of candidates)if(n>=0&&n<photos.length&&!result.includes(n)&&result.length<3)
+   result.push(n);
+  return result;
+ };
+ const showBlurWindow=(indices:number[])=>{
+  const old=blurWindowRef.current;
+  if(old&&indices.length===old.length&&indices.every(i=>old.includes(i)))return;
+  blurWindowRef.current=indices;
+  // DOM-only bounded media writer: no React reconciliation in the rAF loop.
+  blurWriterRef.current(indices);
+ };
+ const stopBlurTracking=()=>{
+  blurSession.current++;
+  if(blurSampleFrame.current!==null)cancelAnimationFrame(blurSampleFrame.current);
+  blurSampleFrame.current=null;
+ };
+ const finishBlurTracking=(target:number)=>{
+  stopBlurTracking();blurWindowRef.current=null;
+  // The terminal media window must match the just-committed target BEFORE
+  // the asynchronous parent blurFrom state update. A temporary fallback based
+  // on the previous blurFrom would insert and immediately remove a stale
+  // decoded image, adding one extra layout/style pass per far transition.
+  // Stable at most 3 peers; resource identity stays owned by ProfileBlurTrack.
+  const settled=[target,target-1,target+1].filter(i=>i>=0&&i<photos.length);
+  blurWriterRef.current(settled);
+  setBlurFrom(target);
+ };
+ const followBlurPosition=(target:number)=>{
+  stopBlurTracking();
+  const generation=blurSession.current;let stable=0;
+  const tick=()=>{
+   if(generation!==blurSession.current)return;
+   const width=Math.max(1,hero.current?.clientWidth??1);
+   const at=fractionalTrack(photoTrack.current,width,target);
+   showBlurWindow(blurWindowAt(at,target));
+   stable=Math.abs(at-target)<.004?stable+1:0;
+   if(stable>=2){finishBlurTracking(target);return;}
+   blurSampleFrame.current=requestAnimationFrame(tick);
+  };
+  blurSampleFrame.current=requestAnimationFrame(tick);
+ };
  const setTransform=useCallback((idx:number,delta=0)=>{
   motionAuthority.current.run("hero",PROFILE_MOTION_WRITER_TABLE.hero,()=>{
-   if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
+   const value=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
+   if(photoTrack.current)photoTrack.current.style.transform=value;
+   if(blurTrack.current)blurTrack.current.style.transform=value;
   });
  },[]);
  // The stationary viewport owns vertical scroll. The rounded surface itself
@@ -283,10 +434,18 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    webApp?.offEvent?.("viewportChanged",measure);
   };
  },[motionActive,paintSheet]);
- useEffect(()=>()=>{stopSheet.current();stopTabs.current();
-  sheetRunner.current?.dispose();tabsRunner.current?.dispose();
-  localGestures.current.dispose();
-  if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
+ useEffect(()=>{
+  const opticalFrame=blurSampleFrame,opticalSession=blurSession;
+  const localArbiter=localGestures.current;
+  return ()=>{
+   opticalSession.current++;
+   if(opticalFrame.current!==null)cancelAnimationFrame(opticalFrame.current);
+   opticalFrame.current=null;
+   stopSheet.current();stopTabs.current();
+   sheetRunner.current?.dispose();tabsRunner.current?.dispose();
+   localArbiter.dispose();
+   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
+  };
  },[]);
  const closeTop=useCallback(():boolean=>{
   if(viewer){if(viewerBack.current)return viewerBack.current();setViewer(null);return true;}
@@ -331,10 +490,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    g.claimed=true;
    g.width=hero.current?.clientWidth||g.width;
    g.index=fractionalTrack(photoTrack.current,g.width,activePhoto);
+   stopBlurTracking(); // pointer now owns sampled fraction, not old dot target
    if(photoTrack.current){
     // The exact capture frame is inspectable by real Chromium gesture QA.
     photoTrack.current.dataset.motionFrozenX=String(-g.index*g.width);
     photoTrack.current.style.transition="none";
+    if(blurTrack.current)blurTrack.current.style.transition="none";
     setTransform(g.index);
    }
    try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
@@ -349,6 +510,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   dragFrame.current=requestAnimationFrame(()=>{
    dragFrame.current=null;
    if(photoSwipe.current!==g||!gestures.owns("hero",g.serial!))return;
+   if(blurWindowRef.current){
+    const fractional=g.index-shift/Math.max(1,g.width);
+    showBlurWindow(blurWindowAt(fractional,fractional+(shift>=0?-1:1)));
+   }
    setTransform(g.index,shift);
   });
  };
@@ -357,15 +522,35 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   const track=photoTrack.current,width=hero.current?.clientWidth||1;
   const currentFraction=fractionalTrack(track,width,activePhoto);
+  stopBlurTracking();
+  const far=Math.abs(index-currentFraction)>1.01;
+  if(far||blurWindowRef.current)showBlurWindow(blurWindowAt(currentFraction,index));
   if(track){
-   track.style.transition="none";setTransform(currentFraction);
+   track.style.transition="none";
+   if(blurTrack.current)blurTrack.current.style.transition="none";
+   setTransform(currentFraction);
    // Flush once only on navigation boundaries, never on pointermove.
    void track.offsetWidth;
    track.style.transition="transform 290ms cubic-bezier(.2,.76,.22,1)";
+   if(blurTrack.current)blurTrack.current.style.transition=track.style.transition;
   }
   setTransform(index);
   activePhotoId.current=photos[index].id;
+  setBlurFrom(Math.max(0,Math.min(photos.length-1,Math.round(currentFraction))));
   setActivePhoto(index);
+  if(far||blurWindowRef.current)followBlurPosition(index);
+  else {
+   const token=++blurSession.current;
+   const done=()=>{if(token===blurSession.current)finishBlurTracking(index);};
+   const ended=(event:TransitionEvent)=>{
+    if(event.target===track&&event.propertyName==="transform"){
+     track?.removeEventListener("transitionend",ended);done();
+    }
+   };
+   track?.addEventListener("transitionend",ended);
+   // Cleanup fallback only: the unchanged physical CSS settle is 290 ms.
+   window.setTimeout(()=>{track?.removeEventListener("transitionend",ended);done();},330);
+  }
  };
  const photoEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=photoSwipe.current;if(!g||g.id!==e.pointerId)return;
@@ -390,11 +575,16 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(list===photos)return;
   previousPhotos.current=photos;
   const index=preservePhotoId(list,photos,activePhotoId.current,activePhoto);
+  // Reorder/removal invalidates pending indices, never keeps a blur slot
+  // bound to the old photo at the same array position.
+  stopBlurTracking();blurWindowRef.current=null;
+  blurWriterRef.current(null);setBlurFrom(index);
   activePhotoId.current=photos[index]?.id??null;
   photoSwipe.current=null;
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   if(photoTrack.current){
    photoTrack.current.style.transition="none";
+   if(blurTrack.current)blurTrack.current.style.transition="none";
    setTransform(index);
   }
   if(index!==activePhoto)setActivePhoto(index);
@@ -766,9 +956,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
-     </div>
      <div className="pm-photo-blur" ref={blurLayer} aria-hidden="true">
-      {current&&<PhotoImage photo={current} alt="" loading="eager"/>}
+      <ProfileBlurTrack photos={photos} activePhoto={activePhoto} blurFrom={blurFrom}
+       trackRef={blurTrack} bindWriter={bindBlurWriter}/>
+     </div>
      </div>
     <div className="pm-hero-gradient" aria-hidden="true"/>
     {photos.length>1&&<div className="pm-photo-progress" role="group" aria-label="Фотографии профиля">{photos.map((p,i)=>

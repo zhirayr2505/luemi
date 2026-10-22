@@ -12,7 +12,9 @@ const query=new URLSearchParams(location.search);
 const mode=query.get("mode")??"step8";
 const kind=query.get("kind")??"six";
 const theme=query.get("theme")==="dark"?"dark":"light";
-const src=(i:number)=>"data:image/svg+xml,"+encodeURIComponent(
+const src=(i:number)=>kind==="broken"&&i===2?"/__rem04b-broken.jpg":
+ kind==="delayed"&&i===2?"/__rem04b-delayed.svg":
+ "data:image/svg+xml,"+encodeURIComponent(
  '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="440"><rect width="300" height="440" fill="'+["#9e72cf","#ee9dc2","#86b9db","#a5d4c8","#efbb93","#baabe8"][i%6]+'"/><text x="15" y="100" font-size="54">PHOTO '+i+'</text></svg>'
 );
 const make=(i:number,status:PhotoItem["status"]="ready"):PhotoItem=>({
