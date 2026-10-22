@@ -73,6 +73,51 @@ try{
  await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
  pass("source offscreen or removed/hidden safely falls back to short fade");
 
+ // Intrinsic landscape/panorama pictures must keep one uniform pixel scale.
+ for(const aspect of ["aspect-landscape","aspect-panorama","aspect-tall"]){
+  await act("change",aspect);
+  await open("grid");const pm=await morph();
+  assert.equal(pm.visible,true,aspect+" must still use uniform morph");
+  assert.ok(Number(pm.scale)>0);
+  await settle();await close();
+ }
+ await act("change","reset");
+ pass("landscape, extreme panorama and tall contained media preserve uniform pixel matrix");
+
+ // Source resource replacement while modal is open invalidates old thumbnail.
+ await open("hero");await settle();
+ await act("change","aspect-panorama");
+ await page.locator(".pm-viewer").getByRole("button",{name:"Закрыть просмотр"}).click();
+ assert.equal((await morph()).visible,false,"changed same ID/src/version must fade");
+ await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
+ await act("change","reset");
+ pass("same photo ID but replaced resource cannot return pixels to prior thumbnail");
+
+ // A viewport change in the middle of morph invalidates its pixel/crop anchor;
+ // it does not remount the viewer, disturb the 3-slot track or restart opening.
+ await open("hero");
+ assert.equal((await morph()).visible,true);
+ await page.setViewportSize({width:430,height:780});
+ await page.waitForFunction(()=>document.querySelector(".pm-viewer-morph")?.style.display==="none");
+ assert.equal(await page.locator(".pm-viewer").count(),1);
+ await settle();await close();await page.setViewportSize({width:393,height:852});
+ pass("viewport changes mid-morph safely abandon obsolete geometry without remount");
+
+ await open("hero");
+ assert.equal((await morph()).visible,true);
+ await page.evaluate(()=>{
+  Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"hidden"});
+  document.dispatchEvent(new Event("visibilitychange"));
+ });
+ await page.waitForFunction(()=>document.querySelector(".pm-viewer-morph")?.style.display==="none");
+ assert.equal(await act("sourceOpacity"),"");
+ await page.evaluate(()=>{
+  Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"visible"});
+  document.dispatchEvent(new Event("visibilitychange"));
+ });
+ await close();
+ pass("background/foreground interrupts morph and restores source opacity without stale ownership");
+
  await open("hero");await settle();
  const start=await morph();assert.equal(start.focused,true,"modal owns keyboard focus");
  assert.equal(start.overflow,"hidden");
@@ -102,6 +147,12 @@ try{
  assert.equal(m.visible,false,"viewport safe change must not restart opening");
  await page.setViewportSize({width:780,height:430});await sleep(80);
  assert.equal(await page.locator(".pm-viewer").count(),1);
+ await page.locator(".luemi-shell").evaluate(el=>el.setAttribute("data-theme","dark"));
+ assert.equal(await page.locator(".pm-viewer").count(),1);
+ await page.locator(".pm-viewer").getByRole("button",{name:"Действия с фото"}).click();
+ await page.locator(".pm-viewer-menu").waitFor();
+ await page.keyboard.press("Escape");
+ await page.locator(".pm-viewer-menu").waitFor({state:"detached"});
  await close();
  assert.ok(revBefore!==undefined);
  pass("REM-01D viewport snapshot MAX safe areas, no remount, landscape orientation");
