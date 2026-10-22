@@ -100,6 +100,22 @@ try{
  near(await translation(),0,1);
  await tabEndpoint("Фото");
  pass("tabs settling -> route claim -> rollback retains selected tab and ≤1 CSS px");
+ // Native vertical pointer candidate must terminalize without poisoning the
+ // next right-swipe session in the shared REM-02C arbiter.
+ const np=await point();
+ await page.mouse.move(np.x,np.y);await page.mouse.down();
+ await page.mouse.move(np.x+5,np.y+80,{steps:6});await page.mouse.up();
+ await sleep(40);
+ await routeDrag(47,{hold:220});await sleep(340);
+ near(await translation(),0,1);
+ pass("native vertical scroll candidate releases route session for next gesture");
+ // Background during a different child tabs settle preserves its destination.
+ await visitor().getByRole("tab",{name:"Подарки",exact:true}).click();
+ await sleep(80);await setBackground(true);await sleep(110);await setBackground(false);
+ await tabEndpoint("Подарки");
+ await visitor().getByRole("tab",{name:"Фото",exact:true}).click();
+ await tabEndpoint("Фото");
+ pass("background while tabs settling restores page and underline destination");
  // No double semantic commit when two cancellation events arrive.
  await routeDrag(62,{hold:35,cancel:true});
  await sleep(310);near(await translation(),0,1);
@@ -131,14 +147,14 @@ try{
  near(await translation(),0,1);
  pass("successful route close, single terminal commit, immediate reopen");
  // System back during a normal open must travel RIGHT from current CSS matrix.
- await page.keyboard.press("Escape");await sleep(440);
+ await page.evaluate(()=>window.__luemiQaBack?.());await sleep(440);
  assert.equal(await visitor().count(),0);
  await open();
- await page.keyboard.press("Escape");
+ await page.evaluate(()=>window.__luemiQaBack?.());
  await sleep(40);
  if(await visitor().count())assert.ok((await translation())>=0);
  await sleep(450);assert.equal(await visitor().count(),0);
- pass("Telegram/keyboard Back and back during route entrance close to right without replay");
+ pass("actual registered DiscoveryApp/Telegram Back callback and back during entrance exit right");
  // Closing while suspended: old timers cannot call exit a second time.
  await open();await sleep(360);
  await page.keyboard.press("Escape");await sleep(65);
