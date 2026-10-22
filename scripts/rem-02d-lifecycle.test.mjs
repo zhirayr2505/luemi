@@ -41,7 +41,7 @@ for(const x of ["suspendForRoute","rollbackRoute","commitRouteClose","suspendFor
 assert.ok(profile.includes("sheetRunner.current?.suspend()")&&profile.includes("tabsRunner.current?.suspend()"));
 assert.ok(profile.includes("sheetDriver.reveal")&&profile.includes("tabDriver.reveal"));
 assert.ok(route.includes('routeMotion.current.finish(token')&&route.includes('routeMotion.current.cancel(liveToken.current,"external")'));
-assert.ok(route.includes('onLostPointerCapture={e=>end(e,true)}')&&route.includes("Math.abs(currentX()-liveTarget.current)>1"));
+assert.ok(route.includes('onLostPointerCapture={e=>{if(e.target===e.currentTarget)end(e,true);}}')&&route.includes("Math.abs(currentX()-liveTarget.current)>1"));
 for(const token of ['const OPEN_DURATION=260','const CLOSE_DURATION=230','cubic-bezier(.2,.82,.24,1)'])
  assert.ok(route.includes(token),"original route visual token "+token);
 assert.ok(!read("apps/web/src/discovery/discovery.css").includes("touch-action:none"));
