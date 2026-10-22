@@ -19,6 +19,7 @@ import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixT
 type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:ViewerSource|null;contextId:string;
  onClose:()=>void;onMain?:(id:string)=>boolean|Promise<boolean>;
  registerBack?:(handler:(()=>boolean)|null)=>void};
+type EndPointer={pointerId:number;clientX:number;clientY:number;currentTarget:HTMLDivElement};
 type Gesture={id:number;x:number;y:number;startX:number;startY:number;time:number;
  axis:""|"x"|"y";origin:number;serial:number|null;startPhotoId:string|null;
  pinch:boolean;captured:boolean;samples:{x:number;t:number}[];interruptedTarget:number|null};
@@ -47,6 +48,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const track=useRef<HTMLDivElement>(null);
  const image=useRef<HTMLImageElement|null>(null);
  const pointer=useRef(new Map<number,{x:number;y:number}>());
+ const pendingCaptureLoss=useRef(new Map<number,number>());
  const gesture=useRef<Gesture|null>(null);
  const mediaPose=useRef<MediaTransform>(identityMedia());
  const pinchSession=useRef(false);
@@ -120,6 +122,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   }
  };
  const releasePointers=()=>{
+  for(const timer of pendingCaptureLoss.current.values())clearTimeout(timer);
+  pendingCaptureLoss.current.clear();
   gesture.current=null;pointer.current.clear();
   pinch.current=null;pan.current=null;pinchSession.current=false;
   gestureArbiter.current?.cancel();
@@ -254,6 +258,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   phase.current=terminal?"closing":"opening";
   surfaceHandler.current(terminal);
   return ()=>{
+   for(const timer of pendingCaptureLoss.current.values())clearTimeout(timer);
+   pendingCaptureLoss.current.clear();
    runner.current?.dispose();gestureArbiter.current?.dispose();
    surfaceOwner.current?.dispose();
   };
@@ -518,7 +524,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    }
   }
  };
- const finish=(e:ReactPointerEvent<HTMLDivElement>,cancel:boolean)=>{
+ const finish=(e:EndPointer,cancel:boolean)=>{
+  const deferred=pendingCaptureLoss.current.get(e.pointerId);
+  if(deferred!==undefined){clearTimeout(deferred);pendingCaptureLoss.current.delete(e.pointerId);}
   if(!pointer.current.has(e.pointerId))return;
   pointer.current.delete(e.pointerId);
   if(pinchSession.current){
@@ -583,7 +591,21 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    kind==="link"?"Постоянная ссылка пока недоступна":"Публикация и отправка ссылки пока недоступны");
  };
  const onLostPointer=(e:ReactPointerEvent<HTMLDivElement>)=>{
-  if(pointer.current.has(e.pointerId))finish(e,true);
+  if(!pointer.current.has(e.pointerId))return;
+  if(e.buttons!==0){finish(e,true);return;}
+  // Chromium may dispatch lostpointercapture BEFORE the ordinary pointerup
+  // for the same released touch. A synchronous cancel would erase the legal
+  // 110px/.8px-ms vertical exit (also the normal x settle).
+  // Defer terminal classification one browser task. pointerup clears the
+  // timer; genuinely lost capture still cancels and cannot commit a swipe.
+  const id=e.pointerId,x=e.clientX,y=e.clientY,target=e.currentTarget;
+  if(pendingCaptureLoss.current.has(id))return;
+  const timer=window.setTimeout(()=>{
+   pendingCaptureLoss.current.delete(id);
+   if(pointer.current.has(id)&&!closing.current)
+    finish({pointerId:id,clientX:x,clientY:y,currentTarget:target},true);
+  },0);
+  pendingCaptureLoss.current.set(id,timer);
  };
  const phaseKey=phase.current;
  return createPortal(<section className="pm-viewer" role="dialog" aria-modal="true" aria-label="Просмотр фото"
