@@ -39,11 +39,10 @@ export function PhotoViewerSlide({photo,role,media,onDecoded,onError,currentRef}
    if(valid&&generation===token.current&&image.current===node)
     callbacks.current.onError(photo);
   });
-  return ()=>{valid=false;token.current++;};
+  return ()=>{valid=false;};
  },[readyKey,media?.src,photo]);
  useEffect(()=>{
   return ()=>{
-   token.current++;
    if(id&&readyKey)callbacks.current.onDecoded(id,readyKey,false);
   };
  },[id,readyKey]);
@@ -61,8 +60,8 @@ export function PhotoViewerSlide({photo,role,media,onDecoded,onError,currentRef}
     alt={"Фото "+photo.id} draggable={false}
     style={{opacity:visible?1:0}}
     onError={()=>{if(media?.phase==="ready")callbacks.current.onError(photo);}}/>}
-   {(!photo?false:!visible)&&<div className="pm-viewer-slide-placeholder"
-     data-photo-id={photo.id} data-media-phase={media?.phase??"idle"}
+   {!!photo&&!visible&&<div className="pm-viewer-slide-placeholder"
+     data-photo-id={id??undefined} data-media-phase={media?.phase??"idle"}
      aria-hidden={role!=="current"}>
      {media?.phase==="error"?"Не удалось загрузить фотографию":"Загрузка фотографии…"}
    </div>}
