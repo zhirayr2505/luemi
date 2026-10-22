@@ -131,13 +131,16 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    layer.style.transform=target;outer.style.opacity=closingPhase?"0":"1";
   };
   const onEnd=(event:TransitionEvent)=>{
-   if(event.target===layer&&event.propertyName==="transform")completed();
+   if((event.target===layer&&event.propertyName==="transform")||
+    (event.target===outer&&event.propertyName==="opacity"))completed();
   };
   layer.addEventListener("transitionend",onEnd);
+  outer.addEventListener("transitionend",onEnd);
   const timer=window.setTimeout(completed,duration+40);
   const frame=requestAnimationFrame(startTransition);
   owner.track(token,()=>{
    layer.removeEventListener("transitionend",onEnd);
+   outer.removeEventListener("transitionend",onEnd);
    clearTimeout(timer);cancelAnimationFrame(frame);
   });
  };
