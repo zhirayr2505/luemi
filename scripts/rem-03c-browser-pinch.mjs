@@ -198,6 +198,18 @@ try{
  });
  s=await state();near(s.scale,1,.02);
  pass("touchcancel + stale lostpointercapture do not resurrect prior gesture");
+ // A touchcancel during normal REM-03B one-finger x dragging must likewise
+ // return the fractional track to center without committing a neighbor.
+ const beforeCancel=await state();
+ await page.mouse.move(290,410);await page.mouse.down();
+ await page.mouse.move(170,410,{steps:8});
+ const duringCancel=await state();assert.ok(duringCancel.offset< -20);
+ await page.locator(".pm-viewer-stage").evaluate(el=>
+  el.dispatchEvent(new Event("touchcancel",{bubbles:true,cancelable:true})));
+ await page.mouse.up();await sleep(290);
+ s=await state();near(s.offset,0,.7);
+ assert.equal(s.id,beforeCancel.id);assert.equal(s.commits,beforeCancel.commits);
+ pass("touchcancel during horizontal drag restores fractional track without a photo commit");
 
  // Background / Telegram deactivation midpinch terminates pointers.
  first=p(71,165,380);second=p(72,230,460);
