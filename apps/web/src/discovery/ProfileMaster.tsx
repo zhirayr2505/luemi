@@ -9,7 +9,6 @@ import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
 import {BlikViewer} from "./BlikViewer";
-import {animateValue} from "../ui/motion";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
 import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
