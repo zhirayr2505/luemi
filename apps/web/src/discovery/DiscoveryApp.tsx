@@ -18,6 +18,8 @@ import {ProfileMaster} from "./ProfileMaster";
 import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
+import {MotionController,type MotionToken} from "../ui/motion-controller";
+import {GestureArbiter,computedTranslation,fractionalTrack,gestureCapabilities} from "../ui/gesture-arbiter";
 import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import "./discovery.css";
@@ -26,7 +28,7 @@ const navigation=[["discover","Знакомства",Images],["likes","Симп�
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 const androidWebView=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 
-type Gesture={id:number;x:number;y:number;started:number;tracking:boolean;index:number;width:number};
+type Gesture={id:number;x:number;y:number;started:number;tracking:boolean;index:number;width:number;serial:number;token:MotionToken|null;originTrack:number;originInk:number;lastX:number};
 function Placeholder({title,text}:{title:string;text:string}){
  return <div className="discovery-placeholder"><Layers3 size={35} strokeWidth={1.4}/>
  <h2>{title}</h2><p>{text}</p><span>Следующий этап LUEMI</span></div>;
@@ -82,6 +84,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const swipeFrame=useRef<number|null>(null);
  const pagerSettleTimer=useRef<number|null>(null);
  const motionAuthority=useRef(createProfileMotionAuthority());
+ const inputOwnership=useRef(new GestureArbiter());
+ const browseMotion=useRef(new MotionController("browse",{
+  frame:cb=>requestAnimationFrame(cb),cancelFrame:id=>cancelAnimationFrame(id)
+ }));
+ const browseSettle=useRef<{token:MotionToken;target:number}|null>(null);
+ const browsePosition=useRef(0);
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
@@ -193,82 +201,168 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   setDiscoveryTab(topTabs[bounded][0]);
   selectionHaptic();
  };
- // Pointer movement updates only CSS compositor variables in one animation frame.
- // React must not render all profile cards on every move.
- const paintDrag=(value:number)=>{
+ // One fractional coordinate drives the browse track and its underline.
+ // CSS retains its original DIFFERENT track/ink easings during settle.
+ const paintBrowse=(trackX:number,inkX:number)=>{
   motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse,()=>{
-   pageTrack.current?.style.setProperty("--luemi-drag",value+"px");
-   underline.current?.style.setProperty("--luemi-underline-drag",(-value/3)+"px");
+   pageTrack.current?.style.setProperty("--luemi-tab-offset","0px");
+   pageTrack.current?.style.setProperty("--luemi-drag",trackX+"px");
+   underline.current?.style.setProperty("--luemi-tab-offset","0px");
+   underline.current?.style.setProperty("--luemi-underline-drag",inkX+"px");
   });
  };
- const flushDrag=()=>{
-  if(swipeFrame.current!==null){window.cancelAnimationFrame(swipeFrame.current);swipeFrame.current=null;}
- };
- const finishPagerSettle=()=>{
-  if(pagerSettleTimer.current!==null){window.clearTimeout(pagerSettleTimer.current);pagerSettleTimer.current=null;}
+ const flushDrag=()=>{/* MotionController owns cancellation of the sole pending RAF. */};
+ const frozenBrowse=()=>{
+  const width=pages.current?.clientWidth||window.innerWidth;
+  // Both CSS transitions can have different in-flight matrix values.
+  const trackX=computedTranslation(pageTrack.current),inkX=computedTranslation(underline.current);
+  const fraction=fractionalTrack(pageTrack.current,width,browsePosition.current);
+  const old=browseSettle.current;
+  if(old){browseMotion.current.interrupt(old.token,"interrupted");browseSettle.current=null;}
+  if(pagerSettleTimer.current!==null){clearTimeout(pagerSettleTimer.current);pagerSettleTimer.current=null;}
   pageTrack.current?.classList.remove("is-settling");
   underline.current?.classList.remove("is-settling");
+  pageTrack.current?.classList.add("is-finger-tracking");
+  underline.current?.classList.add("is-finger-tracking");
+  paintBrowse(trackX,inkX);
+  browsePosition.current=fraction;
+  return {width,fraction,trackX,inkX};
  };
- // Commit final transform and underline offset in the same JS event before
- // React changes the active tab. Do not animate back to the old index first.
- const settleDrag=(targetIndex:number)=>{
-  flushDrag();
-  if(pagerSettleTimer.current!==null)window.clearTimeout(pagerSettleTimer.current);
+ const finishPagerSettle=(token:MotionToken|null=browseSettle.current?.token??null)=>{
+  const current=browseSettle.current;
+  if(!current||!token||!browseMotion.current.owns(token))return;
+  const width=pages.current?.clientWidth||1;
+  if(Math.abs(computedTranslation(pageTrack.current)+current.target*width)>1)return;
+  if(!browseMotion.current.finish(token,{paint:()=>{
+   motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse,()=>{
+    pageTrack.current?.style.setProperty("--luemi-tab-offset",(-current.target*100)+"%");
+    underline.current?.style.setProperty("--luemi-tab-offset",(current.target*100)+"%");
+    pageTrack.current?.style.setProperty("--luemi-drag","0px");
+    underline.current?.style.setProperty("--luemi-underline-drag","0px");
+   });
+  },onCommit:()=>{
+   browsePosition.current=current.target;
+   pageTrack.current?.classList.remove("is-settling");
+   underline.current?.classList.remove("is-settling");
+   browseSettle.current=null;
+   if(pagerSettleTimer.current!==null)clearTimeout(pagerSettleTimer.current);
+   pagerSettleTimer.current=null;
+  }}))return;
+ };
+ const settleDrag=(targetIndex:number,token:MotionToken|null=null)=>{
+  const target=Math.max(0,Math.min(topTabs.length-1,targetIndex));
+  // Freeze at the last visible matrix, including button/dot navigation mid-settle.
+  if(!token)frozenBrowse();
+  const c=browseMotion.current;
+  if(!token){
+   token=c.begin(browsePosition.current);
+   if(!token)return;
+   c.claim(token);
+  }
+  if(!c.settle(token,target))return;
+  browseSettle.current={token,target};
   pageTrack.current?.classList.add("is-settling");
   underline.current?.classList.add("is-settling");
+  // Flush one frozen frame BEFORE re-enabling original CSS transitions.
+  void pageTrack.current?.offsetWidth;
   pageTrack.current?.classList.remove("is-finger-tracking");
   underline.current?.classList.remove("is-finger-tracking");
   motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse,()=>{
-   pageTrack.current?.style.setProperty("--luemi-tab-offset",(-targetIndex*100)+"%");
-   underline.current?.style.setProperty("--luemi-tab-offset",(targetIndex*100)+"%");
+   pageTrack.current?.style.setProperty("--luemi-tab-offset",(-target*100)+"%");
+   underline.current?.style.setProperty("--luemi-tab-offset",(target*100)+"%");
+   pageTrack.current?.style.setProperty("--luemi-drag","0px");
+   underline.current?.style.setProperty("--luemi-underline-drag","0px");
   });
-  paintDrag(0);
-  // transitionend is primary; this only frees the layer if WebView drops the event.
-  pagerSettleTimer.current=window.setTimeout(finishPagerSettle,380);
+  // Original transitionend remains primary. Fallback commits once only.
+  pagerSettleTimer.current=window.setTimeout(()=>{
+   // At >300ms the browser should have painted the terminal matrix.
+   // A delayed transition has another frame to finish, never a stale commit.
+   if(browseSettle.current?.token===token){
+    if(Math.abs(computedTranslation(pageTrack.current)+target*(pages.current?.clientWidth||1))>1){
+     pagerSettleTimer.current=window.setTimeout(()=>finishPagerSettle(token),80);
+    }else finishPagerSettle(token);
+   }
+  },380);
  };
- useEffect(()=>()=>{flushDrag();
+ const requestBrowseTab=(i:number)=>{
+  if(gesture.current?.tracking)return;
+  settleDrag(i);
+  selectTab(i);
+ };
+ useEffect(()=>()=>{inputOwnership.current.dispose();browseMotion.current.dispose();
   if(pagerSettleTimer.current!==null)window.clearTimeout(pagerSettleTimer.current);
  },[]);
  const down=(event:ReactPointerEvent<HTMLDivElement>)=>{
+  if(!event.isPrimary){inputOwnership.current.secondFinger();cancelSwipe();return;}
   if(event.pointerType==="mouse"&&event.button!==0)return;
-  if((event.target as HTMLElement).closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-card,.nb-location"))return;
-  gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,started:performance.now(),tracking:false,index:tabIndex,
-   width:pages.current?.clientWidth||window.innerWidth};
+  const target=event.target as HTMLElement;
+  if(target.closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-card,.nb-location"))return;
+  const serial=inputOwnership.current.begin("pointer",event.pointerId,"browse");
+  if(serial===null)return;
+  gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,
+   started:performance.now(),tracking:false,index:tabIndex,
+   width:pages.current?.clientWidth||window.innerWidth,serial,token:null,
+   originTrack:0,originInk:0,lastX:event.clientX};
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==event.pointerId)return;
   const x=event.clientX-g.x,y=event.clientY-g.y;
+  g.lastX=event.clientX;
   if(!g.tracking){
-    if(Math.abs(y)>12&&Math.abs(y)>Math.abs(x)){gesture.current=null;return;}
-    if(Math.abs(x)<6||Math.abs(x)<Math.abs(y)*1.2)return;
-    g.tracking=true;
-    pageTrack.current?.classList.add("is-finger-tracking");
-    underline.current?.classList.add("is-finger-tracking");
-    try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older Telegram WebView */}
+   if(Math.abs(y)>12&&Math.abs(y)>Math.abs(x)){
+    inputOwnership.current.nativeScroll(g.serial);gesture.current=null;return;
+   }
+   if(Math.abs(x)<6||Math.abs(x)<Math.abs(y)*1.2)return;
+   // If a vertical native scroll is already active, never seize it mid-move.
+   const capabilities=gestureCapabilities(event.target as HTMLElement,false);
+   if(capabilities.canScrollY||!event.cancelable){
+    inputOwnership.current.nativeScroll(g.serial);gesture.current=null;return;
+   }
+   if(!inputOwnership.current.claim("browse",g.serial))return;
+   const frozen=frozenBrowse();
+   g.tracking=true;g.width=frozen.width;g.index=frozen.fraction;
+   g.originTrack=frozen.trackX;g.originInk=frozen.inkX;
+   g.token=browseMotion.current.begin(g.index);
+   if(g.token)browseMotion.current.claim(g.token);
+   try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older WebView */}
   }
+  if(!g.token||!inputOwnership.current.owns("browse",g.serial))return;
   if(event.cancelable)event.preventDefault();
-  const width=g.width;
-  const limited=(g.index===0&&x>0)||(g.index===2&&x<0);
-  const shift=limited?x*.22:Math.max(-width,Math.min(width,x));
-  flushDrag();
-  swipeFrame.current=window.requestAnimationFrame(()=>{swipeFrame.current=null;paintDrag(shift);});
+  const limited=(g.index<=.001&&x>0)||(g.index>=topTabs.length-1-.001&&x<0);
+  const shift=limited?x*.22:Math.max(-g.width,Math.min(g.width,x));
+  const trackX=g.originTrack+shift,inkX=g.originInk-shift/3;
+  // Coalesced one RAF with generation guard; no React renders during move.
+  browseMotion.current.schedulePaint(g.token,trackX,()=>paintBrowse(trackX,inkX));
  };
- const up=(event:ReactPointerEvent<HTMLDivElement>)=>{
+ const up=(event:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=gesture.current;if(!g||g.id!==event.pointerId)return;
   gesture.current=null;
-  if(!g.tracking)return;
+  if(!g.tracking||!g.token){
+   inputOwnership.current.finishCandidate(g.serial);return;
+  }
+  if(!inputOwnership.current.finish("browse",g.serial))return;
+  try{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}catch{/* implicit release */}
   const x=event.clientX-g.x,elapsed=Math.max(1,performance.now()-g.started);
   const velocity=Math.abs(x)/elapsed;
-  const rawTarget=Math.abs(x)>g.width*.18||velocity>.55
-    ?g.index+(x<0?1:-1):g.index;
+  const rawTarget=!cancel&&(Math.abs(x)>g.width*.18||velocity>.55)
+   ?Math.round(g.index)+(x<0?1:-1):Math.round(g.index);
   const target=Math.max(0,Math.min(topTabs.length-1,rawTarget));
   clickBlockUntil.current=performance.now()+260;
+  // The transition begins at the LAST painted pixels. Pending drag RAF dies
+  // before the CSS transition is restarted.
+  browseMotion.current.cancel(g.token,"superseded");
+  const frozen=frozenBrowse();
+  void frozen;
   settleDrag(target);
-  if(target!==g.index)selectTab(target);
+  if(target!==tabIndex)selectTab(target);
  };
- const cancelSwipe=()=>{
-  const g=gesture.current;gesture.current=null;
-  if(g?.tracking)settleDrag(g.index);
+ const cancelSwipe=()=>{const g=gesture.current;gesture.current=null;
+  if(!g)return;
+  inputOwnership.current.cancel();
+  if(g.tracking){
+   if(g.token)browseMotion.current.cancel(g.token,"gesture-cancel");
+   settleDrag(Math.max(0,Math.min(topTabs.length-1,Math.round(g.index))));
+  }
  };
  const apply=(next:DiscoveryFilter)=>{
   if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
@@ -314,9 +408,9 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    <div className="discovery-main-panels">
      <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
        <div className="discovery-top-tabs" role="tablist" aria-label="Разделы знакомств"
-         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}>
+         onPointerDown={down} onPointerMove={move} onPointerUp={e=>up(e)} onPointerCancel={e=>up(e,true)} onLostPointerCapture={e=>up(e,true)}>
          {topTabs.map(([value,label],i)=><button type="button" role="tab" key={value}
-           aria-selected={discoveryTab===value} onClick={()=>{if(performance.now()>=clickBlockUntil.current)selectTab(i);}}
+           aria-selected={discoveryTab===value} onClick={()=>{if(performance.now()>=clickBlockUntil.current)requestBrowseTab(i);}}
            className={discoveryTab===value?"active":""}>{label}</button>)}
          <span className="discovery-tab-underline" ref={underline} aria-hidden="true"
            style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
