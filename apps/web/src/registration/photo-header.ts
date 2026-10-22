@@ -72,21 +72,21 @@ function png(data:DataView):PhotoHeader{
  return {format:"png",width,height,orientation:1};
 }
 function webp(data:DataView):PhotoHeader{
- if(data.byteLength<30||u32(data,0,true)!==0x46464952||u32(data,8)!==0x57454250)throw corrupt();
+ if(data.byteLength<25||u32(data,0,true)!==0x46464952||u32(data,8)!==0x57454250)throw corrupt();
  const riffSize=u32(data,4,true);
  if(riffSize<22||riffSize+8<30)throw corrupt();
  const kind=u32(data,12,true),size=u32(data,16,true);
  if(size>riffSize-12)throw corrupt();
  let width=0,height=0;
  if(kind===0x58385056){ // VP8X
-  if(size<10)throw corrupt();
+  if(size<10||data.byteLength<30)throw corrupt();
   width=1+data.getUint8(24)+(data.getUint8(25)<<8)+(data.getUint8(26)<<16);
   height=1+data.getUint8(27)+(data.getUint8(28)<<8)+(data.getUint8(29)<<16);
  }else if(kind===0x20385056){ // VP8 (lossy)
-  if(size<10||data.getUint8(23)!==0x9d||data.getUint8(24)!==0x01||data.getUint8(25)!==0x2a)throw corrupt();
+  if(size<10||data.byteLength<30||data.getUint8(23)!==0x9d||data.getUint8(24)!==0x01||data.getUint8(25)!==0x2a)throw corrupt();
   width=u16(data,26,true)&0x3fff;height=u16(data,28,true)&0x3fff;
  }else if(kind===0x4c385056){ // VP8L (lossless)
-  if(size<5||data.getUint8(20)!==0x2f)throw corrupt();
+  if(size<5||data.byteLength<25||data.getUint8(20)!==0x2f)throw corrupt();
   const packed=u32(data,21,true);
   width=1+(packed&0x3fff);height=1+((packed>>>14)&0x3fff);
  }else throw corrupt();
