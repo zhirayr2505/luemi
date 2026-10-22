@@ -60,6 +60,23 @@ try{
  assert.ok(data.footer.bottom<=data.shell.bottom+1);
  log("Telegram fullscreen exit at same width shrinks shell; footer stays visible");
 
+ await page.evaluate(()=>{
+  const q=window.__REM01D_QA__;
+  q.telegram.viewportStableHeight=760;q.telegram.viewportHeight=760;
+  q.visual(760);q.emit("fullscreenChanged");
+ });
+ await settle();data=await info();
+ assert.equal(data.snapshot.shellHeight,760);
+ assert.equal(data.snapshot.stableHeight,760);
+ assert.ok(data.footer.bottom<=data.shell.bottom+1);
+ log("Telegram fullscreenChanged expands accepted height without waiting for viewportChanged");
+ await page.evaluate(()=>{
+  const q=window.__REM01D_QA__;
+  q.telegram.viewportStableHeight=640;q.telegram.viewportHeight=640;
+  q.visual(640);q.emit("viewportChanged",{isStateStable:true});
+ });
+ await settle();
+
  await page.locator("#keyboard-field").focus();
  await page.evaluate(()=>{
   const q=window.__REM01D_QA__;
