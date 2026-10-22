@@ -98,6 +98,7 @@ jobs:
           node scripts/rem-01a-browser-regression.mjs
           node scripts/rem-01b-browser-regression.mjs
           node scripts/rem-01c-browser-regression.mjs
+          node scripts/rem-01d-browser-regression.mjs
       - name: Preserve browser screenshots and server diagnostics
         if: always()
         continue-on-error: true

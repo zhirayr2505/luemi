@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {ArrowRight,Moon,Sun} from "lucide-react";
 import {GlassArrow} from "./ui/Glass";
@@ -7,6 +7,7 @@ import { newDraft, steps, validateStep, type RegistrationDraft } from "./registr
 import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registration/Steps";
 import {localScope,loadDraftSnapshot,saveDraftSnapshot,clearDraftSnapshot,type StorageCode} from "./registration/local-draft";
 import {preparePhotoPreview} from "./registration/photo-preview";
+import {installViewportController} from "./viewport/viewport-controller";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 
 declare global {
@@ -200,45 +201,13 @@ export function App() {
       controller.abort();
     };
   },[]);
-  // Keep the *outer* Mini App at its original fullscreen height so its
-  // footer cannot jump above the keyboard. Only the form scroll area shrinks.
-  useEffect(()=>{
-    const vv=window.visualViewport;
-    let stableHeight=Math.max(window.innerHeight,vv?.height??0),stableWidth=window.innerWidth;
-    let focusTimer:number|null=null;
-    const webApp=window.Telegram?.WebApp;
-    const update=()=>{
-      const visible=vv?.height??window.innerHeight;
-      if(Math.abs(window.innerWidth-stableWidth)>40){
-        stableWidth=window.innerWidth;stableHeight=webApp?.viewportStableHeight||window.innerHeight;
-      }else if(visible>stableHeight-30)stableHeight=Math.max(stableHeight,visible);
-      const overlay=Math.max(0,stableHeight-visible);
-      const keyboard=overlay>145;
-      rootRef.current?.style.setProperty("--app-height",stableHeight+"px");
-      rootRef.current?.style.setProperty("--keyboard-overlay",keyboard?overlay+"px":"0px");
-      rootRef.current?.setAttribute("data-keyboard",keyboard?"open":"closed");
-    };
-    update();
-    const onFocus=(event:FocusEvent)=>{
-      const field=event.target;
-      if(!(field instanceof HTMLInputElement)&&!(field instanceof HTMLTextAreaElement))return;
-      if(focusTimer!==null)window.clearTimeout(focusTimer);
-      focusTimer=window.setTimeout(()=>{
-        focusTimer=null;
-        if(document.activeElement===field)field.scrollIntoView({block:"center",behavior:"smooth"});
-      },190);
-    };
-    vv?.addEventListener("resize",update);vv?.addEventListener("scroll",update);
-    window.addEventListener("resize",update);
-    webApp?.onEvent?.("viewportChanged",update);
-    document.addEventListener("focusin",onFocus);
-    return ()=>{
-      vv?.removeEventListener("resize",update);vv?.removeEventListener("scroll",update);
-      window.removeEventListener("resize",update);
-      webApp?.offEvent?.("viewportChanged",update);
-      if(focusTimer!==null)window.clearTimeout(focusTimer);
-      document.removeEventListener("focusin",onFocus);
-    };
+  // LU-22: one frame-coalesced source of truth. The shell tracks the *visible*
+  // viewport while the footer remains in the flex layout above the keyboard.
+  // No modal/route motion code is changed by this stage.
+  useLayoutEffect(()=>{
+    if(!rootRef.current)return;
+    const controller=installViewportController(rootRef.current,()=>window.Telegram?.WebApp);
+    return ()=>controller.dispose();
   },[]);
   // Restore text and photo manifest from the same validated revision.
   // Legacy import is read-only until a complete v2 write has committed.
