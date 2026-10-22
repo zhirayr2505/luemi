@@ -111,3 +111,66 @@ jobs:
             /tmp/luemi-rem04b-accepted-vite.log
             /tmp/luemi-rem04b-current-vite.log
           if-no-files-found: warn
+
+  profile-a-b-c:
+    name: Identical A/B/C Chrome CPU/layout and resource profile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 561145925efe04199235070e4d0c56be295ef2a4
+          path: accepted-rem04a
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 95be2d18f7a94dc5deb897e02cb5d1b9c106a5d0
+          path: before-rem04b
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install pinned app dependencies
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+      - name: Measure A/B/C on one browser with pinned immutable code snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem04a/node_modules"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/before-rem04b/node_modules"
+          (cd accepted-rem04a && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174) >/tmp/rem04b-A.log 2>&1 &
+          old_pid=$!
+          (cd before-rem04b && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5175) >/tmp/rem04b-B.log 2>&1 &
+          pre_pid=$!
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/rem04b-C.log 2>&1 &
+          cur_pid=$!
+          trap 'kill "$old_pid" "$pre_pid" "$cur_pid" 2>/dev/null || true' EXIT
+          for port in 5173 5174 5175; do
+            ready=0
+            for i in $(seq 1 40); do
+              if curl -fsS "http://127.0.0.1:$port/rem-01e-qa.html" >/dev/null; then ready=1; break; fi
+              sleep 1
+            done
+            if [[ "$ready" -ne 1 ]]; then cat /tmp/rem04b-{A,B,C}.log >&2; exit 1; fi
+          done
+          node scripts/rem-04b-performance-abc.mjs
+      - name: Preserve actual CPU profiles, rAF and layout comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem-04b-abc-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04b/performance-abc/**
+            /tmp/rem04b-A.log
+            /tmp/rem04b-B.log
+            /tmp/rem04b-C.log
+          if-no-files-found: warn
