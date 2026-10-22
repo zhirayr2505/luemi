@@ -64,8 +64,9 @@ assert.ok(profile.includes('if(g.axis==="x")paintTabs(g.index,dx)')&&
  "touch pager paints once per frame");
 assert.ok(profile.includes("tabEnd(e,true)")&&profile.includes("photoEnd(e,true)"),
  "pointer cancellation must never commit a new photo or tab");
-assert.ok(profile.includes('mode="preview"')&&profile.includes("projectProfile(data,mode)"),
- "own public preview reuses the exact same profile projection and component");
+assert.ok(profile.includes('mode={data.source==="local-draft"?"local-self-preview":"preview"}')&&
+ profile.includes("projectProfile(data,mode)"),
+ "owner local preview uses explicit self-only projection, server preview remains public-only and both reuse ProfileMaster");
 assert.ok(viewer.includes("createPortal")&&viewer.includes("onPointerCancel")&&
  viewer.includes("maxY")&&viewer.includes("resetGesture()"),
  "fullscreen gallery has pinch pan, cancel isolation and reset");
