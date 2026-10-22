@@ -142,7 +142,7 @@ export function installViewportController(
  telegram?.onEvent?.("contentSafeAreaChanged",onSafe);
  return {
   snapshot:()=>current,
-  refresh:schedule,
+  refresh:(reason="visual")=>schedule(reason),
   dispose:()=>{
    disposed=true;
    if(frame!==null)win.cancelAnimationFrame(frame);
