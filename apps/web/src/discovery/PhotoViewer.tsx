@@ -197,13 +197,43 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const t=owner?.token();
   if(t&&interrupted)owner?.interrupt(t,"interrupted");
  };
- const morphTransform=():string=>{
-  const current=latest.current.show,valid=sourceMatches(sourceRef.current,latest.current.photoId,
-   contextRef.current,current?resourceIdentity(current):null);
-  const from=valid?sourceRef.current?.resolveElement()?.getBoundingClientRect():null;
-  if(!from||from.width<=8||from.height<=8||from.top>=innerHeight||from.bottom<=0)return "none";
-  const w=innerWidth,h=innerHeight;
-  return "translate3d("+(from.left+(from.width-w)/2)+"px,"+(from.top+(from.height-h)/2)+"px,0) scale("+(from.width/w)+","+(from.height/h)+")";
+ const releaseMorph=()=>{
+  morphLayer.current?.style.setProperty("display","none");
+  viewerRoot.current?.removeAttribute("data-morph-active");
+  morphRelease.current?.();morphRelease.current=null;
+ };
+ const prepareMorph=():MorphGeometry|null=>{
+  releaseMorph();
+  const photo=latest.current.show,ref=sourceRef.current;
+  if(!photo||!sourceMatches(ref,latest.current.photoId,contextRef.current,resourceIdentity(photo)))
+   return null;
+  const element=ref?.resolveElement();
+  if(!(element instanceof HTMLImageElement)||!element.complete||!element.naturalWidth||
+   !element.naturalHeight||!isVisibleSource(element,{width:innerWidth,height:innerHeight}))return null;
+  const dest=stage.current?.getBoundingClientRect(),imageNode=morphImage.current,layer=morphLayer.current;
+  if(!dest||!layer||!imageNode)return null;
+  const rect=element.getBoundingClientRect();
+  const css=getComputedStyle(element);
+  const fit=css.objectFit==="contain"?"contain":css.objectFit==="none"?"none":
+   css.objectFit==="scale-down"?"scale-down":"cover";
+  // The standalone img's currentSrc is the decoded source that is actually
+  // being rendered, never a stale gallery index or a different resource.
+  if(!element.currentSrc)return null;
+  const geom=computeMorph({left:rect.left,top:rect.top,width:rect.width,height:rect.height},
+   {width:element.naturalWidth,height:element.naturalHeight},fit,css.objectPosition,
+   {left:dest.left,top:dest.top,width:dest.width,height:dest.height});
+  const styles=geometryStyles(geom);
+  imageNode.src=element.currentSrc;
+  if(!imageNode.complete||!imageNode.naturalWidth)return null;
+  imageNode.style.transition="none";
+  Object.assign(imageNode.style,styles);
+  layer.style.display="block";
+  viewerRoot.current?.setAttribute("data-morph-active","true");
+  const previous=element.style.visibility;
+  element.style.visibility="hidden";
+  let released=false;
+  morphRelease.current=()=>{if(released)return;released=true;element.style.visibility=previous;};
+  return geom;
  };
  /** One completion gate for opening/closing: transitionend and timeout
   * race on the SAME MotionController generation; old callbacks cannot commit.
@@ -216,35 +246,58 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(!owner[closingPhase?"close":"settle"](start,closingPhase?0:1))return;
   const token=owner.token();
   const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const target=closingPhase?morphTransform():"none";
+  const imageNode=morphImage.current;
+  const geometry=reduce?null:prepareMorph();
+  const morph=!!geometry&&!!imageNode;
+  // The track (REM-03B) and zoomed IMG (REM-03C) are NEVER distorted.
+  // Morph imagery owns its own uniform transform and crop clipping.
+  layer.style.transform="none";
   const completed=()=>{
    owner.finish(token,{paint:()=>{
+    releaseMorph();
     if(closingPhase){phase.current="disposed";latest.current.onClose();}
     else if(!closing.current)phase.current="idle";
    }});
   };
   if(reduce){
    layer.style.transition="none";outer.style.transition="none";
-   layer.style.transform=target;outer.style.opacity=closingPhase?"0":"1";
+   outer.style.opacity=closingPhase?"0":"1";
    completed();return;
+  }
+  if(morph&&!closingPhase){
+   // Initially the original source's visible crop is displayed on the overlay.
+   // The regular viewer image is hidden until this uniform morph completes.
+   outer.style.opacity="0";
   }
   const startTransition=()=>{
    if(!owner.owns(token))return;
-   layer.style.transition="transform "+duration+"ms cubic-bezier(.2,.8,.2,1)";
+   layer.style.transition="none";
    outer.style.transition="opacity "+duration+"ms ease";
-   layer.style.transform=target;outer.style.opacity=closingPhase?"0":"1";
+   outer.style.opacity=closingPhase?"0":"1";
+   if(morph&&imageNode&&geometry){
+    imageNode.style.transition="transform "+duration+"ms cubic-bezier(.2,.8,.2,1), clip-path "+
+     duration+"ms cubic-bezier(.2,.8,.2,1)";
+    if(closingPhase){
+     const styles=geometryStyles(geometry);
+     imageNode.style.transform=styles.transform;
+     imageNode.style.clipPath=styles.clipPath;
+    }else{
+     imageNode.style.transform="none";
+     imageNode.style.clipPath="inset(0px)";
+    }
+   }
   };
   const onEnd=(event:TransitionEvent)=>{
-   if((event.target===layer&&event.propertyName==="transform")||
-    (event.target===outer&&event.propertyName==="opacity"))completed();
+   if(morph&&event.target===imageNode&&event.propertyName==="transform")completed();
+   else if(!morph&&event.target===outer&&event.propertyName==="opacity")completed();
   };
-  layer.addEventListener("transitionend",onEnd);
   outer.addEventListener("transitionend",onEnd);
+  imageNode?.addEventListener("transitionend",onEnd);
   const timer=window.setTimeout(completed,duration+40);
   const frame=requestAnimationFrame(startTransition);
   owner.track(token,()=>{
-   layer.removeEventListener("transitionend",onEnd);
    outer.removeEventListener("transitionend",onEnd);
+   imageNode?.removeEventListener("transitionend",onEnd);
    clearTimeout(timer);cancelAnimationFrame(frame);
   });
  };
@@ -266,7 +319,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   // terminal motion on the freshly reconstructed owner, never reopen.
   const terminal=closing.current;
   outer.style.opacity=terminal?"1":"0";outer.style.transition="none";
-  layer.style.transition="none";layer.style.transform=terminal?"none":morphTransform();
+  layer.style.transition="none";layer.style.transform="none";
   phase.current=terminal?"closing":"opening";
   surfaceHandler.current(terminal);
   const captureLossTimers=pendingCaptureLoss.current;
