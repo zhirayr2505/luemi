@@ -120,6 +120,12 @@
 .pm-photo-blur{
  position:absolute;inset:0;z-index:1;opacity:0;overflow:hidden;pointer-events:none;
 }
+/* The blur mirrors the exact fractional clear-gallery matrix inside the
+   SAME parallax parent; only ≤3 photo images have actual media resources. */
+.pm-photo-blur-track{width:100%;height:100%;display:flex;flex-wrap:nowrap;
+ transform:translate3d(0,0,0);transition:transform 300ms cubic-bezier(.2,.76,.22,1)}
+.pm-photo-blur-slide{width:100%;min-width:100%;height:100%;flex:0 0 100%;
+ overflow:hidden;pointer-events:none}
 .pm-photo-blur img{
  display:block;width:100%;height:100%;object-fit:cover;object-position:center 20%;
  filter:blur(11px);transform:scale(1.07);
