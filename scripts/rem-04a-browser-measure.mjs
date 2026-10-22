@@ -56,19 +56,22 @@ try{
  assert.equal(theme.photoId,repeated.photoId);
  await page.close();
  const p=await ctx.newPage();
+ await p.route("https://telegram.org/js/telegram-web-app.js",route=>route.fulfill({status:200,contentType:"application/javascript",body:""}));
  await p.addInitScript(()=>{
   window.Telegram={WebApp:{initData:"rem04a-valid-fixture",colorScheme:"light",ready(){},expand(){},
    requestFullscreen(){},disableVerticalSwipes(){},isVersionAtLeast(){return false;}}};
   Object.defineProperty(document.fonts,"ready",{configurable:true,get:()=>new Promise(()=>{})});
  });
  await p.route("**/api/health/live",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({status:"ok"})}));
- await p.route("**/api/auth/telegram",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({user:{firstName:"QA",id:"qa"}})}));
+ let authRequests=0;
+ await p.route("**/api/auth/telegram",route=>{authRequests++;return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({user:{firstName:"QA",id:"qa"}})});});
  const start=Date.now();
  await p.goto("http://127.0.0.1:5173/",{waitUntil:"domcontentloaded"});
  await delay(2800);
  result.startup={case:"fonts-never-resolve",elapsedMs:Date.now()-start,
   entryText:await p.locator(".entry-state").innerText(),cta:await p.locator(".intro-cta").count(),
-  error:await p.getByText("Не удалось подтвердить вход.").count()};
+  error:await p.getByText("Не удалось подтвердить вход.").count(),authRequests};
+ assert.equal(authRequests,1,"fixture must exercise actual Telegram authorization and not external SDK fallback");
  console.log("REM04A_STARTUP_MEASURE "+JSON.stringify(result.startup));
  if(!baseline)assert.equal(result.startup.cta,1,"optional fonts must not block authorized entry");
  console.log("REM04A_MEASUREMENT_PASS "+JSON.stringify(result));
