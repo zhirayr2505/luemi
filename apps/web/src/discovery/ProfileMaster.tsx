@@ -12,6 +12,7 @@ import {BlikViewer} from "./BlikViewer";
 import {animateValue} from "../ui/motion";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
+import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
 import "./profile-master.css";
 
 type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
@@ -104,6 +105,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const sheetRunner=useRef<GeometryMotion|null>(null),tabsRunner=useRef<GeometryMotion|null>(null);
  const sheetRevision=useRef(0),tabsRevision=useRef(0);
  const sheetIntent=useRef<boolean|null>(null),sheetRootTop=useRef<number|null>(null);
+ const sheetDragActive=useRef(false);
  const motionCallback=useRef(onMotionProgress);
  motionCallback.current=onMotionProgress;
  const motionActive=active&&!preview;
@@ -170,7 +172,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const settleSheet=useCallback((next:boolean)=>{
   stopSheet.current();
   const driver=ensureSheetRunner();
-  const from=driver.cancel();
+  const from=driver.snapshot().phase==="idle"?sheetY.current:driver.cancel();
   const destination=next?collapsedY.current:expandedY.current;
   sheetIntent.current=next;
   // Original endpoint/curve/duration unchanged. A geometry rebase will spend
@@ -206,15 +208,15 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
       Math.abs((sheetRootTop.current??shellRect.top)-shellRect.top)<.5)return;
    const driver=sheetRunner.current;
    const phase=driver?.snapshot().phase??"idle";
-   const oldValue=driver?.sample()??sheetY.current;
+   const oldValue=phase==="settling"||phase==="suspended"?driver!.sample():sheetY.current;
    const oldTop=sheetRootTop.current??shellRect.top;
-   const visible=oldValue+oldTop-shellRect.top;
+   const mapped=remapSheetPixel(oldValue,oldTop,shellRect.top,top,bottom);
+   const visible=mapped.local;
    // Clamping is unavoidable only when the old absolute position no longer
    // exists in the new viewport. Never scale touch movement by the new height.
-   const next=first?(collapsedRef.current?top:bottom):
-    phase==="idle"&&sheetIntent.current===null?
-     (collapsedRef.current?top:bottom):
-     Math.max(top,Math.min(bottom+28,visible));
+   const next=first&&phase!=="suspended"?(collapsedRef.current?top:bottom):
+    phase==="idle"&&sheetIntent.current===null&&!sheetDragActive.current?
+     (collapsedRef.current?top:bottom):visible;
    first=false;hidden=false;sheetRootTop.current=shellRect.top;
    sheetRevision.current++;
    collapsedY.current=top;expandedY.current=bottom;
@@ -230,7 +232,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     else driver.rebase(sheetRevision.current,next,destination);
    }
    paintSheet(next,true);
-   if(intent===null)collapsedRef.current=Math.abs(next-top)<.5;
+   // Physical state is committed by settle completion, never merely by a target.
   };
   measure();
   const ro=new ResizeObserver(measure);
@@ -249,7 +251,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   webApp?.onEvent?.("contentSafeAreaChanged",measure);
   webApp?.onEvent?.("viewportChanged",measure);
   return ()=>{
-   stopSheet.current();ro.disconnect();detachViewport();
+   sheetRunner.current?.suspend();ro.disconnect();detachViewport();
    window.removeEventListener("resize",measure);
    visual?.removeEventListener("resize",measure);
    visual?.removeEventListener("scroll",measure);
@@ -330,14 +332,15 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(!first&&!changed)return;
    // Snapshot the FRACTIONAL page before width and tab metrics are replaced.
    const runner=tabsRunner.current,phase=runner?.snapshot().phase??"idle";
-   const fraction=runner?.sample()??(pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
+   const fraction=phase==="settling"||phase==="suspended"?runner!.sample():
+    (pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
    first=false;hidden=false;tabsRevision.current++;
    tabMetrics.current=metrics;tabViewport.current=rawWidth;
    if(ink.current)ink.current.style.width=metrics[0].width+"px";
    rebaseTabsGesture.current(fraction,tabsRevision.current);
    if(tabSwipe.current){
     const g=tabSwipe.current;
-    g.index=fraction+((g.lastX??g.x)-g.x)/Math.max(1,rawWidth);
+    g.index=reanchorPage(fraction,g.x,g.lastX??g.x,rawWidth);
     g.width=rawWidth;g.revision=tabsRevision.current;
    }
    // Do not paintTabs(selected): that destroys fractional position mid-settle.
@@ -361,7 +364,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const i=Math.min(4,Math.max(0,newIndex));
   stopTabs.current();
   const runner=ensureTabsRunner();
-  const from=runner.cancel();
+  const from=runner.snapshot().phase==="idle"?
+   (pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current):runner.cancel();
   tabSelectionRef.current=tabs[i][0];
   setTab(tabs[i][0]);
   runner.start(from,i,295,[.22,.77,.23,1],value=>paintTabs(value),()=>paintTabs(i),
@@ -377,10 +381,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(e.pointerType==="touch"||(e.pointerType==="mouse"&&e.button!==0))return;
   stopTabs.current();
   tabSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",
-   index:(pages.current?.scrollLeft??0)/tabViewport.current,width:tabViewport.current};
+   index:(pages.current?.scrollLeft??0)/tabViewport.current,width:tabViewport.current,
+   lastX:e.clientX,revision:tabsRevision.current};
  };
  const tabMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
+  g.lastX=e.clientX;
   const dx=e.clientX-g.x,dy=e.clientY-g.y;
   if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";}
   if(g.axis!=="x")return;
