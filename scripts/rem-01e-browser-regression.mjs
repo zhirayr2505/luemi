@@ -58,10 +58,10 @@ try{
   pass(theme+"/"+kind+" one renderer, 5 tabs, real fields, image order, published-only privacy");
  }
  await goto("server");const server=await read();
- assert.equal(server.photos.length,2,"server owner sees only published when other statuses rejected/hidden");
+ assert.equal(server.photos.length,3,"server owner sees published and pending, never hidden/rejected");
  assert.equal(server.verified,true);
  await goto("visitor");const visitor=await read();
- assert.deepEqual(visitor.photos,server.photos,"server public visitor sees published sequence");
+ assert.deepEqual(visitor.photos,[server.photos[0],server.photos[2]],"server visitor sees only published, not pending");
  assert.equal(visitor.ownerActions,0);
  pass("server published/hidden/pending/rejected fixture remains restricted");
 
