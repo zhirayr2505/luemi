@@ -93,3 +93,62 @@ Measured `DOMMatrixReadOnly(getComputedStyle(track).transform)`:
 The exact rollback/acceptance anchor remains **`561145925efe04199235070e4d0c56be295ef2a4`**. Keep Draft PR #48 unmerged (close only on owner's instruction); revert by using the immutable accepted REM-04A tree **without resetting main/staging or force-pushing**. No IndexedDB v2 migration, change to original photos or temporary 32MP cap, Render/Supabase write, user-data mutation, merge, deploy or change to any other project was permitted or performed.
 
 **STOP for REM-04B owner acceptance; REM-04C and REM-04D are NOT AUTHORIZED.**
+
+---
+
+## 6. Independent six-photo investigation and verified REM-04B closure
+
+**Scope:** This addendum is ONLY the finishing LU-13/LU-14 boundary investigation; no REM-04C/D, rework of REM-03C/D, or changes to the inherited brand and gestures. Source investigation began on the previously all-green exact commit `b02841ca6726a2aacb3936eec8ec45ed79229937` in the existing branch and same Draft PR #48. The accepted rollback is still immutable REM-04A `561145925efe04199235070e4d0c56be295ef2a4`. The intermediate complete implementation SHA before this **documentation-only** update is `8ad62abb3c72fbf987c87664380a5c0c0b94f597`. For final-HEAD GitHub run IDs see the PR #48 closure update after this documentation change.
+
+### Six distinct local photos · BEFORE, real Chromium
+
+An additive `scripts/rem-04b-browser-six.mjs` runs a **real** `/rem-01e-qa.html?mode=local&kind=six` (the actual `ProfileMaster` owns six `photo-0…photo-5` sources; `mode=local` uses the `.pm-dialog` class). It collects a JSON record every rAF with computed DOMMatrix x on BOTH tracks, fraction, hero viewport intersection per clear and blur slide, `photoId`, image `complete/naturalWidth` readiness, filtered media existence, effective blur opacity and number of active blur images. Playwright traces and pre/post screenshots are archived via GitHub Actions.
+
+Source-root cause: `choosePhoto(index)` directly selects any dot; the accepted CSS clear and blur tracks both travel 290ms at `cubic-bezier(.2,.76,.22,1)`. The old `blurIndices` chose selected photo, `blurFrom` outgoing photo, and one neighbor. In 0→5, the real blur set was `{0,4,5}`; intermediate visible phases at indices 1, 2 and 3 were empty. **Measured** old rAF outcome (collapsed, blur opacity 0.9): 0→5 **8 affected sampled frames**, 5→0 **8**, 0→3 **3**, 1→4 **3**, rapid 0→5→1 retarget **16**, viewport resize mid-animation **2**. Example at actual fractional index **2.135**: two clear slides 2/3 overlapped the viewport but neither had decoded blur media. X DOMMatrix drift was **zero pixels**, proving synchronized geometry alone was insufficient. A missing DOM element that did not intersect the viewport was NOT counted as a defect.
+
+Original failing six-photo Chromium run and archived original visual evidence: [39848445772](https://github.com/zhirayr2505/luemi/actions/runs/39848445772) (the new strict assertion deliberately failed on the previous implementation).
+
+### Bounded phase-following strategy (production)
+
+Keep exactly the **same hero motion authority** for both CSS transforms, the same duration, same profile parallax and opacity; no new `GeometryMotion`, fake opaque overlay, or full six-image preload. Instead the bounded blur window contains the actually visible left/right fractional slots and one slot ahead in the physical direction, **at most THREE true blur images**. The original six structural div slots remain for identity and layout; only the 0–3 current window images are mounted.
+
+An rAF sampler reads the **actual CSS fraction**, not the semantic destination, prepositions the next optical window at boundary changes, and only commits a media change when indices must change. The photo selection still commits the originally intended photo ID. A monotonically increasing session generation rejects stale rAF callbacks, supports rapid retargets and pointer interruption; the real finger direction replaces the old dot target when pointer gesture takes over. React unmount and photo source reordering/removal cancel stale sampling and invalidate old media indices.
+
+The optical media window is rendered inside a **memoized `ProfileBlurTrack` child**, so media updates do not re-render the parent sheet, tab scrollers or full ProfileMaster; it shares the existing ref to the blur DOM track. On terminal settle, phase sampling finishes and previous `blurFrom` is replaced with the final index; transient images are released. The original `filter:blur(11px)`, `transform:scale(1.07)`, `object-fit:cover`, `object-position:center 20%`, progress opacity maximum 0.9, parallax, 290ms easing, color brand and Liquid Glass are not changed. The approved horizontal swipe thresholds and motion physics are intact.
+
+**Resource caveat:** Image DOM existence, `complete` and positive `naturalWidth` are directly tested; that is not a hardware GPU residency measurement. Broken image resources do **not** impersonate a successfully decoded photo or display the wrong photoId, and release when no longer in the bounded window. A delayed local image ultimately decodes with ID intact. The extra decode/CPU cost is captured, not claimed to be zero.
+
+### Real after-fix optical evidence
+
+[Focused run 39852342853](https://github.com/zhirayr2505/luemi/actions/runs/39852342853) demonstrates (on code SHA `8ad62abb3c72fbf987c87664380a5c0c0b94f597`) **0 optical gaps, 0 px clear/blur DOMMatrix drift, peak 3 blur media** for all of 0→5, 5→0, 0→3, 3→1, 1→4, 4→2, 2→5, direct rapid retargeting, viewport resizing, theme change, midpoint/expanded/collapsed sheet, and actual mouse interruption with reverse motion. Chromium captured separate screenshots near fractional indices ~2.134, ~2.957 and ~3.546, together with full 23-rAF-frame sequences per case.
+
+Terminal assertions confirm removal of outgoing blur peers, the correct photo ID when PhotoViewer opens mid-transition and after return, actual profile counts **1, 2, 3, 4 and 6**, no false extra commits, **broken source** safety and **165ms delayed local media decode** with eventual cleanup. All previously existing `scripts/rem-04b-browser-visual.mjs` LU-13/LU-14 underlay checks still run and PASS, including Feed/ForYou/Nearby, preserving underlay DOM and scroll, hidden descendants, background, reveal and theme. The full Browser QA appends the six-photo test **after** REM-00–04B tests; none are disabled, skipped, shortened or weakened.
+
+### Chromium A/B cost, independent accepted REM-04A → corrected REM-04B
+
+From [A/B and six-photo cost run 39852342853](https://github.com/zhirayr2505/luemi/actions/runs/39852342853): same GitHub Ubuntu Chrome, 393×852, same six SVGs, same light theme, same 0→5→0 sequences, three alternating trials per variant, Chrome Performance domain and rAF timestamps. Below are **medians of totals across both far jumps**, in seconds for duration rows:
+
+| Measurement | Immutable REM-04A | Corrected REM-04B |
+|---|---:|---:|
+| LayoutCount | 25 | 35 |
+| RecalcStyleCount | 41 | 46 |
+| LayoutDuration (s) | 0.00444 | 0.00456 |
+| RecalcStyleDuration (s) | 0.00435 | 0.00379 |
+| ScriptDuration (s) | 0.03549 | 0.07028 |
+| TaskDuration (s) | 0.09350 | 0.12501 |
+| p95 sampled rAF gap (ms) | 16.7 | 16.7 |
+| Peak real blur image nodes | 0 | 3 |
+| Sampled visible missing blur slots | 219 | 0 |
+| Maximum clear/blur matrix drift (px) | 1965 | 0 |
+
+Before optimization, the naïve parent-state implementation had ~0.148s ScriptDuration per two far jumps, reduced by memoized optical rendering to ~0.053–0.070s in subsequent independent 3× runs (~53–64% less JS than the naïve variant). **The increased CPU/layout counts compared with REM-04A are real**: REM-04A did not render a phase-matched blur layer, so this is not equivalent optical work. There is no demonstrated drop of p95 rAF interval in this synthetic run. We do **not** infer GPU texture load, physical FPS, RAM use or black-frame elimination on a physical Android/iOS device.
+
+The earlier 3-photo accepted-vs-current cost suite remains separate, unchanged and passing, as do the accepted REM-04A read-only baseline and all REM-00–04B behavior tests. Screenshots, snapshots, trace ZIP and JSON metrics are stored in the Actions artifacts from focused runs. No actual photo file or production storage was changed.
+
+### GitHub exact-HEAD acceptance gate and rollback
+
+**IMPORTANT:** this report update is a documentation-only commit; the **new final SHA** and exact push/pull_request run IDs for Foundation (7/7), Behavioral (2/2), Focused REM-04B (2 jobs), and REM-04A read-only baseline (1 job) must be verified on that same final SHA, then recorded in [Draft PR #48](https://github.com/zhirayr2505/luemi/pull/48). Do not reuse older green check-runs as if they covered the report HEAD. No merge/deploy.
+
+**Remaining NOT VERIFIED:** Samsung Galaxy A55 inside real Telegram Android WebView, iOS WKWebView, real GPU/raster pressure and media cache eviction, black-frame elimination, device FPS/memory and prolonged background/foreground. If REM-04B is not accepted, keep the Draft unmerged and return via a **new isolated branch anchored at immutable accepted REM-04A `561145925efe04199235070e4d0c56be295ef2a4`**, with no reset/force push to main/staging and no loss of real user data.
+
+**STOP for owner technical acceptance. REM-04C NOT AUTHORIZED.**
