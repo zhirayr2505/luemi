@@ -23,6 +23,18 @@ assert.equal(ar.finish("sheet",native),false);
 assert.equal(ar.snapshot().active,false);
 console.log("REM02C_UNIT_PASS pointer+Touch candidates only one owner and one terminal");
 
+const mixed=ar.begin("pointer",71,"tabs");
+assert.equal(ar.begin("touch",0,"sheet"),mixed);
+assert.equal(ar.claim("sheet",mixed),true,"native Touch sheet wins a shared candidate");
+assert.equal(ar.claim("tabs",mixed),false,"mouse/pen tab cannot paint over sheet");
+assert.equal(ar.finish("sheet",mixed),true);
+const opposite=ar.begin("pointer",72,"tabs");
+ar.begin("touch",0,"sheet");
+assert.equal(ar.claim("tabs",opposite),true);
+assert.equal(ar.claim("sheet",opposite),false,"native Touch cannot overwrite claimed mouse/pen tabs");
+assert.equal(ar.finish("tabs",opposite),true);
+console.log("REM02C_UNIT_PASS mouse/pen tabs and native Touch sheet have exclusive write ownership");
+
 const scroll=ar.begin("touch",8,"native");
 ar.begin("touch",8,"sheet");ar.begin("touch",8,"tabs");
 assert.equal(ar.nativeScroll(scroll),true);
@@ -90,6 +102,16 @@ const profileCss=read("apps/web/src/discovery/profile-master.css");
 assert.ok(profile.includes('g.index=fractionalTrack(photoTrack.current,g.width,activePhoto)'));
 assert.ok(profile.includes('preservePhotoId(list,photos,activePhotoId.current,activePhoto)'));
 assert.ok(profile.includes('gestures.claim(owner,g.serial)')&&profile.includes('gestures.nativeScroll(g.serial)'));
+assert.ok(profile.includes('const serial=gestures.begin("pointer",e.pointerId,"tabs")')&&
+ profile.includes('gestures.claim("tabs",g.serial!)')&&
+ profile.includes('gestures.owns("tabs",g.serial!)')&&
+ profile.includes('onLostPointerCapture={e=>tabEnd(e,true)}'),
+ "mouse/pen tab pointer path must use the same arbiter for claim/paint/terminal");
+const tabCandidate=profile.slice(profile.indexOf("const tabDown="),profile.indexOf("const tabMove="));
+assert.ok(!tabCandidate.includes("stopTabs.current()"),"candidate must not interrupt prior tab settle");
+assert.ok(profile.includes('blocking:inPages?scrollTop<=1:!collapsedRef.current')&&
+ profile.includes('if(g.inPages&&g.scrollTop>1)'),
+ "already scrolled native Touch page must stay passive and never claim sheet on vertical/diagonal input");
 assert.ok(profile.includes('!gestures.owns(g.axis==="x"?"tabs":"sheet",g.serial)'));
 assert.ok(route.includes('gestureArbiter={gestures}')&&route.includes('attachSuppression.current()'));
 assert.ok(browse.includes('browseMotion.current.schedulePaint(g.token,trackX')&&browse.includes('frozenBrowse()'));
