@@ -157,10 +157,14 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(!gestureArbiter.current)gestureArbiter.current=new GestureArbiter();
   width.current=viewportWidth(outer.getBoundingClientRect().width);
   paintTrack(0);
-  outer.style.opacity="0";outer.style.transition="none";
-  layer.style.transition="none";layer.style.transform=morphTransform();
-  phase.current="opening";
-  surfaceHandler.current(false);
+  // StrictMode provisional cleanup cancels the first terminal timer. If that
+  // first effect already requested close (e.g. zero photos), restart its
+  // terminal motion on the freshly reconstructed owner, never reopen.
+  const terminal=closing.current;
+  outer.style.opacity=terminal?"1":"0";outer.style.transition="none";
+  layer.style.transition="none";layer.style.transform=terminal?"none":morphTransform();
+  phase.current=terminal?"closing":"opening";
+  surfaceHandler.current(terminal);
   return ()=>{
    runner.current?.dispose();gestureArbiter.current?.dispose();
    surfaceOwner.current?.dispose();
