@@ -1,5 +1,5 @@
 import {chromium} from "playwright";
-const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
+const browser=await chromium.launch({headless:true,channel:"chrome",args:["--no-sandbox"]});
 const p=await browser.newPage({viewport:{width:393,height:852}});
 p.on("pageerror",error=>console.log("REM03B_CLOSE_PAGE_ERROR",error.message,error.stack));
 try{
