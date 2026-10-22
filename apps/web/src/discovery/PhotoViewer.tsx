@@ -113,6 +113,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
   const target=closingPhase?morphTransform():"none";
   const completed=()=>{
+   if(closingPhase&&stage.current)stage.current.dataset.debugCloseFinish=String(owner.snapshot().phase);
    owner.finish(token,{paint:()=>{
     if(closingPhase){phase.current="disposed";latest.current.onClose();}
     else if(!closing.current)phase.current="idle";
@@ -287,6 +288,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(menu&&!force){setMenu(false);return;}
   if(closing.current)return;
   closing.current=true;phase.current="closing";
+  if(stage.current)stage.current.dataset.debugCloseCalled="true";
   gesture.current=null;pointer.current.clear();pinch.current=null;zoom.current=1;
   gestureArbiter.current?.cancel();
   const motion=runner.current;
@@ -295,6 +297,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    if(Math.abs(x)>.1)motion.start(x,0,duration,easing,paintTrack,()=>{},geometryRevision.current);
   }
   stopSurface();surfaceTransition(true);
+  if(stage.current)stage.current.dataset.debugOwner=String(surfaceOwner.current?.snapshot().phase);
  };
  handlers.current={close:requestClose,navigate:requestNavigation};
  useEffect(()=>{
