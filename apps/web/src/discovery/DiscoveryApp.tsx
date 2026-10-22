@@ -81,7 +81,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const pages=useRef<HTMLDivElement>(null);
  const pageTrack=useRef<HTMLDivElement>(null);
  const underline=useRef<HTMLSpanElement>(null);
- const swipeFrame=useRef<number|null>(null);
  const pagerSettleTimer=useRef<number|null>(null);
  const motionAuthority=useRef(createProfileMotionAuthority());
  const inputOwnership=useRef(new GestureArbiter());
@@ -211,7 +210,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    underline.current?.style.setProperty("--luemi-underline-drag",inkX+"px");
   });
  };
- const flushDrag=()=>{/* MotionController owns cancellation of the sole pending RAF. */};
  const frozenBrowse=()=>{
   const width=pages.current?.clientWidth||window.innerWidth;
   // Both CSS transitions can have different in-flight matrix values.
