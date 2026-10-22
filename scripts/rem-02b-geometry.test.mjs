@@ -33,7 +33,7 @@ for(const percent of [.25,.5,.9]){
  assert.equal(f.motion.snapshot().phase,"settling");
  close(f.motion.snapshot().remaining,left,.1);
  f.advance(left/2);
- assert.ok(pixels.y>59&&pixels.y<before+8,`settling remains between endpoints at ${percent}`);
+ assert.ok(pixels.y>=Math.min(60,before+7)-.05&&pixels.y<=Math.max(60,before+7)+.05,`settling stays between the actual rebased value and target at ${percent}`);
  f.advance(left/2+.5);
  close(pixels.y,60,1);
  assert.equal(commits.length,1);
