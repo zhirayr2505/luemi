@@ -257,9 +257,12 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   layer.style.transition="none";layer.style.transform=terminal?"none":morphTransform();
   phase.current=terminal?"closing":"opening";
   surfaceHandler.current(terminal);
+  const captureLossTimers=pendingCaptureLoss.current;
   return ()=>{
-   for(const timer of pendingCaptureLoss.current.values())clearTimeout(timer);
-   pendingCaptureLoss.current.clear();
+   // Capture this exact timer map at effect setup; no stale ref cleanup and
+   // no timer can terminate a later StrictMode viewer generation.
+   for(const timer of captureLossTimers.values())clearTimeout(timer);
+   captureLossTimers.clear();
    runner.current?.dispose();gestureArbiter.current?.dispose();
    surfaceOwner.current?.dispose();
   };
@@ -611,7 +614,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  return createPortal(<section className="pm-viewer" role="dialog" aria-modal="true" aria-label="Просмотр фото"
    data-motion-phase={phaseKey} data-semantic-commits={commitCount.current}>
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}
-   onPointerUp={e=>finish(e,false)} onPointerCancel={e=>onLostPointer(e)}
+   onPointerUp={e=>finish(e,false)} onPointerCancel={e=>finish(e,true)}
    onLostPointerCapture={onLostPointer}
    onTouchCancel={()=>cancelPinchSession(false)}>
    <div className="pm-viewer-surface" ref={surface}>
