@@ -7,8 +7,8 @@ export async function preparePhotoPreview(file:Blob,signal:AbortSignal):Promise<
  const header=await inspectPhoto(file,signal);
  signal.throwIfAborted();
  const {width:originalWidth,height:originalHeight}=header;
- // A small image is safe to render directly; retain legacy quality and orientation.
- if(Math.max(originalWidth,originalHeight)<=MAX_PREVIEW_SIDE)return file;
+ // Even small photos must decode successfully before being labelled ready.
+ // They still return their original File unchanged if no resize is necessary.
  let bitmap:ImageBitmap|null=null,image:HTMLImageElement|null=null,url:string|null=null;
  let canvas:HTMLCanvasElement|null=null;
  try{
