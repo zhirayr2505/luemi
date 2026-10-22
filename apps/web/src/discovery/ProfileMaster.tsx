@@ -38,7 +38,7 @@ function About({view}:{view:ProfileView}){
     })}</div></article>}
   {!p.about&&!p.interests.length&&!goal&&!p.languages.length&&
     <div className="pm-empty"><FileText size={38}/><h3>Пока ничего не заполнено</h3>
-     <p>{view.canEdit?"Расскажи о себе в редакторе анкеты.":view.profile.source==="local-draft"?"Добавь описание или интересы в регистрации.":"Здесь появится информация, когда владелец её добавит."}</p></div>}
+     <p>{view.profile.source==="local-draft"?"Добавь описание или интересы в регистрации.":"Здесь появится информация, когда владелец её добавит."}</p></div>}
   {view.profile.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/>
    {view.profile.source==="fixture"?"Вымышленный демонстрационный персонаж — не реальный пользователь.":"Локальный черновик. Анкета не опубликована."}</p>}
  </div>;
