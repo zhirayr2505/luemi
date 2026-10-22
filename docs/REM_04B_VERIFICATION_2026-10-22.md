@@ -152,3 +152,56 @@ The earlier 3-photo accepted-vs-current cost suite remains separate, unchanged a
 **Remaining NOT VERIFIED:** Samsung Galaxy A55 inside real Telegram Android WebView, iOS WKWebView, real GPU/raster pressure and media cache eviction, black-frame elimination, device FPS/memory and prolonged background/foreground. If REM-04B is not accepted, keep the Draft unmerged and return via a **new isolated branch anchored at immutable accepted REM-04A `561145925efe04199235070e4d0c56be295ef2a4`**, with no reset/force push to main/staging and no loss of real user data.
 
 **STOP for owner technical acceptance. REM-04C NOT AUTHORIZED.**
+
+---
+
+## 7. REM-04B LU-13 performance optimization — final measured review (October 23, 2026)
+
+**Trigger and controlled experiment.** Prior six-photo A/B showed ScriptDuration 28.79ms (accepted REM-04A) vs 65.57ms (REM-04B), TaskDuration 75.26ms vs 123.24ms and LayoutCount 25 vs 35, with desktop p95 rAF ~16.7ms. These metrics measured **two far transitions**. The new A/B/C study is a different, **four-transition** workload, so values across studies are not directly comparable.
+
+A new supplemental profiling job in the existing REM-04B focused workflow checks out the accepted immutable REM-04A (A: 561145925efe04199235070e4d0c56be295ef2a4), the exact pre-optimization REM-04B (B: 95be2d18f7a94dc5deb897e02cb5d1b9c106a5d0), and the optimized branch (C). All run in the **same Chrome process**, 393×852 viewport, identical six eagerly warmed local SVG sources, and three alternated trials per variant for 0→5→0 and 0→1→0. Browser Performance domain measures ScriptDuration, TaskDuration, Layout and style counters; Chrome CPU sampling, a React DevTools commit hook, a DOM media MutationObserver and computed track matrices identify the source of work. Full samples and CPU profiles are archived in Actions artifacts.
+
+### Confirmed root cause
+
+The prior REM-04B followBlurPosition loop reads the actual CSS fraction each rAF, calculates blurWindowAt, and changes the <=3-member media window only at real slot boundaries. However **showBlurWindow used flushSync + React child state** for each true media-window update, reconciling the six slot wrappers and image membership. The controlled B trace recorded **12 media-window changes, 18 DOM media mutations and 17 React commits** across four transitions, compared with only 4 React commits in accepted REM-04A. Chrome CPU samples show the added React JSX creation and mutation traversal together with some ProfileMaster rAF ticks. The extra work is attributable to **reconciliation/DOM churn from necessary slot updates**, not proven to result solely from the intrinsic overhead of flushSync. Reads of fractional DOMMatrix and hero width remain necessary to preserve the single authoritative physical track phase; the trace does not justify inventing a second animation clock.
+
+A first intermediate experiment memoized unchanged blurred child slides. It was rejected as ineffective: a same-run median ScriptDuration B 104.23ms vs C 105.31ms, **17 React commits in both**, while exact blur coverage was preserved.
+
+### Safely optimized media-window lifecycle
+
+The final optimized ProfileBlurTrack retains all six **React-keyed structural blur slots**. A single bounded media-window writer attached to that existing child synchronously inserts/removes **only necessary image elements**, with **zero per-boundary React state commits**. This writer never touches CSS transforms, sheet state, animation timing, motion controllers, opacity, parallax or the clear track; the accepted Motion Authority still paints the same CSS transform for clear and blur. Unchanged image DOM nodes and already decoded resources are preserved. Outgoing images are detached **before** new inserts so at most three actual blur images exist even mid-update. Each is linked to stable photoId plus source/version and optional fallback; reorder, failure, delayed decode, unmount and StrictMode lifecycle cleanup are supported by existing tests.
+
+An intermediate writer initially staged a stale outgoing peer during terminal blurFrom reconciliation, causing **14 instead of 12 media changes** and LayoutCount 64 instead of 60. This was corrected without modifying the visual effect by staging the final target-and-neighbors window immediately, before the deferred parent blurFrom update. The final window count again equals B's necessary 12; no visible blur gaps are reintroduced.
+
+### Identical A/B/C Chrome metrics after final code optimization
+
+**Source:** [same-run final optimized A/B/C measurements, run 39869396629](https://github.com/zhirayr2505/luemi/actions/runs/39869396629), code revision 391d502a3768c7dfcf2aa07ee83cdd77b1bc31f9. Following this code revision, only an unused benchmark-local declaration and documentation were changed; the optimized ProfileMaster algorithm is unchanged.
+
+| Measurement · 4 transitions; median of 3 trials | A: accepted REM-04A | B: old REM-04B | C: optimized REM-04B |
+|---|---:|---:|---:|
+| ScriptDuration (ms) | 37.79 | 82.27 | **74.91** |
+| TaskDuration (ms) | 97.47 | 147.96 | **135.49** |
+| LayoutCount | 48 | 61 | **60** |
+| RecalcStyleCount | 80 | 87 | **86** |
+| LayoutDuration (ms) | 5.05 | 5.98 | **5.72** |
+| RecalcStyleDuration (ms) | 5.08 | 5.81 | **5.74** |
+| React root commits | 4 | 17 | **8** |
+| Actual DOM blur-media window changes | 0 | 12 | **12** |
+| DOM blur-media mutation records | 0 | 18 | **18** |
+| p95 rAF interval (ms) | 16.7 | 16.7 | **16.7** |
+| Peak active blur images | 0 (no synchronized track) | 3 | **3** |
+| Peak ready/decoded blur images | 0 (no synchronized track) | 3 | **3** |
+| Sampled visible missing blur slots, all trials | 443 | 0 | **0** |
+| Maximum clear-vs-blur track matrix drift (px) | not comparable | 0 | **0** |
+
+**Same-run B→C improvement:** ScriptDuration −7.36ms (**−8.95%**), TaskDuration −12.47ms (**−8.43%**), React commits −9 (**−52.9%**), LayoutCount −1, RecalcStyleCount −1. The remaining B→C media-window change count remains 12: real 0→5→0 coverage with only three live blur images inherently requires resource turnover. Chrome timing is noisy: absolute medians vary between independent identical setup runs. No arbitrary CPU/FPS threshold is claimed, and unchanged desktop p95 frame interval cannot imply acceptable on-device CPU/GPU load.
+
+**Measured residual overhead vs A:** optimized C still has +37.12ms ScriptDuration, +38.02ms TaskDuration and +12 LayoutCount in this four-transition scenario because accepted A does **not** render the same full optical coverage. It would be misleading to report full equality or hide this tradeoff; eliminating all media transitions would reintroduce missing optical blur slots or exceed the resource budget. The optimization is a modest *measured* improvement with a substantial reduction in React reconciliation, not proof of universal optimum.
+
+### Regression and final exact-head gate
+
+- Preserve original 290ms hero transition, cubic-bezier(.2,.76,.22,1), blur(11px), scale(1.07), opacity 0–0.9, parallax, object-fit/object-position, Liquid Glass and the original Motion Authority.
+- Retain original six-photo real-Chromium coverage tests: 0→5/5→0 and all nonadjacent/rapid reversals, viewport/theme/partial collapse, correct viewer photoId, 1/2/3/4/6 photos, broken media, 165ms delayed decode, and <=3 active blur images. No original test removed or weakened.
+- On the **final report HEAD**, verify real job logs for **Foundation 7/7**, **full Behavioral 2/2**, **focused REM-04B 3/3** (original visual/six-photo + original accepted A/B cost + new A/B/C profiling), **read-only REM-04A baseline 1/1**, as well as distinct push and pull_request runs when emitted. Record the actual run URLs and final SHA in Draft PR #48 after all jobs report SUCCESS; success of predecessor commits is not a substitute.
+- **NOT VERIFIED** on physical Samsung Galaxy A55 in Telegram Android WebView or iOS/WKWebView: GPU/raster memory pressure, filtered blur compositing, actual FPS, background/foreground cache eviction and disappearance of black frames.
+- **Rollback:** retain immutable accepted REM-04A 561145925efe04199235070e4d0c56be295ef2a4, leave Draft PR #48 unmerged and do not reset or force-push main/staging. No Render, Supabase, IndexedDB v2, photos, 32MP guard, user data or deployment changes. Stop for owner acceptance; REM-04C not started.
