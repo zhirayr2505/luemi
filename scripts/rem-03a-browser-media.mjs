@@ -16,13 +16,25 @@ const open=id=>page.evaluate(x=>window.__luemiQaMedia.open(x),id);
 const close=()=>page.evaluate(()=>window.__luemiQaMedia.close());
 const pass=message=>console.log("REM03A_BROWSER_PASS "+message);
 const ready=async(id,timeout=4500)=>{
- await page.waitForFunction(expected=>{
+ try{await page.waitForFunction(expected=>{
   const v=document.querySelector(".pm-viewer");
   const img=v?.querySelector(".pm-viewer-image");
   const status=v?.querySelector(".pm-viewer-media-status");
   return !!img&&img.dataset.photoId===expected&&img.naturalWidth>0&&img.naturalHeight>0&&
    img.style.opacity==="1"&&!status;
- },id,{timeout});
+ },id,{timeout});}catch(error){
+  console.log("REM03A_DIAG_READINESS",JSON.stringify(await page.evaluate(()=>{
+   const v=document.querySelector(".pm-viewer");
+   const img=v?.querySelector(".pm-viewer-image");
+   const status=v?.querySelector(".pm-viewer-media-status");
+   return {viewer:!!v,id:img?.dataset.photoId,key:img?.dataset.mediaKey,
+    src:img?.getAttribute("src")?.slice(0,110),opacity:img?.style.opacity,
+    naturalWidth:img?.naturalWidth,naturalHeight:img?.naturalHeight,
+    mediaPhase:status?.dataset.mediaPhase,statusId:status?.dataset.photoId,
+    date:v?.querySelector(".pm-viewer-bottom")?.textContent?.slice(0,100)};
+  })));
+  throw error;
+ }
  assert.equal(await currentId(),id);
  const visible=await image().evaluate(el=>({photo:el.dataset.photoId,src:el.getAttribute("src"),
   width:el.naturalWidth,height:el.naturalHeight}));
