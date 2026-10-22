@@ -76,6 +76,23 @@ The particular elapsed times are single Chrome CI fixture observations, not pred
 
 **Final exact-head Foundation/Behavioral/Focused CI:** to be recorded in Draft PR #46 after the final report commit; do not cite older-SHA runs as final-HEAD acceptance.
 
+## 2A. CI discrepancy investigation · accepted REM-03D baseline
+
+During final verification of the existing REM-04A PR, its **same-head** focused startup baseline had contradictory results:
+
+- [PR focused run 39819906734](https://github.com/zhirayr2505/luemi/actions/runs/39819906734), `Accepted REM-03D startup baseline (read-only)`: PASS, `REM04A_BASELINE_STARTUP_MEASURE.error=0`.
+- [Push focused run 39819951319](https://github.com/zhirayr2505/luemi/actions/runs/39819951319), same accepted baseline and the *same* REM-04A commit `6ba08726ab402e021870593f98acb8fb6fbaee9a`: FAIL, `error=1` (all other focused jobs successful). Both runs authenticated with an actual 200 response; the old app was in the intro, with `cta=0`.
+
+**Exact root cause:** The old read-only `App.tsx` has `Promise.all([prepareBrandImage(signal), document.fonts.ready])`, whose rejection/settlement depends on whether the native logo `Image.decode()` already succeeded when the original 15,000ms `AbortController` fires. The former baseline test installed a fake clock and immediately advanced it beyond the deadline without first confirming the independent original brand preload had finished decoding. If the logo load/decode was already successful, abort did not reject that promise and the accepted App remained pending on deliberately never-resolving `fonts.ready` (`error=0`). If still in flight, abort rejected `prepareBrandImage`, which makes `Promise.all` reject immediately and the accepted App correctly shows an error (`error=1`). **The observed discrepancy is a real source/test race, not evidence that the new REM-04A coordinator failed.** It also means the old startup may exhibit different failure surfaces depending on media timing: the report must not claim that *all* old startup attempts necessarily hang after 15 seconds.
+
+**Targeted CI fixture correction** in `scripts/rem-04a-browser-startup-baseline.mjs` only:
+1. Instrument genuine native `HTMLImageElement.decode()` only for the unchanged LUEMI logo, without modifying its return value or substituting fake pixels.
+2. Require a successful native preload decode, a real DOM logo with positive natural width, and confirmed successful Telegram auth HTTP 200 **before** fast-forwarding the virtual 15,000ms watchdog.
+3. Assert **both** `cta=0` and `error=0` at 14,900ms (plus proper auth/Telegram identity), then **retain both original strict `cta=0` and `error=0` assertions** at 15,900ms. Do not remove/skip the baseline, relax its assertions, or modify read-only REM-03D.
+4. Continue running all existing Foundation, REM-00–03D Behavioral, REM-04A focused optimizations and startup cases on the new exact final head. PR and push focused baseline must independently pass.
+
+This setup isolates the **font-only hang** being measured rather than racing an unrelated brand-download abort. The authenticated bootstrap and real brand decode remain actual browser operations. No production `PhotoViewer`, `App.tsx`, controller, asset, or storage code is changed by the corrective commit.
+
 ## 3. Known limitations
 
 - Physical **Samsung Galaxy A55 inside Telegram Android WebView** — **NOT VERIFIED**.
