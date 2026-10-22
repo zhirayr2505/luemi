@@ -247,8 +247,16 @@ try{
  // Preserve previously accepted either-direction vertical dismiss (upward).
  first=p(82,200,510);await send("touchStart",[first]);
  first=p(82,200,350);await send("touchMove",[first]);
+ const upwardDuring=await state();
  await send("touchEnd",[first]);
- await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
+ try{await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});}
+ catch(error){
+  console.log("REM03C_DIAG_VERTICAL_CLOSE",JSON.stringify({
+   upwardDuring,after:await state(),stats:await stats(),
+   events:await page.evaluate(()=>window.__rem03cEvents.slice(-27))
+  }));
+  throw error;
+ }
  assert.equal((await stats()).closeCommits,base+1);
  await sleep(320);assert.equal((await stats()).closeCommits,base+1);
  pass("upward vertical dismiss at 1x commits close once (not down-only)");
