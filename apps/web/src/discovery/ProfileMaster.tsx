@@ -342,10 +342,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    webApp?.offEvent?.("viewportChanged",measure);
   };
  },[motionActive,paintSheet]);
- useEffect(()=>()=>{stopSheet.current();stopTabs.current();
-  sheetRunner.current?.dispose();tabsRunner.current?.dispose();
-  localGestures.current.dispose();
-  if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
+ useEffect(()=>{
+  const opticalFrame=blurSampleFrame,opticalSession=blurSession;
+  return ()=>{
+   opticalSession.current++;
+   if(opticalFrame.current!==null)cancelAnimationFrame(opticalFrame.current);
+   opticalFrame.current=null;
+   stopSheet.current();stopTabs.current();
+   sheetRunner.current?.dispose();tabsRunner.current?.dispose();
+   localGestures.current.dispose();
+   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
+  };
  },[]);
  const closeTop=useCallback(():boolean=>{
   if(viewer){if(viewerBack.current)return viewerBack.current();setViewer(null);return true;}
@@ -470,6 +477,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(list===photos)return;
   previousPhotos.current=photos;
   const index=preservePhotoId(list,photos,activePhotoId.current,activePhoto);
+  // Reorder/removal invalidates pending indices, never keeps a blur slot
+  // bound to the old photo at the same array position.
+  stopBlurTracking();blurWindowRef.current=null;
+  setBlurWindow(null);setBlurFrom(index);
   activePhotoId.current=photos[index]?.id??null;
   photoSwipe.current=null;
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
