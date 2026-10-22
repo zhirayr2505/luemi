@@ -144,6 +144,12 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  useLayoutEffect(()=>{
   const outer=stage.current,layer=surface.current;
   if(!outer||!layer)return;
+  // React StrictMode may run setup again after a provisional cleanup.
+  if(!runner.current||runner.current.isDisposed())
+   runner.current=new GeometryMotion("hero",()=>performance.now(),requestAnimationFrame,cancelAnimationFrame,0);
+  if(!surfaceOwner.current||surfaceOwner.current.snapshot().disposed)
+   surfaceOwner.current=new MotionController("route",scheduler);
+  if(!gestureArbiter.current)gestureArbiter.current=new GestureArbiter();
   width.current=viewportWidth(outer.getBoundingClientRect().width);
   paintTrack(0);
   outer.style.opacity="0";outer.style.transition="none";
@@ -253,7 +259,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const targetPhoto=target===0?null:selected.photos[selected.index-target];
   motion.start(start,target*w,duration,easing,paintTrack,()=>{
    if(closing.current)return;
-   if(!targetPhoto){phase.current="idle";return;}
+   if(!targetPhoto||target===0){phase.current="idle";return;}
    // One semantic commit per settle generation, after painting its endpoint.
    const valid=navigatePhoto(latest.current.photoId,latest.current.photos,{photoId:targetPhoto.id});
    if(!valid||valid!==targetPhoto.id){paintTrack(0);phase.current="idle";return;}
@@ -356,7 +362,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";
    if(g.serial!==null)gestureArbiter.current?.claim("hero",g.serial);
    phase.current=g.axis==="x"?"draggingX":"draggingY";
-   if(g.axis==="y"&&runner.current)settle(0);
+   if(g.axis==="y"&&Math.abs(trackX.current)>.1)settle(0);
   }
   if(e.cancelable)e.preventDefault();
   try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* Android WebView fallback */}
