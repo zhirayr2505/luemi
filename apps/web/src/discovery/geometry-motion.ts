@@ -155,6 +155,8 @@ export class GeometryMotion {
   this.controller.rebase(revision,value,target);
   this.resume(target);
  }
+ /** StrictMode provisional cleanup must never reuse a disposed RAF driver. */
+ isDisposed():boolean{return this.disposed;}
  /** Ensure completion cannot paint on an unmounted view. */
  dispose():void{
   if(this.disposed)return;this.disposed=true;this.stopFrame();this.active=null;

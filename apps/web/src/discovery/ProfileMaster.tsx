@@ -13,14 +13,20 @@ import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewp
 import {GeometryMotion} from "./geometry-motion";
 import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
 import {GestureArbiter,fractionalTrack,preservePhotoId} from "../ui/gesture-arbiter";
+import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import "./profile-master.css";
 
 type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
+export type ProfileRouteMotionHandle={
+ suspendForRoute:()=>void;rollbackRoute:()=>void;commitRouteClose:()=>void;
+ suspendForBackground:()=>void;resumeFromBackground:()=>void;
+};
 type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
  registerRouteGestureCancel?:(handler:(()=>void)|null)=>void;
+ registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
  gestureArbiter?:GestureArbiter;
 };
 const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["photos","Фото",Images],
@@ -69,7 +75,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel,gestureArbiter}:Props){
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel,registerRouteMotion,gestureArbiter}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
@@ -111,6 +117,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const sheetRevision=useRef(0),tabsRevision=useRef(0);
  const sheetIntent=useRef<boolean|null>(null),sheetRootTop=useRef<number|null>(null);
  const sheetDragActive=useRef(false);
+ const measureSheetRef=useRef<()=>void>(()=>{}),measureTabsRef=useRef<()=>void>(()=>{});
+ const routeFrozen=useRef<{sheet:number;sheetTarget:boolean;sheetSettling:boolean;
+   tabs:number;tabsTarget:number;tabsSettling:boolean}|null>(null);
+ const routeTerminal=useRef(false);
  const motionCallback=useRef(onMotionProgress);
  motionCallback.current=onMotionProgress;
  const motionActive=active&&!preview;
@@ -164,12 +174,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   });
  },[motionActive]);
  const ensureSheetRunner=()=>{
-  if(!sheetRunner.current)sheetRunner.current=new GeometryMotion("sheet",()=>performance.now(),
+  if(!sheetRunner.current||sheetRunner.current.isDisposed())sheetRunner.current=new GeometryMotion("sheet",()=>performance.now(),
    cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),sheetY.current,sheetRevision.current);
   return sheetRunner.current;
  };
  const ensureTabsRunner=()=>{
-  if(!tabsRunner.current)tabsRunner.current=new GeometryMotion("tabs",()=>performance.now(),
+  if(!tabsRunner.current||tabsRunner.current.isDisposed())tabsRunner.current=new GeometryMotion("tabs",()=>performance.now(),
    cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),
    (pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current),tabsRevision.current);
   return tabsRunner.current;
@@ -240,7 +250,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    // Rebase active touch anchors without cancelling the user's finger session.
    rebaseSheetGesture.current(next,sheetRevision.current);
    const intent=sheetIntent.current;
-   if(driver&&phase!=="idle"&&intent!==null){
+   if(driver&&phase!=="idle"&&intent!==null&&!routeFrozen.current){
     const destination=intent?top:bottom;
     if(phase==="suspended")driver.reveal(sheetRevision.current,next,destination);
     else driver.rebase(sheetRevision.current,next,destination);
@@ -248,6 +258,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    paintSheet(next,true);
    // Physical state is committed by settle completion, never merely by a target.
   };
+  measureSheetRef.current=measure;
   measure();
   const ro=new ResizeObserver(measure);
   if(hero.current)ro.observe(hero.current);
@@ -265,7 +276,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   webApp?.onEvent?.("contentSafeAreaChanged",measure);
   webApp?.onEvent?.("viewportChanged",measure);
   return ()=>{
-   sheetRunner.current?.suspend();ro.disconnect();detachViewport();
+   measureSheetRef.current=()=>{};sheetRunner.current?.suspend();ro.disconnect();detachViewport();
    window.removeEventListener("resize",measure);
    visual?.removeEventListener("resize",measure);
    visual?.removeEventListener("scroll",measure);
@@ -425,12 +436,13 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    }
    // Do not paintTabs(selected): that destroys fractional position mid-settle.
    const destination=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
-   if(runner&&phase!=="idle"){
+   if(runner&&phase!=="idle"&&!routeFrozen.current){
     if(phase==="suspended")runner.reveal(tabsRevision.current,fraction,destination);
     else runner.rebase(tabsRevision.current,fraction,destination);
    }
    paintTabs(fraction);
   };
+  measureTabsRef.current=measure;
   measure();
   const ro=new ResizeObserver(measure);
   ro.observe(bar);
@@ -438,7 +450,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   let cancelled=false;
   void document.fonts.ready.then(()=>{if(!cancelled)measure();});
   const detachViewport=bindMotionViewport(window,()=>measure());
-  return ()=>{cancelled=true;ro.disconnect();detachViewport();tabsRunner.current?.suspend();};
+  return ()=>{cancelled=true;measureTabsRef.current=()=>{};ro.disconnect();detachViewport();tabsRunner.current?.suspend();};
  },[motionActive,paintTabs]);
  const chooseTab=useCallback((newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
@@ -530,6 +542,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   };
   cancelSheetGesture.current=abort;
   const start=(e:TouchEvent)=>{
+   if(routeFrozen.current||routeTerminal.current)return;
    if(e.touches.length!==1){gestures.secondFinger();cancel();return;}
    const target=e.target as HTMLElement;
    if(target.closest(".pm-tabs"))return;
@@ -640,6 +653,83 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    pane.removeEventListener("touchcancel",cancel);
   };
  },[motionActive,paintSheet,paintTabs,settleSheet,chooseTab,gestures]);
+ // REM-02D: preserve actual fractional positions and semantic destinations.
+ const suspendForRoute=()=>{
+  if(routeTerminal.current||routeFrozen.current)return;
+  const sheetState=sheetRunner.current?.snapshot(),tabsState=tabsRunner.current?.snapshot();
+  const sheetValue=sheetState?.phase==="settling"?sheetRunner.current!.sample():sheetY.current;
+  const tabsValue=tabsState?.phase==="settling"?tabsRunner.current!.sample():tabLastPosition.current;
+  routeFrozen.current={
+   sheet:sheetValue,sheetTarget:sheetIntent.current??collapsedRef.current,
+   sheetSettling:sheetState?.phase==="settling"||sheetState?.phase==="suspended",
+   tabs:tabsValue,tabsTarget:tabs.findIndex(v=>v[0]===tabSelectionRef.current),
+   tabsSettling:tabsState?.phase==="settling"||tabsState?.phase==="suspended"
+  };
+  cancelSheetGesture.current();
+  const photoId=photoSwipe.current?.id,tabId=tabSwipe.current?.id;
+  photoSwipe.current=null;tabSwipe.current=null;sheetDragActive.current=false;
+  // Lost native cancel events must not leave hidden pointer capture behind.
+  try{if(photoId!==undefined&&hero.current?.hasPointerCapture(photoId))
+   hero.current.releasePointerCapture(photoId);}catch{/* WebView capture may already be gone */}
+  try{if(tabId!==undefined&&pages.current?.hasPointerCapture(tabId))
+   pages.current.releasePointerCapture(tabId);}catch{/* implicit release */}
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
+  sheetRunner.current?.suspend();tabsRunner.current?.suspend();
+  paintSheet(sheetValue,true);paintTabs(tabsValue);
+ };
+ const rollbackRoute=()=>{
+  if(routeTerminal.current)return;
+  const saved=routeFrozen.current;if(!saved)return;
+  measureSheetRef.current();measureTabsRef.current();
+  routeFrozen.current=null;
+  const sheetDriver=sheetRunner.current;
+  if(saved.sheetSettling&&sheetDriver?.snapshot().phase==="suspended"){
+   sheetRevision.current=Math.max(sheetRevision.current,sheetDriver.snapshot().revision+1);
+   sheetDriver.reveal(sheetRevision.current,sheetY.current,
+    saved.sheetTarget?collapsedY.current:expandedY.current);
+  }else if(Math.abs(sheetY.current-(saved.sheetTarget?collapsedY.current:expandedY.current))>.5)
+   settleSheet(saved.sheetTarget);
+  const tabDriver=tabsRunner.current;
+  if(saved.tabsSettling&&tabDriver?.snapshot().phase==="suspended"){
+   tabsRevision.current=Math.max(tabsRevision.current,tabDriver.snapshot().revision+1);
+   tabDriver.reveal(tabsRevision.current,tabLastPosition.current,saved.tabsTarget);
+  }else if(Math.abs(tabLastPosition.current-saved.tabsTarget)>.001)
+   chooseTab(saved.tabsTarget);
+ };
+ const commitRouteClose=()=>{
+  if(routeTerminal.current)return;
+  routeTerminal.current=true;routeFrozen.current=null;
+  cancelSheetGesture.current();photoSwipe.current=null;tabSwipe.current=null;
+  if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
+  stopSheet.current();stopTabs.current();
+  sheetRunner.current?.dispose();tabsRunner.current?.dispose();
+ };
+ const suspendForBackground=()=>{if(!routeTerminal.current){suspendForRoute();gestures.cancel();}};
+ const resumeFromBackground=()=>{if(!routeTerminal.current)rollbackRoute();};
+ const routeMotionHandle=useRef<ProfileRouteMotionHandle>({
+  suspendForRoute:()=>{},rollbackRoute:()=>{},commitRouteClose:()=>{},
+  suspendForBackground:()=>{},resumeFromBackground:()=>{}
+ });
+ routeMotionHandle.current={suspendForRoute,rollbackRoute,commitRouteClose,
+  suspendForBackground,resumeFromBackground};
+ useLayoutEffect(()=>{
+  if(!registerRouteMotion)return;
+  const handle:ProfileRouteMotionHandle={
+   suspendForRoute:()=>routeMotionHandle.current.suspendForRoute(),
+   rollbackRoute:()=>routeMotionHandle.current.rollbackRoute(),
+   commitRouteClose:()=>routeMotionHandle.current.commitRouteClose(),
+   suspendForBackground:()=>routeMotionHandle.current.suspendForBackground(),
+   resumeFromBackground:()=>routeMotionHandle.current.resumeFromBackground()
+  };
+  registerRouteMotion(handle);
+  return ()=>registerRouteMotion(null);
+ },[registerRouteMotion]);
+ useEffect(()=>{
+  if(gestureArbiter)return;
+  return bindMotionLifecycle(()=>{
+   routeMotionHandle.current.suspendForBackground();
+  },()=>routeMotionHandle.current.resumeFromBackground());
+ },[gestureArbiter]);
  useLayoutEffect(()=>{
   if(!registerRouteGestureCancel)return;
   const cancel=()=>{

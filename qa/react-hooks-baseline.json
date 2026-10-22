@@ -21,13 +21,6 @@
       "line": 84,
       "column": 4,
       "message": "React Hook useEffect has a missing dependency: 'requestClose'. Either include it or remove the dependency array."
-    },
-    {
-      "file": "apps/web/src/discovery/VisitorProfileRoute.tsx",
-      "rule": "react-hooks/exhaustive-deps",
-      "line": 131,
-      "column": 4,
-      "message": "React Hook useLayoutEffect has a missing dependency: 'moveTo'. Either include it or remove the dependency array."
     }
   ]
 }

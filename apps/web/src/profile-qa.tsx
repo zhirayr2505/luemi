@@ -1,5 +1,5 @@
 /** Developer-only Vite HTML entry. Not referenced by production index.html. */
-import React,{useState} from "react";
+import React,{useCallback,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 import {newDraft} from "./registration/model";
@@ -22,10 +22,15 @@ const qaPhotos=[
 ];
 function VisualQA(){
  const [theme,setTheme]=useState<"light"|"dark">("light");
+ // Developer fixture: exercise the exact DiscoveryApp callback registered by
+ // Telegram BackButton without requiring a production WebApp mock.
+ const registerBack=useCallback((handler:()=>void)=>{
+  (window as Window & {__luemiQaBack?:()=>void}).__luemiQaBack=handler;
+ },[]);
  return <main className="luemi-shell" data-theme={theme} data-phase="form">
   <DiscoveryApp draft={draft} photos={qaPhotos}
    theme={theme} onTheme={()=>setTheme(value=>value==="light"?"dark":"light")}
-   onExit={()=>{}} registerBack={()=>{}}/>
+   onExit={()=>{}} registerBack={registerBack}/>
  </main>;
 }
 createRoot(document.getElementById("root")!).render(
