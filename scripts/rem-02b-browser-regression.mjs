@@ -37,7 +37,7 @@ try{
   await page.setViewportSize({width:393,height:852});
   await sleep(90);
   if((await geometry()).remaining==="collapsed"){
-   await page.getByRole("button",{name:"Развернуть анкету"}).click();
+   await page.getByRole("button",{name:"Раскрыть фото профиля"}).click();
    await sleep(385);
   }
   await page.getByRole("button",{name:"Развернуть анкету"}).click();
@@ -55,7 +55,7 @@ try{
  await page.setViewportSize({width:393,height:852});await sleep(120);
  const collapsed=await geometry();
  assert.ok(Math.abs(collapsed.sheetPosition-collapsed.collapsed)<=1);
- await page.getByRole("button",{name:"Потянуть панель вниз"}).click();
+ await page.getByRole("button",{name:"Раскрыть фото профиля"}).click();
  await sleep(85);
  await page.setViewportSize({width:393,height:715});
  await sleep(420);
