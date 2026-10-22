@@ -46,7 +46,10 @@ function MediaQA(){
   change:(operation:string)=>setItems(current=>{
    if(operation==="reset")return [...fixturePhotos];
    if(operation==="reorder")return [...current].reverse();
-   if(operation==="remove-current"&&openId)return current.filter(p=>p.id!==openId);
+   if(operation==="remove-current"){
+    const visibleId=document.querySelector<HTMLImageElement>(".pm-viewer-image")?.dataset.photoId;
+    return current.filter(p=>p.id!==visibleId);
+   }
    if(operation==="remove-last")return current.slice(0,-1);
    if(operation==="remove-all")return [];
    if(operation==="revoke-beta")return current.map(p=>p.id==="qa-beta"?{...p,status:"hidden" as const}:p);
