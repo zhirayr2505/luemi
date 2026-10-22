@@ -75,9 +75,11 @@ assert.ok(viewer.includes("canMakeMain(view,show.id)")&&
 assert.ok(discovery.includes('<ProfileMaster data={ownProfile} mode="owner"')&&
  discovery.includes("<VisitorProfileRoute")&&visitorRoute.includes('<ProfileMaster data={data} mode="visitor"'),
  "both profile destinations use one shared implementation");
-assert.ok(app.includes('photos={readyPhotos}')&&
- app.includes('photos.filter(p=>p.status==="ready"||p.status==="success")'),
- "only prepared local photos enter authenticated owner profiles");
+assert.ok(app.includes('photos={readyPhotos}')&&app.includes('readyRegistrationPhotos(photos)')&&
+ read("apps/web/src/registration/Preview.tsx").includes('readyRegistrationPhotos(photos)')&&
+ read("apps/web/src/registration/Preview.tsx").includes('mode="local-self-preview"')&&
+ !read("apps/web/src/registration/Preview.tsx").includes("<PhotoCarousel"),
+ "owner and step-8 share the exact ready-only photo adapter and authoritative ProfileMaster renderer");
 assert.ok(css.includes("@media(prefers-reduced-motion:reduce)")&&
  css.includes(".pm-tab-ink")&&css.includes(".pm-photo-tile"),
  "motion fallback, accessible tab bar and 3-column gallery exist");
