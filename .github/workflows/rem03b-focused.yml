@@ -27,7 +27,7 @@ jobs:
       - name: Build shared contracts
         run: npm run build -w @luemi/contracts
       - name: Browser dependencies
-        run: npx --no-install playwright install chromium --with-deps
+        run: npx --no-install playwright install chromium
       - name: Focused REM-03B physical DOM/lifecycle regression (additional, not a substitute for full behavioral suite)
         shell: bash
         run: |
