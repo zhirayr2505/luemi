@@ -19,7 +19,7 @@ type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:
  registerBack?:(handler:(()=>boolean)|null)=>void};
 type Gesture={id:number;x:number;y:number;startX:number;startY:number;time:number;
  axis:""|"x"|"y";origin:number;serial:number|null;startPhotoId:string|null;
- pinch:boolean;samples:{x:number;t:number}[];interruptedTarget:number|null};
+ pinch:boolean;captured:boolean;samples:{x:number;t:number}[];interruptedTarget:number|null};
 const duration=240;
 const easing=[.2,.8,.2,1] as const;
 const scheduler={frame:(cb:()=>void)=>requestAnimationFrame(cb),cancelFrame:(id:number)=>cancelAnimationFrame(id)};
@@ -352,7 +352,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    const serial=gestureArbiter.current?.begin("pointer",e.pointerId,"hero")??null;
    gesture.current={id:e.pointerId,x:e.clientX,y:e.clientY,
     startX:e.clientX,startY:e.clientY,time:performance.now(),axis:"",
-    origin:frozen,serial,startPhotoId:latest.current.photoId,pinch:false,
+    origin:frozen,serial,startPhotoId:latest.current.photoId,pinch:false,captured:false,
     samples:[{x:e.clientX,t:performance.now()}],
     interruptedTarget:snap?.phase==="settling"?snap.target:null};
   }else if(pointer.current.size===2){
@@ -387,11 +387,13 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    if(Math.max(Math.abs(dx),Math.abs(dy))<9)return;
    g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";
    if(g.serial!==null)gestureArbiter.current?.claim("hero",g.serial);
+   // One capture per session: repeated capture calls can race implicit
+   // release and UA pointercancel while the next finger session begins.
+   try{e.currentTarget.setPointerCapture(e.pointerId);g.captured=true;}catch{/* WebView fallback */}
    phase.current=g.axis==="x"?"draggingX":"draggingY";
    if(g.axis==="y"&&Math.abs(trackX.current)>.1)settle(0);
   }
   if(e.cancelable)e.preventDefault();
-  try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* Android WebView fallback */}
   if(g.axis==="x"){
    // No global 0.55 factor; CSS-pixel equality until first/last edge overscroll.
    const hasPrev=latest.current.index>0,hasNext=latest.current.index<latest.current.photos.length-1;
