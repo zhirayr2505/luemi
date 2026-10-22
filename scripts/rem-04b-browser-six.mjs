@@ -192,6 +192,48 @@ try{
    "all mounted blur media retain the correct photoId");
  }
  console.log("REM04B_SIX_CARDINALITY_PASS real 1/2/3/4/6-photo ProfileMaster modes");
+ // The phase-following blur cache is bounded on network and decode failures:
+ // no outgoing resource or incorrect photo ID can survive its terminal frame.
+ await page.route("**/__rem04b-broken.jpg",route=>route.fulfill({status:404,body:"broken"}));
+ await page.goto("http://127.0.0.1:5173/rem-01e-qa.html?mode=local&kind=broken",{waitUntil:"domcontentloaded"});
+ await page.locator(".pm-shell .pm-photo-slide").first().waitFor({state:"attached"});
+ await page.getByRole("button",{name:"Развернуть анкету"}).click();await pause(425);
+ await dot(2);await pause(350);
+ let broken=await snapshot();
+ assert.equal(broken.pairs[2].id,"photo-2");
+ assert.equal(broken.pairs[2].blurId,"photo-2");
+ assert.equal(broken.pairs[2].clearDecoded,false,"broken source cannot masquerade as successfully decoded");
+ assert.equal(broken.pairs[2].blurDecoded,false,"broken blur cannot claim ready pixels");
+ await dot(5);await pause(370);
+ broken=await snapshot();
+ assert.ok(!broken.pairs[2].blurExists,"broken temporary resource must release once no longer needed");
+ assert.ok(broken.activeBlur<=3);
+ console.log("REM04B_SIX_BROKEN_PASS failed media never substitutes another photo, and peers release");
+
+ let delayedRequests=0;
+ await page.route("**/__rem04b-delayed.svg",async route=>{
+  delayedRequests++;await pause(165);
+  await route.fulfill({status:200,contentType:"image/svg+xml",
+   body:'<svg xmlns="http://www.w3.org/2000/svg" width="300" height="440"><rect width="300" height="440" fill="#86b9db"/></svg>'});
+ });
+ await page.goto("http://127.0.0.1:5173/rem-01e-qa.html?mode=local&kind=delayed",{waitUntil:"domcontentloaded"});
+ await page.locator(".pm-shell .pm-photo-slide").first().waitFor({state:"attached"});
+ await page.getByRole("button",{name:"Развернуть анкету"}).click();await pause(425);
+ await dot(5);await pause(400);
+ const cold=await snapshot();
+ assert.ok(cold.activeBlur<=3);
+ assert.ok(!cold.pairs[2].blurExists,"temporarily mounted slow peer releases after the far settle");
+ assert.ok(cold.pairs.filter(p=>p.blurExists).every(p=>p.id===p.blurId),
+  "slow loading must not insert another photo into the blur window");
+ await dot(2);await pause(350);
+ await page.waitForFunction(()=>{
+  const e=document.querySelector(".pm-shell .pm-photo-slide:nth-child(3) img");
+  return !!e&&e.complete&&e.naturalWidth>0;
+ },null,{timeout:2000});
+ const readySlow=await snapshot();
+ assert.equal(readySlow.pairs[2].blurDecoded,true);
+ assert.ok(delayedRequests>=1,"actual delayed media request must have occurred");
+ console.log("REM04B_SIX_DELAYED_PASS slow media eventually decodes, no wrong ID, limit 3, cleanup after settle");
  const final=await snapshot();
  writeFileSync(dir+"/summary.json",JSON.stringify({records:records.map(r=>({label:r.label,frames:r.frames,issueCount:r.issueCount,issues:r.issues,maxDrift:r.maxDrift,peakBlur:r.peakBlur})),final,errors},null,2));
  const issueCount=records.reduce((n,r)=>n+r.issueCount,0);
