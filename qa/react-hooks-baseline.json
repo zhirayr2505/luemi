@@ -28,13 +28,6 @@
       "line": 112,
       "column": 4,
       "message": "React Hook useLayoutEffect has a missing dependency: 'moveTo'. Either include it or remove the dependency array."
-    },
-    {
-      "file": "apps/web/src/registration/PhotoSorter.tsx",
-      "rule": "react-hooks/exhaustive-deps",
-      "line": 51,
-      "column": 5,
-      "message": "React Hook useLayoutEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked."
     }
   ]
 }
