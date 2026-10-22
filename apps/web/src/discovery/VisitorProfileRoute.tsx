@@ -270,15 +270,6 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   const dt=Math.max(1,performance.now()-g.started);
   const x=currentX();
   const willClose=!cancelled&&(x>width()*.32||(dx>35&&dx/dt>.58));
-  // Temporary DOM-only diagnostic for real Chromium interrupted-close trace.
-  if(route.current)route.current.dataset.rem02dLastEnd=JSON.stringify({
-   cancelled,dx,dt,x,width:width(),willClose,source:g.source,
-   eventType:e.type,pointerType:e.pointerType,pointerId:e.pointerId,
-   target:(e.target as HTMLElement)?.className,currentTarget:e.currentTarget?.className,
-   trusted:e.nativeEvent.isTrusted,targetTag:(e.target as HTMLElement)?.tagName,
-   clientX:e.clientX,clientY:e.clientY,
-   routeHasCapture:route.current?.hasPointerCapture(e.pointerId)
-  });
   if(willClose)close();
   else rollback();
  };
