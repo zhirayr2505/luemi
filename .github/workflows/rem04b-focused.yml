@@ -99,6 +99,7 @@ jobs:
             exit 1
           fi
           node scripts/rem-04b-browser-cost.mjs
+          node scripts/rem-04b-browser-six-cost.mjs
       - name: Preserve same-environment comparison screenshots, traces, metrics
         if: always()
         uses: actions/upload-artifact@v4
@@ -106,6 +107,7 @@ jobs:
           name: rem-04b-compare-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             qa-artifacts/rem-04b/compare/**
+            qa-artifacts/rem-04b/compare-six/**
             /tmp/luemi-rem04b-accepted-vite.log
             /tmp/luemi-rem04b-current-vite.log
           if-no-files-found: warn
