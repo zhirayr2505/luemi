@@ -74,7 +74,7 @@ function png(data:DataView):PhotoHeader{
 function webp(data:DataView):PhotoHeader{
  if(data.byteLength<25||u32(data,0,true)!==0x46464952||u32(data,8)!==0x57454250)throw corrupt();
  const riffSize=u32(data,4,true);
- if(riffSize<22||riffSize+8<30)throw corrupt();
+ if(riffSize<17||riffSize+8<25)throw corrupt();
  const kind=u32(data,12,true),size=u32(data,16,true);
  if(size>riffSize-12)throw corrupt();
  let width=0,height=0;
