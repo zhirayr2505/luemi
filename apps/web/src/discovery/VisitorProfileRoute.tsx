@@ -95,7 +95,7 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const full=target===0?OPEN_DURATION:CLOSE_DURATION;
   const distance=Math.abs(target-start);
-  const duration=reduce||distance<.5?0:Math.max(85,Math.round(full*distance/Math.max(1,width())));
+  const duration=reduce?0:Math.max(85,Math.round(full*distance/Math.max(1,width())));
   if(paused.current)return;
   if(!duration){setX(target);finish();return;}
   el.style.transition="transform "+duration+"ms "+EASING;
