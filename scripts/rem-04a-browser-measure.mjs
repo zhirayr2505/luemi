@@ -44,6 +44,14 @@ try{
  const repeated=await sample(()=>window.__luemiQaPerf.bump());
  result.profile={unrelated,theme,repeated};
  console.log("REM04A_PROFILE_MEASURE "+JSON.stringify(result.profile));
+ if(!baseline){
+  assert.equal(unrelated.commits.VisitorProfileRoute,0,"unrelated parent rerender must not rerender visitor route");
+  assert.equal(unrelated.commits.ProfileMaster,0,"unrelated parent rerender must not rerender memoized profile");
+  assert.equal(unrelated.commits.PhotoViewer,0,"unrelated parent rerender must not rerender existing viewer");
+  assert.equal(repeated.commits.VisitorProfileRoute,0,"second unchanged rerender likewise must bail out");
+  assert.equal(theme.commits.VisitorProfileRoute,1,"real theme change must still reach route");
+  assert.equal(unrelated.mediaPreloadAttempts,0,"no unnecessary preload due to parent change");
+ }
  assert.equal(unrelated.photoId,theme.photoId);
  assert.equal(theme.photoId,repeated.photoId);
  await page.close();
