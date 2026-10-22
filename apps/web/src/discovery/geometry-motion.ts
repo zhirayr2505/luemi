@@ -24,7 +24,7 @@ export class GeometryMotion {
  private frozen:{progress:number;remaining:number;duration:number;paint:(n:number)=>void;commit:()=>void}|null=null;
  private current:number;private revision:number;
  private disposed=false;
- constructor(private name:"sheet"|"tabs",private clock:()=>number,
+ constructor(private name:"sheet"|"tabs"|"hero",private clock:()=>number,
   private raf:(cb:(time:number)=>void)=>number,private cancelRaf:(id:number)=>void,
   value:number,revision=0){
   this.current=value;this.revision=revision;
