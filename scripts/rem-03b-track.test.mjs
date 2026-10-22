@@ -38,4 +38,6 @@ assert.equal(mod.recenterOffset(393,-1,393),0);
 const trace=[{x:0,t:0},{x:60,t:150},{x:60,t:200},{x:35,t:230},{x:5,t:245}];
 assert.ok(mod.recentVelocity(trace)<-.52,"flick samples recent direction, not long-start average");
 assert.equal(mod.recentVelocity([{x:0,t:1}]),0);
+assert.equal(mod.recentVelocity([{x:0,t:0},{x:60,t:20},{x:60,t:200}]),0,
+ "a held-finger release after 80ms cannot inherit stale flick velocity");
 console.log("REM03B_UNIT_PASS 0/1/2/6 slots, 1:1 translation, bounded edge resistance, velocity sampling, 17%/.52 threshold, recenter and resize");
