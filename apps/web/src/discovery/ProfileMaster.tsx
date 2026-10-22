@@ -150,7 +150,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const blurWindowAt=(position:number,toward:number):number[]=>{
   const f=Math.max(0,Math.min(photos.length-1,position));
   const left=Math.floor(f),right=Math.ceil(f),dir=toward<f?-1:1;
-  const candidates=[left,right,dir>0?right+1:left-1,dir>0?left-1:right+1];
+  const candidates=[left,right,dir>0?right+1:left-1,dir>0?right+2:left-2,dir>0?left-1:right+1];
   const result:number[]=[];
   for(const n of candidates)if(n>=0&&n<photos.length&&!result.includes(n)&&result.length<3)
    result.push(n);
