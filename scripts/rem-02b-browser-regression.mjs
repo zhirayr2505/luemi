@@ -91,6 +91,55 @@ try{
  assert.equal(reversed.selected,"Фото");
  assert.ok(Math.abs(reversed.pagesLeft-2*reversed.pageWidth)<=1);
  pass("rapid settle reversal does not restart stale tab target");
+ // Actual pointer input: resize while the horizontal tab swipe is held.
+ await page.getByRole("tab",{name:"О себе",exact:true}).click();await sleep(360);
+ const area=await page.locator(".pm-inline .pm-pages").boundingBox();
+ assert.ok(area&&area.height>10,"tab pager must be physically measurable");
+ const px=area.x+area.width*.62,py=area.y+Math.min(80,area.height*.5);
+ await page.mouse.move(px,py);await page.mouse.down();
+ await page.mouse.move(px-105,py,{steps:7});await sleep(55);
+ const beforePointer=await geometry();
+ assert.ok(beforePointer.fraction>.04&&beforePointer.fraction<.9,
+  "pointer actually drags fractional tab under finger");
+ await page.setViewportSize({width:460,height:852});await sleep(65);
+ const afterPointer=await geometry();
+ assert.ok(Math.abs(afterPointer.fraction-beforePointer.fraction)*afterPointer.pageWidth<=1,
+  "fraction must be continuous within one CSS pixel during width change "+JSON.stringify({beforePointer,afterPointer}));
+ await page.mouse.move(px-140,py,{steps:4});await page.mouse.up();await sleep(370);
+ const pointerFinal=await geometry();
+ assert.equal(pointerFinal.selected,"Блики");
+ assert.ok(Math.abs(pointerFinal.pagesLeft-pointerFinal.pageWidth)<=1);
+ pass("pointer dragging preserves fractional location at width revision, commits new tab ≤1px");
+ // Native touch: preserve sheet absolute position during height-only resize.
+ const identity=await page.locator(".pm-inline .pm-identity").boundingBox();
+ assert.ok(identity&&identity.height>25);
+ const tx=identity.x+identity.width*.45,ty=identity.y+identity.height*.45;
+ const touch=await context.newCDPSession(page);
+ try{
+  const initial=await geometry();
+  await touch.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:tx,y:ty}]});
+  await touch.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:tx,y:ty-115}]});
+  await sleep(65);
+  const dragged=await geometry();
+  assert.ok(dragged.sheetPosition<initial.sheetPosition-5,"native touch must actually drag sheet");
+  await page.setViewportSize({width:460,height:790});await sleep(65);
+  const rebased=await geometry();
+  assert.ok(Math.abs(dragged.sheetPosition-rebased.sheetPosition)<=1,
+   "sheet should remain under finger across resize (≤1px) "+JSON.stringify({dragged,rebased}));
+  await touch.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:tx,y:ty-145}]});
+  await sleep(40);
+  const continued=await geometry();
+  assert.ok(continued.sheetPosition<rebased.sheetPosition-12,
+   "native touch must continue from new anchor without old-coordinate snap");
+  await touch.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ }finally{await touch.detach()}
+ await sleep(435);
+ const touchDone=await geometry();
+ assert.equal(touchDone.remaining,"collapsed");
+ assert.ok(Math.abs(touchDone.sheetPosition-touchDone.collapsed)<=1);
+ await page.getByRole("button",{name:"Раскрыть фото профиля"}).click();
+ await sleep(385);
+ pass("real native touch drag+height change reanchors finger, ends at ≤1px endpoint");
  // Zero-size hidden owner must keep unspent animation time and resume on show.
  await page.getByRole("button",{name:"Развернуть анкету"}).click();
  await sleep(82);
