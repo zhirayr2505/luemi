@@ -48,11 +48,16 @@ const drag=async(delta)=>{
  return {x,y,initial,points};
 };
 const settle=async(id)=>{
- await ready(id);
- await page.waitForFunction(()=>{
-  const v=document.querySelector(".pm-viewer"),t=v?.querySelector(".pm-viewer-track");
-  return !!v&&!!t&&Math.abs(Number(t.dataset.offset))<.25;
- },null,{timeout:4000});
+ try{
+  await ready(id);
+  await page.waitForFunction(()=>{
+   const v=document.querySelector(".pm-viewer"),t=v?.querySelector(".pm-viewer-track");
+   return !!v&&!!t&&Math.abs(Number(t.dataset.offset))<.25;
+  },null,{timeout:4000});
+ }catch(error){
+  console.log("REM03B_SETTLE_DIAG",JSON.stringify({expected:id,state:await state(),errors}));
+  throw error;
+ }
 };
 try{
  await page.route("**/qa-media-cold.png",async route=>{
