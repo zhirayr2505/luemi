@@ -224,7 +224,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const clip=morphClip.current,pixels=morphImage.current;
   if(!clip||!pixels)return false;
   const candidate=getMorph(closing);
-  if(!candidate){clearMorph();return false;}
+  if(!candidate){morphCleanup.current();return false;}
   const {geometry:m,source:el}=candidate;
   pixels.src=el.currentSrc||el.src;
   // The source has already loaded; the shared decoded source is used only
@@ -244,6 +244,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   el.style.visibility="hidden";
   return true;
  };
+ const morphCleanup=useRef<()=>void>(()=>{});
+ morphCleanup.current=clearMorph;
  const stopSurface=(interrupted=true)=>{
   const layer=surface.current,outer=stage.current,owner=surfaceOwner.current;
   // Freeze actual on-screen matrix before cancelling the CSS transition.
@@ -278,7 +280,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    {left:0,top:0,width:window.innerWidth,height:window.innerHeight}):"inset(0px)";
   const completed=()=>{
    owner.finish(token,{paint:()=>{
-    clearMorph();
+    morphCleanup.current();
     if(closingPhase){phase.current="disposed";latest.current.onClose();}
     else if(!closing.current)phase.current="idle";
    }});
@@ -341,7 +343,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   surfaceHandler.current(terminal);
   const captureLossTimers=pendingCaptureLoss.current;
   return ()=>{
-   clearMorph();
+   morphCleanup.current();
    // Capture this exact timer map at effect setup; no stale ref cleanup and
    // no timer can terminate a later StrictMode viewer generation.
    for(const timer of captureLossTimers.values())clearTimeout(timer);
@@ -387,7 +389,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const detach=bindViewerViewport(root);
   return ()=>{
    detach();
-   clearMorph();
+   morphCleanup.current();
    // Closing the portal must restore the exact focus owner, with no document
    // scroll into view or route/profile navigation.
    const previous=openedBy.current;
@@ -423,7 +425,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   }
   priorSignature.current=signature;
   previousIds.current=photos.map(p=>p.id);
-  if(photoId!==committedPhotoId){clearMorph();sourceRef.current=null;setCommittedPhotoId(photoId);}
+  if(photoId!==committedPhotoId){morphCleanup.current();sourceRef.current=null;setCommittedPhotoId(photoId);}
  },[signature,photoId,committedPhotoId,photos]);
  useEffect(()=>{if(photoId===null)handlers.current.close(true);},[photoId,menu]);
  const decodedCallback=useCallback((id:string,key:string,ok:boolean)=>{
@@ -495,7 +497,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   lifecycleActions.current.cancel(false);
   // Background invalidates source hit-testing; unhide the miniature so the
   // retained profile never leaks a hidden original if this viewer is discarded.
-  clearMorph();
+  morphCleanup.current();
   const motion=runner.current;
   if(motion?.snapshot().phase==="settling")motion.suspend();
   const stageNode=stage.current,layer=surface.current;
@@ -524,7 +526,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    // One semantic commit per settle generation, after painting its endpoint.
    const valid=navigatePhoto(latest.current.photoId,latest.current.photos,{photoId:targetPhoto.id});
    if(!valid||valid!==targetPhoto.id){paintTrack(0);phase.current="idle";return;}
-   clearMorph();sourceRef.current=null;setMenu(false);setMessage("");commitCount.current++;
+   morphCleanup.current();sourceRef.current=null;setMenu(false);setMessage("");commitCount.current++;
    pendingCommit.current={id:targetPhoto.id,shift:target===-1?-1:1};
    setCommittedPhotoId(targetPhoto.id);
   },geometryRevision.current);
@@ -538,7 +540,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const nextIndex=photoIndex(selected.photos,target),shift=nextIndex-selected.index;
   if(Math.abs(shift)!==1){
    // Nonadjacent internal navigation is a non-animated, explicit rebase.
-   runner.current?.cancel();paintTrack(0);clearMorph();sourceRef.current=null;
+   runner.current?.cancel();paintTrack(0);morphCleanup.current();sourceRef.current=null;
    setMenu(false);setMessage("");setCommittedPhotoId(target);return true;
   }
   if(phase.current==="opening"){stopSurface();phase.current="idle";}
