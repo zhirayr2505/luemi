@@ -7,9 +7,9 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
  --glass-edge:rgba(255,255,255,.75);--line:rgba(148,109,165,.18);
  --lavender:#b88ce6;--pink:#eca8cf;--shadow:rgba(102,71,142,.11);
  --mist-lavender:rgba(213,184,247,.43);--mist-rose:rgba(246,186,217,.29);
- --top-safe:max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px),var(--tg-content-safe-area-inset-top,0px));
- --bottom-safe:max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px),var(--tg-content-safe-area-inset-bottom,0px));
- position:relative;isolation:isolate;width:100%;height:var(--app-height,100dvh);
+ --top-safe:max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px),var(--tg-content-safe-area-inset-top,0px),var(--viewport-safe-top,0px));
+ --bottom-safe:max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px),var(--tg-content-safe-area-inset-bottom,0px),var(--viewport-safe-bottom,0px));
+ position:relative;top:var(--viewport-offset-top,0px);isolation:isolate;width:100%;height:var(--app-height,100dvh);
  background:var(--bg);color:var(--ink);overflow:hidden;transition:background-color .22s,color .22s;
 }
 .luemi-shell[data-theme=dark]{
@@ -53,7 +53,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 @keyframes screen-exit{to{opacity:0;transform:translateY(-10px)}}
 /* Keep header and footer structurally outside the one scroll container. */
 .onboarding-screen{width:100%;height:100%;max-width:680px;margin:0 auto;display:flex;flex-direction:column;
- padding:calc(var(--top-safe) + 60px) 22px var(--bottom-safe);min-height:0;animation:screen-enter .32s ease both}
+ padding:calc(var(--top-safe) + 60px) 22px 0;min-height:0;animation:screen-enter .32s ease both}
 .onboard-brand{flex:none;margin:-14px 0 6px;padding:0 0 4px;position:relative;background:transparent}
 .onboard-wordmark{width:94px;height:43px;position:relative;display:flex;align-items:center}
 .onboard-logo{width:94px;height:auto;display:block;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(101,69,137,.15))}
@@ -64,7 +64,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .onboard-head h1{font-size:clamp(28px,7.1vw,39px);line-height:1.17;letter-spacing:-.044em;margin:0 0 7px}
 .onboard-head p{color:var(--subtle);font-size:14px;line-height:1.5;margin:0}
 .onboard-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:none;
- -webkit-overflow-scrolling:touch;padding:14px 7px 24px;margin-bottom:var(--keyboard-overlay,0px)}
+ -webkit-overflow-scrolling:touch;padding:14px 7px 24px}
 .onboard-body::-webkit-scrollbar{width:0}
 .form-stack{display:flex;flex-direction:column;gap:18px;min-height:min-content;padding:4px 0 26px}
 .form-stack>*{animation:block-enter .28s cubic-bezier(.2,.8,.3,1) both}
@@ -234,7 +234,14 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .disabled-submit{width:100%;min-height:53px;border:0;border-radius:18px;background:var(--panel);color:var(--subtle)}
 @media (max-height:680px){.onboarding-screen{padding-top:calc(var(--top-safe) + 78px)}.onboard-head p{display:none}
  .entry-state{padding-top:64px;padding-bottom:105px}.intro-mark{height:74px}.intro-cta{bottom:calc(16px + var(--bottom-safe))}}
-.luemi-shell[data-keyboard=open] .onboard-footer{display:none}
+/* LU-22: footer controls stay reachable even while an IME is visible.
+   The shell itself now fits the visual viewport; shrinking the body via
+   the old keyboard-overlay margin would deduct the keyboard twice. */
+.luemi-shell[data-viewport-compact="true"] .onboarding-screen{padding-top:calc(var(--top-safe) + 18px)}
+.luemi-shell[data-viewport-compact="true"] .onboard-head{margin-bottom:5px}
+.luemi-shell[data-viewport-compact="true"] .onboard-head p{display:none}
+.luemi-shell[data-viewport-compact="true"] .onboard-body{padding-top:6px;padding-bottom:9px}
+.luemi-shell[data-viewport-compact="true"] .onboard-footer{padding-top:6px;padding-bottom:max(8px,var(--bottom-safe))}
 .luemi-shell[data-keyboard=open] .selected-interests-floating{display:none}
 @media(min-width:640px){.onboarding-screen{padding-left:45px;padding-right:45px}.mosaic{grid-template-rows:repeat(3,120px)}}
 @supports not (backdrop-filter:blur(1px)){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{background:var(--bg)}}
