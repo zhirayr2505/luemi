@@ -120,11 +120,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const viewerBack=useRef<(()=>boolean)|null>(null);
  const tabSelectionRef=useRef<TabId>(tab);
  tabSelectionRef.current=tab;
- const setTransform=(idx:number,delta=0)=>{
+ const setTransform=useCallback((idx:number,delta=0)=>{
   motionAuthority.current.run("hero",PROFILE_MOTION_WRITER_TABLE.hero,()=>{
    if(photoTrack.current)photoTrack.current.style.transform=`translate3d(calc(-${idx*100}% + ${delta}px),0,0)`;
   });
- };
+ },[]);
  // The stationary viewport owns vertical scroll. The rounded surface itself
  // has no transform, animated top, paint containment or clipping ancestor.
  const paintSheet=useCallback((offset:number,dragging=false)=>{
@@ -276,6 +276,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  },[motionActive,paintSheet]);
  useEffect(()=>()=>{stopSheet.current();stopTabs.current();
   sheetRunner.current?.dispose();tabsRunner.current?.dispose();
+  localGestures.current.dispose();
   if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
  },[]);
  const closeTop=useCallback(():boolean=>{
@@ -379,7 +380,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    setTransform(index);
   }
   if(index!==activePhoto)setActivePhoto(index);
- },[photos,activePhoto]);
+ },[photos,activePhoto,setTransform]);
  const paintTabs=useCallback((i:number,dx=0)=>{
   motionAuthority.current.run("tabs",PROFILE_MOTION_WRITER_TABLE.tabs,()=>{
   const position=Math.max(0,Math.min(4,i-dx/Math.max(1,tabViewport.current)));
@@ -483,7 +484,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const pane=sheet.current;if(!motionActive||!pane)return;
   type SheetGesture={x:number;y:number;start:number;down:boolean;scrollTop:number;
    origin:number;axis:""|"x"|"y"|"native";inPages:boolean;index:number;
-   lastY:number;lastX:number;lastTime:number;velocity:number;blocking:boolean;revision:number};
+   lastY:number;lastX:number;lastTime:number;velocity:number;blocking:boolean;revision:number;
+   serial:number;claimed:boolean};
   let gesture:SheetGesture|null=null,frame:number|null=null;
   const flush=()=>{if(frame!==null){cancelAnimationFrame(frame);frame=null;}};
   const abort=()=>{
@@ -502,19 +504,24 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   };
   cancelSheetGesture.current=abort;
   const start=(e:TouchEvent)=>{
-   if(e.touches.length!==1){cancel();return;}
+   if(e.touches.length!==1){gestures.secondFinger();cancel();return;}
    const target=e.target as HTMLElement;
    if(target.closest(".pm-tabs"))return;
    const t=e.touches[0],inPages=!!target.closest(".pm-pages");
+   const serial=gestures.begin("touch",t.identifier,"sheet");
+   if(serial===null)return;
+   // One physical touch can be observed by pointer and native Touch adapters.
+   gestures.begin("touch",t.identifier,"tabs");
+   gestures.begin("touch",t.identifier,"native");
    const scrollTop=inPages?(contentPages.current[tabs.findIndex(v=>v[0]===tabSelectionRef.current)]?.scrollTop||0):0;
-   stopSheet.current();
-   sheetIntent.current=null;sheetDragActive.current=true;
-   if(inPages)stopTabs.current();
+   // A candidate does not stop an existing settle or the browser native scroll.
+   sheetDragActive.current=false;
    const now=performance.now();
    gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
     lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
-    revision:sheetRevision.current,blocking:!collapsedRef.current||scrollTop<=1};
+    revision:sheetRevision.current,blocking:!collapsedRef.current||scrollTop<=1,
+    serial,claimed:false};
    pane.removeEventListener("touchmove",move);
    pane.addEventListener("touchmove",move,{passive:!gesture.blocking});
   };
@@ -524,11 +531,20 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    g.lastX=t.clientX;
    if(!g.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
-    if(Math.abs(dx)>Math.abs(dy)*1.18)g.axis=g.inPages?"x":"native";
+    // If the listener started passive, it must NEVER take over native scroll
+    // mid-session, even when the diagonal later resembles a horizontal drag.
+    if(Math.abs(dx)>Math.abs(dy)*1.18)
+     g.axis=g.inPages&&g.blocking&&e.cancelable?"x":"native";
     else g.axis=(dy>0?(g.scrollTop<=1&&g.origin<=expandedY.current+28):
-    g.origin>collapsedY.current+.5)?"y":"native";
+     g.origin>collapsedY.current+.5)?"y":"native";
+    if(g.axis==="native"){gestures.nativeScroll(g.serial);return;}
+    const owner=g.axis==="x"?"tabs":"sheet";
+    if(!gestures.claim(owner,g.serial)){g.axis="native";return;}
+    g.claimed=true;
+    if(g.axis==="x")stopTabs.current();
+    else {stopSheet.current();sheetIntent.current=null;sheetDragActive.current=true;}
    }
-   if(g.axis==="native")return;
+   if(g.axis==="native"||!gestures.owns(g.axis==="x"?"tabs":"sheet",g.serial))return;
    if(g.blocking&&e.cancelable)e.preventDefault();
    const now=performance.now(),dt=now-g.lastTime;
    if(dt>0){g.velocity=(t.clientY-g.lastY)/dt;g.lastTime=now;}
@@ -537,7 +553,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const rev=g.revision;
    frame=requestAnimationFrame(()=>{
     frame=null;
-    if(gesture!==g||rev!==g.revision)return;
+    if(gesture!==g||rev!==g.revision||!gestures.owns(g.axis==="x"?"tabs":"sheet",g.serial))return;
     if(g.axis==="x")paintTabs(g.index,dx);
     else {
      const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
@@ -548,14 +564,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   };
   const finish=(e:TouchEvent,cancelled:boolean)=>{
    const g=gesture;abort();if(!g)return;
+   if(g.claimed)gestures.finish(g.axis==="x"?"tabs":"sheet",g.serial);
+   else if(g.axis==="native")gestures.finish("native",g.serial);
+   else gestures.finishCandidate(g.serial);
    const t=e.changedTouches[0];if(!t)return;
    const dx=t.clientX-g.x,dy=t.clientY-g.y;
-   if(g.axis==="x"){
+   if(g.axis==="x"&&g.claimed){
     const dt=Math.max(1,performance.now()-g.start);
     const next=!cancelled&&(Math.abs(dx)>tabViewport.current*.17||Math.abs(dx)/dt>.52)?
      Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
     clickBlocked.current=performance.now()+260;chooseTab(next);
-   }else if(g.axis==="y"){
+   }else if(g.axis==="y"&&g.claimed){
     if(!cancelled){
       const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
       paintSheet(raw>expandedY.current?
@@ -579,8 +598,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const end=(e:TouchEvent)=>finish(e,false);
   const cancel=()=>{
    const g=gesture;abort();if(!g)return;
-   if(g.axis==="x")chooseTab(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
-   else settleSheet(g.down);
+   if(g.claimed)gestures.finish(g.axis==="x"?"tabs":"sheet",g.serial);
+   else if(g.axis==="native")gestures.finish("native",g.serial);
+   else gestures.finishCandidate(g.serial);
+   if(g.axis==="x"&&g.claimed)chooseTab(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
+   else if(g.axis==="y"&&g.claimed)settleSheet(g.down);
   };
   pane.addEventListener("touchstart",start,{passive:true});
   pane.addEventListener("touchend",end,{passive:true});
@@ -591,7 +613,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    pane.removeEventListener("touchstart",start);pane.removeEventListener("touchend",end);
    pane.removeEventListener("touchcancel",cancel);
   };
- },[motionActive,paintSheet,paintTabs,settleSheet,chooseTab]);
+ },[motionActive,paintSheet,paintTabs,settleSheet,chooseTab,gestures]);
  useLayoutEffect(()=>{
   if(!registerRouteGestureCancel)return;
   const cancel=()=>{
