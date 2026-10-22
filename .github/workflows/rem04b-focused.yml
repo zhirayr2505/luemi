@@ -1,0 +1,52 @@
+name: LUEMI REM-04B focused hero and underlay QA
+on:
+  push:
+    branches:
+      - remediation/rem-04b-hero-blur-underlay-20261022
+  pull_request:
+    branches:
+      - remediation/rem-04a-react-startup-20261022
+jobs:
+  rem04b-chromium:
+    name: Focused real Chromium visual layers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Install unchanged lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Build shared contracts
+        run: npm run build -w @luemi/contracts
+      - name: Measure real browser matrices, photo identity, hidden descendants and regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-rem04b-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-rem04b-vite.log >&2; exit 1; fi
+          node scripts/rem-04b-browser-visual.mjs
+      - name: Save after screenshots and trace regardless of result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem-04b-after-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04b/after/**
+            /tmp/luemi-rem04b-vite.log
+          if-no-files-found: warn
