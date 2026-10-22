@@ -8,6 +8,7 @@ import {goals} from "../registration/model";
 import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
+import {resourceIdentity,viewerPhotoContext,type ViewerSource} from "./photo-viewer-state";
 import {BlikViewer} from "./BlikViewer";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
@@ -33,7 +34,7 @@ const tabs=[["about","О себе",FileText],["bliki","Блики",Sparkles],["p
  ["gifts","Подарки",Gift],["meta","О профиле",UserRound]] as const;
 type Swipe={id:number;x:number;y:number;t:number;axis:""|"x"|"y";index:number;width:number;lastX?:number;revision?:number;serial?:number;claimed?:boolean};
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
- return <img src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
+ return <img data-photo-id={photo.id} src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
    onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
 }
 function About({view}:{view:ProfileView}){
@@ -78,7 +79,7 @@ function Meta({view}:{view:ProfileView}){
 export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel,registerRouteMotion,gestureArbiter}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
- const [viewer,setViewer]=useState<{index:number;source:HTMLElement|null}|null>(null);
+ const [viewer,setViewer]=useState<{photoId:string;source:ViewerSource|null}|null>(null);
  const [blikOpen,setBlikOpen]=useState(false);
  const [collapsed,setCollapsed]=useState(false);
  const [mainId,setMainId]=useState<string|null>(null);
@@ -299,8 +300,14 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  },[viewer,preview,blikOpen,onClose]);
  useEffect(()=>{if(!active)return;registerBack?.(closeTop);return ()=>registerBack?.(null);},[active,closeTop,registerBack]);
  const openPhoto=(index:number,element:HTMLElement|null)=>{
-  if(performance.now()<clickBlocked.current||!photos[index])return;
-  setViewer({index,source:element});
+  const photo=photos[index];
+  if(performance.now()<clickBlocked.current||!photo)return;
+  const contextId=viewerPhotoContext(view);
+  const source:ViewerSource|null=element?{
+   photoId:photo.id,contextId,resourceKey:resourceIdentity(photo),
+   resolveElement:()=>element
+  }:null;
+  setViewer({photoId:photo.id,source});
  };
  // The visible CSS matrix (not activePhoto's integer) is the starting frame
  // when a new pointer interrupts a 290ms CSS track transition.
@@ -824,8 +831,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    </div>
   </div>
   </div>
-  {viewer&&<PhotoViewer view={view} photos={photos} initial={viewer.index} source={viewer.source}
-    onClose={()=>setViewer(null)} registerBack={registerViewerBack} onMain={id=>{if(view.canReorderMain)setMainId(id);}}
+  {viewer&&<PhotoViewer view={view} photos={photos} initialPhotoId={viewer.photoId} source={viewer.source}
+    contextId={viewerPhotoContext(view)}
+    onClose={()=>setViewer(null)} registerBack={registerViewerBack}
     />}
   {blikOpen&&view.profile.activeBlik&&<BlikViewer blik={view.profile.activeBlik} name={view.profile.name} onClose={()=>setBlikOpen(false)}/>}
   {preview&&<ProfileMaster data={data} mode={data.source==="local-draft"?"local-self-preview":"preview"} onClose={()=>setPreview(false)} registerBack={registerPreviewBack} active={active} onMotionProgress={onMotionProgress}/>}
