@@ -17,7 +17,7 @@ function Fixture(){
  const movePhoto=(from:number,to:number)=>{
   log.moves.push([from,to]);
   setPhotos(list=>{
-   const next=[...list];const [item]=next.splice(from,1);next.splice(to,0);return next;
+   const next=[...list];const [item]=next.splice(from,1);next.splice(to,0,item);return next;
   });
  };
  return <main className="luemi-shell" data-theme="light" data-phase="form">
