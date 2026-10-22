@@ -590,10 +590,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     settleSheet(g.down);
     const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
     if(g.inPages&&Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
-   }else if(g.axis==="native"&&g.inPages){
-    const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
-    if(Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
-   }
+   } // Native scroll is exclusive; never repair pages.scrollLeft from its touchend.
   };
   const end=(e:TouchEvent)=>finish(e,false);
   const cancel=()=>{
