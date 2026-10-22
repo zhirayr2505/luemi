@@ -260,7 +260,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    <button type="button" onClick={requestClose} aria-label="Закрыть просмотр"><X size={22}/></button>
   </header>
   <footer className="pm-viewer-bottom">
-   <span>{show?displayPhotoDate(show):"Дата добавления недоступна"}</span>
+   <span>{show?displayPhotoDate(show):"Дата не указана"}</span>
    <div className="pm-viewer-actions">
     <button type="button" disabled={index<=0||closing.current}
      onClick={()=>requestNavigation({direction:-1},"button")} aria-label="Предыдущее фото"><ChevronLeft size={21}/></button>
