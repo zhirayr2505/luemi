@@ -28,7 +28,7 @@ const navigation=[["discover","Знакомства",Images],["likes","Симп�
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 const androidWebView=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 
-type Gesture={id:number;x:number;y:number;started:number;tracking:boolean;index:number;width:number;serial:number;token:MotionToken|null;originTrack:number;originInk:number;lastX:number};
+type Gesture={id:number;x:number;y:number;started:number;tracking:boolean;index:number;width:number;serial:number;token:MotionToken|null;originTrack:number;originInk:number;lastX:number;native?:boolean};
 function Placeholder({title,text}:{title:string;text:string}){
  return <div className="discovery-placeholder"><Layers3 size={35} strokeWidth={1.4}/>
  <h2>{title}</h2><p>{text}</p><span>Следующий этап LUEMI</span></div>;
@@ -310,24 +310,25 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   if(target.closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-card,.nb-location"))return;
   const serial=inputOwnership.current.begin("pointer",event.pointerId,"browse");
   if(serial===null)return;
+  inputOwnership.current.begin("pointer",event.pointerId,"native");
   gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,
    started:performance.now(),tracking:false,index:tabIndex,
    width:pages.current?.clientWidth||window.innerWidth,serial,token:null,
    originTrack:0,originInk:0,lastX:event.clientX};
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  const g=gesture.current;if(!g||g.id!==event.pointerId)return;
+  const g=gesture.current;if(!g||g.id!==event.pointerId||g.native)return;
   const x=event.clientX-g.x,y=event.clientY-g.y;
   g.lastX=event.clientX;
   if(!g.tracking){
    if(Math.abs(y)>12&&Math.abs(y)>Math.abs(x)){
-    inputOwnership.current.nativeScroll(g.serial);gesture.current=null;return;
+    inputOwnership.current.nativeScroll(g.serial);g.native=true;return;
    }
    if(Math.abs(x)<6||Math.abs(x)<Math.abs(y)*1.2)return;
    // If a vertical native scroll is already active, never seize it mid-move.
    const capabilities=gestureCapabilities(event.target as HTMLElement,false);
    if(capabilities.canScrollY||!event.cancelable){
-    inputOwnership.current.nativeScroll(g.serial);gesture.current=null;return;
+    inputOwnership.current.nativeScroll(g.serial);g.native=true;return;
    }
    if(!inputOwnership.current.claim("browse",g.serial))return;
    const frozen=frozenBrowse();
@@ -349,7 +350,9 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   const g=gesture.current;if(!g||g.id!==event.pointerId)return;
   gesture.current=null;
   if(!g.tracking||!g.token){
-   inputOwnership.current.finishCandidate(g.serial);return;
+   if(g.native)inputOwnership.current.finish("native",g.serial);
+   else inputOwnership.current.finishCandidate(g.serial);
+   return;
   }
   if(!inputOwnership.current.finish("browse",g.serial))return;
   try{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}catch{/* implicit release */}
