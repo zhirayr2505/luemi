@@ -68,10 +68,7 @@ jobs:
       - name: Build runtime shared domain contracts
         run: npm run build -w @luemi/contracts
       - name: Install pinned browser revision
-        # Ubuntu 24.04 runner already has Chromium libraries; retain the same
-        # lockfile-pinned Playwright browser and all old browser assertions.
-        # Avoid re-running a network-dependent apt upgrade on every PR push.
-        run: npx --no-install playwright install chromium
+        run: npx --no-install playwright install chromium --with-deps
       - name: Run current REM-00C behavioral scenario
         shell: bash
         env:
