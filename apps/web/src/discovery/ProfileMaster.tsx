@@ -8,6 +8,7 @@ import {goals} from "../registration/model";
 import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
+import {QaProfiler} from "./qa-profiler";
 import {resourceIdentity,viewerPhotoContext,type ViewerSource} from "./photo-viewer-state";
 import {BlikViewer} from "./BlikViewer";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
@@ -827,10 +828,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    </div>
   </div>
   </div>
-  {viewer&&<PhotoViewer view={view} photos={photos} initialPhotoId={viewer.photoId} source={viewer.source}
+  {viewer&&<QaProfiler id="PhotoViewer"><PhotoViewer view={view} photos={photos} initialPhotoId={viewer.photoId} source={viewer.source}
     contextId={viewerPhotoContext(view)}
     onClose={()=>setViewer(null)} registerBack={registerViewerBack}
-    />}
+    /></QaProfiler>}
   {blikOpen&&view.profile.activeBlik&&<BlikViewer blik={view.profile.activeBlik} name={view.profile.name} onClose={()=>setBlikOpen(false)}/>}
   {preview&&<ProfileMaster data={data} mode={data.source==="local-draft"?"local-self-preview":"preview"} onClose={()=>setPreview(false)} registerBack={registerPreviewBack} active={active} onMotionProgress={onMotionProgress}/>}
  </section>;
