@@ -4,7 +4,7 @@ import {createRoot} from "react-dom/client";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 import {PhotoViewer} from "./discovery/PhotoViewer";
 import {projectProfile,type ProfileMasterData,type ProfilePhoto} from "./discovery/ProfileModel";
-import {viewerPhotoContext} from "./discovery/photo-viewer-state";
+import {viewerPhotoContext,resourceIdentity,type ViewerSource} from "./discovery/photo-viewer-state";
 import {newDraft} from "./registration/model";
 import "./styles.css";
 
@@ -35,6 +35,13 @@ function MediaQA(){
  const [items,setItems]=useState<ProfilePhoto[]>(fixturePhotos);
  const [openId,setOpenId]=useState<string|null>(null);
  const closed=useRef(0);
+ const sourceImage=useRef<HTMLImageElement>(null);
+ const [useSource,setUseSource]=useState(false);
+ const [sourceKind,setSourceKind]=useState<"hero"|"grid"|"contain">("hero");
+ const [sourceHidden,setSourceHidden]=useState(false);
+ const [sourceOutside,setSourceOutside]=useState(false);
+ const viewerBack=useRef<(()=>boolean)|null>(null);
+ const [modalEvents,setModalEvents]=useState(0);
  const profile:ProfileMasterData={
   id:"qa-media-profile",source:"server",name:"QA Media",age:28,
   city:"Краснодар",country:"Россия",countryCode:"RU",goal:null,about:"",
@@ -43,7 +50,16 @@ function MediaQA(){
  };
  const view=projectProfile(profile,"owner");
  (window as Window&{__luemiQaMedia?:unknown}).__luemiQaMedia={
-  open:(id:string)=>setOpenId(id),close:()=>setOpenId(null),
+  open:(id:string)=>{setUseSource(false);setOpenId(id);},
+  openSource:(id:string,kind:"hero"|"grid"|"contain"="hero")=>{
+   setSourceKind(kind);setSourceHidden(false);setSourceOutside(false);
+   setUseSource(true);setOpenId(id);
+  },
+  close:()=>setOpenId(null),back:()=>{setModalEvents(n=>n+1);return viewerBack.current?.()??false;},
+  sourceHidden:(hidden:boolean)=>setSourceHidden(hidden),
+  sourceOutside:(outside:boolean)=>setSourceOutside(outside),
+  sourceOpacity:()=>sourceImage.current?.style.opacity??null,
+  modalEvents:()=>modalEvents,
   stats:()=>({closeCommits:closed.current,photoCount:items.length,openId}),
   change:(operation:string)=>setItems(current=>{
    if(operation==="count-0")return [];
@@ -89,9 +105,29 @@ function MediaQA(){
    return current;
   })
  };
- return openId?<PhotoViewer view={view} photos={view.photos} initialPhotoId={openId}
-  contextId={viewerPhotoContext(view)} source={null}
-  onClose={()=>{closed.current++;setOpenId(null);}}/>:null;
+ const sourcePhoto=items.find(p=>p.id===openId)??null;
+ const source:ViewerSource|null=useSource&&sourcePhoto?{
+  photoId:sourcePhoto.id,contextId:viewerPhotoContext(view),
+  resourceKey:resourceIdentity(sourcePhoto),
+  resolveElement:()=>sourceImage.current
+ }:null;
+ return <>
+  {useSource&&sourcePhoto&&<div className="qa-rem03d-source"
+   style={{position:"fixed",left:sourceOutside?"-2000px":"20px",top:"155px",
+    width:sourceKind==="grid"?"150px":"220px",
+    height:sourceKind==="grid"?"200px":"165px",zIndex:25,
+    overflow:"hidden",display:sourceHidden?"none":"block"}}>
+   <img ref={sourceImage} src={sourcePhoto.src} data-photo-id={sourcePhoto.id}
+    alt="QA reference thumbnail"
+    style={{display:"block",width:"100%",height:"100%",
+     objectFit:sourceKind==="contain"?"contain":"cover",
+     objectPosition:sourceKind==="hero"?"center 20%":"center center"}}/>
+  </div>}
+  {openId&&<PhotoViewer view={view} photos={view.photos} initialPhotoId={openId}
+   contextId={viewerPhotoContext(view)} source={source}
+   registerBack={handler=>{viewerBack.current=handler;}}
+   onClose={()=>{closed.current++;setOpenId(null);}}/>}
+ </>;
 }
 function VisualQA(){
  const [theme,setTheme]=useState<"light"|"dark">("light");
