@@ -10,7 +10,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const near=(x,y,tol=1)=>assert.ok(Math.abs(x-y)<=tol,`REM02D unexpected physical pixel ${x} vs ${y}`);
 const pass=text=>console.log("REM02D_BROWSER_PASS "+text);
 const visitor=()=>page.locator(".discovery-visitor-route");
-const photo=()=>visitor().locator(".pm-inline");
+const photo=()=>visitor().locator(".pm-dialog");
 const translation=()=>visitor().evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
 const open=async()=>{
  await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
