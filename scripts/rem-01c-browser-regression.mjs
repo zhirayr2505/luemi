@@ -118,6 +118,25 @@ try{
  await cdp.detach();
 
  await reset();
+ const [touchSource,touchTarget]=await slots();assert.ok(touchSource&&touchTarget);
+ const touchDriver=await context.newCDPSession(page);
+ const sx=touchSource.x+touchSource.width*.55,sy=touchSource.y+touchSource.height*.45;
+ const dx=touchTarget.x+touchTarget.width*.5,dy=touchTarget.y+touchTarget.height*.5;
+ await touchDriver.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:sx,y:sy,id:42}]});
+ await sleep(335);
+ assert.equal(await active(),1,"stationary real touch long-press must acquire sorter");
+ for(let i=1;i<=7;i++){
+  await touchDriver.send("Input.dispatchTouchEvent",{type:"touchMove",
+   touchPoints:[{x:sx+(dx-sx)*i/7,y:sy+(dy-sy)*i/7,id:42}]});
+  await sleep(12);
+ }
+ await touchDriver.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ await sleep(180);
+ assert.equal(await moveCount(),1,"real touchscreen long-press must commit reordering once");
+ await touchDriver.detach();
+ log("real Chromium touchscreen long-press drag reorders once after pan-y claim");
+
+ await reset();
  const [a,b]=await slots();assert.ok(a&&b);
  await page.mouse.move(a.x+a.width*.55,a.y+a.height*.45);
  await page.mouse.down();await sleep(330);
