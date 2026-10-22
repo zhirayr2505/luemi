@@ -11,7 +11,7 @@ const base={id:"internal-telegram-identifier",source:"local-draft",name:" Тес
  {id:"c",src:"private.jpg",status:"hidden"},{id:"d",src:"moderation.jpg",status:"pending"}],
  premium:true,verified:true,registeredAt:"2025-01-01",updatedAt:"2026-01-01"};
 const visitor=m.projectProfile(base,"visitor");
-assert.deepEqual(visitor.photos.map(p=>p.id),["b"],"never expose draft, hidden or moderation images");
+assert.deepEqual(visitor.photos.map(p=>p.id),[],"local-draft source cannot expose any photo in visitor, even a forged published flag");
 assert.equal(visitor.profile.id,null,"never expose local internal ID");
 assert.equal(visitor.profile.premium,false,"local claims never attest paid status");
 assert.equal(visitor.profile.verified,false,"local claims never attest verification");
