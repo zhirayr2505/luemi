@@ -203,6 +203,14 @@ try{
   document.dispatchEvent(new Event("visibilitychange"));
  });
  pass("background/foreground midpinch releases media writer and old pointers");
+ first=p(75,158,386);second=p(76,236,460);
+ await send("touchStart",[first]);await send("touchStart",[first,second]);
+ first=p(75,108,344);second=p(76,300,520);await send("touchMove",[first,second]);
+ await page.evaluate(()=>window.dispatchEvent(new Event("blur")));
+ await sleep(25);
+ s=await state();near(s.scale,1,.02);assert.equal(s.id,"qa-alpha");
+ await send("touchCancel",[]).catch(()=>{});
+ pass("focus loss midpinch invalidates old pointer session with no semantic photo commit");
 
  // Vertical dismiss at identity: short slow drag resets y and opacity in lockstep.
  const base=(await stats()).closeCommits;
