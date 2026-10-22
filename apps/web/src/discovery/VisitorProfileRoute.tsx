@@ -128,7 +128,7 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
    gestures.dispose();
    revealUnderlay(false);
   };
- },[]);
+ },[gestures]);
 
  // Expanded: only gestures originating on the white sheet may close.
  // Collapsed: the complete profile is a back-swipe surface. The photo hero
