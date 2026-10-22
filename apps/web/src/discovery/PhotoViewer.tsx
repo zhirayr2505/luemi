@@ -39,6 +39,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const pinch=useRef<{distance:number;cx:number;cy:number}|null>(null);
  const sourceRef=useRef(source);
  const contextRef=useRef(contextId);
+ contextRef.current=contextId;
  const cleanup=useRef<number|null>(null);
  const openFrames=useRef<number[]>([]);
  const latest=useRef({photoId,photos,show,index,resourceKey,displayReady,view,onMain});
