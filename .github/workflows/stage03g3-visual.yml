@@ -119,6 +119,7 @@ jobs:
           node scripts/rem-03d-browser-morph.mjs
           node scripts/rem-04a-browser-measure.mjs
           node scripts/rem-04a-browser-startup.mjs
+          node scripts/rem-04b-browser-visual.mjs
       - name: Preserve browser screenshots and server diagnostics
         if: always()
         continue-on-error: true
