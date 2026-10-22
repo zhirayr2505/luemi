@@ -454,29 +454,52 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(bar&&metric)bar.scrollTo({left:Math.max(0,metric.left+metric.width/2-bar.clientWidth/2),
    behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
  },[paintTabs]);
- // Touch gestures have one axis owner. Mouse/pen horizontal dragging uses
- // Pointer Events; touch is handled below so it cannot run both mechanisms.
+ // Mouse/pen tab input must use the SAME exclusive gesture owner as native
+ // sheet Touch and the visitor route. Candidate input must not stop settling.
  const tabDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
-  if(e.pointerType==="touch"||(e.pointerType==="mouse"&&e.button!==0))return;
-  stopTabs.current();
+  if(e.pointerType==="touch")return;
+  if(!e.isPrimary){gestures.secondFinger();tabSwipe.current=null;return;}
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  const serial=gestures.begin("pointer",e.pointerId,"tabs");
+  if(serial===null)return;
+  gestures.begin("pointer",e.pointerId,"native");
   tabSwipe.current={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now(),axis:"",
    index:(pages.current?.scrollLeft??0)/tabViewport.current,width:tabViewport.current,
-   lastX:e.clientX,revision:tabsRevision.current};
+   lastX:e.clientX,revision:tabsRevision.current,serial,claimed:false};
  };
  const tabMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
   g.lastX=e.clientX;
   const dx=e.clientX-g.x,dy=e.clientY-g.y;
-  if(!g.axis){if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";}
+  if(!g.axis){
+   if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
+   g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";
+   if(g.axis!=="x"){gestures.nativeScroll(g.serial!);return;}
+  }
   if(g.axis!=="x")return;
+  if(!g.claimed){
+   if(!gestures.claim("tabs",g.serial!))return;
+   g.claimed=true;
+   stopTabs.current();
+   // REM-02B fractional position survives the unclaimed candidate period.
+   g.index=(pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
+   g.width=tabViewport.current;
+   try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
+  }
+  if(!gestures.owns("tabs",g.serial!))return;
   if(e.cancelable)e.preventDefault();
-  try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
   paintTabs(g.index,dx);
  };
  const tabEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
   const g=tabSwipe.current;if(!g||g.id!==e.pointerId)return;
   tabSwipe.current=null;
-  if(g.axis!=="x")return;
+  if(!g.claimed||!gestures.owns("tabs",g.serial!)){
+   if(g.axis==="y"&&gestures.owns("native",g.serial!))gestures.finish("native",g.serial!);
+   else gestures.finishCandidate(g.serial!);
+   return;
+  }
+  gestures.finish("tabs",g.serial!);
+  try{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);}catch{/* implicit release */}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
   const next=!cancel&&(Math.abs(dx)>g.width*.17||Math.abs(dx)/dt>.52)?
    Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
@@ -523,7 +546,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
     lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
-    revision:sheetRevision.current,blocking:!collapsedRef.current||scrollTop<=1,
+    revision:sheetRevision.current,blocking:inPages?scrollTop<=1:!collapsedRef.current,
     serial,claimed:false};
    pane.removeEventListener("touchmove",move);
    pane.addEventListener("touchmove",move,{passive:!gesture.blocking});
@@ -534,6 +557,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    g.lastX=t.clientX;
    if(!g.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
+    // A page already scrolled vertically keeps native control in either axis,
+    // including vertical diagonals; no custom sheet or tabs writer may claim.
+    if(g.inPages&&g.scrollTop>1){g.axis="native";gestures.nativeScroll(g.serial);return;}
     // If the listener started passive, it must NEVER take over native scroll
     // mid-session, even when the diagonal later resembles a horizontal drag.
     if(Math.abs(dx)>Math.abs(dy)*1.18)
@@ -690,7 +716,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     <span className="pm-tab-ink" ref={ink} aria-hidden="true"/>
    </div>
    <div className="pm-pages" ref={pages} onPointerDown={tabDown} onPointerMove={tabMove}
-     onPointerUp={e=>tabEnd(e)} onPointerCancel={e=>tabEnd(e,true)}>
+     onPointerUp={e=>tabEnd(e)} onPointerCancel={e=>tabEnd(e,true)}
+     onLostPointerCapture={e=>tabEnd(e,true)}>
     <div className="pm-pages-track" ref={pageTrack}>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[0]=e;}}><About view={view}/></div>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[1]=e;}}><Bliki/></div>
