@@ -210,6 +210,15 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .photo-count{font-size:13px;color:var(--subtle);margin:0}
 /* Shared preview carousel + profile */
 .preview-root{display:flex;flex-direction:column;gap:15px}
+/* LU-24: the real ProfileMaster inside step 8; registration header/footer and
+   previously approved profile physics remain untouched. No second GlobalHeader. */
+.registration-profile-simulator{position:relative;isolation:isolate;width:100%;
+ height:min(720px,82svh);min-height:480px;overflow:hidden;border-radius:24px;
+ background:var(--bg);border:1px solid var(--glass-edge);
+ box-shadow:0 9px 24px var(--shadow)}
+.registration-profile-simulator .pm-shell{height:100%;min-height:0}
+.preview-root>.hint[role=status]{display:flex;align-items:flex-start;gap:5px}
+
 .preview-surface{border:1px solid var(--glass-edge);border-radius:24px;background:var(--panel);
  box-shadow:0 9px 24px var(--shadow);overflow:hidden}
 .carousel-frame{aspect-ratio:4/5;position:relative;overflow:hidden;background:linear-gradient(135deg,#d8c3ed,#f2c8df);

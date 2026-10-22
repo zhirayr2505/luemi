@@ -38,7 +38,7 @@ function About({view}:{view:ProfileView}){
     })}</div></article>}
   {!p.about&&!p.interests.length&&!goal&&!p.languages.length&&
     <div className="pm-empty"><FileText size={38}/><h3>Пока ничего не заполнено</h3>
-     <p>{view.canEdit?"Расскажи о себе в редакторе анкеты.":"Здесь появится информация, когда владелец её добавит."}</p></div>}
+     <p>{view.profile.source==="local-draft"?"Добавь описание или интересы в регистрации.":"Здесь появится информация, когда владелец её добавит."}</p></div>}
   {view.profile.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/>
    {view.profile.source==="fixture"?"Вымышленный демонстрационный персонаж — не реальный пользователь.":"Локальный черновик. Анкета не опубликована."}</p>}
  </div>;
@@ -434,9 +434,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
  const goal=view.profile.goal&&view.profile.goal!=="undecided"?goals.find(x=>x.id===view.profile.goal):null;
- return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer="scroll" className={"pm-shell "+(mode==="owner"?"pm-inline":"pm-dialog")} role={mode==="owner"?undefined:"dialog"}
-   aria-modal={mode==="owner"?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
-  {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
+ // Step 8 embeds the sheet; owner "Предпросмотр" opens a closable nested dialog.
+ const embeddedSelf=mode==="local-self-preview"&&!onClose;
+ return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer="scroll" className={"pm-shell "+(mode==="owner"||embeddedSelf?"pm-inline":"pm-dialog")} role={mode==="owner"||embeddedSelf?undefined:"dialog"}
+   aria-modal={mode==="owner"||embeddedSelf?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="local-self-preview"?"Локальный предпросмотр черновика":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
+  {(mode==="preview"||mode==="local-self-preview"&&!!onClose)&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
     <div className="pm-photo-motion" ref={photoMotion}>
@@ -480,7 +482,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     {mode==="owner"&&<div className="pm-owner-actions">
      <button type="button" onClick={openMyPhotos}><Images size={17}/> Мои фото</button>
      <button type="button" className="pm-owner-edit" onClick={onEdit}><PenLine size={17}/> Изменить</button>
-     <button type="button" onClick={()=>setPreview(true)}><Eye size={17}/> Как видят</button>
+     <button type="button" onClick={()=>setPreview(true)}><Eye size={17}/>{data.source==="local-draft"?"Предпросмотр":"Как видят"}</button>
     </div>}
    <div className="pm-tabs" ref={tabBar} role="tablist" aria-label="Разделы профиля">
     {tabs.map(([id,label,Icon],i)=><button type="button" key={id} className={"pm-tab"+(id===tab?" active":"")} role="tab"
@@ -496,8 +498,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
       {photos.length?<div className="pm-photos-grid">{photos.map((p,i)=><button type="button" key={p.id} className="pm-photo-tile"
        onClick={e=>openPhoto(i,e.currentTarget.querySelector("img"))} aria-label={"Открыть фото "+(i+1)}>
        <PhotoImage photo={p} alt="" loading="lazy"/>{p.status!=="published"&&<span>{p.status==="draft"?"Черновик":"Проверка"}</span>}
-       </button>)}</div>:<div className="pm-empty"><Images size={38}/><h3>Пока нет опубликованных фото</h3>
-        <p>Фото на модерации и приватные снимки не видны другим.</p></div>}
+       </button>)}</div>:<div className="pm-empty"><Images size={38}/><h3>{view.profile.source==="local-draft"?"Пока нет готовых фото":"Пока нет опубликованных фото"}</h3>
+        <p>{view.profile.source==="local-draft"?"Добавь фотографии или дождись окончания локальной обработки.":"Фото на модерации и приватные снимки не видны другим."}</p></div>}
      </div>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[3]=e;}}><Gifts view={view}/></div>
      <div className="pm-page" ref={e=>{if(e)contentPages.current[4]=e;}}><Meta view={view}/></div>
@@ -509,6 +511,6 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     onClose={()=>setViewer(null)} registerBack={registerViewerBack} onMain={id=>{if(view.canReorderMain)setMainId(id);}}
     />}
   {blikOpen&&view.profile.activeBlik&&<BlikViewer blik={view.profile.activeBlik} name={view.profile.name} onClose={()=>setBlikOpen(false)}/>}
-  {preview&&<ProfileMaster data={data} mode="preview" onClose={()=>setPreview(false)} registerBack={registerPreviewBack} active={active} onMotionProgress={onMotionProgress}/>}
+  {preview&&<ProfileMaster data={data} mode={data.source==="local-draft"?"local-self-preview":"preview"} onClose={()=>setPreview(false)} registerBack={registerPreviewBack} active={active} onMotionProgress={onMotionProgress}/>}
  </section>;
 });

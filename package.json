@@ -23,14 +23,15 @@
     "prebuild": "npm run build -w @luemi/contracts && npm run lint && npm run test:ui && npm run test -w @luemi/api",
     "test:discovery": "node scripts/stage03-model.test.mjs && node scripts/stage03d-contract.test.mjs && node scripts/stage03e-contract.test.mjs && node scripts/stage03f2-contract.test.mjs && node scripts/stage03g-contract.test.mjs && node scripts/rem-01a-country.test.mjs",
     "lint:hooks:baseline": "node scripts/rem-00b-hooks-baseline.mjs",
-    "test:source-contracts": "npm run build -w @luemi/contracts && npm run test:ui && npm run test:discovery && npm run test:geo-operations && npm run test:photo-headers && npm run test:viewport-model",
+    "test:source-contracts": "npm run build -w @luemi/contracts && npm run test:ui && npm run test:discovery && npm run test:geo-operations && npm run test:photo-headers && npm run test:viewport-model && npm run test:profile-parity",
     "typecheck": "npm run build -w @luemi/contracts && npm run typecheck -w @luemi/api && npm run typecheck -w @luemi/web",
     "test:api:isolated": "npm run build -w @luemi/contracts && npm run test -w @luemi/api",
     "test:ci-contract": "node scripts/rem-00b-dependency-contract.test.mjs",
     "test:browser:behavior": "node scripts/stage03g7-android-visual-qa.mjs",
     "test:geo-operations": "node scripts/rem-01a-operations.test.mjs",
     "test:photo-headers": "node scripts/rem-01c-photo-header.test.mjs",
-    "test:viewport-model": "node scripts/rem-01d-viewport-model.test.mjs"
+    "test:viewport-model": "node scripts/rem-01d-viewport-model.test.mjs",
+    "test:profile-parity": "node scripts/rem-01e-profile-parity.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",

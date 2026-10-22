@@ -11,7 +11,7 @@ const base={id:"internal-telegram-identifier",source:"local-draft",name:" Тес
  {id:"c",src:"private.jpg",status:"hidden"},{id:"d",src:"moderation.jpg",status:"pending"}],
  premium:true,verified:true,registeredAt:"2025-01-01",updatedAt:"2026-01-01"};
 const visitor=m.projectProfile(base,"visitor");
-assert.deepEqual(visitor.photos.map(p=>p.id),["b"],"never expose draft, hidden or moderation images");
+assert.deepEqual(visitor.photos.map(p=>p.id),[],"local-draft source cannot expose any photo in visitor, even a forged published flag");
 assert.equal(visitor.profile.id,null,"never expose local internal ID");
 assert.equal(visitor.profile.premium,false,"local claims never attest paid status");
 assert.equal(visitor.profile.verified,false,"local claims never attest verification");
@@ -41,8 +41,8 @@ assert.equal(m.projectProfile({...base,source:"server",activeBlik:{...futureBlik
  null,"story media links must use HTTPS");
 console.log("✓ Stage 03G.A: public projection, unpublished photo guards, demo badges, owner/preview permission boundaries");
 
-assert.deepEqual(visitor.profile.photos.map(p=>p.id),["b"],"nested projection cannot carry private images");
-assert.deepEqual(preview.profile.photos.map(p=>p.id),["b"],"nested preview is public-only");
+assert.deepEqual(visitor.profile.photos.map(p=>p.id),[],"nested visitor projection cannot carry any local-draft photo, even forged published flags");
+assert.deepEqual(preview.profile.photos.map(p=>p.id),[],"nested public preview cannot carry any local-draft photo");
 assert.equal(Object.hasOwn(m.projectProfile({...base,privateToken:"secret"},"visitor").profile,"privateToken"),false,
  "unknown future private fields cannot spread through public profile");
 const profile=read("apps/web/src/discovery/ProfileMaster.tsx");
@@ -64,8 +64,9 @@ assert.ok(profile.includes('if(g.axis==="x")paintTabs(g.index,dx)')&&
  "touch pager paints once per frame");
 assert.ok(profile.includes("tabEnd(e,true)")&&profile.includes("photoEnd(e,true)"),
  "pointer cancellation must never commit a new photo or tab");
-assert.ok(profile.includes('mode="preview"')&&profile.includes("projectProfile(data,mode)"),
- "own public preview reuses the exact same profile projection and component");
+assert.ok(profile.includes('mode={data.source==="local-draft"?"local-self-preview":"preview"}')&&
+ profile.includes("projectProfile(data,mode)"),
+ "owner local preview uses explicit self-only projection, server preview remains public-only and both reuse ProfileMaster");
 assert.ok(viewer.includes("createPortal")&&viewer.includes("onPointerCancel")&&
  viewer.includes("maxY")&&viewer.includes("resetGesture()"),
  "fullscreen gallery has pinch pan, cancel isolation and reset");
@@ -75,9 +76,11 @@ assert.ok(viewer.includes("canMakeMain(view,show.id)")&&
 assert.ok(discovery.includes('<ProfileMaster data={ownProfile} mode="owner"')&&
  discovery.includes("<VisitorProfileRoute")&&visitorRoute.includes('<ProfileMaster data={data} mode="visitor"'),
  "both profile destinations use one shared implementation");
-assert.ok(app.includes('photos={readyPhotos}')&&
- app.includes('photos.filter(p=>p.status==="ready"||p.status==="success")'),
- "only prepared local photos enter authenticated owner profiles");
+assert.ok(app.includes('photos={readyPhotos}')&&app.includes('readyRegistrationPhotos(photos)')&&
+ read("apps/web/src/registration/Preview.tsx").includes('readyRegistrationPhotos(photos)')&&
+ read("apps/web/src/registration/Preview.tsx").includes('mode="local-self-preview"')&&
+ !read("apps/web/src/registration/Preview.tsx").includes("<PhotoCarousel"),
+ "owner and step-8 share the exact ready-only photo adapter and authoritative ProfileMaster renderer");
 assert.ok(css.includes("@media(prefers-reduced-motion:reduce)")&&
  css.includes(".pm-tab-ink")&&css.includes(".pm-photo-tile"),
  "motion fallback, accessible tab bar and 3-column gallery exist");
