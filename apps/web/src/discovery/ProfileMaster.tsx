@@ -1,5 +1,4 @@
 import {memo,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {flushSync} from "react-dom";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {PenLine,Eye,FileText,Sparkles,Images,Gift,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
 import {Flag} from "../ui/Flag";
@@ -40,19 +39,11 @@ function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;lo
    onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
 }
 type BlurWindowWriter=(indices:number[]|null)=>void;
-/** Heavy blurred pixels remain in the accepted keyed slide. A window shift
- * only renders slides whose enabled/media state changes; unaffected slots
- * reuse both React work and the already decoded <img> DOM node. No extra media.
- */
-const ProfileBlurSlide=memo(function ProfileBlurSlide({photo,enabled}:{
- photo:ProfilePhoto;enabled:boolean;
-}){
- return <div className="pm-photo-blur-slide" data-blur-photo-id={photo.id}>
-  {enabled&&<PhotoImage photo={photo} alt="" loading="eager"/>}
- </div>;
-});
-/** Memoized media-only renderer: moving the 3 blur peers may NOT rerender the
- * whole profile, native scroll tabs or the accepted hero track controller.
+/** LU-13 media-window owner. React owns the six stable keyed slot wrappers,
+ * not the changing set of at most three decoded image nodes. The ONLY hero
+ * transform writer remains PROFILE_MOTION_WRITER_TABLE.hero. This bounded
+ * writer changes img membership synchronously before the next paint, with no
+ * React render/commit per fractional-window change and no new motion clock.
  */
 const ProfileBlurTrack=memo(function ProfileBlurTrack({
  photos,activePhoto,blurFrom,trackRef,bindWriter
@@ -61,21 +52,77 @@ const ProfileBlurTrack=memo(function ProfileBlurTrack({
  trackRef:{current:HTMLDivElement|null};
  bindWriter:(writer:BlurWindowWriter|null)=>void;
 }){
- const [windowIndices,setWindowIndices]=useState<number[]|null>(null);
+ type Peer={node:HTMLImageElement;resource:string};
+ const liveRef=useRef(new Map<number,Peer>());
+ const overrideRef=useRef<number[]|null>(null);
+ const prevPhotosRef=useRef(photos);
+ const propsRef=useRef({photos,activePhoto,blurFrom});
+ propsRef.current={photos,activePhoto,blurFrom};
+ // A photo reorder or src/version replacement must invalidate numeric
+ // window slots and never reuse another photo's decoded DOM image.
+ if(prevPhotosRef.current!==photos){
+  prevPhotosRef.current=photos;
+  overrideRef.current=null;
+ }
+ const updateWindow=()=>{
+  const {photos,activePhoto,blurFrom}=propsRef.current;
+  const track=trackRef.current;
+  if(!track)return;
+  const slots=track.children;
+  const from=overrideRef.current;
+  const requested=from??(()=>{
+   const list=[activePhoto];
+   if(blurFrom!==activePhoto&&photos[blurFrom])list.push(blurFrom);
+   for(const neighbor of [activePhoto-1,activePhoto+1])
+    if(list.length<3&&photos[neighbor]&&!list.includes(neighbor))list.push(neighbor);
+   return list;
+  })();
+  const wanted:number[]=[];
+  for(const index of requested){
+   if(index>=0&&index<photos.length&&!wanted.includes(index)&&wanted.length<3)wanted.push(index);
+  }
+  // Remove peers that left first; <=3 image nodes at every mutation step.
+  for(const [index,peer] of liveRef.current){
+   const photo=photos[index],slot=slots[index];
+   const identity=photo?resourceIdentity(photo)+"|"+(photo.fallback??""):null;
+   if(!wanted.includes(index)||peer.resource!==identity||peer.node.parentElement!==slot){
+    peer.node.onerror=null;peer.node.remove();liveRef.current.delete(index);
+   }
+  }
+  for(const index of wanted){
+   if(liveRef.current.has(index))continue;
+   const photo=photos[index],slot=slots[index];
+   if(!photo||!slot)continue;
+   const node=document.createElement("img");
+   node.dataset.photoId=photo.id;
+   node.alt="";node.draggable=false;node.loading="eager";node.decoding="async";
+   const fallback=photo.fallback;
+   if(fallback)node.onerror=()=>{
+    if(node.src!==fallback)node.src=fallback;
+   };
+   node.src=photo.src;
+   slot.appendChild(node);
+   liveRef.current.set(index,{node,resource:resourceIdentity(photo)+"|"+(fallback??"")});
+  }
+ };
+ const writerRef=useRef<BlurWindowWriter>(()=>{});
+ writerRef.current=indices=>{overrideRef.current=indices;updateWindow();};
  useLayoutEffect(()=>{
-  bindWriter(setWindowIndices);
-  return ()=>bindWriter(null);
+  const bridge:BlurWindowWriter=indices=>writerRef.current(indices);
+  bindWriter(bridge);
+  // Initial media are present on the first layout frame.
+  bridge(null);
+  return ()=>{
+   bindWriter(null);
+   for(const peer of liveRef.current.values()){
+    peer.node.onerror=null;peer.node.remove();
+   }
+   liveRef.current.clear();overrideRef.current=null;
+  };
  },[bindWriter]);
- const indices=useMemo(()=>{
-  if(windowIndices)return new Set(windowIndices);
-  const list=[activePhoto];
-  if(blurFrom!==activePhoto&&photos[blurFrom])list.push(blurFrom);
-  for(const neighbor of [activePhoto-1,activePhoto+1])
-   if(list.length<3&&photos[neighbor]&&!list.includes(neighbor))list.push(neighbor);
-  return new Set(list);
- },[activePhoto,blurFrom,photos,windowIndices]);
+ useLayoutEffect(()=>{updateWindow();},[photos,activePhoto,blurFrom]);
  return <div className="pm-photo-blur-track" ref={trackRef}>
-  {photos.map((photo,i)=><ProfileBlurSlide key={photo.id} photo={photo} enabled={indices.has(i)}/>)}
+  {photos.map(photo=><div className="pm-photo-blur-slide" key={photo.id} data-blur-photo-id={photo.id}/>)}
  </div>;
 });
 function About({view}:{view:ProfileView}){
@@ -194,7 +241,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const old=blurWindowRef.current;
   if(old&&indices.length===old.length&&indices.every(i=>old.includes(i)))return;
   blurWindowRef.current=indices;
-  flushSync(()=>blurWriterRef.current(indices));
+  // DOM-only bounded media writer: no React reconciliation in the rAF loop.
+  blurWriterRef.current(indices);
  };
  const stopBlurTracking=()=>{
   blurSession.current++;
@@ -203,7 +251,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  };
  const finishBlurTracking=(target:number)=>{
   stopBlurTracking();blurWindowRef.current=null;
-  flushSync(()=>{blurWriterRef.current(null);setBlurFrom(target);});
+  blurWriterRef.current(null);
+  setBlurFrom(target);
  };
  const followBlurPosition=(target:number)=>{
   stopBlurTracking();
