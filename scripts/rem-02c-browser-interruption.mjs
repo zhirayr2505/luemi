@@ -103,6 +103,65 @@ try{
  const diagonal=await scan(browseTrack);
  near(diagonal.x,before.x,1);
  pass("vertical-dominant diagonal preserves native owner, browse pixels unchanged");
+ // Real CDP touch on scrolled page content: a passive-start horizontal-looking
+ // diagonal must remain native; no competing JS pages.scrollLeft write.
+ await page.getByRole("button",{name:"Профиль",exact:true}).click();
+ const grab=page.getByRole("button",{name:"Развернуть анкету"});
+ await grab.click();await sleep(400);
+ await page.getByRole("tab",{name:"О себе",exact:true}).click();await sleep(335);
+ const about=page.locator(".pm-inline .pm-page").first();
+ const scrollable=await about.evaluate(el=>{el.scrollTop=Math.min(90,el.scrollHeight-el.clientHeight);
+  return {top:el.scrollTop,range:el.scrollHeight-el.clientHeight}});
+ assert.ok(scrollable.top>20,"fixture provides genuinely scrollable content");
+ const rect=await about.boundingBox();
+ assert.ok(rect&&rect.width>100&&rect.height>75);
+ const nx=rect.x+rect.width*.5,ny=rect.y+Math.min(100,rect.height*.4);
+ const getLeft=()=>page.locator(".pm-inline .pm-pages").evaluate(el=>el.scrollLeft);
+ const beforeNative=await getLeft();
+ const cdp=await context.newCDPSession(page);
+ try{
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:nx,y:ny}]});
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:nx-90,y:ny-14}]});
+  await sleep(40);
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ }finally{await cdp.detach()}
+ near(await getLeft(),beforeNative,1);
+ assert.equal(await page.getByRole("tab",{name:"О себе",exact:true}).getAttribute("aria-selected"),"true");
+ pass("scrolled content passive native touch retains exclusive scroll ownership, zero custom tab offset");
+ // Two physical fingers invalidate the one-finger custom drag; a subsequent
+ // single-finger drag must still work, with no stuck ownership or stale RAF.
+ await page.getByRole("button",{name:"Раскрыть фото профиля"}).click();
+ await sleep(390);
+ const boxSheet=await page.locator(".pm-inline .pm-identity").boundingBox();
+ assert.ok(boxSheet&&boxSheet.height>35);
+ const tx=boxSheet.x+boxSheet.width*.45,ty=boxSheet.y+boxSheet.height*.47;
+ const multi=await context.newCDPSession(page);
+ try{
+  await multi.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:tx,y:ty}]});
+  await multi.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:tx,y:ty-66}]});
+  await sleep(40);
+  await multi.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[
+   {x:tx,y:ty-66},{x:tx+65,y:ty-48}
+  ]});
+  await multi.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[
+   {x:tx,y:ty-100},{x:tx+65,y:ty-48}
+  ]});
+  await multi.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ }finally{await multi.detach()}
+ await sleep(440);
+ const root=page.locator(".pm-inline");
+ const sState=await root.getAttribute("data-sheet-state");
+ assert.ok(sState==="expanded"||sState==="collapsed");
+ const endpoint=await page.evaluate(()=>{
+  const root=document.querySelector(".pm-inline"),vp=root.querySelector(".pm-sheet-viewport");
+  const pane=root.querySelector(".pm-profile-sheet");
+  const top=parseFloat(pane.style.getPropertyValue("--pm-collapsed-top"));
+  const bottom=parseFloat(root.style.getPropertyValue("--pm-expanded-y"));
+  const y=bottom-vp.scrollTop;
+  return {y,top,bottom,state:root.dataset.sheetState};
+ });
+ near(endpoint.y,endpoint.state==="collapsed"?endpoint.top:endpoint.bottom,1);
+ pass("second real touch cancels one-finger custom drag and settles to consistent DOM/React endpoint");
  assert.deepEqual(errors,[],"no browser exceptions");
  console.log("REM-02C BROWSER INTERRUPTION QA PASS · Chromium Android UA only; physical A55/iOS NOT VERIFIED");
 }finally{await context.close();await browser.close();}
