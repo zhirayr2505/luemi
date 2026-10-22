@@ -36,6 +36,7 @@ function MediaQA(){
  const [items,setItems]=useState<ProfilePhoto[]>(fixturePhotos);
  const [openId,setOpenId]=useState<string|null>(null);
  const [origin,setOrigin]=useState<"hero"|"grid"|"outside"|null>(null);
+ const [originId,setOriginId]=useState<string|null>(null);
  const backHandler=useRef<(()=>boolean)|null>(null);
  const profileBack=useRef(0);
  const closed=useRef(0);
@@ -48,7 +49,10 @@ function MediaQA(){
  const view=projectProfile(profile,"owner");
  (window as Window&{__luemiQaMedia?:unknown}).__luemiQaMedia={
   open:(id:string)=>{setOrigin(null);setOpenId(id);},
-  openFrom:(id:string,kind:"hero"|"grid"|"outside")=>{setOrigin(kind);setOpenId(id);},
+  prepareOrigin:(id:string,kind:"hero"|"grid"|"outside")=>{setOriginId(id);setOrigin(kind);},
+  openFrom:(id:string,kind:"hero"|"grid"|"outside")=>{
+   setOriginId(id);setOrigin(kind);setOpenId(id);
+  },
   removeOrigin:()=>setOrigin(null),
   close:()=>setOpenId(null),
   back:()=>{if(!backHandler.current?.())profileBack.current++;},
@@ -98,7 +102,7 @@ function MediaQA(){
    return current;
   })
  };
- const sourcePhoto=view.photos.find(p=>p.id===openId);
+ const sourcePhoto=view.photos.find(p=>p.id===(originId??openId));
  const source:ViewerSource|null=origin&&sourcePhoto?{
   photoId:sourcePhoto.id,contextId:viewerPhotoContext(view),
   resourceKey:resourceIdentity(sourcePhoto),
