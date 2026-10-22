@@ -72,7 +72,8 @@ try{
  await open("qa-alpha","hero");await viewer().waitFor();await wait(285);
  await viewer().getByRole("button",{name:"Действия с фото"}).click();
  assert.ok(await viewer().getByRole("menu").isVisible());
- await pressBack();assert.ok(await viewer().isVisible());assert.equal(await viewer().getByRole("menu").count(),0);
+ await pressBack();await page.waitForFunction(()=>!document.querySelector(".pm-viewer-menu"));
+ assert.ok(await viewer().isVisible());assert.equal(await viewer().getByRole("menu").count(),0);
  await pressBack();await waitGone();await pressBack();
  assert.ok((await api("stats")).profileBack>=1,"Back stack: menu > viewer > profile");
  pass("modal registered Back hierarchy: menu, viewer, profile");
