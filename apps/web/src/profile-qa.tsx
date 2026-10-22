@@ -51,6 +51,10 @@ function MediaQA(){
  const view=projectProfile(profile,"owner");
  (window as Window&{__luemiQaMedia?:unknown}).__luemiQaMedia={
   open:(id:string)=>{setUseSource(false);setOpenId(id);},
+  prepareSource:(kind:"hero"|"grid"|"contain"="hero")=>{
+   setSourceKind(kind);setSourceHidden(false);setSourceOutside(false);
+   setUseSource(true);setOpenId(null);
+  },
   openSource:(id:string,kind:"hero"|"grid"|"contain"="hero")=>{
    setSourceKind(kind);setSourceHidden(false);setSourceOutside(false);
    setUseSource(true);setOpenId(id);
@@ -105,7 +109,7 @@ function MediaQA(){
    return current;
   })
  };
- const sourcePhoto=items.find(p=>p.id===openId)??null;
+ const sourcePhoto=items.find(p=>p.id===openId)??items[0]??null;
  const source:ViewerSource|null=useSource&&sourcePhoto?{
   photoId:sourcePhoto.id,contextId:viewerPhotoContext(view),
   resourceKey:resourceIdentity(sourcePhoto),
