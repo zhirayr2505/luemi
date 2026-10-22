@@ -82,15 +82,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const [viewer,setViewer]=useState<{photoId:string;source:ViewerSource|null}|null>(null);
  const [blikOpen,setBlikOpen]=useState(false);
  const [collapsed,setCollapsed]=useState(false);
- const [mainId,setMainId]=useState<string|null>(null);
+
  // 02A: exclusive paint-path ownership only. Gestures and physics unchanged.
  const motionAuthority=useRef(createProfileMotionAuthority());
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]);
- const photos=useMemo(()=>{
-  if(!mainId)return view.photos;
-  const selected=view.photos.find(p=>p.id===mainId);
-  return selected?[selected,...view.photos.filter(p=>p.id!==mainId)]:view.photos;
- },[mainId,view.photos]);
+ const photos=view.photos;
  const [activePhoto,setActivePhoto]=useState(0);
  const activePhotoId=useRef<string|null>(photos[0]?.id??null);
  const previousPhotos=useRef(photos);
