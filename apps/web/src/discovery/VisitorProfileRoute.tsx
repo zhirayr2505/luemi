@@ -274,7 +274,10 @@ export function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Pro
   if(route.current)route.current.dataset.rem02dLastEnd=JSON.stringify({
    cancelled,dx,dt,x,width:width(),willClose,source:g.source,
    eventType:e.type,pointerType:e.pointerType,pointerId:e.pointerId,
-   target:(e.target as HTMLElement)?.className,currentTarget:e.currentTarget?.className
+   target:(e.target as HTMLElement)?.className,currentTarget:e.currentTarget?.className,
+   trusted:e.nativeEvent.isTrusted,targetTag:(e.target as HTMLElement)?.tagName,
+   clientX:e.clientX,clientY:e.clientY,
+   routeHasCapture:route.current?.hasPointerCapture(e.pointerId)
   });
   if(willClose)close();
   else rollback();
