@@ -3,7 +3,7 @@ import {normalizeCountryCode} from "@luemi/contracts";
 import type {DemoPerson} from "./model";
 
 /** A public profile is an explicit projection. Never spread raw registrations or API records into it. */
-export type ProfileMode="visitor"|"owner"|"preview";
+export type ProfileMode="visitor"|"owner"|"preview"|"local-self-preview";
 export type Publication="published"|"draft"|"pending"|"hidden"|"rejected";
 export interface ProfilePhoto {id:string;src:string;fallback?:string;status:Publication;addedAt?:string}
 /** Future published, server-verified story media. No fixture or local draft claims active Bliki. */
@@ -23,9 +23,14 @@ const publicOnly=(photos:ProfilePhoto[])=>photos.filter(p=>p.status==="published
 const present=(value:string)=>value.trim();
 export function projectProfile(profile:ProfileMasterData,mode:ProfileMode):ProfileView {
  const owner=mode==="owner",published=profile.source==="server";
- const photos=owner?profile.photos.filter(p=>p.status!=="hidden"&&p.status!=="rejected"):publicOnly(profile.photos);
+ // Self-preview is an explicit local-only capability. It MUST NOT be reachable
+ // from visitor/public-preview; those remain strictly published-only.
+ const localSelf=mode==="local-self-preview"&&profile.source==="local-draft";
+ const photos=owner?profile.photos.filter(p=>p.status!=="hidden"&&p.status!=="rejected"):
+  localSelf?profile.photos.filter(p=>p.status==="draft"&&p.src.trim().length>0):publicOnly(profile.photos);
  // Explicit allow-list is intentional: runtime input may contain future private fields.
- // The public/preview projection must not carry unpublished photo records anywhere.
+ // Public and visitor projection must not carry unpublished records; the explicit
+ // local-self-preview capability receives ONLY source=local-draft ready photo records.
  const exposed:ProfileMasterData={
   id:published?profile.id:null,
   source:profile.source,
@@ -66,6 +71,20 @@ export function draftAge(draft:RegistrationDraft,today=new Date()):number|null {
  let age=today.getUTCFullYear()-y;
  if(today.getUTCMonth()+1<m||(today.getUTCMonth()+1===m&&today.getUTCDate()<d))age--;
  return age>=18&&age<130?age:null;
+}
+/** One canonical registration photo adapter for owner AND step-8 preview.
+ * Preserve chronological/reordered IDs, remove reading/error/empty URLs.
+ * Never convert these local objects into "published" media. */
+export function readyRegistrationPhotos(photos:ReadonlyArray<{
+ id:string;src:string;status?:"reading"|"success"|"ready"|"error"
+}>):Array<{id:string;src:string}>{
+ const known=new Set<string>();
+ return photos.filter(p=>{
+  const ready=(p.status==="ready"||p.status==="success")&&
+   p.id.trim().length>0&&p.src.trim().length>0&&!known.has(p.id);
+  if(ready)known.add(p.id);
+  return ready;
+ }).map(p=>({id:p.id,src:p.src}));
 }
 export function fromLocalDraft(draft:RegistrationDraft,photos:ReadonlyArray<{id:string;src:string}>):ProfileMasterData {
  return {id:null,source:"local-draft",name:draft.name,age:draftAge(draft),
