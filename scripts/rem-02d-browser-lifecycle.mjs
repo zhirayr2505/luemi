@@ -141,8 +141,17 @@ try{
  await settleSheet();
  pass("background while sheet settling preserves target and resumes one child animation");
  // Route back successful close, then immediate reopen proves no stale cleanup callback.
+ const closingPoint=await point();
+ console.log("REM02D_DIAG_CLOSE_SURFACE",JSON.stringify(await page.evaluate(({x,y})=>{
+  const hit=document.elementFromPoint(x,y);
+  return {hit:hit?.className,hasSheet:!!hit?.closest(".pm-profile-sheet"),
+   viewport:{width:innerWidth,height:innerHeight},sheet:document.querySelector(".pm-dialog")?.dataset.sheetState};
+ },closingPoint)));
  await routeDrag(180,{hold:20});
- await sleep(420);assert.equal(await visitor().count(),0);
+ if(await visitor().count())console.log("REM02D_DIAG_AFTER_CLOSE",JSON.stringify({
+  x:await translation(),width:await visitor().evaluate(el=>el.clientWidth)
+ }));
+ await sleep(420);assert.equal(await visitor().count(),0,"claimed route swipe must unmount once");
  await open();await sleep(390);
  near(await translation(),0,1);
  pass("successful route close, single terminal commit, immediate reopen");
