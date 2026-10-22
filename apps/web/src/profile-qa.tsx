@@ -1,5 +1,5 @@
 /** Developer-only Vite HTML entry. Not referenced by production index.html. */
-import React,{useCallback,useState} from "react";
+import React,{useCallback,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 import {PhotoViewer} from "./discovery/PhotoViewer";
@@ -34,6 +34,7 @@ const fixturePhotos:ProfilePhoto[]=[
 function MediaQA(){
  const [items,setItems]=useState<ProfilePhoto[]>(fixturePhotos);
  const [openId,setOpenId]=useState<string|null>(null);
+ const closed=useRef(0);
  const profile:ProfileMasterData={
   id:"qa-media-profile",source:"server",name:"QA Media",age:28,
   city:"Краснодар",country:"Россия",countryCode:"RU",goal:null,about:"",
@@ -43,7 +44,17 @@ function MediaQA(){
  const view=projectProfile(profile,"owner");
  (window as Window&{__luemiQaMedia?:unknown}).__luemiQaMedia={
   open:(id:string)=>setOpenId(id),close:()=>setOpenId(null),
+  stats:()=>({closeCommits:closed.current,photoCount:items.length,openId}),
   change:(operation:string)=>setItems(current=>{
+   if(operation==="count-0")return [];
+   if(operation==="count-1")return fixturePhotos.slice(0,1);
+   if(operation==="count-2")return fixturePhotos.slice(0,2);
+   if(operation==="count-6")return [
+    ...fixturePhotos,
+    {id:"qa-delta",src:qaSvg("DELTA","#4a93a3"),status:"published" as const,addedAt:"2026-04-05"},
+    {id:"qa-epsilon",src:qaSvg("EPSILON","#ae8b42"),status:"published" as const,addedAt:"2026-05-06"},
+    {id:"qa-zeta",src:qaSvg("ZETA","#7b65ad"),status:"published" as const,addedAt:"2026-06-07"}
+   ];
    if(operation==="reset")return [...fixturePhotos];
    if(operation==="reorder")return [...current].reverse();
    if(operation==="remove-current"){
@@ -65,7 +76,8 @@ function MediaQA(){
   })
  };
  return openId?<PhotoViewer view={view} photos={view.photos} initialPhotoId={openId}
-  contextId={viewerPhotoContext(view)} source={null} onClose={()=>setOpenId(null)}/>:null;
+  contextId={viewerPhotoContext(view)} source={null}
+  onClose={()=>{closed.current++;setOpenId(null);}}/>:null;
 }
 function VisualQA(){
  const [theme,setTheme]=useState<"light"|"dark">("light");
