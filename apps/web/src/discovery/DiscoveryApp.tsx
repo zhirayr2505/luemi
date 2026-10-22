@@ -22,6 +22,7 @@ import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {GestureArbiter,computedTranslation,fractionalTrack,gestureCapabilities} from "../ui/gesture-arbiter";
 import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
+import {QaProfiler} from "./qa-profiler";
 import "./discovery.css";
 
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
@@ -484,8 +485,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        {profilePrepared&&<ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"&&!selectedPerson} onMotionProgress={reportProfileMotion}/>}
      </section>
    </div>
-   {selectedPerson&&<VisitorProfileRoute key={selectedPerson.id} data={fromDemoPerson(selectedPerson)}
-     theme={theme} onTheme={onTheme} onExit={()=>setPersonOpen(null)} registerBack={registerVisitorBack}/>}
+   {selectedPerson&&<QaProfiler id="VisitorProfileRoute"><VisitorProfileRoute key={selectedPerson.id} data={fromDemoPerson(selectedPerson)}
+     theme={theme} onTheme={onTheme} onExit={()=>setPersonOpen(null)} registerBack={registerVisitorBack}/></QaProfiler>}
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
        className={"discovery-nav-item"+(mainTab===value?" active":"")}
