@@ -41,6 +41,7 @@ jobs:
           done
           if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-rem04b-vite.log >&2; exit 1; fi
           node scripts/rem-04b-browser-visual.mjs
+          node scripts/rem-04b-browser-six.mjs
       - name: Save after screenshots and trace regardless of result
         if: always()
         uses: actions/upload-artifact@v4
@@ -48,6 +49,7 @@ jobs:
           name: rem-04b-after-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             qa-artifacts/rem-04b/after/**
+            qa-artifacts/rem-04b/six/**
             /tmp/luemi-rem04b-vite.log
           if-no-files-found: warn
 
