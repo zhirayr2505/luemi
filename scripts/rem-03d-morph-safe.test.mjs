@@ -35,7 +35,9 @@ assert.deepEqual(g.objectPosition("right bottom"),{x:1,y:1});
 assert.deepEqual(g.objectPosition("center 20%"),{x:.5,y:.2});
 assert.deepEqual(g.objectPosition("top"),{x:.5,y:0});
 const style=g.geometryStyles(hero);
-assert.ok(style.transform.includes("scale(")&&!style.transform.includes(","));
+const mediaScale=style.transform.match(/scale\(([^)]*)\)/)?.[1];
+assert.ok(mediaScale&&Number.isFinite(Number(mediaScale))&&!mediaScale.includes(","),
+ "only one scale argument is allowed for image pixels (translate3d commas are unrelated)");
 assert.ok(style.clipPath.startsWith("inset("));
 const insets=a.normalizeInsets({top:14,bottom:18,left:1,right:2},
  {top:20,bottom:5,left:0,right:0},{top:17,bottom:32,left:4,right:1});
