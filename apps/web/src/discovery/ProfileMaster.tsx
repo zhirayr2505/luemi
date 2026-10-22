@@ -254,7 +254,13 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  };
  const finishBlurTracking=(target:number)=>{
   stopBlurTracking();blurWindowRef.current=null;
-  blurWriterRef.current(null);
+  // The terminal media window must match the just-committed target BEFORE
+  // the asynchronous parent blurFrom state update. A temporary fallback based
+  // on the previous blurFrom would insert and immediately remove a stale
+  // decoded image, adding one extra layout/style pass per far transition.
+  // Stable at most 3 peers; resource identity stays owned by ProfileBlurTrack.
+  const settled=[target,target-1,target+1].filter(i=>i>=0&&i<photos.length);
+  blurWriterRef.current(settled);
   setBlurFrom(target);
  };
  const followBlurPosition=(target:number)=>{
