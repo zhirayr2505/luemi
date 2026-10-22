@@ -8,8 +8,16 @@ const cdp=await context.newCDPSession(page);
 const failures=[],pass=m=>console.log("REM03C_BROWSER_PASS "+m);
 page.on("pageerror",e=>failures.push(e.message));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const send=(type,points)=>cdp.send("Input.dispatchTouchEvent",{type,touchPoints:points.map(p=>({
- id:p.id,x:p.x,y:p.y,force:1,radiusX:2,radiusY:2}))});
+const send=async(type,points)=>{
+ const eventName=type==="touchStart"?"touchstart":type==="touchMove"?"touchmove":
+  type==="touchEnd"?"touchend":null;
+ const before=eventName?await page.evaluate(()=>window.__rem03cSeq??-1):-1;
+ await cdp.send("Input.dispatchTouchEvent",{type,touchPoints:points.map(p=>({
+  id:p.id,x:p.x,y:p.y,force:1,radiusX:2,radiusY:2}))});
+ if(eventName&&before>=0)await page.waitForFunction(({eventName,before})=>
+  window.__rem03cEvents?.some(e=>e.seq>before&&e.event===eventName),
+  {eventName,before},{timeout:3000});
+};
 const p=(id,x,y)=>({id,x,y});
 const open=id=>page.evaluate(id=>window.__luemiQaMedia.open(id),id);
 const change=op=>page.evaluate(op=>window.__luemiQaMedia.change(op),op);
@@ -54,12 +62,13 @@ try{
  await page.goto("http://127.0.0.1:5173/profile-qa.html",{waitUntil:"domcontentloaded"});
  await page.waitForFunction(()=>!!window.__luemiQaMedia);
  await page.evaluate(()=>{
-  window.__rem03cEvents=[];
+  window.__rem03cEvents=[];window.__rem03cSeq=0;
   for(const name of ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture","touchstart","touchmove","touchend","touchcancel"]){
    document.addEventListener(name,e=>{
     if(!(e.target instanceof Element)||!e.target.closest(".pm-viewer"))return;
     const touch=e.changedTouches?.[0];
-    window.__rem03cEvents.push({event:name,id:e.pointerId??touch?.identifier,
+    window.__rem03cEvents.push({seq:++window.__rem03cSeq,event:name,
+     id:e.pointerId??touch?.identifier,
      x:e.clientX??touch?.clientX,y:e.clientY??touch?.clientY,
      buttons:e.buttons,time:Math.round(e.timeStamp)});
     if(window.__rem03cEvents.length>120)window.__rem03cEvents.shift();
@@ -81,10 +90,9 @@ try{
  pass("portrait off-center pinch preserves actual DOMMatrix focal point under moving midpoint");
  const zoomed=s,commits=s.commits;
  // Remaining finger pans rather than starting horizontal navigation or dismiss.
- await send("touchEnd",[second]);await sleep(35);
+ await send("touchEnd",[second]);
  const oneLeft=await state();
  first=p(11,first.x+30,first.y+29);await send("touchMove",[first]);
- await sleep(40); // Allow Chrome's native touch event coalescer one frame.
  s=await state();
  if(Math.abs(s.tx-zoomed.tx)+Math.abs(s.ty-zoomed.ty)<=3)
   console.log("REM03C_DIAG_ONE_FINGER",JSON.stringify({zoomed,oneLeft,after:s,
