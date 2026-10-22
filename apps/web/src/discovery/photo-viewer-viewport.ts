@@ -41,7 +41,8 @@ export function readPortalViewport(doc:Document,snapshot:ViewportSnapshot|null):
   left:positive(Number.parseFloat(css.paddingLeft)),right:positive(Number.parseFloat(css.paddingRight))};
  element.remove();
  const telegram=win.Telegram?.WebApp;
- const safe=normalizeSafe(browser,telegram?.safeAreaInset??{},telegram?.contentSafeAreaInset??{},
+ const withInsets=telegram as (typeof telegram & {safeAreaInset?:Partial<SafeEdges>;contentSafeAreaInset?:Partial<SafeEdges>})|undefined;
+ const safe=normalizeSafe(browser,withInsets?.safeAreaInset??{},withInsets?.contentSafeAreaInset??{},
   snapshot?safeFromSnapshot(snapshot):fallback);
  return {width:Math.max(1,win.innerWidth),height:Math.max(1,win.innerHeight),
   safe,revision:snapshot?.revision??0};
