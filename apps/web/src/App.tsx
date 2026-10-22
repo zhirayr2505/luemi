@@ -9,6 +9,7 @@ import {localScope,loadDraftSnapshot,saveDraftSnapshot,clearDraftSnapshot,type S
 import {preparePhotoPreview} from "./registration/photo-preview";
 import {installViewportController} from "./viewport/viewport-controller";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
+import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 
 declare global {
   interface Window {
@@ -437,7 +438,7 @@ export function App() {
   const themeName=theme==="light"?"Тёмная":"Светлая";
   const beginDemo=()=>{setDemoOpen(true);setError("");};
   const exitDemo=useCallback(()=>{setDemoOpen(false);setPhase("form");setStep(8);},[]);
-  const readyPhotos=useMemo(()=>photos.filter(p=>p.status==="ready"||p.status==="success").map(p=>({id:p.id,src:p.src})),[photos]);
+  const readyPhotos=useMemo(()=>readyRegistrationPhotos(photos),[photos]);
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
