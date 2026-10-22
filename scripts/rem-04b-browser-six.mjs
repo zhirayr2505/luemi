@@ -118,6 +118,26 @@ try{
  await dot(0);await pause(340);await dot(5);await pause(48);
  await page.evaluate(()=>document.querySelector(".luemi-shell")?.setAttribute("data-theme","dark"));
  await frameTrace("dark-theme");
+ // Dedicated true mid-transition pixel captures: measurements above are
+ // side-effect-free rAF sampling; screenshots are taken in separate replays
+ // so capture overhead never affects the transition-quality measurements.
+ for(const crossing of [1.15,2.15,3.15]){
+  await dot(0);await pause(335);await dot(5);
+  await page.waitForFunction(goal=>{
+   const track=document.querySelector(".pm-shell .pm-photo-track");
+   const hero=document.querySelector(".pm-shell .pm-hero");
+   return !!track&&!!hero&&(-new DOMMatrixReadOnly(getComputedStyle(track).transform).m41/hero.clientWidth)>=goal;
+  },crossing,{timeout:2000});
+  const crossingSample=await snapshot();
+  assert.ok(crossingSample.fractionalIndex>=crossing);
+  assert.ok(crossingSample.pairs.filter(p=>p.intersection>.5).every(p=>
+   p.blurExists&&p.blurDecoded&&p.blurId===p.id),
+   "no visible mismatched blur while capturing source pixels near phase "+crossing);
+  await page.screenshot({path:dir+"/crossing-"+String(crossing).replace(".","-")+".png"});
+  console.log("REM04B_SIX_FRAME_SCREENSHOT "+JSON.stringify({crossing,
+   actualFraction:crossingSample.fractionalIndex,activeBlur:crossingSample.activeBlur}));
+  await pause(335);
+ }
  // The same gallery must remain stable while its sheet is mid-collapse and
  // when the profile is fully expanded with no visible blur opacity.
  await dot(0);await pause(340);
