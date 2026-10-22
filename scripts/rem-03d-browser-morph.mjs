@@ -3,12 +3,16 @@ import {chromium} from "playwright";
 const browser=await chromium.launch({headless:true,channel:"chrome",args:["--no-sandbox"]});
 const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true});
 const page=await context.newPage();
+const cdp=await context.newCDPSession(page);
 const errors=[];
 page.on("pageerror",e=>errors.push(e.message));
 const pass=x=>console.log("REM03D_BROWSER_PASS "+x);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const media=(fn,...args)=>page.evaluate(([name,params])=>window.__luemiQaMedia[name](...params),[fn,args]);
 const source=()=>page.locator(".pm-qa-photo-source img");
+const touch=(type,points)=>cdp.send("Input.dispatchTouchEvent",{type,touchPoints:points.map(x=>({
+ id:x.id,x:x.x,y:x.y,force:1,radiusX:2,radiusY:2
+}))});
 const viewer=()=>page.locator(".pm-viewer");
 const state=()=>page.evaluate(()=>{
  const root=document.querySelector(".pm-viewer"),clip=root?.querySelector(".pm-viewer-morph-clip"),
@@ -84,10 +88,26 @@ try{
  await page.keyboard.press("ArrowRight");await waitReady("qa-beta");
  await close();
  pass("photo navigation invalidates old miniature identity: close falls back safely");
- await setSource("grid");await open("qa-alpha");await waitReady("qa-alpha");await sleep(265);
+ await media("change","reset");await setSource("hero");
+ await open("qa-alpha");await waitReady("qa-alpha");await sleep(265);
+ await media("change","reorder");await page.waitForFunction(()=>
+  document.querySelector(".pm-viewer-image")?.dataset.photoId==="qa-alpha");
+ await viewer().getByRole("button",{name:"Закрыть просмотр"}).click();
+ assert.equal((await state()).active,"false","reorder invalidates previous source morph");
+ await viewer().waitFor({state:"detached",timeout:3500});
+ pass("same photoId after reorder cannot return to stale pre-reorder source");
+ await media("change","reset");await setSource("grid");await open("qa-alpha");await waitReady("qa-alpha");await sleep(265);
  await setSource("none");
  await close();
  pass("deleted source DOM during viewer forces fade, no invalid destination morph");
+ await media("change","reset");await setSource("hero");
+ await open("qa-alpha");await waitReady("qa-alpha");await sleep(270);
+ await media("change","aspect-panorama");
+ await page.waitForFunction(()=>document.querySelector(".pm-viewer-image")?.dataset.photoId==="qa-alpha");
+ await viewer().getByRole("button",{name:"Закрыть просмотр"}).click();
+ assert.equal((await state()).active,"false","new URL/version invalidates old source");
+ await viewer().waitFor({state:"detached",timeout:3500});
+ pass("same photoId with new src/version closes by fade rather than outdated image source");
  await setSource("offscreen");await open("qa-alpha");
  assert.equal((await state()).active,"false","offscreen must not morph");
  await close();await setSource("hero");
@@ -97,6 +117,23 @@ try{
  assert.equal(Math.round((await state()).height),780);
  await close();await page.setViewportSize({width:393,height:852});
  pass("viewport resize invalidates changed thumbnail coordinates; viewer remains continuous");
+ await media("change","reset");await setSource("hero");
+ await open("qa-alpha");await waitReady("qa-alpha");await sleep(270);
+ await touch("touchStart",[{id:11,x:160,y:370}]);
+ await touch("touchStart",[{id:11,x:160,y:370},{id:12,x:245,y:470}]);
+ await touch("touchMove",[{id:11,x:95,y:330},{id:12,x:303,y:515}]);
+ await page.waitForFunction(()=>{
+  const img=document.querySelector(".pm-viewer-image");
+  const m=new DOMMatrixReadOnly(getComputedStyle(img).transform);
+  return Math.hypot(m.m11,m.m12)>1.2;
+ });
+ await page.keyboard.press("Escape");
+ const zoomClosing=await state();
+ assert.equal(zoomClosing.active,"true","zoomed image returns via source after cancellation");
+ assert.ok(Math.abs(zoomClosing.m11-zoomClosing.m22)<1e-5,"closing zoomed image uses uniform image scale");
+ await viewer().waitFor({state:"detached",timeout:3500});
+ await touch("touchCancel",[]).catch(()=>{});
+ pass("closing while pinch zoom is active releases pointers and does not stretch source pixels");
 
  // REM-01D snapshot: safe and content insets must combine via max, not sum.
  await page.evaluate(()=>{
