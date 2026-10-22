@@ -1,5 +1,6 @@
 /** Developer-only Vite HTML entry. Not referenced by production index.html. */
 import React,{useCallback,useRef,useState} from "react";
+import {resourceIdentity,type ViewerSource} from "./discovery/photo-viewer-state";
 import {createRoot} from "react-dom/client";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 import {PhotoViewer} from "./discovery/PhotoViewer";
@@ -34,6 +35,10 @@ const fixturePhotos:ProfilePhoto[]=[
 function MediaQA(){
  const [items,setItems]=useState<ProfilePhoto[]>(fixturePhotos);
  const [openId,setOpenId]=useState<string|null>(null);
+ const [origin,setOrigin]=useState<"hero"|"grid"|"outside"|null>(null);
+ const [originId,setOriginId]=useState<string|null>(null);
+ const backHandler=useRef<(()=>boolean)|null>(null);
+ const profileBack=useRef(0);
  const closed=useRef(0);
  const profile:ProfileMasterData={
   id:"qa-media-profile",source:"server",name:"QA Media",age:28,
@@ -43,8 +48,16 @@ function MediaQA(){
  };
  const view=projectProfile(profile,"owner");
  (window as Window&{__luemiQaMedia?:unknown}).__luemiQaMedia={
-  open:(id:string)=>setOpenId(id),close:()=>setOpenId(null),
-  stats:()=>({closeCommits:closed.current,photoCount:items.length,openId}),
+  open:(id:string)=>{setOrigin(null);setOpenId(id);},
+  prepareOrigin:(id:string,kind:"hero"|"grid"|"outside")=>{setOriginId(id);setOrigin(kind);},
+  openFrom:(id:string,kind:"hero"|"grid"|"outside")=>{
+   setOriginId(id);setOrigin(kind);setOpenId(id);
+  },
+  removeOrigin:()=>setOrigin(null),
+  close:()=>setOpenId(null),
+  back:()=>{if(!backHandler.current?.())profileBack.current++;},
+  stats:()=>({closeCommits:closed.current,photoCount:items.length,openId,
+   profileBack:profileBack.current}),
   change:(operation:string)=>setItems(current=>{
    if(operation==="count-0")return [];
    if(operation==="count-1")return fixturePhotos.slice(0,1);
@@ -89,9 +102,26 @@ function MediaQA(){
    return current;
   })
  };
- return openId?<PhotoViewer view={view} photos={view.photos} initialPhotoId={openId}
-  contextId={viewerPhotoContext(view)} source={null}
-  onClose={()=>{closed.current++;setOpenId(null);}}/>:null;
+ const sourcePhoto=view.photos.find(p=>p.id===(originId??openId));
+ const source:ViewerSource|null=origin&&sourcePhoto?{
+  photoId:sourcePhoto.id,contextId:viewerPhotoContext(view),
+  resourceKey:resourceIdentity(sourcePhoto),
+  resolveElement:()=>document.getElementById("qa-source-photo")
+ }:null;
+ return <>
+  {origin&&sourcePhoto&&<div data-qa-source={origin}
+   style={{position:"fixed",zIndex:20,overflow:"hidden",left:origin==="grid"?55:16,
+    top:origin==="outside"?-900:110,width:origin==="grid"?210:330,
+    height:origin==="grid"?280:390,pointerEvents:"none"}}>
+   <img id="qa-source-photo" data-photo-id={sourcePhoto.id} alt=""
+    src={sourcePhoto.src} style={{width:"100%",height:"100%",display:"block",
+     objectFit:"cover",objectPosition:origin==="hero"?"center 20%":"center center"}}/>
+  </div>}
+  {openId&&<PhotoViewer view={view} photos={view.photos} initialPhotoId={openId}
+   contextId={viewerPhotoContext(view)} source={source}
+   registerBack={cb=>{backHandler.current=cb;}}
+   onClose={()=>{closed.current++;setOpenId(null);}}/>}
+ </>;
 }
 function VisualQA(){
  const [theme,setTheme]=useState<"light"|"dark">("light");

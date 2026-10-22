@@ -80,6 +80,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{photoId:string;source:ViewerSource|null}|null>(null);
+ const modalOwnsMotionFreeze=useRef(false);
  const [blikOpen,setBlikOpen]=useState(false);
  const [collapsed,setCollapsed]=useState(false);
 
@@ -303,6 +304,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    photoId:photo.id,contextId,resourceKey:resourceIdentity(photo),
    resolveElement:()=>element
   }:null;
+  // Reuse the accepted REM-02D fractional-motion snapshot/restore. The
+  // profile must not shift underneath a geometrically anchored crop morph.
+  if(!routeFrozen.current&&!routeTerminal.current){
+   suspendForRoute();
+   modalOwnsMotionFreeze.current=routeFrozen.current!==null;
+  }
   setViewer({photoId:photo.id,source});
  };
  // The visible CSS matrix (not activePhoto's integer) is the starting frame
@@ -829,7 +836,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   </div>
   {viewer&&<PhotoViewer view={view} photos={photos} initialPhotoId={viewer.photoId} source={viewer.source}
     contextId={viewerPhotoContext(view)}
-    onClose={()=>setViewer(null)} registerBack={registerViewerBack}
+    onClose={()=>{
+      setViewer(null);
+      if(modalOwnsMotionFreeze.current){
+       modalOwnsMotionFreeze.current=false;rollbackRoute();
+      }
+    }} registerBack={registerViewerBack}
     />}
   {blikOpen&&view.profile.activeBlik&&<BlikViewer blik={view.profile.activeBlik} name={view.profile.name} onClose={()=>setBlikOpen(false)}/>}
   {preview&&<ProfileMaster data={data} mode={data.source==="local-draft"?"local-self-preview":"preview"} onClose={()=>setPreview(false)} registerBack={registerPreviewBack} active={active} onMotionProgress={onMotionProgress}/>}

@@ -116,6 +116,7 @@ jobs:
           node scripts/rem-03a-browser-media.mjs
           node scripts/rem-03b-browser-track.mjs
           node scripts/rem-03c-browser-pinch.mjs
+          node scripts/rem-03d-browser-morph.mjs
       - name: Preserve browser screenshots and server diagnostics
         if: always()
         continue-on-error: true
