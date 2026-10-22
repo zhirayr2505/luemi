@@ -1,0 +1,149 @@
+import assert from "node:assert/strict";
+import {chromium} from "playwright";
+const browser=await chromium.launch({headless:true,channel:"chrome",args:["--no-sandbox"]});
+const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true});
+const page=await context.newPage();
+const errors=[];
+page.on("pageerror",e=>errors.push(e.message));
+const pass=x=>console.log("REM03D_BROWSER_PASS "+x);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const media=(fn,...args)=>page.evaluate(([name,params])=>window.__luemiQaMedia[name](...params),[fn,args]);
+const source=()=>page.locator(".pm-qa-photo-source img");
+const viewer=()=>page.locator(".pm-viewer");
+const state=()=>page.evaluate(()=>{
+ const root=document.querySelector(".pm-viewer"),clip=root?.querySelector(".pm-viewer-morph-clip"),
+  image=root?.querySelector(".pm-viewer-morph-image"),source=document.querySelector(".pm-qa-photo-source img"),
+  main=root?.querySelector(".pm-viewer-image"),top=root?.querySelector(".pm-viewer-top"),
+  bottom=root?.querySelector(".pm-viewer-bottom");
+ const m=image?new DOMMatrixReadOnly(getComputedStyle(image).transform):null;
+ return {open:!!root,active:root?.dataset.morphActive,clipDisplay:clip?.style.display,
+  clipPath:clip?getComputedStyle(clip).clipPath:null,ghostSrc:image?.getAttribute("src")?.slice(0,32),
+  m11:m?.m11??1,m22:m?.m22??1,sourceVisible:source?getComputedStyle(source).visibility:null,
+  mainVisible:main?getComputedStyle(main).visibility:null,id:main?.dataset.photoId,
+  topPadding:top?getComputedStyle(top).paddingTop:null,
+  bottomPadding:bottom?getComputedStyle(bottom).paddingBottom:null,
+  pvTop:root?.style.getPropertyValue("--pv-safe-top"),
+  pvBottom:root?.style.getPropertyValue("--pv-safe-bottom"),
+  theme:root?.dataset.theme,focus:document.activeElement?.getAttribute("aria-label")??document.activeElement?.className,
+  height:root?.getBoundingClientRect().height};
+});
+const waitReady=id=>page.waitForFunction(id=>{
+ const v=document.querySelector(".pm-viewer"),img=v?.querySelector(".pm-viewer-image");
+ return img?.dataset.photoId===id&&img.style.opacity==="1"&&img.naturalWidth>0;
+},id,{timeout:6000});
+const open=async id=>{await media("open",id);await viewer().waitFor({state:"visible"});};
+const close=async()=>{await viewer().getByRole("button",{name:"Закрыть просмотр"}).click();
+ await viewer().waitFor({state:"detached",timeout:3500});};
+const setSource=async mode=>{
+ await media("setSource",mode);
+ if(mode==="none")await source().waitFor({state:"detached"});
+ else await page.waitForFunction(()=>{const el=document.querySelector(".pm-qa-photo-source img");
+  return el?.complete&&el.naturalWidth>0;});
+};
+try{
+ await page.goto("http://127.0.0.1:5173/profile-qa.html",{waitUntil:"domcontentloaded"});
+ await page.waitForFunction(()=>!!window.__luemiQaMedia);
+ await media("change","aspect-portrait");
+ await setSource("hero");
+ const originalOverflow=await page.evaluate(()=>document.body.style.overflow);
+ await page.locator(".pm-qa-focus").focus();
+ await open("qa-alpha");
+ let s=await state();
+ assert.equal(s.active,"true","hero must start real source crop morph");
+ assert.equal(s.sourceVisible,"hidden");
+ assert.equal(s.mainVisible,"hidden","no competing live pixels during morph");
+ assert.ok(s.clipPath?.startsWith("inset("));
+ assert.ok(Math.abs(s.m11-s.m22)<1e-5,"no scaleX/scaleY face stretching");
+ await waitReady("qa-alpha");await sleep(280);
+ s=await state();assert.equal(s.active,"false");
+ assert.equal(s.sourceVisible,"visible");assert.equal(s.mainVisible,"visible");
+ assert.equal(s.focus,"Закрыть просмотр");
+ await close();
+ assert.equal(await page.evaluate(()=>document.body.style.overflow),originalOverflow);
+ assert.equal(await source().evaluate(el=>getComputedStyle(el).visibility),"visible");
+ assert.equal(await page.locator(".pm-qa-focus").evaluate(el=>document.activeElement===el),true);
+ pass("hero cover 22% 70% source morph: clipped pixels, uniform actual DOMMatrix, single visible copy, focus + overflow restored");
+ for(const [aspect,mode] of [["aspect-portrait","grid"],["aspect-landscape","hero"],
+    ["aspect-panorama","grid"],["aspect-tall","hero"]]){
+  await media("change",aspect);await setSource(mode);
+  await open("qa-alpha");
+  const first=await state();assert.equal(first.active,"true",aspect+" "+mode);
+  assert.ok(Math.abs(first.m11-first.m22)<1e-5);
+  await waitReady("qa-alpha");await sleep(265);
+  await close();
+  assert.equal(await source().evaluate(el=>getComputedStyle(el).visibility),"visible");
+ }
+ pass("3:4 grid, landscape, panorama and tall cover crop have only uniform pixel scale on open and close");
+ await media("change","reset");await setSource("hero");
+ await open("qa-alpha");await waitReady("qa-alpha");await sleep(270);
+ await page.keyboard.press("ArrowRight");await waitReady("qa-beta");
+ await close();
+ pass("photo navigation invalidates old miniature identity: close falls back safely");
+ await setSource("grid");await open("qa-alpha");await waitReady("qa-alpha");await sleep(265);
+ await setSource("none");
+ await close();
+ pass("deleted source DOM during viewer forces fade, no invalid destination morph");
+ await setSource("offscreen");await open("qa-alpha");
+ assert.equal((await state()).active,"false","offscreen must not morph");
+ await close();await setSource("hero");
+ pass("source outside viewport skips morph and restores image");
+ await open("qa-alpha");await waitReady("qa-alpha");await sleep(265);
+ await page.setViewportSize({width:430,height:780});await sleep(60);
+ assert.equal(Math.round((await state()).height),780);
+ await close();await page.setViewportSize({width:393,height:852});
+ pass("viewport resize invalidates changed thumbnail coordinates; viewer remains continuous");
+
+ // REM-01D snapshot: safe and content insets must combine via max, not sum.
+ await page.evaluate(()=>{
+  const shell=document.querySelector(".luemi-shell");
+  shell.style.setProperty("--viewport-safe-top","43px");
+  shell.style.setProperty("--viewport-safe-bottom","36px");
+  shell.style.setProperty("--viewport-offset-top","0px");
+  shell.style.setProperty("--app-height","852px");
+ });
+ await open("qa-alpha");
+ await page.waitForFunction(()=>document.querySelector(".pm-viewer")?.style.getPropertyValue("--pv-safe-top")==="43px");
+ s=await state();assert.equal(s.pvBottom,"36px");
+ assert.ok(parseFloat(s.topPadding)>=106,"63px header inset retained plus 43px safe");
+ assert.ok(parseFloat(s.bottomPadding)>=56,"bottom control above safe area");
+ const before=await state();
+ await page.evaluate(()=>{
+  const shell=document.querySelector(".luemi-shell");
+  shell.style.setProperty("--viewport-safe-top","22px");
+  shell.style.setProperty("--viewport-safe-bottom","15px");
+  shell.dataset.theme="dark";
+ });
+ await page.waitForFunction(()=>document.querySelector(".pm-viewer")?.dataset.theme==="dark");
+ s=await state();assert.equal(s.pvTop,"22px");assert.equal(s.pvBottom,"15px");
+ assert.equal(s.id,before.id);
+ pass("portal live theme + safe/content-area max insets, 63px preserved; no viewer remount on update");
+ const prevCount=(await media("stats")).closeCommits;
+ await viewer().getByRole("button",{name:"Действия с фото"}).click();
+ assert.equal(await viewer().getByRole("menu").isVisible(),true);
+ assert.equal(await media("back"),true);await viewer().getByRole("menu").waitFor({state:"detached"});
+ assert.equal((await media("stats")).closeCommits,prevCount);
+ assert.equal(await media("back"),true);await viewer().waitFor({state:"detached",timeout:3000});
+ assert.equal((await media("stats")).closeCommits,prevCount+1);
+ assert.equal(await media("back"),false);
+ pass("registered Telegram-style Back hierarchy menu → viewer → parent, exact single commit");
+ await setSource("grid");await open("qa-alpha");await waitReady("qa-alpha");await sleep(270);
+ await page.keyboard.press("Escape");await viewer().waitFor({state:"detached",timeout:3000});
+ await open("qa-alpha");await waitReady("qa-alpha");await sleep(270);
+ await close();assert.equal(await media("back"),false);
+ pass("Escape, X, no duplicate close, StrictMode reopen preserved");
+ await open("qa-alpha");
+ await page.evaluate(()=>{
+  Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"hidden"});
+  document.dispatchEvent(new Event("visibilitychange"));
+ });
+ await sleep(50);
+ assert.equal(await source().evaluate(el=>getComputedStyle(el).visibility),"visible");
+ await page.evaluate(()=>{
+  Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"visible"});
+  document.dispatchEvent(new Event("visibilitychange"));
+ });
+ await close();
+ pass("background/foreground restores source visibility and cancels old morph");
+ assert.deepEqual(errors,[],"browser exceptions must be empty");
+ console.log("REM-03D BROWSER MORPH QA PASS · Chromium only; physical A55/iOS NOT VERIFIED");
+}finally{await context.close();await browser.close();}
