@@ -43,3 +43,4 @@ jobs:
           done
           if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-rem04a-vite.log >&2; exit 1; fi
           REM04A_BASELINE=0 node scripts/rem-04a-browser-measure.mjs
+          node scripts/rem-04a-browser-startup.mjs
