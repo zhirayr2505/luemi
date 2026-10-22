@@ -294,13 +294,25 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(stage.current)stage.current.dataset.debugCloseCalled="true";
   gesture.current=null;pointer.current.clear();pinch.current=null;zoom.current=1;
   gestureArbiter.current?.cancel();
-  const motion=runner.current;
-  if(motion){
-   const x=motion.cancel();
-   if(Math.abs(x)>.1)motion.start(x,0,duration,easing,paintTrack,()=>{},geometryRevision.current);
+  try{
+   const motion=runner.current;
+   if(stage.current)stage.current.dataset.debugStep="before-track-cancel";
+   if(motion){
+    const x=motion.cancel();
+    if(Math.abs(x)>.1)motion.start(x,0,duration,easing,paintTrack,()=>{},geometryRevision.current);
+   }
+   if(stage.current)stage.current.dataset.debugStep="before-surface-freeze";
+   stopSurface();
+   if(stage.current)stage.current.dataset.debugStep="before-close-transition";
+   surfaceTransition(true);
+   if(stage.current){
+    stage.current.dataset.debugStep="after-close-transition";
+    stage.current.dataset.debugOwner=String(surfaceOwner.current?.snapshot().phase);
+   }
+  }catch(error){
+   if(stage.current)stage.current.dataset.debugFailure=String(error);
+   throw error;
   }
-  stopSurface();surfaceTransition(true);
-  if(stage.current)stage.current.dataset.debugOwner=String(surfaceOwner.current?.snapshot().phase);
  };
  handlers.current={close:requestClose,navigate:requestNavigation};
  useEffect(()=>{
