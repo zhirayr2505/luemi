@@ -89,6 +89,15 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  }));
  const browseSettle=useRef<{token:MotionToken;target:number}|null>(null);
  const browsePosition=useRef(0);
+ // StrictMode invokes provisional effect cleanup; never reuse a disposed
+ // controller for the next real interaction.
+ const ensureBrowseMotion=()=>{
+  if(browseMotion.current.snapshot().disposed)
+   browseMotion.current=new MotionController("browse",{
+    frame:cb=>requestAnimationFrame(cb),cancelFrame:id=>cancelAnimationFrame(id)
+   },browsePosition.current);
+  return browseMotion.current;
+ };
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
@@ -211,6 +220,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   });
  };
  const frozenBrowse=()=>{
+  ensureBrowseMotion();
   const width=pages.current?.clientWidth||window.innerWidth;
   // Both CSS transitions can have different in-flight matrix values.
   const trackX=computedTranslation(pageTrack.current),inkX=computedTranslation(underline.current);
@@ -291,6 +301,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   if(pagerSettleTimer.current!==null)window.clearTimeout(pagerSettleTimer.current);
  },[]);
  const down=(event:ReactPointerEvent<HTMLDivElement>)=>{
+  ensureBrowseMotion();
   if(!event.isPrimary){inputOwnership.current.secondFinger();cancelSwipe();return;}
   if(event.pointerType==="mouse"&&event.button!==0)return;
   const target=event.target as HTMLElement;
