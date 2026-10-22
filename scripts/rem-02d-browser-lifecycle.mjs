@@ -46,6 +46,9 @@ const routeDrag=async(dx,{hold=200,cancel=false,lost=false}={})=>{
  const p=await point();
  await page.mouse.move(p.x,p.y);await page.mouse.down();
  await page.mouse.move(p.x+dx,p.y,{steps:7});
+ if(dx>=150&&await visitor().count())console.log("REM02D_DIAG_INFLIGHT",JSON.stringify({
+  dx,liveX:await translation(),candidate:p
+ }));
  await sleep(hold);
  if(lost)await visitor().evaluate(el=>el.dispatchEvent(
   new PointerEvent("lostpointercapture",{bubbles:true,pointerId:1,pointerType:"mouse",isPrimary:true})
