@@ -408,11 +408,22 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const pane=sheet.current;if(!motionActive||!pane)return;
   type SheetGesture={x:number;y:number;start:number;down:boolean;scrollTop:number;
    origin:number;axis:""|"x"|"y"|"native";inPages:boolean;index:number;
-   lastY:number;lastTime:number;velocity:number;blocking:boolean};
+   lastY:number;lastX:number;lastTime:number;velocity:number;blocking:boolean;revision:number};
   let gesture:SheetGesture|null=null,frame:number|null=null;
   const flush=()=>{if(frame!==null){cancelAnimationFrame(frame);frame=null;}};
   const abort=()=>{
    pane.removeEventListener("touchmove",move);flush();gesture=null;
+   sheetDragActive.current=false;
+  };
+  rebaseSheetGesture.current=(newValue,revision)=>{
+   const g=gesture;if(!g)return;
+   flush();g.origin=reanchorSheet(newValue,g.y,g.lastY);
+   g.revision=revision;
+  };
+  rebaseTabsGesture.current=(position,revision)=>{
+   const g=gesture;if(!g||!g.inPages)return;
+   flush();g.index=reanchorPage(position,g.x,g.lastX,tabViewport.current);
+   g.revision=revision;
   };
   cancelSheetGesture.current=abort;
   const start=(e:TouchEvent)=>{
@@ -422,17 +433,20 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const t=e.touches[0],inPages=!!target.closest(".pm-pages");
    const scrollTop=inPages?(contentPages.current[tabs.findIndex(v=>v[0]===tabSelectionRef.current)]?.scrollTop||0):0;
    stopSheet.current();
+   sheetIntent.current=null;sheetDragActive.current=true;
    if(inPages)stopTabs.current();
    const now=performance.now();
    gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
-    lastY:t.clientY,lastTime:now,velocity:0,blocking:!collapsedRef.current||scrollTop<=1};
+    lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
+    revision:sheetRevision.current,blocking:!collapsedRef.current||scrollTop<=1};
    pane.removeEventListener("touchmove",move);
    pane.addEventListener("touchmove",move,{passive:!gesture.blocking});
   };
   const move=(e:TouchEvent)=>{
    const g=gesture;if(!g||e.touches.length!==1)return;
    const t=e.touches[0],dx=t.clientX-g.x,dy=t.clientY-g.y;
+   g.lastX=t.clientX;
    if(!g.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
     if(Math.abs(dx)>Math.abs(dy)*1.18)g.axis=g.inPages?"x":"native";
@@ -442,10 +456,13 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(g.axis==="native")return;
    if(g.blocking&&e.cancelable)e.preventDefault();
    const now=performance.now(),dt=now-g.lastTime;
-   if(dt>0){g.velocity=(t.clientY-g.lastY)/dt;g.lastY=t.clientY;g.lastTime=now;}
+   if(dt>0){g.velocity=(t.clientY-g.lastY)/dt;g.lastTime=now;}
+   g.lastY=t.clientY;
    flush();
+   const rev=g.revision;
    frame=requestAnimationFrame(()=>{
     frame=null;
+    if(gesture!==g||rev!==g.revision)return;
     if(g.axis==="x")paintTabs(g.index,dx);
     else {
      const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
@@ -495,6 +512,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   pane.addEventListener("touchcancel",cancel,{passive:true});
   return ()=>{
    abort();cancelSheetGesture.current=()=>{};
+   rebaseSheetGesture.current=()=>{};rebaseTabsGesture.current=()=>{};
    pane.removeEventListener("touchstart",start);pane.removeEventListener("touchend",end);
    pane.removeEventListener("touchcancel",cancel);
   };
