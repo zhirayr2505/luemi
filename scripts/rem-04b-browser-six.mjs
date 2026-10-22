@@ -115,9 +115,31 @@ try{
  await page.setViewportSize({width:375,height:768});await dot(0);await pause(340);
  await dot(5);await pause(55);await page.setViewportSize({width:393,height:852});
  await frameTrace("resize-mid-settle");
+ await dot(0);await pause(340);await dot(5);await pause(48);
  await page.evaluate(()=>document.querySelector(".luemi-shell")?.setAttribute("data-theme","dark"));
- await dot(0);await pause(340);await dot(5);
  await frameTrace("dark-theme");
+ // The same gallery must remain stable while its sheet is mid-collapse and
+ // when the profile is fully expanded with no visible blur opacity.
+ await dot(0);await pause(340);
+ await page.getByRole("button",{name:"Потянуть панель вниз"}).click();
+ await pause(105);await dot(5);
+ const midpoint=await frameTrace("midpoint-sheet-navigation");
+ assert.ok(midpoint.samples.some(x=>x.opacity>.05&&x.opacity<.85),
+  "real intermediate sheet opacity must have been recorded");
+ await dot(0);await frameTrace("expanded-sheet-navigation");
+ const expanded=await snapshot();
+ assert.ok(expanded.opacity<.05,"expanded hero has original clear display");
+ const heroBox=await page.locator(".pm-shell .pm-hero").boundingBox();
+ assert.ok(heroBox&&heroBox.width>100);
+ await dot(5);await pause(70);
+ await page.mouse.move(heroBox.x+heroBox.width*.22,heroBox.y+heroBox.height*.35);
+ await page.mouse.down();
+ await page.mouse.move(heroBox.x+heroBox.width*.78,heroBox.y+heroBox.height*.35,{steps:8});
+ await page.mouse.up();
+ await frameTrace("interrupt-far-jump-with-reverse-pointer");
+ await page.getByRole("button",{name:"Развернуть анкету"}).click();
+ await pause(450);
+ console.log("REM04B_SIX_MOTION_PASS midpoint, expanded, reversed pointer interruption without track drift");
  // An actual viewer opening during a distant gallery transition must
  // point to the selected photo ID, and closing must not corrupt the underlay.
  await dot(0);await pause(340);await dot(5);await pause(55);
