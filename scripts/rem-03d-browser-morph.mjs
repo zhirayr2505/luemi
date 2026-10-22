@@ -8,7 +8,14 @@ const pass=x=>console.log("REM03D_BROWSER_PASS "+x);
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const api=(name,...args)=>page.evaluate(({name,args})=>window.__luemiQaMedia[name](...args),{name,args});
 const viewer=()=>page.locator(".pm-viewer");
-const open=(id,kind)=>api("openFrom",id,kind);
+const open=async(id,kind)=>{
+ await api("prepareOrigin",id,kind);
+ await page.waitForFunction(id=>{
+  const img=document.getElementById("qa-source-photo");
+  return img?.dataset.photoId===id&&img.complete&&img.naturalWidth>0&&img.naturalHeight>0;
+ },id,{timeout:3500});
+ await api("openFrom",id,kind);
+};
 const get=()=>page.evaluate(()=>{
  const root=document.querySelector(".pm-viewer"),m=root?.querySelector(".pm-viewer-morph img"),img=root?.querySelector(".pm-viewer-image");
  const source=document.getElementById("qa-source-photo");
@@ -43,6 +50,8 @@ try{
   assert.equal(init.photo,"qa-alpha");
   assert.equal(init.active,"Закрыть просмотр");
   assert.equal(init.overflow,"hidden");
+  if(kind==="hero"||kind==="grid")
+   assert.equal(init.morph,"true","decoded existing thumbnail should get true uniform morph");
   if(init.morph==="true"){
    assert.ok(Math.abs(init.matrixScaleX-init.matrixScaleY)<.001,
     "morph image never uses scaleX/scaleY separately");
