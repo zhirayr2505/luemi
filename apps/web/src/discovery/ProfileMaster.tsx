@@ -174,12 +174,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   });
  },[motionActive]);
  const ensureSheetRunner=()=>{
-  if(!sheetRunner.current)sheetRunner.current=new GeometryMotion("sheet",()=>performance.now(),
+  if(!sheetRunner.current||sheetRunner.current.isDisposed())sheetRunner.current=new GeometryMotion("sheet",()=>performance.now(),
    cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),sheetY.current,sheetRevision.current);
   return sheetRunner.current;
  };
  const ensureTabsRunner=()=>{
-  if(!tabsRunner.current)tabsRunner.current=new GeometryMotion("tabs",()=>performance.now(),
+  if(!tabsRunner.current||tabsRunner.current.isDisposed())tabsRunner.current=new GeometryMotion("tabs",()=>performance.now(),
    cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),
    (pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current),tabsRevision.current);
   return tabsRunner.current;
