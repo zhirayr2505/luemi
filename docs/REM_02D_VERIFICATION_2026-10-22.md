@@ -69,6 +69,19 @@ Existing approved Foundation, browser, source/React hooks, build, smoke and API 
 
 **Final exact-head GitHub Actions evidence:** see current, immutable SHA and links in [PR #41](https://github.com/zhirayr2505/luemi/pull/41). The PR must not be marked accepted unless *both* Foundation (7/7) and Behavioral (2/2), including every REM-02D case, have concluded SUCCESS **on the exact final SHA**.
 
+## Root cause verified during REM-02D regression and resolved
+
+The first complete Chromium scenario exposed a trusted browser `pointercancel` during a fast **mouse** drag on an identity text `SPAN` (`isTrusted: true`, before pointerup), with only the first 25–26 pixels reaching the route. This is not a stale MotionController callback. React's route abort correctly cancelled the session, and therefore simply suppressing `pointercancel` would have violated LU-12.
+
+The repair is strictly scoped to the existing identity section in `profile-master.css`:
+
+- `.pm-identity { touch-action: pan-y; user-select: none; -webkit-user-select: none; }` prevents the browser's horizontal text-selection/drag takeover **only** for the route-eligible identity content. Its vertical native pan remains supported.
+- Tab-strip native `touch-action: pan-x` and page native `touch-action: pan-y` are unchanged; no global `touch-action:none` is introduced.
+- The route listens to `lostpointercapture` only when `event.target === event.currentTarget`; child capture losses still use their own arbiter owners.
+- The route's terminal `pointercancel` is **not** disabled and continues to rollback with a single commit when a genuine cancellation occurs.
+
+Exact-head earlier checkpoint `c40bb405ef3d593bb31f35c40225055a790a5531` passed the full [Foundation 7/7](https://github.com/zhirayr2505/luemi/actions/runs/39765423654), [Behavioral 2/2](https://github.com/zhirayr2505/luemi/actions/runs/39765423456), and [Focused REM-02D 1/1](https://github.com/zhirayr2505/luemi/actions/runs/39765423811) workflows. The Chromium trace reached a real `pointerup` at 180 CSS px, with a single authorized close and immediate reopen. **These are evidence for that exact checkpoint only.** Subsequent cleanup removes temporary DOM/console diagnostic writes, with unchanged assertions and no changes to physics; final release of this branch requires a fresh green run on its exact final head (record links in Draft PR #41).
+
 ## Open gates (NOT VERIFIED)
 
 - Physical Galaxy A55 **inside Telegram Android WebView**: TOUCH/Pointer interleaving, gesture contention, dropped capture, FPS/p95/p99, app background and Telegram Back Button.
