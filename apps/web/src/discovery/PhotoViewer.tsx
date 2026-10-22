@@ -17,7 +17,7 @@ import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixTransform,
  localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
 import {computeMorph,isVisibleSource,geometryStyles,type MorphGeometry} from "./photo-viewer-morph";
-import {readViewerInsets,watchViewerInsets,type ViewerInsets} from "./photo-viewer-safe-area";
+import {watchViewerInsets,type ViewerInsets} from "./photo-viewer-safe-area";
 
 type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:ViewerSource|null;contextId:string;
  onClose:()=>void;onMain?:(id:string)=>boolean|Promise<boolean>;
@@ -174,7 +174,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   freeze:()=>MediaTransform;
   local:(point:Point)=>Point;
   reset:()=>void;
- }>({cancel:()=>{},freeze:identityMedia,local:point=>point,reset:()=>{}});
+  stopSurface:()=>void;
+ }>({cancel:()=>{},freeze:identityMedia,local:point=>point,reset:()=>{},stopSurface:()=>{}});
  const paintTrack=(x:number)=>{
   trackX.current=x;
   if(track.current){
@@ -456,7 +457,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(motion?.snapshot().phase==="settling")motion.suspend();
   const stageNode=stage.current,layer=surface.current;
   if(stageNode&&layer&&phase.current==="opening"){
-   stopSurface();phase.current="idle";
+   lifecycleActions.current.stopSurface();phase.current="idle";
   }
  },()=>{
   const motion=runner.current;
@@ -556,7 +557,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(!closing.current&&phase.current!=="settling")phase.current="idle";
  };
  lifecycleActions.current={
-  cancel:cancelPinchSession,freeze:freezeMedia,local:localPoint,reset:resetGesture
+  cancel:cancelPinchSession,freeze:freezeMedia,local:localPoint,reset:resetGesture,
+  stopSurface
  };
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(closing.current||menu||(e.pointerType==="mouse"&&e.button!==0))return;
