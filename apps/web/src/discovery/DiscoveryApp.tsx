@@ -225,6 +225,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   // Both CSS transitions can have different in-flight matrix values.
   const trackX=computedTranslation(pageTrack.current),inkX=computedTranslation(underline.current);
   const fraction=fractionalTrack(pageTrack.current,width,browsePosition.current);
+  if(pageTrack.current)pageTrack.current.dataset.motionFrozenX=String(trackX);
+  if(underline.current)underline.current.dataset.motionFrozenX=String(inkX);
   const old=browseSettle.current;
   if(old){browseMotion.current.interrupt(old.token,"interrupted");browseSettle.current=null;}
   if(pagerSettleTimer.current!==null){clearTimeout(pagerSettleTimer.current);pagerSettleTimer.current=null;}
