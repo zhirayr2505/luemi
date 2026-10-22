@@ -47,6 +47,7 @@ for(const token of ['const OPEN_DURATION=260','const CLOSE_DURATION=230','cubic-
 assert.ok(!read("apps/web/src/discovery/discovery.css").includes("touch-action:none"));
 const profileCss=read("apps/web/src/discovery/profile-master.css");
 assert.match(profileCss,/\.pm-identity\{[^}]*touch-action:pan-y/s,"identity back-swipe zone must prevent native horizontal cancellation");
+assert.match(profileCss,/\.pm-identity\{[^}]*user-select:none/s,"identity swipe zone must not initiate native text drag/capture loss");
 assert.match(profileCss,/\.pm-tabs\{[^}]*touch-action:pan-x/s,"native tab strip pan-x must remain intact");
 assert.match(profileCss,/\.pm-pages\{[^}]*touch-action:pan-y/s,"native profile page pan-y must remain intact");
 console.log("REM02D_UNIT_PASS same REM02A controller, REM02B geometry and REM02C arbiter, original route tokens");
