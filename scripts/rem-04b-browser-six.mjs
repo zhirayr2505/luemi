@@ -88,7 +88,15 @@ const dot=async n=>page.locator(".pm-inline .pm-photo-progress button").nth(n).e
 try{
  await context.tracing.start({screenshots:true,snapshots:true,sources:false});
  await page.goto("http://127.0.0.1:5173/rem-01e-qa.html?mode=local&kind=six",{waitUntil:"domcontentloaded"});
- await page.locator(".pm-inline .pm-photo-slide img").first().waitFor();
+ await page.locator(".pm-inline .pm-photo-slide img").first().waitFor({state:"attached"});
+ const fixture=await page.evaluate(()=>{
+  const host=document.querySelector(".pm-inline"),hero=host?.querySelector(".pm-hero");
+  return {photos:host?.querySelectorAll(".pm-photo-slide img").length,
+   host:host?.getBoundingClientRect().toJSON(),hero:hero?.getBoundingClientRect().toJSON()};
+ });
+ console.log("REM04B_SIX_FIXTURE",JSON.stringify(fixture));
+ assert.equal(fixture.photos,6,"real ProfileMaster local fixture must contain six photos");
+ assert.ok(fixture.hero?.width>100&&fixture.hero?.height>100,"real visible hero required");
  await pause(120);
  await page.getByRole("button",{name:"Развернуть анкету"}).click();
  await pause(430);
