@@ -26,8 +26,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Build shared contracts
         run: npm run build -w @luemi/contracts
-      - name: Browser dependencies
-        run: npx --no-install playwright install chromium
+      # GitHub Ubuntu runner preinstalls Chrome; Playwright channel=chrome uses
+      # the actual Chromium engine without network-dependent system apt downloads.
       - name: Focused REM-03B physical DOM/lifecycle regression (additional, not a substitute for full behavioral suite)
         shell: bash
         run: |
@@ -42,4 +42,5 @@ jobs:
             sleep 1
           done
           if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-rem03b-vite.log >&2; exit 1; fi
+          node scripts/rem-03b-debug-close.mjs
           node scripts/rem-03b-browser-track.mjs
