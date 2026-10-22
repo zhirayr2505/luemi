@@ -132,6 +132,7 @@ export function installViewportController(
  const onTelegram=(event?:{isStateStable?:boolean})=>
   schedule(event?.isStateStable===true?"telegram-stable":"telegram-moving");
  const onFullscreen=()=>schedule("fullscreen");
+ const onTelegramFullscreen=()=>schedule(telegram?.viewportStableHeight?"telegram-stable":"fullscreen");
  const onSafe=()=>schedule("safe-area");
  win.addEventListener("resize",onWindow);
  win.addEventListener("orientationchange",onOrientation);
@@ -141,7 +142,7 @@ export function installViewportController(
  doc.addEventListener("focusout",onBlur);
  doc.addEventListener("fullscreenchange",onFullscreen);
  telegram?.onEvent?.("viewportChanged",onTelegram);
- telegram?.onEvent?.("fullscreenChanged",onFullscreen);
+ telegram?.onEvent?.("fullscreenChanged",onTelegramFullscreen);
  telegram?.onEvent?.("safeAreaChanged",onSafe);
  telegram?.onEvent?.("contentSafeAreaChanged",onSafe);
  return {
@@ -158,7 +159,7 @@ export function installViewportController(
    doc.removeEventListener("focusout",onBlur);
    doc.removeEventListener("fullscreenchange",onFullscreen);
    telegram?.offEvent?.("viewportChanged",onTelegram);
-   telegram?.offEvent?.("fullscreenChanged",onFullscreen);
+   telegram?.offEvent?.("fullscreenChanged",onTelegramFullscreen);
    telegram?.offEvent?.("safeAreaChanged",onSafe);
    telegram?.offEvent?.("contentSafeAreaChanged",onSafe);
   }
