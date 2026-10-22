@@ -434,9 +434,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
  const goal=view.profile.goal&&view.profile.goal!=="undecided"?goals.find(x=>x.id===view.profile.goal):null;
- return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer="scroll" className={"pm-shell "+(mode==="owner"||mode==="local-self-preview"?"pm-inline":"pm-dialog")} role={mode==="owner"||mode==="local-self-preview"?undefined:"dialog"}
-   aria-modal={mode==="owner"||mode==="local-self-preview"?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="local-self-preview"?"Локальный предпросмотр черновика":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
-  {mode==="preview"&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
+ // Step 8 embeds the sheet; owner "Предпросмотр" opens a closable nested dialog.
+ const embeddedSelf=mode==="local-self-preview"&&!onClose;
+ return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer="scroll" className={"pm-shell "+(mode==="owner"||embeddedSelf?"pm-inline":"pm-dialog")} role={mode==="owner"||embeddedSelf?undefined:"dialog"}
+   aria-modal={mode==="owner"||embeddedSelf?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="local-self-preview"?"Локальный предпросмотр черновика":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
+  {(mode==="preview"||mode==="local-self-preview"&&!!onClose)&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}>
     <div className="pm-photo-motion" ref={photoMotion}>
