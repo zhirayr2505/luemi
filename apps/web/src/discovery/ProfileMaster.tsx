@@ -39,6 +39,36 @@ function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;lo
  return <img data-photo-id={photo.id} src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
    onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
 }
+type BlurWindowWriter=(indices:number[]|null)=>void;
+/** Memoized media-only renderer: moving the 3 blur peers may NOT rerender the
+ * whole profile, native scroll tabs or the accepted hero track controller.
+ */
+const ProfileBlurTrack=memo(function ProfileBlurTrack({
+ photos,activePhoto,blurFrom,trackRef,bindWriter
+}:{
+ photos:ProfilePhoto[];activePhoto:number;blurFrom:number;
+ trackRef:{current:HTMLDivElement|null};
+ bindWriter:(writer:BlurWindowWriter|null)=>void;
+}){
+ const [windowIndices,setWindowIndices]=useState<number[]|null>(null);
+ useLayoutEffect(()=>{
+  bindWriter(setWindowIndices);
+  return ()=>bindWriter(null);
+ },[bindWriter]);
+ const indices=useMemo(()=>{
+  if(windowIndices)return new Set(windowIndices);
+  const list=[activePhoto];
+  if(blurFrom!==activePhoto&&photos[blurFrom])list.push(blurFrom);
+  for(const neighbor of [activePhoto-1,activePhoto+1])
+   if(list.length<3&&photos[neighbor]&&!list.includes(neighbor))list.push(neighbor);
+  return new Set(list);
+ },[activePhoto,blurFrom,photos,windowIndices]);
+ return <div className="pm-photo-blur-track" ref={trackRef}>
+  {photos.map((photo,i)=><div className="pm-photo-blur-slide" key={photo.id} data-blur-photo-id={photo.id}>
+   {indices.has(i)&&<PhotoImage photo={photo} alt="" loading="eager"/>}
+  </div>)}
+ </div>;
+});
 function About({view}:{view:ProfileView}){
  const p=view.profile,goal=p.goal&&p.goal!=="undecided"?goals.find(g=>g.id===p.goal):null;
  return <div className="pm-card-stack">
@@ -91,7 +121,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const photos=view.photos;
  const [activePhoto,setActivePhoto]=useState(0);
  const [blurFrom,setBlurFrom]=useState(0);
- const [blurWindow,setBlurWindow]=useState<number[]|null>(null);
+ const blurWriterRef=useRef<BlurWindowWriter>(()=>{});
+ const bindBlurWriter=useCallback((writer:BlurWindowWriter|null)=>{
+  blurWriterRef.current=writer??(()=>{});
+ },[]);
  const blurWindowRef=useRef<number[]|null>(null);
  const blurSampleFrame=useRef<number|null>(null);
  const blurSession=useRef(0);
@@ -102,14 +135,6 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const current=photos[Math.min(activePhoto,Math.max(0,photos.length-1))];
  // At most three actual blur images are mounted, including the outgoing frame
  // if a progress-dot jump spans more than one slide.
- const blurIndices=useMemo(()=>{
-  if(blurWindow)return new Set(blurWindow);
-  const indices=[activePhoto];
-  if(blurFrom!==activePhoto&&photos[blurFrom])indices.push(blurFrom);
-  for(const neighbor of [activePhoto-1,activePhoto+1])
-   if(indices.length<3&&photos[neighbor]&&!indices.includes(neighbor))indices.push(neighbor);
-  return new Set(indices);
- },[activePhoto,blurFrom,blurWindow,photos]);
  const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null),blurTrack=useRef<HTMLDivElement>(null);
@@ -160,7 +185,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const old=blurWindowRef.current;
   if(old&&indices.length===old.length&&indices.every(i=>old.includes(i)))return;
   blurWindowRef.current=indices;
-  flushSync(()=>setBlurWindow(indices));
+  flushSync(()=>blurWriterRef.current(indices));
  };
  const stopBlurTracking=()=>{
   blurSession.current++;
@@ -169,7 +194,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  };
  const finishBlurTracking=(target:number)=>{
   stopBlurTracking();blurWindowRef.current=null;
-  flushSync(()=>{setBlurWindow(null);setBlurFrom(target);});
+  flushSync(()=>{blurWriterRef.current(null);setBlurFrom(target);});
  };
  const followBlurPosition=(target:number)=>{
   stopBlurTracking();
@@ -480,7 +505,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   // Reorder/removal invalidates pending indices, never keeps a blur slot
   // bound to the old photo at the same array position.
   stopBlurTracking();blurWindowRef.current=null;
-  setBlurWindow(null);setBlurFrom(index);
+  blurWriterRef.current(null);setBlurFrom(index);
   activePhotoId.current=photos[index]?.id??null;
   photoSwipe.current=null;
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
@@ -859,12 +884,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
      <div className="pm-photo-blur" ref={blurLayer} aria-hidden="true">
-      <div className="pm-photo-blur-track" ref={blurTrack}>
-       {photos.map((photo,i)=><div className="pm-photo-blur-slide" key={photo.id}
-         data-blur-photo-id={photo.id}>
-         {blurIndices.has(i)&&<PhotoImage photo={photo} alt="" loading="eager"/>}
-       </div>)}
-      </div>
+      <ProfileBlurTrack photos={photos} activePhoto={activePhoto} blurFrom={blurFrom}
+       trackRef={blurTrack} bindWriter={bindBlurWriter}/>
      </div>
      </div>
     <div className="pm-hero-gradient" aria-hidden="true"/>
