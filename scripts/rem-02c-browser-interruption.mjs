@@ -166,6 +166,21 @@ try{
  near(await getLeft(),beforeNative,1);
  assert.equal(await page.getByRole("tab",{name:"О себе",exact:true}).getAttribute("aria-selected"),"true");
  pass("scrolled content passive native touch retains exclusive scroll ownership, zero custom tab offset");
+ // Mouse/pen tab adapter now joins the same arbiter, without interrupting
+ // a candidate settle. Exercise its real DOM pointer path rather than only
+ // checking that source code calls the arbitration helper.
+ await about.evaluate(el=>{el.scrollTop=0;});
+ const mousePager=await page.locator(".pm-inline .pm-pages").boundingBox();
+ assert.ok(mousePager&&mousePager.width>300&&mousePager.height>60);
+ const mx=mousePager.x+mousePager.width*.67,my=mousePager.y+Math.min(90,mousePager.height*.32);
+ await page.mouse.move(mx,my);await page.mouse.down();
+ await page.mouse.move(mx-130,my,{steps:8});await page.mouse.up();
+ await sleep(345);
+ assert.equal(await page.getByRole("tab",{name:"Блики",exact:true}).getAttribute("aria-selected"),"true");
+ const mouseOffset=await page.locator(".pm-inline .pm-pages").evaluate(el=>el.scrollLeft);
+ near(mouseOffset,mousePager.width,1);
+ await page.getByRole("tab",{name:"О себе",exact:true}).click();await sleep(340);
+ pass("real mouse Pointer tab path claims exclusive owner, selects once and settles to ≤1px");
  // Two physical fingers invalidate the one-finger custom drag; a subsequent
  // single-finger drag must still work, with no stuck ownership or stale RAF.
  await page.getByRole("button",{name:"Раскрыть фото профиля"}).click();
