@@ -21,6 +21,8 @@ async function run(variant,trial){
  const ctx=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
   userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Mobile Safari/537.36"});
  const page=await ctx.newPage(),errors=[];
+ page.setDefaultTimeout(12000);
+ console.log("REM04B_ABC_STAGE "+JSON.stringify({variant,trial,stage:"start"}));
  page.on("pageerror",e=>errors.push(e.message));
  await page.addInitScript(()=>{
   const perf={reactCommits:0,commitDurations:[],injectCalls:0};
@@ -41,15 +43,26 @@ async function run(variant,trial){
   assert.equal(await page.locator(".pm-shell .pm-photo-slide").count(),6);
   await page.getByRole("button",{name:"Развернуть анкету"}).click();
   await sleep(380);
-  await page.evaluate(async()=>{
-   await Promise.all(Array.from(document.querySelectorAll(".pm-shell .pm-photo-slide img")).map(img=>
-     img.decode?.().catch(()=>{})??Promise.resolve()));
+  await page.evaluate(()=>{
+   for(const img of document.querySelectorAll(".pm-shell .pm-photo-slide img"))
+    img.loading="eager"; // same six exact sources warmed identically in A/B/C
   });
+  await page.waitForFunction(()=>{
+   const imgs=[...document.querySelectorAll(".pm-shell .pm-photo-slide img")];
+   return imgs.length===6&&imgs.every(img=>img.complete&&img.naturalWidth>0);
+  },null,{timeout:6000});
+  await Promise.race([
+   page.evaluate(async()=>Promise.all([...document.querySelectorAll(".pm-shell .pm-photo-slide img")]
+    .map(img=>img.decode().then(()=>true)))),
+   sleep(6500).then(()=>{throw Error("REM04B_ABC warm decode exceeded 6500ms");})
+  ]);
+  console.log("REM04B_ABC_STAGE "+JSON.stringify({variant,trial,stage:"warmed-six"}));
   await sleep(75);
   const samples=[];
   if(trial===0)await cdp.send("Profiler.start");
   for(const [from,to] of [[0,5],[5,0],[0,1],[1,0]]){
    // One true same-browser click + identical 340ms frame window, no screenshots inside.
+   console.log("REM04B_ABC_STAGE "+JSON.stringify({variant,trial,stage:"navigate",from,to}));
    const before=metrics((await cdp.send("Performance.getMetrics")).metrics);
    const current=await page.evaluate(()=>{
     const root=document.querySelector(".pm-shell"),blur=root?.querySelector(".pm-photo-blur-track");
