@@ -99,6 +99,8 @@ try{
  await page.mouse.move(px,py);await page.mouse.down();
  await page.mouse.move(px-105,py,{steps:7});await sleep(55);
  const beforePointer=await geometry();
+ console.log("REM02B_POINTER_CONTEXT "+JSON.stringify({area,px,py,beforePointer,
+  hit:await page.evaluate(([x,y])=>document.elementFromPoint(x,y)?.outerHTML.slice(0,180),[px,py])}));
  assert.ok(beforePointer.fraction>.04&&beforePointer.fraction<.9,
   "pointer actually drags fractional tab under finger");
  await page.setViewportSize({width:460,height:852});await sleep(65);
