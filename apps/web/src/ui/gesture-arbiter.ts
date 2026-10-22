@@ -13,7 +13,7 @@ export interface GestureCapabilities {
 }
 export const gestureCapabilities=(target:Element|null,canBack:boolean):GestureCapabilities=>{
  if(!target)return {canScrollY:false,canPageX:false,canBack:false,modalBlocked:true};
- const modalBlocked=!!target.closest(".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar,[role=dialog],.discovery-filter-sheet,.fy-expanded,.fy-rail,.nb-card,.nb-location,.carousel-frame");
+ const modalBlocked=!!target.closest(".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar,[role=dialog]:not(.pm-shell),.discovery-filter-sheet,.fy-expanded,.fy-rail,.nb-card,.nb-location,.carousel-frame");
  const scroller=target.closest<HTMLElement>(".pm-page,.fy-scroll,.nb-scroll,.discovery-page");
  const canScrollY=!!scroller&&scroller.scrollHeight>scroller.clientHeight+1&&scroller.scrollTop>1;
  const canPageX=!!target.closest(".pm-hero,.pm-pages,.pm-tabs,.discovery-pages,.discovery-top-tabs");
