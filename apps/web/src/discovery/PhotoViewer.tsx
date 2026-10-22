@@ -13,6 +13,9 @@ import {GeometryMotion} from "./geometry-motion";
 import {GestureArbiter} from "../ui/gesture-arbiter";
 import {MotionController} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
+import {calculateMorph,currentSource,insetClip,isUnoccluded,visibleElementRect,validInViewport,
+ morphTransform as sourceImageTransform,type Rect,type CropMorph} from "./photo-viewer-morph";
+import {bindViewerViewport} from "./photo-viewer-safe-area";
 import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixTransform,
  localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
 
@@ -45,6 +48,14 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const [message,setMessage]=useState("");
  const stage=useRef<HTMLDivElement>(null);
  const surface=useRef<HTMLDivElement>(null);
+ const modal=useRef<HTMLElement>(null);
+ const closeButton=useRef<HTMLButtonElement>(null);
+ const morphClip=useRef<HTMLDivElement>(null);
+ const morphImage=useRef<HTMLImageElement>(null);
+ const visibleSource=useRef<{node:HTMLElement;visibility:string}|null>(null);
+ const openSourceRect=useRef<Rect|null>(null);
+ const openedBy=useRef<HTMLElement|null>(null);
+ const morphActive=useRef(false);
  const track=useRef<HTMLDivElement>(null);
  const image=useRef<HTMLImageElement|null>(null);
  const pointer=useRef(new Map<number,{x:number;y:number}>());
@@ -170,6 +181,66 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    track.current.dataset.offset=String(x);
   }
  };
+ const restoreSource=()=>{
+  const held=visibleSource.current;
+  if(held){held.node.style.visibility=held.visibility;visibleSource.current=null;}
+ };
+ const clearMorph=()=>{
+  morphActive.current=false;
+  if(modal.current)modal.current.dataset.morphActive="false";
+  if(morphClip.current){morphClip.current.style.display="none";morphClip.current.style.transition="none";}
+  if(morphImage.current)morphImage.current.style.transition="none";
+  restoreSource();
+ };
+ const getMorph=(isClosing:boolean):{geometry:CropMorph;source:HTMLImageElement}|null=>{
+  const photo=latest.current.show,key=photo?resourceIdentity(photo):null;
+  if(!sourceMatches(sourceRef.current,latest.current.photoId,contextRef.current,key)||!photo)return null;
+  const el=sourceRef.current?.resolveElement();
+  if(!(el instanceof HTMLImageElement)||!currentSource(el,photo.src,photo.fallback))return null;
+  // Temporarily restore the miniature for hit testing: the viewer is a portal
+  // above it, but the first non-viewer painted element must still be our photo.
+  restoreSource();
+  const viewport={left:0,top:0,width:window.innerWidth,height:window.innerHeight};
+  const box=el.getBoundingClientRect();
+  const sourceRect={left:box.left,top:box.top,width:box.width,height:box.height};
+  const visible=visibleElementRect(el,viewport);
+  if(!visible||!validInViewport(visible,viewport)||!isUnoccluded(el,visible))return null;
+  if(isClosing&&openSourceRect.current&&(
+    Math.abs(sourceRect.left-openSourceRect.current.left)>2||
+    Math.abs(sourceRect.top-openSourceRect.current.top)>2||
+    Math.abs(sourceRect.width-openSourceRect.current.width)>2||
+    Math.abs(sourceRect.height-openSourceRect.current.height)>2))return null;
+  const css=getComputedStyle(el);
+  const fit=css.objectFit==="contain"?"contain":css.objectFit==="cover"?"cover":"fill";
+  const geometry=calculateMorph(sourceRect,{width:el.naturalWidth,height:el.naturalHeight},
+   fit,css.objectPosition,visible,viewport);
+  if(!geometry)return null;
+  if(!isClosing)openSourceRect.current=sourceRect;
+  return {geometry,source:el};
+ };
+ const prepareMorph=(closing:boolean):boolean=>{
+  const clip=morphClip.current,pixels=morphImage.current;
+  if(!clip||!pixels)return false;
+  const candidate=getMorph(closing);
+  if(!candidate){clearMorph();return false;}
+  const {geometry:m,source:el}=candidate;
+  pixels.src=el.currentSrc||el.src;
+  // The source has already loaded; the shared decoded source is used only
+  // for this transitional layer, never as a false media-readiness signal.
+  pixels.style.left=m.destination.left+"px";pixels.style.top=m.destination.top+"px";
+  pixels.style.width=m.destination.width+"px";pixels.style.height=m.destination.height+"px";
+  pixels.style.transition="none";
+  pixels.style.transform=closing?"none":sourceImageTransform(m);
+  clip.style.transition="none";
+  clip.style.clipPath=closing?"inset(0px)":insetClip(m.sourceClip,
+   {left:0,top:0,width:window.innerWidth,height:window.innerHeight});
+  clip.style.display="block";clip.style.opacity="1";
+  morphActive.current=true;
+  if(modal.current)modal.current.dataset.morphActive="true";
+  visibleSource.current={node:el,visibility:el.style.visibility};
+  el.style.visibility="hidden";
+  return true;
+ };
  const stopSurface=(interrupted=true)=>{
   const layer=surface.current,outer=stage.current,owner=surfaceOwner.current;
   // Freeze actual on-screen matrix before cancelling the CSS transition.
@@ -185,14 +256,6 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const t=owner?.token();
   if(t&&interrupted)owner?.interrupt(t,"interrupted");
  };
- const morphTransform=():string=>{
-  const current=latest.current.show,valid=sourceMatches(sourceRef.current,latest.current.photoId,
-   contextRef.current,current?resourceIdentity(current):null);
-  const from=valid?sourceRef.current?.resolveElement()?.getBoundingClientRect():null;
-  if(!from||from.width<=8||from.height<=8||from.top>=innerHeight||from.bottom<=0)return "none";
-  const w=innerWidth,h=innerHeight;
-  return "translate3d("+(from.left+(from.width-w)/2)+"px,"+(from.top+(from.height-h)/2)+"px,0) scale("+(from.width/w)+","+(from.height/h)+")";
- };
  /** One completion gate for opening/closing: transitionend and timeout
   * race on the SAME MotionController generation; old callbacks cannot commit.
   */
@@ -204,9 +267,15 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(!owner[closingPhase?"close":"settle"](start,closingPhase?0:1))return;
   const token=owner.token();
   const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const target=closingPhase?morphTransform():"none";
+  const doMorph=prepareMorph(closingPhase);
+  const target="none";
+  const clip=morphClip.current,pixels=morphImage.current;
+  const geom=doMorph?getMorph(closingPhase)?.geometry:null;
+  const clipFinal=geom?insetClip(geom.sourceClip,
+   {left:0,top:0,width:window.innerWidth,height:window.innerHeight}):"inset(0px)";
   const completed=()=>{
    owner.finish(token,{paint:()=>{
+    clearMorph();
     if(closingPhase){phase.current="disposed";latest.current.onClose();}
     else if(!closing.current)phase.current="idle";
    }});
@@ -214,6 +283,10 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(reduce){
    layer.style.transition="none";outer.style.transition="none";
    layer.style.transform=target;outer.style.opacity=closingPhase?"0":"1";
+   if(doMorph&&clip&&pixels){
+    clip.style.clipPath=closingPhase?clipFinal:"inset(0px)";
+    pixels.style.transform=closingPhase?sourceImageTransform(geom!):"none";
+   }
    completed();return;
   }
   const startTransition=()=>{
@@ -221,6 +294,12 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    layer.style.transition="transform "+duration+"ms cubic-bezier(.2,.8,.2,1)";
    outer.style.transition="opacity "+duration+"ms ease";
    layer.style.transform=target;outer.style.opacity=closingPhase?"0":"1";
+   if(doMorph&&clip&&pixels&&geom){
+    clip.style.transition="clip-path "+duration+"ms cubic-bezier(.2,.8,.2,1)";
+    pixels.style.transition="transform "+duration+"ms cubic-bezier(.2,.8,.2,1)";
+    clip.style.clipPath=closingPhase?clipFinal:"inset(0px)";
+    pixels.style.transform=closingPhase?sourceImageTransform(geom):"none";
+   }
   };
   const onEnd=(event:TransitionEvent)=>{
    if((event.target===layer&&event.propertyName==="transform")||
@@ -254,7 +333,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   // terminal motion on the freshly reconstructed owner, never reopen.
   const terminal=closing.current;
   outer.style.opacity=terminal?"1":"0";outer.style.transition="none";
-  layer.style.transition="none";layer.style.transform=terminal?"none":morphTransform();
+  layer.style.transition="none";layer.style.transform="none";
   phase.current=terminal?"closing":"opening";
   surfaceHandler.current(terminal);
   const captureLossTimers=pendingCaptureLoss.current;
@@ -307,7 +386,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   }
   priorSignature.current=signature;
   previousIds.current=photos.map(p=>p.id);
-  if(photoId!==committedPhotoId){sourceRef.current=null;setCommittedPhotoId(photoId);}
+  if(photoId!==committedPhotoId){clearMorph();sourceRef.current=null;setCommittedPhotoId(photoId);}
  },[signature,photoId,committedPhotoId,photos]);
  useEffect(()=>{if(photoId===null)handlers.current.close(true);},[photoId,menu]);
  const decodedCallback=useCallback((id:string,key:string,ok:boolean)=>{
@@ -405,7 +484,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    // One semantic commit per settle generation, after painting its endpoint.
    const valid=navigatePhoto(latest.current.photoId,latest.current.photos,{photoId:targetPhoto.id});
    if(!valid||valid!==targetPhoto.id){paintTrack(0);phase.current="idle";return;}
-   sourceRef.current=null;setMenu(false);setMessage("");commitCount.current++;
+   clearMorph();sourceRef.current=null;setMenu(false);setMessage("");commitCount.current++;
    pendingCommit.current={id:targetPhoto.id,shift:target===-1?-1:1};
    setCommittedPhotoId(targetPhoto.id);
   },geometryRevision.current);
@@ -419,7 +498,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const nextIndex=photoIndex(selected.photos,target),shift=nextIndex-selected.index;
   if(Math.abs(shift)!==1){
    // Nonadjacent internal navigation is a non-animated, explicit rebase.
-   runner.current?.cancel();paintTrack(0);sourceRef.current=null;
+   runner.current?.cancel();paintTrack(0);clearMorph();sourceRef.current=null;
    setMenu(false);setMessage("");setCommittedPhotoId(target);return true;
   }
   if(phase.current==="opening"){stopSurface();phase.current="idle";}
