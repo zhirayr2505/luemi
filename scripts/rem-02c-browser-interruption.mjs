@@ -35,7 +35,10 @@ try{
   await sleep(45);
   const frozen=await scan(heroTrack);
   assert.ok(Number.isFinite(frozen.frozen),"hero capture must expose actual matrix");
-  near(frozen.x,frozen.frozen-16,1);
+  // At 250ms the photo may already be at the LAST edge: the approved .18
+  // elastic coefficient must remain intact, not be mistaken for a discontinuity.
+  const last=-frozen.frozen/frozen.width>=2-.001;
+  near(frozen.x,frozen.frozen-(last?16*.18:16),1);
   await page.mouse.move(px-36,py,{steps:4});await page.mouse.up();
   const state=await heroDots.evaluateAll(nodes=>nodes.filter(n=>n.getAttribute("aria-current")==="true").length);
   assert.equal(state,1,"one semantic photo index after interrupted settle");
