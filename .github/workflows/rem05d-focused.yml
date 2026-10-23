@@ -32,6 +32,7 @@ jobs:
       REM05D_WORKER_DATABASE_URL: postgres://rem05d_ci_worker:synthetic_rem05d_worker@127.0.0.1:5432/rem05d_disposable
       REM05D_MODERATOR_DATABASE_URL: postgres://rem05d_ci_moderator:synthetic_rem05d_moderator@127.0.0.1:5432/rem05d_disposable
       REM05D_COMBINED_DATABASE_URL: postgres://rem05d_ci_combined:synthetic_rem05d_combined@127.0.0.1:5432/rem05d_disposable
+      REM05D_EXTRA_COLUMN_DATABASE_URL: postgres://rem05d_ci_extracol:synthetic_rem05d_extracol@127.0.0.1:5432/rem05d_disposable
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,6 +69,8 @@ jobs:
           CREATE ROLE rem05d_ci_moderator LOGIN PASSWORD 'synthetic_rem05d_moderator' IN ROLE luemi_moderator;
           CREATE ROLE rem05d_ci_combined LOGIN NOINHERIT PASSWORD 'synthetic_rem05d_combined';
           GRANT luemi_request,luemi_media_worker TO rem05d_ci_combined;
+          CREATE ROLE rem05d_ci_extracol LOGIN PASSWORD 'synthetic_rem05d_extracol' IN ROLE luemi_request;
+          GRANT SELECT(decision) ON luemi_private.moderation_decisions TO rem05d_ci_extracol;
           SQL
           npx --no-install tsx --test apps/api/secure-tests/rem05d.test.ts
   rem05d-preservation:
