@@ -116,6 +116,8 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
  if(!guard||opts.testOnly!==true||!opts.requestDatabaseUrl||!opts.workerDatabaseUrl||
   !/^[\w:-]{1,96}$/.test(opts.namespace)||!str(opts.consentVersion,3,64)||!opts.storage)
    throw new Error("REM-05D requires isolated role-separated test-only setup");
+ const cfg=opts;
+ const auth=guard;
  const requestPool=new Pool({connectionString:opts.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  const workerPool=new Pool({connectionString:opts.workerDatabaseUrl,max:3,connectionTimeoutMillis:3000});
  app.addHook("onClose",async()=>{await Promise.all([requestPool.end(),workerPool.end()]);});
