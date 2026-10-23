@@ -18,7 +18,7 @@ export function validateTelegramInitData(
   nowSeconds = Math.floor(Date.now() / 1000),
   maxAgeSeconds = 3600
 ): ValidatedInitData | null {
-  if (!raw || raw.length > 8192 || !botToken) return null;
+  if (!raw || Buffer.byteLength(raw,"utf8") > 8192 || !botToken) return null;
   const entries = [...new URLSearchParams(raw).entries()];
   const seen = new Set<string>();
   for (const [key] of entries) {
@@ -35,7 +35,7 @@ export function validateTelegramInitData(
   if (authDate > nowSeconds + 60 || nowSeconds - authDate > maxAgeSeconds) return null;
   const checkString = entries
     .filter(([key]) => key !== "hash")
-    .sort(([a], [b]) => a.localeCompare(b, "en"))
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
     .map(([key, value]) => `${key}=${value}`)
     .join("\n");
   const secret = createHmac("sha256", "WebAppData").update(botToken).digest();
