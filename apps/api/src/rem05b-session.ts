@@ -133,6 +133,12 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
     [s.actorId,cfg.namespace]);
    await db.query("COMMIT");
    if(result.rowCount!==1)return deny(reply);
+   // Recheck revocation/rotation after the DB read, not only at the request
+   // entry: a concurrent logout must not authorize an already revoked result.
+   const current=await inspect(req);
+   if(!("value" in current))return deny(reply,current.status);
+   if(current.value.sessionId!==s.sessionId||current.value.actorId!==s.actorId||
+      !timingSafeEqual(current.value.hash,s.hash))return deny(reply);
    return{id:result.rows[0].id,capabilities:{draftSync:false,publish:false,mediaUpload:false,
     matches:false,chats:false,bliki:false,payments:false}};
   }catch{await db.query("ROLLBACK").catch(()=>{});return deny(reply,503);}
