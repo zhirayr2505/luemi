@@ -5,6 +5,7 @@ import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
 import {addSyntheticMetadata,makeSyntheticPng,makeSynthetic50MpHeader,sanitizePng} from "../src/rem05d-image.js";
 import {memoryPrivateStore,syntheticModerate} from "../src/rem05d-private.js";
+import type {PrivateObjectStore} from "../src/rem05d-private.js";
 const adminUrl=process.env.REM05D_ADMIN_DATABASE_URL;
 const issuerUrl=process.env.REM05D_ISSUER_DATABASE_URL;
 const requestUrl=process.env.REM05D_REQUEST_DATABASE_URL;
@@ -23,12 +24,12 @@ function sign(id:number){
 const b={enabled:true,issuerDatabaseUrl:issuerUrl!,requestDatabaseUrl:requestUrl!,
  pepper:"synthetic-rem05d-pepper-1234567890-1234567890",namespace,origin,botToken:token,
  idleMs:43200000,absoluteMs:604800000,maxSessions:5};
-function app(opts:{request?:string;worker?:string;enabled?:boolean}={}){
+function app(opts:{request?:string;worker?:string;enabled?:boolean;storage?:PrivateObjectStore}={}){
  return buildApp({port:3001,origin,botToken:token,healthKey:"synthetic_health_key_123456789012345",
  logger:false,rem05b:{...b,requestDatabaseUrl:opts.request??requestUrl!},
  rem05d:opts.enabled===false?undefined:{enabled:true,testOnly:true,
    requestDatabaseUrl:opts.request??requestUrl!,workerDatabaseUrl:opts.worker??workerUrl!,
-   namespace,consentVersion:"ci-consent-v1",storage:memoryPrivateStore()}});
+   namespace,consentVersion:"ci-consent-v1",storage:opts.storage??memoryPrivateStore()}});
 }
 const admin=new Pool({connectionString:adminUrl});
 const request=new Pool({connectionString:requestUrl});
@@ -238,6 +239,39 @@ test("D09: session revoked while draft UPDATE waits on a real PostgreSQL row loc
   if(pending)await pending.catch(()=>{});
   hold.release();await server.close();
  }
+});
+test("M11: revoke approved media while private storage GET is in flight; never deliver stale pixels",async()=>{
+ const store=memoryPrivateStore();
+ let entered!:()=>void,release!:()=>void;
+ const fetching=new Promise<void>(resolve=>{entered=resolve;});
+ const gate=new Promise<void>(resolve=>{release=resolve;});
+ const slowStore:PrivateObjectStore={
+  put:(key,bytes)=>store.put(key,bytes),
+  get:async(key)=>{entered();await gate;return store.get(key);}
+ };
+ const server=app({storage:slowStore});
+ try{
+  const a=await identity(server,90606);
+  const png=makeSyntheticPng();
+  const intent=await post(server,"/api/v2/media/intents",a,
+   {bytes:png.length,mime:"image/png",clientKey:"slow-read-fixture-001"});
+  assert.equal(intent.statusCode,200,intent.body);
+  const id=intent.json().assetId as string;
+  const upload=await server.inject({method:"PUT",url:"/api/v2/media/"+id+"/bytes",
+   headers:{...headers(a.cookie,a.csrf),"content-type":"image/png"},payload:png});
+  assert.equal(upload.statusCode,200,upload.body);
+  await syntheticModerate(moderatorUrl!,id,"approved");
+  const pending=get(server,"/api/v2/media/"+id,a);
+  // Signals after the first role/RLS read has finished and storage.get starts.
+  await Promise.race([fetching,new Promise<never>((_resolve,reject)=>
+   setTimeout(()=>reject(new Error("storage GET did not start")),4000))]);
+  await admin.query("UPDATE luemi_private.media_assets SET state='revoked' WHERE id=$1",[id]);
+  release();
+  const response=await pending;
+  assert.equal(response.statusCode,404,"revoked media cannot be delivered from an in-flight object fetch");
+  assert.ok(!response.rawPayload.equals(png),"private pixels must not leak");
+  console.log("REM05D_MEDIA_REVOKED_DURING_STORAGE_READ_PASS");
+ }finally{release();await server.close();}
 });
 test("Off by default on ordinary app configuration and signed UI is not activated",async()=>{
  const off=app({enabled:false});
