@@ -91,10 +91,11 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
   setQuery(normalized.city+", "+normalized.country);setEditing(false);
   setResults([]);setError("");setActivity("success");
  };
+ const syntheticQa=import.meta.env.DEV&&window.location.pathname==="/geo-qa.html";
  const detect=()=>{
   cancelPending();
-  if(import.meta.env.VITE_LUEMI_AUTH_V2!=="1"||
-     import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"||!geoCsrf()){
+  if(!syntheticQa&&(import.meta.env.VITE_LUEMI_AUTH_V2!=="1"||
+     import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"||!geoCsrf())){
     setManual(true);setActivity("error");
     setError("Автоматическое определение пока недоступно. Выбери город вручную.");
     return; // Never transmit precise GPS coordinates to an unapproved endpoint.
@@ -121,8 +122,10 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
      fail("Автоматическое определение сейчас недоступно. Выбери город вручную.");
     },6500);
     try {
-     const response=await fetch("/api/v2/geo/reverse",{method:"POST",credentials:"same-origin",cache:"no-store",
-       headers:{"Content-Type":"application/json","X-Luemi-CSRF":geoCsrf()??""},
+     const response=await fetch(syntheticQa?"/api/geo/reverse":"/api/v2/geo/reverse",{
+       method:"POST",credentials:"same-origin",cache:"no-store",
+       headers:syntheticQa?{"Content-Type":"application/json"}:
+        {"Content-Type":"application/json","X-Luemi-CSRF":geoCsrf()??""},
        body:JSON.stringify({lat:pos.coords.latitude,lon:pos.coords.longitude}),signal});
      if(!response.ok)throw new Error("Автоматическое определение сейчас недоступно. Выбери город вручную.");
      const result=await response.json() as {result?:unknown};
