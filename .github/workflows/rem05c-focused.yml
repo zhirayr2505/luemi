@@ -1,0 +1,80 @@
+name: LUEMI REM-05C isolated geo budget and HTTP policy QA
+on:
+  push:
+    branches: [remediation/rem-05c-geo-rate-cache-telegramweb-20261023]
+  pull_request:
+    branches: [remediation/rem-05b-telegram-identity-sessions-20261023]
+permissions:
+  contents: read
+jobs:
+  rem05c-postgresql-budget:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: synthetic_rem05c_test_password
+          POSTGRES_DB: rem05c_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rem05c_test"
+          --health-interval 3s --health-timeout 3s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: rem05c_test
+      PGPASSWORD: synthetic_rem05c_test_password
+      REM05B_TEST_ADMIN_DATABASE_URL: postgres://postgres:synthetic_rem05c_test_password@127.0.0.1:5432/rem05c_test
+      REM05B_TEST_ISSUER_DATABASE_URL: postgres://rem05c_ci_issuer:synthetic_issuer_only@127.0.0.1:5432/rem05c_test
+      REM05B_TEST_REQUEST_DATABASE_URL: postgres://rem05c_ci_request:synthetic_request_only@127.0.0.1:5432/rem05c_test
+      REM05C_TEST_BUDGET_DATABASE_URL: postgres://rem05c_ci_budget:synthetic_budget_only@127.0.0.1:5432/rem05c_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Locked dependencies and strict API typecheck
+        run: |
+          set -euo pipefail
+          npm install -g npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npm run typecheck -w @luemi/api
+      - name: Disposable PostgreSQL 16 isolated roles and quota
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0002_rem05b_identity_sessions.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0003_rem05c_geo_budget.sql
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE rem05c_ci_issuer LOGIN PASSWORD 'synthetic_issuer_only' IN ROLE luemi_auth_issuer;
+          CREATE ROLE rem05c_ci_request LOGIN PASSWORD 'synthetic_request_only' IN ROLE luemi_request;
+          CREATE ROLE rem05c_ci_budget LOGIN PASSWORD 'synthetic_budget_only' IN ROLE luemi_geo_budget;
+          SQL
+          npx --no-install tsx --test apps/api/secure-tests/rem05c.test.ts
+  rem05c-http-boundaries:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Locked install and HTTP failure-path assertions
+        run: |
+          set -euo pipefail
+          npm install -g npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npx --no-install tsx --test apps/api/secure-tests/rem05c-http.test.ts

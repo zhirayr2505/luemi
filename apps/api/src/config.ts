@@ -1,5 +1,7 @@
 import type { FastifyServerOptions } from "fastify";
 import type { Rem05bOptions } from "./rem05b-session.js";
+import type { GeoRuntime } from "./geo-routes.js";
+import type { EmbeddingPolicy } from "./rem05c-headers.js";
 export interface ApiConfig {
   port: number;
   origin: string;
@@ -12,6 +14,7 @@ export interface ApiConfig {
   setupOnStart?: boolean;
   logger: FastifyServerOptions["logger"];
   rem05b?: Rem05bOptions;
+  rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const port = Number(env.PORT ?? "3001");
@@ -47,8 +50,29 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     absoluteMs: 7 * 24 * 60 * 60 * 1000,
     maxSessions: 5
   } : undefined;
+  // No opt-in flags are set in existing deployments. Key presence alone NEVER
+  // activates a charged upstream call.
+  const geoEnabled=env.REM05C_ENABLED==="1";
+  const providerEnabled=geoEnabled&&env.REM05C_GEO_PROVIDER_ENABLED==="1";
+  const geo:GeoRuntime={enabled:geoEnabled,providerEnabled,
+    providerKey:providerEnabled?(env.GEOAPIFY_API_KEY??""):"",
+    budget:providerEnabled?{
+      databaseUrl:env.REM05C_BUDGET_DATABASE_URL??"",
+      namespace:env.REM05B_BOT_NAMESPACE??"",
+      actorSearchPerDay:Number(env.REM05C_SEARCH_DAILY??30),
+      actorReversePerDay:Number(env.REM05C_REVERSE_DAILY??10),
+      globalDailyCap:Number(env.REM05C_GLOBAL_DAILY_CAP??0),
+      maxInFlight:Number(env.REM05C_MAX_INFLIGHT??3)
+    }:undefined};
+  if(providerEnabled&&(!v2Enabled||!geo.providerKey||!geo.budget?.databaseUrl||
+    !Number.isSafeInteger(geo.budget.globalDailyCap)||geo.budget.globalDailyCap<1))
+    throw new Error("REM-05C charged geo gate requires v2 identity and approved durable budget");
+  const embeddingEnabled=env.REM05C_TELEGRAM_WEB_EMBED_ENABLED==="1";
+  const embedding:EmbeddingPolicy={enabled:embeddingEnabled,
+    ancestors:embeddingEnabled?(env.REM05C_EMBED_ANCESTORS??"").split(",").map(x=>x.trim()):[]};
   return {
     rem05b,
+    rem05c:{geo,embedding},
     port,
     origin,
     stagingOnly,

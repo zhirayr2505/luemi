@@ -27,7 +27,7 @@ function validOrigin(req:FastifyRequest,origin:string){
 function deny(reply:FastifyReply,status:401|503=401){
  return reply.code(status).send({error:status===401?"unauthorized":"service_unavailable"});
 }
-export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
+export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;mutation:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>}|undefined{
  if(!cfg.enabled)return;
  if(!cfg.issuerDatabaseUrl||!cfg.requestDatabaseUrl||!cfg.botToken||!cfg.namespace||
  !/^[a-z0-9:_-]{1,96}$/i.test(cfg.namespace)||Buffer.byteLength(cfg.pepper)<32||
@@ -240,4 +240,5 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
  app.post("/api/v2/auth/logout-all",{preHandler:protectedMutation},async(_req,reply)=>{
   return reply.code(403).send({error:"additional_confirmation_required"});
  });
+ return {read:authenticated,mutation:protectedMutation};
 }

@@ -8,6 +8,7 @@ import { validateTelegramInitData } from "./telegram-auth.js";
 import { registerTelegramWebhook } from "./telegram-webhook.js";
 import { registerGeography } from "./geo-routes.js";
 import { registerRem05b } from "./rem05b-session.js";
+import { installHttpPolicy } from "./rem05c-headers.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -26,13 +27,20 @@ export function buildApp(config: ApiConfig) {
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "X-Health-Key", "X-Luemi-CSRF"]
   });
-  app.register(rateLimit, { max: 60, timeWindow: "1 minute" });
-  app.addHook("onSend", async (_request, reply) => {
-    reply.header("Cache-Control", "no-store");
-    reply.header("X-Content-Type-Options", "nosniff");
-    reply.header("Referrer-Policy", "no-referrer");
-    reply.header("X-Frame-Options", "DENY");
+  // One untrusted network peer must not consume static/health/geo actor quotas.
+  // trustProxy stays FALSE until the real Render hop chain is independently proven.
+  app.register(rateLimit,{global:false,skipOnError:false});
+  app.addHook("onRoute",route=>{
+    const url=route.url;
+    const auth=url==="/api/auth/telegram"||url==="/api/v2/auth/telegram";
+    const webhook=url==="/api/telegram/webhook";
+    const ready=url==="/api/health/ready";
+    if(auth||webhook||ready){
+      route.config={...route.config,rateLimit:{max:auth?10:webhook?120:30,
+        timeWindow:"1 minute",keyGenerator:(request:import("fastify").FastifyRequest)=>request.ip}};
+    }
   });
+  installHttpPolicy(app,config.rem05c?.embedding);
 
   app.get("/api/health/live", async (): Promise<HealthResponse> => ({ status: "ok" }));
   app.get("/api/health/ready", async (request, reply) => {
@@ -53,8 +61,8 @@ export function buildApp(config: ApiConfig) {
     };
     return response;
   });
-  if (config.rem05b?.enabled) registerRem05b(app, config.rem05b);
-  registerTelegramWebhook(app, config);
-  registerGeography(app);
+  const guards=config.rem05b?.enabled?registerRem05b(app,config.rem05b):undefined;
+  registerTelegramWebhook(app,config);
+  registerGeography(app,config.rem05c?.geo,guards);
   return app;
 }

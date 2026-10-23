@@ -5,6 +5,7 @@ import {normalizeCountryCode} from "@luemi/contracts";
 import {GlassField} from "../ui/Glass";
 import {Flag} from "../ui/Flag";
 import {createGeoOperationGate,type GeoOperation} from "./geo-operation";
+import {geoCsrf} from "../auth/session-adapter";
 import type {RegistrationDraft,SearchScope} from "./model";
 export interface Place {id:string;city:string;country:string;countryCode:string;region?:string}
 interface SearchResult {results?:unknown;coverage?:"demo"|"world"}
@@ -57,7 +58,14 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
    if(!gate.current.isCurrent(token))return;
    setActivity("searching");
    try{
-    const response=await fetch("/api/geo/search?q="+encodeURIComponent(query.trim()),{signal});
+    const searchUrl="/api/"+(import.meta.env.VITE_LUEMI_AUTH_V2==="1"?"v2/geo":"geo")+
+      "/search?q="+encodeURIComponent(query.trim());
+    let response=await fetch(searchUrl,{signal,credentials:"same-origin",cache:"no-store"});
+    // Public legacy search is intentionally fixture-only. One bounded recovery
+    // after a v2 failure, never a retry to the paid provider.
+    if(!response.ok&&import.meta.env.VITE_LUEMI_AUTH_V2==="1")
+      response=await fetch("/api/geo/search?q="+encodeURIComponent(query.trim()),
+        {signal,credentials:"same-origin",cache:"no-store"});
     if(!response.ok)throw new Error("Поиск сейчас недоступен");
     const json=await response.json() as SearchResult;
     if(!Array.isArray(json?.results))throw new Error("Некорректный ответ поиска");
@@ -85,6 +93,12 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
  };
  const detect=()=>{
   cancelPending();
+  if(import.meta.env.VITE_LUEMI_AUTH_V2!=="1"||
+     import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"||!geoCsrf()){
+    setManual(true);setActivity("error");
+    setError("Автоматическое определение пока недоступно. Выбери город вручную.");
+    return; // Never transmit precise GPS coordinates to an unapproved endpoint.
+  }
   const token=gate.current.begin();
   setManual(false);setEditing(false);setResults([]);setError("");
   if(!navigator.geolocation){
@@ -107,7 +121,8 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
      fail("Автоматическое определение сейчас недоступно. Выбери город вручную.");
     },6500);
     try {
-     const response=await fetch("/api/geo/reverse",{method:"POST",headers:{"Content-Type":"application/json"},
+     const response=await fetch("/api/v2/geo/reverse",{method:"POST",credentials:"same-origin",cache:"no-store",
+       headers:{"Content-Type":"application/json","X-Luemi-CSRF":geoCsrf()??""},
        body:JSON.stringify({lat:pos.coords.latitude,lon:pos.coords.longitude}),signal});
      if(!response.ok)throw new Error("Автоматическое определение сейчас недоступно. Выбери город вручную.");
      const result=await response.json() as {result?:unknown};
