@@ -191,7 +191,7 @@ test("REM05B server-clock expiry, account lock and environment partition",async(
   const again=await auth(appA,signed);
   assert.equal(again.statusCode,200);
   const fresh=sid(again);
-  await issuer.query("UPDATE luemi_private.sessions SET absolute_expires_at=clock_timestamp() "+
+  await admin.query("UPDATE luemi_private.sessions SET absolute_expires_at=clock_timestamp() "+
    "WHERE actor_id=$1 AND environment=$2 AND revoked_at IS NULL",[id,"ci_clock_a"]);
   assert.equal((await get(appA,"/api/v2/me",fresh)).statusCode,401,"absolute expiry enforced by server");
   for(const status of ["suspended","deleted"]){
