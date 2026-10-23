@@ -103,7 +103,7 @@ test("REM05B real PostgreSQL: signature, A/B, RLS, sessions, concurrency, CSRF a
   const replay=await auth(app,signed);
   assert.equal(replay.statusCode,200,"signed Telegram initData replay remains possible within 1h");
   assert.equal((await get(app,"/api/v2/me",sid(replay))).statusCode,200);
-  await issuer.query("UPDATE luemi_private.actors SET status='banned' WHERE id=$1",[uuid]);
+  await admin.query("UPDATE luemi_private.actors SET status='banned' WHERE id=$1",[uuid]);
   assert.equal((await auth(app,signed)).statusCode,403);
   assert.equal((await get(app,"/api/v2/me",sid(replay))).statusCode,401);
   assert.equal((await issuer.query("SELECT count(*)::int AS n FROM luemi_private.actors WHERE environment='ci_bot_a'")).rows[0].n,1);
