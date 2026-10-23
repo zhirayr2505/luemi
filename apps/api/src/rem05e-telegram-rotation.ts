@@ -31,6 +31,8 @@ export interface RotationRequest {
   previousGeneration: string;
   candidateGeneration: string;
   candidateSecret: string;
+  /** Per-mock-call timeout, bounded to 10..10000ms. */
+  transportTimeoutMs?: number;
   knownExposedGenerations?: readonly string[];
   /**
    * A record from a *synthetic* end-to-end test only; never persisted as
@@ -107,6 +109,11 @@ export async function executeSyntheticWebhookRotation(
       config.setupOnStart === true) {
     reason = "invalid_environment"; return result();
   }
+  if (request.transportTimeoutMs !== undefined &&
+      (!Number.isSafeInteger(request.transportTimeoutMs) ||
+       request.transportTimeoutMs < 10 || request.transportTimeoutMs > 10000)) {
+    reason = "invalid_authorization"; return result();
+  }
   if (!SYNTHETIC_BOT.test(config.botToken) ||
       !TOKEN.test(config.webhookSecret) ||
       !TOKEN.test(request.candidateSecret) ||
@@ -134,7 +141,19 @@ export async function executeSyntheticWebhookRotation(
     operations.push(method);
     // No error propagation, log, token-bearing URL or raw transport response.
     // Even malformed JSON / HTTP errors become a constant nonsecret reason.
-    const response: unknown = await transport.request(method, body);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let response: unknown;
+    try {
+      response = await Promise.race([
+        transport.request(method, body),
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => reject(new Error("synthetic_transport_timeout")),
+            request.transportTimeoutMs ?? 10000);
+        })
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
     if (!isRecord(response) || response.ok !== true || !("result" in response))
       throw new Error("synthetic_api_unconfirmed");
     return response.result;

@@ -173,6 +173,29 @@ test("E09 malformed preflight response cannot mutate",async()=>{
     assert.equal(r.state,"refused");noMutation(f.calls);
   }
 });
+test("E09 hung fake Bot API setWebhook times out into UNKNOWN, never success",async()=>{
+  const f=fake();
+  const hung:MockBotTransport={request(method,payload) {
+    if(method==="setWebhook")return new Promise<never>(()=>{});
+    return f.api.request(method,payload);
+  }};
+  const r=await executeSyntheticWebhookRotation(config(),{
+    ...request(),transportTimeoutMs:25
+  },hung);
+  assert.equal(r.state,"telegram_state_unknown");
+  assert.equal(r.reason,"bot_api_unavailable");
+  assert.equal(r.liveTelegramVerified,false);
+});
+test("E09 invalid transport timeout refuses before any call",async()=>{
+  for(const transportTimeoutMs of [0,-1,10001,1.5]) {
+    const f=fake();
+    const r=await executeSyntheticWebhookRotation(config(),{
+      ...request(),transportTimeoutMs
+    },f.api);
+    assert.equal(r.state,"refused");
+    assert.equal(f.calls.length,0);
+  }
+});
 test("E10 failure after menu change is PARTIAL without webhook or hidden retry",async()=>{
   const f=fake({menu:{type:"commands"},methodFailure:"setWebhook",failureStyle:"throw"});
   const r=await executeSyntheticWebhookRotation(config(),request(),f.api);
