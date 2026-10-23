@@ -197,6 +197,48 @@ test("M: actual RLS media, intent concurrency, sanitized PNG, moderator-only app
   console.log("REM05D_MEDIA_PRIVATE_DERIVATIVE_MODERATION_REVOKE_PASS");
  }finally{await server.close();}
 });
+test("D09: session revoked while draft UPDATE waits on a real PostgreSQL row lock must ROLLBACK",async()=>{
+ const server=app();
+ const hold=await admin.connect();
+ let pending:Promise<Awaited<ReturnType<typeof put>>>|undefined;
+ let holding=false;
+ try{
+  const a=await identity(server,90505);
+  assert.equal((await put(server,"/api/v2/profile/draft",a,
+   {revision:0,fields:{displayName:"Before"}})).statusCode,200);
+  await hold.query("BEGIN");
+  holding=true;
+  await hold.query("SELECT owner_id FROM luemi_private.private_profile_drafts WHERE owner_id=$1 FOR UPDATE",[a.id]);
+  pending=put(server,"/api/v2/profile/draft",a,
+   {revision:1,fields:{displayName:"After revocation"}});
+  // Confirm the UPDATE is actually blocked on the row lock; don't merely race
+  // timers and accidentally pass due to early pre-handler 401.
+  let blocked=false;
+  for(let i=0;i<120;i++){
+   const q=await admin.query<{blocked:boolean}>(`
+    SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE wait_event_type='Lock'
+      AND query LIKE 'UPDATE luemi_private.private_profile_drafts SET revision=%') AS blocked`);
+   if(q.rows[0].blocked){blocked=true;break;}
+   await new Promise(resolve=>setTimeout(resolve,20));
+  }
+  assert.ok(blocked,"draft UPDATE must reach a database row-lock wait before revocation");
+  await admin.query("UPDATE luemi_private.sessions SET revoked_at=clock_timestamp() "+
+   "WHERE actor_id=$1 AND revoked_at IS NULL",[a.id]);
+  await hold.query("COMMIT");
+  holding=false;
+  const response=await pending;
+  assert.equal(response.statusCode,401,response.body);
+  const row=await admin.query<{revision:string;payload:{displayName:string}}>(
+   "SELECT revision::text,payload FROM luemi_private.private_profile_drafts WHERE owner_id=$1",[a.id]);
+  assert.equal(row.rows[0].revision,"1","transaction after logout must never commit revision 2");
+  assert.equal(row.rows[0].payload.displayName,"Before");
+  console.log("REM05D_REVOKED_DURING_ROWLOCK_ROLLBACK_PASS");
+ }finally{
+  if(holding)await hold.query("ROLLBACK").catch(()=>{});
+  if(pending)await pending.catch(()=>{});
+  hold.release();await server.close();
+ }
+});
 test("Off by default on ordinary app configuration and signed UI is not activated",async()=>{
  const off=app({enabled:false});
  try{
