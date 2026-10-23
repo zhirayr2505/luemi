@@ -161,7 +161,7 @@ export async function executeSyntheticWebhookRotation(
     }
     const existingMenuMatches = menu.type === "web_app" &&
       isRecord(menu.web_app) && menuMatches(menu.web_app.url);
-    if (menu.type === "web_app" && !existingMenuMatches) {
+    if (!existingMenuMatches && menu.type !== "commands" && menu.type !== "default") {
       destination = "foreign"; reason = "foreign_menu"; return result();
     }
     if (!existingMenuMatches) {

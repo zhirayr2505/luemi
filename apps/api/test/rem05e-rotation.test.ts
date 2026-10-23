@@ -118,6 +118,12 @@ test("E06 foreign menu origin/path/query all denied",async()=>{
     assert.equal(r.reason,"foreign_menu");noMutation(f.calls);
   }
 });
+test("E06 unexpected menu type is foreign rather than an implicit overwrite",async()=>{
+  const f=fake({menu:{type:"unexpected_future_menu"}});
+  const r=await executeSyntheticWebhookRotation(config(),request(),f.api);
+  assert.equal(r.reason,"foreign_menu");
+  noMutation(f.calls);
+});
 test("E07 missing approval fails before reading credentials",async()=>{
   for(const item of [{explicitOwnerApproval:false},{mode:"production" as never}]) {
     const f=fake();const r=await executeSyntheticWebhookRotation(config(),{...request(),...item},f.api);
