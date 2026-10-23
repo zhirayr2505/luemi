@@ -129,3 +129,31 @@ PUBLIC repo visibility remains unchanged as owner authorized.
 
 STOP after REM-05E. No merge, deploy, live key rotation, webhook change,
 BotFather change, RLS change or REM-05F under this authorization.
+
+## Independent security audit hardening addendum — E-A1, E-A2, E-A3
+
+**Legacy setup acknowledgements:** Telegram Bot API HTTP 200 with ok:true,
+result:false is NOT success. Require exact boolean true for menu AND webhook
+mutations. If menu ACK is false, stop before setWebhook. After webhook ACK false,
+do not assert completion. Exception text is static; no request URL, response or
+credential value may be printed.
+
+**Trust boundary for synthetic proof:** Caller callback booleans have no power
+to attest the receiver. They may veto or inject failure/latency only. The
+module itself must run four in-process Fastify HTTP probes with synthetic data:
+candidate accepted (200 plus expected message response), old rejected (404),
+missing rejected (404), wrong rejected (404). All failures must carry no Bot API
+sendMessage method, chat_id or reply_markup. Count proof requests actually
+completed and require exactly four for end_to_end_synthetic_proof.
+This proves nothing about live Telegram or live Render.
+
+**Deadline and classification:** Proof is bounded (default 2000ms; requested
+10..10000ms). A proof rejection/timeout AFTER successful synthetic Telegram
+setWebhook ACK is synthetic_delivery_failed / delivery_unconfirmed, NOT a
+Bot API transport error and NOT telegram_state_unknown. A missing/ambiguous
+Telegram ACK still remains telegram_state_unknown. No blind setWebhook retry.
+Always liveTelegramVerified:false.
+
+**RED proof:** commit 866eed3eda1d7c1ecb3b172db7f7e225b4a64aa1, Actions
+run 40035470523, 5/5 intentionally failing audit checks. The original 27/27
+security tests stayed green. The final GREEN/CI ledger is maintained in PR #55.

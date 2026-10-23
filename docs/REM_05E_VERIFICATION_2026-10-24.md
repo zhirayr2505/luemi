@@ -172,3 +172,49 @@ evidence. DO NOT supply secret values in PR, chat or issue.
 
 **STOP after REM-05E for owner's independent technical acceptance.**
 No merge/deploy, live secret operation or REM-05F authorized.
+
+---
+
+## 8. REM-05E independent audit hardening: E-A1 / E-A2 / E-A3 (2026-10-24)
+
+**Scope:** only webhook legacy ACK and synthetic proof integrity/deadlines.
+**Preserved parent:** accepted REM-05D c7e434175db648ca3d911963f538192a9cf74cfa.
+**Existing branch/PR:** remediation/rem-05e-webhook-secret-rotation-20261024 / Draft #55.
+**RED SHA:** 866eed3eda1d7c1ecb3b172db7f7e225b4a64aa1.
+**Immutable RED evidence:** https://github.com/zhirayr2505/luemi/actions/runs/40035470523
+
+### 8.1 Independent RED reproduction — deliberate expected failures
+
+Five separate failing negatives in apps/api/test/rem05e-audit.test.ts:
+
+| Finding | RED failure on unpatched source | Required GREEN |
+|---|---|---|
+| E-A1 P1 | Legacy setChatMenuButton ok:true/result:false returned success and proceeded to webhook mutation | Static sanitized error, no setWebhook |
+| E-A1 P1 | Legacy setWebhook ok:true/result:false returned menuConfigured:true | Static sanitized error, no success |
+| E-A2 P2 | Caller booleans true/true produced end_to_end_synthetic_proof without any trusted HTTP verification | Four actual isolated Fastify inject responses required |
+| E-A3 P2 | Hanging proof never settled; bounded negative sentinel fired | Fail within bounded proof deadline as synthetic_delivery_failed |
+| E-A3 P2 | Rejected proof after Telegram ACK became telegram_state_unknown / bot_api_unavailable | synthetic_delivery_failed / delivery_unconfirmed; preserve prior ACK metadata |
+
+RED GitHub run 40035470523: isolated pre-existing security suite **27/27 PASS** followed by deliberately failing audit tests **0/5 PASS**. Bootstrap preservation ran **48/53 PASS** due to the same five new tests. All failures and their logs are retained; they are not production failures or omitted from the record.
+
+### 8.2 Narrow patch / postcondition
+
+- Legacy staging Bot API mutation results now require exact boolean true. Any false/undefined/malformed ACK fails safely; menu failure short-circuits webhook. Normal same-URL/menu no-op still reports secretGenerationStatus=unknown_not_attested. Static messages cannot include raw HTTP responses, token-bearing URLs or secret values.
+- Synthetic receiver evidence: caller-provided boolean callbacks are **never sufficient** to assert delivery. They can veto/error or delay proof, but only a trusted implementation within the REM-05E module performs **four real in-memory Fastify HTTP injections**. The isolated app uses exclusively synthetic test credentials, logger=false and disables rem05b/rem05c/rem05d remote providers. Candidate must produce HTTP 200 with the expected sendMessage shape; previous, missing and wrong tokens must each produce HTTP 404 with no message method/chat ID/keyboard or other actionable response. Internal receiverChecks is the completed trusted HTTP probe count, never supplied by caller.
+- Delivery callback and Fastify verification share a bounded configurable 10..10000ms proof deadline (default 2000ms). Rejection/timeout after mock setWebhook ACK results in synthetic_delivery_failed, reason delivery_unconfirmed, with secretGeneration=telegram_ack_unverified. It never retries setWebhook or reclassifies a receiver error as bot_api_unavailable. Failures before/at mock Telegram ACK still correctly return telegram_state_unknown when a webhook mutation may have occurred.
+- Result liveTelegramVerified remains always false. No production transport, live Telegram, Render, Supabase, BotFather, secrets, user data or migration changes.
+- The caller callback remains a legacy optional **negative gate/fault injection** for the synthetic harness, not a trusted attestation source. Future operator work may remove this gate entirely; it must never be used to claim live provenance.
+
+### 8.3 GREEN and exact-final-SHA CI evidence
+
+The authoritative GREEN, all inherited PostgreSQL/HTTP/Chromium browser jobs,
+push and PR head runs are recorded in the Draft PR #55 description at its exact final SHA.
+Do not infer PASS from RED or an intermediate commit. The final SHA is read from GitHub,
+not embedded into this self-referential document. Report any failed attempt explicitly
+even if a same-SHA retry passes. Full 05B/05C/05D security suites and D-R4 must not
+be skipped.
+
+**Classification rule:** PASS for source / local synthetic mock checks only after
+final same-SHA 12/12 workflow / 38/38 job matrix passes; PARTIAL for future
+operator procedure; BLOCKED / NOT VERIFIED for live webhook generation, history
+of secret rotation and real Telegram delivery. REM-05F remains outside scope.
