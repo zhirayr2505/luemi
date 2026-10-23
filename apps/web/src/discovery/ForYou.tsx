@@ -9,6 +9,7 @@ import {forYouDemoPeople} from "./for-you-data";
 import {collectionDefinitions,evidence,membersFor,rankDemonstrations} from "./for-you-ranking";
 import type {CollectionId} from "./for-you-ranking";
 import "./for-you.css";
+import {useModalLayer} from "../ui/modal-layer";
 
 type Prefs={order:CollectionId[];hidden:CollectionId[];favorites:CollectionId[]};
 const allIds:CollectionId[]=collectionDefinitions.map(s=>s.id);
@@ -73,6 +74,8 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
  const [prefs,setPrefs]=useState<Prefs>(savedPrefs);
  const scroll=useRef<HTMLDivElement>(null), first=useRef<HTMLElement>(null);
  const expandedScroll=useRef<HTMLDivElement>(null);
+ const manageDialog=useRef<HTMLElement>(null);
+ useModalLayer(settingsOpen,manageDialog,()=>onSettingsOpen(false));
  // Finite set of stable collection identities; never cache arbitrary route keys.
  const collectionOffsets=useRef<Partial<Record<CollectionId|"best",number>>>({});
  useLayoutEffect(()=>{
@@ -167,9 +170,9 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
     <div><h2>{viewTitle}</h2><p>Полная подборка · демо</p></div></header>
    {expandedPeople.length?<div className="fy-grid" ref={expandedScroll} onScroll={event=>reportScroll(event.currentTarget.scrollTop,expanded)}>{expandedPeople.map(person=>one(person,true))}</div>:<Empty text={expanded==="best"?"Нет подходящих тестовых анкет. Измени фильтры.":emptyMessage(expanded)}/>}
   </section>}
-  {settingsOpen&&<section className="fy-manage" role="dialog" aria-modal="true" aria-label="Управление подборками">
+  {settingsOpen&&<section className="fy-manage" ref={manageDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Управление подборками">
    <header><div><h2>Мои подборки</h2><p>Избранное, порядок и видимость тематических блоков.</p></div>
-    <button type="button" className="fy-back" onClick={()=>onSettingsOpen(false)} aria-label="Закрыть"><X size={19}/></button></header>
+    <button type="button" className="fy-back" data-modal-initial onClick={()=>onSettingsOpen(false)} aria-label="Закрыть"><X size={19}/></button></header>
    <div className="fy-manage-list">{prefs.order.map((id,i)=>{
     const c=collectionDefinitions.find(x=>x.id===id)!,Icon=icons[id];
     return <div className="fy-manage-row" key={id}><span><Icon size={16}/>{c.title}</span>
