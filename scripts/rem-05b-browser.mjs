@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {chromium} from "playwright";
 
-const site="http://127.0.0.1:5173/";
+const site="http://127.0.0.1:5175/";
 const actorId="11111111-1111-4111-8111-111111111111";
 const session={mode:"session_v2",user:{id:actorId,firstName:"Тест"},
  csrfToken:"synthetic-csrf",expiresAt:"2026-11-01T00:00:00Z"};
