@@ -104,3 +104,53 @@ jobs:
           name: rem-04c-lu21-lu22-${{ github.run_id }}-${{ github.run_attempt }}
           path: /tmp/luemi-rem04c-input-vite.log
           if-no-files-found: warn
+
+  rem04c-accepted-gesture-regression:
+    name: REM-03 viewer and REM-04B six-photo preservation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install accepted browser and dependencies
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npx playwright install chromium
+      - name: Run accepted identity, 1-to-6 blur, pinch, lifecycle and source morph
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-rem04c-regressions-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then cat /tmp/luemi-rem04c-regressions-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-03a-browser-media.mjs
+          node scripts/rem-03c-browser-pinch.mjs
+          node scripts/rem-02d-browser-lifecycle.mjs
+          node scripts/rem-03d-browser-morph.mjs
+          node scripts/rem-04b-browser-six.mjs
+      - name: Preserve regression screenshot and trace artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem-04c-accepted-gestures-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04b/six/**
+            qa-artifacts/rem-03a/**
+            qa-artifacts/rem-03c/**
+            qa-artifacts/rem-03d/**
+            /tmp/luemi-rem04c-regressions-vite.log
+          if-no-files-found: warn
