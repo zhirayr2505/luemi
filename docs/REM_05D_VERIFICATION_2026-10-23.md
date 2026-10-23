@@ -72,11 +72,11 @@ The focused job executes real isolated PostgreSQL 16 with multiple actual LOGIN 
 | D02 | PASS | simultaneous revision=1 PUT, exactly one 200 and one 409 |
 | D03 | PARTIAL | SQL non-owner owner reassignment denied; B-owner INSERT separately not tested |
 | D04 | PARTIAL | actual anonymous role and default-deny tested; PostgREST HTTP unavailable |
-| D05 | PARTIAL | effective role, FORCE RLS and unexpected session/audit grants tested; comprehensive per-column escalation matrix outstanding |
+| D05 | PARTIAL | effective role, FORCE RLS, tested disjoint memberships and adversarial direct SELECT(decision) column grant rejected by runtime; exhaustive per-column grant matrix still outstanding |
 | D06 | PARTIAL | A/B, missing GUC and rollback deny executed; adversarial fault in multi-instance pool outstanding |
 | D07 | PARTIAL | mixed NOINHERIT worker/request login is denied; transitive moderator combinations outstanding |
 | D08 | PARTIAL | owner projection and raw keys kept out of HTTP; comprehensive structured log audit outstanding |
-| D09 | PARTIAL | revoked sessions block private APIs; some expired/suspended paths inherited from 05B |
+| D09 | PARTIAL | revoked sessions block private APIs; real locked draft UPDATE after mid-flight revocation ROLLBACKs; expiry/sanctions inherited from 05B, complete multi-process atomicity outstanding |
 | D10 | PARTIAL | invalid draft/unknown fields/date/consent tested; exact 18th birthday boundary not tested |
 | D11 | PARTIAL | namespace composite FK exists; two-bot concurrent REM-05D access matrix outstanding |
 | D12 | PASS | publication HTTP denied and DB CHECK prevents publishing |
@@ -90,7 +90,7 @@ The focused job executes real isolated PostgreSQL 16 with multiple actual LOGIN 
 | M08 | BLOCKED | no crash-restart, interrupted byte streaming/resume or durable cleanup proof |
 | M09 | PARTIAL | worker/moderator cannot read private draft/session; broad operator role review outstanding |
 | M10 | PARTIAL | private MOCK denies B/anonymous; real Storage.objects and PostgREST unavailable |
-| M11 | PARTIAL | revoke next request 404; block and public media race cannot be verified while public OFF |
+| M11 | PARTIAL | revoke next request 404 AND in-flight slow private object read rechecked after state revocation; block/public visitor-media races remain untestable with publication OFF |
 | M12 | PASS | pending review inaccessible, approved remains unpublished |
 | MOD01 | PARTIAL | pending default and no automated approval; real scanner outage untested |
 | MOD02 | PARTIAL | only DB moderator helper can approve; no staff principal live authentication |
@@ -124,5 +124,24 @@ No real data has been read, written, copied, deleted, published or charged. Acce
 **REM-05D has a demonstrable, non-production private-data slice, but is PARTIAL vs the full requested security catalog.** The isolated disposable PostgreSQL + synthetic media acceptance is the meaningful PASS surface; the missing real Storage verification, scanner, report appeals and native device evidence remain explicit BLOCKED/PARTIAL. Do **not** enable real-user uploads or submission until those controls and policy decisions are independently accepted.
 
 No REM-05E/05F, merge, deploy, webhook rotation or visibility change. STOP for owner independent technical review after all latest-head GitHub checks are inspected.
+
+## 7. REM-05D resumed post-audit security-hardening and reproduced race negatives
+
+**Scope unchanged: REM-05D only; same branch and same Draft PR #54.**
+After the first green PostgreSQL security run, additional actual-code review identified three sensitive boundaries. These were implemented in separate follow-on commits, without changing any `apps/web/src` source, REM-05B session issuer, accepted REM-05C quotas/headers or production settings:
+
+| Boundary | Pre-hardening risk | Current remediation and executable regression |
+|---|---|---|
+| R1: revoke during profile CAS | The prior scoped `owner()` helper committed a user write before revalidating the token generation. A concurrent revoked session could cause a committed update followed by HTTP 401. | Re-check the session identity and token generation **inside the still-open request transaction before COMMIT**. On revoked/rotated token the update transaction ROLLBACKs. Synthetic PostgreSQL row-lock test waits until UPDATE is blocked, revokes the actor session and releases the lock, then proves HTTP 401 and the original draft revision/payload survive. |
+| R2: media revoked during slow object GET | The previous gateway only checked approved/owner status *before* `storage.get`. A revocation while fetching could allow stale pixels. | After the object read, re-query the asset with verified actor, exact version/key and `approved/private` state and fresh session; reject changed/hidden asset before byte emission. Test holds a synthetic private Storage `get`, changes approval to `revoked`, releases the barrier, and asserts HTTP 404 with no image bytes. |
+| R3: unexpected column-level privilege | Restricting table-level `SELECT` alone could overlook a direct `SELECT(decision)` GRANT on a sensitive table to an otherwise request-scoped LOGIN role. | `safeDb` checks effective column-level SELECT/INSERT/UPDATE rights across forbidden moderation/audit/session/issuer/draft surfaces. A separate real `rem05d_ci_extracol` login in disposable PG16 receives a deliberately prohibited `SELECT(decision)` privilege; Fastify rejects this configuration with 503 before accessing any private profile. |
+
+**Executable synthetic proof after R1+R2+R3:** [REM-05D push security job](https://github.com/zhirayr2505/luemi/actions/runs/40015982314) on code SHA `35bc17fbe52d08ca8109b1a495ef313800a7f2d4`, PostgreSQL 16 actual restricted LOGIN roles, **5/5 TAP subtests PASS / 0 failures / 0 skipped** (includes both interleaving races and unexpected column grant). This proves the focused isolated code path; it does not by itself prove later documentation commit checks or every other inherited workflow.
+
+**Remaining temporal limitation:** pre-commit revalidation considerably narrows the revoked-session window but is not a distributed atomic session-revocation linearization across two separate PostgreSQL principals/transactions. A revocation racing *after* the final session check remains a theoretical boundary; no zero-window atomicity guarantee is claimed. A future independently reviewed cross-service session-lock protocol or other strict revocation transaction design would require isolated race tests and authorization, not a silent REM-05D production promise.
+
+**Remaining media limitation:** a second status check stops the reproduced revoked-during-storage-read race, but cannot erase bytes already delivered to a prior client, and cannot emulate public visitor/block relationships while publication is hard disabled. Real Supabase Storage private object policy, deletion/retention, malware scanning, durable media storage, legal and device evidence remain NOT VERIFIED/PARTIAL/BLOCKED.
+
+**Final SHA workflow rule:** this document modification itself creates a new immutable GitHub head. Only the actual results of Foundation, REM-00C, REM-05B, REM-05C and REM-05D workflows (both push/PR) on that **new final head**, recorded in Draft PR #54, can close the mandatory CI gate. Do not count successful previous-SHA test runs as final proof. No merge, deploy or REM-05E.
 
 LUEMI 💜
