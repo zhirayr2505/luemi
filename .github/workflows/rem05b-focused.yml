@@ -34,11 +34,14 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
           cache: npm
           cache-dependency-path: package-lock.json
+      - name: Redacted public PR diff secret gate
+        run: node scripts/rem-05b-public-diff-scan.mjs
       - name: Reproducible build and types
         run: |
           set -euo pipefail
@@ -73,6 +76,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
