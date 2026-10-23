@@ -78,3 +78,33 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build -w @luemi/contracts
           npx --no-install tsx --test apps/api/secure-tests/rem05c-http.test.ts
+
+  rem05c-csp-chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Locked install and synthetic local TLS origins
+        run: |
+          set -euo pipefail
+          npm install -g npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npx --no-install playwright install chromium
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=127.0.0.1' -keyout /tmp/rem05c-synthetic.key -out /tmp/rem05c-synthetic.crt 2>/dev/null
+      - name: Browser exercise real CSP frame-ancestors with allowed and malicious parents
+        run: npx --no-install tsx scripts/rem-05c-frame-browser.ts /tmp/rem05c-synthetic.key /tmp/rem05c-synthetic.crt
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem05c-csp-synthetic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: qa-artifacts/rem05c/**
+          if-no-files-found: warn
