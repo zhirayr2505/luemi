@@ -169,9 +169,11 @@ async function run(name,url){
   await page.getByRole("button",{name:"Профиль",exact:true}).click();
   await page.locator(".pm-inline .pm-photo-track").waitFor();
   for(let n=0;n<5;n++){
-   await page.getByRole("button",{name:"Развернуть анкету"}).click();
+   await page.locator(".pm-inline .pm-sheet-grab").evaluate(button=>button.click());
+   await page.waitForFunction(()=>document.querySelector(".pm-inline")?.dataset.sheetState==="collapsed");
    await sleep(370);
-   await page.getByRole("button",{name:"Потянуть панель вниз"}).click();
+   await page.locator(".pm-inline .pm-sheet-grab").evaluate(button=>button.click());
+   await page.waitForFunction(()=>document.querySelector(".pm-inline")?.dataset.sheetState==="expanded");
    await sleep(370);
   }
   const owner=await measure("owner-after-reentry");
