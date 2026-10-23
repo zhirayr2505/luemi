@@ -279,6 +279,61 @@ test("M11: revoke approved media while private storage GET is in flight; never d
   console.log("REM05D_MEDIA_REVOKED_DURING_STORAGE_READ_PASS");
  }finally{release();await server.close();}
 });
+test("D-R4 RED: revoke original session while synthetic PrivateObjectStore PUT is stalled; SQL must not promote media",async()=>{
+ const backing=memoryPrivateStore();
+ let entered!:()=>void,release!:()=>void;
+ const putStarted=new Promise<void>(resolve=>{entered=resolve;});
+ const unblockPut=new Promise<void>(resolve=>{release=resolve;});
+ let stagedKey:string|undefined;
+ const slowStore:PrivateObjectStore={
+  put:async(key,bytes)=>{stagedKey=key;entered();await unblockPut;await backing.put(key,bytes);},
+  get:(key)=>backing.get(key)
+ };
+ const server=app({storage:slowStore});
+ let inFlight:ReturnType<typeof server.inject>|undefined;
+ try{
+  const a=await identity(server,90707),png=makeSyntheticPng();
+  const intent=await post(server,"/api/v2/media/intents",a,
+   {bytes:png.length,mime:"image/png",clientKey:"revocation-upload-red-001"});
+  assert.equal(intent.statusCode,200,intent.body);
+  const id=intent.json().assetId as string;
+  const upload=server.inject({method:"PUT",url:"/api/v2/media/"+id+"/bytes",
+   headers:{...headers(a.cookie,a.csrf),"content-type":"image/png"},payload:png});
+  inFlight=upload;
+  await Promise.race([putStarted,new Promise<never>((_resolve,reject)=>
+   setTimeout(()=>reject(new Error("storage PUT did not start")),5000))]);
+  const before=await admin.query(
+   "SELECT a.state AS asset_state,u.state AS upload_state, "+
+   "(SELECT count(*)::int FROM luemi_private.moderation_jobs j WHERE j.asset_id=a.id) AS jobs "+
+   "FROM luemi_private.media_assets a JOIN luemi_private.media_uploads u ON u.asset_id=a.id WHERE a.id=$1",[id]);
+  assert.equal(before.rows[0].asset_state,"reserved");
+  assert.equal(before.rows[0].upload_state,"reserved");
+  assert.equal(before.rows[0].jobs,0);
+  const revoked=await admin.query(
+   "UPDATE luemi_private.sessions SET revoked_at=clock_timestamp() "+
+   "WHERE actor_id=$1 AND environment=$2 AND revoked_at IS NULL RETURNING id,token_hash,generation",
+   [a.id,namespace]);
+  assert.equal(revoked.rowCount,1,"revoke exactly the active upload session generation");
+  release();
+  const response=await upload;
+  assert.equal(response.statusCode,401,response.body);
+  const after=await admin.query(
+   "SELECT a.state AS asset_state,u.state AS upload_state, "+
+   "(SELECT count(*)::int FROM luemi_private.moderation_jobs j "+
+   "WHERE j.asset_id=a.id AND j.state='pending_review') AS actionable_jobs "+
+   "FROM luemi_private.media_assets a JOIN luemi_private.media_uploads u ON u.asset_id=a.id WHERE a.id=$1",[id]);
+  assert.equal(after.rows[0].asset_state,"reserved","revoked upload must never promote to pending_review");
+  assert.equal(after.rows[0].upload_state,"reserved","revoked upload must never become received");
+  assert.equal(after.rows[0].actionable_jobs,0,"revoked upload must not enqueue moderation");
+  assert.equal((await get(server,"/api/v2/media/"+id,a)).statusCode,401);
+  if(stagedKey)assert.equal(await backing.get(stagedKey),null,"staged object must be cleaned up");
+  console.log("REM05D_UPLOAD_REVOCATION_SQL_AND_OBJECT_ROLLBACK_PASS");
+ }finally{
+  release();
+  if(inFlight)await inFlight.catch(()=>{});
+  await server.close();
+ }
+});
 test("Off by default on ordinary app configuration and signed UI is not activated",async()=>{
  const off=app({enabled:false});
  try{
