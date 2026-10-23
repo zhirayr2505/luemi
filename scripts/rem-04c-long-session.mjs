@@ -178,14 +178,27 @@ async function run(name,url){
   }
   const owner=await measure("owner-after-reentry");
   assert.ok(owner.imageBlurNodes<=3,"REM-04B blur cap preserved");
-  let teardown=null;
+  let teardown=null,remounted=null;
   if(name==="current"){
    await page.evaluate(()=>window.__luemiQaUnmount());
    teardown=await measure("react-teardown");
    assert.equal(teardown.reactChildren,0,"all mounted React content removed");
+   assert.equal(teardown.imgNodes,0,"no application images survive teardown");
+   assert.equal(teardown.own.raf,0,"no own animation frames after teardown");
+   assert.equal(teardown.own.timers,0,"no own timers after teardown");
+   assert.equal(teardown.own.urls,0,"no leaked app-created object URLs");
+   assert.equal(teardown.own.decodes,0,"no tracked app decode left pending");
+   assert.ok(teardown.own.listeners<=initial.own.listeners,
+    "global app-owned listeners must release to cold baseline");
+   await page.evaluate(()=>window.__luemiQaRemount());
+   await page.locator(".discovery-app").waitFor();
+   remounted=await measure("react-remount");
+   assert.equal(remounted.reactChildren,1,"React can mount a clean app after teardown");
+   assert.ok(remounted.own.listeners<=initial.own.listeners+2,
+    "remount must not accumulate global listeners");
   }
   assert.deepEqual(errors,[],"browser page errors");
-  const result={name,initial,expanded,checkpoints,after50,restored,nearby,feed,forYouReturn,viewer,resized,owner,teardown,errors};
+  const result={name,initial,expanded,checkpoints,after50,restored,nearby,feed,forYouReturn,viewer,resized,owner,teardown,remounted,errors};
   console.log("REM04C_SESSION "+JSON.stringify(result));
   return result;
  }finally{
