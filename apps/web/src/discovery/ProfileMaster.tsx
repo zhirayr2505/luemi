@@ -17,6 +17,7 @@ import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
 import {GestureArbiter,fractionalTrack,preservePhotoId} from "../ui/gesture-arbiter";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import "./profile-master.css";
+import {useModalLayer} from "../ui/modal-layer";
 
 type TabId="about"|"bliki"|"photos"|"gifts"|"meta";
 export type ProfileRouteMotionHandle={
@@ -196,10 +197,14 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  // if a progress-dot jump spans more than one slide.
  const viewport=useRef<HTMLDivElement>(null);
  const shell=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),blurLayer=useRef<HTMLDivElement>(null);
+ const nestedBack=useRef<()=>void>(()=>{});
+ const isNestedPreview=mode==="preview"||(mode==="local-self-preview"&&!!onClose);
+ useModalLayer(isNestedPreview,shell,()=>nestedBack.current());
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null),blurTrack=useRef<HTMLDivElement>(null);
  const grab=useRef<HTMLButtonElement>(null),miniAvatar=useRef<HTMLButtonElement>(null);
  const photoMotion=useRef<HTMLDivElement>(null),rubberY=useRef(0);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
+ const keyboardTabFocus=useRef<number|null>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
  const tabMetrics=useRef<Array<{left:number;width:number}>>([]);
  const tabViewport=useRef(1),tabLastPosition=useRef(0);
@@ -454,6 +459,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(onClose){onClose();return true;}
   return false;
  },[viewer,preview,blikOpen,onClose]);
+ nestedBack.current=()=>{closeTop();};
  useEffect(()=>{if(!active)return;registerBack?.(closeTop);return ()=>registerBack?.(null);},[active,closeTop,registerBack]);
  const openPhoto=(index:number,element:HTMLElement|null)=>{
   const photo=photos[index];
@@ -646,6 +652,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const detachViewport=bindMotionViewport(window,()=>measure());
   return ()=>{cancelled=true;measureTabsRef.current=()=>{};ro.disconnect();detachViewport();tabsRunner.current?.suspend();};
  },[motionActive,paintTabs]);
+ useLayoutEffect(()=>{
+  const i=keyboardTabFocus.current;
+  if(i===null||tabs[i][0]!==tab)return;
+  keyboardTabFocus.current=null;
+  tabBar.current?.querySelectorAll<HTMLButtonElement>(".pm-tab")[i]?.focus({preventScroll:true});
+ },[tab]);
  const chooseTab=useCallback((newIndex:number)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   stopTabs.current();
@@ -947,13 +959,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const embeddedSelf=mode==="local-self-preview"&&!onClose;
  return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer="scroll" className={"pm-shell "+(mode==="owner"||embeddedSelf?"pm-inline":"pm-dialog")} role={mode==="owner"||embeddedSelf?undefined:"dialog"}
    aria-modal={mode==="owner"||embeddedSelf?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="local-self-preview"?"Локальный предпросмотр черновика":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
-  {(mode==="preview"||mode==="local-self-preview"&&!!onClose)&&<div className="pm-preview-toolbar"><button type="button" onClick={onClose}>Закрыть предпросмотр</button></div>}
+  {(mode==="preview"||mode==="local-self-preview"&&!!onClose)&&<div className="pm-preview-toolbar"><button type="button" data-modal-initial onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}
      onLostPointerCapture={e=>photoEnd(e,true)}>
     <div className="pm-photo-motion" ref={photoMotion}>
     {photos.length?<div className="pm-photo-track" ref={photoTrack}>
-      {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
+      {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} role="button" tabIndex={i===activePhoto?0:-1}
+       aria-label={"Открыть фото "+(i+1)+" из "+photos.length}
+       onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){
+        event.preventDefault();event.stopPropagation();openPhoto(i,event.currentTarget.querySelector("img"));}}}
+       onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
        <PhotoImage photo={p} alt={"Фото "+(i+1)+" · "+view.profile.name} loading={i===0?"eager":"lazy"}/></div>)}
      </div>:<div className="pm-hero-no-photo"><Images size={40}/><span>{view.profile.source==="local-draft"?"В локальном черновике нет фото":"Публичных фотографий пока нет"}</span></div>}
      <div className="pm-photo-blur" ref={blurLayer} aria-hidden="true">
@@ -995,8 +1011,20 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
      <button type="button" className="pm-owner-edit" onClick={onEdit}><PenLine size={17}/> Изменить</button>
      <button type="button" onClick={()=>setPreview(true)}><Eye size={17}/>{data.source==="local-draft"?"Предпросмотр":"Как видят"}</button>
     </div>}
-   <div className="pm-tabs" ref={tabBar} role="tablist" aria-label="Разделы профиля">
-    {tabs.map(([id,label,Icon],i)=><button type="button" key={id} className={"pm-tab"+(id===tab?" active":"")} role="tab"
+   <div className="pm-tabs" ref={tabBar} role="tablist" aria-label="Разделы профиля"
+    onKeyDown={event=>{
+     const i=tabs.findIndex(v=>v[0]===tab);
+     const next=event.key==="ArrowRight"?Math.min(4,i+1):
+      event.key==="ArrowLeft"?Math.max(0,i-1):
+      event.key==="Home"?0:event.key==="End"?4:-1;
+     if(next<0)return;
+     event.preventDefault();
+     keyboardTabFocus.current=next;
+     chooseTab(next);
+     if(next===i){keyboardTabFocus.current=null;
+      tabBar.current?.querySelectorAll<HTMLButtonElement>(".pm-tab")[i]?.focus({preventScroll:true});}
+    }}>
+    {tabs.map(([id,label,Icon],i)=><button type="button" key={id} className={"pm-tab"+(id===tab?" active":"")} role="tab" tabIndex={id===tab?0:-1}
       aria-selected={id===tab} onClick={()=>chooseTab(i)}><Icon size={16}/><span>{label}</span></button>)}
     <span className="pm-tab-ink" ref={ink} aria-hidden="true"/>
    </div>
@@ -1004,17 +1032,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
      onPointerUp={e=>tabEnd(e)} onPointerCancel={e=>tabEnd(e,true)}
      onLostPointerCapture={e=>tabEnd(e,true)}>
     <div className="pm-pages-track" ref={pageTrack}>
-     <div className="pm-page" ref={e=>{if(e)contentPages.current[0]=e;}}><About view={view}/></div>
-     <div className="pm-page" ref={e=>{if(e)contentPages.current[1]=e;}}><Bliki/></div>
-     <div className="pm-page" ref={e=>{if(e)contentPages.current[2]=e;}}>
+     <div className="pm-page" role="tabpanel" aria-label="О себе" inert={tab!=="about"} aria-hidden={tab!=="about"} ref={e=>{if(e)contentPages.current[0]=e;}}><About view={view}/></div>
+     <div className="pm-page" role="tabpanel" aria-label="Блики" inert={tab!=="bliki"} aria-hidden={tab!=="bliki"} ref={e=>{if(e)contentPages.current[1]=e;}}><Bliki/></div>
+     <div className="pm-page" role="tabpanel" aria-label="Фото" inert={tab!=="photos"} aria-hidden={tab!=="photos"} ref={e=>{if(e)contentPages.current[2]=e;}}>
       {photos.length?<div className="pm-photos-grid">{photos.map((p,i)=><button type="button" key={p.id} className="pm-photo-tile"
        onClick={e=>openPhoto(i,e.currentTarget.querySelector("img"))} aria-label={"Открыть фото "+(i+1)}>
        <PhotoImage photo={p} alt="" loading="lazy"/>{p.status!=="published"&&<span>{p.status==="draft"?"Черновик":"Проверка"}</span>}
        </button>)}</div>:<div className="pm-empty"><Images size={38}/><h3>{view.profile.source==="local-draft"?"Пока нет готовых фото":"Пока нет опубликованных фото"}</h3>
         <p>{view.profile.source==="local-draft"?"Добавь фотографии или дождись окончания локальной обработки.":"Фото на модерации и приватные снимки не видны другим."}</p></div>}
      </div>
-     <div className="pm-page" ref={e=>{if(e)contentPages.current[3]=e;}}><Gifts view={view}/></div>
-     <div className="pm-page" ref={e=>{if(e)contentPages.current[4]=e;}}><Meta view={view}/></div>
+     <div className="pm-page" role="tabpanel" aria-label="Подарки" inert={tab!=="gifts"} aria-hidden={tab!=="gifts"} ref={e=>{if(e)contentPages.current[3]=e;}}><Gifts view={view}/></div>
+     <div className="pm-page" role="tabpanel" aria-label="О профиле" inert={tab!=="meta"} aria-hidden={tab!=="meta"} ref={e=>{if(e)contentPages.current[4]=e;}}><Meta view={view}/></div>
     </div>
    </div>
   </div>
