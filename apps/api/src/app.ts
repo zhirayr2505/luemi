@@ -7,6 +7,7 @@ import type { ApiConfig } from "./config.js";
 import { validateTelegramInitData } from "./telegram-auth.js";
 import { registerTelegramWebhook } from "./telegram-webhook.js";
 import { registerGeography } from "./geo-routes.js";
+import { registerRem05b } from "./rem05b-session.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -23,7 +24,7 @@ export function buildApp(config: ApiConfig) {
   app.register(cors, {
     origin: config.origin,
     methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "X-Health-Key"]
+    allowedHeaders: ["Content-Type", "X-Health-Key", "X-Luemi-CSRF"]
   });
   app.register(rateLimit, { max: 60, timeWindow: "1 minute" });
   app.addHook("onSend", async (_request, reply) => {
@@ -52,6 +53,7 @@ export function buildApp(config: ApiConfig) {
     };
     return response;
   });
+  if (config.rem05b?.enabled) registerRem05b(app, config.rem05b);
   registerTelegramWebhook(app, config);
   registerGeography(app);
   return app;
