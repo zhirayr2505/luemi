@@ -3,6 +3,7 @@ import type {FastifyInstance,FastifyReply,FastifyRequest} from "fastify";
 import {Pool} from "pg";
 import type {PoolClient} from "pg";
 import {validateTelegramInitData} from "./telegram-auth.js";
+import {RateBuckets} from "./rem05c-rate.js";
 
 export interface Rem05bOptions {
  enabled:boolean; issuerDatabaseUrl:string; requestDatabaseUrl:string; pepper:string;
@@ -27,12 +28,13 @@ function validOrigin(req:FastifyRequest,origin:string){
 function deny(reply:FastifyReply,status:401|503=401){
  return reply.code(status).send({error:status===401?"unauthorized":"service_unavailable"});
 }
-export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
+export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;geoRead:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;mutation:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>}|undefined{
  if(!cfg.enabled)return;
  if(!cfg.issuerDatabaseUrl||!cfg.requestDatabaseUrl||!cfg.botToken||!cfg.namespace||
  !/^[a-z0-9:_-]{1,96}$/i.test(cfg.namespace)||Buffer.byteLength(cfg.pepper)<32||
  cfg.idleMs<60000||cfg.absoluteMs<cfg.idleMs||!Number.isSafeInteger(cfg.maxSessions)||
  cfg.maxSessions<1||cfg.maxSessions>20)throw new Error("Invalid REM-05B test-only config");
+ const perActorRate=new RateBuckets();
  const issuer=new Pool({connectionString:cfg.issuerDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  const scoped=new Pool({connectionString:cfg.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  app.addHook("onClose",async()=>{await Promise.all([issuer.end(),scoped.end()]);});
@@ -122,6 +124,31 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
   const result=await inspect(req);
   if("status" in result){deny(reply,result.status);return;}
   req.authActor=result.value;
+  if(req.url.split("?")[0]==="/api/v2/me"){
+   const limit=perActorRate.check("me:"+result.value.actorId,180);
+   if(!limit.allowed){
+    reply.header("Retry-After",String(limit.retryAfter));
+    reply.code(429).send({error:"rate_limited"});
+   }
+  }
+ };
+ // Read-only GET can still bill Geoapify. Browser SameSite=Lax cookies are
+ // sent on cross-site top-level navigations: require a memory-only, session
+ // generation-bound CSRF header and reject cross-origin Fetch Metadata.
+ const protectedGeoRead=async(req:FastifyRequest,reply:FastifyReply)=>{
+  await authenticated(req,reply);
+  if(!req.authActor||reply.sent)return;
+  const site=req.headers["sec-fetch-site"];
+  const mode=req.headers["sec-fetch-mode"];
+  const dest=req.headers["sec-fetch-dest"];
+  if((req.headers.origin!==undefined&&req.headers.origin!==cfg.origin)||
+    (site!==undefined&&site!=="same-origin")||
+    mode==="navigate"||dest==="document"){
+    reply.code(403).send({error:"forbidden"});return;
+  }
+  const supplied=req.headers["x-luemi-csrf"];
+  if(typeof supplied!=="string"||!equals(supplied,csrf(cfg.pepper,req.authActor.hash)))
+    reply.code(403).send({error:"forbidden"});
  };
  const protectedMutation=async(req:FastifyRequest,reply:FastifyReply)=>{
   if(!validOrigin(req,cfg.origin)){reply.code(403).send({error:"forbidden"});return;}
@@ -240,4 +267,5 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
  app.post("/api/v2/auth/logout-all",{preHandler:protectedMutation},async(_req,reply)=>{
   return reply.code(403).send({error:"additional_confirmation_required"});
  });
+ return {read:authenticated,geoRead:protectedGeoRead,mutation:protectedMutation};
 }

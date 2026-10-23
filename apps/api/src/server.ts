@@ -16,6 +16,7 @@ async function start(): Promise<void> {
       app.setNotFoundHandler((request, reply) => {
         if (request.method === "GET" &&
           !request.url.startsWith("/api/") &&
+          !request.url.startsWith("/assets/") &&
           request.headers.accept?.includes("text/html")) {
           return reply.sendFile("index.html");
         }
