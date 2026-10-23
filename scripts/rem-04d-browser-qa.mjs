@@ -90,8 +90,9 @@ try{
  // Open profile from collection; keyboard focus cannot reach underlying browse.
  await openCollection(0);
  await page.locator(".fy-expanded .fy-grid").evaluate(el=>el.scrollTop=240);
- await page.locator(".fy-expanded .fy-tile-photo").first().click();
+ await page.locator(".fy-expanded .fy-tile-photo").nth(2).click();
  await page.locator(".discovery-visitor-route").waitFor();
+ const collectionAtProfileOpen=await snapshot();
  await sleep(320);
  const profile=await snapshot();
  assert.ok(profile.inertApp,"visitor profile isolates underlying browse");
@@ -124,7 +125,7 @@ try{
  await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:4000});
  assert.equal((await snapshot()).bodyOverflow,"","last modal restores body lock");
  const collectionReturn=await snapshot();
- assert.ok(Math.abs(collectionReturn.expanded-240)<=1,"profile Back preserves expanded collection offset");
+ assert.ok(Math.abs(collectionReturn.expanded-collectionAtProfileOpen.expanded)<=1,"profile Back preserves collection offset measured at actual profile opening");
  assert.ok(collectionReturn.headerProgress>.95,"profile Back restores expanded header context");
  await closeCollection();
  // Modal focus trap, body scroll lock and trigger restore from header filters.
@@ -163,7 +164,7 @@ try{
  await page.waitForSelector(".discovery-app");
  assert.equal(errors.length,0,"no browser page errors: "+errors.join("; "));
  const report={sha:process.env.GITHUB_SHA??"local",library,fresh,gridScrolled,restored,reopened,second,
-  orderBeforeReload:beforeReload,orderAfterReload:afterReload,profile,viewer,menuStart,collectionReturn,tabs,
+  orderBeforeReload:beforeReload,orderAfterReload:afterReload,collectionAtProfileOpen,profile,viewer,menuStart,collectionReturn,tabs,
   pageErrors:errors,limitations:"Chromium 393x852 Android-UA touch simulation; physical A55/iOS/VoiceOver NOT VERIFIED"};
  writeFileSync(dir+"/focused.json",JSON.stringify(report,null,2));
  console.log("REM04D_FOCUSED_PASS "+JSON.stringify({header:[library.headerProgress,fresh.headerProgress,restored.headerProgress,second.headerProgress],tabs,pageErrors:errors.length}));
