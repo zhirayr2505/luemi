@@ -68,7 +68,7 @@ The focused job executes real isolated PostgreSQL 16 with multiple actual LOGIN 
 
 | Test | Status | Executed/proof and missing boundary |
 |---|---|---|
-| D01 | PARTIAL | owner A + B isolation and 401 tested; explicit forgery on draft route not separately asserted |
+| D01 | PASS | owner A + B isolation and 401 tested; forged X-Actor-Id/role header ignored; strict Origin/CSRF rejected |
 | D02 | PASS | simultaneous revision=1 PUT, exactly one 200 and one 409 |
 | D03 | PARTIAL | SQL non-owner owner reassignment denied; B-owner INSERT separately not tested |
 | D04 | PARTIAL | actual anonymous role and default-deny tested; PostgREST HTTP unavailable |
@@ -81,7 +81,7 @@ The focused job executes real isolated PostgreSQL 16 with multiple actual LOGIN 
 | D11 | PARTIAL | namespace composite FK exists; two-bot concurrent REM-05D access matrix outstanding |
 | D12 | PASS | publication HTTP denied and DB CHECK prevents publishing |
 | M01 | PASS | verified owner intent, foreign upload 404 and anonymous auth |
-| M02 | PARTIAL | 25 concurrent intents <=6; requested 50+ flood not yet executed |
+| M02 | PASS | 50 concurrent intents capped at 6 under one real DB role, no seventh admission |
 | M03 | PASS | same idempotency digest same asset; changed body 409 |
 | M04 | PARTIAL | unpredictable key kept from DTO; traversal/encoded path injection not independently tested |
 | M05 | PARTIAL | bad PNG/magic/truncated/trailing bytes; broader polyglot MIME matrix not completed |
