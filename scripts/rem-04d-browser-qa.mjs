@@ -141,6 +141,13 @@ try{
  await page.keyboard.press("Escape");
  await page.getByRole("dialog",{name:"Фильтры знакомств"}).waitFor({state:"detached"});
  assert.equal(await trigger.evaluate(el=>document.activeElement===el),true,"focus returns to live filter trigger");
+ const savedButton=page.getByRole("button",{name:"Сохранённые анкеты"});
+ await savedButton.click();
+ await page.getByRole("dialog",{name:"Сохранённые демо-анкеты"}).waitFor();
+ assert.ok(await page.evaluate(()=>document.querySelector(".discovery-main-panels")?.inert),"saved modal isolates browsing");
+ await page.keyboard.press("Escape");
+ await page.getByRole("dialog",{name:"Сохранённые демо-анкеты"}).waitFor({state:"detached"});
+ assert.equal(await savedButton.evaluate(el=>document.activeElement===el),true,"saved sheet returns to its trigger");
  // Owner profile keeps all pages mounted, but only selected page interactive.
  await page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"}).click();
  await page.locator(".pm-inline .pm-tabs").waitFor();
@@ -157,6 +164,15 @@ try{
  }));
  assert.ok(Math.abs(tabs.scroll-tabs.width)<=2,"keyboard tab selection and physical scrollLeft agree");
  await page.screenshot({path:dir+"/profile-keyboard.png"});
+ // The owner-only 'eyes of others' preview is a nested modal, not another profile route.
+ const previewButton=page.locator(".pm-inline .pm-owner-actions button").filter({hasText:"Предпросмотр"});
+ await previewButton.click();
+ await page.locator(".pm-dialog[role=dialog]").waitFor();
+ assert.equal(await page.locator(".pm-dialog[role=dialog]").count(),1);
+ assert.ok(await page.evaluate(()=>document.activeElement?.closest(".pm-dialog")!==null),"preview takes initial focus");
+ await page.keyboard.press("Escape");
+ await page.locator(".pm-dialog[role=dialog]").waitFor({state:"detached"});
+ assert.equal(await previewButton.evaluate(el=>document.activeElement===el),true,"preview focus returns to button");
  // Focus fallback must be safe when the original trigger disappears while a
  // portalled viewer is open (reorder/unmount of source control).
  await page.locator(".pm-qa-focus").focus();
