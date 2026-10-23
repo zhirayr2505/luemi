@@ -146,7 +146,11 @@ function VisualQA(){
  <span data-qa-unrelated={unrelated} hidden/>
  </main>;
 }
-createRoot(document.getElementById("root")!).render(
+// QA-only teardown hook. React owns unmount; tests can verify that app-owned
+// listeners/RAF/media are released instead of merely navigating away.
+const qaRoot=createRoot(document.getElementById("root")!);
+(window as Window&{__luemiQaUnmount?:()=>void}).__luemiQaUnmount=()=>qaRoot.unmount();
+qaRoot.render(
  <React.StrictMode>
   <VisualQA/>
  </React.StrictMode>
