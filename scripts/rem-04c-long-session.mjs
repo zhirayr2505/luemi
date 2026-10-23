@@ -70,15 +70,15 @@ async function run(name,url){
   const perf=Object.fromEntries((await cdp.send("Performance.getMetrics")).metrics.map(v=>[v.name,v.value]));
   const dom=await page.evaluate(()=>{
    const r=document.querySelector(".fy-scroll"),library=r?.getBoundingClientRect();
-   const windowImages=[...(r?.querySelectorAll(".fy-tile-photo img")??[])].filter(n=>{
+   const windowImages=[...(r?.querySelectorAll(".fy-tile-photo > img")??[])].filter(n=>{
     if(!library)return false;const b=n.getBoundingClientRect();
     return b.bottom>=library.top&&b.top<=library.bottom;
    });
    const images=[...document.querySelectorAll("img")];
    return {imgNodes:images.length,decodedDomImages:images.filter(i=>i.complete&&i.naturalWidth>0).length,
-    fyLibraryImages:r?.querySelectorAll(".fy-tile-photo img").length??0,
+    fyLibraryImages:r?.querySelectorAll(".fy-tile-photo > img").length??0,
     fyNearWindowImages:windowImages.length,
-    fyExpandedImages:document.querySelectorAll(".fy-expanded .fy-tile-photo img").length,
+    fyExpandedImages:document.querySelectorAll(".fy-expanded .fy-tile-photo > img").length,
     fyExpandedTiles:document.querySelectorAll(".fy-expanded .fy-tile-photo").length,
     fyLibraryTiles:r?.querySelectorAll(".fy-tile-photo").length??0,
     libraryScroll:r?.scrollTop??0,
