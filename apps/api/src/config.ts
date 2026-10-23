@@ -1,4 +1,5 @@
 import type { FastifyServerOptions } from "fastify";
+import type { Rem05bOptions } from "./rem05b-session.js";
 export interface ApiConfig {
   port: number;
   origin: string;
@@ -10,6 +11,7 @@ export interface ApiConfig {
   expectedBotUsername?: string;
   setupOnStart?: boolean;
   logger: FastifyServerOptions["logger"];
+  rem05b?: Rem05bOptions;
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const port = Number(env.PORT ?? "3001");
@@ -30,7 +32,23 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     env.EXPECTED_TELEGRAM_BOT_USERNAME?.toLowerCase() !== "luemiappbot" ||
     !/^[a-zA-Z0-9_-]{24,256}$/.test(env.TELEGRAM_WEBHOOK_SECRET ?? "")
   )) throw new Error("Telegram auto-setup requires verified LUEMI staging configuration");
+  // Deliberately OFF for all existing Render deployments until separately authorized.
+  const v2Enabled = env.REM05B_SESSIONS_ENABLED === "1";
+  const rem05b: Rem05bOptions | undefined = v2Enabled ? {
+    enabled: true,
+    issuerDatabaseUrl: env.REM05B_AUTH_DATABASE_URL ?? "",
+    requestDatabaseUrl: env.REM05B_REQUEST_DATABASE_URL ?? "",
+    pepper: env.REM05B_SESSION_PEPPER ?? "",
+    namespace: env.REM05B_BOT_NAMESPACE ?? "",
+    origin,
+    botToken: env.TELEGRAM_BOT_TOKEN ?? "",
+    // PROVISIONAL local/CI policy: NOT approved for real users.
+    idleMs: 12 * 60 * 60 * 1000,
+    absoluteMs: 7 * 24 * 60 * 60 * 1000,
+    maxSessions: 5
+  } : undefined;
   return {
+    rem05b,
     port,
     origin,
     stagingOnly,
