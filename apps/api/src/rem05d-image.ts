@@ -103,6 +103,6 @@ export function makeSyntheticPng(width=1,height=1):Buffer{
 }
 export function addSyntheticMetadata(image:Buffer):Buffer{
  if(!image.subarray(0,8).equals(SIGNATURE))throw new UnsafeImageError();
- return Buffer.concat([image.subarray(0,8),chunk("eXIf",Buffer.from("GPSLatitude=00;SyntheticOnly")),
- image.subarray(8)]);
+ return Buffer.concat([image.subarray(0,33),chunk("eXIf",Buffer.from("GPSLatitude=00;SyntheticOnly")),
+ image.subarray(33)]);
 }
