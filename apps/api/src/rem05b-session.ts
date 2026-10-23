@@ -35,8 +35,20 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
  const issuer=new Pool({connectionString:cfg.issuerDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  const scoped=new Pool({connectionString:cfg.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  app.addHook("onClose",async()=>{await Promise.all([issuer.end(),scoped.end()]);});
+ async function safeRole(pool:Pool,role:"luemi_auth_issuer"|"luemi_request"):Promise<boolean>{
+  try{
+   const res=await pool.query<{safe:boolean}>(
+    "SELECT (NOT rolsuper AND NOT rolbypassrls AND "+
+    "pg_has_role(current_user,$1::name,'member') AND "+
+    "NOT EXISTS(SELECT 1 FROM pg_class c WHERE c.oid='luemi_private.actors'::regclass "+
+    "AND pg_get_userbyid(c.relowner)=current_user)) AS safe "+
+    "FROM pg_roles WHERE rolname=current_user",[role]);
+   return res.rowCount===1&&res.rows[0].safe===true;
+  }catch{return false;}
+ }
  async function inspect(req:FastifyRequest):Promise<{value:Session}|{status:401|503}>{
   const raw=tokenFrom(req);if(!raw)return{status:401};
+  if(!(await safeRole(issuer,"luemi_auth_issuer")))return{status:503};
   const h=hash(cfg.pepper,raw);
   try{
    const result=await issuer.query<{actor_id:string;session_id:string;expires_at:string;first_name:string}>(
@@ -71,6 +83,7 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
   if(typeof raw!=="string"||Buffer.byteLength(raw,"utf8")>8192)return reply.code(401).send({error:"invalid_init_data"});
   const verified=validateTelegramInitData(raw,cfg.botToken);
   if(!verified||!verified.user.first_name.trim())return reply.code(401).send({error:"invalid_init_data"});
+  if(!(await safeRole(issuer,"luemi_auth_issuer")))return deny(reply,503);
   const db=await issuer.connect().catch(()=>null);
   if(!db)return deny(reply,503);
   try{
@@ -108,7 +121,9 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
     csrfToken:csrf(cfg.pepper,s.hash),expiresAt:s.expiresAt};
  });
  app.get("/api/v2/me",{preHandler:authenticated},async(req,reply)=>{
-  const s=req.authActor!,db=await scoped.connect().catch(()=>null);
+  const s=req.authActor!;
+  if(!(await safeRole(scoped,"luemi_request")))return deny(reply,503);
+  const db=await scoped.connect().catch(()=>null);
   if(!db)return deny(reply,503);
   try{
    await db.query("BEGIN");
