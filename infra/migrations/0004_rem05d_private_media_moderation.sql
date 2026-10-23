@@ -197,7 +197,9 @@ GRANT SELECT(owner_id,environment,publication_status,published_revision,display_
  ON luemi_private.public_profiles TO luemi_request;
 GRANT SELECT,INSERT,DELETE ON luemi_private.blocks TO luemi_request;
 GRANT SELECT,INSERT ON luemi_private.reports TO luemi_request;
-GRANT SELECT ON luemi_private.media_assets,luemi_private.moderation_jobs TO luemi_moderator;
+GRANT SELECT(id,owner_id,environment,generation,state,actual_mime,byte_count,width,height,content_sha256,position,publication_status)
+ ON luemi_private.media_assets TO luemi_moderator;
+GRANT SELECT ON luemi_private.moderation_jobs TO luemi_moderator;
 GRANT UPDATE(state) ON luemi_private.media_assets,luemi_private.moderation_jobs TO luemi_moderator;
 GRANT INSERT ON luemi_private.moderation_decisions,luemi_private.audit_events TO luemi_moderator;
 GRANT USAGE ON SEQUENCE luemi_private.audit_events_id_seq TO luemi_moderator;
