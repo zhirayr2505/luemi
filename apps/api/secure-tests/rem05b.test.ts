@@ -251,10 +251,13 @@ test("REM05B disjoint PG roles: combined/inherited/NOINHERIT and effective ACLs 
      assert.equal(flags.rows[0].request,true,label+" request role membership");
     }
     if(label==="extra-column"){
-     const access=await pool.query<{unexpected:boolean}>(
-       "SELECT has_column_privilege(current_user,'luemi_private.actors','telegram_id','SELECT') AS unexpected");
+     const access=await pool.query<{unexpected:boolean;unexpected_update:boolean}>(
+       "SELECT has_column_privilege(current_user,'luemi_private.actors','telegram_id','SELECT') AS unexpected,"+
+       "has_column_privilege(current_user,'luemi_private.actors','updated_at','UPDATE') AS unexpected_update");
      assert.equal(access.rows[0].unexpected,true,
-       "the synthetic direct grant must be demonstrated, not inferred");
+       "the synthetic private column grant must be demonstrated, not inferred");
+     assert.equal(access.rows[0].unexpected_update,true,
+       "the synthetic extra UPDATE column grant must be effective");
     }
     if(label==="combined"||label==="indirect"){
      const rls=await pool.query("SELECT row_security_active('luemi_private.actors'::regclass) AS active");
