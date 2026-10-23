@@ -1,0 +1,105 @@
+name: LUEMI REM-04C focused media residency and long-session QA
+on:
+  push:
+    branches:
+      - remediation/rem-04c-bounded-media-20261023
+  pull_request:
+    branches:
+      - remediation/rem-04b-hero-blur-underlay-20261022
+permissions:
+  contents: read
+jobs:
+  rem04c-long-session:
+    name: Same-browser accepted vs current 50-cycle resource and viewer QA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: a632833220f37b9ed03965d3308ade26c3dadbe5
+          path: accepted-rem04b
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install exact lock graph without changing prior quality gates
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+      - name: Compare accepted and current same Chrome, synthetic media and viewport
+        shell: bash
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem04b/node_modules"
+          (cd accepted-rem04b && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174) >/tmp/luemi-rem04c-base-vite.log 2>&1 &
+          base_pid=$!
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-rem04c-after-vite.log 2>&1 &
+          after_pid=$!
+          trap 'kill "$base_pid" "$after_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null && curl -fsS http://127.0.0.1:5174/profile-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then cat /tmp/luemi-rem04c-{base,after}-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-04c-long-session.mjs
+      - name: Preserve measured evidence even after a test failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem-04c-long-session-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04c/**
+            /tmp/luemi-rem04c-base-vite.log
+            /tmp/luemi-rem04c-after-vite.log
+          if-no-files-found: warn
+  rem04c-lu21-lu22:
+    name: Reverify accepted LU-21 photo budget and LU-22 viewport
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+      - name: Unit preflight and viewport model (accepted limits unchanged)
+        run: |
+          node scripts/rem-01c-photo-header.test.mjs
+          node scripts/rem-01d-viewport-model.test.mjs
+      - name: Real browser photo preflight, cleanup and viewport keyboard flows
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-rem04c-input-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/rem-01c-sorter-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then cat /tmp/luemi-rem04c-input-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-01c-browser-regression.mjs
+          node scripts/rem-01d-browser-regression.mjs
+      - name: Preserve browser startup diagnostics on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem-04c-lu21-lu22-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/luemi-rem04c-input-vite.log
+          if-no-files-found: warn
