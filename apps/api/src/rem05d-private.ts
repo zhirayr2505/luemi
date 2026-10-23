@@ -295,7 +295,18 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   try{
    const bytes=await opts.storage.get(record.derivative_key);
    if(!bytes)return reply.code(503).send({error:"media_unavailable"});
-   await guard.read(req,reply);if(reply.sent)return reply;
+   // Object read may be delayed. Revalidate current ownership, moderation,
+   // version and revocation after fetching pixels, before emitting any bytes.
+   const rechecked=await owner(req,reply,async(db,id)=>{
+    const q=await db.query(
+     "SELECT id FROM luemi_private.media_assets WHERE id=$1 AND owner_id=$2 "+
+     "AND environment=$3 AND state='approved' AND publication_status='private' "+
+     "AND generation=$4 AND derivative_key=$5",
+     [req.params.id,id,opts.namespace,record.generation,record.derivative_key]);
+    if(!q.rowCount)reject(404,"not_found");
+    return true;
+   });
+   if(reply.sent||rechecked!==true)return rechecked;
    return reply.header("Content-Type","image/png")
     .header("Content-Disposition","inline; filename=\"private-preview.png\"")
     .header("Cache-Control","private, no-store").send(bytes);
