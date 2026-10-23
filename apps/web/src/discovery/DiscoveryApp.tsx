@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {selectionHaptic} from "../ui/haptic";
 import type {CSSProperties} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
@@ -125,24 +125,34 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const profileMode=mainTab==="profile"||!!selectedPerson;
  const backgroundHeaderMode=mainTab==="profile"?"profile":"browse";
  const savedScroll=useRef({"for-you":0,nearby:0});
- const reportForYouScroll=useCallback((top:number)=>{
-   savedScroll.current["for-you"]=top;
-   if(mainTab==="discover"&&discoveryTab==="for-you"&&!personOpen)globalHeader.current?.setScrollTop(top);
- },[mainTab,discoveryTab,personOpen]);
+ const forYouCollectionScroll=useRef<Partial<Record<CollectionId|"best",number>>>({});
+ const activeScrollContext=useRef(forYouCollection);
+ activeScrollContext.current=forYouCollection;
+ const currentBrowse=useRef({mainTab,discoveryTab,personOpen});
+ currentBrowse.current={mainTab,discoveryTab,personOpen};
+ const reportForYouScroll=useCallback((top:number,context:CollectionId|"best"|null)=>{
+   if(context)forYouCollectionScroll.current[context]=top;
+   else savedScroll.current["for-you"]=top;
+   const browse=currentBrowse.current;
+   if(browse.mainTab==="discover"&&browse.discoveryTab==="for-you"&&
+     !browse.personOpen&&activeScrollContext.current===context)
+    globalHeader.current?.setScrollTop(top);
+ },[]);
  const reportNearbyScroll=useCallback((top:number)=>{
    savedScroll.current.nearby=top;
    if(mainTab==="discover"&&discoveryTab==="nearby"&&!personOpen)globalHeader.current?.setScrollTop(top);
  },[mainTab,discoveryTab,personOpen]);
- useEffect(()=>{
+ useLayoutEffect(()=>{
    // The active profile paints its own scroll progress; resetting the header
    // after child effects would flash the contrast shadow to zero on return.
    if(profileMode)return;
    globalHeader.current?.reset();
    if(mainTab==="discover"&&!personOpen){
-     globalHeader.current?.setScrollTop(discoveryTab==="for-you"?savedScroll.current["for-you"]:
+     globalHeader.current?.setScrollTop(discoveryTab==="for-you"?
+       (forYouCollection?(forYouCollectionScroll.current[forYouCollection]??0):savedScroll.current["for-you"]):
        discoveryTab==="nearby"?savedScroll.current.nearby:0);
    }
- },[mainTab,discoveryTab,personOpen,profileMode]);
+ },[mainTab,discoveryTab,personOpen,profileMode,forYouCollection]);
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
