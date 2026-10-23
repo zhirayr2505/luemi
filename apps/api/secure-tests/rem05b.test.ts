@@ -227,7 +227,8 @@ test("REM05B disjoint PG roles: combined/inherited/NOINHERIT and effective ACLs 
   ["indirect","REM05B_TEST_INDIRECT_DATABASE_URL"],
   ["noinherit","REM05B_TEST_NOINHERIT_DATABASE_URL"],
   ["readall","REM05B_TEST_READALL_DATABASE_URL"],
-  ["createrole","REM05B_TEST_CREATE_ROLE_DATABASE_URL"]
+  ["createrole","REM05B_TEST_CREATE_ROLE_DATABASE_URL"],
+  ["extra-column","REM05B_TEST_EXTRA_COLUMN_DATABASE_URL"]
  ] as const;
  const root=makeApp({...opts,namespace:"ci_pg_collision"});
  try{
@@ -248,6 +249,12 @@ test("REM05B disjoint PG roles: combined/inherited/NOINHERIT and effective ACLs 
     if(["combined","indirect","noinherit"].includes(label)){
      assert.equal(flags.rows[0].issuer,true,label+" issuer role membership");
      assert.equal(flags.rows[0].request,true,label+" request role membership");
+    }
+    if(label==="extra-column"){
+     const access=await pool.query<{unexpected:boolean}>(
+       "SELECT has_column_privilege(current_user,'luemi_private.actors','telegram_id','SELECT') AS unexpected");
+     assert.equal(access.rows[0].unexpected,true,
+       "the synthetic direct grant must be demonstrated, not inferred");
     }
     if(label==="combined"||label==="indirect"){
      const rls=await pool.query("SELECT row_security_active('luemi_private.actors'::regclass) AS active");
