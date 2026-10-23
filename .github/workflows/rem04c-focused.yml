@@ -94,6 +94,7 @@ jobs:
             if [[ "$i" -eq 45 ]]; then cat /tmp/luemi-rem04c-input-vite.log >&2; exit 1; fi
             sleep 1
           done
+          npx playwright install chromium
           node scripts/rem-01c-browser-regression.mjs
           node scripts/rem-01d-browser-regression.mjs
       - name: Preserve browser startup diagnostics on failure
