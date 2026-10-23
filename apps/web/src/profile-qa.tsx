@@ -148,10 +148,16 @@ function VisualQA(){
 }
 // QA-only teardown hook. React owns unmount; tests can verify that app-owned
 // listeners/RAF/media are released instead of merely navigating away.
-const qaRoot=createRoot(document.getElementById("root")!);
-(window as Window&{__luemiQaUnmount?:()=>void}).__luemiQaUnmount=()=>qaRoot.unmount();
-qaRoot.render(
- <React.StrictMode>
-  <VisualQA/>
- </React.StrictMode>
-);
+let qaRoot:ReturnType<typeof createRoot>|null=null;
+const qaWindow=window as Window&{__luemiQaUnmount?:()=>void;__luemiQaRemount?:()=>void};
+const mountFixture=()=>{
+ if(qaRoot)return;
+ qaRoot=createRoot(document.getElementById("root")!);
+ qaRoot.render(<React.StrictMode><VisualQA/></React.StrictMode>);
+};
+qaWindow.__luemiQaUnmount=()=>{
+ if(!qaRoot)return;
+ qaRoot.unmount();qaRoot=null;
+};
+qaWindow.__luemiQaRemount=mountFixture;
+mountFixture();
