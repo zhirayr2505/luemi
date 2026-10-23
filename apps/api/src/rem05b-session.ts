@@ -64,6 +64,13 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
     "AND row_security_active('luemi_private.sessions'::regclass) "+
     "AND CASE WHEN $1::text='luemi_request' THEN "+
     "(has_column_privilege(current_user,'luemi_private.actors','id','SELECT') AND has_column_privilege(current_user,'luemi_private.actors','status','SELECT') AND has_column_privilege(current_user,'luemi_private.actors','environment','SELECT') "+
+    "AND NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE "+
+    "a.attrelid='luemi_private.actors'::regclass AND a.attnum>0 "+
+    "AND NOT a.attisdropped AND a.attname NOT IN ('id','status','environment') "+
+    "AND has_column_privilege(current_user,a.attrelid,a.attname,'SELECT')) "+
+    "AND NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE "+
+    "a.attrelid='luemi_private.sessions'::regclass AND a.attnum>0 "+
+    "AND NOT a.attisdropped AND has_column_privilege(current_user,a.attrelid,a.attname,'SELECT')) "+
     "AND NOT has_table_privilege(current_user,'luemi_private.sessions','SELECT') "+
     "AND NOT has_table_privilege(current_user,'luemi_private.actors','INSERT') "+
     "AND NOT has_table_privilege(current_user,'luemi_private.actors','DELETE') "+
