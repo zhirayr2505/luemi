@@ -142,6 +142,44 @@ test("SEC-G09 separate geo role cannot select 05B actors or sessions",async()=>{
   assert.deepEqual(cap.rows[0],{s:false,i:false});
  }finally{await budgetConnection.end();}
 });
+
+test("SEC-G05 real Fastify fake upstream 429/503/malformed/5s timeout with no key leak",async()=>{
+ let providerCalls=0;
+ const fake:typeof fetch=async(_url,options)=>{
+  const n=++providerCalls;
+  if(n===1)return new Response("",{status:429});
+  if(n===2)return new Response("",{status:503});
+  if(n===3)return Response.json({results:"not-an-array"});
+  return await new Promise<Response>((_resolve,reject)=>{
+   const signal=options?.signal;
+   if(signal?.aborted)reject(new Error("synthetic aborted"));
+   else signal?.addEventListener("abort",()=>reject(new Error("synthetic aborted")),{once:true});
+  });
+ };
+ const namespace="rem05c_fake_failures";
+ const app=buildApp({port:3001,origin,botToken,
+  healthKey:"synthetic_health_key_123456789012345",
+  webhookSecret:"synthetic_webhook",logger:false,
+  rem05b:{enabled:true,issuerDatabaseUrl:issuerUrl!,requestDatabaseUrl:requestUrl!,
+   pepper:"synthetic-rem05c-failures-pepper-long-12345",namespace,origin,botToken,
+   idleMs:43200000,absoluteMs:604800000,maxSessions:5},
+  rem05c:{geo:{enabled:true,providerEnabled:true,providerKey:"synthetic_key_not_live",
+   budget:budget(namespace,10),providerFetch:fake}}});
+ try{
+  const s=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(5566)}});
+  assert.equal(s.statusCode,200);
+  const cookie=String(s.headers["set-cookie"]).split(";")[0];
+  for(const [i,status] of [429,503,503,503,429].entries()){
+   const r=await app.inject({url:"/api/v2/geo/search?q=Yerevan",headers:{cookie}});
+   assert.equal(r.statusCode,status,"fake provider failure "+i);
+   assert.ok(!r.body.includes("synthetic_key_not_live"));
+   assert.ok(!JSON.stringify(r.headers).includes("synthetic_key_not_live"));
+   if(status===429)assert.ok(Number(r.headers["retry-after"])>=1);
+  }
+  assert.equal(providerCalls,4,"actor quota denial cannot cause a fifth upstream call");
+ }finally{await app.close();}
+});
 test("SEC-G09: budget unavailable fails closed before provider",async()=>{
  const calls=0;
  const unavailableBudget=new GeoBudget({...budget("rem05c_store_down",1),
