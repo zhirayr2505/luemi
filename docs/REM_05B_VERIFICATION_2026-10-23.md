@@ -53,18 +53,20 @@ luemi_private is excluded from application public APIs in the intended architect
 
 Acceptance evidence must use exact final SHA and inspect completed jobs/steps, not a green badge alone. If any job is queued/pending/failure it is not PASS. FINAL EXACT-SHA RUN MATRIX WILL BE RECORDED BELOW.
 
-## 4. CI evidence and final SHA
+## 4. CI evidence: verified cumulative implementation SHA
 
-**Final SHA:** PENDING END-OF-STAGE VERIFICATION (to be replaced, not assumed).
+**Fully CI-verified implementation SHA:** dfdf011a8070d1a1bd726240e020098787f8a276. This commit includes all executable code, SQL, package-lock, browser and security tests. The next documentation-only verification commit will change the PR HEAD; its exact resulting SHA and same-SHA CI should be read in the PR #52 description / GitHub checks. A Markdown file cannot embed its own future Git commit SHA.
 
-| Gate | Push run | PR run | Status |
+| Gate | Push exact-SHA run | PR exact-SHA run | Verified status |
 |---|---|---|---|
-| Foundation (7 real jobs per event) | Pending | Pending | NOT YET VERIFIED final SHA |
-| Full REM-00C Behavioral | Pending | Pending | NOT YET VERIFIED final SHA |
-| REM-05B PostgreSQL security + Chromium preserved | Pending | Pending | NOT YET VERIFIED final SHA |
-| Public diff scan | Included in REM-05B security job | Included | NOT YET VERIFIED final SHA |
+| Foundation (7 jobs/event: lint-hooks, type-contracts, source-marker-contracts, api-isolated, build, local-smoke, ci-infrastructure) | https://github.com/zhirayr2505/luemi/actions/runs/39951629834 | https://github.com/zhirayr2505/luemi/actions/runs/39951637052 | 14/14 jobs completed SUCCESS |
+| Full REM-00C Behavioral (2 jobs/event, real Chromium) | https://github.com/zhirayr2505/luemi/actions/runs/39951629833 | https://github.com/zhirayr2505/luemi/actions/runs/39951637300 | 4/4 jobs completed SUCCESS |
+| REM-05B Focused (PostgreSQL security, browser preservation, 50-cycle accepted comparison; 3 jobs/event) | https://github.com/zhirayr2505/luemi/actions/runs/39951630147 | https://github.com/zhirayr2505/luemi/actions/runs/39951637056 | 6/6 jobs completed SUCCESS |
+| Public diff scan | Inside REM-05B security push job | Inside REM-05B security PR job | Zero matching violations; raw values never displayed |
 
-Source/contract tests, build, browser preservation and new security gates must pass on identical final head. Historical intermediate commits had temporary failures due to an occupied Vite port, clock-dependent negative test and a legitimate issuer-column restriction. Corrections preserve strict assertions and least-privilege SQL, not skip them. Intermediate failures must not be presented as final evidence.
+**Total:** 6/6 workflows, 24/24 jobs completed SUCCESS on dfdf011a... . PostgreSQL 16 actual-role integration recorded 5/5 test groups PASS, 0 failed, 0 skipped. Chromium contained REM05B_V2_MOCK_STARTUP_PASS and REM05B_COOKIE_BLOCKED_FAIL_CLOSED_PASS, accepted viewer/blur/modal behavior and A/B-compatible login. The 50-cycle job compared immutable accepted REM-04C SHA 5ea0a1f851e2518f6f23b17e7287ae536bb06395 against the REM-05B candidate in the same Chromium runner; its synthetic output artifact is https://github.com/zhirayr2505/luemi/actions/runs/39951637056 (artifact rem05b-50-cycle-synthetic). These instrumented desktop traces do not establish physical Galaxy A55 GPU/tile residency or iOS native compatibility.
+
+**Baseline warning:** The pre-existing react-hooks/exhaustive-deps warning in GlobalHeader.tsx remains 1 warning; no new warning was introduced or suppressed. Historical intermediate commits had temporary CI failures due to an occupied Vite port, clock-dependent negative test and a legitimate issuer-column permission guard. The fixes maintained strict checks and minimal database grants rather than skipping assertions. Green intermediate builds alone are not evidence for the final head; final HEAD revalidation is required.
 
 ## 5. Rollback without destructive data change
 
