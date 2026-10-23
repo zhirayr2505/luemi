@@ -180,6 +180,13 @@ test("E10 menu ACK false is partial, does not proceed to webhook",async()=>{
   assert.equal(r.state,"partial_menu_applied");
   assert.equal(f.calls.some(x=>x.method==="setWebhook"),false);
 });
+test("E10 lost menu acknowledgement is conservatively PARTIAL",async()=>{
+  const f=fake({menu:{type:"commands"},methodFailure:"setChatMenuButton",failureStyle:"throw"});
+  const r=await executeSyntheticWebhookRotation(config(),request(),f.api);
+  assert.equal(r.state,"partial_menu_applied");
+  assert.equal(r.reason,"bot_api_unavailable");
+  assert.equal(f.calls.some(x=>x.method==="setWebhook"),false);
+});
 test("E11/E12/E13 real Fastify verifier: absent/wrong/old header 404; candidate ONLY",async()=>{
   const app=buildApp({...config(),webhookSecret:NEXT});
   try {
@@ -196,14 +203,23 @@ test("E11/E12/E13 real Fastify verifier: absent/wrong/old header 404; candidate 
     assert.equal(ok.json().method,"sendMessage");
   }finally{await app.close();}
 });
-test("E12 verified mock callback supports synthetic-only delivery proof",async()=>{
-  const f=fake();
-  const req={...request(),syntheticReceiverProof:async()=>({
-    candidateAccepted:true,previousRejected:true})};
-  const r=await executeSyntheticWebhookRotation(config(),req,f.api);
-  assert.equal(r.state,"end_to_end_synthetic_proof");
-  assert.equal(r.secretGeneration,"end_to_end_synthetic_only");
-  assert.equal(r.liveTelegramVerified,false);
+test("E12 real isolated Fastify injection proves synthetic candidate and old rejection",async()=>{
+  const f=fake();const app=buildApp({...config(),webhookSecret:NEXT});
+  try {
+    const payload={message:{text:"/start",chat:{type:"private",id:13579}}};
+    const req={...request(),syntheticReceiverProof:async()=>{
+      const good=await app.inject({method:"POST",url:"/api/telegram/webhook",
+        headers:{"x-telegram-bot-api-secret-token":NEXT},payload});
+      const old=await app.inject({method:"POST",url:"/api/telegram/webhook",
+        headers:{"x-telegram-bot-api-secret-token":OLD},payload});
+      return {candidateAccepted:good.statusCode===200&&good.json().method==="sendMessage",
+        previousRejected:old.statusCode===404&&old.json().method===undefined};
+    }};
+    const r=await executeSyntheticWebhookRotation(config(),req,f.api);
+    assert.equal(r.state,"end_to_end_synthetic_proof");
+    assert.equal(r.secretGeneration,"end_to_end_synthetic_only");
+    assert.equal(r.liveTelegramVerified,false);
+  }finally{await app.close();}
 });
 test("E12 end-to-end partial proof cannot mark success",async()=>{
   const f=fake();
