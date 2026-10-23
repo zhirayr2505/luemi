@@ -157,7 +157,7 @@ test("REM05B privileged-role configuration is rejected at the API boundary",asyn
  }finally{await wrongRequest.close();}
 });
 test("REM05B fail-closed DB unavailable and rejected third-party cookie fixture",async()=>{
- const bad=makeApp({...opts,issuerDatabaseUrl:"postgres://invalid:invalid@127.0.0.1:1/missing"});
+ const bad=makeApp({...opts,issuerDatabaseUrl:"postgres://synthetic_invalid:synthetic_invalid@127.0.0.1:1/missing"});
  try{
   assert.equal((await auth(bad,sign(999))).statusCode,503);
   assert.equal((await get(bad,"/api/v2/me","__Host-luemi_sid="+"A".repeat(43))).statusCode,503);
