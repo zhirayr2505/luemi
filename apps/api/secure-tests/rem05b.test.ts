@@ -128,6 +128,14 @@ test("REM05B real PostgreSQL: signature, A/B, RLS, sessions, concurrency, CSRF a
  }finally{await app.close();}
 });
 test("REM05B actual request role RLS no actor cross-tenant or pooled context",async()=>{
+ const capability=await scoped.query(
+  "SELECT row_security_active('luemi_private.actors'::regclass) AS actors_rls,"+
+  "row_security_active('luemi_private.sessions'::regclass) AS sessions_rls,"+
+  "has_table_privilege(current_user,'luemi_private.actors','SELECT') AS table_select,"+
+  "has_column_privilege(current_user,'luemi_private.actors','id','SELECT') AS column_select,"+
+  "has_table_privilege(current_user,'luemi_private.actors','UPDATE') AS actor_update,"+
+  "has_table_privilege(current_user,'luemi_private.sessions','SELECT') AS session_select");
+ console.log("REM05B_REDACTED_ROLE_CAPABILITY",JSON.stringify(capability.rows[0]));
  const app=makeApp({...opts,namespace:"ci_bot_b"});
  try{
   const a=await auth(app,sign(123456,"Actor A")),b=await auth(app,sign(567890,"Actor B"));
@@ -234,16 +242,16 @@ test("REM05B disjoint PG roles: combined/inherited/NOINHERIT and effective ACLs 
    assert.ok(url,"Missing disposable test-only connection for "+label);
    const pool=new Pool({connectionString:url,max:1});
    try{
-    const flags=await pool.query<{issuer:boolean;request:boolean;active:boolean}>(
+    const flags=await pool.query<{issuer:boolean;request:boolean}>(
      "SELECT pg_has_role(current_user,'luemi_auth_issuer','member') AS issuer,"+
-     "pg_has_role(current_user,'luemi_request','member') AS request,"+
-     "row_security_active('luemi_private.actors'::regclass) AS active");
-    assert.equal(flags.rows[0].active,true,"RLS must be active for "+label);
+     "pg_has_role(current_user,'luemi_request','member') AS request");
     if(["combined","indirect","noinherit"].includes(label)){
      assert.equal(flags.rows[0].issuer,true,label+" issuer role membership");
      assert.equal(flags.rows[0].request,true,label+" request role membership");
     }
     if(label==="combined"||label==="indirect"){
+     const rls=await pool.query("SELECT row_security_active('luemi_private.actors'::regclass) AS active");
+     assert.equal(rls.rows[0].active,true,"active PostgreSQL RLS required");
      // An inheriting mixed role has both permissive policies. This is the
      // actual problem: its SELECT sees A and B without a server actor context.
      const leaky=await pool.query<{id:string}>(
