@@ -61,6 +61,10 @@ async function run(name,url){
  await context.addInitScript(instrumentation);
  const page=await context.newPage(),errors=[];
  page.on("pageerror",error=>errors.push(error.message));
+ const requests=new Set();
+ page.on("request",request=>requests.add(request));
+ page.on("requestfinished",request=>requests.delete(request));
+ page.on("requestfailed",request=>requests.delete(request));
  await page.route("**/*",route=>route.request().url().startsWith(url+"/")?route.continue():route.abort("blockedbyclient"));
  const cdp=await context.newCDPSession(page);
  await cdp.send("Performance.enable");
@@ -90,7 +94,7 @@ async function run(name,url){
     own:window.__rem04cMetrics?.()??null
    };
   });
-  return {tag, ...dom,heap:Math.round(perf.JSHeapUsedSize??0),cdpNodes:perf.Nodes??null};
+  return {tag,...dom,inFlightRequests:requests.size,heap:Math.round(perf.JSHeapUsedSize??0),cdpNodes:perf.Nodes??null};
  };
  try{
   await page.goto(url+"/profile-qa.html",{waitUntil:"domcontentloaded"});
@@ -124,6 +128,8 @@ async function run(name,url){
   console.log("REM04C_PLATEAU "+JSON.stringify({name,expanded,checkpoints,after50}));
   assert.equal(after50.visitorRoutes,0,"visitor route must leave no mounted route");
   assert.ok(after50.own.urls<=expanded.own.urls,"app-owned object URLs must not grow");
+  assert.ok(after50.inFlightRequests<=initial.inFlightRequests,
+   "network request backlog must not persist across 50 cycles");
   assert.ok(after50.own.listeners<=expanded.own.listeners+4,"app-owned global window/document listeners must plateau");
   // An expanded scroll is independent of the covered library scroll.
   await page.locator(".fy-expanded .fy-grid").evaluate(node=>node.scrollTop=245);
@@ -162,6 +168,39 @@ async function run(name,url){
   assert.equal(await page.locator(".pm-viewer-slide").count(),3,"bounded three slide viewer");
   await page.evaluate(()=>window.__luemiQaMedia.back());
   await page.locator(".pm-viewer").waitFor({state:"detached",timeout:4500});
+  // REM-04C §2.4: exercise actual accepted image preflight AFTER the 50-cycle
+  // browse and six-photo viewer warm-up, not just in isolated cold QA.
+  const warmedPhotoBudget=await page.evaluate(async()=>{
+   const {preparePhotoPreview}=await import("/src/registration/photo-preview.ts");
+   const {MAX_PREVIEW_SOURCE_PIXELS,MAX_PREVIEW_SIDE}=await import("/src/registration/photo-header.ts");
+   const canvas=document.createElement("canvas");canvas.width=2300;canvas.height=1700;
+   try{
+    const original=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
+    if(!original)throw new Error("QA canvas encode failed");
+    const prepared=await preparePhotoPreview(original,new AbortController().signal);
+    const bitmap=await createImageBitmap(prepared);
+    const converted={width:bitmap.width,height:bitmap.height,bytes:prepared.size,
+     maxSide:MAX_PREVIEW_SIDE,maxPixels:MAX_PREVIEW_SOURCE_PIXELS};
+    bitmap.close();
+    const dimensions=new Uint8Array(33),dv=new DataView(dimensions.buffer);
+    dimensions.set([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82]);
+    dv.setUint32(16,9000);dv.setUint32(20,9000);dimensions[24]=8;dimensions[25]=6;
+    let invalidError="";
+    try{await preparePhotoPreview(new Blob([dimensions],{type:"image/png"}),new AbortController().signal);}
+    catch(error){invalidError=String(error instanceof Error?error.message:error);}
+    let abortName="";
+    const abort=new AbortController();abort.abort();
+    try{await preparePhotoPreview(original,abort.signal);}
+    catch(error){abortName=String(error instanceof Error?error.name:error);}
+    return {...converted,invalidError,abortName};
+   }finally{canvas.width=0;canvas.height=0;}
+  });
+  console.log("REM04C_WARM_INPUT "+JSON.stringify({name,warmedPhotoBudget}));
+  assert.equal(warmedPhotoBudget.width,2048,"accepted input thumbnail maximum side");
+  assert.ok(warmedPhotoBudget.height>1000&&warmedPhotoBudget.height<=2048);
+  assert.equal(warmedPhotoBudget.maxPixels,32_000_000,"accepted 32 MP limit is unchanged");
+  assert.equal(warmedPhotoBudget.invalidError,"PHOTO_DIMENSIONS_UNSUPPORTED");
+  assert.equal(warmedPhotoBudget.abortName,"AbortError");
   await page.evaluate(()=>window.__luemiQaPerf.theme());
   await page.setViewportSize({width:375,height:768});
   await sleep(190);
@@ -198,7 +237,7 @@ async function run(name,url){
     "remount must not accumulate global listeners");
   }
   assert.deepEqual(errors,[],"browser page errors");
-  const result={name,initial,expanded,checkpoints,after50,restored,nearby,feed,forYouReturn,viewer,resized,owner,teardown,remounted,errors};
+  const result={name,initial,expanded,checkpoints,after50,restored,nearby,feed,forYouReturn,viewer,warmedPhotoBudget,resized,owner,teardown,remounted,errors};
   console.log("REM04C_SESSION "+JSON.stringify(result));
   return result;
  }finally{
