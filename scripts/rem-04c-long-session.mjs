@@ -85,6 +85,7 @@ async function run(name,url){
     imageBlurNodes:document.querySelectorAll(".pm-photo-blur-slide img").length,
     visitorRoutes:document.querySelectorAll(".discovery-visitor-route").length,
     domNodes:document.querySelectorAll("*").length,
+    reactChildren:document.querySelector("#root")?.children.length??0,
     own:window.__rem04cMetrics?.()??null
    };
   });
@@ -144,17 +145,16 @@ async function run(name,url){
   await page.evaluate(()=>window.__luemiQaMedia.open("qa-alpha"));
   await page.locator(".pm-viewer").waitFor();
   const six=["qa-alpha","qa-beta","qa-gamma","qa-delta","qa-epsilon","qa-zeta"];
-  for(const ids of [six.slice(1),six.slice(0,-1).reverse()]){
+  for(const [direction,ids] of [["ArrowRight",six.slice(1)],["ArrowLeft",six.slice(0,-1).reverse()]]){
    for(const id of ids){
-    await page.keyboard.press(ids===undefined?"ArrowRight":id===six[0]?"ArrowLeft":"ArrowRight");
-    // Determine physical direction from current ID; keyboard request transitions are immediate.
-    await sleep(35);
+    await page.keyboard.press(direction);
+    await page.waitForFunction(expected=>document.querySelector(".pm-viewer-image")?.dataset.photoId===expected,id,{timeout:3000});
    }
   }
   // Use explicit source fixture to check six-photo window and teardown reliably.
   const viewer=await measure("viewer-six");
-  assert.ok(document!==null);
   assert.ok(viewer.imageBlurNodes<=3);
+  assert.equal(await page.locator(".pm-viewer-slide").count(),3,"bounded three slide viewer");
   await page.evaluate(()=>window.__luemiQaMedia.back());
   await page.locator(".pm-viewer").waitFor({state:"detached",timeout:4500});
   await page.evaluate(()=>window.__luemiQaPerf.theme());
@@ -165,7 +165,7 @@ async function run(name,url){
   if(name==="current"){
    await page.evaluate(()=>window.__luemiQaUnmount());
    teardown=await measure("react-teardown");
-   assert.equal(teardown.domNodes,3 /* html, head, body? */, "all mounted React content removed");
+   assert.equal(teardown.reactChildren,0,"all mounted React content removed");
   }
   assert.deepEqual(errors,[],"browser page errors");
   const result={name,initial,expanded,checkpoints,after50,restored,nearby,feed,forYouReturn,viewer,resized,teardown,errors};
