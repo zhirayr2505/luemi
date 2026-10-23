@@ -104,6 +104,8 @@ jobs:
           node scripts/rem-00c-browser-behavior.mjs
           node scripts/rem-02d-browser-lifecycle.mjs
           node scripts/rem-03a-browser-media.mjs
+          node scripts/rem-03b-browser-track.mjs
+          node scripts/rem-01d-browser-regression.mjs
           node scripts/rem-03c-browser-pinch.mjs
           node scripts/rem-03d-browser-morph.mjs
           node scripts/rem-04b-browser-six.mjs
@@ -123,3 +125,53 @@ jobs:
             sleep 1
           done
           node scripts/rem-05b-browser.mjs
+
+  rem05b-50-cycle-media-regression:
+    name: Accepted REM-04C versus REM-05B 50-cycle media regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 5ea0a1f851e2518f6f23b17e7287ae536bb06395
+          path: accepted-rem04c
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies and browser
+        run: |
+          set -euo pipefail
+          npm install -g npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npx --no-install playwright install chromium
+      - name: Compare same-runner 50-cycle residency and lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem04c/node_modules"
+          (cd accepted-rem04c && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174 --strictPort) >/tmp/rem05b-base-vite.log 2>&1 &
+          base_pid=$!
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 --strictPort >/tmp/rem05b-current-vite.log 2>&1 &
+          current_pid=$!
+          trap 'kill "$base_pid" "$current_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 50); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null &&
+               curl -fsS http://127.0.0.1:5174/profile-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 50 ]]; then tail -50 /tmp/rem05b-{base,current}-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-04d-long-session.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem05b-50-cycle-synthetic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: qa-artifacts/rem-04d/media/**
+          if-no-files-found: warn
