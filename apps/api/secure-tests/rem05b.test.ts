@@ -44,7 +44,7 @@ const admin=new Pool({connectionString:adminUrl});
 const issuer=new Pool({connectionString:issuerUrl});
 const scoped=new Pool({connectionString:requestUrl});
 test("REM05B real PostgreSQL: signature, A/B, RLS, sessions, concurrency, CSRF and revocation",async()=>{
- const app=makeApp();
+ let app=makeApp();
  try{
   assert.equal((await get(app,"/api/v2/me")).statusCode,401);
   assert.equal((await get(app,"/api/v2/auth/session")).statusCode,401);
@@ -62,6 +62,9 @@ test("REM05B real PostgreSQL: signature, A/B, RLS, sessions, concurrency, CSRF a
   assert.equal(replies.filter(r=>r.statusCode===200).length,5,"five-device ceiling");
   assert.equal(replies.filter(r=>r.statusCode===429).length,45,"no 50 live sessions");
   const active=replies.filter(r=>r.statusCode===200);
+  // Preserve the unchanged legacy global 60/min limit; continue on a fresh
+  // Fastify instance rather than testing LU-26 topology in REM-05B.
+  await app.close(); app=makeApp();
   const uuid=active[0].json().user.id;
   assert.match(uuid,/^[a-f0-9-]{36}$/);
   assert.equal(new Set(active.map(r=>r.json().user.id)).size,1);
