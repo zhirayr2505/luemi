@@ -1,0 +1,200 @@
+name: LUEMI REM-05B isolated identity and sessions QA
+on:
+  push:
+    branches: [remediation/rem-05b-telegram-identity-sessions-20261023]
+  pull_request:
+    branches: [remediation/rem-04d-scroll-modal-focus-20261023]
+permissions:
+  contents: read
+jobs:
+  rem05b-postgres-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: synthetic_rem05b_test_password
+          POSTGRES_DB: rem05b_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rem05b_test"
+          --health-interval 3s --health-timeout 3s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: rem05b_test
+      PGPASSWORD: synthetic_rem05b_test_password
+      REM05B_TEST_ADMIN_DATABASE_URL: postgres://postgres:synthetic_rem05b_test_password@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_ISSUER_DATABASE_URL: postgres://rem05b_ci_issuer:synthetic_ci_issuer_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_REQUEST_DATABASE_URL: postgres://rem05b_ci_request:synthetic_ci_request_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_COMBINED_DATABASE_URL: postgres://rem05b_ci_combined:synthetic_ci_combined_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_INDIRECT_DATABASE_URL: postgres://rem05b_ci_indirect:synthetic_ci_indirect_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_NOINHERIT_DATABASE_URL: postgres://rem05b_ci_noinherit:synthetic_ci_noinherit_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_READALL_DATABASE_URL: postgres://rem05b_ci_readall:synthetic_ci_readall_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_CREATE_ROLE_DATABASE_URL: postgres://rem05b_ci_createrole:synthetic_ci_createrole_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_EXTRA_COLUMN_DATABASE_URL: postgres://rem05b_ci_extracol:synthetic_ci_extracol_only@127.0.0.1:5432/rem05b_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Redacted public PR diff secret gate
+        run: node scripts/rem-05b-public-diff-scan.mjs
+      - name: Reproducible build and types
+        run: |
+          set -euo pipefail
+          npm install -g npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npm run typecheck -w @luemi/api
+      - name: Provision disposable RLS with synthetic credentials
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          SQL
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0002_rem05b_identity_sessions.sql
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE rem05b_ci_issuer LOGIN PASSWORD 'synthetic_ci_issuer_only' IN ROLE luemi_auth_issuer;
+          CREATE ROLE rem05b_ci_request LOGIN PASSWORD 'synthetic_ci_request_only' IN ROLE luemi_request;
+          -- Both direct and transitive, including NOINHERIT membership, are unsafe.
+          CREATE ROLE rem05b_ci_combined LOGIN PASSWORD 'synthetic_ci_combined_only';
+          GRANT luemi_auth_issuer,luemi_request TO rem05b_ci_combined;
+          CREATE ROLE rem05b_ci_intermediate NOLOGIN;
+          GRANT luemi_auth_issuer,luemi_request TO rem05b_ci_intermediate;
+          CREATE ROLE rem05b_ci_indirect LOGIN PASSWORD 'synthetic_ci_indirect_only';
+          GRANT rem05b_ci_intermediate TO rem05b_ci_indirect;
+          CREATE ROLE rem05b_ci_noinherit LOGIN NOINHERIT PASSWORD 'synthetic_ci_noinherit_only';
+          GRANT luemi_auth_issuer,luemi_request TO rem05b_ci_noinherit;
+          CREATE ROLE rem05b_ci_readall LOGIN PASSWORD 'synthetic_ci_readall_only';
+          GRANT luemi_request,pg_read_all_data TO rem05b_ci_readall;
+          CREATE ROLE rem05b_ci_createrole LOGIN CREATEROLE PASSWORD 'synthetic_ci_createrole_only';
+          GRANT luemi_request TO rem05b_ci_createrole;
+          CREATE ROLE rem05b_ci_extracol LOGIN PASSWORD 'synthetic_ci_extracol_only';
+          GRANT luemi_request TO rem05b_ci_extracol;
+          GRANT SELECT(telegram_id) ON luemi_private.actors TO rem05b_ci_extracol;
+          GRANT UPDATE(updated_at) ON luemi_private.actors TO rem05b_ci_extracol;
+          SQL
+      - name: Actual PostgreSQL ownership and auth security negatives
+        run: npx --no-install tsx --test apps/api/secure-tests/rem05b.test.ts
+  rem05b-preservation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    env:
+      STAGING_BOOTSTRAP_ONLY: '1'
+      TELEGRAM_BOT_TOKEN: ''
+      TELEGRAM_WEBHOOK_SECRET: ''
+      HEALTH_CHECK_KEY: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pin dependencies and Chromium
+        run: |
+          set -euo pipefail
+          npm install -g npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npx --no-install playwright install chromium
+      - name: Preserve accepted real DOM/browser state and resource tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/rem05b-vite.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then tail -80 /tmp/rem05b-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-00c-browser-behavior.mjs
+          node scripts/rem-02d-browser-lifecycle.mjs
+          node scripts/rem-03a-browser-media.mjs
+          node scripts/rem-03b-browser-track.mjs
+          node scripts/rem-01d-browser-regression.mjs
+          node scripts/rem-03c-browser-pinch.mjs
+          node scripts/rem-03d-browser-morph.mjs
+          node scripts/rem-04b-browser-six.mjs
+          node scripts/rem-04d-browser-qa.mjs
+      - name: Explicit v2 adapter Chrome fixtures (no real Telegram session)
+        shell: bash
+        env:
+          VITE_LUEMI_AUTH_V2: '1'
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5175 --strictPort >/tmp/rem05b-v2-vite.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5175/ >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then tail -80 /tmp/rem05b-v2-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-05b-browser.mjs
+
+  rem05b-50-cycle-media-regression:
+    name: Accepted REM-04C versus REM-05B 50-cycle media regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 5ea0a1f851e2518f6f23b17e7287ae536bb06395
+          path: accepted-rem04c
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies and browser
+        run: |
+          set -euo pipefail
+          npm install -g npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npx --no-install playwright install chromium
+      - name: Compare same-runner 50-cycle residency and lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem04c/node_modules"
+          (cd accepted-rem04c && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174 --strictPort) >/tmp/rem05b-base-vite.log 2>&1 &
+          base_pid=$!
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 --strictPort >/tmp/rem05b-current-vite.log 2>&1 &
+          current_pid=$!
+          trap 'kill "$base_pid" "$current_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 50); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null &&
+               curl -fsS http://127.0.0.1:5174/profile-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 50 ]]; then tail -50 /tmp/rem05b-{base,current}-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-04d-long-session.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem05b-50-cycle-synthetic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: qa-artifacts/rem-04d/media/**
+          if-no-files-found: warn

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import {ArrowRight,Moon,Sun} from "lucide-react";
 import {GlassArrow} from "./ui/Glass";
-import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
+import type { HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
 import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registration/Steps";
 import {localScope,loadDraftSnapshot,saveDraftSnapshot,clearDraftSnapshot,type StorageCode} from "./registration/local-draft";
@@ -11,6 +11,7 @@ import {installViewportController} from "./viewport/viewport-controller";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
+import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
 
 declare global {
   interface Window {
@@ -156,7 +157,7 @@ export function App() {
     // An expired, aborted or disposed attempt can never change this instance.
     const generation=++startupGeneration.current;
     const isCurrent=()=>generation===startupGeneration.current;
-    const run=startStartup<BootstrapResponse|null>({
+    const run=startStartup<AuthStartupIdentity|null>({
       deadlineMs:15000,
       optionalBudgetMs:650,
       critical:async signal=>{
@@ -164,13 +165,7 @@ export function App() {
         const live=await fetch("/api/health/live",{signal});
         if(!live.ok||((await live.json()) as HealthResponse).status!=="ok")
           throw new Error("API unavailable");
-        const response=await fetch("/api/auth/telegram",{
-          method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({initData}),signal
-        });
-        if(response.status===503)return null;
-        if(!response.ok)throw new Error("Telegram authorization failed");
-        return (await response.json()) as BootstrapResponse;
+        return authenticateBootstrap(initData,signal);
       },
       // Fonts and the original LUEMI logo are optional *render preparation*,
       // never an authentication prerequisite. Keep the exact original asset

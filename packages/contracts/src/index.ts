@@ -10,8 +10,18 @@ export interface BootstrapResponse {
   mode: "bootstrap";
   user: BootstrapIdentity;
 }
+export interface SessionV2Response {
+  mode: "session_v2";
+  user: { id: string; firstName: string };
+  csrfToken: string;
+  expiresAt: string;
+}
+export interface SessionV2Me {
+  id: string;
+  capabilities: {draftSync:false;publish:false;mediaUpload:false;matches:false;chats:false;bliki:false;payments:false};
+}
 export interface ApiError {
-  error: "invalid_init_data" | "service_unavailable" | "not_found";
+  error: "invalid_init_data" | "service_unavailable" | "not_found" | "unauthorized" | "forbidden" | "account_unavailable" | "session_limit";
 }
 export const productStages = [
   "00-contracts",
