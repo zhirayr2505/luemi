@@ -82,6 +82,7 @@ jobs:
           CREATE ROLE rem05b_ci_extracol LOGIN PASSWORD 'synthetic_ci_extracol_only';
           GRANT luemi_request TO rem05b_ci_extracol;
           GRANT SELECT(telegram_id) ON luemi_private.actors TO rem05b_ci_extracol;
+          GRANT UPDATE(updated_at) ON luemi_private.actors TO rem05b_ci_extracol;
           SQL
       - name: Actual PostgreSQL ownership and auth security negatives
         run: npx --no-install tsx --test apps/api/secure-tests/rem05b.test.ts
