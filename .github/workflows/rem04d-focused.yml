@@ -18,6 +18,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 5ea0a1f851e2518f6f23b17e7287ae536bb06395
+          path: accepted-rem04c
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -33,14 +38,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem04c/node_modules"
+          (cd accepted-rem04c && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174) >/tmp/rem04d-base-vite.log 2>&1 &
+          base_pid=$!
           npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/rem04d-vite.log 2>&1 &
           pid=$!
-          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          trap 'kill "$pid" "$base_pid" 2>/dev/null || true' EXIT
           for i in $(seq 1 45); do
-            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then break; fi
-            if [[ "$i" -eq 45 ]]; then cat /tmp/rem04d-vite.log >&2; exit 1; fi
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null &&
+               curl -fsS http://127.0.0.1:5174/profile-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then cat /tmp/rem04d-{base-,}vite.log >&2; exit 1; fi
             sleep 1
           done
+          node scripts/rem-04d-before-after.mjs
           node scripts/rem-04d-browser-qa.mjs
       - if: always()
         uses: actions/upload-artifact@v4
@@ -49,6 +59,7 @@ jobs:
           path: |
             qa-artifacts/rem-04d/**
             /tmp/rem04d-vite.log
+            /tmp/rem04d-base-vite.log
           if-no-files-found: warn
   rem04d-accepted-resource:
     name: REM-04C accepted versus current 50-cycle media regression
