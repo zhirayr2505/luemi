@@ -11,7 +11,8 @@ function make(embedding?:{enabled:boolean;ancestors:string[]}){
 test("SEC-W01 W04 W05: route cache and iframe policy default-deny",async()=>{
  const app=make();
  try{
-  app.get("/assets/client-1234abcd.js",async()=>({synthetic:true}));
+  app.get("/assets/client-1234abcd.js",async(_req,reply)=>
+   reply.type("application/javascript").send("export const synthetic = true;"));
   app.get("/plain.js",async()=>({synthetic:true}));
   app.get("/index.html",async()=>"<html>Synthetic shell</html>");
   const cases=[

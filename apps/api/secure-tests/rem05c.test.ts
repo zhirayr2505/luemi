@@ -4,7 +4,7 @@ import {createHmac} from "node:crypto";
 import {spawn} from "node:child_process";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
-import {GeoBudget} from "../src/rem05c-quota.js";
+import {GeoBudget,providerBudgetNamespace} from "../src/rem05c-quota.js";
 const adminUrl=process.env.REM05B_TEST_ADMIN_DATABASE_URL;
 const issuerUrl=process.env.REM05B_TEST_ISSUER_DATABASE_URL;
 const requestUrl=process.env.REM05B_TEST_REQUEST_DATABASE_URL;
@@ -29,7 +29,8 @@ function budget(namespace:string,cap=6){
 }
 test("SEC-G04 G09: two real pools and 100 concurrent admissions share atomic budget",async()=>{
  const namespace="rem05c_durable_100";
- const one=new GeoBudget(budget(namespace,7)),two=new GeoBudget(budget(namespace,7));
+ const one=new GeoBudget(budget(namespace,7),"synthetic_direct_budget"),
+ two=new GeoBudget(budget(namespace,7),"synthetic_direct_budget");
  try{
   const admits=await Promise.all(Array.from({length:100},async(_,i)=>{
     const b=i%2?one:two;
@@ -41,7 +42,7 @@ test("SEC-G04 G09: two real pools and 100 concurrent admissions share atomic bud
   const passed=admits.filter(Boolean).length;
   assert.ok(passed<=7&&passed>0);
   const rows=await admin.query<{used:string}>("SELECT used::text FROM luemi_private.geo_daily_usage "+
-    "WHERE namespace=$1 AND scope='global'",[namespace]);
+    "WHERE namespace=$1 AND scope='global'",[providerBudgetNamespace("synthetic_direct_budget")]);
   assert.equal(rows.rowCount,1);
   assert.equal(Number(rows.rows[0].used),passed,"no overspend or negative counter");
   const usage=await admin.query<{n:string}>("SELECT sum(used)::text AS n FROM luemi_private.geo_daily_usage "+
@@ -75,14 +76,14 @@ test("SEC-G01 G02 G03 G07 G08 G09: actual sessions and fake provider, separate N
   assert.equal(a.statusCode,200);assert.equal(b.statusCode,200);
   const cookieA=String(a.headers["set-cookie"]).split(";")[0];
   const cookieB=String(b.headers["set-cookie"]).split(";")[0];
-  for(const cookie of [cookieA,cookieB]){
+  for(const [cookie,csrf] of [[cookieA,a.json().csrfToken],[cookieB,b.json().csrfToken]]){
     const wrong=await app1.inject({url:"/api/v2/geo/search?q=Yerevan",
-      headers:{cookie,"x-forwarded-for":"198.51.100.97","x-actor-id":actorB}});
+      headers:{cookie,"x-luemi-csrf":csrf,"x-forwarded-for":"198.51.100.97","x-actor-id":actorB}});
     assert.equal(wrong.statusCode,200);
     assert.equal(wrong.json().coverage,"world");
   }
   const invalid=await app1.inject({url:"/api/v2/geo/search?q=%3C%3C",
-    headers:{cookie:cookieA}});
+    headers:{cookie:cookieA,"x-luemi-csrf":a.json().csrfToken}});
   assert.equal(invalid.statusCode,400);
   const invalidPost=await app1.inject({method:"POST",url:"/api/v2/geo/reverse",
     headers:{cookie:cookieA,origin,"x-luemi-csrf":a.json().csrfToken},
@@ -94,13 +95,14 @@ test("SEC-G01 G02 G03 G07 G08 G09: actual sessions and fake provider, separate N
   assert.equal(cross.statusCode,403);
   for(let i=0;i<10;i++){
     const reply=await (i%2?app1:app2).inject({url:"/api/v2/geo/search?q=Yerevan",
-      headers:{cookie:i%2?cookieA:cookieB,"x-forwarded-for":"8.8.8."+i}});
+      headers:{cookie:i%2?cookieA:cookieB,"x-luemi-csrf":i%2?a.json().csrfToken:b.json().csrfToken,
+       "x-forwarded-for":"8.8.8."+i}});
     assert.ok([200,429].includes(reply.statusCode),String(reply.statusCode));
     if(reply.statusCode===429)assert.ok(Number(reply.headers["retry-after"])>=1);
   }
   assert.ok(calls<=5,"only budgeted fake provider calls");
   const global=await admin.query<{used:string}>("SELECT used::text FROM luemi_private.geo_daily_usage "+
-    "WHERE namespace=$1 AND scope='global'",[namespace]);
+    "WHERE namespace=$1 AND scope='global'",[providerBudgetNamespace("synthetic_key")]);
   assert.equal(Number(global.rows[0].used),calls);
   assert.equal((await app1.inject({url:"/api/v2/me",headers:{cookie:cookieA}})).statusCode,200,
     "geo denial does not block unrelated verified API");
@@ -128,7 +130,7 @@ test("SEC-G04 real independent OS processes share one PostgreSQL global ceiling"
  assert.ok(total>0&&total<=8,"two processes cannot exceed shared cap");
  const global=await admin.query<{used:string}>(
   "SELECT used::text FROM luemi_private.geo_daily_usage WHERE namespace=$1 AND scope='global'",
-  [namespace]);
+  [providerBudgetNamespace("synthetic_multiworker_key")]);
  assert.equal(Number(global.rows[0].used),total);
 });
 test("SEC-G09 separate geo role cannot select 05B actors or sessions",async()=>{
@@ -171,7 +173,8 @@ test("SEC-G05 real Fastify fake upstream 429/503/malformed/5s timeout with no ke
   assert.equal(s.statusCode,200);
   const cookie=String(s.headers["set-cookie"]).split(";")[0];
   for(const [i,status] of [429,503,503,503,429].entries()){
-   const r=await app.inject({url:"/api/v2/geo/search?q=Yerevan",headers:{cookie}});
+   const r=await app.inject({url:"/api/v2/geo/search?q=Yerevan",
+    headers:{cookie,"x-luemi-csrf":s.json().csrfToken}});
    assert.equal(r.statusCode,status,"fake provider failure "+i);
    assert.ok(!r.body.includes("synthetic_key_not_live"));
    assert.ok(!JSON.stringify(r.headers).includes("synthetic_key_not_live"));
@@ -183,7 +186,7 @@ test("SEC-G05 real Fastify fake upstream 429/503/malformed/5s timeout with no ke
 test("SEC-G09: budget unavailable fails closed before provider",async()=>{
  const calls=0;
  const unavailableBudget=new GeoBudget({...budget("rem05c_store_down",1),
-  databaseUrl:"postgres://synthetic_user:synthetic_password@127.0.0.1:1/down"});
+  databaseUrl:"postgres://synthetic_user:synthetic_password@127.0.0.1:1/down"},"synthetic_down");
  try{
   const r=await unavailableBudget.reserve(actorA,"search");
   assert.deepEqual({ok:r.ok}, {ok:false});
@@ -193,16 +196,25 @@ test("SEC-G09: budget unavailable fails closed before provider",async()=>{
 
 test("POST-AUDIT C1: same Geoapify key spanning bot namespaces shares one global cap",async()=>{
  const nsA="audit_samekey_bot_a",nsB="audit_samekey_bot_b";
- const a=new GeoBudget(budget(nsA,3)),b=new GeoBudget(budget(nsB,3));
+ const key="synthetic_one_vendor_shared_between_bots";
+ const a=new GeoBudget(budget(nsA,3),key),b=new GeoBudget(budget(nsB,3),key);
  try{
   let admitted=0;
-  for(const item of [a,b]){
-   for(let i=0;i<3;i++){
-    const result=await item.reserve(item===a?actorA:actorB,"search");
-    if(result.ok){admitted++;await result.release();}
-   }
+  for(let i=0;i<6;i++){
+   const instance=i%2===0?a:b;
+   const result=await instance.reserve(i%2===0?actorA:actorB,"search");
+   if(result.ok){admitted++;await result.release();}
   }
-  assert.ok(admitted<=3,"two bot namespaces using one paid provider key cannot spend 6 of 3 global credits");
+  assert.equal(admitted,3,"shared provider cap must be exact across both namespaces");
+  const global=await admin.query<{used:string}>(
+   "SELECT used::text FROM luemi_private.geo_daily_usage WHERE namespace=$1 AND scope='global'",
+   [providerBudgetNamespace(key)]);
+  assert.equal(Number(global.rows[0].used),3);
+  const actors=await admin.query<{namespace:string;used:string}>(
+   "SELECT namespace,used::text FROM luemi_private.geo_daily_usage WHERE namespace=ANY($1::text[]) AND scope='actor'",
+   [[nsA,nsB]]);
+  assert.equal(actors.rowCount,2,"both actors have independent namespace-scoped budgets");
+  assert.equal(actors.rows.reduce((sum,row)=>sum+Number(row.used),0),3);
  }finally{await a.close();await b.close();}
 });
 
@@ -227,6 +239,19 @@ test("POST-AUDIT C2: cross-site GET with valid Lax cookie cannot trigger paid pr
     "sec-fetch-site":"cross-site","sec-fetch-mode":"navigate","sec-fetch-dest":"document"}});
   assert.equal(response.statusCode,403);
   assert.equal(calls,0,"attacker navigation must not reserve credits or call upstream");
+  const metadata=await app.inject({method:"GET",url:"/api/v2/geo/search?q=Yerevan",
+   headers:{cookie,"x-luemi-csrf":authenticated.json().csrfToken,
+    "sec-fetch-site":"cross-site","sec-fetch-mode":"navigate"}});
+  assert.equal(metadata.statusCode,403,"cross-site navigation denied even with forged CSRF header");
+  const missing=await app.inject({url:"/api/v2/geo/search?q=Yerevan",
+   headers:{cookie,"sec-fetch-site":"same-origin"}});
+  assert.equal(missing.statusCode,403,"missing CSRF denies paid GET even from same origin");
+  assert.equal(calls,0);
+  const allowed=await app.inject({url:"/api/v2/geo/search?q=Yerevan",
+   headers:{cookie,"x-luemi-csrf":authenticated.json().csrfToken,
+    "sec-fetch-site":"same-origin","sec-fetch-mode":"cors"}});
+  assert.equal(allowed.statusCode,200,"legitimate verified same-origin search remains functional");
+  assert.equal(calls,1);
  }finally{await app.close();}
 });
 

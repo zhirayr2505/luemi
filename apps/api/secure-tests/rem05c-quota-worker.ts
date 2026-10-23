@@ -4,7 +4,7 @@ const url=process.env.REM05C_TEST_BUDGET_DATABASE_URL;
 if(!url||!namespace||!actor)throw new Error("Disposable worker config missing");
 const budget=new GeoBudget({databaseUrl:url,namespace,
  actorSearchPerDay:50,actorReversePerDay:50,globalDailyCap:8,
- vendorDailyQuota:10,maxInFlight:3});
+ vendorDailyQuota:10,maxInFlight:3},"synthetic_multiworker_key");
 try{
  const results=await Promise.all(Array.from({length:50},async()=>{
   const result=await budget.reserve(actor,"search");
