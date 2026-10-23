@@ -28,7 +28,7 @@ function validOrigin(req:FastifyRequest,origin:string){
 function deny(reply:FastifyReply,status:401|503=401){
  return reply.code(status).send({error:status===401?"unauthorized":"service_unavailable"});
 }
-export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;mutation:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>}|undefined{
+export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;geoRead:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;mutation:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>}|undefined{
  if(!cfg.enabled)return;
  if(!cfg.issuerDatabaseUrl||!cfg.requestDatabaseUrl||!cfg.botToken||!cfg.namespace||
  !/^[a-z0-9:_-]{1,96}$/i.test(cfg.namespace)||Buffer.byteLength(cfg.pepper)<32||
@@ -131,6 +131,24 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     reply.code(429).send({error:"rate_limited"});
    }
   }
+ };
+ // Read-only GET can still bill Geoapify. Browser SameSite=Lax cookies are
+ // sent on cross-site top-level navigations: require a memory-only, session
+ // generation-bound CSRF header and reject cross-origin Fetch Metadata.
+ const protectedGeoRead=async(req:FastifyRequest,reply:FastifyReply)=>{
+  await authenticated(req,reply);
+  if(!req.authActor||reply.sent)return;
+  const site=req.headers["sec-fetch-site"];
+  const mode=req.headers["sec-fetch-mode"];
+  const dest=req.headers["sec-fetch-dest"];
+  if((req.headers.origin!==undefined&&req.headers.origin!==cfg.origin)||
+    (site!==undefined&&site!=="same-origin")||
+    mode==="navigate"||dest==="document"){
+    reply.code(403).send({error:"forbidden"});return;
+  }
+  const supplied=req.headers["x-luemi-csrf"];
+  if(typeof supplied!=="string"||!equals(supplied,csrf(cfg.pepper,req.authActor.hash)))
+    reply.code(403).send({error:"forbidden"});
  };
  const protectedMutation=async(req:FastifyRequest,reply:FastifyReply)=>{
   if(!validOrigin(req,cfg.origin)){reply.code(403).send({error:"forbidden"});return;}
@@ -249,5 +267,5 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
  app.post("/api/v2/auth/logout-all",{preHandler:protectedMutation},async(_req,reply)=>{
   return reply.code(403).send({error:"additional_confirmation_required"});
  });
- return {read:authenticated,mutation:protectedMutation};
+ return {read:authenticated,geoRead:protectedGeoRead,mutation:protectedMutation};
 }

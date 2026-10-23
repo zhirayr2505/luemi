@@ -1,4 +1,4 @@
-import {randomUUID} from "node:crypto";
+import {createHash,randomUUID} from "node:crypto";
 import {Pool} from "pg";
 import type {PoolClient} from "pg";
 
@@ -16,6 +16,15 @@ export type GeoOperation="search"|"reverse";
 export type Admission={ok:true;release:()=>Promise<void>}|{ok:false;reason:"quota"|"unavailable";retryAfter:number};
 
 const UUID_ZERO="00000000-0000-0000-0000-000000000000";
+/** One provider key = one shared cost / in-flight scope across bot namespaces.
+ * The key never enters SQL or logs; this stable opaque digest identifies the
+ * actual billable Geoapify credential. Requires ONE shared quota database. */
+export function providerBudgetNamespace(providerKey:string):string{
+ if(typeof providerKey!=="string"||!providerKey.trim())
+  throw new Error("REM-05C requires a server-held provider key");
+ return "geoapify_v1_"+createHash("sha256").update("luemi:geoapify:v1\0")
+  .update(providerKey).digest("hex");
+}
 /** Only this isolated DB principal can account provider spending. It must never
  * inherit issuer/request privileges, own tables, or bypass RLS. */
 async function safeGeoRole(db:PoolClient):Promise<boolean>{
@@ -60,7 +69,9 @@ async function safeGeoRole(db:PoolClient):Promise<boolean>{
 }
 export class GeoBudget {
   private readonly pool:Pool;
-  constructor(private readonly config:GeoBudgetConfig){
+  private readonly providerScope:string;
+  constructor(private readonly config:GeoBudgetConfig,providerKey:string){
+    this.providerScope=providerBudgetNamespace(providerKey);
     if(!config.databaseUrl||!/^[a-z0-9:_-]{1,96}$/i.test(config.namespace)||
       ![config.actorSearchPerDay,config.actorReversePerDay,
         config.globalDailyCap,config.vendorDailyQuota,config.maxInFlight].every(x=>Number.isSafeInteger(x)&&x>0)||
@@ -83,7 +94,7 @@ export class GeoBudget {
       if(!(await safeGeoRole(db)))return{ok:false,reason:"unavailable",retryAfter:60};
       await db.query("BEGIN");begun=true;
       // Transaction lock is shared by ALL PostgreSQL clients/Node instances.
-      await db.query("SELECT pg_advisory_xact_lock(hashtext($1), 51703)",[this.config.namespace]);
+      await db.query("SELECT pg_advisory_xact_lock(hashtext($1), 51703)",[this.providerScope]);
       // PostgreSQL owns the UTC accounting boundary across multiple Node clocks.
       const clock=await db.query<{day:string;retry:number}>(`
         SELECT (clock_timestamp() AT TIME ZONE 'UTC')::date::text AS day,
@@ -92,15 +103,15 @@ export class GeoBudget {
               +interval '1 day'-(clock_timestamp() AT TIME ZONE 'UTC')))))::int AS retry`);
       day=clock.rows[0].day;
       retryAfter=clock.rows[0].retry;
-      await db.query("DELETE FROM luemi_private.geo_inflight WHERE namespace=$1 AND expires_at<clock_timestamp()",[this.config.namespace]);
-      const busy=await db.query<{n:string}>("SELECT count(*)::text AS n FROM luemi_private.geo_inflight WHERE namespace=$1",[this.config.namespace]);
+      await db.query("DELETE FROM luemi_private.geo_inflight WHERE namespace=$1 AND expires_at<clock_timestamp()",[this.providerScope]);
+      const busy=await db.query<{n:string}>("SELECT count(*)::text AS n FROM luemi_private.geo_inflight WHERE namespace=$1",[this.providerScope]);
       if(Number(busy.rows[0].n)>=this.config.maxInFlight){
         await db.query("ROLLBACK");begun=false;
         return{ok:false,reason:"quota",retryAfter:7};
       }
       const entries=[
-        {scope:"actor",actor:actorId,kind:op,limit:op==="search"?this.config.actorSearchPerDay:this.config.actorReversePerDay},
-        {scope:"global",actor:UUID_ZERO,kind:"provider",limit:this.config.globalDailyCap}
+        {namespace:this.config.namespace,scope:"actor",actor:actorId,kind:op,limit:op==="search"?this.config.actorSearchPerDay:this.config.actorReversePerDay},
+        {namespace:this.providerScope,scope:"global",actor:UUID_ZERO,kind:"provider",limit:this.config.globalDailyCap}
       ];
       for(const entry of entries){
         const reserved=await db.query(`
@@ -109,21 +120,21 @@ export class GeoBudget {
           ON CONFLICT(namespace,scope,actor_id,kind,period)
           DO UPDATE SET used=luemi_private.geo_daily_usage.used+1
           WHERE luemi_private.geo_daily_usage.used < $6
-          RETURNING used`,[this.config.namespace,entry.scope,entry.actor,entry.kind,day,entry.limit]);
+          RETURNING used`,[entry.namespace,entry.scope,entry.actor,entry.kind,day,entry.limit]);
         if(reserved.rowCount!==1){
           await db.query("ROLLBACK");begun=false;
           return{ok:false,reason:"quota",retryAfter};
         }
       }
       await db.query(`INSERT INTO luemi_private.geo_inflight(id,namespace,expires_at)
-        VALUES($1,$2,clock_timestamp()+interval '12 seconds')`,[id,this.config.namespace]);
+        VALUES($1,$2,clock_timestamp()+interval '12 seconds')`,[id,this.providerScope]);
       await db.query("COMMIT");begun=false;
       return{ok:true,release:async()=>{
         const client=await this.pool.connect().catch(()=>null);
         if(!client)return; // TTL lease self-recovers if the connection is down
         try{
           if(await safeGeoRole(client)){
-            await client.query("DELETE FROM luemi_private.geo_inflight WHERE id=$1 AND namespace=$2",[id,this.config.namespace]);
+            await client.query("DELETE FROM luemi_private.geo_inflight WHERE id=$1 AND namespace=$2",[id,this.providerScope]);
           }
         }catch{
           // Lease expires independently if release cannot reach the store.

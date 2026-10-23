@@ -60,7 +60,17 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
    try{
     const searchUrl="/api/"+(import.meta.env.VITE_LUEMI_AUTH_V2==="1"?"v2/geo":"geo")+
       "/search?q="+encodeURIComponent(query.trim());
-    let response=await fetch(searchUrl,{signal,credentials:"same-origin",cache:"no-store"});
+    const v2=import.meta.env.VITE_LUEMI_AUTH_V2==="1";
+    const csrf=geoCsrf();
+    let response:Response;
+    if(v2&&!csrf){
+      // No session proof; never attempt a chargeable upstream route.
+      response=await fetch("/api/geo/search?q="+encodeURIComponent(query.trim()),
+        {signal,credentials:"same-origin",cache:"no-store"});
+    }else{
+      response=await fetch(searchUrl,{signal,credentials:"same-origin",cache:"no-store",
+        ...(v2?{headers:{"X-Luemi-CSRF":csrf!}}:{})});
+    }
     // Public legacy search is intentionally fixture-only. One bounded recovery
     // after a v2 failure, never a retry to the paid provider.
     if(!response.ok&&import.meta.env.VITE_LUEMI_AUTH_V2==="1")

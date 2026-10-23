@@ -14,6 +14,7 @@ export interface GeoRuntime {
 }
 export interface SessionGuards {
   read:(request:FastifyRequest,reply:FastifyReply)=>Promise<void>;
+  geoRead:(request:FastifyRequest,reply:FastifyReply)=>Promise<void>;
   mutation:(request:FastifyRequest,reply:FastifyReply)=>Promise<void>;
 }
 type SearchQuery={q?:unknown};
@@ -66,7 +67,7 @@ export function registerGeography(app:FastifyInstance,runtime?:GeoRuntime,guards
   app.post("/api/geo/reverse",async(_request,reply)=>
     reply.code(503).send({error:"geocoder_unavailable"}));
   const available=!!runtime?.enabled&&!!guards;
-  const authorizedRead=guards?.read;
+  const authorizedRead=guards?.geoRead;
   const authorizedMutation=guards?.mutation;
   // Explicit v2 is unavailable when REM05B sessions or REM05C gate is disabled.
   // This is independent of the legacy safe offline fixture endpoint.
@@ -81,7 +82,7 @@ export function registerGeography(app:FastifyInstance,runtime?:GeoRuntime,guards
   const providerEnabled=available&&runtime?.providerEnabled===true;
   if(providerEnabled&&(!runtime?.providerKey||!runtime.budget))
     throw new Error("REM-05C charged geo requires key and durable budget");
-  const budget=providerEnabled?new GeoBudget(runtime!.budget!):undefined;
+  const budget=providerEnabled?new GeoBudget(runtime!.budget!,runtime!.providerKey):undefined;
   if(budget)app.addHook("onClose",()=>budget.close());
   async function execute(op:GeoOperation,actor:string,input:string|{lat:number;lon:number},
     reply:FastifyReply){
@@ -101,7 +102,8 @@ export function registerGeography(app:FastifyInstance,runtime?:GeoRuntime,guards
       }
       if(op==="search")return{results:normalizeGeoapify(response.raw),coverage:"world"};
       const items=(response.raw as {results:Record<string,unknown>[]}).results;
-      const first=items.find(x=>typeof x.city==="string"&&typeof x.country==="string"&&
+      const first=items.find(x=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&
+        typeof x.city==="string"&&typeof x.country==="string"&&
         typeof x.country_code==="string"&&typeof x.place_id==="string");
       const countryCode=first?normalizeCountryCode(first.country_code):null;
       if(!first||!countryCode)return reply.code(404).send({error:"city_not_found"});

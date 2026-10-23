@@ -20,9 +20,14 @@ export function installHttpPolicy(app:FastifyInstance,embedding?:EmbeddingPolicy
   app.addHook("onSend",async(request,reply,payload)=>{
     const path=request.url.split("?")[0];
     const api=path.startsWith("/api/");
-    const immutable=request.method==="GET"&&hashed.test(path)&&reply.statusCode<400;
-    const document=!api&&!immutable&&request.method==="GET"&&
-      (path==="/"||path==="/index.html"||request.headers.accept?.includes("text/html"));
+    const mime=String(reply.getHeader("content-type")??"").split(";")[0].trim().toLowerCase();
+    const html=mime==="text/html";
+    const match=hashed.exec(path);
+    const immutable=request.method==="GET"&&reply.statusCode===200&&
+      match!==null&&!!assetMime[match[1]]?.includes(mime);
+    // Never use a URL-shaped fingerprint to classify an HTML SPA fallback.
+    const document=!api&&request.method==="GET"&&(html||path==="/"||
+      path==="/index.html"||request.headers.accept?.includes("text/html"));
     reply.header("X-Content-Type-Options","nosniff");
     reply.header("Referrer-Policy","no-referrer");
     reply.header("Cross-Origin-Resource-Policy","same-origin");
