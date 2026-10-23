@@ -104,3 +104,18 @@ jobs:
           node scripts/rem-03d-browser-morph.mjs
           node scripts/rem-04b-browser-six.mjs
           node scripts/rem-04d-browser-qa.mjs
+      - name: Explicit v2 adapter Chrome fixtures (no real Telegram session)
+        shell: bash
+        env:
+          VITE_LUEMI_AUTH_V2: '1'
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/rem05b-v2-vite.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/ >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then tail -80 /tmp/rem05b-v2-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-05b-browser.mjs
