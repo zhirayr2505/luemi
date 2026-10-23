@@ -966,7 +966,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     <div className="pm-photo-motion" ref={photoMotion}>
     {photos.length?<div className="pm-photo-track" ref={photoTrack}>
       {photos.map((p,i)=><div className="pm-photo-slide" key={p.id} role="button" tabIndex={i===activePhoto?0:-1}
-       aria-label={"Открыть фото "+(i+1)+" из "+photos.length}
+       aria-label={"Фотография в галерее профиля "+(i+1)+" из "+photos.length+" — открыть просмотр"}
        onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){
         event.preventDefault();event.stopPropagation();openPhoto(i,event.currentTarget.querySelector("img"));}}}
        onClick={event=>openPhoto(i,event.currentTarget.querySelector("img"))}>
