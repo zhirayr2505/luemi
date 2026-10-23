@@ -62,6 +62,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       actorSearchPerDay:Number(env.REM05C_SEARCH_DAILY??30),
       actorReversePerDay:Number(env.REM05C_REVERSE_DAILY??10),
       globalDailyCap:Number(env.REM05C_GLOBAL_DAILY_CAP??0),
+      vendorDailyQuota:Number(env.REM05C_VENDOR_DAILY_QUOTA??0),
       maxInFlight:Number(env.REM05C_MAX_INFLIGHT??3)
     }:undefined};
   if(providerEnabled&&(!v2Enabled||!geo.providerKey||!geo.budget?.databaseUrl||

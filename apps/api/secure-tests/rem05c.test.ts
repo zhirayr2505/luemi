@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {createHmac} from "node:crypto";
+import {spawn} from "node:child_process";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
 import {GeoBudget} from "../src/rem05c-quota.js";
@@ -24,7 +25,7 @@ function sign(id:number){
 const admin=new Pool({connectionString:adminUrl});
 function budget(namespace:string,cap=6){
  return{databaseUrl:budgetUrl,namespace,actorSearchPerDay:4,
-    actorReversePerDay:2,globalDailyCap:cap,maxInFlight:3};
+    actorReversePerDay:2,globalDailyCap:cap,vendorDailyQuota:Math.ceil(cap/0.8),maxInFlight:3};
 }
 test("SEC-G04 G09: two real pools and 100 concurrent admissions share atomic budget",async()=>{
  const namespace="rem05c_durable_100";
@@ -104,6 +105,42 @@ test("SEC-G01 G02 G03 G07 G08 G09: actual sessions and fake provider, separate N
   assert.equal((await app1.inject({url:"/api/v2/me",headers:{cookie:cookieA}})).statusCode,200,
     "geo denial does not block unrelated verified API");
  }finally{await app1.close();await app2.close();}
+});
+
+test("SEC-G04 real independent OS processes share one PostgreSQL global ceiling",async()=>{
+ const namespace="rem05c_two_processes";
+ const worker=(actor:string)=>new Promise<number>((resolve,reject)=>{
+  const p=spawn(process.execPath,["--import","tsx",
+    "apps/api/secure-tests/rem05c-quota-worker.ts",namespace,actor],{
+    cwd:process.cwd(),env:process.env,stdio:["ignore","pipe","pipe"]});
+  let stdout="",stderr="";
+  p.stdout.setEncoding("utf8");p.stderr.setEncoding("utf8");
+  p.stdout.on("data",(data:string)=>{stdout+=data;});
+  p.stderr.on("data",(data:string)=>{stderr+=data;});
+  p.on("error",reject);
+  p.on("close",code=>{
+   if(code!==0)return reject(new Error("synthetic quota worker failed: "+stderr.slice(-300)));
+   try{resolve(JSON.parse(stdout.trim()).accepted as number);}catch(e){reject(e);}
+  });
+ });
+ const counts=await Promise.all([worker(actorA),worker(actorB)]);
+ const total=counts[0]+counts[1];
+ assert.ok(total>0&&total<=8,"two processes cannot exceed shared cap");
+ const global=await admin.query<{used:string}>(
+  "SELECT used::text FROM luemi_private.geo_daily_usage WHERE namespace=$1 AND scope='global'",
+  [namespace]);
+ assert.equal(Number(global.rows[0].used),total);
+});
+test("SEC-G09 separate geo role cannot select 05B actors or sessions",async()=>{
+ const budgetConnection=new Pool({connectionString:budgetUrl!});
+ try{
+  await assert.rejects(budgetConnection.query("SELECT id FROM luemi_private.sessions"));
+  await assert.rejects(budgetConnection.query("SELECT id FROM luemi_private.actors"));
+  const cap=await budgetConnection.query<{s:boolean;i:boolean}>(
+   "SELECT pg_has_role(current_user,'luemi_request','member') AS s,"+
+   "pg_has_role(current_user,'luemi_auth_issuer','member') AS i");
+  assert.deepEqual(cap.rows[0],{s:false,i:false});
+ }finally{await budgetConnection.end();}
 });
 test("SEC-G09: budget unavailable fails closed before provider",async()=>{
  const calls=0;

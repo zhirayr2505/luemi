@@ -8,6 +8,8 @@ export interface GeoBudgetConfig {
   actorSearchPerDay:number;
   actorReversePerDay:number;
   globalDailyCap:number;
+  /** Verified vendor daily maximum; no live activation without known quota. */
+  vendorDailyQuota:number;
   maxInFlight:number;
 }
 export type GeoOperation="search"|"reverse";
@@ -61,8 +63,10 @@ export class GeoBudget {
   constructor(private readonly config:GeoBudgetConfig){
     if(!config.databaseUrl||!/^[a-z0-9:_-]{1,96}$/i.test(config.namespace)||
       ![config.actorSearchPerDay,config.actorReversePerDay,
-        config.globalDailyCap,config.maxInFlight].every(x=>Number.isSafeInteger(x)&&x>0)||
-      config.maxInFlight>32)throw new Error("Invalid REM-05C isolated budget configuration");
+        config.globalDailyCap,config.vendorDailyQuota,config.maxInFlight].every(x=>Number.isSafeInteger(x)&&x>0)||
+      config.maxInFlight>32 ||
+      config.globalDailyCap>Math.floor(config.vendorDailyQuota*0.8))
+      throw new Error("REM-05C budget exceeds 80 percent of verified vendor quota");
     this.pool=new Pool({connectionString:config.databaseUrl,max:8,connectionTimeoutMillis:2000});
   }
   async close(){await this.pool.end();}
@@ -72,14 +76,22 @@ export class GeoBudget {
     if(!/^[0-9a-f-]{36}$/i.test(actorId))return{ok:false,reason:"unavailable",retryAfter:60};
     const db=await this.pool.connect().catch(()=>null);
     if(!db)return{ok:false,reason:"unavailable",retryAfter:60};
-    const id=randomUUID(),now=new Date(),day=now.toISOString().slice(0,10);
-    const retryAfter=Math.max(1,Math.ceil((Date.parse(day+"T00:00:00.000Z")+86400000-now.getTime())/1000));
+    const id=randomUUID();
+    let day="",retryAfter=60;
     let begun=false;
     try{
       if(!(await safeGeoRole(db)))return{ok:false,reason:"unavailable",retryAfter:60};
       await db.query("BEGIN");begun=true;
       // Transaction lock is shared by ALL PostgreSQL clients/Node instances.
       await db.query("SELECT pg_advisory_xact_lock(hashtext($1), 51703)",[this.config.namespace]);
+      // PostgreSQL owns the UTC accounting boundary across multiple Node clocks.
+      const clock=await db.query<{day:string;retry:number}>(`
+        SELECT (clock_timestamp() AT TIME ZONE 'UTC')::date::text AS day,
+          GREATEST(1,CEIL(EXTRACT(EPOCH FROM
+            (date_trunc('day',clock_timestamp() AT TIME ZONE 'UTC')
+              +interval '1 day'-(clock_timestamp() AT TIME ZONE 'UTC')))))::int AS retry`);
+      day=clock.rows[0].day;
+      retryAfter=clock.rows[0].retry;
       await db.query("DELETE FROM luemi_private.geo_inflight WHERE namespace=$1 AND expires_at<clock_timestamp()",[this.config.namespace]);
       const busy=await db.query<{n:string}>("SELECT count(*)::text AS n FROM luemi_private.geo_inflight WHERE namespace=$1",[this.config.namespace]);
       if(Number(busy.rows[0].n)>=this.config.maxInFlight){
