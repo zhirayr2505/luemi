@@ -144,4 +144,34 @@ After the first green PostgreSQL security run, additional actual-code review ide
 
 **Final SHA workflow rule:** this document modification itself creates a new immutable GitHub head. Only the actual results of Foundation, REM-00C, REM-05B, REM-05C and REM-05D workflows (both push/PR) on that **new final head**, recorded in Draft PR #54, can close the mandatory CI gate. Do not count successful previous-SHA test runs as final proof. No merge, deploy or REM-05E.
 
+
+## 8. 2026-10-24 independent post-audit D-R4: session revocation across private upload
+
+**Change boundary: existing REM-05D branch / Draft PR #54 only. No production release, deployment or REM-05E.**
+
+### Original-head RED reproduction — independently executed, not theoretical
+
+At accepted candidate \`86786fa23faf73807ac0204cff7baa106e7c7446\`, the request-role owner verification ended before the worker-role storage PUT. The original code did not revalidate the uploader's exact session until **after** the worker transaction had already committed three private side effects.
+
+A test-only commit \`d61ba297a78e830546d1fcb9c691ad6609465c2f\` added a deterministic gate inside synthetic \`PrivateObjectStore.put()\` without touching the endpoint source. [Real PostgreSQL 16.15 RED execution, GitHub push run #40025758576](https://github.com/zhirayr2505/luemi/actions/runs/40025758576), restricted SQL logins and signed synthetic Telegram session: the test observed \`reserved / reserved / 0 moderation jobs\` during the gate, revoked **the active session's generation** through independent admin fixture, released the storage gate, and observed HTTP 401 yet committed \`media_assets.state='pending_review'\`. TAP: **5 PASS, 1 FAIL, 0 skipped**; exact error \`revoked upload must never promote to pending_review; actual 'pending_review', expected 'reserved'\`. This is a **confirmed upload TOCTOU defect**, not a failure of CI infrastructure. It does **not** establish actual production exposure: REM-05D is test-only and feature-OFF.
+
+### Point remediation and guarantees in isolated test
+
+- \`apps/api/src/rem05d-private.ts\`: while the independent media-worker transaction is still open, after the awaited sanitized PNG object PUT and worker SQL updates/queue insertion but **before COMMIT**, invoke the existing REM-05B issuer-backed session guard and compare the **original** actor ID, session ID and constant-time token hash; on revocation, suspended/banned account or rotated token, reject and roll back worker asset/upload/queue writes. No worker access to the \`sessions\` table, no shared PostgreSQL principal, no RLS/permission/schema relaxation.
+- The private synthetic \`PrivateObjectStore\` contract now requires idempotent \`delete(key)\`. Track the staged object key; on an uncommitted worker failure, perform best-effort compensating delete. \`memoryPrivateStore()\` implements this operation and test adapters exercise it. An unknown-after-COMMIT database/transport failure cannot be treated as proven rollback; the on-COMMIT flag narrows the ordinary cleanup path but does **not** prove resolution of ambiguous commit outcomes.
+- \`apps/api/secure-tests/rem05d.test.ts\` retains the original RED interleaving as a permanent GREEN assertion with both SQL state and actual mock object checks, plus repeatable separate \`suspended\`, \`banned\`, exact-session \`auth/refresh\` rotation races. An adapter that writes bytes and **then throws** checks SQL rollback and successful object deletion; deliberately failing compensating deletion checks that the orphan remains **inaccessible via the authenticated gateway** because no \`approved\` record exists. Existing valid upload and cross-actor denial remain in the unchanged M media tests.
+- The original R1 pre-commit draft-check, R2 post-storage GET recheck, R3 role/column-grant protection, independent \`luemi_request\`/\`luemi_auth_issuer\`/\`luemi_media_worker\`/\`luemi_moderator\` LOGIN memberships, nine FORCE RLS tables, six-photo SQL admission and publication hard-deny remain present.
+
+**Exact atomicity boundary:** PostgreSQL \`BEGIN/ROLLBACK/COMMIT\` controls asset/upload/moderation rows together. A distinct object store PUT is **never** part of that SQL transaction. Compensation may fail, the process may crash between PUT and cleanup, and an object may remain orphaned privately; no durable cleanup queue/retry/quarantine ledger exists. Such an orphan is not exposed by the current authenticated media gateway in this isolated implementation, but persistent storage cleanup and regulatory retention remain **BLOCKED/UNVERIFIED**, and this is not a complete production storage protocol.
+
+**Session ordering boundary:** the issuer-backed current-token check runs before worker COMMIT, but a revoke/refresh can happen after the final check and before SQL commit. Neither the separate issuer and worker transactions nor remote object-store writes are linearizable as one atomic operation. Do not claim zero-window revocation or guaranteed prevention of every cross-process race. Strict ordering would require a separately designed and tested issuer/worker synchronization protocol, durability/cleanup outbox and owner authorization, not an implicit feature of this patch.
+
+**Client and production boundary:** no real Supabase Storage, \`storage.objects\`, live users/photos, CDN/signed URLs, scanners, cleanup daemon, appeal workflow, real Telegram device or live production service was touched or validated. \`REM05D_PRIVATE_ENABLED\` stays OFF outside the permitted isolated test path; no automatic IndexedDB v2 upload, public projection or media publication was enabled. **D/M/MOD PARTIAL and BLOCKED statuses in section 3 are unchanged.**
+
+### Final acceptance gate
+
+The separate RED run above is immutable proof of the original failure. It is **not** evidence of patched-code success. For the fix, verify the focused PostgreSQL TAP suites, all inherited browser/identity/geo/Fastify checks, **5 workflows × push and PR = 10 completed-success runs and 34 individual success jobs on one new final SHA**. The exact SHA and run links should be recorded in **Draft PR #54** only after the required GitHub jobs actually complete; do not copy older green statuses into this final verdict.
+
+**STOP:** subsequent stages require independent owner instruction. REM-05E, merge/deploy, webhook rotation, real Supabase/Render/Storage modification and repository visibility change remain prohibited.
+
 LUEMI 💜
