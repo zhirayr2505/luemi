@@ -131,6 +131,54 @@ async function run(name,url){
   assert.ok(after50.inFlightRequests<=initial.inFlightRequests,
    "network request backlog must not persist across 50 cycles");
   assert.ok(after50.own.listeners<=expanded.own.listeners+4,"app-owned global window/document listeners must plateau");
+  // Verify accepted LU-22 controller with a live keyboard/viewport fixture
+  // in the SAME warmed browser context while ForYou remains mounted and covered.
+  // The second foreground tab also causes a browser visibility lifecycle.
+  const viewportTab=await context.newPage();
+  let warmViewport;
+  try{
+   await viewportTab.goto(url+"/rem-01d-viewport-qa.html",{waitUntil:"domcontentloaded"});
+   await viewportTab.waitForFunction(()=>!!window.__REM01D_QA__?.snapshot());
+   await viewportTab.evaluate(()=>{
+    const q=window.__REM01D_QA__;
+    q.telegram.viewportStableHeight=852;q.telegram.viewportHeight=852;
+    q.visual(852);q.emit("viewportChanged",{isStateStable:true});
+   });
+   await sleep(180);
+   const stable=await viewportTab.evaluate(()=>window.__REM01D_QA__.snapshot());
+   await viewportTab.locator("#keyboard-field").focus();
+   await viewportTab.evaluate(()=>{
+    const q=window.__REM01D_QA__;
+    q.telegram.viewportHeight=390;q.visual(390);
+   });
+   await sleep(180);
+   const keyboard=await viewportTab.evaluate(()=>{
+    const state=window.__REM01D_QA__.snapshot();
+    const shell=document.querySelector("#viewport-shell"),footer=document.querySelector(".onboard-footer");
+    return {state,footerBottom:footer?.getBoundingClientRect().bottom??null,
+      shellBottom:shell?.getBoundingClientRect().bottom??null};
+   });
+   await viewportTab.locator("#keyboard-field").evaluate(el=>el.blur());
+   await viewportTab.evaluate(()=>{
+    const q=window.__REM01D_QA__;
+    q.telegram.viewportHeight=852;q.visual(852);
+   });
+   await sleep(180);
+   const restoredState=await viewportTab.evaluate(()=>window.__REM01D_QA__.snapshot());
+   warmViewport={stable,keyboard,restoredState};
+   assert.equal(stable.shellHeight,852,"LU-22 warmed stable shell");
+   assert.equal(keyboard.state.keyboardState,"open","LU-22 warmed IME state");
+   assert.equal(keyboard.state.shellHeight,390,"LU-22 warmed keyboard must shrink shell");
+   assert.ok(keyboard.footerBottom<=keyboard.shellBottom+1,"LU-22 CTA remains above keyboard");
+   assert.equal(restoredState.keyboardState,"closed","LU-22 keyboard dismissal restores policy");
+   assert.equal(restoredState.shellHeight,852,"LU-22 viewport recovers accepted stable height");
+  }finally{await viewportTab.close();}
+  await page.bringToFront();
+  await sleep(170);
+  const afterBackground=await measure("background-foreground-return");
+  assert.equal(afterBackground.libraryScroll,originalScroll,"original scroll survived background lifecycle");
+  assert.equal(afterBackground.fyExpandedTiles,expanded.fyExpandedTiles,"covered collection survived tab switch");
+  console.log("REM04C_WARM_LU22 "+JSON.stringify({name,warmViewport,afterBackground}));
   // An expanded scroll is independent of the covered library scroll.
   await page.locator(".fy-expanded .fy-grid").evaluate(node=>node.scrollTop=245);
   await page.getByRole("button",{name:"Назад к подборкам"}).click();
@@ -237,7 +285,7 @@ async function run(name,url){
     "remount must not accumulate global listeners");
   }
   assert.deepEqual(errors,[],"browser page errors");
-  const result={name,initial,expanded,checkpoints,after50,restored,nearby,feed,forYouReturn,viewer,warmedPhotoBudget,resized,owner,teardown,remounted,errors};
+  const result={name,initial,expanded,checkpoints,after50,warmViewport,afterBackground,restored,nearby,feed,forYouReturn,viewer,warmedPhotoBudget,resized,owner,teardown,remounted,errors};
   console.log("REM04C_SESSION "+JSON.stringify(result));
   return result;
  }finally{
