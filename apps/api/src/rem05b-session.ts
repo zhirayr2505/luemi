@@ -63,7 +63,7 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
     "AND row_security_active('luemi_private.actors'::regclass) "+
     "AND row_security_active('luemi_private.sessions'::regclass) "+
     "AND CASE WHEN $1::text='luemi_request' THEN "+
-    "(has_table_privilege(current_user,'luemi_private.actors','SELECT') "+
+    "(has_column_privilege(current_user,'luemi_private.actors','id','SELECT') AND has_column_privilege(current_user,'luemi_private.actors','status','SELECT') AND has_column_privilege(current_user,'luemi_private.actors','environment','SELECT') "+
     "AND NOT has_table_privilege(current_user,'luemi_private.sessions','SELECT') "+
     "AND NOT has_table_privilege(current_user,'luemi_private.actors','INSERT') "+
     "AND NOT has_table_privilege(current_user,'luemi_private.actors','DELETE') "+
