@@ -87,3 +87,16 @@ test("SEC-G07: existing real provider key does not enable legacy upstream",async
   await app.close();
  }
 });
+
+test("POST-AUDIT C3: missing hashed JavaScript served as SPA HTML is NEVER immutable",async()=>{
+ const app=make();
+ try{
+  app.get("/assets/missing-deadbeef.js",async(_req,reply)=>
+   reply.type("text/html").send("<!doctype html><html>fallback shell</html>"));
+  const result=await app.inject({url:"/assets/missing-deadbeef.js",headers:{accept:"text/html"}});
+  assert.equal(result.statusCode,200,"fixture emulates successful SPA fallback for missing asset");
+  assert.match(String(result.headers["content-type"]),/text\/html/);
+  assert.equal(result.headers["cache-control"],"no-store",
+   "HTML fallback must not be cached for a year as an immutable JS asset");
+ }finally{await app.close();}
+});

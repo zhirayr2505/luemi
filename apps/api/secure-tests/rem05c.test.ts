@@ -190,4 +190,75 @@ test("SEC-G09: budget unavailable fails closed before provider",async()=>{
   assert.equal(calls,0);
  }finally{await unavailableBudget.close();}
 });
+
+test("POST-AUDIT C1: same Geoapify key spanning bot namespaces shares one global cap",async()=>{
+ const nsA="audit_samekey_bot_a",nsB="audit_samekey_bot_b";
+ const a=new GeoBudget(budget(nsA,3)),b=new GeoBudget(budget(nsB,3));
+ try{
+  let admitted=0;
+  for(const item of [a,b]){
+   for(let i=0;i<3;i++){
+    const result=await item.reserve(item===a?actorA:actorB,"search");
+    if(result.ok){admitted++;await result.release();}
+   }
+  }
+  assert.ok(admitted<=3,"two bot namespaces using one paid provider key cannot spend 6 of 3 global credits");
+ }finally{await a.close();await b.close();}
+});
+
+test("POST-AUDIT C2: cross-site GET with valid Lax cookie cannot trigger paid provider",async()=>{
+ let calls=0;
+ const namespace="audit_crosssite_get",app=buildApp({
+  port:3001,origin,botToken,healthKey:"synthetic_health_key_123456789012345",
+  webhookSecret:"synthetic_webhook",logger:false,
+  rem05b:{enabled:true,issuerDatabaseUrl:issuerUrl!,requestDatabaseUrl:requestUrl!,
+   pepper:"synthetic-cross-site-read-pepper-123456789",namespace,origin,botToken,
+   idleMs:43200000,absoluteMs:604800000,maxSessions:5},
+  rem05c:{geo:{enabled:true,providerEnabled:true,providerKey:"synthetic_post_audit_paid",
+   budget:budget(namespace,5),providerFetch:async()=>{calls++;return Response.json({results:[]});}}}
+ });
+ try{
+  const authenticated=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(777777)}});
+  assert.equal(authenticated.statusCode,200);
+  const cookie=String(authenticated.headers["set-cookie"]).split(";")[0];
+  const response=await app.inject({method:"GET",url:"/api/v2/geo/search?q=Yerevan",
+   headers:{cookie,origin:"https://attacker.invalid",
+    "sec-fetch-site":"cross-site","sec-fetch-mode":"navigate","sec-fetch-dest":"document"}});
+  assert.equal(response.statusCode,403);
+  assert.equal(calls,0,"attacker navigation must not reserve credits or call upstream");
+ }finally{await app.close();}
+});
+
+test("POST-AUDIT C4: provider reverse null/invalid array element is safe and sanitized",async()=>{
+ let calls=0;
+ const namespace="audit_provider_null";
+ const app=buildApp({port:3001,origin,botToken,
+  healthKey:"synthetic_health_key_123456789012345",webhookSecret:"synthetic_webhook",logger:false,
+  rem05b:{enabled:true,issuerDatabaseUrl:issuerUrl!,requestDatabaseUrl:requestUrl!,
+   pepper:"synthetic-malformed-reverse-pepper-12345678",namespace,origin,botToken,
+   idleMs:43200000,absoluteMs:604800000,maxSessions:5},
+  rem05c:{geo:{enabled:true,providerEnabled:true,providerKey:"synthetic_null_response",
+   budget:budget(namespace,5),providerFetch:async()=>{
+    calls++;
+    return Response.json({results:calls===1?[null]:[null,{
+      place_id:"synthetic-valid",city:"Ереван",country:"Армения",country_code:"AM"}]});
+   }}}});
+ try{
+  const a=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(888888)}});
+  assert.equal(a.statusCode,200);
+  const cookie=String(a.headers["set-cookie"]).split(";")[0];
+  const headers={cookie,origin,"sec-fetch-site":"same-origin","x-luemi-csrf":a.json().csrfToken};
+  const empty=await app.inject({method:"POST",url:"/api/v2/geo/reverse",
+   headers,payload:{lat:40.18,lon:44.51}});
+  assert.equal(empty.statusCode,404,"null-only response should report city_not_found, never 500");
+  assert.deepEqual(empty.json(),{error:"city_not_found"});
+  const valid=await app.inject({method:"POST",url:"/api/v2/geo/reverse",
+   headers,payload:{lat:40.18,lon:44.51}});
+  assert.equal(valid.statusCode,200);
+  assert.equal(valid.json().result.countryCode,"AM");
+  assert.equal(calls,2);
+ }finally{await app.close();}
+});
 test.after(async()=>{await admin.end();});
