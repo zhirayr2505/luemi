@@ -1,6 +1,7 @@
 import {createHmac,randomBytes,timingSafeEqual} from "node:crypto";
 import type {FastifyInstance,FastifyReply,FastifyRequest} from "fastify";
 import {Pool} from "pg";
+import type {PoolClient} from "pg";
 import {validateTelegramInitData} from "./telegram-auth.js";
 
 export interface Rem05bOptions {
@@ -35,23 +36,62 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
  const issuer=new Pool({connectionString:cfg.issuerDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  const scoped=new Pool({connectionString:cfg.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  app.addHook("onClose",async()=>{await Promise.all([issuer.end(),scoped.end()]);});
- async function safeRole(pool:Pool,role:"luemi_auth_issuer"|"luemi_request"):Promise<boolean>{
+ async function safeRole(db:PoolClient,kind:"luemi_auth_issuer"|"luemi_request"):Promise<boolean>{
+  // SECURITY: membership, including indirect/non-inheriting membership, must be disjoint.
+  // Check the exact same connection used by each following SQL statement, not pool.query().
+  // Effective ACLs and RLS activation must agree with the intended role boundary.
   try{
-   const res=await pool.query<{safe:boolean}>(
-    "SELECT (NOT rolsuper AND NOT rolbypassrls AND "+
-    "pg_has_role(current_user,$1::name,'member') AND "+
-    "NOT EXISTS(SELECT 1 FROM pg_class c WHERE c.oid='luemi_private.actors'::regclass "+
-    "AND pg_get_userbyid(c.relowner)=current_user)) AS safe "+
-    "FROM pg_roles WHERE rolname=current_user",[role]);
+   const other=kind==="luemi_auth_issuer"?"luemi_request":"luemi_auth_issuer";
+   const res=await db.query<{safe:boolean}>(
+    "SELECT (r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls "+
+    "AND NOT r.rolcreaterole AND NOT r.rolcreatedb AND session_user=current_user "+
+    "AND current_setting('row_security')='on' "+
+    "AND pg_has_role(current_user,$1::name,'member') "+
+    "AND NOT pg_has_role(current_user,$2::name,'member') "+
+    "AND NOT pg_has_role(current_user,'pg_read_all_data','member') "+
+    "AND NOT pg_has_role(current_user,'pg_write_all_data','member') "+
+    "AND NOT pg_has_role(current_user,'pg_read_server_files','member') "+
+    "AND NOT pg_has_role(current_user,'pg_write_server_files','member') "+
+    "AND NOT pg_has_role(current_user,'pg_execute_server_program','member') "+
+    "AND NOT has_schema_privilege(current_user,'luemi_private','CREATE') "+
+    "AND NOT EXISTS (SELECT 1 FROM pg_class c WHERE c.oid IN "+
+    "('luemi_private.actors'::regclass,'luemi_private.sessions'::regclass) "+
+    "AND c.relowner=r.oid) "+
+    "AND (SELECT bool_and(c.relrowsecurity AND c.relforcerowsecurity) "+
+    "FROM pg_class c WHERE c.oid IN "+
+    "('luemi_private.actors'::regclass,'luemi_private.sessions'::regclass)) "+
+    "AND row_security_active('luemi_private.actors'::regclass) "+
+    "AND row_security_active('luemi_private.sessions'::regclass) "+
+    "AND CASE WHEN $1::text='luemi_request' THEN "+
+    "(has_table_privilege(current_user,'luemi_private.actors','SELECT') "+
+    "AND NOT has_table_privilege(current_user,'luemi_private.sessions','SELECT') "+
+    "AND NOT has_table_privilege(current_user,'luemi_private.actors','INSERT') "+
+    "AND NOT has_table_privilege(current_user,'luemi_private.actors','DELETE') "+
+    "AND NOT has_table_privilege(current_user,'luemi_private.actors','UPDATE') "+
+    "AND NOT has_table_privilege(current_user,'luemi_private.sessions','INSERT') "+
+    "AND NOT has_table_privilege(current_user,'luemi_private.sessions','UPDATE') "+
+    "AND NOT has_table_privilege(current_user,'luemi_private.sessions','DELETE')) "+
+    "ELSE (has_table_privilege(current_user,'luemi_private.sessions','SELECT') "+
+    "AND has_table_privilege(current_user,'luemi_private.sessions','INSERT') "+
+    "AND has_table_privilege(current_user,'luemi_private.actors','SELECT')) END "+
+    ") AS safe FROM pg_roles r WHERE r.rolname=current_user",
+    [kind,other]);
    return res.rowCount===1&&res.rows[0].safe===true;
   }catch{return false;}
  }
+ async function roleClient(pool:Pool,kind:"luemi_auth_issuer"|"luemi_request"):Promise<PoolClient|null>{
+  const db=await pool.connect().catch(()=>null);
+  if(!db)return null;
+  if(!(await safeRole(db,kind))){db.release();return null;}
+  return db;
+ }
  async function inspect(req:FastifyRequest):Promise<{value:Session}|{status:401|503}>{
   const raw=tokenFrom(req);if(!raw)return{status:401};
-  if(!(await safeRole(issuer,"luemi_auth_issuer")))return{status:503};
+  const db=await roleClient(issuer,"luemi_auth_issuer");
+  if(!db)return{status:503};
   const h=hash(cfg.pepper,raw);
   try{
-   const result=await issuer.query<{actor_id:string;session_id:string;expires_at:string;first_name:string}>(
+   const result=await db.query<{actor_id:string;session_id:string;expires_at:string;first_name:string}>(
     "UPDATE luemi_private.sessions s SET last_seen_at=clock_timestamp(), "+
     "idle_expires_at=LEAST(s.absolute_expires_at,clock_timestamp()+($3::bigint * interval '1 millisecond')) "+
     "FROM luemi_private.actors a WHERE s.token_hash=$1 AND s.environment=$2 AND s.revoked_at IS NULL "+
@@ -63,6 +103,7 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
    const r=result.rows[0];
    return{value:{actorId:r.actor_id,sessionId:r.session_id,hash:h,expiresAt:r.expires_at,firstName:r.first_name}};
   }catch{return{status:503};}
+  finally{db.release();}
  }
  const authenticated=async(req:FastifyRequest,reply:FastifyReply)=>{
   const result=await inspect(req);
@@ -83,8 +124,7 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
   if(typeof raw!=="string"||Buffer.byteLength(raw,"utf8")>8192)return reply.code(401).send({error:"invalid_init_data"});
   const verified=validateTelegramInitData(raw,cfg.botToken);
   if(!verified||!verified.user.first_name.trim())return reply.code(401).send({error:"invalid_init_data"});
-  if(!(await safeRole(issuer,"luemi_auth_issuer")))return deny(reply,503);
-  const db=await issuer.connect().catch(()=>null);
+  const db=await roleClient(issuer,"luemi_auth_issuer");
   if(!db)return deny(reply,503);
   try{
    await db.query("BEGIN");
@@ -122,8 +162,7 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
  });
  app.get("/api/v2/me",{preHandler:authenticated},async(req,reply)=>{
   const s=req.authActor!;
-  if(!(await safeRole(scoped,"luemi_request")))return deny(reply,503);
-  const db=await scoped.connect().catch(()=>null);
+  const db=await roleClient(scoped,"luemi_request");
   if(!db)return deny(reply,503);
   try{
    await db.query("BEGIN");
@@ -145,7 +184,7 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
   finally{db.release();}
  });
  app.post("/api/v2/auth/refresh",{preHandler:protectedMutation},async(req,reply)=>{
-  const s=req.authActor!,db=await issuer.connect().catch(()=>null);
+  const s=req.authActor!,db=await roleClient(issuer,"luemi_auth_issuer");
   if(!db)return deny(reply,503);
   try{
    await db.query("BEGIN");
@@ -170,19 +209,22 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
   finally{db.release();}
  });
  app.post("/api/v2/auth/logout",{preHandler:protectedMutation},async(req,reply)=>{
+  const db=await roleClient(issuer,"luemi_auth_issuer");
+  if(!db)return deny(reply,503);
   try{
-   await issuer.query("UPDATE luemi_private.sessions SET revoked_at=clock_timestamp() "+
-    "WHERE id=$1 AND actor_id=$2 AND revoked_at IS NULL",
-    [req.authActor!.sessionId,req.authActor!.actorId]);
+   // Match the exact token generation: a stale logout must not revoke a freshly
+   // rotated generation on the same session id.
+   const changed=await db.query("UPDATE luemi_private.sessions SET revoked_at=clock_timestamp() "+
+    "WHERE id=$1 AND actor_id=$2 AND token_hash=$3 AND environment=$4 AND revoked_at IS NULL",
+    [req.authActor!.sessionId,req.authActor!.actorId,req.authActor!.hash,cfg.namespace]);
+   if(changed.rowCount!==1)return deny(reply);
    reply.header("Set-Cookie",cookie("",0));return{ok:true};
-  }catch{return deny(reply,503);}
+  }catch{return deny(reply,503);}finally{db.release();}
  });
- app.post("/api/v2/auth/logout-all",{preHandler:protectedMutation},async(req,reply)=>{
-  try{
-   await issuer.query("UPDATE luemi_private.sessions SET revoked_at=clock_timestamp() "+
-    "WHERE actor_id=$1 AND environment=$2 AND revoked_at IS NULL",
-    [req.authActor!.actorId,cfg.namespace]);
-   reply.header("Set-Cookie",cookie("",0));return{ok:true};
-  }catch{return deny(reply,503);}
+ // Destructive-to-access action: broad revocation is withheld until a separate,
+ // owner-ratified step-up confirmation policy exists. A valid cookie+CSRF is
+ // NOT sufficient proof of recent user intent; initData replay is still possible.
+ app.post("/api/v2/auth/logout-all",{preHandler:protectedMutation},async(_req,reply)=>{
+  return reply.code(403).send({error:"additional_confirmation_required"});
  });
 }
