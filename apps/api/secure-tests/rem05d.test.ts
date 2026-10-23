@@ -67,6 +67,14 @@ test("D/MOD: public flags default-deny, protected API, CAS, A/B and SQL role evi
    {revision:1,fields:{displayName:"Private",about:"Only A"}})));
   assert.deepEqual(old.map(r=>r.statusCode).sort(),[200,409]);
   assert.equal((await get(server,"/api/v2/profile/draft",a)).json().revision,2);
+  const spoofed=await server.inject({method:"GET",url:"/api/v2/profile/draft",
+    headers:{cookie:a.cookie,"x-actor-id":other.id,"x-role":"moderator"}});
+  assert.equal(spoofed.json().fields.displayName,"Private","headers cannot replace session authority");
+  assert.equal((await put(server,"/api/v2/profile/draft",
+    {cookie:a.cookie,csrf:"bad"}, {revision:2,fields:{displayName:"Compromised"}})).statusCode,403);
+  assert.equal((await server.inject({method:"PUT",url:"/api/v2/profile/draft",
+    headers:{...headers(a.cookie,a.csrf),origin:"https://attacker.invalid"},
+    payload:{revision:2,fields:{displayName:"Compromised"}}})).statusCode,403);
   for(const malicious of [
    {ownerId:other.id},{publication_status:"published"},{isPremium:true},
    {birthDate:"2020-01-01"},{birthDate:"2023-02-31"},
@@ -144,11 +152,11 @@ test("M: actual RLS media, intent concurrency, sanitized PNG, moderator-only app
     Buffer.from("not a PNG"),makeSynthetic50MpHeader(),withGps.subarray(0,20),
     Buffer.concat([withGps,Buffer.from("tail")])
   ])assert.throws(()=>sanitizePng(malformed));
-  const flood=await Promise.all(Array.from({length:25},(_,i)=>post(server,
+  const flood=await Promise.all(Array.from({length:50},(_,i)=>post(server,
    "/api/v2/media/intents",a,{bytes:withGps.length,mime:"image/png",clientKey:"synthetic-key-"+i})));
   const good=flood.filter(r=>r.statusCode===200);
   assert.equal(good.length,6,JSON.stringify(flood.map(x=>x.statusCode)));
-  assert.equal(flood.filter(r=>r.statusCode===409).length,19);
+  assert.equal(flood.filter(r=>r.statusCode===409).length,44);
   const chosen=good[0].json().assetId as string;
   assert.ok(!good[0].body.includes("private/"));
   const replay=await post(server,"/api/v2/media/intents",a,
