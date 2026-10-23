@@ -106,3 +106,12 @@ export function addSyntheticMetadata(image:Buffer):Buffer{
  return Buffer.concat([image.subarray(0,33),chunk("eXIf",Buffer.from("GPSLatitude=00;SyntheticOnly")),
  image.subarray(33)]);
 }
+
+/** Correct CRC header, synthetic 50MP dimensions; no 50MP allocation in CI. */
+export function makeSynthetic50MpHeader():Buffer{
+ const tiny=makeSyntheticPng();
+ const ihdr=Buffer.from(tiny.subarray(8,33));
+ ihdr.writeUInt32BE(10000,8);ihdr.writeUInt32BE(5000,12);
+ ihdr.writeUInt32BE(crc(ihdr.subarray(4,21)),21);
+ return Buffer.concat([SIGNATURE,ihdr,tiny.subarray(33)]);
+}
