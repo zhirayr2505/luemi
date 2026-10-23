@@ -9,7 +9,7 @@ const sites=[["accepted","http://127.0.0.1:5174"],["current","http://127.0.0.1:5
 const results={date:new Date().toISOString(),sites:[],limitations:[
  "Chromium desktop with Android UA/touch simulation is not Telegram Android WebView or iOS WKWebView",
  "DOM image elements and JS heap do not represent GPU/decoded texture residency",
- "Instrumented own listeners count add/removeEventListener only; cannot count browser-internal native resources",
+ "Instrumented global window/document listeners count add/removeEventListener only; detached DOM element listeners are deliberately not strongly referenced",
  "GC/idle samples are laboratory observations, not guarantees of OS memory return"]};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const instrumentation=()=>{
@@ -19,13 +19,13 @@ const instrumentation=()=>{
  const originalRemove=EventTarget.prototype.removeEventListener;
  const capture=o=>typeof o==="boolean"?o:!!o?.capture;
  EventTarget.prototype.addEventListener=function(type,fn,options){
-  if(fn&&!existing.some(x=>x.target===this&&x.type===type&&x.fn===fn&&x.capture===capture(options))){
+  if((this===window||this===document)&&fn&&!existing.some(x=>x.target===this&&x.type===type&&x.fn===fn&&x.capture===capture(options))){
    existing.push({target:this,type,fn,capture:capture(options)});counts.listeners++;
   }
   return originalAdd.call(this,type,fn,options);
  };
  EventTarget.prototype.removeEventListener=function(type,fn,options){
-  const i=existing.findIndex(x=>x.target===this&&x.type===type&&x.fn===fn&&x.capture===capture(options));
+  const i=this===window||this===document?existing.findIndex(x=>x.target===this&&x.type===type&&x.fn===fn&&x.capture===capture(options)):-1;
   if(i>=0){existing.splice(i,1);counts.listeners--;}
   return originalRemove.call(this,type,fn,options);
  };
@@ -119,9 +119,10 @@ async function run(name,url){
    if(i===0||i===9||i===29||i===49)checkpoints.push({cycle:i+1,...await measure("cycle-"+(i+1))});
   }
   const after50=await measure("after50");
+  console.log("REM04C_PLATEAU "+JSON.stringify({name,expanded,checkpoints,after50}));
   assert.equal(after50.visitorRoutes,0,"visitor route must leave no mounted route");
   assert.ok(after50.own.urls<=expanded.own.urls,"app-owned object URLs must not grow");
-  assert.ok(after50.own.listeners<=expanded.own.listeners+8,"app-owned listeners must plateau");
+  assert.ok(after50.own.listeners<=expanded.own.listeners+4,"app-owned global window/document listeners must plateau");
   // An expanded scroll is independent of the covered library scroll.
   await page.locator(".fy-expanded .fy-grid").evaluate(node=>node.scrollTop=245);
   await page.getByRole("button",{name:"Назад к подборкам"}).click();
