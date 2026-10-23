@@ -62,4 +62,68 @@ try {
   console.log(blocked?"REM05B_COOKIE_BLOCKED_FAIL_CLOSED_PASS":"REM05B_V2_MOCK_STARTUP_PASS");
   await context.close();
  }
+ // Browser proof is intentionally limited to local IndexedDB survival and
+ // session identity switching; it does NOT prove actual Telegram native behavior.
+ const context=await browser.newContext({viewport:{width:393,height:852},serviceWorkers:"block"});
+ await context.addInitScript(()=>{
+  window.__luemiDeleted=0;
+  const original=IDBFactory.prototype.deleteDatabase;
+  IDBFactory.prototype.deleteDatabase=function(name){window.__luemiDeleted++;return original.call(this,name);};
+  const userId=sessionStorage.getItem("__rem05bActor")==="B"?880022:880011;
+  window.Telegram={WebApp:{initData:"SYNTHETIC_SIGNED_INITDATA_ONLY",initDataUnsafe:{
+   user:{id:userId,first_name:"Synthetic "+(userId===880022?"B":"A")}},
+   ready(){},expand(){},colorScheme:"light"}};
+ });
+ const page=await context.newPage();
+ const pageErrors=[];page.on("pageerror",e=>pageErrors.push(e.message));
+ await page.route("**/telegram-web-app.js*",route=>route.fulfill({status:200,contentType:"application/javascript",body:""}));
+ await page.route("**/api/health/live",route=>route.fulfill({status:200,contentType:"application/json",body:'{"status":"ok"}'}));
+ let requestedA=0,requestedB=0;
+ const actorResponse=()=>({
+   ...session,user:{...session.user,id:requestedB>0?"22222222-2222-4222-8222-222222222222":actorId}
+ });
+ await page.route("**/api/v2/auth/telegram",route=>{
+  if(requestedA===0)requestedA++;else requestedB++;
+  return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(actorResponse())});
+ });
+ await page.route("**/api/v2/auth/session",route=>route.fulfill({
+  status:200,contentType:"application/json",body:JSON.stringify(actorResponse())}));
+ await page.goto(site,{waitUntil:"domcontentloaded"});
+ await page.getByRole("button",{name:/Начать/}).waitFor({timeout:12000});
+ await page.evaluate(async()=>{
+  await new Promise((resolve,reject)=>{
+   const open=indexedDB.open("luemi-rem05b-ci-local-originals",1);
+   open.onupgradeneeded=()=>{open.result.createObjectStore("local");};
+   open.onerror=()=>reject(open.error);
+   open.onsuccess=()=>{
+    const db=open.result,tx=db.transaction("local","readwrite");
+    tx.objectStore("local").put({blob:"LOCAL_DRAFT_A_UNTOUCHED"},"A");
+    tx.oncomplete=()=>{db.close();resolve();};
+    tx.onerror=()=>reject(tx.error);
+   };
+  });
+  sessionStorage.setItem("__rem05bActor","B");
+ });
+ await page.reload({waitUntil:"domcontentloaded"});
+ await page.getByRole("button",{name:/Начать/}).waitFor({timeout:12000});
+ assert.equal(requestedA,1);assert.equal(requestedB,1);
+ const local=await page.evaluate(()=>new Promise((resolve,reject)=>{
+  const open=indexedDB.open("luemi-rem05b-ci-local-originals",1);
+  open.onerror=()=>reject(open.error);
+  open.onsuccess=()=>{
+   const db=open.result,tx=db.transaction("local","readonly");
+   const get=tx.objectStore("local").get("A");
+   get.onsuccess=()=>{const payload=get.result;db.close();resolve({
+    payload,deleteCalls:window.__luemiDeleted,unsafeKeys:Object.keys(localStorage).filter(x=>/token|session|initdata/i.test(x))
+   });};
+   get.onerror=()=>reject(get.error);
+  };
+ }));
+ assert.deepEqual(local.payload,{blob:"LOCAL_DRAFT_A_UNTOUCHED"});
+ assert.equal(local.deleteCalls,0);
+ assert.deepEqual(local.unsafeKeys,[]);
+ assert.deepEqual(pageErrors,[]);
+ console.log("REM05B_BROWSER_ACCOUNT_SWITCH_LOCAL_IDB_PRESERVED_PASS");
+ await context.close();
+
 }finally{await browser.close();}
