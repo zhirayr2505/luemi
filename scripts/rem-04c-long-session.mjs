@@ -102,7 +102,9 @@ async function run(name,url){
   const initial=await measure("library-warm");
   assert.ok(initial.fyLibraryImages>0&&initial.own!==null,"measuring owner must be installed");
   const originalScroll=initial.libraryScroll;
-  await page.getByRole("button",{name:"Смотреть всех"}).first().click();
+  // Open by DOM click: Playwright auto-scroll would change the library scroll
+  // before the collection switch, incorrectly attributing test scrolling to LUEMI.
+  await page.getByRole("button",{name:"Смотреть всех"}).first().evaluate(node=>node.click());
   await page.locator(".fy-expanded .fy-grid").waitFor();
   const expanded=await measure("expanded");
   assert.equal(expanded.fyExpandedImages,expanded.fyExpandedTiles);
@@ -127,6 +129,7 @@ async function run(name,url){
   await page.locator(".fy-expanded .fy-grid").evaluate(node=>node.scrollTop=245);
   await page.getByRole("button",{name:"Назад к подборкам"}).click();
   const restored=await measure("library-return");
+  console.log("REM04C_SCROLL "+JSON.stringify({name,originalScroll,expandedScroll:expanded.libraryScroll,restoredScroll:restored.libraryScroll}));
   assert.ok(Math.abs(restored.libraryScroll-originalScroll)<=1,
    "REM-04C must keep original library scroll geometry, no scroll-to-zero");
   assert.equal(restored.fyLibraryImages,initial.fyLibraryImages,"all library media restored");
