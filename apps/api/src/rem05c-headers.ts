@@ -1,6 +1,6 @@
 import type {FastifyInstance} from "fastify";
 export interface EmbeddingPolicy {enabled:boolean;ancestors:string[]}
-const hashed=/^\\/assets\\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8,}\\.(js|css|svg|woff2?|png|webp|avif|ico)$/;
+const hashed=/^\/assets\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8,}\.(js|css|svg|woff2?|png|webp|avif|ico)$/;
 const assetMime:Record<string,readonly string[]>={
  js:["application/javascript","text/javascript"],css:["text/css"],
  svg:["image/svg+xml"],woff:["font/woff","application/font-woff"],
