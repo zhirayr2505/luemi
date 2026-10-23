@@ -25,6 +25,8 @@ export interface TelegramSetupResult {
   botUsername: string;
   webhookUrl: string;
   menuConfigured: true;
+  /** URL/menu checks cannot attest Telegram secret generation. */
+  secretGenerationStatus: "unknown_not_attested";
 }
 
 /**
@@ -90,22 +92,24 @@ export async function configureStagingTelegramBot(
   }
   // Fully configured bot: startup is idempotent, do not rewrite Telegram settings.
   if (existingMenuMatches && webhook.url === webhookUrl) {
-    return { botUsername: me.username ?? "LuemiAppBot", webhookUrl, menuConfigured: true };
+    return { botUsername: me.username ?? "LuemiAppBot", webhookUrl, menuConfigured: true, secretGenerationStatus: "unknown_not_attested" };
   }
 
   // All read-only checks have passed; customize the global bot menu button.
-  await invoke<boolean>("setChatMenuButton", {
+  const menuAck = await invoke<boolean>("setChatMenuButton", {
     menu_button: {
       type: "web_app",
       text: "Открыть LUEMI 💜",
       web_app: { url: config.origin }
     }
   });
-  await invoke<boolean>("setWebhook", {
+  if (menuAck !== true) throw new Error("Telegram menu setup not acknowledged");
+  const webhookAck = await invoke<boolean>("setWebhook", {
     url: webhookUrl,
     secret_token: config.webhookSecret,
     allowed_updates: ["message"],
     drop_pending_updates: false
   });
-  return { botUsername: me.username ?? "LuemiAppBot", webhookUrl, menuConfigured: true };
+  if (webhookAck !== true) throw new Error("Telegram webhook setup not acknowledged");
+  return { botUsername: me.username ?? "LuemiAppBot", webhookUrl, menuConfigured: true, secretGenerationStatus: "unknown_not_attested" };
 }

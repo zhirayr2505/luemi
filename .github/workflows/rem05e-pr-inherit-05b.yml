@@ -1,0 +1,9 @@
+name: LUEMI REM-05B exact-head inherited PR preservation
+on:
+  pull_request:
+    branches: [remediation/rem-05d-private-media-rls-moderation-20261023]
+permissions:
+  contents: read
+jobs:
+  rem05b-inherited:
+    uses: ./.github/workflows/rem05b-focused.yml

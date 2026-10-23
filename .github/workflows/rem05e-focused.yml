@@ -1,0 +1,75 @@
+name: LUEMI REM-05E mock-only Telegram webhook secret QA
+on:
+  push:
+    branches: [remediation/rem-05e-webhook-secret-rotation-20261024]
+  pull_request:
+    branches: [remediation/rem-05d-private-media-rls-moderation-20261023]
+permissions:
+  contents: read
+jobs:
+  rem05e-synthetic-rotation-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      STAGING_BOOTSTRAP_ONLY: '1'
+      TELEGRAM_BOT_TOKEN: ''
+      TELEGRAM_WEBHOOK_SECRET: ''
+      HEALTH_CHECK_KEY: ''
+      REM05D_PRIVATE_ENABLED: '0'
+      REM05D_PUBLICATION_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install pinned locked dependencies and typecheck
+        run: |
+          set -euo pipefail
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npm run typecheck -w @luemi/api
+      - name: Synthetic Bot API and strict receiver negative tests E01-E19
+        run: |
+          set -euo pipefail
+          npx --no-install tsx --test apps/api/test/rem05e-rotation.test.ts
+          npx --no-install tsx --test apps/api/test/rem05e-audit.test.ts
+      - name: Public new-diff secret violations must be zero
+        run: node scripts/rem-05b-public-diff-scan.mjs
+  rem05e-bootstrap-preservation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      STAGING_BOOTSTRAP_ONLY: '1'
+      TELEGRAM_BOT_TOKEN: ''
+      TELEGRAM_WEBHOOK_SECRET: ''
+      HEALTH_CHECK_KEY: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Locked install and contracts
+        run: |
+          set -euo pipefail
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npm run typecheck -w @luemi/api
+      - name: Existing Telegram bootstrap and Fastify webhook behavior unchanged
+        run: |
+          set -euo pipefail
+          npx --no-install tsx --test apps/api/test/telegram-setup.test.ts apps/api/test/telegram-webhook.test.ts
+          npm run test:api:isolated
