@@ -34,6 +34,7 @@ jobs:
       REM05B_TEST_NOINHERIT_DATABASE_URL: postgres://rem05b_ci_noinherit:synthetic_ci_noinherit_only@127.0.0.1:5432/rem05b_test
       REM05B_TEST_READALL_DATABASE_URL: postgres://rem05b_ci_readall:synthetic_ci_readall_only@127.0.0.1:5432/rem05b_test
       REM05B_TEST_CREATE_ROLE_DATABASE_URL: postgres://rem05b_ci_createrole:synthetic_ci_createrole_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_EXTRA_COLUMN_DATABASE_URL: postgres://rem05b_ci_extracol:synthetic_ci_extracol_only@127.0.0.1:5432/rem05b_test
     steps:
       - uses: actions/checkout@v4
         with:
@@ -78,6 +79,9 @@ jobs:
           GRANT luemi_request,pg_read_all_data TO rem05b_ci_readall;
           CREATE ROLE rem05b_ci_createrole LOGIN CREATEROLE PASSWORD 'synthetic_ci_createrole_only';
           GRANT luemi_request TO rem05b_ci_createrole;
+          CREATE ROLE rem05b_ci_extracol LOGIN PASSWORD 'synthetic_ci_extracol_only';
+          GRANT luemi_request TO rem05b_ci_extracol;
+          GRANT SELECT(telegram_id) ON luemi_private.actors TO rem05b_ci_extracol;
           SQL
       - name: Actual PostgreSQL ownership and auth security negatives
         run: npx --no-install tsx --test apps/api/secure-tests/rem05b.test.ts
