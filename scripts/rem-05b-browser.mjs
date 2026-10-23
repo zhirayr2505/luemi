@@ -20,9 +20,10 @@ try {
   });
   const page=await context.newPage();
   const errors=[];page.on("pageerror",err=>errors.push(err.message));
-  let authCalls=0,probeCalls=0;
+  let authCalls=0,probeCalls=0,healthCalls=0;
+  const failedRequests=[];page.on('requestfailed',request=>failedRequests.push({url:request.url(),failure:request.failure()}));
   await page.route("**/telegram-web-app.js*",route=>route.fulfill({status:200,contentType:"application/javascript",body:""}));
-  await page.route("**/api/health/live",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({status:"ok"})}));
+  await page.route("**/api/health/live",route=>{healthCalls++;return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({status:"ok"})});});
   await page.route("**/api/v2/auth/telegram",route=>{
    authCalls++;
    const payload=route.request().postDataJSON();
@@ -43,11 +44,11 @@ try {
     const runtime=await page.evaluate(()=>({initDataLength:window.Telegram?.WebApp?.initData?.length??0,
       scene:document.querySelector("main")?.getAttribute("data-scene"),
       phase:document.querySelector("main")?.getAttribute("data-phase")}));
-    console.error("REM05B_DIAGNOSTIC",JSON.stringify({visible,runtime,authCalls,probeCalls}));
+    console.error("REM05B_DIAGNOSTIC",JSON.stringify({visible,runtime,healthCalls,authCalls,probeCalls,failedRequests}));
     throw error;
    });
   }
-  assert.equal(authCalls,1);
+  assert.equal(healthCalls,1);assert.equal(authCalls,1);
   assert.equal(probeCalls,1);
   assert.deepEqual(errors,[]);
   const privacy=await page.evaluate(()=>({
