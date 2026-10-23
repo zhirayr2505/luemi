@@ -65,7 +65,9 @@ CREATE POLICY luemi_actors_self ON luemi_private.actors FOR SELECT TO luemi_requ
  USING (id = nullif(current_setting('luemi.actor_id',true),'')::uuid
    AND status = 'active');
 GRANT USAGE ON SCHEMA luemi_private TO luemi_auth_issuer,luemi_request;
-GRANT SELECT,INSERT,UPDATE ON luemi_private.actors,luemi_private.sessions TO luemi_auth_issuer;
+GRANT SELECT,INSERT ON luemi_private.actors,luemi_private.sessions TO luemi_auth_issuer;
+GRANT UPDATE(updated_at) ON luemi_private.actors TO luemi_auth_issuer;
+GRANT UPDATE(last_seen_at,idle_expires_at,token_hash,generation,revoked_at) ON luemi_private.sessions TO luemi_auth_issuer;
 GRANT SELECT(id,status,environment) ON luemi_private.actors TO luemi_request;
 -- No request-role privilege on sessions; never expose luemi_private via PostgREST.
 -- No SECURITY DEFINER functions; no legacy table/row changes; no destructive DOWN.
