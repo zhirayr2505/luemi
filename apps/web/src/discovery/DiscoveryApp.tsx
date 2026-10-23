@@ -23,6 +23,7 @@ import {GestureArbiter,computedTranslation,fractionalTrack,gestureCapabilities} 
 import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
+import {useModalLayer} from "../ui/modal-layer";
 import "./discovery.css";
 
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
@@ -102,6 +103,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
+ const savedDialog=useRef<HTMLElement>(null);
+ useModalLayer(savedOpen,savedDialog,()=>setSavedOpen(false));
  const [interestOpen,setInterestOpen]=useState<string|null>(null);
  const [forYouCollection,setForYouCollection]=useState<CollectionId|"best"|null>(null);
  const [forYouSettings,setForYouSettings]=useState(false);
@@ -452,7 +455,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
              if(event.target===event.currentTarget&&event.propertyName==="transform")finishPagerSettle();
            }}
            style={{"--luemi-tab-offset":(-tabIndex*100)+"%"} as CSSProperties}>
-           <section className="discovery-page" role="tabpanel" aria-label="Лента">
+           <section className="discovery-page" role="tabpanel" aria-label="Лента" inert={discoveryTab!=="feed"} aria-hidden={discoveryTab!=="feed"}>
              {<div className="discovery-deck-stage">
                {person&&<div key={person.id}
                  className={"discovery-deck-layer"+(leaving?" deck-leaving":" deck-active")}
@@ -478,12 +481,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
                </div>}
              </div>}
            </section>
-           <section className="discovery-page" role="tabpanel" aria-label="Для тебя">
+           <section className="discovery-page" role="tabpanel" aria-label="Для тебя" inert={discoveryTab!=="for-you"} aria-hidden={discoveryTab!=="for-you"}>
              <ForYou draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportForYouScroll} onSave={toggleForYouSave}
                onPerson={setPersonOpen} expanded={forYouCollection} onExpanded={setForYouCollection}
                settingsOpen={forYouSettings} onSettingsOpen={setForYouSettings}/>
            </section>
-           <section className="discovery-page" role="tabpanel" aria-label="Рядом">
+           <section className="discovery-page" role="tabpanel" aria-label="Рядом" inert={discoveryTab!=="nearby"} aria-hidden={discoveryTab!=="nearby"}>
              {nearbyPrepared&&<Nearby active={mainTab==="discover"&&discoveryTab==="nearby"&&!selectedPerson} draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportNearbyScroll} onSave={toggleForYouSave}
                onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>}
            </section>
@@ -511,10 +514,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    <span className="discovery-sr-status" role="status" aria-live="polite">{announcement}</span>
    <DiscoveryFilters open={filterOpen} filter={filters} draft={draft} onClose={()=>setFilterOpen(false)} onApply={apply}/>
    {savedOpen&&<div className="discovery-modal-backdrop" onClick={()=>setSavedOpen(false)}>
-     <section className="discovery-saved-sheet" role="dialog" aria-label="Сохранённые демо-анкеты" aria-modal="true"
+     <section className="discovery-saved-sheet" ref={savedDialog} tabIndex={-1} role="dialog" aria-label="Сохранённые демо-анкеты" aria-modal="true"
        onClick={e=>e.stopPropagation()}>
        <header><h2>Сохранённые <span className="discovery-demo-label">Демо</span></h2>
-         <button className="discovery-icon-action" type="button" onClick={()=>setSavedOpen(false)} aria-label="Закрыть"><X size={19}/></button>
+         <button className="discovery-icon-action" type="button" onClick={()=>setSavedOpen(false)} data-modal-initial aria-label="Закрыть"><X size={19}/></button>
        </header>
        <div className="discovery-saved-list">
          {feed.saved.length?feed.saved.map(id=>{
