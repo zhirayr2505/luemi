@@ -46,8 +46,12 @@ async function safeGeoRole(db:PoolClient):Promise<boolean>{
            AND row_security_active(c.oid)) FROM pg_class c WHERE
           c.oid IN ('luemi_private.geo_daily_usage'::regclass,
                     'luemi_private.geo_inflight'::regclass))
-        AND has_table_privilege(current_user,'luemi_private.geo_daily_usage','SELECT,INSERT,UPDATE')
-        AND has_table_privilege(current_user,'luemi_private.geo_inflight','SELECT,INSERT,DELETE')
+        AND has_table_privilege(current_user,'luemi_private.geo_daily_usage','SELECT')
+        AND has_table_privilege(current_user,'luemi_private.geo_daily_usage','INSERT')
+        AND has_table_privilege(current_user,'luemi_private.geo_daily_usage','UPDATE')
+        AND has_table_privilege(current_user,'luemi_private.geo_inflight','SELECT')
+        AND has_table_privilege(current_user,'luemi_private.geo_inflight','INSERT')
+        AND has_table_privilege(current_user,'luemi_private.geo_inflight','DELETE')
       ) AS safe FROM pg_roles r WHERE r.rolname=current_user`);
     return r.rowCount===1 && r.rows[0].safe===true;
   }catch{return false;}
@@ -109,7 +113,9 @@ export class GeoBudget {
           if(await safeGeoRole(client)){
             await client.query("DELETE FROM luemi_private.geo_inflight WHERE id=$1 AND namespace=$2",[id,this.config.namespace]);
           }
-        }catch{}finally{client.release();}
+        }catch{
+          // Lease expires independently if release cannot reach the store.
+        }finally{client.release();}
       }};
     }catch{
       if(begun)await db.query("ROLLBACK").catch(()=>{});

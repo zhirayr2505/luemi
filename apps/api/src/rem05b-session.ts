@@ -131,7 +131,7 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   if(typeof supplied!=="string"||!equals(supplied,csrf(cfg.pepper,req.authActor.hash)))
    reply.code(403).send({error:"forbidden"});
  };
- app.post<{Body:{initData?:unknown}}>("/api/v2/auth/telegram",async(req,reply)=>{
+ app.post<{Body:{initData?:unknown}}>("/api/v2/auth/telegram",{config:{rateLimit:{max:10,timeWindow:"1 minute"}}},async(req,reply)=>{
   if(!validOrigin(req,cfg.origin))return reply.code(403).send({error:"forbidden"});
   const raw=req.body?.initData;
   if(typeof raw!=="string"||Buffer.byteLength(raw,"utf8")>8192)return reply.code(401).send({error:"invalid_init_data"});

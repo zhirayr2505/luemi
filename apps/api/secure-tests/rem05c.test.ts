@@ -106,13 +106,13 @@ test("SEC-G01 G02 G03 G07 G08 G09: actual sessions and fake provider, separate N
  }finally{await app1.close();await app2.close();}
 });
 test("SEC-G09: budget unavailable fails closed before provider",async()=>{
- let calls=0;
- const budget=new GeoBudget({...budget("rem05c_store_down",1),
-  databaseUrl:"postgres://synthetic:synthetic@127.0.0.1:1/down"});
+ const calls=0;
+ const unavailableBudget=new GeoBudget({...budget("rem05c_store_down",1),
+  databaseUrl:"postgres://synthetic_user:synthetic_password@127.0.0.1:1/down"});
  try{
-  const r=await budget.reserve(actorA,"search");
+  const r=await unavailableBudget.reserve(actorA,"search");
   assert.deepEqual({ok:r.ok}, {ok:false});
   assert.equal(calls,0);
- }finally{await budget.close();}
+ }finally{await unavailableBudget.close();}
 });
 test.after(async()=>{await admin.end();});

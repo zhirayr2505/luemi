@@ -21,7 +21,7 @@ type ReverseBody={lat?:unknown;lon?:unknown};
 function query(value:unknown):string|null{
   if(typeof value!=="string")return null;
   const trimmed=value.trim().normalize("NFC");
-  if([...trimmed].length<2||[...trimmed].length>80||/[\u0000-\u001f\u007f<>]/u.test(trimmed))return null;
+  if([...trimmed].length<2||[...trimmed].length>80||[...trimmed].some(ch=>ch.charCodeAt(0)<32||ch.charCodeAt(0)===127||ch==="<"||ch===">"))return null;
   return trimmed;
 }
 function coordinates(body:unknown):{lat:number;lon:number}|null{

@@ -30,26 +30,16 @@ export function buildApp(config: ApiConfig) {
   // One untrusted network peer must not consume static/health/geo actor quotas.
   // trustProxy stays FALSE until the real Render hop chain is independently proven.
   app.register(rateLimit,{global:false,skipOnError:false});
-  app.addHook("onRoute",route=>{
-    const url=route.url;
-    const auth=url==="/api/auth/telegram"||url==="/api/v2/auth/telegram";
-    const webhook=url==="/api/telegram/webhook";
-    const ready=url==="/api/health/ready";
-    if(auth||webhook||ready){
-      route.config={...route.config,rateLimit:{max:auth?10:webhook?120:30,
-        timeWindow:"1 minute",keyGenerator:(request:import("fastify").FastifyRequest)=>request.ip}};
-    }
-  });
   installHttpPolicy(app,config.rem05c?.embedding);
 
   app.get("/api/health/live", async (): Promise<HealthResponse> => ({ status: "ok" }));
-  app.get("/api/health/ready", async (request, reply) => {
+  app.get("/api/health/ready", {config:{rateLimit:{max:30,timeWindow:"1 minute"}}}, async (request, reply) => {
     const secret = request.headers["x-health-key"];
     if (!config.healthKey || typeof secret !== "string" || !equalSecret(secret, config.healthKey))
       return reply.code(404).send({ error: "not_found" });
     return { status: "ready", database: "not_connected", stage: "01" };
   });
-  app.post<{ Body: { initData?: unknown } }>("/api/auth/telegram", async (request, reply) => {
+  app.post<{ Body: { initData?: unknown } }>("/api/auth/telegram", {config:{rateLimit:{max:10,timeWindow:"1 minute"}}}, async (request, reply) => {
     if (!config.botToken) return reply.code(503).send({ error: "service_unavailable" });
     const raw = request.body?.initData;
     if (typeof raw !== "string") return reply.code(401).send({ error: "invalid_init_data" });
