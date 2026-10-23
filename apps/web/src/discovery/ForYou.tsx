@@ -38,12 +38,12 @@ function reason(p:DemoPerson,d:RegistrationDraft){
  if(ev.languages.length)return "Общий язык общения";
  return "Анкета · демо";
 }
-const PersonTile=memo(function PersonTile({person,draft,saved,onSave,onPerson}:{person:DemoPerson;draft:RegistrationDraft;saved:boolean;onSave:(id:string)=>void;onPerson:(id:string)=>void}){
+const PersonTile=memo(function PersonTile({person,draft,saved,onSave,onPerson,mediaActive}:{person:DemoPerson;draft:RegistrationDraft;saved:boolean;onSave:(id:string)=>void;onPerson:(id:string)=>void;mediaActive:boolean}){
  const pic=person.photos[0];
  return <article className="fy-tile">
-  <button className="fy-tile-photo" type="button" onClick={()=>onPerson(person.id)} aria-label={"Открыть демо-профиль "+person.name+", "+person.age}>
-   <img src={pic.src} alt="" loading="lazy" decoding="async" draggable={false}
-    onError={e=>{if(pic.fallback&&e.currentTarget.src!==pic.fallback)e.currentTarget.src=pic.fallback;}}/>
+  <button className="fy-tile-photo" type="button" data-person-id={person.id} onClick={()=>onPerson(person.id)} aria-label={"Открыть демо-профиль "+person.name+", "+person.age}>
+   {mediaActive&&<img src={pic.src} alt="" loading="lazy" decoding="async" draggable={false}
+    onError={e=>{if(pic.fallback&&e.currentTarget.src!==pic.fallback)e.currentTarget.src=pic.fallback;}}/>}
    <span className="fy-tile-fade" aria-hidden="true"/>
    <span className="fy-tile-demo">Демо</span>
    <span className="fy-tile-info"><strong>{person.name}, {person.age}</strong>
@@ -72,6 +72,24 @@ function emptyMessage(id:CollectionId){
 export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,settingsOpen,onSettingsOpen,onScrollTop}:Props){
  const [prefs,setPrefs]=useState<Prefs>(savedPrefs);
  const scroll=useRef<HTMLDivElement>(null), first=useRef<HTMLElement>(null);
+ // REM-04C: while an expanded collection covers the original library, keep
+ // only the library photos near its saved viewport. Preserve all cards, state,
+ // layout and scroll nodes. Nearby photos survive for an immediate reveal.
+ const [libraryWindow,setLibraryWindow]=useState<ReadonlySet<string>|null>(null);
+ const openCollection=(id:CollectionId|"best")=>{
+  const root=scroll.current,rect=root?.getBoundingClientRect();
+  if(rect&&rect.height>0){
+   const visible=new Set<string>();
+   root!.querySelectorAll<HTMLElement>(".fy-tile-photo[data-person-id]").forEach(tile=>{
+    const box=tile.getBoundingClientRect();
+    if(box.bottom>=rect.top-rect.height*.5&&box.top<=rect.bottom+rect.height*.5){
+     const id=tile.dataset.personId;if(id)visible.add(id);
+    }
+   });
+   setLibraryWindow(visible);
+  }else setLibraryWindow(null); // fail open, not a blind eviction
+  onExpanded(id);
+ };
  useEffect(()=>{try{localStorage.setItem(storeKey,JSON.stringify(prefs));}catch{/* restricted Telegram storage */}},[prefs]);
  const eligible=useMemo(()=>filterDemoPeople(forYouDemoPeople,filters,draft),[filters,draft]);
  const ranked=useMemo(()=>rankDemonstrations(eligible,draft),[eligible,draft]);
@@ -81,7 +99,8 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
  },[ranked,draft,filters]);
  const shown=useMemo(()=>prefs.order.filter(id=>!prefs.hidden.includes(id))
   .sort((a,b)=>Number(prefs.favorites.includes(b))-Number(prefs.favorites.includes(a))),[prefs]);
- const one=(p:DemoPerson)=><PersonTile key={p.id} person={p} draft={draft} saved={saved.includes(p.id)} onSave={onSave} onPerson={onPerson}/>;
+ const one=(p:DemoPerson,fromExpanded=false)=><PersonTile key={p.id} person={p} draft={draft} saved={saved.includes(p.id)} onSave={onSave} onPerson={onPerson}
+  mediaActive={fromExpanded||!expanded||!libraryWindow||libraryWindow.has(p.id)}/>;
  const rail=(list:DemoPerson[],name:string)=><div className="fy-rail" role="group" aria-label={name} onPointerDown={e=>e.stopPropagation()}>{list.slice(0,6).map(one)}</div>;
  const flip=(id:CollectionId,field:"hidden"|"favorites")=>setPrefs(p=>({...p,[field]:p[field].includes(id)?p[field].filter(x=>x!==id):[...p[field],id]}));
  const shift=(id:CollectionId,n:number)=>setPrefs(p=>{
@@ -101,12 +120,12 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
   const c=collectionDefinitions.find(x=>x.id===id)!,list=members[id],Icon=icons[id];
   return <section className="fy-section" key={id} aria-label={c.title}>
    <div className="fy-section-header"><div><h3><Icon size={18}/>{c.title}</h3><p>{c.description}</p></div>
-    {!!list.length&&<button type="button" onClick={()=>onExpanded(id)}>Смотреть всех <ArrowRight size={14}/></button>}
+    {!!list.length&&<button type="button" onClick={()=>openCollection(id)}>Смотреть всех <ArrowRight size={14}/></button>}
    </div>
    {list.length?rail(list,c.title+" · демо"):<Empty text={emptyMessage(id)}/>}
   </section>;
  };
- return <div className="fy-root">
+ return <div className="fy-root" data-media-residency={expanded?"expanded-window":"library"}>
   <div className="fy-scroll" ref={scroll} onScroll={event=>onScrollTop?.(event.currentTarget.scrollTop)}>
    <div className="fy-hero">
     <div className="fy-hero-glow" aria-hidden="true"/><div className="fy-hero-mark" aria-hidden="true"><Heart size={89} strokeWidth={.85}/><Sparkles size={29}/></div>
@@ -122,7 +141,7 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
    <section className="fy-section" ref={first} aria-label="Лучшие совпадения сегодня">
     <div className="fy-section-header"><div><h3><Sparkles size={18}/>Лучшие совпадения сегодня</h3>
      <p>Подборка-пример по интересам, целям и языкам</p></div>
-     {ranked.length>0&&<button type="button" onClick={()=>onExpanded("best")}>Смотреть всех <ArrowRight size={14}/></button>}</div>
+     {ranked.length>0&&<button type="button" onClick={()=>openCollection("best")}>Смотреть всех <ArrowRight size={14}/></button>}</div>
     {ranked.length?rail(ranked,"Персональные рекомендации · демо"):<Empty text="По выбранным фильтрам нет тестовых анкет. Измени параметры поиска."/>}
    </section>
    {shown.includes("common")&&section("common")}
@@ -133,7 +152,7 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
   {expanded&&<section className="fy-expanded" role="region" aria-label={"Полная подборка: "+viewTitle}>
    <header><button type="button" onClick={()=>onExpanded(null)} aria-label="Назад к подборкам" className="fy-back"><ArrowLeft size={20}/></button>
     <div><h2>{viewTitle}</h2><p>Полная подборка · демо</p></div></header>
-   {expandedPeople.length?<div className="fy-grid" onScroll={event=>onScrollTop?.(event.currentTarget.scrollTop)}>{expandedPeople.map(one)}</div>:<Empty text={expanded==="best"?"Нет подходящих тестовых анкет. Измени фильтры.":emptyMessage(expanded)}/>}
+   {expandedPeople.length?<div className="fy-grid" onScroll={event=>onScrollTop?.(event.currentTarget.scrollTop)}>{expandedPeople.map(person=>one(person,true))}</div>:<Empty text={expanded==="best"?"Нет подходящих тестовых анкет. Измени фильтры.":emptyMessage(expanded)}/>}
   </section>}
   {settingsOpen&&<section className="fy-manage" role="dialog" aria-modal="true" aria-label="Управление подборками">
    <header><div><h2>Мои подборки</h2><p>Избранное, порядок и видимость тематических блоков.</p></div>
