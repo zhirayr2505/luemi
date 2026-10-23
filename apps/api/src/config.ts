@@ -2,6 +2,8 @@ import type { FastifyServerOptions } from "fastify";
 import type { Rem05bOptions } from "./rem05b-session.js";
 import type { GeoRuntime } from "./geo-routes.js";
 import type { EmbeddingPolicy } from "./rem05c-headers.js";
+import {memoryPrivateStore} from "./rem05d-private.js";
+import type {Rem05dOptions} from "./rem05d-private.js";
 export interface ApiConfig {
   port: number;
   origin: string;
@@ -14,6 +16,7 @@ export interface ApiConfig {
   setupOnStart?: boolean;
   logger: FastifyServerOptions["logger"];
   rem05b?: Rem05bOptions;
+  rem05d?: Rem05dOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -71,8 +74,23 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const embeddingEnabled=env.REM05C_TELEGRAM_WEB_EMBED_ENABLED==="1";
   const embedding:EmbeddingPolicy={enabled:embeddingEnabled,
     ancestors:embeddingEnabled?(env.REM05C_EMBED_ANCESTORS??"").split(",").map(x=>x.trim()):[]};
+  // Never activate from an existing Supabase/Storage key or remote Render flag.
+  // No persistent storage adapter exists in 05D; only isolated NODE_ENV=test
+  // can intentionally instantiate synthetic private in-memory storage.
+  const dFlag=env.REM05D_PRIVATE_ENABLED==="1";
+  if(dFlag&&(env.NODE_ENV!=="test"||!v2Enabled))
+    throw new Error("REM-05D is unavailable outside explicit isolated tests");
+  const rem05d:Rem05dOptions|undefined=dFlag?{
+    enabled:true,testOnly:true,namespace:env.REM05B_BOT_NAMESPACE??"",
+    requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
+    workerDatabaseUrl:env.REM05D_TEST_WORKER_DATABASE_URL??"",
+    consentVersion:env.REM05D_TEST_CONSENT_VERSION??"",
+    storage:memoryPrivateStore()
+  }:undefined;
+  if(env.REM05D_PUBLICATION_ENABLED==="1")
+    throw new Error("REM-05D publication is HARD DISABLED");
   return {
-    rem05b,
+    rem05b,rem05d,
     rem05c:{geo,embedding},
     port,
     origin,

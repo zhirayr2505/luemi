@@ -9,6 +9,7 @@ import { registerGeography } from "./geo-routes.js";
 import { registerRem05b } from "./rem05b-session.js";
 import { installHttpPolicy } from "./rem05c-headers.js";
 import { installNetworkLimits } from "./rem05c-rate.js";
+import { registerRem05d } from "./rem05d-private.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -24,7 +25,7 @@ export function buildApp(config: ApiConfig) {
   });
   app.register(cors, {
     origin: config.origin,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "X-Health-Key", "X-Luemi-CSRF"]
   });
   // One untrusted network peer must not consume static/health/geo actor quotas.
@@ -54,5 +55,6 @@ export function buildApp(config: ApiConfig) {
   const guards=config.rem05b?.enabled?registerRem05b(app,config.rem05b):undefined;
   registerTelegramWebhook(app,config);
   registerGeography(app,config.rem05c?.geo,guards);
+  registerRem05d(app,guards,config.rem05d);
   return app;
 }
