@@ -3,6 +3,7 @@ import {createHmac} from "node:crypto";
 import test from "node:test";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
+import {validateTelegramInitData} from "../src/telegram-auth.js";
 
 const issuerUrl=process.env.REM05B_TEST_ISSUER_DATABASE_URL;
 const requestUrl=process.env.REM05B_TEST_REQUEST_DATABASE_URL;
@@ -19,6 +20,13 @@ function sign(userId:number,firstName="Тест",date=now,bot=token,extra:Record
  .map(([k,v])=>k+"="+v).join("\n");
  const key=createHmac("sha256","WebAppData").update(bot).digest();
  return new URLSearchParams({...data,hash:createHmac("sha256",key).update(message).digest("hex")}).toString();
+}
+function tamperUser(raw:string):string {
+ const p=new URLSearchParams(raw);
+ const user=JSON.parse(p.get("user")!);
+ user.id=102;
+ p.set("user",JSON.stringify(user));
+ return p.toString();
 }
 function makeApp(settings=opts){
  return buildApp({port:3001,origin,botToken:token,healthKey:"synthetic_health_key_length_32_chars",logger:false,rem05b:settings});
@@ -49,11 +57,13 @@ test("REM05B real PostgreSQL: signature, A/B, RLS, sessions, concurrency, CSRF a
   assert.equal((await get(app,"/api/v2/me")).statusCode,401);
   assert.equal((await get(app,"/api/v2/auth/session")).statusCode,401);
   const invalid=[
-   "a=b", sign(101).replace("101","102"),sign(101,"Тест",now-3601),
-   sign(101,"Тест",now+61),sign(101,"Тест",now, "999999:wrong-bot"),
+   "a=b", tamperUser(sign(101)),sign(101,"Тест",now-3601),
+   sign(101,"Тест",now+300),sign(101,"Тест",now, "999999:wrong-bot"),
    sign(101)+"&auth_date="+now,sign(101)+"&auth_date="+now+"&hash=x",
    "x".repeat(8200)
   ];
+  assert.equal(validateTelegramInitData(sign(101,"Тест",now+61),token,now),null,
+   "exact +61s skew must fail under a pinned server clock");
   for(const raw of invalid)assert.equal((await auth(app,raw)).statusCode,401);
   const records=await issuer.query<{count:string}>("SELECT count(*)::text AS count FROM luemi_private.actors");
   assert.equal(Number(records.rows[0].count),0,"Invalid input must not provision accounts");
