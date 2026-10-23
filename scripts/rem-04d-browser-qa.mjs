@@ -10,6 +10,7 @@ const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
  userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Mobile Safari/537.36"});
 const page=await context.newPage(),errors=[];
+await context.tracing.start({screenshots:true,snapshots:true,sources:false});
 page.on("pageerror",error=>errors.push(error.message));
 const snapshot=()=>page.evaluate(()=>{
  const lib=document.querySelector(".fy-scroll"),grid=document.querySelector(".fy-expanded .fy-grid"),header=document.querySelector(".lh-header");
@@ -156,6 +157,22 @@ try{
  }));
  assert.ok(Math.abs(tabs.scroll-tabs.width)<=2,"keyboard tab selection and physical scrollLeft agree");
  await page.screenshot({path:dir+"/profile-keyboard.png"});
+ // Focus fallback must be safe when the original trigger disappears while a
+ // portalled viewer is open (reorder/unmount of source control).
+ await page.locator(".pm-qa-focus").focus();
+ await page.evaluate(()=>window.__luemiQaMedia?.open("qa-alpha"));
+ await page.locator(".pm-viewer").waitFor();
+ await page.evaluate(()=>document.querySelector(".pm-qa-focus")?.remove());
+ await page.keyboard.press("Escape");
+ await page.locator(".pm-viewer").waitFor({state:"detached",timeout:4000});
+ const fallback=await page.evaluate(()=>{
+  const el=document.activeElement;
+  return {tag:el?.tagName,label:el?.getAttribute("aria-label"),
+    connected:el instanceof HTMLElement&&el.isConnected,
+    visible:el instanceof HTMLElement&&el.getClientRects().length>0&&!el.closest("[inert],[hidden]")};
+ });
+ assert.ok(fallback.connected&&fallback.visible&&fallback.tag!=="BODY",
+  "closed modal must focus a connected visible fallback when trigger has disappeared");
  // Repeated browser transitions and StrictMode cleanup.
  await page.evaluate(()=>window.__luemiQaUnmount?.());
  await sleep(50);
@@ -164,8 +181,11 @@ try{
  await page.waitForSelector(".discovery-app");
  assert.equal(errors.length,0,"no browser page errors: "+errors.join("; "));
  const report={sha:process.env.GITHUB_SHA??"local",library,fresh,gridScrolled,restored,reopened,second,
-  orderBeforeReload:beforeReload,orderAfterReload:afterReload,collectionAtProfileOpen,profile,viewer,menuStart,collectionReturn,tabs,
+  orderBeforeReload:beforeReload,orderAfterReload:afterReload,collectionAtProfileOpen,profile,viewer,menuStart,collectionReturn,tabs,fallback,
   pageErrors:errors,limitations:"Chromium 393x852 Android-UA touch simulation; physical A55/iOS/VoiceOver NOT VERIFIED"};
  writeFileSync(dir+"/focused.json",JSON.stringify(report,null,2));
  console.log("REM04D_FOCUSED_PASS "+JSON.stringify({header:[library.headerProgress,fresh.headerProgress,restored.headerProgress,second.headerProgress],tabs,pageErrors:errors.length}));
-}finally{await context.close();await browser.close();}
+}finally{
+ await context.tracing.stop({path:dir+"/focused.trace.zip"}).catch(()=>{});
+ await context.close();await browser.close();
+}
