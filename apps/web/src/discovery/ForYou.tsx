@@ -101,7 +101,7 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
   .sort((a,b)=>Number(prefs.favorites.includes(b))-Number(prefs.favorites.includes(a))),[prefs]);
  const one=(p:DemoPerson,fromExpanded=false)=><PersonTile key={p.id} person={p} draft={draft} saved={saved.includes(p.id)} onSave={onSave} onPerson={onPerson}
   mediaActive={fromExpanded||!expanded||!libraryWindow||libraryWindow.has(p.id)}/>;
- const rail=(list:DemoPerson[],name:string)=><div className="fy-rail" role="group" aria-label={name} onPointerDown={e=>e.stopPropagation()}>{list.slice(0,6).map(one)}</div>;
+ const rail=(list:DemoPerson[],name:string)=><div className="fy-rail" role="group" aria-label={name} onPointerDown={e=>e.stopPropagation()}>{list.slice(0,6).map(person=>one(person))}</div>;
  const flip=(id:CollectionId,field:"hidden"|"favorites")=>setPrefs(p=>({...p,[field]:p[field].includes(id)?p[field].filter(x=>x!==id):[...p[field],id]}));
  const shift=(id:CollectionId,n:number)=>setPrefs(p=>{
   const order=[...p.order],a=order.indexOf(id),b=a+n;if(b<0||b>=order.length)return p;
