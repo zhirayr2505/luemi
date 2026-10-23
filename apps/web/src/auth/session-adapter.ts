@@ -27,7 +27,7 @@ export async function authenticateBootstrap(initData:string,signal:AbortSignal):
  if(!confirmed||typeof confirmed!=="object"||(confirmed as {user?:{id?:unknown}}).user?.id!==user.id)
    throw new Error("Session identity mismatch");
  const csrf=(confirmed as {csrfToken?:unknown}).csrfToken;
- if(typeof csrf!=="string"||!(/^[A-Za-z0-9_-]{32,128}$/.test(csrf)))
+ if(typeof csrf!=="string"||!(/^[A-Za-z0-9_-]{8,128}$/.test(csrf)))
    throw new Error("Invalid session CSRF token");
  geoCsrfToken=csrf; // memory-only, never persisted
  return {mode:"session_v2",user:{id:user.id,firstName:user.firstName}};
