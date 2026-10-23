@@ -33,7 +33,7 @@ export function installNetworkLimits(
     path==="/api/telegram/webhook"?"webhook":
     path==="/api/health/ready"?"ready":null;
   if(!key)return;
-  const perPeer=key==="auth"?10:key==="webhook"?120:30;
+  const perPeer=key==="auth"?80:key==="webhook"?120:30;
   const wholeProcess=key==="auth"?400:key==="webhook"?2400:1200;
   // request.ip is socket peer because Fastify trustProxy=false. Ignore user XFF.
   const limit=peer.check(key+":"+req.ip,perPeer);

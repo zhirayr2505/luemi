@@ -56,11 +56,11 @@ test("SEC-W01 W05: explicit HTTPS ancestor allowlist is not a wildcard",async()=
 test("R01 R02 R05: pre-auth spoofed forwarding does not exhaust health or webhook buckets",async()=>{
  const app=make();
  try{
-  for(let i=0;i<13;i++){
+  for(let i=0;i<83;i++){
    const r=await app.inject({method:"POST",url:"/api/auth/telegram",
      headers:{Origin:origin,"x-forwarded-for":"203.0.113."+i},
      payload:{initData:"forged"}});
-   if(i===12)assert.equal(r.statusCode,429,"spoofed XFF must not reset preauth peer limiter");
+   if(i===82)assert.equal(r.statusCode,429,"spoofed XFF must not reset preauth peer limiter");
   }
   const health=await app.inject({url:"/api/health/live"});
   assert.equal(health.statusCode,200);
