@@ -164,4 +164,34 @@ test("REM05B fail-closed DB unavailable and rejected third-party cookie fixture"
   assert.equal((await get(bad,"/api/v2/me")).statusCode,401);
  }finally{await bad.close();}
 });
+test("REM05B server-clock expiry, account lock and environment partition",async()=>{
+ const appA=makeApp({...opts,namespace:"ci_clock_a"});
+ const appB=makeApp({...opts,namespace:"ci_clock_b"});
+ try{
+  const signed=sign(9_987_654_321,"Immutable");
+  const first=await auth(appA,signed),other=await auth(appB,signed);
+  assert.equal(first.statusCode,200);
+  assert.equal(other.statusCode,200);
+  const id=first.json().user.id;
+  assert.notEqual(id,other.json().user.id,"same Telegram ID in different bot namespace must differ");
+  const previous=sid(first);
+  await issuer.query("UPDATE luemi_private.sessions SET idle_expires_at=clock_timestamp() "+
+   "WHERE actor_id=$1 AND environment=$2",[id,"ci_clock_a"]);
+  assert.equal((await get(appA,"/api/v2/me",previous)).statusCode,401);
+  const again=await auth(appA,signed);
+  assert.equal(again.statusCode,200);
+  const fresh=sid(again);
+  await issuer.query("UPDATE luemi_private.sessions SET absolute_expires_at=clock_timestamp() "+
+   "WHERE actor_id=$1 AND environment=$2 AND revoked_at IS NULL",[id,"ci_clock_a"]);
+  assert.equal((await get(appA,"/api/v2/me",fresh)).statusCode,401,"absolute expiry enforced by server");
+  for(const status of ["suspended","deleted"]){
+   await admin.query("UPDATE luemi_private.actors SET status=$1 WHERE id=$2",[status,id]);
+   assert.equal((await auth(appA,signed)).statusCode,403);
+   assert.equal((await issuer.query("SELECT count(*)::int AS n FROM luemi_private.actors "+
+     "WHERE environment=$1 AND telegram_id=$2",["ci_clock_a","9987654321"])).rows[0].n,1);
+  }
+  assert.equal((await get(appB,"/api/v2/me",sid(other))).statusCode,200,
+    "one bot namespace suspension does not block another");
+ }finally{await Promise.all([appA.close(),appB.close()]);}
+});
 test.after(async()=>{await Promise.all([issuer.end(),scoped.end(),admin.end()]);});
