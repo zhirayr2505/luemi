@@ -12,7 +12,8 @@ const requestUrl=process.env.REM05D_REQUEST_DATABASE_URL;
 const workerUrl=process.env.REM05D_WORKER_DATABASE_URL;
 const moderatorUrl=process.env.REM05D_MODERATOR_DATABASE_URL;
 const combinedUrl=process.env.REM05D_COMBINED_DATABASE_URL;
-if(!adminUrl||!issuerUrl||!requestUrl||!workerUrl||!moderatorUrl||!combinedUrl)
+const extraColumnUrl=process.env.REM05D_EXTRA_COLUMN_DATABASE_URL;
+if(!adminUrl||!issuerUrl||!requestUrl||!workerUrl||!moderatorUrl||!combinedUrl||!extraColumnUrl)
  throw new Error("REM-05D needs real disposable PostgreSQL role connections");
 const origin="https://ci.luemi.invalid",token="123456:synthetic_rem05d_bot",namespace="ci_rem05d";
 function sign(id:number){
@@ -138,6 +139,11 @@ test("D/MOD: public flags default-deny, protected API, CAS, A/B and SQL role evi
   try{
    assert.equal((await get(bad,"/api/v2/profile/draft",a)).statusCode,503);
   }finally{await bad.close();}
+  const sneaky=app({request:extraColumnUrl!});
+  try{
+   assert.equal((await get(sneaky,"/api/v2/profile/draft",a)).statusCode,503,
+    "a request login with SELECT(decision) grant must fail closed before data access");
+  }finally{await sneaky.close();}
   console.log("REM05D_ROLE_A_B_ANON_CAS_PUBLISH_DENY_PASS");
  }finally{await server.close();}
 });
