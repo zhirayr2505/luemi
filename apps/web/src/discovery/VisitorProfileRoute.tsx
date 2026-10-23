@@ -6,6 +6,7 @@ import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profil
 import {GestureArbiter,gestureCapabilities,fractionalTrack,computedTranslation} from "../ui/gesture-arbiter";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
+import {useModalLayer} from "../ui/modal-layer";
 import type {ProfileRouteMotionHandle} from "./ProfileMaster";
 import type {HeaderMotion} from "./GlobalHeader";
 import type {ProfileMasterData} from "./ProfileModel";
@@ -26,6 +27,8 @@ const EASING="cubic-bezier(.2,.82,.24,1)";
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
 export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Props){
  const route=useRef<HTMLDivElement>(null);
+ const escapeClose=useRef<()=>void>(()=>{});
+ useModalLayer(true,route,()=>escapeClose.current());
  const motionAuthority=useRef(createProfileMotionAuthority());
  const gestures=useRef(new GestureArbiter()).current;
  const detachSuppression=useRef<()=>void>(()=>{});
@@ -119,6 +122,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   revealUnderlay(true);
   moveTo(width(),onExit,"closing");
  };
+ escapeClose.current=close;
  // Keep lifecycle listeners mounted once; resolve latest handlers through a
  // stable ref so a React render cannot detach/reinstall them mid-gesture.
  const motionActions=useRef({moveTo,rollback,onExit});

@@ -1,0 +1,164 @@
+name: LUEMI REM-04D focused scroll and modal focus Chromium QA
+on:
+  push:
+    branches:
+      - remediation/rem-04d-scroll-modal-focus-20261023
+  pull_request:
+    branches:
+      - remediation/rem-04c-bounded-media-20261023
+permissions:
+  contents: read
+jobs:
+  rem04d-focused:
+    name: LU-33/LU-34 real DOM and keyboard/browser QA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 5ea0a1f851e2518f6f23b17e7287ae536bb06395
+          path: accepted-rem04c
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Exact dependencies and Chromium
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npx --no-install playwright install chromium
+      - name: Scroll/header, collection ordering, portal stacking, focus and keyboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem04c/node_modules"
+          (cd accepted-rem04c && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174) >/tmp/rem04d-base-vite.log 2>&1 &
+          base_pid=$!
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/rem04d-vite.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" "$base_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null &&
+               curl -fsS http://127.0.0.1:5174/profile-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then cat /tmp/rem04d-{base-,}vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-04d-before-after.mjs
+          node scripts/rem-04d-browser-qa.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem04d-focused-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04d/**
+            /tmp/rem04d-vite.log
+            /tmp/rem04d-base-vite.log
+          if-no-files-found: warn
+  rem04d-accepted-resource:
+    name: REM-04C accepted versus current 50-cycle media regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 5ea0a1f851e2518f6f23b17e7287ae536bb06395
+          path: accepted-rem04c
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install exact accepted graph
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npx --no-install playwright install chromium
+      - name: Compare preserved media policy and own resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/accepted-rem04c/node_modules"
+          (cd accepted-rem04c && npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5174) >/tmp/rem04d-accepted-vite.log 2>&1 &
+          base_pid=$!
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/rem04d-current-vite.log 2>&1 &
+          current_pid=$!
+          trap 'kill "$base_pid" "$current_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null &&
+               curl -fsS http://127.0.0.1:5174/profile-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then cat /tmp/rem04d-{accepted,current}-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-04d-long-session.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem04d-media-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04d/media/**
+            /tmp/rem04d-accepted-vite.log
+            /tmp/rem04d-current-vite.log
+          if-no-files-found: warn
+  rem04d-preservation:
+    name: PhotoViewer blur gesture source morph and viewport regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pinned browser and shared contracts
+        run: |
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npx --no-install playwright install chromium
+      - name: Preserve the accepted viewer and input/browser behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/rem-01c-photo-header.test.mjs
+          node scripts/rem-01d-viewport-model.test.mjs
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/rem04d-regression-vite.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then break; fi
+            if [[ "$i" -eq 45 ]]; then cat /tmp/rem04d-regression-vite.log >&2; exit 1; fi
+            sleep 1
+          done
+          node scripts/rem-03a-browser-media.mjs
+          node scripts/rem-03c-browser-pinch.mjs
+          node scripts/rem-02d-browser-lifecycle.mjs
+          node scripts/rem-03d-browser-morph.mjs
+          node scripts/rem-04b-browser-six.mjs
+          node scripts/rem-01d-browser-regression.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rem04d-preservation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa-artifacts/rem-04b/six/**
+            qa-artifacts/rem-03a/**
+            qa-artifacts/rem-03d/**
+            /tmp/rem04d-regression-vite.log
+          if-no-files-found: warn

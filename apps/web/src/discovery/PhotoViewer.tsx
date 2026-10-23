@@ -16,6 +16,7 @@ import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import {calculateMorph,currentSource,insetClip,isUnoccluded,visibleElementRect,validInViewport,
  morphTransform as sourceImageTransform,type Rect,type CropMorph} from "./photo-viewer-morph";
 import {bindViewerViewport} from "./photo-viewer-safe-area";
+import {isTopModal,useModalLayer} from "../ui/modal-layer";
 import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixTransform,
  localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
 
@@ -54,7 +55,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const morphImage=useRef<HTMLImageElement>(null);
  const visibleSource=useRef<{node:HTMLElement;visibility:string}|null>(null);
  const openSourceRect=useRef<Rect|null>(null);
- const openedBy=useRef<HTMLElement|null>(null);
+ const menuRoot=useRef<HTMLDivElement>(null);
  const morphActive=useRef(false);
  const morphGeometry=useRef<CropMorph|null>(null);
  const track=useRef<HTMLDivElement>(null);
@@ -88,6 +89,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const handlers=useRef<{close:(force?:boolean)=>void;navigate:(target:NavigationRequest,origin:NavigationOrigin)=>boolean}>({
   close:()=>{},navigate:()=>false
  });
+ useModalLayer(true,modal,()=>handlers.current.close());
+ useModalLayer(menu,menuRoot,()=>setMenu(false));
  const viewSize=()=>({
   width:Math.max(1,surface.current?.clientWidth??stage.current?.clientWidth??width.current),
   height:Math.max(1,surface.current?.clientHeight??stage.current?.clientHeight??window.innerHeight)
@@ -353,26 +356,16 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   };
  },[]);
  useEffect(()=>{
+  // Central modal owner traps Tab and Escape; viewer handles only its own
+  // navigation shortcuts and never steals keys from a higher dialog.
   const key=(event:KeyboardEvent)=>{
-   if(event.key==="Tab"){
-    const root=modal.current;
-    if(!root)return;
-    const items=[...root.querySelectorAll<HTMLElement>(
-     'button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')]
-     .filter(node=>node.getClientRects().length>0);
-    if(!items.length){event.preventDefault();root.focus({preventScroll:true});return;}
-    const first=items[0],last=items[items.length-1];
-    if(event.shiftKey&&(document.activeElement===first||!root.contains(document.activeElement))){
-     event.preventDefault();last.focus({preventScroll:true});
-    }else if(!event.shiftKey&&(document.activeElement===last||!root.contains(document.activeElement))){
-     event.preventDefault();first.focus({preventScroll:true});
-    }
-    return;
-   }
-   if(event.key==="Escape"||(event.key==="Backspace"&&
-     !(document.activeElement instanceof HTMLInputElement)&&
-     !(document.activeElement instanceof HTMLTextAreaElement))){event.stopImmediatePropagation();event.preventDefault();handlers.current.close();}
-   else if(event.key==="ArrowRight"||event.key==="ArrowLeft"){
+   const viewerTop=isTopModal(modal.current),menuTop=isTopModal(menuRoot.current);
+   if(!viewerTop&&!menuTop)return;
+   if(event.key==="Backspace"&&
+      !(document.activeElement instanceof HTMLInputElement)&&
+      !(document.activeElement instanceof HTMLTextAreaElement)){
+    event.stopImmediatePropagation();event.preventDefault();handlers.current.close();
+   }else if(viewerTop&&(event.key==="ArrowRight"||event.key==="ArrowLeft")){
     event.stopImmediatePropagation();event.preventDefault();
     handlers.current.navigate({direction:event.key==="ArrowRight"?1:-1},"keyboard");
    }
@@ -381,20 +374,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   return ()=>window.removeEventListener("keydown",key,true);
  },[]);
  useLayoutEffect(()=>{
-  const root=modal.current;
-  if(!root)return;
-  if(openedBy.current===null&&document.activeElement instanceof HTMLElement&&
-   !root.contains(document.activeElement))openedBy.current=document.activeElement;
-  closeButton.current?.focus({preventScroll:true});
+  const root=modal.current;if(!root)return;
   const detach=bindViewerViewport(root);
-  return ()=>{
-   detach();
-   morphCleanup.current();
-   // Closing the portal must restore the exact focus owner, with no document
-   // scroll into view or route/profile navigation.
-   const previous=openedBy.current;
-   if(previous?.isConnected)previous.focus({preventScroll:true});
-  };
+  return ()=>{detach();morphCleanup.current();};
  },[]);
  useEffect(()=>{
   // Any actual background movement invalidates captured source geometry;
@@ -415,8 +397,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   };
  },[]);
  useEffect(()=>{
-  const old=document.body.style.overflow;document.body.style.overflow="hidden";
-  return ()=>{document.body.style.overflow=old;mediaRef.current?.dispose();};
+  return ()=>{mediaRef.current?.dispose();};
  },[]);
  useEffect(()=>{
   let cache=mediaRef.current;
@@ -783,7 +764,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   </div>
   <header className="pm-viewer-top">
    <span className="pm-viewer-topspacer"/><span>{index>=0?index+1:0} / {photos.length}</span>
-   <button type="button" ref={closeButton} onClick={()=>handlers.current.close()} aria-label="Закрыть просмотр"><X size={22}/></button>
+   <button type="button" ref={closeButton} data-modal-initial onClick={()=>handlers.current.close()} aria-label="Закрыть просмотр"><X size={22}/></button>
   </header>
   <footer className="pm-viewer-bottom">
    <span>{show?displayPhotoDate(show):"Дата не указана"}</span>
@@ -797,7 +778,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    </div>
   </footer>
   {menu&&<div className="pm-viewer-menu-backdrop" onClick={()=>setMenu(false)}>
-    <div className="pm-viewer-menu" role="menu" onClick={e=>e.stopPropagation()}>
+    <div className="pm-viewer-menu" ref={menuRoot} role="menu" aria-label="Действия с фото" tabIndex={-1} onClick={e=>e.stopPropagation()}>
      {view.mode==="owner"&&<button type="button" role="menuitem" disabled={!show||!displayReady||!onMain||!canMakeMain(view,show.id)}
       onClick={()=>action("main")}><Star size={18}/> Сделать главным {!view.published&&<Lock size={14}/>}</button>}
      <button type="button" role="menuitem" disabled={!displayReady} onClick={()=>action("link")}><Link2 size={18}/> Скопировать ссылку</button>

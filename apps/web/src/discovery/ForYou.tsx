@@ -1,4 +1,4 @@
-import {memo,useEffect,useMemo,useRef,useState} from "react";
+import {memo,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Bookmark,Check,ChevronDown,ChevronUp,Globe2,Heart,MapPin,Music2,Plane,Settings2,Sparkles,Users,X} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {Flag} from "../ui/Flag";
@@ -9,6 +9,7 @@ import {forYouDemoPeople} from "./for-you-data";
 import {collectionDefinitions,evidence,membersFor,rankDemonstrations} from "./for-you-ranking";
 import type {CollectionId} from "./for-you-ranking";
 import "./for-you.css";
+import {useModalLayer} from "../ui/modal-layer";
 
 type Prefs={order:CollectionId[];hidden:CollectionId[];favorites:CollectionId[]};
 const allIds:CollectionId[]=collectionDefinitions.map(s=>s.id);
@@ -28,7 +29,7 @@ interface Props{
  onSave:(id:string)=>void;onPerson:(id:string)=>void;
  expanded:CollectionId|"best"|null;onExpanded:(id:CollectionId|"best"|null)=>void;
  settingsOpen:boolean;onSettingsOpen:(b:boolean)=>void;
- onScrollTop?:(top:number)=>void;
+ onScrollTop?:(top:number,context:CollectionId|"best"|null)=>void;
 }
 function reason(p:DemoPerson,d:RegistrationDraft){
  const ev=evidence(p,d);
@@ -72,11 +73,37 @@ function emptyMessage(id:CollectionId){
 export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,expanded,onExpanded,settingsOpen,onSettingsOpen,onScrollTop}:Props){
  const [prefs,setPrefs]=useState<Prefs>(savedPrefs);
  const scroll=useRef<HTMLDivElement>(null), first=useRef<HTMLElement>(null);
+ const expandedScroll=useRef<HTMLDivElement>(null);
+ const opener=useRef<HTMLElement|null>(null);
+ const previousExpanded=useRef<CollectionId|"best"|null>(null);
+ const manageDialog=useRef<HTMLElement>(null);
+ useModalLayer(settingsOpen,manageDialog,()=>onSettingsOpen(false));
+ // Finite set of stable collection identities; never cache arbitrary route keys.
+ const collectionOffsets=useRef<Partial<Record<CollectionId|"best",number>>>({});
+ useLayoutEffect(()=>{
+  const changed=previousExpanded.current!==expanded;
+  previousExpanded.current=expanded;
+  if(expanded){
+   const node=expandedScroll.current;
+   if(node){node.scrollTop=collectionOffsets.current[expanded]??0;
+    onScrollTop?.(node.scrollTop,expanded);}
+   if(changed)expandedScroll.current?.closest(".fy-expanded")?.querySelector<HTMLElement>(".fy-back")?.focus({preventScroll:true});
+  }else if(scroll.current){
+   onScrollTop?.(scroll.current.scrollTop,null);
+   if(changed&&opener.current?.isConnected&&opener.current.getClientRects().length)
+    opener.current.focus({preventScroll:true});
+  }
+ },[expanded,onScrollTop]);
+ const reportScroll=(top:number,context:CollectionId|"best"|null)=>{
+  if(context)collectionOffsets.current[context]=top;
+  onScrollTop?.(top,context);
+ };
  // REM-04C: while an expanded collection covers the original library, keep
  // only the library photos near its saved viewport. Preserve all cards, state,
  // layout and scroll nodes. Nearby photos survive for an immediate reveal.
  const [libraryWindow,setLibraryWindow]=useState<ReadonlySet<string>|null>(null);
  const openCollection=(id:CollectionId|"best")=>{
+  opener.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
   const root=scroll.current,rect=root?.getBoundingClientRect();
   if(rect&&rect.height>0){
    const visible=new Set<string>();
@@ -126,7 +153,7 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
   </section>;
  };
  return <div className="fy-root" data-media-residency={expanded?"expanded-window":"library"}>
-  <div className="fy-scroll" ref={scroll} onScroll={event=>onScrollTop?.(event.currentTarget.scrollTop)}>
+  <div className="fy-scroll" ref={scroll} inert={!!expanded} aria-hidden={!!expanded} onScroll={event=>reportScroll(event.currentTarget.scrollTop,null)}>
    <div className="fy-hero">
     <div className="fy-hero-glow" aria-hidden="true"/><div className="fy-hero-mark" aria-hidden="true"><Heart size={89} strokeWidth={.85}/><Sparkles size={29}/></div>
     <div className="fy-hero-copy">
@@ -144,19 +171,18 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
      {ranked.length>0&&<button type="button" onClick={()=>openCollection("best")}>Смотреть всех <ArrowRight size={14}/></button>}</div>
     {ranked.length?rail(ranked,"Персональные рекомендации · демо"):<Empty text="По выбранным фильтрам нет тестовых анкет. Измени параметры поиска."/>}
    </section>
-   {shown.includes("common")&&section("common")}
-   {shown.filter(id=>id!=="common").map(section)}
+   {shown.map(section)}
    {!shown.length&&<Empty text="Все темы скрыты. Верни нужные подборки через «Настроить»."/>}
    <p className="fy-legal">16 вымышленных персонажей · только демо. Нет реальных мэтчей, онлайн-статусов, процентов совместимости или новых регистраций.</p>
   </div>
   {expanded&&<section className="fy-expanded" role="region" aria-label={"Полная подборка: "+viewTitle}>
    <header><button type="button" onClick={()=>onExpanded(null)} aria-label="Назад к подборкам" className="fy-back"><ArrowLeft size={20}/></button>
     <div><h2>{viewTitle}</h2><p>Полная подборка · демо</p></div></header>
-   {expandedPeople.length?<div className="fy-grid" onScroll={event=>onScrollTop?.(event.currentTarget.scrollTop)}>{expandedPeople.map(person=>one(person,true))}</div>:<Empty text={expanded==="best"?"Нет подходящих тестовых анкет. Измени фильтры.":emptyMessage(expanded)}/>}
+   {expandedPeople.length?<div className="fy-grid" ref={expandedScroll} onScroll={event=>reportScroll(event.currentTarget.scrollTop,expanded)}>{expandedPeople.map(person=>one(person,true))}</div>:<Empty text={expanded==="best"?"Нет подходящих тестовых анкет. Измени фильтры.":emptyMessage(expanded)}/>}
   </section>}
-  {settingsOpen&&<section className="fy-manage" role="dialog" aria-modal="true" aria-label="Управление подборками">
+  {settingsOpen&&<section className="fy-manage" ref={manageDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Управление подборками">
    <header><div><h2>Мои подборки</h2><p>Избранное, порядок и видимость тематических блоков.</p></div>
-    <button type="button" className="fy-back" onClick={()=>onSettingsOpen(false)} aria-label="Закрыть"><X size={19}/></button></header>
+    <button type="button" className="fy-back" data-modal-initial onClick={()=>onSettingsOpen(false)} aria-label="Закрыть"><X size={19}/></button></header>
    <div className="fy-manage-list">{prefs.order.map((id,i)=>{
     const c=collectionDefinitions.find(x=>x.id===id)!,Icon=icons[id];
     return <div className="fy-manage-row" key={id}><span><Icon size={16}/>{c.title}</span>

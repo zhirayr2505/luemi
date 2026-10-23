@@ -1,4 +1,5 @@
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
+import {useModalLayer} from "../ui/modal-layer";
 import {X,RotateCcw,SlidersHorizontal} from "lucide-react";
 import type {DiscoveryFilter} from "./model";
 import {defaultFilters} from "./model";
@@ -10,21 +11,17 @@ import type {RegistrationDraft} from "../registration/model";
 interface Props {open:boolean;filter:DiscoveryFilter;draft:RegistrationDraft;onClose:()=>void;onApply:(next:DiscoveryFilter)=>void}
 export function DiscoveryFilters({open,filter,draft,onClose,onApply}:Props){
  const [working,setWorking]=useState<DiscoveryFilter>(filter);
+ const dialog=useRef<HTMLElement>(null);
+ useModalLayer(open,dialog,onClose);
  useEffect(()=>{if(open)setWorking(filter);},[open,filter]);
- useEffect(()=>{
-  if(!open)return;
-  const listener=(e:KeyboardEvent)=>{if(e.key==="Escape")onClose();};
-  document.addEventListener("keydown",listener);
-  return ()=>document.removeEventListener("keydown",listener);
- },[open,onClose]);
  if(!open)return null;
  const set=<K extends keyof DiscoveryFilter>(key:K,value:DiscoveryFilter[K])=>setWorking(prev=>({...prev,[key]:value}));
  return <div className="discovery-modal-backdrop" role="presentation" onClick={onClose}>
-   <section role="dialog" aria-modal="true" aria-label="Фильтры знакомств" className="discovery-filter-sheet"
+   <section ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Фильтры знакомств" className="discovery-filter-sheet"
      onClick={e=>e.stopPropagation()}>
      <div className="discovery-sheet-grip" aria-hidden="true"/>
      <header className="discovery-sheet-heading"><h2><SlidersHorizontal size={18}/> Фильтры</h2>
-       <button type="button" className="discovery-icon-action" aria-label="Закрыть фильтры" onClick={onClose}><X size={20}/></button>
+       <button type="button" className="discovery-icon-action" aria-label="Закрыть фильтры" data-modal-initial onClick={onClose}><X size={20}/></button>
      </header>
      <div className="discovery-filter-content">
        <fieldset className="discovery-filter-group"><legend>Кого ищем?</legend>

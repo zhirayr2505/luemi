@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {selectionHaptic} from "../ui/haptic";
 import type {CSSProperties} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
@@ -23,6 +23,7 @@ import {GestureArbiter,computedTranslation,fractionalTrack,gestureCapabilities} 
 import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
+import {useModalLayer} from "../ui/modal-layer";
 import "./discovery.css";
 
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
@@ -56,6 +57,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const registerProfileBack=useCallback((handler:(()=>boolean)|null)=>{profileBackRef.current=handler;},[]);
  const ownProfile=useMemo(()=>fromLocalDraft(draft,photos),[draft,photos]);
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
+ const keyboardBrowseFocus=useRef<number|null>(null);
  const [personOpen,setPersonOpen]=useState<string|null>(null);
  // Prepare Nearby when For You becomes current or Nearby is selected; keep it mounted thereafter.
  const [nearbyPrepared,setNearbyPrepared]=useState(false);
@@ -102,6 +104,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
  const [savedOpen,setSavedOpen]=useState(false);
+ const savedDialog=useRef<HTMLElement>(null);
+ useModalLayer(savedOpen,savedDialog,()=>setSavedOpen(false));
  const [interestOpen,setInterestOpen]=useState<string|null>(null);
  const [forYouCollection,setForYouCollection]=useState<CollectionId|"best"|null>(null);
  const [forYouSettings,setForYouSettings]=useState(false);
@@ -125,25 +129,41 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const profileMode=mainTab==="profile"||!!selectedPerson;
  const backgroundHeaderMode=mainTab==="profile"?"profile":"browse";
  const savedScroll=useRef({"for-you":0,nearby:0});
- const reportForYouScroll=useCallback((top:number)=>{
-   savedScroll.current["for-you"]=top;
-   if(mainTab==="discover"&&discoveryTab==="for-you"&&!personOpen)globalHeader.current?.setScrollTop(top);
- },[mainTab,discoveryTab,personOpen]);
+ const forYouCollectionScroll=useRef<Partial<Record<CollectionId|"best",number>>>({});
+ const activeScrollContext=useRef(forYouCollection);
+ activeScrollContext.current=forYouCollection;
+ const currentBrowse=useRef({mainTab,discoveryTab,personOpen});
+ currentBrowse.current={mainTab,discoveryTab,personOpen};
+ const reportForYouScroll=useCallback((top:number,context:CollectionId|"best"|null)=>{
+   if(context)forYouCollectionScroll.current[context]=top;
+   else savedScroll.current["for-you"]=top;
+   const browse=currentBrowse.current;
+   if(browse.mainTab==="discover"&&browse.discoveryTab==="for-you"&&
+     !browse.personOpen&&activeScrollContext.current===context)
+    globalHeader.current?.setScrollTop(top);
+ },[]);
  const reportNearbyScroll=useCallback((top:number)=>{
    savedScroll.current.nearby=top;
    if(mainTab==="discover"&&discoveryTab==="nearby"&&!personOpen)globalHeader.current?.setScrollTop(top);
  },[mainTab,discoveryTab,personOpen]);
- useEffect(()=>{
+ useLayoutEffect(()=>{
    // The active profile paints its own scroll progress; resetting the header
    // after child effects would flash the contrast shadow to zero on return.
    if(profileMode)return;
    globalHeader.current?.reset();
    if(mainTab==="discover"&&!personOpen){
-     globalHeader.current?.setScrollTop(discoveryTab==="for-you"?savedScroll.current["for-you"]:
+     globalHeader.current?.setScrollTop(discoveryTab==="for-you"?
+       (forYouCollection?(forYouCollectionScroll.current[forYouCollection]??0):savedScroll.current["for-you"]):
        discoveryTab==="nearby"?savedScroll.current.nearby:0);
    }
- },[mainTab,discoveryTab,personOpen,profileMode]);
+ },[mainTab,discoveryTab,personOpen,profileMode,forYouCollection]);
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
+ useLayoutEffect(()=>{
+  const i=keyboardBrowseFocus.current;
+  if(i===null||topTabs[i][0]!==discoveryTab)return;
+  keyboardBrowseFocus.current=null;
+  document.querySelectorAll<HTMLButtonElement>(".discovery-top-tabs [role=tab]")[i]?.focus({preventScroll:true});
+ },[discoveryTab]);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
  // Commit only after the outgoing full card completes its own animation.
@@ -428,9 +448,21 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    <div className="discovery-main-panels">
      <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
        <div className="discovery-top-tabs" role="tablist" aria-label="Разделы знакомств"
+         onKeyDown={event=>{
+          const i=topTabs.findIndex(value=>value[0]===discoveryTab);
+          const next=event.key==="ArrowRight"?Math.min(2,i+1):
+           event.key==="ArrowLeft"?Math.max(0,i-1):
+           event.key==="Home"?0:event.key==="End"?2:-1;
+          if(next<0)return;
+          event.preventDefault();
+          keyboardBrowseFocus.current=next;
+          requestBrowseTab(next);
+          if(next===i){keyboardBrowseFocus.current=null;
+           document.querySelectorAll<HTMLButtonElement>(".discovery-top-tabs [role=tab]")[i]?.focus({preventScroll:true});}
+         }}
          onPointerDown={down} onPointerMove={move} onPointerUp={e=>up(e)} onPointerCancel={e=>up(e,true)} onLostPointerCapture={e=>up(e,true)}>
          {topTabs.map(([value,label],i)=><button type="button" role="tab" key={value}
-           aria-selected={discoveryTab===value} onClick={()=>{if(performance.now()>=clickBlockUntil.current)requestBrowseTab(i);}}
+           aria-selected={discoveryTab===value} tabIndex={discoveryTab===value?0:-1} onClick={()=>{if(performance.now()>=clickBlockUntil.current)requestBrowseTab(i);}}
            className={discoveryTab===value?"active":""}>{label}</button>)}
          <span className="discovery-tab-underline" ref={underline} aria-hidden="true"
            style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
@@ -442,7 +474,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
              if(event.target===event.currentTarget&&event.propertyName==="transform")finishPagerSettle();
            }}
            style={{"--luemi-tab-offset":(-tabIndex*100)+"%"} as CSSProperties}>
-           <section className="discovery-page" role="tabpanel" aria-label="Лента">
+           <section className="discovery-page" role="tabpanel" aria-label="Лента" inert={discoveryTab!=="feed"} aria-hidden={discoveryTab!=="feed"}>
              {<div className="discovery-deck-stage">
                {person&&<div key={person.id}
                  className={"discovery-deck-layer"+(leaving?" deck-leaving":" deck-active")}
@@ -468,12 +500,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
                </div>}
              </div>}
            </section>
-           <section className="discovery-page" role="tabpanel" aria-label="Для тебя">
+           <section className="discovery-page" role="tabpanel" aria-label="Для тебя" inert={discoveryTab!=="for-you"} aria-hidden={discoveryTab!=="for-you"}>
              <ForYou draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportForYouScroll} onSave={toggleForYouSave}
                onPerson={setPersonOpen} expanded={forYouCollection} onExpanded={setForYouCollection}
                settingsOpen={forYouSettings} onSettingsOpen={setForYouSettings}/>
            </section>
-           <section className="discovery-page" role="tabpanel" aria-label="Рядом">
+           <section className="discovery-page" role="tabpanel" aria-label="Рядом" inert={discoveryTab!=="nearby"} aria-hidden={discoveryTab!=="nearby"}>
              {nearbyPrepared&&<Nearby active={mainTab==="discover"&&discoveryTab==="nearby"&&!selectedPerson} draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportNearbyScroll} onSave={toggleForYouSave}
                onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>}
            </section>
@@ -501,10 +533,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    <span className="discovery-sr-status" role="status" aria-live="polite">{announcement}</span>
    <DiscoveryFilters open={filterOpen} filter={filters} draft={draft} onClose={()=>setFilterOpen(false)} onApply={apply}/>
    {savedOpen&&<div className="discovery-modal-backdrop" onClick={()=>setSavedOpen(false)}>
-     <section className="discovery-saved-sheet" role="dialog" aria-label="Сохранённые демо-анкеты" aria-modal="true"
+     <section className="discovery-saved-sheet" ref={savedDialog} tabIndex={-1} role="dialog" aria-label="Сохранённые демо-анкеты" aria-modal="true"
        onClick={e=>e.stopPropagation()}>
        <header><h2>Сохранённые <span className="discovery-demo-label">Демо</span></h2>
-         <button className="discovery-icon-action" type="button" onClick={()=>setSavedOpen(false)} aria-label="Закрыть"><X size={19}/></button>
+         <button className="discovery-icon-action" type="button" onClick={()=>setSavedOpen(false)} data-modal-initial aria-label="Закрыть"><X size={19}/></button>
        </header>
        <div className="discovery-saved-list">
          {feed.saved.length?feed.saved.map(id=>{
