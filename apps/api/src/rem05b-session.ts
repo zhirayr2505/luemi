@@ -151,8 +151,8 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
  app.post("/api/v2/auth/logout",{preHandler:protectedMutation},async(req,reply)=>{
   try{
    await issuer.query("UPDATE luemi_private.sessions SET revoked_at=clock_timestamp() "+
-    "WHERE id=$1 AND token_hash=$2 AND revoked_at IS NULL",
-    [req.authActor!.sessionId,req.authActor!.hash]);
+    "WHERE id=$1 AND actor_id=$2 AND revoked_at IS NULL",
+    [req.authActor!.sessionId,req.authActor!.actorId]);
    reply.header("Set-Cookie",cookie("",0));return{ok:true};
   }catch{return deny(reply,503);}
  });
