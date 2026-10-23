@@ -11,6 +11,7 @@ import {installViewportController} from "./viewport/viewport-controller";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
+import {authenticateBootstrap} from "./auth/session-adapter";
 
 declare global {
   interface Window {
@@ -164,13 +165,7 @@ export function App() {
         const live=await fetch("/api/health/live",{signal});
         if(!live.ok||((await live.json()) as HealthResponse).status!=="ok")
           throw new Error("API unavailable");
-        const response=await fetch("/api/auth/telegram",{
-          method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({initData}),signal
-        });
-        if(response.status===503)return null;
-        if(!response.ok)throw new Error("Telegram authorization failed");
-        return (await response.json()) as BootstrapResponse;
+        return authenticateBootstrap(initData,signal);
       },
       // Fonts and the original LUEMI logo are optional *render preparation*,
       // never an authentication prerequisite. Keep the exact original asset
