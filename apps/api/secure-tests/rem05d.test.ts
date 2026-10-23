@@ -253,7 +253,8 @@ test("M11: revoke approved media while private storage GET is in flight; never d
  const gate=new Promise<void>(resolve=>{release=resolve;});
  const slowStore:PrivateObjectStore={
   put:(key,bytes)=>store.put(key,bytes),
-  get:async(key)=>{entered();await gate;return store.get(key);}
+  get:async(key)=>{entered();await gate;return store.get(key);},
+  delete:(key)=>store.delete(key)
  };
  const server=app({storage:slowStore});
  try{
@@ -287,7 +288,8 @@ test("D-R4 RED: revoke original session while synthetic PrivateObjectStore PUT i
  let stagedKey:string|undefined;
  const slowStore:PrivateObjectStore={
   put:async(key,bytes)=>{stagedKey=key;entered();await unblockPut;await backing.put(key,bytes);},
-  get:(key)=>backing.get(key)
+  get:(key)=>backing.get(key),
+  delete:(key)=>backing.delete(key)
  };
  const server=app({storage:slowStore});
  let inFlight:ReturnType<typeof server.inject>|undefined;
@@ -326,13 +328,110 @@ test("D-R4 RED: revoke original session while synthetic PrivateObjectStore PUT i
   assert.equal(after.rows[0].upload_state,"reserved","revoked upload must never become received");
   assert.equal(after.rows[0].actionable_jobs,0,"revoked upload must not enqueue moderation");
   assert.equal((await get(server,"/api/v2/media/"+id,a)).statusCode,401);
-  if(stagedKey)assert.equal(await backing.get(stagedKey),null,"staged object must be cleaned up");
+  if(stagedKey){
+   let cleaned=false;
+   for(let i=0;i<60;i++){
+    if(await backing.get(stagedKey)===null){cleaned=true;break;}
+    await new Promise(resolve=>setTimeout(resolve,10));
+   }
+   assert.ok(cleaned,"revoked session should trigger compensating object deletion");
+  }
   console.log("REM05D_UPLOAD_REVOCATION_SQL_AND_OBJECT_ROLLBACK_PASS");
  }finally{
   release();
   if(inFlight)await inFlight.catch(()=>{});
   await server.close();
  }
+});
+test("D-R4: suspending/banning actor or rotating same session during storage PUT rolls back worker SQL",async()=>{
+ for(const mode of ["suspended","banned","refresh"] as const){
+  const backing=memoryPrivateStore();
+  let entered!:()=>void,release!:()=>void;
+  const waiting=new Promise<void>(resolve=>{entered=resolve;});
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  let key:string|undefined;
+  const gated:PrivateObjectStore={
+   put:async(k,v)=>{key=k;entered();await gate;await backing.put(k,v);},
+   get:(k)=>backing.get(k),delete:(k)=>backing.delete(k)
+  };
+  const server=app({storage:gated});
+  let upload:ReturnType<typeof server.inject>|undefined;
+  try{
+   const user=await identity(server,mode==="suspended"?90808:mode==="banned"?90909:91010);
+   const png=makeSyntheticPng();
+   const intent=await post(server,"/api/v2/media/intents",user,
+    {bytes:png.length,mime:"image/png",clientKey:"d-r4-actor-"+mode+"-001"});
+   assert.equal(intent.statusCode,200,intent.body);
+   const id=intent.json().assetId as string;
+   upload=server.inject({method:"PUT",url:"/api/v2/media/"+id+"/bytes",
+    headers:{...headers(user.cookie,user.csrf),"content-type":"image/png"},payload:png});
+   await Promise.race([waiting,new Promise<never>((_res,reject)=>
+    setTimeout(()=>reject(new Error("PUT gate not reached: "+mode)),5000))]);
+   if(mode==="refresh"){
+    const refresh=await post(server,"/api/v2/auth/refresh",user,{});
+    assert.equal(refresh.statusCode,200,refresh.body);
+    assert.ok(String(refresh.headers["set-cookie"]).includes("luemi_"),
+     "token rotation must return a new session cookie");
+   }else{
+    const banned=await admin.query("UPDATE luemi_private.actors SET status=$2 WHERE id=$1 RETURNING status",
+     [user.id,mode]);
+    assert.equal(banned.rowCount,1);
+   }
+   release();
+   const response=await upload;
+   assert.equal(response.statusCode,401,mode+": "+response.body);
+   const row=await admin.query(
+    "SELECT a.state asset,u.state upload,(SELECT count(*)::int FROM luemi_private.moderation_jobs j "+
+    "WHERE j.asset_id=a.id) jobs FROM luemi_private.media_assets a "+
+    "JOIN luemi_private.media_uploads u ON u.asset_id=a.id WHERE a.id=$1",[id]);
+   assert.equal(row.rows[0].asset,"reserved",mode);
+   assert.equal(row.rows[0].upload,"reserved",mode);
+   assert.equal(row.rows[0].jobs,0,mode);
+   if(key){
+    let deleted=false;
+    for(let i=0;i<60;i++){
+     if(await backing.get(key)===null){deleted=true;break;}
+     await new Promise(resolve=>setTimeout(resolve,10));
+    }
+    assert.ok(deleted,mode+": staged private object must be deleted");
+   }
+  }finally{
+   release();if(upload)await upload.catch(()=>{});await server.close();
+  }
+ }
+ console.log("REM05D_UPLOAD_BANNED_SUSPENDED_ROTATED_SQL_ROLLBACK_PASS");
+});
+test("D-R4: storage PUT writes bytes then fails before PostgreSQL COMMIT; compensate or fail closed",async()=>{
+ for(const cleanupFails of [false,true]){
+  const backing=memoryPrivateStore();
+  let savedKey:string|undefined;
+  const interrupted:PrivateObjectStore={
+   put:async(k,v)=>{savedKey=k;await backing.put(k,v);throw new Error("synthetic_store_interrupted_after_bytes");},
+   get:(k)=>backing.get(k),
+   delete:async(k)=>{if(cleanupFails)throw new Error("synthetic_delete_unavailable");await backing.delete(k);}
+  };
+  const server=app({storage:interrupted});
+  try{
+   const user=await identity(server,cleanupFails?91212:91111),png=makeSyntheticPng();
+   const intent=await post(server,"/api/v2/media/intents",user,
+    {bytes:png.length,mime:"image/png",clientKey:"storage-after-write-"+cleanupFails+"-001"});
+   assert.equal(intent.statusCode,200,intent.body);
+   const id=intent.json().assetId as string;
+   const resp=await server.inject({method:"PUT",url:"/api/v2/media/"+id+"/bytes",
+    headers:{...headers(user.cookie,user.csrf),"content-type":"image/png"},payload:png});
+   assert.equal(resp.statusCode,503,resp.body);
+   const status=await admin.query("SELECT a.state asset,u.state upload, "+
+    "(SELECT count(*)::int FROM luemi_private.moderation_jobs j WHERE j.asset_id=a.id) jobs "+
+    "FROM luemi_private.media_assets a JOIN luemi_private.media_uploads u ON u.asset_id=a.id "+
+    "WHERE a.id=$1",[id]);
+   assert.deepEqual(status.rows[0],{asset:"reserved",upload:"reserved",jobs:0});
+   assert.ok(savedKey);
+   assert.equal((await backing.get(savedKey!))===null,!cleanupFails);
+   assert.equal((await get(server,"/api/v2/media/"+id,user)).statusCode,404,
+    "orphan in the private object store must not be readable through authenticated gateway");
+  }finally{await server.close();}
+ }
+ console.log("REM05D_UPLOAD_STAGED_STORAGE_FAILURE_FAIL_CLOSED_PASS");
 });
 test("Off by default on ordinary app configuration and signed UI is not activated",async()=>{
  const off=app({enabled:false});
