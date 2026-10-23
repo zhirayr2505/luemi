@@ -57,6 +57,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const registerProfileBack=useCallback((handler:(()=>boolean)|null)=>{profileBackRef.current=handler;},[]);
  const ownProfile=useMemo(()=>fromLocalDraft(draft,photos),[draft,photos]);
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
+ const keyboardBrowseFocus=useRef<number|null>(null);
  const [personOpen,setPersonOpen]=useState<string|null>(null);
  // Prepare Nearby when For You becomes current or Nearby is selected; keep it mounted thereafter.
  const [nearbyPrepared,setNearbyPrepared]=useState(false);
@@ -157,6 +158,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    }
  },[mainTab,discoveryTab,personOpen,profileMode,forYouCollection]);
  const tabIndex=topTabs.findIndex(x=>x[0]===discoveryTab);
+ useLayoutEffect(()=>{
+  const i=keyboardBrowseFocus.current;
+  if(i===null||topTabs[i][0]!==discoveryTab)return;
+  keyboardBrowseFocus.current=null;
+  document.querySelectorAll<HTMLButtonElement>(".discovery-top-tabs [role=tab]")[i]?.focus({preventScroll:true});
+ },[discoveryTab]);
 
  const indicate=useCallback((message:string)=>{setAnnouncement(message);},[]);
  // Commit only after the outgoing full card completes its own animation.
@@ -441,9 +448,21 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    <div className="discovery-main-panels">
      <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
        <div className="discovery-top-tabs" role="tablist" aria-label="Разделы знакомств"
+         onKeyDown={event=>{
+          const i=topTabs.findIndex(value=>value[0]===discoveryTab);
+          const next=event.key==="ArrowRight"?Math.min(2,i+1):
+           event.key==="ArrowLeft"?Math.max(0,i-1):
+           event.key==="Home"?0:event.key==="End"?2:-1;
+          if(next<0)return;
+          event.preventDefault();
+          keyboardBrowseFocus.current=next;
+          requestBrowseTab(next);
+          if(next===i){keyboardBrowseFocus.current=null;
+           document.querySelectorAll<HTMLButtonElement>(".discovery-top-tabs [role=tab]")[i]?.focus({preventScroll:true});}
+         }}
          onPointerDown={down} onPointerMove={move} onPointerUp={e=>up(e)} onPointerCancel={e=>up(e,true)} onLostPointerCapture={e=>up(e,true)}>
          {topTabs.map(([value,label],i)=><button type="button" role="tab" key={value}
-           aria-selected={discoveryTab===value} onClick={()=>{if(performance.now()>=clickBlockUntil.current)requestBrowseTab(i);}}
+           aria-selected={discoveryTab===value} tabIndex={discoveryTab===value?0:-1} onClick={()=>{if(performance.now()>=clickBlockUntil.current)requestBrowseTab(i);}}
            className={discoveryTab===value?"active":""}>{label}</button>)}
          <span className="discovery-tab-underline" ref={underline} aria-hidden="true"
            style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
