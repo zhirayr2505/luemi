@@ -1,6 +1,5 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import rateLimit from "@fastify/rate-limit";
 import { timingSafeEqual } from "node:crypto";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import type { ApiConfig } from "./config.js";
@@ -9,6 +8,7 @@ import { registerTelegramWebhook } from "./telegram-webhook.js";
 import { registerGeography } from "./geo-routes.js";
 import { registerRem05b } from "./rem05b-session.js";
 import { installHttpPolicy } from "./rem05c-headers.js";
+import { installNetworkLimits } from "./rem05c-rate.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -29,17 +29,17 @@ export function buildApp(config: ApiConfig) {
   });
   // One untrusted network peer must not consume static/health/geo actor quotas.
   // trustProxy stays FALSE until the real Render hop chain is independently proven.
-  app.register(rateLimit,{global:false,skipOnError:false});
+  installNetworkLimits(hook=>app.addHook("onRequest",hook));
   installHttpPolicy(app,config.rem05c?.embedding);
 
   app.get("/api/health/live", async (): Promise<HealthResponse> => ({ status: "ok" }));
-  app.get("/api/health/ready", {config:{rateLimit:{max:30,timeWindow:"1 minute"}}}, async (request, reply) => {
+  app.get("/api/health/ready", async (request, reply) => {
     const secret = request.headers["x-health-key"];
     if (!config.healthKey || typeof secret !== "string" || !equalSecret(secret, config.healthKey))
       return reply.code(404).send({ error: "not_found" });
     return { status: "ready", database: "not_connected", stage: "01" };
   });
-  app.post<{ Body: { initData?: unknown } }>("/api/auth/telegram", {config:{rateLimit:{max:10,timeWindow:"1 minute"}}}, async (request, reply) => {
+  app.post<{ Body: { initData?: unknown } }>("/api/auth/telegram", async (request, reply) => {
     if (!config.botToken) return reply.code(503).send({ error: "service_unavailable" });
     const raw = request.body?.initData;
     if (typeof raw !== "string") return reply.code(401).send({ error: "invalid_init_data" });

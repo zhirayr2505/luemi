@@ -3,6 +3,7 @@ import type {FastifyInstance,FastifyReply,FastifyRequest} from "fastify";
 import {Pool} from "pg";
 import type {PoolClient} from "pg";
 import {validateTelegramInitData} from "./telegram-auth.js";
+import {RateBuckets} from "./rem05c-rate.js";
 
 export interface Rem05bOptions {
  enabled:boolean; issuerDatabaseUrl:string; requestDatabaseUrl:string; pepper:string;
@@ -33,6 +34,7 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
  !/^[a-z0-9:_-]{1,96}$/i.test(cfg.namespace)||Buffer.byteLength(cfg.pepper)<32||
  cfg.idleMs<60000||cfg.absoluteMs<cfg.idleMs||!Number.isSafeInteger(cfg.maxSessions)||
  cfg.maxSessions<1||cfg.maxSessions>20)throw new Error("Invalid REM-05B test-only config");
+ const perActorRate=new RateBuckets();
  const issuer=new Pool({connectionString:cfg.issuerDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  const scoped=new Pool({connectionString:cfg.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  app.addHook("onClose",async()=>{await Promise.all([issuer.end(),scoped.end()]);});
@@ -122,6 +124,13 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   const result=await inspect(req);
   if("status" in result){deny(reply,result.status);return;}
   req.authActor=result.value;
+  if(req.url.split("?")[0]==="/api/v2/me"){
+   const limit=perActorRate.check("me:"+result.value.actorId,180);
+   if(!limit.allowed){
+    reply.header("Retry-After",String(limit.retryAfter));
+    reply.code(429).send({error:"rate_limited"});
+   }
+  }
  };
  const protectedMutation=async(req:FastifyRequest,reply:FastifyReply)=>{
   if(!validOrigin(req,cfg.origin)){reply.code(403).send({error:"forbidden"});return;}
@@ -131,7 +140,7 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   if(typeof supplied!=="string"||!equals(supplied,csrf(cfg.pepper,req.authActor.hash)))
    reply.code(403).send({error:"forbidden"});
  };
- app.post<{Body:{initData?:unknown}}>("/api/v2/auth/telegram",{config:{rateLimit:{max:10,timeWindow:"1 minute"}}},async(req,reply)=>{
+ app.post<{Body:{initData?:unknown}}>("/api/v2/auth/telegram",async(req,reply)=>{
   if(!validOrigin(req,cfg.origin))return reply.code(403).send({error:"forbidden"});
   const raw=req.body?.initData;
   if(typeof raw!=="string"||Buffer.byteLength(raw,"utf8")>8192)return reply.code(401).send({error:"invalid_init_data"});

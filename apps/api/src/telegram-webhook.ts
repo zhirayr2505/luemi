@@ -17,7 +17,7 @@ interface TelegramUpdate {
 }
 
 export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig): void {
-  app.post<{ Body: TelegramUpdate }>("/api/telegram/webhook", {config:{rateLimit:{max:120,timeWindow:"1 minute"}}}, async (request, reply) => {
+  app.post<{ Body: TelegramUpdate }>("/api/telegram/webhook", async (request, reply) => {
     const header = request.headers["x-telegram-bot-api-secret-token"];
     if (!config.botToken || !constantTimeMatch(header, config.webhookSecret))
       return reply.code(404).send({ error: "not_found" });
