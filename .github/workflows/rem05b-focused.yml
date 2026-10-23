@@ -29,6 +29,11 @@ jobs:
       REM05B_TEST_ADMIN_DATABASE_URL: postgres://postgres:synthetic_rem05b_test_password@127.0.0.1:5432/rem05b_test
       REM05B_TEST_ISSUER_DATABASE_URL: postgres://rem05b_ci_issuer:synthetic_ci_issuer_only@127.0.0.1:5432/rem05b_test
       REM05B_TEST_REQUEST_DATABASE_URL: postgres://rem05b_ci_request:synthetic_ci_request_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_COMBINED_DATABASE_URL: postgres://rem05b_ci_combined:synthetic_ci_combined_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_INDIRECT_DATABASE_URL: postgres://rem05b_ci_indirect:synthetic_ci_indirect_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_NOINHERIT_DATABASE_URL: postgres://rem05b_ci_noinherit:synthetic_ci_noinherit_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_READALL_DATABASE_URL: postgres://rem05b_ci_readall:synthetic_ci_readall_only@127.0.0.1:5432/rem05b_test
+      REM05B_TEST_CREATE_ROLE_DATABASE_URL: postgres://rem05b_ci_createrole:synthetic_ci_createrole_only@127.0.0.1:5432/rem05b_test
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,6 +65,19 @@ jobs:
           psql -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE rem05b_ci_issuer LOGIN PASSWORD 'synthetic_ci_issuer_only' IN ROLE luemi_auth_issuer;
           CREATE ROLE rem05b_ci_request LOGIN PASSWORD 'synthetic_ci_request_only' IN ROLE luemi_request;
+          -- Both direct and transitive, including NOINHERIT membership, are unsafe.
+          CREATE ROLE rem05b_ci_combined LOGIN PASSWORD 'synthetic_ci_combined_only';
+          GRANT luemi_auth_issuer,luemi_request TO rem05b_ci_combined;
+          CREATE ROLE rem05b_ci_intermediate NOLOGIN;
+          GRANT luemi_auth_issuer,luemi_request TO rem05b_ci_intermediate;
+          CREATE ROLE rem05b_ci_indirect LOGIN PASSWORD 'synthetic_ci_indirect_only';
+          GRANT rem05b_ci_intermediate TO rem05b_ci_indirect;
+          CREATE ROLE rem05b_ci_noinherit LOGIN NOINHERIT PASSWORD 'synthetic_ci_noinherit_only';
+          GRANT luemi_auth_issuer,luemi_request TO rem05b_ci_noinherit;
+          CREATE ROLE rem05b_ci_readall LOGIN PASSWORD 'synthetic_ci_readall_only';
+          GRANT luemi_request,pg_read_all_data TO rem05b_ci_readall;
+          CREATE ROLE rem05b_ci_createrole LOGIN CREATEROLE PASSWORD 'synthetic_ci_createrole_only';
+          GRANT luemi_request TO rem05b_ci_createrole;
           SQL
       - name: Actual PostgreSQL ownership and auth security negatives
         run: npx --no-install tsx --test apps/api/secure-tests/rem05b.test.ts
