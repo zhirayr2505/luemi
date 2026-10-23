@@ -8,7 +8,8 @@ import {sanitizePng} from "./rem05d-image.js";
 const MAX_BYTES=1_048_576;
 type Guard={read:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;
  mutation:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>};
-export type PrivateObjectStore={put:(key:string,bytes:Buffer)=>Promise<void>;get:(key:string)=>Promise<Buffer|null>};
+export type PrivateObjectStore={put:(key:string,bytes:Buffer)=>Promise<void>;get:(key:string)=>Promise<Buffer|null>;
+ delete:(key:string)=>Promise<void>};
 export type Rem05dOptions={enabled:boolean;requestDatabaseUrl:string;workerDatabaseUrl:string;
  namespace:string;consentVersion:string;storage:PrivateObjectStore;testOnly:true};
 class Rejection extends Error{constructor(public status:number,public code:string){super(code);}}
@@ -132,12 +133,14 @@ function statusError(reply:FastifyReply,error:unknown){
 export function memoryPrivateStore():PrivateObjectStore{
  const objects=new Map<string,Buffer>();
  return{put:async(k,v)=>{if(objects.has(k))throw new Error("storage_collision");objects.set(k,Buffer.from(v));},
- get:async(k)=>objects.has(k)?Buffer.from(objects.get(k)!):null};
+ get:async(k)=>objects.has(k)?Buffer.from(objects.get(k)!):null,
+ delete:async(k)=>{objects.delete(k);}};
 }
 export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Rem05dOptions|undefined){
  if(!opts?.enabled)return;
  if(!guard||opts.testOnly!==true||!opts.requestDatabaseUrl||!opts.workerDatabaseUrl||
-  !/^[\w:-]{1,96}$/.test(opts.namespace)||!str(opts.consentVersion,3,64)||!opts.storage)
+  !/^[\w:-]{1,96}$/.test(opts.namespace)||!str(opts.consentVersion,3,64)||
+  !opts.storage||typeof opts.storage.delete!=="function")
    throw new Error("REM-05D requires isolated role-separated test-only setup");
  const cfg=opts;
  const auth=guard;
@@ -173,13 +176,13 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    return statusError(reply,e);
   }finally{db.release();}
  }
- async function worker<T>(fn:(db:PoolClient)=>Promise<T>):Promise<T>{
+ async function worker<T>(fn:(db:PoolClient)=>Promise<T>,onCommit?:()=>void):Promise<T>{
   const db=await workerPool.connect();
   try{
    if(!await safeDb(db,"luemi_media_worker"))reject(503,"service_unavailable");
    await db.query("BEGIN");
    const output=await fn(db);
-   await db.query("COMMIT");return output;
+   await db.query("COMMIT");onCommit?.();return output;
   }catch(e){await db.query("ROLLBACK").catch(()=>{});throw e;}
   finally{db.release();}
  }
@@ -278,6 +281,11 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   if(reply.sent||!("id" in verify))return verify;
   let clean:ReturnType<typeof sanitizePng>;
   try{clean=sanitizePng(req.body);}catch{return reply.code(422).send({error:"invalid_image"});}
+  // Preserve the original authorized token generation across the storage/worker
+  // boundary. The request and worker principals remain deliberately disjoint.
+  const uploadActor=req.authActor;
+  let stagedKey:string|undefined;
+  let workerCommitted=false;
   try{
    const changed=await worker(async db=>{
     const row=await db.query<{original_key:string;derivative_key:string;owner_id:string}>(
@@ -288,6 +296,9 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
      [req.params.id,verify.id,opts.namespace]);
     if(!row.rowCount)reject(409,"intent_consumed");
     const m=row.rows[0];
+    // Object store writes are NOT transactional with PostgreSQL. Any failure
+    // after this point requires best-effort compensating deletion.
+    stagedKey=m.derivative_key;
     await opts.storage.put(m.derivative_key,clean.bytes);
     await db.query("UPDATE luemi_private.media_assets SET state='pending_review',"+
      "actual_mime='image/png',byte_count=$2,width=$3,height=$4,content_sha256=$5 WHERE id=$1",
@@ -296,13 +307,32 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
     await db.query("UPDATE luemi_private.media_uploads SET state='received' WHERE asset_id=$1",[req.params.id]);
     await db.query("INSERT INTO luemi_private.moderation_jobs(asset_id,generation) VALUES($1,1) ON CONFLICT DO NOTHING",
      [req.params.id]);
+    // Critical D-R4 boundary: revalidate the *original* actor/session/token
+    // after all async storage and SQL work but BEFORE the worker commits.
+    // The issuer checks its own session tables; worker gets NO session grants.
+    await auth.read(req,reply);
+    if(reply.sent||!uploadActor||!req.authActor||
+      req.authActor.actorId!==uploadActor.actorId||
+      req.authActor.sessionId!==uploadActor.sessionId||
+      !timingSafeEqual(req.authActor.hash,uploadActor.hash))
+       reject(401,"unauthorized");
     return true;
-   });
+   },()=>{workerCommitted=true;});
    if(!changed)reject(503,"service_unavailable");
    await guard.read(req,reply);
    if(reply.sent)return reply;
    return{assetId:req.params.id,status:"pending_review",published:false};
-  }catch(e){return statusError(reply,e);}
+  }catch(e){
+   if(!workerCommitted&&stagedKey){
+    // Rollback cannot undo the already-written object. The private adapter
+    // must support idempotent deletion; failure leaves a private orphan only,
+    // not an actionable SQL media or moderation state. Durable cleanup is
+    // NOT implemented in this isolated mock prototype.
+    try{await opts.storage.delete(stagedKey);}catch{/* fail-closed SQL state; cleanup needed */}
+   }
+   if(reply.sent)return reply;
+   return statusError(reply,e);
+  }
  });
  app.get<{Params:{id:string}}>("/api/v2/media/:id",{preHandler:guard.read},async(req,reply)=>{
   if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});
