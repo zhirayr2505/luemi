@@ -64,6 +64,7 @@ async function run(name,url){
  await page.route("**/*",route=>route.request().url().startsWith(url+"/")?route.continue():route.abort("blockedbyclient"));
  const cdp=await context.newCDPSession(page);
  await cdp.send("Performance.enable");
+ await context.tracing.start({screenshots:true,snapshots:true,sources:false});
  const measure=async(tag)=>{
   await sleep(130);
   await cdp.send("HeapProfiler.collectGarbage");
@@ -99,7 +100,7 @@ async function run(name,url){
   await page.locator(".fy-scroll").evaluate(node=>node.scrollTop=360);
   await sleep(125);
   const initial=await measure("library-warm");
-  assert.ok(initial.fyLibraryImages>0);
+  assert.ok(initial.fyLibraryImages>0&&initial.own!==null,"measuring owner must be installed");
   const originalScroll=initial.libraryScroll;
   await page.getByRole("button",{name:"Смотреть всех"}).first().click();
   await page.locator(".fy-expanded .fy-grid").waitFor();
@@ -161,6 +162,16 @@ async function run(name,url){
   await page.setViewportSize({width:375,height:768});
   await sleep(190);
   const resized=await measure("theme-viewport");
+  await page.getByRole("button",{name:"Профиль",exact:true}).click();
+  await page.locator(".pm-inline .pm-photo-track").waitFor();
+  for(let n=0;n<5;n++){
+   await page.getByRole("button",{name:"Развернуть анкету"}).click();
+   await sleep(370);
+   await page.getByRole("button",{name:"Потянуть панель вниз"}).click();
+   await sleep(370);
+  }
+  const owner=await measure("owner-after-reentry");
+  assert.ok(owner.imageBlurNodes<=3,"REM-04B blur cap preserved");
   let teardown=null;
   if(name==="current"){
    await page.evaluate(()=>window.__luemiQaUnmount());
@@ -168,10 +179,13 @@ async function run(name,url){
    assert.equal(teardown.reactChildren,0,"all mounted React content removed");
   }
   assert.deepEqual(errors,[],"browser page errors");
-  const result={name,initial,expanded,checkpoints,after50,restored,nearby,feed,forYouReturn,viewer,resized,teardown,errors};
+  const result={name,initial,expanded,checkpoints,after50,restored,nearby,feed,forYouReturn,viewer,resized,owner,teardown,errors};
   console.log("REM04C_SESSION "+JSON.stringify(result));
   return result;
- }finally{await context.close();}
+ }finally{
+  await context.tracing.stop({path:dir+"/"+name+".trace.zip"}).catch(()=>{});
+  await context.close();
+ }
 }
 try{
  for(const [name,url] of sites)results.sites.push(await run(name,url));
