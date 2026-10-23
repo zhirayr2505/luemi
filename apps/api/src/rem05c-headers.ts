@@ -1,6 +1,12 @@
 import type {FastifyInstance} from "fastify";
 export interface EmbeddingPolicy {enabled:boolean;ancestors:string[]}
-const hashed=/^\/assets\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8,}\.(?:js|css|svg|woff2?|png|webp|avif|ico)$/;
+const hashed=/^\\/assets\\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8,}\\.(js|css|svg|woff2?|png|webp|avif|ico)$/;
+const assetMime:Record<string,readonly string[]>={
+ js:["application/javascript","text/javascript"],css:["text/css"],
+ svg:["image/svg+xml"],woff:["font/woff","application/font-woff"],
+ woff2:["font/woff2"],png:["image/png"],webp:["image/webp"],
+ avif:["image/avif"],ico:["image/x-icon","image/vnd.microsoft.icon"]
+};
 export function acceptedAncestors(policy?:EmbeddingPolicy):string[]{
   if(!policy?.enabled)return [];
   if(!Array.isArray(policy.ancestors)||policy.ancestors.length<1||
@@ -32,7 +38,7 @@ export function installHttpPolicy(app:FastifyInstance,embedding?:EmbeddingPolicy
     reply.header("Referrer-Policy","no-referrer");
     reply.header("Cross-Origin-Resource-Policy","same-origin");
     reply.header("Cache-Control",api?"private, no-store":immutable?
-      "public, max-age=31536000, immutable":document?"no-store":"no-cache");
+      "public, max-age=31536000, immutable":document||reply.statusCode>=400?"no-store":"no-cache");
     if(api){
       reply.header("Vary","Origin, Cookie, Authorization");
       reply.removeHeader("ETag");
