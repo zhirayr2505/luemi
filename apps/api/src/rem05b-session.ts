@@ -72,6 +72,12 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):void{
     "a.attrelid='luemi_private.sessions'::regclass AND a.attnum>0 "+
     "AND NOT a.attisdropped AND has_column_privilege(current_user,a.attrelid,a.attname,'SELECT')) "+
     "AND NOT has_table_privilege(current_user,'luemi_private.sessions','SELECT') "+
+    "AND NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE "+
+    "a.attrelid IN ('luemi_private.actors'::regclass,'luemi_private.sessions'::regclass) "+
+    "AND a.attnum>0 AND NOT a.attisdropped AND "+
+    "(has_column_privilege(current_user,a.attrelid,a.attname,'INSERT') OR "+
+    "has_column_privilege(current_user,a.attrelid,a.attname,'UPDATE') OR "+
+    "has_column_privilege(current_user,a.attrelid,a.attname,'REFERENCES'))) "+
     "AND NOT has_table_privilege(current_user,'luemi_private.actors','INSERT') "+
     "AND NOT has_table_privilege(current_user,'luemi_private.actors','DELETE') "+
     "AND NOT has_table_privilege(current_user,'luemi_private.actors','UPDATE') "+
