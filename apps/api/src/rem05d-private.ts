@@ -137,13 +137,13 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
      [initial.actorId,cfg.namespace]);
    if(active.rowCount!==1)reject(401,"unauthorized");
    const output=await fn(db,initial.actorId);
-   await db.query("COMMIT");
-   // Revalidate the current token generation AFTER protected DB work as in REM-05B.
+   // Revalidate the exact session generation BEFORE committing any user write.
+   // A concurrent logout/ban during the SQL work must roll this transaction back.
    await auth.read(req,reply);
-   if(reply.sent)return reply;
+   if(reply.sent){await db.query("ROLLBACK");return reply;}
    if(req.authActor?.actorId!==initial.actorId||req.authActor.sessionId!==initial.sessionId||
-      !timingSafeEqual(req.authActor.hash,initial.hash))
-    return reply.code(401).send({error:"unauthorized"});
+      !timingSafeEqual(req.authActor.hash,initial.hash))reject(401,"unauthorized");
+   await db.query("COMMIT");
    return output;
   }catch(e){
    await db.query("ROLLBACK").catch(()=>{});
