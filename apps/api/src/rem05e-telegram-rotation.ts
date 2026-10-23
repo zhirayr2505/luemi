@@ -1,4 +1,5 @@
 import type { ApiConfig } from "./config.js";
+import { buildApp } from "./app.js";
 
 /**
  * REM-05E: deliberately MOCK-ONLY. This module has no production Bot API
@@ -33,10 +34,12 @@ export interface RotationRequest {
   candidateSecret: string;
   /** Per-mock-call timeout, bounded to 10..10000ms. */
   transportTimeoutMs?: number;
+  /** Bounded total receiver verification, including optional untrusted veto; 10..10000ms. */
+  proofTimeoutMs?: number;
   knownExposedGenerations?: readonly string[];
   /**
-   * A record from a *synthetic* end-to-end test only; never persisted as
-   * evidence that live Telegram has this generation.
+   * Legacy optional untrusted veto/fault-injection hook; returned booleans
+   * NEVER establish verification. Only internal Fastify inject does that.
    */
   verifiedSyntheticGeneration?: string;
   syntheticReceiverProof?: () => Promise<{
@@ -58,6 +61,8 @@ export interface RotationResult {
   secretGeneration: "unknown" | "synthetic_metadata_only" |
     "telegram_ack_unverified" | "end_to_end_synthetic_only";
   operations: string[];
+  /** Number of trusted isolated Fastify HTTP probes completed, 0..4. */
+  receiverChecks: number;
   liveTelegramVerified: false;
 }
 
@@ -82,6 +87,69 @@ function menuMatches(url: unknown): boolean {
   } catch { return false; }
 }
 
+
+/**
+ * Trusted mock-only receiver evidence. Builds an isolated local Fastify app;
+ * no port listening, network, Telegram, production DB or user traffic.
+ * Untrusted callback values cannot supply a successful HTTP response.
+ */
+async function verifyIsolatedFastifyReceiver(
+  config: ApiConfig, candidate: string, previous: string
+): Promise<{ verified: boolean; checks: number }> {
+  const app = buildApp({
+    ...config, logger: false, webhookSecret: candidate,
+    // Never touch remote persistence or optional real providers during a proof.
+    rem05b: undefined, rem05c: undefined, rem05d: undefined
+  });
+  const payload = { message: { text: "/start", chat: { id: 13579, type: "private" } } };
+  let checks = 0;
+  try {
+    async function probe(token?: string) {
+      const response = await app.inject({
+        method: "POST", url: "/api/telegram/webhook", payload,
+        headers: token === undefined ? {} : { "x-telegram-bot-api-secret-token": token }
+      });
+      checks++;
+      const body: unknown = response.json();
+      return { status: response.statusCode, body };
+    }
+    const candidateResponse = await probe(candidate);
+    const previousResponse = await probe(previous);
+    const missingResponse = await probe();
+    const wrongToken = candidate[0] === "x" ? "y".repeat(32) : "x".repeat(32);
+    const wrongResponse = await probe(wrongToken);
+    const good = candidateResponse.status === 200 &&
+      isRecord(candidateResponse.body) &&
+      candidateResponse.body.method === "sendMessage" &&
+      candidateResponse.body.chat_id === 13579 &&
+      isRecord(candidateResponse.body.reply_markup) &&
+      Array.isArray(candidateResponse.body.reply_markup.inline_keyboard);
+    const denied = (reply: typeof previousResponse) =>
+      reply.status === 404 && isRecord(reply.body) &&
+      reply.body.error === "not_found" &&
+      !("method" in reply.body) && !("chat_id" in reply.body) &&
+      !("reply_markup" in reply.body);
+    return { verified: good && denied(previousResponse) &&
+      denied(missingResponse) && denied(wrongResponse), checks };
+  } finally {
+    await app.close();
+  }
+}
+
+async function withinProofDeadline<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("isolated_proof_timeout")), ms);
+      })
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 /** No retries; operator must investigate ambiguous acknowledgements. */
 export async function executeSyntheticWebhookRotation(
   config: ApiConfig,
@@ -95,9 +163,10 @@ export async function executeSyntheticWebhookRotation(
   let secretGeneration: RotationResult["secretGeneration"] = "unknown";
   let menuApplied = false;
   let webhookAttempted = false;
+  let receiverChecks = 0;
   const result = (): RotationResult => ({
     state, reason, destination, secretGeneration,
-    operations: [...operations],
+    operations: [...operations], receiverChecks,
     liveTelegramVerified: false
   });
   if (request.mode !== "isolated-mock-only" || !request.explicitOwnerApproval) {
@@ -112,6 +181,11 @@ export async function executeSyntheticWebhookRotation(
   if (request.transportTimeoutMs !== undefined &&
       (!Number.isSafeInteger(request.transportTimeoutMs) ||
        request.transportTimeoutMs < 10 || request.transportTimeoutMs > 10000)) {
+    reason = "invalid_authorization"; return result();
+  }
+  if (request.proofTimeoutMs !== undefined &&
+      (!Number.isSafeInteger(request.proofTimeoutMs) ||
+       request.proofTimeoutMs < 10 || request.proofTimeoutMs > 10000)) {
     reason = "invalid_authorization"; return result();
   }
   if (!SYNTHETIC_BOT.test(config.botToken) ||
@@ -211,13 +285,31 @@ export async function executeSyntheticWebhookRotation(
     }
     state = "telegram_update_acknowledged_synthetic";
     secretGeneration = "telegram_ack_unverified";
-    // Ack is NOT end-to-end verification. Proof is optional and fake-only.
+    // ACK is never delivery proof. The caller's booleans are a negative gate
+    // only; four real isolated Fastify HTTP probes establish positive evidence.
     if (request.syntheticReceiverProof) {
-      const proof = await request.syntheticReceiverProof();
-      if (proof.candidateAccepted === true && proof.previousRejected === true) {
-        state = "end_to_end_synthetic_proof";
-        secretGeneration = "end_to_end_synthetic_only";
-      } else {
+      try {
+        const evidence = await withinProofDeadline((async () => {
+          const advisory = await request.syntheticReceiverProof!();
+          if (!advisory || advisory.candidateAccepted !== true ||
+              advisory.previousRejected !== true) {
+            return { verified: false, checks: 0 };
+          }
+          return verifyIsolatedFastifyReceiver(
+            config, request.candidateSecret, config.webhookSecret
+          );
+        })(), request.proofTimeoutMs ?? 2000);
+        receiverChecks = evidence.checks;
+        if (evidence.verified === true && evidence.checks === 4) {
+          state = "end_to_end_synthetic_proof";
+          secretGeneration = "end_to_end_synthetic_only";
+        } else {
+          state = "synthetic_delivery_failed";
+          reason = "delivery_unconfirmed";
+        }
+      } catch {
+        // Once Bot API has ACKed, proof rejection/timeout is NEVER a Bot API
+        // failure. Do not retry setWebhook, reveal exceptions or claim success.
         state = "synthetic_delivery_failed";
         reason = "delivery_unconfirmed";
       }
