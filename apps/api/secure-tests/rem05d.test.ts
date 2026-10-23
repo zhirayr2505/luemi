@@ -3,7 +3,7 @@ import {test} from "node:test";
 import {createHmac} from "node:crypto";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
-import {addSyntheticMetadata,makeSyntheticPng,sanitizePng} from "../src/rem05d-image.js";
+import {addSyntheticMetadata,makeSyntheticPng,makeSynthetic50MpHeader,sanitizePng} from "../src/rem05d-image.js";
 import {memoryPrivateStore,syntheticModerate} from "../src/rem05d-private.js";
 const adminUrl=process.env.REM05D_ADMIN_DATABASE_URL;
 const issuerUrl=process.env.REM05D_ISSUER_DATABASE_URL;
@@ -141,7 +141,7 @@ test("M: actual RLS media, intent concurrency, sanitized PNG, moderator-only app
   assert.ok(!normalized.bytes.includes(Buffer.from("GPSLatitude")));
   assert.equal(normalized.width,1);assert.equal(normalized.height,1);
   for(const malformed of [
-    Buffer.from("not a PNG"),withGps.subarray(0,20),
+    Buffer.from("not a PNG"),makeSynthetic50MpHeader(),withGps.subarray(0,20),
     Buffer.concat([withGps,Buffer.from("tail")])
   ])assert.throws(()=>sanitizePng(malformed));
   const flood=await Promise.all(Array.from({length:25},(_,i)=>post(server,
