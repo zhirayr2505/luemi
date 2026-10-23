@@ -91,13 +91,13 @@ jobs:
             if [[ "$i" -eq 45 ]]; then cat /tmp/rem04d-{accepted,current}-vite.log >&2; exit 1; fi
             sleep 1
           done
-          node scripts/rem-04c-long-session.mjs
+          node scripts/rem-04d-long-session.mjs
       - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: rem04d-media-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            qa-artifacts/rem-04c/**
+            qa-artifacts/rem-04d/media/**
             /tmp/rem04d-accepted-vite.log
             /tmp/rem04d-current-vite.log
           if-no-files-found: warn
