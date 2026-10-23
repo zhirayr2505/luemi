@@ -144,6 +144,18 @@ test("REM05B actual request role RLS no actor cross-tenant or pooled context",as
   }
  }finally{await app.close();}
 });
+test("REM05B privileged-role configuration is rejected at the API boundary",async()=>{
+ const wrongIssuer=makeApp({...opts,namespace:"ci_role_probe",issuerDatabaseUrl:adminUrl});
+ try{
+  assert.equal((await auth(wrongIssuer,sign(220033))).statusCode,503);
+ }finally{await wrongIssuer.close();}
+ const wrongRequest=makeApp({...opts,namespace:"ci_role_probe",requestDatabaseUrl:adminUrl});
+ try{
+  const valid=await auth(wrongRequest,sign(220034));
+  assert.equal(valid.statusCode,200);
+  assert.equal((await get(wrongRequest,"/api/v2/me",sid(valid))).statusCode,503);
+ }finally{await wrongRequest.close();}
+});
 test("REM05B fail-closed DB unavailable and rejected third-party cookie fixture",async()=>{
  const bad=makeApp({...opts,issuerDatabaseUrl:"postgres://invalid:invalid@127.0.0.1:1/missing"});
  try{
