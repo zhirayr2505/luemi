@@ -130,14 +130,14 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    if(!await safeDb(db,"luemi_request"))reject(503,"service_unavailable");
    await db.query("BEGIN");
    await db.query("SELECT set_config('luemi.actor_id',$1,true)",[initial.actorId]);
-   await db.query("SELECT set_config('luemi.environment',$1,true)",[opts.namespace]);
+   await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
    const active=await db.query("SELECT id FROM luemi_private.actors WHERE id=$1 AND environment=$2 AND status='active'",
-     [initial.actorId,opts.namespace]);
+     [initial.actorId,cfg.namespace]);
    if(active.rowCount!==1)reject(401,"unauthorized");
    const output=await fn(db,initial.actorId);
    await db.query("COMMIT");
    // Revalidate the current token generation AFTER protected DB work as in REM-05B.
-   await guard.read(req,reply);
+   await auth.read(req,reply);
    if(reply.sent)return reply;
    if(req.authActor?.actorId!==initial.actorId||req.authActor.sessionId!==initial.sessionId||
       !timingSafeEqual(req.authActor.hash,initial.hash))
