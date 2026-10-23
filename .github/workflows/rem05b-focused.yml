@@ -1,5 +1,6 @@
 name: LUEMI REM-05B isolated identity and sessions QA
 on:
+  workflow_call:
   push:
     branches: [remediation/rem-05b-telegram-identity-sessions-20261023, remediation/rem-05c-geo-rate-cache-telegramweb-20261023, remediation/rem-05d-private-media-rls-moderation-20261023, remediation/rem-05e-webhook-secret-rotation-20261024]
   pull_request:

@@ -1,5 +1,6 @@
 name: LUEMI REM-05C isolated geo budget and HTTP policy QA
 on:
+  workflow_call:
   push:
     branches: [remediation/rem-05c-geo-rate-cache-telegramweb-20261023, remediation/rem-05d-private-media-rls-moderation-20261023, remediation/rem-05e-webhook-secret-rotation-20261024]
   pull_request:
