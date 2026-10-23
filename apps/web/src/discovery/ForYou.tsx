@@ -74,16 +74,25 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
  const [prefs,setPrefs]=useState<Prefs>(savedPrefs);
  const scroll=useRef<HTMLDivElement>(null), first=useRef<HTMLElement>(null);
  const expandedScroll=useRef<HTMLDivElement>(null);
+ const opener=useRef<HTMLElement|null>(null);
+ const previousExpanded=useRef<CollectionId|"best"|null>(null);
  const manageDialog=useRef<HTMLElement>(null);
  useModalLayer(settingsOpen,manageDialog,()=>onSettingsOpen(false));
  // Finite set of stable collection identities; never cache arbitrary route keys.
  const collectionOffsets=useRef<Partial<Record<CollectionId|"best",number>>>({});
  useLayoutEffect(()=>{
+  const changed=previousExpanded.current!==expanded;
+  previousExpanded.current=expanded;
   if(expanded){
    const node=expandedScroll.current;
    if(node){node.scrollTop=collectionOffsets.current[expanded]??0;
     onScrollTop?.(node.scrollTop,expanded);}
-  }else if(scroll.current)onScrollTop?.(scroll.current.scrollTop,null);
+   if(changed)expandedScroll.current?.closest(".fy-expanded")?.querySelector<HTMLElement>(".fy-back")?.focus({preventScroll:true});
+  }else if(scroll.current){
+   onScrollTop?.(scroll.current.scrollTop,null);
+   if(changed&&opener.current?.isConnected&&opener.current.getClientRects().length)
+    opener.current.focus({preventScroll:true});
+  }
  },[expanded,onScrollTop]);
  const reportScroll=(top:number,context:CollectionId|"best"|null)=>{
   if(context)collectionOffsets.current[context]=top;
@@ -94,6 +103,7 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
  // layout and scroll nodes. Nearby photos survive for an immediate reveal.
  const [libraryWindow,setLibraryWindow]=useState<ReadonlySet<string>|null>(null);
  const openCollection=(id:CollectionId|"best")=>{
+  opener.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
   const root=scroll.current,rect=root?.getBoundingClientRect();
   if(rect&&rect.height>0){
    const visible=new Set<string>();
@@ -143,7 +153,7 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
   </section>;
  };
  return <div className="fy-root" data-media-residency={expanded?"expanded-window":"library"}>
-  <div className="fy-scroll" ref={scroll} onScroll={event=>reportScroll(event.currentTarget.scrollTop,null)}>
+  <div className="fy-scroll" ref={scroll} inert={!!expanded} aria-hidden={!!expanded} onScroll={event=>reportScroll(event.currentTarget.scrollTop,null)}>
    <div className="fy-hero">
     <div className="fy-hero-glow" aria-hidden="true"/><div className="fy-hero-mark" aria-hidden="true"><Heart size={89} strokeWidth={.85}/><Sparkles size={29}/></div>
     <div className="fy-hero-copy">
