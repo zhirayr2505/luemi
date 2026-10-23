@@ -38,7 +38,14 @@ try {
   if(blocked){
    await page.getByText("Не удалось подтвердить вход. Попробуй снова через Telegram.").waitFor({timeout:10000});
   }else{
-   await page.getByRole("button",{name:/Начать/}).waitFor({timeout:10000});
+   await page.getByRole("button",{name:/Начать/}).waitFor({timeout:7000}).catch(async error=>{
+    const visible=(await page.locator("body").innerText()).slice(0,400);
+    const runtime=await page.evaluate(()=>({initDataLength:window.Telegram?.WebApp?.initData?.length??0,
+      scene:document.querySelector("main")?.getAttribute("data-scene"),
+      phase:document.querySelector("main")?.getAttribute("data-phase")}));
+    console.error("REM05B_DIAGNOSTIC",JSON.stringify({visible,runtime,authCalls,probeCalls}));
+    throw error;
+   });
   }
   assert.equal(authCalls,1);
   assert.equal(probeCalls,1);
