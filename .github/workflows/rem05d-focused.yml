@@ -1,9 +1,9 @@
 name: LUEMI REM-05D isolated private media and RLS QA
 on:
   push:
-    branches: [remediation/rem-05d-private-media-rls-moderation-20261023]
+    branches: [remediation/rem-05d-private-media-rls-moderation-20261023, remediation/rem-05e-webhook-secret-rotation-20261024]
   pull_request:
-    branches: [remediation/rem-05c-geo-rate-cache-telegramweb-20261023]
+    branches: [remediation/rem-05c-geo-rate-cache-telegramweb-20261023, remediation/rem-05e-webhook-secret-rotation-20261024]
 permissions:
   contents: read
 jobs:
