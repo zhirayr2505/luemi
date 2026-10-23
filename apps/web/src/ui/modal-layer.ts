@@ -103,8 +103,9 @@ const deactivate=(id:symbol)=>{
  if(focusSafe(removed.trigger))return;
  if(stack.length)focusTop();
  else{
-  const fallback=document.querySelector<HTMLElement>(
-   '.discovery-top-tabs button.active,.discovery-bottom-nav button.active,.pm-tab.active');
+  const fallback=[...document.querySelectorAll<HTMLElement>(
+   '.discovery-top-tabs button.active,.discovery-bottom-nav button.active,.pm-tab.active')]
+   .find(isVisible);
   focusSafe(fallback);
  }
 };
