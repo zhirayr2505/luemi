@@ -131,9 +131,13 @@ test("REM05B actual request role RLS no actor cross-tenant or pooled context",as
   }
   assert.equal((await scoped.query("SELECT id FROM luemi_private.actors")).rowCount,0,"rollback cleared context");
   for(const roleName of ["anon","authenticated"]){
-   await assert.rejects(admin.query("SET ROLE "+roleName+"; SELECT * FROM luemi_private.actors; RESET ROLE;"));
-   // Failed multi-command can leave a transaction aborted for that connection;
-   // use dedicated disposable connection for permission assertions instead.
+   const conn=await admin.connect();
+   try{
+    await conn.query("BEGIN");
+    await conn.query("SET LOCAL ROLE "+roleName);
+    await assert.rejects(conn.query("SELECT id FROM luemi_private.actors"));
+    await conn.query("ROLLBACK");
+   }finally{conn.release();}
   }
  }finally{await app.close();}
 });
