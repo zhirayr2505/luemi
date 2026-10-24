@@ -203,25 +203,11 @@
 .deck-entering .discovery-action:disabled{opacity:1}
 
 
-/* Visitor profile is inside the content panel; the stationary header remains above it. */
-.discovery-app[data-profile-overlay=true] .discovery-bottom-nav{visibility:hidden}
-.discovery-app[data-profile-overlay=true][data-route-revealing=true] .discovery-bottom-nav{visibility:visible}
-/* REM-04B LU-14: preserve mounted Feed/ForYou/Nearby DOM and scroll while
-   the route covers the browser. The visible flag is NOT a raster-readiness
-   guarantee: Blink may discard cached paint/GPU tiles while hidden.
-   The route enables the underlay BEFORE sliding back; no artificial delay
-   or full-screen bitmap placeholder is introduced. On covered screens,
-   descendants from the animated deck may explicitly say visibility:visible,
-   so the complete subtree must be scoped to the same visibility owner. */
-.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true]) .discovery-browse-panel,
-.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true]) .discovery-browse-panel *{
- visibility:hidden!important;
-}
-/* The persistent browse header is a second full logo (plus translucent tools)
-   behind the visitor's own header; suppress its Android raster layer as well. */
-.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true])>.lh-header{
- visibility:hidden;
-}
+/* Keep Feed, header and navigation painted underneath the opaque visitor
+   route throughout an Android back gesture. Flipping visibility across the
+   entire browse subtree on gesture claim discards GPU paint tiles and causes
+   a visible card flash during slow drag/rollback. Modal isolation still owns
+   background keyboard/touch input; route z-index:80 covers header/nav. */
 
 /* Only the rectangular navigation layer slides. The profile sheet keeps its
    already-verified stationary scroll renderer and five independent pages. */
@@ -230,6 +216,7 @@
  background:var(--bg);transform:translate3d(100%,0,0);
  box-shadow:-8px 0 24px rgba(30,17,44,.13);
 }
+.discovery-visitor-route:focus{outline:none}
 .discovery-visitor-route>.pm-shell{position:absolute;inset:0}
 /* Expanded portraits are reserved for photo swipes. Collapsed profiles
    and the expanded white sheet own horizontal back gestures via the route. */
