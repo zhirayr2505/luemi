@@ -169,12 +169,17 @@ assert.ok(css.includes(".pm-sheet-viewport")&&
 console.log("✓ Profile scroll motion replaces legacy top/left and transformed clipping");
 
 const discoveryCss=read("apps/web/src/discovery/discovery.css");
-assert.ok(discovery.includes("data-profile-renderer=")&&
- discoveryCss.includes("[data-profile-renderer=android][data-profile-overlay=true]")&&
- discoveryCss.includes(":not([data-route-revealing=true])")&&
- discoveryCss.includes(">.lh-header")&&
+// REM-04B originally required hiding every Android browse descendant while a
+// visitor route was covering it. Live slow-drag reports exposed the resulting
+// raster tile invalidation. The painted underlay must now remain stable as the
+// opaque high-z-index route moves; modal inert isolation still blocks inputs.
+assert.ok(discoveryCss.includes(".discovery-visitor-route{")&&
+ discoveryCss.includes("z-index:80")&&
+ discoveryCss.includes("background:var(--bg)")&&
+ !discoveryCss.includes("[data-profile-renderer=android][data-profile-overlay=true]")&&
+ !discoveryCss.includes(".discovery-bottom-nav{visibility:hidden}")&&
  !discovery.includes("data-profile-from-feed"),
- "all Android browsing sources share one hidden underlay, restored during route transitions");
+ "visitor route covers a persistently painted browse underlay on Android");
 assert.ok(header.includes("androidProfileChrome")&&
  header.includes("!androidProfileChrome&&<img")&&
  profile.includes("collapsedRef.current=next;")&&profile.includes("sheetIntent.current=null;")&&
