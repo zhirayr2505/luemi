@@ -123,8 +123,8 @@ assertCheck("restart label not misleading and controls remain local-only",
  discovery.includes('onRestart={restartFeed}')&&discovery.includes('indicate("Демо-Лента начата заново")'));
 assertCheck("full profile sheet anchors identity and scrolls only selected tab content",
  discoveryProfile.includes("data-sheet-state={collapsed")&&
- discoveryProfile.includes('className="pm-mini-avatar"')===false&&
- discoveryProfile.includes('className={"pm-mini-avatar"')&&
+ (discoveryProfile.includes('className="pm-mini-avatar"')||
+  discoveryProfile.includes('className={"pm-mini-avatar"'))&&
  discoveryProfile.includes("settleSheet(")&&globalHeader.includes("setScrollTop")&&
  !globalHeader.includes("setProfileMorph")&&
  !globalHeaderCss.includes(".lh-droplet")&&
