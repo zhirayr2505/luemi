@@ -24,6 +24,10 @@ const focusSafe=(node:HTMLElement|null|undefined)=>{
 const focusTop=()=>{
  const root=stack[stack.length-1]?.root;
  if(!root)return;
+ // Focusing this route root avoids a synchronous DOM-wide visible-control
+ // scan and repeated layout checks on a time-critical mobile profile tap.
+ // Other dialogs retain their existing explicit initial-focus behavior.
+ if(root.hasAttribute("data-modal-focus-root")&&focusSafe(root))return;
  const preferred=root.querySelector<HTMLElement>("[data-modal-initial]");
  if(focusSafe(preferred))return;
  if(focusSafe(candidates(root)[0]))return;
