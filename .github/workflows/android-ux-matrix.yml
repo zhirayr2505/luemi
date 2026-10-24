@@ -8,6 +8,9 @@ permissions:
   contents: read
 jobs:
   android-ux:
+    # Avoid an always-on extra runner once LUEMI becomes a private repository.
+    # This focused QA is automatic only for its hardening branch; manual afterwards.
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/android-webview-interaction-stability-matrix-20261024'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
