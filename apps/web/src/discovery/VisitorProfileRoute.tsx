@@ -17,7 +17,7 @@ type Props={
  registerBack:(handler:(()=>boolean)|null)=>void;
 };
 type RouteDrag={
- id:number;startX:number;startY:number;started:number;origin:number;claimed:boolean;serial:number;
+ id:number;startX:number;startY:number;started:number;origin:number;span:number;claimed:boolean;serial:number;
  source:"photo"|"pages"|"tabs"|"sheet";
 };
 const OPEN_DURATION=260;
@@ -219,7 +219,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   const serial=gestures.begin("pointer",e.pointerId,"route");
   if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
-   origin:currentX(),claimed:false,source,serial};
+   origin:currentX(),span:width(),claimed:false,source,serial};
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
@@ -260,7 +260,8 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   if(!gestures.owns("route",g.serial))return;
   if(e.cancelable)e.preventDefault();
   e.stopPropagation();
-  setX(Math.max(0,Math.min(width(),g.origin+dx)));
+  // Width stays stable for this gesture; avoid a clientWidth/layout read on every pointermove.
+   setX(Math.max(0,Math.min(g.span,g.origin+dx)));
  };
  const end=(e:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
@@ -274,7 +275,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   const dx=Math.max(0,e.clientX-g.startX);
   const dt=Math.max(1,performance.now()-g.started);
   const x=currentX();
-  const willClose=!cancelled&&(x>width()*.32||(dx>35&&dx/dt>.58));
+  const willClose=!cancelled&&(x>g.span*.32||(dx>35&&dx/dt>.58));
   if(willClose)close();
   else rollback();
  };
