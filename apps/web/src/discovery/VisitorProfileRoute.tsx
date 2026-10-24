@@ -278,7 +278,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   if(willClose)close();
   else rollback();
  };
- return <div className="discovery-visitor-route" ref={route}
+ return <div className="discovery-visitor-route" ref={route} tabIndex={-1} data-modal-focus-root="true"
     onTransitionEnd={e=>{if(e.target===e.currentTarget&&e.propertyName==="transform")finish();}}
     onPointerDownCapture={down} onPointerMoveCapture={move}
     onPointerUpCapture={e=>end(e)} onPointerCancelCapture={e=>end(e,true)}
