@@ -180,3 +180,63 @@ test("F25 unknown moderation and stale permission revision fail closed",()=>{
  deny(auth(blik({permissionRevision:2}),facts({permissionRevision:1})));
  assert.equal(parseSyntheticBlik({...blik(),mediaVersion:0}),null);
 });
+
+/** Independent REM-05F post-audit RED tests: dormant media and synthetic policy. */
+test("F-A1 RED completed video never restarts or regresses",()=>{
+ const m=new BlikMediaSession(),g=m.begin("video",10000);
+ assert.equal(m.videoReady(g,0),true);
+ assert.equal(m.videoTime(g,8,10),true);
+ assert.equal(m.endedOnce(g),true);
+ assert.equal(m.videoReady(g,100),false);
+ assert.equal(m.videoTime(g,2,10),false);
+ assert.equal(m.buffering(g,110),false);
+ assert.equal(m.playing(g,120),false);
+ assert.equal(m.hold(g,true,130),false);
+ assert.equal(m.hold(g,false,140),false);
+ assert.equal(m.visibility(g,false,150),false);
+ assert.equal(m.visibility(g,true,160),false);
+ assert.equal(m.snapshot().phase,"paused");
+ assert.equal(m.progress(),1);
+ assert.equal(m.endedOnce(g),false);
+ const h=m.begin("video",10000);
+ assert.notEqual(h,g);
+ assert.equal(m.videoReady(h,200),true);
+ assert.equal(m.videoTime(h,2,10),true);
+ assert.equal(m.progress(),.2);
+ m.cleanup();
+});
+test("F-A2 RED hold/visibility/playing/buffering cannot bypass video readiness",()=>{
+ for(const path of ["hold","visibility"] as const){
+  const m=new BlikMediaSession(),g=m.begin("video",30000);
+  assert.equal(m.endedOnce(g),false);
+  if(path==="hold"){assert.equal(m.hold(g,true,10),true);assert.equal(m.hold(g,false,20),true);}
+  else{assert.equal(m.visibility(g,false,10),true);assert.equal(m.visibility(g,true,20),true);}
+  assert.notEqual(m.snapshot().phase,"playing");
+  assert.equal(m.videoTime(g,2,10),false);
+  assert.equal(m.progress(),0);
+  assert.equal(m.playing(g,30),false);
+  assert.equal(m.buffering(g,40),false);
+  assert.equal(m.endedOnce(g),false);
+  assert.equal(m.videoReady(g,50),true);
+  assert.equal(m.videoTime(g,2,10),true);
+  const next=m.begin("video",30000);
+  assert.equal(m.videoReady(g,70),false);
+  assert.equal(m.videoReady(next,80),true);
+  m.cleanup();
+ }
+});
+test("F-A3 RED runtime operation allowlist denies anything unknown",()=>{
+ const p=blik({worldOptIn:true,commentsEnabled:true});
+ const f=facts({viewerWorldOpened:true,premiumEntitlement:{serverVerified:true,active:true},
+  currentMatchIds:new Set(["author"]),playback:{userInitiated:true,decodedAndVisible:true}});
+ for(const bad of ["delete","admin","premium_override","",null,0,{},[],Symbol.for("forged")]){
+  const x=evaluateSyntheticBlik(p,f,bad as BlikOperation);
+  assert.equal(x.decision,"DENY","unknown op="+String(bad));
+  assert.equal(x.mediaUrl,null);
+  assert.equal(x.publicViewerIdentity,null);
+ }
+ assert.equal(auth(p,f,"world").decision,"ALLOW_SYNTHETIC_ONLY");
+ deny(auth(blik({audience:"matches"}),facts(),"viewer"));
+ deny(auth(blik({revokedAtMs:NOW}),facts(),"media"));
+ deny(auth(blik({moderation:"removed"}),facts(),"detail"));
+});
