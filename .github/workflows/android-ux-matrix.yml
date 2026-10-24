@@ -1,0 +1,48 @@
+name: LUEMI Android interaction matrix
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-ux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      STAGING_BOOTSTRAP_ONLY: '1'
+      TELEGRAM_BOT_TOKEN: ''
+      TELEGRAM_WEBHOOK_SECRET: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build runtime contracts
+        run: npm run build -w @luemi/contracts
+      - name: Install Chromium browser
+        run: timeout 180s npx --no-install playwright install chromium --with-deps
+      - name: Run reproducible Android UX matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-android-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then ready=1; break; fi
+            if ! kill -0 "$vite_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-android-vite.log >&2; exit 1; fi
+          timeout --signal=TERM --kill-after=10s 260s node scripts/android-profile-ux-matrix.mjs
