@@ -37,7 +37,8 @@ assert.ok(css.includes("touch-action:pan-y")&&css.includes("aspect-ratio:4/5"),"
 // exercised in rem-00c-browser-behavior.mjs (required browser CI lane).
 assert.match(discovery, /<Nearby\b[^>]*\bdraft=\{draft\}/, "Nearby must receive real draft with any additional props");
 const downSource=discovery.slice(discovery.indexOf("const down="),discovery.indexOf("const move="));
-assert.ok(downSource.includes(".nb-card,.nb-location"), "card and location controls retain child gesture ownership");
+assert.ok(downSource.includes(".nb-location")&&!downSource.includes(".nb-card"),
+ "Nearby location controls retain child ownership, but photo cards allow horizontal pager gestures");
 assert.ok(!downSource.includes(".nb-scroll,.nb-card"), "Nearby background must be eligible for parent pager gesture");
 
 assert.ok(discovery.includes("onSave={toggleForYouSave}")&&discovery.includes("onPerson={setPersonOpen}"),"shared save and existing public profile");
