@@ -216,6 +216,15 @@
  background:var(--bg);transform:translate3d(100%,0,0);
  box-shadow:-8px 0 24px rgba(30,17,44,.13);
 }
+/* Android Telegram WebView: keep the one moving full-screen route on
+   a stable compositor surface. Do not rerasterize its logo drop-shadow on
+   every partial back swipe. Original raster, size and placement stay intact. */
+.discovery-app[data-profile-renderer=android] .discovery-visitor-route{
+ will-change:transform;backface-visibility:hidden;
+}
+.discovery-app[data-profile-renderer=android] .discovery-visitor-route .lh-island img{
+ filter:none;
+}
 .discovery-visitor-route>.pm-shell{position:absolute;inset:0}
 /* Expanded portraits are reserved for photo swipes. Collapsed profiles
    and the expanded white sheet own horizontal back gestures via the route. */
