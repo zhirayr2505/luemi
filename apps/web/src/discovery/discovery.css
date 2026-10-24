@@ -216,7 +216,6 @@
  background:var(--bg);transform:translate3d(100%,0,0);
  box-shadow:-8px 0 24px rgba(30,17,44,.13);
 }
-.discovery-visitor-route:focus{outline:none}
 .discovery-visitor-route>.pm-shell{position:absolute;inset:0}
 /* Expanded portraits are reserved for photo swipes. Collapsed profiles
    and the expanded white sheet own horizontal back gestures via the route. */
