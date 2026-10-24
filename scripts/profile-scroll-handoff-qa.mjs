@@ -11,17 +11,6 @@ const devices=[
 const dims=[[360,780],[393,852],[412,915]];
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const samples=[];
-async function touch(cdp,x,y,dy,frames){
- const data=[];
- await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{id:1,x,y}]});
- for(let i=1;i<=frames;i++){
-  await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{id:1,x,y:y+dy*i/frames}]});
-  data.push(Date.now());
-  await sleep(17);
- }
- await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
- return data.length;
-}
 async function profile(page,source){
  if(source==="owner"){
   await page.getByRole("button",{name:"Профиль",exact:true}).click();
