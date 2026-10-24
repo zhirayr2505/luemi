@@ -225,6 +225,27 @@ async function qaProfile(browser){
   await (await required(page,'.discovery-visitor-route .pm-dialog[role="dialog"]',"visitor profile")).waitFor({state:"attached"});
   await sleep(350);
   assert.equal(await page.locator(".discovery-app").getAttribute("data-profile-overlay"),"true");
+  // A slow interactive back-swipe must never toggle the paint visibility
+  // of the browse subtree and force Android Blink to recreate its tiles.
+  const underlay=await page.evaluate(()=>{
+   const scene=document.querySelector(".discovery-app");
+   const browse=scene?.querySelector(".discovery-browse-panel");
+   const chrome=scene?.querySelector(":scope > .lh-header");
+   const nav=scene?.querySelector(".discovery-bottom-nav");
+   const route=scene?.querySelector(".discovery-visitor-route");
+   if(!scene||!browse||!chrome||!nav||!route)return null;
+   const visibility=()=>[browse,chrome,nav].map(el=>getComputedStyle(el).visibility);
+   const atRest=visibility();
+   scene.setAttribute("data-route-revealing","true");
+   const whileDragging=visibility();
+   scene.removeAttribute("data-route-revealing");
+   const afterRollback=visibility();
+   return {atRest,whileDragging,afterRollback,focusInsideRoute:route.contains(document.activeElement)};
+  });
+  assert.ok(underlay?.focusInsideRoute,"visitor route owns focus at rest");
+  assert.deepEqual(underlay?.atRest,["visible","visible","visible"],"browse paints under opaque route");
+  assert.deepEqual(underlay?.whileDragging,underlay.atRest,"no underlay raster visibility toggle on drag");
+  assert.deepEqual(underlay?.afterRollback,underlay.atRest,"no underlay raster visibility toggle on rollback");
   const beforeBack=await page.locator(".discovery-visitor-route").evaluate(el=>getComputedStyle(el).transform);
   console.log("QA_VISITOR_OPEN "+beforeBack);
   await page.keyboard.press("Escape");
