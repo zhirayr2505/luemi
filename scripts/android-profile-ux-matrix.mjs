@@ -13,7 +13,8 @@ try{
  for(const {width,height,theme,rate} of variants){
   const ctx=await browser.newContext({viewport:{width,height},isMobile:true,hasTouch:true,userAgent:ua});
   const page=await ctx.newPage(),errors=[];
-  if(rate>1){const cdp=await ctx.newCDPSession(page);await cdp.send("Emulation.setCPUThrottlingRate",{rate});}
+  const cdp=await ctx.newCDPSession(page);
+  if(rate>1)await cdp.send("Emulation.setCPUThrottlingRate",{rate});
   page.on("pageerror",e=>errors.push(e.message));
   await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.locator(".discovery-app").waitFor();
@@ -69,11 +70,17 @@ try{
    assert.ok(box&&box.width>80&&box.height>10,key+": missing identity sheet");
    const x=Math.max(26,box.x+Math.min(30,box.width*.09)),y=box.y+box.height*.5;
    const closeBySwipe=round===1;
+   // Half the matrix now uses actual Chromium Input.dispatchTouchEvent,
+   // not mouse pointer events masquerading as Android touch.
+   const realTouch=rate===1&&round===1;
    const dragFraction=closeBySwipe?.56:.23;
    const frames=[];
-   await page.mouse.move(x,y);await page.mouse.down();
+   if(realTouch)await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y,id:1}]});
+   else {await page.mouse.move(x,y);await page.mouse.down();}
    for(let n=1;n<=12;n++){
-    await page.mouse.move(x+Math.round(width*dragFraction*n/12),y);
+    const pointX=x+Math.round(width*dragFraction*n/12);
+    if(realTouch)await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:pointX,y,id:1}]});
+    else await page.mouse.move(pointX,y);
     frames.push(await page.evaluate(()=>{
      const scene=document.querySelector(".discovery-app"),route=scene.querySelector(".discovery-visitor-route");
      return {x:new DOMMatrixReadOnly(getComputedStyle(route).transform).m41,
@@ -82,7 +89,8 @@ try{
     }));
     await pause(30);
    }
-   await page.mouse.up();
+   if(realTouch)await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+   else await page.mouse.up();
    assert.ok(frames.some(p=>p.x>width*.06),key+": route did not follow pointer");
    assert.ok(frames.every(p=>p.underlay==="visible"&&p.front===1),key+": flicker-prone paint/logo state");
    assert.ok(frames.every((p,i)=>i===0||p.x>=frames[i-1].x-8),key+": backward jump mid-drag");
