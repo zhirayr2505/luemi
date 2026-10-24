@@ -51,3 +51,4 @@ jobs:
           timeout --signal=TERM --kill-after=10s 260s node scripts/android-profile-ux-matrix.mjs
           timeout --signal=TERM --kill-after=10s 230s node scripts/android-browse-touch-matrix.mjs
           timeout --signal=TERM --kill-after=10s 220s node scripts/profile-scroll-handoff-qa.mjs
+          timeout --signal=TERM --kill-after=10s 140s node scripts/theme-switch-mobile-qa.mjs
