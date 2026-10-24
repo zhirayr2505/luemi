@@ -109,9 +109,10 @@ assert.ok(profile.includes('const serial=gestures.begin("pointer",e.pointerId,"t
  "mouse/pen tab pointer path must use the same arbiter for claim/paint/terminal");
 const tabCandidate=profile.slice(profile.indexOf("const tabDown="),profile.indexOf("const tabMove="));
 assert.ok(!tabCandidate.includes("stopTabs.current()"),"candidate must not interrupt prior tab settle");
-assert.ok(profile.includes('blocking:inPages?scrollTop<=1:!collapsedRef.current')&&
- profile.includes('if(g.inPages&&g.scrollTop>1)'),
- "already scrolled native Touch page must stay passive and never claim sheet on vertical/diagonal input");
+assert.ok(profile.includes('blocking:inPages?(!collapsedRef.current||scrollTop<=1):!collapsedRef.current')&&
+ profile.includes('if(g.inPages&&g.down&&g.scrollTop>1)')&&
+ profileCss.includes('.pm-shell[data-sheet-state="expanded"] .pm-page'),
+ "collapsed scrolled content retains passive native scroll; expanded surface hands vertical touch to sheet");
 assert.ok(profile.includes('!gestures.owns(g.axis==="x"?"tabs":"sheet",g.serial)'));
 assert.ok(route.includes('gestureArbiter={gestures}')&&route.includes('attachSuppression.current()'));
 assert.ok(browse.includes('browseMotion.current.schedulePaint(g.token,trackX')&&browse.includes('frozenBrowse()'));
