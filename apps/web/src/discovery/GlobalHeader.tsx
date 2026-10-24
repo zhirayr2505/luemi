@@ -20,7 +20,8 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  {mode,theme,onTheme,onFilters,onSaved},ref
 ){
  // Avoid a second filtered logo raster on Android Telegram WebView.
- const androidProfileChrome=mode==="profile"&&typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
+ const androidClient=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
+ const androidProfileChrome=mode==="profile"&&androidClient;
  const host=useRef<HTMLElement>(null);
  const island=useRef<HTMLButtonElement>(null);
  const lastScroll=useRef(0);
@@ -84,8 +85,8 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   <div className="lh-center">
    <button className="lh-island" type="button" ref={island} onClick={toggleIsland}
      aria-label={mode==="browse"?"Раскрыть инструменты LUEMI":"LUEMI"} title="LUEMI">
-    <img src={logo} alt="luemi" decoding="sync" fetchPriority="high"/>
-    {!androidProfileChrome&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="sync"/>}
+    <img src={logo} alt="luemi" decoding="async" fetchPriority="high"/>
+    {!androidClient&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="async"/>}
    </button>
    {mode==="profile"&&<button type="button" className="lh-profile-theme" onClick={onTheme}
       aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>
