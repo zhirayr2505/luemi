@@ -988,7 +988,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     if(performance.now()<clickBlocked.current){e.preventDefault();e.stopPropagation();}
    }}>
     <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsedRef.current)}
-      tabIndex={collapsed?-1:0} aria-label={collapsed?"Потянуть панель вниз":"Развернуть анкету"}><span/></button>
+      tabIndex={collapsed?-1:0} aria-label={collapsed?"Развернуть анкету":"Свернуть анкету"}><span/></button>
     <div className="pm-identity">
      <div className="pm-identity-core">
       <div className="pm-identity-text">
