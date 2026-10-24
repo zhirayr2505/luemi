@@ -129,7 +129,7 @@ async function qaProfile(browser){
   if(state.mode!=="collapsed"){
    // An incomplete threshold interaction must be observable, not fake success.
    console.log("QA_TOUCH_SETTLE "+JSON.stringify(state));
-   await page.getByRole("button",{name:"Свернуть анкету"}).click();
+   await page.getByRole("button",{name:"Развернуть анкету"}).click();
    await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
    state=await readState(page);
   }
@@ -337,7 +337,7 @@ async function standardProfile(browser){
   assert.equal(await page.locator(".lh-profile .lh-island img").count(),2,"standard-DOM logo has primary raster and contrast companion");
   assert.equal((await readState(page)).mode,"expanded");
   await snapshot(page,"10-standard-reduced-light-expanded");
-  await page.getByRole("button",{name:"Свернуть анкету"}).click();
+  await page.getByRole("button",{name:"Развернуть анкету"}).click();
   await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
   let state=await readState(page);
   assert.ok(state.scrollTop>60&&state.blurOpacity>.5,"reduced-motion collapse still reaches physical endpoint");
