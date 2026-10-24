@@ -347,3 +347,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 @keyframes check-reveal{from{opacity:0;transform:translate(-50%,-50%) scale(.75)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 @media (max-width:355px){.language-results{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(prefers-reduced-motion:reduce){.interest-chip,.photo-processed{transition:none;animation:none;}}
+
+/* Stationary gradients preserve LUEMI colours, while avoiding a permanent
+   full-viewport animation competing with touch compositing on mobile WebView. */
+@media (hover:none) and (pointer:coarse){
+ .milky-mist::before,.milky-mist::after{animation:none!important}
+}
