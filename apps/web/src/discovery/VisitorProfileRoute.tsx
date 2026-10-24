@@ -17,7 +17,7 @@ type Props={
  registerBack:(handler:(()=>boolean)|null)=>void;
 };
 type RouteDrag={
- id:number;startX:number;startY:number;started:number;origin:number;claimed:boolean;serial:number;
+ id:number;startX:number;startY:number;started:number;origin:number;claimed:boolean;primed:boolean;serial:number;
  source:"photo"|"pages"|"tabs"|"sheet";
 };
 const OPEN_DURATION=260;
@@ -201,9 +201,9 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
  // never becomes a back-swipe surface while expanded, even on photo #1.
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(!e.isPrimary){
-   const claimed=!!gesture.current?.claimed;
+   const claimed=!!gesture.current?.claimed,primed=!!gesture.current?.primed;
    gestures.secondFinger();gesture.current=null;detachSuppression.current();
-   if(claimed)rollback();
+   if(claimed)rollback();else if(primed)revealUnderlay(false);
    return;
   }
   if(paused.current||closing.current||(e.pointerType==="mouse"&&e.button!==0))return;
@@ -219,7 +219,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   const serial=gestures.begin("pointer",e.pointerId,"route");
   if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
-   origin:currentX(),claimed:false,source,serial};
+   origin:currentX(),claimed:false,primed:false,source,serial};
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
@@ -227,7 +227,22 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   if(!g.claimed){
    if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)){
     // No route writer, and no orphaned candidate after native pan-y wins.
-    gestures.finishCandidate(g.serial);gesture.current=null;return;
+    gestures.finishCandidate(g.serial);gesture.current=null;
+    if(g.primed)revealUnderlay(false);
+    return;
+   }
+   // Prepare the approved hidden underlay before the profile moves, not on
+   // the same pointer frame. The stationary modal keeps full-page isolation.
+   // A normal tap never changes the background visibility.
+   if(!g.primed&&dx>=3&&dx>=Math.abs(dy)*1.28){
+    const photoTrack=route.current?.querySelector<HTMLElement>(".pm-photo-track");
+    const hero=route.current?.querySelector<HTMLElement>(".pm-hero");
+    const pages=route.current?.querySelector<HTMLElement>(".pm-pages");
+    const tabs=route.current?.querySelector<HTMLElement>(".pm-tabs");
+    const eligible=g.source==="photo"?fractionalTrack(photoTrack??null,hero?.clientWidth??0,0)<=.015:
+     g.source==="pages"?(pages?.scrollLeft??0)<=1:
+     g.source==="tabs"?(tabs?.scrollLeft??0)<=1:true;
+    if(eligible){g.primed=true;revealUnderlay(true);}
    }
    if(dx<9||dx<Math.abs(dy)*1.28)return;
    // Preserve the existing gallery and tab pager until their first item;
@@ -254,7 +269,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
    if(liveToken.current)routeMotion.current.cancel(liveToken.current,"interrupted");
    liveToken.current=null;intent.current="rollback";
    if(route.current){route.current.style.transition="none";setX(frozenX);g.origin=frozenX;}
-   revealUnderlay(true);
+   if(!g.primed){g.primed=true;revealUnderlay(true);}
    try{route.current?.setPointerCapture(e.pointerId);}catch{/* older WebView */}
   }
   if(!gestures.owns("route",g.serial))return;
@@ -265,7 +280,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
  const end=(e:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   gesture.current=null;
-  if(!g.claimed){gestures.finishCandidate(g.serial);return;}
+  if(!g.claimed){gestures.finishCandidate(g.serial);if(g.primed)revealUnderlay(false);return;}
   if(!gestures.finish("route",g.serial))return;
   detachSuppression.current();
   if(e.cancelable)e.preventDefault();
