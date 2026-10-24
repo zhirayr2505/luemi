@@ -74,8 +74,8 @@ try{
  assert.ok((await page.locator(".registration-preview-watermark").innerText()).includes("не опубликовано"));
  await page.getByRole("tab",{name:"Полный профиль"}).click();
  assert.equal(await page.locator(".registration-profile-simulator .pm-shell").count(),1,"same accepted full profile");
- assert.equal((await page.locator(".preview-root").innerText()).includes("обрабатываются"),true);
- assert.equal((await page.locator(".preview-root").innerText()).includes("ошибки"),true);
+ assert.equal((await page.locator(".preview-root").innerText()).includes("Фото в обработке:"),true);
+ assert.equal((await page.locator(".preview-root").innerText()).includes("с ошибками:"),true);
  await page.getByRole("button",{name:"Изменить анкету"}).click();
  assert.equal(await page.locator("#events").innerText(),"edit-7");
  await page.getByRole("button",{name:/Открыть демо-Ленту/}).click();
