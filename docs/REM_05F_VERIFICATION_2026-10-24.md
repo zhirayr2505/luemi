@@ -59,3 +59,29 @@ On the accepted REM-05E parent, tests were introduced without modifying the risk
 Zero live Telegram webhook operations, BotFather changes, Render/Supabase/Storage accesses, real secret/PII reads, RLS migration, real story publication, payments, merge or deploy. No work on PR #55.
 
 STOP at independent technical acceptance. LU-29 remains DEFERRED_FEATURE_GATE.
+
+
+---
+
+## 7. REM-05F independent post-audit: F-A1 / F-A2 / F-A3 (24 October 2026)
+
+**Scope:** dormant media lifecycle and mock-only authorization operations. No real Bliki viewer activation, endpoints, publication or deployment. LU-29 remains DEFERRED_FEATURE_GATE.
+
+**Before-audit accepted SHA:** f1a915d36f51d2f45978e29ca205aa20db38146d.
+**RED-only SHA:** f29b85a650c35a1691d3c84d1917532182ecc6a3.
+**RED Actions evidence:** https://github.com/zhirayr2505/luemi/actions/runs/40070978609.
+**RED:** 26/26 original REM-05F behavioral tests PASS; all 3 additional real-behavior security tests FAIL as expected; zero skipped.
+
+| Case | Verified RED fault | Required GREEN behavior |
+| --- | --- | --- |
+| F-A1 | endedOnce commits completed video, but late videoReady and videoTime can restart old generation and regress progress | Terminal ended guard; old generation cannot resume, buffer, progress, complete again, react to hold/visibility. begin(new) may play |
+| F-A2 | hold/visibility changes can set video playing without videoReady, allow timeupdate and false endedOnce | Per-generation videoReadySignaled needed before playing, buffering and video time; endedOnce requires a previously started playable generation |
+| F-A3 | forged unknown runtime operation bypasses TypeScript union and returns ALLOW_SYNTHETIC_ONLY | Explicit runtime allowlist, all unknown values DENY before other policy evaluation |
+
+**Changed implementation modules:** apps/web/src/discovery/bliki-media-lifecycle.ts and apps/api/secure-tests/rem05f-policy-fixture.ts.
+**New tests:** apps/api/secure-tests/rem05f.test.ts, preserving 26 existing tests and adding 3 new negatives.
+**Real infrastructure:** none touched. Mock-only allow does not provide server authorization, media lease or URL.
+
+**Final exact SHA, job matrix and any historical failures:** maintained in the description of existing Draft PR #56 and verified against GitHub workflows on both push and pull_request after this report is committed. No assertion of full CI PASS is made in advance; the historical RED run remains failed and accessible.
+
+**Remaining status:** isolated mock-only guard/method behavior eligible for PASS after actual CI; future real viewer integration PARTIAL; live Bliki backend, Storage, media/CDN revocation, World and Premium BLOCKED / NOT VERIFIED. LU-29 DEFERRED_FEATURE_GATE.

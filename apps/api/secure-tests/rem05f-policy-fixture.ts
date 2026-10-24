@@ -5,6 +5,10 @@
  */
 export type BlikAudience="public"|"matches";
 export type BlikOperation="list"|"detail"|"media"|"viewer"|"prefetch"|"view"|"fire"|"comment"|"world"|"author_viewers";
+/** Enforce this allowlist at runtime, not only via erased TypeScript unions. */
+const VALID_BLIK_OPERATIONS: ReadonlySet<BlikOperation>=new Set([
+ "list","detail","media","viewer","prefetch","view","fire","comment","world","author_viewers"
+]);
 export type Decision="ALLOW_SYNTHETIC_ONLY"|"DENY";
 export type BlikFailure="closed"|"identity"|"publication"|"moderation"|"expiry"|"revoked"|"blocked"|"audience"|"world_consent"|"eligibility"|"premium"|"author_only";
 
@@ -57,6 +61,7 @@ export function evaluateSyntheticBlik(
 ):SyntheticDecision {
  const deny=(reason:BlikFailure):SyntheticDecision=>({decision:"DENY",reason,
    permissionRevision:null,mediaUrl:null,publicViewerIdentity:null});
+ if(!VALID_BLIK_OPERATIONS.has(operation))return deny("closed");
  const p=parseSyntheticBlik(input);
  if(!p||!Number.isSafeInteger(facts.serverNowMs)||!Number.isSafeInteger(facts.permissionRevision)||
    facts.permissionRevision<1)return deny("closed");

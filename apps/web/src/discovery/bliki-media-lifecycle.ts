@@ -19,6 +19,8 @@ export class BlikMediaSession {
  private lastClockMs:number|null=null;
  private videoSeconds=0;
  private ended=false;
+ private videoReadySignaled=false;
+ private playbackStarted=false;
  private cleanups:Cleanup[]=[];
  private disposed=false;
  private cleaned=0;
@@ -31,6 +33,7 @@ export class BlikMediaSession {
   this.durationMs=Math.max(2500,Math.min(30000,Number.isFinite(durationMs)?durationMs:6000));
   this.imageLoaded=false;this.imageDecoded=false;this.held=false;this.visible=true;
   this.elapsedMs=0;this.videoSeconds=0;this.lastClockMs=null;this.ended=false;
+  this.videoReadySignaled=false;this.playbackStarted=false;
   return this.generation;
  }
  currentGeneration(){return this.generation;}
@@ -41,7 +44,7 @@ export class BlikMediaSession {
   if(!this.live(token)){release();return false;}
   this.cleanups.push(release);return true;
  }
- private live(token:number){return !this.disposed&&token===this.generation&&
+ private live(token:number){return !this.disposed&&!this.ended&&token===this.generation&&
   !["error","expired","revoked"].includes(this.phase);}
  private release(){
   const list=this.cleanups.splice(0);
@@ -57,9 +60,13 @@ export class BlikMediaSession {
   this.lastClockMs=nowMs;
  }
  private resume(nowMs:number){
+  // Neither UI activity nor late readiness can invent a playable generation.
+  if(this.ended||this.disposed||
+    (this.kind==="video"&&!this.videoReadySignaled)||
+    (this.kind==="image"&&(!this.imageLoaded||!this.imageDecoded)))return;
   this.lastClockMs=nowMs;
-  if(this.phase==="error"||this.phase==="revoked"||this.phase==="expired")return;
   this.phase=this.held||!this.visible?"paused":"playing";
+  if(this.phase==="playing")this.playbackStarted=true;
  }
  loaded(token:number){
   if(!this.live(token)||this.kind!=="image")return false;
@@ -80,6 +87,7 @@ export class BlikMediaSession {
  }
  videoReady(token:number,nowMs:number){
   if(!this.live(token)||this.kind!=="video")return false;
+  this.videoReadySignaled=true;
   this.phase="ready";this.resume(nowMs);return !this.held&&this.visible;
  }
  videoTime(token:number,currentTimeSeconds:number,durationSeconds:number){
@@ -91,29 +99,29 @@ export class BlikMediaSession {
   return true;
  }
  buffering(token:number,nowMs:number){
-  if(!this.live(token)||this.kind!=="video")return false;
+  if(!this.live(token)||this.kind!=="video"||!this.videoReadySignaled)return false;
   this.advance(nowMs);this.phase="buffering";return true;
  }
  playing(token:number,nowMs:number){
-  if(!this.live(token)||this.kind!=="video"||this.ended)return false;
+  if(!this.live(token)||this.kind!=="video"||!this.videoReadySignaled)return false;
   this.resume(nowMs);return this.phase==="playing";
  }
  hold(token:number,on:boolean,nowMs:number){
   if(!this.live(token))return false;
   this.advance(nowMs);this.held=on;
   if(this.kind==="image"&&(!this.imageLoaded||!this.imageDecoded))return true;
-  if(this.kind==="video"&&this.phase==="buffering")return true;
+  if(this.kind==="video"&&(!this.videoReadySignaled||this.phase==="buffering"))return true;
   this.resume(nowMs);return true;
  }
  visibility(token:number,on:boolean,nowMs:number){
   if(!this.live(token))return false;
   this.advance(nowMs);this.visible=on;
   if(this.kind==="image"&&(!this.imageLoaded||!this.imageDecoded))return true;
-  if(this.kind==="video"&&this.phase==="buffering")return true;
+  if(this.kind==="video"&&(!this.videoReadySignaled||this.phase==="buffering"))return true;
   this.resume(nowMs);return true;
  }
  endedOnce(token:number):boolean{
-  if(!this.live(token)||this.ended)return false;
+  if(!this.live(token)||!this.playbackStarted)return false;
   this.ended=true;this.phase="paused";
   if(this.kind==="video")this.videoSeconds=1;
   else this.elapsedMs=this.durationMs;
