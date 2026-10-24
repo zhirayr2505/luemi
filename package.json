@@ -14,6 +14,7 @@
   "scripts": {
     "lint": "eslint .",
     "check": "npm run lint:hooks:baseline && npm run lint && npm run typecheck && npm run test:source-contracts && npm run test:api:isolated && npm run build && npm run smoke",
+    "start": "npm run start -w @luemi/api",
     "smoke": "node scripts/staging-smoke.mjs",
     "dev:api": "npm run dev -w @luemi/api",
     "dev:web": "npm run dev -w @luemi/web",
