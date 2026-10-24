@@ -8,7 +8,7 @@ import {BlikMediaSession} from "../../web/src/discovery/bliki-media-lifecycle.js
 const DAY=86400000,NOW=1760000000000;
 function blik(overrides:Partial<SyntheticBlik>={}):SyntheticBlik {
  return {id:"blink_one",authorId:"author",mediaId:"media_1",mediaVersion:1,
- audience:"public",publication:"published",moderation:"approved",
+ audience:"public",permissionRevision:1,publication:"published",moderation:"approved",
  publishedAtMs:NOW-1000,expiresAtMs:NOW-1000+DAY,
  revokedAtMs:null,worldOptIn:false,commentsEnabled:false,...overrides};
 }
@@ -177,4 +177,6 @@ test("F24 end/expiry/revocation are terminal and duplicate ended does not progre
 test("F25 unknown moderation and stale permission revision fail closed",()=>{
  deny(auth(blik(),facts({permissionRevision:0})));
  deny(auth({...blik(),moderation:"AUTO"}));
+ deny(auth(blik({permissionRevision:2}),facts({permissionRevision:1})));
+ assert.equal(parseSyntheticBlik({...blik(),mediaVersion:0}),null);
 });

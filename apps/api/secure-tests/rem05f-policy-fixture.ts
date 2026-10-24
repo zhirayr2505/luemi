@@ -9,7 +9,7 @@ export type Decision="ALLOW_SYNTHETIC_ONLY"|"DENY";
 export type BlikFailure="closed"|"identity"|"publication"|"moderation"|"expiry"|"revoked"|"blocked"|"audience"|"world_consent"|"eligibility"|"premium"|"author_only";
 
 export interface SyntheticBlik {
- id:string;authorId:string;mediaId:string;mediaVersion:number;
+ id:string;authorId:string;mediaId:string;mediaVersion:number;permissionRevision:number;
  audience:BlikAudience;publication:"published"|"draft"|"pending"|"hidden"|"rejected";
  moderation:"approved"|"pending"|"removed"|"rejected";
  publishedAtMs:number;expiresAtMs:number;revokedAtMs:null|number;
@@ -36,6 +36,7 @@ export function parseSyntheticBlik(value:unknown):SyntheticBlik|null {
  const ms=(n:unknown)=>typeof n==="number"&&Number.isSafeInteger(n)&&n>=0;
  if(!id(p.id)||!id(p.authorId)||!id(p.mediaId)||
    typeof p.mediaVersion!=="number"||!Number.isSafeInteger(p.mediaVersion)||p.mediaVersion<1||
+   typeof p.permissionRevision!=="number"||!Number.isSafeInteger(p.permissionRevision)||p.permissionRevision<1||
    (p.audience!=="public"&&p.audience!=="matches")||
    !["published","draft","pending","hidden","rejected"].includes(String(p.publication))||
    !["approved","pending","removed","rejected"].includes(String(p.moderation))||
@@ -43,7 +44,8 @@ export function parseSyntheticBlik(value:unknown):SyntheticBlik|null {
    !(p.revokedAtMs===null||ms(p.revokedAtMs))||
    typeof p.worldOptIn!=="boolean"||typeof p.commentsEnabled!=="boolean")return null;
  return {id:p.id as string,authorId:p.authorId as string,mediaId:p.mediaId as string,
-   mediaVersion:p.mediaVersion as number,audience:p.audience as BlikAudience,
+   mediaVersion:p.mediaVersion as number,permissionRevision:p.permissionRevision as number,
+   audience:p.audience as BlikAudience,
    publication:p.publication as SyntheticBlik["publication"],
    moderation:p.moderation as SyntheticBlik["moderation"],
    publishedAtMs:p.publishedAtMs as number,expiresAtMs:p.expiresAtMs as number,
@@ -59,6 +61,7 @@ export function evaluateSyntheticBlik(
  if(!p||!Number.isSafeInteger(facts.serverNowMs)||!Number.isSafeInteger(facts.permissionRevision)||
    facts.permissionRevision<1)return deny("closed");
  if(!facts.viewerId||typeof facts.viewerId!=="string")return deny("identity");
+ if(facts.permissionRevision!==p.permissionRevision)return deny("closed");
  if(p.publication!=="published")return deny("publication");
  if(p.moderation!=="approved")return deny("moderation");
  if(p.revokedAtMs!==null)return deny("revoked");
