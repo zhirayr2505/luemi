@@ -240,3 +240,35 @@ test("F-A3 RED runtime operation allowlist denies anything unknown",()=>{
  deny(auth(blik({revokedAtMs:NOW}),facts(),"media"));
  deny(auth(blik({moderation:"removed"}),facts(),"detail"));
 });
+
+test("F-A1 POST-AUDIT RED: ended generation promptly releases owned resources once",()=>{
+ for(const kind of ["video","image"] as const){
+  const m=new BlikMediaSession();
+  const g=m.begin(kind,6000);
+  let released=0;
+  assert.equal(m.own(g,()=>released++),true);
+  assert.equal(m.own(g,()=>released++),true);
+  if(kind==="video"){
+   assert.equal(m.videoReady(g,0),true);
+   assert.equal(m.videoTime(g,2,10),true);
+  }else{
+   assert.equal(m.loaded(g),true);
+   assert.equal(m.decoded(g),true);
+   assert.equal(m.imageReadyToPlay(g,0),true);
+  }
+  assert.equal(m.endedOnce(g),true);
+  assert.equal(released,2,"completion must close all resource owners immediately");
+  assert.equal(m.snapshot().resources,0,"no stale listener/decoder/cancel callback after end");
+  assert.equal(m.progress(),1);
+  assert.equal(m.endedOnce(g),false);
+  assert.equal(m.revoked(g),false,"already-completed generation must not re-open");
+  assert.equal(released,2);
+  m.cleanup();
+  assert.equal(released,2,"cleanup must not double-release");
+  const next=m.begin(kind,6000);
+  assert.notEqual(g,next);
+  assert.equal(m.own(next,()=>released++),true);
+  m.cleanup();
+  assert.equal(released,3);
+ }
+});
