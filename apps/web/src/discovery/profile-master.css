@@ -266,6 +266,13 @@
  overflow-anchor:none;
 }
 .pm-page::-webkit-scrollbar{display:none}
+/* While the hero is expanded, scrolling up anywhere on the white content
+   must collapse the sheet, not be captured by Chromium's native pan-y before
+   the touch recognizer can claim it. Once collapsed, native vertical scrolling
+   is restored unmodified. Tabs keep their independent horizontal handling. */
+.pm-shell[data-sheet-state="expanded"] .pm-page,
+.pm-shell[data-sheet-state="expanded"] .pm-identity{touch-action:none}
+
 /* Keep page overflow geometry identical at both snap points. During a
    sheet gesture its touch recognizer owns vertical movement. */
 .pm-preview-toolbar{position:absolute;z-index:15;right:14px;top:calc(var(--top-safe) + 76px)}
