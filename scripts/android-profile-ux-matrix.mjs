@@ -5,20 +5,25 @@ const browser=await chromium.launch({headless:true});
 const base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 const ua="Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Mobile Safari/537.36";
 const screenSizes=[[360,780],[393,852],[412,915]],themes=["light","dark"],sources=["feed","for-you","nearby"];
+const variants=[...screenSizes.flatMap(([width,height])=>themes.map(theme=>({width,height,theme,rate:1}))),
+ {width:393,height:852,theme:"light",rate:4}];
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms)),measure=[];
 const quantile=(arr,q)=>{const a=[...arr].sort((x,y)=>x-y);return a[Math.min(a.length-1,Math.ceil(a.length*q)-1)]??0};
 try{
- for(const [width,height] of screenSizes)for(const theme of themes){
+ for(const {width,height,theme,rate} of variants){
   const ctx=await browser.newContext({viewport:{width,height},isMobile:true,hasTouch:true,userAgent:ua});
   const page=await ctx.newPage(),errors=[];
+  if(rate>1){const cdp=await ctx.newCDPSession(page);await cdp.send("Emulation.setCPUThrottlingRate",{rate});}
   page.on("pageerror",e=>errors.push(e.message));
   await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.locator(".discovery-app").waitFor();
   if(theme==="dark")await page.evaluate(()=>window.__luemiQaPerf.theme());
   for(const source of sources)for(let round=0;round<2;round++){
-   const key=width+"x"+height+"/"+theme+"/"+source+"/"+round;
+   const key=width+"x"+height+"/"+theme+"/cpu"+rate+"/"+source+"/"+round;
    const tab=page.locator(".discovery-top-tabs [role=tab]");
    await tab.nth(sources.indexOf(source)).click();
+   // Do not count the accepted 300ms tab-settling animation as a tap delay.
+   await pause(340);
    const selector=source==="feed"?".discovery-deck-layer.deck-active .discovery-name-button":
     source==="for-you"?".fy-tile-photo":".nb-photo";
    const target=page.locator(selector).first();
@@ -28,7 +33,7 @@ try{
    const route=page.locator(".discovery-visitor-route");
    await route.waitFor({state:"attached",timeout:2600});
    const openMs=await page.evaluate(()=>performance.now())-started;
-   assert.ok(openMs<2200,key+": synthetic tap-to-route >2200 ms: "+openMs);
+   assert.ok(openMs<(rate===1?1200:3200),key+": synthetic tap-to-route too slow: "+openMs);
    await pause(320);
    const chrome=await page.evaluate(()=>{
     const scene=document.querySelector(".discovery-app"),route=scene?.querySelector(".discovery-visitor-route");
