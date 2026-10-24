@@ -19,7 +19,7 @@ import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
-import {GestureArbiter,computedTranslation,fractionalTrack,gestureCapabilities} from "../ui/gesture-arbiter";
+import {GestureArbiter,computedTranslation,fractionalTrack} from "../ui/gesture-arbiter";
 import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
@@ -333,7 +333,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   if(!event.isPrimary){inputOwnership.current.secondFinger();cancelSwipe();return;}
   if(event.pointerType==="mouse"&&event.button!==0)return;
   const target=event.target as HTMLElement;
-  if(target.closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-card,.nb-location"))return;
+  if(target.closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-location"))return;
   const serial=inputOwnership.current.begin("pointer",event.pointerId,"browse");
   if(serial===null)return;
   inputOwnership.current.begin("pointer",event.pointerId,"native");
@@ -351,9 +351,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
     inputOwnership.current.nativeScroll(g.serial);g.native=true;return;
    }
    if(Math.abs(x)<6||Math.abs(x)<Math.abs(y)*1.2)return;
-   // If a vertical native scroll is already active, never seize it mid-move.
-   const capabilities=gestureCapabilities(event.target as HTMLElement,false);
-   if(capabilities.canScrollY||!event.cancelable){
+   // Axis direction above already distinguished native pan-y from browse pan-x.
+   // A resting scrollTop > 0 must NOT disable horizontal swipes for the entire
+   // ForYou/Nearby scroller. Native vertical motion retains exclusive ownership.
+   if(!event.cancelable){
     inputOwnership.current.nativeScroll(g.serial);g.native=true;return;
    }
    if(!inputOwnership.current.claim("browse",g.serial))return;
