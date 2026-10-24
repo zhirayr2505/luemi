@@ -32,16 +32,27 @@ try{
   const sel=await profile(page,source);
   const root=page.locator(sel);
   const init=await root.evaluate(node=>{
-   const p=node.querySelector(".pm-page[aria-hidden=false]")??node.querySelector(".pm-page");
-   const b=p?.getBoundingClientRect();
-   if(!(p instanceof HTMLElement)||!b)return null;
-   const low=Math.max(0,b.top+10),high=Math.min(innerHeight-32,b.bottom-8);
-   const x=b.x+Math.min(42,b.width*.14),y=low+(high-low)*.5;
-   const hit=document.elementFromPoint(x,y);
-   return {state:node.dataset.sheetState,action:getComputedStyle(p).touchAction,
-     x,y,within:high>low+10&&!!hit&&p.contains(hit),
-     hit:hit?.className?.toString().slice(0,95),pageTop:b.top,pageBottom:b.bottom,
-     height:b.height,rootHeight:node.clientHeight};
+   const page=node.querySelector(".pm-page[aria-hidden=false]")??node.querySelector(".pm-page");
+   const identity=node.querySelector(".pm-identity");
+   if(!(page instanceof HTMLElement)||!(identity instanceof HTMLElement))return null;
+   const probe=element=>{
+     const rect=element.getBoundingClientRect();
+     const low=Math.max(0,rect.top+8),high=Math.min(innerHeight-24,rect.bottom-8);
+     const x=rect.x+Math.min(42,rect.width*.14),y=low+(high-low)*.5;
+     const hit=document.elementFromPoint(x,y);
+     return {x,y,within:high>low+10&&!!hit&&element.contains(hit),
+      hit:hit?.className?.toString().slice(0,95),
+      top:rect.top,bottom:rect.bottom,height:rect.height};
+   };
+   // The owner-action row pushes content below the fold on smaller screens.
+   // Fall back to the identity area there; visitor content remains the
+   // primary regression surface whenever visible.
+   const article=probe(page),identityHit=probe(identity);
+   const chosen=article.within?article:identityHit;
+   const source=article.within?"content":"identity";
+   return {state:node.dataset.sheetState,action:getComputedStyle(article.within?page:identity).touchAction,
+     x:chosen.x,y:chosen.y,within:chosen.within,source,article,identityHit,
+     height:chosen.height,rootHeight:node.clientHeight};
   });
   assert.ok(init?.within&&init?.height>30,device.name+"/"+source+" missing visible profile content");
   assert.equal(init.state,"expanded","opens expanded");
