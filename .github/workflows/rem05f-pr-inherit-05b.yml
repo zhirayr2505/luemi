@@ -1,9 +1,0 @@
-name: LUEMI REM-05B exact-head REM-05F PR preservation
-on:
-  pull_request:
-    branches: [remediation/rem-05e-webhook-secret-rotation-20261024]
-permissions:
-  contents: read
-jobs:
-  rem05b-inherited:
-    uses: ./.github/workflows/rem05b-focused.yml

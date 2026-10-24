@@ -80,7 +80,7 @@ export class BlikMediaSession {
  }
  videoReady(token:number,nowMs:number){
   if(!this.live(token)||this.kind!=="video")return false;
-  this.phase="ready";this.resume(nowMs);return this.phase==="playing";
+  this.phase="ready";this.resume(nowMs);return !this.held&&this.visible;
  }
  videoTime(token:number,currentTimeSeconds:number,durationSeconds:number){
   if(!this.live(token)||this.kind!=="video"||this.phase!=="playing"||
