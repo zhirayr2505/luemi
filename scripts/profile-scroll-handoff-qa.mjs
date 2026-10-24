@@ -54,6 +54,7 @@ try{
      x:chosen.x,y:chosen.y,within:chosen.within,source,article,identityHit,
      height:chosen.height,rootHeight:node.clientHeight};
   });
+  console.log("LUEMI_SHEET_POINT "+JSON.stringify({device:device.name,source,width,height,init}));
   assert.ok(init?.within&&init?.height>30,device.name+"/"+source+" missing visible profile content");
   assert.equal(init.state,"expanded","opens expanded");
   assert.equal(init.action,"none","expanded page must yield native touch to collapse");
