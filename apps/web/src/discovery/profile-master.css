@@ -168,6 +168,12 @@
  padding:32px 0 0;border-radius:34px 34px 0 0;
  background:var(--bg);box-shadow:0 -5px 20px rgba(56,30,73,.052);
 }
+/* Android theme switch paints one stationary surface without altering the
+   physics or transform of the white profile sheet. */
+.discovery-app[data-profile-renderer=android] .pm-profile-sheet{transition:background-color 180ms ease-out}
+@media (prefers-reduced-motion:reduce){
+ .discovery-app[data-profile-renderer=android] .pm-profile-sheet{transition:none}
+}
 .pm-sheet-grab{
  position:absolute;z-index:2;top:6px;left:50%;transform:translateX(-50%);
  display:grid;place-items:center;width:64px;height:25px;padding:0;border:0;background:transparent;
