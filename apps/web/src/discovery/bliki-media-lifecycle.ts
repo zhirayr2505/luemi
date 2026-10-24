@@ -122,9 +122,12 @@ export class BlikMediaSession {
  }
  endedOnce(token:number):boolean{
   if(!this.live(token)||!this.playbackStarted)return false;
-  this.ended=true;this.phase="paused";
+  this.ended=true;this.phase="paused";this.lastClockMs=null;
   if(this.kind==="video")this.videoSeconds=1;
   else this.elapsedMs=this.durationMs;
+  // End-of-media is terminal: release decoders, listeners and pending aborts
+  // without requiring another navigation, revoke callback, or unmount.
+  this.release();
   return true;
  }
  error(token:number){return this.terminal(token,"error");}

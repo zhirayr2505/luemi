@@ -85,3 +85,26 @@ STOP at independent technical acceptance. LU-29 remains DEFERRED_FEATURE_GATE.
 **Final exact SHA, job matrix and any historical failures:** maintained in the description of existing Draft PR #56 and verified against GitHub workflows on both push and pull_request after this report is committed. No assertion of full CI PASS is made in advance; the historical RED run remains failed and accessible.
 
 **Remaining status:** isolated mock-only guard/method behavior eligible for PASS after actual CI; future real viewer integration PARTIAL; live Bliki backend, Storage, media/CDN revocation, World and Premium BLOCKED / NOT VERIFIED. LU-29 DEFERRED_FEATURE_GATE.
+
+
+### F-A1 terminal media resource finalization (supplemental audit)
+
+The prior accepted F-A1 fix prevented late callbacks from restarting ended playback but
+did not flush resources owned by that generation. Because live() already rejects ended
+generations, a subsequent revoked() also cannot flush those resources. A dormant
+BlikMediaSession could thus retain decoder/listener cleanup registrations until a
+future begin() or unmount. This is a narrow F-A1 lifecycle hardening, not
+publication of the Blik viewer.
+
+- New RED test covers image and video: own() registers two resources, valid playback
+  ends, and the test requires immediate exactly-once release, no pending resource
+  owners, no ended replay, and correct fresh-generation teardown.
+- RED-only SHA: c267924bff7a51d34a698ef04cecbc31aa464c5c.
+- GREEN changes only endedOnce: after fixing final progress at 100% and marking
+  terminal ended, zeroes lastClockMs and invokes the existing idempotent release()
+  implementation. Calling cleanup later must not double-release.
+- Real media DOM, actual decoded memory, server ACL, permissions and production
+  endpoint behavior remain NOT VERIFIED; this is an isolated resource-owner
+  model test. LU-29 remains DEFERRED_FEATURE_GATE.
+- Precise final-head push/PR GitHub CI, RED failure and verification links are
+  recorded in the existing Draft PR #56 description after all workflows complete.
