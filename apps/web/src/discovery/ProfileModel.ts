@@ -46,8 +46,9 @@ export function projectProfile(profile:ProfileMasterData,mode:ProfileMode):Profi
   languages:[...profile.languages],
   photos,
   premium:published&&profile.premium,
-  activeBlik:published&&profile.activeBlik&&Date.parse(profile.activeBlik.expiresAt)>Date.now()&&
-   /^https:\/\//.test(profile.activeBlik.src)?{...profile.activeBlik}:null,
+  // REM-05F LU-29: CLOSED. No client/server JSON or HTTPS src is a
+  // signed permission; future server-authenticated Bliki are separately gated.
+  activeBlik:null,
   verified:published&&profile.verified,
   registeredAt:published?profile.registeredAt:null,
   updatedAt:published?profile.updatedAt:null

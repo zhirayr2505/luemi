@@ -33,6 +33,7 @@ jobs:
           npm install --global npm@10.9.2 --no-audit --no-fund
           npm ci --no-audit --no-fund
           npm run build -w @luemi/contracts
-          npx --no-install tsx --test apps/api/test/rem05f-activation.test.ts
+          npm run typecheck -w @luemi/web
+          npx --no-install tsx --test apps/api/test/rem05f-activation.test.ts apps/api/secure-tests/rem05f.test.ts
       - name: Public diff secret gate
         run: node scripts/rem-05b-public-diff-scan.mjs

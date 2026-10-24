@@ -1,7 +1,8 @@
 name: LUEMI REM-05E mock-only Telegram webhook secret QA
 on:
+  workflow_call:
   push:
-    branches: [remediation/rem-05e-webhook-secret-rotation-20261024]
+    branches: [remediation/rem-05e-webhook-secret-rotation-20261024, remediation/rem-05f-bliki-readiness-20261024]
   pull_request:
     branches: [remediation/rem-05d-private-media-rls-moderation-20261023]
 permissions:
