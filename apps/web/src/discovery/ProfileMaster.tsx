@@ -952,11 +952,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
  const goal=view.profile.goal&&view.profile.goal!=="undecided"?goals.find(x=>x.id===view.profile.goal):null;
  // Step 8 embeds the sheet; owner "Предпросмотр" opens a closable nested dialog.
+ // Visitor-only programmatic focus avoids scanning and measuring every control
+ // during modal activation, without changing the normal keyboard tab order.
  const embeddedSelf=mode==="local-self-preview"&&!onClose;
  return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer="scroll" className={"pm-shell "+(mode==="owner"||embeddedSelf?"pm-inline":"pm-dialog")} role={mode==="owner"||embeddedSelf?undefined:"dialog"}
-   // A visitor route needs one immediately focusable target. Without this,
-   // modal-layer walks and measures every button in the full profile on open,
-   // forcing synchronous Android WebView layout during the tap.
    tabIndex={mode==="visitor"?-1:undefined} data-modal-initial={mode==="visitor"?"true":undefined}
    aria-modal={mode==="owner"||embeddedSelf?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="local-self-preview"?"Локальный предпросмотр черновика":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
   {(mode==="preview"||mode==="local-self-preview"&&!!onClose)&&<div className="pm-preview-toolbar"><button type="button" data-modal-initial onClick={onClose}>Закрыть предпросмотр</button></div>}
