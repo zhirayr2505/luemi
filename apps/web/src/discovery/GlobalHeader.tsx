@@ -1,4 +1,4 @@
-import {forwardRef,useLayoutEffect,useImperativeHandle,useRef} from "react";
+import {forwardRef,useCallback,useLayoutEffect,useImperativeHandle,useRef} from "react";
 import {Bookmark,Moon,SlidersHorizontal,Sun} from "lucide-react";
 import "./global-header.css";
 
@@ -33,7 +33,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  useLayoutEffect(()=>()=>{if(toolsFrame.current!==null){
   cancelAnimationFrame(toolsFrame.current);toolsFrame.current=null;
  }},[mode]);
- const paintTools=(top:number)=>{
+ const paintTools=useCallback((top:number)=>{
   if(mode==="profile")return;
   const p=smooth(clamp(top/105));
   const v=manual.current?0:p,el=host.current;
@@ -48,7 +48,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   el?.style.setProperty("--lh-control-stretch",String(1+.24*Math.sin(Math.PI*v)));
   el?.style.setProperty("--lh-impact",String(.036*Math.sin(Math.PI*clamp((v-.66)/.34))));
   host.current?.setAttribute("data-tools-merged",!manual.current&&p>.96?"true":"false");
- };
+ },[mode]);
  useImperativeHandle(ref,()=>({
   setScrollTop:(top:number)=>{
    if(Math.abs(top-lastScroll.current)>.5)manual.current=false;
@@ -72,7 +72,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    host.current?.style.setProperty("--lh-contrast","0");
    if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
   }
- }),[mode]);
+ }),[mode,androidProfileChrome,paintTools]);
  const toggleIsland=()=>{
   if(mode==="profile")return;
   if(lastScroll.current<12)return;
