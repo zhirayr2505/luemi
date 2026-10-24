@@ -181,7 +181,8 @@ assert.ok(discoveryCss.includes(".discovery-visitor-route{")&&
  !discovery.includes("data-profile-from-feed"),
  "visitor route covers a persistently painted browse underlay on Android");
 assert.ok(header.includes("androidProfileChrome")&&
- header.includes("!androidProfileChrome&&<img")&&
+ header.includes("!androidClient&&<img")&&
+ header.includes('decoding="async"')&&
  profile.includes("collapsedRef.current=next;")&&profile.includes("sheetIntent.current=null;")&&
  profile.includes("driver.rebase(sheetRevision.current,next,destination)")&&
  profile.includes("miniAvatar.current.style.opacity=")&&
