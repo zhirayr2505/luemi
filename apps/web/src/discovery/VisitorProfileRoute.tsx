@@ -226,8 +226,12 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   const dx=e.clientX-g.startX,dy=e.clientY-g.startY;
   if(!g.claimed){
    if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)){
-    // No route writer, and no orphaned candidate after native pan-y wins.
-    gestures.finishCandidate(g.serial);gesture.current=null;return;
+    // Parent pointer capture precedes child touchmove on Android. If the
+    // touch originated on the sheet/pages, leave the shared gesture session
+    // alive so the sheet recognizer can claim the vertical movement.
+    // Photo hero and independent tabs still release unclaimed candidates.
+    if(g.source==="photo"||g.source==="tabs")gestures.finishCandidate(g.serial);
+    gesture.current=null;return;
    }
    if(dx<9||dx<Math.abs(dy)*1.28)return;
    // Preserve the existing gallery and tab pager until their first item;
