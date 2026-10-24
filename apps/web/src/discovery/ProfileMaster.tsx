@@ -762,7 +762,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
     lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
-    revision:sheetRevision.current,blocking:inPages?scrollTop<=1:!collapsedRef.current,
+    revision:sheetRevision.current,blocking:inPages?(!collapsedRef.current||scrollTop<=1):!collapsedRef.current,
     serial,claimed:false};
    pane.removeEventListener("touchmove",move);
    pane.addEventListener("touchmove",move,{passive:!gesture.blocking});
@@ -773,9 +773,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    g.lastX=t.clientX;
    if(!g.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
-    // A page already scrolled vertically keeps native control in either axis,
-    // including vertical diagonals; no custom sheet or tabs writer may claim.
-    if(g.inPages&&g.scrollTop>1){g.axis="native";gestures.nativeScroll(g.serial);return;}
+    // Preserve native vertical scrolling after collapse, even when the list
+    // is already scrolled. An expanded sheet owns the whole white surface;
+    // its old content scrollTop must not disable the collapse gesture.
+    if(g.inPages&&g.down&&g.scrollTop>1){g.axis="native";gestures.nativeScroll(g.serial);return;}
     // If the listener started passive, it must NEVER take over native scroll
     // mid-session, even when the diagonal later resembles a horizontal drag.
     if(Math.abs(dx)>Math.abs(dy)*1.18)
