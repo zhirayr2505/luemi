@@ -68,10 +68,12 @@ try{
    const box=await page.locator(".discovery-visitor-route .pm-identity").first().boundingBox();
    assert.ok(box&&box.width>80&&box.height>10,key+": missing identity sheet");
    const x=Math.max(26,box.x+Math.min(30,box.width*.09)),y=box.y+box.height*.5;
+   const closeBySwipe=round===1;
+   const dragFraction=closeBySwipe?.56:.23;
    const frames=[];
    await page.mouse.move(x,y);await page.mouse.down();
    for(let n=1;n<=12;n++){
-    await page.mouse.move(x+Math.round(width*.23*n/12),y);
+    await page.mouse.move(x+Math.round(width*dragFraction*n/12),y);
     frames.push(await page.evaluate(()=>{
      const scene=document.querySelector(".discovery-app"),route=scene.querySelector(".discovery-visitor-route");
      return {x:new DOMMatrixReadOnly(getComputedStyle(route).transform).m41,
@@ -85,15 +87,28 @@ try{
    assert.ok(frames.every(p=>p.underlay==="visible"&&p.front===1),key+": flicker-prone paint/logo state");
    assert.ok(frames.every((p,i)=>i===0||p.x>=frames[i-1].x-8),key+": backward jump mid-drag");
    await pause(345);
-   const rollback=await page.evaluate(()=>{
-    const route=document.querySelector(".discovery-visitor-route");
-    return route?new DOMMatrixReadOnly(getComputedStyle(route).transform).m41:null;
-   });
-   assert.ok(rollback!==null&&Math.abs(rollback)<9,key+": rollback incomplete");
-   await page.evaluate(()=>window.dispatchEvent(new Event("resize")));
-   assert.equal(await route.count(),1,key+": resize unmounted or duplicated route");
-   await page.keyboard.press("Escape");
-   await route.waitFor({state:"detached",timeout:2200});
+   if(closeBySwipe){
+    await route.waitFor({state:"detached",timeout:2200});
+    const returned=await page.evaluate(()=>{
+     const scene=document.querySelector(".discovery-app");
+     return {overlay:scene.dataset.profileOverlay,
+      browse:getComputedStyle(scene.querySelector(".discovery-browse-panel")).visibility,
+      logo:scene.querySelector(":scope > .lh-header .lh-island")?.querySelectorAll("img").length};
+    });
+    assert.equal(returned.overlay,"false",key+": route close did not release overlay");
+    assert.equal(returned.browse,"visible",key+": browse absent after completed slow close");
+    assert.equal(returned.logo,1,key+": background logo changed at swipe completion");
+   }else{
+    const rollback=await page.evaluate(()=>{
+     const route=document.querySelector(".discovery-visitor-route");
+     return route?new DOMMatrixReadOnly(getComputedStyle(route).transform).m41:null;
+    });
+    assert.ok(rollback!==null&&Math.abs(rollback)<9,key+": rollback incomplete");
+    await page.evaluate(()=>window.dispatchEvent(new Event("resize")));
+    assert.equal(await route.count(),1,key+": resize unmounted or duplicated route");
+    await page.keyboard.press("Escape");
+    await route.waitFor({state:"detached",timeout:2200});
+   }
    measure.push({key,openMs:Math.round(openMs)});
   }
   assert.deepEqual(errors,[],"browser page errors "+width+"/"+theme);
