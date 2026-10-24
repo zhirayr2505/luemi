@@ -206,28 +206,22 @@
 /* Visitor profile is inside the content panel; the stationary header remains above it. */
 .discovery-app[data-profile-overlay=true] .discovery-bottom-nav{visibility:hidden}
 .discovery-app[data-profile-overlay=true][data-route-revealing=true] .discovery-bottom-nav{visibility:visible}
-/* REM-04B LU-14: preserve mounted Feed/ForYou/Nearby DOM and scroll while
-   the route covers the browser. The visible flag is NOT a raster-readiness
-   guarantee: Blink may discard cached paint/GPU tiles while hidden.
-   The route enables the underlay BEFORE sliding back; no artificial delay
-   or full-screen bitmap placeholder is introduced. On covered screens,
-   descendants from the animated deck may explicitly say visibility:visible,
-   so the complete subtree must be scoped to the same visibility owner. */
-.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true]) .discovery-browse-panel,
-.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true]) .discovery-browse-panel *{
- visibility:hidden!important;
-}
-/* The persistent browse header is a second full logo (plus translucent tools)
-   behind the visitor's own header; suppress its Android raster layer as well. */
-.discovery-app[data-profile-renderer=android][data-profile-overlay=true]:not([data-route-revealing=true])>.lh-header{
- visibility:hidden;
-}
+/* Profile underlay remains continuously PAINTABLE on Android while covered.
+   An earlier visibility:hidden rule recursively hid Feed/ForYou/Nearby and
+   the background header, then made them all visible on the FIRST claimed
+   back-swipe frame. That forces Android Blink to re-raster a full card/deck
+   while the foreground profile is already moving, causing a visible flash.
+   Modal-layer still makes the underlay inert and aria-hidden. The profile
+   route below provides its own opaque, isolated background; browse pixels
+   are only visible outside its moving left edge. No per-gesture visibility
+   mutation is necessary for the browse panels or header. */
 
 /* Only the rectangular navigation layer slides. The profile sheet keeps its
    already-verified stationary scroll renderer and five independent pages. */
 .discovery-visitor-route{
  position:absolute;inset:0;z-index:80;width:100%;height:100%;
  background:var(--bg);transform:translate3d(100%,0,0);
+ isolation:isolate;backface-visibility:hidden;-webkit-backface-visibility:hidden;
  box-shadow:-8px 0 24px rgba(30,17,44,.13);
 }
 .discovery-visitor-route>.pm-shell{position:absolute;inset:0}
