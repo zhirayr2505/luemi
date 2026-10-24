@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {ArrowRight,Moon,Sun} from "lucide-react";
 import {GlassArrow} from "./ui/Glass";
@@ -8,7 +8,8 @@ import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registrat
 import {localScope,loadDraftSnapshot,saveDraftSnapshot,clearDraftSnapshot,type StorageCode} from "./registration/local-draft";
 import {preparePhotoPreview} from "./registration/photo-preview";
 import {installViewportController} from "./viewport/viewport-controller";
-import {DiscoveryApp} from "./discovery/DiscoveryApp";
+// Load the heavy Discovery/profile route only after the entry shell can paint.
+const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({default:m.DiscoveryApp})));
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
@@ -86,6 +87,13 @@ export function App() {
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [demoOpen,setDemoOpen] = useState(false);
   const [scope] = useState(()=>localScope());
+  // Prewarm the optional Discovery chunk after the welcome screen appears.
+  // Never let large profile/viewer modules block Telegram entry and registration.
+  useEffect(()=>{
+    if(!introElapsed)return;
+    const timer=window.setTimeout(()=>{void import("./discovery/DiscoveryApp");},800);
+    return ()=>window.clearTimeout(timer);
+  },[introElapsed]);
   const [step,setStep] = useState(1);
   const [draft,setDraft] = useState<RegistrationDraft>(()=>newDraft());
   const [photos,setPhotos] = useState<PhotoItem[]>([]);
@@ -438,7 +446,7 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
-    {demoOpen&&auth==="authorized"?<DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/>:null}
+    {demoOpen&&auth==="authorized"?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
