@@ -43,7 +43,10 @@ try{
       browse:getComputedStyle(scene.querySelector(".discovery-browse-panel")).visibility,
       nav:getComputedStyle(scene.querySelector(".discovery-bottom-nav")).visibility,
       bg:getComputedStyle(route).backgroundColor,
-      frontZ:Number(getComputedStyle(route).zIndex),backZ:Number(getComputedStyle(back).zIndex)};
+      frontZ:Number(getComputedStyle(route).zIndex),backZ:Number(getComputedStyle(back).zIndex),
+      routeWillChange:getComputedStyle(route).willChange,
+      logoFilter:getComputedStyle(front.querySelector(".lh-island img")).filter,
+      mistAnimation:getComputedStyle(document.querySelector(".milky-mist"),"::before").animationName};
    });
    assert.equal(chrome.front,1,key+": multiple moving logos");
    assert.equal(chrome.back,1,key+": duplicate browse logos");
@@ -51,6 +54,9 @@ try{
    assert.equal(chrome.nav,"visible",key+": navigation raster invalidated");
    assert.ok(chrome.frontZ>chrome.backZ,key+": logo occlusion lost");
    assert.ok(/^rgb\(/.test(chrome.bg),key+": visitor route must be opaque");
+   assert.ok(chrome.routeWillChange.includes("transform"),key+": route compositor hint missing");
+   assert.equal(chrome.logoFilter,"none",key+": animated logo filter still creates raster churn");
+   assert.equal(chrome.mistAnimation,"none",key+": background GPU animation active on mobile");
    const box=await page.locator(".discovery-visitor-route .pm-identity").first().boundingBox();
    assert.ok(box&&box.width>80&&box.height>10,key+": missing identity sheet");
    const x=Math.max(26,box.x+Math.min(30,box.width*.09)),y=box.y+box.height*.5;
