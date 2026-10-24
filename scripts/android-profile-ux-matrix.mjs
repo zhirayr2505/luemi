@@ -17,6 +17,14 @@ try{
   page.on("pageerror",e=>errors.push(e.message));
   await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.locator(".discovery-app").waitFor();
+  // profile-qa.html mounts DiscoveryApp directly (without App.tsx's ambient
+  // layer). Mount that same static CSS element in the synthetic fixture before
+  // testing the mobile reduced-paint rule.
+  await page.evaluate(()=>{
+   const mist=document.createElement("div");
+   mist.className="milky-mist";
+   document.querySelector(".luemi-shell")?.prepend(mist);
+  });
   if(theme==="dark")await page.evaluate(()=>window.__luemiQaPerf.theme());
   for(const source of sources)for(let round=0;round<2;round++){
    const key=width+"x"+height+"/"+theme+"/cpu"+rate+"/"+source+"/"+round;
