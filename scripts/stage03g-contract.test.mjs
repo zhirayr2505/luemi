@@ -33,8 +33,8 @@ const futureBlik={id:"published-blik",src:"https://example.com/real-story.jpg",k
  expiresAt:new Date(Date.now()+3600_000).toISOString()};
 assert.equal(m.projectProfile({...base,activeBlik:futureBlik},"visitor").profile.activeBlik,null,
  "local draft must not advertise an active Blik");
-assert.equal(m.projectProfile({...base,source:"server",activeBlik:futureBlik},"visitor").profile.activeBlik?.id,
- "published-blik","verified server Blik can be opened through circular avatar");
+assert.equal(m.projectProfile({...base,source:"server",activeBlik:futureBlik},"visitor").profile.activeBlik,
+ null,"REM-05F: HTTPS server payload is not a verified server Blik authorization");
 assert.equal(m.projectProfile({...base,source:"server",activeBlik:{...futureBlik,expiresAt:"2025-01-01T00:00:00Z"}},"visitor").profile.activeBlik,
  null,"expired story cannot be shown as active");
 assert.equal(m.projectProfile({...base,source:"server",activeBlik:{...futureBlik,src:"javascript:alert(1)"}},"visitor").profile.activeBlik,
@@ -104,8 +104,8 @@ assert.ok(profile.includes('className="pm-mini-avatar"')||
  profile.includes('className={"pm-mini-avatar"'),
  "small photo appears only in collapsed profile");
 assert.ok(profile.includes('onClick={openMyPhotos}')&&profile.includes('settleSheet(true)')&&
- profile.includes("BlikViewer")&&profile.includes("view.profile.activeBlik"),
- "gallery shortcut and future published story routing remain functional");
+ !profile.includes("BlikViewer")&&!profile.includes("setBlikOpen"),
+ "gallery shortcut remains; unverified Blik viewer activation is fail-closed");
 console.log("✓ Stage 03G.4: independent scroll and pinned controls, no liquid morph");
 assert.equal((css.match(/^\.pm-profile-sheet\{/gm)||[]).length,1,
  "profile sheet has one authoritative CSS definition, not multiple overriding generations");

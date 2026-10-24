@@ -10,7 +10,6 @@ import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
 import {QaProfiler} from "./qa-profiler";
 import {resourceIdentity,viewerPhotoContext,type ViewerSource} from "./photo-viewer-state";
-import {BlikViewer} from "./BlikViewer";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
 import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
@@ -172,7 +171,6 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{photoId:string;source:ViewerSource|null}|null>(null);
- const [blikOpen,setBlikOpen]=useState(false);
  const [collapsed,setCollapsed]=useState(false);
 
  // 02A: exclusive paint-path ownership only. Gestures and physics unchanged.
@@ -455,10 +453,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const closeTop=useCallback(():boolean=>{
   if(viewer){if(viewerBack.current)return viewerBack.current();setViewer(null);return true;}
   if(preview){if(previewBack.current?.())return true;setPreview(false);return true;}
-  if(blikOpen){setBlikOpen(false);return true;}
   if(onClose){onClose();return true;}
   return false;
- },[viewer,preview,blikOpen,onClose]);
+ },[viewer,preview,onClose]);
  nestedBack.current=()=>{closeTop();};
  useEffect(()=>{if(!active)return;registerBack?.(closeTop);return ()=>registerBack?.(null);},[active,closeTop,registerBack]);
  const openPhoto=(index:number,element:HTMLElement|null)=>{
@@ -949,7 +946,6 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  },[registerRouteGestureCancel]);
  const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
  const openAvatar=()=>{
-  if(view.profile.activeBlik){setBlikOpen(true);return;}
   settleSheet(false);
  };
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
@@ -998,9 +994,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
        <h2>{nameLine} {view.profile.premium&&<span className="pm-premium">◆</span>}{view.profile.verified&&<ShieldCheck size={19} aria-label="Подтверждён"/>}</h2>
        <p className="pm-identity-location">{location}</p>
       </div>
-      {current&&<button ref={miniAvatar} type="button" className={"pm-mini-avatar"+(view.profile.activeBlik?" has-blik":"")}
+      {current&&<button ref={miniAvatar} type="button" className="pm-mini-avatar"
          onClick={openAvatar} tabIndex={collapsed?0:-1} aria-hidden={!collapsed}
-         aria-label={view.profile.activeBlik?"Открыть активный блик":"Раскрыть фото профиля"}>
+         aria-label={"Раскрыть фото профиля"}>
          <PhotoImage photo={current} alt="" loading="eager"/>
        </button>}
      </div>
@@ -1051,7 +1047,6 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     contextId={viewerPhotoContext(view)}
     onClose={()=>setViewer(null)} registerBack={registerViewerBack}
     /></QaProfiler>}
-  {blikOpen&&view.profile.activeBlik&&<BlikViewer blik={view.profile.activeBlik} name={view.profile.name} onClose={()=>setBlikOpen(false)}/>}
-  {preview&&<ProfileMaster data={data} mode={data.source==="local-draft"?"local-self-preview":"preview"} onClose={()=>setPreview(false)} registerBack={registerPreviewBack} active={active} onMotionProgress={onMotionProgress}/>}
+   {preview&&<ProfileMaster data={data} mode={data.source==="local-draft"?"local-self-preview":"preview"} onClose={()=>setPreview(false)} registerBack={registerPreviewBack} active={active} onMotionProgress={onMotionProgress}/>}
  </section>;
 });
