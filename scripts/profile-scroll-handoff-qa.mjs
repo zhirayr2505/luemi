@@ -35,8 +35,12 @@ try{
    const p=node.querySelector(".pm-page[aria-hidden=false]")??node.querySelector(".pm-page");
    const b=p?.getBoundingClientRect();
    if(!(p instanceof HTMLElement)||!b)return null;
+   const low=Math.max(0,b.top+10),high=Math.min(innerHeight-32,b.bottom-8);
+   const x=b.x+Math.min(42,b.width*.14),y=low+(high-low)*.5;
+   const hit=document.elementFromPoint(x,y);
    return {state:node.dataset.sheetState,action:getComputedStyle(p).touchAction,
-     x:b.x+Math.min(42,b.width*.14),y:b.y+b.height*.46,within:b.bottom>0&&b.y<innerHeight,
+     x,y,within:high>low+10&&!!hit&&p.contains(hit),
+     hit:hit?.className?.toString().slice(0,95),pageTop:b.top,pageBottom:b.bottom,
      height:b.height,rootHeight:node.clientHeight};
   });
   assert.ok(init?.within&&init?.height>30,device.name+"/"+source+" missing visible profile content");
@@ -64,6 +68,8 @@ try{
    return {state:node.dataset.sheetState,action:getComputedStyle(page).touchAction,
     top:sheet.getBoundingClientRect().y};
   });
+  console.log("LUEMI_SHEET_DIAGNOSTIC "+JSON.stringify({device:device.name,source,viewport:width+"x"+height,
+   init,before,collapsed,start:track[0],mid:track[7],end:track.at(-1)}));
   assert.equal(collapsed.state,"collapsed",device.name+"/"+source+": swipe on page failed to minimize");
   assert.equal(collapsed.action,"pan-y",device.name+"/"+source+": native vertical scroll not restored");
   assert.ok(collapsed.top<before.sheetY-60,device.name+"/"+source+": sheet did not move up");
