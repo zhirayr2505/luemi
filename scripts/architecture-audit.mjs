@@ -114,7 +114,7 @@ const view={files:paths.length,production:prod.size,qa:qa.size,roots,qaRoots,
  intentional:Object.entries(intentional).map(([path,reason])=>({path,reason})),
  unreachable:unused,staleExemptions:ignored};
 console.log("LUEMI_ARCHITECTURE_AUDIT "+JSON.stringify(view));
-if(process.argv.includes("--strict")&&(unused.length||ignored.length||retiredUsages.length||retiredFlags.length)){
- console.error("ARCHITECTURE_AUDIT_FAIL: unreachable modules or retired gesture/motion paths require removal.");
+if(process.argv.includes("--strict")&&(unused.length||ignored.length||retiredUsages.length||retiredFlags.length||productionImportCycles.length)){
+ console.error("ARCHITECTURE_AUDIT_FAIL: unreachable modules, dependency cycles or retired gesture/motion paths require removal.");
  process.exitCode=1;
 }
