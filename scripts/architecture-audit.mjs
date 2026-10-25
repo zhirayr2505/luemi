@@ -24,7 +24,9 @@ function resolve(file,spec){
  if(spec==="@luemi/contracts")return "packages/contracts/src/index.ts";
  if(!spec.startsWith("."))return null;
  const from=path.posix.dirname(file),name=path.posix.normalize(path.posix.join(from,spec));
- return [name,...ext.map(e=>name+e),...["index.ts","index.tsx"].map(e=>name+"/"+e)]
+ // NodeNext TypeScript imports intentionally use .js specifiers in .ts files.
+ const base=name.replace(/\.(?:m?js|cjs)$/,"");
+ return [name,base,...ext.map(e=>base+e),...["index.ts","index.tsx"].map(e=>base+"/"+e)]
   .find(v=>all.has(v))??null;
 }
 for(const file of paths){
