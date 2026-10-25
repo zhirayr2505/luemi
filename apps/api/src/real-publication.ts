@@ -109,7 +109,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
  app.addHook("onClose",async()=>{await Promise.all([publisher.end(),reader.end(),requestPool.end()]);});
  async function requireEligibleViewer(actorId:string):Promise<void>{
   const db=await requestPool.connect().catch(()=>null);
-  if(!db)fail(503,"service_unavailable");
+  if(!db)throw new Rejection(503,"service_unavailable");
   try{
    if(!await safeDb(db,"luemi_request"))fail(503,"service_unavailable");
    await db.query("BEGIN");
