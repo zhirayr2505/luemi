@@ -15,6 +15,11 @@ const noLayoutTarget={
 assert.equal(mod.isGestureModalBlocked(noLayoutTarget),false,"resting scrolled panels may begin horizontal gesture");
 assert.equal(mod.isGestureModalBlocked({closest:()=>({})}),true,"nested modal must retain gesture exclusion");
 assert.equal(mod.isGestureModalBlocked(null),true,"missing target is blocked");
+const browseOnly={closest(selector){
+ return /\\.nb-card|\\.fy-rail|\\.nb-location|\\.discovery-filter-sheet/.test(selector)?{}:null;
+}};
+assert.equal(mod.isGestureModalBlocked(browseOnly),false,
+ "visitor modal gate must not accidentally blacklist unrelated browse/nearby elements");
 console.log("REM02C_UNIT_PASS pointerdown modal gate has no forced layout reads");
 const ar=new mod.GestureArbiter();
 const native=ar.begin("pointer",5,"route");
