@@ -13,6 +13,7 @@ import { registerRem05d } from "./rem05d-private.js";
 import { registerRealRegistrationDrafts } from "./real-registration-drafts.js";
 import {registerPublishedProfiles} from "./real-publication.js";
 import {registerAccountErasure} from "./real-erasure.js";
+import {registerSafetyAppeals} from "./safety-appeal-api.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -62,5 +63,6 @@ export function buildApp(config: ApiConfig) {
   registerRealRegistrationDrafts(app,guards,config.realRegistration);
   registerPublishedProfiles(app,guards,config.realPublication);
   registerAccountErasure(app,guards,config.realErasure);
+  registerSafetyAppeals(app,config.safetyAppeal);
   return app;
 }
