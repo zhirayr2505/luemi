@@ -29,6 +29,7 @@ export class ProfileSheetMotion {
   private readonly caf:(frame:number)=>void=frame=>cancelAnimationFrame(frame)){
   this.y=initial;
  }
+ isDisposed(){return this.destroyed;}
  get phase():Stage{return this.run?"settling":this.paused?"paused":"idle";}
  get value():number{return this.y;}
  sample():number{return this.interpolate(this.now());}
