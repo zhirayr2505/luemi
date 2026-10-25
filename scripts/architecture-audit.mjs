@@ -65,7 +65,8 @@ const ignored=Object.keys(intentional).filter(p=>!all.has(p));
 // Guard against reintroducing old helpers as new parallel motion paths.
 // TypeScript AST identifiers ignore comments, which can document historical code.
 const retired=new Set(["animateValue","createGuardedCompletion",
- "createProfileMotionControllers","gestureCapabilities"]);
+ "createProfileMotionControllers","gestureCapabilities",
+ "blockedNative","blocksNative"]);
 const retiredUsages=[],retiredFlags=[];
 for(const file of paths){
  const code=readFileSync(path.join(root,file),"utf8");
