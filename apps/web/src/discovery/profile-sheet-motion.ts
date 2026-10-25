@@ -7,6 +7,7 @@
  * Finger input writes synchronously; a settle always starts at THAT pixel.
  */
 import {easeAt} from "../ui/motion";
+import {motionDebug,motionDebugId} from "../ui/motion-debug";
 
 type Stage="idle"|"settling"|"paused";
 type Run={from:number;to:number;began:number;duration:number;
@@ -16,6 +17,7 @@ const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const ease=(fraction:number)=>easeAt(fraction,.22,.79,.22,1);
 export class ProfileSheetMotion {
  private y:number;
+ private readonly debugId=motionDebugId();
  private min=0;
  private max=1000;
  private run:Run|null=null;
@@ -28,12 +30,17 @@ export class ProfileSheetMotion {
   private readonly raf:(callback:(t:number)=>void)=>number=callback=>requestAnimationFrame(callback),
   private readonly caf:(frame:number)=>void=frame=>cancelAnimationFrame(frame)){
   this.y=initial;
+  this.debug("engine.construct",{initial});
  }
  isDisposed(){return this.destroyed;}
  get phase():Stage{return this.run?"settling":this.paused?"paused":"idle";}
  get value():number{return this.y;}
  sample():number{return this.interpolate(this.now());}
  get destinationCollapsed():boolean|null{return this.run?.collapsed??this.paused?.collapsed??null;}
+ private debug(event:string,fields:Record<string,unknown>={}){
+  motionDebug(event,{engine:this.debugId,y:this.y,min:this.min,max:this.max,
+   phase:this.phase,run:!!this.run,paused:!!this.paused,destination:this.destinationCollapsed,...fields});
+ }
  private invalidate(){
   this.epoch++;
   if(this.frame!==null)this.caf(this.frame);
@@ -49,6 +56,7 @@ export class ProfileSheetMotion {
   if(this.destroyed)return;
   this.y=clamp(value,this.min,this.max+28);
   this.paint(this.y,dragging);
+  this.debug("engine.put",{requested:value,dragging});
  }
  /** Stop a transition by sampling its current pixel, never the last target. */
  interrupt():number{
@@ -60,18 +68,21 @@ export class ProfileSheetMotion {
  }
  /** A finger is authoritative; no queued frame may paint over it. */
  drag(value:number){
+  this.debug("engine.drag",{requested:value});
   if(this.destroyed)return;
   if(this.run||this.paused)this.interrupt();
   this.put(value,true);
  }
  /** New settle ALWAYS starts from the last actual finger-painted pixel. */
  settle(collapsed:boolean,done:()=>void,duration=290){
+  this.debug("engine.settle",{collapsed,duration});
   if(this.destroyed)return;
   this.interrupt();
   this.start(collapsed,done,duration);
  }
  private start(collapsed:boolean,done:()=>void,duration:number){
   const target=collapsed?this.min:this.max;
+  this.debug("engine.start",{collapsed,target,duration});
   if(Math.abs(target-this.y)<.15||duration<=0||
    (typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches)){
    this.put(target,false);done();return;
@@ -91,6 +102,7 @@ export class ProfileSheetMotion {
    if(time-r.began>=r.duration){
     this.run=null;
     this.put(r.to,false);
+    this.debug("engine.done",{collapsed:r.collapsed,target:r.to});
     r.done();
    }else this.tick();
   });
@@ -102,6 +114,7 @@ export class ProfileSheetMotion {
   */
  resize(min:number,max:number,screenMappedY:number,committedCollapsed:boolean,
   fingerActive:boolean){
+  this.debug("engine.resize",{nextMin:min,nextMax:max,screenMappedY,committedCollapsed,fingerActive});
   if(this.destroyed||![min,max,screenMappedY].every(Number.isFinite)||max<=min)return;
   const now=this.now(),r=this.run,p=this.paused;
   const remaining=r?Math.max(0,r.duration-(now-r.began)):0;
@@ -109,11 +122,13 @@ export class ProfileSheetMotion {
   this.min=min;this.max=max;
   this.put(!r&&!p&&!fingerActive?(committedCollapsed?min:max):screenMappedY,
    fingerActive);
+  this.debug("engine.resize.afterPut",{remaining,wasRunning:!!r,wasPaused:!!p});
   if(r){this.paused=null;this.start(r.collapsed,r.done,remaining);}
   else if(p)this.paused=p;
  }
  /** Freeze on Telegram background/route transition without committing a target. */
  pause(){
+  this.debug("engine.pause");
   if(this.destroyed||this.paused)return;
   const now=this.now(),r=this.run;
   const current=this.interpolate(now);
@@ -123,12 +138,14 @@ export class ProfileSheetMotion {
    remaining:Math.max(0,r.duration-(now-r.began)),done:r.done};
  }
  resume(){
+  this.debug("engine.resume");
   if(this.destroyed||!this.paused)return;
   const p=this.paused;
   this.paused=null;
   this.start(p.collapsed,p.done,p.remaining);
  }
  dispose(){
+  this.debug("engine.dispose");
   this.invalidate();
   this.run=null;this.paused=null;this.destroyed=true;
  }
