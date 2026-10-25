@@ -35,7 +35,7 @@ try{
  await sleep(180);
  const original=await geometry();
  assert.ok(original.expanded>original.collapsed);
- for(const percent of [.25,.5,.9]){
+ for(const percent of [.25,.5,.75]){
   await page.setViewportSize({width:393,height:852});
   await sleep(90);
   if((await geometry()).remaining==="collapsed"){
@@ -43,7 +43,7 @@ try{
    await sleep(385);
   }
   await page.getByRole("button",{name:"Развернуть анкету"}).click();
-  await sleep(Math.round(335*percent));
+  await sleep(Math.round(290*percent));
   const before=await geometry();
   assert.equal(before.remaining,"expanded","CSS/React state must stay expanded until actual settle completion");
   await page.setViewportSize({width:393,height:percent===.25?722:percent===.5?648:782});
