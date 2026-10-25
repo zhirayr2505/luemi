@@ -127,4 +127,40 @@ test("REG01A boot flags fail CLOSED for unapproved privacy and publication",()=>
  assert.throws(()=>readConfig({...authorized,REM06_PUBLICATION_ENABLED:"1"}),/HARD DISABLED/);
  assert.throws(()=>readConfig({...authorized,STAGING_BOOTSTRAP_ONLY:"1"}),/privacy\/DB gates/);
 });
+test("REG01A revoke during row-lock wait rolls back in-flight draft UPDATE",async()=>{
+ const app=server();
+ const hold=await admin.connect();
+ let pending:Promise<Awaited<ReturnType<typeof put>>>|undefined;
+ let holding=false;
+ try{
+  const a=await identity(app,7011003);
+  assert.equal((await put(app,a,0,{displayName:"Before"})).statusCode,200);
+  await hold.query("BEGIN");
+  holding=true;
+  await hold.query("SELECT owner_id FROM luemi_private.private_profile_drafts WHERE owner_id=$1 FOR UPDATE",[a.id]);
+  pending=put(app,a,1,{displayName:"After logout"});
+  let blocked=false;
+  for(let n=0;n<140;n++){
+   const q=await admin.query<{blocked:boolean}>(`
+    SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE wait_event_type='Lock'
+     AND query LIKE 'UPDATE luemi_private.private_profile_drafts SET revision=%') AS blocked`);
+   if(q.rows[0].blocked){blocked=true;break;}
+   await new Promise(resolve=>setTimeout(resolve,20));
+  }
+  assert.equal(blocked,true,"update must actually be waiting on a PostgreSQL row lock");
+  await admin.query("UPDATE luemi_private.sessions SET revoked_at=clock_timestamp() WHERE actor_id=$1",[a.id]);
+  await hold.query("COMMIT");
+  holding=false;
+  const reply=await pending;
+  assert.equal(reply.statusCode,401,reply.body);
+  const row=await admin.query<{revision:string;payload:{displayName:string}}>(
+   "SELECT revision::text,payload FROM luemi_private.private_profile_drafts WHERE owner_id=$1",[a.id]);
+  assert.equal(row.rows[0].revision,"1");
+  assert.equal(row.rows[0].payload.displayName,"Before");
+ }finally{
+  if(holding)await hold.query("ROLLBACK").catch(()=>{});
+  if(pending)await pending.catch(()=>{});
+  hold.release();await app.close();
+ }
+});
 test("REG01A disposable pool cleanup",async()=>{await admin.end();await scoped.end();});

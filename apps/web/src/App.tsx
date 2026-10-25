@@ -13,6 +13,7 @@ const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({d
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
+import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft} from "./registration/server-draft";
 
 declare global {
   interface Window {
@@ -114,6 +115,9 @@ export function App() {
   const [storageState,setStorageState]=useState<"loading"|"idle"|"dirty"|"saving"|"saved"|"error">("loading");
   const [storageCode,setStorageCode]=useState<StorageCode|null>(null);
   const [error,setError] = useState("");
+  const [serverConsent,setServerConsent]=useState(false);
+  const [serverSaving,setServerSaving]=useState(false);
+  const [serverStatus,setServerStatus]=useState("");
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
@@ -123,6 +127,7 @@ export function App() {
     persistEnabled.current=true;
     setStorageState("dirty");
     setDraft(prev=>({...prev,...change}));
+    setServerStatus(""); // A changed local draft is no longer identical to the server copy.
     setError("");
   },[]);
   useEffect(()=>{
@@ -389,7 +394,7 @@ export function App() {
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
     draftId.current=crypto.randomUUID();revision.current=0;
-    setPhotos([]);setDraft(newDraft());setStep(1);setError("");
+    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);
     setStorageState("saving");setStorageCode(null);
     if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
     void clearDraftSnapshot(scope).then(result=>{
@@ -438,6 +443,26 @@ export function App() {
   const beginDemo=()=>{setDemoOpen(true);setError("");};
   const exitDemo=useCallback(()=>{setDemoOpen(false);setPhase("form");setStep(8);},[]);
   const readyPhotos=useMemo(()=>readyRegistrationPhotos(photos),[photos]);
+  const persistServerDraft=async()=>{
+    if(!remoteDraftPilot.enabled||!serverConsent||serverSaving||auth!=="authorized")return;
+    for(let n=1;n<=6;n++){
+      const problem=validateStep(draft,n,photos.length);
+      if(problem){setServerStatus("Проверь шаг "+n+": "+problem);return;}
+    }
+    setServerSaving(true);setServerStatus("");
+    try{
+      const previous=await readRemoteRevision();
+      if(previous.state==="private"&&!window.confirm(
+        "На сервере уже есть приватный черновик. Заменить его текущими полями? Фотографии останутся на этом устройстве."
+      )){setServerStatus("Серверный черновик оставлен без изменений.");return;}
+      await saveRemoteDraft(draft,previous.revision);
+      setServerStatus("Поля анкеты сохранены на сервере. Публикация закрыта, фотографии остались на этом устройстве.");
+    }catch(e){
+      setServerStatus(e instanceof Error&&e.message==="revision_conflict"?
+        "Черновик изменён в другой сессии. Ничего не перезаписано — проверь данные и повтори.":
+        "Серверное сохранение не удалось. Локальный черновик и фотографии не удалены.");
+    }finally{setServerSaving(false);}
+  };
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
@@ -475,6 +500,20 @@ export function App() {
       <div key={step} className="onboard-body" ref={contentRef}>
         <RegistrationStep data={draft} patch={patch} step={step} photos={photos}
           addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep} resetDraft={resetDraft} openDemo={beginDemo}/>
+        {step===8&&remoteDraftPilot.enabled&&<section className="registration-preview-review" aria-label="Приватное серверное сохранение">
+          <strong>Приватное сохранение анкеты</strong>
+          <p>На сервер отправятся только поля анкеты. Фотографии останутся на устройстве; анкета не будет опубликована.</p>
+          <label>
+            <input type="checkbox" checked={serverConsent} onChange={e=>setServerConsent(e.target.checked)}/>
+            {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">
+              политику обработки данных</a> и согласен(-на) сохранить черновик на сервере.
+          </label>
+          <button type="button" className="primary-action" disabled={!serverConsent||serverSaving}
+            onClick={()=>{void persistServerDraft();}}>
+            {serverSaving?"Сохранение…":"Сохранить приватный черновик"}
+          </button>
+          {serverStatus&&<p role="status">{serverStatus}</p>}
+        </section>}
       </div>
       {step===5&&<SelectedInterests selected={draft.interests}
         onChange={id=>patch({interests:draft.interests.filter(x=>x!==id)})}/>}
