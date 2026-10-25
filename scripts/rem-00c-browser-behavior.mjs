@@ -316,7 +316,10 @@ async function qaProfile(browser){
    "SHEET REENTRANCY: neutral touchend must not reverse in-flight avatar expansion");
   assert.ok(Math.abs(unaffected.sheetTop-expanded.sheetTop)<5,
    "SHEET REENTRANCY: original expand endpoint must remain physically stable");
-  await page.locator(".pm-inline").getByRole("button",{name:"Развернуть анкету"}).click();
+  // QA teardown: the grab can be deliberately non-interactive immediately
+  // after this probe. Invoke its actual click handler rather than waiting
+  // for Playwright's role visibility/accessibility heuristic to expose it.
+  await page.locator(".pm-inline .pm-sheet-grab").evaluate(el=>el.click());
   await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
   console.log("QA_NO_TOUCHEND_RESTART_DURING_SHEET_EXPAND_PASS");
   // A collapsed/scrolled about page must still accept horizontal paging.
