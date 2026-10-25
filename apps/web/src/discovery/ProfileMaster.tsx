@@ -860,10 +860,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     const threshold=Math.min(90,Math.max(65,(expandedY.current-collapsedY.current)*.2));
     const commit=g.down?(dy>threshold||velocity>.65):(dy< -threshold||velocity<-.65);
     clickBlocked.current=performance.now()+260;
-    settleSheet(cancelled?g.down:g.down?!commit:commit);
+    settleSheet(cancelled?g.down:g.down?!commit:commit,"touchend");
    }else if(!g.axis){
     // A tap during settling resumes from the frozen position.
-    settleSheet(g.down);
+    settleSheet(g.down,"touchend.noAxis");
     const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
     if(g.inPages&&Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
    } // Native scroll is exclusive; never repair pages.scrollLeft from its touchend.
@@ -875,7 +875,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    else if(g.axis==="native")gestures.finish("native",g.serial);
    else gestures.finishCandidate(g.serial);
    if(g.axis==="x"&&g.claimed)chooseTab(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
-   else if(g.axis==="y"&&g.claimed)settleSheet(g.down);
+   else if(g.axis==="y"&&g.claimed)settleSheet(g.down,"touchcancel");
   };
   pane.addEventListener("touchstart",start,{passive:true});
   pane.addEventListener("touchend",end,{passive:true});
@@ -921,7 +921,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const sheetDriver=sheetMotion.current;
   if(saved.sheetSettling&&sheetDriver?.phase==="paused")sheetDriver.resume();
   else if(Math.abs(sheetY.current-(saved.sheetTarget?collapsedY.current:expandedY.current))>.5)
-   settleSheet(saved.sheetTarget);
+   settleSheet(saved.sheetTarget,"rollbackRoute");
   const tabDriver=tabsRunner.current;
   if(saved.tabsSettling&&tabDriver?.snapshot().phase==="suspended"){
    tabsRevision.current=Math.max(tabsRevision.current,tabDriver.snapshot().revision+1);
@@ -963,9 +963,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    routeMotionHandle.current.suspendForBackground();
   },()=>routeMotionHandle.current.resumeFromBackground());
  },[gestureArbiter]);
- const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
+ const openMyPhotos=()=>{chooseTab(2);settleSheet(true,"openMyPhotos");};
  const openAvatar=()=>{
-  settleSheet(false);
+  settleSheet(false,"openAvatar");
  };
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
@@ -1005,7 +1005,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    <div className="pm-profile-sheet" ref={sheet} onClickCapture={e=>{
     if(performance.now()<clickBlocked.current){e.preventDefault();e.stopPropagation();}
    }}>
-    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsedRef.current)}
+    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsedRef.current,"grab.onClick")}
       tabIndex={collapsed?-1:0} aria-label={collapsed?"Потянуть панель вниз":"Развернуть анкету"}><span/></button>
     <div className="pm-identity">
      <div className="pm-identity-core">
