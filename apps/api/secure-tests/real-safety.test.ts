@@ -70,7 +70,7 @@ test("01H: report must be human triaged, suspend revokes all sessions and hides 
   const png=makeSyntheticPng(),ids:string[]=[];
   for(let i=0;i<3;i++){
    const intent=await app.inject({method:"POST",url:"/api/v2/media/intents",
-    headers:headers(owner),payload:{bytes:png.length,mime:"image/png",clientKey:"reg01h"+i}});
+    headers:headers(owner),payload:{bytes:png.length,mime:"image/png",clientKey:"reg01h-photo-"+i}});
    assert.equal(intent.statusCode,200,intent.body);
    const assetId=intent.json().assetId as string;
    ids.push(assetId);
