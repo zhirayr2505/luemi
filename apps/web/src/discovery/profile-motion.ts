@@ -8,7 +8,7 @@ export const PROFILE_MOTION_WRITER_TABLE={
  sheet:["sheet-scroll","elastic-sheet","parallax","blur","avatar","grab"],
  tabs:["tab-scroll","tab-ink"],hero:["hero-track"],
  browse:["browse-track","browse-underline"],
- route:["route-transform","route-reveal"]
+ route:["route-transform"]
 } as const satisfies Record<MotionOwner,ReadonlyArray<MotionProperty>>;
 
 /** One writer capability per property, per mounted profile/root. Controls
