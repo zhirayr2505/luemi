@@ -13,6 +13,7 @@ import {resourceIdentity,viewerPhotoContext,type ViewerSource} from "./photo-vie
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
 import {ProfileSheetMotion} from "./profile-sheet-motion";
+import {createSheetFrameTrace,installMotionDebugPanel,motionDebug,motionDebugEnabled,type SheetFrameTrace} from "../ui/motion-debug";
 import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
 import {GestureArbiter,fractionalTrack,preservePhotoId} from "../ui/gesture-arbiter";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
@@ -225,6 +226,23 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const motionCallback=useRef(onMotionProgress);
  motionCallback.current=onMotionProgress;
  const motionActive=active&&!preview;
+ const debugTrace=useRef<SheetFrameTrace|null>(null);
+ if(motionDebugEnabled&&!debugTrace.current){
+  debugTrace.current=createSheetFrameTrace(()=>({
+   mode,engineY:sheetMotion.current?.value??null,
+   paintedY:sheetY.current,domTop:sheet.current?.style.top??"",
+   state:shell.current?.getAttribute("data-sheet-state")??null,
+   phase:sheetMotion.current?.phase??"none",collapsedRef:collapsedRef.current,
+   min:collapsedY.current,max:expandedY.current
+  }));
+ }
+ useEffect(()=>installMotionDebugPanel(),[]);
+ useEffect(()=>()=>debugTrace.current?.dispose(),[]);
+ if(motionDebugEnabled)motionDebug("ProfileMaster.render",{
+  mode,active,motionActive,collapsed,collapsedRef:collapsedRef.current,
+  paintedY:sheetY.current,min:collapsedY.current,max:expandedY.current,
+  sheetPhase:sheetMotion.current?.phase??"none"
+ });
  const previewBack=useRef<(()=>boolean)|null>(null);
  const registerPreviewBack=useCallback((handler:(()=>boolean)|null)=>{previewBack.current=handler;},[]);
  const registerViewerBack=useCallback((handler:(()=>boolean)|null)=>{viewerBack.current=handler;},[]);
@@ -300,6 +318,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    Math.max(1,expandedY.current-collapsedY.current)));
   // One actual top coordinate replaces the asynchronous native scrollTop.
    if(sheet.current)sheet.current.style.top=next.toFixed(2)+"px";
+   if(motionDebugEnabled)motionDebug("paintSheet",{
+    mode,y:next,offset,dragging,progress,elastic,
+    domTop:sheet.current?.style.top??null,collapsedRef:collapsedRef.current
+   },false);
   
   if(photoMotion.current){
    const y=-10*progress+elastic*.22;
@@ -334,13 +356,26 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    (pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current),tabsRevision.current);
   return tabsRunner.current;
  };
- const settleSheet=useCallback((next:boolean)=>{
+ const settleSheet=useCallback((next:boolean,source="unspecified")=>{
+  if(motionDebugEnabled){
+   debugTrace.current?.start();
+   motionDebug("settleSheet",{mode,next,source,collapsedRef:collapsedRef.current,
+    paintedY:sheetY.current,phase:sheetMotion.current?.phase??"none",
+    destination:sheetMotion.current?.destinationCollapsed??null});
+  }
   ensureSheetMotion().settle(next,()=>{
+   if(motionDebugEnabled)motionDebug("collapsedRef.write",{
+    mode,next,previous:collapsedRef.current,y:sheetY.current
+   });
    collapsedRef.current=next;
+   if(motionDebugEnabled)motionDebug("setCollapsed.invoke",{
+    mode,next,y:sheetY.current,phase:sheetMotion.current?.phase??"none"
+   });
    setCollapsed(next);
+   debugTrace.current?.finished();
   });
   stopSheet.current=()=>{sheetMotion.current?.interrupt();};
- },[ensureSheetMotion]);
+ },[ensureSheetMotion,mode]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
   let first=true,hidden=false;
