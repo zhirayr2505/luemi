@@ -199,7 +199,12 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   const target=e.target as HTMLElement;
   if(target.closest(".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar"))return;
   const capabilities=gestureCapabilities(target,true);
-  if(capabilities.modalBlocked||capabilities.canScrollY)return;
+  // A nonzero resting scrollTop does not mean a native vertical gesture is
+  // active. Gate only on actual modal ownership here; pointer movement below
+  // resolves direction, while a vertical native pan is yielded to the sheet.
+  // Previously this blocked ALL horizontal profile-back candidates on
+  // scrollable content until the list was returned to its very top.
+  if(capabilities.modalBlocked)return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
   const collapsed=shell?.dataset.sheetState==="collapsed";
   if(!collapsed&&!target.closest(".pm-profile-sheet"))return;
