@@ -212,7 +212,8 @@ assert.ok(profile.includes('ensureSheetMotion().settle(next,()=>')&&
  sheetMotion.includes('get phase():Stage')&&
  sheetMotion.includes('duration=290')&&
  sheetMotion.includes('easeAt(fraction,.22,.79,.22,1)')&&
- profile.includes('runner.start(from,i,295,[.22,.77,.23,1]')&&
+ profile.includes('runner.start(from,i,fromFinger?tabReleaseDuration(from,i):295,[.22,.77,.23,1]')&&
+ profile.includes('chooseTab(next,true)')&&
  profile.includes('runner.rebase(tabsRevision.current,fraction,destination)')&&
  profile.includes("transform 290ms cubic-bezier(.2,.76,.22,1)"),
  "REM-02B source contract: new one-owner sheet timeline and unchanged tab/photo motion");
