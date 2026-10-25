@@ -54,6 +54,15 @@ export async function withdrawRealConsent():Promise<void>{
  if(!object(result)||result.state!=="consent_withdrawn"||result.dataDeleted!==false)
   throw new Error("invalid_consent_withdrawal_receipt");
 }
+/** Request immediate account lockout and queued Storage/DB purge. NOT completed erasure. */
+export async function requestMyAccountDeletion():Promise<void>{
+ const result=await api("/api/v3/account/request-deletion","POST",
+  {confirmation:"DELETE MY LUEMI ACCOUNT"});
+ if(!object(result)||result.state!=="deletion_queued"||
+   result.publicAccessRevoked!==true||result.sessionsRevoked!==true||
+   result.storagePending!==true||result.dataDeleted!==false)
+  throw new Error("invalid_deletion_queue_receipt");
+}
 export async function getPublishedFeed(signal:AbortSignal):Promise<RealPublishedProfile[]>{
  requirePilot();
  const res=await fetch("/api/v3/discovery/feed",{

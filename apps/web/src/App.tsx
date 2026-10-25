@@ -16,7 +16,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft} from "./registration/server-draft";
 import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
-import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent} from "./registration/real-live-client";
+import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 
 declare global {
@@ -129,6 +129,8 @@ export function App() {
   const [publishBusy,setPublishBusy]=useState(false);
   const [publishFeedback,setPublishFeedback]=useState("");
   const [realFeedOpen,setRealFeedOpen]=useState(false);
+  const [accountDeletionRequested,setAccountDeletionRequested]=useState(false);
+  const [localDeletionFailed,setLocalDeletionFailed]=useState(false);
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
@@ -553,6 +555,43 @@ export function App() {
       setPublishFeedback("Не удалось отозвать согласие. Проверь соединение и повтори.");
     }finally{setPublishBusy(false);}
   };
+  const eraseMyAccount=async()=>{
+    if(!realFeedPilot.enabled||publishBusy||auth!=="authorized")return;
+    if(window.prompt("Для запроса полного удаления аккаунта впиши УДАЛИТЬ")!=="УДАЛИТЬ")return;
+    if(!window.confirm(
+      "Удалить доступ к аккаунту навсегда? Сессии будут отозваны сразу. Файлы и записи будут удаляться отдельно. Отменить запрос после отправки нельзя."
+    ))return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      await requestMyAccountDeletion();
+      // Server receipt means all sessions were revoked, but remote file/database
+      // purge is still pending. Never label this a completed deletion.
+      setAccountDeletionRequested(true);setRealFeedOpen(false);setServerConsent(false);
+      persistEnabled.current=false;
+      ++saveSequence.current;photoGeneration.current++;
+      for(const job of photoJobs.current.values())job.abort();
+      photoJobs.current.clear();
+      for(const timer of photoTimers.current.values())window.clearTimeout(timer);
+      photoTimers.current.clear();
+      for(const url of ownedUrls.current)URL.revokeObjectURL(url);
+      ownedUrls.current=[];photoIds.current.clear();
+      setPhotos([]);setDraft(newDraft());
+      try{
+        const result=scope?await clearDraftSnapshot(scope):null;
+        if(!result?.ok)setLocalDeletionFailed(true);
+      }catch{setLocalDeletionFailed(true);}
+    }catch{
+      setPublishFeedback("Не удалось отправить запрос на удаление. Аккаунт не считается удалённым.");
+    }finally{setPublishBusy(false);}
+  };
+  if(accountDeletionRequested)return <main className="luemi-shell" data-theme={activeTheme}
+    data-scene="intro" role="status" style={{padding:"32px 22px",display:"grid",alignContent:"center",gap:18}}>
+    <img src={logoSrc} alt="LUEMI" style={{width:150,maxWidth:"100%",justifySelf:"center"}}/>
+    <h2>Запрос на удаление принят</h2>
+    <p>Ваш аккаунт отключён, активные сессии закрыты, анкета и фотографии скрыты. Удаление файлов из хранилища и остальных данных ещё выполняется.</p>
+    {localDeletionFailed&&<p role="alert">Локальный черновик на этом устройстве не удалось очистить. Удалите данные Telegram Mini App вручную.</p>}
+    <p>Не закрывайте этот текст с ожиданием мгновенного полного удаления: подтверждения завершения очистки сервер ещё не выдавал.</p>
+  </main>;
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
@@ -638,6 +677,8 @@ export function App() {
             onClick={()=>{void withdrawPersonalConsent();}}>
             Отозвать согласие и скрыть анкету
           </button>
+          <button type="button" disabled={publishBusy}
+            onClick={()=>{void eraseMyAccount();}}>Запросить удаление аккаунта и фото</button>
           <button type="button" onClick={()=>setRealFeedOpen(value=>!value)}>
             {realFeedOpen?"Закрыть реальную ленту":"Открыть реальную ленту"}
           </button>

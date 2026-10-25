@@ -6,12 +6,15 @@ import {buildApp} from "../src/app.js";
 import {memoryPrivateStore,syntheticModerate} from "../src/rem05d-private.js";
 import {makeSyntheticPng,sanitizePng} from "../src/rem05d-image.js";
 import type {PrivateObjectStore} from "../src/rem05d-private.js";
+import {runErasureBatch} from "../src/real-erasure-worker.js";
 
 const adminUrl=process.env.REG01_ADMIN_DATABASE_URL,issuerUrl=process.env.REG01_ISSUER_DATABASE_URL;
 const requestUrl=process.env.REG01_REQUEST_DATABASE_URL,workerUrl=process.env.REG01_WORKER_DATABASE_URL;
 const moderatorUrl=process.env.REG01_MODERATOR_DATABASE_URL;
 const publisherUrl=process.env.REG01_PUBLISHER_DATABASE_URL,readerUrl=process.env.REG01_READER_DATABASE_URL;
-if(!adminUrl||!issuerUrl||!requestUrl||!workerUrl||!moderatorUrl||!publisherUrl||!readerUrl)
+const erasureRequestUrl=process.env.REG01_ERASURE_REQUEST_DATABASE_URL;
+const erasureWorkerUrl=process.env.REG01_ERASURE_WORKER_DATABASE_URL;
+if(!adminUrl||!issuerUrl||!requestUrl||!workerUrl||!moderatorUrl||!publisherUrl||!readerUrl||!erasureRequestUrl||!erasureWorkerUrl)
  throw new Error("REG01D requires disposable database roles");
 const admin=new Pool({connectionString:adminUrl}),reader=new Pool({connectionString:readerUrl});
 const namespace="ci_reg01",origin="https://ci.luemi.invalid",token="123456:synthetic_reg01_bot";
@@ -26,7 +29,7 @@ function sign(id:number){
 const session={enabled:true,issuerDatabaseUrl:issuerUrl!,requestDatabaseUrl:requestUrl!,
  pepper:"synthetic-reg01-pepper-1234567890-1234567890",namespace,origin,botToken:token,
  idleMs:43200000,absoluteMs:604800000,maxSessions:5};
-const makeApp=(opts:{storage?:PrivateObjectStore;publisher?:string;reader?:string}={})=>{
+const makeApp=(opts:{storage?:PrivateObjectStore;publisher?:string;reader?:string;erasure?:boolean;erasureUrl?:string}={})=>{
  const storage=opts.storage??memoryPrivateStore();
  return buildApp({port:3001,origin,botToken:token,
   healthKey:"synthetic_health_key_123456789012345",logger:false,rem05b:session,
@@ -34,7 +37,8 @@ const makeApp=(opts:{storage?:PrivateObjectStore;publisher?:string;reader?:strin
   rem05d:{enabled:true,durablePrivateOnly:true,requestDatabaseUrl:requestUrl!,
    workerDatabaseUrl:workerUrl!,namespace,consentVersion,storage},
   realPublication:{enabled:true,requestDatabaseUrl:requestUrl!,publisherDatabaseUrl:opts.publisher??publisherUrl!,
-   discoveryDatabaseUrl:opts.reader??readerUrl!,namespace,consentVersion,storage}
+   discoveryDatabaseUrl:opts.reader??readerUrl!,namespace,consentVersion,storage},
+  realErasure:opts.erasure?{enabled:true,databaseUrl:opts.erasureUrl??erasureRequestUrl!,namespace}:undefined
  });
 };
 type User={id:string;cookie:string;csrf:string};
@@ -201,5 +205,188 @@ test("01D: disclosure reevaluated after storage read and revoked on moderator ch
   const reply=await pending;
   assert.equal(reply.statusCode,404,"revoked pixels must not leave the API after slow Storage read");
  }finally{release?.();await app.close();}
+});
+test("01F: delete-account queues exactly owner assets, immediately revokes access, "+
+ "flaky Storage retries without resurrecting PII",async()=>{
+ const storage=memoryPrivateStore();
+ const app=makeApp({erasure:true,storage});
+ try{
+  const a=await identity(app,8011010),b=await identity(app,8011011);
+  await consent(app,b);
+  const ids=await prepare(app,a);
+  for(const id of ids)await syntheticModerate(moderatorUrl!,id,"approved");
+  assert.equal((await mutate(app,a,"/api/v3/profile/publish",{revision:1})).statusCode,200);
+  assert.equal((await feed(app,b)).json().profiles.length,1);
+  assert.equal((await photo(app,b,ids[0])).statusCode,200);
+  const block=await mutate(app,a,"/api/v2/profile/blocks",{targetId:b.id});
+  assert.equal(block.statusCode,200);
+  const report=await mutate(app,a,"/api/v2/profile/reports",{
+   targetId:b.id,reason:"spam",clientRef:"reg01f-report-0001"});
+  assert.equal(report.statusCode,200);
+  const uri="/api/v3/account/request-deletion";
+  const missing=await mutate(app,a,uri,{confirmation:"not the exact phrase"});
+  assert.equal(missing.statusCode,422);
+  assert.equal((await mutate(app,a,uri,{confirmation:"DELETE MY LUEMI ACCOUNT",ownerId:b.id})).statusCode,422);
+  const noOrigin=await app.inject({method:"POST",url:uri,
+   headers:{cookie:a.cookie,"x-luemi-csrf":a.csrf},
+   payload:{confirmation:"DELETE MY LUEMI ACCOUNT"}});
+  assert.equal(noOrigin.statusCode,403);
+  const deleted=await mutate(app,a,uri,{confirmation:"DELETE MY LUEMI ACCOUNT"});
+  assert.equal(deleted.statusCode,202,deleted.body);
+  assert.deepEqual(deleted.json(),{state:"deletion_queued",publicAccessRevoked:true,
+   sessionsRevoked:true,storagePending:true,dataDeleted:false});
+  assert.match(String(deleted.headers["set-cookie"]),/Max-Age=0/);
+  assert.equal((await feed(app,b)).json().profiles.length,0);
+  assert.equal((await photo(app,b,ids[0])).statusCode,404);
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/auth/session",
+   headers:{cookie:a.cookie}})).statusCode,401);
+  const relogin=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(8011010)}});
+  assert.equal(relogin.statusCode,403,"a deleted actor cannot sign back in during erasure");
+  assert.equal((await mutate(app,a,uri,{confirmation:"DELETE MY LUEMI ACCOUNT"})).statusCode,401);
+  const q=await admin.query<{id:string;state:string}>(
+   "SELECT id,state FROM luemi_private.erasure_requests WHERE actor_id=$1",[a.id]);
+  assert.equal(q.rowCount,1);
+  assert.equal(q.rows[0].state,"pending");
+  const objects=await admin.query<{object_key:string}>(
+   "SELECT object_key FROM luemi_private.erasure_objects WHERE request_id=$1",
+   [q.rows[0].id]);
+  assert.equal(objects.rowCount,3);
+  // The special worker role must not inspect or delete the OTHER user, even
+  // when one pending erasure request exists in the same environment.
+  await admin.query("INSERT INTO luemi_private.geo_daily_usage "+
+   "(namespace,scope,actor_id,kind,period,used) VALUES "+
+   "($1,'actor',$2,'search',CURRENT_DATE,2),"+
+   "($1,'actor',$3,'search',CURRENT_DATE,7)",
+   [namespace,a.id,b.id]);
+  const workerProbe=new Pool({connectionString:erasureWorkerUrl!});
+  try{
+   assert.equal((await workerProbe.query(
+    "SELECT id FROM luemi_private.actors WHERE id=$1",[b.id])).rowCount,0);
+   assert.equal((await workerProbe.query(
+    "SELECT id FROM luemi_private.sessions WHERE actor_id=$1",[b.id])).rowCount,0);
+   assert.equal((await workerProbe.query(
+    "SELECT actor_id FROM luemi_private.geo_daily_usage WHERE actor_id=$1",[b.id])).rowCount,0);
+   assert.equal((await workerProbe.query(
+    "DELETE FROM luemi_private.geo_daily_usage WHERE actor_id=$1 RETURNING actor_id",[b.id])).rowCount,0);
+   const foreignAudit=await admin.query<{id:string}>(
+    "INSERT INTO luemi_private.audit_events(actor_id,event_type) "+
+    "VALUES($1,'report_created') RETURNING id::text",[b.id]);
+   const forbidden=await workerProbe.query(
+    "DELETE FROM luemi_private.audit_events WHERE id=$1 RETURNING id",[foreignAudit.rows[0].id]);
+   assert.equal(forbidden.rowCount,0,"worker must not erase another adult's audit");
+   assert.equal((await admin.query(
+    "SELECT id FROM luemi_private.audit_events WHERE id=$1",[foreignAudit.rows[0].id])).rowCount,1);
+  }finally{await workerProbe.end();}
+  for(const object of objects.rows)assert.ok(await storage.get(object.object_key));
+  // First deletion succeeds in external Storage, second fails. SQL must
+  // roll back, and a retry must treat the missing first object as deleted.
+  let deletions=0;
+  const flaky:PrivateObjectStore={put:(k,b)=>storage.put(k,b),get:k=>storage.get(k),
+   delete:async key=>{
+    deletions++;
+    if(deletions===2)throw new Error("synthetic-storage-outage");
+    await storage.delete(key);
+   }};
+  const blocked=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,
+   storage:flaky,limit:1});
+  assert.deepEqual(blocked,{completed:0,failed:1,pending:true});
+  assert.equal(deletions,2);
+  assert.equal((await admin.query(
+   "SELECT 1 FROM luemi_private.erasure_objects WHERE request_id=$1 AND deleted_at IS NOT NULL",
+   [q.rows[0].id])).rowCount,0,"SQL markers must roll back on partial external success");
+  assert.equal((await admin.query("SELECT 1 FROM luemi_private.actors WHERE id=$1",[a.id])).rowCount,1);
+  assert.equal((await admin.query("SELECT 1 FROM luemi_private.sessions WHERE actor_id=$1",[a.id])).rowCount,1);
+  const done=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,
+   storage,limit:1});
+  assert.deepEqual(done,{completed:1,failed:0,pending:false});
+  for(const object of objects.rows)assert.equal(await storage.get(object.object_key),null);
+  assert.equal((await admin.query(
+   "SELECT actor_id FROM luemi_private.geo_daily_usage WHERE actor_id=$1",[a.id])).rowCount,0);
+  assert.equal((await admin.query(
+   "SELECT actor_id FROM luemi_private.geo_daily_usage WHERE actor_id=$1",[b.id])).rowCount,1);
+  for(const [table,column] of [
+   ["actors","id"],["sessions","actor_id"],["private_profile_drafts","owner_id"],
+   ["public_profiles","owner_id"],["media_assets","owner_id"],["media_uploads","owner_id"]
+  ]){
+   const found=await admin.query("SELECT 1 FROM luemi_private."+table+" WHERE "+column+"=$1",[a.id]);
+   assert.equal(found.rowCount,0,table+" retains a deleted owner");
+  }
+  assert.equal((await admin.query(
+   "SELECT 1 FROM luemi_private.reports WHERE reporter_id=$1 OR subject_id=$1",[a.id])).rowCount,0);
+  assert.equal((await admin.query(
+   "SELECT 1 FROM luemi_private.blocks WHERE blocker_id=$1 OR blocked_id=$1",[a.id])).rowCount,0);
+  assert.equal((await admin.query(
+   "SELECT 1 FROM luemi_private.moderation_jobs WHERE asset_id=ANY($1::uuid[])",[ids])).rowCount,0);
+  assert.equal((await admin.query(
+   "SELECT 1 FROM luemi_private.erasure_objects WHERE request_id=$1",[q.rows[0].id])).rowCount,0);
+  const receipt=await admin.query<{state:string;finished_at:string}>(
+   "SELECT state,finished_at FROM luemi_private.erasure_requests WHERE id=$1",[q.rows[0].id]);
+  assert.equal(receipt.rows[0].state,"complete");
+  assert.ok(receipt.rows[0].finished_at);
+  assert.equal((await feed(app,b)).json().profiles.length,0);
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/auth/session",
+   headers:{cookie:b.cookie}})).statusCode,200,"other adults remain authenticated");
+ }finally{await app.close();}
+});
+test("01F: erasure waits for in-flight Storage write and queues its derivative",async()=>{
+ const store=memoryPrivateStore();
+ let entered!:()=>void,release!:()=>void;
+ const pendingStorage=new Promise<void>(resolve=>{entered=resolve;});
+ const gate=new Promise<void>(resolve=>{release=resolve;});
+ const storage:PrivateObjectStore={
+  get:k=>store.get(k),delete:k=>store.delete(k),
+  put:async(key,bytes)=>{entered();await gate;await store.put(key,bytes);}
+ };
+ const app=makeApp({erasure:true,storage});
+ try{
+  const user=await identity(app,8011013);
+  await consent(app,user);
+  const png=makeSyntheticPng();
+  const intent=await mutate(app,user,"/api/v2/media/intents",{
+   bytes:png.length,mime:"image/png",clientKey:"reg01f-race-early-upload"});
+  assert.equal(intent.statusCode,200,intent.body);
+  const asset=intent.json().assetId as string;
+  const uploading=app.inject({method:"PUT",url:"/api/v2/media/"+asset+"/bytes",
+   headers:{...headers(user),"content-type":"image/png"},payload:png});
+  await Promise.race([pendingStorage,new Promise<never>((_,reject)=>
+   setTimeout(()=>reject(new Error("storage_not_entered")),5000))]);
+  // Media worker owns the per-user advisory lock; erasure must wait until
+  // its SQL and Storage operation have finished before taking its outbox snapshot.
+  const deleting=mutate(app,user,"/api/v3/account/request-deletion",
+   {confirmation:"DELETE MY LUEMI ACCOUNT"});
+  release();
+  const [uploaded,disabled]=await Promise.all([uploading,deleting]);
+  assert.equal(uploaded.statusCode,200,uploaded.body);
+  assert.equal(disabled.statusCode,202,disabled.body);
+  const receipt=await admin.query<{id:string}>(
+   "SELECT id FROM luemi_private.erasure_requests WHERE actor_id=$1",[user.id]);
+  assert.equal(receipt.rowCount,1);
+  const files=await admin.query<{object_key:string}>(
+   "SELECT object_key FROM luemi_private.erasure_objects WHERE request_id=$1",
+   [receipt.rows[0].id]);
+  assert.equal(files.rowCount,1,"in-flight derivative must appear in deletion queue");
+  const done=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,
+   storage,limit:1});
+  assert.deepEqual(done,{completed:1,failed:0,pending:false});
+  assert.equal(await store.get(files.rows[0].object_key),null);
+ }finally{release?.();await app.close();}
+});
+test("01F: miswired requester role, worker role or unapproved feature fail closed",async()=>{
+ const miswired=makeApp({erasure:true,erasureUrl:requestUrl!});
+ try{
+  const user=await identity(miswired,8011012);
+  assert.equal((await mutate(miswired,user,"/api/v3/account/request-deletion",
+   {confirmation:"DELETE MY LUEMI ACCOUNT"})).statusCode,503);
+  assert.equal((await miswired.inject({method:"GET",url:"/api/v2/auth/session",
+   headers:{cookie:user.cookie}})).statusCode,200);
+ }finally{await miswired.close();}
+ const normal=makeApp();
+ try{
+  assert.equal((await normal.inject({method:"POST",url:"/api/v3/account/request-deletion",
+   headers:{origin,"sec-fetch-site":"same-origin"}})).statusCode,404);
+ }finally{await normal.close();}
+ await assert.rejects(runErasureBatch({databaseUrl:erasureRequestUrl!,namespace,
+  storage:memoryPrivateStore()}),/erasure_worker_role_denied/);
 });
 test("01D admin connection cleanup",async()=>{await admin.end();await reader.end();});
