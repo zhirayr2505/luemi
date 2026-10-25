@@ -69,7 +69,7 @@ const retired=new Set(["animateValue","createGuardedCompletion",
 const retiredUsages=[],retiredFlags=[];
 for(const file of paths){
  const code=readFileSync(path.join(root,file),"utf8");
- if(code.includes("data-route-revealing")||code.includes("route-reveal"))
+ if(code.includes("data-route-revealing")||code.includes("route-reveal")||code.includes("pm-blik-viewer"))
   retiredFlags.push(file);
  if(file.endsWith(".css"))continue;
  const source=ts.createSourceFile(file,code,ts.ScriptTarget.Latest,true,
