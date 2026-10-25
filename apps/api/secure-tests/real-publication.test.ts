@@ -91,6 +91,11 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
   assert.equal((await feed(app,b)).statusCode,403,"unregistered viewer must not browse dating profiles");
   await consent(app,b);await consent(app,c);
   const ids=await prepare(app,a);
+  const initial=await app.inject({method:"GET",url:"/api/v3/profile/status",headers:{cookie:a.cookie}});
+  assert.equal(initial.statusCode,200,initial.body);
+  assert.equal(initial.json().state,"draft");
+  assert.equal(initial.json().pending,3);
+  assert.equal(initial.json().approved,0);
   const denied=await mutate(app,a,"/api/v3/profile/publish",{revision:1});
   assert.equal(denied.statusCode,409,denied.body);
   assert.deepEqual((await feed(app,b)).json().profiles,[]);
@@ -100,6 +105,10 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
   const pub=await mutate(app,a,"/api/v3/profile/publish",{revision:1});
   assert.equal(pub.statusCode,200,pub.body);
   assert.deepEqual(pub.json(),{state:"published",revision:1,photoCount:3});
+  const ownerPublished=await app.inject({method:"GET",url:"/api/v3/profile/status",
+   headers:{cookie:a.cookie}});
+  assert.equal(ownerPublished.json().state,"published");
+  assert.equal(ownerPublished.json().approved,3);
   const response=await feed(app,b);
   assert.equal(response.statusCode,200,response.body);
   assert.match(String(response.headers["cache-control"]),/no-store/);
@@ -131,6 +140,9 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
   assert.equal(hidden.statusCode,200,hidden.body);
   assert.equal((await feed(app,b)).json().profiles.length,0);
   assert.equal((await photo(app,b,ids[0])).statusCode,404);
+  const ownerHidden=await app.inject({method:"GET",url:"/api/v3/profile/status",
+   headers:{cookie:a.cookie}});
+  assert.equal(ownerHidden.json().state,"hidden");
   assert.equal((await mutate(app,a,"/api/v3/profile/unpublish")).statusCode,200,"idempotent hide");
   // DB-level reader has no raw private draft access.
   await assert.rejects(reader.query("SELECT * FROM luemi_private.private_profile_drafts"));
