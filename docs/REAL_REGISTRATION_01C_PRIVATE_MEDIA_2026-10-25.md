@@ -50,3 +50,25 @@ UI conversion is a temporary preview-quality limitation.
 2026-10-25 current published Storage docs: private assets require authorized
 reads; standard uploads default to non-upsert, and Storage RLS normally denies
 anonymous operations.
+
+
+## Client media gate (REAL-REG-01C)
+
+The approved existing interface is unchanged without explicit build flags.
+After a separately consented server private-draft save, and only when
+`VITE_LUEMI_PRIVATE_MEDIA_UI=1`, the last registration step offers a second
+explicit action to upload 3–6 locally ready photographs for **private review**.
+
+The client decodes JPEG, PNG, or WebP, converts to a bounded PNG thumbnail
+(up to 800 px, compressing down to 300 px if necessary) and sends it to the
+same-origin protected API with memory-only CSRF. The backend independently
+decodes/reencodes and strips metadata. No original camera file or Supabase
+secret is sent via Storage's public API. This is a thumbnail-quality pilot,
+NOT the final high-resolution photo feature.
+
+Uploads proceed sequentially; retry uses each locally stored photo's stable
+UUID as an idempotency key. A previously received intent skips resending.
+Any partial failure is reported without calling the data published.
+No deletion, reorder of already uploaded media, retry reconciliation after
+local draft loss or moderator decision UI exists yet: **do not enable for
+real friends until those critical operations are present**.
