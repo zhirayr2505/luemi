@@ -4,6 +4,7 @@ import type { GeoRuntime } from "./geo-routes.js";
 import type { EmbeddingPolicy } from "./rem05c-headers.js";
 import {memoryPrivateStore} from "./rem05d-private.js";
 import type {Rem05dOptions} from "./rem05d-private.js";
+import type {RealRegistrationOptions} from "./real-registration-drafts.js";
 export interface ApiConfig {
   port: number;
   origin: string;
@@ -17,6 +18,7 @@ export interface ApiConfig {
   logger: FastifyServerOptions["logger"];
   rem05b?: Rem05bOptions;
   rem05d?: Rem05dOptions;
+  realRegistration?: RealRegistrationOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -87,10 +89,21 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     consentVersion:env.REM05D_TEST_CONSENT_VERSION??"",
     storage:memoryPrivateStore()
   }:undefined;
+  // REAL-REG-01 is explicit opt-in, independent of the synthetic media prototype.
+  const regEnabled=env.REM06_PRIVATE_DRAFT_ENABLED==="1";
+  if(regEnabled&&(!v2Enabled||stagingOnly||env.REM06_PRIVACY_APPROVED!=="1"||
+    !env.REM06_CONSENT_VERSION||!env.REM05B_REQUEST_DATABASE_URL))
+    throw new Error("REAL-REG-01 requires v2 sessions and approved privacy/DB gates");
+  const realRegistration:RealRegistrationOptions|undefined=regEnabled?{
+    enabled:true,requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
+    namespace:env.REM05B_BOT_NAMESPACE??"",consentVersion:env.REM06_CONSENT_VERSION??""
+  }:undefined;
+  if(env.REM06_PUBLICATION_ENABLED==="1")
+    throw new Error("REAL-REG-01 publication is HARD DISABLED");
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
   return {
-    rem05b,rem05d,
+    rem05b,rem05d,realRegistration,
     rem05c:{geo,embedding},
     port,
     origin,
