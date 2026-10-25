@@ -34,6 +34,12 @@ A race existed because `pointerup` in a parent could terminate an entire shared 
 6. Removed the duplicate `.deck-queued .photo-progress` CSS declaration.
 7. Removed four **archived, obsolete** Stage03G3–G6 browser QA scripts and their README. Their original bytes remain available in Git history; active REM-00C browser QA remains present.
 
+8. Removed the unmounted legacy `BlikViewer.tsx` (independent React/RAF media timer). Its unused avatar `.has-blik` styling was deleted. The separate, pure `bliki-media-lifecycle.ts` REM-05F future-state module is retained intentionally; the stale audit exemption for the deleted viewer was removed.
+9. Deleted unreferenced registration preview CSS classes from the old onboarding generation. Computed feed-button classes like `discovery-${kind}` remain intentionally: a literal selector search falsely labels these as unused.
+10. Deleted the unused `gestureCapabilities` API that measured `scrollHeight` and `scrollTop` synchronously during a visitor-profile pointerdown. The route now checks only nested modal blocking; actual pointer movement decides x/y gesture ownership. This prevents a stationary, scrolled profile from losing all horizontal back-swipe candidates.
+11. Updated both unit and browser regressions to use the new modal-only gate. No old gesture API is left merely to satisfy legacy tests.
+12. A second proposed reachability implementation was reverted: the **existing TypeScript AST-based strict architecture audit** remains the only source-of-truth gate, avoiding duplicate scanners.
+
 **Intentionally retained:** REM-05B–05F security/session/storage modules, migrations, current CI/browser suites, the accepted UI/brand assets, and feature-reserved Bliki modules. “Not called during staging” is not enough evidence to delete a secured future feature.
 
 ## Ongoing guardrails
