@@ -57,6 +57,8 @@ const intentional={
  "apps/api/src/human-review-runner.ts":"explicitly authorized private review CLI, not an HTTP route",
  "apps/api/src/safety-operator.ts":"isolated safety role operations, only imported by operator CLI",
  "apps/api/src/safety-runner.ts":"explicitly gated safety operator CLI, never available via HTTP",
+ "apps/api/src/private-storage-probe.ts":"standalone synthetic Storage round-trip verifier, never live HTTP",
+ "apps/api/src/private-storage-probe-runner.ts":"explicitly gated LUEMI-only Storage operator CLI",
  "apps/web/src/discovery/bliki-media-lifecycle.ts":"future Bliki readiness state machine, kept for accepted REM-05F work"
 };
 function reach(entries){
