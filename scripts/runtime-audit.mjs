@@ -53,7 +53,7 @@ const webDir=path.join(root,"apps/web");
 const qaEntries=fs.readdirSync(webDir).filter(name=>name.endsWith(".html"))
  .flatMap(name=>{
   const html=fs.readFileSync(path.join(webDir,name),"utf8");
-  return [...html.matchAll(/<script\\b[^>]*\\bsrc=["']\\/?(src\\/[^"']+\\.[jt]sx?)["']/g)]
+  return [...html.matchAll(/<script\b[^>]*\bsrc=["']\/?(src\/[^"']+\.[jt]sx?)["']/g)]
    .map(match=>path.join(webDir,match[1]));
  });
 for(const entry of [
