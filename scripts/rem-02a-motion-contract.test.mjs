@@ -207,7 +207,8 @@ assert.ok(profile.includes('motionAuthority.current.run("sheet",PROFILE_MOTION_W
 assert.ok(route.includes('motionAuthority.current.run("route",PROFILE_MOTION_WRITER_TABLE.route'));
 assert.ok(browse.includes('motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse'));
 const sheetMotion=read("apps/web/src/discovery/profile-sheet-motion.ts");
-assert.ok(profile.includes('ensureSheetMotion().settle(next,()=>')&&
+assert.ok(profile.includes('engine.settle(next,()=>')&&
+ profile.includes('engine.phase==="settling"&&engine.destinationCollapsed===next')&&
  sheetMotion.includes('private readonly paint:(y:number,dragging:boolean)=>void')&&
  sheetMotion.includes('get phase():Stage')&&
  sheetMotion.includes('duration=290')&&
