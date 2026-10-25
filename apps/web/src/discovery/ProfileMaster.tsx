@@ -323,7 +323,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   // One actual top coordinate replaces the asynchronous native scrollTop.
    if(sheet.current)sheet.current.style.top=next.toFixed(2)+"px";
    if(motionDebugEnabled)motionDebug("paintSheet",{
-    mode,y:next,offset,dragging,progress,elastic,
+    y:next,offset,dragging,progress,elastic,
     domTop:sheet.current?.style.top??null,collapsedRef:collapsedRef.current
    },false);
   
@@ -363,36 +363,35 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const settleSheet=useCallback((next:boolean,source="unspecified")=>{
   if(motionDebugEnabled){
    debugTrace.current?.start();
-   motionDebug("settleSheet",{mode,next,source,collapsedRef:collapsedRef.current,
+   motionDebug("settleSheet",{next,source,collapsedRef:collapsedRef.current,
     paintedY:sheetY.current,phase:sheetMotion.current?.phase??"none",
     destination:sheetMotion.current?.destinationCollapsed??null});
   }
   ensureSheetMotion().settle(next,()=>{
    if(motionDebugEnabled)motionDebug("collapsedRef.write",{
-    mode,next,previous:collapsedRef.current,y:sheetY.current
+    next,previous:collapsedRef.current,y:sheetY.current
    });
    collapsedRef.current=next;
    if(motionDebugEnabled)motionDebug("setCollapsed.invoke",{
-    mode,next,y:sheetY.current,phase:sheetMotion.current?.phase??"none"
+    next,y:sheetY.current,phase:sheetMotion.current?.phase??"none"
    });
    setCollapsed(next);
    debugTrace.current?.finished();
   });
   stopSheet.current=()=>{sheetMotion.current?.interrupt();};
- },[ensureSheetMotion,mode]);
+ },[ensureSheetMotion]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
   let first=true,hidden=false;
   const measure=(reason="initial")=>{
-   if(motionDebugEnabled)motionDebug("measure.enter",{
-    mode,reason,collapsedRef:collapsedRef.current,sheetY:sheetY.current,
+   if(motionDebugEnabled)motionDebug("measure.enter",{reason,collapsedRef:collapsedRef.current,sheetY:sheetY.current,
     phase:sheetMotion.current?.phase??"none",
     engineTarget:sheetMotion.current?.destinationCollapsed??null
    });
    const frame=hero.current,pane=sheet.current,root=shell.current;
    if(!frame||!pane||!root)return;
    if(root.clientHeight<180||!frame.offsetHeight){
-    if(motionDebugEnabled)motionDebug("measure.hidden",{mode,reason});
+    if(motionDebugEnabled)motionDebug("measure.hidden",{reason});
     hidden=true;sheetMotion.current?.pause();return;
    }
    const rootRect=root.getBoundingClientRect();
@@ -407,7 +406,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(!first&&!hidden&&Math.abs(top-collapsedY.current)<.5&&
       Math.abs(bottom-expandedY.current)<.5&&
       Math.abs((sheetRootTop.current??rootRect.top)-rootRect.top)<.5){
-    if(motionDebugEnabled)motionDebug("measure.unchanged",{mode,reason,top,bottom});
+    if(motionDebugEnabled)motionDebug("measure.unchanged",{reason,top,bottom});
     return;
    }
    const motion=ensureSheetMotion();
@@ -420,7 +419,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    pane.style.setProperty("--pm-collapsed-top",top+"px");
    root.style.setProperty("--pm-dots-top",dots+"px");
    if(motionDebugEnabled)motionDebug("measure.apply",{
-    mode,reason,top,bottom,physical,
+    reason,top,bottom,physical,
     committedCollapsed:collapsedRef.current,
     fingerActive:sheetDragActive.current,engineY:motion.value,phase:motion.phase
    });
@@ -787,6 +786,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    // A candidate does not stop an existing settle or the browser native scroll.
    sheetDragActive.current=false;
    const now=performance.now();
+   debugTrace.current?.start();
    gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
     lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
@@ -871,6 +871,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
     if(g.inPages&&Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
    } // Native scroll is exclusive; never repair pages.scrollLeft from its touchend.
+   if(g.axis==="native"||g.axis==="x")debugTrace.current?.finished();
   };
   const end=(e:TouchEvent)=>finish(e,false);
   const cancel=()=>{
@@ -880,6 +881,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    else gestures.finishCandidate(g.serial);
    if(g.axis==="x"&&g.claimed)chooseTab(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
    else if(g.axis==="y"&&g.claimed)settleSheet(g.down,"touchcancel");
+   else debugTrace.current?.finished();
   };
   pane.addEventListener("touchstart",start,{passive:true});
   pane.addEventListener("touchend",end,{passive:true});
