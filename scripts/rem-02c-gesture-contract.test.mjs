@@ -16,7 +16,7 @@ assert.equal(mod.isGestureModalBlocked(noLayoutTarget),false,"resting scrolled p
 assert.equal(mod.isGestureModalBlocked({closest:()=>({})}),true,"nested modal must retain gesture exclusion");
 assert.equal(mod.isGestureModalBlocked(null),true,"missing target is blocked");
 const browseOnly={closest(selector){
- return /\\.nb-card|\\.fy-rail|\\.nb-location|\\.discovery-filter-sheet/.test(selector)?{}:null;
+ return [".nb-card",".fy-rail",".nb-location",".discovery-filter-sheet"].some(c=>selector.includes(c))?{}:null;
 }};
 assert.equal(mod.isGestureModalBlocked(browseOnly),false,
  "visitor modal gate must not accidentally blacklist unrelated browse/nearby elements");
