@@ -30,17 +30,21 @@ export function createDurablePrivateStore(
  const origin="https://"+projectRef+".supabase.co/storage/v1/object/";
  // Opaque sb_secret keys are NOT JWTs. Their use as Bearer tokens can fail
  // with Invalid JWT; legacy service-role JWTs still need Authorization.
- const headers=()=>legacyServiceJwt?
-  {"Authorization":"Bearer "+secret,"apikey":secret}:{"apikey":secret};
+ const headers=()=>{
+  const h=new Headers({"apikey":secret,"Cache-Control":"no-store"});
+  if(legacyServiceJwt)h.set("Authorization","Bearer "+secret);
+  return h;
+ };
  const remote=async(method:string,key:string,body?:Uint8Array):Promise<Response>=>{
   const path=pathFor(key,namespace),url=origin+
    (method==="GET"?"authenticated/":"")+bucket+"/"+path;
   try{
+   const requestHeaders=headers();
+   if(body){requestHeaders.set("Content-Type","image/png");requestHeaders.set("x-upsert","false");}
    return await transport(url,{
-    method,headers:{...headers(),"Cache-Control":"no-store",
-      ...(body?{"Content-Type":"image/png","x-upsert":"false"}:{})},
-    ...(body?{body:new Blob([Uint8Array.from(body)],{type:"image/png"})}:{}),redirect:"manual",cache:"no-store",
-    signal:AbortSignal.timeout(12000)
+    method,headers:requestHeaders,
+    ...(body?{body:new Blob([Uint8Array.from(body)],{type:"image/png"})}:{}),
+    redirect:"manual",cache:"no-store",signal:AbortSignal.timeout(12000)
    });
   }catch{throw new Error("private_storage_unavailable");}
  };
