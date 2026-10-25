@@ -50,7 +50,6 @@ const roots=["apps/web/src/main.tsx","apps/api/src/server.ts"];
 const qaRoots=paths.filter(p=>/\/(?:profile-qa|rem-\d+[a-z]?(?:-[\w-]+)?-qa)\.tsx?$/.test(p));
 const intentional={
  "apps/api/src/rem05e-telegram-rotation.ts":"standalone operator CLI; not a boot-time server import",
- "apps/web/src/discovery/BlikViewer.tsx":"reserved future Bliki viewer behind disabled server feature",
  "apps/web/src/discovery/bliki-media-lifecycle.ts":"future Bliki readiness state machine, kept for accepted REM-05F work"
 };
 function reach(entries){
