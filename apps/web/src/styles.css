@@ -261,8 +261,8 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .photo-progress{position:absolute;left:10px;right:10px;top:10px;display:flex;gap:4px}
 .photo-progress button{flex:1;height:4px;border:0;padding:0;border-radius:99px;background:rgba(255,255,255,.4)}
 .photo-progress button.current{background:#fff}
-.goal-badge{display:flex;align-items:center;gap:7px;font-size:13px}
-.goal-badge{width:max-content;max-width:100%;padding:9px 14px;border-radius:99px;border:1px solid rgba(177,122,216,.4);
+.goal-badge{display:flex;align-items:center;gap:7px;width:max-content;max-width:100%;
+ padding:9px 14px;border-radius:99px;border:1px solid rgba(177,122,216,.4);
  background:linear-gradient(120deg,#d7b9f0,#f0b8d7);box-shadow:0 4px 12px rgba(153,98,188,.15);
  color:#54336e;font-size:14px;font-weight:760}
 
