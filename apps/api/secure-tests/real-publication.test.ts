@@ -144,6 +144,24 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
    headers:{cookie:a.cookie}});
   assert.equal(ownerHidden.json().state,"hidden");
   assert.equal((await mutate(app,a,"/api/v3/profile/unpublish")).statusCode,200,"idempotent hide");
+  // Re-publish (with previously approved photographs), then withdraw consent.
+  const republish=await mutate(app,a,"/api/v3/profile/publish",{revision:1});
+  assert.equal(republish.statusCode,200,republish.body);
+  assert.equal((await feed(app,b)).json().profiles.length,1);
+  const withdrawn=await mutate(app,a,"/api/v3/profile/withdraw-consent");
+  assert.equal(withdrawn.statusCode,200,withdrawn.body);
+  assert.deepEqual(withdrawn.json(),{state:"consent_withdrawn",dataDeleted:false});
+  assert.equal((await feed(app,b)).json().profiles.length,0);
+  assert.equal((await photo(app,b,ids[0])).statusCode,404);
+  assert.equal((await feed(app,a)).statusCode,403,"withdrawn owner loses access to dating feed");
+  assert.equal((await mutate(app,a,"/api/v3/profile/publish",{revision:1})).statusCode,403);
+  const revokedConsent=await admin.query<{consent_version:string|null}>(
+   "SELECT consent_version FROM luemi_private.private_profile_drafts WHERE owner_id=$1",
+   [a.id]);
+  assert.equal(revokedConsent.rows[0].consent_version,null);
+  const again=await mutate(app,a,"/api/v3/profile/withdraw-consent");
+  assert.equal(again.statusCode,200,"withdrawal remains idempotent");
+
   // DB-level reader has no raw private draft access.
   await assert.rejects(reader.query("SELECT * FROM luemi_private.private_profile_drafts"));
   await assert.rejects(reader.query("UPDATE luemi_private.public_profiles SET publication_status='published'"));

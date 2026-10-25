@@ -41,6 +41,15 @@ CREATE POLICY d_publisher_read ON luemi_private.private_profile_drafts
  FOR SELECT TO luemi_profile_publisher
  USING(owner_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
    AND environment=current_setting('luemi.environment',true));
+-- Consent withdrawal is a narrow, owner-scoped UPDATE that can only set NULL.
+-- This is NOT erasure; that needs a separately audited deletion workflow.
+CREATE POLICY d_withdraw ON luemi_private.private_profile_drafts
+ FOR UPDATE TO luemi_profile_publisher
+ USING(owner_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
+   AND environment=current_setting('luemi.environment',true))
+ WITH CHECK(owner_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
+   AND environment=current_setting('luemi.environment',true)
+   AND consent_version IS NULL);
 CREATE POLICY p_publisher ON luemi_private.public_profiles
  FOR ALL TO luemi_profile_publisher
  USING(owner_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
@@ -90,6 +99,7 @@ GRANT SELECT(owner_id,environment,revision,payload,birth_date,consent_version)
 GRANT SELECT(id,owner_id,environment,state,publication_status,generation,derivative_key,position)
  ON luemi_private.media_assets TO luemi_profile_publisher;
 GRANT UPDATE(publication_status) ON luemi_private.media_assets TO luemi_profile_publisher;
+GRANT UPDATE(consent_version) ON luemi_private.private_profile_drafts TO luemi_profile_publisher;
 GRANT SELECT(owner_id,environment,publication_status,published_revision,display_name,city_label,country_code,
  about,interests,gender,goal,languages,birth_date,published_at,updated_at)
  ON luemi_private.public_profiles TO luemi_profile_publisher;

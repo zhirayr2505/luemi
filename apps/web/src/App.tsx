@@ -16,7 +16,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft} from "./registration/server-draft";
 import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
-import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile} from "./registration/real-live-client";
+import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent} from "./registration/real-live-client";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 
 declare global {
@@ -538,6 +538,21 @@ export function App() {
     }catch{setPublishFeedback("Не удалось скрыть анкету. Проверь соединение.");}
     finally{setPublishBusy(false);}
   };
+  const withdrawPersonalConsent=async()=>{
+    if(!realFeedPilot.enabled||publishBusy||auth!=="authorized")return;
+    if(!window.confirm(
+      "Отозвать согласие? Анкета и фотографии сразу скроются от других людей. Данные останутся на сервере до отдельного удаления."
+    ))return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      await withdrawRealConsent();
+      setServerConsent(false);setPrivateDraftSaved(false);setRealFeedOpen(false);
+      setPublishStatus(null);
+      setPublishFeedback("Согласие отозвано, анкета и фото скрыты. Данные НЕ удалены: удаление аккаунта появится отдельно.");
+    }catch{
+      setPublishFeedback("Не удалось отозвать согласие. Проверь соединение и повтори.");
+    }finally{setPublishBusy(false);}
+  };
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
@@ -619,6 +634,10 @@ export function App() {
             <button type="button" disabled={publishBusy}
               onClick={()=>{void hideProfile();}}>Снять анкету с публикации</button>}
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
+          <button type="button" disabled={publishBusy}
+            onClick={()=>{void withdrawPersonalConsent();}}>
+            Отозвать согласие и скрыть анкету
+          </button>
           <button type="button" onClick={()=>setRealFeedOpen(value=>!value)}>
             {realFeedOpen?"Закрыть реальную ленту":"Открыть реальную ленту"}
           </button>

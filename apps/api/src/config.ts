@@ -32,6 +32,16 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid PORT");
   if (!origin || origin === "*" || !/^https?:\/\//.test(origin))
     throw new Error("APP_ORIGIN must be an explicit origin");
+  // APP_ORIGIN is an exact trust boundary, never a URL with credentials,
+  // path, query, fragment or a confusing port/hostname normalization.
+  // Reject alternate spellings rather than silently normalizing CORS.
+  let parsedOrigin:URL;
+  try{parsedOrigin=new URL(origin);}
+  catch{throw new Error("APP_ORIGIN must be an exact HTTP(S) origin");}
+  if(!["http:","https:"].includes(parsedOrigin.protocol)||parsedOrigin.origin!==origin||
+    parsedOrigin.username||parsedOrigin.password||parsedOrigin.pathname!=="/"||
+    parsedOrigin.search||parsedOrigin.hash)
+    throw new Error("APP_ORIGIN must be an exact HTTP(S) origin");
   if (env.NODE_ENV === "production" && !origin.startsWith("https://"))
     throw new Error("Production APP_ORIGIN must use HTTPS");
   if (!stagingOnly && (!env.TELEGRAM_BOT_TOKEN || !/^\d+:[\w-]+$/.test(env.TELEGRAM_BOT_TOKEN)))
