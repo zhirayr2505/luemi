@@ -60,6 +60,32 @@ function reach(entries){
  return done;
 }
 const prod=reach(roots),qa=reach(qaRoots);
+
+// Report strongly connected groups of modules. This is diagnostic until
+// type-only imports are classified separately: a TypeScript type cycle does
+// not necessarily imply a runtime initialization loop.
+function dependencyCycles(active){
+ const ids=new Map(),low=new Map(),stack=[],inStack=new Set(),groups=[];
+ let serial=0;
+ const visit=p=>{
+  ids.set(p,serial);low.set(p,serial++);stack.push(p);inStack.add(p);
+  for(const to of graph.get(p)||[]){
+   if(!active.has(to))continue;
+   if(!ids.has(to)){visit(to);low.set(p,Math.min(low.get(p),low.get(to)))}
+   else if(inStack.has(to))low.set(p,Math.min(low.get(p),ids.get(to)));
+  }
+  if(low.get(p)===ids.get(p)){
+   const group=[];let to;
+   do{to=stack.pop();inStack.delete(to);group.push(to)}while(to!==p);
+   if(group.length>1||(graph.get(p)||[]).includes(p))
+    groups.push(group.sort());
+  }
+ };
+ for(const p of active)if(!ids.has(p))visit(p);
+ return groups.sort((a,b)=>a[0].localeCompare(b[0]));
+}
+const productionImportCycles=dependencyCycles(prod);
+
 const unused=paths.filter(p=>!prod.has(p)&&!qa.has(p)&&!(p in intentional));
 const ignored=Object.keys(intentional).filter(p=>!all.has(p));
 // Guard against reintroducing old helpers as new parallel motion paths.
@@ -83,6 +109,7 @@ for(const file of paths){
  scan(source);
 }
 const view={files:paths.length,production:prod.size,qa:qa.size,roots,qaRoots,
+ productionImportCycles,
  retiredUsages,retiredFlags,
  intentional:Object.entries(intentional).map(([path,reason])=>({path,reason})),
  unreachable:unused,staleExemptions:ignored};
