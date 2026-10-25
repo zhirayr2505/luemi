@@ -141,10 +141,18 @@ async function qaProfile(browser){
      });
     },{capture:true,passive:true});
   });
-  const samples=[];
+  const samples=[],flexSamples=[];
   await touch(page,{x,y,dy:-215,onStep:async i=>{
-   if([4,8,12].includes(i))samples.push(await readState(page));
+   if([4,8,12].includes(i)){
+    samples.push(await readState(page));
+    flexSamples.push(await readSheetFlexLayout(page));
+   }
   }});
+  assert.equal(flexSamples.length,3,"captured layout at three finger positions");
+  assert.ok(flexSamples.every(s=>Math.abs(s.sheetHeight-expandedFlexLayout.sheetHeight)<1&&
+   Math.abs(s.pagesHeight-expandedFlexLayout.pagesHeight)<1&&
+   Math.abs(s.tabLocalTop-expandedFlexLayout.tabLocalTop)<1),
+   "TAB FLICKER: drag may change sheet top but not tab/page layout");
   console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,top:s.sheetTop,outerScroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
   console.log("QA_SHEET_TOUCH_DIAGNOSTICS "+JSON.stringify(
    await page.evaluate(()=>window.__SHEET_QA_TOUCH__?.slice(0,40))));
