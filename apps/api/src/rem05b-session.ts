@@ -107,6 +107,10 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   if(!db)return{status:503};
   const h=hash(cfg.pepper,raw);
   try{
+   if(cfg.inviteOnly){
+    await db.query("BEGIN");
+    await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+   }
    const result=await db.query<{actor_id:string;session_id:string;expires_at:string;first_name:string}>(
     "UPDATE luemi_private.sessions s SET last_seen_at=clock_timestamp(), "+
     "idle_expires_at=LEAST(s.absolute_expires_at,clock_timestamp()+($3::bigint * interval '1 millisecond')) "+
@@ -118,11 +122,17 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     "AND s.idle_expires_at>clock_timestamp() AND s.absolute_expires_at>clock_timestamp() "+
     "RETURNING s.actor_id,s.id AS session_id,s.absolute_expires_at AS expires_at,a.first_name",
     [h,cfg.namespace,cfg.idleMs]);
-   if(result.rowCount!==1)return{status:401};
+   if(result.rowCount!==1){
+    if(cfg.inviteOnly)await db.query("ROLLBACK");
+    return{status:401};
+   }
+   if(cfg.inviteOnly)await db.query("COMMIT");
    const r=result.rows[0];
    return{value:{actorId:r.actor_id,sessionId:r.session_id,hash:h,expiresAt:r.expires_at,firstName:r.first_name}};
-  }catch{return{status:503};}
-  finally{db.release();}
+  }catch{
+   if(cfg.inviteOnly)await db.query("ROLLBACK").catch(()=>{});
+   return{status:503};
+  }finally{db.release();}
  }
  const authenticated=async(req:FastifyRequest,reply:FastifyReply)=>{
   const result=await inspect(req);
