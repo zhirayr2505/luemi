@@ -183,8 +183,8 @@ assert.ok(discoveryCss.includes(".discovery-visitor-route{")&&
 assert.ok(header.includes("androidProfileChrome")&&
  header.includes("!androidClient&&<img")&&
  header.includes('decoding="async"')&&
- profile.includes("collapsedRef.current=next;")&&profile.includes("sheetIntent.current=null;")&&
- profile.includes("driver.rebase(sheetRevision.current,next,destination)")&&
+ profile.includes("collapsedRef.current=next;")&&
+ profile.includes("motion.resize(top,bottom,physical,collapsedRef.current,sheetDragActive.current)")&&
  profile.includes("miniAvatar.current.style.opacity=")&&
  profile.includes("grab.current.style.opacity="),
  "Android single-raster header and progress-driven sheet controls avoid duplicate paints");
