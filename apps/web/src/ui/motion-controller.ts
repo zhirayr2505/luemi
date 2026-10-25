@@ -225,7 +225,7 @@ export class MotionController {
   if(next===this.state)return false;
   this.state=next;this.abortResources();return true;
  }
- /** Register external CSS transition timer / existing animateValue cancellation. */
+ /** Register cancellation for external CSS timers or transition subscriptions. */
  track(token:MotionToken,release:()=>void):boolean{
   if(!this.owns(token)){release();return false;}
   this.releases.add(release);return true;
