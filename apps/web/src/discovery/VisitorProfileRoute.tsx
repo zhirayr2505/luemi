@@ -3,7 +3,7 @@ import type {PointerEvent as ReactPointerEvent} from "react";
 import {ProfileMaster} from "./ProfileMaster";
 import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
-import {GestureArbiter,gestureCapabilities,fractionalTrack,computedTranslation} from "../ui/gesture-arbiter";
+import {GestureArbiter,isGestureModalBlocked,fractionalTrack,computedTranslation} from "../ui/gesture-arbiter";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import {useModalLayer} from "../ui/modal-layer";
@@ -198,13 +198,9 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   if(paused.current||closing.current||(e.pointerType==="mouse"&&e.button!==0))return;
   const target=e.target as HTMLElement;
   if(target.closest(".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar"))return;
-  const capabilities=gestureCapabilities(target,true);
-  // A nonzero resting scrollTop does not mean a native vertical gesture is
-  // active. Gate only on actual modal ownership here; pointer movement below
-  // resolves direction, while a vertical native pan is yielded to the sheet.
-  // Previously this blocked ALL horizontal profile-back candidates on
-  // scrollable content until the list was returned to its very top.
-  if(capabilities.modalBlocked)return;
+  // Guard only nested interactive layers, never stale scroll offsets. The
+  // shared arbiter decides horizontal/vertical ownership from movement.
+  if(isGestureModalBlocked(target))return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
   const collapsed=shell?.dataset.sheetState==="collapsed";
   if(!collapsed&&!target.closest(".pm-profile-sheet"))return;
