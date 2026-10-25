@@ -22,7 +22,6 @@ export class GestureArbiter {
  private ids:{pointer:number|null;touch:number|null}={pointer:null,touch:null};
  private claimed:GestureOwner|null=null;
  private candidates=new Set<GestureOwner>();
- private blockedNative=false;
  private terminals=0;
  begin(kind:InputKind,id:number,owner:GestureOwner):number|null{
   if(!Number.isSafeInteger(id))return null;
@@ -34,7 +33,7 @@ export class GestureArbiter {
   }
   if(this.identity===null){
    this.session++;this.identity=id;this.claimed=null;this.candidates.clear();
-   this.ids={pointer:null,touch:null};this.blockedNative=false;
+   this.ids={pointer:null,touch:null};
   }else if(this.claimed!==null)return null;
   this.ids[kind]=id;
   this.candidates.add(owner);
@@ -46,13 +45,12 @@ export class GestureArbiter {
  }
  claim(owner:GestureOwner,serial:number):boolean{
   if(!this.candidate(owner,serial))return false;
-  this.claimed=owner;this.blockedNative=owner==="native";return true;
+  this.claimed=owner;return true;
  }
  owns(owner:GestureOwner,serial:number):boolean{
   return this.session===serial&&this.identity!==null&&this.claimed===owner;
  }
  owner():GestureOwner|null{return this.claimed;}
- serial():number{return this.session;}
  nativeScroll(serial:number):boolean{return this.claim("native",serial);}
  /** A second finger cancels the one-finger custom interaction. */
  secondFinger():void{this.cancel();}
@@ -61,7 +59,7 @@ export class GestureArbiter {
   if(this.identity===null)return;
   this.terminals++;
   this.identity=null;this.ids={pointer:null,touch:null};
-  this.claimed=null;this.candidates.clear();this.blockedNative=false;
+  this.claimed=null;this.candidates.clear();
  }
  finish(owner:GestureOwner,serial:number):boolean{
   if(!this.owns(owner,serial))return false;
@@ -72,7 +70,6 @@ export class GestureArbiter {
   if(owner!==undefined)this.candidates.delete(owner);
   if(owner===undefined||this.candidates.size===0)this.cancel();
  }
- blocksNative():boolean{return this.blockedNative;}
  snapshot(){return {generation:this.session,owner:this.claimed,
   active:this.identity!==null,terminals:this.terminals};}
  dispose(){this.cancel();}
