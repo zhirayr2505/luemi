@@ -16,6 +16,20 @@ interface TelegramUpdate {
   message?: TelegramMessage;
 }
 
+/**
+ * Telegram WebView can reuse an already-open HTML document after a deploy.
+ * A fresh /start message supplies a different URL per Render commit, without
+ * changing the bot's permanent menu URL, the trust origin, or stored drafts.
+ * Invalid/missing revision fails closed to the canonical root URL.
+ */
+export function versionedWebAppUrl(origin: string, gitCommit: string | undefined): string {
+  if (origin !== "https://luemi-stage01.onrender.com" ||
+      !gitCommit || !/^[0-9a-f]{40}$/i.test(gitCommit)) return origin;
+  const url = new URL(origin);
+  url.searchParams.set("luemiRelease", gitCommit.slice(0, 12));
+  return url.toString();
+}
+
 export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig): void {
   app.post<{ Body: TelegramUpdate }>("/api/telegram/webhook", async (request, reply) => {
     const header = request.headers["x-telegram-bot-api-secret-token"];
@@ -33,7 +47,7 @@ export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig)
       reply_markup: {
         inline_keyboard: [[{
           text: "Открыть LUEMI 💜",
-          web_app: { url: config.origin }
+          web_app: { url: versionedWebAppUrl(config.origin, process.env.RENDER_GIT_COMMIT) }
         }]]
       }
     };
