@@ -161,7 +161,7 @@ for(const [property,owner] of Object.entries(props)){
  assert.equal(seen.has(property),false);seen.add(property);
  assert.ok(adapter.PROFILE_MOTION_WRITER_TABLE[owner].includes(property),"owner matrix "+property);
 }
-assert.equal(seen.size,13,"all 13 mutable properties assigned exactly one owner");
+assert.equal(seen.size,12,"all 12 active mutable properties assigned exactly one owner");
 const authority=adapter.createProfileMotionAuthority();
 const surface={scrollTop:0,style:{transform:"",opacity:""}};
 authority.run("sheet",["sheet-scroll","elastic-sheet","parallax"],()=>{
