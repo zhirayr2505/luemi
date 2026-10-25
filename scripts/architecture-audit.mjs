@@ -55,6 +55,8 @@ const intentional={
  "apps/api/src/beta-invite-operator.ts":"standalone allowlist operator; never imported by HTTP app",
  "apps/api/src/human-moderation.ts":"isolated human moderator; imported only by operator CLI",
  "apps/api/src/human-review-runner.ts":"explicitly authorized private review CLI, not an HTTP route",
+ "apps/api/src/safety-operator.ts":"isolated safety role operations, only imported by operator CLI",
+ "apps/api/src/safety-runner.ts":"explicitly gated safety operator CLI, never available via HTTP",
  "apps/web/src/discovery/bliki-media-lifecycle.ts":"future Bliki readiness state machine, kept for accepted REM-05F work"
 };
 function reach(entries){

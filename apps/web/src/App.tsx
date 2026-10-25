@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {ArrowRight,Moon,Sun} from "lucide-react";
+import {SafetyAppealPanel} from "./SafetyAppealPanel";
 import {GlassArrow} from "./ui/Glass";
 import type { HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
@@ -608,7 +609,7 @@ export function App() {
       <h1>Твоя история начинается здесь</h1>
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
-      {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button></>}
+      {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
       {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
         <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
           Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
