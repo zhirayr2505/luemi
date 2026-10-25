@@ -56,7 +56,7 @@ assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki"
  profile.includes('["photos","Фото"')&&profile.includes('["gifts","Подарки"')&&
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
 assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.blocking})')&&
- profile.includes('viewport.current.scrollTop=Math.max(0,expandedY.current-Math.min(next,expandedY.current))')&&
+ profile.includes('if(sheet.current)sheet.current.style.top=next.toFixed(2)+"px"')&&
  profile.includes('g.origin+dy')&&profile.includes('contentPages.current['),
  "sheet follows its actual origin while each tab retains native vertical scrolling");
 assert.ok(profile.includes('if(g.axis==="x")paintTabs(g.index,dx)')&&
@@ -157,8 +157,8 @@ assert.ok(header.includes("pendingTop.current=top")&&
  "browse logo controls are coalesced to one frame and stale paints are cancelled");
 console.log("✓ Stage 03G.6 flicker regressions: single transform owner, passive native scroll, stable paint boundaries");
 
-assert.ok(profile.includes('data-sheet-renderer="scroll"')&&!profile.includes("androidSafeSheet"),
- "one scroll renderer replaces divergent platform motion implementations");
+assert.ok(profile.includes('data-sheet-renderer="absolute"')&&!profile.includes("androidSafeSheet"),
+ "one absolute-top renderer replaces divergent native scrolling and platform implementations");
 assert.ok(profile.includes('pages.current.scrollLeft=position*tabViewport.current')&&
  !profile.includes('pageTrack.current.style.left'),
  "horizontal movement uses a stationary scroll viewport without animated left");
