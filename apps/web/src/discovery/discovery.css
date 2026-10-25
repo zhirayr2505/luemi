@@ -167,7 +167,6 @@
 .deck-queued .discovery-actions,.deck-queued .discovery-card-overlay,
 .deck-queued .discovery-save-control,.deck-queued .discovery-demo-label,
 .deck-queued .photo-progress{visibility:hidden;opacity:0}
-.deck-queued .photo-progress{visibility:hidden}
 .deck-entering{z-index:2;pointer-events:none;will-change:transform,opacity;animation:luemi-deck-enter var(--deck-motion,290ms) cubic-bezier(.2,.72,.22,1) both}
 .deck-entering .discovery-actions,.deck-entering .discovery-card-overlay,
 .deck-entering .discovery-save-control,.deck-entering .discovery-demo-label,
