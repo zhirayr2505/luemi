@@ -213,6 +213,6 @@ assert.ok(route.includes("const OPEN_DURATION=260;")&&route.includes("const CLOS
  route.includes('const EASING="cubic-bezier(.2,.82,.24,1)";'));
 assert.ok(browse.includes("380")&&browse.includes("clickBlockUntil.current=performance.now()+260"));
 assert.ok(css.includes("border-radius:34px 34px 0 0"));
-assert.ok(ease.includes("export function animateValue("));
+assert.ok(!ease.includes("export function animateValue("), "obsolete parallel RAF animator removed");
 console.log("REM02A_ADAPTER_PASS existing sheet/route/tabs/pager motion timing and easing tokens unchanged");
 console.log("REM-02A UNIT AND ADAPTER QA PASS; physical A55/iOS NOT VERIFIED");
