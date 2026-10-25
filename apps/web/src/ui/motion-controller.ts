@@ -57,7 +57,7 @@ export const createMotionSnapshot=(owner:MotionOwner,current=0,revision=0):Motio
 export const motionToken=(s:MotionSnapshot):MotionToken=>({
  owner:s.owner,generation:s.generation,geometryRevision:s.geometryRevision
 });
-export const isMotionToken=(s:MotionSnapshot,t:MotionToken):boolean=>
+const isMotionToken=(s:MotionSnapshot,t:MotionToken):boolean=>
  !s.disposed&&s.owner===t.owner&&s.generation===t.generation&&
  s.geometryRevision===t.geometryRevision;
 const finite=(value:number)=>Number.isFinite(value);
