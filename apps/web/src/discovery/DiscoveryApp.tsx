@@ -378,7 +378,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   gesture.current=null;
   if(!g.tracking||!g.token){
    if(g.native)inputOwnership.current.finish("native",g.serial);
-   else inputOwnership.current.finishCandidate(g.serial);
+   else {
+    // Release only this component's candidates. Another recognizer may still
+    // process its native touchend after the synthetic pointerup.
+    inputOwnership.current.finishCandidate(g.serial,"browse");
+    inputOwnership.current.finishCandidate(g.serial,"native");
+   }
    return;
   }
   if(!inputOwnership.current.finish("browse",g.serial))return;
