@@ -124,7 +124,7 @@ export async function decideReviewPhoto(o:HumanReviewOptions,assetId:string,
   if(job.rowCount!==1)throw new Error("review_job_conflict");
   const record=await db.query(
    "INSERT INTO luemi_private.moderation_decisions(job_id,moderator_label,decision,reason_code) "+
-   "VALUES($1,$2,$3,$4) RETURNING id",
+   "VALUES($1,$2,$3,$4)",
    [current.rows[0].job_id,o.operatorLabel,decision,reason]);
   if(record.rowCount!==1)throw new Error("review_audit_conflict");
   return{state:"decided",decision};
@@ -148,7 +148,7 @@ export async function triageReviewReport(o:HumanReviewOptions,reportId:string,
   const a=await db.query(
    "INSERT INTO luemi_private.human_report_reviews "+
    "(report_id,environment,action,moderator_label,reason_code) "+
-   "VALUES($1,$2,$3,$4,$5) RETURNING id",
+   "VALUES($1,$2,$3,$4,$5)",
    [reportId,o.namespace,action,o.operatorLabel,reason]);
   if(a.rowCount!==1)throw new Error("review_report_audit_denied");
   return{state:action};
