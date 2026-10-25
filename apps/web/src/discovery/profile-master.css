@@ -131,6 +131,17 @@
  display:block;width:100%;height:100%;object-fit:cover;object-position:center 20%;
  filter:blur(11px);transform:scale(1.07);
 }
+/* Android Telegram WebView: hold the existing parallax/blur media on stable
+   compositor surfaces while the white sheet's accepted CSS top moves above
+   them. Prevent a transient unblurred photo frame on rapid reversals without
+   changing the hero pixels, sheet geometry, blur amount or easing. Avoid
+   applying these persistent full-screen layers to iOS WebKit. */
+.discovery-app[data-profile-renderer="android"] .pm-photo-motion{
+ will-change:transform;backface-visibility:hidden;
+}
+.discovery-app[data-profile-renderer="android"] .pm-photo-blur{
+ will-change:opacity;backface-visibility:hidden;
+}
 .pm-hero-gradient{
  position:absolute;inset:0;z-index:2;pointer-events:none;
  background:linear-gradient(to bottom,rgba(31,17,45,.08),transparent 27%,transparent 72%,rgba(28,13,42,.13));
