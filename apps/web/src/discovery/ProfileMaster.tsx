@@ -368,7 +368,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     paintedY:sheetY.current,phase:sheetMotion.current?.phase??"none",
     destination:sheetMotion.current?.destinationCollapsed??null});
   }
-  ensureSheetMotion().settle(next,()=>{
+  const engine=ensureSheetMotion();
+  // Repeated quick taps aimed at the same in-flight destination are not a
+  // new gesture. Do not cancel/restart a 290ms run for an identical target.
+  if(engine.phase==="settling"&&engine.destinationCollapsed===next)return;
+  engine.settle(next,()=>{
    if(motionDebugEnabled)motionDebug("collapsedRef.write",{
     next,previous:collapsedRef.current,y:sheetY.current
    });
@@ -1035,7 +1039,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    <div className="pm-profile-sheet" ref={sheet} onClickCapture={e=>{
     if(performance.now()<clickBlocked.current){e.preventDefault();e.stopPropagation();}
    }}>
-    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsedRef.current,"grab.onClick")}
+    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!(sheetMotion.current?.destinationCollapsed??collapsedRef.current),"grab.onClick")}
       tabIndex={collapsed?-1:0} aria-label={collapsed?"Потянуть панель вниз":"Развернуть анкету"}><span/></button>
     <div className="pm-identity">
      <div className="pm-identity-core">
