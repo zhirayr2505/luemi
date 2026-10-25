@@ -1,7 +1,6 @@
 // REG01F: explicitly invoked, server-only irreversible erasure worker.
 // NEVER wire this into the HTTP app or expose it as an unauthenticated endpoint.
 import {Pool} from "pg";
-import type {PoolClient} from "pg";
 import type {PrivateObjectStore} from "./rem05d-private.js";
 import {erasureRoleSafe} from "./real-erasure.js";
 export interface ErasureBatchOptions{
