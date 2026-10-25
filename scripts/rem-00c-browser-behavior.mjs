@@ -395,8 +395,20 @@ async function qaProfile(browser){
   await sleep(38);
   const identityDuringSettle=await page.locator(".pm-inline .pm-identity").boundingBox();
   assert.ok(identityDuringSettle&&identityDuringSettle.height>40);
-  await touch(page,{x:identityDuringSettle.x+identityDuringSettle.width*.3,
-   y:identityDuringSettle.y+Math.min(35,identityDuringSettle.height*.32),steps:1});
+  // Dispatch a neutral native-compatible touch WITHOUT synthesizing a
+  // click on controls which can pass beneath the touch as the panel moves.
+  // Real CDP gestures are exercised above; this isolates the no-axis path.
+  await page.evaluate(()=>{
+   const target=document.querySelector(".pm-inline .pm-identity-text h2");
+   if(!(target instanceof HTMLElement))throw Error("identity heading missing");
+   const rect=target.getBoundingClientRect();
+   const touch=new Touch({identifier:41,target,
+    clientX:rect.left+Math.min(40,rect.width*.25),clientY:rect.top+Math.min(12,rect.height*.25)});
+   target.dispatchEvent(new TouchEvent("touchstart",{bubbles:true,cancelable:true,
+    touches:[touch],targetTouches:[touch],changedTouches:[touch]}));
+   target.dispatchEvent(new TouchEvent("touchend",{bubbles:true,cancelable:true,
+    touches:[],targetTouches:[],changedTouches:[touch]}));
+  });
   await sleep(350);
   const afterNeutral=await readState(page);
   assert.equal(afterNeutral.mode,"expanded",
