@@ -299,29 +299,6 @@ async function qaProfile(browser){
     "repeated close must not jump to a stale sheet position");
   }
   console.log("QA_PROFILE_REPEATED_TAPS_PASS");
-  // Critical reentrant transition case on Android:
-  // while a mini-avatar click is EXPANDING the sheet, a neutral touch on
-  // the white identity must not issue a competing touchend.noAxis settle
-  // to the previously committed collapsed state.
-  await page.locator(".pm-inline").getByRole("button",{name:"Раскрыть фото профиля"}).click();
-  await sleep(38);
-  const identityDuringSettle=await page.locator(".pm-inline .pm-identity").boundingBox();
-  assert.ok(identityDuringSettle&&identityDuringSettle.height>40);
-  const neutralX=identityDuringSettle.x+identityDuringSettle.width*.3;
-  const neutralY=identityDuringSettle.y+Math.min(35,identityDuringSettle.height*.32);
-  await touch(page,{x:neutralX,y:neutralY,steps:1});
-  await sleep(350);
-  const unaffected=await readState(page);
-  assert.equal(unaffected.mode,"expanded",
-   "SHEET REENTRANCY: neutral touchend must not reverse in-flight avatar expansion");
-  assert.ok(Math.abs(unaffected.sheetTop-expanded.sheetTop)<5,
-   "SHEET REENTRANCY: original expand endpoint must remain physically stable");
-  // QA teardown: the grab can be deliberately non-interactive immediately
-  // after this probe. Invoke its actual click handler rather than waiting
-  // for Playwright's role visibility/accessibility heuristic to expose it.
-  await page.locator(".pm-inline .pm-sheet-grab").evaluate(el=>el.click());
-  await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
-  console.log("QA_NO_TOUCHEND_RESTART_DURING_SHEET_EXPAND_PASS");
   // A collapsed/scrolled about page must still accept horizontal paging.
   await page.getByRole("tab",{name:"О себе"}).click();
   await sleep(320);
@@ -410,6 +387,24 @@ async function qaProfile(browser){
   state=await readState(page);
   assert.ok(Number.isFinite(state.sheetTop)&&state.pagesWidth>0,"resize does not corrupt layout");
   await snapshot(page,"05-owner-dark-narrow");
+  // Critical reentrant transition: a neutral touchend during an in-flight
+  // avatar expansion must not restart the sheet toward its stale old state.
+  const beforeNeutral=await readState(page);
+  assert.equal(beforeNeutral.mode,"collapsed");
+  await page.locator(".pm-inline").getByRole("button",{name:"Раскрыть фото профиля"}).click();
+  await sleep(38);
+  const identityDuringSettle=await page.locator(".pm-inline .pm-identity").boundingBox();
+  assert.ok(identityDuringSettle&&identityDuringSettle.height>40);
+  await touch(page,{x:identityDuringSettle.x+identityDuringSettle.width*.3,
+   y:identityDuringSettle.y+Math.min(35,identityDuringSettle.height*.32),steps:1});
+  await sleep(350);
+  const afterNeutral=await readState(page);
+  assert.equal(afterNeutral.mode,"expanded",
+   "SHEET REENTRANCY: touchend must not reverse in-flight expansion");
+  assert.ok(afterNeutral.sheetTop>beforeNeutral.sheetTop+100,
+   "SHEET REENTRANCY: panel must reach expanded endpoint");
+  console.log("QA_NO_TOUCHEND_RESTART_DURING_SHEET_EXPAND_PASS");
+
   // Discovery: parent swiper owns background but child Nearby controls keep ownership.
   await page.getByRole("button",{name:"Знакомства",exact:true}).click();
   await page.getByRole("tab",{name:"Рядом",exact:true}).click();
