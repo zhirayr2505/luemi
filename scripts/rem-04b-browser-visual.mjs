@@ -33,7 +33,7 @@ const snapshot=async(tag,requireHero=false)=>{
    browseVisibility:browse?getComputedStyle(browse).visibility:null,
    browseDisplay:browse?getComputedStyle(browse).display:null,
    enteringVisibility:entering?getComputedStyle(entering).visibility:null,
-   overlay:root?.getAttribute("data-profile-overlay"),revealing:root?.getAttribute("data-route-revealing")};
+   overlay:root?.getAttribute("data-profile-overlay")};
  });
  records.push({tag,...r});console.log("REM04B_AFTER "+JSON.stringify({tag,...r}));
  await page.screenshot({path:dir+"/"+String(records.length).padStart(2,"0")+"-"+tag+".png"});
@@ -91,7 +91,7 @@ try{
  assert.equal(leak.enteringVisibility,"visible","deck descendant stays painted while route covers it");
  await page.evaluate(()=>{window.__rem04bBrowse=document.querySelector(".discovery-browse-panel");});
  await page.evaluate(()=>window.__luemiQaBack?.());
- await delay(80);const reveal=await snapshot("route-revealing");
+ await delay(80);const reveal=await snapshot("route-returning");
  assert.equal(reveal.browseVisibility,"visible");
  await delay(390);const returned=await snapshot("route-returned");
  assert.equal(returned.route,false);
@@ -115,7 +115,6 @@ try{
  await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3200});
  await page.evaluate(()=>{
   const app=document.querySelector(".discovery-app");app?.setAttribute("data-profile-overlay","true");
-  app?.removeAttribute("data-route-revealing");
   Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"hidden"});
   document.dispatchEvent(new Event("visibilitychange"));
  });
