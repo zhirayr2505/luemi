@@ -32,6 +32,15 @@ export function registerSafetyAppeals(app:FastifyInstance,o:SafetyAppealOptions|
     "AND NOT pg_has_role(current_user,'luemi_auth_issuer','member') "+
     "AND NOT pg_has_role(current_user,'luemi_request','member') "+
     "AND NOT pg_has_role(current_user,'luemi_safety_operator','member') "+
+    "AND NOT pg_has_role(current_user,'luemi_erasure_worker','member') "+
+    "AND NOT pg_has_role(current_user,'luemi_erasure_requester','member') "+
+    "AND NOT pg_has_role(current_user,'luemi_media_worker','member') "+
+    "AND NOT pg_has_role(current_user,'luemi_human_moderator','member') "+
+    "AND NOT pg_has_role(current_user,'luemi_moderator','member') "+
+    "AND NOT pg_has_role(current_user,'luemi_profile_publisher','member') "+
+    "AND NOT pg_has_role(current_user,'luemi_discovery_reader','member') "+
+    "AND NOT pg_has_role(current_user,'luemi_invite_operator','member') "+
+
     "AND NOT pg_has_role(current_user,'pg_read_all_data','member') "+
     "AND NOT pg_has_role(current_user,'pg_write_all_data','member') "+
     "AND row_security_active('luemi_private.account_appeals'::regclass) "+
