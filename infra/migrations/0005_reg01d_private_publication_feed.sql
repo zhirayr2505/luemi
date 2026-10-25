@@ -13,6 +13,8 @@ REVOKE ALL ON SCHEMA luemi_private FROM PUBLIC;
 GRANT USAGE ON SCHEMA luemi_private TO luemi_profile_publisher,luemi_discovery_reader;
 ALTER TABLE luemi_private.public_profiles
  DROP CONSTRAINT public_profiles_publication_status_check;
+ALTER TABLE luemi_private.public_profiles DROP CONSTRAINT public_profiles_published_revision_check;
+ALTER TABLE luemi_private.public_profiles ADD CONSTRAINT public_profiles_published_revision_check CHECK(published_revision>=0);
 ALTER TABLE luemi_private.public_profiles
  ADD CONSTRAINT public_profiles_publication_status_check
  CHECK(publication_status IN ('draft','published','hidden'));
@@ -70,7 +72,7 @@ CREATE POLICY p_discover ON luemi_private.public_profiles
  AND environment=current_setting('luemi.environment',true)
  AND owner_id<>nullif(current_setting('luemi.viewer_id',true),'')::uuid
  AND EXISTS(SELECT 1 FROM luemi_private.actors a WHERE a.id=owner_id
-   AND a.environment=environment AND a.status='active')
+   AND a.environment=luemi_private.public_profiles.environment AND a.status='active')
  AND NOT EXISTS(SELECT 1 FROM luemi_private.blocks b WHERE b.environment=environment
   AND ((b.blocker_id=owner_id AND b.blocked_id=nullif(current_setting('luemi.viewer_id',true),'')::uuid)
   OR (b.blocked_id=owner_id AND b.blocker_id=nullif(current_setting('luemi.viewer_id',true),'')::uuid))));
