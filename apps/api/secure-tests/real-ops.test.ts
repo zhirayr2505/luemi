@@ -16,7 +16,7 @@ const reviewer=env.REG01_HUMAN_MODERATOR_DATABASE_URL!;
 const adminUrl=env.REG01_ADMIN_DATABASE_URL!;
 if([issuer,request,worker,publisher,reader,invite,reviewer,adminUrl].some(x=>!x))
  throw new Error("REG01G disposable PostgreSQL role configuration required");
-const origin="https://ci.luemi.invalid",bot="123456:synthetic_reg01_bot",ns="ci_reg01";
+const origin="https://ci.luemi.invalid",bot="123456:synthetic_reg01_bot",ns="ci_reg01g";
 const cv="beta-consent-v1";
 const admin=new Pool({connectionString:adminUrl});
 const store=memoryPrivateStore();
@@ -92,6 +92,11 @@ test("01G: photo review and report triage use scoped human role, not browser/adm
  const app=appFactory(false,true);
  try{
   const owner=await authorize(app,9200111),viewer=await authorize(app,9200112);
+  const eligible=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
+   headers:sessionHeaders(viewer),payload:{revision:0,fields:{
+    displayName:"Adult Viewer",birthDate:"1995-01-01",consentVersion:cv
+   }}});
+  assert.equal(eligible.statusCode,200,eligible.body);
   const draft=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
    headers:sessionHeaders(owner),payload:{revision:0,fields:{
     displayName:"Adult",birthDate:"1997-02-03",gender:"woman",city:"Yerevan",
@@ -155,7 +160,8 @@ test("01G: photo review and report triage use scoped human role, not browser/adm
 });
 test("01G: real invite rollout requires explicit privacy and operator approval",()=>{
  const flags={NODE_ENV:"test",APP_ORIGIN:origin,TELEGRAM_BOT_TOKEN:bot,
-  REM06_BETA_INVITES_ENABLED:"1",REM05B_SESSIONS_ENABLED:"1"};
+  REM06_BETA_INVITES_ENABLED:"1",REM05B_SESSIONS_ENABLED:"1",
+  HEALTH_CHECK_KEY:"synthetic_health_key_123456789012345"};
  assert.throws(()=>readConfig(flags),/REG01G invite gate/);
 });
 test("01G: teardown",async()=>admin.end());
