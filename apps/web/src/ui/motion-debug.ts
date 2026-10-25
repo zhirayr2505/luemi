@@ -54,7 +54,28 @@ export function createSheetFrameTrace(snapshot:()=>Record<string,unknown>):Sheet
 }
 /** Tiny diagnostic-only export UI for Android Telegram WebView without DevTools. */
 export function installMotionDebugPanel():()=>void{
- if(!motionDebugEnabled||typeof document==="undefined")return ()=>{};
+ if(typeof document==="undefined")return ()=>{};
+ // On the real Telegram Mini App, a bot menu URL cannot be edited by users.
+ // Five quick taps on the central LUEMI logo inside ProfileMaster enable
+ // diagnostics in the SAME Telegram WebView origin, without DevTools or UI changes.
+ if(!motionDebugEnabled){
+  let taps=0,lastAt=0;
+  const enable=(event:MouseEvent)=>{
+   const target=event.target;
+   if(!(target instanceof Element)||!target.closest(".lh-island"))return;
+   const now=performance.now();
+   taps=now-lastAt<=1200?taps+1:1;
+   lastAt=now;
+   if(taps<5)return;
+   taps=0;
+   try{
+    window.localStorage.setItem(KEY,"1");
+    window.location.reload();
+   }catch{/* Storage blocked: do not mutate the application state. */}
+  };
+  document.addEventListener("click",enable,true);
+  return ()=>document.removeEventListener("click",enable,true);
+ }
  const trigger=document.createElement("button");
  trigger.type="button";trigger.textContent="LOG";
  trigger.setAttribute("aria-label","Открыть журнал движения LUEMI");
@@ -92,6 +113,9 @@ export function installMotionDebugPanel():()=>void{
   });
   addButton("Выделить весь лог",()=>{area.value=motionDebugDump();area.focus();area.select();});
   addButton("Очистить",()=>{records.length=0;area.value="";});
+  addButton("Выключить LOG",()=>{
+   try{window.localStorage.removeItem(KEY);window.location.reload();}catch{/* leave visible */}
+  });
   addButton("Закрыть",()=>{overlay?.remove();overlay=null;});
   overlay.append(buttons,area);document.body.append(overlay);
  };
