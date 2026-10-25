@@ -27,7 +27,6 @@ type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
- registerRouteGestureCancel?:(handler:(()=>void)|null)=>void;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
  gestureArbiter?:GestureArbiter;
 };
@@ -167,7 +166,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel,registerRouteMotion,gestureArbiter}:Props){
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteMotion,gestureArbiter}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{photoId:string;source:ViewerSource|null}|null>(null);
@@ -934,17 +933,6 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    routeMotionHandle.current.suspendForBackground();
   },()=>routeMotionHandle.current.resumeFromBackground());
  },[gestureArbiter]);
- useLayoutEffect(()=>{
-  if(!registerRouteGestureCancel)return;
-  const cancel=()=>{
-   photoSwipe.current=null;tabSwipe.current=null;
-   cancelSheetGesture.current();
-   stopSheet.current();stopTabs.current();
-   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
-  };
-  registerRouteGestureCancel(cancel);
-  return ()=>registerRouteGestureCancel(null);
- },[registerRouteGestureCancel]);
  const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
  const openAvatar=()=>{
   settleSheet(false);
