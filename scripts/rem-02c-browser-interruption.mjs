@@ -141,8 +141,8 @@ try{
  assert.equal(await top.first().getAttribute("aria-selected"),"true");
  near((await scan(browseTrack)).x,0,1);
  pass("real DOM pointercancel is terminal and settles without double page commit");
- // Real CDP touch on scrolled page content: a passive-start horizontal-looking
- // diagonal must remain native; no competing JS pages.scrollLeft write.
+ // On scrolled content, classify direction rather than automatically
+ // surrendering horizontal swipes. Preserve vertical-dominant native scroll.
  await page.getByRole("button",{name:"Профиль",exact:true}).click();
  const grab=page.getByRole("button",{name:"Развернуть анкету"});
  await grab.click();await sleep(400);
@@ -163,9 +163,26 @@ try{
   await sleep(40);
   await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
  }finally{await cdp.detach()}
- near(await getLeft(),beforeNative,1);
+ await sleep(350);
+ near(await getLeft(),beforeNative+rect.width,1);
+ assert.equal(await page.getByRole("tab",{name:"Блики",exact:true}).getAttribute("aria-selected"),"true");
+ pass("scrolled passive-start horizontal swipe switches to adjacent tab");
+ await page.getByRole("tab",{name:"О себе",exact:true}).click();await sleep(345);
+ await about.evaluate(el=>{el.scrollTop=40;});
+ const verticalBefore=await getLeft(),scrollBefore=await about.evaluate(el=>el.scrollTop);
+ const vertical=await context.newCDPSession(page);
+ try{
+  await vertical.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:nx,y:ny}]});
+  await vertical.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:nx-14,y:ny-115}]});
+  await sleep(45);
+  await vertical.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ }finally{await vertical.detach()}
+ await sleep(120);
+ near(await getLeft(),verticalBefore,1);
+ assert.ok((await about.evaluate(el=>el.scrollTop))>=scrollBefore,
+  "vertical-dominant gesture must preserve native content scrolling");
  assert.equal(await page.getByRole("tab",{name:"О себе",exact:true}).getAttribute("aria-selected"),"true");
- pass("scrolled content passive native touch retains exclusive scroll ownership, zero custom tab offset");
+ pass("scrolled vertical-dominant native pan keeps exclusive scroll ownership");
  // Mouse/pen tab adapter now joins the same arbiter, without interrupting
  // a candidate settle. Exercise its real DOM pointer path rather than only
  // checking that source code calls the arbitration helper.
