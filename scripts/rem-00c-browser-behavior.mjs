@@ -88,7 +88,7 @@ async function qaProfile(browser){
  try{
   await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.getByRole("button",{name:"Профиль",exact:true}).click();
-  await (await required(page,'.pm-inline[data-sheet-renderer="scroll"]',"owner profile")).waitFor({state:"visible"});
+  await (await required(page,'.pm-inline[data-sheet-renderer="absolute"]',"owner profile")).waitFor({state:"visible"});
   await readyAssets(page);
   let state=await readState(page);
   assert.equal(state.mode,"expanded","owner must start expanded");
@@ -380,7 +380,7 @@ async function standardProfile(browser){
  try{
   await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.getByRole("button",{name:"Профиль",exact:true}).click();
-  const owner=await required(page,'.pm-inline[data-sheet-renderer="scroll"]',"standard-DOM profile");
+  const owner=await required(page,'.pm-inline[data-sheet-renderer="absolute"]',"standard-DOM profile");
   await owner.waitFor({state:"visible"});
   await readyAssets(page);
   assert.equal(await page.locator(".lh-profile-android").count(),0,"non-Android profile uses standard logo chrome");
