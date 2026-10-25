@@ -144,13 +144,9 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
   }finally{anon.release();}
  }finally{await app.close();}
 });
-test("01D: disjoint DB roles cannot publish from session request credentials",async()=>{
- const app=makeApp({publisher:requestUrl!});
- try{
-  const x=await identity(app,8011004);
-  const denied=await mutate(app,x,"/api/v3/profile/publish",{revision:1});
-  assert.equal(denied.statusCode,503,denied.body);
- }finally{await app.close();}
+test("01D: reusing the requester login for publishing is rejected at bootstrap",()=>{
+ assert.throws(()=>makeApp({publisher:requestUrl!}),
+  /separate publisher\/discovery roles/);
 });
 test("01D: disclosure reevaluated after storage read and revoked on moderator change",async()=>{
  const storage=memoryPrivateStore();
