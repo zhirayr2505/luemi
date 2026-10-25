@@ -4,7 +4,7 @@ import {createHmac} from "node:crypto";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
 import {memoryPrivateStore,syntheticModerate} from "../src/rem05d-private.js";
-import {makeSyntheticPng} from "../src/rem05d-image.js";
+import {makeSyntheticPng,sanitizePng} from "../src/rem05d-image.js";
 import type {PrivateObjectStore} from "../src/rem05d-private.js";
 
 const adminUrl=process.env.REG01_ADMIN_DATABASE_URL,issuerUrl=process.env.REG01_ISSUER_DATABASE_URL;
@@ -33,7 +33,7 @@ const makeApp=(opts:{storage?:PrivateObjectStore;publisher?:string;reader?:strin
   realRegistration:{enabled:true,requestDatabaseUrl:requestUrl!,namespace,consentVersion},
   rem05d:{enabled:true,durablePrivateOnly:true,requestDatabaseUrl:requestUrl!,
    workerDatabaseUrl:workerUrl!,namespace,consentVersion,storage},
-  realPublication:{enabled:true,publisherDatabaseUrl:opts.publisher??publisherUrl!,
+  realPublication:{enabled:true,requestDatabaseUrl:requestUrl!,publisherDatabaseUrl:opts.publisher??publisherUrl!,
    discoveryDatabaseUrl:opts.reader??readerUrl!,namespace,consentVersion,storage}
  });
 };
@@ -54,6 +54,13 @@ const photo=(app:ReturnType<typeof makeApp>,user:User,id:string)=>
  app.inject({method:"GET",url:"/api/v3/discovery/photo/"+id,headers:{cookie:user.cookie}});
 const mutate=(app:ReturnType<typeof makeApp>,user:User,url:string,payload?:unknown)=>
  app.inject({method:"POST",url,headers:headers(user),...(payload===undefined?{}:{payload})});
+async function consent(app:ReturnType<typeof makeApp>,user:User){
+ const res=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
+  headers:headers(user),payload:{revision:0,fields:{
+   displayName:"Adult",birthDate:"1995-01-01",consentVersion
+  }}});
+ assert.equal(res.statusCode,200,res.body);
+}
 async function prepare(app:ReturnType<typeof makeApp>,user:User){
  const d=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
   headers:headers(user),payload:{revision:0,fields:{
@@ -81,6 +88,8 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
   assert.equal((await app.inject({method:"GET",url:"/api/v3/discovery/feed"})).statusCode,401);
   assert.equal((await app.inject({method:"POST",url:"/api/v3/profile/publish",headers:{origin,"sec-fetch-site":"same-origin"}})).statusCode,401);
   const a=await identity(app,8011001),b=await identity(app,8011002),c=await identity(app,8011003);
+  assert.equal((await feed(app,b)).statusCode,403,"unregistered viewer must not browse dating profiles");
+  await consent(app,b);await consent(app,c);
   const ids=await prepare(app,a);
   const denied=await mutate(app,a,"/api/v3/profile/publish",{revision:1});
   assert.equal(denied.statusCode,409,denied.body);
@@ -107,7 +116,7 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
   const img=await photo(app,b,ids[0]);
   assert.equal(img.statusCode,200,img.body);
   assert.equal(img.headers["content-type"],"image/png");
-  assert.deepEqual(img.rawPayload,makeSyntheticPng());
+  assert.deepEqual(img.rawPayload,sanitizePng(makeSyntheticPng()).bytes);
   assert.equal((await photo(app,a,ids[0])).statusCode,404,"owner cannot bypass public visitor endpoint");
   // A block in EITHER direction hides both public profile and its pixels.
   const block=await mutate(app,b,"/api/v2/profile/blocks",{targetId:a.id});
@@ -154,6 +163,7 @@ test("01D: disclosure reevaluated after storage read and revoked on moderator ch
  const app=makeApp({storage:slow});
  try{
   const x=await identity(app,8011005),viewer=await identity(app,8011006);
+  await consent(app,viewer);
   const ids=await prepare(app,x);
   for(const id of ids)await syntheticModerate(moderatorUrl!,id,"approved");
   assert.equal((await mutate(app,x,"/api/v3/profile/publish",{revision:1})).statusCode,200);

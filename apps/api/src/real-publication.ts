@@ -4,8 +4,9 @@ import {Pool} from "pg";
 import type {PoolClient} from "pg";
 import type {FastifyInstance,FastifyReply,FastifyRequest} from "fastify";
 import type {PrivateObjectStore} from "./rem05d-private.js";
+import {safeDb} from "./rem05d-private.js";
 export interface PublicationOptions {
- enabled:true;publisherDatabaseUrl:string;discoveryDatabaseUrl:string;
+ enabled:true;requestDatabaseUrl:string;publisherDatabaseUrl:string;discoveryDatabaseUrl:string;
  namespace:string;consentVersion:string;storage:PrivateObjectStore;
 }
 type Guard={read:(request:FastifyRequest,reply:FastifyReply)=>Promise<void>;
@@ -94,15 +95,41 @@ async function checkedRole(db:PoolClient,role:Kind):Promise<boolean>{
 }
 export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undefined,opts:PublicationOptions|undefined){
  if(!opts?.enabled)return;
- if(!guards||!opts.publisherDatabaseUrl||!opts.discoveryDatabaseUrl||
+ if(!guards||!opts.requestDatabaseUrl||!opts.publisherDatabaseUrl||!opts.discoveryDatabaseUrl||
   opts.publisherDatabaseUrl===opts.discoveryDatabaseUrl||
+  opts.publisherDatabaseUrl===opts.requestDatabaseUrl||
+  opts.discoveryDatabaseUrl===opts.requestDatabaseUrl||
   !/^[a-z0-9:_-]{1,96}$/i.test(opts.namespace)||
   !/^[a-z0-9][a-z0-9._:-]{2,63}$/i.test(opts.consentVersion))
   throw new Error("REG01D separate publisher/discovery roles and approved version required");
  const auth:Guard=guards,cfg=opts;
  const publisher=new Pool({connectionString:cfg.publisherDatabaseUrl,max:4,connectionTimeoutMillis:3000});
  const reader=new Pool({connectionString:cfg.discoveryDatabaseUrl,max:6,connectionTimeoutMillis:3000});
- app.addHook("onClose",async()=>{await Promise.all([publisher.end(),reader.end()]);});
+ const requestPool=new Pool({connectionString:cfg.requestDatabaseUrl,max:4,connectionTimeoutMillis:3000});
+ app.addHook("onClose",async()=>{await Promise.all([publisher.end(),reader.end(),requestPool.end()]);});
+ async function requireEligibleViewer(actorId:string):Promise<void>{
+  const db=await requestPool.connect().catch(()=>null);
+  if(!db)fail(503,"service_unavailable");
+  try{
+   if(!await safeDb(db,"luemi_request"))fail(503,"service_unavailable");
+   await db.query("BEGIN");
+   await db.query("SELECT set_config('luemi.actor_id',$1,true)",[actorId]);
+   await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+   const q=await db.query(
+    "SELECT 1 FROM luemi_private.private_profile_drafts d "+
+    "JOIN luemi_private.actors a ON a.id=d.owner_id AND a.environment=d.environment "+
+    "WHERE d.owner_id=$1 AND d.environment=$2 AND a.status='active' "+
+    "AND d.consent_version=$3 AND d.birth_date IS NOT NULL "+
+    "AND d.birth_date <= ((clock_timestamp() AT TIME ZONE 'UTC')::date - interval '18 years')",
+    [actorId,cfg.namespace,cfg.consentVersion]);
+   await db.query("COMMIT");
+   if(q.rowCount!==1)fail(403,"registration_required");
+  }catch(e){
+   await db.query("ROLLBACK").catch(()=>{});
+   if(e instanceof Rejection)throw e;
+   fail(503,"service_unavailable");
+  }finally{db.release();}
+ }
  async function transaction<T>(req:FastifyRequest,reply:FastifyReply,kind:Kind,
   job:(db:PoolClient,viewer:string)=>Promise<T>):Promise<T|FastifyReply>{
   const actor=req.authActor;
@@ -110,6 +137,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   const db=await (kind==="luemi_profile_publisher"?publisher:reader).connect().catch(()=>null);
   if(!db)return reply.code(503).send({error:"service_unavailable"});
   try{
+   if(kind==="luemi_discovery_reader")await requireEligibleViewer(actor.actorId);
    if(!await checkedRole(db,kind))fail(503,"service_unavailable");
    await db.query("BEGIN");
    const scope=kind==="luemi_profile_publisher"?"luemi.actor_id":"luemi.viewer_id";
