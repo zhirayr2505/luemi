@@ -72,6 +72,10 @@ export function registerAccountErasure(
     await db.query("BEGIN");
     await db.query("SELECT set_config('luemi.actor_id',$1,true)",[actor.actorId]);
     await db.query("SELECT set_config('luemi.environment',$1,true)",[opts.namespace]);
+    // Synchronize with reservations and worker uploads BEFORE locking actor/session
+    // rows, preventing an untracked late private object after the outbox snapshot.
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+actor.actorId+":profile_media_slots"]);
     // Lock in consistent order. Neither the cookie nor UI controls authorize another owner.
     const active=await db.query("SELECT id FROM luemi_private.actors "+
      "WHERE id=$1 AND environment=$2 AND status='active' FOR UPDATE",

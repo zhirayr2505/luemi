@@ -299,6 +299,10 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   let workerCommitted=false;
   try{
    const changed=await worker(async db=>{
+    // Identical per-owner lock and order as erasure requests/media intents.
+    // Once deletion commits, revalidation below prevents a late Storage PUT.
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+verify.id+":profile_media_slots"]);
     const row=await db.query<{original_key:string;derivative_key:string;owner_id:string}>(
      "SELECT a.original_key,a.derivative_key,a.owner_id FROM luemi_private.media_assets a "+
      "JOIN luemi_private.media_uploads u ON u.asset_id=a.id "+
@@ -307,6 +311,14 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
      [req.params.id,verify.id,opts.namespace]);
     if(!row.rowCount)reject(409,"intent_consumed");
     const m=row.rows[0];
+    // A delete request may have committed while this upload was waiting for
+    // the per-owner lock. Reject before any external Storage operation.
+    await auth.read(req,reply);
+    if(reply.sent||!uploadActor||!req.authActor||
+      req.authActor.actorId!==uploadActor.actorId||
+      req.authActor.sessionId!==uploadActor.sessionId||
+      !timingSafeEqual(req.authActor.hash,uploadActor.hash))
+       reject(401,"unauthorized");
     // Object store writes are NOT transactional with PostgreSQL. Any failure
     // after this point requires best-effort compensating deletion.
     stagedKey=m.derivative_key;
