@@ -20,7 +20,7 @@ async function geometry(){
   const expanded=Number(root.style.getPropertyValue("--pm-expanded-y").replace("px",""));
   // Actual visible white panel coordinate; no scrollTop is used by 03G.
   const sheetPosition=shell.getBoundingClientRect().top-root.getBoundingClientRect().top;
-  assert.equal(viewport.scrollTop,0,"outer native scroll offset must stay disabled");
+  if(viewport.scrollTop!==0)throw Error("outer native scroll offset must stay disabled");
   return {height:root.clientHeight,width:root.clientWidth,top,collapsed,expanded,
    sheetPosition,remaining:root.dataset.sheetState,pagesLeft:pages.scrollLeft,
    pageWidth:pages.clientWidth,fraction:pages.scrollLeft/Math.max(1,pages.clientWidth),
