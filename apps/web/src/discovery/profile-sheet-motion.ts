@@ -7,7 +7,7 @@
  * Finger input writes synchronously; a settle always starts at THAT pixel.
  */
 import {easeAt} from "../ui/motion";
-import {motionDebug,motionDebugId} from "../ui/motion-debug";
+import {motionDebug,motionDebugEnabled,motionDebugId} from "../ui/motion-debug";
 
 type Stage="idle"|"settling"|"paused";
 type Run={from:number;to:number;began:number;duration:number;
@@ -38,6 +38,7 @@ export class ProfileSheetMotion {
  sample():number{return this.interpolate(this.now());}
  get destinationCollapsed():boolean|null{return this.run?.collapsed??this.paused?.collapsed??null;}
  private debug(event:string,fields:Record<string,unknown>={}){
+  if(!motionDebugEnabled)return;
   motionDebug(event,{engine:this.debugId,y:this.y,min:this.min,max:this.max,
    phase:this.phase,run:!!this.run,paused:!!this.paused,destination:this.destinationCollapsed,...fields});
  }
