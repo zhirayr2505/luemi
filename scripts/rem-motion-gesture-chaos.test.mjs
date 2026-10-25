@@ -145,7 +145,72 @@ for(let seed=1;seed<=50;seed++){
  assert.equal(history.length,painted,"late post-dispose callback painted");
  assert.equal(c.snapshot().disposed,true);
 }
+// Targeted hostile interleavings omitted from the generic random walk:
+// fresh RAF after a cancelled RAF, terminal pixel before semantic commit,
+// and reentrant cleanup/onCommit must never publish a second completion.
+let commitRaces=0,atomicTerminals=0;
+for(let seed=1;seed<=7000;seed++){
+ const rnd=rng(seed*7717+109),queue=[];
+ let frame=0;
+ const scheduler={
+  frame:cb=>{queue.push({id:++frame,cb});return frame;},
+  cancelFrame:()=>{} // browser may still deliver old callbacks
+ };
+ const c=new motion.MotionController(choose(rnd,movingOwners),scheduler,0,0);
+ let token=c.begin(0);assert.ok(token&&c.claim(token));
+ let writes=0,oldPaints=0;
+ for(let i=0;i<4;i++)assert.equal(c.schedulePaint(token,i+1,()=>oldPaints++),true);
+ assert.equal(queue.length,1,"one pending RAF regardless of touchmove burst");
+ const stale=queue[0].cb;
+ if(seed%2===0){
+  const paused=c.interrupt(token,"interrupted");
+  assert.ok(paused);
+  token=c.resume(paused,"dragging");
+  assert.ok(token);
+  const expected=seed%383+3;
+  assert.equal(c.schedulePaint(token,expected,()=>writes++),true);
+  stale();commitRaces++;
+  assert.equal(oldPaints,0,"old queued RAF wrote after restart");
+  assert.equal(c.snapshot().current,0,"old queued RAF changed new state");
+  queue[1].cb();
+  assert.equal(writes,1);
+  assert.equal(c.snapshot().current,expected);
+ }else{
+  stale();commitRaces++;
+  assert.equal(oldPaints,1);
+ }
+ const endpoint=Math.floor(rnd()*3200)-800,order=[];
+ assert.equal((seed%3===0?c.close(token,endpoint):c.settle(token,endpoint)),true);
+ const staleAfterEnd=c.token();
+ let onCommitCount=0;
+ assert.equal(c.track(token,()=>order.push("cleanup")),true);
+ const ok=c.finish(token,{
+  paint(value){
+   assert.equal(value,endpoint);
+   order.push("paint");
+   assert.equal(c.finish(token,{paint:()=>{throw Error("recursive finish")}}),false);
+  },
+  onCommit(value){
+   assert.equal(value,endpoint);
+   assert.equal(order.at(-1),"paint","pixels must settle before semantic state");
+   onCommitCount++;
+   order.push("commit");
+   assert.equal(c.finish(token,{paint:()=>{throw Error("double commit")}}),false);
+  }
+ });
+ assert.equal(ok,true);
+ assert.equal(onCommitCount,1);
+ assert.deepEqual(order,["cleanup","paint","commit"]);
+ assert.equal(c.finish(staleAfterEnd,{paint:()=>{throw Error("stale paint")}}),false);
+ assert.equal(c.snapshot().phase,"idle");
+ assert.equal(c.snapshot().lastSettled,endpoint);
+ atomicTerminals++;
+ c.dispose();
+ for(const {cb} of queue)cb(); // replay ALL callbacks after dispose
+ assert.equal(c.begin(0),null);
+}
+
 console.log("LUEMI_GESTURE_MOTION_CHAOS_PASS "+JSON.stringify({
  gestureOperations:gestures,motionOperations:motions,lateFrameCallbacks:lateFrames,
- seeds:150,mode:"deterministic adversarial pure-state, not device GPU QA"
+ seeds:7150,hostileRafReplays:commitRaces,atomicTerminals,mode:"deterministic adversarial pure-state, not device GPU QA"
 }));
