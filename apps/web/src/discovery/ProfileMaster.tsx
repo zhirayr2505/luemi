@@ -848,7 +848,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    pages.current.releasePointerCapture(tabId);}catch{/* implicit release */}
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   sheetMotion.current?.pause();tabsRunner.current?.suspend();
-  sheetMotion.current?.drag(sheetValue);paintTabs(tabsValue);
+  // pause() already paints the exact frozen pixel; a drag() here would
+  // destroy the pause snapshot and reset unspent time on route rollback.
+  paintTabs(tabsValue);
  };
  const rollbackRoute=()=>{
   if(routeTerminal.current)return;
