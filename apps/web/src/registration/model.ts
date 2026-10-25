@@ -34,12 +34,12 @@ export const newDraft=(name=""):RegistrationDraft=>({
 });
 export const cleanName=(name:string):string=>
   name.normalize("NFC").replace(/[^\p{L}\p{M}'’\- ]/gu,"").slice(0,48);
-export function nameValid(name:string):boolean {
+function nameValid(name:string):boolean {
   const value=name.trim();
   return value.length>=2&&value.length<=48 &&
     /^[\p{L}\p{M}]+(?:[ '\u2019-][\p{L}\p{M}]+)*$/u.test(value);
 }
-export function birthDateValid(day:string,month:string,year:string,today=new Date()):boolean {
+function birthDateValid(day:string,month:string,year:string,today=new Date()):boolean {
   if(!/^\d{1,2}$/.test(day)||!/^\d{1,2}$/.test(month)||!/^\d{4}$/.test(year))return false;
   const y=Number(year),m=Number(month),d=Number(day);
   if(y<1900||m<1||m>12||d<1||d>31)return false;
