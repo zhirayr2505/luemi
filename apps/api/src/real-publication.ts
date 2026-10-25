@@ -164,6 +164,24 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   "AND (SELECT count(*) FROM luemi_private.media_assets x WHERE x.owner_id=p.owner_id "+
   "AND x.environment=p.environment AND x.state='approved' AND x.publication_status='published') BETWEEN 3 AND 6";
 
+ app.get("/api/v3/profile/status",{preHandler:guards.read},async(req,reply)=>{
+  reply.header("Cache-Control","private, no-store").header("Vary","Cookie");
+  return transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
+   const p=await db.query<{publication_status:string;published_revision:string}>(
+    "SELECT publication_status,published_revision::text FROM luemi_private.public_profiles "+
+    "WHERE owner_id=$1 AND environment=$2",[id,cfg.namespace]);
+   const media=await db.query<{state:string;n:string}>(
+    "SELECT state,count(*)::text AS n FROM luemi_private.media_assets "+
+    "WHERE owner_id=$1 AND environment=$2 AND state<>'revoked' GROUP BY state",
+    [id,cfg.namespace]);
+   const counts=Object.fromEntries(media.rows.map(r=>[r.state,Number(r.n)]));
+   return{state:p.rows[0]?.publication_status??"draft",
+    publishedRevision:p.rows[0]?Number(p.rows[0].published_revision):0,
+    approved:counts.approved??0,pending:counts.pending_review??0,
+    other:Object.entries(counts).filter(([key])=>key!=="approved"&&key!=="pending_review")
+     .reduce((sum,[,value])=>sum+value,0)};
+  });
+ });
  app.post<{Body:unknown}>("/api/v3/profile/publish",{preHandler:guards.mutation},async(req,reply)=>
  transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
   const body=req.body;
