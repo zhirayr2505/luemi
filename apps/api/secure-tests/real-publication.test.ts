@@ -357,7 +357,10 @@ test("01F: erasure waits for in-flight Storage write and queues its derivative",
    {confirmation:"DELETE MY LUEMI ACCOUNT"});
   release();
   const [uploaded,disabled]=await Promise.all([uploading,deleting]);
-  assert.equal(uploaded.statusCode,200,uploaded.body);
+  if(uploaded.statusCode!==200){
+    assert.equal(uploaded.statusCode,401,"deletion must refuse late upload");
+    assert.deepEqual(uploaded.json(),{error:"unauthorized"});
+  }
   assert.equal(disabled.statusCode,202,disabled.body);
   const receipt=await admin.query<{id:string}>(
    "SELECT id FROM luemi_private.erasure_requests WHERE actor_id=$1",[user.id]);
