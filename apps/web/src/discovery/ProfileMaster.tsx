@@ -376,32 +376,50 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    hidden=false;
    rebaseSheetGesture.current(motion.value,sheetRevision.current);
   };
-  measureSheetRef.current=measure;
-  measure();
-  const ro=new ResizeObserver(measure);
+  // Window, VisualViewport, Telegram and ResizeObserver can all report
+  // one physical resize in the SAME frame. Rebase sheet coordinates once,
+  // otherwise a second event samples an in-flight motion at a new origin
+  // and makes the white column appear to hop up/down in Android WebView.
+  let queuedFrame:number|null=null,measureDead=false;
+  const scheduleMeasure=()=>{
+   if(measureDead||queuedFrame!==null)return;
+   queuedFrame=requestAnimationFrame(()=>{
+    queuedFrame=null;
+    if(!measureDead)measure();
+   });
+  };
+  const measureNow=()=>{
+   if(queuedFrame!==null){cancelAnimationFrame(queuedFrame);queuedFrame=null;}
+   if(!measureDead)measure();
+  };
+  measureSheetRef.current=measureNow;
+  measureNow();
+  const ro=new ResizeObserver(scheduleMeasure);
   if(hero.current)ro.observe(hero.current);
   if(shell.current)ro.observe(shell.current);
   const anchor=(shell.current?.closest(".discovery-visitor-route")??shell.current?.closest(".discovery-app"))
    ?.querySelector<HTMLElement>(".lh-header .lh-center");
   if(anchor)ro.observe(anchor);
   const webApp=window.Telegram?.WebApp;
-  const detachViewport=bindMotionViewport(window,()=>measure());
+  const detachViewport=bindMotionViewport(window,()=>scheduleMeasure());
   const visual=window.visualViewport;
-  window.addEventListener("resize",measure);
-  visual?.addEventListener("resize",measure);
-  visual?.addEventListener("scroll",measure);
-  webApp?.onEvent?.("safeAreaChanged",measure);
-  webApp?.onEvent?.("contentSafeAreaChanged",measure);
-  webApp?.onEvent?.("viewportChanged",measure);
+  window.addEventListener("resize",scheduleMeasure);
+  visual?.addEventListener("resize",scheduleMeasure);
+  visual?.addEventListener("scroll",scheduleMeasure);
+  webApp?.onEvent?.("safeAreaChanged",scheduleMeasure);
+  webApp?.onEvent?.("contentSafeAreaChanged",scheduleMeasure);
+  webApp?.onEvent?.("viewportChanged",scheduleMeasure);
   return ()=>{
+   measureDead=true;
+   if(queuedFrame!==null){cancelAnimationFrame(queuedFrame);queuedFrame=null;}
    measureSheetRef.current=()=>{};
    sheetMotion.current?.pause();ro.disconnect();detachViewport();
-   window.removeEventListener("resize",measure);
-   visual?.removeEventListener("resize",measure);
-   visual?.removeEventListener("scroll",measure);
-   webApp?.offEvent?.("safeAreaChanged",measure);
-   webApp?.offEvent?.("contentSafeAreaChanged",measure);
-   webApp?.offEvent?.("viewportChanged",measure);
+   window.removeEventListener("resize",scheduleMeasure);
+   visual?.removeEventListener("resize",scheduleMeasure);
+   visual?.removeEventListener("scroll",scheduleMeasure);
+   webApp?.offEvent?.("safeAreaChanged",scheduleMeasure);
+   webApp?.offEvent?.("contentSafeAreaChanged",scheduleMeasure);
+   webApp?.offEvent?.("viewportChanged",scheduleMeasure);
   };
  },[motionActive,ensureSheetMotion]);
  useEffect(()=>{
