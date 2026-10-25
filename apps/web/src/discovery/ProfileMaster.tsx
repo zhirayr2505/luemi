@@ -692,9 +692,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   runner.start(from,i,295,[.22,.77,.23,1],value=>paintTabs(value),()=>paintTabs(i),
    tabsRevision.current);
   stopTabs.current=()=>{const frozen=runner.cancel();paintTabs(frozen);};
+  // The page and underline already run the accepted 295ms settle. Avoid
+  // a second native smooth-scroll animation of the tab labels: WebView may
+  // composite their glyphs on different frames from the moving underline.
   const bar=tabBar.current,metric=tabMetrics.current[i];
   if(bar&&metric)bar.scrollTo({left:Math.max(0,metric.left+metric.width/2-bar.clientWidth/2),
-   behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
+   behavior:"instant"});
  },[paintTabs]);
  // Mouse/pen tab input must use the SAME exclusive gesture owner as native
  // sheet Touch and the visitor route. Candidate input must not stop settling.
@@ -723,8 +726,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(!gestures.claim("tabs",g.serial!))return;
    g.claimed=true;
    stopTabs.current();
-   // REM-02B fractional position survives the unclaimed candidate period.
-   g.index=(pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current);
+   // Preserve the fractional pixel seen at claim if an earlier settle
+   // advanced between pointerdown and this movement.
+   const width=Math.max(1,tabViewport.current);
+   const now=(pages.current?.scrollLeft??0)/width;
+   if(Math.abs(now-g.index)>.07)g.index=now+dx/width;
    g.width=tabViewport.current;
    try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* old WebView */}
   }
@@ -745,6 +751,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
   const next=!cancel&&(Math.abs(dx)>g.width*.17||Math.abs(dx)/dt>.52)?
    Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
+  // Fast flicks can end before the next RAF. Reconcile the finger's final
+  // position before the settle begins to avoid a stale-page flash.
+  paintTabs(g.index,dx);
   clickBlocked.current=performance.now()+240;
   chooseTab(next);
  };
@@ -801,22 +810,27 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    g.lastX=t.clientX;
    if(!g.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
-    // Preserve native vertical scrolling after collapse, even when the list
-    // is already scrolled. An expanded sheet owns the whole white surface;
-    // its old content scrollTop must not disable the collapse gesture.
-    if(g.inPages&&g.down&&g.scrollTop>1){g.axis="native";gestures.nativeScroll(g.serial);return;}
-    // If the listener started passive, it must NEVER take over native scroll
-    // mid-session, even when the diagonal later resembles a horizontal drag.
+    // Classify direction BEFORE native-scroll fallback. Collapsed content
+    // with scrollTop > 1 must still allow horizontal tab swipes.
+    // The passive listener retains normal vertical scrolling; CSS
+    // touch-action:pan-y on the pages vetoes native horizontal panning.
     if(Math.abs(dx)>Math.abs(dy)*1.18)
-     g.axis=g.inPages&&g.blocking&&e.cancelable?"x":"native";
+     g.axis=g.inPages?"x":"native";
+    else if(g.inPages&&g.down&&g.scrollTop>1)g.axis="native";
     else g.axis=(dy>0?(g.scrollTop<=1&&g.origin<=expandedY.current+28):
      g.origin>collapsedY.current+.5)?"y":"native";
     if(g.axis==="native"){gestures.nativeScroll(g.serial);return;}
     const owner=g.axis==="x"?"tabs":"sheet";
     if(!gestures.claim(owner,g.serial)){g.axis="native";return;}
     g.claimed=true;
-    if(g.axis==="x")stopTabs.current();
-    else {
+    if(g.axis==="x"){
+     stopTabs.current();
+     // An interrupted tab settle must continue from its visible page,
+     // not the stale position captured before the gesture was claimed.
+     const width=Math.max(1,tabViewport.current);
+     const now=(pages.current?.scrollLeft??0)/width;
+     if(Math.abs(now-g.index)>.07)g.index=now+dx/width;
+    }else {
     const current=ensureSheetMotion().interrupt();
     // Claim the FULL first movement from touchstart. Subtracting dy here
     // swallowed the initial swipe and broke short fast one-event gestures.
@@ -853,6 +867,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     const dt=Math.max(1,performance.now()-g.start);
     const next=!cancelled&&(Math.abs(dx)>tabViewport.current*.17||Math.abs(dx)/dt>.52)?
      Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
+    // abort() cancelled any queued paint. Never start the snap from the
+    // penultimate RAF when touchend arrived ahead of it.
+    paintTabs(g.index,dx);
     clickBlocked.current=performance.now()+260;chooseTab(next);
    }else if(g.axis==="y"&&g.claimed){
     if(!cancelled){
