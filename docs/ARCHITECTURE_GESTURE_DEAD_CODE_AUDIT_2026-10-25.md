@@ -39,6 +39,11 @@ A race existed because `pointerup` in a parent could terminate an entire shared 
 10. Deleted the unused `gestureCapabilities` API that measured `scrollHeight` and `scrollTop` synchronously during a visitor-profile pointerdown. The route now checks only nested modal blocking; actual pointer movement decides x/y gesture ownership. This prevents a stationary, scrolled profile from losing all horizontal back-swipe candidates.
 11. Updated both unit and browser regressions to use the new modal-only gate. No old gesture API is left merely to satisfy legacy tests.
 12. A second proposed reachability implementation was reverted: the **existing TypeScript AST-based strict architecture audit** remains the only source-of-truth gate, avoiding duplicate scanners.
+13. Deleted `createGuardedCompletion`, a wrapper exported from production `profile-motion.ts` but used only by the adapter unit test. The test now exercises `MotionController.finish` directly with captured tokens and the same double-commit/stale-generation assertions.
+14. Pruned old ForYou, Nearby and filter selectors from `isGestureModalBlocked`. That gate runs only inside `VisitorProfileRoute`; browse nodes are outside its DOM. Added a negative regression so such selectors cannot silently block unrelated gestures.
+15. Extended the strict architecture audit to reject reintroduced retired helper identifiers (`animateValue`, `createGuardedCompletion`, `createProfileMotionControllers`, `gestureCapabilities`) and the no-op `route-reveal` flag in frontend/API sources. Left protected runtime modules, CI and data/security migrations intact.
+
+
 
 **Intentionally retained:** REM-05B–05F security/session/storage modules, migrations, current CI/browser suites, the accepted UI/brand assets, and feature-reserved Bliki modules. “Not called during staging” is not enough evidence to delete a secured future feature.
 
