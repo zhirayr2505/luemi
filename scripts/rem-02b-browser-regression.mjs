@@ -18,7 +18,9 @@ async function geometry(){
   const top=Number(c.getPropertyValue("--pm-collapsed-top"))||Number(shell.style.getPropertyValue("--pm-collapsed-top"));
   const collapsed=Number(shell.style.getPropertyValue("--pm-collapsed-top").replace("px",""));
   const expanded=Number(root.style.getPropertyValue("--pm-expanded-y").replace("px",""));
-  const sheetPosition=expanded-viewport.scrollTop;
+  // Actual visible white panel coordinate; no scrollTop is used by 03G.
+  const sheetPosition=shell.getBoundingClientRect().top-root.getBoundingClientRect().top;
+  assert.equal(viewport.scrollTop,0,"outer native scroll offset must stay disabled");
   return {height:root.clientHeight,width:root.clientWidth,top,collapsed,expanded,
    sheetPosition,remaining:root.dataset.sheetState,pagesLeft:pages.scrollLeft,
    pageWidth:pages.clientWidth,fraction:pages.scrollLeft/Math.max(1,pages.clientWidth),
@@ -50,7 +52,7 @@ try{
   assert.equal(after.remaining,"collapsed");
   assert.ok(Math.abs(after.sheetPosition-after.collapsed)<=1,
    "sheet endpoint deviation >1 CSS px at "+percent+": "+JSON.stringify(after));
-  pass("native sheet resize "+Math.round(percent*100)+"% settles at endpoint within 1px");
+  pass("absolute sheet resize "+Math.round(percent*100)+"% settles at endpoint within 1px");
  }
  await page.setViewportSize({width:393,height:852});await sleep(120);
  const collapsed=await geometry();
