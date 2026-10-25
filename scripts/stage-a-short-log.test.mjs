@@ -30,7 +30,7 @@ for(let attempt=0;attempt<9;attempt++){
  write(begin+1112,"ProfileMaster.render",{collapsed:true});
 }
 const short=compactMotionLog(log);
-assert.ok(short.length<=14000,"short text must fit in an ordinary ChatGPT message");
+assert.ok(short.length<=6500,"short text must fit in an ordinary ChatGPT message");
 assert.ok(short.includes("LUEMI STAGE A SHORT"));
 assert.ok(short.includes("settleSheet"));
 assert.ok(short.includes("measure.apply"));
