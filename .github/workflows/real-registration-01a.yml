@@ -1,9 +1,9 @@
 name: LUEMI REAL-REG-01A private registration and PostgreSQL QA
 on:
   push:
-    branches: ['feature/real-registration-01-*']
+    branches: ['feature/real-registration-01*']
   pull_request:
-    branches: ['refactor/architecture-dead-code-motion-20261025', 'feature/real-registration-01-private-draft-20261025']
+    branches: ['refactor/architecture-dead-code-motion-20261025', 'feature/real-registration-01-private-draft-20261025', 'feature/real-registration-01b-client-save-20261025']
 permissions:
   contents: read
 jobs:
@@ -55,6 +55,7 @@ jobs:
       REG01_ISSUER_DATABASE_URL: postgres://reg01_ci_issuer:synthetic_reg01_issuer@127.0.0.1:5432/reg01_disposable
       REG01_REQUEST_DATABASE_URL: postgres://reg01_ci_request:synthetic_reg01_request@127.0.0.1:5432/reg01_disposable
       REG01_COMBINED_DATABASE_URL: postgres://reg01_ci_combined:synthetic_reg01_combined@127.0.0.1:5432/reg01_disposable
+      REG01_WORKER_DATABASE_URL: postgres://reg01_ci_worker:synthetic_reg01_worker@127.0.0.1:5432/reg01_disposable
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,6 +86,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE reg01_ci_issuer LOGIN PASSWORD 'synthetic_reg01_issuer' IN ROLE luemi_auth_issuer;
           CREATE ROLE reg01_ci_request LOGIN PASSWORD 'synthetic_reg01_request' IN ROLE luemi_request;
+          CREATE ROLE reg01_ci_worker LOGIN PASSWORD 'synthetic_reg01_worker' IN ROLE luemi_media_worker;
           CREATE ROLE reg01_ci_combined LOGIN NOINHERIT PASSWORD 'synthetic_reg01_combined';
           GRANT luemi_auth_issuer,luemi_request TO reg01_ci_combined;
           SQL

@@ -4,12 +4,15 @@ import {createHmac} from "node:crypto";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
 import {readConfig} from "../src/config.js";
+import {createDurablePrivateStore} from "../src/real-private-storage.js";
+import {makeSyntheticPng} from "../src/rem05d-image.js";
 
 const adminUrl=process.env.REG01_ADMIN_DATABASE_URL;
 const issuerUrl=process.env.REG01_ISSUER_DATABASE_URL;
 const requestUrl=process.env.REG01_REQUEST_DATABASE_URL;
 const combinedUrl=process.env.REG01_COMBINED_DATABASE_URL;
-if(!adminUrl||!issuerUrl||!requestUrl||!combinedUrl)
+const workerUrl=process.env.REG01_WORKER_DATABASE_URL;
+if(!adminUrl||!issuerUrl||!requestUrl||!combinedUrl||!workerUrl)
  throw new Error("REG01 secure-tests require disposable Postgres URLs");
 const origin="https://ci.luemi.invalid",token="123456:synthetic_reg01_bot";
 const namespace="ci_reg01",consentVersion="beta-consent-v1";
@@ -162,5 +165,74 @@ test("REG01A revoke during row-lock wait rolls back in-flight draft UPDATE",asyn
   if(pending)await pending.catch(()=>{});
   hold.release();await app.close();
  }
+});
+test("REG01C durable private media: owner/other, session, stripped PNG, pending moderation",async()=>{
+ const storage=new Map<string,Uint8Array>();
+ const calls:Array<{method:string;path:string}>=[];
+ const transport:typeof fetch=async(input,init)=>{
+  const uri=new URL(String(input));const method=init?.method??"GET";
+  const suffix=uri.pathname.split("/"+ "luemi-profile-private/")[1];
+  assert.ok(suffix?.startsWith("private/"+namespace+"/"),"server-only private namespace");
+  calls.push({method,path:uri.pathname});
+  if(method==="POST"){
+   if(storage.has(suffix))return new Response(null,{status:409});
+   assert.ok(init?.body instanceof Blob);
+   storage.set(suffix!,new Uint8Array(await init.body.arrayBuffer()));return new Response("{}",{status:201});
+  }
+  if(method==="GET"){
+   const bytes=storage.get(suffix!);
+   return bytes?new Response(new Uint8Array(bytes),{
+    status:200,headers:{"Content-Type":"image/png"}}):new Response(null,{status:404});
+  }
+  if(method==="DELETE"){storage.delete(suffix!);return new Response(null,{status:204});}
+  return new Response(null,{status:405});
+ };
+ const api=buildApp({port:3001,origin,botToken:token,
+  healthKey:"synthetic_health_key_123456789012345",logger:false,
+  rem05b:sessions,
+  realRegistration:{enabled:true,requestDatabaseUrl:requestUrl!,namespace,consentVersion},
+  rem05d:{enabled:true,durablePrivateOnly:true,requestDatabaseUrl:requestUrl!,
+   workerDatabaseUrl:workerUrl!,namespace,consentVersion,
+   storage:createDurablePrivateStore({projectRef:"abcdefghijklmnopqrst",
+    namespace,secret:"sb_secret_synthetic_disposable_storage_tests_0001",
+    bucket:"luemi-profile-private"},transport)}
+ });
+ const a=await identity(api,7011004),b=await identity(api,7011005);
+ const png=makeSyntheticPng();
+ const h=(u:User)=>({origin,"sec-fetch-site":"same-origin",cookie:u.cookie,"x-luemi-csrf":u.csrf});
+ try{
+  const noConsent=await api.inject({method:"POST",url:"/api/v2/media/intents",
+   headers:h(a),payload:{bytes:png.length,mime:"image/png",clientKey:"before-consent"}});
+  assert.equal(noConsent.statusCode,403,"signed session cannot upload without server consent");
+  assert.equal(storage.size,0);
+  assert.equal((await put(api,a,0,{displayName:"Person A",birthDate:"1997-01-01"})).statusCode,200);
+  assert.equal((await put(api,b,0,{displayName:"Person B",birthDate:"1998-01-01"})).statusCode,200);
+  const intent=await api.inject({method:"POST",url:"/api/v2/media/intents",headers:h(a),
+   payload:{bytes:png.length,mime:"image/png",clientKey:"01c-private-media-photo-1"}});
+  assert.equal(intent.statusCode,200,intent.body);
+  const asset=intent.json().assetId as string;
+  assert.match(asset,/^[0-9a-f-]{36}$/i);
+  const stranger=await api.inject({method:"PUT",url:"/api/v2/media/"+asset+"/bytes",
+   headers:{...h(b),"content-type":"image/png"},payload:png});
+  assert.equal(stranger.statusCode,404,stranger.body);
+  const accepted=await api.inject({method:"PUT",url:"/api/v2/media/"+asset+"/bytes",
+   headers:{...h(a),"content-type":"image/png"},payload:png});
+  assert.equal(accepted.statusCode,200,accepted.body);
+  assert.equal(accepted.json().status,"pending_review");
+  assert.equal(storage.size,1);
+  assert.equal((await api.inject({method:"GET",url:"/api/v2/media/"+asset,
+   headers:{cookie:a.cookie}})).statusCode,404);
+  assert.equal((await api.inject({method:"GET",url:"/api/v2/media/"+asset,
+   headers:{cookie:b.cookie}})).statusCode,404);
+  assert.equal((await api.inject({method:"POST",url:"/api/v2/profile/submit",
+   headers:h(a)})).statusCode,403);
+  const p=await api.inject({method:"GET",url:"/api/v2/profile/preview",headers:{cookie:a.cookie}});
+  assert.equal(p.json().photos[0].state,"pending_review");
+  assert.equal(p.json().publish,false);
+  assert.ok(calls.every(x=>!x.path.includes("/public/")&&!x.path.includes("/sign/")));
+  await admin!.query("UPDATE luemi_private.sessions SET revoked_at=clock_timestamp() WHERE actor_id=$1",[a.id]);
+  assert.equal((await api.inject({method:"POST",url:"/api/v2/media/intents",
+   headers:h(a),payload:{bytes:png.length,mime:"image/png",clientKey:"01c-private-media-photo-2"}})).statusCode,401);
+ }finally{await api.close();}
 });
 test("REG01A disposable pool cleanup",async()=>{await admin.end();await scoped.end();});

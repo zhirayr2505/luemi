@@ -14,6 +14,7 @@ import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft} from "./registration/server-draft";
+import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
 
 declare global {
   interface Window {
@@ -118,6 +119,9 @@ export function App() {
   const [serverConsent,setServerConsent]=useState(false);
   const [serverSaving,setServerSaving]=useState(false);
   const [serverStatus,setServerStatus]=useState("");
+  const [privateDraftSaved,setPrivateDraftSaved]=useState(false);
+  const [mediaSaving,setMediaSaving]=useState(false);
+  const [mediaStatus,setMediaStatus]=useState("");
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
@@ -128,6 +132,7 @@ export function App() {
     setStorageState("dirty");
     setDraft(prev=>({...prev,...change}));
     setServerStatus(""); // A changed local draft is no longer identical to the server copy.
+    setPrivateDraftSaved(false);
     setError("");
   },[]);
   useEffect(()=>{
@@ -330,6 +335,7 @@ export function App() {
   };
   const addPhotos=(files:File[])=>{
     if(!files.length)return;
+    setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
     const accepted:PhotoItem[]=[];
     let problem="";
@@ -366,6 +372,7 @@ export function App() {
     setError(problem);
   };
   const removePhoto=(id:string)=>{
+    setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
     photoJobs.current.get(id)?.abort();photoJobs.current.delete(id);
     const timer=photoTimers.current.get(id);
@@ -376,6 +383,7 @@ export function App() {
     setPhotos(prev=>prev.filter(p=>p.id!==id));
   };
   const movePhoto=(from:number,to:number)=>{
+    setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
     setPhotos(prev=>{
       if(from<0||from>=prev.length||to<0||to>=prev.length)return prev;
@@ -394,7 +402,7 @@ export function App() {
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
     draftId.current=crypto.randomUUID();revision.current=0;
-    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);
+    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setMediaStatus("");
     setStorageState("saving");setStorageCode(null);
     if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
     void clearDraftSnapshot(scope).then(result=>{
@@ -456,12 +464,30 @@ export function App() {
         "На сервере уже есть приватный черновик. Заменить его текущими полями? Фотографии останутся на этом устройстве."
       )){setServerStatus("Серверный черновик оставлен без изменений.");return;}
       await saveRemoteDraft(draft,previous.revision);
+      setPrivateDraftSaved(true);
       setServerStatus("Поля анкеты сохранены на сервере. Публикация закрыта, фотографии остались на этом устройстве.");
     }catch(e){
+      setPrivateDraftSaved(false);
       setServerStatus(e instanceof Error&&e.message==="revision_conflict"?
         "Черновик изменён в другой сессии. Ничего не перезаписано — проверь данные и повтори.":
         "Серверное сохранение не удалось. Локальный черновик и фотографии не удалены.");
     }finally{setServerSaving(false);}
+  };
+  const persistPrivatePhotos=async()=>{
+    if(!remoteMediaPilot.enabled||!privateDraftSaved||!serverConsent||
+      mediaSaving||serverSaving||auth!=="authorized")return;
+    if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready")){
+      setMediaStatus("Для загрузки требуется от 3 до 6 обработанных фотографий.");
+      return;
+    }
+    setMediaSaving(true);setMediaStatus("");
+    try{
+      await uploadPrivatePhotos([...photos],(done,total)=>
+        setMediaStatus("Отправлено "+done+" из "+total+". Все фотографии приватны."));
+      setMediaStatus("Фотографии приняты в приватную очередь модерации. Они никому не видны и не опубликованы.");
+    }catch{
+      setMediaStatus("Не все фотографии отправлены. Уже принятые остаются приватными. Проверь соединение перед повтором.");
+    }finally{setMediaSaving(false);}
   };
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
@@ -513,6 +539,15 @@ export function App() {
             {serverSaving?"Сохранение…":"Сохранить приватный черновик"}
           </button>
           {serverStatus&&<p role="status">{serverStatus}</p>}
+          {remoteMediaPilot.enabled&&privateDraftSaved&&serverConsent&&
+            <div className="registration-preview-review" aria-label="Приватная загрузка фотографий">
+              <p>Фотографии пройдут серверную проверку и попадут в очередь модерации. Публикация пока запрещена. Передавать можно только 3–6 фотографий.</p>
+              <button className="primary-action" type="button" disabled={serverSaving||mediaSaving}
+                onClick={()=>{void persistPrivatePhotos();}}>
+                {mediaSaving?"Отправка фотографий…":"Отправить фото на приватную проверку"}
+              </button>
+              {mediaStatus&&<p role="status">{mediaStatus}</p>}
+            </div>}
         </section>}
       </div>
       {step===5&&<SelectedInterests selected={draft.interests}
