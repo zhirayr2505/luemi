@@ -63,6 +63,8 @@ jobs:
       REG01_ERASURE_WORKER_DATABASE_URL: postgres://reg01_ci_purge:synthetic_reg01_purge@127.0.0.1:5432/reg01_disposable
       REG01_INVITE_DATABASE_URL: postgres://reg01_ci_invite:synthetic_reg01_invite@127.0.0.1:5432/reg01_disposable
       REG01_HUMAN_MODERATOR_DATABASE_URL: postgres://reg01_ci_human:synthetic_reg01_human@127.0.0.1:5432/reg01_disposable
+      REG01_SAFETY_OPERATOR_DATABASE_URL: postgres://reg01_ci_safety:synthetic_reg01_safety@127.0.0.1:5432/reg01_disposable
+      REG01_SAFETY_APPEAL_DATABASE_URL: postgres://reg01_ci_appeal:synthetic_reg01_appeal@127.0.0.1:5432/reg01_disposable
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,6 +96,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0006_reg01f_account_erasure.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0007_reg01g_invite_gate.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0008_reg01g_human_moderation.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0009_reg01h_enforcement_appeals.sql
           psql -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE reg01_ci_issuer LOGIN PASSWORD 'synthetic_reg01_issuer' IN ROLE luemi_auth_issuer;
           CREATE ROLE reg01_ci_request LOGIN PASSWORD 'synthetic_reg01_request' IN ROLE luemi_request;
@@ -105,8 +108,10 @@ jobs:
           CREATE ROLE reg01_ci_purge LOGIN PASSWORD 'synthetic_reg01_purge' IN ROLE luemi_erasure_worker;
           CREATE ROLE reg01_ci_invite LOGIN PASSWORD 'synthetic_reg01_invite' IN ROLE luemi_invite_operator;
           CREATE ROLE reg01_ci_human LOGIN PASSWORD 'synthetic_reg01_human' IN ROLE luemi_human_moderator;
+          CREATE ROLE reg01_ci_safety LOGIN PASSWORD 'synthetic_reg01_safety' IN ROLE luemi_safety_operator;
+          CREATE ROLE reg01_ci_appeal LOGIN PASSWORD 'synthetic_reg01_appeal' IN ROLE luemi_safety_appeal;
           CREATE ROLE reg01_ci_combined LOGIN NOINHERIT PASSWORD 'synthetic_reg01_combined';
           GRANT luemi_auth_issuer,luemi_request TO reg01_ci_combined;
           SQL
       - name: Multi-user signed-session / RLS / privacy / CAS tests
-        run: npx --no-install tsx --test apps/api/secure-tests/real-registration.test.ts apps/api/secure-tests/real-publication.test.ts apps/api/secure-tests/real-ops.test.ts
+        run: npx --no-install tsx --test apps/api/secure-tests/real-registration.test.ts apps/api/secure-tests/real-publication.test.ts apps/api/secure-tests/real-ops.test.ts apps/api/secure-tests/real-safety.test.ts
