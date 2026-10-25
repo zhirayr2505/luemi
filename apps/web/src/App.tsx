@@ -10,11 +10,14 @@ import {preparePhotoPreview} from "./registration/photo-preview";
 import {installViewportController} from "./viewport/viewport-controller";
 // Load the heavy Discovery/profile route only after the entry shell can paint.
 const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({default:m.DiscoveryApp})));
+const RealLiveFeed = lazy(() => import("./registration/RealLiveFeed").then(m=>({default:m.RealLiveFeed})));
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft} from "./registration/server-draft";
 import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
+import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile} from "./registration/real-live-client";
+import type {OwnerPublicationStatus} from "./registration/real-live-client";
 
 declare global {
   interface Window {
@@ -122,6 +125,10 @@ export function App() {
   const [privateDraftSaved,setPrivateDraftSaved]=useState(false);
   const [mediaSaving,setMediaSaving]=useState(false);
   const [mediaStatus,setMediaStatus]=useState("");
+  const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
+  const [publishBusy,setPublishBusy]=useState(false);
+  const [publishFeedback,setPublishFeedback]=useState("");
+  const [realFeedOpen,setRealFeedOpen]=useState(false);
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
@@ -133,6 +140,7 @@ export function App() {
     setDraft(prev=>({...prev,...change}));
     setServerStatus(""); // A changed local draft is no longer identical to the server copy.
     setPrivateDraftSaved(false);
+    setPublishStatus(null);
     setError("");
   },[]);
   useEffect(()=>{
@@ -335,7 +343,7 @@ export function App() {
   };
   const addPhotos=(files:File[])=>{
     if(!files.length)return;
-    setPrivateDraftSaved(false);setMediaStatus("");
+    setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);
     persistEnabled.current=true;setStorageState("dirty");
     const accepted:PhotoItem[]=[];
     let problem="";
@@ -402,7 +410,7 @@ export function App() {
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
     draftId.current=crypto.randomUUID();revision.current=0;
-    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setMediaStatus("");
+    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);setRealFeedOpen(false);
     setStorageState("saving");setStorageCode(null);
     if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
     void clearDraftSnapshot(scope).then(result=>{
@@ -465,6 +473,7 @@ export function App() {
       )){setServerStatus("Серверный черновик оставлен без изменений.");return;}
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
+      setPublishStatus(null);
       setServerStatus("Поля анкеты сохранены на сервере. Публикация закрыта, фотографии остались на этом устройстве.");
     }catch(e){
       setPrivateDraftSaved(false);
@@ -484,10 +493,50 @@ export function App() {
     try{
       await uploadPrivatePhotos([...photos],(done,total)=>
         setMediaStatus("Отправлено "+done+" из "+total+". Все фотографии приватны."));
+      setPublishStatus(null);
       setMediaStatus("Фотографии приняты в приватную очередь модерации. Они никому не видны и не опубликованы.");
     }catch{
       setMediaStatus("Не все фотографии отправлены. Уже принятые остаются приватными. Проверь соединение перед повтором.");
     }finally{setMediaSaving(false);}
+  };
+  const checkPublication=async()=>{
+    if(!realFeedPilot.enabled||publishBusy)return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      const state=await ownerPublicationStatus();
+      setPublishStatus(state);
+      setPublishFeedback(state.state==="published"?"Анкета опубликована.":
+        state.approved>=3&&state.approved<=6&&state.pending===0&&state.other===0?
+        "Все фотографии одобрены. Можно запросить публикацию.":
+        "Публикация пока недоступна: требуется 3–6 одобренных фотографий и отсутствие ожидающих проверки.");
+    }catch{setPublishStatus(null);setPublishFeedback("Не удалось проверить статус на сервере.");}
+    finally{setPublishBusy(false);}
+  };
+  const publishProfile=async()=>{
+    if(!realFeedPilot.enabled||publishBusy||publishStatus?.state==="published"||
+       !serverConsent)return;
+    if(!window.confirm("Опубликовать анкету и одобренные фото для других совершеннолетних пользователей?"))return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      const current=await readRemoteRevision();
+      if(current.state!=="private")throw new Error("private_draft_missing");
+      await publishMyProfile(current.revision);
+      setPublishStatus(await ownerPublicationStatus());
+      setPublishFeedback("Анкета опубликована. Теперь другие подходящие пользователи могут её увидеть.");
+    }catch{
+      setPublishFeedback("Публикация не выполнена. Проверь одобрение всех фото, согласие и версию анкеты.");
+    }finally{setPublishBusy(false);}
+  };
+  const hideProfile=async()=>{
+    if(!realFeedPilot.enabled||publishBusy||
+       !window.confirm("Снять анкету с публикации и скрыть фотографии от других пользователей?"))return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      await unpublishMyProfile();
+      setPublishStatus(await ownerPublicationStatus());
+      setPublishFeedback("Анкета скрыта. Другим пользователям её фото больше недоступны.");
+    }catch{setPublishFeedback("Не удалось скрыть анкету. Проверь соединение.");}
+    finally{setPublishBusy(false);}
   };
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
@@ -548,6 +597,34 @@ export function App() {
               </button>
               {mediaStatus&&<p role="status">{mediaStatus}</p>}
             </div>}
+        </section>}
+        {step===8&&realFeedPilot.enabled&&<section className="registration-preview-review" aria-label="Реальная регистрация и просмотр пользователей">
+          <strong>Публикация и проверенные анкеты</strong>
+          <p>Только совершеннолетние, опубликованные анкеты и одобренные модерацией фотографии. Демо-пользователи здесь не отображаются.</p>
+          <button type="button" disabled={publishBusy} onClick={()=>{void checkPublication();}}>
+            Проверить статус модерации
+          </button>
+          {publishStatus&&<p role="status">
+            Статус: {publishStatus.state==="published"?"опубликована":
+              publishStatus.state==="hidden"?"скрыта":"черновик"} ·
+            Одобрено: {publishStatus.approved} · Ожидают: {publishStatus.pending}
+          </p>}
+          {publishStatus?.state!=="published"&&publishStatus!==null&&
+            publishStatus.approved>=3&&publishStatus.approved<=6&&
+            publishStatus.pending===0&&publishStatus.other===0&&
+            <button type="button" className="primary-action"
+              disabled={publishBusy||!serverConsent}
+              onClick={()=>{void publishProfile();}}>Опубликовать анкету</button>}
+          {publishStatus?.state==="published"&&
+            <button type="button" disabled={publishBusy}
+              onClick={()=>{void hideProfile();}}>Снять анкету с публикации</button>}
+          {publishFeedback&&<p role="status">{publishFeedback}</p>}
+          <button type="button" onClick={()=>setRealFeedOpen(value=>!value)}>
+            {realFeedOpen?"Закрыть реальную ленту":"Открыть реальную ленту"}
+          </button>
+          {realFeedOpen&&<Suspense fallback={<p>Открываем ленту…</p>}>
+            <RealLiveFeed onClose={()=>setRealFeedOpen(false)}/>
+          </Suspense>}
         </section>}
       </div>
       {step===5&&<SelectedInterests selected={draft.interests}

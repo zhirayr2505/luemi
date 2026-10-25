@@ -127,7 +127,7 @@ test("REG01A boot flags fail CLOSED for unapproved privacy and publication",()=>
  const authorized={...base,REM06_PRIVACY_APPROVED:"1",REM06_CONSENT_VERSION:consentVersion};
  const cfg=readConfig(authorized);
  assert.equal(cfg.realRegistration?.consentVersion,consentVersion);
- assert.throws(()=>readConfig({...authorized,REM06_PUBLICATION_ENABLED:"1"}),/HARD DISABLED/);
+ assert.throws(()=>readConfig({...authorized,REM06_PUBLICATION_ENABLED:"1"}),/REG01D requires/);
  assert.throws(()=>readConfig({...authorized,STAGING_BOOTSTRAP_ONLY:"1"}),/privacy\/DB gates/);
 });
 test("REG01A revoke during row-lock wait rolls back in-flight draft UPDATE",async()=>{
