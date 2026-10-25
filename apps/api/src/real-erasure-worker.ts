@@ -100,7 +100,10 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
    }catch(e){
     if(process.env.NODE_ENV==='test'||process.env.CI==='true'){
      const code=typeof e==='object'&&e!==null&&'code' in e?String(e.code):'NON_SQL';
-     process.stderr.write('REG01F_WORKER_ERROR_CODE '+code.slice(0,5)+'\n');
+     const whitelist=new Set(['erasure_actor_not_disabled','erasure_object_marker_conflict',
+      'erasure_object_pending','erasure_actor_delete_denied','erasure_finalize_conflict']);
+     const reason=e instanceof Error&&whitelist.has(e.message)?e.message:'unspecified';
+     process.stderr.write('REG01F_WORKER_ERROR_CODE '+code.slice(0,5)+' '+reason+'\n');
     }
     if(began)await db.query("ROLLBACK").catch(()=>{});
     failed++;
