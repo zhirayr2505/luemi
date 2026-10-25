@@ -99,12 +99,12 @@ for(const percent of [.25,.5,.9]){
 }
 {
  const s=read("apps/web/src/discovery/ProfileMaster.tsx");
- assert.ok(s.includes("bindMotionViewport(window")&&s.includes("driver.rebase(sheetRevision.current,next,destination)"));
+ assert.ok(s.includes("bindMotionViewport(window")&&s.includes("motion.resize(top,bottom,physical,collapsedRef.current,sheetDragActive.current)"));
  assert.ok(s.includes("runner.rebase(tabsRevision.current,fraction,destination)"));
  assert.ok(s.includes("g.origin=reanchorSheet(newValue,g.y,g.lastY)"));
  assert.ok(s.includes("g.index=reanchorPage(position,g.x,g.lastX,tabViewport.current)"));
- assert.ok(s.includes("rev!==g.revision")&&s.includes("sheetIntent.current=null;"));
- assert.ok(s.includes("from>expandedY.current?240:335,[.22,.79,.22,1]"));
+ assert.ok(s.includes("rev!==g.revision")&&s.includes("sheetDragActive.current=true;"));
+ assert.ok(read("apps/web/src/discovery/profile-sheet-motion.ts").includes("easeAt(fraction,.22,.79,.22,1)"));
  assert.ok(s.includes("runner.start(from,i,295,[.22,.77,.23,1]"));
  assert.ok(!s.includes("paintTabs(tabs.findIndex(v=>v[0]===tabSelectionRef.current))"),
   "no unconditionally snapped selected tab after geometry revision");
