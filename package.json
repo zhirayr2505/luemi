@@ -34,7 +34,7 @@
     "test:photo-headers": "node scripts/rem-01c-photo-header.test.mjs",
     "test:viewport-model": "node scripts/rem-01d-viewport-model.test.mjs",
     "test:profile-parity": "node scripts/rem-01e-profile-parity.test.mjs",
-    "test:motion-contract": "node scripts/rem-02a-motion-contract.test.mjs && node scripts/rem-profile-sheet-motion.test.mjs",
+    "test:motion-contract": "node scripts/rem-02a-motion-contract.test.mjs && node scripts/rem-profile-sheet-motion.test.mjs && node scripts/motion-conflict-audit.mjs",
     "test:geometry-contract": "node scripts/rem-02b-geometry.test.mjs",
     "test:gesture-contract": "node scripts/rem-02c-gesture-contract.test.mjs",
     "test:lifecycle-contract": "node scripts/rem-02d-lifecycle.test.mjs",

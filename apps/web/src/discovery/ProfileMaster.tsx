@@ -207,6 +207,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const tabMetrics=useRef<Array<{left:number;width:number}>>([]);
  const tabViewport=useRef(1),tabLastPosition=useRef(0);
  const dragFrame=useRef<number|null>(null);
+ const photoSettleCleanup=useRef<()=>void>(()=>{});
  const photoSwipe=useRef<Swipe|null>(null),tabSwipe=useRef<Swipe|null>(null);
  const clickBlocked=useRef(0),expandedY=useRef(385),collapsedY=useRef(46),collapsedRef=useRef(false);
  const sheetY=useRef(385);
@@ -252,6 +253,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  };
  const stopBlurTracking=()=>{
   blurSession.current++;
+  // The old transitionend listener and fallback timer belong to the PREVIOUS
+  // photo generation. Cancel both immediately, not 330ms after the next tap.
+  photoSettleCleanup.current();photoSettleCleanup.current=()=>{};
   if(blurSampleFrame.current!==null)cancelAnimationFrame(blurSampleFrame.current);
   blurSampleFrame.current=null;
  };
@@ -269,13 +273,19 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const followBlurPosition=(target:number)=>{
   stopBlurTracking();
   const generation=blurSession.current;let stable=0;
+  const started=performance.now();
   const tick=()=>{
    if(generation!==blurSession.current)return;
    const width=Math.max(1,hero.current?.clientWidth??1);
    const at=fractionalTrack(photoTrack.current,width,target);
    showBlurWindow(blurWindowAt(at,target));
    stable=Math.abs(at-target)<.004?stable+1:0;
-   if(stable>=2){finishBlurTracking(target);return;}
+   // A hidden WebView or a cancelled CSS transition can NEVER poll forever.
+   // Finish the bounded blur-window transition once, and stop this RAF owner.
+   if(stable>=2||performance.now()-started>=650||
+      document.visibilityState==="hidden"){
+    finishBlurTracking(target);return;
+   }
    blurSampleFrame.current=requestAnimationFrame(tick);
   };
   blurSampleFrame.current=requestAnimationFrame(tick);
@@ -376,38 +386,57 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    hidden=false;
    rebaseSheetGesture.current(motion.value,sheetRevision.current);
   };
-  measureSheetRef.current=measure;
-  measure();
-  const ro=new ResizeObserver(measure);
+  // Window, VisualViewport, Telegram and ResizeObserver can all report
+  // one physical resize in the SAME frame. Rebase sheet coordinates once,
+  // otherwise a second event samples an in-flight motion at a new origin
+  // and makes the white column appear to hop up/down in Android WebView.
+  let queuedFrame:number|null=null,measureDead=false;
+  const scheduleMeasure=()=>{
+   if(measureDead||queuedFrame!==null)return;
+   queuedFrame=requestAnimationFrame(()=>{
+    queuedFrame=null;
+    if(!measureDead)measure();
+   });
+  };
+  const measureNow=()=>{
+   if(queuedFrame!==null){cancelAnimationFrame(queuedFrame);queuedFrame=null;}
+   if(!measureDead)measure();
+  };
+  measureSheetRef.current=measureNow;
+  measureNow();
+  const ro=new ResizeObserver(scheduleMeasure);
   if(hero.current)ro.observe(hero.current);
   if(shell.current)ro.observe(shell.current);
   const anchor=(shell.current?.closest(".discovery-visitor-route")??shell.current?.closest(".discovery-app"))
    ?.querySelector<HTMLElement>(".lh-header .lh-center");
   if(anchor)ro.observe(anchor);
   const webApp=window.Telegram?.WebApp;
-  const detachViewport=bindMotionViewport(window,()=>measure());
+  const detachViewport=bindMotionViewport(window,()=>scheduleMeasure());
   const visual=window.visualViewport;
-  window.addEventListener("resize",measure);
-  visual?.addEventListener("resize",measure);
-  visual?.addEventListener("scroll",measure);
-  webApp?.onEvent?.("safeAreaChanged",measure);
-  webApp?.onEvent?.("contentSafeAreaChanged",measure);
-  webApp?.onEvent?.("viewportChanged",measure);
+  window.addEventListener("resize",scheduleMeasure);
+  visual?.addEventListener("resize",scheduleMeasure);
+  visual?.addEventListener("scroll",scheduleMeasure);
+  webApp?.onEvent?.("safeAreaChanged",scheduleMeasure);
+  webApp?.onEvent?.("contentSafeAreaChanged",scheduleMeasure);
+  webApp?.onEvent?.("viewportChanged",scheduleMeasure);
   return ()=>{
+   measureDead=true;
+   if(queuedFrame!==null){cancelAnimationFrame(queuedFrame);queuedFrame=null;}
    measureSheetRef.current=()=>{};
    sheetMotion.current?.pause();ro.disconnect();detachViewport();
-   window.removeEventListener("resize",measure);
-   visual?.removeEventListener("resize",measure);
-   visual?.removeEventListener("scroll",measure);
-   webApp?.offEvent?.("safeAreaChanged",measure);
-   webApp?.offEvent?.("contentSafeAreaChanged",measure);
-   webApp?.offEvent?.("viewportChanged",measure);
+   window.removeEventListener("resize",scheduleMeasure);
+   visual?.removeEventListener("resize",scheduleMeasure);
+   visual?.removeEventListener("scroll",scheduleMeasure);
+   webApp?.offEvent?.("safeAreaChanged",scheduleMeasure);
+   webApp?.offEvent?.("contentSafeAreaChanged",scheduleMeasure);
+   webApp?.offEvent?.("viewportChanged",scheduleMeasure);
   };
  },[motionActive,ensureSheetMotion]);
  useEffect(()=>{
   const opticalFrame=blurSampleFrame,opticalSession=blurSession;
   const localArbiter=localGestures.current;
   return ()=>{
+   photoSettleCleanup.current();photoSettleCleanup.current=()=>{};
    opticalSession.current++;
    if(opticalFrame.current!==null)cancelAnimationFrame(opticalFrame.current);
    opticalFrame.current=null;
@@ -511,15 +540,25 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(far||blurWindowRef.current)followBlurPosition(index);
   else {
    const token=++blurSession.current;
-   const done=()=>{if(token===blurSession.current)finishBlurTracking(index);};
+   let finished=false;
+   const done=()=>{
+    if(finished)return;
+    finished=true;
+    photoSettleCleanup.current();
+    photoSettleCleanup.current=()=>{};
+    if(token===blurSession.current)finishBlurTracking(index);
+   };
    const ended=(event:TransitionEvent)=>{
-    if(event.target===track&&event.propertyName==="transform"){
-     track?.removeEventListener("transitionend",ended);done();
-    }
+    if(event.target===track&&event.propertyName==="transform")done();
    };
    track?.addEventListener("transitionend",ended);
-   // Cleanup fallback only: the unchanged physical CSS settle is 290 ms.
-   window.setTimeout(()=>{track?.removeEventListener("transitionend",ended);done();},330);
+   // One tracked terminal fallback per active photo generation. No duplicate
+   // listeners or old timeout may fire after a fast second swipe/unmount.
+   const timer=window.setTimeout(done,330);
+   photoSettleCleanup.current=()=>{
+    track?.removeEventListener("transitionend",ended);
+    window.clearTimeout(timer);
+   };
   }
  };
  const photoEnd=(e:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{

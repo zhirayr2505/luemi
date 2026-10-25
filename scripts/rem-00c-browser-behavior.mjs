@@ -217,6 +217,23 @@ async function qaProfile(browser){
     "repeated close must not jump to a stale sheet position");
   }
   console.log("QA_PROFILE_REPEATED_TAPS_PASS");
+  // Telegram can deliver window + VisualViewport + its own revision during
+  // a single compositor frame. Even a rapid burst must not repaint the
+  // stationary white panel to a previous endpoint and then back.
+  const burstBefore=await readState(page);
+  await page.evaluate(()=>{
+   for(let i=0;i<8;i++){
+    window.dispatchEvent(new Event("resize"));
+    window.visualViewport?.dispatchEvent(new Event("resize"));
+    window.visualViewport?.dispatchEvent(new Event("scroll"));
+   }
+  });
+  await sleep(55);
+  const burstAfter=await readState(page);
+  assert.ok(Math.abs(burstBefore.sheetTop-burstAfter.sheetTop)<1.5,
+   "DUPLICATE VIEWPORT EVENTS: idle white panel must not bounce");
+  console.log("QA_VIEWPORT_EVENT_BURST_NO_BOUNCE_PASS");
+
   await page.getByRole("tab",{name:"Подарки"}).click();
   await sleep(380);
   state=await readState(page);

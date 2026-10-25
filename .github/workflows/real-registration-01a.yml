@@ -1,9 +1,9 @@
 name: LUEMI REAL-REG-01A private registration and PostgreSQL QA
 on:
   push:
-    branches: ['main', 'feature/real-registration-01*']
+    branches: ['main', 'audit/motion-gesture-conflicts-20261025', 'feature/real-registration-01*']
   pull_request:
-    branches: ['main', 'refactor/architecture-dead-code-motion-20261025', 'feature/real-registration-01-private-draft-20261025', 'feature/real-registration-01b-client-save-20261025', 'feature/real-registration-01c-durable-private-media-20261025', 'feature/real-registration-01d-published-feed-20261025']
+    branches: ['main', 'fix/profile-sheet-motion-full-rewrite-20261025', 'refactor/architecture-dead-code-motion-20261025', 'feature/real-registration-01-private-draft-20261025', 'feature/real-registration-01b-client-save-20261025', 'feature/real-registration-01c-durable-private-media-20261025', 'feature/real-registration-01d-published-feed-20261025']
 permissions:
   contents: read
 jobs:
