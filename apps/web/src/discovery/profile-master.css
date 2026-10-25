@@ -164,9 +164,17 @@
  position:absolute;inset:0;z-index:6;overflow:hidden;
  pointer-events:none;overscroll-behavior:none;
 }
+/* The sheet is positioned by the single JS-owned top coordinate, but its
+   CHILD LAYOUT must not resize each frame. In Android Telegram WebView, the
+   previous top+bottom:0 stretched/shrank the flex column on every paint,
+   invalidating the tab strip, scroll viewport and text raster tiles.
+   Measure --pm-collapsed-top only on actual viewport/logo size changes.
+   All in-between motion now shifts a fixed-height surface, not its contents.
+   The stationary .pm-sheet-viewport clips the unused portion at the bottom. */
 .pm-profile-sheet{
  box-sizing:border-box;position:absolute;top:var(--pm-expanded-y,calc(var(--pm-hero-height) - 43px));
- bottom:0;left:0;right:0;width:100%;height:auto;min-height:0;pointer-events:auto;
+ bottom:auto;left:0;right:0;width:100%;
+ height:calc(100% - var(--pm-collapsed-top,45px));min-height:0;pointer-events:auto;
  display:flex;flex-direction:column;overflow:hidden;
  padding:32px 0 0;border-radius:34px 34px 0 0;
  background:var(--bg);box-shadow:0 -5px 20px rgba(56,30,73,.052);
