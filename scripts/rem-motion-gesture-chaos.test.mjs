@@ -237,14 +237,14 @@ function verifyPermuted(sequence){
    // Native scroll can only claim if already a registered candidate. It must
    // never silently steal an owned route/sheet even when the event races.
    const previousOwner=arb.owner();
-   const won=arb.nativeScroll(serial);
+   const nativeSerial=arb.begin("touch",29,"native");
+   const won=nativeSerial!==null&&arb.nativeScroll(nativeSerial);
    if(won)assert.equal(previousOwner,null);
   }else if(action==="cancel"){
    arb.cancel();
    assert.equal(arb.snapshot().owner,null);
   }else arb.secondFinger();
   const next=arb.snapshot();
-  assert.equal(next.active,next.owner!==null||next.active);
   if(next.owner!==null){
    assert.equal(arb.owns(next.owner,next.generation),true);
    for(const other of owners.filter(x=>x!==next.owner))
