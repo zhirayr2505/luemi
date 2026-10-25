@@ -114,11 +114,25 @@ async function qaProfile(browser){
   assert.ok(identityBox&&identityBox.height>30,"profile identity provides real sheet gesture surface");
   const x=identityBox.x+identityBox.width*.48,y=identityBox.y+Math.min(identityBox.height*.45,50);
   console.log("QA_TOUCH_CONTEXT "+JSON.stringify({geometry,x,y,element:await page.evaluate(([x,y])=>{const el=document.elementFromPoint(x,y);return el?.outerHTML.slice(0,280)??"none"},[x,y])}));
+  await page.evaluate(()=>{
+   const el=document.querySelector(".pm-inline .pm-profile-sheet");
+   window.__SHEET_QA_TOUCH__=[];
+   for(const type of ["touchstart","touchmove","touchend","touchcancel"])
+    el?.addEventListener(type,e=>{
+     window.__SHEET_QA_TOUCH__.push({
+      type,top:el.getBoundingClientRect().top,
+      target:e.target?.className||e.target?.nodeName,
+      cancelable:e.cancelable,touches:e.touches?.length
+     });
+    },{capture:true,passive:true});
+  });
   const samples=[];
   await touch(page,{x,y,dy:-215,onStep:async i=>{
    if([4,8,12].includes(i))samples.push(await readState(page));
   }});
   console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,top:s.sheetTop,outerScroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
+  console.log("QA_SHEET_TOUCH_DIAGNOSTICS "+JSON.stringify(
+   await page.evaluate(()=>window.__SHEET_QA_TOUCH__?.slice(0,40))));
   assert.equal(samples.length,3);
   assert.ok(samples.every(s=>Number.isFinite(s.sheetTop)&&Number.isFinite(s.blurOpacity)),"physical samples finite");
   assert.ok(samples.some(s=>s.sheetTop<expanded.sheetTop-5),"touch must move the real white surface");
