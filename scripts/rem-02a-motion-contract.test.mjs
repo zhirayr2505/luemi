@@ -36,7 +36,8 @@ console.log("REM02A_UNIT_PASS single RAF coalescing, candidate→dragging and ve
 
 assert.equal(c.settle(t,46),true);assertPhase("settling");
 const updates=[];
-const complete=adapter.createGuardedCompletion(c,t,x=>updates.push("paint:"+x),()=>updates.push("commit"));
+const completeToken=t;
+const complete=()=>c.finish(completeToken,{paint:x=>updates.push("paint:"+x),onCommit:()=>updates.push("commit")});
 assert.equal(complete(),true);assert.deepEqual(updates,["paint:46","commit"]);
 assert.equal(complete(),false);assert.deepEqual(updates,["paint:46","commit"]);
 assert.equal(c.snapshot().lastSettled,46);
@@ -45,14 +46,15 @@ console.log("REM02A_UNIT_PASS finish writes terminal pixels then semantic commit
 t=c.begin(46);assert.equal(c.claim(t),true);
 assert.equal(c.paint(t,92,consumer,.2),true);
 assert.equal(c.settle(t,385),true);
-const stale=adapter.createGuardedCompletion(c,t,consumer,()=>updates.push("STALE"));
+const staleToken=t;
+const stale=()=>c.finish(staleToken,{paint:consumer,onCommit:()=>updates.push("STALE")});
 const paused=c.interrupt(t,"interrupted");
 assertPhase("suspended");assert.equal(paused.generation,t.generation+1);
 assert.equal(stale(),false);
 assert.equal(c.resume(paused,"settling",46)?.generation,paused.generation+1);
 const next=c.token();
 assert.equal(stale(),false);
-const done=adapter.createGuardedCompletion(c,next,consumer,()=>updates.push("RESUMED"));
+const done=()=>c.finish(next,{paint:consumer,onCommit:()=>updates.push("RESUMED")});
 assert.equal(done(),true);assert.equal(done(),false);
 assert.equal(updates.includes("STALE"),false);
 assert.equal(updates.filter(x=>x==="RESUMED").length,1);
@@ -85,7 +87,8 @@ console.log("REM02A_UNIT_PASS cancel twice and stale after-cancel finish");
 
 t=c.begin(350);assert.equal(c.close(t,900),true);
 assertPhase("closing");assert.equal(c.schedulePaint(t,420,consumer),false);
-const closeDone=adapter.createGuardedCompletion(c,t,consumer,()=>updates.push("close"));
+const closeToken=t;
+const closeDone=()=>c.finish(closeToken,{paint:consumer,onCommit:()=>updates.push("close")});
 assert.equal(closeDone(),true);
 assert.equal(closeDone(),false);
 assert.equal(updates.filter(x=>x==="close").length,1);
