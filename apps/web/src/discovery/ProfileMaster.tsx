@@ -343,10 +343,13 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  },[ensureSheetMotion]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
-  let first=true;
+  let first=true,hidden=false;
   const measure=()=>{
    const frame=hero.current,pane=sheet.current,root=shell.current;
-   if(!frame||!pane||!root||root.clientHeight<180||!frame.offsetHeight)return;
+   if(!frame||!pane||!root)return;
+   if(root.clientHeight<180||!frame.offsetHeight){
+    hidden=true;sheetMotion.current?.pause();return;
+   }
    const rootRect=root.getBoundingClientRect();
    const scope=root.closest(".discovery-visitor-route")??root.closest(".discovery-app");
    const image=scope?.querySelector<HTMLElement>(".lh-header .lh-island img")?.getBoundingClientRect();
@@ -367,6 +370,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    pane.style.setProperty("--pm-collapsed-top",top+"px");
    root.style.setProperty("--pm-dots-top",dots+"px");
    motion.resize(top,bottom,physical,collapsedRef.current,sheetDragActive.current);
+   if(hidden&&motion.phase==="paused"&&!routeFrozen.current)motion.resume();
+   hidden=false;
    rebaseSheetGesture.current(motion.value,sheetRevision.current);
   };
   measureSheetRef.current=measure;
