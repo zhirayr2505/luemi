@@ -324,7 +324,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   });
  },[motionActive]);
  const ensureSheetMotion=useCallback(()=>{
-  if(!sheetMotion.current)sheetMotion.current=new ProfileSheetMotion(sheetY.current,
+  if(!sheetMotion.current||sheetMotion.current.isDisposed())sheetMotion.current=new ProfileSheetMotion(sheetY.current,
    (value,dragging)=>paintSheet(value,dragging));
   return sheetMotion.current;
  },[paintSheet]);
