@@ -357,7 +357,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const top=Math.max(38,Math.min(root.clientHeight*.24,logoBottom));
    const bottom=Math.max(top+185,frame.offsetHeight-43);
    const dots=(image?.bottom??(rootRect.top+108))-rootRect.top+8;
-   if(!first&&Math.abs(top-collapsedY.current)<.5&&
+   // Restoring from hidden is a lifecycle event even if CSS dimensions are
+   // byte-identical. Never return before resuming the frozen frame.
+   if(!first&&!hidden&&Math.abs(top-collapsedY.current)<.5&&
       Math.abs(bottom-expandedY.current)<.5&&
       Math.abs((sheetRootTop.current??rootRect.top)-rootRect.top)<.5)return;
    const motion=ensureSheetMotion();
