@@ -1,7 +1,5 @@
 /** REM-02A · DOM adapter contract. No changed curves, CSS, or gesture physics. */
-import {MOTION_PROPERTY_OWNERS,MotionController,
- type MotionOwner,type MotionProperty,type MotionToken
-} from "../ui/motion-controller";
+import {MOTION_PROPERTY_OWNERS,type MotionOwner,type MotionProperty} from "../ui/motion-controller";
 import {VIEWPORT_REVISION_EVENT,type ViewportSnapshot} from "../viewport/viewport-model";
 
 export const PROFILE_MOTION_WRITER_TABLE={
@@ -51,10 +49,4 @@ export function bindMotionViewport(
  };
  target.addEventListener(VIEWPORT_REVISION_EVENT,changed);
  return ()=>{disposed=true;target.removeEventListener(VIEWPORT_REVISION_EVENT,changed);};
-}
-/** Freeze adapters acknowledge CSS transitions via the SAME generation guard
- * used by a timeout fallback; only the first completion can commit. */
-export function createGuardedCompletion(controller:MotionController,
- token:MotionToken,paintEndpoint:(value:number)=>void,commit:()=>void){
- return ()=>controller.finish(token,{paint:paintEndpoint,onCommit:()=>commit()});
 }
