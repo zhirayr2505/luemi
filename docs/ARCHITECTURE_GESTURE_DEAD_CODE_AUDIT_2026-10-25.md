@@ -84,3 +84,15 @@ A race existed because `pointerup` in a parent could terminate an entire shared 
 ### Remaining limitations
 
 Suspected-unused exports can include public contracts, internal-only types and synthetic secure-test fixtures. They require specific proof before deletion. AST import reachability cannot guarantee smooth Android WebView frame pacing, iOS Safari behaviour, or the absence of PhotoViewer GPU artifacts.
+
+
+## Fourth-pass independent cleanup and adversarial coverage
+
+- Re-checked six production CSS stylesheets for byte-identical duplicate selector declarations. None of the main style rules was safely deletable on that basis. Identical inner `to` keyframes serve separate animations; leave intact.
+- Re-checked ownership boundaries in the main browse, visitor route, profile sheet, and fullscreen viewer. Maintain separately scoped motion controllers for separately moving surfaces. Do not replace them with one global animation writer: exclusive *gesture claims*, not one global transform, are the relevant invariant.
+- Private file-local helpers have narrower export surfaces: `isMotionToken`, `MIN_SCALE`, `MAX_SCALE`, and `MAX_HEADER_BYTES` retain their internal implementation, but are not re-exported as public APIs. This is API cleanup, not removal of their runtime logic.
+- **Important test-discovered correction:** `nameValid` and `birthDateValid` were initially misclassified as local-only. `apps/api/test/registration-model.test.ts` directly imports both. Their exports were immediately restored; this is evidence why a grep-only dead-code deletion would be unsafe. The AST audit's consumer set now includes `.ts` and `.tsx` files under API tests and secure-tests, not just `.js` scripts.
+- Added an exhaustive permutation test for eight hostile input actions (40,320 event orderings, 322,560 operation slots), covering parent pointer versus child touch claims, candidate releases, native scroll claims, cancelled sessions, second fingers, and stale-generation callbacks. It supplements existing 100,000 randomized gesture actions, 50,000 motion actions, and 7,000 hostile RAF/reentrant completion races. Test PASS is a state-machine invariant, **not** proof of Android/iPhone GPU frame pacing.
+- Preserved public exports required by tests/security contracts and retained real Bliki readiness, API RLS/session/auth, SQL migrations, and PhotoViewer geometry. Those are not 'dead' merely because UI-only staging does not call them.
+- Remaining high-risk work is **instrumented physical Android WebView and iOS Safari evaluation** of scroll-to-sheet handoff, image blackout during morph/pan, and the occasional translucent deck frame from the supplied video. No claim that all visual defects are cured without device evidence.
+
