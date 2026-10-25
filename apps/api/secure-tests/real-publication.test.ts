@@ -270,11 +270,22 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
     "SELECT id FROM luemi_private.audit_events WHERE id=$1",[foreignAudit.rows[0].id])).rowCount,1);
   }finally{await workerProbe.end();}
   for(const object of objects.rows)assert.ok(await storage.get(object.object_key));
+  // First deletion succeeds in external Storage, second fails. SQL must
+  // roll back, and a retry must treat the missing first object as deleted.
+  let deletions=0;
   const flaky:PrivateObjectStore={put:(k,b)=>storage.put(k,b),get:k=>storage.get(k),
-   delete:async()=>{throw new Error("synthetic-storage-outage");}};
+   delete:async key=>{
+    deletions++;
+    if(deletions===2)throw new Error("synthetic-storage-outage");
+    await storage.delete(key);
+   }};
   const blocked=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,
    storage:flaky,limit:1});
   assert.deepEqual(blocked,{completed:0,failed:1,pending:true});
+  assert.equal(deletions,2);
+  assert.equal((await admin.query(
+   "SELECT 1 FROM luemi_private.erasure_objects WHERE request_id=$1 AND deleted_at IS NOT NULL",
+   [q.rows[0].id])).rowCount,0,"SQL markers must roll back on partial external success");
   assert.equal((await admin.query("SELECT 1 FROM luemi_private.actors WHERE id=$1",[a.id])).rowCount,1);
   assert.equal((await admin.query("SELECT 1 FROM luemi_private.sessions WHERE actor_id=$1",[a.id])).rowCount,1);
   const done=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,
