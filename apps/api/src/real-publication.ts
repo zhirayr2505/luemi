@@ -247,6 +247,24 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   return{state:"hidden"};
  }));
 
+ // Explicit withdrawal immediately atomically hides the entire published
+ // projection and removes the consent grant. Data erasure is NOT implied.
+ app.post("/api/v3/profile/withdraw-consent",{preHandler:guards.mutation},async(req,reply)=>
+ transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
+  await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+   [cfg.namespace+":"+id+":publication"]);
+  await db.query("UPDATE luemi_private.media_assets SET publication_status='private' "+
+   "WHERE owner_id=$1 AND environment=$2 AND publication_status='published'",
+   [id,cfg.namespace]);
+  await db.query("UPDATE luemi_private.public_profiles SET publication_status='hidden',"+
+   "updated_at=clock_timestamp() WHERE owner_id=$1 AND environment=$2",
+   [id,cfg.namespace]);
+  await db.query("UPDATE luemi_private.private_profile_drafts SET consent_version=NULL,"+
+   "updated_at=clock_timestamp() WHERE owner_id=$1 AND environment=$2",
+   [id,cfg.namespace]);
+  return{state:"consent_withdrawn",dataDeleted:false};
+ }));
+
  app.get("/api/v3/discovery/feed",{preHandler:guards.read},async(req,reply)=>{
   reply.header("Cache-Control","private, no-store").header("Vary","Cookie");
   return transaction(req,reply,"luemi_discovery_reader",async(db,viewer)=>{
