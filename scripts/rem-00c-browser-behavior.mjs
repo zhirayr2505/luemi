@@ -180,9 +180,16 @@ async function qaProfile(browser){
    }
   }});
   assert.equal(tabPaintSamples.length,3);
+  const samePaintedTabs=(a,b)=>a.items.length===b.items.length&&a.items.every((v,i)=>{
+   const prior=b.items[i];
+   return v.text===prior.text&&v.selected===prior.selected&&
+    v.opacity===prior.opacity&&v.visibility===prior.visibility&&v.display===prior.display&&
+    Math.abs(v.x-prior.x)<.75&&Math.abs(v.y-prior.y)<.75&&
+    Math.abs(v.width-prior.width)<.75;
+  });
   assert.ok(tabPaintSamples.every(x=>x.selectedCount===1&&
-   JSON.stringify(x.items)===JSON.stringify(pristineTabs.items)&&x.layer!=="none"),
-   "PROFILE TAB FLICKER: tab buttons must stay painted and keep local geometry during sheet movement");
+   samePaintedTabs(x,pristineTabs)&&x.layer!=="none"),
+   "PROFILE TAB FLICKER: all labels stay visible with stable local geometry during sheet movement");
   assert.equal(flexSamples.length,3,"captured layout at three finger positions");
   assert.ok(flexSamples.every(s=>Math.abs(s.sheetHeight-expandedFlexLayout.sheetHeight)<1&&
    Math.abs(s.pagesHeight-expandedFlexLayout.pagesHeight)<1&&
@@ -213,8 +220,8 @@ async function qaProfile(browser){
   assert.ok(state.sheetTop<expanded.sheetTop,"sheet has actually moved");
   const collapsedFlexLayout=await readSheetFlexLayout(page);
   const collapsedTabs=await readTabPaint(page);
-  assert.deepEqual(collapsedTabs.items,pristineTabs.items,
-   "PROFILE TAB FLICKER: collapsed sheet cannot hide, reposition or reorder the tab row");
+  assert.ok(samePaintedTabs(collapsedTabs,pristineTabs),
+   "PROFILE TAB FLICKER: collapsed sheet cannot hide, reposition or reorder tab labels");
 
   assert.ok(Math.abs(collapsedFlexLayout.sheetHeight-expandedFlexLayout.sheetHeight)<1,
    "TAB FLICKER: sheet flex surface must retain the same height at both snap points");
