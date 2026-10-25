@@ -13,6 +13,7 @@ import {resourceIdentity,viewerPhotoContext,type ViewerSource} from "./photo-vie
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
 import {ProfileSheetMotion} from "./profile-sheet-motion";
+import {createSheetFrameTrace,installMotionDebugPanel,motionDebug,motionDebugEnabled,type SheetFrameTrace} from "../ui/motion-debug";
 import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
 import {GestureArbiter,fractionalTrack,preservePhotoId} from "../ui/gesture-arbiter";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
@@ -225,6 +226,27 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const motionCallback=useRef(onMotionProgress);
  motionCallback.current=onMotionProgress;
  const motionActive=active&&!preview;
+ const debugTrace=useRef<SheetFrameTrace|null>(null);
+ useEffect(()=>{
+  if(!motionDebugEnabled)return;
+  const trace=createSheetFrameTrace(()=>({
+   mode,engineY:sheetMotion.current?.value??null,
+   paintedY:sheetY.current,domTop:sheet.current?.style.top??"",
+   state:shell.current?.getAttribute("data-sheet-state")??null,
+   phase:sheetMotion.current?.phase??"none",collapsedRef:collapsedRef.current,
+   min:collapsedY.current,max:expandedY.current
+  }));
+  debugTrace.current=trace;
+  return ()=>{trace.dispose();debugTrace.current=null;};
+ },[mode]);
+ useEffect(()=>installMotionDebugPanel(),[]);
+ useEffect(()=>{
+  if(motionDebugEnabled)motionDebug("ProfileMaster.render",{
+   mode,active,motionActive,collapsed,collapsedRef:collapsedRef.current,
+   paintedY:sheetY.current,min:collapsedY.current,max:expandedY.current,
+   sheetPhase:sheetMotion.current?.phase??"none"
+  });
+ });
  const previewBack=useRef<(()=>boolean)|null>(null);
  const registerPreviewBack=useCallback((handler:(()=>boolean)|null)=>{previewBack.current=handler;},[]);
  const registerViewerBack=useCallback((handler:(()=>boolean)|null)=>{viewerBack.current=handler;},[]);
@@ -300,6 +322,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    Math.max(1,expandedY.current-collapsedY.current)));
   // One actual top coordinate replaces the asynchronous native scrollTop.
    if(sheet.current)sheet.current.style.top=next.toFixed(2)+"px";
+   if(motionDebugEnabled)motionDebug("paintSheet",{
+    y:next,offset,dragging,progress,elastic,
+    domTop:sheet.current?.style.top??null,collapsedRef:collapsedRef.current
+   },false);
   
   if(photoMotion.current){
    const y=-10*progress+elastic*.22;
@@ -334,20 +360,38 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    (pages.current?.scrollLeft??0)/Math.max(1,tabViewport.current),tabsRevision.current);
   return tabsRunner.current;
  };
- const settleSheet=useCallback((next:boolean)=>{
+ const settleSheet=useCallback((next:boolean,source="unspecified")=>{
+  if(motionDebugEnabled){
+   debugTrace.current?.start();
+   motionDebug("settleSheet",{next,source,collapsedRef:collapsedRef.current,
+    paintedY:sheetY.current,phase:sheetMotion.current?.phase??"none",
+    destination:sheetMotion.current?.destinationCollapsed??null});
+  }
   ensureSheetMotion().settle(next,()=>{
+   if(motionDebugEnabled)motionDebug("collapsedRef.write",{
+    next,previous:collapsedRef.current,y:sheetY.current
+   });
    collapsedRef.current=next;
+   if(motionDebugEnabled)motionDebug("setCollapsed.invoke",{
+    next,y:sheetY.current,phase:sheetMotion.current?.phase??"none"
+   });
    setCollapsed(next);
+   debugTrace.current?.finished();
   });
   stopSheet.current=()=>{sheetMotion.current?.interrupt();};
  },[ensureSheetMotion]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
   let first=true,hidden=false;
-  const measure=()=>{
+  const measure=(reason="initial")=>{
+   if(motionDebugEnabled)motionDebug("measure.enter",{reason,collapsedRef:collapsedRef.current,sheetY:sheetY.current,
+    phase:sheetMotion.current?.phase??"none",
+    engineTarget:sheetMotion.current?.destinationCollapsed??null
+   });
    const frame=hero.current,pane=sheet.current,root=shell.current;
    if(!frame||!pane||!root)return;
    if(root.clientHeight<180||!frame.offsetHeight){
+    if(motionDebugEnabled)motionDebug("measure.hidden",{reason});
     hidden=true;sheetMotion.current?.pause();return;
    }
    const rootRect=root.getBoundingClientRect();
@@ -361,7 +405,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    // byte-identical. Never return before resuming the frozen frame.
    if(!first&&!hidden&&Math.abs(top-collapsedY.current)<.5&&
       Math.abs(bottom-expandedY.current)<.5&&
-      Math.abs((sheetRootTop.current??rootRect.top)-rootRect.top)<.5)return;
+      Math.abs((sheetRootTop.current??rootRect.top)-rootRect.top)<.5){
+    if(motionDebugEnabled)motionDebug("measure.unchanged",{reason,top,bottom});
+    return;
+   }
    const motion=ensureSheetMotion();
    const physical=first?(collapsedRef.current?top:bottom):
     remapSheetPixel(motion.sample(),sheetRootTop.current??rootRect.top,rootRect.top,top,bottom).local;
@@ -371,37 +418,50 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    root.style.setProperty("--pm-expanded-y",bottom+"px");
    pane.style.setProperty("--pm-collapsed-top",top+"px");
    root.style.setProperty("--pm-dots-top",dots+"px");
+   if(motionDebugEnabled)motionDebug("measure.apply",{
+    reason,top,bottom,physical,
+    committedCollapsed:collapsedRef.current,
+    fingerActive:sheetDragActive.current,engineY:motion.value,phase:motion.phase
+   });
    motion.resize(top,bottom,physical,collapsedRef.current,sheetDragActive.current);
    if(hidden&&motion.phase==="paused"&&!routeFrozen.current)motion.resume();
    hidden=false;
    rebaseSheetGesture.current(motion.value,sheetRevision.current);
   };
-  measureSheetRef.current=measure;
-  measure();
-  const ro=new ResizeObserver(measure);
-  if(hero.current)ro.observe(hero.current);
-  if(shell.current)ro.observe(shell.current);
+  measureSheetRef.current=()=>measure("measureSheetRef");
+  measure("effect.mount");
   const anchor=(shell.current?.closest(".discovery-visitor-route")??shell.current?.closest(".discovery-app"))
    ?.querySelector<HTMLElement>(".lh-header .lh-center");
+  const ro=new ResizeObserver(entries=>measure("ResizeObserver:"+
+   entries.map(entry=>entry.target===hero.current?"hero":
+    entry.target===shell.current?"shell":entry.target===anchor?"logo":"other").join(",")));
+  if(hero.current)ro.observe(hero.current);
+  if(shell.current)ro.observe(shell.current);
   if(anchor)ro.observe(anchor);
   const webApp=window.Telegram?.WebApp;
-  const detachViewport=bindMotionViewport(window,()=>measure());
+  const detachViewport=bindMotionViewport(window,()=>measure("bindMotionViewport"));
   const visual=window.visualViewport;
-  window.addEventListener("resize",measure);
-  visual?.addEventListener("resize",measure);
-  visual?.addEventListener("scroll",measure);
-  webApp?.onEvent?.("safeAreaChanged",measure);
-  webApp?.onEvent?.("contentSafeAreaChanged",measure);
-  webApp?.onEvent?.("viewportChanged",measure);
+  const windowResize=()=>measure("window.resize");
+  const visualResize=()=>measure("visualViewport.resize");
+  const visualScroll=()=>measure("visualViewport.scroll");
+  const safeAreaChanged=()=>measure("Telegram.safeAreaChanged");
+  const contentSafeAreaChanged=()=>measure("Telegram.contentSafeAreaChanged");
+  const viewportChanged=()=>measure("Telegram.viewportChanged");
+  window.addEventListener("resize",windowResize);
+  visual?.addEventListener("resize",visualResize);
+  visual?.addEventListener("scroll",visualScroll);
+  webApp?.onEvent?.("safeAreaChanged",safeAreaChanged);
+  webApp?.onEvent?.("contentSafeAreaChanged",contentSafeAreaChanged);
+  webApp?.onEvent?.("viewportChanged",viewportChanged);
   return ()=>{
    measureSheetRef.current=()=>{};
    sheetMotion.current?.pause();ro.disconnect();detachViewport();
-   window.removeEventListener("resize",measure);
-   visual?.removeEventListener("resize",measure);
-   visual?.removeEventListener("scroll",measure);
-   webApp?.offEvent?.("safeAreaChanged",measure);
-   webApp?.offEvent?.("contentSafeAreaChanged",measure);
-   webApp?.offEvent?.("viewportChanged",measure);
+   window.removeEventListener("resize",windowResize);
+   visual?.removeEventListener("resize",visualResize);
+   visual?.removeEventListener("scroll",visualScroll);
+   webApp?.offEvent?.("safeAreaChanged",safeAreaChanged);
+   webApp?.offEvent?.("contentSafeAreaChanged",contentSafeAreaChanged);
+   webApp?.offEvent?.("viewportChanged",viewportChanged);
   };
  },[motionActive,ensureSheetMotion]);
  useEffect(()=>{
@@ -726,6 +786,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    // A candidate does not stop an existing settle or the browser native scroll.
    sheetDragActive.current=false;
    const now=performance.now();
+   debugTrace.current?.start();
    gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
     lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
@@ -803,13 +864,14 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     const threshold=Math.min(90,Math.max(65,(expandedY.current-collapsedY.current)*.2));
     const commit=g.down?(dy>threshold||velocity>.65):(dy< -threshold||velocity<-.65);
     clickBlocked.current=performance.now()+260;
-    settleSheet(cancelled?g.down:g.down?!commit:commit);
+    settleSheet(cancelled?g.down:g.down?!commit:commit,"touchend");
    }else if(!g.axis){
     // A tap during settling resumes from the frozen position.
-    settleSheet(g.down);
+    settleSheet(g.down,"touchend.noAxis");
     const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
     if(g.inPages&&Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
    } // Native scroll is exclusive; never repair pages.scrollLeft from its touchend.
+   if(g.axis==="native"||g.axis==="x")debugTrace.current?.finished();
   };
   const end=(e:TouchEvent)=>finish(e,false);
   const cancel=()=>{
@@ -818,7 +880,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    else if(g.axis==="native")gestures.finish("native",g.serial);
    else gestures.finishCandidate(g.serial);
    if(g.axis==="x"&&g.claimed)chooseTab(tabs.findIndex(v=>v[0]===tabSelectionRef.current));
-   else if(g.axis==="y"&&g.claimed)settleSheet(g.down);
+   else if(g.axis==="y"&&g.claimed)settleSheet(g.down,"touchcancel");
+   else debugTrace.current?.finished();
   };
   pane.addEventListener("touchstart",start,{passive:true});
   pane.addEventListener("touchend",end,{passive:true});
@@ -864,7 +927,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const sheetDriver=sheetMotion.current;
   if(saved.sheetSettling&&sheetDriver?.phase==="paused")sheetDriver.resume();
   else if(Math.abs(sheetY.current-(saved.sheetTarget?collapsedY.current:expandedY.current))>.5)
-   settleSheet(saved.sheetTarget);
+   settleSheet(saved.sheetTarget,"rollbackRoute");
   const tabDriver=tabsRunner.current;
   if(saved.tabsSettling&&tabDriver?.snapshot().phase==="suspended"){
    tabsRevision.current=Math.max(tabsRevision.current,tabDriver.snapshot().revision+1);
@@ -906,9 +969,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    routeMotionHandle.current.suspendForBackground();
   },()=>routeMotionHandle.current.resumeFromBackground());
  },[gestureArbiter]);
- const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
+ const openMyPhotos=()=>{chooseTab(2);settleSheet(true,"openMyPhotos");};
  const openAvatar=()=>{
-  settleSheet(false);
+  settleSheet(false,"openAvatar");
  };
  const nameLine=<>{view.profile.name||"Имя не указано"}{view.profile.age!==null?", "+view.profile.age:""}</>;
  const location=<>{view.profile.city||view.profile.country?<>{view.profile.countryCode&&<Flag code={view.profile.countryCode} size={19}/>}<span>{[view.profile.city,view.profile.country].filter(Boolean).join(", ")}</span></>:"Город не указан"}</>;
@@ -948,7 +1011,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    <div className="pm-profile-sheet" ref={sheet} onClickCapture={e=>{
     if(performance.now()<clickBlocked.current){e.preventDefault();e.stopPropagation();}
    }}>
-    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsedRef.current)}
+    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsedRef.current,"grab.onClick")}
       tabIndex={collapsed?-1:0} aria-label={collapsed?"Потянуть панель вниз":"Развернуть анкету"}><span/></button>
     <div className="pm-identity">
      <div className="pm-identity-core">

@@ -6,8 +6,12 @@ const js=x=>ts.transpileModule(x,{compilerOptions:{
   module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
 const asURL=x=>"data:text/javascript;base64,"+Buffer.from(x).toString("base64");
 const dependency=asURL(js(read("apps/web/src/ui/motion.ts")));
+// The motion unit test runs via data: URL. Stub only the disabled diagnostic
+// export: Node cannot resolve relative imports from a data: URL.
+const debug=asURL("export const motionDebugEnabled=false; export const motionDebugId=()=>0; export const motionDebug=()=>{};");
 const engine=js(read("apps/web/src/discovery/profile-sheet-motion.ts"))
- .replaceAll('from "../ui/motion"','from "'+dependency+'"');
+ .replaceAll('from "../ui/motion"','from "'+dependency+'"')
+ .replaceAll('from "../ui/motion-debug"','from "'+debug+'"');
 const {ProfileSheetMotion}=await import(asURL(engine));
 const make=initial=>{
  let now=0,id=0;

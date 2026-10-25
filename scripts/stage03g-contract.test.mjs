@@ -103,7 +103,7 @@ assert.ok(headerCss.includes("position:absolute;inset:0 0 auto")&&
 assert.ok(profile.includes('className="pm-mini-avatar"')||
  profile.includes('className={"pm-mini-avatar"'),
  "small photo appears only in collapsed profile");
-assert.ok(profile.includes('onClick={openMyPhotos}')&&profile.includes('settleSheet(true)')&&
+assert.ok(profile.includes('onClick={openMyPhotos}')&&(profile.includes('settleSheet(true)')||profile.includes('settleSheet(true,"openMyPhotos")'))&&
  !profile.includes("BlikViewer")&&!profile.includes("setBlikOpen"),
  "gallery shortcut remains; unverified Blik viewer activation is fail-closed");
 console.log("✓ Stage 03G.4: independent scroll and pinned controls, no liquid morph");
