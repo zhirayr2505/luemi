@@ -24,6 +24,7 @@ export function registerRealRegistrationDrafts(
     !/^[a-z0-9][a-z0-9._:-]{2,63}$/i.test(options.consentVersion))
    throw new Error("REAL-REG-01 requires v2 sessions, approved policy, isolated request DB role");
  const cfg=options;
+ const auth:Guard=guard;
  const pool=new Pool({connectionString:cfg.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  app.addHook("onClose",async()=>{await pool.end();});
  async function owner<T>(
@@ -46,7 +47,7 @@ export function registerRealRegistrationDrafts(
    if(active.rowCount!==1)deny(401,"unauthorized");
    const result=await fn(db,original.actorId);
    // A session revoked while SQL is running must not commit a private write.
-   await guard.read(req,reply);
+   await auth.read(req,reply);
    if(reply.sent||!req.authActor||req.authActor.actorId!==original.actorId||
      req.authActor.sessionId!==original.sessionId||
      !timingSafeEqual(req.authActor.hash,original.hash))deny(401,"unauthorized");
@@ -59,8 +60,9 @@ export function registerRealRegistrationDrafts(
    return reply.code(503).send({error:"service_unavailable"});
   }finally{db.release();}
  }
- app.get("/api/v3/registration/draft",{preHandler:guard.read},async(req,reply)=>
-  owner(req,reply,async(db,id)=>{
+ app.get("/api/v3/registration/draft",{preHandler:guard.read},async(req,reply)=>{
+  reply.header("Cache-Control","private, no-store");
+  return owner(req,reply,async(db,id)=>{
    const q=await db.query<{revision:string;payload:Record<string,unknown>;
     birth_date:string|null;consent_version:string|null}>(
     "SELECT revision::text,payload,birth_date::text,consent_version "+
@@ -72,8 +74,8 @@ export function registerRealRegistrationDrafts(
      ...r.payload,...(r.birth_date?{birthDate:r.birth_date}:{}),
      ...(r.consent_version?{consentVersion:r.consent_version}:{})
    }};
-  })
- );
+  });
+ });
  app.put<{Body:unknown}>("/api/v3/registration/draft",{preHandler:guard.mutation},async(req,reply)=>
   owner(req,reply,async(db,id)=>{
    const body=req.body;
