@@ -163,6 +163,16 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    const active=await db.query("SELECT id FROM luemi_private.actors WHERE id=$1 AND environment=$2 AND status='active'",
      [initial.actorId,cfg.namespace]);
    if(active.rowCount!==1)reject(401,"unauthorized");
+   // Secure server-side gate: a signed session alone never authorizes storage.
+   if(cfg.durablePrivateOnly){
+    const consent=await db.query(
+     "SELECT 1 FROM luemi_private.private_profile_drafts WHERE owner_id=$1 "+
+     "AND environment=$2 AND consent_version=$3 "+
+     "AND birth_date IS NOT NULL AND birth_date <= "+
+     "((clock_timestamp() AT TIME ZONE 'UTC')::date - interval '18 years')",
+     [initial.actorId,cfg.namespace,cfg.consentVersion]);
+    if(consent.rowCount!==1)reject(403,"consent_required");
+   }
    const output=await fn(db,initial.actorId);
    // Revalidate the exact session generation BEFORE committing any user write.
    // A concurrent logout/ban during the SQL work must roll this transaction back.

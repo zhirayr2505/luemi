@@ -190,6 +190,7 @@ test("REG01C durable private media: owner/other, session, stripped PNG, pending 
  const api=buildApp({port:3001,origin,botToken:token,
   healthKey:"synthetic_health_key_123456789012345",logger:false,
   rem05b:sessions,
+  realRegistration:{enabled:true,requestDatabaseUrl:requestUrl!,namespace,consentVersion},
   rem05d:{enabled:true,durablePrivateOnly:true,requestDatabaseUrl:requestUrl!,
    workerDatabaseUrl:workerUrl!,namespace,consentVersion,
    storage:createDurablePrivateStore({projectRef:"abcdefghijklmnopqrst",
@@ -200,6 +201,12 @@ test("REG01C durable private media: owner/other, session, stripped PNG, pending 
  const png=makeSyntheticPng();
  const h=(u:User)=>({origin,"sec-fetch-site":"same-origin",cookie:u.cookie,"x-luemi-csrf":u.csrf});
  try{
+  const noConsent=await api.inject({method:"POST",url:"/api/v2/media/intents",
+   headers:h(a),payload:{bytes:png.length,mime:"image/png",clientKey:"before-consent"}});
+  assert.equal(noConsent.statusCode,403,"signed session cannot upload without server consent");
+  assert.equal(storage.size,0);
+  assert.equal((await put(api,a,0,{displayName:"Person A",birthDate:"1997-01-01"})).statusCode,200);
+  assert.equal((await put(api,b,0,{displayName:"Person B",birthDate:"1998-01-01"})).statusCode,200);
   const intent=await api.inject({method:"POST",url:"/api/v2/media/intents",headers:h(a),
    payload:{bytes:png.length,mime:"image/png",clientKey:"01c-private-media-photo-1"}});
   assert.equal(intent.statusCode,200,intent.body);
