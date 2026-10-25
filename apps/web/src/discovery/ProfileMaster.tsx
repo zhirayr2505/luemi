@@ -336,20 +336,32 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   return tabsRunner.current;
  };
  const settleSheet=useCallback((next:boolean)=>{
-  stopSheet.current();
   const driver=ensureSheetRunner();
-  const from=driver.snapshot().phase==="idle"?sheetY.current:driver.cancel();
+  // Drag updates sheetY directly. Once the previous settle is IDLE, its
+  // runner still holds the OLD endpoint, not the live finger position.
+  // Cancelling that idle runner used to repaint the stale endpoint and
+  // physically jump the white panel backwards before the new settle.
+  if(driver.snapshot().phase!=="idle"){
+   const interrupted=driver.cancel();
+   paintSheet(interrupted,true);
+  }
+  const from=sheetY.current;
   const destination=next?collapsedY.current:expandedY.current;
   sheetIntent.current=next;
-  // Original endpoint/curve/duration unchanged. A geometry rebase will spend
-  // only the remaining time rather than restarting the 335/240ms interval.
+  // Preserve the approved easing and duration; only the source pixel changes.
   driver.start(from,destination,from>expandedY.current?240:335,[.22,.79,.22,1],
    value=>paintSheet(value,true),()=>{
     collapsedRef.current=next;
     setCollapsed(next);
     sheetIntent.current=null;
    },sheetRevision.current);
-  stopSheet.current=()=>{const frozen=driver.cancel();paintSheet(frozen,true);};
+  stopSheet.current=()=>{
+   // An idle driver is no longer the source of the sheet's screen position.
+   // Gesture paints and geometry reanchors must never be overwritten by it.
+   if(driver.snapshot().phase==="idle")return;
+   const frozen=driver.cancel();
+   paintSheet(frozen,true);
+  };
  },[paintSheet]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
