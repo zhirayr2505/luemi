@@ -10,13 +10,13 @@ export type MotionOwner="sheet"|"tabs"|"hero"|"browse"|"route";
 export type MotionProperty=
  "sheet-scroll"|"elastic-sheet"|"parallax"|"blur"|"avatar"|"grab"|
  "tab-scroll"|"tab-ink"|"hero-track"|"browse-track"|"browse-underline"|
- "route-transform"|"route-reveal";
+ "route-transform";
 
 export const MOTION_PROPERTY_OWNERS={
  "sheet-scroll":"sheet","elastic-sheet":"sheet","parallax":"sheet","blur":"sheet",
  "avatar":"sheet","grab":"sheet","tab-scroll":"tabs","tab-ink":"tabs",
  "hero-track":"hero","browse-track":"browse","browse-underline":"browse",
- "route-transform":"route","route-reveal":"route"
+ "route-transform":"route"
 } as const satisfies Record<MotionProperty,MotionOwner>;
 
 export type MotionCancelReason="gesture-cancel"|"interrupted"|"route-handoff"|
