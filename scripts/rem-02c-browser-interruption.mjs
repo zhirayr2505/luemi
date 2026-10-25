@@ -210,7 +210,8 @@ try{
   const pane=root.querySelector(".pm-profile-sheet");
   const top=parseFloat(pane.style.getPropertyValue("--pm-collapsed-top"));
   const bottom=parseFloat(root.style.getPropertyValue("--pm-expanded-y"));
-  const y=bottom-vp.scrollTop;
+  if(vp.scrollTop!==0)throw Error("outer native scrolling must remain disabled");
+  const y=pane.getBoundingClientRect().top-root.getBoundingClientRect().top;
   return {y,top,bottom,state:root.dataset.sheetState};
  });
  near(endpoint.y,endpoint.state==="collapsed"?endpoint.top:endpoint.bottom,1);
