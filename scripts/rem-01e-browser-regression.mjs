@@ -32,7 +32,7 @@ try{
   await goto("step8",kind,theme);const step=await read();
   assert.equal(step.profileShells,1,"step 8 must not create second independent profile");
   assert.equal(step.globalHeaders,0,"registration preview must not mount GlobalHeader");
-  assert.equal(step.sheetRenderer,"scroll");
+  assert.equal(step.sheetRenderer,"absolute");
   assert.equal(step.ownerActions,0,"local preview cannot edit/publish inside ProfileMaster");
   assert.equal(step.verified,false);
   assert.ok(step.disclaimer.some(s=>s.includes("не опубликована")),"local draft label must remain");
