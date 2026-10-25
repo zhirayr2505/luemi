@@ -3,6 +3,7 @@ import type { Rem05bOptions } from "./rem05b-session.js";
 import type { GeoRuntime } from "./geo-routes.js";
 import type { EmbeddingPolicy } from "./rem05c-headers.js";
 import {memoryPrivateStore} from "./rem05d-private.js";
+import {createDurablePrivateStore} from "./real-private-storage.js";
 import type {Rem05dOptions} from "./rem05d-private.js";
 import type {RealRegistrationOptions} from "./real-registration-drafts.js";
 export interface ApiConfig {
@@ -82,7 +83,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const dFlag=env.REM05D_PRIVATE_ENABLED==="1";
   if(dFlag&&(env.NODE_ENV!=="test"||!v2Enabled))
     throw new Error("REM-05D is unavailable outside explicit isolated tests");
-  const rem05d:Rem05dOptions|undefined=dFlag?{
+  let rem05d:Rem05dOptions|undefined=dFlag?{
     enabled:true,testOnly:true,namespace:env.REM05B_BOT_NAMESPACE??"",
     requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
     workerDatabaseUrl:env.REM05D_TEST_WORKER_DATABASE_URL??"",
@@ -98,6 +99,30 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     enabled:true,requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
     namespace:env.REM05B_BOT_NAMESPACE??"",consentVersion:env.REM06_CONSENT_VERSION??""
   }:undefined;
+  // Real private media is an independent opt-in; never activated merely by
+  // installing Storage credentials. No live state or storage is touched at boot.
+  const mediaEnabled=env.REM06_MEDIA_ENABLED==="1";
+  if(mediaEnabled){
+   if(dFlag||!regEnabled||!v2Enabled||stagingOnly||
+     env.REM06_PRIVACY_APPROVED!=="1"||
+     !env.REM06_MEDIA_WORKER_DATABASE_URL||
+     env.REM06_MEDIA_BUCKET!=="luemi-profile-private"||
+     !env.REM06_SUPABASE_PROJECT_REF||!env.REM06_SUPABASE_STORAGE_SECRET)
+    throw new Error("REAL-REG-01C requires approved private draft, worker and storage gates");
+   rem05d={
+    enabled:true,durablePrivateOnly:true,
+    namespace:env.REM05B_BOT_NAMESPACE??"",
+    consentVersion:env.REM06_CONSENT_VERSION??"",
+    requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
+    workerDatabaseUrl:env.REM06_MEDIA_WORKER_DATABASE_URL,
+    storage:createDurablePrivateStore({
+      projectRef:env.REM06_SUPABASE_PROJECT_REF,
+      namespace:env.REM05B_BOT_NAMESPACE??"",
+      bucket:"luemi-profile-private",
+      secret:env.REM06_SUPABASE_STORAGE_SECRET
+    })
+   };
+  }
   if(env.REM06_PUBLICATION_ENABLED==="1")
     throw new Error("REAL-REG-01 publication is HARD DISABLED");
   if(env.REM05D_PUBLICATION_ENABLED==="1")

@@ -1,5 +1,5 @@
-// LUEMI REM-05D, opt-in SYNTHETIC SERVER ONLY.
-// Neither production Storage nor IndexedDB is read, synced or touched here.
+// REM-05D shared private media engine. Synthetic test mode remains default-OFF;
+ // REAL-REG-01C may opt into durable PRIVATE-ONLY storage after separate gates.
 import {createHash,randomBytes,randomUUID,timingSafeEqual} from "node:crypto";
 import {Pool} from "pg";
 import type {PoolClient} from "pg";
@@ -11,7 +11,7 @@ type Guard={read:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;
 export type PrivateObjectStore={put:(key:string,bytes:Buffer)=>Promise<void>;get:(key:string)=>Promise<Buffer|null>;
  delete:(key:string)=>Promise<void>};
 export type Rem05dOptions={enabled:boolean;requestDatabaseUrl:string;workerDatabaseUrl:string;
- namespace:string;consentVersion:string;storage:PrivateObjectStore;testOnly:true};
+ namespace:string;consentVersion:string;storage:PrivateObjectStore;testOnly?:true;durablePrivateOnly?:true};
 class Rejection extends Error{constructor(public status:number,public code:string){super(code);}}
 function reject(status:number,code:string):never{throw new Rejection(status,code);}
 function digest(text:string){return createHash("sha256").update(text).digest("hex");}
@@ -138,10 +138,11 @@ export function memoryPrivateStore():PrivateObjectStore{
 }
 export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Rem05dOptions|undefined){
  if(!opts?.enabled)return;
- if(!guard||opts.testOnly!==true||!opts.requestDatabaseUrl||!opts.workerDatabaseUrl||
+ const exactlyOneMode=(opts.testOnly===true)!==(opts.durablePrivateOnly===true);
+ if(!guard||!exactlyOneMode||!opts.requestDatabaseUrl||!opts.workerDatabaseUrl||
   !/^[\w:-]{1,96}$/.test(opts.namespace)||!str(opts.consentVersion,3,64)||
   !opts.storage||typeof opts.storage.delete!=="function")
-   throw new Error("REM-05D requires isolated role-separated test-only setup");
+   throw new Error("Private media requires one explicit mode, isolated roles and a private store");
  const cfg=opts;
  const auth=guard;
  const requestPool=new Pool({connectionString:opts.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
