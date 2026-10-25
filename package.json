@@ -25,7 +25,7 @@
     "prebuild": "npm run build -w @luemi/contracts && npm run lint && npm run test:ui && npm run test -w @luemi/api",
     "test:discovery": "node scripts/stage03-model.test.mjs && node scripts/stage03d-contract.test.mjs && node scripts/stage03e-contract.test.mjs && node scripts/stage03f2-contract.test.mjs && node scripts/stage03g-contract.test.mjs && node scripts/rem-01a-country.test.mjs",
     "lint:hooks:baseline": "node scripts/rem-00b-hooks-baseline.mjs",
-    "test:source-contracts": "npm run audit:architecture && npm run build -w @luemi/contracts && npm run test:ui && npm run test:discovery && npm run test:geo-operations && npm run test:photo-headers && npm run test:viewport-model && npm run test:profile-parity && npm run test:motion-contract && npm run test:geometry-contract && npm run test:gesture-contract && npm run test:lifecycle-contract && npm run test:photo-viewer-contract && npm run test:photo-viewer-track && npm run test:photo-viewer-pinch && npm run test:photo-viewer-morph && npm run test:startup-coordinator",
+    "test:source-contracts": "npm run audit:architecture && npm run build -w @luemi/contracts && npm run test:ui && npm run test:discovery && npm run test:geo-operations && npm run test:photo-headers && npm run test:viewport-model && npm run test:profile-parity && npm run test:motion-contract && npm run test:geometry-contract && npm run test:gesture-contract && npm run test:motion-chaos && npm run test:lifecycle-contract && npm run test:photo-viewer-contract && npm run test:photo-viewer-track && npm run test:photo-viewer-pinch && npm run test:photo-viewer-morph && npm run test:startup-coordinator",
     "typecheck": "npm run build -w @luemi/contracts && npm run typecheck -w @luemi/api && npm run typecheck -w @luemi/web",
     "test:api:isolated": "npm run build -w @luemi/contracts && npm run test -w @luemi/api",
     "test:ci-contract": "node scripts/rem-00b-dependency-contract.test.mjs",
@@ -42,7 +42,8 @@
     "test:photo-viewer-track": "node scripts/rem-03b-track.test.mjs",
     "test:photo-viewer-pinch": "node scripts/rem-03c-pinch.test.mjs",
     "test:photo-viewer-morph": "node scripts/rem-03d-morph-contract.test.mjs",
-    "test:startup-coordinator": "node scripts/rem-04a-startup.test.mjs"
+    "test:startup-coordinator": "node scripts/rem-04a-startup.test.mjs",
+    "test:motion-chaos": "node scripts/rem-motion-gesture-chaos.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
