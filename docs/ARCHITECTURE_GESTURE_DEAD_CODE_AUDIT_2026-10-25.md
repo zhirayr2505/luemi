@@ -47,6 +47,16 @@ A race existed because `pointerup` in a parent could terminate an entire shared 
 
 **Intentionally retained:** REM-05B–05F security/session/storage modules, migrations, current CI/browser suites, the accepted UI/brand assets, and feature-reserved Bliki modules. “Not called during staging” is not enough evidence to delete a secured future feature.
 
+## Second-pass independent cleanup
+
+- **Removed the orphan modal selector** `pm-blik-viewer` after verifying its original `BlikViewer.tsx` component had already been deleted and neither the active `PhotoViewer` nor other profile components render it. The real `pm-preview-toolbar` is intentionally retained: the local profile preview still renders it.
+- **Removed double modal gating** in `VisitorProfileRoute`. The shared `isGestureModalBlocked` remains the single source of route/modal hit exclusion.
+- **Removed unused arbiter state** `blockedNative` and the dormant `blocksNative()` / `serial()` accessors. The accepted `claimed` state is the one source of gesture ownership.
+- **Consolidated duplicate `.goal-badge` CSS** without changing computed styles; earlier `font-size:13px` was overwritten by `14px` immediately.
+- **Validated reuse of `.age-range`**: while not directly referenced by the filter view, `DoubleAgeRange` imported from registration creates it. Do not delete merely because a direct selector grep does not see it.
+- Extended AST audit with a production import-cycle report and strict enforcement. First verified run reported **zero production dependency cycles**, **zero unreachable modules**, and **zero retired identifiers**.
+- Source-level import reachability does **not** prove no unused exported symbols, no CSS dead declarations, or device-level gesture correctness. Those require separate measured inspection rather than mass deletion.
+
 ## Ongoing guardrails
 
 - `scripts/architecture-audit.mjs --strict` now builds an AST import graph from the real web and API entrypoints, includes separately declared QA entrypoints, and fails for unreferenced modules unless an explicit, documented exception exists.
