@@ -55,6 +55,10 @@ CREATE POLICY m_publisher ON luemi_private.media_assets
 CREATE POLICY a_discover ON luemi_private.actors
  FOR SELECT TO luemi_discovery_reader
  USING(environment=current_setting('luemi.environment',true) AND status='active');
+CREATE POLICY a_publisher ON luemi_private.actors
+ FOR SELECT TO luemi_profile_publisher
+ USING(environment=current_setting('luemi.environment',true)
+ AND id=nullif(current_setting('luemi.actor_id',true),'')::uuid);
 CREATE POLICY b_discover ON luemi_private.blocks
  FOR SELECT TO luemi_discovery_reader
  USING(environment=current_setting('luemi.environment',true) AND
@@ -75,9 +79,10 @@ CREATE POLICY m_discover ON luemi_private.media_assets
  USING(environment=current_setting('luemi.environment',true)
  AND state='approved' AND publication_status='published'
  AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p
-  WHERE p.owner_id=owner_id AND p.environment=environment AND p.publication_status='published'));
+  WHERE p.owner_id=luemi_private.media_assets.owner_id AND p.environment=luemi_private.media_assets.environment AND p.publication_status='published'));
 
 -- No access to sessions, audit, private drafts (reader) or publication writes (reader).
+GRANT SELECT(id,environment,status) ON luemi_private.actors TO luemi_profile_publisher;
 GRANT SELECT(owner_id,environment,revision,payload,birth_date,consent_version)
  ON luemi_private.private_profile_drafts TO luemi_profile_publisher;
 GRANT SELECT(id,owner_id,environment,state,publication_status,generation,derivative_key,position)
