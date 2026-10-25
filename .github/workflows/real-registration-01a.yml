@@ -1,9 +1,9 @@
 name: LUEMI REAL-REG-01A private registration and PostgreSQL QA
 on:
   push:
-    branches: ['feature/real-registration-01*']
+    branches: ['main', 'feature/real-registration-01*']
   pull_request:
-    branches: ['refactor/architecture-dead-code-motion-20261025', 'feature/real-registration-01-private-draft-20261025', 'feature/real-registration-01b-client-save-20261025', 'feature/real-registration-01c-durable-private-media-20261025', 'feature/real-registration-01d-published-feed-20261025']
+    branches: ['main', 'refactor/architecture-dead-code-motion-20261025', 'feature/real-registration-01-private-draft-20261025', 'feature/real-registration-01b-client-save-20261025', 'feature/real-registration-01c-durable-private-media-20261025', 'feature/real-registration-01d-published-feed-20261025']
 permissions:
   contents: read
 jobs:
@@ -32,12 +32,16 @@ jobs:
           npm ci --no-audit --no-fund
           npm run check
   postgres:
-    name: REG01 actual RLS and signed Telegram sessions
+    name: REG01 actual RLS and signed Telegram sessions (PG${{ matrix.postgres }})
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ['16', '17']
     timeout-minutes: 22
     services:
       postgres:
-        image: postgres:16
+        image: postgres:${{ matrix.postgres }}
         env:
           POSTGRES_PASSWORD: synthetic_reg01_admin
           POSTGRES_DB: reg01_disposable
@@ -82,7 +86,7 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build -w @luemi/contracts
           npm run typecheck -w @luemi/api
-      - name: Isolated real PostgreSQL 16 migrations
+      - name: Isolated PostgreSQL ${{ matrix.postgres }} migrations
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 <<'SQL'
