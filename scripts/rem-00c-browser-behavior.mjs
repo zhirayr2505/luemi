@@ -138,6 +138,37 @@ async function qaProfile(browser){
   assert.ok(state.blurOpacity>.5,"collapsed state renders blurred photo layer");
   assert.ok(state.sheetTop<expanded.sheetTop,"sheet has actually moved");
   await snapshot(page,"02-owner-collapsed");
+  // Regression: a COMPLETE settle followed by a new finger drag must NOT
+  // jump backward on touchend to the previous motion-runner endpoint.
+  const collapsedBeforeReopen=await readState(page);
+  const reopenBox=await page.locator(".pm-inline .pm-identity").boundingBox();
+  assert.ok(reopenBox&&reopenBox.height>30,"collapsed grab target must remain measurable");
+  let lastFingerFrame=null;
+  await touch(page,{x:reopenBox.x+reopenBox.width*.48,
+   y:reopenBox.y+Math.min(reopenBox.height*.44,45),dy:177,steps:14,
+   onStep:async index=>{
+    if(index===14){await sleep(22);lastFingerFrame=await readState(page);}
+   }});
+  const releaseFrame=await readState(page);
+  assert.ok(lastFingerFrame&&lastFingerFrame.sheetTop>collapsedBeforeReopen.sheetTop+55,
+   "finger must physically pull the white panel downward before release");
+  assert.ok(releaseFrame.sheetTop>=lastFingerFrame.sheetTop-16,
+   "WHITE SHEET BOUNCE: touchend snapped panel UP before its expand settle");
+  await page.locator('.pm-inline[data-sheet-state="expanded"]').waitFor({state:"attached",timeout:2500});
+  await sleep(35);
+  const reopened=await readState(page);
+  assert.ok(Math.abs(reopened.sheetTop-expanded.sheetTop)<5,
+   "reopened panel should return to the actual expanded endpoint");
+  await page.getByRole("button",{name:"Развернуть анкету"}).click();
+  await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
+  const recollapsed=await readState(page);
+  assert.ok(Math.abs(recollapsed.sheetTop-collapsedBeforeReopen.sheetTop)<5,
+   "collapsed panel must return to its prior physical pixel endpoint");
+  console.log("QA_NO_SHEET_BOUNCE "+JSON.stringify({
+   collapsedTop:collapsedBeforeReopen.sheetTop,
+   draggedTop:lastFingerFrame.sheetTop,releaseTop:releaseFrame.sheetTop,
+   expandedTop:reopened.sheetTop,recollapsedTop:recollapsed.sheetTop}));
+
   await page.getByRole("tab",{name:"Подарки"}).click();
   await sleep(380);
   state=await readState(page);
