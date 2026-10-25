@@ -68,8 +68,13 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     // PROVISIONAL local/CI policy: NOT approved for real users.
     idleMs: 12 * 60 * 60 * 1000,
     absoluteMs: 7 * 24 * 60 * 60 * 1000,
-    maxSessions: 5
+    maxSessions: 5,
+    inviteOnly: env.REM06_BETA_INVITES_ENABLED==="1"
   } : undefined;
+  if(env.REM06_BETA_INVITES_ENABLED==="1"&&(!v2Enabled||
+    env.REM06_BETA_INVITES_APPROVED!=="1"||
+    env.REM06_PRIVACY_APPROVED!=="1"))
+    throw new Error("REG01G invite gate requires V2 and approved beta/privacy policy");
   // No opt-in flags are set in existing deployments. Key presence alone NEVER
   // activates a charged upstream call.
   const geoEnabled=env.REM05C_ENABLED==="1";
@@ -138,7 +143,11 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
    };
   }
   const publicationEnabled=env.REM06_PUBLICATION_ENABLED==="1";
-  if(publicationEnabled&&(!mediaEnabled||!rem05d?.durablePrivateOnly||
+  // 01G closed beta MUST NOT accidentally switch on public discovery while
+  // invite enforcement is absent, even if old publication keys are present.
+  if(publicationEnabled&&(!rem05b?.inviteOnly||
+    env.REM06_BETA_INVITES_APPROVED!=="1"||
+    !mediaEnabled||!rem05d?.durablePrivateOnly||
     env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1"||
     !env.REM06_PUBLISHER_DATABASE_URL||!env.REM06_DISCOVERY_DATABASE_URL||
     env.REM06_PUBLISHER_DATABASE_URL===env.REM06_DISCOVERY_DATABASE_URL))
