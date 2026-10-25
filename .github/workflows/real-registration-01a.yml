@@ -1,0 +1,92 @@
+name: LUEMI REAL-REG-01A private registration and PostgreSQL QA
+on:
+  push:
+    branches: ['feature/real-registration-01-*']
+  pull_request:
+    branches: ['refactor/architecture-dead-code-motion-20261025']
+permissions:
+  contents: read
+jobs:
+  foundation:
+    name: REG01 foundation regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      STAGING_BOOTSTRAP_ONLY: '1'
+      REM06_PRIVATE_DRAFT_ENABLED: '0'
+      REM06_PUBLICATION_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked toolchain and full repo checks
+        run: |
+          set -euo pipefail
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run check
+  postgres:
+    name: REG01 actual RLS and signed Telegram sessions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: synthetic_reg01_admin
+          POSTGRES_DB: reg01_disposable
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d reg01_disposable"
+          --health-interval 3s --health-timeout 3s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: reg01_disposable
+      PGPASSWORD: synthetic_reg01_admin
+      REG01_ADMIN_DATABASE_URL: postgres://postgres:synthetic_reg01_admin@127.0.0.1:5432/reg01_disposable
+      REG01_ISSUER_DATABASE_URL: postgres://reg01_ci_issuer:synthetic_reg01_issuer@127.0.0.1:5432/reg01_disposable
+      REG01_REQUEST_DATABASE_URL: postgres://reg01_ci_request:synthetic_reg01_request@127.0.0.1:5432/reg01_disposable
+      REG01_COMBINED_DATABASE_URL: postgres://reg01_ci_combined:synthetic_reg01_combined@127.0.0.1:5432/reg01_disposable
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install and typecheck
+        run: |
+          set -euo pipefail
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
+          npm run typecheck -w @luemi/api
+      - name: Isolated real PostgreSQL 16 migrations
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          SQL
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0002_rem05b_identity_sessions.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0003_rem05c_geo_budget.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0004_rem05d_private_media_moderation.sql
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE reg01_ci_issuer LOGIN PASSWORD 'synthetic_reg01_issuer' IN ROLE luemi_auth_issuer;
+          CREATE ROLE reg01_ci_request LOGIN PASSWORD 'synthetic_reg01_request' IN ROLE luemi_request;
+          CREATE ROLE reg01_ci_combined LOGIN NOINHERIT PASSWORD 'synthetic_reg01_combined';
+          GRANT luemi_auth_issuer,luemi_request TO reg01_ci_combined;
+          SQL
+      - name: Multi-user signed-session / RLS / privacy / CAS tests
+        run: npx --no-install tsx --test apps/api/secure-tests/real-registration.test.ts

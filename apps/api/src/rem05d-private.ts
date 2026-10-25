@@ -52,7 +52,7 @@ function validatedDraft(raw:unknown,approvedConsent:string){
  if(Buffer.byteLength(JSON.stringify(p))>7000)reject(413,"draft_too_large");
  return p;
 }
-async function safeDb(db:PoolClient,kind:"luemi_request"|"luemi_media_worker"|"luemi_moderator"){
+export async function safeDb(db:PoolClient,kind:"luemi_request"|"luemi_media_worker"|"luemi_moderator"){
  try{
   const q=await db.query<{safe:boolean}>(`
     SELECT(r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls
