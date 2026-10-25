@@ -107,15 +107,15 @@ CREATE POLICY f_worker_objects ON luemi_private.erasure_objects FOR ALL TO luemi
  USING(true) WITH CHECK(true);
 CREATE POLICY f_worker_actor ON luemi_private.actors FOR SELECT TO luemi_erasure_worker USING(
  status='deleted' AND EXISTS(SELECT 1 FROM luemi_private.erasure_requests q
- WHERE q.actor_id=id AND q.environment=environment AND q.state='pending'));
+ WHERE q.actor_id=luemi_private.actors.id AND q.environment=luemi_private.actors.environment AND q.state='pending'));
 CREATE POLICY f_worker_actor_delete ON luemi_private.actors FOR DELETE TO luemi_erasure_worker USING(
  status='deleted' AND EXISTS(SELECT 1 FROM luemi_private.erasure_requests q
- WHERE q.actor_id=id AND q.environment=environment AND q.state='pending'));
+ WHERE q.actor_id=luemi_private.actors.id AND q.environment=luemi_private.actors.environment AND q.state='pending'));
 -- Only rows tied to a pending, deleted actor may be purged.
 CREATE POLICY f_worker_sessions ON luemi_private.sessions FOR ALL TO luemi_erasure_worker
  USING(EXISTS(SELECT 1 FROM luemi_private.actors a JOIN luemi_private.erasure_requests q
  ON q.actor_id=a.id AND q.environment=a.environment
- WHERE a.id=actor_id AND a.status='deleted' AND q.state='pending'))
+ WHERE a.id=luemi_private.sessions.actor_id AND a.status='deleted' AND q.state='pending'))
  WITH CHECK(false);
 CREATE POLICY f_worker_drafts ON luemi_private.private_profile_drafts FOR ALL TO luemi_erasure_worker
  USING(EXISTS(SELECT 1 FROM luemi_private.actors a JOIN luemi_private.erasure_requests q
@@ -163,8 +163,8 @@ CREATE POLICY f_worker_reports ON luemi_private.reports FOR ALL TO luemi_erasure
 CREATE POLICY f_worker_audit ON luemi_private.audit_events FOR ALL TO luemi_erasure_worker
  USING(EXISTS(SELECT 1 FROM luemi_private.erasure_requests q
  JOIN luemi_private.actors a ON a.id=q.actor_id AND a.status='deleted'
- WHERE q.state='pending' AND (q.actor_id=actor_id OR EXISTS(
- SELECT 1 FROM luemi_private.media_assets m WHERE m.id=resource_ref AND m.owner_id=q.actor_id))))
+ WHERE q.state='pending' AND (q.actor_id=luemi_private.audit_events.actor_id OR EXISTS(
+ SELECT 1 FROM luemi_private.media_assets m WHERE m.id=luemi_private.audit_events.resource_ref AND m.owner_id=q.actor_id))))
  WITH CHECK(false);
 
 GRANT SELECT(id,actor_id,environment,state,requested_at,finished_at),UPDATE(state,finished_at)
