@@ -4,6 +4,7 @@ import type { GeoRuntime } from "./geo-routes.js";
 import type { EmbeddingPolicy } from "./rem05c-headers.js";
 import {memoryPrivateStore} from "./rem05d-private.js";
 import {createDurablePrivateStore} from "./real-private-storage.js";
+import type {PublicationOptions} from "./real-publication.js";
 import type {Rem05dOptions} from "./rem05d-private.js";
 import type {RealRegistrationOptions} from "./real-registration-drafts.js";
 export interface ApiConfig {
@@ -20,6 +21,7 @@ export interface ApiConfig {
   rem05b?: Rem05bOptions;
   rem05d?: Rem05dOptions;
   realRegistration?: RealRegistrationOptions;
+  realPublication?: PublicationOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -123,12 +125,22 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     })
    };
   }
-  if(env.REM06_PUBLICATION_ENABLED==="1")
-    throw new Error("REAL-REG-01 publication is HARD DISABLED");
+  const publicationEnabled=env.REM06_PUBLICATION_ENABLED==="1";
+  if(publicationEnabled&&(!mediaEnabled||!rem05d?.durablePrivateOnly||
+    env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1"||
+    !env.REM06_PUBLISHER_DATABASE_URL||!env.REM06_DISCOVERY_DATABASE_URL||
+    env.REM06_PUBLISHER_DATABASE_URL===env.REM06_DISCOVERY_DATABASE_URL))
+    throw new Error("REG01D requires private media, independent DB roles and accepted moderation");
+  const realPublication:PublicationOptions|undefined=publicationEnabled?{
+    enabled:true,publisherDatabaseUrl:env.REM06_PUBLISHER_DATABASE_URL??"",
+    discoveryDatabaseUrl:env.REM06_DISCOVERY_DATABASE_URL??"",
+    namespace:env.REM05B_BOT_NAMESPACE??"",consentVersion:env.REM06_CONSENT_VERSION??"",
+    storage:rem05d!.storage
+  }:undefined;
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
   return {
-    rem05b,rem05d,realRegistration,
+    rem05b,rem05d,realRegistration,realPublication,
     rem05c:{geo,embedding},
     port,
     origin,

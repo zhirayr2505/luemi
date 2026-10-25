@@ -11,6 +11,7 @@ import { installHttpPolicy } from "./rem05c-headers.js";
 import { installNetworkLimits } from "./rem05c-rate.js";
 import { registerRem05d } from "./rem05d-private.js";
 import { registerRealRegistrationDrafts } from "./real-registration-drafts.js";
+import {registerPublishedProfiles} from "./real-publication.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -58,5 +59,6 @@ export function buildApp(config: ApiConfig) {
   registerGeography(app,config.rem05c?.geo,guards);
   registerRem05d(app,guards,config.rem05d);
   registerRealRegistrationDrafts(app,guards,config.realRegistration);
+  registerPublishedProfiles(app,guards,config.realPublication);
   return app;
 }
