@@ -108,7 +108,46 @@ for(const file of paths){
  };
  scan(source);
 }
+// Additional diagnostic, NOT a deletion gate: find exported symbols absent from
+// other tracked TypeScript/JS sources. Barrels, dynamic consumers, package APIs
+// and test fixtures can produce false positives; each candidate needs proof.
+const codeFiles=[...paths.filter(p=>!p.endsWith(".css"))];
+function scriptWalk(dir){
+ if(!existsSync(dir))return;
+ for(const ent of readdirSync(dir,{withFileTypes:true})){
+  const full=path.join(dir,ent.name);
+  if(ent.isDirectory()){scriptWalk(full);continue;}
+  if(ent.isFile()&&/\.[cm]?js$/.test(ent.name))
+   codeFiles.push(path.relative(root,full).replaceAll(path.sep,"/"));
+ }
+}
+scriptWalk(path.join(root,"scripts"));
+const content=new Map(codeFiles.map(file=>[file,readFileSync(path.join(root,file),"utf8")]));
+const suspectedUnusedExports=[];
+for(const file of paths.filter(p=>/\.[jt]sx?$/.test(p))){
+ const source=ts.createSourceFile(file,content.get(file),ts.ScriptTarget.Latest,true,
+  file.endsWith("tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
+ for(const node of source.statements){
+  const mods=ts.canHaveModifiers(node)?ts.getModifiers(node)??[]:[];
+  if(!mods.some(m=>m.kind===ts.SyntaxKind.ExportKeyword)||
+    mods.some(m=>m.kind===ts.SyntaxKind.DefaultKeyword))continue;
+  const names=[];
+  if(ts.isVariableStatement(node)){
+   for(const decl of node.declarationList.declarations)
+    if(ts.isIdentifier(decl.name))names.push(decl.name.text);
+  }else if(("name" in node)&&node.name&&ts.isIdentifier(node.name))
+   names.push(node.name.text);
+  for(const name of names){
+   // Whole identifier boundaries avoid counting 'foo' merely inside 'foobar'.
+   const token=new RegExp("(?<![\\w$])"+name+"(?![\\w$])");
+   if(!codeFiles.some(p=>p!==file&&token.test(content.get(p))))
+    suspectedUnusedExports.push({file,name});
+  }
+ }
+}
+
 const view={files:paths.length,production:prod.size,qa:qa.size,roots,qaRoots,
+ suspectedUnusedExports,
  productionImportCycles,
  retiredUsages,retiredFlags,
  intentional:Object.entries(intentional).map(([path,reason])=>({path,reason})),
