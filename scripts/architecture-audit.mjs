@@ -117,7 +117,7 @@ function scriptWalk(dir){
  for(const ent of readdirSync(dir,{withFileTypes:true})){
   const full=path.join(dir,ent.name);
   if(ent.isDirectory()){scriptWalk(full);continue;}
-  if(ent.isFile()&&/\.[cm]?js$/.test(ent.name))
+  if(ent.isFile()&&/\.(?:[cm]?js|[cm]?ts|tsx)$/.test(ent.name))
    {const rel=path.relative(root,full).replaceAll(path.sep,"/");
     if(!codeFiles.includes(rel))codeFiles.push(rel);}
  }
