@@ -227,21 +227,25 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  motionCallback.current=onMotionProgress;
  const motionActive=active&&!preview;
  const debugTrace=useRef<SheetFrameTrace|null>(null);
- if(motionDebugEnabled&&!debugTrace.current){
-  debugTrace.current=createSheetFrameTrace(()=>({
+ useEffect(()=>{
+  if(!motionDebugEnabled)return;
+  const trace=createSheetFrameTrace(()=>({
    mode,engineY:sheetMotion.current?.value??null,
    paintedY:sheetY.current,domTop:sheet.current?.style.top??"",
    state:shell.current?.getAttribute("data-sheet-state")??null,
    phase:sheetMotion.current?.phase??"none",collapsedRef:collapsedRef.current,
    min:collapsedY.current,max:expandedY.current
   }));
- }
+  debugTrace.current=trace;
+  return ()=>{trace.dispose();debugTrace.current=null;};
+ },[mode]);
  useEffect(()=>installMotionDebugPanel(),[]);
- useEffect(()=>()=>debugTrace.current?.dispose(),[]);
- if(motionDebugEnabled)motionDebug("ProfileMaster.render",{
-  mode,active,motionActive,collapsed,collapsedRef:collapsedRef.current,
-  paintedY:sheetY.current,min:collapsedY.current,max:expandedY.current,
-  sheetPhase:sheetMotion.current?.phase??"none"
+ useEffect(()=>{
+  if(motionDebugEnabled)motionDebug("ProfileMaster.render",{
+   mode,active,motionActive,collapsed,collapsedRef:collapsedRef.current,
+   paintedY:sheetY.current,min:collapsedY.current,max:expandedY.current,
+   sheetPhase:sheetMotion.current?.phase??"none"
+  });
  });
  const previewBack=useRef<(()=>boolean)|null>(null);
  const registerPreviewBack=useCallback((handler:(()=>boolean)|null)=>{previewBack.current=handler;},[]);
