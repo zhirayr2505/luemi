@@ -755,7 +755,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     if(g.axis==="x")stopTabs.current();
     else {
     const current=ensureSheetMotion().interrupt();
-    g.origin=current-dy;
+    // Claim the FULL first movement from touchstart. Subtracting dy here
+    // swallowed the initial swipe and broke short fast one-event gestures.
+    g.origin=current;
     sheetDragActive.current=true;
    }
    }
