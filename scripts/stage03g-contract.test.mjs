@@ -114,7 +114,7 @@ assert.ok(!css.includes("border-radius 390ms")&&css.includes("border-radius:34px
 assert.ok(css.includes(".pm-photo-blur")&&css.includes("filter:blur(11px)")&&
  profile.includes('blurLayer.current.style.opacity=String(progress*.9)'),
  "fixed blur opacity follows the sheet controller");
-assert.ok(profile.includes("imageRect.height*.11")&&
+assert.ok(profile.includes("image.height*.11")&&
  profile.includes('pane.style.setProperty("--pm-collapsed-top"'),
  "collapsed top overlaps lower 11% of measured actual logo instead of system controls");
 assert.ok(profile.includes("const paintSheet=useCallback(")&&
