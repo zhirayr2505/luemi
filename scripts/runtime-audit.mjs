@@ -47,11 +47,29 @@ function visit(file){
   if(target)visit(target);else missing.push(normalize(file)+" -> "+relative);
  }
 }
+// All HTML QA entries are explicit isolated Vite entrypoints. Parse them
+// instead of misclassifying their source modules as abandoned production code.
+const webDir=path.join(root,"apps/web");
+const qaEntries=fs.readdirSync(webDir).filter(name=>name.endsWith(".html"))
+ .flatMap(name=>{
+  const html=fs.readFileSync(path.join(webDir,name),"utf8");
+  return [...html.matchAll(/<script\\b[^>]*\\bsrc=["']\\/?(src\\/[^"']+\\.[jt]sx?)["']/g)]
+   .map(match=>path.join(webDir,match[1]));
+ });
 for(const entry of [
- "apps/web/src/main.tsx","apps/web/src/profile-qa.tsx",
- "apps/api/src/server.ts","packages/contracts/src/index.ts"
-])visit(path.join(root,entry));
+ path.join(root,"apps/web/src/main.tsx"),
+ path.join(root,"apps/api/src/server.ts"),
+ path.join(root,"packages/contracts/src/index.ts"),
+ ...qaEntries
+])visit(entry);
 const orphan=[...all].filter(f=>!reachable.has(f)).map(normalize).sort();
+// Two explicitly separated, non-production utilities, not app import orphans:
+// secret rotation is CLI-only; the Bliki lifecycle is a dormant future feature.
+const documentedDormant=new Set([
+ "apps/api/src/rem05e-telegram-rotation.ts",
+ "apps/web/src/discovery/bliki-media-lifecycle.ts"
+]);
+const unexplained=orphan.filter(file=>!documentedDormant.has(file));
 const appJS=code.filter(f=>/\.tsx?$/.test(f)).map(f=>fs.readFileSync(f,"utf8")).join("\n");
 const css=code.filter(f=>f.endsWith(".css"));
 const unusedSelectors=[];
@@ -68,5 +86,8 @@ console.log("Analyzed modules:",code.length,"reachable:",reachable.size);
 console.log("Potential unreachable source files:",JSON.stringify(orphan));
 console.log("Potential CSS selectors without literal JSX reference:",JSON.stringify(unusedSelectors));
 console.log("Unresolved relative imports:",JSON.stringify(missing));
+console.log("Dormant, approved non-entry modules:",JSON.stringify(orphan.filter(f=>documentedDormant.has(f))));
+console.log("Undocumented unreachable modules:",JSON.stringify(unexplained));
+assert.deepEqual(unexplained,[],"new unreachable module: remove dead code or explicitly document why it must be retained");
 assert.deepEqual(missing,[],"runtime imports must resolve locally");
 console.log("PASS: runtime import graph has no unresolved local imports");
