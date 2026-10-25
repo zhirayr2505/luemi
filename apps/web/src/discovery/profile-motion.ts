@@ -1,6 +1,6 @@
 /** REM-02A · DOM adapter contract. No changed curves, CSS, or gesture physics. */
 import {MOTION_PROPERTY_OWNERS,MotionController,
- type MotionOwner,type MotionProperty,type MotionScheduler,type MotionToken
+ type MotionOwner,type MotionProperty,type MotionToken
 } from "../ui/motion-controller";
 import {VIEWPORT_REVISION_EVENT,type ViewportSnapshot} from "../viewport/viewport-model";
 
@@ -31,17 +31,6 @@ export class MotionPropertyAuthority {
 }
 export function createProfileMotionAuthority():MotionPropertyAuthority{
  return new MotionPropertyAuthority();
-}
-/** Tokenized controller group, deliberately not a React global state. */
-export function createProfileMotionControllers(scheduler:MotionScheduler,revision=0){
- const controllers={
-  sheet:new MotionController("sheet",scheduler,0,revision),
-  tabs:new MotionController("tabs",scheduler,0,revision),
-  hero:new MotionController("hero",scheduler,0,revision),
-  browse:new MotionController("browse",scheduler,0,revision),
-  route:new MotionController("route",scheduler,0,revision)
- };
- return {controllers,dispose:()=>Object.values(controllers).forEach(c=>c.dispose())};
 }
 /**
  * REM-01D viewport bridge: only new revisions are broadcast. Existing
