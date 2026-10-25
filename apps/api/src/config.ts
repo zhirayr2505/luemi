@@ -143,7 +143,11 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
    };
   }
   const publicationEnabled=env.REM06_PUBLICATION_ENABLED==="1";
-  if(publicationEnabled&&(!mediaEnabled||!rem05d?.durablePrivateOnly||
+  // 01G closed beta MUST NOT accidentally switch on public discovery while
+  // invite enforcement is absent, even if old publication keys are present.
+  if(publicationEnabled&&(!rem05b?.inviteOnly||
+    env.REM06_BETA_INVITES_APPROVED!=="1"||
+    !mediaEnabled||!rem05d?.durablePrivateOnly||
     env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1"||
     !env.REM06_PUBLISHER_DATABASE_URL||!env.REM06_DISCOVERY_DATABASE_URL||
     env.REM06_PUBLISHER_DATABASE_URL===env.REM06_DISCOVERY_DATABASE_URL))
