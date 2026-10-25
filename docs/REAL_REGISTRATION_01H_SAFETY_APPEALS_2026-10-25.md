@@ -16,7 +16,7 @@ a specific report has been marked `triaged` by a human reviewer in 01G.
 `suspendReportedActor` locks user/media/publication operations and then in
 one transaction: records the report-backed reason and operator label, marks
 the account suspended, revokes its existing sessions, hides public profile
-and every formerly published photo, and marks the report actioned.
+and permanently revokes approval of formerly published photos, and marks the report actioned.
 The current read-side account-status and signed-session checks deny further
 profile/media access. Accounts already deleted, banned or suspended cannot
 be forcibly re-suspended or accessed through this operator tool.
@@ -53,8 +53,9 @@ and a distinguishable operator label. It lists pending appeals and resolves
 each **once** as accepted or rejected, recording the reason and reviewer.
 On acceptance, the suspended account changes back to active in the same
 transaction; the existing sanctions record is retained as restored evidence.
-**Previously revoked cookies, unpublished photos and hidden profiles remain
-revoked/private.** New signed Telegram login and fresh publication approval
+**Previously revoked cookies, hidden profiles and media approvals remain
+revoked/private. Formerly public photos cannot be republished without new
+upload and human review.** New signed Telegram login and fresh publication approval
 are needed before other adults can view the profile again.
 
 The worker's database permissions cannot DELETE user accounts, bypass RLS,
