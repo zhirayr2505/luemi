@@ -140,6 +140,11 @@ test("01H: report must be human triaged, suspend revokes all sessions and hides 
   const newLogin=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
    headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:init(9300011)}});
   assert.equal(newLogin.statusCode,200,newLogin.body);
+  const republish=await app.inject({method:"POST",url:"/api/v3/profile/publish",
+   headers:{origin,"sec-fetch-site":"same-origin",
+    cookie:String(newLogin.headers["set-cookie"]).split(";")[0],
+    "x-luemi-csrf":newLogin.json().csrfToken},payload:{revision:1}});
+  assert.equal(republish.statusCode,409,"previous published photos must be re-reviewed");
   assert.equal((await admin.query("SELECT id FROM luemi_private.account_enforcements "+
    "WHERE id=$1 AND state='restored'",[suspended.caseId])).rowCount,1);
   const deletion=await app.inject({method:"POST",url:"/api/v3/account/request-deletion",
