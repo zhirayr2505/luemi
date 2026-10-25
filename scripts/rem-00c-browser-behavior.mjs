@@ -52,6 +52,20 @@ const readState=async(page,selector=".pm-inline")=>page.evaluate(selector=>{
   frame:performance.now()
  };
 },selector);
+// A moving sheet may change its top, but never the layout height of its
+// descendants. Reflowing the tab strip each Android WebView frame can cause
+// tab raster flicker even when the sheet top has correct motion endpoints.
+const readSheetFlexLayout=async page=>page.evaluate(()=>{
+ const root=document.querySelector(".pm-inline");
+ const sheet=root?.querySelector(".pm-profile-sheet");
+ const tabs=root?.querySelector(".pm-tabs");
+ const pages=root?.querySelector(".pm-pages");
+ if(!(sheet instanceof HTMLElement)||!(tabs instanceof HTMLElement)||
+    !(pages instanceof HTMLElement))throw new Error("sheet flex QA nodes missing");
+ const box=sheet.getBoundingClientRect(),tabBox=tabs.getBoundingClientRect();
+ return {sheetHeight:box.height,pagesHeight:pages.clientHeight,
+  tabLocalTop:tabBox.top-box.top,tabsHeight:tabBox.height,top:box.top};
+});
 const touch=async(page,{x,y,dx=0,dy=0,steps=12,onStep})=>{
  const cdp=await page.context().newCDPSession(page);
  try{
@@ -107,6 +121,7 @@ async function qaProfile(browser){
   await dots.first().click();
   assert.equal(await dots.first().getAttribute("aria-current"),"true","photo index can return to first");
   const expanded=state;
+  const expandedFlexLayout=await readSheetFlexLayout(page);
   // Real mobile touch: sample the independent absolute sheet top each frame.
   const geometry=await page.locator(".pm-inline .pm-profile-sheet").boundingBox();
   assert.ok(geometry&&geometry.height>80,"sheet must be measurable");
@@ -153,6 +168,16 @@ async function qaProfile(browser){
    assert.equal(state.sheetTransform,"none","new white sheet must not move by transform");
   assert.ok(state.blurOpacity>.5,"collapsed state renders blurred photo layer");
   assert.ok(state.sheetTop<expanded.sheetTop,"sheet has actually moved");
+  const collapsedFlexLayout=await readSheetFlexLayout(page);
+  assert.ok(Math.abs(collapsedFlexLayout.sheetHeight-expandedFlexLayout.sheetHeight)<1,
+   "TAB FLICKER: sheet flex surface must retain the same height at both snap points");
+  assert.ok(Math.abs(collapsedFlexLayout.pagesHeight-expandedFlexLayout.pagesHeight)<1,
+   "TAB FLICKER: pages viewport must not resize during profile collapse");
+  assert.ok(Math.abs(collapsedFlexLayout.tabLocalTop-expandedFlexLayout.tabLocalTop)<1,
+   "TAB FLICKER: tabs offset relative to sheet must stay constant");
+  assert.ok(Math.abs(collapsedFlexLayout.tabsHeight-expandedFlexLayout.tabsHeight)<1,
+   "TAB FLICKER: tab strip height must stay constant");
+  console.log("QA_STABLE_PROFILE_SHEET_LAYOUT "+JSON.stringify({expandedFlexLayout,collapsedFlexLayout}));
   await snapshot(page,"02-owner-collapsed");
   // Regression: a COMPLETE settle followed by a new finger drag must NOT
   // jump backward on touchend to the previous motion-runner endpoint.
@@ -175,6 +200,9 @@ async function qaProfile(browser){
   const reopened=await readState(page);
   assert.ok(Math.abs(reopened.sheetTop-expanded.sheetTop)<5,
    "reopened panel should return to the actual expanded endpoint");
+  const reopenedFlexLayout=await readSheetFlexLayout(page);
+  assert.ok(Math.abs(reopenedFlexLayout.pagesHeight-expandedFlexLayout.pagesHeight)<1,
+   "TAB FLICKER: expanding the sheet must not resize its tab pager");
   // Symmetric regression: collapsing from a completely settled expansion
   // must also start at the LAST finger-painted position, not the stale old
   // expanded endpoint. Test both directions through actual touch events.
