@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - 'audit/motion-gesture-conflicts-20261025'
       - 'staging/**'
       - 'remediation/**'
       - 'rebuild/**'
@@ -28,6 +29,7 @@ on:
   pull_request:
     branches:
       - main
+      - 'fix/profile-sheet-motion-full-rewrite-20261025'
       - 'staging/**'
       - 'remediation/**'
 permissions:
