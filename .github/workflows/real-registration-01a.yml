@@ -3,7 +3,7 @@ on:
   push:
     branches: ['feature/real-registration-01-*']
   pull_request:
-    branches: ['refactor/architecture-dead-code-motion-20261025']
+    branches: ['refactor/architecture-dead-code-motion-20261025', 'feature/real-registration-01-private-draft-20261025']
 permissions:
   contents: read
 jobs:

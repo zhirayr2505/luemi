@@ -75,7 +75,9 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      placeholder="Как тебя зовут?" onChange={e=>updateName(e.target.value)}/></GlassField>
    {nameHint&&<div className="name-input-hint" role="status"><Info size={17} aria-hidden="true"/>Можно использовать только буквы, пробел, тире и апостроф.</div>}
    <GlassCheckbox checked={data.trialConsent} onChange={trialConsent=>patch({trialConsent})}>
-     Я понимаю, что это тест интерфейса. Данные и фотографии не публикуются и не передаются на сервер.
+     {import.meta.env.VITE_LUEMI_PRIVATE_DRAFT_UI==="1"?
+      "Я понимаю, что анкета пока не публикуется, а серверное сохранение требует отдельного согласия.":
+      "Я понимаю, что это тест интерфейса. Данные и фотографии не публикуются и не передаются на сервер."}
    </GlassCheckbox>
    <p className="hint">Тестовый черновик сохраняется только на этом устройстве. Очистка данных Telegram удалит его.</p>
    <button className="draft-clear-action" type="button" onClick={resetDraft}><Trash2 size={14}/> Очистить локальный черновик</button>
