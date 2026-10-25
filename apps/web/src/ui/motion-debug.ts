@@ -25,6 +25,83 @@ export function motionDebug(event:string,fields:Record<string,unknown>={},withSt
 export function motionDebugDump(){
  return "LUEMI STAGE A / "+new Date().toISOString()+"\n"+records.join("\n");
 }
+/** A bounded, human-readable diagnostic, not a replacement for the full trace.
+ * Preserve settle/resize/render ordering, and sample or flag abrupt Y changes.
+ * The full original records remain available for offline review as a TXT file.
+ */
+export function compactMotionLog(lines:readonly string[],maxChars=14000):string{
+ type Entry={t:number;event:string;[key:string]:unknown};
+ const entries:Entry[]=[];
+ for(const line of lines){
+  try{
+   const item=JSON.parse(line) as Partial<Entry>;
+   if(typeof item.t==="number"&&typeof item.event==="string")entries.push(item as Entry);
+  }catch{/* a partial line cannot invalidate other diagnostics */}
+ }
+ const settles=entries.flatMap((e,i)=>e.event==="settleSheet"?[i]:[]);
+ const startIndex=settles.length?Math.max(0,settles[Math.max(0,settles.length-6)]-45):
+  Math.max(0,entries.length-700);
+ const segment=entries.slice(startIndex);
+ const relevant=new Set(["settleSheet","engine.construct","engine.settle","engine.start",
+  "engine.resize","engine.resize.afterPut","engine.done","engine.pause","engine.resume",
+  "engine.dispose","collapsedRef.write","setCollapsed.invoke","ProfileMaster.render",
+  "measure.enter","measure.apply","measure.hidden"]);
+ const round=(v:unknown)=>typeof v==="number"?Math.round(v*10)/10:v;
+ const fields=["source","next","reason","engine","phase","destination","collapsed",
+  "collapsedRef","committedCollapsed","fingerActive","min","max","nextMin","nextMax",
+  "screenMappedY","remaining","from","to","target","duration","y","paintedY",
+  "engineY","dragging","wasRunning","wasPaused","state","domTop"];
+ const formatted:string[]=[];
+ let lastFrameAt=-Infinity,lastFrameY:number|null=null,lastFrameT=0;
+ let lastPaintY:number|null=null,lastPutY:number|null=null,jumps=0;
+ for(const item of segment){
+  const kind=item.event;
+  const rawY=kind==="frame.y"?(item.paintedY??item.engineY):item.y;
+  const y=typeof rawY==="number"?rawY:null;
+  let special="";
+  if(kind==="frame.y"){
+   if(y!==null&&lastFrameY!==null&&Math.abs(y-lastFrameY)>=24&&item.t-lastFrameT<=90){
+    special="FRAME_JUMP";jumps++;
+   }
+   const capture=special!==""||item.t-lastFrameAt>=100;
+   if(y!==null){lastFrameY=y;lastFrameT=item.t;}
+   if(!capture)continue;
+   lastFrameAt=item.t;
+  }else if(kind==="paintSheet"||kind==="engine.put"){
+   const prior=kind==="paintSheet"?lastPaintY:lastPutY;
+   if(kind==="paintSheet")lastPaintY=y;
+   else lastPutY=y;
+   if(y===null||prior===null||Math.abs(y-prior)<40)continue;
+   special="PAINT_DELTA";
+  }else if(!relevant.has(kind))continue;
+  const content:Record<string,unknown>={};
+  for(const key of fields)if(item[key]!==undefined)content[key]=round(item[key]);
+  if(kind==="frame.y"&&item.collapsedRef!==undefined)content.collapsedRef=item.collapsedRef;
+  // For stacks, only the original source of an event is useful; repeated
+  // third-party frames are intentionally excluded from the short report.
+  if(kind==="settleSheet"||kind==="measure.apply"||kind==="engine.resize"||
+     kind==="engine.done"||kind==="setCollapsed.invoke"){
+   if(typeof item.stack==="string")content.stack=item.stack.slice(0,240);
+  }
+  const name=special?snapshotTag(special,kind):kind;
+  formatted.push(item.t.toFixed(1)+" "+name+" "+JSON.stringify(content));
+ }
+ const header="LUEMI STAGE A SHORT / "+new Date().toISOString()+
+  "\nsourceEvents="+entries.length+" / sampled="+formatted.length+
+  " / recentSettleCount="+Math.min(6,settles.length)+
+  " / jumpCandidates="+jumps+
+  "\nNOTE: frame sampling is reduced; see full TXT for every frame.\n";
+ const budget=Math.max(200,maxChars-header.length-120);
+ let kept=formatted,removed=0,total=formatted.reduce((n,v)=>n+v.length+1,0);
+ while(kept.length>1&&total>budget){
+  total-=kept[0].length+1;kept=kept.slice(1);removed++;
+ }
+ return header+(removed?"[earliest "+removed+" short lines omitted]\n":"")+
+  kept.join("\n").slice(0,budget);
+}
+function snapshotTag(prefix:string,name:string){return prefix+"."+name;}
+export function motionDebugShort(){return compactMotionLog(records);}
+
 export type SheetFrameTrace={start:()=>void;finished:()=>void;dispose:()=>void};
 export function createSheetFrameTrace(snapshot:()=>Record<string,unknown>):SheetFrameTrace{
  if(!motionDebugEnabled)return {start:()=>{},finished:()=>{},dispose:()=>{}};
@@ -95,7 +172,7 @@ export function installMotionDebugPanel():()=>void{
   const buttons=document.createElement("div");
   buttons.style.cssText="display:flex;gap:8px;flex-wrap:wrap";
   const area=document.createElement("textarea");
-  area.readOnly=true;area.value=motionDebugDump();
+  area.readOnly=true;area.value=motionDebugShort();
   area.style.cssText="width:100%;flex:1;min-height:160px;font:10px monospace";
   const addButton=(label:string,action:()=>void)=>{
    const button=document.createElement("button");
@@ -103,15 +180,25 @@ export function installMotionDebugPanel():()=>void{
    button.style.cssText="padding:9px;border:1px solid #999;border-radius:6px";
    button.addEventListener("click",action);buttons.append(button);
   };
-  addButton("Копировать",()=>{
-   area.value=motionDebugDump();area.focus();area.select();
+  const compactCopy=()=>{
+   const short=motionDebugShort();
+   area.value=short;area.focus();area.select();
    if(navigator.clipboard?.writeText){
-    void navigator.clipboard.writeText(area.value).then(()=>{
+    void navigator.clipboard.writeText(short).then(()=>{
      area.setSelectionRange(0,0);
     }).catch(()=>{area.focus();area.select();});
    }
+  };
+  addButton("Копировать короткий",compactCopy);
+  addButton("Сохранить полный TXT",()=>{
+   const blob=new Blob([motionDebugDump()],{type:"text/plain;charset=utf-8"});
+   const url=URL.createObjectURL(blob);
+   const anchor=document.createElement("a");
+   anchor.href=url;anchor.download="luemi-motion-log-"+Date.now()+".txt";
+   document.body.append(anchor);anchor.click();anchor.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(url),30000);
   });
-  addButton("Выделить весь лог",()=>{area.value=motionDebugDump();area.focus();area.select();});
+  addButton("Выделить короткий",()=>{area.value=motionDebugShort();area.focus();area.select();});
   addButton("Очистить",()=>{records.length=0;area.value="";});
   addButton("Выключить LOG",()=>{
    try{window.localStorage.removeItem(KEY);window.location.reload();}catch{/* leave visible */}
