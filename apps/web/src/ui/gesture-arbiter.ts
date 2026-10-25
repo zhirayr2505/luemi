@@ -7,13 +7,14 @@ import type {MotionOwner} from "../ui/motion-controller";
 
 export type GestureOwner=MotionOwner|"native";
 export type InputKind="pointer"|"touch";
-/** Read-only target gate. Never query scrollHeight/scrollTop while processing
+/** Nested visitor-profile modal gate only: browse cards, Nearby and ForYou
+ * are never children of the visitor profile and must not participate here.
+ * Never query scrollHeight/scrollTop while processing
  * the pointerdown critical path: existing list position is NOT active pan-y.
  * Direction arbitration is performed by the actual gesture owner on movement. */
 export const isGestureModalBlocked=(target:Element|null):boolean=>
  !target||!!target.closest(
-  ".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar,[role=dialog]:not(.pm-shell),"+
-  ".discovery-filter-sheet,.fy-expanded,.fy-rail,.nb-card,.nb-location,.carousel-frame"
+  ".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar,[role=dialog]:not(.pm-shell)"
  );
 export class GestureArbiter {
  private session=0;
