@@ -23,6 +23,30 @@ assert.equal(ar.finish("sheet",native),false);
 assert.equal(ar.snapshot().active,false);
 console.log("REM02C_UNIT_PASS pointer+Touch candidates only one owner and one terminal");
 
+// A pointerup in the outer visitor route may precede touchend in the inner
+// sheet on Android. Releasing the outer candidate must NOT kill the inner
+// gesture before it claims the vertical motion. This was the profile bug.
+const parent=ar.begin("pointer",40,"route");
+assert.equal(ar.begin("touch",0,"sheet"),parent);
+assert.equal(ar.begin("touch",0,"tabs"),parent);
+ar.finishCandidate(parent,"route");
+assert.equal(ar.candidate("sheet",parent),true,"parent release preserves child");
+assert.equal(ar.claim("sheet",parent),true,"child may claim after parent pointer terminal");
+assert.equal(ar.finish("sheet",parent),true);
+assert.equal(ar.snapshot().active,false);
+const leftover=ar.begin("pointer",41,"browse");
+assert.equal(ar.begin("pointer",41,"native"),leftover);
+ar.finishCandidate(leftover,"browse");
+assert.equal(ar.candidate("native",leftover),true,"native candidate survives browse release");
+ar.finishCandidate(leftover,"native");
+assert.equal(ar.snapshot().active,false,"last candidate releases session");
+const sameKind=ar.begin("touch",9,"sheet");
+assert.equal(ar.begin("touch",10,"tabs"),null,"second native touch cancels interaction");
+assert.equal(ar.finish("sheet",sameKind),false,"cancelled touch never commits");
+assert.equal(ar.snapshot().active,false);
+console.log("REM02C_UNIT_PASS candidate-specific release, pointer/touch ordering and second-finger protection");
+
+
 const mixed=ar.begin("pointer",71,"tabs");
 assert.equal(ar.begin("touch",0,"sheet"),mixed);
 assert.equal(ar.claim("sheet",mixed),true,"native Touch sheet wins a shared candidate");
