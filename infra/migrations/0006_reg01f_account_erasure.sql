@@ -160,6 +160,14 @@ CREATE POLICY f_worker_reports ON luemi_private.reports FOR ALL TO luemi_erasure
  JOIN luemi_private.actors a ON a.id=q.actor_id AND a.status='deleted'
  WHERE q.state='pending' AND q.environment=luemi_private.reports.environment
  AND (q.actor_id=reporter_id OR q.actor_id=subject_id))) WITH CHECK(false);
+-- Actor-level geo usage is personal to the deleted actor. Global quota
+-- counters and anonymous inflight slots remain operational and untouched.
+CREATE POLICY f_worker_geo_usage ON luemi_private.geo_daily_usage FOR ALL TO luemi_erasure_worker
+ USING(scope='actor' AND EXISTS(SELECT 1 FROM luemi_private.erasure_requests q
+ JOIN luemi_private.actors a ON a.id=q.actor_id AND a.status='deleted'
+ WHERE q.state='pending' AND q.actor_id=luemi_private.geo_daily_usage.actor_id
+ AND q.environment=luemi_private.geo_daily_usage.namespace))
+ WITH CHECK(false);
 CREATE POLICY f_worker_audit ON luemi_private.audit_events FOR ALL TO luemi_erasure_worker
  USING(EXISTS(SELECT 1 FROM luemi_private.erasure_requests q
  JOIN luemi_private.actors a ON a.id=q.actor_id AND a.status='deleted'
@@ -180,4 +188,5 @@ GRANT SELECT(id,job_id),DELETE ON luemi_private.moderation_decisions TO luemi_er
 GRANT SELECT(blocker_id,blocked_id,environment),DELETE ON luemi_private.blocks TO luemi_erasure_worker;
 GRANT SELECT(id,reporter_id,subject_id,environment),DELETE ON luemi_private.reports TO luemi_erasure_worker;
 GRANT SELECT(id,actor_id,resource_ref),DELETE ON luemi_private.audit_events TO luemi_erasure_worker;
+GRANT SELECT(namespace,scope,actor_id),DELETE ON luemi_private.geo_daily_usage TO luemi_erasure_worker;
 -- Never grant any of these privileges to anon, authenticated, issuer or reader.

@@ -254,12 +254,21 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
   assert.equal(objects.rowCount,3);
   // The special worker role must not inspect or delete the OTHER user, even
   // when one pending erasure request exists in the same environment.
+  await admin.query("INSERT INTO luemi_private.geo_daily_usage "+
+   "(namespace,scope,actor_id,kind,period,used) VALUES "+
+   "($1,'actor',$2,'search',CURRENT_DATE,2),"+
+   "($1,'actor',$3,'search',CURRENT_DATE,7)",
+   [namespace,a.id,b.id]);
   const workerProbe=new Pool({connectionString:erasureWorkerUrl!});
   try{
    assert.equal((await workerProbe.query(
     "SELECT id FROM luemi_private.actors WHERE id=$1",[b.id])).rowCount,0);
    assert.equal((await workerProbe.query(
     "SELECT id FROM luemi_private.sessions WHERE actor_id=$1",[b.id])).rowCount,0);
+   assert.equal((await workerProbe.query(
+    "SELECT actor_id FROM luemi_private.geo_daily_usage WHERE actor_id=$1",[b.id])).rowCount,0);
+   assert.equal((await workerProbe.query(
+    "DELETE FROM luemi_private.geo_daily_usage WHERE actor_id=$1 RETURNING actor_id",[b.id])).rowCount,0);
    const foreignAudit=await admin.query<{id:string}>(
     "INSERT INTO luemi_private.audit_events(actor_id,event_type) "+
     "VALUES($1,'report_created') RETURNING id::text",[b.id]);
@@ -292,6 +301,10 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
    storage,limit:1});
   assert.deepEqual(done,{completed:1,failed:0,pending:false});
   for(const object of objects.rows)assert.equal(await storage.get(object.object_key),null);
+  assert.equal((await admin.query(
+   "SELECT actor_id FROM luemi_private.geo_daily_usage WHERE actor_id=$1",[a.id])).rowCount,0);
+  assert.equal((await admin.query(
+   "SELECT actor_id FROM luemi_private.geo_daily_usage WHERE actor_id=$1",[b.id])).rowCount,1);
   for(const [table,column] of [
    ["actors","id"],["sessions","actor_id"],["private_profile_drafts","owner_id"],
    ["public_profiles","owner_id"],["media_assets","owner_id"],["media_uploads","owner_id"]

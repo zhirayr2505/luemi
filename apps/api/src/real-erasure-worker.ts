@@ -57,6 +57,11 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
      "SELECT 1 FROM luemi_private.erasure_objects "+
      "WHERE request_id=$1 AND deleted_at IS NULL LIMIT 1",[id]);
     if(outstanding.rowCount!==0)throw new Error("erasure_object_pending");
+    // Only account-specific geo queries/quotas are erased. Global budget
+    // reservations cannot be safely attributed to one actor.
+    await db.query("DELETE FROM luemi_private.geo_daily_usage "+
+     "WHERE namespace=$2 AND scope='actor' AND actor_id=$1",
+     [actor,options.namespace]);
     // FK-safe order. For reports and blocks we remove both directions.
     // Audit rows referring to deleted media must not survive the purge.
     await db.query(
