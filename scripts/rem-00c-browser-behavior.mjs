@@ -202,6 +202,21 @@ async function qaProfile(browser){
    draggedUpTop:lastCollapseFingerFrame.sheetTop,releaseCollapseTop:collapseReleaseFrame.sheetTop,
    recollapsedTop:recollapsed.sheetTop}));
 
+  // The owner's actual UI sequence, repeated: collapse -> mini-avatar tap
+  // -> expand -> white grab tap -> collapse. Never reuse a stale end pixel.
+  for(let repeat=0;repeat<3;repeat++){
+   await page.locator(".pm-inline").getByRole("button",{name:"Раскрыть фото профиля"}).click();
+   await page.locator('.pm-inline[data-sheet-state="expanded"]').waitFor({state:"attached",timeout:2500});
+   const openAgain=await readState(page);
+   assert.ok(Math.abs(openAgain.sheetTop-expanded.sheetTop)<5,
+    "repeated open must not reposition the white column");
+   await page.locator(".pm-inline").getByRole("button",{name:"Развернуть анкету"}).click();
+   await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
+   const closeAgain=await readState(page);
+   assert.ok(Math.abs(closeAgain.sheetTop-collapsedBeforeReopen.sheetTop)<5,
+    "repeated close must not jump to a stale sheet position");
+  }
+  console.log("QA_PROFILE_REPEATED_TAPS_PASS");
   await page.getByRole("tab",{name:"Подарки"}).click();
   await sleep(380);
   state=await readState(page);
