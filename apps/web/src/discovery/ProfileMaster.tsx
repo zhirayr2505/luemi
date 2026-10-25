@@ -379,10 +379,16 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  useLayoutEffect(()=>{
   if(!motionActive)return;
   let first=true,hidden=false;
-  const measure=()=>{
+  const measure=(reason="initial")=>{
+   if(motionDebugEnabled)motionDebug("measure.enter",{
+    mode,reason,collapsedRef:collapsedRef.current,sheetY:sheetY.current,
+    phase:sheetMotion.current?.phase??"none",
+    engineTarget:sheetMotion.current?.destinationCollapsed??null
+   });
    const frame=hero.current,pane=sheet.current,root=shell.current;
    if(!frame||!pane||!root)return;
    if(root.clientHeight<180||!frame.offsetHeight){
+    if(motionDebugEnabled)motionDebug("measure.hidden",{mode,reason});
     hidden=true;sheetMotion.current?.pause();return;
    }
    const rootRect=root.getBoundingClientRect();
@@ -396,7 +402,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    // byte-identical. Never return before resuming the frozen frame.
    if(!first&&!hidden&&Math.abs(top-collapsedY.current)<.5&&
       Math.abs(bottom-expandedY.current)<.5&&
-      Math.abs((sheetRootTop.current??rootRect.top)-rootRect.top)<.5)return;
+      Math.abs((sheetRootTop.current??rootRect.top)-rootRect.top)<.5){
+    if(motionDebugEnabled)motionDebug("measure.unchanged",{mode,reason,top,bottom});
+    return;
+   }
    const motion=ensureSheetMotion();
    const physical=first?(collapsedRef.current?top:bottom):
     remapSheetPixel(motion.sample(),sheetRootTop.current??rootRect.top,rootRect.top,top,bottom).local;
@@ -406,37 +415,50 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    root.style.setProperty("--pm-expanded-y",bottom+"px");
    pane.style.setProperty("--pm-collapsed-top",top+"px");
    root.style.setProperty("--pm-dots-top",dots+"px");
+   if(motionDebugEnabled)motionDebug("measure.apply",{
+    mode,reason,top,bottom,physical,
+    committedCollapsed:collapsedRef.current,
+    fingerActive:sheetDragActive.current,engineY:motion.value,phase:motion.phase
+   });
    motion.resize(top,bottom,physical,collapsedRef.current,sheetDragActive.current);
    if(hidden&&motion.phase==="paused"&&!routeFrozen.current)motion.resume();
    hidden=false;
    rebaseSheetGesture.current(motion.value,sheetRevision.current);
   };
-  measureSheetRef.current=measure;
-  measure();
-  const ro=new ResizeObserver(measure);
-  if(hero.current)ro.observe(hero.current);
-  if(shell.current)ro.observe(shell.current);
+  measureSheetRef.current=()=>measure("measureSheetRef");
+  measure("effect.mount");
   const anchor=(shell.current?.closest(".discovery-visitor-route")??shell.current?.closest(".discovery-app"))
    ?.querySelector<HTMLElement>(".lh-header .lh-center");
+  const ro=new ResizeObserver(entries=>measure("ResizeObserver:"+
+   entries.map(entry=>entry.target===hero.current?"hero":
+    entry.target===shell.current?"shell":entry.target===anchor?"logo":"other").join(",")));
+  if(hero.current)ro.observe(hero.current);
+  if(shell.current)ro.observe(shell.current);
   if(anchor)ro.observe(anchor);
   const webApp=window.Telegram?.WebApp;
-  const detachViewport=bindMotionViewport(window,()=>measure());
+  const detachViewport=bindMotionViewport(window,()=>measure("bindMotionViewport"));
   const visual=window.visualViewport;
-  window.addEventListener("resize",measure);
-  visual?.addEventListener("resize",measure);
-  visual?.addEventListener("scroll",measure);
-  webApp?.onEvent?.("safeAreaChanged",measure);
-  webApp?.onEvent?.("contentSafeAreaChanged",measure);
-  webApp?.onEvent?.("viewportChanged",measure);
+  const windowResize=()=>measure("window.resize");
+  const visualResize=()=>measure("visualViewport.resize");
+  const visualScroll=()=>measure("visualViewport.scroll");
+  const safeAreaChanged=()=>measure("Telegram.safeAreaChanged");
+  const contentSafeAreaChanged=()=>measure("Telegram.contentSafeAreaChanged");
+  const viewportChanged=()=>measure("Telegram.viewportChanged");
+  window.addEventListener("resize",windowResize);
+  visual?.addEventListener("resize",visualResize);
+  visual?.addEventListener("scroll",visualScroll);
+  webApp?.onEvent?.("safeAreaChanged",safeAreaChanged);
+  webApp?.onEvent?.("contentSafeAreaChanged",contentSafeAreaChanged);
+  webApp?.onEvent?.("viewportChanged",viewportChanged);
   return ()=>{
    measureSheetRef.current=()=>{};
    sheetMotion.current?.pause();ro.disconnect();detachViewport();
-   window.removeEventListener("resize",measure);
-   visual?.removeEventListener("resize",measure);
-   visual?.removeEventListener("scroll",measure);
-   webApp?.offEvent?.("safeAreaChanged",measure);
-   webApp?.offEvent?.("contentSafeAreaChanged",measure);
-   webApp?.offEvent?.("viewportChanged",measure);
+   window.removeEventListener("resize",windowResize);
+   visual?.removeEventListener("resize",visualResize);
+   visual?.removeEventListener("scroll",visualScroll);
+   webApp?.offEvent?.("safeAreaChanged",safeAreaChanged);
+   webApp?.offEvent?.("contentSafeAreaChanged",contentSafeAreaChanged);
+   webApp?.offEvent?.("viewportChanged",viewportChanged);
   };
  },[motionActive,ensureSheetMotion]);
  useEffect(()=>{
