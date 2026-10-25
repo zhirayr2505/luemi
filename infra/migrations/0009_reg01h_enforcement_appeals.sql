@@ -62,7 +62,17 @@ CREATE POLICY h_safety_actor_update ON luemi_private.actors FOR UPDATE TO luemi_
  USING(environment=current_setting('luemi.environment',true)
    AND status IN ('active','suspended'))
  WITH CHECK(environment=current_setting('luemi.environment',true)
-   AND status IN ('active','suspended'));
+   AND ((status='suspended' AND EXISTS(
+     SELECT 1 FROM luemi_private.account_enforcements e
+     WHERE e.actor_id=luemi_private.actors.id AND e.environment=luemi_private.actors.environment
+       AND e.state='suspended'))
+    OR (status='active' AND NOT EXISTS(
+      SELECT 1 FROM luemi_private.account_enforcements e
+      WHERE e.actor_id=luemi_private.actors.id AND e.environment=luemi_private.actors.environment
+        AND e.state='suspended')
+      AND EXISTS(SELECT 1 FROM luemi_private.account_enforcements e
+      WHERE e.actor_id=luemi_private.actors.id AND e.environment=luemi_private.actors.environment
+        AND e.state='restored'))));
 CREATE POLICY h_safety_session_select ON luemi_private.sessions FOR SELECT TO luemi_safety_operator
  USING(environment=current_setting('luemi.environment',true));
 CREATE POLICY h_safety_session_revoke ON luemi_private.sessions FOR UPDATE TO luemi_safety_operator
@@ -87,7 +97,19 @@ CREATE POLICY h_safety_human_review ON luemi_private.human_report_reviews FOR SE
  USING(environment=current_setting('luemi.environment',true));
 CREATE POLICY h_safety_cases ON luemi_private.account_enforcements FOR ALL TO luemi_safety_operator
  USING(environment=current_setting('luemi.environment',true))
- WITH CHECK(environment=current_setting('luemi.environment',true));
+ WITH CHECK(environment=current_setting('luemi.environment',true)
+ AND ((state='suspended' AND report_id IS NOT NULL AND
+    EXISTS(SELECT 1 FROM luemi_private.reports r
+    JOIN luemi_private.human_report_reviews h ON h.report_id=r.id
+    WHERE r.id=luemi_private.account_enforcements.report_id
+     AND r.subject_id=luemi_private.account_enforcements.actor_id
+     AND r.environment=luemi_private.account_enforcements.environment
+     AND r.state='triaged' AND h.action='triaged' AND h.environment=r.environment))
+ OR (state='restored' AND EXISTS(
+    SELECT 1 FROM luemi_private.account_appeals a
+    WHERE a.enforcement_id=luemi_private.account_enforcements.id
+     AND a.actor_id=luemi_private.account_enforcements.actor_id
+     AND a.state='accepted'))));
 CREATE POLICY h_safety_appeals ON luemi_private.account_appeals FOR ALL TO luemi_safety_operator
  USING(environment=current_setting('luemi.environment',true))
  WITH CHECK(environment=current_setting('luemi.environment',true));
