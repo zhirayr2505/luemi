@@ -142,6 +142,20 @@ test("01H: report must be human triaged, suspend revokes all sessions and hides 
   assert.equal(newLogin.statusCode,200,newLogin.body);
   assert.equal((await admin.query("SELECT id FROM luemi_private.account_enforcements "+
    "WHERE id=$1 AND state='restored'",[suspended.caseId])).rowCount,1);
+  const deletion=await app.inject({method:"POST",url:"/api/v3/account/request-deletion",
+   headers:{origin,"sec-fetch-site":"same-origin",
+    cookie:String(newLogin.headers["set-cookie"]).split(";")[0],
+    "x-luemi-csrf":newLogin.json().csrfToken},
+   payload:{confirmation:"DELETE MY LUEMI ACCOUNT"}});
+  assert.equal(deletion.statusCode,202,deletion.body);
+  const erased=await runErasureBatch({databaseUrl:eraseWorker,namespace:ns,storage:store,limit:1});
+  assert.deepEqual(erased,{completed:1,failed:0,pending:false});
+  assert.equal((await admin.query("SELECT 1 FROM luemi_private.account_enforcements "+
+   "WHERE actor_id=$1",[owner.id])).rowCount,0);
+  assert.equal((await admin.query("SELECT 1 FROM luemi_private.account_appeals "+
+   "WHERE actor_id=$1",[owner.id])).rowCount,0);
+  assert.equal((await admin.query("SELECT 1 FROM luemi_private.actors "+
+   "WHERE id=$1",[viewer.id])).rowCount,1);
   // Safety operator must never access raw Telegram identities or stored sessions.
   const spy=new Pool({connectionString:safety});
   try{
