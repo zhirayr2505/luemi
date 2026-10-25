@@ -8,6 +8,7 @@ import {RateBuckets} from "./rem05c-rate.js";
 export interface Rem05bOptions {
  enabled:boolean; issuerDatabaseUrl:string; requestDatabaseUrl:string; pepper:string;
  namespace:string; origin:string; botToken:string; idleMs:number; absoluteMs:number; maxSessions:number;
+ inviteOnly?:boolean;
 }
 type Session={actorId:string;sessionId:string;hash:Buffer;expiresAt:string;firstName:string};
 declare module "fastify" {interface FastifyRequest{authActor?:Session}}
@@ -111,6 +112,9 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     "idle_expires_at=LEAST(s.absolute_expires_at,clock_timestamp()+($3::bigint * interval '1 millisecond')) "+
     "FROM luemi_private.actors a WHERE s.token_hash=$1 AND s.environment=$2 AND s.revoked_at IS NULL "+
     "AND s.actor_id=a.id AND a.environment=$2 AND a.status='active' "+
+    (cfg.inviteOnly?
+      "AND EXISTS(SELECT 1 FROM luemi_private.beta_invites i WHERE i.environment=$2 "+
+      "AND i.telegram_id=a.telegram_id AND i.state='active') ":"") +
     "AND s.idle_expires_at>clock_timestamp() AND s.absolute_expires_at>clock_timestamp() "+
     "RETURNING s.actor_id,s.id AS session_id,s.absolute_expires_at AS expires_at,a.first_name",
     [h,cfg.namespace,cfg.idleMs]);
@@ -168,6 +172,17 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   if(!db)return deny(reply,503);
   try{
    await db.query("BEGIN");
+   if(cfg.inviteOnly){
+    await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+    const allowed=await db.query(
+     "SELECT 1 FROM luemi_private.beta_invites "+
+     "WHERE environment=$1 AND telegram_id=$2 AND state='active'",
+     [cfg.namespace,String(verified.user.id)]);
+    if(allowed.rowCount!==1){
+     await db.query("ROLLBACK");
+     return reply.code(403).send({error:"invitation_required"});
+    }
+   }
    const result=await db.query<{id:string;first_name:string}>(
     "INSERT INTO luemi_private.actors(environment,telegram_id,first_name) VALUES($1,$2,$3) "+
     "ON CONFLICT(environment,telegram_id) DO UPDATE SET updated_at=clock_timestamp() "+
