@@ -3,7 +3,7 @@
  * are explicit exceptions, so stale code is not silently normalized as active.
  */
 import ts from "typescript";
-import {readFileSync,readdirSync,statSync,existsSync} from "node:fs";
+import {readFileSync,readdirSync,existsSync} from "node:fs";
 import path from "node:path";
 
 const root=process.cwd(),ext=[".ts",".tsx",".css"];
