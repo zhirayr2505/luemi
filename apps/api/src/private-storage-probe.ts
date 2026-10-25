@@ -18,10 +18,11 @@ export class PrivateStorageProbeError extends Error{
   super(code);this.name="PrivateStorageProbeError";
  }
 }
+export type PublicExposureCheck=(key:string)=>Promise<"denied"|"accessible">;
 export async function probePrivateStorage(
- store:PrivateObjectStore,namespace:string
+ store:PrivateObjectStore,namespace:string,checkPublic:PublicExposureCheck
 ):Promise<PrivateStorageProbeResult>{
- if(!NS.test(namespace)||!namespace.startsWith("ci_"))
+ if(typeof checkPublic!=="function"||!NS.test(namespace)||!namespace.startsWith("ci_"))
   throw new Error("invalid_private_probe_namespace");
  // Entirely random synthetic owner, upload and opaque hash. The probe NEVER
  // queries or reuses existing LUEMI user IDs or existing private media paths.
@@ -37,6 +38,10 @@ export async function probePrivateStorage(
  try{
   if(await store.get(key)!==null)throw new Error("private_storage_collision");
   await store.put(key,png);
+  // Private bucket status alone is insufficient: an unauthenticated public
+  // download of THIS synthetic object must be explicitly denied.
+  if(await checkPublic(key)!=="denied")
+   throw new Error("private_storage_publicly_readable");
   const fetched=await store.get(key);
   if(!fetched||!fetched.equals(png))throw new Error("private_storage_readback_mismatch");
   await clean();
