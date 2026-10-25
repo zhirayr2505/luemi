@@ -62,11 +62,31 @@ function reach(entries){
 const prod=reach(roots),qa=reach(qaRoots);
 const unused=paths.filter(p=>!prod.has(p)&&!qa.has(p)&&!(p in intentional));
 const ignored=Object.keys(intentional).filter(p=>!all.has(p));
+// Guard against reintroducing old helpers as new parallel motion paths.
+// TypeScript AST identifiers ignore comments, which can document historical code.
+const retired=new Set(["animateValue","createGuardedCompletion",
+ "createProfileMotionControllers","gestureCapabilities"]);
+const retiredUsages=[],retiredFlags=[];
+for(const file of paths){
+ const code=readFileSync(path.join(root,file),"utf8");
+ if(code.includes("data-route-revealing")||code.includes("route-reveal"))
+  retiredFlags.push(file);
+ if(file.endsWith(".css"))continue;
+ const source=ts.createSourceFile(file,code,ts.ScriptTarget.Latest,true,
+  file.endsWith("tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
+ const scan=node=>{
+  if(ts.isIdentifier(node)&&retired.has(node.text))
+   retiredUsages.push(file+":"+node.text);
+  ts.forEachChild(node,scan);
+ };
+ scan(source);
+}
 const view={files:paths.length,production:prod.size,qa:qa.size,roots,qaRoots,
+ retiredUsages,retiredFlags,
  intentional:Object.entries(intentional).map(([path,reason])=>({path,reason})),
  unreachable:unused,staleExemptions:ignored};
 console.log("LUEMI_ARCHITECTURE_AUDIT "+JSON.stringify(view));
-if(process.argv.includes("--strict")&&(unused.length||ignored.length)){
- console.error("ARCHITECTURE_AUDIT_FAIL: runtime-or-QA-unreachable files need review, not another hidden layer.");
+if(process.argv.includes("--strict")&&(unused.length||ignored.length||retiredUsages.length||retiredFlags.length)){
+ console.error("ARCHITECTURE_AUDIT_FAIL: unreachable modules or retired gesture/motion paths require removal.");
  process.exitCode=1;
 }
