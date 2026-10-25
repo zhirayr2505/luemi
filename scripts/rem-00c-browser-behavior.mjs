@@ -227,7 +227,7 @@ async function qaProfile(browser){
   assert.equal(await page.locator(".discovery-app").getAttribute("data-profile-overlay"),"true");
   // A slow interactive back-swipe must never toggle the paint visibility
   // of the browse subtree and force Android Blink to recreate its tiles.
-  const underlay=await page.evaluate(()=>{
+  const underlay=await page.evaluate(async()=>{
    const scene=document.querySelector(".discovery-app");
    const browse=scene?.querySelector(".discovery-browse-panel");
    const chrome=scene?.querySelector(":scope > .lh-header");
@@ -236,9 +236,11 @@ async function qaProfile(browser){
    if(!scene||!browse||!chrome||!nav||!route)return null;
    const visibility=()=>[browse,chrome,nav].map(el=>getComputedStyle(el).visibility);
    const atRest=visibility();
-   scene.setAttribute("data-route-revealing","true");
+   // No synthetic data-route-revealing flag: the CSS never consumed it.
+   // Observe consecutive paints; actual drag/rollback is in Android QA.
+   await new Promise(requestAnimationFrame);
    const whileDragging=visibility();
-   scene.removeAttribute("data-route-revealing");
+   await new Promise(requestAnimationFrame);
    const afterRollback=visibility();
    return {atRest,whileDragging,afterRollback,focusInsideRoute:route.contains(document.activeElement)};
   });
