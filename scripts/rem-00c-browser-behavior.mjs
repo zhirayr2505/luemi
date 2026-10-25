@@ -406,7 +406,8 @@ async function standardProfile(browser){
   await page.getByRole("button",{name:"Развернуть анкету"}).click();
   await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
   let state=await readState(page);
-  assert.ok(state.scrollTop>60&&state.blurOpacity>.5,"reduced-motion collapse still reaches physical endpoint");
+  assert.ok(state.scrollTop===0&&state.sheetTop<185&&state.blurOpacity>.5,
+    "reduced-motion collapse reaches the real absolute top without outer scroll");
   await page.getByRole("tab",{name:"Блики",exact:true}).click();await sleep(390);
   state=await readState(page);
   assert.equal(state.selectedTab,"Блики");
