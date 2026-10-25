@@ -197,7 +197,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   }
   if(paused.current||closing.current||(e.pointerType==="mouse"&&e.button!==0))return;
   const target=e.target as HTMLElement;
-  if(target.closest(".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar"))return;
   // Guard only nested interactive layers, never stale scroll offsets. The
   // shared arbiter decides horizontal/vertical ownership from movement.
   if(isGestureModalBlocked(target))return;
