@@ -107,7 +107,7 @@ async function qaProfile(browser){
   await dots.first().click();
   assert.equal(await dots.first().getAttribute("aria-current"),"true","photo index can return to first");
   const expanded=state;
-  // Real native touch gesture: take intermediate sheet frames without faking CSS state.
+  // Real mobile touch: sample the independent absolute sheet top each frame.
   const geometry=await page.locator(".pm-inline .pm-profile-sheet").boundingBox();
   assert.ok(geometry&&geometry.height>80,"sheet must be measurable");
   const identityBox=await page.locator(".pm-inline .pm-identity").boundingBox();
@@ -118,12 +118,12 @@ async function qaProfile(browser){
   await touch(page,{x,y,dy:-215,onStep:async i=>{
    if([4,8,12].includes(i))samples.push(await readState(page));
   }});
-  console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,scroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
+  console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,top:s.sheetTop,outerScroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
   assert.equal(samples.length,3);
-  assert.ok(samples.every(s=>Number.isFinite(s.scrollTop)&&Number.isFinite(s.blurOpacity)),"physical samples finite");
-  assert.ok(samples.some(s=>s.scrollTop>expanded.scrollTop+5),"touch must move native sheet scroll");
+  assert.ok(samples.every(s=>Number.isFinite(s.sheetTop)&&Number.isFinite(s.blurOpacity)),"physical samples finite");
+  assert.ok(samples.some(s=>s.sheetTop<expanded.sheetTop-5),"touch must move the real white surface");
   assert.ok(samples.some(s=>s.blurOpacity>expanded.blurOpacity+.03),"blur follows user gesture");
-  console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,scroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
+  console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,top:s.sheetTop,outerScroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
   await sleep(480);
   state=await readState(page);
   if(state.mode!=="collapsed"){
@@ -134,7 +134,9 @@ async function qaProfile(browser){
    state=await readState(page);
   }
   assert.equal(state.mode,"collapsed");
-  assert.ok(state.scrollTop>expanded.scrollTop+80,"collapsed sheet changes native viewport scroll");
+  assert.ok(state.sheetTop<expanded.sheetTop-80,"collapsed white surface must move upward");
+   assert.equal(state.scrollTop,0,"no outer native scroller may compete");
+   assert.equal(state.sheetTransform,"none","new white sheet must not move by transform");
   assert.ok(state.blurOpacity>.5,"collapsed state renders blurred photo layer");
   assert.ok(state.sheetTop<expanded.sheetTop,"sheet has actually moved");
   await snapshot(page,"02-owner-collapsed");
