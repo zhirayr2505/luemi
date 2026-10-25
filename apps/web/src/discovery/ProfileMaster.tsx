@@ -323,11 +323,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(motionActive)motionCallback.current?.(progress,dragging);
   });
  },[motionActive]);
- const ensureSheetMotion=()=>{
+ const ensureSheetMotion=useCallback(()=>{
   if(!sheetMotion.current)sheetMotion.current=new ProfileSheetMotion(sheetY.current,
    (value,dragging)=>paintSheet(value,dragging));
   return sheetMotion.current;
- };
+ },[paintSheet]);
  const ensureTabsRunner=()=>{
   if(!tabsRunner.current||tabsRunner.current.isDisposed())tabsRunner.current=new GeometryMotion("tabs",()=>performance.now(),
    cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),
@@ -340,7 +340,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    setCollapsed(next);
   });
   stopSheet.current=()=>{sheetMotion.current?.interrupt();};
- },[paintSheet]);
+ },[ensureSheetMotion]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
   let first=true;
@@ -396,7 +396,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    webApp?.offEvent?.("contentSafeAreaChanged",measure);
    webApp?.offEvent?.("viewportChanged",measure);
   };
- },[motionActive,paintSheet]);
+ },[motionActive,ensureSheetMotion]);
  useEffect(()=>{
   const opticalFrame=blurSampleFrame,opticalSession=blurSession;
   const localArbiter=localGestures.current;
@@ -820,7 +820,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    pane.removeEventListener("touchstart",start);pane.removeEventListener("touchend",end);
    pane.removeEventListener("touchcancel",cancel);
   };
- },[motionActive,paintSheet,paintTabs,settleSheet,chooseTab,gestures]);
+ },[motionActive,paintTabs,settleSheet,chooseTab,gestures,ensureSheetMotion]);
  // REM-02D: preserve actual fractional positions and semantic destinations.
  const suspendForRoute=()=>{
   if(routeTerminal.current||routeFrozen.current)return;
