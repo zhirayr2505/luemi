@@ -79,7 +79,7 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
  const app=makeApp();
  try{
   assert.equal((await app.inject({method:"GET",url:"/api/v3/discovery/feed"})).statusCode,401);
-  assert.equal((await app.inject({method:"POST",url:"/api/v3/profile/publish"})).statusCode,401);
+  assert.equal((await app.inject({method:"POST",url:"/api/v3/profile/publish",headers:{origin,"sec-fetch-site":"same-origin"}})).statusCode,401);
   const a=await identity(app,8011001),b=await identity(app,8011002),c=await identity(app,8011003);
   const ids=await prepare(app,a);
   const denied=await mutate(app,a,"/api/v3/profile/publish",{revision:1});
