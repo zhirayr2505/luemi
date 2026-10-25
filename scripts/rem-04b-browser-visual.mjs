@@ -33,7 +33,7 @@ const snapshot=async(tag,requireHero=false)=>{
    browseVisibility:browse?getComputedStyle(browse).visibility:null,
    browseDisplay:browse?getComputedStyle(browse).display:null,
    enteringVisibility:entering?getComputedStyle(entering).visibility:null,
-   overlay:root?.getAttribute("data-profile-overlay"),revealing:root?.getAttribute("data-route-revealing")};
+   overlay:root?.getAttribute("data-profile-overlay")};
  });
  records.push({tag,...r});console.log("REM04B_AFTER "+JSON.stringify({tag,...r}));
  await page.screenshot({path:dir+"/"+String(records.length).padStart(2,"0")+"-"+tag+".png"});
@@ -76,7 +76,7 @@ try{
  await page.locator(".fy-tile-photo").first().evaluate(el=>el.click());
  await page.locator(".discovery-visitor-route").waitFor();
  await delay(390);const covered=await snapshot("for-you-covered");
- assert.equal(covered.browseVisibility,"hidden");
+ assert.equal(covered.browseVisibility,"visible","painted ForYou underlay stays ready behind opaque route");
  // REM-03B/03D nested Viewer should leave the same hero/blur gallery and
  // underlay untouched when its own modal returns to profile.
  await page.locator(".discovery-visitor-route .pm-photo-slide").first().evaluate(el=>el.click());
@@ -88,10 +88,10 @@ try{
  assert.equal(covered.browseDisplay,"flex","mounted underlay remains layout alive");
  await page.evaluate(()=>document.querySelector(".discovery-browse-panel .discovery-deck-layer")?.classList.add("deck-entering"));
  const leak=await snapshot("deck-entering-under-covered-route");
- assert.equal(leak.enteringVisibility,"hidden","explicitly visible deck descendant may not escape hidden underlay");
+ assert.equal(leak.enteringVisibility,"visible","deck descendant stays painted while route covers it");
  await page.evaluate(()=>{window.__rem04bBrowse=document.querySelector(".discovery-browse-panel");});
  await page.evaluate(()=>window.__luemiQaBack?.());
- await delay(80);const reveal=await snapshot("route-revealing");
+ await delay(80);const reveal=await snapshot("route-returning");
  assert.equal(reveal.browseVisibility,"visible");
  await delay(390);const returned=await snapshot("route-returned");
  assert.equal(returned.route,false);
@@ -103,25 +103,24 @@ try{
  await page.locator(".nb-photo").first().evaluate(el=>el.click());
  await page.locator(".discovery-visitor-route").waitFor();await delay(370);
  const nearbyCovered=await snapshot("nearby-covered");
- assert.equal(nearbyCovered.browseVisibility,"hidden");
+ assert.equal(nearbyCovered.browseVisibility,"visible","painted Nearby underlay stays ready");
  await page.evaluate(()=>window.__luemiQaBack?.());
  await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3200});
  await page.getByRole("tab",{name:"Лента",exact:true}).click();
  await page.locator(".discovery-deck-layer.deck-active .discovery-name-button").first().evaluate(el=>el.click());
  await page.locator(".discovery-visitor-route").waitFor();await delay(350);
  const feedCovered=await snapshot("feed-covered");
- assert.equal(feedCovered.browseVisibility,"hidden");
+ assert.equal(feedCovered.browseVisibility,"visible","painted Feed underlay stays ready");
  await page.evaluate(()=>window.__luemiQaBack?.());
  await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3200});
  await page.evaluate(()=>{
   const app=document.querySelector(".discovery-app");app?.setAttribute("data-profile-overlay","true");
-  app?.removeAttribute("data-route-revealing");
   Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"hidden"});
   document.dispatchEvent(new Event("visibilitychange"));
  });
  await page.setViewportSize({width:852,height:393});await delay(75);
  const landscape=await snapshot("covered-landscape");
- assert.equal(landscape.browseVisibility,"hidden");
+ assert.equal(landscape.browseVisibility,"visible","no background tile invalidation on lifecycle or resize");
  await page.evaluate(()=>{
   const app=document.querySelector(".discovery-app");app?.removeAttribute("data-profile-overlay");
   Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"visible"});

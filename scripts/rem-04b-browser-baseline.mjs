@@ -38,7 +38,6 @@ const sample=async label=>{
      display:browse?getComputedStyle(browse).display:null,descendant:anchor(descendant),
      mounted:!!browse,scrollTop:scene?.querySelector(".fy-page-scroll")?.scrollTop??null},
    route:{exists:!!scene?.querySelector(".discovery-visitor-route"),
-     reveal:scene?.hasAttribute("data-route-revealing"),
      offset:scene?.querySelector(".discovery-visitor-route")?
       new DOMMatrixReadOnly(getComputedStyle(scene.querySelector(".discovery-visitor-route")).transform).m41:null},
    overlap:br&&cr?{blurW:br.width,clearW:cr.width}:null};
@@ -85,7 +84,7 @@ try{
  });
  await sample("visitor-hidden-deck-explicit-visible");
  await page.evaluate(()=>window.__luemiQaBack?.());
- await sleep(70);await sample("visitor-route-revealing");
+ await sleep(70);await sample("visitor-route-returning");
  await sleep(390);await sample("visitor-returned");
  await page.getByRole("tab",{name:"Рядом",exact:true}).click();await sleep(90);
  await sample("nearby-tab");
@@ -93,7 +92,6 @@ try{
  if(browse){
   await page.evaluate(()=>{
    document.querySelector(".discovery-app")?.setAttribute("data-profile-overlay","true");
-   document.querySelector(".discovery-app")?.removeAttribute("data-route-revealing");
   });
   await sleep(140);await page.setViewportSize({width:375,height:700});
   await sample("hidden-resize");

@@ -8,8 +8,8 @@ export type Viewport={width:number;height:number};
 export type MediaTransform={scale:number;x:number;y:number};
 export type FitRect={x:number;y:number;width:number;height:number;cx:number;cy:number};
 export type PinchAnchor={q:Point;startDistance:number;startScale:number;ids:readonly [number,number]};
-export const MIN_SCALE=1;
-export const MAX_SCALE=3.2;
+const MIN_SCALE=1;
+const MAX_SCALE=3.2;
 export const identityMedia=():MediaTransform=>({scale:1,x:0,y:0});
 export function finite(value:number,fallback=0):number{return Number.isFinite(value)?value:fallback;}
 export function clampScale(s:number):number{return Math.min(MAX_SCALE,Math.max(MIN_SCALE,finite(s,1)));}

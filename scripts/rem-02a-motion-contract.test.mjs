@@ -36,7 +36,8 @@ console.log("REM02A_UNIT_PASS single RAF coalescing, candidate→dragging and ve
 
 assert.equal(c.settle(t,46),true);assertPhase("settling");
 const updates=[];
-const complete=adapter.createGuardedCompletion(c,t,x=>updates.push("paint:"+x),()=>updates.push("commit"));
+const completeToken=t;
+const complete=()=>c.finish(completeToken,{paint:x=>updates.push("paint:"+x),onCommit:()=>updates.push("commit")});
 assert.equal(complete(),true);assert.deepEqual(updates,["paint:46","commit"]);
 assert.equal(complete(),false);assert.deepEqual(updates,["paint:46","commit"]);
 assert.equal(c.snapshot().lastSettled,46);
@@ -45,14 +46,15 @@ console.log("REM02A_UNIT_PASS finish writes terminal pixels then semantic commit
 t=c.begin(46);assert.equal(c.claim(t),true);
 assert.equal(c.paint(t,92,consumer,.2),true);
 assert.equal(c.settle(t,385),true);
-const stale=adapter.createGuardedCompletion(c,t,consumer,()=>updates.push("STALE"));
+const staleToken=t;
+const stale=()=>c.finish(staleToken,{paint:consumer,onCommit:()=>updates.push("STALE")});
 const paused=c.interrupt(t,"interrupted");
 assertPhase("suspended");assert.equal(paused.generation,t.generation+1);
 assert.equal(stale(),false);
 assert.equal(c.resume(paused,"settling",46)?.generation,paused.generation+1);
 const next=c.token();
 assert.equal(stale(),false);
-const done=adapter.createGuardedCompletion(c,next,consumer,()=>updates.push("RESUMED"));
+const done=()=>c.finish(next,{paint:consumer,onCommit:()=>updates.push("RESUMED")});
 assert.equal(done(),true);assert.equal(done(),false);
 assert.equal(updates.includes("STALE"),false);
 assert.equal(updates.filter(x=>x==="RESUMED").length,1);
@@ -85,7 +87,8 @@ console.log("REM02A_UNIT_PASS cancel twice and stale after-cancel finish");
 
 t=c.begin(350);assert.equal(c.close(t,900),true);
 assertPhase("closing");assert.equal(c.schedulePaint(t,420,consumer),false);
-const closeDone=adapter.createGuardedCompletion(c,t,consumer,()=>updates.push("close"));
+const closeToken=t;
+const closeDone=()=>c.finish(closeToken,{paint:consumer,onCommit:()=>updates.push("close")});
 assert.equal(closeDone(),true);
 assert.equal(closeDone(),false);
 assert.equal(updates.filter(x=>x==="close").length,1);
@@ -161,7 +164,7 @@ for(const [property,owner] of Object.entries(props)){
  assert.equal(seen.has(property),false);seen.add(property);
  assert.ok(adapter.PROFILE_MOTION_WRITER_TABLE[owner].includes(property),"owner matrix "+property);
 }
-assert.equal(seen.size,13,"all 13 mutable properties assigned exactly one owner");
+assert.equal(seen.size,12,"all 12 active mutable properties assigned exactly one owner");
 const authority=adapter.createProfileMotionAuthority();
 const surface={scrollTop:0,style:{transform:"",opacity:""}};
 authority.run("sheet",["sheet-scroll","elastic-sheet","parallax"],()=>{
@@ -213,6 +216,6 @@ assert.ok(route.includes("const OPEN_DURATION=260;")&&route.includes("const CLOS
  route.includes('const EASING="cubic-bezier(.2,.82,.24,1)";'));
 assert.ok(browse.includes("380")&&browse.includes("clickBlockUntil.current=performance.now()+260"));
 assert.ok(css.includes("border-radius:34px 34px 0 0"));
-assert.ok(ease.includes("export function animateValue("));
+assert.ok(!ease.includes("export function animateValue("), "obsolete parallel RAF animator removed");
 console.log("REM02A_ADAPTER_PASS existing sheet/route/tabs/pager motion timing and easing tokens unchanged");
 console.log("REM-02A UNIT AND ADAPTER QA PASS; physical A55/iOS NOT VERIFIED");

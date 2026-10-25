@@ -1,5 +1,5 @@
 /** LU-09: math shared by sheet & tab geometry adapters; no DOM reads. */
-export const clampPosition=(value:number,lower:number,upper:number):number=>
+const clampPosition=(value:number,lower:number,upper:number):number=>
  Math.max(lower,Math.min(upper,value));
 /** Keep the same *screen-space* position when a container changes its top. */
 export function remapSheetPixel(

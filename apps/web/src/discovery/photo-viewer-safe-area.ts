@@ -13,8 +13,8 @@ export function combineInsets(safe:Partial<Insets>|null|undefined,
   bottom:Math.max(positive(safe?.bottom),positive(content?.bottom),positive(css?.bottom)),
   left:Math.max(positive(safe?.left),positive(content?.left),positive(css?.left))};
 }
-export type ViewerInsets={insets:Insets;visualTop:number;visualBottom:number;theme:string};
-export function readViewerInsets(shell:HTMLElement|null,root:HTMLElement,
+type ViewerInsets={insets:Insets;visualTop:number;visualBottom:number;theme:string};
+function readViewerInsets(shell:HTMLElement|null,root:HTMLElement,
  snapshot:ViewportSnapshot|null=null):ViewerInsets{
  const style=shell?getComputedStyle(shell):null;
  const telegram=window.Telegram?.WebApp as ({safeAreaInset?:Partial<Insets>;contentSafeAreaInset?:Partial<Insets>;onEvent?:(name:string,cb:()=>void)=>void;offEvent?:(name:string,cb:()=>void)=>void})|undefined;
@@ -29,7 +29,7 @@ export function readViewerInsets(shell:HTMLElement|null,root:HTMLElement,
  return {insets,visualTop:top,visualBottom:bottom,
   theme:shell?.dataset.theme??"dark"};
 }
-export function applyViewerInsets(viewer:HTMLElement,next:ViewerInsets):void{
+function applyViewerInsets(viewer:HTMLElement,next:ViewerInsets):void{
  const {insets}=next;
  for(const axis of ["top","bottom","left","right"] as const)
   viewer.style.setProperty("--pv-safe-"+axis,insets[axis]+"px");

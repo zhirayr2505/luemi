@@ -226,12 +226,11 @@ try{
  const identity=await visitor.locator(".pm-identity").boundingBox();
  assert.ok(identity&&identity.width>=160&&identity.height>=25,"visitor route sheet back surface");
  const rx=identity.x+Math.min(54,identity.width*.2),ry=identity.y+Math.min(48,identity.height*.45);
- const eligible=await visitor.locator(".pm-identity").evaluate(async element=>{
-  const {gestureCapabilities}=await import("/src/ui/gesture-arbiter.ts");
-  return gestureCapabilities(element,true);
+ const modalBlocked=await visitor.locator(".pm-identity").evaluate(async element=>{
+  const {isGestureModalBlocked}=await import("/src/ui/gesture-arbiter.ts");
+  return isGestureModalBlocked(element);
  });
- assert.equal(eligible.modalBlocked,false,"visitor shell is allowed back surface despite dialog role");
- assert.equal(eligible.canBack,true);
+ assert.equal(modalBlocked,false,"visitor identity must remain a back-swipe surface despite dialog role");
  await page.mouse.move(rx,ry);await page.mouse.down();
  await page.mouse.move(rx+165,ry,{steps:6});
  await sleep(45);

@@ -3,7 +3,12 @@ import type { Rem05bOptions } from "./rem05b-session.js";
 import type { GeoRuntime } from "./geo-routes.js";
 import type { EmbeddingPolicy } from "./rem05c-headers.js";
 import {memoryPrivateStore} from "./rem05d-private.js";
+import {createDurablePrivateStore} from "./real-private-storage.js";
+import type {PublicationOptions} from "./real-publication.js";
+import type {ErasureRequestOptions} from "./real-erasure.js";
+import type {SafetyAppealOptions} from "./safety-appeal-api.js";
 import type {Rem05dOptions} from "./rem05d-private.js";
+import type {RealRegistrationOptions} from "./real-registration-drafts.js";
 export interface ApiConfig {
   port: number;
   origin: string;
@@ -17,6 +22,10 @@ export interface ApiConfig {
   logger: FastifyServerOptions["logger"];
   rem05b?: Rem05bOptions;
   rem05d?: Rem05dOptions;
+  realRegistration?: RealRegistrationOptions;
+  realPublication?: PublicationOptions;
+  realErasure?: ErasureRequestOptions;
+  safetyAppeal?: SafetyAppealOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -27,6 +36,16 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid PORT");
   if (!origin || origin === "*" || !/^https?:\/\//.test(origin))
     throw new Error("APP_ORIGIN must be an explicit origin");
+  // APP_ORIGIN is an exact trust boundary, never a URL with credentials,
+  // path, query, fragment or a confusing port/hostname normalization.
+  // Reject alternate spellings rather than silently normalizing CORS.
+  let parsedOrigin:URL;
+  try{parsedOrigin=new URL(origin);}
+  catch{throw new Error("APP_ORIGIN must be an exact HTTP(S) origin");}
+  if(!["http:","https:"].includes(parsedOrigin.protocol)||parsedOrigin.origin!==origin||
+    parsedOrigin.username||parsedOrigin.password||parsedOrigin.pathname!=="/"||
+    parsedOrigin.search||parsedOrigin.hash)
+    throw new Error("APP_ORIGIN must be an exact HTTP(S) origin");
   if (env.NODE_ENV === "production" && !origin.startsWith("https://"))
     throw new Error("Production APP_ORIGIN must use HTTPS");
   if (!stagingOnly && (!env.TELEGRAM_BOT_TOKEN || !/^\d+:[\w-]+$/.test(env.TELEGRAM_BOT_TOKEN)))
@@ -51,8 +70,13 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     // PROVISIONAL local/CI policy: NOT approved for real users.
     idleMs: 12 * 60 * 60 * 1000,
     absoluteMs: 7 * 24 * 60 * 60 * 1000,
-    maxSessions: 5
+    maxSessions: 5,
+    inviteOnly: env.REM06_BETA_INVITES_ENABLED==="1"
   } : undefined;
+  if(env.REM06_BETA_INVITES_ENABLED==="1"&&(!v2Enabled||
+    env.REM06_BETA_INVITES_APPROVED!=="1"||
+    env.REM06_PRIVACY_APPROVED!=="1"))
+    throw new Error("REG01G invite gate requires V2 and approved beta/privacy policy");
   // No opt-in flags are set in existing deployments. Key presence alone NEVER
   // activates a charged upstream call.
   const geoEnabled=env.REM05C_ENABLED==="1";
@@ -80,17 +104,92 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const dFlag=env.REM05D_PRIVATE_ENABLED==="1";
   if(dFlag&&(env.NODE_ENV!=="test"||!v2Enabled))
     throw new Error("REM-05D is unavailable outside explicit isolated tests");
-  const rem05d:Rem05dOptions|undefined=dFlag?{
+  let rem05d:Rem05dOptions|undefined=dFlag?{
     enabled:true,testOnly:true,namespace:env.REM05B_BOT_NAMESPACE??"",
     requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
     workerDatabaseUrl:env.REM05D_TEST_WORKER_DATABASE_URL??"",
     consentVersion:env.REM05D_TEST_CONSENT_VERSION??"",
     storage:memoryPrivateStore()
   }:undefined;
+  // REAL-REG-01 is explicit opt-in, independent of the synthetic media prototype.
+  const regEnabled=env.REM06_PRIVATE_DRAFT_ENABLED==="1";
+  if(regEnabled&&(!v2Enabled||stagingOnly||env.REM06_PRIVACY_APPROVED!=="1"||
+    !env.REM06_CONSENT_VERSION||!env.REM05B_REQUEST_DATABASE_URL))
+    throw new Error("REAL-REG-01 requires v2 sessions and approved privacy/DB gates");
+  const realRegistration:RealRegistrationOptions|undefined=regEnabled?{
+    enabled:true,requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
+    namespace:env.REM05B_BOT_NAMESPACE??"",consentVersion:env.REM06_CONSENT_VERSION??""
+  }:undefined;
+  // Real private media is an independent opt-in; never activated merely by
+  // installing Storage credentials. No live state or storage is touched at boot.
+  const mediaEnabled=env.REM06_MEDIA_ENABLED==="1";
+  if(mediaEnabled){
+   if(dFlag||!regEnabled||!v2Enabled||stagingOnly||
+     env.REM06_PRIVACY_APPROVED!=="1"||
+     !env.REM06_MEDIA_WORKER_DATABASE_URL||
+     env.REM06_MEDIA_BUCKET!=="luemi-profile-private"||
+     !env.REM06_SUPABASE_PROJECT_REF||!env.REM06_SUPABASE_STORAGE_SECRET)
+    throw new Error("REAL-REG-01C requires approved private draft, worker and storage gates");
+   rem05d={
+    enabled:true,durablePrivateOnly:true,
+    namespace:env.REM05B_BOT_NAMESPACE??"",
+    consentVersion:env.REM06_CONSENT_VERSION??"",
+    requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
+    workerDatabaseUrl:env.REM06_MEDIA_WORKER_DATABASE_URL,
+    storage:createDurablePrivateStore({
+      projectRef:env.REM06_SUPABASE_PROJECT_REF,
+      namespace:env.REM05B_BOT_NAMESPACE??"",
+      bucket:"luemi-profile-private",
+      secret:env.REM06_SUPABASE_STORAGE_SECRET
+    })
+   };
+  }
+  const publicationEnabled=env.REM06_PUBLICATION_ENABLED==="1";
+  // 01G closed beta MUST NOT accidentally switch on public discovery while
+  // invite enforcement is absent, even if old publication keys are present.
+  if(publicationEnabled&&(!rem05b?.inviteOnly||
+    env.REM06_BETA_INVITES_APPROVED!=="1"||
+    !mediaEnabled||!rem05d?.durablePrivateOnly||
+    env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1"||
+    !env.REM06_PUBLISHER_DATABASE_URL||!env.REM06_DISCOVERY_DATABASE_URL||
+    env.REM06_PUBLISHER_DATABASE_URL===env.REM06_DISCOVERY_DATABASE_URL))
+    throw new Error("REG01D requires private media, independent DB roles and accepted moderation");
+  const realPublication:PublicationOptions|undefined=publicationEnabled?{
+    enabled:true,requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
+    publisherDatabaseUrl:env.REM06_PUBLISHER_DATABASE_URL??"",
+    discoveryDatabaseUrl:env.REM06_DISCOVERY_DATABASE_URL??"",
+    namespace:env.REM05B_BOT_NAMESPACE??"",consentVersion:env.REM06_CONSENT_VERSION??"",
+    storage:rem05d!.storage
+  }:undefined;
+  const eraseEnabled=env.REM06_ERASURE_REQUEST_ENABLED==="1";
+  if(eraseEnabled&&(!publicationEnabled||!realPublication||
+    env.REM06_ERASURE_POLICY_APPROVED!=="1"||
+    !env.REM06_ERASURE_REQUEST_DATABASE_URL||
+    [env.REM05B_AUTH_DATABASE_URL,env.REM05B_REQUEST_DATABASE_URL,
+     env.REM06_MEDIA_WORKER_DATABASE_URL,env.REM06_PUBLISHER_DATABASE_URL,
+     env.REM06_DISCOVERY_DATABASE_URL].includes(env.REM06_ERASURE_REQUEST_DATABASE_URL)))
+    throw new Error("REG01F requires independently approved deletion policy and separate erasure role");
+  const realErasure:ErasureRequestOptions|undefined=eraseEnabled?{
+   enabled:true,databaseUrl:env.REM06_ERASURE_REQUEST_DATABASE_URL??"",
+   namespace:env.REM05B_BOT_NAMESPACE??""
+  }:undefined;
+  const appealsEnabled=env.REM06_SAFETY_APPEALS_ENABLED==="1";
+  if(appealsEnabled&&(!publicationEnabled||!realErasure||!rem05b?.inviteOnly||
+    env.REM06_SAFETY_POLICY_APPROVED!=="1"||
+    !env.REM06_SAFETY_APPEAL_DATABASE_URL||
+    [env.REM05B_AUTH_DATABASE_URL,env.REM05B_REQUEST_DATABASE_URL,
+     env.REM06_MEDIA_WORKER_DATABASE_URL,env.REM06_PUBLISHER_DATABASE_URL,
+     env.REM06_DISCOVERY_DATABASE_URL,env.REM06_ERASURE_REQUEST_DATABASE_URL]
+     .includes(env.REM06_SAFETY_APPEAL_DATABASE_URL)))
+    throw Error("REG01H requires approved safety appeals and isolated database role");
+  const safetyAppeal:SafetyAppealOptions|undefined=appealsEnabled?{
+   enabled:true,databaseUrl:env.REM06_SAFETY_APPEAL_DATABASE_URL??"",
+   namespace:env.REM05B_BOT_NAMESPACE??"",origin,botToken:env.TELEGRAM_BOT_TOKEN??""
+  }:undefined;
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
   return {
-    rem05b,rem05d,
+    rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,
     rem05c:{geo,embedding},
     port,
     origin,

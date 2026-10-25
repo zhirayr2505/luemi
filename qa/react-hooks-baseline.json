@@ -1,12 +1,4 @@
 {
   "schemaVersion": 1,
-  "allowed": [
-    {
-      "file": "apps/web/src/discovery/GlobalHeader.tsx",
-      "rule": "react-hooks/exhaustive-deps",
-      "line": 74,
-      "column": 5,
-      "message": "React Hook useImperativeHandle has missing dependencies: 'androidProfileChrome' and 'paintTools'. Either include them or remove the dependency array."
-    }
-  ]
+  "allowed": []
 }

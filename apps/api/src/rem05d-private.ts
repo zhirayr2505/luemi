@@ -1,5 +1,5 @@
-// LUEMI REM-05D, opt-in SYNTHETIC SERVER ONLY.
-// Neither production Storage nor IndexedDB is read, synced or touched here.
+// REM-05D shared private media engine. Synthetic test mode remains default-OFF;
+ // REAL-REG-01C may opt into durable PRIVATE-ONLY storage after separate gates.
 import {createHash,randomBytes,randomUUID,timingSafeEqual} from "node:crypto";
 import {Pool} from "pg";
 import type {PoolClient} from "pg";
@@ -11,7 +11,7 @@ type Guard={read:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;
 export type PrivateObjectStore={put:(key:string,bytes:Buffer)=>Promise<void>;get:(key:string)=>Promise<Buffer|null>;
  delete:(key:string)=>Promise<void>};
 export type Rem05dOptions={enabled:boolean;requestDatabaseUrl:string;workerDatabaseUrl:string;
- namespace:string;consentVersion:string;storage:PrivateObjectStore;testOnly:true};
+ namespace:string;consentVersion:string;storage:PrivateObjectStore;testOnly?:true;durablePrivateOnly?:true};
 class Rejection extends Error{constructor(public status:number,public code:string){super(code);}}
 function reject(status:number,code:string):never{throw new Rejection(status,code);}
 function digest(text:string){return createHash("sha256").update(text).digest("hex");}
@@ -52,7 +52,7 @@ function validatedDraft(raw:unknown,approvedConsent:string){
  if(Buffer.byteLength(JSON.stringify(p))>7000)reject(413,"draft_too_large");
  return p;
 }
-async function safeDb(db:PoolClient,kind:"luemi_request"|"luemi_media_worker"|"luemi_moderator"){
+export async function safeDb(db:PoolClient,kind:"luemi_request"|"luemi_media_worker"|"luemi_moderator"){
  try{
   const q=await db.query<{safe:boolean}>(`
     SELECT(r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls
@@ -138,10 +138,11 @@ export function memoryPrivateStore():PrivateObjectStore{
 }
 export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Rem05dOptions|undefined){
  if(!opts?.enabled)return;
- if(!guard||opts.testOnly!==true||!opts.requestDatabaseUrl||!opts.workerDatabaseUrl||
+ const exactlyOneMode=(opts.testOnly===true)!==(opts.durablePrivateOnly===true);
+ if(!guard||!exactlyOneMode||!opts.requestDatabaseUrl||!opts.workerDatabaseUrl||
   !/^[\w:-]{1,96}$/.test(opts.namespace)||!str(opts.consentVersion,3,64)||
   !opts.storage||typeof opts.storage.delete!=="function")
-   throw new Error("REM-05D requires isolated role-separated test-only setup");
+   throw new Error("Private media requires one explicit mode, isolated roles and a private store");
  const cfg=opts;
  const auth=guard;
  const requestPool=new Pool({connectionString:opts.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
@@ -162,6 +163,16 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    const active=await db.query("SELECT id FROM luemi_private.actors WHERE id=$1 AND environment=$2 AND status='active'",
      [initial.actorId,cfg.namespace]);
    if(active.rowCount!==1)reject(401,"unauthorized");
+   // Secure server-side gate: a signed session alone never authorizes storage.
+   if(cfg.durablePrivateOnly){
+    const consent=await db.query(
+     "SELECT 1 FROM luemi_private.private_profile_drafts WHERE owner_id=$1 "+
+     "AND environment=$2 AND consent_version=$3 "+
+     "AND birth_date IS NOT NULL AND birth_date <= "+
+     "((clock_timestamp() AT TIME ZONE 'UTC')::date - interval '18 years')",
+     [initial.actorId,cfg.namespace,cfg.consentVersion]);
+    if(consent.rowCount!==1)reject(403,"consent_required");
+   }
    const output=await fn(db,initial.actorId);
    // Revalidate the exact session generation BEFORE committing any user write.
    // A concurrent logout/ban during the SQL work must roll this transaction back.
@@ -288,6 +299,10 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   let workerCommitted=false;
   try{
    const changed=await worker(async db=>{
+    // Identical per-owner lock and order as erasure requests/media intents.
+    // Once deletion commits, revalidation below prevents a late Storage PUT.
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+verify.id+":profile_media_slots"]);
     const row=await db.query<{original_key:string;derivative_key:string;owner_id:string}>(
      "SELECT a.original_key,a.derivative_key,a.owner_id FROM luemi_private.media_assets a "+
      "JOIN luemi_private.media_uploads u ON u.asset_id=a.id "+
@@ -296,6 +311,14 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
      [req.params.id,verify.id,opts.namespace]);
     if(!row.rowCount)reject(409,"intent_consumed");
     const m=row.rows[0];
+    // A delete request may have committed while this upload was waiting for
+    // the per-owner lock. Reject before any external Storage operation.
+    await auth.read(req,reply);
+    if(reply.sent||!uploadActor||!req.authActor||
+      req.authActor.actorId!==uploadActor.actorId||
+      req.authActor.sessionId!==uploadActor.sessionId||
+      !timingSafeEqual(req.authActor.hash,uploadActor.hash))
+       reject(401,"unauthorized");
     // Object store writes are NOT transactional with PostgreSQL. Any failure
     // after this point requires best-effort compensating deletion.
     stagedKey=m.derivative_key;

@@ -168,6 +168,12 @@
  padding:32px 0 0;border-radius:34px 34px 0 0;
  background:var(--bg);box-shadow:0 -5px 20px rgba(56,30,73,.052);
 }
+/* Android theme switch paints one stationary surface without altering the
+   physics or transform of the white profile sheet. */
+.discovery-app[data-profile-renderer=android] .pm-profile-sheet{transition:background-color 180ms ease-out}
+@media (prefers-reduced-motion:reduce){
+ .discovery-app[data-profile-renderer=android] .pm-profile-sheet{transition:none}
+}
 .pm-sheet-grab{
  position:absolute;z-index:2;top:6px;left:50%;transform:translateX(-50%);
  display:grid;place-items:center;width:64px;height:25px;padding:0;border:0;background:transparent;
@@ -208,10 +214,6 @@
  /* paintSheet owns these properties; CSS transitions would trail every frame. */
 }
 .pm-mini-avatar img{width:100%;height:100%;display:block;object-fit:cover}
-.pm-mini-avatar.has-blik{
- border:2px solid #ac62eb;
- box-shadow:0 0 0 2px var(--bg),0 0 0 4px rgba(198,119,243,.54);
-}
 /* Avatar appearance is a continuous sheet progress, not a discrete state flip. */
 .pm-owner-actions{
  flex:none;display:grid;grid-template-columns:1fr 1.26fr 1fr;gap:8px;
@@ -266,6 +268,13 @@
  overflow-anchor:none;
 }
 .pm-page::-webkit-scrollbar{display:none}
+/* While the hero is expanded, scrolling up anywhere on the white content
+   must collapse the sheet, not be captured by Chromium's native pan-y before
+   the touch recognizer can claim it. Once collapsed, native vertical scrolling
+   is restored unmodified. Tabs keep their independent horizontal handling. */
+.pm-shell[data-sheet-state="expanded"] .pm-page,
+.pm-shell[data-sheet-state="expanded"] .pm-identity{touch-action:none}
+
 /* Keep page overflow geometry identical at both snap points. During a
    sheet gesture its touch recognizer owns vertical movement. */
 .pm-preview-toolbar{position:absolute;z-index:15;right:14px;top:calc(var(--top-safe) + 76px)}

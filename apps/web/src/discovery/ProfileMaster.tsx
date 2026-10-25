@@ -27,7 +27,6 @@ type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
- registerRouteGestureCancel?:(handler:(()=>void)|null)=>void;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
  gestureArbiter?:GestureArbiter;
 };
@@ -167,7 +166,7 @@ function Meta({view}:{view:ProfileView}){
  {p.source!=="server"&&<p className="pm-demo-disclaimer"><Info size={15}/> Демо/черновик: даты, публичный ID и проверка не подтверждены сервером.</p>}
  </div>;
 }
-export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteGestureCancel,registerRouteMotion,gestureArbiter}:Props){
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteMotion,gestureArbiter}:Props){
  const [preview,setPreview]=useState(false);
  const [tab,setTab]=useState<TabId>("about");
  const [viewer,setViewer]=useState<{photoId:string;source:ViewerSource|null}|null>(null);
@@ -762,7 +761,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
     lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
-    revision:sheetRevision.current,blocking:inPages?scrollTop<=1:!collapsedRef.current,
+    revision:sheetRevision.current,blocking:inPages?(!collapsedRef.current||scrollTop<=1):!collapsedRef.current,
     serial,claimed:false};
    pane.removeEventListener("touchmove",move);
    pane.addEventListener("touchmove",move,{passive:!gesture.blocking});
@@ -773,9 +772,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    g.lastX=t.clientX;
    if(!g.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
-    // A page already scrolled vertically keeps native control in either axis,
-    // including vertical diagonals; no custom sheet or tabs writer may claim.
-    if(g.inPages&&g.scrollTop>1){g.axis="native";gestures.nativeScroll(g.serial);return;}
+    // Preserve native vertical scrolling after collapse, even when the list
+    // is already scrolled. An expanded sheet owns the whole white surface;
+    // its old content scrollTop must not disable the collapse gesture.
+    if(g.inPages&&g.down&&g.scrollTop>1){g.axis="native";gestures.nativeScroll(g.serial);return;}
     // If the listener started passive, it must NEVER take over native scroll
     // mid-session, even when the diagonal later resembles a horizontal drag.
     if(Math.abs(dx)>Math.abs(dy)*1.18)
@@ -933,17 +933,6 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    routeMotionHandle.current.suspendForBackground();
   },()=>routeMotionHandle.current.resumeFromBackground());
  },[gestureArbiter]);
- useLayoutEffect(()=>{
-  if(!registerRouteGestureCancel)return;
-  const cancel=()=>{
-   photoSwipe.current=null;tabSwipe.current=null;
-   cancelSheetGesture.current();
-   stopSheet.current();stopTabs.current();
-   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
-  };
-  registerRouteGestureCancel(cancel);
-  return ()=>registerRouteGestureCancel(null);
- },[registerRouteGestureCancel]);
  const openMyPhotos=()=>{chooseTab(2);settleSheet(true);};
  const openAvatar=()=>{
   settleSheet(false);
@@ -954,7 +943,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  // Step 8 embeds the sheet; owner "Предпросмотр" opens a closable nested dialog.
  const embeddedSelf=mode==="local-self-preview"&&!onClose;
  return <section ref={shell} data-sheet-state={collapsed?"collapsed":"expanded"} data-sheet-renderer="scroll" className={"pm-shell "+(mode==="owner"||embeddedSelf?"pm-inline":"pm-dialog")} role={mode==="owner"||embeddedSelf?undefined:"dialog"}
-   aria-modal={mode==="owner"||embeddedSelf?undefined:true} aria-label={mode==="owner"?"Мой профиль":mode==="local-self-preview"?"Локальный предпросмотр черновика":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
+   aria-modal={mode==="owner"||embeddedSelf?undefined:true} tabIndex={mode==="visitor"?-1:undefined} data-modal-initial={mode==="visitor"?"true":undefined} aria-label={mode==="owner"?"Мой профиль":mode==="local-self-preview"?"Локальный предпросмотр черновика":mode==="preview"?"Посмотреть глазами других":"Демо-профиль"}>
   {(mode==="preview"||mode==="local-self-preview"&&!!onClose)&&<div className="pm-preview-toolbar"><button type="button" data-modal-initial onClick={onClose}>Закрыть предпросмотр</button></div>}
    <div className="pm-hero" ref={hero} onPointerDown={photoStart} onPointerMove={photoMove}
     onPointerUp={e=>photoEnd(e)} onPointerCancel={e=>photoEnd(e,true)}

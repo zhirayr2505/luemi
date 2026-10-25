@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {ArrowRight,Moon,Sun} from "lucide-react";
+import {SafetyAppealPanel} from "./SafetyAppealPanel";
 import {GlassArrow} from "./ui/Glass";
 import type { HealthResponse } from "@luemi/contracts";
 import { newDraft, steps, validateStep, type RegistrationDraft } from "./registration/model";
@@ -10,9 +11,14 @@ import {preparePhotoPreview} from "./registration/photo-preview";
 import {installViewportController} from "./viewport/viewport-controller";
 // Load the heavy Discovery/profile route only after the entry shell can paint.
 const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({default:m.DiscoveryApp})));
+const RealLiveFeed = lazy(() => import("./registration/RealLiveFeed").then(m=>({default:m.RealLiveFeed})));
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
+import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft} from "./registration/server-draft";
+import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
+import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
+import type {OwnerPublicationStatus} from "./registration/real-live-client";
 
 declare global {
   interface Window {
@@ -114,6 +120,18 @@ export function App() {
   const [storageState,setStorageState]=useState<"loading"|"idle"|"dirty"|"saving"|"saved"|"error">("loading");
   const [storageCode,setStorageCode]=useState<StorageCode|null>(null);
   const [error,setError] = useState("");
+  const [serverConsent,setServerConsent]=useState(false);
+  const [serverSaving,setServerSaving]=useState(false);
+  const [serverStatus,setServerStatus]=useState("");
+  const [privateDraftSaved,setPrivateDraftSaved]=useState(false);
+  const [mediaSaving,setMediaSaving]=useState(false);
+  const [mediaStatus,setMediaStatus]=useState("");
+  const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
+  const [publishBusy,setPublishBusy]=useState(false);
+  const [publishFeedback,setPublishFeedback]=useState("");
+  const [realFeedOpen,setRealFeedOpen]=useState(false);
+  const [accountDeletionRequested,setAccountDeletionRequested]=useState(false);
+  const [localDeletionFailed,setLocalDeletionFailed]=useState(false);
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
@@ -123,6 +141,9 @@ export function App() {
     persistEnabled.current=true;
     setStorageState("dirty");
     setDraft(prev=>({...prev,...change}));
+    setServerStatus(""); // A changed local draft is no longer identical to the server copy.
+    setPrivateDraftSaved(false);
+    setPublishStatus(null);
     setError("");
   },[]);
   useEffect(()=>{
@@ -325,6 +346,7 @@ export function App() {
   };
   const addPhotos=(files:File[])=>{
     if(!files.length)return;
+    setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);
     persistEnabled.current=true;setStorageState("dirty");
     const accepted:PhotoItem[]=[];
     let problem="";
@@ -361,6 +383,7 @@ export function App() {
     setError(problem);
   };
   const removePhoto=(id:string)=>{
+    setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
     photoJobs.current.get(id)?.abort();photoJobs.current.delete(id);
     const timer=photoTimers.current.get(id);
@@ -371,6 +394,7 @@ export function App() {
     setPhotos(prev=>prev.filter(p=>p.id!==id));
   };
   const movePhoto=(from:number,to:number)=>{
+    setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
     setPhotos(prev=>{
       if(from<0||from>=prev.length||to<0||to>=prev.length)return prev;
@@ -389,7 +413,7 @@ export function App() {
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
     draftId.current=crypto.randomUUID();revision.current=0;
-    setPhotos([]);setDraft(newDraft());setStep(1);setError("");
+    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);setRealFeedOpen(false);
     setStorageState("saving");setStorageCode(null);
     if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
     void clearDraftSnapshot(scope).then(result=>{
@@ -438,6 +462,137 @@ export function App() {
   const beginDemo=()=>{setDemoOpen(true);setError("");};
   const exitDemo=useCallback(()=>{setDemoOpen(false);setPhase("form");setStep(8);},[]);
   const readyPhotos=useMemo(()=>readyRegistrationPhotos(photos),[photos]);
+  const persistServerDraft=async()=>{
+    if(!remoteDraftPilot.enabled||!serverConsent||serverSaving||auth!=="authorized")return;
+    for(let n=1;n<=6;n++){
+      const problem=validateStep(draft,n,photos.length);
+      if(problem){setServerStatus("Проверь шаг "+n+": "+problem);return;}
+    }
+    setServerSaving(true);setServerStatus("");
+    try{
+      const previous=await readRemoteRevision();
+      if(previous.state==="private"&&!window.confirm(
+        "На сервере уже есть приватный черновик. Заменить его текущими полями? Фотографии останутся на этом устройстве."
+      )){setServerStatus("Серверный черновик оставлен без изменений.");return;}
+      await saveRemoteDraft(draft,previous.revision);
+      setPrivateDraftSaved(true);
+      setPublishStatus(null);
+      setServerStatus("Поля анкеты сохранены на сервере. Публикация закрыта, фотографии остались на этом устройстве.");
+    }catch(e){
+      setPrivateDraftSaved(false);
+      setServerStatus(e instanceof Error&&e.message==="revision_conflict"?
+        "Черновик изменён в другой сессии. Ничего не перезаписано — проверь данные и повтори.":
+        "Серверное сохранение не удалось. Локальный черновик и фотографии не удалены.");
+    }finally{setServerSaving(false);}
+  };
+  const persistPrivatePhotos=async()=>{
+    if(!remoteMediaPilot.enabled||!privateDraftSaved||!serverConsent||
+      mediaSaving||serverSaving||auth!=="authorized")return;
+    if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready")){
+      setMediaStatus("Для загрузки требуется от 3 до 6 обработанных фотографий.");
+      return;
+    }
+    setMediaSaving(true);setMediaStatus("");
+    try{
+      await uploadPrivatePhotos([...photos],(done,total)=>
+        setMediaStatus("Отправлено "+done+" из "+total+". Все фотографии приватны."));
+      setPublishStatus(null);
+      setMediaStatus("Фотографии приняты в приватную очередь модерации. Они никому не видны и не опубликованы.");
+    }catch{
+      setMediaStatus("Не все фотографии отправлены. Уже принятые остаются приватными. Проверь соединение перед повтором.");
+    }finally{setMediaSaving(false);}
+  };
+  const checkPublication=async()=>{
+    if(!realFeedPilot.enabled||publishBusy)return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      const state=await ownerPublicationStatus();
+      setPublishStatus(state);
+      setPublishFeedback(state.state==="published"?"Анкета опубликована.":
+        state.approved>=3&&state.approved<=6&&state.pending===0&&state.other===0?
+        "Все фотографии одобрены. Можно запросить публикацию.":
+        "Публикация пока недоступна: требуется 3–6 одобренных фотографий и отсутствие ожидающих проверки.");
+    }catch{setPublishStatus(null);setPublishFeedback("Не удалось проверить статус на сервере.");}
+    finally{setPublishBusy(false);}
+  };
+  const publishProfile=async()=>{
+    if(!realFeedPilot.enabled||publishBusy||publishStatus?.state==="published"||
+       !serverConsent)return;
+    if(!window.confirm("Опубликовать анкету и одобренные фото для других совершеннолетних пользователей?"))return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      const current=await readRemoteRevision();
+      if(current.state!=="private")throw new Error("private_draft_missing");
+      await publishMyProfile(current.revision);
+      setPublishStatus(await ownerPublicationStatus());
+      setPublishFeedback("Анкета опубликована. Теперь другие подходящие пользователи могут её увидеть.");
+    }catch{
+      setPublishFeedback("Публикация не выполнена. Проверь одобрение всех фото, согласие и версию анкеты.");
+    }finally{setPublishBusy(false);}
+  };
+  const hideProfile=async()=>{
+    if(!realFeedPilot.enabled||publishBusy||
+       !window.confirm("Снять анкету с публикации и скрыть фотографии от других пользователей?"))return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      await unpublishMyProfile();
+      setPublishStatus(await ownerPublicationStatus());
+      setPublishFeedback("Анкета скрыта. Другим пользователям её фото больше недоступны.");
+    }catch{setPublishFeedback("Не удалось скрыть анкету. Проверь соединение.");}
+    finally{setPublishBusy(false);}
+  };
+  const withdrawPersonalConsent=async()=>{
+    if(!realFeedPilot.enabled||publishBusy||auth!=="authorized")return;
+    if(!window.confirm(
+      "Отозвать согласие? Анкета и фотографии сразу скроются от других людей. Данные останутся на сервере до отдельного удаления."
+    ))return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      await withdrawRealConsent();
+      setServerConsent(false);setPrivateDraftSaved(false);setRealFeedOpen(false);
+      setPublishStatus(null);
+      setPublishFeedback("Согласие отозвано, анкета и фото скрыты. Данные НЕ удалены: удаление аккаунта появится отдельно.");
+    }catch{
+      setPublishFeedback("Не удалось отозвать согласие. Проверь соединение и повтори.");
+    }finally{setPublishBusy(false);}
+  };
+  const eraseMyAccount=async()=>{
+    if(!realFeedPilot.enabled||publishBusy||auth!=="authorized")return;
+    if(window.prompt("Для запроса полного удаления аккаунта впиши УДАЛИТЬ")!=="УДАЛИТЬ")return;
+    if(!window.confirm(
+      "Удалить доступ к аккаунту навсегда? Сессии будут отозваны сразу. Файлы и записи будут удаляться отдельно. Отменить запрос после отправки нельзя."
+    ))return;
+    setPublishBusy(true);setPublishFeedback("");
+    try{
+      await requestMyAccountDeletion();
+      // Server receipt means all sessions were revoked, but remote file/database
+      // purge is still pending. Never label this a completed deletion.
+      setAccountDeletionRequested(true);setRealFeedOpen(false);setServerConsent(false);
+      persistEnabled.current=false;
+      ++saveSequence.current;photoGeneration.current++;
+      for(const job of photoJobs.current.values())job.abort();
+      photoJobs.current.clear();
+      for(const timer of photoTimers.current.values())window.clearTimeout(timer);
+      photoTimers.current.clear();
+      for(const url of ownedUrls.current)URL.revokeObjectURL(url);
+      ownedUrls.current=[];photoIds.current.clear();
+      setPhotos([]);setDraft(newDraft());
+      try{
+        const result=scope?await clearDraftSnapshot(scope):null;
+        if(!result?.ok)setLocalDeletionFailed(true);
+      }catch{setLocalDeletionFailed(true);}
+    }catch{
+      setPublishFeedback("Не удалось отправить запрос на удаление. Аккаунт не считается удалённым.");
+    }finally{setPublishBusy(false);}
+  };
+  if(accountDeletionRequested)return <main className="luemi-shell" data-theme={activeTheme}
+    data-scene="intro" role="status" style={{padding:"32px 22px",display:"grid",alignContent:"center",gap:18}}>
+    <img src={logoSrc} alt="LUEMI" style={{width:150,maxWidth:"100%",justifySelf:"center"}}/>
+    <h2>Запрос на удаление принят</h2>
+    <p>Ваш аккаунт отключён, активные сессии закрыты, анкета и фотографии скрыты. Удаление файлов из хранилища и остальных данных ещё выполняется.</p>
+    {localDeletionFailed&&<p role="alert">Локальный черновик на этом устройстве не удалось очистить. Удалите данные Telegram Mini App вручную.</p>}
+    <p>Не закрывайте этот текст с ожиданием мгновенного полного удаления: подтверждения завершения очистки сервер ещё не выдавал.</p>
+  </main>;
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
@@ -454,7 +609,7 @@ export function App() {
       <h1>Твоя история начинается здесь</h1>
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
-      {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button></>}
+      {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
       {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
         <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
           Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
@@ -475,6 +630,63 @@ export function App() {
       <div key={step} className="onboard-body" ref={contentRef}>
         <RegistrationStep data={draft} patch={patch} step={step} photos={photos}
           addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep} resetDraft={resetDraft} openDemo={beginDemo}/>
+        {step===8&&remoteDraftPilot.enabled&&<section className="registration-preview-review" aria-label="Приватное серверное сохранение">
+          <strong>Приватное сохранение анкеты</strong>
+          <p>На сервер отправятся только поля анкеты. Фотографии останутся на устройстве; анкета не будет опубликована.</p>
+          <label>
+            <input type="checkbox" checked={serverConsent} onChange={e=>setServerConsent(e.target.checked)}/>
+            {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">
+              политику обработки данных</a> и согласен(-на) сохранить черновик на сервере.
+          </label>
+          <button type="button" className="primary-action" disabled={!serverConsent||serverSaving}
+            onClick={()=>{void persistServerDraft();}}>
+            {serverSaving?"Сохранение…":"Сохранить приватный черновик"}
+          </button>
+          {serverStatus&&<p role="status">{serverStatus}</p>}
+          {remoteMediaPilot.enabled&&privateDraftSaved&&serverConsent&&
+            <div className="registration-preview-review" aria-label="Приватная загрузка фотографий">
+              <p>Фотографии пройдут серверную проверку и попадут в очередь модерации. Публикация пока запрещена. Передавать можно только 3–6 фотографий.</p>
+              <button className="primary-action" type="button" disabled={serverSaving||mediaSaving}
+                onClick={()=>{void persistPrivatePhotos();}}>
+                {mediaSaving?"Отправка фотографий…":"Отправить фото на приватную проверку"}
+              </button>
+              {mediaStatus&&<p role="status">{mediaStatus}</p>}
+            </div>}
+        </section>}
+        {step===8&&realFeedPilot.enabled&&<section className="registration-preview-review" aria-label="Реальная регистрация и просмотр пользователей">
+          <strong>Публикация и проверенные анкеты</strong>
+          <p>Только совершеннолетние, опубликованные анкеты и одобренные модерацией фотографии. Демо-пользователи здесь не отображаются.</p>
+          <button type="button" disabled={publishBusy} onClick={()=>{void checkPublication();}}>
+            Проверить статус модерации
+          </button>
+          {publishStatus&&<p role="status">
+            Статус: {publishStatus.state==="published"?"опубликована":
+              publishStatus.state==="hidden"?"скрыта":"черновик"} ·
+            Одобрено: {publishStatus.approved} · Ожидают: {publishStatus.pending}
+          </p>}
+          {publishStatus?.state!=="published"&&publishStatus!==null&&
+            publishStatus.approved>=3&&publishStatus.approved<=6&&
+            publishStatus.pending===0&&publishStatus.other===0&&
+            <button type="button" className="primary-action"
+              disabled={publishBusy||!serverConsent}
+              onClick={()=>{void publishProfile();}}>Опубликовать анкету</button>}
+          {publishStatus?.state==="published"&&
+            <button type="button" disabled={publishBusy}
+              onClick={()=>{void hideProfile();}}>Снять анкету с публикации</button>}
+          {publishFeedback&&<p role="status">{publishFeedback}</p>}
+          <button type="button" disabled={publishBusy}
+            onClick={()=>{void withdrawPersonalConsent();}}>
+            Отозвать согласие и скрыть анкету
+          </button>
+          <button type="button" disabled={publishBusy}
+            onClick={()=>{void eraseMyAccount();}}>Запросить удаление аккаунта и фото</button>
+          <button type="button" onClick={()=>setRealFeedOpen(value=>!value)}>
+            {realFeedOpen?"Закрыть реальную ленту":"Открыть реальную ленту"}
+          </button>
+          {realFeedOpen&&<Suspense fallback={<p>Открываем ленту…</p>}>
+            <RealLiveFeed onClose={()=>setRealFeedOpen(false)}/>
+          </Suspense>}
+        </section>}
       </div>
       {step===5&&<SelectedInterests selected={draft.interests}
         onChange={id=>patch({interests:draft.interests.filter(x=>x!==id)})}/>}

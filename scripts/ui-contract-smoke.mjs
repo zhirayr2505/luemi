@@ -143,7 +143,7 @@ assertCheck("stable tab geometry while switching Chats and Discover",
  discoveryCss.includes(".discovery-main-panels{position:relative")&&
  discoveryCss.includes(".discovery-panel{position:absolute;inset:0")&&
  discovery.includes("selectMainTab(value)")&&
- globalHeader.includes("decoding=\"sync\" fetchPriority=\"high\""));
+ globalHeader.includes("decoding=\"async\" fetchPriority=\"high\""));
 assertCheck("single atomic Deck Lift commit synchronized with exit animation",
  discovery.includes("onAnimationEnd={event=>")&&
  discovery.includes('event.animationName==="luemi-deck-leave"')&&

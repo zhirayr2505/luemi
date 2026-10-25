@@ -66,8 +66,16 @@ try{
  pass("server published/hidden/pending/rejected fixture remains restricted");
 
  await goto("step8","mixed");
- assert.equal((await page.locator(".preview-root").innerText()).includes("обрабатываются"),true);
- assert.equal((await page.locator(".preview-root").innerText()).includes("ошибки"),true);
+ assert.equal(await page.locator('.registration-preview-switch [role="tab"]').count(),2);
+ await page.getByRole("tab",{name:"Карточка в ленте"}).click();
+ assert.equal(await page.locator(".registration-preview-card").count(),1,"local card preview available");
+ assert.equal(await page.locator(".registration-preview-card-photo img").count(),1,"ready photo projected to local card");
+ assert.equal(await page.locator(".registration-preview-card-details strong").count(),1);
+ assert.ok((await page.locator(".registration-preview-watermark").innerText()).includes("не опубликовано"));
+ await page.getByRole("tab",{name:"Полный профиль"}).click();
+ assert.equal(await page.locator(".registration-profile-simulator .pm-shell").count(),1,"same accepted full profile");
+ assert.equal((await page.locator(".preview-root").innerText()).includes("Фото в обработке:"),true);
+ assert.equal((await page.locator(".preview-root").innerText()).includes("с ошибками:"),true);
  await page.getByRole("button",{name:"Изменить анкету"}).click();
  assert.equal(await page.locator("#events").innerText(),"edit-7");
  await page.getByRole("button",{name:/Открыть демо-Ленту/}).click();

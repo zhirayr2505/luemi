@@ -7,6 +7,20 @@ const url=x=>"data:text/javascript;base64,"+Buffer.from(x).toString("base64");
 const motionURL=url(compile(read("apps/web/src/ui/motion-controller.ts")));
 const gestureURL=url(compile(read("apps/web/src/ui/gesture-arbiter.ts")).replaceAll('from "../ui/motion-controller"','from "'+motionURL+'"'));
 const mod=await import(gestureURL);
+const noLayoutTarget={
+ closest(){return null;},
+ get scrollTop(){throw new Error("gesture target must not measure scroll position");},
+ get scrollHeight(){throw new Error("gesture target must not measure scroll geometry");}
+};
+assert.equal(mod.isGestureModalBlocked(noLayoutTarget),false,"resting scrolled panels may begin horizontal gesture");
+assert.equal(mod.isGestureModalBlocked({closest:()=>({})}),true,"nested modal must retain gesture exclusion");
+assert.equal(mod.isGestureModalBlocked(null),true,"missing target is blocked");
+const browseOnly={closest(selector){
+ return [".nb-card",".fy-rail",".nb-location",".discovery-filter-sheet"].some(c=>selector.includes(c))?{}:null;
+}};
+assert.equal(mod.isGestureModalBlocked(browseOnly),false,
+ "visitor modal gate must not accidentally blacklist unrelated browse/nearby elements");
+console.log("REM02C_UNIT_PASS pointerdown modal gate has no forced layout reads");
 const ar=new mod.GestureArbiter();
 const native=ar.begin("pointer",5,"route");
 assert.equal(ar.begin("touch",0,"sheet"),native,"pointer/touch single logical candidate");
@@ -22,6 +36,30 @@ assert.equal(ar.finish("sheet",native),true);
 assert.equal(ar.finish("sheet",native),false);
 assert.equal(ar.snapshot().active,false);
 console.log("REM02C_UNIT_PASS pointer+Touch candidates only one owner and one terminal");
+
+// A pointerup in the outer visitor route may precede touchend in the inner
+// sheet on Android. Releasing the outer candidate must NOT kill the inner
+// gesture before it claims the vertical motion. This was the profile bug.
+const parent=ar.begin("pointer",40,"route");
+assert.equal(ar.begin("touch",0,"sheet"),parent);
+assert.equal(ar.begin("touch",0,"tabs"),parent);
+ar.finishCandidate(parent,"route");
+assert.equal(ar.candidate("sheet",parent),true,"parent release preserves child");
+assert.equal(ar.claim("sheet",parent),true,"child may claim after parent pointer terminal");
+assert.equal(ar.finish("sheet",parent),true);
+assert.equal(ar.snapshot().active,false);
+const leftover=ar.begin("pointer",41,"browse");
+assert.equal(ar.begin("pointer",41,"native"),leftover);
+ar.finishCandidate(leftover,"browse");
+assert.equal(ar.candidate("native",leftover),true,"native candidate survives browse release");
+ar.finishCandidate(leftover,"native");
+assert.equal(ar.snapshot().active,false,"last candidate releases session");
+const sameKind=ar.begin("touch",9,"sheet");
+assert.equal(ar.begin("touch",10,"tabs"),null,"second native touch cancels interaction");
+assert.equal(ar.finish("sheet",sameKind),false,"cancelled touch never commits");
+assert.equal(ar.snapshot().active,false);
+console.log("REM02C_UNIT_PASS candidate-specific release, pointer/touch ordering and second-finger protection");
+
 
 const mixed=ar.begin("pointer",71,"tabs");
 assert.equal(ar.begin("touch",0,"sheet"),mixed);
@@ -109,11 +147,16 @@ assert.ok(profile.includes('const serial=gestures.begin("pointer",e.pointerId,"t
  "mouse/pen tab pointer path must use the same arbiter for claim/paint/terminal");
 const tabCandidate=profile.slice(profile.indexOf("const tabDown="),profile.indexOf("const tabMove="));
 assert.ok(!tabCandidate.includes("stopTabs.current()"),"candidate must not interrupt prior tab settle");
-assert.ok(profile.includes('blocking:inPages?scrollTop<=1:!collapsedRef.current')&&
- profile.includes('if(g.inPages&&g.scrollTop>1)'),
- "already scrolled native Touch page must stay passive and never claim sheet on vertical/diagonal input");
+assert.ok(profile.includes('blocking:inPages?(!collapsedRef.current||scrollTop<=1):!collapsedRef.current')&&
+ profile.includes('if(g.inPages&&g.down&&g.scrollTop>1)')&&
+ profileCss.includes('.pm-shell[data-sheet-state="expanded"] .pm-page'),
+ "collapsed scrolled content retains passive native scroll; expanded surface hands vertical touch to sheet");
 assert.ok(profile.includes('!gestures.owns(g.axis==="x"?"tabs":"sheet",g.serial)'));
 assert.ok(route.includes('gestureArbiter={gestures}')&&route.includes('attachSuppression.current()'));
+assert.ok(route.includes("if(isGestureModalBlocked(target))return;")&&
+ !route.includes("capabilities.canScrollY")&&
+ !route.includes("gestureCapabilities(target"),
+ "visitor route never blocks horizontal back swipe merely because content was scrolled");
 assert.ok(browse.includes('browseMotion.current.schedulePaint(g.token,trackX')&&browse.includes('frozenBrowse()'));
 assert.ok(browse.includes('g.originInk-shift/3')&&browse.includes('trackX=g.originTrack+shift'));
 assert.ok(css.includes('transition:transform .3s cubic-bezier(.2,.77,.21,1)')&&

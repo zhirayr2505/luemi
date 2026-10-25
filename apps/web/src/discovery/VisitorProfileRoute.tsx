@@ -3,7 +3,7 @@ import type {PointerEvent as ReactPointerEvent} from "react";
 import {ProfileMaster} from "./ProfileMaster";
 import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
-import {GestureArbiter,gestureCapabilities,fractionalTrack,computedTranslation} from "../ui/gesture-arbiter";
+import {GestureArbiter,isGestureModalBlocked,fractionalTrack,computedTranslation} from "../ui/gesture-arbiter";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import {useModalLayer} from "../ui/modal-layer";
@@ -17,7 +17,7 @@ type Props={
  registerBack:(handler:(()=>boolean)|null)=>void;
 };
 type RouteDrag={
- id:number;startX:number;startY:number;started:number;origin:number;claimed:boolean;serial:number;
+ id:number;startX:number;startY:number;started:number;origin:number;span:number;claimed:boolean;serial:number;
  source:"photo"|"pages"|"tabs"|"sheet";
 };
 const OPEN_DURATION=260;
@@ -35,7 +35,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
  const attachSuppression=useRef<()=>void>(()=>{});
  const header=useRef<HeaderMotion>(null);
  const gesture=useRef<RouteDrag|null>(null);
- const cancelProfileGesture=useRef<(()=>void)|null>(null);
  const childMotion=useRef<ProfileRouteMotionHandle|null>(null);
  const paused=useRef(false),intent=useRef<"opening"|"rollback"|"closing"|null>(null);
  const routeMotion=useRef(new MotionController("route",{
@@ -47,13 +46,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
  const entranceFrame=useRef<number|null>(null);
  const finishMotion=useRef<(()=>void)|null>(null);
 
- const revealUnderlay=(visible:boolean)=>{
-  motionAuthority.current.run("route",PROFILE_MOTION_WRITER_TABLE.route,()=>{
-   const app=route.current?.closest<HTMLElement>(".discovery-app");
-   if(visible)app?.setAttribute("data-route-revealing","true");
-   else app?.removeAttribute("data-route-revealing");
-  });
- };
  const clearTimer=()=>{
   if(timer.current!==null){window.clearTimeout(timer.current);timer.current=null;}
   finishMotion.current=null;
@@ -109,7 +101,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   controller.track(token,()=>{window.clearTimeout(id);if(timer.current===id)timer.current=null;});
  };
  const rollback=()=>moveTo(0,()=>{
-  childMotion.current?.rollbackRoute();revealUnderlay(false);
+  childMotion.current?.rollbackRoute();
  },"rollback");
  const close=()=>{
   if(closing.current)return;
@@ -119,7 +111,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   if(entranceFrame.current!==null){cancelAnimationFrame(entranceFrame.current);entranceFrame.current=null;}
   childMotion.current?.commitRouteClose();
   gestures.cancel();
-  revealUnderlay(true);
   moveTo(width(),onExit,"closing");
  };
  escapeClose.current=close;
@@ -132,7 +123,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
  };
 
  useLayoutEffect(()=>{
-  revealUnderlay(true);
   const el=route.current;
   // No non-passive capture listeners during candidate/native scrolling.
   // Install route touch suppression only AFTER a valid exclusive claim.
@@ -156,7 +146,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   attachSuppression.current=suppress;
   entranceFrame.current=requestAnimationFrame(()=>{
    entranceFrame.current=null;
-   if(!closing.current)motionActions.current.moveTo(0,()=>revealUnderlay(false),"opening");
+   if(!closing.current)motionActions.current.moveTo(0,()=>{},"opening");
   });
   return ()=>{
    if(entranceFrame.current!==null)cancelAnimationFrame(entranceFrame.current);
@@ -164,7 +154,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
    routeMotion.current.dispose();
    detachSuppression.current();attachSuppression.current=()=>{};
    gestures.dispose();
-   revealUnderlay(false);
   };
  },[gestures]);
  useLayoutEffect(()=>bindMotionLifecycle(()=>{
@@ -192,7 +181,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   if(closing.current||intent.current==="closing"){
    motionActions.current.moveTo(width(),motionActions.current.onExit,"closing");
   }else if(intent.current==="opening"){
-   motionActions.current.moveTo(0,()=>{childMotion.current?.resumeFromBackground();revealUnderlay(false);},"opening");
+   motionActions.current.moveTo(0,()=>childMotion.current?.resumeFromBackground(),"opening");
   }else motionActions.current.rollback();
  }),[gestures]);
 
@@ -208,9 +197,9 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   }
   if(paused.current||closing.current||(e.pointerType==="mouse"&&e.button!==0))return;
   const target=e.target as HTMLElement;
-  if(target.closest(".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar"))return;
-  const capabilities=gestureCapabilities(target,true);
-  if(capabilities.modalBlocked||capabilities.canScrollY)return;
+  // Guard only nested interactive layers, never stale scroll offsets. The
+  // shared arbiter decides horizontal/vertical ownership from movement.
+  if(isGestureModalBlocked(target))return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
   const collapsed=shell?.dataset.sheetState==="collapsed";
   if(!collapsed&&!target.closest(".pm-profile-sheet"))return;
@@ -219,15 +208,19 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   const serial=gestures.begin("pointer",e.pointerId,"route");
   if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
-   origin:currentX(),claimed:false,source,serial};
+   origin:currentX(),span:width(),claimed:false,source,serial};
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   const dx=e.clientX-g.startX,dy=e.clientY-g.startY;
   if(!g.claimed){
    if(Math.abs(dy)>11&&Math.abs(dy)>Math.abs(dx)){
-    // No route writer, and no orphaned candidate after native pan-y wins.
-    gestures.finishCandidate(g.serial);gesture.current=null;return;
+    // Parent pointer capture precedes child touchmove on Android. If the
+    // touch originated on the sheet/pages, leave the shared gesture session
+    // alive so the sheet recognizer can claim the vertical movement.
+    // Photo hero and independent tabs still release unclaimed candidates.
+    gestures.finishCandidate(g.serial,"route");
+    gesture.current=null;return;
    }
    if(dx<9||dx<Math.abs(dy)*1.28)return;
    // Preserve the existing gallery and tab pager until their first item;
@@ -254,18 +247,18 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
    if(liveToken.current)routeMotion.current.cancel(liveToken.current,"interrupted");
    liveToken.current=null;intent.current="rollback";
    if(route.current){route.current.style.transition="none";setX(frozenX);g.origin=frozenX;}
-   revealUnderlay(true);
    try{route.current?.setPointerCapture(e.pointerId);}catch{/* older WebView */}
   }
   if(!gestures.owns("route",g.serial))return;
   if(e.cancelable)e.preventDefault();
   e.stopPropagation();
-  setX(Math.max(0,Math.min(width(),g.origin+dx)));
+  // Width stays stable for this gesture; avoid a clientWidth/layout read on every pointermove.
+   setX(Math.max(0,Math.min(g.span,g.origin+dx)));
  };
  const end=(e:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   gesture.current=null;
-  if(!g.claimed){gestures.finishCandidate(g.serial);return;}
+  if(!g.claimed){gestures.finishCandidate(g.serial,"route");return;}
   if(!gestures.finish("route",g.serial))return;
   detachSuppression.current();
   if(e.cancelable)e.preventDefault();
@@ -274,7 +267,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   const dx=Math.max(0,e.clientX-g.startX);
   const dt=Math.max(1,performance.now()-g.started);
   const x=currentX();
-  const willClose=!cancelled&&(x>width()*.32||(dx>35&&dx/dt>.58));
+  const willClose=!cancelled&&(x>g.span*.32||(dx>35&&dx/dt>.58));
   if(willClose)close();
   else rollback();
  };
@@ -286,7 +279,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
    <QaProfiler id="ProfileMaster"><ProfileMaster data={data} mode="visitor" onClose={close}
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
-     registerRouteGestureCancel={cb=>{cancelProfileGesture.current=cb;}}
      onMotionProgress={reportMotion}/></QaProfiler>
    <GlobalHeader ref={header} mode="profile" theme={theme} onTheme={onTheme}
      onFilters={()=>{}} onSaved={()=>{}}/>

@@ -1,4 +1,4 @@
-import {forwardRef,useLayoutEffect,useImperativeHandle,useRef} from "react";
+import {forwardRef,useCallback,useLayoutEffect,useImperativeHandle,useRef} from "react";
 import {Bookmark,Moon,SlidersHorizontal,Sun} from "lucide-react";
 import "./global-header.css";
 
@@ -20,7 +20,8 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  {mode,theme,onTheme,onFilters,onSaved},ref
 ){
  // Avoid a second filtered logo raster on Android Telegram WebView.
- const androidProfileChrome=mode==="profile"&&typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
+ const androidClient=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
+ const androidProfileChrome=mode==="profile"&&androidClient;
  const host=useRef<HTMLElement>(null);
  const island=useRef<HTMLButtonElement>(null);
  const lastScroll=useRef(0);
@@ -32,7 +33,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  useLayoutEffect(()=>()=>{if(toolsFrame.current!==null){
   cancelAnimationFrame(toolsFrame.current);toolsFrame.current=null;
  }},[mode]);
- const paintTools=(top:number)=>{
+ const paintTools=useCallback((top:number)=>{
   if(mode==="profile")return;
   const p=smooth(clamp(top/105));
   const v=manual.current?0:p,el=host.current;
@@ -47,7 +48,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   el?.style.setProperty("--lh-control-stretch",String(1+.24*Math.sin(Math.PI*v)));
   el?.style.setProperty("--lh-impact",String(.036*Math.sin(Math.PI*clamp((v-.66)/.34))));
   host.current?.setAttribute("data-tools-merged",!manual.current&&p>.96?"true":"false");
- };
+ },[mode]);
  useImperativeHandle(ref,()=>({
   setScrollTop:(top:number)=>{
    if(Math.abs(top-lastScroll.current)>.5)manual.current=false;
@@ -71,7 +72,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    host.current?.style.setProperty("--lh-contrast","0");
    if(host.current){host.current.style.setProperty("--lh-p","0");host.current.style.setProperty("--lh-impact","0");host.current.style.setProperty("--lh-control-opacity","1");host.current.style.setProperty("--lh-control-scale","1");host.current.style.setProperty("--lh-control-y","0px");host.current.style.setProperty("--lh-left-x","0px");host.current.style.setProperty("--lh-right-x","0px");host.current.style.setProperty("--lh-control-stretch","1");host.current.setAttribute("data-tools-merged","false");}
   }
- }),[mode]);
+ }),[mode,androidProfileChrome,paintTools]);
  const toggleIsland=()=>{
   if(mode==="profile")return;
   if(lastScroll.current<12)return;
@@ -84,8 +85,8 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   <div className="lh-center">
    <button className="lh-island" type="button" ref={island} onClick={toggleIsland}
      aria-label={mode==="browse"?"Раскрыть инструменты LUEMI":"LUEMI"} title="LUEMI">
-    <img src={logo} alt="luemi" decoding="sync" fetchPriority="high"/>
-    {!androidProfileChrome&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="sync"/>}
+    <img src={logo} alt="luemi" decoding="async" fetchPriority="high"/>
+    {!androidClient&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="async"/>}
    </button>
    {mode==="profile"&&<button type="button" className="lh-profile-theme" onClick={onTheme}
       aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>

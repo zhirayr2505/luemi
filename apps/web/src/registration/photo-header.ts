@@ -7,7 +7,7 @@ export interface PhotoHeader {
 }
 export const MAX_PREVIEW_SOURCE_PIXELS=32_000_000;
 export const MAX_PREVIEW_SIDE=2048;
-export const MAX_HEADER_BYTES=262_144;
+const MAX_HEADER_BYTES=262_144;
 export const MAX_PHOTO_BYTES=12*1024*1024;
 /** 32 MP x 4 = 128 MB decoded RGBA, + up to 16 MB output + implementation copies.
  * Conservative, provisional Android WebView budget; NOT physically measured on A55/iOS.

@@ -1,0 +1,55 @@
+name: LUEMI Android interaction matrix
+on:
+  pull_request:
+    branches:
+      - main
+      - 'staging/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-ux:
+    # Avoid an always-on extra runner once LUEMI becomes a private repository.
+    # This focused QA is automatic only for its hardening branch; manual afterwards.
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/android-webview-interaction-stability-matrix-20261024' || github.head_ref == 'fix/gesture-scroll-tab-ownership-20261025' || github.head_ref == 'fix/profile-scroll-handoff-theme-preview-20261025' || github.head_ref == 'refactor/architecture-dead-code-motion-20261025'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      STAGING_BOOTSTRAP_ONLY: '1'
+      TELEGRAM_BOT_TOKEN: ''
+      TELEGRAM_WEBHOOK_SECRET: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build runtime contracts
+        run: npm run build -w @luemi/contracts
+      - name: Install Chromium browser
+        run: timeout 180s npx --no-install playwright install chromium --with-deps
+      - name: Run reproducible Android UX matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 >/tmp/luemi-android-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:5173/profile-qa.html >/dev/null; then ready=1; break; fi
+            if ! kill -0 "$vite_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-android-vite.log >&2; exit 1; fi
+          timeout --signal=TERM --kill-after=10s 260s node scripts/android-profile-ux-matrix.mjs
+          timeout --signal=TERM --kill-after=10s 230s node scripts/android-browse-touch-matrix.mjs
+          timeout --signal=TERM --kill-after=10s 220s node scripts/profile-scroll-handoff-qa.mjs
+          timeout --signal=TERM --kill-after=10s 140s node scripts/theme-switch-mobile-qa.mjs

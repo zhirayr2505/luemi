@@ -10,13 +10,13 @@ export type MotionOwner="sheet"|"tabs"|"hero"|"browse"|"route";
 export type MotionProperty=
  "sheet-scroll"|"elastic-sheet"|"parallax"|"blur"|"avatar"|"grab"|
  "tab-scroll"|"tab-ink"|"hero-track"|"browse-track"|"browse-underline"|
- "route-transform"|"route-reveal";
+ "route-transform";
 
 export const MOTION_PROPERTY_OWNERS={
  "sheet-scroll":"sheet","elastic-sheet":"sheet","parallax":"sheet","blur":"sheet",
  "avatar":"sheet","grab":"sheet","tab-scroll":"tabs","tab-ink":"tabs",
  "hero-track":"hero","browse-track":"browse","browse-underline":"browse",
- "route-transform":"route","route-reveal":"route"
+ "route-transform":"route"
 } as const satisfies Record<MotionProperty,MotionOwner>;
 
 export type MotionCancelReason="gesture-cancel"|"interrupted"|"route-handoff"|
@@ -57,7 +57,7 @@ export const createMotionSnapshot=(owner:MotionOwner,current=0,revision=0):Motio
 export const motionToken=(s:MotionSnapshot):MotionToken=>({
  owner:s.owner,generation:s.generation,geometryRevision:s.geometryRevision
 });
-export const isMotionToken=(s:MotionSnapshot,t:MotionToken):boolean=>
+const isMotionToken=(s:MotionSnapshot,t:MotionToken):boolean=>
  !s.disposed&&s.owner===t.owner&&s.generation===t.generation&&
  s.geometryRevision===t.geometryRevision;
 const finite=(value:number)=>Number.isFinite(value);
@@ -225,7 +225,7 @@ export class MotionController {
   if(next===this.state)return false;
   this.state=next;this.abortResources();return true;
  }
- /** Register external CSS transition timer / existing animateValue cancellation. */
+ /** Register cancellation for external CSS timers or transition subscriptions. */
  track(token:MotionToken,release:()=>void):boolean{
   if(!this.owns(token)){release();return false;}
   this.releases.add(release);return true;
