@@ -299,6 +299,55 @@ async function qaProfile(browser){
     "repeated close must not jump to a stale sheet position");
   }
   console.log("QA_PROFILE_REPEATED_TAPS_PASS");
+  // A collapsed/scrolled about page must still accept horizontal paging.
+  await page.getByRole("tab",{name:"О себе"}).click();
+  await sleep(320);
+  const beforeSwipe=await readState(page);
+  const scrollAtStart=await page.evaluate(()=>{
+   const panel=document.querySelector(".pm-inline .pm-page");
+   if(!(panel instanceof HTMLElement))throw new Error("about page missing");
+   const available=panel.scrollHeight-panel.clientHeight;
+   panel.scrollTop=Math.min(85,available);
+   return {available,top:panel.scrollTop};
+  });
+  assert.ok(scrollAtStart.top>20,"about page must be scrolled before horizontal swipe");
+  const pagesBox=await page.locator(".pm-inline .pm-pages").boundingBox();
+  assert.ok(pagesBox&&pagesBox.width>250&&pagesBox.height>140);
+  const swipeX=pagesBox.x+pagesBox.width*.65;
+  const swipeY=pagesBox.y+Math.min(115,pagesBox.height*.3);
+  await touch(page,{x:swipeX,y:swipeY,dx:-205,dy:2,steps:12});
+  await sleep(360);
+  const afterScrolledSwipe=await readState(page);
+  assert.equal(afterScrolledSwipe.selectedTab,"Блики",
+   "TAB SWIPE REGRESSION: horizontal swipe on scrolled page must switch tabs");
+  assert.ok(Math.abs(afterScrolledSwipe.pagesLeft-afterScrolledSwipe.pagesWidth)<5,
+   "TAB SWIPE REGRESSION: pager position and selected tab agree");
+  assert.ok(Math.abs(afterScrolledSwipe.sheetTop-beforeSwipe.sheetTop)<2,
+   "TAB SWIPE REGRESSION: accepted white sheet must not move");
+  // Touchend can arrive before the first queued RAF on a one-move flick.
+  await touch(page,{x:swipeX-pagesBox.width*.25,y:swipeY,dx:190,steps:1});
+  await sleep(360);
+  const afterFastFlick=await readState(page);
+  assert.equal(afterFastFlick.selectedTab,"О себе",
+   "TAB SWIPE REGRESSION: one-event reverse flick must work");
+  assert.ok(Math.abs(afterFastFlick.pagesLeft)<5,
+   "TAB SWIPE REGRESSION: fast flick must settle correct visible page");
+  const nativeBefore=await page.evaluate(()=>{
+   const el=document.querySelector(".pm-inline .pm-page");
+   if(!(el instanceof HTMLElement))throw new Error("about page missing");
+   el.scrollTop=25;return el.scrollTop;
+  });
+  await touch(page,{x:swipeX,y:swipeY,dy:-125,steps:9});
+  await sleep(80);
+  const nativeAfter=await page.evaluate(()=>{
+   const el=document.querySelector(".pm-inline .pm-page");
+   return el instanceof HTMLElement?el.scrollTop:-1;
+  });
+  assert.ok(nativeAfter>nativeBefore+10,
+   "TAB SWIPE REGRESSION: native vertical scrolling remains available");
+  assert.equal((await readState(page)).selectedTab,"О себе",
+   "TAB SWIPE REGRESSION: vertical scroll cannot change tabs");
+  console.log("QA_PROFILE_SCROLLED_SIDEWAYS_FAST_FLICK_NATIVE_VERTICAL_PASS");
   await page.getByRole("tab",{name:"Подарки"}).click();
   await sleep(380);
   state=await readState(page);
