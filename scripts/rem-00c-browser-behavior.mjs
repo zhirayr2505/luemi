@@ -299,6 +299,26 @@ async function qaProfile(browser){
     "repeated close must not jump to a stale sheet position");
   }
   console.log("QA_PROFILE_REPEATED_TAPS_PASS");
+  // Critical reentrant transition case on Android:
+  // while a mini-avatar click is EXPANDING the sheet, a neutral touch on
+  // the white identity must not issue a competing touchend.noAxis settle
+  // to the previously committed collapsed state.
+  await page.locator(".pm-inline").getByRole("button",{name:"Раскрыть фото профиля"}).click();
+  await sleep(38);
+  const identityDuringSettle=await page.locator(".pm-inline .pm-identity").boundingBox();
+  assert.ok(identityDuringSettle&&identityDuringSettle.height>40);
+  const neutralX=identityDuringSettle.x+identityDuringSettle.width*.3;
+  const neutralY=identityDuringSettle.y+Math.min(35,identityDuringSettle.height*.32);
+  await touch(page,{x:neutralX,y:neutralY,steps:1});
+  await sleep(350);
+  const unaffected=await readState(page);
+  assert.equal(unaffected.mode,"expanded",
+   "SHEET REENTRANCY: neutral touchend must not reverse in-flight avatar expansion");
+  assert.ok(Math.abs(unaffected.sheetTop-expanded.sheetTop)<5,
+   "SHEET REENTRANCY: original expand endpoint must remain physically stable");
+  await page.locator(".pm-inline").getByRole("button",{name:"Развернуть анкету"}).click();
+  await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
+  console.log("QA_NO_TOUCHEND_RESTART_DURING_SHEET_EXPAND_PASS");
   // A collapsed/scrolled about page must still accept horizontal paging.
   await page.getByRole("tab",{name:"О себе"}).click();
   await sleep(320);
