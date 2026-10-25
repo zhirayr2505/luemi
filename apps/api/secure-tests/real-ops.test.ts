@@ -154,7 +154,7 @@ test("01G: photo review and report triage use scoped human role, not browser/adm
  }finally{await app.close();}
 });
 test("01G: real invite rollout requires explicit privacy and operator approval",()=>{
- const flags={NODE_ENV:"test",APP_ORIGIN:origin,
+ const flags={NODE_ENV:"test",APP_ORIGIN:origin,TELEGRAM_BOT_TOKEN:bot,
   REM06_BETA_INVITES_ENABLED:"1",REM05B_SESSIONS_ENABLED:"1"};
  assert.throws(()=>readConfig(flags),/REG01G invite gate/);
 });
