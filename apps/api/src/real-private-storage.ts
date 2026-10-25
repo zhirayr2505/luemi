@@ -21,12 +21,17 @@ export function createDurablePrivateStore(
  settings:DurablePrivateStoreSettings,transport:typeof fetch=fetch
 ):PrivateObjectStore{
  const {projectRef,namespace,bucket,secret}=settings;
+ const opaqueSecret=/^sb_secret_[A-Za-z0-9_-]{24,}$/.test(secret);
+ const legacyServiceJwt=/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(secret);
  if(!PROJECT.test(projectRef)||!ENVIRONMENT.test(namespace)||
     bucket!=="luemi-profile-private"||typeof secret!=="string"||
-    secret.length<32||/\s/.test(secret)||secret.startsWith("sb_publishable_"))
+    (!opaqueSecret&&!legacyServiceJwt))
   throw new Error("invalid_private_storage_configuration");
  const origin="https://"+projectRef+".supabase.co/storage/v1/object/";
- const headers=()=>({"Authorization":"Bearer "+secret,"apikey":secret});
+ // Opaque sb_secret keys are NOT JWTs. Their use as Bearer tokens can fail
+ // with Invalid JWT; legacy service-role JWTs still need Authorization.
+ const headers=()=>legacyServiceJwt?
+  {"Authorization":"Bearer "+secret,"apikey":secret}:{"apikey":secret};
  const remote=async(method:string,key:string,body?:Uint8Array):Promise<Response>=>{
   const path=pathFor(key,namespace),url=origin+
    (method==="GET"?"authenticated/":"")+bucket+"/"+path;
@@ -34,7 +39,7 @@ export function createDurablePrivateStore(
    return await transport(url,{
     method,headers:{...headers(),"Cache-Control":"no-store",
       ...(body?{"Content-Type":"image/png","x-upsert":"false"}:{})},
-    ...(body?{body}:{}),redirect:"manual",cache:"no-store",
+    ...(body?{body:new Blob([Uint8Array.from(body)],{type:"image/png"})}:{}),redirect:"manual",cache:"no-store",
     signal:AbortSignal.timeout(12000)
    });
   }catch{throw new Error("private_storage_unavailable");}

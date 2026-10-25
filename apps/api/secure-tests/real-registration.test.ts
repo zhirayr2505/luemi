@@ -176,8 +176,8 @@ test("REG01C durable private media: owner/other, session, stripped PNG, pending 
   calls.push({method,path:uri.pathname});
   if(method==="POST"){
    if(storage.has(suffix))return new Response(null,{status:409});
-   assert.ok(init?.body instanceof Uint8Array);
-   storage.set(suffix!,new Uint8Array(init.body));return new Response("{}",{status:201});
+   assert.ok(init?.body instanceof Blob);
+   storage.set(suffix!,new Uint8Array(await init.body.arrayBuffer()));return new Response("{}",{status:201});
   }
   if(method==="GET"){
    const bytes=storage.get(suffix!);
@@ -193,7 +193,7 @@ test("REG01C durable private media: owner/other, session, stripped PNG, pending 
   rem05d:{enabled:true,durablePrivateOnly:true,requestDatabaseUrl:requestUrl!,
    workerDatabaseUrl:workerUrl!,namespace,consentVersion,
    storage:createDurablePrivateStore({projectRef:"abcdefghijklmnopqrst",
-    namespace,secret:"synthetic-secret-for-disposable-storage-tests-0001",
+    namespace,secret:"sb_secret_synthetic_disposable_storage_tests_0001",
     bucket:"luemi-profile-private"},transport)}
  });
  const a=await identity(api,7011004),b=await identity(api,7011005);

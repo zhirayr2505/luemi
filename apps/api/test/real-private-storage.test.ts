@@ -3,7 +3,7 @@ import test from "node:test";
 import {createDurablePrivateStore} from "../src/real-private-storage.js";
 
 const projectRef="abcdefghijklmnopqrst",namespace="ci_reg01",bucket="luemi-profile-private";
-const secret="synthetic-secret-for-disposable-storage-tests-0001";
+const secret="sb_secret_synthetic_disposable_storage_tests_0001";
 const key="private/"+namespace+"/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/"+
  "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/"+"a".repeat(48)+"/sanitized";
 
@@ -27,7 +27,7 @@ test("01C write/download/delete use private routes, no public URLs or upsert",as
  const transport:typeof fetch=async(input,init)=>{
   const url=String(input),method=init?.method??"GET";
   const headers=new Headers(init?.headers);
-  const incoming=init?.body instanceof Uint8Array?init.body:new Uint8Array();
+  const incoming=init?.body instanceof Blob?new Uint8Array(await init.body.arrayBuffer()):new Uint8Array();
   events.push({url,method,headers,body:incoming});
   if(method==="POST"){saved=new Uint8Array(incoming);return new Response("{}",{status:201});}
   if(method==="GET")return new Response(new Uint8Array(saved),{
@@ -47,7 +47,7 @@ test("01C write/download/delete use private routes, no public URLs or upsert",as
  assert.equal(events[1].url,root+"authenticated/"+bucket+"/"+key);
  assert.equal(events[2].url,root+bucket+"/"+key);
  for(const event of events){
-  assert.equal(event.headers.get("authorization"),"Bearer "+secret);
+  assert.equal(event.headers.get("authorization"),null,"opaque secret is not a JWT");
   assert.equal(event.headers.get("apikey"),secret);
   assert.equal(event.headers.get("cache-control"),"no-store");
   assert.equal(event.url.includes("/public/"),false);
