@@ -157,16 +157,20 @@
 /* Motion is a scroll offset in a stationary rectangular viewport.
    Rounded background and native page scrollers are no longer clipped into a
    translated/paint-contained texture. No layout property changes per frame. */
+/* Completely new 03G renderer: one absolute top property, no parent
+   native scrolling and no CSS transform/transition competition.
+   Inner .pm-page retains native vertical content scrolling. */
 .pm-sheet-viewport{
- position:absolute;inset:0;z-index:6;overflow:hidden;overflow-anchor:none;
- pointer-events:none;scroll-behavior:auto;overscroll-behavior:none;
+ position:absolute;inset:0;z-index:6;overflow:hidden;
+ pointer-events:none;overscroll-behavior:none;
 }
-.pm-sheet-spacer{height:var(--pm-expanded-y,calc(var(--pm-hero-height) - 43px));pointer-events:none}
 .pm-profile-sheet{
- position:relative;width:100%;height:100%;min-height:0;pointer-events:auto;
- display:flex;flex-direction:column;overflow:visible;
+ box-sizing:border-box;position:absolute;top:var(--pm-expanded-y,calc(var(--pm-hero-height) - 43px));
+ bottom:0;left:0;right:0;width:100%;height:auto;min-height:0;pointer-events:auto;
+ display:flex;flex-direction:column;overflow:hidden;
  padding:32px 0 0;border-radius:34px 34px 0 0;
  background:var(--bg);box-shadow:0 -5px 20px rgba(56,30,73,.052);
+ transition:none;
 }
 /* Android theme switch paints one stationary surface without altering the
    physics or transform of the white profile sheet. */
