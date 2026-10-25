@@ -329,6 +329,49 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
    headers:{cookie:b.cookie}})).statusCode,200,"other adults remain authenticated");
  }finally{await app.close();}
 });
+test("01F: erasure waits for in-flight Storage write and queues its derivative",async()=>{
+ const store=memoryPrivateStore();
+ let entered!:()=>void,release!:()=>void;
+ const pendingStorage=new Promise<void>(resolve=>{entered=resolve;});
+ const gate=new Promise<void>(resolve=>{release=resolve;});
+ const storage:PrivateObjectStore={
+  get:k=>store.get(k),delete:k=>store.delete(k),
+  put:async(key,bytes)=>{entered();await gate;await store.put(key,bytes);}
+ };
+ const app=makeApp({erasure:true,storage});
+ try{
+  const user=await identity(app,8011013);
+  await consent(app,user);
+  const png=makeSyntheticPng();
+  const intent=await mutate(app,user,"/api/v2/media/intents",{
+   bytes:png.length,mime:"image/png",clientKey:"reg01f-race-early-upload"});
+  assert.equal(intent.statusCode,200,intent.body);
+  const asset=intent.json().assetId as string;
+  const uploading=app.inject({method:"PUT",url:"/api/v2/media/"+asset+"/bytes",
+   headers:{...headers(user),"content-type":"image/png"},payload:png});
+  await Promise.race([pendingStorage,new Promise<never>((_,reject)=>
+   setTimeout(()=>reject(new Error("storage_not_entered")),5000))]);
+  // Media worker owns the per-user advisory lock; erasure must wait until
+  // its SQL and Storage operation have finished before taking its outbox snapshot.
+  const deleting=mutate(app,user,"/api/v3/account/request-deletion",
+   {confirmation:"DELETE MY LUEMI ACCOUNT"});
+  release();
+  const [uploaded,disabled]=await Promise.all([uploading,deleting]);
+  assert.equal(uploaded.statusCode,200,uploaded.body);
+  assert.equal(disabled.statusCode,202,disabled.body);
+  const receipt=await admin.query<{id:string}>(
+   "SELECT id FROM luemi_private.erasure_requests WHERE actor_id=$1",[user.id]);
+  assert.equal(receipt.rowCount,1);
+  const files=await admin.query<{object_key:string}>(
+   "SELECT object_key FROM luemi_private.erasure_objects WHERE request_id=$1",
+   [receipt.rows[0].id]);
+  assert.equal(files.rowCount,1,"in-flight derivative must appear in deletion queue");
+  const done=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,
+   storage,limit:1});
+  assert.deepEqual(done,{completed:1,failed:0,pending:false});
+  assert.equal(await store.get(files.rows[0].object_key),null);
+ }finally{release?.();await app.close();}
+});
 test("01F: miswired requester role, worker role or unapproved feature fail closed",async()=>{
  const miswired=makeApp({erasure:true,erasureUrl:requestUrl!});
  try{
