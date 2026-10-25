@@ -159,15 +159,32 @@ async function qaProfile(browser){
   const reopened=await readState(page);
   assert.ok(Math.abs(reopened.sheetTop-expanded.sheetTop)<5,
    "reopened panel should return to the actual expanded endpoint");
-  await page.getByRole("button",{name:"Развернуть анкету"}).click();
+  // Symmetric regression: collapsing from a completely settled expansion
+  // must also start at the LAST finger-painted position, not the stale old
+  // expanded endpoint. Test both directions through actual touch events.
+  const recollapseBox=await page.locator(".pm-inline .pm-identity").boundingBox();
+  assert.ok(recollapseBox&&recollapseBox.height>30,"expanded panel gesture target measurable");
+  let lastCollapseFingerFrame=null;
+  await touch(page,{x:recollapseBox.x+recollapseBox.width*.48,
+   y:recollapseBox.y+Math.min(recollapseBox.height*.44,45),dy:-215,steps:14,
+   onStep:async index=>{
+    if(index===14){await sleep(22);lastCollapseFingerFrame=await readState(page);}
+   }});
+  const collapseReleaseFrame=await readState(page);
+  assert.ok(lastCollapseFingerFrame&&lastCollapseFingerFrame.sheetTop<reopened.sheetTop-55,
+   "finger must physically pull the white panel UP before collapse release");
+  assert.ok(collapseReleaseFrame.sheetTop<=lastCollapseFingerFrame.sheetTop+16,
+   "WHITE SHEET BOUNCE: collapse touchend snapped panel DOWN before settling upward");
   await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
   const recollapsed=await readState(page);
   assert.ok(Math.abs(recollapsed.sheetTop-collapsedBeforeReopen.sheetTop)<5,
    "collapsed panel must return to its prior physical pixel endpoint");
   console.log("QA_NO_SHEET_BOUNCE "+JSON.stringify({
    collapsedTop:collapsedBeforeReopen.sheetTop,
-   draggedTop:lastFingerFrame.sheetTop,releaseTop:releaseFrame.sheetTop,
-   expandedTop:reopened.sheetTop,recollapsedTop:recollapsed.sheetTop}));
+   draggedDownTop:lastFingerFrame.sheetTop,releaseExpandTop:releaseFrame.sheetTop,
+   expandedTop:reopened.sheetTop,
+   draggedUpTop:lastCollapseFingerFrame.sheetTop,releaseCollapseTop:collapseReleaseFrame.sheetTop,
+   recollapsedTop:recollapsed.sheetTop}));
 
   await page.getByRole("tab",{name:"Подарки"}).click();
   await sleep(380);
