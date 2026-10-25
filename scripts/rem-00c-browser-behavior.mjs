@@ -404,6 +404,10 @@ async function qaProfile(browser){
   assert.ok(afterNeutral.sheetTop>beforeNeutral.sheetTop+100,
    "SHEET REENTRANCY: panel must reach expanded endpoint");
   console.log("QA_NO_TOUCHEND_RESTART_DURING_SHEET_EXPAND_PASS");
+  // Restore the approved collapsed state before testing bottom navigation.
+  // Otherwise the expanded profile intentionally occludes the browse button.
+  await page.locator(".pm-inline .pm-sheet-grab").evaluate(el=>el.click());
+  await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
 
   // Discovery: parent swiper owns background but child Nearby controls keep ownership.
   await page.getByRole("button",{name:"Знакомства",exact:true}).click();
