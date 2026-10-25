@@ -70,3 +70,17 @@ A race existed because `pointerup` in a parent could terminate an entire shared 
 - Browser test PASS cannot prove actual Samsung Galaxy A55 / Telegram Android WebView frame pacing, GPU tile lifetime, or iOS Safari rendering. Physical device instrumentation remains a release condition.
 - Recorded black photo-viewer frames and occasional deck ghosts should be reproduced independently before altering their caching/paint logic; speculative CSS patches risk restoring regressions.
 - Do not automatically merge this draft PR into `main` or auto-deploy to Telegram until the refactor test suite and physical checks are accepted.
+
+
+## Third-pass independent verification (same Draft PR)
+
+- **AST graph:** 86 TS/TSX/CSS modules; last fully verified run: zero unreachable, zero stale exceptions, zero production import cycles, zero retired identifiers or flags. This does NOT certify every function or animation as necessary.
+- **Export diagnostics:** source and test/secure-test consumers are now scanned. Suspected unused exports are reported for human review, not removed automatically. Internal-only exports readViewerInsets, applyViewerInsets, ViewerInsets, clampPosition, and extraDemoPeople were made private while their runtime implementations stay intact.
+- **CSS:** reviewed all six web stylesheets. Repeated identical 'to' keyframe bodies belonged to different animations, so they were not blindly deleted. Runtime-generated class selectors must not be removed by grep.
+- **DOM writes:** inspected VisitorProfileRoute (5 direct transform/transition writes), ProfileMaster (18), PhotoViewer (37). These are candidates for deeper ownership testing, NOT proof that the writes conflict. PhotoViewer has a legitimate separate media motion surface.
+- **Chaos stress:** retained the existing test harness rather than adding a duplicate. Existing 100,000 gesture and 50,000 motion operations, plus 7,000 focused hostile-RAF / reentrant completion races checking stale-frame rejection, paint-before-commit and exactly-once semantic completion.
+- **Safety:** no main, Telegram staging, Render, Supabase, existing secret or user-data changes. CI and physical device QA remain separate release gates.
+
+### Remaining limitations
+
+Suspected-unused exports can include public contracts, internal-only types and synthetic secure-test fixtures. They require specific proof before deletion. AST import reachability cannot guarantee smooth Android WebView frame pacing, iOS Safari behaviour, or the absence of PhotoViewer GPU artifacts.
