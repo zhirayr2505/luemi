@@ -100,6 +100,9 @@ test("01H: report must be human triaged, suspend revokes all sessions and hides 
    headers:{cookie:viewer.cookie}})).json().profiles.length,0);
   assert.equal((await app.inject({method:"GET",url:"/api/v3/discovery/photo/"+ids[0],
    headers:{cookie:viewer.cookie}})).statusCode,404);
+  assert.equal((await admin.query(
+   "SELECT id FROM luemi_private.media_assets WHERE id=ANY($1::uuid[]) "+
+   "AND state='revoked' AND publication_status='private'",[ids])).rowCount,3);
   assert.equal((await app.inject({method:"GET",url:"/api/v2/auth/session",
    headers:{cookie:owner.cookie}})).statusCode,401);
   const relog=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
