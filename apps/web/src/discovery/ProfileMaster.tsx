@@ -749,8 +749,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   gestures.finish("tabs",g.serial!);
   try{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);}catch{/* implicit release */}
   const dx=e.clientX-g.x,dt=Math.max(1,performance.now()-g.t);
+  // A fractional paint origin can move during a prior settle.
+  // The semantic swipe must always target at most one adjacent tab.
+  const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
   const next=!cancel&&(Math.abs(dx)>g.width*.17||Math.abs(dx)/dt>.52)?
-   Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
+   selected+(dx<0?1:-1):selected;
   // Fast flicks can end before the next RAF. Reconcile the finger's final
   // position before the settle begins to avoid a stale-page flash.
   paintTabs(g.index,dx);
@@ -865,8 +868,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const dx=t.clientX-g.x,dy=t.clientY-g.y;
    if(g.axis==="x"&&g.claimed){
     const dt=Math.max(1,performance.now()-g.start);
+    const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
     const next=!cancelled&&(Math.abs(dx)>tabViewport.current*.17||Math.abs(dx)/dt>.52)?
-     Math.round(g.index)+(dx<0?1:-1):Math.round(g.index);
+     selected+(dx<0?1:-1):selected;
     // abort() cancelled any queued paint. Never start the snap from the
     // penultimate RAF when touchend arrived ahead of it.
     paintTabs(g.index,dx);
