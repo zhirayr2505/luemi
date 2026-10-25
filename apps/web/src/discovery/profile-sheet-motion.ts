@@ -31,6 +31,7 @@ export class ProfileSheetMotion {
  }
  get phase():Stage{return this.run?"settling":this.paused?"paused":"idle";}
  get value():number{return this.y;}
+ sample():number{return this.interpolate(this.now());}
  get destinationCollapsed():boolean|null{return this.run?.collapsed??this.paused?.collapsed??null;}
  private invalidate(){
   this.epoch++;
