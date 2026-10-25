@@ -66,6 +66,28 @@ const readSheetFlexLayout=async page=>page.evaluate(()=>{
  return {sheetHeight:box.height,pagesHeight:pages.clientHeight,
   tabLocalTop:tabBox.top-box.top,tabsHeight:tabBox.height,top:box.top};
 });
+// Android WebView paint regression: the moving SHEET must no longer
+// re-rasterize all five tab labels or independently transition the underline.
+const readTabPaint=async page=>page.evaluate(()=>{
+ const root=document.querySelector(".pm-inline");
+ const bar=root?.querySelector(".pm-tabs");
+ const ink=bar?.querySelector(".pm-tab-ink");
+ if(!(bar instanceof HTMLElement)||!(ink instanceof HTMLElement))throw new Error("profile tabs missing");
+ const strip=getComputedStyle(bar),under=getComputedStyle(ink);
+ const bounds=bar.getBoundingClientRect();
+ const items=[...bar.querySelectorAll(".pm-tab")].map(el=>{
+  const style=getComputedStyle(el),rect=el.getBoundingClientRect();
+  return {text:el.textContent?.trim(),selected:el.getAttribute("aria-selected"),
+   opacity:style.opacity,visibility:style.visibility,display:style.display,
+   x:Math.round((rect.left-bounds.left)*100)/100,
+   y:Math.round((rect.top-bounds.top)*100)/100,
+   width:Math.round(rect.width*100)/100};
+ });
+ return {layer:strip.transform,contain:strip.contain,isolation:strip.isolation,
+  backface:strip.backfaceVisibility,
+  inkTransition:under.transitionDuration,inkHint:under.willChange,
+  items,selectedCount:items.filter(x=>x.selected==="true").length};
+});
 const touch=async(page,{x,y,dx=0,dy=0,steps=12,onStep})=>{
  const cdp=await page.context().newCDPSession(page);
  try{
@@ -122,6 +144,14 @@ async function qaProfile(browser){
   assert.equal(await dots.first().getAttribute("aria-current"),"true","photo index can return to first");
   const expanded=state;
   const expandedFlexLayout=await readSheetFlexLayout(page);
+  const pristineTabs=await readTabPaint(page);
+  assert.ok(pristineTabs.layer!=="none"&&pristineTabs.contain.includes("paint")&&
+   pristineTabs.isolation==="isolate"&&pristineTabs.backface==="hidden",
+   "PROFILE TAB FLICKER: tab labels need one persistent isolated composited paint surface");
+  assert.equal(pristineTabs.inkTransition,"0s","underline must not have competing CSS transitions");
+  assert.ok(pristineTabs.inkHint.includes("transform"),"underline movement stays in its own transform layer");
+  assert.equal(pristineTabs.selectedCount,1);
+
   // Real mobile touch: sample the independent absolute sheet top each frame.
   const geometry=await page.locator(".pm-inline .pm-profile-sheet").boundingBox();
   assert.ok(geometry&&geometry.height>80,"sheet must be measurable");
@@ -141,13 +171,18 @@ async function qaProfile(browser){
      });
     },{capture:true,passive:true});
   });
-  const samples=[],flexSamples=[];
+  const samples=[],flexSamples=[],tabPaintSamples=[];
   await touch(page,{x,y,dy:-215,onStep:async i=>{
    if([4,8,12].includes(i)){
     samples.push(await readState(page));
     flexSamples.push(await readSheetFlexLayout(page));
+    tabPaintSamples.push(await readTabPaint(page));
    }
   }});
+  assert.equal(tabPaintSamples.length,3);
+  assert.ok(tabPaintSamples.every(x=>x.selectedCount===1&&
+   JSON.stringify(x.items)===JSON.stringify(pristineTabs.items)&&x.layer!=="none"),
+   "PROFILE TAB FLICKER: tab buttons must stay painted and keep local geometry during sheet movement");
   assert.equal(flexSamples.length,3,"captured layout at three finger positions");
   assert.ok(flexSamples.every(s=>Math.abs(s.sheetHeight-expandedFlexLayout.sheetHeight)<1&&
    Math.abs(s.pagesHeight-expandedFlexLayout.pagesHeight)<1&&
@@ -177,6 +212,10 @@ async function qaProfile(browser){
   assert.ok(state.blurOpacity>.5,"collapsed state renders blurred photo layer");
   assert.ok(state.sheetTop<expanded.sheetTop,"sheet has actually moved");
   const collapsedFlexLayout=await readSheetFlexLayout(page);
+  const collapsedTabs=await readTabPaint(page);
+  assert.deepEqual(collapsedTabs.items,pristineTabs.items,
+   "PROFILE TAB FLICKER: collapsed sheet cannot hide, reposition or reorder the tab row");
+
   assert.ok(Math.abs(collapsedFlexLayout.sheetHeight-expandedFlexLayout.sheetHeight)<1,
    "TAB FLICKER: sheet flex surface must retain the same height at both snap points");
   assert.ok(Math.abs(collapsedFlexLayout.pagesHeight-expandedFlexLayout.pagesHeight)<1,
