@@ -259,8 +259,8 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   await db.query("UPDATE luemi_private.public_profiles SET publication_status='hidden',"+
    "updated_at=clock_timestamp() WHERE owner_id=$1 AND environment=$2",
    [id,cfg.namespace]);
-  await db.query("UPDATE luemi_private.private_profile_drafts SET consent_version=NULL,"+
-   "updated_at=clock_timestamp() WHERE owner_id=$1 AND environment=$2",
+  await db.query("UPDATE luemi_private.private_profile_drafts SET consent_version=NULL "+
+   "WHERE owner_id=$1 AND environment=$2",
    [id,cfg.namespace]);
   return{state:"consent_withdrawn",dataDeleted:false};
  }));
