@@ -127,6 +127,7 @@ export function App() {
     persistEnabled.current=true;
     setStorageState("dirty");
     setDraft(prev=>({...prev,...change}));
+    setServerStatus(""); // A changed local draft is no longer identical to the server copy.
     setError("");
   },[]);
   useEffect(()=>{
@@ -393,7 +394,7 @@ export function App() {
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
     draftId.current=crypto.randomUUID();revision.current=0;
-    setPhotos([]);setDraft(newDraft());setStep(1);setError("");
+    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);
     setStorageState("saving");setStorageCode(null);
     if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
     void clearDraftSnapshot(scope).then(result=>{

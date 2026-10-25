@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from "react";
+import {remoteDraftPilot} from "./server-draft";
 import type {CSSProperties,ReactNode} from "react";
 import {Check,Info,Trash2} from "lucide-react";
 import {goals,goalIcons} from "../ui/Goals";
@@ -75,7 +76,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      placeholder="Как тебя зовут?" onChange={e=>updateName(e.target.value)}/></GlassField>
    {nameHint&&<div className="name-input-hint" role="status"><Info size={17} aria-hidden="true"/>Можно использовать только буквы, пробел, тире и апостроф.</div>}
    <GlassCheckbox checked={data.trialConsent} onChange={trialConsent=>patch({trialConsent})}>
-     {import.meta.env.VITE_LUEMI_PRIVATE_DRAFT_UI==="1"?
+     {remoteDraftPilot.enabled?
       "Я понимаю, что анкета пока не публикуется, а серверное сохранение требует отдельного согласия.":
       "Я понимаю, что это тест интерфейса. Данные и фотографии не публикуются и не передаются на сервер."}
    </GlassCheckbox>
