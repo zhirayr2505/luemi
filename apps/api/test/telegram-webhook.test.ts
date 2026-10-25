@@ -24,7 +24,8 @@ test("webhook rejects unsigned requests, then generates genuine Telegram Web App
       "x-telegram-bot-api-secret-token": "s".repeat(32)
     }, payload });
     assert.equal(signed.statusCode, 200);
-    assert.equal(signed.json().reply_markup.inline_keyboard[0][0].web_app.url, "https://luemi-stage01.onrender.com");
+    assert.equal(signed.json().reply_markup.inline_keyboard[0][0].web_app.url,
+      versionedWebAppUrl(config().origin,process.env.RENDER_GIT_COMMIT));
   } finally { await app.close(); }
 });
 test("staging without credentials refuses Telegram auth", async () => {
