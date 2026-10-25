@@ -154,6 +154,10 @@ assert.ok(profile.includes('chooseTab(next,true)'),
  "both touch and pointer releases use distance-proportional settle");
 assert.ok(!profile.includes('settleSheet(g.down,"touchend.noAxis")'),
  "no-axis taps must not restart the sheet before click handlers");
+assert.ok(profile.includes('engine.phase==="settling"&&engine.destinationCollapsed===next'),
+ "duplicate sheet commands to the same in-flight endpoint must be idempotent");
+assert.ok(profile.includes('!(sheetMotion.current?.destinationCollapsed??collapsedRef.current)'),
+ "grab tap must invert the actual pending sheet target rather than stale React state");
 assert.ok(profile.includes('down:sheetMotion.current?.destinationCollapsed??collapsedRef.current'),
  "rapid sheet gestures must use the in-flight destination, not stale React state");
 assert.ok(profile.includes('preservePhotoId(list,photos,activePhotoId.current,activePhoto)'));
