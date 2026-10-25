@@ -22,7 +22,6 @@ export class GestureArbiter {
  private ids:{pointer:number|null;touch:number|null}={pointer:null,touch:null};
  private claimed:GestureOwner|null=null;
  private candidates=new Set<GestureOwner>();
- private terminals=0;
  begin(kind:InputKind,id:number,owner:GestureOwner):number|null{
   if(!Number.isSafeInteger(id))return null;
   // A native touch and its synthetic pointer use different ID namespaces.
@@ -57,7 +56,6 @@ export class GestureArbiter {
  /** Idempotent terminal. Any callback from a previous generation is invalid. */
  cancel():void{
   if(this.identity===null)return;
-  this.terminals++;
   this.identity=null;this.ids={pointer:null,touch:null};
   this.claimed=null;this.candidates.clear();
  }
@@ -71,7 +69,7 @@ export class GestureArbiter {
   if(owner===undefined||this.candidates.size===0)this.cancel();
  }
  snapshot(){return {generation:this.session,owner:this.claimed,
-  active:this.identity!==null,terminals:this.terminals};}
+  active:this.identity!==null};}
  dispose(){this.cancel();}
 }
 /** CSS may still be interpolating after semantic index changes. Read once at
