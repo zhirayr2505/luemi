@@ -1,9 +1,9 @@
-/** REM-02C / LU-10, LU-11: common gesture ownership, not another animation driver.
- * An interaction has candidates and exactly one claimed owner. Native scrolling
- * is a real, exclusive owner: custom writers must never run while it owns input.
- * The REM-02A MotionController supplies token generations and cleanup.
+/** One state machine owns input across React pointer and native Touch adapters.
+ * No MotionController here: this class owns events, not pixels or RAF frames.
+ * Rendering controllers stay separately scoped to the actual moving surface.
+ * Candidate release cannot cancel another still-live candidate.
  */
-import {MotionController,type MotionOwner,type MotionToken} from "../ui/motion-controller";
+import type {MotionOwner} from "../ui/motion-controller";
 
 export type GestureOwner=MotionOwner|"native";
 export type InputKind="pointer"|"touch";
@@ -20,35 +20,27 @@ export const gestureCapabilities=(target:Element|null,canBack:boolean):GestureCa
  return {canScrollY,canPageX,canBack:canBack&&!modalBlocked,modalBlocked};
 };
 export class GestureArbiter {
- private motion:MotionController;
  private session=0;
  private identity:number|null=null;
+ private ids:{pointer:number|null;touch:number|null}={pointer:null,touch:null};
  private claimed:GestureOwner|null=null;
  private candidates=new Set<GestureOwner>();
  private blockedNative=false;
  private terminals=0;
- constructor(){
-  this.motion=new MotionController("route",{
-   frame:cb=>requestAnimationFrame(cb),cancelFrame:id=>cancelAnimationFrame(id)
-  });
- }
  begin(kind:InputKind,id:number,owner:GestureOwner):number|null{
-  if(!Number.isFinite(id))return null;
-  // Pointer and Touch callbacks from one physical touch join the same logical
-  // candidate instead of opening two independently painting gesture sessions.
+  if(!Number.isSafeInteger(id))return null;
+  // A native touch and its synthetic pointer use different ID namespaces.
+  // Same-kind different IDs without a terminal mean a second finger, never
+  // another writer in the existing interaction.
+  if(this.identity!==null&&this.ids[kind]!==null&&this.ids[kind]!==id){
+   this.secondFinger();return null;
+  }
   if(this.identity===null){
-   // React StrictMode performs a provisional effect cleanup; reconstruct the
-   // isolated REM-02A controller on the next real input, never revive its old
-   // disposed generation or a stale callback from the first mount.
-   if(this.motion.snapshot().disposed)this.motion=new MotionController("route",{
-    frame:cb=>requestAnimationFrame(cb),cancelFrame:id=>cancelAnimationFrame(id)
-   });
    this.session++;this.identity=id;this.claimed=null;this.candidates.clear();
-   this.blockedNative=false;
-   if(!this.motion.begin(0))return null;
+   this.ids={pointer:null,touch:null};this.blockedNative=false;
   }else if(this.claimed!==null)return null;
+  this.ids[kind]=id;
   this.candidates.add(owner);
-  void kind;
   return this.session;
  }
  candidate(owner:GestureOwner,serial:number):boolean{
@@ -57,8 +49,6 @@ export class GestureArbiter {
  }
  claim(owner:GestureOwner,serial:number):boolean{
   if(!this.candidate(owner,serial))return false;
-  const token:MotionToken=this.motion.token();
-  if(!this.motion.claim(token))return false;
   this.claimed=owner;this.blockedNative=owner==="native";return true;
  }
  owns(owner:GestureOwner,serial:number):boolean{
@@ -73,20 +63,22 @@ export class GestureArbiter {
  cancel():void{
   if(this.identity===null)return;
   this.terminals++;
-  const token=this.motion.token();this.motion.cancel(token,"gesture-cancel");
-  this.identity=null;this.claimed=null;this.candidates.clear();this.blockedNative=false;
+  this.identity=null;this.ids={pointer:null,touch:null};
+  this.claimed=null;this.candidates.clear();this.blockedNative=false;
  }
  finish(owner:GestureOwner,serial:number):boolean{
   if(!this.owns(owner,serial))return false;
   this.cancel();return true;
  }
- finishCandidate(serial:number):void{
-  if(serial===this.session&&this.claimed===null)this.cancel();
+ finishCandidate(serial:number,owner?:GestureOwner):void{
+  if(serial!==this.session||this.claimed!==null)return;
+  if(owner!==undefined)this.candidates.delete(owner);
+  if(owner===undefined||this.candidates.size===0)this.cancel();
  }
  blocksNative():boolean{return this.blockedNative;}
  snapshot(){return {generation:this.session,owner:this.claimed,
   active:this.identity!==null,terminals:this.terminals};}
- dispose(){this.cancel();this.motion.dispose();}
+ dispose(){this.cancel();}
 }
 /** CSS may still be interpolating after semantic index changes. Read once at
  * actual gesture capture; never reconstruct from a potentially stale index. */
