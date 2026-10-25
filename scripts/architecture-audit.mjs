@@ -118,10 +118,14 @@ function scriptWalk(dir){
   const full=path.join(dir,ent.name);
   if(ent.isDirectory()){scriptWalk(full);continue;}
   if(ent.isFile()&&/\.[cm]?js$/.test(ent.name))
-   codeFiles.push(path.relative(root,full).replaceAll(path.sep,"/"));
+   {const rel=path.relative(root,full).replaceAll(path.sep,"/");
+    if(!codeFiles.includes(rel))codeFiles.push(rel);}
  }
 }
 scriptWalk(path.join(root,"scripts"));
+scriptWalk(path.join(root,"apps/api/test"));
+scriptWalk(path.join(root,"apps/api/secure-tests"));
+scriptWalk(path.join(root,"apps/web"));
 const content=new Map(codeFiles.map(file=>[file,readFileSync(path.join(root,file),"utf8")]));
 const suspectedUnusedExports=[];
 for(const file of paths.filter(p=>/\.[jt]sx?$/.test(p))){
