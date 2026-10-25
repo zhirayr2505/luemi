@@ -91,7 +91,7 @@ export async function suspendReportedActor(o:SafetyOperatorOptions,reportId:stri
    "VALUES($1,$2,$3,$4,$5) RETURNING id",
    [o.namespace,actor,reportId,reason,o.operatorLabel]);
   if(r.rowCount!==1)throw Error("safety_case_failed");
-  await db.query("UPDATE luemi_private.media_assets SET publication_status='private' "+
+  await db.query("UPDATE luemi_private.media_assets SET publication_status='private',state='revoked' "+
    "WHERE owner_id=$1 AND environment=$2 AND publication_status='published'",
    [actor,o.namespace]);
   await db.query("UPDATE luemi_private.public_profiles SET publication_status='hidden' "+
