@@ -29,6 +29,6 @@ CREATE POLICY g_operator_invite ON luemi_private.beta_invites FOR ALL
  TO luemi_invite_operator USING(environment=current_setting('luemi.environment',true))
  WITH CHECK(environment=current_setting('luemi.environment',true));
 GRANT SELECT(environment,telegram_id,state,created_at,revoked_at),
- INSERT(environment,telegram_id,state),UPDATE(state,revoked_at)
+ INSERT(environment,telegram_id,state,revoked_at),UPDATE(state,revoked_at)
  ON luemi_private.beta_invites TO luemi_invite_operator;
 -- Do NOT grant changes in Telegram identities to any public or request role.
