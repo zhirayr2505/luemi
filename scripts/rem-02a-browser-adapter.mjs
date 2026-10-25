@@ -36,9 +36,10 @@ try{
   const old=token;
   controller.settle(token,393);
   const commit=[];
-  const completion=a.createGuardedCompletion(controller,token,x=>{
-   el.style.left=x+"px";commit.push("paint");
-  },()=>commit.push("commit"));
+  const completion=()=>controller.finish(token,{
+   paint:x=>{el.style.left=x+"px";commit.push("paint");},
+   onCommit:()=>commit.push("commit")
+  });
   const once=completion()&&!completion()&&commit.join(",")==="paint,commit";
   const before=controller.snapshot().current;
   const newToken=controller.begin(before);
