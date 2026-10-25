@@ -1,5 +1,5 @@
 /** REM-02B / LU-09: geometry-aware RAF settle adapter.
- * Same bezier, duration and endpoint as existing animateValue; a resize only
+ * Retains the accepted bezier, duration and endpoint; a resize only
  * continues the *unused interval* of that easing curve.
  */
 import {easeAt} from "../ui/motion";
