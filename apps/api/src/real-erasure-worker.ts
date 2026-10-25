@@ -98,6 +98,10 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
     if(finalized.rowCount!==1)throw new Error("erasure_finalize_conflict");
     await db.query("COMMIT");began=false;completed++;
    }catch(e){
+    if(process.env.NODE_ENV==='test'||process.env.CI==='true'){
+     const code=typeof e==='object'&&e!==null&&'code' in e?String(e.code):'NON_SQL';
+     process.stderr.write('REG01F_WORKER_ERROR_CODE '+code.slice(0,5)+'\n');
+    }
     if(began)await db.query("ROLLBACK").catch(()=>{});
     failed++;
     // Deny a running worker with a merged/privileged credential, never retry it.
