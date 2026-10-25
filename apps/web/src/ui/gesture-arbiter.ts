@@ -7,18 +7,14 @@ import type {MotionOwner} from "../ui/motion-controller";
 
 export type GestureOwner=MotionOwner|"native";
 export type InputKind="pointer"|"touch";
-export type Axis="x"|"y";
-export interface GestureCapabilities {
- canScrollY:boolean;canPageX:boolean;canBack:boolean;modalBlocked:boolean;
-}
-export const gestureCapabilities=(target:Element|null,canBack:boolean):GestureCapabilities=>{
- if(!target)return {canScrollY:false,canPageX:false,canBack:false,modalBlocked:true};
- const modalBlocked=!!target.closest(".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar,[role=dialog]:not(.pm-shell),.discovery-filter-sheet,.fy-expanded,.fy-rail,.nb-card,.nb-location,.carousel-frame");
- const scroller=target.closest<HTMLElement>(".pm-page,.fy-scroll,.nb-scroll,.discovery-page");
- const canScrollY=!!scroller&&scroller.scrollHeight>scroller.clientHeight+1&&scroller.scrollTop>1;
- const canPageX=!!target.closest(".pm-hero,.pm-pages,.pm-tabs,.discovery-pages,.discovery-top-tabs");
- return {canScrollY,canPageX,canBack:canBack&&!modalBlocked,modalBlocked};
-};
+/** Read-only target gate. Never query scrollHeight/scrollTop while processing
+ * the pointerdown critical path: existing list position is NOT active pan-y.
+ * Direction arbitration is performed by the actual gesture owner on movement. */
+export const isGestureModalBlocked=(target:Element|null):boolean=>
+ !target||!!target.closest(
+  ".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar,[role=dialog]:not(.pm-shell),"+
+  ".discovery-filter-sheet,.fy-expanded,.fy-rail,.nb-card,.nb-location,.carousel-frame"
+ );
 export class GestureArbiter {
  private session=0;
  private identity:number|null=null;
