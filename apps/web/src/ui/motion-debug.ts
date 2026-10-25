@@ -29,7 +29,7 @@ export function motionDebugDump(){
  * Preserve settle/resize/render ordering, and sample or flag abrupt Y changes.
  * The full original records remain available for offline review as a TXT file.
  */
-export function compactMotionLog(lines:readonly string[],maxChars=14000):string{
+export function compactMotionLog(lines:readonly string[],maxChars=6500):string{
  type Entry={t:number;event:string;[key:string]:unknown};
  const entries:Entry[]=[];
  for(const line of lines){
