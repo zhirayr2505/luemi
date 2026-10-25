@@ -252,6 +252,23 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
    "SELECT object_key FROM luemi_private.erasure_objects WHERE request_id=$1",
    [q.rows[0].id]);
   assert.equal(objects.rowCount,3);
+  // The special worker role must not inspect or delete the OTHER user, even
+  // when one pending erasure request exists in the same environment.
+  const workerProbe=new Pool({connectionString:erasureWorkerUrl!});
+  try{
+   assert.equal((await workerProbe.query(
+    "SELECT id FROM luemi_private.actors WHERE id=$1",[b.id])).rowCount,0);
+   assert.equal((await workerProbe.query(
+    "SELECT id FROM luemi_private.sessions WHERE actor_id=$1",[b.id])).rowCount,0);
+   const foreignAudit=await admin.query<{id:string}>(
+    "INSERT INTO luemi_private.audit_events(actor_id,event_type) "+
+    "VALUES($1,'report_created') RETURNING id::text",[b.id]);
+   const forbidden=await workerProbe.query(
+    "DELETE FROM luemi_private.audit_events WHERE id=$1 RETURNING id",[foreignAudit.rows[0].id]);
+   assert.equal(forbidden.rowCount,0,"worker must not erase another adult's audit");
+   assert.equal((await admin.query(
+    "SELECT id FROM luemi_private.audit_events WHERE id=$1",[foreignAudit.rows[0].id])).rowCount,1);
+  }finally{await workerProbe.end();}
   for(const object of objects.rows)assert.ok(await storage.get(object.object_key));
   const flaky:PrivateObjectStore={put:(k,b)=>storage.put(k,b),get:k=>storage.get(k),
    delete:async()=>{throw new Error("synthetic-storage-outage");}};
