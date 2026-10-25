@@ -105,7 +105,8 @@ for(const percent of [.25,.5,.9]){
  assert.ok(s.includes("g.index=reanchorPage(position,g.x,g.lastX,tabViewport.current)"));
  assert.ok(s.includes("rev!==g.revision")&&s.includes("sheetDragActive.current=true;"));
  assert.ok(read("apps/web/src/discovery/profile-sheet-motion.ts").includes("easeAt(fraction,.22,.79,.22,1)"));
- assert.ok(s.includes("runner.start(from,i,295,[.22,.77,.23,1]"));
+ assert.ok(s.includes("runner.start(from,i,fromFinger?tabReleaseDuration(from,i):295,[.22,.77,.23,1]"),
+  "original 295ms tap curve retained, while swipe release only animates the remaining distance");
  assert.ok(!s.includes("paintTabs(tabs.findIndex(v=>v[0]===tabSelectionRef.current))"),
   "no unconditionally snapped selected tab after geometry revision");
  console.log("REM02B_UNIT_PASS live revision/gesture/physics wiring without visual token changes");

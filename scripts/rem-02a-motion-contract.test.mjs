@@ -207,12 +207,14 @@ assert.ok(profile.includes('motionAuthority.current.run("sheet",PROFILE_MOTION_W
 assert.ok(route.includes('motionAuthority.current.run("route",PROFILE_MOTION_WRITER_TABLE.route'));
 assert.ok(browse.includes('motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse'));
 const sheetMotion=read("apps/web/src/discovery/profile-sheet-motion.ts");
-assert.ok(profile.includes('ensureSheetMotion().settle(next,()=>')&&
+assert.ok(profile.includes('engine.settle(next,()=>')&&
+ profile.includes('engine.phase==="settling"&&engine.destinationCollapsed===next')&&
  sheetMotion.includes('private readonly paint:(y:number,dragging:boolean)=>void')&&
  sheetMotion.includes('get phase():Stage')&&
  sheetMotion.includes('duration=290')&&
  sheetMotion.includes('easeAt(fraction,.22,.79,.22,1)')&&
- profile.includes('runner.start(from,i,295,[.22,.77,.23,1]')&&
+ profile.includes('runner.start(from,i,fromFinger?tabReleaseDuration(from,i):295,[.22,.77,.23,1]')&&
+ profile.includes('chooseTab(next,true)')&&
  profile.includes('runner.rebase(tabsRevision.current,fraction,destination)')&&
  profile.includes("transform 290ms cubic-bezier(.2,.76,.22,1)"),
  "REM-02B source contract: new one-owner sheet timeline and unchanged tab/photo motion");

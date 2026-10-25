@@ -132,12 +132,34 @@ globalThis.DOMMatrixReadOnly=prevMatrix;
 globalThis.getComputedStyle=prevCSS;
 console.log("REM02C_UNIT_PASS actual matrix freezing recovers half-slide fractional coordinate");
 
+const snap=await import(url(compile(read("apps/web/src/discovery/profile-tab-snap.ts"))));
+assert.equal(snap.tabReleaseDuration(.95,1),0,
+ "near-complete swipe must not replay another visual transition");
+assert.ok(snap.tabReleaseDuration(.6,1)>=50&&snap.tabReleaseDuration(.6,1)<170,
+ "swipe releases finish remaining distance, not a fresh full 295ms");
+assert.equal(snap.tabReleaseDuration(0,1),210,
+ "release duration is bounded even for an early flick");
+assert.equal(snap.tabReleaseDuration(Infinity,1),295,
+ "invalid fraction falls back to safe original duration");
+console.log("PROFILE_TAB_RELEASE_PASS proportional remaining settle");
 const profile=read("apps/web/src/discovery/ProfileMaster.tsx");
 const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 const css=read("apps/web/src/discovery/discovery.css");
 const profileCss=read("apps/web/src/discovery/profile-master.css");
 assert.ok(profile.includes('g.index=fractionalTrack(photoTrack.current,g.width,activePhoto)'));
+assert.ok(profile.includes('fromFinger?tabReleaseDuration(from,i):295'),
+ "tab clicks remain 295ms, finger release scales remaining animation");
+assert.ok(profile.includes('chooseTab(next,true)'),
+ "both touch and pointer releases use distance-proportional settle");
+assert.ok(!profile.includes('settleSheet(g.down,"touchend.noAxis")'),
+ "no-axis taps must not restart the sheet before click handlers");
+assert.ok(profile.includes('engine.phase==="settling"&&engine.destinationCollapsed===next'),
+ "duplicate sheet commands to the same in-flight endpoint must be idempotent");
+assert.ok(profile.includes('!(sheetMotion.current?.destinationCollapsed??collapsedRef.current)'),
+ "grab tap must invert the actual pending sheet target rather than stale React state");
+assert.ok(profile.includes('down:sheetMotion.current?.destinationCollapsed??collapsedRef.current'),
+ "rapid sheet gestures must use the in-flight destination, not stale React state");
 assert.ok(profile.includes('preservePhotoId(list,photos,activePhotoId.current,activePhoto)'));
 assert.ok(profile.includes('gestures.claim(owner,g.serial)')&&profile.includes('gestures.nativeScroll(g.serial)'));
 assert.ok(profile.includes('const serial=gestures.begin("pointer",e.pointerId,"tabs")')&&

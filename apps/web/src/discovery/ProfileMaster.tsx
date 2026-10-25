@@ -12,6 +12,7 @@ import {QaProfiler} from "./qa-profiler";
 import {resourceIdentity,viewerPhotoContext,type ViewerSource} from "./photo-viewer-state";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
+import {tabReleaseDuration} from "./profile-tab-snap";
 import {ProfileSheetMotion} from "./profile-sheet-motion";
 import {createSheetFrameTrace,installMotionDebugPanel,motionDebug,motionDebugEnabled,type SheetFrameTrace} from "../ui/motion-debug";
 import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
@@ -367,7 +368,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     paintedY:sheetY.current,phase:sheetMotion.current?.phase??"none",
     destination:sheetMotion.current?.destinationCollapsed??null});
   }
-  ensureSheetMotion().settle(next,()=>{
+  const engine=ensureSheetMotion();
+  // Repeated quick taps aimed at the same in-flight destination are not a
+  // new gesture. Do not cancel/restart a 290ms run for an identical target.
+  if(engine.phase==="settling"&&engine.destinationCollapsed===next)return;
+  engine.settle(next,()=>{
    if(motionDebugEnabled)motionDebug("collapsedRef.write",{
     next,previous:collapsedRef.current,y:sheetY.current
    });
@@ -682,14 +687,14 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   keyboardTabFocus.current=null;
   tabBar.current?.querySelectorAll<HTMLButtonElement>(".pm-tab")[i]?.focus({preventScroll:true});
  },[tab]);
- const chooseTab=useCallback((newIndex:number)=>{
+ const chooseTab=useCallback((newIndex:number,fromFinger=false)=>{
   const i=Math.min(4,Math.max(0,newIndex));
   stopTabs.current();
   const runner=ensureTabsRunner();
   const from=runner.snapshot().phase==="idle"?tabLastPosition.current:runner.cancel();
   tabSelectionRef.current=tabs[i][0];
   setTab(tabs[i][0]);
-  runner.start(from,i,295,[.22,.77,.23,1],value=>paintTabs(value),()=>paintTabs(i),
+  runner.start(from,i,fromFinger?tabReleaseDuration(from,i):295,[.22,.77,.23,1],value=>paintTabs(value),()=>paintTabs(i),
    tabsRevision.current);
   stopTabs.current=()=>{const frozen=runner.cancel();paintTabs(frozen);};
   // The page and underline already run the accepted 295ms settle. Avoid
@@ -758,7 +763,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   // position before the settle begins to avoid a stale-page flash.
   paintTabs(g.index,dx);
   clickBlocked.current=performance.now()+240;
-  chooseTab(next);
+  chooseTab(next,true);
  };
  useEffect(()=>{
   const pane=sheet.current;if(!motionActive||!pane)return;
@@ -799,7 +804,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    sheetDragActive.current=false;
    const now=performance.now();
    debugTrace.current?.start();
-   gesture={x:t.clientX,y:t.clientY,start:now,down:collapsedRef.current,scrollTop,
+   gesture={x:t.clientX,y:t.clientY,start:now,down:sheetMotion.current?.destinationCollapsed??collapsedRef.current,scrollTop,
     origin:sheetY.current,axis:"",inPages,index:(pages.current?.scrollLeft??0)/tabViewport.current,
     lastY:t.clientY,lastX:t.clientX,lastTime:now,velocity:0,
     revision:sheetRevision.current,blocking:inPages?(!collapsedRef.current||scrollTop<=1):!collapsedRef.current,
@@ -874,7 +879,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     // abort() cancelled any queued paint. Never start the snap from the
     // penultimate RAF when touchend arrived ahead of it.
     paintTabs(g.index,dx);
-    clickBlocked.current=performance.now()+260;chooseTab(next);
+    clickBlocked.current=performance.now()+260;chooseTab(next,true);
    }else if(g.axis==="y"&&g.claimed){
     if(!cancelled){
       const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
@@ -887,8 +892,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     clickBlocked.current=performance.now()+260;
     settleSheet(cancelled?g.down:g.down?!commit:commit,"touchend");
    }else if(!g.axis){
-    // A tap during settling resumes from the frozen position.
-    settleSheet(g.down,"touchend.noAxis");
+    // A touch-only tap is not a sheet command. The grab/avatar's click
+    // handler owns its settle; calling settleSheet here first used to
+    // reverse/restart that very animation during rapid taps on Android.
+    // Existing settling motion continues uninterrupted.
     const selected=tabs.findIndex(v=>v[0]===tabSelectionRef.current);
     if(g.inPages&&Math.abs((pages.current?.scrollLeft??0)-selected*tabViewport.current)>.5)chooseTab(selected);
    } // Native scroll is exclusive; never repair pages.scrollLeft from its touchend.
@@ -1032,7 +1039,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    <div className="pm-profile-sheet" ref={sheet} onClickCapture={e=>{
     if(performance.now()<clickBlocked.current){e.preventDefault();e.stopPropagation();}
    }}>
-    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!collapsedRef.current,"grab.onClick")}
+    <button ref={grab} type="button" className="pm-sheet-grab" onClick={()=>settleSheet(!(sheetMotion.current?.destinationCollapsed??collapsedRef.current),"grab.onClick")}
       tabIndex={collapsed?-1:0} aria-label={collapsed?"Потянуть панель вниз":"Развернуть анкету"}><span/></button>
     <div className="pm-identity">
      <div className="pm-identity-core">

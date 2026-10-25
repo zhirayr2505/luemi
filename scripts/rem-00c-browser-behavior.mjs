@@ -387,6 +387,40 @@ async function qaProfile(browser){
   state=await readState(page);
   assert.ok(Number.isFinite(state.sheetTop)&&state.pagesWidth>0,"resize does not corrupt layout");
   await snapshot(page,"05-owner-dark-narrow");
+  // Critical reentrant transition: a neutral touchend during an in-flight
+  // avatar expansion must not restart the sheet toward its stale old state.
+  const beforeNeutral=await readState(page);
+  assert.equal(beforeNeutral.mode,"collapsed");
+  await page.locator(".pm-inline").getByRole("button",{name:"Раскрыть фото профиля"}).click();
+  await sleep(38);
+  const identityDuringSettle=await page.locator(".pm-inline .pm-identity").boundingBox();
+  assert.ok(identityDuringSettle&&identityDuringSettle.height>40);
+  // Dispatch a neutral native-compatible touch WITHOUT synthesizing a
+  // click on controls which can pass beneath the touch as the panel moves.
+  // Real CDP gestures are exercised above; this isolates the no-axis path.
+  await page.evaluate(()=>{
+   const target=document.querySelector(".pm-inline .pm-identity-text h2");
+   if(!(target instanceof HTMLElement))throw Error("identity heading missing");
+   const rect=target.getBoundingClientRect();
+   const touch=new Touch({identifier:41,target,
+    clientX:rect.left+Math.min(40,rect.width*.25),clientY:rect.top+Math.min(12,rect.height*.25)});
+   target.dispatchEvent(new TouchEvent("touchstart",{bubbles:true,cancelable:true,
+    touches:[touch],targetTouches:[touch],changedTouches:[touch]}));
+   target.dispatchEvent(new TouchEvent("touchend",{bubbles:true,cancelable:true,
+    touches:[],targetTouches:[],changedTouches:[touch]}));
+  });
+  await sleep(350);
+  const afterNeutral=await readState(page);
+  assert.equal(afterNeutral.mode,"expanded",
+   "SHEET REENTRANCY: touchend must not reverse in-flight expansion");
+  assert.ok(afterNeutral.sheetTop>beforeNeutral.sheetTop+100,
+   "SHEET REENTRANCY: panel must reach expanded endpoint");
+  console.log("QA_NO_TOUCHEND_RESTART_DURING_SHEET_EXPAND_PASS");
+  // Restore the approved collapsed state before testing bottom navigation.
+  // Otherwise the expanded profile intentionally occludes the browse button.
+  await page.locator(".pm-inline .pm-sheet-grab").evaluate(el=>el.click());
+  await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
+
   // Discovery: parent swiper owns background but child Nearby controls keep ownership.
   await page.getByRole("button",{name:"Знакомства",exact:true}).click();
   await page.getByRole("tab",{name:"Рядом",exact:true}).click();
