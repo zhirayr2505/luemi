@@ -4,7 +4,7 @@ import {adultDate,validateRealRegistrationDraft} from "../src/real-registration-
 
 const consent="beta-policy-v1";
 const now=new Date("2026-10-25T14:00:00.000Z");
-const ok=(fields:Record<string,unknown>)=>validateRealRegistrationDraft({...fields,consentVersion:consent},consent,now);
+const ok=(fields:Record<string,unknown>)=>validateRealRegistrationDraft({consentVersion:consent,...fields},consent,now);
 test("DOB: exact 18th birthday allowed, next day and malformed rejected",()=>{
  assert.equal(adultDate("2008-10-25",now),true);
  assert.equal(adultDate("2008-10-26",now),false);
