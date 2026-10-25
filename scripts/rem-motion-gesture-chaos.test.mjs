@@ -210,7 +210,66 @@ for(let seed=1;seed<=7000;seed++){
  assert.equal(c.begin(0),null);
 }
 
+// Exhaustively permute eight hostile action families. Unlike random fuzz,
+// this ensures every short ordering (40,320 cases) appears, including a parent
+// candidate releasing during child touch, competing claims, second finger,
+// and cancellation immediately before an attempted stale callback.
+const actionKinds=["pointer-route","touch-sheet","route-release","sheet-claim",
+ "route-claim","native-claim","cancel","second-finger"];
+let permutationCases=0,permutationOperations=0;
+function verifyPermuted(sequence){
+ const arb=new gesture.GestureArbiter();
+ for(const action of sequence){
+  const before=arb.snapshot(),serial=before.generation;
+  if(action==="pointer-route")arb.begin("pointer",11,"route");
+  else if(action==="touch-sheet")arb.begin("touch",29,"sheet");
+  else if(action==="route-release"){
+   arb.finishCandidate(serial,"route");
+   if(before.active&&before.owner===null)
+    assert.equal(arb.candidate("route",serial),false,"released parent reclaimed gesture");
+  }else if(action==="sheet-claim"){
+   const won=arb.claim("sheet",serial);
+   if(won)assert.equal(arb.owner(),"sheet");
+  }else if(action==="route-claim"){
+   const won=arb.claim("route",serial);
+   if(won)assert.equal(arb.owner(),"route");
+  }else if(action==="native-claim"){
+   // Native scroll can only claim if already a registered candidate. It must
+   // never silently steal an owned route/sheet even when the event races.
+   const previousOwner=arb.owner();
+   const won=arb.nativeScroll(serial);
+   if(won)assert.equal(previousOwner,null);
+  }else if(action==="cancel"){
+   arb.cancel();
+   assert.equal(arb.snapshot().owner,null);
+  }else arb.secondFinger();
+  const next=arb.snapshot();
+  assert.equal(next.active,next.owner!==null||next.active);
+  if(next.owner!==null){
+   assert.equal(arb.owns(next.owner,next.generation),true);
+   for(const other of owners.filter(x=>x!==next.owner))
+    assert.equal(arb.candidate(other,next.generation),false,"two simultaneous writers");
+  }
+  if(!next.active)assert.equal(next.owner,null);
+  if(next.generation!==serial){
+   assert.equal(arb.claim("route",serial),false,"superseded route generation claimed");
+   assert.equal(arb.claim("sheet",serial),false,"superseded sheet generation claimed");
+  }
+  permutationOperations++;
+ }
+ arb.dispose();
+ assert.equal(arb.snapshot().active,false);
+ permutationCases++;
+}
+function permutations(prefix,remaining){
+ if(remaining.length===0){verifyPermuted(prefix);return;}
+ for(let i=0;i<remaining.length;i++)
+  permutations([...prefix,remaining[i]],remaining.filter((_,j)=>j!==i));
+}
+permutations([],actionKinds);
+
 console.log("LUEMI_GESTURE_MOTION_CHAOS_PASS "+JSON.stringify({
  gestureOperations:gestures,motionOperations:motions,lateFrameCallbacks:lateFrames,
+ permutationCases,permutationOperations,
  seeds:7150,hostileRafReplays:commitRaces,atomicTerminals,mode:"deterministic adversarial pure-state, not device GPU QA"
 }));
