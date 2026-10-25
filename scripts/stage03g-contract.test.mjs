@@ -56,7 +56,7 @@ assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki"
  profile.includes('["photos","Фото"')&&profile.includes('["gifts","Подарки"')&&
  profile.includes('["meta","О профиле"'),"strict five-tab ordering");
 assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.blocking})')&&
- profile.includes('viewport.current.scrollTop=Math.max(0,expandedY.current-Math.min(next,expandedY.current))')&&
+ profile.includes('if(sheet.current)sheet.current.style.top=next.toFixed(2)+"px"')&&
  profile.includes('g.origin+dy')&&profile.includes('contentPages.current['),
  "sheet follows its actual origin while each tab retains native vertical scrolling");
 assert.ok(profile.includes('if(g.axis==="x")paintTabs(g.index,dx)')&&
@@ -114,7 +114,7 @@ assert.ok(!css.includes("border-radius 390ms")&&css.includes("border-radius:34px
 assert.ok(css.includes(".pm-photo-blur")&&css.includes("filter:blur(11px)")&&
  profile.includes('blurLayer.current.style.opacity=String(progress*.9)'),
  "fixed blur opacity follows the sheet controller");
-assert.ok(profile.includes("imageRect.height*.11")&&
+assert.ok(profile.includes("image.height*.11")&&
  profile.includes('pane.style.setProperty("--pm-collapsed-top"'),
  "collapsed top overlaps lower 11% of measured actual logo instead of system controls");
 assert.ok(profile.includes("const paintSheet=useCallback(")&&
@@ -157,8 +157,8 @@ assert.ok(header.includes("pendingTop.current=top")&&
  "browse logo controls are coalesced to one frame and stale paints are cancelled");
 console.log("✓ Stage 03G.6 flicker regressions: single transform owner, passive native scroll, stable paint boundaries");
 
-assert.ok(profile.includes('data-sheet-renderer="scroll"')&&!profile.includes("androidSafeSheet"),
- "one scroll renderer replaces divergent platform motion implementations");
+assert.ok(profile.includes('data-sheet-renderer="absolute"')&&!profile.includes("androidSafeSheet"),
+ "one absolute-top renderer replaces divergent native scrolling and platform implementations");
 assert.ok(profile.includes('pages.current.scrollLeft=position*tabViewport.current')&&
  !profile.includes('pageTrack.current.style.left'),
  "horizontal movement uses a stationary scroll viewport without animated left");
@@ -183,8 +183,8 @@ assert.ok(discoveryCss.includes(".discovery-visitor-route{")&&
 assert.ok(header.includes("androidProfileChrome")&&
  header.includes("!androidClient&&<img")&&
  header.includes('decoding="async"')&&
- profile.includes("collapsedRef.current=next;")&&profile.includes("sheetIntent.current=null;")&&
- profile.includes("driver.rebase(sheetRevision.current,next,destination)")&&
+ profile.includes("collapsedRef.current=next;")&&
+ profile.includes("motion.resize(top,bottom,physical,collapsedRef.current,sheetDragActive.current)")&&
  profile.includes("miniAvatar.current.style.opacity=")&&
  profile.includes("grab.current.style.opacity="),
  "Android single-raster header and progress-driven sheet controls avoid duplicate paints");

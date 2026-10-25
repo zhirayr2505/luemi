@@ -59,7 +59,9 @@ const sheetEndpoint=async()=>photo().evaluate(root=>{
  const view=root.querySelector(".pm-sheet-viewport"),panel=root.querySelector(".pm-profile-sheet");
  const top=parseFloat(panel.style.getPropertyValue("--pm-collapsed-top"));
  const bottom=parseFloat(root.style.getPropertyValue("--pm-expanded-y"));
- return {y:bottom-view.scrollTop,top,bottom,state:root.dataset.sheetState};
+ if(view.scrollTop!==0)throw Error("native outer sheet scrolling forbidden after rewrite");
+ return {y:panel.getBoundingClientRect().top-root.getBoundingClientRect().top,
+  top,bottom,state:root.dataset.sheetState};
 });
 const settleSheet=async()=>{
  await sleep(430);

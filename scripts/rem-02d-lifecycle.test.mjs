@@ -38,8 +38,8 @@ const profile=read("apps/web/src/discovery/ProfileMaster.tsx");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 for(const x of ["suspendForRoute","rollbackRoute","commitRouteClose","suspendForBackground","resumeFromBackground"])
  assert.ok(profile.includes(x)&&route.includes(x),"child handoff "+x);
-assert.ok(profile.includes("sheetRunner.current?.suspend()")&&profile.includes("tabsRunner.current?.suspend()"));
-assert.ok(profile.includes("sheetDriver.reveal")&&profile.includes("tabDriver.reveal"));
+assert.ok(profile.includes("sheetMotion.current?.pause()")&&profile.includes("tabsRunner.current?.suspend()"));
+assert.ok(profile.includes("sheetDriver.resume()")&&profile.includes("tabDriver.reveal"));
 assert.ok(route.includes('routeMotion.current.finish(token')&&route.includes('routeMotion.current.cancel(liveToken.current,"external")'));
 assert.ok(route.includes('onLostPointerCapture={e=>{if(e.target===e.currentTarget)end(e,true);}}')&&route.includes("Math.abs(currentX()-liveTarget.current)>1"));
 for(const token of ['const OPEN_DURATION=260','const CLOSE_DURATION=230','cubic-bezier(.2,.82,.24,1)'])

@@ -18,7 +18,9 @@ async function geometry(){
   const top=Number(c.getPropertyValue("--pm-collapsed-top"))||Number(shell.style.getPropertyValue("--pm-collapsed-top"));
   const collapsed=Number(shell.style.getPropertyValue("--pm-collapsed-top").replace("px",""));
   const expanded=Number(root.style.getPropertyValue("--pm-expanded-y").replace("px",""));
-  const sheetPosition=expanded-viewport.scrollTop;
+  // Actual visible white panel coordinate; no scrollTop is used by 03G.
+  const sheetPosition=shell.getBoundingClientRect().top-root.getBoundingClientRect().top;
+  if(viewport.scrollTop!==0)throw Error("outer native scroll offset must stay disabled");
   return {height:root.clientHeight,width:root.clientWidth,top,collapsed,expanded,
    sheetPosition,remaining:root.dataset.sheetState,pagesLeft:pages.scrollLeft,
    pageWidth:pages.clientWidth,fraction:pages.scrollLeft/Math.max(1,pages.clientWidth),
@@ -33,7 +35,7 @@ try{
  await sleep(180);
  const original=await geometry();
  assert.ok(original.expanded>original.collapsed);
- for(const percent of [.25,.5,.9]){
+ for(const percent of [.25,.5,.75]){
   await page.setViewportSize({width:393,height:852});
   await sleep(90);
   if((await geometry()).remaining==="collapsed"){
@@ -41,7 +43,7 @@ try{
    await sleep(385);
   }
   await page.getByRole("button",{name:"Развернуть анкету"}).click();
-  await sleep(Math.round(335*percent));
+  await sleep(Math.round(290*percent));
   const before=await geometry();
   assert.equal(before.remaining,"expanded","CSS/React state must stay expanded until actual settle completion");
   await page.setViewportSize({width:393,height:percent===.25?722:percent===.5?648:782});
@@ -50,7 +52,7 @@ try{
   assert.equal(after.remaining,"collapsed");
   assert.ok(Math.abs(after.sheetPosition-after.collapsed)<=1,
    "sheet endpoint deviation >1 CSS px at "+percent+": "+JSON.stringify(after));
-  pass("native sheet resize "+Math.round(percent*100)+"% settles at endpoint within 1px");
+  pass("absolute sheet resize "+Math.round(percent*100)+"% settles at endpoint within 1px");
  }
  await page.setViewportSize({width:393,height:852});await sleep(120);
  const collapsed=await geometry();

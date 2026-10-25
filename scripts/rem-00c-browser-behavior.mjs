@@ -88,7 +88,7 @@ async function qaProfile(browser){
  try{
   await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.getByRole("button",{name:"Профиль",exact:true}).click();
-  await (await required(page,'.pm-inline[data-sheet-renderer="scroll"]',"owner profile")).waitFor({state:"visible"});
+  await (await required(page,'.pm-inline[data-sheet-renderer="absolute"]',"owner profile")).waitFor({state:"visible"});
   await readyAssets(page);
   let state=await readState(page);
   assert.equal(state.mode,"expanded","owner must start expanded");
@@ -107,23 +107,37 @@ async function qaProfile(browser){
   await dots.first().click();
   assert.equal(await dots.first().getAttribute("aria-current"),"true","photo index can return to first");
   const expanded=state;
-  // Real native touch gesture: take intermediate sheet frames without faking CSS state.
+  // Real mobile touch: sample the independent absolute sheet top each frame.
   const geometry=await page.locator(".pm-inline .pm-profile-sheet").boundingBox();
   assert.ok(geometry&&geometry.height>80,"sheet must be measurable");
   const identityBox=await page.locator(".pm-inline .pm-identity").boundingBox();
   assert.ok(identityBox&&identityBox.height>30,"profile identity provides real sheet gesture surface");
   const x=identityBox.x+identityBox.width*.48,y=identityBox.y+Math.min(identityBox.height*.45,50);
   console.log("QA_TOUCH_CONTEXT "+JSON.stringify({geometry,x,y,element:await page.evaluate(([x,y])=>{const el=document.elementFromPoint(x,y);return el?.outerHTML.slice(0,280)??"none"},[x,y])}));
+  await page.evaluate(()=>{
+   const el=document.querySelector(".pm-inline .pm-profile-sheet");
+   window.__SHEET_QA_TOUCH__=[];
+   for(const type of ["touchstart","touchmove","touchend","touchcancel"])
+    el?.addEventListener(type,e=>{
+     window.__SHEET_QA_TOUCH__.push({
+      type,top:el.getBoundingClientRect().top,
+      target:e.target?.className||e.target?.nodeName,
+      cancelable:e.cancelable,touches:e.touches?.length
+     });
+    },{capture:true,passive:true});
+  });
   const samples=[];
   await touch(page,{x,y,dy:-215,onStep:async i=>{
    if([4,8,12].includes(i))samples.push(await readState(page));
   }});
-  console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,scroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
+  console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,top:s.sheetTop,outerScroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
+  console.log("QA_SHEET_TOUCH_DIAGNOSTICS "+JSON.stringify(
+   await page.evaluate(()=>window.__SHEET_QA_TOUCH__?.slice(0,40))));
   assert.equal(samples.length,3);
-  assert.ok(samples.every(s=>Number.isFinite(s.scrollTop)&&Number.isFinite(s.blurOpacity)),"physical samples finite");
-  assert.ok(samples.some(s=>s.scrollTop>expanded.scrollTop+5),"touch must move native sheet scroll");
+  assert.ok(samples.every(s=>Number.isFinite(s.sheetTop)&&Number.isFinite(s.blurOpacity)),"physical samples finite");
+  assert.ok(samples.some(s=>s.sheetTop<expanded.sheetTop-5),"touch must move the real white surface");
   assert.ok(samples.some(s=>s.blurOpacity>expanded.blurOpacity+.03),"blur follows user gesture");
-  console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,scroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
+  console.log("QA_INTERMEDIATE_FRAMES "+JSON.stringify(samples.map(s=>({frame:s.frame,top:s.sheetTop,outerScroll:s.scrollTop,blur:s.blurOpacity,mode:s.mode}))));
   await sleep(480);
   state=await readState(page);
   if(state.mode!=="collapsed"){
@@ -134,7 +148,9 @@ async function qaProfile(browser){
    state=await readState(page);
   }
   assert.equal(state.mode,"collapsed");
-  assert.ok(state.scrollTop>expanded.scrollTop+80,"collapsed sheet changes native viewport scroll");
+  assert.ok(state.sheetTop<expanded.sheetTop-80,"collapsed white surface must move upward");
+   assert.equal(state.scrollTop,0,"no outer native scroller may compete");
+   assert.equal(state.sheetTransform,"none","new white sheet must not move by transform");
   assert.ok(state.blurOpacity>.5,"collapsed state renders blurred photo layer");
   assert.ok(state.sheetTop<expanded.sheetTop,"sheet has actually moved");
   await snapshot(page,"02-owner-collapsed");
@@ -186,6 +202,21 @@ async function qaProfile(browser){
    draggedUpTop:lastCollapseFingerFrame.sheetTop,releaseCollapseTop:collapseReleaseFrame.sheetTop,
    recollapsedTop:recollapsed.sheetTop}));
 
+  // The owner's actual UI sequence, repeated: collapse -> mini-avatar tap
+  // -> expand -> white grab tap -> collapse. Never reuse a stale end pixel.
+  for(let repeat=0;repeat<3;repeat++){
+   await page.locator(".pm-inline").getByRole("button",{name:"Раскрыть фото профиля"}).click();
+   await page.locator('.pm-inline[data-sheet-state="expanded"]').waitFor({state:"attached",timeout:2500});
+   const openAgain=await readState(page);
+   assert.ok(Math.abs(openAgain.sheetTop-expanded.sheetTop)<5,
+    "repeated open must not reposition the white column");
+   await page.locator(".pm-inline").getByRole("button",{name:"Развернуть анкету"}).click();
+   await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
+   const closeAgain=await readState(page);
+   assert.ok(Math.abs(closeAgain.sheetTop-collapsedBeforeReopen.sheetTop)<5,
+    "repeated close must not jump to a stale sheet position");
+  }
+  console.log("QA_PROFILE_REPEATED_TAPS_PASS");
   await page.getByRole("tab",{name:"Подарки"}).click();
   await sleep(380);
   state=await readState(page);
@@ -380,7 +411,7 @@ async function standardProfile(browser){
  try{
   await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.getByRole("button",{name:"Профиль",exact:true}).click();
-  const owner=await required(page,'.pm-inline[data-sheet-renderer="scroll"]',"standard-DOM profile");
+  const owner=await required(page,'.pm-inline[data-sheet-renderer="absolute"]',"standard-DOM profile");
   await owner.waitFor({state:"visible"});
   await readyAssets(page);
   assert.equal(await page.locator(".lh-profile-android").count(),0,"non-Android profile uses standard logo chrome");
@@ -390,7 +421,8 @@ async function standardProfile(browser){
   await page.getByRole("button",{name:"Развернуть анкету"}).click();
   await page.locator('.pm-inline[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:2500});
   let state=await readState(page);
-  assert.ok(state.scrollTop>60&&state.blurOpacity>.5,"reduced-motion collapse still reaches physical endpoint");
+  assert.ok(state.scrollTop===0&&state.sheetTop<185&&state.blurOpacity>.5,
+    "reduced-motion collapse reaches the real absolute top without outer scroll");
   await page.getByRole("tab",{name:"Блики",exact:true}).click();await sleep(390);
   state=await readState(page);
   assert.equal(state.selectedTab,"Блики");
