@@ -77,7 +77,7 @@ CREATE POLICY h_safety_media_select ON luemi_private.media_assets FOR SELECT TO 
  USING(environment=current_setting('luemi.environment',true));
 CREATE POLICY h_safety_media_hide ON luemi_private.media_assets FOR UPDATE TO luemi_safety_operator
  USING(environment=current_setting('luemi.environment',true))
- WITH CHECK(environment=current_setting('luemi.environment',true) AND publication_status='private');
+ WITH CHECK(environment=current_setting('luemi.environment',true) AND publication_status='private' AND state='revoked');
 CREATE POLICY h_safety_report_select ON luemi_private.reports FOR SELECT TO luemi_safety_operator
  USING(environment=current_setting('luemi.environment',true));
 CREATE POLICY h_safety_report_action ON luemi_private.reports FOR UPDATE TO luemi_safety_operator
@@ -97,7 +97,7 @@ GRANT SELECT(id,actor_id,environment,revoked_at),UPDATE(revoked_at)
  ON luemi_private.sessions TO luemi_safety_operator;
 GRANT SELECT(owner_id,environment,publication_status),UPDATE(publication_status)
  ON luemi_private.public_profiles TO luemi_safety_operator;
-GRANT SELECT(id,owner_id,environment,publication_status),UPDATE(publication_status)
+GRANT SELECT(id,owner_id,environment,publication_status),UPDATE(publication_status,state)
  ON luemi_private.media_assets TO luemi_safety_operator;
 GRANT SELECT(id,subject_id,environment,state,reason_code),UPDATE(state)
  ON luemi_private.reports TO luemi_safety_operator;
