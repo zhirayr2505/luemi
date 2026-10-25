@@ -246,12 +246,17 @@
  box-shadow:0 6px 18px rgba(148,67,225,.23),inset 0 1px rgba(255,255,255,.22);
 }
 .pm-owner-actions button:active{transform:scale(.98)}
+/* Android WebView: keep the existing five-tab strip as ONE persistent
+   composited paint surface when its fixed-height parent moves by CSS top.
+   This changes neither sheet geometry nor tab/page gesture ownership. */
 .pm-tabs{
  position:relative;flex:none;display:flex;align-items:stretch;gap:1px;
  width:calc(100% - 14px);height:47px;min-height:47px;margin:0 7px;
  padding:0 1px 5px;z-index:10;border-bottom:1px solid var(--line);
  background:var(--bg);overflow-x:auto;overflow-y:hidden;
  scrollbar-width:none;touch-action:pan-x;
+ isolation:isolate;contain:paint;transform:translate3d(0,0,0);
+ backface-visibility:hidden;
 }
 .pm-tabs::-webkit-scrollbar{display:none}
 .pm-tab{
@@ -266,6 +271,7 @@
  position:absolute;bottom:1px;left:0;height:3px;z-index:3;
  border-radius:99px;transform-origin:left center;
  background:linear-gradient(90deg,#a67cdb,#e5a2d7);pointer-events:none;
+ will-change:transform;transition:none;
 }
 .pm-pages{position:relative;flex:1;min-height:0;height:0;overflow:hidden;touch-action:pan-y;
  scroll-behavior:auto;overflow-anchor:none;overscroll-behavior-x:none}
