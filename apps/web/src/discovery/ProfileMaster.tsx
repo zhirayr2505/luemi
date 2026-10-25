@@ -12,6 +12,7 @@ import {QaProfiler} from "./qa-profiler";
 import {resourceIdentity,viewerPhotoContext,type ViewerSource} from "./photo-viewer-state";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE,bindMotionViewport} from "./profile-motion";
 import {GeometryMotion} from "./geometry-motion";
+import {ProfileSheetMotion} from "./profile-sheet-motion";
 import {reanchorSheet,reanchorPage,remapSheetPixel} from "./profile-geometry";
 import {GestureArbiter,fractionalTrack,preservePhotoId} from "../ui/gesture-arbiter";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
@@ -213,9 +214,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const cancelSheetGesture=useRef<()=>void>(()=>{});
  const rebaseSheetGesture=useRef<(relativeY:number,revision:number)=>void>(()=>{});
  const rebaseTabsGesture=useRef<(position:number,revision:number)=>void>(()=>{});
- const sheetRunner=useRef<GeometryMotion|null>(null),tabsRunner=useRef<GeometryMotion|null>(null);
+ const sheetMotion=useRef<ProfileSheetMotion|null>(null),tabsRunner=useRef<GeometryMotion|null>(null);
  const sheetRevision=useRef(0),tabsRevision=useRef(0);
- const sheetIntent=useRef<boolean|null>(null),sheetRootTop=useRef<number|null>(null);
+ const sheetRootTop=useRef<number|null>(null);
  const sheetDragActive=useRef(false);
  const measureSheetRef=useRef<()=>void>(()=>{}),measureTabsRef=useRef<()=>void>(()=>{});
  const routeFrozen=useRef<{sheet:number;sheetTarget:boolean;sheetSettling:boolean;
@@ -297,11 +298,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   sheetY.current=next;
   const progress=Math.max(0,Math.min(1,(expandedY.current-next)/
    Math.max(1,expandedY.current-collapsedY.current)));
-  if(viewport.current)viewport.current.scrollTop=Math.max(0,expandedY.current-Math.min(next,expandedY.current));
-  if(sheet.current&&Math.abs(elastic-rubberY.current)>.05){
-   sheet.current.style.transform=elastic>0.05?`translate3d(0,${elastic.toFixed(2)}px,0)`:"";
-   rubberY.current=elastic;
-  }
+  // One actual top coordinate replaces the asynchronous native scrollTop.
+   if(sheet.current)sheet.current.style.top=next.toFixed(2)+"px";
+  rubberY.current=elastic;
   if(photoMotion.current){
    const y=-10*progress+elastic*.22;
    const scale=1+.025*progress+elastic*.001;
@@ -324,10 +323,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(motionActive)motionCallback.current?.(progress,dragging);
   });
  },[motionActive]);
- const ensureSheetRunner=()=>{
-  if(!sheetRunner.current||sheetRunner.current.isDisposed())sheetRunner.current=new GeometryMotion("sheet",()=>performance.now(),
-   cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),sheetY.current,sheetRevision.current);
-  return sheetRunner.current;
+ const ensureSheetMotion=()=>{
+  if(!sheetMotion.current)sheetMotion.current=new ProfileSheetMotion(sheetY.current,
+   (value,dragging)=>paintSheet(value,dragging));
+  return sheetMotion.current;
  };
  const ensureTabsRunner=()=>{
   if(!tabsRunner.current||tabsRunner.current.isDisposed())tabsRunner.current=new GeometryMotion("tabs",()=>performance.now(),
@@ -336,90 +335,39 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   return tabsRunner.current;
  };
  const settleSheet=useCallback((next:boolean)=>{
-  const driver=ensureSheetRunner();
-  // Drag updates sheetY directly. Once the previous settle is IDLE, its
-  // runner still holds the OLD endpoint, not the live finger position.
-  // Cancelling that idle runner used to repaint the stale endpoint and
-  // physically jump the white panel backwards before the new settle.
-  if(driver.snapshot().phase!=="idle"){
-   const interrupted=driver.cancel();
-   paintSheet(interrupted,true);
-  }
-  const from=sheetY.current;
-  const destination=next?collapsedY.current:expandedY.current;
-  sheetIntent.current=next;
-  // Preserve the approved easing and duration; only the source pixel changes.
-  driver.start(from,destination,from>expandedY.current?240:335,[.22,.79,.22,1],
-   value=>paintSheet(value,true),()=>{
-    collapsedRef.current=next;
-    setCollapsed(next);
-    sheetIntent.current=null;
-   },sheetRevision.current);
-  stopSheet.current=()=>{
-   // An idle driver is no longer the source of the sheet's screen position.
-   // Gesture paints and geometry reanchors must never be overwritten by it.
-   if(driver.snapshot().phase==="idle")return;
-   const frozen=driver.cancel();
-   paintSheet(frozen,true);
-  };
+  ensureSheetMotion().settle(next,()=>{
+   collapsedRef.current=next;
+   setCollapsed(next);
+  });
+  stopSheet.current=()=>{sheetMotion.current?.interrupt();};
  },[paintSheet]);
  useLayoutEffect(()=>{
   if(!motionActive)return;
-  let first=true,hidden=false;
+  let first=true;
   const measure=()=>{
    const frame=hero.current,pane=sheet.current,root=shell.current;
-   if(!frame||!pane||!root)return;
-   if(!root.clientWidth||!root.clientHeight||!frame.offsetHeight){
-    hidden=true;sheetRunner.current?.suspend();return;
-   }
-   // Read all rectangles first. Cached old root top is essential when the
-   // visual viewport moves the entire profile between two frames.
-   const shellRect=root.getBoundingClientRect();
-   const headerScope=root.closest(".discovery-visitor-route")??root.closest(".discovery-app");
-   const imageRect=headerScope?.querySelector<HTMLElement>(".lh-header .lh-island img")?.getBoundingClientRect();
-   const logoBottom=imageRect?imageRect.bottom-shellRect.top-imageRect.height*.11:48;
+   if(!frame||!pane||!root||root.clientHeight<180||!frame.offsetHeight)return;
+   const rootRect=root.getBoundingClientRect();
+   const scope=root.closest(".discovery-visitor-route")??root.closest(".discovery-app");
+   const image=scope?.querySelector<HTMLElement>(".lh-header .lh-island img")?.getBoundingClientRect();
+   const logoBottom=image?image.bottom-rootRect.top-image.height*.11:48;
    const top=Math.max(38,Math.min(root.clientHeight*.24,logoBottom));
    const bottom=Math.max(top+185,frame.offsetHeight-43);
-   const dots=(imageRect?.bottom??(shellRect.top+108))-shellRect.top+8;
-   if(!first&&!hidden&&Math.abs(top-collapsedY.current)<.5&&
+   const dots=(image?.bottom??(rootRect.top+108))-rootRect.top+8;
+   if(!first&&Math.abs(top-collapsedY.current)<.5&&
       Math.abs(bottom-expandedY.current)<.5&&
-      Math.abs((sheetRootTop.current??shellRect.top)-shellRect.top)<.5)return;
-   const driver=sheetRunner.current;
-   const phase=driver?.snapshot().phase??"idle";
-   const oldValue=phase==="settling"||phase==="suspended"?driver!.sample():sheetY.current;
-   const oldTop=sheetRootTop.current??shellRect.top;
-   const mapped=remapSheetPixel(oldValue,oldTop,shellRect.top,top,bottom);
-   // Explicit measurable exception: an old pixel can be outside the new
-   // physically reachable interval. Do not silently claim ≤1px continuity.
-   if(mapped.clamped){
-    root.dataset.geometryClampReason="outside-new-sheet-endpoints";
-    root.dataset.geometryClampPx=Math.abs(mapped.unclamped-mapped.local).toFixed(2);
-   }else{
-    delete root.dataset.geometryClampReason;
-    delete root.dataset.geometryClampPx;
-   }
-   const visible=mapped.local;
-   // Clamping is unavoidable only when the old absolute position no longer
-   // exists in the new viewport. Never scale touch movement by the new height.
-   const next=first&&phase!=="suspended"?(collapsedRef.current?top:bottom):
-    phase==="idle"&&sheetIntent.current===null&&!sheetDragActive.current?
-     (collapsedRef.current?top:bottom):visible;
-   first=false;hidden=false;sheetRootTop.current=shellRect.top;
+      Math.abs((sheetRootTop.current??rootRect.top)-rootRect.top)<.5)return;
+   const motion=ensureSheetMotion();
+   const physical=first?(collapsedRef.current?top:bottom):
+    remapSheetPixel(motion.sample(),sheetRootTop.current??rootRect.top,rootRect.top,top,bottom).local;
+   first=false;sheetRootTop.current=rootRect.top;
    sheetRevision.current++;
    collapsedY.current=top;expandedY.current=bottom;
    root.style.setProperty("--pm-expanded-y",bottom+"px");
    pane.style.setProperty("--pm-collapsed-top",top+"px");
    root.style.setProperty("--pm-dots-top",dots+"px");
-   // Rebase active touch anchors without cancelling the user's finger session.
-   rebaseSheetGesture.current(next,sheetRevision.current);
-   const intent=sheetIntent.current;
-   if(driver&&phase!=="idle"&&intent!==null&&!routeFrozen.current){
-    const destination=intent?top:bottom;
-    if(phase==="suspended")driver.reveal(sheetRevision.current,next,destination);
-    else driver.rebase(sheetRevision.current,next,destination);
-   }
-   paintSheet(next,true);
-   // Physical state is committed by settle completion, never merely by a target.
+   motion.resize(top,bottom,physical,collapsedRef.current,sheetDragActive.current);
+   rebaseSheetGesture.current(motion.value,sheetRevision.current);
   };
   measureSheetRef.current=measure;
   measure();
@@ -439,7 +387,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   webApp?.onEvent?.("contentSafeAreaChanged",measure);
   webApp?.onEvent?.("viewportChanged",measure);
   return ()=>{
-   measureSheetRef.current=()=>{};sheetRunner.current?.suspend();ro.disconnect();detachViewport();
+   measureSheetRef.current=()=>{};
+   sheetMotion.current?.pause();ro.disconnect();detachViewport();
    window.removeEventListener("resize",measure);
    visual?.removeEventListener("resize",measure);
    visual?.removeEventListener("scroll",measure);
@@ -456,7 +405,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(opticalFrame.current!==null)cancelAnimationFrame(opticalFrame.current);
    opticalFrame.current=null;
    stopSheet.current();stopTabs.current();
-   sheetRunner.current?.dispose();tabsRunner.current?.dispose();
+   sheetMotion.current?.dispose();tabsRunner.current?.dispose();
    localArbiter.dispose();
    if(dragFrame.current!==null)cancelAnimationFrame(dragFrame.current);
   };
@@ -799,7 +748,11 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     if(!gestures.claim(owner,g.serial)){g.axis="native";return;}
     g.claimed=true;
     if(g.axis==="x")stopTabs.current();
-    else {stopSheet.current();sheetIntent.current=null;sheetDragActive.current=true;}
+    else {
+    const current=ensureSheetMotion().interrupt();
+    g.origin=current-dy;
+    sheetDragActive.current=true;
+   }
    }
    if(g.axis==="native"||!gestures.owns(g.axis==="x"?"tabs":"sheet",g.serial))return;
    if(g.blocking&&e.cancelable)e.preventDefault();
@@ -814,8 +767,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     if(g.axis==="x")paintTabs(g.index,dx);
     else {
      const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
-     paintSheet(raw>expandedY.current?
-      expandedY.current+28*(1-Math.exp(-extra/48)):raw,true);
+     ensureSheetMotion().drag(raw>expandedY.current?
+     expandedY.current+28*(1-Math.exp(-extra/48)):raw);
     }
    });
   };
@@ -834,8 +787,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    }else if(g.axis==="y"&&g.claimed){
     if(!cancelled){
       const raw=g.origin+dy,extra=Math.max(0,raw-expandedY.current);
-      paintSheet(raw>expandedY.current?
-       expandedY.current+28*(1-Math.exp(-extra/48)):raw,true);
+      ensureSheetMotion().drag(raw>expandedY.current?
+     expandedY.current+28*(1-Math.exp(-extra/48)):raw);
      }
     const velocity=performance.now()-g.lastTime<90?g.velocity:0;
     const threshold=Math.min(90,Math.max(65,(expandedY.current-collapsedY.current)*.2));
@@ -871,12 +824,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  // REM-02D: preserve actual fractional positions and semantic destinations.
  const suspendForRoute=()=>{
   if(routeTerminal.current||routeFrozen.current)return;
-  const sheetState=sheetRunner.current?.snapshot(),tabsState=tabsRunner.current?.snapshot();
-  const sheetValue=sheetState?.phase==="settling"?sheetRunner.current!.sample():sheetY.current;
+  const sheetPhase=sheetMotion.current?.phase??"idle",tabsState=tabsRunner.current?.snapshot();
+  const sheetValue=sheetMotion.current?.sample()??sheetY.current;
   const tabsValue=tabsState?.phase==="settling"?tabsRunner.current!.sample():tabLastPosition.current;
   routeFrozen.current={
-   sheet:sheetValue,sheetTarget:sheetIntent.current??collapsedRef.current,
-   sheetSettling:sheetState?.phase==="settling"||sheetState?.phase==="suspended",
+   sheet:sheetValue,sheetTarget:sheetMotion.current?.destinationCollapsed??collapsedRef.current,
+   sheetSettling:sheetPhase==="settling"||sheetPhase==="paused",
    tabs:tabsValue,tabsTarget:tabs.findIndex(v=>v[0]===tabSelectionRef.current),
    tabsSettling:tabsState?.phase==="settling"||tabsState?.phase==="suspended"
   };
@@ -889,20 +842,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   try{if(tabId!==undefined&&pages.current?.hasPointerCapture(tabId))
    pages.current.releasePointerCapture(tabId);}catch{/* implicit release */}
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
-  sheetRunner.current?.suspend();tabsRunner.current?.suspend();
-  paintSheet(sheetValue,true);paintTabs(tabsValue);
+  sheetMotion.current?.pause();tabsRunner.current?.suspend();
+  sheetMotion.current?.drag(sheetValue);paintTabs(tabsValue);
  };
  const rollbackRoute=()=>{
   if(routeTerminal.current)return;
   const saved=routeFrozen.current;if(!saved)return;
   measureSheetRef.current();measureTabsRef.current();
   routeFrozen.current=null;
-  const sheetDriver=sheetRunner.current;
-  if(saved.sheetSettling&&sheetDriver?.snapshot().phase==="suspended"){
-   sheetRevision.current=Math.max(sheetRevision.current,sheetDriver.snapshot().revision+1);
-   sheetDriver.reveal(sheetRevision.current,sheetY.current,
-    saved.sheetTarget?collapsedY.current:expandedY.current);
-  }else if(Math.abs(sheetY.current-(saved.sheetTarget?collapsedY.current:expandedY.current))>.5)
+  const sheetDriver=sheetMotion.current;
+  if(saved.sheetSettling&&sheetDriver?.phase==="paused")sheetDriver.resume();
+  else if(Math.abs(sheetY.current-(saved.sheetTarget?collapsedY.current:expandedY.current))>.5)
    settleSheet(saved.sheetTarget);
   const tabDriver=tabsRunner.current;
   if(saved.tabsSettling&&tabDriver?.snapshot().phase==="suspended"){
@@ -917,7 +867,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   cancelSheetGesture.current();photoSwipe.current=null;tabSwipe.current=null;
   if(dragFrame.current!==null){cancelAnimationFrame(dragFrame.current);dragFrame.current=null;}
   stopSheet.current();stopTabs.current();
-  sheetRunner.current?.dispose();tabsRunner.current?.dispose();
+  sheetMotion.current?.dispose();tabsRunner.current?.dispose();
  };
  const suspendForBackground=()=>{if(!routeTerminal.current){suspendForRoute();gestures.cancel();}};
  const resumeFromBackground=()=>{if(!routeTerminal.current)rollbackRoute();};
@@ -983,7 +933,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     {view.profile.source!=="server"&&<span className="pm-hero-demo">{view.profile.source==="fixture"?"Демо":"Черновик"}</span>}
    </div>
    <div className="pm-sheet-viewport" ref={viewport}>
-    <div className="pm-sheet-spacer" aria-hidden="true"/>
+    
    <div className="pm-profile-sheet" ref={sheet} onClickCapture={e=>{
     if(performance.now()<clickBlocked.current){e.preventDefault();e.stopPropagation();}
    }}>
