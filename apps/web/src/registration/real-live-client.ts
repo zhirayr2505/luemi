@@ -48,6 +48,12 @@ export async function unpublishMyProfile():Promise<void>{
  const data=await api("/api/v3/profile/unpublish","POST",{});
  if(!object(data)||data.state!=="hidden")throw new Error("invalid_unpublish_receipt");
 }
+/** Hides profile/media immediately, but does NOT erase user data or credentials. */
+export async function withdrawRealConsent():Promise<void>{
+ const result=await api("/api/v3/profile/withdraw-consent","POST",{});
+ if(!object(result)||result.state!=="consent_withdrawn"||result.dataDeleted!==false)
+  throw new Error("invalid_consent_withdrawal_receipt");
+}
 export async function getPublishedFeed(signal:AbortSignal):Promise<RealPublishedProfile[]>{
  requirePilot();
  const res=await fetch("/api/v3/discovery/feed",{

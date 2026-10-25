@@ -91,3 +91,16 @@ https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_
 **NO-GO for real users.** The code continues in separate GitHub DRAFT PRs.
 The 01E synthetic test + privacy withdrawal work reduces risk but does
 not constitute live deployment or actual adult friend onboarding.
+
+
+## Immediate withdrawal controls (01E)
+
+A separate owner UI action invokes `POST /api/v3/profile/withdraw-consent`.
+It requires the signed V2 Telegram session, CSRF and deliberate confirmation,
+and does not depend on the registration consent checkbox being checked at the
+moment of withdrawal. The server atomically sets all owner's published photo
+flags back to private, hides the public profile and nulls the private draft's
+consent version. RLS and authenticated photo endpoints stop disclosing those
+pixels. **Data are retained, not erased**: the user-facing message explicitly
+says that full account deletion still needs implementation and acceptance.
+This is not a substitute for a formal deletion/retention policy.
