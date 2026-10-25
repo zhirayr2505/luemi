@@ -14,7 +14,7 @@ export type InputKind="pointer"|"touch";
  * Direction arbitration is performed by the actual gesture owner on movement. */
 export const isGestureModalBlocked=(target:Element|null):boolean=>
  !target||!!target.closest(
-  ".pm-viewer,.pm-blik-viewer,.pm-preview-toolbar,[role=dialog]:not(.pm-shell)"
+  ".pm-viewer,.pm-preview-toolbar,[role=dialog]:not(.pm-shell)"
  );
 export class GestureArbiter {
  private session=0;
