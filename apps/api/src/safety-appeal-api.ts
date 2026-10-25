@@ -52,14 +52,16 @@ export function registerSafetyAppeals(app:FastifyInstance,o:SafetyAppealOptions|
    if(e.rowCount!==1){await db.query("ROLLBACK");return reply.code(404).send({error:"suspension_not_found"});}
    const inserted=await db.query(
     "INSERT INTO luemi_private.account_appeals(environment,enforcement_id,actor_id,statement) "+
-    "VALUES($1,$2,$3,$4) ON CONFLICT(enforcement_id) DO NOTHING",
+    "VALUES($1,$2,$3,$4)",
     [o.namespace,e.rows[0].id,a.rows[0].id,data.statement]);
    await db.query("COMMIT");
    return inserted.rowCount===1
     ?reply.code(202).send({state:"appeal_received",reviewPending:true})
     :reply.code(409).send({error:"appeal_already_submitted"});
-  }catch{
+  }catch(error){
    await db.query("ROLLBACK").catch(()=>{});
+   if(error&&typeof error==="object"&&"code" in error&&error.code==="23505")
+    return reply.code(409).send({error:"appeal_already_submitted"});
    return reply.code(503).send({error:"service_unavailable"});
   }finally{db.release();}
  });
