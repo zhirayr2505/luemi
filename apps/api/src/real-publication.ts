@@ -36,18 +36,19 @@ function validList(v:unknown,n:number):v is string[]{
 }
 function validatedProjection(payload:unknown,birthDate:string|null){
  if(!object(payload))fail(422,"incomplete_profile");
- const name=payload.displayName,city=payload.city,country=payload.countryCode;
+ const data=payload as Record<string,unknown>;
+ const name=data.displayName,city=data.city,country=data.countryCode;
  if(typeof name!=="string"||name.trim()!==name||name.length<2||name.length>48||
   typeof city!=="string"||city.trim()!==city||city.length<2||city.length>120||
   typeof country!=="string"||!/^[A-Z]{2}$/.test(country)||
-  !genderOk(payload.gender)||!goalOk(payload.goal)||
-  typeof payload.placeId!=="string"||!/^[a-z0-9:_-]{3,180}$/i.test(payload.placeId)||
-  !validList(payload.interests,15)||!validList(payload.languages,10)||
-  typeof payload.about!=="string"||[...payload.about].length>750||
+  !genderOk(data.gender)||!goalOk(data.goal)||
+  typeof data.placeId!=="string"||!/^[a-z0-9:_-]{3,180}$/i.test(data.placeId)||
+  !validList(data.interests,15)||!validList(data.languages,10)||
+  typeof data.about!=="string"||[...data.about].length>750||
   !birthDate||dateAge(birthDate)<18||dateAge(birthDate)>=130)
    fail(422,"incomplete_profile");
- return {name,city,country,gender:payload.gender,goal:payload.goal,
-  about:payload.about,interests:payload.interests,languages:payload.languages,birthDate};
+ return {name,city,country,gender:data.gender,goal:data.goal,
+  about:data.about,interests:data.interests,languages:data.languages,birthDate};
 }
 type Kind="luemi_profile_publisher"|"luemi_discovery_reader";
 async function checkedRole(db:PoolClient,role:Kind):Promise<boolean>{
@@ -137,10 +138,11 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
 
  app.post<{Body:unknown}>("/api/v3/profile/publish",{preHandler:guards.mutation},async(req,reply)=>
  transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
-  if(!object(req.body)||Object.keys(req.body).length!==1||
-    !Number.isSafeInteger(req.body.revision)||Number(req.body.revision)<1)
+  const body=req.body;
+  if(!object(body)||Object.keys(body).length!==1||
+    !Number.isSafeInteger(body.revision)||Number(body.revision)<1)
    fail(422,"invalid_revision");
-  const expected=Number(req.body.revision);
+  const expected=Number((body as {revision:number}).revision);
   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
     [cfg.namespace+":"+id+":publication"]);
   const actor=await db.query(
