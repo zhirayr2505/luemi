@@ -5,6 +5,7 @@ import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
 import {makeSyntheticPng} from "../src/rem05d-image.js";
 import {memoryPrivateStore,syntheticModerate} from "../src/rem05d-private.js";
+import {runErasureBatch} from "../src/real-erasure-worker.js";
 import {triageReviewReport} from "../src/human-moderation.js";
 import {changeInvite} from "../src/beta-invite-operator.js";
 import {suspendReportedActor,pendingSafetyAppeals,decideSafetyAppeal} from "../src/safety-operator.js";
@@ -15,7 +16,8 @@ const publisher=env.REG01_PUBLISHER_DATABASE_URL!,reader=env.REG01_READER_DATABA
 const reviewer=env.REG01_HUMAN_MODERATOR_DATABASE_URL!,invite=env.REG01_INVITE_DATABASE_URL!;
 const safety=env.REG01_SAFETY_OPERATOR_DATABASE_URL!,appeal=env.REG01_SAFETY_APPEAL_DATABASE_URL!;
 const moderator=env.REG01_MODERATOR_DATABASE_URL!;
-if([dbAdmin,issuer,request,mediaWorker,publisher,reader,reviewer,invite,safety,appeal,moderator].some(x=>!x))
+const eraseRequest=env.REG01_ERASURE_REQUEST_DATABASE_URL!,eraseWorker=env.REG01_ERASURE_WORKER_DATABASE_URL!;
+if([dbAdmin,issuer,request,mediaWorker,publisher,reader,reviewer,invite,safety,appeal,moderator,eraseRequest,eraseWorker].some(x=>!x))
  throw Error("01H requires disposable role credentials");
 const admin=new Pool({connectionString:dbAdmin});
 const origin="https://ci.luemi.invalid",bot="123456:synthetic_reg01_bot",ns="ci_reg01h";
@@ -38,6 +40,7 @@ const makeApp=(opts:{safetyUrl?:string;enabled?:boolean}={})=>buildApp({
   workerDatabaseUrl:mediaWorker,namespace:ns,consentVersion:cv,storage:store},
  realPublication:{enabled:true,requestDatabaseUrl:request,publisherDatabaseUrl:publisher,
   discoveryDatabaseUrl:reader,namespace:ns,consentVersion:cv,storage:store},
+ realErasure:{enabled:true,databaseUrl:eraseRequest,namespace:ns},
  safetyAppeal:opts.enabled===false?undefined:{
   enabled:true,databaseUrl:opts.safetyUrl??appeal,namespace:ns,origin,botToken:bot}
 });
