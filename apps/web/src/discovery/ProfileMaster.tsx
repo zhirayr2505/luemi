@@ -200,7 +200,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  useModalLayer(isNestedPreview,shell,()=>nestedBack.current());
  const hero=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null),blurTrack=useRef<HTMLDivElement>(null);
  const grab=useRef<HTMLButtonElement>(null),miniAvatar=useRef<HTMLButtonElement>(null);
- const photoMotion=useRef<HTMLDivElement>(null),rubberY=useRef(0);
+ const photoMotion=useRef<HTMLDivElement>(null);
  const tabBar=useRef<HTMLDivElement>(null),pages=useRef<HTMLDivElement>(null),pageTrack=useRef<HTMLDivElement>(null);
  const keyboardTabFocus=useRef<number|null>(null);
  const ink=useRef<HTMLSpanElement>(null),contentPages=useRef<HTMLDivElement[]>([]);
@@ -300,7 +300,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    Math.max(1,expandedY.current-collapsedY.current)));
   // One actual top coordinate replaces the asynchronous native scrollTop.
    if(sheet.current)sheet.current.style.top=next.toFixed(2)+"px";
-  rubberY.current=elastic;
+  
   if(photoMotion.current){
    const y=-10*progress+elastic*.22;
    const scale=1+.025*progress+elastic*.001;
