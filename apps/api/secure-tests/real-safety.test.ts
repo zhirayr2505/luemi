@@ -164,6 +164,12 @@ test("01H: report must be human triaged, suspend revokes all sessions and hides 
   }finally{await spy.end();}
  }finally{await app.close();}
 });
+test("01H: normal user DB role cannot masquerade as safety operator",async()=>{
+ await assert.rejects(
+  pendingSafetyAppeals({...operator,databaseUrl:request}),
+  /safety_role_denied/
+ );
+});
 test("01H: safety appeals absent unless explicitly enabled; wrong DB roles fail shut",async()=>{
  const off=makeApp({enabled:false});
  try{
