@@ -54,7 +54,7 @@ const additional=[
  ["artem","Артём",26,"man","Краснодар","Россия","ru","dates","кино|путешествия|кофе|настольные-игры","ru|en","Люблю спонтанные поездки, игры и смешные истории."]
 ] as const;
 
-export const extraDemoPeople:DemoPerson[]=additional.map((p,i)=>({
+const extraDemoPeople:DemoPerson[]=additional.map((p,i)=>({
  id:p[0],name:p[1],age:p[2],gender:p[3] as DemoPerson["gender"],city:p[4],country:p[5],countryCode:normalizeCountryCode(p[6])??"",
  goal:p[7] as DemoPerson["goal"],interests:p[8].split("|"),languages:p[9].split("|"),about:p[10],
  photos:[{id:p[0]+"-1",src:avatar(i,0,p[3] as DemoPerson["gender"])},
