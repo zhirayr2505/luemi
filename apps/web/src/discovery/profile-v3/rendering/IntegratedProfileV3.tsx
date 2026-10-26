@@ -240,7 +240,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     onPointerUp={up} onPointerCancel={e=>up(e,true)}
     onLostPointerCapture={e=>{if(e.target===e.currentTarget)up(e,true);}}>
     <div className="v3-int-photo-rail pm-photo-track" ref={rail}>
-     {photos.map((item,i)=><div className="v3-int-photo-slide" key={item.id} data-photo-id={item.id}>
+     {photos.map((item,i)=><div className="v3-int-photo-slide" key={item.id} data-photo-id={item.id}
+      style={{left:"calc(var(--v3-w) * "+i+")"}}>
       <img ref={el=>{if(el)refs.current.set(item.id,el);else refs.current.delete(item.id);}}
        data-photo-id={item.id} src={item.src} alt={"Фото "+(i+1)+" · "+p.name}
        loading={i===photoIndex?"eager":"lazy"} decoding="async" draggable={false}
@@ -298,7 +299,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     onPointerUp={up} onPointerCancel={e=>up(e,true)}
     onLostPointerCapture={e=>{if(e.target===e.currentTarget)up(e,true);}}>
     <div className="v3-int-pages-track" ref={pagesTrack}>
-     {tabs.map(([id,label])=><section key={id} className="v3-int-page" role="tabpanel"
+     {tabs.map(([id,label],i)=><section key={id} className="v3-int-page" role="tabpanel"
+      style={{left:"calc(var(--v3-w) * "+i+")"}}
       aria-label={label} inert={tab!==id} aria-hidden={tab!==id}>
        {renderPage(id)}
       </section>)}
