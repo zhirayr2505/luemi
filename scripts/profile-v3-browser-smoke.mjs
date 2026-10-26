@@ -47,10 +47,13 @@ try{
    await page.evaluate(()=>{
     const el=document.querySelector(".v3-handle");
     window.__v3TouchTrace=[];
-    for(const name of ["pointerdown","pointermove","pointerup","pointercancel","touchstart","touchmove","touchend","click"]){
-     el?.addEventListener(name,e=>{
+    for(const name of ["pointerdown","pointermove","pointerup","pointercancel","gotpointercapture","lostpointercapture","touchstart","touchmove","touchend","click"]){
+     document.addEventListener(name,e=>{
+      if(window.__v3TouchTrace.length>150)return;
+      const source=e.target?.className;
       window.__v3TouchTrace.push({event:e.type,primary:e.isPrimary,pointer:e.pointerType,
-       target:e.target?.className,at:e.timeStamp,x:e.clientX,y:e.clientY});
+       target:typeof source==="string"?source:"svg/other",at:e.timeStamp,x:e.clientX,y:e.clientY,
+       progress:document.querySelector("[data-testid=v3-root]")?.dataset.progress});
      },true);
     }
    });
