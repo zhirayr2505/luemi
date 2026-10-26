@@ -22,12 +22,12 @@ export const ProfileMorphBackground=memo(function ProfileMorphBackground({photo}
   const decoded=img.decode?img.decode():new Promise<void>((ok,bad)=>{
    img.onload=()=>ok();img.onerror=()=>bad(new Error("photo failed"));
   });
-  void decoded.catch(async()=>{
+  void decoded.then(()=>true,async()=>{
    if(!next.fallback)return false;
    img.src=next.fallback;
    try{if(img.decode)await img.decode();return true;}catch{return false;}
-  }).then(()=>{
-   if(disposed||generation!==revision.current)return;
+  }).then(success=>{
+   if(!success||disposed||generation!==revision.current)return;
    setIncoming(next);setVisible(false);
   });
   return ()=>{disposed=true;revision.current++};
