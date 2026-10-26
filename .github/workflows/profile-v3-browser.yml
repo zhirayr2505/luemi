@@ -1,7 +1,7 @@
 name: LUEMI Profile V3 isolated browser smoke
 on:
   pull_request:
-    branches: [main]
+    branches: [main, staging/telegram-miniapp-20261019]
     paths:
       - 'apps/web/src/discovery/profile-v3/**'
       - 'apps/web/profile-v3-preview.html'
