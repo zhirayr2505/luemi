@@ -150,11 +150,24 @@ try{
  await firstPage.evaluate(el=>el.scrollTop=0);
  const pageBounds=await firstPage.boundingBox();assert(pageBounds);
  const beforePanel=await progress(root),trace=[];
+ await page.evaluate(()=>{
+  window.__v3MoveTrace=[];
+  for(const kind of ["pointerdown","pointermove","pointercancel","pointerup"]){
+   document.addEventListener(kind,e=>{
+    if(window.__v3MoveTrace.length>70)return;
+    const current=document.querySelector(".v3-int-sheet");
+    const elem=e.target;
+    window.__v3MoveTrace.push({kind,x:e.clientX,y:e.clientY,cls:elem?.className,
+     p:current?.style.transform,scroll:document.querySelector('.v3-int-page[aria-hidden="false"]')?.scrollTop});
+   },true);
+  }
+ });
  await touch({x:pageBounds.x+pageBounds.width*.50,
   y:pageBounds.y+Math.min(60,pageBounds.height*.24),dy:110,steps:12,
   each:async i=>{if([5,9,12].includes(i))trace.push(await progress(root));}});
  assert(trace.some(v=>v>beforePanel+.02),
-  "at top, downward swipe on tab content hands off to expanding profile");
+  "at top, downward swipe must expand: before="+beforePanel+" series="+JSON.stringify(trace)+
+   " DOM="+JSON.stringify(await page.evaluate(()=>window.__v3MoveTrace)).slice(0,9000));
  await page.waitForTimeout(340);
  await root.locator(".v3-int-handle").click();
  await page.waitForTimeout(340);
