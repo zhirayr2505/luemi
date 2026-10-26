@@ -164,6 +164,20 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  useLayoutEffect(()=>{setTabIndex(selectedTab.current,false);},[]);
  const choosePhoto=(idx:number,animate=true)=>{
   const item=current.current.photos[idx];if(!item)return;
+  // Decode/crop the new active and adjacent slides before the track slides.
+  // Otherwise a previously offscreen 4th/5th/6th image has zero painted size
+  // and briefly shows an empty/mismatched rectangle when touched on Android.
+  const l=layout.current,p=engine.current?.getProgress()??0;
+  for(const j of [idx-1,idx,idx+1]){
+   const adjacent=current.current.photos[j];
+   if(!adjacent)continue;
+   const image=refs.current.get(adjacent.id);
+   if(!image||!image.complete||!image.naturalWidth||!image.naturalHeight)continue;
+   const offset=photoOffset(l,p,image.naturalWidth,image.naturalHeight);
+   image.style.width=offset.width+"px";
+   image.style.height=offset.height+"px";
+   image.style.transform="translate3d("+offset.x+"px,"+offset.y+"px,0)";
+  }
   if(rail.current){rail.current.style.transition=animate?"transform 210ms cubic-bezier(.2,.8,.2,1)":"none";
    rail.current.style.transform="translate3d("+(-idx*layout.current.width)+"px,0,0)";}
   currentIndex.current=idx;pendingPhotoCommit.current=item.id;current.current.onPhotoId(item.id);
