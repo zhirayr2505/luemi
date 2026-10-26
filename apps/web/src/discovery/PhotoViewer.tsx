@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useLayoutEffect,useRef,useState} from "react";
+import "./profile-viewer.css";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import {X,MoreHorizontal,ChevronLeft,ChevronRight,Lock,Star,Share2,Link2,Flag as ReportIcon} from "lucide-react";
@@ -21,7 +22,7 @@ import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixT
  localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
 
 type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:ViewerSource|null;contextId:string;
- onClose:()=>void;onMain?:(id:string)=>boolean|Promise<boolean>;
+ onClose:(photoId?:string)=>void;onMain?:(id:string)=>boolean|Promise<boolean>;
  registerBack?:(handler:(()=>boolean)|null)=>void};
 type EndPointer={pointerId:number;clientX:number;clientY:number;currentTarget:HTMLDivElement};
 type Gesture={id:number;x:number;y:number;startX:number;startY:number;time:number;
@@ -284,7 +285,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const completed=()=>{
    owner.finish(token,{paint:()=>{
     morphCleanup.current();
-    if(closingPhase){phase.current="disposed";latest.current.onClose();}
+    if(closingPhase){phase.current="disposed";latest.current.onClose(latest.current.photoId??undefined);}
     else if(!closing.current)phase.current="idle";
    }});
   };

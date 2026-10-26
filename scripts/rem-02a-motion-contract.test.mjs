@@ -196,32 +196,18 @@ parent.dispatchEvent(new CustomEvent(type,{detail:{revision:21}}));
 assert.deepEqual(revisions,[[19,19],[20,20]]);
 console.log("REM02A_ADAPTER_PASS viewport revision bridge monotonicity and listener cleanup");
 
-const profile=read("apps/web/src/discovery/ProfileMaster.tsx");
+
+const a2=read("apps/web/src/discovery/ProfileMorphA2.tsx");
+const a2MotionSource=read("apps/web/src/discovery/profile-morph-a2-motion.ts");
+const css=read("apps/web/src/discovery/profile-morph-a2.css");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
-const css=read("apps/web/src/discovery/profile-master.css");
-const ease=read("apps/web/src/ui/motion.ts");
-assert.ok(profile.includes('motionAuthority.current.run("sheet",PROFILE_MOTION_WRITER_TABLE.sheet')&&
- profile.includes('motionAuthority.current.run("tabs",PROFILE_MOTION_WRITER_TABLE.tabs')&&
- profile.includes('motionAuthority.current.run("hero",PROFILE_MOTION_WRITER_TABLE.hero'));
+assert.ok(a2MotionSource.includes("class ProfileMorphMotion")&&a2MotionSource.includes("private generation=0")&&
+ a2MotionSource.includes("this.sample()")&&a2MotionSource.includes("this.clock.cancel"),"A2 motion owns normalized progress, interruptible RAF");
+assert.ok(a2.includes("new ProfileMorphMotion")&&a2.includes("morphFrame(geometry.current,p)")&&
+ !a2.includes("ProfileSheetMotion")&&!a2.includes('style.top='),"A2 sheet uses one writer, no legacy top");
+assert.ok(css.includes(".pm-a2-sheet")&&css.includes("transform:translate3d")&&
+ !css.includes(".pm-sheet-viewport"),"A2 fixed layout compositor geometry");
 assert.ok(route.includes('motionAuthority.current.run("route",PROFILE_MOTION_WRITER_TABLE.route'));
 assert.ok(browse.includes('motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse'));
-const sheetMotion=read("apps/web/src/discovery/profile-sheet-motion.ts");
-assert.ok(profile.includes('engine.settle(next,()=>')&&
- profile.includes('engine.phase==="settling"&&engine.destinationCollapsed===next')&&
- sheetMotion.includes('private readonly paint:(y:number,dragging:boolean)=>void')&&
- sheetMotion.includes('get phase():Stage')&&
- sheetMotion.includes('duration=290')&&
- sheetMotion.includes('easeAt(fraction,.22,.79,.22,1)')&&
- profile.includes('runner.start(from,i,fromFinger?tabReleaseDuration(from,i):295,[.22,.77,.23,1]')&&
- profile.includes('chooseTab(next,true)')&&
- profile.includes('runner.rebase(tabsRevision.current,fraction,destination)')&&
- profile.includes("transform 290ms cubic-bezier(.2,.76,.22,1)"),
- "REM-02B source contract: new one-owner sheet timeline and unchanged tab/photo motion");
-assert.ok(route.includes("const OPEN_DURATION=260;")&&route.includes("const CLOSE_DURATION=230;")&&
- route.includes('const EASING="cubic-bezier(.2,.82,.24,1)";'));
-assert.ok(browse.includes("380")&&browse.includes("clickBlockUntil.current=performance.now()+260"));
-assert.ok(css.includes("border-radius:34px 34px 0 0"));
-assert.ok(!ease.includes("export function animateValue("), "obsolete parallel RAF animator removed");
-console.log("REM02A_ADAPTER_PASS existing sheet/route/tabs/pager motion timing and easing tokens unchanged");
-console.log("REM-02A UNIT AND ADAPTER QA PASS; physical A55/iOS NOT VERIFIED");
+console.log("PROFILE_A2_MOTION_ADAPTER_PASS shared route/browse motion and new single-owner profile motion");

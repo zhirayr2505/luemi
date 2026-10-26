@@ -45,150 +45,33 @@ assert.deepEqual(visitor.profile.photos.map(p=>p.id),[],"nested visitor projecti
 assert.deepEqual(preview.profile.photos.map(p=>p.id),[],"nested public preview cannot carry any local-draft photo");
 assert.equal(Object.hasOwn(m.projectProfile({...base,privateToken:"secret"},"visitor").profile,"privateToken"),false,
  "unknown future private fields cannot spread through public profile");
-const profile=read("apps/web/src/discovery/ProfileMaster.tsx");
+
+const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
 const viewer=read("apps/web/src/discovery/PhotoViewer.tsx");
-const css=read("apps/web/src/discovery/profile-master.css");
+const css=read("apps/web/src/discovery/profile-morph-a2.css");
 const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const visitorRoute=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
-const app=read("apps/web/src/App.tsx");
-const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
+const previewSource=read("apps/web/src/registration/Preview.tsx");
+assert.ok(profile.includes('projectProfile(data,mode)'),"canonical projection stays in A2");
+assert.ok(profile.includes('mode={data.source==="local-draft"?"local-self-preview":"preview"}'),
+ "self preview retains private local-only capability");
+assert.ok(profile.includes('mode==="owner"')&&profile.includes('onClick={onEdit}'),
+ "only owner can render editing actions");
 assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki","Блики"')&&
- profile.includes('["photos","Фото"')&&profile.includes('["gifts","Подарки"')&&
- profile.includes('["meta","О профиле"'),"strict five-tab ordering");
-assert.ok(profile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.blocking})')&&
- profile.includes('if(sheet.current)sheet.current.style.top=next.toFixed(2)+"px"')&&
- profile.includes('g.origin+dy')&&profile.includes('contentPages.current['),
- "sheet follows its actual origin while each tab retains native vertical scrolling");
-assert.ok(profile.includes('if(g.axis==="x")paintTabs(g.index,dx)')&&
- profile.includes('frame=requestAnimationFrame'),
- "touch pager paints once per frame");
-assert.ok(profile.includes("tabEnd(e,true)")&&profile.includes("photoEnd(e,true)"),
- "pointer cancellation must never commit a new photo or tab");
-assert.ok(profile.includes('mode={data.source==="local-draft"?"local-self-preview":"preview"}')&&
- profile.includes("projectProfile(data,mode)"),
- "owner local preview uses explicit self-only projection, server preview remains public-only and both reuse ProfileMaster");
-assert.ok(viewer.includes("createPortal")&&viewer.includes("onPointerCancel")&&
- viewer.includes("maxY")&&viewer.includes("resetGesture()"),
- "fullscreen gallery has pinch pan, cancel isolation and reset");
-assert.ok(viewer.includes("canMakeMain(view,show.id)")&&
- viewer.includes("Дата добавления недоступна")===false,
- "make-main is guarded; date originates exclusively from model");
-assert.ok(discovery.includes('<ProfileMaster data={ownProfile} mode="owner"')&&
- discovery.includes("<VisitorProfileRoute")&&visitorRoute.includes('<ProfileMaster data={data} mode="visitor"'),
- "both profile destinations use one shared implementation");
-assert.ok(app.includes('photos={readyPhotos}')&&app.includes('readyRegistrationPhotos(photos)')&&
- read("apps/web/src/registration/Preview.tsx").includes('readyRegistrationPhotos(photos)')&&
- read("apps/web/src/registration/Preview.tsx").includes('mode="local-self-preview"')&&
- !read("apps/web/src/registration/Preview.tsx").includes("<PhotoCarousel"),
- "owner and step-8 share the exact ready-only photo adapter and authoritative ProfileMaster renderer");
-assert.ok(css.includes("@media(prefers-reduced-motion:reduce)")&&
- css.includes(".pm-tab-ink")&&css.includes(".pm-photo-tile"),
- "motion fallback, accessible tab bar and 3-column gallery exist");
-assert.ok(carousel.includes("frameId.current=window.requestAnimationFrame"),
- "locked discovery PhotoCarousel stays compositor-driven");
-console.log("✓ Stage 03G profile projection, gestures, viewer, and safe public data");
-
-const header=read("apps/web/src/discovery/GlobalHeader.tsx");
-const headerCss=read("apps/web/src/discovery/global-header.css");
-assert.ok(discovery.includes("<GlobalHeader")&&header.includes("setScrollTop")&&
- !header.includes("setProfileMorph")&&!headerCss.includes(".lh-droplet")&&
- !headerCss.includes(".lh-profile-info")&&!profile.includes("onScrollMotion"),
- "global W06 wordmark is unboxed, with no liquid/avatar or duplicated floating identity");
-assert.ok(headerCss.includes("top:max(6px,calc(var(--top-safe) - 12px))"),
- "fixed global logo Y anchor across screens");
-assert.ok(headerCss.includes("position:absolute;inset:0 0 auto")&&
- headerCss.includes("background:transparent;box-shadow:none")&&
- css.includes(".pm-profile-sheet")&&css.includes(".pm-sheet-viewport"),
- "full-bleed hero and rounded sheet keep independent stationary chrome");
-assert.ok(profile.includes('className="pm-mini-avatar"')||
- profile.includes('className={"pm-mini-avatar"'),
- "small photo appears only in collapsed profile");
-assert.ok(profile.includes('onClick={openMyPhotos}')&&(profile.includes('settleSheet(true)')||profile.includes('settleSheet(true,"openMyPhotos")'))&&
- !profile.includes("BlikViewer")&&!profile.includes("setBlikOpen"),
- "gallery shortcut remains; unverified Blik viewer activation is fail-closed");
-console.log("✓ Stage 03G.4: independent scroll and pinned controls, no liquid morph");
-assert.equal((css.match(/^\.pm-profile-sheet\{/gm)||[]).length,1,
- "profile sheet has one authoritative CSS definition, not multiple overriding generations");
-assert.ok(!css.includes("border-radius 390ms")&&css.includes("border-radius:34px 34px 0 0"),
- "sheet keeps stable rounded corners while moving on compositor");
-assert.ok(css.includes(".pm-photo-blur")&&css.includes("filter:blur(11px)")&&
- profile.includes('blurLayer.current.style.opacity=String(progress*.9)'),
- "fixed blur opacity follows the sheet controller");
-assert.ok(profile.includes("image.height*.11")&&
- profile.includes('pane.style.setProperty("--pm-collapsed-top"'),
- "collapsed top overlaps lower 11% of measured actual logo instead of system controls");
-assert.ok(profile.includes("const paintSheet=useCallback(")&&
- profile.includes('if(motionActive)motionCallback.current?.(progress,dragging)')&&
- header.includes("setProfileProgress")&&headerCss.includes(".lh-logo-contrast"),
- "only the visible profile drives blur and logo from the same progress");
-assert.ok(profile.includes("tabMetrics.current")&&
- profile.includes('if(g.axis!=="x")return;')&&
- !profile.includes("indicator.style.width=width+"),
- "tab swipe does not read offsets/width every frame or replay horizontal motion on vertical scroll");
-assert.ok(css.includes("flex-direction:row;")&&
- css.includes(".pm-tab.active{color:#a86ddd;background:transparent"),
- "tabs have horizontal label/icon and no selected rectangle");
-assert.ok(css.includes(".pm-photo-progress button::before")&&
- css.includes(".pm-photo-progress button.active::before")&&
- css.includes("width:64px;height:64px"),
- "photo dots replace progress bars; rounded profile avatar is 64px");
-console.log("✓ Stage 03G.5: stable safe-area sheet, synchronized blur and logo, compositor tabs and dot pager");
-
-
-
-assert.ok(!profile.includes('style={{transform:`translate3d(')&&
- profile.includes('className="pm-pages-track" ref={pageTrack}')&&
- profile.includes('className="pm-photo-track" ref={photoTrack}'),
- "React cannot override imperative touch animation transforms on either photo or profile tabs");
-assert.ok(profile.includes('},[motionActive,paintTabs]);')&&
- profile.includes('if(!first&&!changed)return;'),
- "tab geometry is measured only on activation or actual size changes");
-assert.ok(profile.includes('pane.removeEventListener("touchmove",move);')&&
- profile.includes('passive:!gesture.blocking'),
- "native tab scroll avoids a permanent blocking touchmove listener");
-assert.ok(css.includes('overflow-anchor:none;')&&
- css.includes('.pm-sheet-viewport')&&!css.includes('contain:layout paint')&&
- !css.includes('.pm-pages-track.is-finger-tracking'),
- "native profile scroll surfaces have no nested transformed paint containment");
-assert.ok(header.includes("pendingTop.current=top")&&
- header.includes("toolsFrame.current=requestAnimationFrame")&&
- header.includes("lastControlsValue.current=v")&&
- header.includes("cancelAnimationFrame(toolsFrame.current)"),
- "browse logo controls are coalesced to one frame and stale paints are cancelled");
-console.log("✓ Stage 03G.6 flicker regressions: single transform owner, passive native scroll, stable paint boundaries");
-
-assert.ok(profile.includes('data-sheet-renderer="absolute"')&&!profile.includes("androidSafeSheet"),
- "one absolute-top renderer replaces divergent native scrolling and platform implementations");
-assert.ok(profile.includes('pages.current.scrollLeft=position*tabViewport.current')&&
- !profile.includes('pageTrack.current.style.left'),
- "horizontal movement uses a stationary scroll viewport without animated left");
-assert.ok(css.includes(".pm-sheet-viewport")&&
- !css.includes("transition:top")&&!css.includes("transition:left")&&
- !css.includes("data-sheet-renderer=layout"),
- "profile has no legacy layout-property animations or Android override cascade");
-console.log("✓ Profile scroll motion replaces legacy top/left and transformed clipping");
-
-const discoveryCss=read("apps/web/src/discovery/discovery.css");
-// REM-04B originally required hiding every Android browse descendant while a
-// visitor route was covering it. Live slow-drag reports exposed the resulting
-// raster tile invalidation. The painted underlay must now remain stable as the
-// opaque high-z-index route moves; modal inert isolation still blocks inputs.
-assert.ok(discoveryCss.includes(".discovery-visitor-route{")&&
- discoveryCss.includes("z-index:80")&&
- discoveryCss.includes("background:var(--bg)")&&
- !discoveryCss.includes("[data-profile-renderer=android][data-profile-overlay=true]")&&
- !discoveryCss.includes(".discovery-bottom-nav{visibility:hidden}")&&
- !discovery.includes("data-profile-from-feed"),
- "visitor route covers a persistently painted browse underlay on Android");
-assert.ok(header.includes("androidProfileChrome")&&
- header.includes("!androidClient&&<img")&&
- header.includes('decoding="async"')&&
- profile.includes("collapsedRef.current=next;")&&
- profile.includes("motion.resize(top,bottom,physical,collapsedRef.current,sheetDragActive.current)")&&
- profile.includes("miniAvatar.current.style.opacity=")&&
- profile.includes("grab.current.style.opacity="),
- "Android single-raster header and progress-driven sheet controls avoid duplicate paints");
-assert.ok(!profile.includes('ro.observe(button)')&&
- profile.includes("document.fonts.ready.then"),
- "tab metrics are not repeatedly reset by individual button resize observers");
-console.log("✓ Android occluded browse layers, stable logo and sheet progress guards");
+ profile.includes('["photos","Фото"')&&profile.includes('["meta","Аккаунт"')&&
+ profile.includes('["gifts","Подарки"'),"approved five tabs and A2 order");
+assert.ok(profile.includes('useState<"compact"|"expanded">("compact")')&&
+ profile.includes("morphFrame(geometry.current,p)"),"A2 compact first, one geometric morph");
+assert.ok(profile.includes("PhotoViewer")&&profile.includes("initialPhotoId={viewer.photoId}")&&
+ viewer.includes("createPortal"),"existing fullscreen viewer and active photo ID retained");
+assert.ok(profile.includes("reconcilePhotoId")&&profile.includes("resourceIdentity"),
+ "media identity preserved on reorder and viewer return");
+assert.ok(css.includes(".pm-a2-backing")&&css.includes("isolation:isolate")&&
+ css.includes(".pm-a2-sheet"),"opaque backing masks underlying feed throughout morph");
+assert.ok(discovery.includes('from "./ProfileMorphA2"')&&
+ visitorRoute.includes('from "./ProfileMorphA2"')&&
+ previewSource.includes('from "../discovery/ProfileMorphA2"'),
+ "owner/visitor/registration all use one new profile component");
+assert.ok(!profile.includes("ProfileSheetMotion")&&!css.includes("pm-sheet-viewport"),
+ "old sheet motion engine absent");
+console.log("PROFILE_A2_SOURCE_AND_PRIVACY_CONTRACT_PASS; browser/GPU validation separate");

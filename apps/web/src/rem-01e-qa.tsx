@@ -2,7 +2,7 @@
 import React from "react";
 import {createRoot} from "react-dom/client";
 import {RegistrationPreview} from "./registration/Preview";
-import {ProfileMaster} from "./discovery/ProfileMaster";
+import {ProfileMaster} from "./discovery/ProfileMorphA2";
 import {fromLocalDraft,readyRegistrationPhotos} from "./discovery/ProfileModel";
 import type {ProfileMasterData} from "./discovery/ProfileModel";
 import {newDraft} from "./registration/model";

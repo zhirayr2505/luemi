@@ -54,7 +54,7 @@ const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const discoveryModel=read("apps/web/src/discovery/model.ts");
 const fixture=read("apps/web/src/discovery/demo-people.ts");
 const discoveryCss=read("apps/web/src/discovery/discovery.css");
-const discoveryProfile=read("apps/web/src/discovery/ProfileMaster.tsx");
+const discoveryProfile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
 const globalHeader=read("apps/web/src/discovery/GlobalHeader.tsx");
 const globalHeaderCss=read("apps/web/src/discovery/global-header.css");
 const discoveryFilters=read("apps/web/src/discovery/Filters.tsx");
@@ -104,7 +104,7 @@ assertCheck("correct inverse tracking of page and line",discovery.includes("g.or
  && discoveryCss.includes("--luemi-underline-drag")&&discoveryCss.includes("--luemi-drag"));
 assertCheck("rounded Liquid Glass bottom island and active icon only",discoveryCss.includes(".discovery-bottom-nav{")&&discoveryCss.includes("border-radius:29px")&&discoveryCss.includes(".discovery-nav-item.active{color:#aa76d8;background:transparent"));
 assertCheck("profile has independent photo swipe, tab swipe and native back",
- discoveryProfile.includes("photoSwipe.current")&&discoveryProfile.includes("tabSwipe.current")
+ discoveryProfile.includes('slideStart(e,"photo")')&&discoveryProfile.includes('slideStart(e,"tab")')
  && discoveryProfile.includes("registerBack?.(closeTop)")&&discoveryProfile.includes("setPointerCapture"));
 assertCheck("six women for exclusive demo fixture",fixture.includes('"alisa"')&&fixture.includes('"lina"')&&!fixture.includes('"aram"'));
 console.log("LUEMI Stage 03 Feed Polish 2 UI smoke PASS");
@@ -121,15 +121,15 @@ assertCheck("all ephemeral visual toasts removed but announcements accessible",
  discovery.includes('discovery-sr-status')&&discovery.includes('aria-live="polite"'));
 assertCheck("restart label not misleading and controls remain local-only",
  discovery.includes('onRestart={restartFeed}')&&discovery.includes('indicate("Демо-Лента начата заново")'));
-assertCheck("full profile sheet anchors identity and scrolls only selected tab content",
- discoveryProfile.includes("data-sheet-state={collapsed")&&
- (discoveryProfile.includes('className="pm-mini-avatar"')||
-  discoveryProfile.includes('className={"pm-mini-avatar"'))&&
- discoveryProfile.includes("settleSheet(")&&globalHeader.includes("setScrollTop")&&
- !globalHeader.includes("setProfileMorph")&&
+assertCheck("A2 compact-first profile keeps independent native-scroll panels and original logo",
+ discoveryProfile.includes('data-morph-state={state}')&&
+ discoveryProfile.includes('useState<"compact"|"expanded">("compact")')&&
+ discoveryProfile.includes("profileMorphGeometry(")&&
+ discoveryProfile.includes("morphFrame(geometry.current,p)")&&
+ globalHeader.includes("setScrollTop")&&!globalHeader.includes("setProfileMorph")&&
  !globalHeaderCss.includes(".lh-droplet")&&
- read("apps/web/src/discovery/profile-master.css").includes(".pm-page{")&&
- read("apps/web/src/discovery/profile-master.css").includes("overflow-y:auto"));
+ read("apps/web/src/discovery/profile-morph-a2.css").includes(".pm-a2-page")&&
+ read("apps/web/src/discovery/profile-morph-a2.css").includes("overflow-y:auto"));
 assertCheck("deck controls hidden until incoming profile starts motion",
  discoveryCss.includes(".deck-queued .discovery-actions")&&
  discoveryCss.includes(".deck-entering .discovery-actions")&&
@@ -149,10 +149,10 @@ assertCheck("single atomic Deck Lift commit synchronized with exit animation",
  discovery.includes('event.animationName==="luemi-deck-leave"')&&
  discovery.includes("pendingCommit.current")&&
  discovery.includes("finishDeck()"));
-assertCheck("profile gestures follow finger while vertically scrolling natively",
+assertCheck("A2 profile gestures use one motion writer and native independent content scroll",
  discoveryProfile.includes("setPointerCapture")&&
- discoveryProfile.includes("paintTabs(g.index")&&
- discoveryProfile.includes('pane.addEventListener("touchmove",move,{passive:!gesture.blocking})')&&
- read("apps/web/src/discovery/profile-master.css").includes("touch-action:pan-y")&&
+ discoveryProfile.includes('gestureArbiter?.claim(')&&
+ discoveryProfile.includes("motion.current?.drag(event.clientY)")&&
+ read("apps/web/src/discovery/profile-morph-a2.css").includes("touch-action:pan-y")&&
  !discoveryProfile.includes("setDragX"));
 console.log("LUEMI Stage 03 motion v2 regression checks PASS");
