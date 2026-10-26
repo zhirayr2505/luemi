@@ -93,6 +93,24 @@ try{
  await page.screenshot({path:out+"/owner-after-touch.png"});
  const tabs=root.locator(".v3-int-tab");
  assert.equal(await tabs.count(),5);
+ const contentSurface=await root.locator(".v3-int-pages").boundingBox();
+ assert(contentSurface);
+ const tabTrack=root.locator(".v3-int-pages-track");
+ const startTabs=await tabTrack.evaluate(el=>getComputedStyle(el).transform);
+ await touch({x:contentSurface.x+contentSurface.width*.75,y:contentSurface.y+Math.min(105,contentSurface.height*.35),
+  dx:-210,steps:12,each:async i=>{
+   if(i===6){
+    assert.notEqual(await tabTrack.evaluate(el=>getComputedStyle(el).transform),startTabs,
+     "tab rail must follow active touch, not snap after release");
+    await page.screenshot({path:out+"/owner-tab-mid-swipe.png"});
+   }
+  }});
+ await page.waitForTimeout(260);
+ assert.equal(await tabs.nth(1).getAttribute("aria-selected"),"true","horizontal swipe selects Bliki");
+ await tabs.first().click();
+ const firstPage=root.locator(".v3-int-page").first();
+ await firstPage.evaluate(el=>el.scrollTop=75);
+ assert(await firstPage.evaluate(el=>el.scrollTop)>0,"native tab content can scroll without sheet changing");
  for(let i=0;i<5;i++){
   await tabs.nth(i).click();
   assert.equal(await tabs.nth(i).getAttribute("aria-selected"),"true");
@@ -125,7 +143,15 @@ try{
  assert.equal(await visitor.locator(".v3-int-owner-actions").count(),0,"visitor never gets owner actions");
  assert.equal(await visitor.locator(".v3-int-photo-slide img").count()>=1,true);
  await page.screenshot({path:out+"/visitor-compact.png"});
- await page.keyboard.press("Escape");
+ // A right swipe starting on the expanded sheet handle belongs to ROUTE_BACK,
+ // while the hero gallery and tab pager retain their own horizontal gestures.
+ const visitorMask=visitor.locator(".v3-int-mask");
+ await visitorMask.click();
+ await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .v3-profile-host")?.dataset.morphState==="expanded");
+ const visitorHandle=await visitor.locator(".v3-int-handle").boundingBox();
+ assert(visitorHandle);
+ await touch({x:visitorHandle.x+Math.min(100,visitorHandle.width*.35),
+  y:visitorHandle.y+visitorHandle.height/2,dx:230,steps:12});
  await visitor.waitFor({state:"detached",timeout:3000});
  assert.deepEqual(errors,[],"no uncaught DOM runtime errors");
  console.log("PROFILE_V3_INTEGRATION_CHROMIUM_PASS owner/visitor real projection, 5 real tabs, fullscreen viewer, touch, photo aspect, route exit");
