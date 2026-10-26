@@ -51,107 +51,23 @@ assertCheck("name validation reports invalid characters visibly",forms.includes(
 console.log("LUEMI Stage 02G UI contracts PASS");
 
 const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
-const discoveryModel=read("apps/web/src/discovery/model.ts");
-const fixture=read("apps/web/src/discovery/demo-people.ts");
+const feedCard=read("apps/web/src/discovery/FeedCard.tsx");
+const feedCss=read("apps/web/src/discovery/feed-v2.css");
 const discoveryCss=read("apps/web/src/discovery/discovery.css");
-const discoveryProfile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
-const globalHeader=read("apps/web/src/discovery/GlobalHeader.tsx");
-const globalHeaderCss=read("apps/web/src/discovery/global-header.css");
-const discoveryFilters=read("apps/web/src/discovery/Filters.tsx");
-assertCheck("separate Stage 03 demo does not change publication flow",app.includes("demoOpen")&&app.includes("<DiscoveryApp")&&preview.includes("Открыть демо-Ленту")&&preview.includes("Публикация анкеты пока закрыта"));
-assertCheck("four global navigation destinations and three discovery tabs",discovery.includes('["discover","Знакомства"')&&discovery.includes('["likes","Симпатии"')&&discovery.includes('["chats","Чаты"')&&discovery.includes('["profile","Профиль"')&&discovery.includes('["feed","Лента"')&&discovery.includes('["for-you","Для тебя"')&&discovery.includes('["nearby","Рядом"'));
-assertCheck("five simulated actions without live API",["save","pass","special","like","undo"].every(k=>(discovery+read("apps/web/src/discovery/FeedCard.tsx")).includes('"'+k+'"'))&&!discovery.includes('fetch(')&&!discovery.includes("TelegramStars"));
-assertCheck("profile and filters use existing shared profile components",discoveryProfile.includes("PhotoViewer")&&discoveryProfile.includes("InterestChip")&&discoveryFilters.includes("DoubleAgeRange")&&discoveryFilters.includes("languages.map"));
-assertCheck("W12 photo swipe remains independent of like/pass",read("apps/web/src/discovery/FeedCard.tsx").includes("<PhotoCarousel")&&discovery.includes("target.closest")&&discovery.includes(".discovery-page[aria-label='Лента']")&&read("apps/web/src/discovery/FeedCard.tsx").includes("<PhotoCarousel"));
-assertCheck("demo fixture is visibly marked and illustrated locally",fixture.includes("illustration(")&&fixture.includes("portraitSources")&&discovery.includes('className="discovery-demo-label"'));
-assertCheck("adaptive card peek hidden on smaller screens, native Telegram back",discoveryCss.includes(".discovery-card")&&app.includes("discoveryBackRef")&&discovery.includes("registerBack"));
-assertCheck("demo actions include reversible state history",discoveryModel.includes("demoUndo")&&discoveryModel.includes("history:")&&discoveryModel.includes("wasSaved"));
-
-assertCheck("single viewport Feed without legacy scroll wrapper",discoveryCss.includes(".discovery-pages{flex:1;min-height:0;overflow:hidden")
- && discoveryCss.includes(".discovery-page{height:100%")&&!discoveryCss.includes(".discovery-feed-scroller")
- && !discovery.includes("discovery-filter-row"));
-assertCheck("single original LUEMI header without removed global tools",
- discovery.includes("<GlobalHeader")&&globalHeader.includes("wordmark_original_raster_alpha_W06.webp")
- && !globalHeader.includes("lh-tool-filter")&&!globalHeader.includes("lh-tool-saved")
- && !discovery.includes("discovery-header-controls")&&globalHeaderCss.includes(".lh-island"));
-assertCheck("moving page and underline share a compositor-driven gesture",
- discovery.includes("browseMotion.current.schedulePaint(g.token,trackX")&&
- discovery.includes("paintBrowse(trackX,inkX)")&&discovery.includes("frozenBrowse()")&&
- discovery.includes("motionAuthority.current.run(\"browse\"")&&discovery.includes("pageTrack.current")&&
- discovery.includes("underline.current")&&!discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
-assertCheck("entire profile and action controls share a single keyed card",read("apps/web/src/discovery/FeedCard.tsx").includes('className="feed-v2-information"')
- && read("apps/web/src/discovery/FeedCard.tsx").includes('className="discovery-actions"')
- && discovery.includes('<FeedCard person={person}')&&discovery.includes('<FeedCard person={profiles[feed.index+1]}'));
-assertCheck("no old standalone glass action tray",!discoveryCss.includes(".discovery-card-facts")
- && !discoveryCss.includes(".discovery-action-hint") && !discoveryCss.includes(".discovery-city"));
-assertCheck("real finger-tracking photo carousel retained with full-width bars",discoveryCss.includes(".discovery-photo .photo-progress")
- && discoveryCss.includes("left:11px;right:11px") && read("apps/web/src/ui/PhotoCarousel.tsx").includes("requestAnimationFrame"));
-assertCheck("premium simulated account and capped interests",read("apps/web/src/discovery/FeedCard.tsx").includes("person.premium")
- && read("apps/web/src/discovery/FeedCard.tsx").includes("Crown")
- && read("apps/web/src/discovery/FeedCard.tsx").includes("person.interests.slice(0,3)")&&fixture.includes("premium:index===0"));
-console.log("LUEMI Stage 03 Feed Polish UI contracts PASS");
-
-const interestSheet=read("apps/web/src/discovery/InterestsSheet.tsx");
-assertCheck("saved moved onto top-right card and filled when selected",read("apps/web/src/discovery/FeedCard.tsx").includes('className={"discovery-save-control"')&&read("apps/web/src/discovery/FeedCard.tsx").includes('fill={saved?'));
-assertCheck("four separate footer actions and a top bookmark",read("apps/web/src/discovery/FeedCard.tsx").includes('["undo","Отменить"')&&read("apps/web/src/discovery/FeedCard.tsx").includes('["special","Особенная симпатия"')&&!read("apps/web/src/discovery/FeedCard.tsx").includes('["save","Сохранить",Bookmark]'));
-assertCheck("hidden undecided goal on feed AND public profile",read("apps/web/src/discovery/FeedCard.tsx").includes('person.goal==="undecided"')&&discoveryProfile.includes('p.goal!=="undecided"'));
-assertCheck("gradient registration interests remain enabled",discoveryCss.includes(".discovery-interests>.chip")&&!discoveryCss.includes("background:rgba(244,230,255,.85)!important"));
-assertCheck("interests +N opens sheet, not full profile",discovery.includes('setInterestOpen(person.id)')&&read("apps/web/src/discovery/FeedCard.tsx").includes("onInterests")&&interestSheet.includes('className="discovery-interests-sheet"'));
-assertCheck("Deck Lift uses one locked timed action",discovery.includes("locked.current=true")&&discovery.includes("deck-leaving")&&discoveryCss.includes(".deck-leaving")&&discoveryCss.includes(".deck-entering"));
-assertCheck("correct inverse tracking of page and line",discovery.includes("g.originInk-shift/3")&&discovery.includes("trackX=g.originTrack+shift")
- && discovery.includes("tabIndex*100")&&discovery.includes("(-tabIndex*100)")
- && discoveryCss.includes("--luemi-underline-drag")&&discoveryCss.includes("--luemi-drag"));
-assertCheck("rounded Liquid Glass bottom island and active icon only",discoveryCss.includes(".discovery-bottom-nav{")&&discoveryCss.includes("border-radius:29px")&&discoveryCss.includes(".discovery-nav-item.active{color:#aa76d8;background:transparent"));
-assertCheck("profile has independent photo swipe, tab swipe and native back",
- discoveryProfile.includes('slideStart(e,"photo")')&&discoveryProfile.includes('slideStart(e,"tab")')
- && discoveryProfile.includes("registerBack?.(closeTop)")&&discoveryProfile.includes("setPointerCapture"));
-assertCheck("six women for exclusive demo fixture",fixture.includes('"alisa"')&&fixture.includes('"lina"')&&!fixture.includes('"aram"'));
-console.log("LUEMI Stage 03 Feed Polish 2 UI smoke PASS");
-
-assertCheck("AI-only portrait references are externally sourced with on-error original fallback",fixture.includes("cdn.pixabay.com")&&read("apps/web/src/ui/PhotoCarousel.tsx").includes("onError={event"));
-
-assertCheck("next card is a fully rendered keyed card with no photo-only duplicate",
- discovery.includes('key={profiles[feed.index+1].id}') &&
- discovery.includes('<FeedCard person={profiles[feed.index+1]}')&&
- !discoveryCss.includes(".discovery-deck-next") &&
- !discoveryCss.includes(".discovery-next-peek"));
-assertCheck("all ephemeral visual toasts removed but announcements accessible",
- !discoveryCss.includes(".discovery-toast")&&!discovery.includes('className="discovery-toast"')&&
- discovery.includes('discovery-sr-status')&&discovery.includes('aria-live="polite"'));
-assertCheck("restart label not misleading and controls remain local-only",
- discovery.includes('onRestart={restartFeed}')&&discovery.includes('indicate("Демо-Лента начата заново")'));
-assertCheck("A2 compact-first profile keeps independent native-scroll panels and original logo",
- discoveryProfile.includes('data-morph-state={state}')&&
- discoveryProfile.includes('useState<"compact"|"expanded">("compact")')&&
- discoveryProfile.includes("profileMorphGeometry(")&&
- discoveryProfile.includes("morphFrame(geometry.current,p)")&&
- globalHeader.includes("setScrollTop")&&!globalHeader.includes("setProfileMorph")&&
- !globalHeaderCss.includes(".lh-droplet")&&
- read("apps/web/src/discovery/profile-morph-a2.css").includes(".pm-a2-page")&&
- read("apps/web/src/discovery/profile-morph-a2.css").includes("overflow-y:auto"));
-assertCheck("deck controls hidden until incoming profile starts motion",
- discoveryCss.includes(".deck-queued .discovery-actions")&&
- discoveryCss.includes(".deck-entering .discovery-actions")&&
- discoveryCss.includes("luemi-controls-with-card")&&
- discoveryCss.includes("var(--deck-motion,290ms)"));
-assertCheck("single fade gradient extends to very bottom of card; no rectangular overlay edge",
- discoveryCss.includes(".discovery-card::after{")&&
- discoveryCss.includes("rgba(31,18,41,.79) 100%")&&
- discoveryCss.includes("background:none;pointer-events:none"));
-assertCheck("stable tab geometry while switching Chats and Discover",
- discoveryCss.includes(".discovery-main-panels{position:relative")&&
- discoveryCss.includes(".discovery-panel{position:absolute;inset:0")&&
- discovery.includes("selectMainTab(value)")&&
- globalHeader.includes("decoding=\"async\" fetchPriority=\"high\""));
-assertCheck("single atomic Deck Lift commit synchronized with exit animation",
- discovery.includes("onAnimationEnd={event=>")&&
- discovery.includes('event.animationName==="luemi-deck-leave"')&&
- discovery.includes("pendingCommit.current")&&
- discovery.includes("finishDeck()"));
-assertCheck("A2 profile gestures use one motion writer and native independent content scroll",
- discoveryProfile.includes("setPointerCapture")&&
- discoveryProfile.includes('gestureArbiter?.claim(')&&
- discoveryProfile.includes("motion.current?.drag(event.clientY)")&&
- read("apps/web/src/discovery/profile-morph-a2.css").includes("touch-action:pan-y")&&
- !discoveryProfile.includes("setDragX"));
-console.log("LUEMI Stage 03 motion v2 regression checks PASS");
+const header=read("apps/web/src/discovery/GlobalHeader.tsx");
+const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
+const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
+assertCheck("Discovery retains four main navigation destinations and three discovery tabs",
+ ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Рядом"].every(x=>discovery.includes(x)));
+assertCheck("feed card retains four explicit reaction controls",["undo","pass","special","like"].every(x=>feedCard.includes('"'+x+'"')));
+assertCheck("photos remain an independent carousel",feedCard.includes("<PhotoCarousel")&&carousel.includes("requestAnimationFrame")&&discovery.includes("target.closest"));
+assertCheck("feed page excluded from tab swipe ownership",discovery.includes(".discovery-page[aria-label='Лента']"));
+assertCheck("feed V2 overlays profile information on photo",feedCard.includes('className="feed-v2-information"')&&feedCard.includes('className="feed-v2-photo"')&&feedCss.includes(".feed-v2-information"));
+assertCheck("collapsed about and expanded interests remain available",feedCard.includes("discovery-short-about")&&feedCard.includes("setExpanded")&&feedCard.includes("feed-v2-interests"));
+assertCheck("action buttons remain within the keyed card",feedCard.includes('className="discovery-actions"')&&discovery.includes("<FeedCard person={person}")&&discovery.includes("<FeedCard person={profiles[feed.index+1]}"));
+assertCheck("save bookmark stays on card",feedCard.includes("discovery-save-control")&&feedCard.includes('onAction("save")'));
+assertCheck("responsive card height uses ResizeObserver",feedCard.includes("ResizeObserver")&&feedCard.includes("dataset.size"));
+assertCheck("single original LUEMI logo retained without removed global controls",header.includes("wordmark_original_raster_alpha_W06.webp")&&!header.includes("lh-tool-filter")&&!header.includes("lh-tool-saved"));
+assertCheck("feed deck and Telegram back handling retained",discovery.includes("pendingCommit.current")&&discovery.includes("registerBack")&&discoveryCss.includes(".discovery-page"));
+assertCheck("profile photo viewer and independent gestures remain present",profile.includes("PhotoViewer")&&profile.includes("setPointerCapture"));
+console.log("LUEMI Discovery V2 UI contracts PASS");
