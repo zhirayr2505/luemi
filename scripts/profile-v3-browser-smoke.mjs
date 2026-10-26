@@ -44,6 +44,18 @@ try{
   if(settings.isMobile){
    // Browser touch emulation must dispatch touchscreen events; Playwright's
    // mouse.move is not a reliable substitute for Android PointerEvent touch.
+   await page.evaluate(()=>{
+    const el=document.querySelector(".v3-handle");
+    window.__v3TouchTrace=[];
+    for(const name of ["pointerdown","pointermove","pointerup","pointercancel","touchstart","touchmove","touchend","click"]){
+     el?.addEventListener(name,e=>{
+      window.__v3TouchTrace.push({event:e.type,primary:e.isPrimary,pointer:e.pointerType,
+       target:e.target?.className,at:e.timeStamp,x:e.clientX,y:e.clientY});
+     },true);
+    }
+   });
+   console.log("V3 mobile hit",await page.evaluate(({x,y})=>({at:document.elementFromPoint(x,y)?.className,
+    handle:document.querySelector(".v3-handle")?.getBoundingClientRect().toJSON(),x,y}),{x,y}));
    const client=await context.newCDPSession(page);
    const touch=(type,atY,touching=true)=>client.send("Input.dispatchTouchEvent",{
     type,touchPoints:touching?[{x,y:atY,id:0,radiusX:1,radiusY:1,force:1}]:[]
@@ -54,6 +66,7 @@ try{
     await page.waitForTimeout(12);
    }
    const dragged=await progress();
+   if(!(dragged>0&&dragged<.5))console.log("V3 TOUCH TRACE",JSON.stringify(await page.evaluate(()=>window.__v3TouchTrace)).slice(0,10000));
    assert(dragged>0&&dragged<.5,`touch drag should follow finger below midpoint; p=${dragged}`);
    await page.screenshot({path:`${output}/${settings.label}-interrupted.png`});
    await touch("touchEnd",y-dragDistance,false);
