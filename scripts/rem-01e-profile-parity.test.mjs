@@ -74,7 +74,7 @@ assert.ok(preview.includes("editStep(7)")&&preview.includes("openDemo")&&
  preview.includes("disabled-submit"),"step-8 controls stay accessible");
 const app=read("apps/web/src/App.tsx");
 assert.ok(app.includes("readyRegistrationPhotos(photos)"));
-const master=read("apps/web/src/discovery/ProfileMaster.tsx");
+const master=read("apps/web/src/discovery/ProfileMorphA2.tsx");
 assert.ok(master.includes('mode={data.source==="local-draft"?"local-self-preview":"preview"}'));
 assert.ok(!preview.includes("GlobalHeader"),"registration never creates another header");
 console.log("REM-01E MODEL AND PRIVACY QA PASS");
