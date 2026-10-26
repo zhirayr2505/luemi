@@ -31,7 +31,8 @@ assert.ok(forYou.includes("const PersonTile=memo(function PersonTile")&&forYouCs
  "native horizontal For You carousels preserved");
 assert.ok(carousel.includes("frameId.current=window.requestAnimationFrame")&&!carousel.includes("setDx("),
  "PhotoCarousel tracks finger without per-pointer React renders");
-assert.ok(carousel.includes("const cancel=(e:ReactPointerEvent)=>finish(e,true)")&&
+assert.ok(carousel.includes("const cancel=(e:ReactPointerEvent)=>{if(!externalGesture)finishAt(e.pointerId,e.clientX,true)")&&
+ carousel.includes("finish:(id,x,cancelled)=>finishAt(id,x,cancelled)")&&
  carousel.includes("if(t.horizontal&&!canceled)"),"pointercancel never changes photos");
 assert.ok(style.includes("luemi-deck-leave")&&style.includes("luemi-deck-enter"),"original Deck Lift keyframes retained");
 assert.ok(model.includes("radius:5000"),"locked 1–5000km radius unchanged");

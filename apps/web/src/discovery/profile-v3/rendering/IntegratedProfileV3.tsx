@@ -66,20 +66,30 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   if(ink.current&&button){ink.current.style.transition="none";
    ink.current.style.transform="translate3d("+(button.offsetLeft+(tabLabels.current?.offsetLeft??0))+"px,0,0)";}
  };
- const photoTransform=(frame:ReturnType<typeof photoOffset>,elastic:number)=>{
+ const photoTransform=(frame:ReturnType<typeof photoOffset>,elastic:number,origin:{x:number;y:number})=>{
   const zoom=1+elastic/Math.max(1,layout.current.photo.height);
-  return "translate3d("+(frame.x-frame.width*(zoom-1)/2)+"px,"+frame.y+"px,0) scale("+(frame.scale*zoom)+")";
+  return "translate3d("+(origin.x+frame.x-frame.width*(zoom-1)/2)+"px,"+
+   (origin.y+frame.y)+"px,0) scale("+(frame.scale*zoom)+")";
  };
  const paint=useRef<(progress:number,elastic?:number)=>void>(()=>{});
  paint.current=(progress,elastic=0)=>{
   const l=layout.current,m=photoMask(l,progress);
   const surface=mask.current,move=sheet.current;
-  if(surface){surface.style.transform="translate3d("+m.x+"px,"+m.y+"px,0)";
-   surface.style.width=m.width+"px";surface.style.height=(m.height+elastic)+"px";
-   // A single rounded overflow clip owns both photo and white ring. Updating
-   // clip-path as well would rerasterize a second mask on every drag frame.
-   const radius=Math.min(m.width,m.height)*(1-progress)/2;
-   surface.style.borderRadius=radius+"px";}
+  // Keep the photograph's raster bounds constant. Resizing an overflow mask
+  // while its image moves discarded Android WebView paint tiles on each frame.
+  // One rounded inset clips the same geometry without changing layer bounds.
+  const radius=Math.min(m.width,m.height)*(1-progress)/2;
+  if(surface){
+   const right=Math.max(0,l.width-m.x-m.width);
+   const bottom=Math.max(0,l.photo.height+24-m.y-m.height-elastic);
+   surface.style.clipPath="inset("+m.y+"px "+right+"px "+bottom+"px "+m.x+
+    "px round "+radius+"px)";
+  }
+  if(ring.current){
+   ring.current.style.left=m.x+"px";ring.current.style.top=m.y+"px";
+   ring.current.style.width=m.width+"px";ring.current.style.height=(m.height+elastic)+"px";
+   ring.current.style.borderRadius=radius+"px";
+  }
   // Only the active and immediately adjacent decoded images can enter
   // the clip. Avoid writing size/visibility for every photo at every frame.
   const idx=currentIndex.current;
@@ -91,7 +101,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const w=frame.baseWidth+"px",h=frame.baseHeight+"px";
    if(image.style.width!==w)image.style.width=w;
    if(image.style.height!==h)image.style.height=h;
-   image.style.transform=photoTransform(frame,elastic);
+   image.style.transform=photoTransform(frame,elastic,m);
   }
   if(move)move.style.transform="translate3d(0,"+(l.span*progress+elastic)+"px,0)";
   if(identityCompact.current)identityCompact.current.style.opacity=String(clamp((.14-progress)/.12,0,1));
@@ -125,6 +135,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const next=createProfileLayout({width:rect.width,height:rect.height,
     chromeBottom:logoBottom?logoBottom-rect.top:undefined});
    layout.current=next;
+   if(mask.current){mask.current.style.width=next.width+"px";
+    mask.current.style.height=next.photo.height+24+"px";}
    node.style.setProperty("--v3-w",next.width+"px");
    node.style.setProperty("--v3-photo-height",next.expandedTop+"px");
    node.style.setProperty("--v3-hero-bleed",next.heroBleed+"px");
@@ -226,7 +238,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const offset=photoOffset(l,p,image.naturalWidth,image.naturalHeight,adjacent.focalPoint);
    image.style.width=offset.baseWidth+"px";
    image.style.height=offset.baseHeight+"px";
-   image.style.transform=photoTransform(offset,engine.current?.getSnapshot().elastic??0);
+   image.style.transform=photoTransform(offset,engine.current?.getSnapshot().elastic??0,photoMask(l,p));
   }
   if(rail.current){rail.current.style.transition=animate?"transform 210ms cubic-bezier(.2,.8,.2,1)":"none";
    rail.current.style.transform="translate3d("+(-idx*layout.current.width)+"px,0,0)";}

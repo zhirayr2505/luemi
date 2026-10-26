@@ -39,16 +39,18 @@ try{
  const items=root.locator(".v3-int-photo-slide img");
  assert.equal(await items.count(),3,"three projected QA photos, not placeholder");
  await items.first().evaluate(img=>img.decode());
- const avatar=await root.locator(".v3-int-mask").boundingBox();
+ // The photo clip now keeps a fixed raster surface. The ring follows the
+ // visible mask geometry, so use its box for pixel/hit assertions.
+ const avatar=await root.locator(".v3-int-ring").boundingBox();
  const start=await root.locator(".v3-int-sheet").boundingBox();
  assert(avatar&&start&&avatar.width>=90&&avatar.width<=116&&avatar.x<160,
   "compact portrait has plausible geometry");
  assert(start.y>=avatar.y+avatar.height-6,"sheet below avatar");
  assert.equal(await root.locator('.v3-int-tab[aria-selected="true"]').count(),1);
  await page.screenshot({path:out+"/owner-compact.png"});
- await root.locator(".v3-int-mask").click({position:{x:avatar.width/2,y:avatar.height/2}});
+ await page.mouse.click(avatar.x+avatar.width/2,avatar.y+avatar.height/2);
  await page.waitForFunction(()=>document.querySelector(".v3-profile-host.pm-inline")?.dataset.morphState==="expanded");
- const expanded=await root.locator(".v3-int-mask").boundingBox(),sheet=await root.locator(".v3-int-sheet").boundingBox();
+ const expanded=await root.locator(".v3-int-ring").boundingBox(),sheet=await root.locator(".v3-int-sheet").boundingBox();
  assert(expanded&&sheet&&expanded.width>avatar.width*2&&sheet.y>start.y+45,"hero expands in bounded frame and sheet travels");
  assert(expanded.height<page.viewportSize().height*.62,"expanded photo may not consume most of the screen");
  assert.equal(await root.locator(".v3-int-photo-slide").first().evaluate(el=>getComputedStyle(el).overflow),"hidden",
@@ -70,7 +72,7 @@ try{
  assert.equal(await root.getAttribute("data-morph-state"),"expanded","viewer return retains expanded hero");
  // Gallery is a real, permission-filtered track with follow-finger horizontal
  // movement. The selected published/local self photo must persist in PhotoViewer.
- const swipable=await root.locator(".v3-int-mask").boundingBox();
+ const swipable=await root.locator(".v3-int-ring").boundingBox();
  assert(swipable);
  const centerX=swipable.x+swipable.width*.62,centerY=swipable.y+swipable.height*.42;
  const track=root.locator(".v3-int-photo-rail");
@@ -205,8 +207,9 @@ try{
  await page.screenshot({path:out+"/visitor-compact.png"});
  // A right swipe starting on the expanded sheet handle belongs to ROUTE_BACK,
  // while the hero gallery and tab pager retain their own horizontal gestures.
- const visitorMask=visitor.locator(".v3-int-mask");
- await visitorMask.click();
+ const visitorMask=await visitor.locator(".v3-int-ring").boundingBox();
+ assert(visitorMask);
+ await page.mouse.click(visitorMask.x+visitorMask.width/2,visitorMask.y+visitorMask.height/2);
  await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .v3-profile-host")?.dataset.morphState==="expanded");
  const visitorHandle=await visitor.locator(".v3-int-handle").boundingBox();
  assert(visitorHandle);

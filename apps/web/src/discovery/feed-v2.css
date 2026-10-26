@@ -24,21 +24,35 @@
  background:linear-gradient(to bottom,transparent 27%,rgba(25,14,36,.025) 43%,
  rgba(25,14,36,.22) 61%,rgba(25,14,36,.62) 79%,rgba(25,14,36,.88) 100%)
 }
+.feed-v2-card::before{
+ content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+ background:linear-gradient(to bottom,transparent 20%,rgba(25,14,36,.13) 51%,
+ rgba(25,14,36,.36) 78%,rgba(25,14,36,.3));
+ opacity:0;transition:opacity .42s cubic-bezier(.22,.7,.24,1)
+}
+.feed-v2-card[data-expanded=true]::before{opacity:1}
 .feed-v2-photo>.carousel-frame{touch-action:pan-y}
 .feed-v2-photo .carousel-track img{
  width:100%;height:100%;object-fit:cover;object-position:center 35%;
  backface-visibility:hidden
 }
 .feed-v2-photo .carousel-track img:nth-child(2){object-position:center 22%;transform:scale(1.095)}
-.feed-v2-photo .photo-progress{right:66px;top:13px;gap:5px}
-.feed-v2-photo .photo-progress button{position:relative;height:24px;background:none;box-shadow:none}
+.feed-v2-photo .photo-progress{
+ left:50%;right:auto;top:12px;width:max-content;max-width:calc(100% - 118px);
+ transform:translateX(-50%);gap:0;overflow:hidden
+}
+.feed-v2-photo .photo-progress button{
+ position:relative;flex:0 1 24px;width:24px;min-width:18px;height:28px;background:none;box-shadow:none
+}
 .feed-v2-photo .photo-progress button.current{background:none;box-shadow:none}
 .feed-v2-photo .photo-progress button::after{
- content:"";position:absolute;left:0;right:0;top:0;height:4px;border-radius:9px;
- background:rgba(255,255,255,.42);box-shadow:0 1px 4px rgba(42,28,63,.1)
+ content:"";position:absolute;left:50%;top:9px;width:6px;height:6px;
+ transform:translateX(-50%);border-radius:9px;background:rgba(255,255,255,.69);
+ box-shadow:0 1px 5px rgba(42,28,63,.25);
+ transition:width .28s cubic-bezier(.2,.75,.22,1),background-color .28s ease
 }
-.feed-v2-photo .photo-progress button.current::after{background:rgba(255,255,255,.98)}
-.feed-v2-photo>.discovery-demo-label{top:25px}
+.feed-v2-photo .photo-progress button.current::after{width:17px;background:rgba(255,255,255,.98)}
+.feed-v2-photo>.discovery-demo-label{top:45px}
 .feed-v2-photo>.discovery-save-control{top:12px;right:12px}
 .feed-v2-information{
  position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;
@@ -53,15 +67,14 @@
  transition:height .34s cubic-bezier(.21,.76,.24,1),transform .18s ease
 }
 .feed-v2-card[data-expanded=true] .feed-v2-details{
- height:min(72%,430px);
- background:linear-gradient(to top,rgba(28,15,39,.39),rgba(28,15,39,.08) 72%,transparent)
+ height:min(72%,430px)
 }
 .feed-v2-expand{
  height:21px;min-height:21px;min-width:70px;margin:0 auto 4px;padding:0;
  display:flex;align-items:center;justify-content:center;gap:7px;
  border:0;background:transparent;color:rgba(255,255,255,.95);touch-action:none
 }
-.feed-v2-expand span{display:block;width:31px;height:3px;border-radius:9px;background:rgba(255,255,255,.76)}
+.feed-v2-expand svg{filter:drop-shadow(0 1px 2px rgba(22,10,31,.5))}
 .feed-v2-scroll{
  min-height:0;max-height:calc(100% - 25px);overflow:hidden;
  display:flex;flex-direction:column;gap:5px;overscroll-behavior:contain;touch-action:none;
@@ -80,14 +93,23 @@
 .feed-v2 .discovery-place span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .feed-v2-goal{display:flex;gap:5px;align-items:center;font-size:12px;font-weight:690;min-height:18px}
 .feed-v2-goal svg{color:#ffbfdc}
+.feed-v2-about{flex:none;max-height:40px;overflow:hidden;
+ transition:max-height .42s cubic-bezier(.22,.7,.24,1)}
+.feed-v2-card[data-expanded=true] .feed-v2-about{max-height:1400px}
 .feed-v2 .discovery-short-about{
- flex:none;color:rgba(255,255,255,.96);font-size:12px;line-height:1.4;
- -webkit-line-clamp:2;line-clamp:2;margin:1px 0 0
+ flex:none;color:rgba(255,255,255,.96);font-size:12px;line-height:1.45;
+ -webkit-line-clamp:2;line-clamp:2;margin:1px 0 0;
+ padding:1px 0 1px 11px;border-left:2px solid rgba(246,188,225,.9);
+ font-style:italic;letter-spacing:.005em
 }
 .feed-v2-card[data-expanded=true] .discovery-short-about{
  display:block;overflow:visible;-webkit-line-clamp:unset;line-clamp:unset
 }
-.feed-v2-interests{padding:7px 0 3px}
+.feed-v2-interests{padding:7px 0 3px;max-height:120px;opacity:1;
+ transition:max-height .36s cubic-bezier(.22,.7,.24,1),opacity .26s ease}
+.feed-v2-card:not([data-expanded=true]) .feed-v2-interests{
+ max-height:0;opacity:0;padding-top:0;padding-bottom:0;overflow:hidden
+}
 .feed-v2 .discovery-interests{flex-wrap:wrap;overflow:visible}
 .feed-v2 .discovery-interests>.chip{flex:none;max-width:100%}
 .feed-v2 .discovery-actions{
@@ -123,7 +145,8 @@
 .feed-v2-card[data-size=tiny] .discovery-action{--diameter:44px}
 @media(max-width:350px){.feed-v2 .discovery-actions{gap:2px;padding-left:6px;padding-right:6px}}
 @media(prefers-reduced-motion:reduce){
- .feed-v2-details{transition:none}
+ .feed-v2-details,.feed-v2-card::before,.feed-v2-interests,.feed-v2-about,
+ .feed-v2-photo .photo-progress button::after{transition:none}
  .discovery-page[aria-label="Лента"] .deck-leaving,
  .discovery-page[aria-label="Лента"] .deck-entering{animation:none}
 }
