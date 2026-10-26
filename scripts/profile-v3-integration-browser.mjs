@@ -113,6 +113,7 @@ try{
  await page.waitForTimeout(260);
  assert.equal(await tabs.nth(1).getAttribute("aria-selected"),"true","horizontal swipe selects Bliki");
  await tabs.first().click();
+ await page.waitForTimeout(280);
  // Swipe from an actual nested content card, not an empty gutter. Android
  // must bubble PointerEvents through the scrollable article to the tab owner.
  const nestedCard=root.locator(".v3-int-page").first().locator(".pm-card").first();
