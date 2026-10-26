@@ -125,8 +125,23 @@ try{
   "left swipe starting inside nested content switches to Bliki");
  await tabs.first().click();
  const firstPage=root.locator(".v3-int-page").first();
- await firstPage.evaluate(el=>el.scrollTop=75);
- assert(await firstPage.evaluate(el=>el.scrollTop)>0,"native tab content can scroll without sheet changing");
+ await firstPage.evaluate(el=>el.scrollTop=110);
+ assert(await firstPage.evaluate(el=>el.scrollTop)>0,"tab content is scrollable");
+ const article=await firstPage.locator(".pm-card").first().boundingBox();assert(article);
+ await touch({x:article.x+article.width*.5,y:article.y+Math.min(42,article.height*.4),dy:55});
+ assert((await firstPage.evaluate(el=>el.scrollTop))<110,
+  "downward gesture scrolls content before it is allowed to unfold profile");
+ await firstPage.evaluate(el=>el.scrollTop=0);
+ const pageBounds=await firstPage.boundingBox();assert(pageBounds);
+ const beforePanel=await progress(root),trace=[];
+ await touch({x:pageBounds.x+pageBounds.width*.50,
+  y:pageBounds.y+Math.min(60,pageBounds.height*.24),dy:110,steps:12,
+  each:async i=>{if([5,9,12].includes(i))trace.push(await progress(root));}});
+ assert(trace.some(v=>v>beforePanel+.02),
+  "at top, downward swipe on tab content hands off to expanding profile");
+ await page.waitForTimeout(340);
+ await root.locator(".v3-int-handle").click();
+ await page.waitForTimeout(340);
  for(let i=0;i<5;i++){
   await tabs.nth(i).click();
   assert.equal(await tabs.nth(i).getAttribute("aria-selected"),"true");
