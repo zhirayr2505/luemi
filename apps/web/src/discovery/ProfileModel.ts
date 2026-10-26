@@ -5,7 +5,9 @@ import type {DemoPerson} from "./model";
 /** A public profile is an explicit projection. Never spread raw registrations or API records into it. */
 export type ProfileMode="visitor"|"owner"|"preview"|"local-self-preview";
 export type Publication="published"|"draft"|"pending"|"hidden"|"rejected";
-export interface ProfilePhoto {id:string;src:string;fallback?:string;version?:string;status:Publication;addedAt?:string}
+export interface ProfilePhoto {id:string;src:string;fallback?:string;version?:string;status:Publication;addedAt?:string;
+ /** Optional public composition hint for profile previews; original media is untouched. */
+ focalPoint?:{x:number;y:number}}
 /** Future published, server-verified story media. No fixture or local draft claims active Bliki. */
 export interface ActiveBlik {id:string;src:string;kind:"image"|"video";expiresAt:string;durationMs?:number}
 export interface ProfileMasterData {

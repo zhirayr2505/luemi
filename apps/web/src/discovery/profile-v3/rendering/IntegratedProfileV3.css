@@ -78,14 +78,14 @@
 .v3-int-owner-actions button.v3-int-edit{background:#ae76dc;color:white}
 .v3-int-tabs{position:relative;display:flex;flex:none;width:100%;height:51px;
  box-sizing:border-box;padding:0 7px 4px;border-bottom:1px solid var(--line,#e9dfea);
- background:var(--bg,#fbf9fe);z-index:1;transform:translateZ(0)}
+ background:var(--bg,#fbf9fe);z-index:1}
 .v3-int-tab{position:relative;z-index:2;min-width:0;flex:1 1 20%;border:0;padding:0 2px;
  background:transparent;color:var(--subtle,#917e9f);font:inherit;font-size:clamp(10px,2.65vw,13px);font-weight:750}
 .v3-int-tab.active{color:#955bd2}
 .v3-int-ink{position:absolute;bottom:0;left:0;width:calc((100% - 14px)/5);height:4px;border-radius:12px;
  background:#ac75dc;pointer-events:none;transform:translate3d(7px,0,0)}
 .v3-int-pages{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;
- overscroll-behavior:contain}
+ overscroll-behavior:contain;contain:paint}
 .v3-int-pages-track{position:absolute;inset:0;width:100%;height:100%;transition:none;
  transform:translate3d(0,0,0)}
 .v3-int-page{position:absolute;left:calc(var(--v3-w) * var(--v3-page-index));
@@ -94,6 +94,9 @@
  overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;
  touch-action:none;-webkit-overflow-scrolling:touch;overflow-anchor:none;scrollbar-width:none}
 .v3-int-page::-webkit-scrollbar{display:none}
+.v3-profile-host .pm-photos-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.v3-profile-host .pm-photo-tile{aspect-ratio:1;border-radius:18px;touch-action:none}
+.v3-profile-host .pm-photo-tile img{object-fit:cover}
 .v3-profile-host .pm-preview-toolbar{position:absolute;z-index:30;top:84px;right:12px}
 .v3-profile-host .pm-preview-toolbar button{border:1px solid #e3d0ee;background:#fffd;
  border-radius:30px;color:#604477;padding:9px 12px}

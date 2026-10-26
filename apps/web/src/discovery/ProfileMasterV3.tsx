@@ -12,6 +12,7 @@ import {resourceIdentity,viewerPhotoContext,reconcilePhotoId,type ViewerSource} 
 import {useModalLayer} from "../ui/modal-layer";
 import type {GestureArbiter} from "../ui/gesture-arbiter";
 import {IntegratedProfileV3,type V3TabId} from "./profile-v3/rendering/IntegratedProfileV3";
+import {resolvePhotoFocus} from "./profile-v3/geometry/ProfileGeometry";
 import "./profile-morph-a2.css";
 import "./profile-v3/rendering/IntegratedProfileV3.css";
 
@@ -28,7 +29,13 @@ type Props={
 };
 
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
+ const point=resolvePhotoFocus(1,2,photo.focalPoint);
  return <img data-photo-id={photo.id} src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
+  style={{objectPosition:`${point.x*100}% ${point.y*100}%`}}
+  onLoad={e=>{const image=e.currentTarget;
+   const resolved=resolvePhotoFocus(image.naturalWidth,image.naturalHeight,photo.focalPoint);
+   image.style.objectPosition=`${resolved.x*100}% ${resolved.y*100}%`;
+  }}
   onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
 }
 function About({view}:{view:ProfileView}){

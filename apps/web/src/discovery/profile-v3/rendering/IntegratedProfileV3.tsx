@@ -79,7 +79,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    if(Math.abs(i-idx)>1)continue;
    const image=refs.current.get(item.id);if(!image)continue;
    if(!image.complete||image.naturalWidth<=0||image.naturalHeight<=0)continue;
-   const frame=photoOffset(l,progress,image.naturalWidth,image.naturalHeight);
+   const frame=photoOffset(l,progress,image.naturalWidth,image.naturalHeight,item.focalPoint);
    const w=frame.baseWidth+"px",h=frame.baseHeight+"px";
    if(image.style.width!==w)image.style.width=w;
    if(image.style.height!==h)image.style.height=h;
@@ -218,7 +218,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    if(!adjacent)continue;
    const image=refs.current.get(adjacent.id);
    if(!image||!image.complete||!image.naturalWidth||!image.naturalHeight)continue;
-   const offset=photoOffset(l,p,image.naturalWidth,image.naturalHeight);
+   const offset=photoOffset(l,p,image.naturalWidth,image.naturalHeight,adjacent.focalPoint);
    image.style.width=offset.baseWidth+"px";
    image.style.height=offset.baseHeight+"px";
    image.style.transform=photoTransform(offset,engine.current?.getSnapshot().elastic??0);
@@ -251,7 +251,11 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   if(!e.isPrimary){coordinator.current.secondFinger();gesture.current=null;engine.current?.cancelDrag();return;}
   if(e.pointerType==="mouse"&&e.button!==0)return;
   if(kind==="photo"&&(engine.current?.getProgress()??0)<.95)return;
-  if((e.target as Element).closest("button,input,textarea,select,a,[contenteditable=true]"))return;
+  // Gallery tiles are tap targets AND a horizontal swipe surface. Other
+  // controls keep their ordinary click behavior and never start a pager drag.
+  const target=e.target as Element;
+  if(target.closest("button,input,textarea,select,a,[contenteditable=true]")&&
+   !(kind==="tabs"&&target.closest(".pm-photo-tile")))return;
   const region:Region=kind==="handle"?"handle":kind==="photo"?"photo":"content";
   if(!coordinator.current.begin({id:e.pointerId,x:e.clientX,y:e.clientY,time:e.timeStamp},region))return;
   const offset=kind==="photo"?currentIndex.current:selectedTab.current;
@@ -325,7 +329,10 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   gesture.current=null;const decision=coordinator.current.end(e.pointerId);
   const dx=e.clientX-g.x,dy=e.clientY-g.y,elapsed=Math.max(1,e.timeStamp-g.at);
   if(g.claimed){
-   if(g.kind==="handle"||g.vertical){if(cancelled)engine.current?.cancelDrag();else engine.current?.endDrag(g.velocity);}
+   if(g.kind==="handle"||g.vertical){
+    const releaseVelocity=e.timeStamp-g.lastAt>70?0:g.velocity;
+    if(cancelled)engine.current?.cancelDrag();else engine.current?.endDrag(releaseVelocity);
+   }
    else {
     const changed=!cancelled&&(Math.abs(dx)>layout.current.width*.18||Math.abs(dx)/elapsed>.43);
     const max=(g.kind==="photo"?current.current.photos.length:tabs.length)-1;
@@ -443,6 +450,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     <span className="v3-int-ink" ref={ink} aria-hidden="true"/>
    </div>
    <div className="v3-int-pages pm-pages" onPointerDown={e=>down(e,"tabs")} onPointerMove={move}
+    onClickCapture={e=>{if(performance.now()<suppressed.current&&
+     (e.target as Element).closest(".pm-photo-tile")){e.preventDefault();e.stopPropagation();}}}
     onPointerUp={up} onPointerCancel={e=>up(e,true)}
     onLostPointerCapture={e=>{if(e.target===e.currentTarget)up(e,true);}}>
     <div className="v3-int-pages-track" ref={pagesTrack}>

@@ -25,6 +25,10 @@
  filter:drop-shadow(0 1px 1px rgba(41,18,60,.46))
         drop-shadow(0 2px 4px rgba(75,34,99,.55));
 }
+/* Profile chrome on Android uses one unchanged raster, without a filtered
+   second paint surface during sheet motion or page-rail swipes. */
+.lh-profile-android .lh-island img{filter:none}
+.lh-profile-android .lh-island{transform:translateX(-50%)}
 .lh-browse .lh-logo-contrast{opacity:0}
 .lh-tools{
  position:absolute;top:48px;left:50%;transform:translateX(-50%);

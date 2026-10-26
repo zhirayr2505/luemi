@@ -18,7 +18,7 @@ type Props={
 };
 type RouteDrag={
  id:number;startX:number;startY:number;started:number;origin:number;span:number;claimed:boolean;serial:number;
- source:"photo"|"pages"|"tabs"|"sheet";
+ source:"photo"|"pages"|"tabs"|"sheet";edge:boolean;
 };
 const OPEN_DURATION=260;
 const CLOSE_DURATION=230;
@@ -35,6 +35,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
  const attachSuppression=useRef<()=>void>(()=>{});
  const header=useRef<HeaderMotion>(null);
  const gesture=useRef<RouteDrag|null>(null);
+ const suppressClickUntil=useRef(0);
  const childMotion=useRef<ProfileRouteMotionHandle|null>(null);
  const paused=useRef(false),intent=useRef<"opening"|"rollback"|"closing"|null>(null);
  const routeMotion=useRef(new MotionController("route",{
@@ -208,7 +209,8 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   const serial=gestures.begin("pointer",e.pointerId,"route");
   if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
-   origin:currentX(),span:width(),claimed:false,source,serial};
+   origin:currentX(),span:width(),claimed:false,source,serial,
+   edge:e.clientX-(route.current?.getBoundingClientRect().left??0)<=26};
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
@@ -230,12 +232,14 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
     const hero=route.current?.querySelector<HTMLElement>(".pm-hero");
     if(fractionalTrack(track??null,hero?.clientWidth??0,0)>.015)return;
    }
-   // A2: horizontal pager is exclusive even at the first tab; never steal its right swipe.
-   if(g.source==="pages"||g.source==="tabs")return;
+   // Narrow left-edge back has priority over the tab pager. Central page
+   // swipes remain exclusive to the five-tab follow-finger track.
+   if((g.source==="pages"||g.source==="tabs")&&!g.edge)return;
    const tabStrip=route.current?.querySelector<HTMLElement>(".pm-tabs");
    if(tabStrip&&tabStrip.scrollLeft>1)return;
    if(!gestures.claim("route",g.serial))return;
    g.claimed=true;
+   suppressClickUntil.current=performance.now()+350;
    attachSuppression.current();
    childMotion.current?.suspendForRoute();
    // Read the interpolated position BEFORE disabling CSS transition:
@@ -270,6 +274,8 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   else rollback();
  };
  return <div className="discovery-visitor-route" ref={route}
+    onClickCapture={e=>{if(performance.now()<suppressClickUntil.current){
+     e.preventDefault();e.stopPropagation();}}}
     onTransitionEnd={e=>{if(e.target===e.currentTarget&&e.propertyName==="transform")finish();}}
     onPointerDownCapture={down} onPointerMoveCapture={move}
     onPointerUpCapture={e=>end(e)} onPointerCancelCapture={e=>end(e,true)}

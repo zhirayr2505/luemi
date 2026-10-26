@@ -1,6 +1,8 @@
 export type Insets = {top:number;right:number;bottom:number;left:number};
 export type Viewport = {width:number;height:number;insets?:Partial<Insets>;chromeBottom?:number};
 export type Rect = {x:number;y:number;width:number;height:number};
+/** Optional photo composition hint; normalized source coordinates, not a crop. */
+export type PhotoFocus = {x:number;y:number};
 export type MorphLayout = {
  width:number;height:number;safe:Insets;logo:Rect;avatar:Rect;
  compactTop:number;expandedTop:number;span:number;heroBleed:number;photo:Rect;
@@ -48,22 +50,28 @@ export function coverSize(sourceWidth:number,sourceHeight:number,box:Rect){
  const scale=Math.max(box.width/w,box.height/h);
  return {width:w*scale,height:h*scale,scale};
 }
-export function photoOffset(layout:MorphLayout,p:number,sourceWidth:number,sourceHeight:number){
+export function resolvePhotoFocus(sourceWidth:number,sourceHeight:number,focus?:PhotoFocus|null):PhotoFocus {
+ // No face detection: favor the upper third only for portrait images.
+ const fallbackY=sourceHeight>sourceWidth*1.2?.38:.5;
+ return {x:clamp(focus?.x??.5,0,1),y:clamp(focus?.y??fallbackY,0,1)};
+}
+export function photoOffset(layout:MorphLayout,p:number,sourceWidth:number,sourceHeight:number,focus?:PhotoFocus|null){
  const cover=coverSize(sourceWidth,sourceHeight,layout.photo);
  // Interpolate ONE uniform scale. Interpolating width and height separately
  // changes the aspect ratio between the endpoints, visibly warping faces.
  const w=Math.max(1,finite(sourceWidth,layout.avatar.width));
  const h=Math.max(1,finite(sourceHeight,layout.avatar.height));
+ const point=resolvePhotoFocus(w,h,focus);
  // Cover the compact square before its circular clip is applied. Both ends
  // use a uniform source scale, so the face keeps its proportions during morph.
  const portraitScale=Math.max(layout.avatar.width/w,layout.avatar.height/h);
  const portraitW=w*portraitScale,portraitH=h*portraitScale;
- const compactX=(layout.avatar.width-portraitW)/2;
- const compactY=(layout.avatar.height-portraitH)/2;
- const expandedX=(layout.width-cover.width)/2;
- // Keep the approved crop when it already covers the bleed; shift only when
- // a landscape image would otherwise leave its lower edge exposed.
- const expandedY=Math.min((layout.expandedTop-cover.height)*.3,layout.photo.height-cover.height);
+ const compactX=(layout.avatar.width-portraitW)*point.x;
+ const compactY=(layout.avatar.height-portraitH)*point.y;
+ const expandedX=(layout.width-cover.width)*point.x;
+ // The expanded cover includes hero bleed; both endpoints use the same
+ // normalized focus, so the subject does not jump as the mask changes shape.
+ const expandedY=(layout.photo.height-cover.height)*point.y;
  const scale=lerp(portraitScale,cover.scale,p);
  return {x:lerp(compactX,expandedX,p),y:lerp(compactY,expandedY,p),
   width:w*scale,height:h*scale,scale:scale/cover.scale,
