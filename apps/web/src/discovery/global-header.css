@@ -25,9 +25,11 @@
  filter:drop-shadow(0 1px 1px rgba(41,18,60,.46))
         drop-shadow(0 2px 4px rgba(75,34,99,.55));
 }
-/* Profile chrome on Android uses one unchanged raster, without a filtered
-   second paint surface during sheet motion or page-rail swipes. */
-.lh-profile-android .lh-island img{filter:none}
+/* The profile logo stays centered at the same coordinates with one fewer
+   transformed ancestor. Isolate only its small static image from the moving
+   visitor hero and sheet, without promoting the whole header. */
+.lh-profile-android .lh-center{left:0;width:100%;transform:none}
+.lh-profile-android .lh-island img{filter:none;transform:translate3d(0,0,0)}
 .lh-profile-android .lh-island{transform:translateX(-50%)}
 .lh-browse .lh-logo-contrast{opacity:0}
 .lh-tools{

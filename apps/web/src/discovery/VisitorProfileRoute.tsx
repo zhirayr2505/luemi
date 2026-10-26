@@ -204,13 +204,25 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
   const collapsed=shell?.dataset.sheetState==="collapsed";
   if(!collapsed&&!target.closest(".pm-a2-sheet,.pm-profile-sheet,.v3-int-sheet"))return;
+  const interactive=target.closest("button,a,input,textarea,select,[contenteditable=true]");
+  if(interactive&&!target.closest(".pm-photo-tile"))return;
   const source:RouteDrag["source"]=target.closest(".pm-hero")?"photo":
    target.closest(".pm-a2-tabs,.pm-tabs")?"tabs":target.closest(".pm-a2-pages,.pm-pages")?"pages":"sheet";
+  const screenLeft=route.current?.getBoundingClientRect().left??0;
+  const page=source==="pages"?target.closest<HTMLElement>('.v3-int-page[data-tab-id="about"]'):null;
+  // About cards start after both the page and card padding: their first text
+  // pixel is outside the original screen-edge candidate. Keep the 26px
+  // screen edge, and recognize the first 26px of About content only. Gallery
+  // thumbnails in the other pages retain their existing tab-swipe ownership.
+  const contentLeft=page?page.getBoundingClientRect().left+
+   (Number.parseFloat(getComputedStyle(page).paddingLeft)||0):screenLeft;
+  const contentX=e.clientX-contentLeft;
+  const edge=e.clientX-screenLeft<=26||(!!page&&contentX>=0&&contentX<=26);
   const serial=gestures.begin("pointer",e.pointerId,"route");
   if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
    origin:currentX(),span:width(),claimed:false,source,serial,
-   edge:e.clientX-(route.current?.getBoundingClientRect().left??0)<=26};
+   edge};
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
@@ -224,7 +236,9 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
     gestures.finishCandidate(g.serial,"route");
     gesture.current=null;return;
    }
-   if(dx<9||dx<Math.abs(dy)*1.28)return;
+   // The route sees capture first. At the same 7px recognition threshold as
+   // V3 pages, it can own an edge swipe before the child captures the pointer.
+   if(dx<(g.edge?7:9)||dx<Math.abs(dy)*1.28)return;
    // Preserve the existing gallery and tab pager until their first item;
    // a page with remaining content always owns its own right swipe.
    if(g.source==="photo"){

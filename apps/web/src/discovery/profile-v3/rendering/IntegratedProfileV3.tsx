@@ -59,6 +59,13 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  // A tab selection changes only its aria state and underline. Keep all five
  // page subtrees (and their decoded gallery tiles) stable across that render.
  const pageBodies=useMemo(()=>tabs.map(([id])=>renderPage(id)),[renderPage]);
+ const restoreTabTrack=()=>{
+  if(pagesTrack.current){pagesTrack.current.style.transition="none";
+   pagesTrack.current.style.transform="translate3d("+(-selectedTab.current*layout.current.width)+"px,0,0)";}
+  const button=tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")[selectedTab.current];
+  if(ink.current&&button){ink.current.style.transition="none";
+   ink.current.style.transform="translate3d("+(button.offsetLeft+(tabLabels.current?.offsetLeft??0))+"px,0,0)";}
+ };
  const photoTransform=(frame:ReturnType<typeof photoOffset>,elastic:number)=>{
   const zoom=1+elastic/Math.max(1,layout.current.photo.height);
   return "translate3d("+(frame.x-frame.width*(zoom-1)/2)+"px,"+frame.y+"px,0) scale("+(frame.scale*zoom)+")";
@@ -149,14 +156,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const interrupted=gesture.current;gesture.current=null;hostGestures.cancel();controller.cancelDrag();
    if(interrupted?.kind==="photo"&&rail.current){rail.current.style.transition="none";
     rail.current.style.transform="translate3d("+(-currentIndex.current*layout.current.width)+"px,0,0)";}
-   if(interrupted?.kind==="tabs"&&pagesTrack.current){pagesTrack.current.style.transition="none";
-    pagesTrack.current.style.transform="translate3d("+(-selectedTab.current*layout.current.width)+"px,0,0)";}
-   if(interrupted?.kind==="tabs"&&ink.current){
-    const button=tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")[selectedTab.current];
-    if(button){ink.current.style.transition="none";
-     ink.current.style.transform="translate3d("+(button.offsetLeft+(tabLabels.current?.offsetLeft??0))+"px,0,0)";
-    }
-   }
+   if(interrupted?.kind==="tabs")restoreTabTrack();
   };
   const visibility=()=>{if(document.visibilityState==="hidden"){cancelGesture();controller.suspend();}else controller.resume();};
   const suspend=()=>{cancelGesture();controller.suspend();},resume=()=>controller.resume();
@@ -172,7 +172,10 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   };
  },[]);
  const actions=useRef<ProfileRouteMotionHandle>({
-  suspendForRoute:()=>{gesture.current=null;coordinator.current.cancel();engine.current?.suspend();},
+  suspendForRoute:()=>{const interrupted=gesture.current;
+   gesture.current=null;coordinator.current.cancel();
+   if(interrupted?.kind==="tabs")restoreTabTrack();
+   engine.current?.suspend();},
   rollbackRoute:()=>engine.current?.resume(),
   commitRouteClose:()=>engine.current?.dispose(),suspendForBackground:()=>engine.current?.suspend(),
   resumeFromBackground:()=>engine.current?.resume()
@@ -459,7 +462,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     onPointerUp={up} onPointerCancel={e=>up(e,true)}
     onLostPointerCapture={e=>{if(e.target===e.currentTarget)up(e,true);}}>
     <div className="v3-int-pages-track" ref={pagesTrack}>
-     {tabs.map(([id,label],i)=><section key={id} className="v3-int-page" role="tabpanel"
+     {tabs.map(([id,label],i)=><section key={id} className="v3-int-page" role="tabpanel" data-tab-id={id}
       style={{left:"calc(var(--v3-w) * "+i+")"}}
       aria-label={label} inert={tab!==id} aria-hidden={tab!==id}>
       {pageBodies[i]}
