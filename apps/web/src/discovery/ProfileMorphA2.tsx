@@ -76,7 +76,7 @@ function Meta({view}:{view:ProfileView}){
 }
 
 type PointerSession={id:number;x:number;y:number;at:number;lastX:number;lastY:number;lastAt:number;
- axis:"pending"|"x"|"y";start:number;claimed:boolean;serial?:number;};
+ axis:"pending"|"x"|"y";start:number;claimed:boolean;serial?:number;velocity?:number;};
 const clamp=(x:number,min:number,max:number)=>Math.max(min,Math.min(max,x));
 const photoPixel=(element:HTMLElement|null,slideWidth:number,otherwise:number)=>{
  if(!element||slideWidth<=0)return otherwise;
@@ -246,7 +246,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* host ownership */}
   }
   if(g.serial!==undefined&&!g.claimed)return;
-  g.lastY=event.clientY;g.lastAt=performance.now();
+  const now=performance.now();const dt=now-g.lastAt;
+  if(dt>0&&dt<120){const v=(event.clientY-g.lastY)/dt;g.velocity=g.velocity===undefined?v:g.velocity*.28+v*.72;}
+  g.lastY=event.clientY;g.lastAt=now;
   motion.current?.drag(event.clientY);
  };
  const endSheet=(event:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
@@ -257,7 +259,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    else gestureArbiter?.finishCandidate(g.serial,"sheet");
   }
   if(!g.claimed){if(!cancelled)motion.current?.toggle();}
-  else motion.current?.release((event.clientY-g.y)/Math.max(1,performance.now()-g.at),cancelled);
+  else {const now=performance.now();const average=(event.clientY-g.y)/Math.max(1,now-g.at);
+   const velocity=now-g.lastAt<120?(g.velocity??average):average;
+   motion.current?.release(velocity,cancelled);}
   suppressClick.current=performance.now()+260;
   try{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}catch{/* implicit */}
  };
