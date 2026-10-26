@@ -68,7 +68,6 @@ try{
  await page.waitForFunction(()=>document.querySelector(".v3-profile-host.pm-inline")?.dataset.morphState==="compact",
   null,{timeout:2600});
  await page.screenshot({path:out+"/owner-after-touch.png"});
- const names=["О себе","Блики","Фото","Аккаунт","Подарки"];
  const tabs=root.locator(".v3-int-tab");
  assert.equal(await tabs.count(),5);
  for(let i=0;i<5;i++){
