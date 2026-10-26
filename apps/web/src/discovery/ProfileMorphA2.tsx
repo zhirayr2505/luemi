@@ -14,6 +14,7 @@ import {ProfileMorphMotion} from "./profile-morph-a2-motion";
 import {profileMorphGeometry,morphFrame,type MorphGeometry} from "./profile-morph-a2-geometry";
 import {reconcilePhotoId} from "./photo-viewer-state";
 import {useModalLayer} from "../ui/modal-layer";
+import {GestureArbiter} from "../ui/gesture-arbiter";
 import "./profile-morph-a2.css";
 
 type TabId="about"|"bliki"|"photos"|"meta"|"gifts";
@@ -28,6 +29,7 @@ type Props={
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
+ gestureArbiter?:GestureArbiter;
 };
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
  return <img data-photo-id={photo.id} src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
@@ -74,7 +76,7 @@ function Meta({view}:{view:ProfileView}){
 }
 
 type PointerSession={id:number;x:number;y:number;at:number;lastX:number;lastY:number;lastAt:number;
- axis:"pending"|"x"|"y";start:number;claimed:boolean;};
+ axis:"pending"|"x"|"y";start:number;claimed:boolean;serial?:number;};
 const clamp=(x:number,min:number,max:number)=>Math.max(min,Math.min(max,x));
 const photoPixel=(element:HTMLElement|null,slideWidth:number,otherwise:number)=>{
  if(!element||slideWidth<=0)return otherwise;
@@ -83,7 +85,7 @@ const photoPixel=(element:HTMLElement|null,slideWidth:number,otherwise:number)=>
  return m?clamp(-m.m41/slideWidth,0,Number.MAX_SAFE_INTEGER):otherwise;
 };
 /** A2 replaces the old sheet/hero/tabs engines; renderer owns no per-frame React state. */
-export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteMotion}:Props){
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,active=true,onMotionProgress,registerRouteMotion,gestureArbiter}:Props){
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]),photos=view.photos;
  const [tab,setTab]=useState<TabId>("about");
  const [photoId,setPhotoId]=useState<string|null>(photos[0]?.id??null);
@@ -226,37 +228,51 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  };
  useLayoutEffect(()=>{chooseTab(0,false);},[]);
  const startSheet=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  if(!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
+  if(!event.isPrimary){gestureArbiter?.secondFinger();return;}
+  if(event.pointerType==="mouse"&&event.button!==0)return;
   const engine=motion.current;if(!engine)return;
+  const serial=gestureArbiter?.begin("pointer",event.pointerId,"sheet");
+  if(gestureArbiter&&serial===null)return;
   sheetDrag.current={id:event.pointerId,x:event.clientX,y:event.clientY,at:performance.now(),
-   lastX:event.clientX,lastY:event.clientY,lastAt:performance.now(),axis:"pending",start:engine.sample(),claimed:false};
+   lastX:event.clientX,lastY:event.clientY,lastAt:performance.now(),axis:"pending",start:engine.sample(),claimed:false,serial:serial??undefined};
   engine.dragStart(event.clientY,geometry.current.span);
   try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* host ownership */}
  };
  const moveSheet=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const g=sheetDrag.current;if(g?.id!==event.pointerId)return;
-  if(Math.abs(event.clientY-g.y)>4)g.claimed=true;
+  if(Math.abs(event.clientY-g.y)>4&&!g.claimed){
+   if(g.serial!==undefined&&!gestureArbiter?.claim("sheet",g.serial))return;
+   g.claimed=true;
+  }
+  if(g.serial!==undefined&&!g.claimed)return;
   g.lastY=event.clientY;g.lastAt=performance.now();
   motion.current?.drag(event.clientY);
  };
  const endSheet=(event:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
   const g=sheetDrag.current;if(!g||g.id!==event.pointerId)return;
   sheetDrag.current=null;
+  if(g.serial!==undefined){
+   if(g.claimed)gestureArbiter?.finish("sheet",g.serial);
+   else gestureArbiter?.finishCandidate(g.serial,"sheet");
+  }
   if(!cancelled&&!g.claimed)motion.current?.toggle();
   else motion.current?.release((event.clientY-g.y)/Math.max(1,performance.now()-g.at),cancelled);
   suppressClick.current=performance.now()+260;
   try{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}catch{/* implicit */}
  };
  const slideStart=(event:ReactPointerEvent<HTMLDivElement>,kind:"photo"|"tab")=>{
-  if(!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
+  if(!event.isPrimary){gestureArbiter?.secondFinger();return;}
+  if(event.pointerType==="mouse"&&event.button!==0)return;
   if(kind==="photo"&&(motion.current?.sample()??0)<.95)return;
   if((event.target as Element).closest("button"))return;
+  const serial=gestureArbiter?.begin("pointer",event.pointerId,kind==="photo"?"hero":"tabs");
+  if(gestureArbiter&&serial===null)return;
   const node=kind==="photo"?photoTrack.current:pagesTrack.current;
   const width=(kind==="photo"?photoViewport.current:root.current)?.clientWidth??1;
   const index=kind==="photo"?activeIndex:activeTabIndex;
   const start=photoPixel(node,width,index);
   const g:PointerSession={id:event.pointerId,x:event.clientX,y:event.clientY,at:performance.now(),lastX:event.clientX,
-   lastY:event.clientY,lastAt:performance.now(),axis:"pending",start,claimed:false};
+   lastY:event.clientY,lastAt:performance.now(),axis:"pending",start,claimed:false,serial:serial??undefined};
   (kind==="photo"?photoDrag:pageDrag).current=g;
  };
  const slideMove=(event:ReactPointerEvent<HTMLDivElement>,kind:"photo"|"tab")=>{
@@ -267,12 +283,13 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(Math.max(Math.abs(dx),Math.abs(dy))<8)return;
    g.axis=Math.abs(dx)>Math.abs(dy)*1.2?"x":"y";
    if(g.axis!=="x")return;
+   if(g.serial!==undefined&&!gestureArbiter?.claim(kind==="photo"?"hero":"tabs",g.serial))return;
    g.claimed=true;
    const node=kind==="photo"?photoTrack.current:pagesTrack.current;
    if(node){node.style.transition="none";}
    try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* optional */}
   }
-  if(g.axis!=="x")return;
+  if(g.axis!=="x"||!g.claimed)return;
   if(event.cancelable)event.preventDefault();
   const viewport=kind==="photo"?photoViewport.current:root.current;
   const width=Math.max(1,viewport?.clientWidth??1);
@@ -293,6 +310,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   const s=kind==="photo"?photoDrag:pageDrag,g=s.current;
   if(!g||g.id!==event.pointerId)return;
   s.current=null;
+  if(g.serial!==undefined){
+   if(g.claimed)gestureArbiter?.finish(kind==="photo"?"hero":"tabs",g.serial);
+   else gestureArbiter?.finishCandidate(g.serial,kind==="photo"?"hero":"tabs");
+  }
   const index=kind==="photo"?activeIndex:activeTabIndex;
   const width=Math.max(1,(kind==="photo"?photoViewport.current:root.current)?.clientWidth??1);
   const dx=event.clientX-g.x,dt=Math.max(1,performance.now()-g.at);
