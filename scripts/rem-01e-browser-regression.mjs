@@ -18,13 +18,13 @@ const read=()=>page.evaluate(()=>{
  const gallery=Array.from(root.querySelectorAll(".pm-photo-tile img")).map(e=>e.getAttribute("src"));
  const tabs=Array.from(root.querySelectorAll('[role="tab"]')).map(e=>e.getAttribute("aria-label")||e.textContent.trim());
  const html=e=>root.querySelector(e)?.textContent.trim()||"";
- return {photos,gallery,tabs,identity:html(".pm-identity h2"),location:html(".pm-identity-location"),
-  goal:html(".pm-goal-chip"),about:html(".pm-card-stack"),noPhoto:html(".pm-hero-no-photo"),
-  disclaimer:get(".pm-demo-disclaimer"),verified:!!root.querySelector('[aria-label="Подтверждён"]'),
+ return {photos,gallery,tabs,identity:html(".pm-a2-compact-identity h2"),location:html(".pm-a2-compact-identity p"),
+  goal:html(".pm-a2-compact-identity .pm-a2-goal"),about:html(".pm-card-stack"),noPhoto:html(".pm-a2-no-photo"),
+  disclaimer:get(".pm-demo-disclaimer"),verified:!!root.querySelector('[aria-label="Подтверждено"]'),
   ownerActions:root.querySelectorAll(".pm-owner-actions button").length,
   globalHeaders:document.querySelectorAll(".lh-header").length,
   profileShells:document.querySelectorAll(".pm-shell").length,
-  sheetRenderer:root.getAttribute("data-sheet-renderer")};
+  sheetRenderer:root.getAttribute("data-morph-state")};
 });
 const pass=s=>console.log("REM01E_BROWSER_PASS "+s);
 try{
@@ -32,17 +32,17 @@ try{
   await goto("step8",kind,theme);const step=await read();
   assert.equal(step.profileShells,1,"step 8 must not create second independent profile");
   assert.equal(step.globalHeaders,0,"registration preview must not mount GlobalHeader");
-  assert.equal(step.sheetRenderer,"absolute");
+  assert.equal(step.sheetRenderer,"compact","step8 must open compact by default");
   assert.equal(step.ownerActions,0,"local preview cannot edit/publish inside ProfileMaster");
   assert.equal(step.verified,false);
   assert.ok(step.disclaimer.some(s=>s.includes("не опубликована")),"local draft label must remain");
   assert.deepEqual(step.photos,step.gallery,"hero and photo-tab source order identical");
-  assert.deepEqual(step.tabs,["О себе","Блики","Фото","Подарки","О профиле"]);
+  assert.deepEqual(step.tabs,["О себе","Блики","Фото","Аккаунт","Подарки"]);
   assert.equal(await page.locator(".disabled-submit").isDisabled(),true);
   assert.ok((await page.locator(".preview-root").innerText()).includes("локальный"));
   const expected=kind==="none"?0:kind==="one"?1:kind==="mixed"?4:6;
   assert.equal(step.photos.length,expected,theme+"/"+kind);
-  if(kind==="none")assert.ok(step.noPhoto.includes("нет фото"));
+  if(kind==="none")assert.ok(step.noPhoto.toLowerCase().includes("нет доступных фото"));
   if(kind==="undecided")assert.equal(step.goal,"");
   await goto("owner",kind,theme);const owner=await read();
   for(const field of ["photos","gallery","tabs","identity","location","goal","about","noPhoto"]){
@@ -83,8 +83,10 @@ try{
  pass("step-8 edit/back-to-registration and demo CTA retained without publication");
 
  await goto("step8","one");
- const topPhoto=page.locator(".registration-profile-simulator .pm-photo-slide").first();
- await topPhoto.click({position:{x:30,y:40}});
+ const face=page.locator(".registration-profile-simulator .pm-a2-face");
+ await face.click();
+ await page.locator('.registration-profile-simulator .pm-a2-root[data-morph-state="expanded"]').waitFor({state:"attached",timeout:2200});
+ await face.click({position:{x:200,y:180}});
  await page.locator('.pm-viewer[aria-label="Просмотр фото"]').waitFor({state:"visible"});
  assert.equal(await page.locator(".pm-viewer-image").getAttribute("src"),(await read()).photos[0]);
  await page.getByRole("button",{name:"Действия с фото"}).click();
@@ -97,9 +99,9 @@ try{
  pass("real fullscreen viewer cannot report/make-main/publish/share successfully in local preview");
 
  await goto("step8","six");
- await page.locator(".registration-profile-simulator .pm-tab").filter({hasText:"Фото"}).click();
+ await page.locator(".registration-profile-simulator .pm-a2-tab").filter({hasText:"Фото"}).click();
  await page.waitForTimeout(220);
- assert.equal(await page.locator(".registration-profile-simulator .pm-tab[aria-selected=true]").innerText(),"Фото");
+ assert.equal(await page.locator(".registration-profile-simulator .pm-a2-tab[aria-selected=true]").innerText(),"Фото");
  assert.equal(await page.locator(".registration-profile-simulator .pm-photo-tile").count(),6);
  pass("shared ProfileMaster tabs render six ordered photos, no fake blank slots");
  if(errors.length)throw new Error("Unexpected browser errors: "+errors.join(" | "));
