@@ -38,7 +38,7 @@
 .pm-meta-item strong{font-size:13px;overflow-wrap:anywhere}
 
 /* A2: OPAQUE backing remains mounted, isolated and full-screen above Discovery.
-   Old pm-sheet-viewport + CSS top writer intentionally absent. */
+   Legacy absolute-top sheet and competing writers intentionally absent. */
 .pm-a2-root{position:relative;display:block;isolation:isolate;width:100%;height:100%;
  min-height:0;overflow:hidden;color:var(--ink);background:#e2c9ed;
  --a2-compact-top:260px;--a2-expanded-top:510px;--a2-avatar-left:20px;--a2-avatar-top:110px;--a2-avatar-size:110px;}
