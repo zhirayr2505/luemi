@@ -60,13 +60,17 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   if(surface){surface.style.left=m.x+"px";surface.style.top=m.y+"px";
    surface.style.width=m.width+"px";surface.style.height=m.height+"px";
    surface.style.borderRadius=(1-progress)*50+"%";}
-  for(const item of current.current.photos){
+  // Only the active and immediately adjacent decoded images can enter
+  // the clip. Avoid writing size/visibility for every photo at every frame.
+  const idx=currentIndex.current;
+  for(const [i,item] of current.current.photos.entries()){
+   if(Math.abs(i-idx)>1)continue;
    const image=refs.current.get(item.id);if(!image)continue;
-   const ready=image.complete&&image.naturalWidth>0&&image.naturalHeight>0;
-   image.style.visibility=ready?"visible":"hidden";
-   if(!ready)continue;
+   if(!image.complete||image.naturalWidth<=0||image.naturalHeight<=0)continue;
    const frame=photoOffset(l,progress,image.naturalWidth,image.naturalHeight);
-   image.style.width=frame.width+"px";image.style.height=frame.height+"px";
+   const w=frame.width+"px",h=frame.height+"px";
+   if(image.style.width!==w)image.style.width=w;
+   if(image.style.height!==h)image.style.height=h;
    image.style.transform="translate3d("+frame.x+"px,"+frame.y+"px,0)";
   }
   if(track&&!gesture.current?.claimed)track.style.transform="translate3d("+(-currentIndex.current*l.width)+"px,0,0)";
@@ -183,6 +187,9 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   const decision=coordinator.current.move({id:e.pointerId,x:e.clientX,y:e.clientY,time:e.timeStamp});
   const needed:Owner=g.kind==="handle"?"SHEET":g.kind==="photo"?"PHOTO":"TABS";
   if(decision.owner!==needed)return;
+  // For horizontal gestures in native-scroll pages, prevent browser panning
+  // only after ownership was established. Vertical scroll is untouched.
+  if(g.kind==="tabs"&&e.cancelable)e.preventDefault();
   if(!g.claimed){g.claimed=true;
    if(g.kind==="handle")engine.current?.beginDrag(g.y);
    else {const track=g.kind==="photo"?rail.current:pagesTrack.current;
