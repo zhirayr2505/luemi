@@ -107,4 +107,19 @@ const make=reduce=>{
  assert.equal(pending(),0);
  engine.dispose();
 }
+
+{
+ const renderer=readFileSync(new URL("../apps/web/src/discovery/ProfileMorphA2.tsx",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../apps/web/src/discovery/profile-morph-a2.css",import.meta.url),"utf8");
+ assert.ok(!renderer.includes('photoViewport.current.style.transform'),
+  "WebView regression: never transform the clipping viewport inside a nonuniformly scaled face");
+ assert.match(renderer,/photoTrack\.current\.style\.setProperty\("--a2-pixel-ratio"/,
+  "aspect correction lives within the clipped slide, not on its scrollport");
+ assert.match(css,/\.pm-a2-photo-viewport\{[^}]*transform:none;contain:paint;isolation:isolate/s,
+  "photo viewport must remain a stable untransformed paint boundary");
+ assert.match(css,/\.pm-a2-photo-slide img\{[^}]*transform:scaleY\(var\(--a2-pixel-ratio,1\)\)/s,
+  "counter-scale pixels within the clipping boundary");
+ assert.doesNotMatch(css,/\.pm-a2-background>img\{[^}]*scale\(6\)/s,
+  "WebView background must not allocate a heavily magnified filtered image layer");
+}
 console.log("Profile Morph A2 controller: interruption/reversal/geometry/reduced-motion/viewport-rebase PASS");
