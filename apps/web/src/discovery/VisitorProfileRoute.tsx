@@ -7,7 +7,7 @@ import {GestureArbiter,isGestureModalBlocked,fractionalTrack,computedTranslation
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import {useModalLayer} from "../ui/modal-layer";
-import type {ProfileRouteMotionHandle} from "./ProfileMaster";
+import type {ProfileRouteMotionHandle} from "./ProfileMorphA2";
 import type {HeaderMotion} from "./GlobalHeader";
 import type {ProfileMasterData} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
