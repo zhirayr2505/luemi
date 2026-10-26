@@ -23,7 +23,7 @@ export function createProfileLayout(v:Viewport):MorphLayout {
  const available=Math.max(0,height-safe.bottom-compactTop);
  // On a small WebView do not promote a full-viewport portrait layer. The
  // expanded hero is capped to a portrait-sized area above the content sheet.
- const heroLimit=clamp(height*.53,short?230:300,short?315:435);
+ const heroLimit=clamp(height*.435,short?215:280,short?290:395);
  const span=Math.max(0,Math.min(available*(short?.38:.59),available-96,heroLimit-compactTop));
  const expandedTop=compactTop+span;
  const logoWidth=Math.min(128,usable*.36);
@@ -45,12 +45,14 @@ export function coverSize(sourceWidth:number,sourceHeight:number,box:Rect){
  return {width:w*scale,height:h*scale,scale};
 }
 export function photoOffset(layout:MorphLayout,p:number,sourceWidth:number,sourceHeight:number){
- const mask=photoMask(layout,p),cover=coverSize(sourceWidth,sourceHeight,layout.photo);
+ const cover=coverSize(sourceWidth,sourceHeight,layout.photo);
  // The compact crop uses the same decoded pixels as expanded. Keep the focal
  // center near the upper third of a portrait; no nonuniform scaling is applied.
- const compactX=mask.width/2-cover.width*.5;
- const compactY=mask.height/2-cover.height*.32;
+ const portraitScale=Math.min(layout.avatar.width/sourceWidth,layout.avatar.height/sourceHeight);
+ const portraitW=sourceWidth*portraitScale,portraitH=sourceHeight*portraitScale;
+ const compactX=(layout.avatar.width-portraitW)/2;
+ const compactY=(layout.avatar.height-portraitH)/2;
  const expandedX=(layout.width-cover.width)/2;
  const expandedY=(layout.expandedTop-cover.height)*.3;
- return {x:lerp(compactX,expandedX,p),y:lerp(compactY,expandedY,p),width:cover.width,height:cover.height};
+ return {x:lerp(compactX,expandedX,p),y:lerp(compactY,expandedY,p),width:lerp(portraitW,cover.width,p),height:lerp(portraitH,cover.height,p)};
 }
