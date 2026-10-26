@@ -4,7 +4,7 @@ import {mkdir,writeFile} from "node:fs/promises";
 import {chromium} from "playwright";
 /** Profile Morph A2 behavioral QA on synthetic Chromium, not physical Telegram A55. */
 const BASE=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
-const OUT=process.env.LUEMI_QA_OUT||"qa-artifacts/profile-morph-a2";
+const OUT=process.env.LUEMI_QA_OUT||"qa-artifacts/rem-00c/profile-morph-a2";
 const androidUA="Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Mobile Safari/537.36";
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const required=async(page,selector,scope="page")=>{
@@ -89,9 +89,9 @@ async function profileA2(browser,platform="android"){
   const handle=await root.locator(".pm-a2-handle").boundingBox();
   assert.ok(handle?.height>=25);
   const before=await state(page),frames=[];
-  await touch(page,{x:handle.x+handle.width*.5,y:handle.y+handle.height*.5,dy:-115,
+  await touch(page,{x:handle.x+handle.width*.5,y:handle.y+handle.height*.5,dy:-205,
    onStep:async i=>{if([2,5,8,12].includes(i))frames.push((await state(page)).sheet.y)}});
-  assert.ok(frames.length===4&&frames.at(-1)<before.sheet.y-60,"up swipe follows finger immediately");
+  assert.ok(frames.length===4&&frames.at(-1)<before.sheet.y-110,"up swipe follows finger immediately");
   assert.ok(frames.every((y,i)=>i===0||y<=frames[i-1]+9),"no reverse snap while moving up");
   await sleep(340);
   const now=await state(page);
