@@ -52,9 +52,9 @@
 .pm-a2-background-stage{position:absolute;inset:0;z-index:1;pointer-events:none;}
 .pm-a2-background{position:absolute;inset:0;overflow:hidden;pointer-events:none;
  opacity:1;background:#b58bc7}
-.pm-a2-background>img{position:absolute;left:50%;top:50%;width:110px;height:110px;
- transform:translate(-50%,-50%) scale(6);object-fit:cover;object-position:center 30%;
- filter:blur(12px);pointer-events:none}
+.pm-a2-background>img{position:absolute;inset:-18px;width:calc(100% + 36px);height:calc(100% + 36px);
+ object-fit:cover;object-position:center 30%;filter:blur(14px);
+ pointer-events:none}
 .pm-a2-background>img.pm-a2-bg-incoming{opacity:0;transition:opacity 195ms ease-out;}
 .pm-a2-background>img.pm-a2-bg-incoming.is-ready{opacity:1;}
 .pm-a2-background-tone{position:absolute;inset:0;background:
@@ -64,16 +64,19 @@
  border-radius:50%;background:#ad92c4;
  transform:translate3d(var(--a2-avatar-left),var(--a2-avatar-top),0) scale(.27,.22);
  will-change:transform;user-select:none;-webkit-user-select:none;
+ isolation:isolate;contain:paint;
  outline:0;box-shadow:0 9px 35px rgba(40,17,65,.2)}
 .pm-a2-photo-ring{position:absolute;inset:0;pointer-events:none;border-radius:inherit;
  box-shadow:inset 0 0 0 13px rgba(255,255,255,.98);opacity:1}
 .pm-a2-face:focus-visible{outline:4px solid #fdf8ff;outline-offset:-4px}
-.pm-a2-photo-viewport{position:absolute;inset:0;overflow:hidden;touch-action:pan-y}
+.pm-a2-photo-viewport{position:absolute;inset:0;overflow:hidden;touch-action:pan-y;
+ transform:none;contain:paint;isolation:isolate}
 .pm-a2-photo-track{width:100%;height:100%;display:flex;transform:translate3d(0,0,0);
  transition:none;will-change:transform}
 .pm-a2-photo-slide{width:100%;height:100%;min-width:100%;flex:0 0 100%;overflow:hidden}
 .pm-a2-photo-slide img{display:block;width:100%;height:100%;object-fit:cover;
- object-position:center 26%;user-select:none;-webkit-user-select:none;pointer-events:none}
+ object-position:center 26%;transform:scaleY(var(--a2-pixel-ratio,1));
+ transform-origin:center;user-select:none;-webkit-user-select:none;pointer-events:none}
 .pm-a2-no-photo{width:100%;height:100%;display:flex;flex-direction:column;gap:15px;
  align-items:center;justify-content:center;color:#fff;background:linear-gradient(140deg,#ab90c6,#debad8)}
 .pm-a2-compact-identity{position:absolute;z-index:4;
