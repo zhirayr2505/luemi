@@ -75,7 +75,7 @@
 .v3-int-tab.active{color:#955bd2;font-weight:750}
 .v3-int-ink{position:absolute;bottom:0;left:0;height:4px;border-radius:12px;
  background:#ac75dc;pointer-events:none;transform:translate3d(7px,0,0)}
-.v3-int-pages{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:pan-y;
+.v3-int-pages{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;
  overscroll-behavior:contain}
 .v3-int-pages-track{position:absolute;inset:0;width:100%;height:100%;transition:none;
  transform:translate3d(0,0,0)}
