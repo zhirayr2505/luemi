@@ -1,0 +1,54 @@
+.pm-viewer{position:fixed;inset:0;z-index:10000;overflow:hidden;isolation:isolate;background:#09080f;color:#fff;touch-action:none}
+.pm-viewer-stage{position:absolute;inset:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;opacity:1;transition:opacity 240ms ease}
+/* REM-03B: three independent viewport-width media slots. Track is the
+   ONLY horizontal property writer; surface owns vertical/open/close; IMG owns zoom. */
+.pm-viewer-surface{position:absolute;inset:0;overflow:hidden;transform-origin:center;transform:none;will-change:transform}
+.pm-viewer-track{position:absolute;inset:0;width:100%;height:100%;display:flex;flex-wrap:nowrap;overflow:visible;transform:translate3d(-100%,0,0);will-change:transform;transition:none}
+.pm-viewer-slide{position:relative;flex:0 0 100%;min-width:100%;width:100%;height:100%;overflow:hidden;isolation:isolate}
+.pm-viewer-image,.pm-viewer-neighbor-image{width:100%;height:100%;display:block;object-fit:contain;transform-origin:center;user-select:none;-webkit-user-select:none;pointer-events:none}
+.pm-viewer-image{transition:transform 240ms cubic-bezier(.2,.8,.2,1)}
+/* REM-03D: source crop/clip and pixel transform are independent and the
+   image is scaled UNIFORMLY; neither three-slide track nor zoom IMG morphs. */
+.pm-viewer-morph-clip{
+ position:absolute;inset:0;z-index:2;display:none;overflow:hidden;
+ pointer-events:none;clip-path:inset(0px);will-change:clip-path;
+}
+.pm-viewer-morph-image{
+ position:absolute;max-width:none;max-height:none;object-fit:fill;
+ transform-origin:top left;pointer-events:none;user-select:none;
+ -webkit-user-select:none;will-change:transform;
+}
+.pm-viewer[data-morph-active="true"] .pm-viewer-image{visibility:hidden}
+.pm-viewer-neighbor-image{transition:none}
+.pm-viewer-slide-placeholder{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:13px;text-align:center;color:rgba(255,255,255,.84);pointer-events:none}
+
+.pm-viewer-top,.pm-viewer-bottom{position:absolute;z-index:3;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-left:19px;padding-right:19px;pointer-events:none}
+.pm-viewer-top{top:0;padding-top:calc(63px + var(--pv-visual-top,0px) + max(env(safe-area-inset-top,0px),var(--pv-safe-top,0px)))}
+.pm-viewer-bottom{bottom:0;padding-bottom:calc(20px + var(--pv-visual-bottom,0px) + max(env(safe-area-inset-bottom,0px),var(--pv-safe-bottom,0px)));font-size:12px;text-shadow:0 2px 6px #000}
+.pm-viewer-top>* ,.pm-viewer-bottom>*{pointer-events:auto}
+.pm-viewer-top,.pm-viewer-bottom{
+ padding-left:max(19px,var(--pv-safe-left,0px),env(safe-area-inset-left,0px));
+ padding-right:max(19px,var(--pv-safe-right,0px),env(safe-area-inset-right,0px));
+}
+.pm-viewer-top>span{font-size:13px;font-weight:750}
+.pm-viewer-topspacer{width:37px}
+.pm-viewer button{width:38px;height:38px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.17);border-radius:50%;background:rgba(25,22,35,.42);color:white}
+.pm-viewer button:disabled{opacity:.25}
+.pm-viewer-actions{display:flex;gap:7px}
+.pm-viewer-menu-backdrop{position:absolute;inset:0;z-index:5;display:flex;align-items:flex-end;background:rgba(0,0,0,.45)}
+.pm-viewer-menu{display:flex;flex-direction:column;gap:4px;width:100%;padding:12px 14px calc(14px + var(--pv-visual-bottom,0px) + max(env(safe-area-inset-bottom,0px),var(--pv-safe-bottom,0px)));border-radius:22px 22px 0 0;background:#23202e}
+.pm-viewer .pm-viewer-menu button{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;height:46px;padding:0 14px;font-size:14px;text-align:left;border-radius:12px;background:#302c3a;border:0}
+.pm-viewer .pm-viewer-menu button:last-child{justify-content:center;margin-top:6px;background:#393442}
+/* REM-03A resource state: keeps the approved full-screen geometry intact. */
+.pm-viewer-media-status{
+ position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:14px;
+ color:rgba(255,255,255,.84);font-size:13px;text-align:center;
+ pointer-events:none;
+}
+.pm-viewer .pm-viewer-media-status .pm-viewer-retry{
+ pointer-events:auto;width:auto;height:38px;padding:0 16px;border-radius:20px;
+ font-size:13px;
+}
+.pm-viewer-message{position:absolute;left:20px;right:20px;bottom:88px;z-index:8;text-align:center;padding:11px 13px;border-radius:14px;color:#fff;background:rgba(61,47,75,.94);font-size:12px;line-height:1.5}
+
