@@ -5,10 +5,11 @@
 .v3-int-root{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;
  isolation:isolate;background:#c4a4d5;color:#fff;--v3-w:390px;--v3-photo-height:530px;
  --v3-identity-compact-x:149px;--v3-identity-compact-y:115px;--v3-identity-expanded-y:410px;
- --v3-extra-scroll:200px}
+ --v3-extra-scroll:200px;--v3-hero-bleed:36px}
 .v3-int-opaque{position:absolute;inset:0;z-index:0;pointer-events:none;
  background:linear-gradient(150deg,#a984c6,#e8b5d7 55%,#cfa8df)}
-.v3-int-hero{position:absolute;left:0;right:0;top:0;height:var(--v3-photo-height);z-index:1;
+.v3-int-hero{position:absolute;left:0;right:0;top:0;
+ height:calc(var(--v3-photo-height) + var(--v3-hero-bleed) + 24px);z-index:1;
  overflow:hidden;isolation:isolate;background:linear-gradient(130deg,#b78cc6,#e8c3de)}
 .v3-int-ambient{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;
  background:linear-gradient(130deg,#ae86c9,#e7b2d6)}
@@ -18,11 +19,12 @@
 .v3-int-ambient span{position:absolute;inset:0;background:linear-gradient(150deg,rgba(84,43,110,.4),rgba(230,167,217,.25) 65%,rgba(80,45,118,.2))}
 .v3-int-mask{position:absolute;z-index:2;overflow:hidden;touch-action:pan-y;
  background:linear-gradient(130deg,#ac8ac4,#d8b4d9);border-radius:50%;
- user-select:none;-webkit-user-select:none;isolation:isolate;contain:paint;outline:0}
+ clip-path:inset(0 round 50%);user-select:none;-webkit-user-select:none;
+ isolation:isolate;contain:paint;outline:0}
 .v3-int-mask:focus-visible{outline:3px solid #fff;outline-offset:-3px}
 .v3-int-photo-rail{position:absolute;inset:0 auto auto 0;width:100%;height:100%;
  transition:none;transform:translate3d(0,0,0)}
-.v3-int-photo-slide{position:absolute;top:0;height:var(--v3-photo-height);width:var(--v3-w);
+.v3-int-photo-slide{position:absolute;top:0;height:calc(var(--v3-photo-height) + var(--v3-hero-bleed) + 24px);width:var(--v3-w);
  left:calc(var(--v3-w) * var(--v3-slide-index));overflow:hidden;contain:paint}
 .v3-int-photo-slide img{position:absolute;top:0;left:0;max-width:none;max-height:none;
  display:block;transform-origin:0 0;user-select:none;pointer-events:none;-webkit-user-select:none}
@@ -30,6 +32,13 @@
  align-items:center;gap:10px;text-align:center;padding:25px;color:#fff}
 .v3-int-ring{position:absolute;inset:0;box-shadow:inset 0 0 0 3px rgba(255,255,255,.98);
  border-radius:inherit;pointer-events:none}
+.v3-int-bliki-avatar{position:absolute;left:0;top:0;z-index:3;box-sizing:border-box;
+ border:2px solid #d496f4;box-shadow:0 0 10px rgba(184,103,228,.6),inset 0 0 5px rgba(240,199,255,.5);
+ pointer-events:none;opacity:1}
+.v3-int-bliki-name{display:inline-flex;align-items:center;justify-content:center;
+ width:27px;height:27px;flex:none;border:1px solid #e9baff;border-radius:50%;
+ color:#fff;background:rgba(157,91,201,.55);box-shadow:0 0 9px rgba(212,145,247,.5);opacity:0}
+.v3-int-bliki-avatar[hidden],.v3-int-bliki-name[hidden]{display:none!important}
 .v3-int-compact-identity,.v3-int-expanded-identity{position:absolute;z-index:3;color:#fff;
  pointer-events:none;text-shadow:0 1px 7px rgba(44,22,58,.4)}
 .v3-int-compact-identity{top:var(--v3-identity-compact-y);left:var(--v3-identity-compact-x);
@@ -74,7 +83,7 @@
 .v3-int-tab{position:relative;z-index:2;min-width:0;flex:1 1 20%;border:0;padding:0 2px;
  background:transparent;color:var(--subtle,#917e9f);font:inherit;font-size:clamp(10px,2.65vw,13px)}
 .v3-int-tab.active{color:#955bd2;font-weight:750}
-.v3-int-ink{position:absolute;bottom:0;left:0;height:4px;border-radius:12px;
+.v3-int-ink{position:absolute;bottom:0;left:0;width:calc((100% - 14px)/5);height:4px;border-radius:12px;
  background:#ac75dc;pointer-events:none;transform:translate3d(7px,0,0)}
 .v3-int-pages{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;
  overscroll-behavior:contain}
@@ -104,7 +113,6 @@
 
 /* Stable tab label and immutable original logo layers. No opacity animations
    on labels: only underline + page rail move during the gesture. */
-.v3-int-tab{transition:none!important;opacity:1;backface-visibility:hidden}
-.v3-int-tabs{backface-visibility:hidden;contain:paint}
+.v3-int-tab{transition:none!important;opacity:1}
 .v3-int-ink{will-change:transform}
 .v3-int-ambient img{transform:none;will-change:auto}

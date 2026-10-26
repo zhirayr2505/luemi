@@ -1,6 +1,6 @@
 import {useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent,ReactNode} from "react";
-import {Images,Eye,PenLine,Heart,ShieldCheck} from "lucide-react";
+import {Images,Eye,PenLine,Heart,ShieldCheck,Sparkles} from "lucide-react";
 import {Flag} from "../../../ui/Flag";
 import {goals} from "../../../registration/model";
 import type {ProfileView} from "../../ProfileModel";
@@ -26,13 +26,14 @@ type SurfaceProps={
 };
 type Session={id:number;kind:"handle"|"photo"|"tabs";scroll?:HTMLElement|null;scrollStart?:number;vertical?:boolean;at:number;x:number;y:number;
  lastX:number;lastY:number;lastAt:number;velocity:number;claimed:boolean;
- startIndex:number;startOffset:number;buttons?:Array<{x:number;width:number}>};
+ startIndex:number;startOffset:number;buttons?:Array<{x:number}>};
 export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress,
  onEdit,onShowPreview,renderPage,registerRouteMotion}:SurfaceProps){
  const p=view.profile,photos=view.photos;
  const root=useRef<HTMLDivElement>(null),mask=useRef<HTMLDivElement>(null);
  const rail=useRef<HTMLDivElement>(null),sheet=useRef<HTMLDivElement>(null),identityCompact=useRef<HTMLDivElement>(null);
  const identityExpanded=useRef<HTMLDivElement>(null),photoDots=useRef<HTMLDivElement>(null);
+ const blikiAvatar=useRef<HTMLDivElement>(null),blikiName=useRef<HTMLSpanElement>(null);
  const ring=useRef<HTMLDivElement>(null),pagesTrack=useRef<HTMLDivElement>(null),tabsRoot=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),refs=useRef(new Map<string,HTMLImageElement>());
  const current=useRef({photos,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress});
@@ -57,15 +58,23 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  // A tab selection changes only its aria state and underline. Keep all five
  // page subtrees (and their decoded gallery tiles) stable across that render.
  const pageBodies=useMemo(()=>tabs.map(([id])=>renderPage(id)),[renderPage]);
- const paint=useRef<(progress:number)=>void>(()=>{});
- paint.current=progress=>{
+ const photoTransform=(frame:ReturnType<typeof photoOffset>,elastic:number)=>{
+  const zoom=1+elastic/Math.max(1,layout.current.photo.height);
+  return "translate3d("+(frame.x-frame.width*(zoom-1)/2)+"px,"+frame.y+"px,0) scale("+(frame.scale*zoom)+")";
+ };
+ const paint=useRef<(progress:number,elastic?:number)=>void>(()=>{});
+ paint.current=(progress,elastic=0)=>{
   const l=layout.current,m=photoMask(l,progress);
   const surface=mask.current,move=sheet.current;
   if(surface){surface.style.transform="translate3d("+m.x+"px,"+m.y+"px,0)";
-   surface.style.width=m.width+"px";surface.style.height=m.height+"px";
+   surface.style.width=m.width+"px";surface.style.height=(m.height+elastic)+"px";
    // Pixel radius is a true circle at compact (a square box), shrinking to
    // zero without percentage radii turning into elliptical corners.
-   surface.style.borderRadius=(Math.min(m.width,m.height)*(1-progress)/2)+"px";}
+   const radius=Math.min(m.width,m.height)*(1-progress)/2;
+   surface.style.borderRadius=radius+"px";
+   // Explicit clipping keeps independently composited image tiles inside the
+   // visible circle in Android WebView; the ring inherits the same radius.
+   surface.style.clipPath="inset(0 round "+radius+"px)";}
   // Only the active and immediately adjacent decoded images can enter
   // the clip. Avoid writing size/visibility for every photo at every frame.
   const idx=currentIndex.current;
@@ -77,11 +86,20 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const w=frame.baseWidth+"px",h=frame.baseHeight+"px";
    if(image.style.width!==w)image.style.width=w;
    if(image.style.height!==h)image.style.height=h;
-   image.style.transform="translate3d("+frame.x+"px,"+frame.y+"px,0) scale("+frame.scale+")";
+   image.style.transform=photoTransform(frame,elastic);
   }
-  if(move)move.style.transform="translate3d(0,"+(l.span*progress)+"px,0)";
-  if(identityCompact.current){identityCompact.current.style.opacity=String(clamp((.63-progress)/.31,0,1));}
-  if(identityExpanded.current){identityExpanded.current.style.opacity=String(clamp((progress-.36)/.31,0,1));}
+  if(move)move.style.transform="translate3d(0,"+(l.span*progress+elastic)+"px,0)";
+  if(identityCompact.current)identityCompact.current.style.opacity=String(clamp((.14-progress)/.12,0,1));
+  if(identityExpanded.current)identityExpanded.current.style.opacity=String(clamp((progress-.79)/.17,0,1));
+  if(blikiAvatar.current&&!blikiAvatar.current.hidden){
+   blikiAvatar.current.style.opacity=String(clamp((.22-progress)/.14,0,1));
+   blikiAvatar.current.style.transform="translate3d("+(m.x-6)+"px,"+(m.y-6)+"px,0)";
+   blikiAvatar.current.style.width=(m.width+12)+"px";
+   blikiAvatar.current.style.height=(m.height+12)+"px";
+   blikiAvatar.current.style.borderRadius=(Math.min(m.width,m.height)*(1-progress)/2+6)+"px";
+  }
+  if(blikiName.current&&!blikiName.current.hidden)
+   blikiName.current.style.opacity=String(clamp((progress-.82)/.14,0,1));
   if(photoDots.current){photoDots.current.style.opacity=String(clamp((progress-.68)*3.4,0,1));
    photoDots.current.style.pointerEvents=progress>.98?"auto":"none";}
   if(ring.current)ring.current.style.opacity=String(clamp((.96-progress)/.29,0,1));
@@ -104,6 +122,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    layout.current=next;
    node.style.setProperty("--v3-w",next.width+"px");
    node.style.setProperty("--v3-photo-height",next.expandedTop+"px");
+   node.style.setProperty("--v3-hero-bleed",next.heroBleed+"px");
    node.style.setProperty("--v3-identity-compact-x",next.compactIdentity.x+"px");
    node.style.setProperty("--v3-identity-compact-y",next.compactIdentity.y+"px");
    node.style.setProperty("--v3-identity-expanded-y",next.expandedIdentity.y+"px");
@@ -113,11 +132,12 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    if(rail.current){rail.current.style.transition="none";
     rail.current.style.transform="translate3d("+(-currentIndex.current*next.width)+"px,0,0)";}
    engine.current?.rebaseViewport(next);
-   painter.current(engine.current?.getProgress()??0);
+   const snapshot=engine.current?.getSnapshot();
+   painter.current(snapshot?.progress??0,snapshot?.elastic??0);
   };
   const schedule=()=>{if(resizeRaf)return;resizeRaf=requestAnimationFrame(()=>{resizeRaf=0;measure();});};
   measure();
-  const controller=new ProfileMotionEngine(layout.current,progress=>painter.current(progress),to=>{
+  const controller=new ProfileMotionEngine(layout.current,(progress,elastic)=>painter.current(progress,elastic),to=>{
    setExpanded(to===1);current.current.onState?.(to===1);
   },()=>window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   engine.current=controller;
@@ -136,7 +156,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     const button=tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")[selectedTab.current];
     if(button){ink.current.style.transition="none";
      ink.current.style.transform="translate3d("+button.offsetLeft+"px,0,0)";
-     ink.current.style.width=button.offsetWidth+"px";}
+    }
    }
   };
   const visibility=()=>{if(document.visibilityState==="hidden"){cancelGesture();controller.suspend();}else controller.resume();};
@@ -159,6 +179,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   resumeFromBackground:()=>engine.current?.resume()
  });
  useLayoutEffect(()=>{registerRouteMotion?.(actions.current);return ()=>registerRouteMotion?.(null);},[registerRouteMotion]);
+ useLayoutEffect(()=>{const snapshot=engine.current?.getSnapshot();
+  painter.current(snapshot?.progress??0,snapshot?.elastic??0);},[p.activeBlik]);
  useLayoutEffect(()=>{
   // A gesture-driven photo change has already launched the track settle.
   // Do not cancel that visual transition on the parent's photoId React commit.
@@ -173,7 +195,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   root.current?.setAttribute("data-active-photo-ready",image?.complete&&!!image.naturalWidth?"true":"false");
   if(rail.current){rail.current.style.transition="none";
    rail.current.style.transform="translate3d("+(-idx*layout.current.width)+"px,0,0)";}
-  painter.current(engine.current?.getProgress()??0);
+  const snapshot=engine.current?.getSnapshot();
+  painter.current(snapshot?.progress??0,snapshot?.elastic??0);
  },[photoId,photos]);
  const setTabIndex=(index:number,animate=true)=>{
   const target=clamp(index,0,tabs.length-1);
@@ -183,9 +206,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    pagesTrack.current.style.transform="translate3d("+(-target*width)+"px,0,0)";}
   const buttons=tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab");
   const button=buttons?.[target];
-  if(ink.current&&button){ink.current.style.transition=animate?"transform 220ms ease,width 220ms ease":"none";
-   ink.current.style.transform="translate3d("+button.offsetLeft+"px,0,0)";
-   ink.current.style.width=button.offsetWidth+"px";}
+  if(ink.current&&button){ink.current.style.transition=animate?"transform 220ms ease":"none";
+   ink.current.style.transform="translate3d("+button.offsetLeft+"px,0,0)";}
  };
  useLayoutEffect(()=>{setTabIndex(selectedTab.current,false);},[]);
  const commitPhoto=(idx:number,animate=true)=>{
@@ -202,7 +224,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const offset=photoOffset(l,p,image.naturalWidth,image.naturalHeight);
    image.style.width=offset.baseWidth+"px";
    image.style.height=offset.baseHeight+"px";
-   image.style.transform="translate3d("+offset.x+"px,"+offset.y+"px,0) scale("+offset.scale+")";
+   image.style.transform=photoTransform(offset,engine.current?.getSnapshot().elastic??0);
   }
   if(rail.current){rail.current.style.transition=animate?"transform 210ms cubic-bezier(.2,.8,.2,1)":"none";
    rail.current.style.transform="translate3d("+(-idx*layout.current.width)+"px,0,0)";}
@@ -242,7 +264,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    scroll:kind==="tabs"?((e.target as Element).closest<HTMLElement>(".v3-int-page")??pagesTrack.current?.querySelector<HTMLElement>('.v3-int-page[aria-hidden="false"]')??null):null,
    scrollStart:kind==="tabs"?(((e.target as Element).closest<HTMLElement>(".v3-int-page")??pagesTrack.current?.querySelector<HTMLElement>('.v3-int-page[aria-hidden="false"]'))?.scrollTop??0):0,
    buttons:kind==="tabs"?Array.from(tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")??[])
-    .map(b=>({x:b.offsetLeft,width:b.offsetWidth})):undefined};
+    .map(b=>({x:b.offsetLeft})):undefined};
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
@@ -295,10 +317,9 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   if(track)track.style.transform="translate3d("+(-fractional*width)+"px,0,0)";
   if(g.kind==="tabs"&&g.buttons&&ink.current){
    const a=g.buttons[Math.floor(fractional)],b=g.buttons[Math.min(max,Math.floor(fractional)+1)];
-   if(a&&b){const t=fractional-Math.floor(fractional);
+    if(a&&b){const t=fractional-Math.floor(fractional);
     ink.current.style.transition="none";
-    ink.current.style.transform="translate3d("+(a.x+(b.x-a.x)*t)+"px,0,0)";
-    ink.current.style.width=(a.width+(b.width-a.width)*t)+"px";}
+    ink.current.style.transform="translate3d("+(a.x+(b.x-a.x)*t)+"px,0,0)";}
   }
  };
  const up=(e:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
@@ -330,7 +351,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   if(event.currentTarget.naturalWidth>0){
    if(event.currentTarget.dataset.photoId===current.current.photoId)
     root.current?.setAttribute("data-active-photo-ready","true");
-   painter.current(engine.current?.getProgress()??0);
+   const snapshot=engine.current?.getSnapshot();
+   painter.current(snapshot?.progress??0,snapshot?.elastic??0);
    const pending=pendingPhotoRequest.current;
    if(pending && pending.id===event.currentTarget.dataset.photoId && current.current.photos[pending.index]?.id===pending.id){
     pendingPhotoRequest.current=null;commitPhoto(pending.index,pending.animate);
@@ -372,11 +394,15 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     {!activePhoto&&<div className="v3-int-no-photo"><Images size={30}/>Нет доступных фотографий</div>}
     <div className="v3-int-ring" ref={ring} aria-hidden="true"/>
    </div>
+   <div className="v3-int-bliki-avatar" ref={blikiAvatar} data-bliki-slot="compact"
+    hidden={!p.activeBlik} aria-hidden="true"/>
    <div className="v3-int-compact-identity" ref={identityCompact}>
     <h2>{title}</h2><p>{location}</p>{goalView}
    </div>
    <div className="v3-int-expanded-identity" ref={identityExpanded}>
-    <h2>{title}</h2><div><p>{location}</p>{goalView}</div>
+    <h2>{title}<span className="v3-int-bliki-name" ref={blikiName} data-bliki-slot="expanded"
+     hidden={!p.activeBlik} aria-hidden="true"><Sparkles size={15}/></span></h2>
+    <div><p>{location}</p>{goalView}</div>
    </div>
    {photos.length>1&&<div className="v3-int-photo-dots" ref={photoDots} aria-label="Фотографии профиля">
     {photos.map((item,i)=><button key={item.id} type="button" aria-label={"Фото "+(i+1)+" из "+photos.length}
