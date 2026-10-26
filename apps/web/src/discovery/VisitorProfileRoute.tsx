@@ -233,7 +233,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
    // A2: horizontal pager is exclusive even at the first tab; never steal its right swipe.
    if(g.source==="pages"||g.source==="tabs")return;
    const tabStrip=route.current?.querySelector<HTMLElement>(".pm-tabs");
-   if(g.source==="tabs"&&tabStrip&&tabStrip.scrollLeft>1)return;
+   if(tabStrip&&tabStrip.scrollLeft>1)return;
    if(!gestures.claim("route",g.serial))return;
    g.claimed=true;
    attachSuppression.current();
