@@ -28,9 +28,9 @@ export function createProfileLayout(v:Viewport):MorphLayout {
  const heroLimit=clamp(height*.435,short?215:280,short?290:395);
  const span=Math.max(0,Math.min(available*(short?.38:.59),available-96,heroLimit-compactTop));
  const expandedTop=compactTop+span;
- // The hero remains behind the sheet's 31px rounded corners, including
- // a small allowance for the bounded elastic pull past expanded.
- const heroBleed=36;
+ // Keep the actual image behind the 31px sheet corners even at the motion
+ // engine's bounded pull (less than 24px), with a small raster margin.
+ const heroBleed=56;
  const logoWidth=Math.min(128,usable*.36);
  const logo={x:(width-logoWidth)/2,y:safe.top+8,width:logoWidth,height:40};
  const compactIdentity={x:avatar.x+size+14,y:avatarY+6,width:Math.max(0,width-safe.right-avatar.x-size-26),height:size};

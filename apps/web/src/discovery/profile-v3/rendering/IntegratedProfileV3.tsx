@@ -35,6 +35,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  const identityExpanded=useRef<HTMLDivElement>(null),photoDots=useRef<HTMLDivElement>(null);
  const blikiAvatar=useRef<HTMLDivElement>(null),blikiName=useRef<HTMLSpanElement>(null);
  const ring=useRef<HTMLDivElement>(null),pagesTrack=useRef<HTMLDivElement>(null),tabsRoot=useRef<HTMLDivElement>(null);
+ const tabLabels=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),refs=useRef(new Map<string,HTMLImageElement>());
  const current=useRef({photos,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress});
  current.current={photos,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress};
@@ -123,6 +124,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    node.style.setProperty("--v3-identity-compact-x",next.compactIdentity.x+"px");
    node.style.setProperty("--v3-identity-compact-y",next.compactIdentity.y+"px");
    node.style.setProperty("--v3-identity-expanded-y",next.expandedIdentity.y+"px");
+   node.style.setProperty("--v3-identity-shade-height",Math.max(0,next.expandedTop-next.expandedIdentity.y)+"px");
    node.style.setProperty("--v3-extra-scroll",next.span+24+"px");
    if(sheet.current){sheet.current.style.top=next.compactTop+"px";
     sheet.current.style.height=Math.max(0,next.height-next.compactTop+next.span)+"px";}
@@ -152,7 +154,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    if(interrupted?.kind==="tabs"&&ink.current){
     const button=tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")[selectedTab.current];
     if(button){ink.current.style.transition="none";
-     ink.current.style.transform="translate3d("+button.offsetLeft+"px,0,0)";
+     ink.current.style.transform="translate3d("+(button.offsetLeft+(tabLabels.current?.offsetLeft??0))+"px,0,0)";
     }
    }
   };
@@ -204,7 +206,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   const buttons=tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab");
   const button=buttons?.[target];
   if(ink.current&&button){ink.current.style.transition=animate?"transform 220ms ease":"none";
-   ink.current.style.transform="translate3d("+button.offsetLeft+"px,0,0)";}
+   ink.current.style.transform="translate3d("+(button.offsetLeft+(tabLabels.current?.offsetLeft??0))+"px,0,0)";}
  };
  useLayoutEffect(()=>{setTabIndex(selectedTab.current,false);},[]);
  const commitPhoto=(idx:number,animate=true)=>{
@@ -265,7 +267,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    scroll:kind==="tabs"?((e.target as Element).closest<HTMLElement>(".v3-int-page")??pagesTrack.current?.querySelector<HTMLElement>('.v3-int-page[aria-hidden="false"]')??null):null,
    scrollStart:kind==="tabs"?(((e.target as Element).closest<HTMLElement>(".v3-int-page")??pagesTrack.current?.querySelector<HTMLElement>('.v3-int-page[aria-hidden="false"]'))?.scrollTop??0):0,
    buttons:kind==="tabs"?Array.from(tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")??[])
-    .map(b=>({x:b.offsetLeft})):undefined};
+    .map(b=>({x:b.offsetLeft+(tabLabels.current?.offsetLeft??0)})):undefined};
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
@@ -439,14 +441,16 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     <button type="button" onClick={onShowPreview}><Eye size={17}/> Как видят</button>
    </div>}
    <div className="v3-int-tabs pm-tabs" ref={tabsRoot} role="tablist" aria-label="Разделы профиля">
-    {tabs.map(([id,label],i)=><button type="button" key={id}
-     className={"v3-int-tab"+(tab===id?" active":"")} role="tab"
-     aria-selected={tab===id} tabIndex={tab===id?0:-1}
-     onClick={()=>setTabIndex(i)} onKeyDown={e=>{
-      if(e.key==="ArrowRight"||e.key==="ArrowLeft"){e.preventDefault();
-       const next=clamp(i+(e.key==="ArrowRight"?1:-1),0,4);setTabIndex(next);
-       tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")[next]?.focus({preventScroll:true});
-      }}}>{label}</button>)}
+    <div className="v3-int-tab-labels" ref={tabLabels} role="presentation">
+     {tabs.map(([id,label],i)=><button type="button" key={id}
+      className={"v3-int-tab"+(tab===id?" active":"")} role="tab"
+      aria-selected={tab===id} tabIndex={tab===id?0:-1}
+      onClick={()=>setTabIndex(i)} onKeyDown={e=>{
+       if(e.key==="ArrowRight"||e.key==="ArrowLeft"){e.preventDefault();
+        const next=clamp(i+(e.key==="ArrowRight"?1:-1),0,4);setTabIndex(next);
+        tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")[next]?.focus({preventScroll:true});
+       }}}>{label}</button>)}
+    </div>
     <span className="v3-int-ink" ref={ink} aria-hidden="true"/>
    </div>
    <div className="v3-int-pages pm-pages" onPointerDown={e=>down(e,"tabs")} onPointerMove={move}

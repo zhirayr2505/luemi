@@ -5,7 +5,7 @@
 .v3-int-root{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;
  isolation:isolate;background:#c4a4d5;color:#fff;--v3-w:390px;--v3-photo-height:530px;
  --v3-identity-compact-x:149px;--v3-identity-compact-y:115px;--v3-identity-expanded-y:410px;
- --v3-extra-scroll:200px;--v3-hero-bleed:36px}
+ --v3-extra-scroll:200px;--v3-hero-bleed:56px;--v3-identity-shade-height:114px}
 .v3-int-opaque{position:absolute;inset:0;z-index:0;pointer-events:none;
  background:linear-gradient(150deg,#a984c6,#e8b5d7 55%,#cfa8df)}
 .v3-int-hero{position:absolute;left:0;right:0;top:0;
@@ -43,7 +43,9 @@
 .v3-int-compact-identity{top:var(--v3-identity-compact-y);left:var(--v3-identity-compact-x);
  right:11px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
 .v3-int-expanded-identity{top:var(--v3-identity-expanded-y);left:0;right:0;opacity:0;
- padding:20px 17px 34px;background:linear-gradient(to top,rgba(32,17,50,.45),transparent)}
+ padding:20px 17px 34px;
+ background:linear-gradient(to bottom,transparent,rgba(32,17,50,.45) 55%,transparent);
+ background-size:100% var(--v3-identity-shade-height);background-repeat:no-repeat}
 .v3-int-compact-identity h2,.v3-int-expanded-identity h2{display:flex;gap:5px;flex-wrap:wrap;align-items:center;
  font-size:clamp(20px,5.5vw,27px);line-height:1.25;letter-spacing:-.025em;font-weight:800;
  margin:0;overflow-wrap:anywhere}
@@ -79,11 +81,14 @@
 .v3-int-tabs{position:relative;display:flex;flex:none;width:100%;height:51px;
  box-sizing:border-box;padding:0 7px 4px;border-bottom:1px solid var(--line,#e9dfea);
  background:var(--bg,#fbf9fe);z-index:1}
+.v3-int-tab-labels{position:relative;z-index:2;display:flex;flex:1;min-width:0;
+ /* One stationary text surface; the moving ink is its sibling, not its child. */
+ transform:translate3d(0,0,0)}
 .v3-int-tab{position:relative;z-index:2;min-width:0;flex:1 1 20%;border:0;padding:0 2px;
  background:transparent;color:var(--subtle,#917e9f);font:inherit;font-size:clamp(10px,2.65vw,13px);font-weight:750}
 .v3-int-tab.active{color:#955bd2}
 .v3-int-ink{position:absolute;bottom:0;left:0;width:calc((100% - 14px)/5);height:4px;border-radius:12px;
- background:#ac75dc;pointer-events:none;transform:translate3d(7px,0,0)}
+ background:#ac75dc;z-index:1;pointer-events:none;transform:translate3d(7px,0,0)}
 .v3-int-pages{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;
  overscroll-behavior:contain;contain:paint}
 .v3-int-pages-track{position:absolute;inset:0;width:100%;height:100%;transition:none;
