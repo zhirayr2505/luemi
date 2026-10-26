@@ -25,6 +25,7 @@ import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
 import {useModalLayer} from "../ui/modal-layer";
 import "./discovery.css";
+import "./feed-v2.css";
 
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
@@ -110,6 +111,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const [forYouCollection,setForYouCollection]=useState<CollectionId|"best"|null>(null);
  const [forYouSettings,setForYouSettings]=useState(false);
  const [leaving,setLeaving]=useState<string|null>(null);
+ const [leavingKind,setLeavingKind]=useState<DemoKind|null>(null);
  const transitionRef=useRef<number|null>(null);
  const pendingCommit=useRef<(()=>void)|null>(null);
  const locked=useRef(false);
@@ -214,11 +216,13 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   // in the same keyed deck before motion begins. This prevents the photo-only flash.
   locked.current=true;
   setLeaving(person.id);
+  setLeavingKind(kind);
   const message=kind==="pass"?"Анкета пропущена · демо":
     kind==="like"?"Симпатия · никому не отправлена":"Особенная симпатия · только демо";
   pendingCommit.current=()=>{
     setFeed(prev=>demoAct(prev,ids,kind));
     setLeaving(null);
+    setLeavingKind(null);
     locked.current=false;
     indicate(message);
   };
@@ -333,7 +337,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   if(!event.isPrimary){inputOwnership.current.secondFinger();cancelSwipe();return;}
   if(event.pointerType==="mouse"&&event.button!==0)return;
   const target=event.target as HTMLElement;
-  if(target.closest(".discovery-photo,.carousel-frame,.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-location"))return;
+  if(target.closest(".discovery-page[aria-label='Лента'],.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-location"))return;
   const serial=inputOwnership.current.begin("pointer",event.pointerId,"browse");
   if(serial===null)return;
   inputOwnership.current.begin("pointer",event.pointerId,"native");
@@ -412,7 +416,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  };
  const apply=(next:DiscoveryFilter)=>{
   if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
-  transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);
+  transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);setLeavingKind(null);
   setFilters(next);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));setFilterOpen(false);
   indicate("Фильтры применены к демо-анкетам");
  };
@@ -440,7 +444,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
 
  const restartFeed=()=>{
    if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
-   transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);
+   transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);setLeavingKind(null);
    setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
@@ -483,18 +487,18 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
            <section className="discovery-page" role="tabpanel" aria-label="Лента" inert={discoveryTab!=="feed"} aria-hidden={discoveryTab!=="feed"}>
              {<div className="discovery-deck-stage">
                {person&&<div key={person.id}
-                 className={"discovery-deck-layer"+(leaving?" deck-leaving":" deck-active")}
+                 className={"discovery-deck-layer"+(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active")}
                  onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
-                   event.animationName==="luemi-deck-leave")finishDeck();}}>
+                   ["luemi-deck-leave","feed-v2-like","feed-v2-special"].includes(event.animationName))finishDeck();}}>
                  <FeedCard person={person} saved={feed.saved.includes(person.id)}
-                   canUndo={feed.history.length>0} active={true}
+                   canUndo={feed.history.length>0} active={true} busy={!!leaving}
                    onAction={act} onOpenProfile={()=>setPersonOpen(person.id)}
                    onInterests={()=>setInterestOpen(person.id)}/>
                </div>}
                {profiles[feed.index+1]&&<div key={profiles[feed.index+1].id}
                  className={"discovery-deck-layer"+(leaving?" deck-entering":" deck-queued")}>
                  <FeedCard person={profiles[feed.index+1]} saved={feed.saved.includes(profiles[feed.index+1].id)}
-                   canUndo={feed.history.length>0} active={false} onAction={act}
+                   canUndo={feed.history.length>0} active={false} busy={!!leaving} onAction={act}
                    onOpenProfile={()=>setPersonOpen(profiles[feed.index+1].id)}
                    onInterests={()=>setInterestOpen(profiles[feed.index+1].id)}/>
                </div>}

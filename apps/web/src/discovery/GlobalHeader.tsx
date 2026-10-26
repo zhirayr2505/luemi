@@ -1,5 +1,5 @@
 import {forwardRef,useCallback,useLayoutEffect,useImperativeHandle,useRef} from "react";
-import {Bookmark,Moon,SlidersHorizontal,Sun} from "lucide-react";
+import {Moon,Sun} from "lucide-react";
 import "./global-header.css";
 
 const logo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
@@ -17,7 +17,7 @@ const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 const smooth=(p:number)=>p*p*(3-2*p);
 
 export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
- {mode,theme,onTheme,onFilters,onSaved},ref
+ {mode,theme,onTheme},ref
 ){
  // Avoid a second filtered logo raster on Android Telegram WebView.
  const androidClient=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
@@ -84,7 +84,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   
   <div className="lh-center">
    <button className="lh-island" type="button" ref={island} onClick={toggleIsland}
-     aria-label={mode==="browse"?"Раскрыть инструменты LUEMI":"LUEMI"} title="LUEMI">
+     aria-label="LUEMI" title="LUEMI">
     <img src={logo} alt="luemi" decoding="async" fetchPriority="high"/>
     {!androidClient&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="async"/>}
    </button>
@@ -92,11 +92,6 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
       aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>
        {theme==="light"?<Moon size={15}/>:<Sun size={15}/>}
      </button>}
-   {mode==="browse"&&<div className="lh-tools" aria-label="Инструменты LUEMI">
-    <button type="button" className="lh-tool lh-tool-filter" onClick={onFilters} aria-label="Фильтры"><SlidersHorizontal size={17}/></button>
-    <button type="button" className="lh-tool lh-tool-theme" onClick={onTheme} aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>{theme==="light"?<Moon size={17}/>:<Sun size={17}/>}</button>
-    <button type="button" className="lh-tool lh-tool-saved" onClick={onSaved} aria-label="Сохранённые анкеты"><Bookmark size={17}/></button>
-   </div>}
   </div>
  </header>;
 });

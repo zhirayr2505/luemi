@@ -1,0 +1,129 @@
+/* Discovery V2 — cinematic photograph and local card geometry only. */
+.discovery-app .discovery-panel:not(.discovery-profile-panel){top:calc(var(--top-safe) + 40px)}
+.lh-browse .lh-center{height:44px}
+.discovery-page[aria-label="Лента"]{padding:4px 12px 3px}
+.discovery-page[aria-label="Лента"] .discovery-deck-stage{overflow:hidden}
+.discovery-page[aria-label="Лента"] .discovery-deck-layer{inset:0 0 8px}
+.discovery-page[aria-label="Лента"] .deck-queued{transform:translate3d(0,9px,0) scale(.967);opacity:.83}
+.discovery-page[aria-label="Лента"] .deck-active,
+.discovery-page[aria-label="Лента"] .deck-entering,
+.discovery-page[aria-label="Лента"] .deck-leaving{z-index:3}
+.discovery-page[aria-label="Лента"] .deck-leaving{z-index:4}
+.discovery-page[aria-label="Лента"] .deck-entering{animation:luemi-deck-enter var(--deck-motion,290ms) cubic-bezier(.2,.72,.22,1) both}
+.discovery-page[aria-label="Лента"] .deck-leaving-like{animation:feed-v2-like var(--deck-motion,290ms) cubic-bezier(.16,.76,.24,1) both}
+.discovery-page[aria-label="Лента"] .deck-leaving-special{animation:feed-v2-special var(--deck-motion,290ms) cubic-bezier(.16,.76,.24,1) both}
+@keyframes feed-v2-like{to{transform:translate3d(12px,-18px,0) rotate(1deg) scale(1.025);opacity:0}}
+@keyframes feed-v2-special{to{transform:translate3d(0,-27px,0) scale(1.035);opacity:0}}
+.feed-v2{height:100%}
+.feed-v2-card{
+ --feed-actions-height:79px;--feed-closed-height:174px;
+ background:#ad8fba;border-radius:26px;overflow:hidden;
+ border-color:rgba(255,255,255,.75);box-shadow:0 12px 30px rgba(71,35,91,.18)
+}
+.feed-v2-card::after{
+ background:linear-gradient(to bottom,transparent 27%,rgba(25,14,36,.025) 43%,
+ rgba(25,14,36,.22) 61%,rgba(25,14,36,.62) 79%,rgba(25,14,36,.88) 100%)
+}
+.feed-v2-photo>.carousel-frame{touch-action:pan-y}
+.feed-v2-photo .carousel-track img{
+ width:100%;height:100%;object-fit:cover;object-position:center 35%;
+ backface-visibility:hidden
+}
+.feed-v2-photo .carousel-track img:nth-child(2){object-position:center 22%;transform:scale(1.095)}
+.feed-v2-photo .photo-progress{right:66px;top:13px;gap:5px}
+.feed-v2-photo .photo-progress button{position:relative;height:24px;background:none;box-shadow:none}
+.feed-v2-photo .photo-progress button.current{background:none;box-shadow:none}
+.feed-v2-photo .photo-progress button::after{
+ content:"";position:absolute;left:0;right:0;top:0;height:4px;border-radius:9px;
+ background:rgba(255,255,255,.42);box-shadow:0 1px 4px rgba(42,28,63,.1)
+}
+.feed-v2-photo .photo-progress button.current::after{background:rgba(255,255,255,.98)}
+.feed-v2-photo>.discovery-demo-label{top:25px}
+.feed-v2-photo>.discovery-save-control{top:12px;right:12px}
+.feed-v2-information{
+ position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;
+ justify-content:flex-end;pointer-events:none
+}
+.feed-v2-details{
+ flex:none;min-height:0;height:var(--feed-closed-height);
+ max-height:calc(100% - var(--feed-actions-height));
+ padding:0 17px 5px;color:#fff;display:flex;flex-direction:column;
+ justify-content:flex-end;overflow:hidden;pointer-events:auto;touch-action:none;
+ transform:translate3d(0,var(--feed-drag,0px),0);
+ transition:height .34s cubic-bezier(.21,.76,.24,1),transform .18s ease
+}
+.feed-v2-card[data-expanded=true] .feed-v2-details{
+ height:min(72%,430px);
+ background:linear-gradient(to top,rgba(28,15,39,.39),rgba(28,15,39,.08) 72%,transparent)
+}
+.feed-v2-expand{
+ height:21px;min-height:21px;min-width:70px;margin:0 auto 4px;padding:0;
+ display:flex;align-items:center;justify-content:center;gap:7px;
+ border:0;background:transparent;color:rgba(255,255,255,.95);touch-action:none
+}
+.feed-v2-expand span{display:block;width:31px;height:3px;border-radius:9px;background:rgba(255,255,255,.76)}
+.feed-v2-scroll{
+ min-height:0;max-height:calc(100% - 25px);overflow:hidden;
+ display:flex;flex-direction:column;gap:5px;overscroll-behavior:contain;touch-action:none;
+ text-shadow:0 1px 9px rgba(18,9,27,.44)
+}
+.feed-v2-card[data-expanded=true] .feed-v2-scroll{
+ overflow-y:auto;touch-action:pan-y;scrollbar-width:thin;scrollbar-color:rgba(245,218,255,.55) transparent
+}
+.feed-v2-card[data-expanded=true] .discovery-name-row,
+.feed-v2-card[data-expanded=true] .discovery-place,
+.feed-v2-card[data-expanded=true] .feed-v2-goal{touch-action:none}
+.feed-v2 .discovery-name-row{min-height:29px}
+.feed-v2 .discovery-name-button{max-width:calc(100% - 34px)}
+.feed-v2 .discovery-name-button span{font-size:clamp(22px,6vw,28px)}
+.feed-v2 .discovery-place{min-height:20px;font-size:12px;gap:5px}
+.feed-v2 .discovery-place span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-v2-goal{display:flex;gap:5px;align-items:center;font-size:12px;font-weight:690;min-height:18px}
+.feed-v2-goal svg{color:#ffbfdc}
+.feed-v2 .discovery-short-about{
+ flex:none;color:rgba(255,255,255,.96);font-size:12px;line-height:1.4;
+ -webkit-line-clamp:2;line-clamp:2;margin:1px 0 0
+}
+.feed-v2-card[data-expanded=true] .discovery-short-about{
+ display:block;overflow:visible;-webkit-line-clamp:unset;line-clamp:unset
+}
+.feed-v2-interests{padding:7px 0 3px}
+.feed-v2 .discovery-interests{flex-wrap:wrap;overflow:visible}
+.feed-v2 .discovery-interests>.chip{flex:none;max-width:100%}
+.feed-v2 .discovery-actions{
+ position:relative;left:auto;right:auto;bottom:auto;z-index:7;flex:none;
+ height:var(--feed-actions-height);display:flex;justify-content:space-evenly;
+ align-items:center;gap:5px;padding:3px 11px 9px;pointer-events:auto
+}
+.feed-v2 .discovery-action{
+ --diameter:clamp(44px,12vw,52px);min-width:44px;min-height:44px;
+ backdrop-filter:none;-webkit-backdrop-filter:none;background:linear-gradient(145deg,rgba(255,247,255,.96),rgba(231,209,249,.88))
+}
+.feed-v2 .discovery-action.discovery-special{
+ --diameter:clamp(54px,14vw,62px);
+ background:linear-gradient(145deg,#cb9ce9,#d88dcf)
+}
+.feed-v2 .discovery-action.discovery-like{
+ --diameter:clamp(62px,17vw,72px);
+ background:linear-gradient(145deg,#f9b7dc,#e481bd)
+}
+.feed-v2-card[data-size=compact]{--feed-closed-height:155px;--feed-actions-height:69px}
+.feed-v2-card[data-size=compact] .feed-v2-details{padding:0 12px 2px}
+.feed-v2-card[data-size=compact] .feed-v2-scroll{gap:3px}
+.feed-v2-card[data-size=compact] .discovery-short-about{font-size:11px}
+.feed-v2-card[data-size=compact] .discovery-actions{padding-bottom:4px}
+.feed-v2-card[data-size=tiny]{--feed-closed-height:130px;--feed-actions-height:55px}
+.feed-v2-card[data-size=tiny] .feed-v2-details{padding:0 11px 1px}
+.feed-v2-card[data-size=tiny] .feed-v2-expand{height:17px;min-height:17px;margin-bottom:1px}
+.feed-v2-card[data-size=tiny] .feed-v2-scroll{gap:2px;overflow-y:auto}
+.feed-v2-card[data-size=tiny] .discovery-short-about{-webkit-line-clamp:1;line-clamp:1}
+.feed-v2-card[data-size=tiny] .discovery-actions{padding:0 7px 2px}
+.feed-v2-card[data-size=tiny] .discovery-action.discovery-like{--diameter:54px}
+.feed-v2-card[data-size=tiny] .discovery-action.discovery-special{--diameter:48px}
+.feed-v2-card[data-size=tiny] .discovery-action{--diameter:44px}
+@media(max-width:350px){.feed-v2 .discovery-actions{gap:2px;padding-left:6px;padding-right:6px}}
+@media(prefers-reduced-motion:reduce){
+ .feed-v2-details{transition:none}
+ .discovery-page[aria-label="Лента"] .deck-leaving,
+ .discovery-page[aria-label="Лента"] .deck-entering{animation:none}
+}
