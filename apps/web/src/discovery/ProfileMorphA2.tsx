@@ -228,21 +228,22 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  };
  useLayoutEffect(()=>{chooseTab(0,false);},[]);
  const startSheet=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  if(!event.isPrimary){gestureArbiter?.secondFinger();return;}
+  if(!event.isPrimary){gestureArbiter?.secondFinger();if(sheetDrag.current?.claimed)motion.current?.release(0,true);sheetDrag.current=null;return;}
   if(event.pointerType==="mouse"&&event.button!==0)return;
   const engine=motion.current;if(!engine)return;
   const serial=gestureArbiter?.begin("pointer",event.pointerId,"sheet");
   if(gestureArbiter&&serial===null)return;
   sheetDrag.current={id:event.pointerId,x:event.clientX,y:event.clientY,at:performance.now(),
    lastX:event.clientX,lastY:event.clientY,lastAt:performance.now(),axis:"pending",start:engine.sample(),claimed:false,serial:serial??undefined};
-  engine.dragStart(event.clientY,geometry.current.span);
-  try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* host ownership */}
+  // Candidate does not interrupt an already-running settle: claim movement first.
  };
  const moveSheet=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const g=sheetDrag.current;if(g?.id!==event.pointerId)return;
   if(Math.abs(event.clientY-g.y)>4&&!g.claimed){
    if(g.serial!==undefined&&!gestureArbiter?.claim("sheet",g.serial))return;
    g.claimed=true;
+   motion.current?.dragStart(g.y,geometry.current.span);
+   try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* host ownership */}
   }
   if(g.serial!==undefined&&!g.claimed)return;
   g.lastY=event.clientY;g.lastAt=performance.now();
@@ -255,7 +256,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(g.claimed)gestureArbiter?.finish("sheet",g.serial);
    else gestureArbiter?.finishCandidate(g.serial,"sheet");
   }
-  if(!cancelled&&!g.claimed)motion.current?.toggle();
+  if(!g.claimed){if(!cancelled)motion.current?.toggle();}
   else motion.current?.release((event.clientY-g.y)/Math.max(1,performance.now()-g.at),cancelled);
   suppressClick.current=performance.now()+260;
   try{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}catch{/* implicit */}
