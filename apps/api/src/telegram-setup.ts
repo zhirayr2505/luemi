@@ -42,7 +42,7 @@ export async function configureStagingTelegramBot(
   if (config.stagingOnly || !config.botToken || !config.webhookSecret) {
     throw new Error("Telegram staging credentials are not enabled");
   }
-  if (config.origin !== "https://luemi.onrender.com") {
+  if (!["https://luemi.onrender.com","https://luemi-stage01.onrender.com"].includes(config.origin)) {
     throw new Error("Telegram setup restricted to LUEMI staging");
   }
   if (!/^[a-zA-Z0-9_-]{24,256}$/.test(config.webhookSecret)) {
