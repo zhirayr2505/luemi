@@ -14,7 +14,7 @@ import {demoAct,demoUndo,filterDemoPeople,freshDemoState,defaultFilters} from ".
 import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter} from "./model";
 import {DiscoveryFilters} from "./Filters";
 import {DiscoveryInterestsSheet} from "./InterestsSheet";
-import {ProfileMaster} from "./ProfileMaster";
+import {ProfileMaster} from "./ProfileMorphA2";
 import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
