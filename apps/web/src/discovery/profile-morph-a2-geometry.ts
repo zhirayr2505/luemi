@@ -6,11 +6,16 @@ export type MorphGeometry={
 export const between=(a:number,b:number,p:number)=>a+(b-a)*p;
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 export function profileMorphGeometry(width:number,height:number,chromeBottom=86):MorphGeometry{
- const w=Math.max(280,width),h=Math.max(410,height);
- const avatarSize=clamp(w*.285,88,116);
- const avatarY=clamp(chromeBottom+24,92,160);
- const compactTop=clamp(Math.max(avatarY+avatarSize+24,h*.355),235,Math.max(235,h-220));
- const expandedTop=clamp(h*.68,compactTop+120,Math.max(compactTop+120,h-138));
+ const w=Math.max(280,width),h=Math.max(320,height);
+ const short=h<480;
+ const avatarSize=short?clamp(w*.15,67,82):clamp(w*.285,88,116);
+ const avatarY=short?clamp(chromeBottom+8,54,Math.max(54,h*.23)):clamp(chromeBottom+24,92,160);
+ const compactTop=short?
+  clamp(Math.max(avatarY+avatarSize+10,h*.42),162,Math.max(162,h-195)):
+  clamp(Math.max(avatarY+avatarSize+24,h*.355),235,Math.max(235,h-220));
+ const expandedTop=short?
+  clamp(h-148,compactTop+32,Math.max(compactTop+32,h-125)):
+  clamp(h*.68,compactTop+120,Math.max(compactTop+120,h-138));
  return {width:w,height:h,compactTop,expandedTop,
   span:Math.max(1,expandedTop-compactTop),avatarX:20,avatarY,avatarSize,
   heroHeight:expandedTop};
