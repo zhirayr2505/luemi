@@ -114,7 +114,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  },[viewer,preview,onClose]);
  innerBack.current=()=>{closeTop();};
  useEffect(()=>{if(!active)return;registerBack?.(closeTop);return ()=>registerBack?.(null);},[active,closeTop,registerBack]);
- const renderPage=(id:V3TabId)=>{
+ const renderPage=useCallback((id:V3TabId)=>{
   if(id==="about")return <About view={view}/>;
   if(id==="bliki")return <Bliki/>;
   if(id==="meta")return <Meta view={view}/>;
@@ -126,7 +126,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     <PhotoImage photo={photo} alt="" loading="lazy"/>
     {photo.status!=="published"&&<span>{photo.status==="draft"?"Черновик":"Проверка"}</span>}
    </button>)}</div>:<div className="pm-empty"><Images size={37}/><h3>Пока нет доступных фото</h3></div>;
- };
+ },[view,photos,openPhoto]);
  return <section ref={root} className={"pm-shell v3-profile-host "+(inline?"pm-inline":"pm-dialog")}
    data-sheet-state={expanded?"expanded":"collapsed"} data-morph-state={expanded?"expanded":"compact"}
    role={inline?undefined:"dialog"} aria-modal={inline?undefined:true}

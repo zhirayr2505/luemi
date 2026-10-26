@@ -38,7 +38,7 @@ export function photoMask(layout:MorphLayout,p:number):Rect {
  return {x:lerp(layout.avatar.x,0,p),y:lerp(layout.avatar.y,0,p),
   width:lerp(layout.avatar.width,layout.width,p),height:lerp(layout.avatar.height,layout.expandedTop,p)};
 }
-/** Intrinsic cover dimensions are constant throughout morph; only the crop translates. */
+/** Expanded cover dimensions provide the stable base for a uniformly scaled image. */
 export function coverSize(sourceWidth:number,sourceHeight:number,box:Rect){
  const w=Math.max(1,finite(sourceWidth,box.width)),h=Math.max(1,finite(sourceHeight,box.height));
  const scale=Math.max(box.width/w,box.height/h);
@@ -46,13 +46,20 @@ export function coverSize(sourceWidth:number,sourceHeight:number,box:Rect){
 }
 export function photoOffset(layout:MorphLayout,p:number,sourceWidth:number,sourceHeight:number){
  const cover=coverSize(sourceWidth,sourceHeight,layout.photo);
- // The compact crop uses the same decoded pixels as expanded. Keep the focal
- // center near the upper third of a portrait; no nonuniform scaling is applied.
- const portraitScale=Math.min(layout.avatar.width/sourceWidth,layout.avatar.height/sourceHeight);
- const portraitW=sourceWidth*portraitScale,portraitH=sourceHeight*portraitScale;
+ // Interpolate ONE uniform scale. Interpolating width and height separately
+ // changes the aspect ratio between the endpoints, visibly warping faces.
+ const w=Math.max(1,finite(sourceWidth,layout.avatar.width));
+ const h=Math.max(1,finite(sourceHeight,layout.avatar.height));
+ // Inscribe the entire rectangular source inside the circular viewport.
+ // Fitting to the square's edges would still clip its corners at the circle.
+ const portraitScale=Math.min(layout.avatar.width,layout.avatar.height)/Math.hypot(w,h);
+ const portraitW=w*portraitScale,portraitH=h*portraitScale;
  const compactX=(layout.avatar.width-portraitW)/2;
  const compactY=(layout.avatar.height-portraitH)/2;
  const expandedX=(layout.width-cover.width)/2;
  const expandedY=(layout.expandedTop-cover.height)*.3;
- return {x:lerp(compactX,expandedX,p),y:lerp(compactY,expandedY,p),width:lerp(portraitW,cover.width,p),height:lerp(portraitH,cover.height,p)};
+ const scale=lerp(portraitScale,cover.scale,p);
+ return {x:lerp(compactX,expandedX,p),y:lerp(compactY,expandedY,p),
+  width:w*scale,height:h*scale,scale:scale/cover.scale,
+  baseWidth:cover.width,baseHeight:cover.height};
 }

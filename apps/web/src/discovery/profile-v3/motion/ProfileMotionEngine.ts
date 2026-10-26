@@ -8,12 +8,15 @@ const ease=(t:number)=>1-Math.pow(1-t,3);
 export class ProfileMotionEngine {
  private p=0;private phase:Phase="COMPACT";private target:0|1|null=null;
  private generation=0;private frameId:number|null=null;
+ private dragFrame:number|null=null;private pendingDrag:number|null=null;
  private run:{from:number;to:0|1;at:number;duration:number}|null=null;
  private drag:{y:number;anchor:number;lastY:number}|null=null;
  constructor(private layout:MorphLayout,private readonly paint:(p:number)=>void,
   private readonly commit?:(target:0|1)=>void,private readonly reduced=()=>false,
   private readonly clock:Clock=browserClock){paint(0);}
- private stop(){this.generation++;if(this.frameId!==null)this.clock.cancel(this.frameId);this.frameId=null;this.run=null;}
+ private stop(){this.generation++;if(this.frameId!==null)this.clock.cancel(this.frameId);
+  if(this.dragFrame!==null)this.clock.cancel(this.dragFrame);
+  this.frameId=null;this.dragFrame=null;this.pendingDrag=null;this.run=null;}
  private write(p:number){this.p=clamp(p,0,1);this.paint(this.p);}
  getProgress(){return this.sample();}
  getSnapshot():MotionSnapshot{return {progress:this.sample(),phase:this.phase,target:this.target,generation:this.generation};}
@@ -38,17 +41,26 @@ export class ProfileMotionEngine {
   const generation=this.generation;this.frameId=this.clock.request(()=>this.tick(generation));
  }
  beginDrag(y:number){if(this.phase==="DISPOSED"||this.phase==="SUSPENDED")return;
-  const current=this.sample();this.stop();this.write(current);this.target=null;
-  this.drag={y,anchor:current,lastY:y};this.phase="DRAGGING";
+  const current=this.sample();this.stop();this.target=null;
+  this.drag={y,anchor:current,lastY:y};this.phase="DRAGGING";this.write(current);
  }
  updateDrag(y:number){if(this.phase!=="DRAGGING"||!this.drag)return;
-  this.drag.lastY=y;this.write(this.drag.anchor+(y-this.drag.y)/Math.max(1,this.layout.span));
+  this.drag.lastY=y;
+  this.pendingDrag=clamp(this.drag.anchor+(y-this.drag.y)/Math.max(1,this.layout.span),0,1);
+  this.p=this.pendingDrag;
+  if(this.dragFrame===null){const generation=this.generation;
+   this.dragFrame=this.clock.request(()=>{this.dragFrame=null;
+    if(generation!==this.generation||this.phase!=="DRAGGING"||this.pendingDrag===null)return;
+    const next=this.pendingDrag;this.pendingDrag=null;this.write(next);
+   });}
  }
  endDrag(velocityY=0){if(this.phase!=="DRAGGING")return;
+  if(this.pendingDrag!==null)this.write(this.pendingDrag);
   const to:0|1=velocityY>.35?1:velocityY<-.35?0:this.p>=.5?1:0;
   this.drag=null;this.animateTo(to,velocityY);
  }
- cancelDrag(){if(this.phase==="DRAGGING"){this.drag=null;this.animateTo(this.p>=.5?1:0);}}
+ cancelDrag(){if(this.phase==="DRAGGING"){if(this.pendingDrag!==null)this.write(this.pendingDrag);
+  this.drag=null;this.animateTo(this.p>=.5?1:0);}}
  rebaseViewport(next:MorphLayout){if(this.phase==="DISPOSED")return;
   const old=this.layout,current=this.sample(),physical=old.compactTop+old.span*current;
   const moving=this.phase==="DRAGGING"||!!this.run;

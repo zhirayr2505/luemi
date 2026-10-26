@@ -1,4 +1,4 @@
-import {useLayoutEffect,useRef,useState} from "react";
+import {useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent,ReactNode} from "react";
 import {Images,Eye,PenLine,Heart,ShieldCheck} from "lucide-react";
 import {Flag} from "../../../ui/Flag";
@@ -33,7 +33,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  const root=useRef<HTMLDivElement>(null),mask=useRef<HTMLDivElement>(null);
  const rail=useRef<HTMLDivElement>(null),sheet=useRef<HTMLDivElement>(null),identityCompact=useRef<HTMLDivElement>(null);
  const identityExpanded=useRef<HTMLDivElement>(null),photoDots=useRef<HTMLDivElement>(null);
- const ring=useRef<HTMLDivElement>(null),ambient=useRef<HTMLImageElement>(null),pagesTrack=useRef<HTMLDivElement>(null),tabsRoot=useRef<HTMLDivElement>(null);
+ const ring=useRef<HTMLDivElement>(null),pagesTrack=useRef<HTMLDivElement>(null),tabsRoot=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),refs=useRef(new Map<string,HTMLImageElement>());
  const current=useRef({photos,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress});
  current.current={photos,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress};
@@ -41,6 +41,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  const coordinator=useRef(new ProfileGestureCoordinator()),gesture=useRef<Session|null>(null);
  const suppressed=useRef(0),selectedTab=useRef(0),currentIndex=useRef(0);
  const pendingPhotoCommit=useRef<string|null>(null);
+ const pendingPhotoRequest=useRef<{id:string;index:number;animate:boolean}|null>(null);
  const [tab,setTab]=useState<V3TabId>("about");
  const [expanded,setExpanded]=useState(false);
  const photoIndex=Math.max(0,photos.findIndex(item=>item.id===photoId));
@@ -53,13 +54,18 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  const location=<>{p.countryCode&&<Flag code={p.countryCode} size={17}/>}
   <span>{[p.city,p.country].filter(Boolean).join(", ")||"Город не указан"}</span></>;
  const goalView=goal?<span className="v3-int-goal"><Heart size={14}/>{goal.label}</span>:null;
+ // A tab selection changes only its aria state and underline. Keep all five
+ // page subtrees (and their decoded gallery tiles) stable across that render.
+ const pageBodies=useMemo(()=>tabs.map(([id])=>renderPage(id)),[renderPage]);
  const paint=useRef<(progress:number)=>void>(()=>{});
  paint.current=progress=>{
   const l=layout.current,m=photoMask(l,progress);
-  const surface=mask.current,move=sheet.current,track=rail.current;
-  if(surface){surface.style.left=m.x+"px";surface.style.top=m.y+"px";
+  const surface=mask.current,move=sheet.current;
+  if(surface){surface.style.transform="translate3d("+m.x+"px,"+m.y+"px,0)";
    surface.style.width=m.width+"px";surface.style.height=m.height+"px";
-   surface.style.borderRadius=(1-progress)*50+"%";}
+   // Pixel radius is a true circle at compact (a square box), shrinking to
+   // zero without percentage radii turning into elliptical corners.
+   surface.style.borderRadius=(Math.min(m.width,m.height)*(1-progress)/2)+"px";}
   // Only the active and immediately adjacent decoded images can enter
   // the clip. Avoid writing size/visibility for every photo at every frame.
   const idx=currentIndex.current;
@@ -68,14 +74,12 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const image=refs.current.get(item.id);if(!image)continue;
    if(!image.complete||image.naturalWidth<=0||image.naturalHeight<=0)continue;
    const frame=photoOffset(l,progress,image.naturalWidth,image.naturalHeight);
-   const w=frame.width+"px",h=frame.height+"px";
+   const w=frame.baseWidth+"px",h=frame.baseHeight+"px";
    if(image.style.width!==w)image.style.width=w;
    if(image.style.height!==h)image.style.height=h;
-   image.style.transform="translate3d("+frame.x+"px,"+frame.y+"px,0)";
+   image.style.transform="translate3d("+frame.x+"px,"+frame.y+"px,0) scale("+frame.scale+")";
   }
-  if(track&&!gesture.current?.claimed)track.style.transform="translate3d("+(-currentIndex.current*l.width)+"px,0,0)";
-  if(move){move.style.top=l.compactTop+"px";move.style.height=Math.max(0,l.height-l.compactTop)+"px";
-   move.style.transform="translate3d(0,"+(l.span*progress)+"px,0)";}
+  if(move)move.style.transform="translate3d(0,"+(l.span*progress)+"px,0)";
   if(identityCompact.current){identityCompact.current.style.opacity=String(clamp((.63-progress)/.31,0,1));}
   if(identityExpanded.current){identityExpanded.current.style.opacity=String(clamp((progress-.36)/.31,0,1));}
   if(photoDots.current){photoDots.current.style.opacity=String(clamp((progress-.68)*3.4,0,1));
@@ -104,6 +108,10 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    node.style.setProperty("--v3-identity-compact-y",next.compactIdentity.y+"px");
    node.style.setProperty("--v3-identity-expanded-y",next.expandedIdentity.y+"px");
    node.style.setProperty("--v3-extra-scroll",next.span+24+"px");
+   if(sheet.current){sheet.current.style.top=next.compactTop+"px";
+    sheet.current.style.height=Math.max(0,next.height-next.compactTop+next.span)+"px";}
+   if(rail.current){rail.current.style.transition="none";
+    rail.current.style.transform="translate3d("+(-currentIndex.current*next.width)+"px,0,0)";}
    engine.current?.rebaseViewport(next);
    painter.current(engine.current?.getProgress()??0);
   };
@@ -118,8 +126,21 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   const web=window.Telegram?.WebApp;
   const stable=(event?:{isStateStable?:boolean})=>{if(event?.isStateStable!==false)schedule();};
   web?.onEvent?.("viewportChanged",stable);web?.onEvent?.("safeAreaChanged",schedule);
-  const visibility=()=>{if(document.visibilityState==="hidden")controller.suspend();else controller.resume();};
-  const suspend=()=>controller.suspend(),resume=()=>controller.resume();
+  const cancelGesture=()=>{
+   const interrupted=gesture.current;gesture.current=null;hostGestures.cancel();controller.cancelDrag();
+   if(interrupted?.kind==="photo"&&rail.current){rail.current.style.transition="none";
+    rail.current.style.transform="translate3d("+(-currentIndex.current*layout.current.width)+"px,0,0)";}
+   if(interrupted?.kind==="tabs"&&pagesTrack.current){pagesTrack.current.style.transition="none";
+    pagesTrack.current.style.transform="translate3d("+(-selectedTab.current*layout.current.width)+"px,0,0)";}
+   if(interrupted?.kind==="tabs"&&ink.current){
+    const button=tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")[selectedTab.current];
+    if(button){ink.current.style.transition="none";
+     ink.current.style.transform="translate3d("+button.offsetLeft+"px,0,0)";
+     ink.current.style.width=button.offsetWidth+"px";}
+   }
+  };
+  const visibility=()=>{if(document.visibilityState==="hidden"){cancelGesture();controller.suspend();}else controller.resume();};
+  const suspend=()=>{cancelGesture();controller.suspend();},resume=()=>controller.resume();
   document.addEventListener("visibilitychange",visibility);window.addEventListener("pagehide",suspend);
   window.addEventListener("pageshow",resume);
   return ()=>{ro.disconnect();window.removeEventListener("resize",schedule);
@@ -132,7 +153,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   };
  },[]);
  const actions=useRef<ProfileRouteMotionHandle>({
-  suspendForRoute:()=>engine.current?.suspend(),rollbackRoute:()=>engine.current?.resume(),
+  suspendForRoute:()=>{gesture.current=null;coordinator.current.cancel();engine.current?.suspend();},
+  rollbackRoute:()=>engine.current?.resume(),
   commitRouteClose:()=>engine.current?.dispose(),suspendForBackground:()=>engine.current?.suspend(),
   resumeFromBackground:()=>engine.current?.resume()
  });
@@ -144,7 +166,11 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    pendingPhotoCommit.current=null;return;
   }
   pendingPhotoCommit.current=null;
+  pendingPhotoRequest.current=null;
   const idx=currentIndex.current;
+  const selected=current.current.photos[idx];
+  const image=selected?refs.current.get(selected.id):null;
+  root.current?.setAttribute("data-active-photo-ready",image?.complete&&!!image.naturalWidth?"true":"false");
   if(rail.current){rail.current.style.transition="none";
    rail.current.style.transform="translate3d("+(-idx*layout.current.width)+"px,0,0)";}
   painter.current(engine.current?.getProgress()??0);
@@ -162,7 +188,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    ink.current.style.width=button.offsetWidth+"px";}
  };
  useLayoutEffect(()=>{setTabIndex(selectedTab.current,false);},[]);
- const choosePhoto=(idx:number,animate=true)=>{
+ const commitPhoto=(idx:number,animate=true)=>{
   const item=current.current.photos[idx];if(!item)return;
   // Decode/crop the new active and adjacent slides before the track slides.
   // Otherwise a previously offscreen 4th/5th/6th image has zero painted size
@@ -174,19 +200,39 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const image=refs.current.get(adjacent.id);
    if(!image||!image.complete||!image.naturalWidth||!image.naturalHeight)continue;
    const offset=photoOffset(l,p,image.naturalWidth,image.naturalHeight);
-   image.style.width=offset.width+"px";
-   image.style.height=offset.height+"px";
-   image.style.transform="translate3d("+offset.x+"px,"+offset.y+"px,0)";
+   image.style.width=offset.baseWidth+"px";
+   image.style.height=offset.baseHeight+"px";
+   image.style.transform="translate3d("+offset.x+"px,"+offset.y+"px,0) scale("+offset.scale+")";
   }
   if(rail.current){rail.current.style.transition=animate?"transform 210ms cubic-bezier(.2,.8,.2,1)":"none";
    rail.current.style.transform="translate3d("+(-idx*layout.current.width)+"px,0,0)";}
   currentIndex.current=idx;pendingPhotoCommit.current=item.id;current.current.onPhotoId(item.id);
+  root.current?.setAttribute("data-active-photo-ready","true");
+ };
+ const choosePhoto=(idx:number,animate=true)=>{
+  const item=current.current.photos[idx];if(!item)return;
+  const image=refs.current.get(item.id);
+  if(image&&(!image.complete||!image.naturalWidth)){
+   pendingPhotoRequest.current={id:item.id,index:idx,animate};
+   image.loading="eager";
+   void image.decode?.().then(()=>{
+    const pending=pendingPhotoRequest.current;
+    if(pending?.id===item.id&&current.current.photos[pending.index]?.id===item.id&&image.naturalWidth){
+     pendingPhotoRequest.current=null;commitPhoto(pending.index,pending.animate);
+    }
+   }).catch(()=>{/* onLoad handles a fallback URL if one exists */});
+   if(rail.current){rail.current.style.transition="transform 140ms ease-out";
+    rail.current.style.transform="translate3d("+(-currentIndex.current*layout.current.width)+"px,0,0)";}
+   return;
+  }
+  pendingPhotoRequest.current=null;
+  commitPhoto(idx,animate);
  };
  const down=(e:ReactPointerEvent<HTMLDivElement>,kind:Session["kind"])=>{
   if(!e.isPrimary){coordinator.current.secondFinger();gesture.current=null;engine.current?.cancelDrag();return;}
   if(e.pointerType==="mouse"&&e.button!==0)return;
   if(kind==="photo"&&(engine.current?.getProgress()??0)<.95)return;
-  if(kind!=="handle"&&(e.target as Element).closest("button"))return;
+  if((e.target as Element).closest("button,input,textarea,select,a,[contenteditable=true]"))return;
   const region:Region=kind==="handle"?"handle":kind==="photo"?"photo":"content";
   if(!coordinator.current.begin({id:e.pointerId,x:e.clientX,y:e.clientY,time:e.timeStamp},region))return;
   const offset=kind==="photo"?currentIndex.current:selectedTab.current;
@@ -206,12 +252,25 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const scroll=g.scroll;
    const dy=e.clientY-g.y;
    if(!scroll)return;
-   const remaining=Math.max(0,(g.scrollStart??0)-dy);
-   if(dy>0&&remaining===0){
-    if(!g.vertical){g.vertical=true;g.claimed=true;engine.current?.beginDrag(e.clientY);
-     try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* implicit */}}
+   const atTop=(g.scrollStart??0)<=1;
+   const toSheet=g.vertical||dy>0&&dy>=(g.scrollStart??0)-1||
+    atTop&&dy<0&&(engine.current?.getProgress()??0)>.02;
+   if(toSheet){
+    if(!g.vertical){
+     g.vertical=true;g.claimed=true;
+     // Hand off only the movement left after consuming the scroll distance.
+     const handoffY=g.y+(dy>0?(g.scrollStart??0):0);
+     scroll.scrollTop=0;
+     engine.current?.beginDrag(handoffY);
+     g.lastY=e.clientY;g.lastAt=e.timeStamp;g.velocity=0;
+     try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* implicit */}
+    }
+    const dt=e.timeStamp-g.lastAt;
+    if(dt>0&&dt<125)g.velocity=(e.clientY-g.lastY)/dt;
+    g.lastY=e.clientY;g.lastAt=e.timeStamp;
     engine.current?.updateDrag(e.clientY);
-   }else if(!g.vertical)scroll.scrollTop=remaining;
+   }else {scroll.scrollTop=Math.max(0,(g.scrollStart??0)-dy);
+    g.lastY=e.clientY;g.lastAt=e.timeStamp;}
    return;
   }
   if(decision.owner!==needed)return;
@@ -243,6 +302,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   }
  };
  const up=(e:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
+  if(!e.isPrimary){coordinator.current.releaseSecondFinger();return;}
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   gesture.current=null;const decision=coordinator.current.end(e.pointerId);
   const dx=e.clientX-g.x,dy=e.clientY-g.y,elapsed=Math.max(1,e.timeStamp-g.at);
@@ -268,14 +328,28 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  };
  const imageLoaded=(event:React.SyntheticEvent<HTMLImageElement>)=>{
   if(event.currentTarget.naturalWidth>0){
+   if(event.currentTarget.dataset.photoId===current.current.photoId)
+    root.current?.setAttribute("data-active-photo-ready","true");
    painter.current(engine.current?.getProgress()??0);
+   const pending=pendingPhotoRequest.current;
+   if(pending?.id===event.currentTarget.dataset.photoId&&current.current.photos[pending.index]?.id===pending.id){
+    pendingPhotoRequest.current=null;commitPhoto(pending.index,pending.animate);
+   }
   }
  };
- return <div ref={root} className="v3-int-root" data-testid="v3-integrated" data-progress="0" data-sheet-state={expanded?"expanded":"collapsed"}>
+ return <div ref={root} className="v3-int-root" data-testid="v3-integrated" data-progress="0" data-sheet-state={expanded?"expanded":"collapsed"}
+  onPointerDownCapture={e=>{if(!e.isPrimary){
+   const interrupted=gesture.current;gesture.current=null;coordinator.current.secondFinger();engine.current?.cancelDrag();
+   if(interrupted?.kind==="tabs")setTabIndex(selectedTab.current,false);
+   if(interrupted?.kind==="photo"&&rail.current){rail.current.style.transition="none";
+    rail.current.style.transform="translate3d("+(-currentIndex.current*layout.current.width)+"px,0,0)";}
+  }}}
+  onPointerUpCapture={e=>{if(!e.isPrimary)coordinator.current.releaseSecondFinger();}}
+  onPointerCancelCapture={e=>{if(!e.isPrimary)coordinator.current.releaseSecondFinger();}}>
   <div className="v3-int-opaque" aria-hidden="true"/>
   <div className="v3-int-hero pm-hero">
    <div className="v3-int-ambient" aria-hidden="true">
-    {activePhoto&&<img ref={ambient} key={activePhoto.id} src={activePhoto.src} alt="" draggable={false}/>}
+    {photos[0]&&<img src={photos[0].src} alt="" draggable={false}/>}
     <span/>
    </div>
    <div className="v3-int-mask" ref={mask} role="button" tabIndex={0}
@@ -289,7 +363,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
       style={{left:"calc(var(--v3-w) * "+i+")"}}>
       <img ref={el=>{if(el)refs.current.set(item.id,el);else refs.current.delete(item.id);}}
        data-photo-id={item.id} src={item.src} alt={"Фото "+(i+1)+" · "+p.name}
-       loading={i===photoIndex?"eager":"lazy"} decoding="async" draggable={false}
+       loading={Math.abs(i-photoIndex)<=1?"eager":"lazy"} decoding="async" draggable={false}
        onLoad={e=>imageLoaded(e)} onError={e=>{
         if(item.fallback&&e.currentTarget.src!==item.fallback)e.currentTarget.src=item.fallback;
        }}/>
@@ -312,7 +386,12 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    {p.source!=="server"&&<span className="pm-hero-demo v3-int-source">
     {p.source==="fixture"?"Демо":"Черновик"}</span>}
   </div>
-  <div className="v3-int-sheet" ref={sheet}>
+  <div className="v3-int-sheet" ref={sheet}
+   onPointerDown={e=>{if(!(e.target as Element).closest(".v3-int-handle,.v3-int-pages"))down(e,"handle");}}
+   onPointerMove={e=>{if(e.target===e.currentTarget)move(e);}}
+   onPointerUp={e=>{if(e.target===e.currentTarget)up(e);}}
+   onPointerCancel={e=>{if(e.target===e.currentTarget)up(e,true);}}
+   onLostPointerCapture={e=>{if(e.target===e.currentTarget)up(e,true);}}>
    <div className="v3-int-handle" role="button" tabIndex={0}
     aria-label={expanded?"Свернуть фото":"Раскрыть фото"}
     onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();
@@ -347,7 +426,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
      {tabs.map(([id,label],i)=><section key={id} className="v3-int-page" role="tabpanel"
       style={{left:"calc(var(--v3-w) * "+i+")"}}
       aria-label={label} inert={tab!==id} aria-hidden={tab!==id}>
-       {renderPage(id)}
+      {pageBodies[i]}
       </section>)}
     </div>
    </div>
