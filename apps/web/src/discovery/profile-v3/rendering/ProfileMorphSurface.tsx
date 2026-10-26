@@ -95,7 +95,7 @@ export function ProfileMorphSurface({data=syntheticProfile,viewport}:ProfileMorp
     onClick={e=>{if(e.detail===0)engine.current?.animateTo(engine.current.getProgress()>=.5?0:1);}}
     onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();engine.current?.animateTo(engine.current.getProgress()>=.5?0:1);}}}
     onPointerDown={down} onPointerMove={move} onPointerUp={e=>end(e)} onPointerCancel={e=>end(e,true)}
-    onLostPointerCapture={e=>end(e,true)}><span/></div>
+    onLostPointerCapture={e=>{if(e.target===e.currentTarget)end(e,true);}}><span/></div>
    <div className="v3-tabs" role="tablist">{labels.map((label,i)=><button role="tab" aria-selected={selected===i}
     key={label} onClick={()=>setSelected(i)}>{label}</button>)}</div>
    <div className="v3-content" role="tabpanel"><article><h3>{labels[selected]}</h3><p>Синтетический контент для проверки композиции.</p></article></div>
