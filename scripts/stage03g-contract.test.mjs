@@ -76,9 +76,10 @@ assert.ok(discovery.includes('from "./ProfileV3Gateway"')&&
  visitorRoute.includes('from "./ProfileV3Gateway"')&&
  previewSource.includes('from "../discovery/ProfileV3Gateway"'),
  "owner/visitor/registration must all use the SAME controlled profile gateway");
-assert.ok(gateway.includes('new URLSearchParams(window.location.search).get("profileV3")==="1"')&&
+assert.ok(gateway.includes('value==="0"')&&gateway.includes('value==="1"')&&
+ gateway.includes('window.location.hostname==="luemi-stage01.onrender.com"')&&
  gateway.includes('<ProfileV3 {...props}/>')&&gateway.includes('<ProfileA2 {...props}/>'),
- "one mutually exclusive renderer; V3 never simultaneously mounts legacy A2");
+ "V3 defaults on stage01 only with A2 fallback; profile renders remain mutually exclusive");
 assert.ok(v3.includes("projectProfile(data,mode)")&&
  v3.includes("PhotoViewer")&&v3.includes("initialPhotoId={viewer.photoId}")&&
  v3.includes("mode={data.source===")&&v3.includes("reconcilePhotoId")&&
