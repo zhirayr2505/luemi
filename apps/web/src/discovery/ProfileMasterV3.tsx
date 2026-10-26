@@ -1,5 +1,5 @@
 import {memo,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {PenLine,Eye,FileText,Sparkles,Images,Gift,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
+import {FileText,Sparkles,Images,Gift,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
 import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import {languages} from "../ui/Languages";
@@ -75,7 +75,6 @@ function Meta({view}:{view:ProfileView}){
  </div>;
 }
 
-type PointerSession={id:number;x:number;y:number;at:number;lastX:number;lastY:number;lastAt:number;
 
 export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,
  active=true,onMotionProgress,registerRouteMotion,gestureArbiter}:Props){
