@@ -40,7 +40,7 @@ try{
   const x=bounds.x+bounds.width/2,y=bounds.y+bounds.height/2;
   // Explicitly drag further than half the range, so a slow or quick release
   // MUST resolve COMPACT. Do not add a second tap during an in-flight settle.
-  const travel=expanded.y-initial.y,dragDistance=Math.max(110,Math.min(travel*.73,y-80));
+  const travel=expanded.y-initial.y,dragDistance=Math.min(travel*.73,Math.max(24,y-80));
   if(settings.isMobile){
    // Browser touch emulation must dispatch touchscreen events; Playwright's
    // mouse.move is not a reliable substitute for Android PointerEvent touch.
