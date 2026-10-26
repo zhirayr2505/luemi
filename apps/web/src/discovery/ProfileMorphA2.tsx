@@ -266,7 +266,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(g.claimed)gestureArbiter?.finish("sheet",g.serial);
    else gestureArbiter?.finishCandidate(g.serial,"sheet");
   }
-  if(!g.claimed){if(!cancelled)motion.current?.toggle();}
+  // An x-axis back swipe owned by the visitor route is not a profile toggle.
+  const dx=event.clientX-g.x,dy=event.clientY-g.y;
+  const pointerTap=Math.hypot(dx,dy)<9;
+  if(!g.claimed){if(!cancelled&&pointerTap&&(g.serial===undefined||!gestureArbiter?.owner()))motion.current?.toggle();}
   else {const now=performance.now();const average=(event.clientY-g.y)/Math.max(1,now-g.at);
    const velocity=now-g.lastAt<120?(g.velocity??average):average;
    motion.current?.release(velocity,cancelled);}
