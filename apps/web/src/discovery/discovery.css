@@ -220,6 +220,9 @@
    every partial back swipe. Original raster, size and placement stay intact. */
 .discovery-app[data-profile-renderer=android] .discovery-visitor-route{
  will-change:transform;backface-visibility:hidden;
+ /* Keep the white sheet and photo within the translating route's paint box.
+    Prevent old Android WebView GPU tiles from escaping into the feed. */
+ contain:paint;isolation:isolate;
 }
 .discovery-app[data-profile-renderer=android] .discovery-visitor-route .lh-island img{
  filter:none;
