@@ -96,7 +96,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const root=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),face=useRef<HTMLDivElement>(null);
  const compactText=useRef<HTMLDivElement>(null),expandedText=useRef<HTMLDivElement>(null),backdrop=useRef<HTMLDivElement>(null);
  const pagesTrack=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
- const photoDots=useRef<HTMLDivElement>(null);
+ const photoDots=useRef<HTMLDivElement>(null),photoRing=useRef<HTMLDivElement>(null);
  const photoViewport=useRef<HTMLDivElement>(null),tabsRoot=useRef<HTMLDivElement>(null),ink=useRef<HTMLSpanElement>(null);
  const motion=useRef<ProfileMorphMotion|null>(null);
  const geometry=useRef<MorphGeometry>(profileMorphGeometry(390,730));
@@ -124,7 +124,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    face.current.style.borderRadius=frame.radius+"%";
    // Counter-scale portrait pixels: the moving clip may change aspect but faces never stretch.
    if(photoViewport.current)photoViewport.current.style.transform="scaleY("+(frame.scaleX/frame.scaleY)+")";
-   face.current.style.boxShadow=p<.9?"0 9px 35px rgba(40,17,65,.20)":"none";
+   if(photoRing.current)photoRing.current.style.opacity=String(Math.max(0,1-p*1.8));
   }
   if(compactText.current){compactText.current.style.opacity=String(frame.compactAlpha);compactText.current.style.pointerEvents=p<.2?"auto":"none";}
   if(expandedText.current)expandedText.current.style.opacity=String(frame.expandedAlpha);
@@ -390,6 +390,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
         </div>)}
        </div>:<div className="pm-a2-no-photo"><Images size={38}/> Нет доступных фото</div>}
       </div>
+      <div className="pm-a2-photo-ring" ref={photoRing} aria-hidden="true"/>
     </div>
     <div className="pm-a2-compact-identity" ref={compactText}>
      <h2>{name}</h2><p>{location}</p>
