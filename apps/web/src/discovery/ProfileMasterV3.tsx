@@ -1,5 +1,5 @@
 import {memo,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {FileText,Sparkles,Images,Gift,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
+import {FileText,Sparkles,Images,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
 import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import {languages} from "../ui/Languages";
@@ -26,10 +26,6 @@ type Props={
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
  gestureArbiter?:GestureArbiter;
 };
-function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
- return <img data-photo-id={photo.id} src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
-  onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
-}
 
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
  return <img data-photo-id={photo.id} src={photo.src} alt={alt} draggable={false} loading={loading} decoding="async"
