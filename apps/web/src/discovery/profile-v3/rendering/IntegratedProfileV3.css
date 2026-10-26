@@ -13,7 +13,7 @@
 .v3-int-ambient{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;
  background:linear-gradient(130deg,#ae86c9,#e7b2d6)}
 .v3-int-ambient img{position:absolute;left:-18px;top:-18px;width:calc(100% + 36px);height:calc(100% + 36px);
- object-fit:cover;object-position:50% 30%;opacity:.28;pointer-events:none}
+ object-fit:cover;object-position:50% 30%;filter:blur(9px);opacity:.35;pointer-events:none}
 .v3-int-ambient span{position:absolute;inset:0;background:linear-gradient(150deg,rgba(84,43,110,.4),rgba(230,167,217,.25) 65%,rgba(80,45,118,.2))}
 .v3-int-mask{position:absolute;z-index:2;overflow:hidden;touch-action:pan-y;
  background:linear-gradient(130deg,#ac8ac4,#d8b4d9);border-radius:50%;
@@ -83,7 +83,7 @@
  top:0;width:var(--v3-w);height:100%;box-sizing:border-box;
  padding:14px 14px calc(110px + var(--v3-extra-scroll));
  overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;
- touch-action:pan-y;-webkit-overflow-scrolling:touch;overflow-anchor:none;scrollbar-width:none}
+ touch-action:none;-webkit-overflow-scrolling:touch;overflow-anchor:none;scrollbar-width:none}
 .v3-int-page::-webkit-scrollbar{display:none}
 .v3-profile-host .pm-preview-toolbar{position:absolute;z-index:30;top:84px;right:12px}
 .v3-profile-host .pm-preview-toolbar button{border:1px solid #e3d0ee;background:#fffd;
@@ -99,4 +99,11 @@
 .v3-int-ambient{isolation:isolate;contain:paint}
 .v3-int-photo-rail{backface-visibility:hidden}
 .v3-int-hero{contain:paint}
-.v3-int-page{touch-action:pan-y;overflow-anchor:none}
+.v3-int-page{touch-action:none;overflow-anchor:none}
+
+/* Stable tab label and immutable original logo layers. No opacity animations
+   on labels: only underline + page rail move during the gesture. */
+.v3-int-tab{transition:none!important;opacity:1;backface-visibility:hidden}
+.v3-int-tabs{backface-visibility:hidden;contain:paint}
+.v3-int-ink{will-change:transform}
+.v3-int-ambient img{transform:none;will-change:auto}
