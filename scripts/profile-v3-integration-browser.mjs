@@ -58,6 +58,29 @@ try{
  await page.keyboard.press("Escape");
  await page.locator(".pm-viewer").waitFor({state:"detached",timeout:2600});
  assert.equal(await root.getAttribute("data-morph-state"),"expanded","viewer return retains expanded hero");
+ // Gallery is a real, permission-filtered track with follow-finger horizontal
+ // movement. The selected published/local self photo must persist in PhotoViewer.
+ const swipable=await root.locator(".v3-int-mask").boundingBox();
+ assert(swipable);
+ const centerX=swipable.x+swipable.width*.62,centerY=swipable.y+swipable.height*.42;
+ const track=root.locator(".v3-int-photo-rail");
+ const initialTrack=await track.evaluate(el=>getComputedStyle(el).transform);
+ await touch({x:centerX,y:centerY,dx:-235,steps:12,each:async i=>{
+  if(i===6){
+   const middle=await track.evaluate(el=>getComputedStyle(el).transform);
+   assert.notEqual(middle,initialTrack,"gallery follows touch before release");
+   await page.screenshot({path:out+"/owner-photo-mid-swipe.png"});
+  }
+ }});
+ await page.waitForTimeout(300);
+ assert.equal(await root.locator('.v3-int-photo-dots button.active').getAttribute("aria-label"),"Фото 2 из 3",
+  "photo swipe commits next actual photo");
+ await root.locator(".v3-int-mask").click({position:{x:expanded.width*.5,y:expanded.height*.36}});
+ await page.locator(".pm-viewer").waitFor();
+ await page.keyboard.press("Escape");
+ await page.locator(".pm-viewer").waitFor({state:"detached"});
+ assert.equal(await root.locator('.v3-int-photo-dots button.active').getAttribute("aria-label"),"Фото 2 из 3",
+  "return from viewer preserves active photoId");
  const handle=await root.locator(".v3-int-handle").boundingBox();
  assert(handle&&handle.height>=30);
  const series=[];
@@ -81,6 +104,18 @@ try{
  await page.locator(".pm-viewer").waitFor();
  await page.keyboard.press("Escape");
  await page.locator(".pm-viewer").waitFor({state:"detached"});
+ // Owner media can be revised while profile remains mounted. No inaccessible
+ // gallery slots, undefined dimensions or private media should leak.
+ await page.evaluate(()=>window.__luemiQaV3.setPhotoCount(0));
+ await page.waitForFunction(()=>document.querySelectorAll(".v3-profile-host.pm-inline .v3-int-photo-slide img").length===0);
+ assert.equal(await root.locator(".v3-int-no-photo").count(),1,"0-photo placeholder remains safe");
+ await page.evaluate(()=>window.__luemiQaV3.setPhotoCount(1));
+ await page.waitForFunction(()=>document.querySelectorAll(".v3-profile-host.pm-inline .v3-int-photo-slide img").length===1);
+ await page.evaluate(()=>window.__luemiQaV3.setPhotoCount(6));
+ await page.waitForFunction(()=>document.querySelectorAll(".v3-profile-host.pm-inline .v3-int-photo-slide img").length===6);
+ assert.equal(await root.locator(".pm-photo-tile").count(),6,"owner retains six authorized photo tiles");
+ await page.evaluate(()=>window.__luemiQaV3.setPhotoCount(3));
+ await page.waitForFunction(()=>document.querySelectorAll(".v3-profile-host.pm-inline .v3-int-photo-slide img").length===3);
  await page.getByRole("button",{name:"Знакомства",exact:true}).click();
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
  await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
