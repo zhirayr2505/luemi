@@ -101,6 +101,14 @@ for(const percent of [.25,.5,.9]){
    assert.ok(f.scaleX>0&&f.scaleY>0,"finite nonzero bitmap transforms");
   }
  }
+ for(const [w,h] of [[393,425],[852,393],[700,460]]){
+  const g=geometry.profileMorphGeometry(w,h,92);
+  assert.ok(g.avatarSize<=82,"short viewport limits portrait to a usable area");
+  assert.ok(g.compactTop>=g.avatarY+g.avatarSize-5,"compact portrait remains visible in landscape");
+  assert.ok(g.expandedTop>g.compactTop,"expanded photo must remain reachable");
+  assert.ok(g.expandedTop<=h-120,"landscape leaves room for handle + tabs + minimal content");
+ }
+ console.log("PROFILE_A2_LANDSCAPE_PASS 393x425, 852x393, 700x460");
  console.log("PROFILE_A2_GEOMETRY_PASS compact/expanded and 101 samples x 4 viewports");
 }
 {
