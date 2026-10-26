@@ -124,6 +124,7 @@ try{
  assert.equal(await tabs.nth(1).getAttribute("aria-selected"),"true",
   "left swipe starting inside nested content switches to Bliki");
  await tabs.first().click();
+ await page.waitForTimeout(280); // wait for the previous horizontal tab settle
  const firstPage=root.locator(".v3-int-page").first();
  await firstPage.evaluate(el=>el.scrollTop=110);
  assert(await firstPage.evaluate(el=>el.scrollTop)>0,"tab content is scrollable");
