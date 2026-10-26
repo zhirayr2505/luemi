@@ -132,59 +132,24 @@ globalThis.DOMMatrixReadOnly=prevMatrix;
 globalThis.getComputedStyle=prevCSS;
 console.log("REM02C_UNIT_PASS actual matrix freezing recovers half-slide fractional coordinate");
 
-const snap=await import(url(compile(read("apps/web/src/discovery/profile-tab-snap.ts"))));
-assert.equal(snap.tabReleaseDuration(.95,1),0,
- "near-complete swipe must not replay another visual transition");
-assert.ok(snap.tabReleaseDuration(.6,1)>=50&&snap.tabReleaseDuration(.6,1)<170,
- "swipe releases finish remaining distance, not a fresh full 295ms");
-assert.equal(snap.tabReleaseDuration(0,1),210,
- "release duration is bounded even for an early flick");
-assert.equal(snap.tabReleaseDuration(Infinity,1),295,
- "invalid fraction falls back to safe original duration");
-console.log("PROFILE_TAB_RELEASE_PASS proportional remaining settle");
-const profile=read("apps/web/src/discovery/ProfileMaster.tsx");
-const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
+
+const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
-const css=read("apps/web/src/discovery/discovery.css");
-const profileCss=read("apps/web/src/discovery/profile-master.css");
-assert.ok(profile.includes('g.index=fractionalTrack(photoTrack.current,g.width,activePhoto)'));
-assert.ok(profile.includes('fromFinger?tabReleaseDuration(from,i):295'),
- "tab clicks remain 295ms, finger release scales remaining animation");
-assert.ok(profile.includes('chooseTab(next,true)'),
- "both touch and pointer releases use distance-proportional settle");
-assert.ok(!profile.includes('settleSheet(g.down,"touchend.noAxis")'),
- "no-axis taps must not restart the sheet before click handlers");
-assert.ok(profile.includes('engine.phase==="settling"&&engine.destinationCollapsed===next'),
- "duplicate sheet commands to the same in-flight endpoint must be idempotent");
-assert.ok(profile.includes('!(sheetMotion.current?.destinationCollapsed??collapsedRef.current)'),
- "grab tap must invert the actual pending sheet target rather than stale React state");
-assert.ok(profile.includes('down:sheetMotion.current?.destinationCollapsed??collapsedRef.current'),
- "rapid sheet gestures must use the in-flight destination, not stale React state");
-assert.ok(profile.includes('preservePhotoId(list,photos,activePhotoId.current,activePhoto)'));
-assert.ok(profile.includes('gestures.claim(owner,g.serial)')&&profile.includes('gestures.nativeScroll(g.serial)'));
-assert.ok(profile.includes('const serial=gestures.begin("pointer",e.pointerId,"tabs")')&&
- profile.includes('gestures.claim("tabs",g.serial!)')&&
- profile.includes('gestures.owns("tabs",g.serial!)')&&
- profile.includes('onLostPointerCapture={e=>tabEnd(e,true)}'),
- "mouse/pen tab pointer path must use the same arbiter for claim/paint/terminal");
-const tabCandidate=profile.slice(profile.indexOf("const tabDown="),profile.indexOf("const tabMove="));
-assert.ok(!tabCandidate.includes("stopTabs.current()"),"candidate must not interrupt prior tab settle");
-assert.ok(profile.includes('blocking:inPages?(!collapsedRef.current||scrollTop<=1):!collapsedRef.current')&&
- profile.includes('if(g.inPages&&g.down&&g.scrollTop>1)')&&
- profileCss.includes('.pm-shell[data-sheet-state="expanded"] .pm-page'),
- "collapsed scrolled content retains passive native scroll; expanded surface hands vertical touch to sheet");
-assert.ok(profile.includes('!gestures.owns(g.axis==="x"?"tabs":"sheet",g.serial)'));
-assert.ok(route.includes('gestureArbiter={gestures}')&&route.includes('attachSuppression.current()'));
-assert.ok(route.includes("if(isGestureModalBlocked(target))return;")&&
- !route.includes("capabilities.canScrollY")&&
- !route.includes("gestureCapabilities(target"),
- "visitor route never blocks horizontal back swipe merely because content was scrolled");
-assert.ok(browse.includes('browseMotion.current.schedulePaint(g.token,trackX')&&browse.includes('frozenBrowse()'));
-assert.ok(browse.includes('g.originInk-shift/3')&&browse.includes('trackX=g.originTrack+shift'));
-assert.ok(css.includes('transition:transform .3s cubic-bezier(.2,.77,.21,1)')&&
- css.includes('transition:transform .3s cubic-bezier(.2,.76,.23,1)'));
-assert.ok(profile.includes('transform 290ms cubic-bezier(.2,.76,.22,1)'));
-assert.ok(profileCss.includes('transition:transform 300ms cubic-bezier(.2,.76,.22,1)'));
-assert.ok(!css.includes("touch-action:none"));
-console.log("REM02C_UNIT_PASS original pager/ink/hero easings, durations and non-blocking native touch-action preserved");
-console.log("REM-02C UNIT + ADAPTER QA PASS — real hardware NOT VERIFIED");
+const css=read("apps/web/src/discovery/profile-morph-a2.css");
+const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
+assert.ok(profile.includes('gestureArbiter?.begin("pointer"')&&
+ profile.includes('gestureArbiter?.claim(')&&profile.includes('gestureArbiter?.finish('),
+ "A2 visitor route shares exclusive GestureArbiter for sheet/hero/tabs");
+assert.ok(profile.includes('onPointerCancel={e=>endSheet(e,true)}')&&
+ profile.includes('onPointerCancel={e=>slideEnd(e,"photo",true)}')&&
+ profile.includes('onPointerCancel={e=>slideEnd(e,"tab",true)}'),
+ "all A2 pointer owners cancel deterministically");
+assert.ok(css.includes(".pm-a2-page")&&css.includes("overflow-y:auto")&&
+ css.includes("touch-action:pan-y")&&css.includes(".pm-a2-handle")&&css.includes("touch-action:none"),
+ "native vertical scroll preserved, touch-action none only in gesture handle");
+assert.ok(route.includes('gestureArbiter={gestures}')&&route.includes('if(isGestureModalBlocked(target))return;'),
+ "Telegram modal and route arbitration preserved");
+assert.ok(browse.includes("browseMotion.current.schedulePaint")&&
+ !read("apps/web/src/discovery/discovery.css").includes("touch-action:none"),
+ "Discovery gesture ownership unchanged");
+console.log("PROFILE_A2_GESTURE_ADAPTER_PASS shared arbiter and scroll boundaries");
