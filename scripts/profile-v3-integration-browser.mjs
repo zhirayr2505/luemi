@@ -127,8 +127,12 @@ try{
  const firstPage=root.locator(".v3-int-page").first();
  await firstPage.evaluate(el=>el.scrollTop=110);
  assert(await firstPage.evaluate(el=>el.scrollTop)>0,"tab content is scrollable");
- const article=await firstPage.locator(".pm-card").first().boundingBox();assert(article);
- await touch({x:article.x+article.width*.5,y:article.y+Math.min(42,article.height*.4),dy:55});
+ const scrolledPage=await firstPage.boundingBox();assert(scrolledPage);
+ const scrollX=scrolledPage.x+scrolledPage.width*.5;
+ const scrollY=scrolledPage.y+Math.min(68,scrolledPage.height*.25);
+ assert.equal(await page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest(".v3-int-page"),{x:scrollX,y:scrollY}),true,
+  "scroll test starts on visible tab content, never on an offscreen article");
+ await touch({x:scrollX,y:scrollY,dy:55});
  assert((await firstPage.evaluate(el=>el.scrollTop))<110,
   "downward gesture scrolls content before it is allowed to unfold profile");
  await firstPage.evaluate(el=>el.scrollTop=0);
