@@ -96,6 +96,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const root=useRef<HTMLElement>(null),sheet=useRef<HTMLDivElement>(null),face=useRef<HTMLDivElement>(null);
  const compactText=useRef<HTMLDivElement>(null),expandedText=useRef<HTMLDivElement>(null),backdrop=useRef<HTMLDivElement>(null);
  const pagesTrack=useRef<HTMLDivElement>(null),photoTrack=useRef<HTMLDivElement>(null);
+ const photoDots=useRef<HTMLDivElement>(null);
  const photoViewport=useRef<HTMLDivElement>(null),tabsRoot=useRef<HTMLDivElement>(null),ink=useRef<HTMLSpanElement>(null);
  const motion=useRef<ProfileMorphMotion|null>(null);
  const geometry=useRef<MorphGeometry>(profileMorphGeometry(390,730));
@@ -128,6 +129,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(compactText.current){compactText.current.style.opacity=String(frame.compactAlpha);compactText.current.style.pointerEvents=p<.2?"auto":"none";}
   if(expandedText.current)expandedText.current.style.opacity=String(frame.expandedAlpha);
   if(backdrop.current)backdrop.current.style.opacity=String(1-frame.expandedAlpha);
+  if(photoDots.current){photoDots.current.style.opacity=String(clamp((p-.65)/.3,0,1));
+   photoDots.current.style.pointerEvents=p>.97?"auto":"none";}
   motionCallback.current?.(1-p,motion.current?.snapshot().phase==="dragging");
  };
  useLayoutEffect(()=>{
@@ -394,7 +397,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
      <div className="pm-a2-expanded-row"><p>{location}</p>
       {goal&&<span className="pm-a2-goal"><Heart size={13}/>{goal.label}</span>}</div>
     </div>
-    {photos.length>1&&<div className="pm-a2-photo-dots" aria-label="Фотографии профиля">
+    {photos.length>1&&<div className="pm-a2-photo-dots" ref={photoDots} aria-label="Фотографии профиля">
      {photos.map((photo,i)=><button type="button" key={photo.id} aria-label={"Фото "+(i+1)+" из "+photos.length}
       aria-current={i===activeIndex?"true":undefined}
       className={i===activeIndex?"active":""} onClick={()=>choosePhoto(i)}/>)}
