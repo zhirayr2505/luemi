@@ -49,11 +49,14 @@
 .pm-a2-hero{position:absolute;top:0;left:0;width:100%;
  height:var(--a2-expanded-top);min-height:0;overflow:hidden;z-index:1;isolation:isolate;
  background:linear-gradient(135deg,#b88dc8,#e6bbd2)}
-.pm-a2-background{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;
+.pm-a2-background-stage{position:absolute;inset:0;z-index:1;pointer-events:none;}
+.pm-a2-background{position:absolute;inset:0;overflow:hidden;pointer-events:none;
  opacity:1;background:#b58bc7}
 .pm-a2-background>img{position:absolute;left:50%;top:50%;width:110px;height:110px;
  transform:translate(-50%,-50%) scale(6);object-fit:cover;object-position:center 30%;
  filter:blur(12px);pointer-events:none}
+.pm-a2-background>img.pm-a2-bg-incoming{opacity:0;transition:opacity 195ms ease-out;}
+.pm-a2-background>img.pm-a2-bg-incoming.is-ready{opacity:1;}
 .pm-a2-background-tone{position:absolute;inset:0;background:
  linear-gradient(150deg,rgba(83,43,113,.42),rgba(228,149,202,.32) 65%,rgba(104,68,134,.25))}
 .pm-a2-face{position:absolute;left:0;top:0;width:100%;height:var(--a2-expanded-top);
