@@ -5,6 +5,11 @@ on:
     paths:
       - 'apps/web/src/discovery/profile-v3/**'
       - 'apps/web/profile-v3-preview.html'
+      - 'apps/web/src/discovery/ProfileMasterV3.tsx'
+      - 'apps/web/src/discovery/ProfileV3Gateway.tsx'
+      - 'apps/web/src/discovery/DiscoveryApp.tsx'
+      - 'apps/web/src/discovery/VisitorProfileRoute.tsx'
+      - 'apps/web/src/registration/Preview.tsx'
       - 'scripts/profile-v3-*.mjs'
       - '.github/workflows/profile-v3-browser.yml'
   workflow_dispatch:
@@ -56,6 +61,7 @@ jobs:
           done
           if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-v3-vite.log; exit 1; fi
           node scripts/profile-v3-browser-smoke.mjs
+          node scripts/profile-v3-integration-browser.mjs
       - name: Preserve isolated screenshots
         if: always()
         continue-on-error: true
@@ -64,5 +70,6 @@ jobs:
           name: luemi-profile-v3-synthetic-${{ github.run_id }}
           path: |
             qa-artifacts/profile-v3/**
+            qa-artifacts/profile-v3-integration/**
             /tmp/luemi-v3-vite.log
           if-no-files-found: ignore
