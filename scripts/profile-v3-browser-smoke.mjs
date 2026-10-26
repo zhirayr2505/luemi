@@ -51,7 +51,7 @@ try{
   await page.waitForFunction(()=>Number(document.querySelector('[data-testid="v3-root"]')?.getAttribute("data-progress")??1)<.001,
    null,{timeout:2500});
   assert.equal(await img.count(),1,"same img survives full interrupted morph");
-  assert.equal(await img.elementHandle(),photoElement,
+  assert(await img.evaluate((el,original)=>el===original,photoElement),
    "morph never replaces active img element");
   await handle.click();
   await page.waitForFunction(()=>Number(document.querySelector('[data-testid="v3-root"]')?.getAttribute("data-progress")??0)>.999,
