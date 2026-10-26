@@ -1,11 +1,11 @@
 import {useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent,ReactNode} from "react";
 import {Images,Eye,PenLine,Heart,ShieldCheck} from "lucide-react";
-import {Flag} from "../../ui/Flag";
-import {goals} from "../../registration/model";
-import type {ProfileView} from "../ProfileModel";
-import type {ProfileRouteMotionHandle} from "../ProfileMasterV3";
-import type {GestureArbiter} from "../../ui/gesture-arbiter";
+import {Flag} from "../../../ui/Flag";
+import {goals} from "../../../registration/model";
+import type {ProfileView} from "../../ProfileModel";
+import type {ProfileRouteMotionHandle} from "../../ProfileMasterV3";
+import type {GestureArbiter} from "../../../ui/gesture-arbiter";
 import {createProfileLayout,photoMask,photoOffset,clamp,type MorphLayout} from "../geometry/ProfileGeometry";
 import {ProfileMotionEngine} from "../motion/ProfileMotionEngine";
 import {ProfileGestureCoordinator,type Region,type Owner} from "../gestures/ProfileGestureCoordinator";
@@ -135,7 +135,6 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    rail.current.style.transform="translate3d("+(-idx*layout.current.width)+"px,0,0)";}
   painter.current(engine.current?.getProgress()??0);
  },[photoId,photos]);
- const indexTab=tabs.findIndex(t=>t[0]===tab);
  const setTabIndex=(index:number,animate=true)=>{
   const target=clamp(index,0,tabs.length-1);
   selectedTab.current=target;setTab(tabs[target][0]);
