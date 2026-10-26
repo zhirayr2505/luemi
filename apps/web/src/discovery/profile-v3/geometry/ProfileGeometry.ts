@@ -21,7 +21,10 @@ export function createProfileLayout(v:Viewport):MorphLayout {
  const avatar={x:safe.left+18,y:avatarY,width:size,height:size};
  const compactTop=clamp(avatarY+size+(short?10:24),safe.top+130,height-Math.min(140,height*.23));
  const available=Math.max(0,height-safe.bottom-compactTop);
- const span=clamp(available*(short?.38:.59),0,Math.max(0,available-96));
+ // On a small WebView do not promote a full-viewport portrait layer. The
+ // expanded hero is capped to a portrait-sized area above the content sheet.
+ const heroLimit=clamp(height*.53,short?230:300,short?315:435);
+ const span=Math.max(0,Math.min(available*(short?.38:.59),available-96,heroLimit-compactTop));
  const expandedTop=compactTop+span;
  const logoWidth=Math.min(128,usable*.36);
  const logo={x:(width-logoWidth)/2,y:safe.top+8,width:logoWidth,height:40};
