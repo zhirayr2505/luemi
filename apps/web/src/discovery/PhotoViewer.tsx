@@ -285,7 +285,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const completed=()=>{
    owner.finish(token,{paint:()=>{
     morphCleanup.current();
-    if(closingPhase){phase.current="disposed";latest.current.onClose(latest.current.photoId);}
+    if(closingPhase){phase.current="disposed";latest.current.onClose(latest.current.photoId??undefined);}
     else if(!closing.current)phase.current="idle";
    }});
   };
