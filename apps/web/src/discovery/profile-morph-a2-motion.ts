@@ -44,6 +44,7 @@ export class ProfileMorphMotion{
  };
  settle(target:0|1,velocity=0){
   if(this.phase==="disposed")return;
+  if(this.phase==="idle"&&Math.abs(this.progress-target)<.0005)return;
   if(this.phase==="settling"&&this.target===target)return;
   const current=this.sample();this.stop();this.dragOrigin=null;this.write(current);
   if(this.reducedMotion()||Math.abs(current-target)<.0005){this.end(target);return;}
