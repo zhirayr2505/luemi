@@ -1,13 +1,13 @@
 import {memo,useLayoutEffect,useRef} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {ProfileMaster} from "./ProfileMorphA2";
+import {ProfileMaster} from "./ProfileV3Gateway";
 import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
 import {GestureArbiter,isGestureModalBlocked,fractionalTrack,computedTranslation} from "../ui/gesture-arbiter";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import {useModalLayer} from "../ui/modal-layer";
-import type {ProfileRouteMotionHandle} from "./ProfileMorphA2";
+import type {ProfileRouteMotionHandle} from "./ProfileV3Gateway";
 import type {HeaderMotion} from "./GlobalHeader";
 import type {ProfileMasterData} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
