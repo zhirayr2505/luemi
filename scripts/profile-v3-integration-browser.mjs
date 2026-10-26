@@ -44,7 +44,12 @@ try{
  await root.locator(".v3-int-mask").click({position:{x:avatar.width/2,y:avatar.height/2}});
  await page.waitForFunction(()=>document.querySelector(".v3-profile-host.pm-inline")?.dataset.morphState==="expanded");
  const expanded=await root.locator(".v3-int-mask").boundingBox(),sheet=await root.locator(".v3-int-sheet").boundingBox();
- assert(expanded&&sheet&&expanded.width>avatar.width*2&&sheet.y>start.y+70,"hero expands and sheet travels");
+ assert(expanded&&sheet&&expanded.width>avatar.width*2&&sheet.y>start.y+45,"hero expands in bounded frame and sheet travels");
+ assert(expanded.height<page.viewportSize().height*.62,"expanded photo may not consume most of the screen");
+ assert.equal(await root.locator(".v3-int-photo-slide").first().evaluate(el=>getComputedStyle(el).overflow),"hidden",
+  "each large photo must be clipped to its own slide; adjacent portraits cannot overlap");
+ assert.equal(await root.locator(".v3-int-ambient img").evaluate(el=>getComputedStyle(el).filter),"none",
+  "large blurred CSS photo cannot obscure the active portrait on A55");
  assert.equal(await page.locator(".pm-viewer").count(),0,"compact avatar must expand first, not open viewer");
  await page.screenshot({path:out+"/owner-expanded.png"});
  const photoId=await items.first().getAttribute("data-photo-id");
@@ -107,6 +112,16 @@ try{
   }});
  await page.waitForTimeout(260);
  assert.equal(await tabs.nth(1).getAttribute("aria-selected"),"true","horizontal swipe selects Bliki");
+ await tabs.first().click();
+ // Swipe from an actual nested content card, not an empty gutter. Android
+ // must bubble PointerEvents through the scrollable article to the tab owner.
+ const nestedCard=root.locator(".v3-int-page").first().locator(".pm-card").first();
+ const nestedBounds=await nestedCard.boundingBox();assert(nestedBounds);
+ await touch({x:nestedBounds.x+nestedBounds.width*.75,
+  y:nestedBounds.y+Math.min(45,nestedBounds.height*.5),dx:-225,steps:12});
+ await page.waitForTimeout(280);
+ assert.equal(await tabs.nth(1).getAttribute("aria-selected"),"true",
+  "left swipe starting inside nested content switches to Bliki");
  await tabs.first().click();
  const firstPage=root.locator(".v3-int-page").first();
  await firstPage.evaluate(el=>el.scrollTop=75);
