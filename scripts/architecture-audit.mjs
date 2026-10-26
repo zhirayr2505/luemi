@@ -48,6 +48,11 @@ for(const file of paths){
 }
 const roots=["apps/web/src/main.tsx","apps/api/src/server.ts"];
 const qaRoots=paths.filter(p=>/\/(?:profile-qa|rem-\d+[a-z]?(?:-[\w-]+)?-qa)\.tsx?$/.test(p));
+// V3's synthetic preview is a separate HTML/Vite QA entry, intentionally
+// isolated from apps/web/src/main.tsx until the A55 acceptance gate.
+// Track the entry as a QA root so all its transitive modules stay audited.
+const v3PreviewEntry="apps/web/src/discovery/profile-v3/prototype/preview-entry.tsx";
+if(all.has(v3PreviewEntry))qaRoots.push(v3PreviewEntry);
 const intentional={
  "apps/api/src/rem05e-telegram-rotation.ts":"standalone operator CLI; not a boot-time server import",
  "apps/api/src/real-erasure-worker.ts":"security-sensitive manually invoked worker, intentionally not reachable from HTTP startup",
