@@ -334,6 +334,9 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    if(g.claimed)gestureArbiter?.finish(kind==="photo"?"hero":"tabs",g.serial);
    else gestureArbiter?.finishCandidate(g.serial,kind==="photo"?"hero":"tabs");
   }
+  // Browser-owned vertical scroll and unclaimed taps must never re-start
+  // a still-running horizontal tween, especially after pointercancel.
+  if(!g.claimed)return;
   const index=kind==="photo"?activeIndex:activeTabIndex;
   const width=Math.max(1,(kind==="photo"?photoViewport.current:root.current)?.clientWidth??1);
   const dx=event.clientX-g.x,dt=Math.max(1,performance.now()-g.at);
