@@ -27,7 +27,7 @@ const make=reduce=>{
  engine.drag(220);
  assert.ok(Math.abs(engine.snapshot().progress-.4)<1e-7,"1:1 drag");
  engine.release(0);
- step(100);
+ step(40);
  const sampled=engine.snapshot().progress;
  engine.dragStart(200,300);
  assert.ok(Math.abs(engine.snapshot().progress-sampled)<1e-7,"gesture interrupts CURRENT visual position");
