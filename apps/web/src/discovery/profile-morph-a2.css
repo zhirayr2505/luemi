@@ -99,8 +99,7 @@
 .pm-a2-expanded-row p{flex:1;min-width:0}
 .pm-a2-expanded-row .pm-a2-goal{flex:0 1 auto;max-width:46%}
 .pm-a2-photo-dots{position:absolute;left:50%;top:calc(var(--a2-expanded-top) - 27px);z-index:5;
- display:flex;gap:7px;transform:translateX(-50%);opacity:0;transition:opacity 130ms;pointer-events:none}
-.pm-a2-root[data-morph-state=expanded] .pm-a2-photo-dots{opacity:1;pointer-events:auto}
+ display:flex;gap:7px;transform:translateX(-50%);opacity:0;transition:none;pointer-events:none}
 .pm-a2-photo-dots button{border:0;padding:0;width:7px;height:7px;border-radius:50%;background:#ffffff77}
 .pm-a2-photo-dots button.active{background:#fff}
 .pm-a2-hero .pm-hero-demo{position:absolute;top:calc(var(--a2-expanded-top) - 47px);
