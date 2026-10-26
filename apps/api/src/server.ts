@@ -24,6 +24,7 @@ async function start(): Promise<void> {
       });
     }
     await app.listen({ port: config.port, host: "0.0.0.0" });
+    app.log.info({ telegramSetupEnabled: Boolean(config.setupOnStart), originMatchesMain: config.origin === "https://luemi.onrender.com", webhookSecretPresent: Boolean(config.webhookSecret), botTokenPresent: Boolean(config.botToken) }, "LUEMI bot setup diagnostic");
     if (config.setupOnStart) {
       try {
         const setup = await configureStagingTelegramBot(config);
