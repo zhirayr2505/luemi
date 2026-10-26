@@ -118,6 +118,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(face.current){
    face.current.style.transform=`translate3d(${frame.photoX}px,${frame.photoY}px,0) scale(${frame.scaleX},${frame.scaleY})`;
    face.current.style.borderRadius=frame.radius+"%";
+   // Counter-scale portrait pixels: the moving clip may change aspect but faces never stretch.
+   if(photoViewport.current)photoViewport.current.style.transform="scaleY("+(frame.scaleX/frame.scaleY)+")";
    face.current.style.boxShadow=p<.9?"0 9px 35px rgba(40,17,65,.20)":"none";
   }
   if(compactText.current){compactText.current.style.opacity=String(frame.compactAlpha);compactText.current.style.pointerEvents=p<.2?"auto":"none";}
@@ -222,7 +224,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     underline.style.transform=`translate3d(${target.offsetLeft}px,0,0)`;}
   }
  };
- useLayoutEffect(()=>{chooseTab(activeTabIndex,false);},[]);
+ useLayoutEffect(()=>{chooseTab(0,false);},[]);
  const startSheet=(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
   const engine=motion.current;if(!engine)return;
