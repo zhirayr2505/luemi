@@ -8,6 +8,7 @@ import {goals} from "../registration/model";
 import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
+import {ProfileMorphBackground} from "./ProfileMorphBackground";
 import {QaProfiler} from "./qa-profiler";
 import {resourceIdentity,viewerPhotoContext,type ViewerSource} from "./photo-viewer-state";
 import {ProfileMorphMotion} from "./profile-morph-a2-motion";
@@ -367,9 +368,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   aria-label={mode==="owner"?"Мой профиль":mode==="visitor"?"Профиль":"Предпросмотр профиля"}>
    <div className="pm-a2-backing" aria-hidden="true"/>
    <div className="pm-hero pm-a2-hero">
-    <div className="pm-a2-background" ref={backdrop} aria-hidden="true">
-     {current&&<img key={current.id} src={current.src} alt="" decoding="async"/>}
-     <div className="pm-a2-background-tone"/>
+    <div className="pm-a2-background-stage" ref={backdrop}>
+     <ProfileMorphBackground photo={current??null}/>
     </div>
     <div className="pm-a2-face" ref={face} role="button" tabIndex={0}
       aria-label={state==="compact"?"Развернуть фото":"Открыть просмотр фото"}
