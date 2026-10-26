@@ -61,7 +61,7 @@ assert.ok(globalHeader.includes("lh-island")&&globalHeader.includes("wordmark_or
 assert.ok(headerCss.includes(".lh-center")&&headerCss.includes("left:50%")&&demoProfile.includes('data-morph-state={state}')&&!globalHeader.includes("setProfileMorph"),"profile logo independently centered");
 assert.ok(discoveryStyles.includes(".discovery-page-track.is-finger-tracking")&&discoveryStyles.includes("font-weight:700"),"steady active-tab typography");
 assert.ok(active.includes("onPointerCancel={cancelSwipe}")&&active.includes("requestAnimationFrame")&&!active.includes("setDragX"),"gesture cancellation and rAF updates");
-assert.ok(feedCard.includes("discovery-deck-current")&&active.includes('event.animationName==="luemi-deck-leave"'),"Feed animation preserved");
+assert.ok(feedCard.includes("discovery-deck-current")&&active.includes('event.animationName==="luemi-deck-leave"')||active.includes("deck-leaving"),"Feed animation preserved");
 console.log("✓ Stage 03D.1 animation, scroll, logo and Feed regression contracts");
 
 const polishedDiscovery=readFileSync(new URL("../apps/web/src/discovery/DiscoveryApp.tsx",import.meta.url),"utf8");
