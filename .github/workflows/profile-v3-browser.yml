@@ -1,0 +1,75 @@
+name: LUEMI Profile V3 isolated browser smoke
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/src/discovery/profile-v3/**'
+      - 'apps/web/profile-v3-preview.html'
+      - 'apps/web/src/discovery/ProfileMasterV3.tsx'
+      - 'apps/web/src/discovery/ProfileV3Gateway.tsx'
+      - 'apps/web/src/discovery/DiscoveryApp.tsx'
+      - 'apps/web/src/discovery/VisitorProfileRoute.tsx'
+      - 'apps/web/src/registration/Preview.tsx'
+      - 'scripts/profile-v3-*.mjs'
+      - '.github/workflows/profile-v3-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v3-browser:
+    name: V3 isolated Chromium DOM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Pinned npm
+        run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - name: Locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Foundation invariants and TS
+        run: |
+          node scripts/profile-v3-foundation.test.mjs
+          npm run build -w @luemi/contracts
+          npm run typecheck -w @luemi/web
+      - name: Pinned Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! timeout --signal=TERM --kill-after=10s 120s npx --no-install playwright install chromium --with-deps; then
+            npx --no-install playwright install chromium
+          fi
+      - name: Run isolated preview DOM smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 > /tmp/luemi-v3-vite.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/profile-v3-preview.html > /dev/null; then ready=1; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-v3-vite.log; exit 1; fi
+          node scripts/profile-v3-browser-smoke.mjs
+          node scripts/profile-v3-integration-browser.mjs
+      - name: Preserve isolated screenshots
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: luemi-profile-v3-synthetic-${{ github.run_id }}
+          path: |
+            qa-artifacts/profile-v3/**
+            qa-artifacts/profile-v3-integration/**
+            /tmp/luemi-v3-vite.log
+          if-no-files-found: ignore

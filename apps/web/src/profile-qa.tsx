@@ -126,6 +126,18 @@ function MediaQA(){
 function VisualQA(){
  const [theme,setTheme]=useState<"light"|"dark">("light");
  const [unrelated,setUnrelated]=useState(0);
+ const [v3Photos,setV3Photos]=useState(qaPhotos);
+ const allV3Photos=[
+  ...qaPhotos,{id:"qa-photo-4",src:qaSvg("LUEMI QA 4","#7c6b97")},
+  {id:"qa-photo-5",src:qaSvg("LUEMI QA 5","#a7849e")},
+  {id:"qa-photo-6",src:qaSvg("LUEMI QA 6","#6294a3")}
+ ];
+ if(new URLSearchParams(window.location.search).get("profileV3")==="1"){
+  (window as Window&{__luemiQaV3?:unknown}).__luemiQaV3={
+   setPhotoCount:(n:number)=>setV3Photos(allV3Photos.slice(0,Math.max(0,Math.min(6,n)))),
+   photoIds:()=>v3Photos.map(p=>p.id)
+  };
+ }
  const toggleTheme=useCallback(()=>setTheme(value=>value==="light"?"dark":"light"),[]);
  (window as Window&{__luemiQaPerf?:unknown}).__luemiQaPerf={
   theme:toggleTheme,bump:()=>setUnrelated(v=>v+1),
@@ -139,7 +151,7 @@ function VisualQA(){
   (window as Window & {__luemiQaBack?:()=>void}).__luemiQaBack=handler;
  },[]);
  return <main className="luemi-shell" data-theme={theme} data-phase="form">
-  <QaProfiler id="DiscoveryApp"><DiscoveryApp draft={draft} photos={qaPhotos}
+  <QaProfiler id="DiscoveryApp"><DiscoveryApp draft={draft} photos={v3Photos}
    theme={theme} onTheme={toggleTheme}
    onExit={()=>{}} registerBack={registerBack}/></QaProfiler>
   <MediaQA/>

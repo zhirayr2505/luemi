@@ -1,13 +1,13 @@
 import {memo,useLayoutEffect,useRef} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {ProfileMaster} from "./ProfileMorphA2";
+import {ProfileMaster} from "./ProfileV3Gateway";
 import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
 import {GestureArbiter,isGestureModalBlocked,fractionalTrack,computedTranslation} from "../ui/gesture-arbiter";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import {useModalLayer} from "../ui/modal-layer";
-import type {ProfileRouteMotionHandle} from "./ProfileMorphA2";
+import type {ProfileRouteMotionHandle} from "./ProfileV3Gateway";
 import type {HeaderMotion} from "./GlobalHeader";
 import type {ProfileMasterData} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
@@ -202,7 +202,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   if(isGestureModalBlocked(target))return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
   const collapsed=shell?.dataset.sheetState==="collapsed";
-  if(!collapsed&&!target.closest(".pm-a2-sheet,.pm-profile-sheet"))return;
+  if(!collapsed&&!target.closest(".pm-a2-sheet,.pm-profile-sheet,.v3-int-sheet"))return;
   const source:RouteDrag["source"]=target.closest(".pm-hero")?"photo":
    target.closest(".pm-a2-tabs,.pm-tabs")?"tabs":target.closest(".pm-a2-pages,.pm-pages")?"pages":"sheet";
   const serial=gestures.begin("pointer",e.pointerId,"route");

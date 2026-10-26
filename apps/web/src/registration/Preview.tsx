@@ -4,7 +4,7 @@ import type {RegistrationDraft} from "./model";
 import {goals,validateStep} from "./model";
 import type {PhotoItem} from "./PhotoSorter";
 import {fromLocalDraft,readyRegistrationPhotos} from "../discovery/ProfileModel";
-import {ProfileMaster} from "../discovery/ProfileMorphA2";
+import {ProfileMaster} from "../discovery/ProfileV3Gateway";
 
 interface Props {
  data:RegistrationDraft;photos:PhotoItem[];
