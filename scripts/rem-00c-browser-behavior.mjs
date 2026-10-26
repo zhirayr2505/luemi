@@ -66,7 +66,7 @@ async function profileA2(browser,platform="android"){
   await snapshot(page,platform+"-01-compact");
   // Portrait tap expands but must NOT open PhotoViewer.
   await root.locator(".pm-a2-face").click({position:{x:compact.face.width/2,y:compact.face.height/2}});
-  await root.locator('[data-morph-state="expanded"]').waitFor({state:"attached",timeout:2300}).catch(async()=>{throw Error("portrait click did not expand")});
+  await page.locator('.pm-inline[data-morph-state="expanded"]').waitFor({state:"attached",timeout:2300});
   await sleep(35);
   let expanded=await state(page);
   assert.equal(expanded.mode,"expanded");
@@ -125,6 +125,7 @@ async function profileA2(browser,platform="android"){
   const scrolled=await pageEl.evaluate(el=>el.scrollTop);
   assert.ok(scrolled>=0,"native scroll remains functional");
   if(android){
+   await page.getByRole("button",{name:"Знакомства",exact:true}).click();
    await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
    await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
    const visitor=await required(page,".discovery-visitor-route .pm-a2-root","visitor A2");
