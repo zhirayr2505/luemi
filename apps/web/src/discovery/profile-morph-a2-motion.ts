@@ -17,7 +17,7 @@ export class ProfileMorphMotion{
  private generation=0;
  private raf:number|null=null;
  private run:{from:number;to:0|1;at:number;duration:number}|null=null;
- private dragOrigin:{y:number;p:number;span:number}|null=null;
+ private dragOrigin:{y:number;p:number;span:number;lastY:number}|null=null;
  constructor(private readonly paint:(p:number)=>void,
   private readonly clock:MorphClock={
    now:()=>performance.now(),request:cb=>requestAnimationFrame(cb),cancel:id=>cancelAnimationFrame(id)
@@ -59,11 +59,34 @@ export class ProfileMorphMotion{
  dragStart(clientY:number,span:number){
   if(this.phase==="disposed")return;
   const current=this.sample();this.stop();this.write(current);
-  this.target=null;this.phase="dragging";this.dragOrigin={y:clientY,p:current,span:Math.max(1,span)};
+  this.target=null;this.phase="dragging";this.dragOrigin={y:clientY,lastY:clientY,p:current,span:Math.max(1,span)};
  }
  drag(clientY:number){
   if(this.phase!=="dragging"||!this.dragOrigin)return;
+  this.dragOrigin.lastY=clientY;
   this.write(this.dragOrigin.p+(clientY-this.dragOrigin.y)/this.dragOrigin.span);
+ }
+ /** Preserve the old physical panel Y through a stable viewport revision.
+  * Caller has already installed the NEW geometry before paint is invoked.
+  * Idle semantic endpoints are intentionally not rebased. */
+ rebaseActive(physicalProgress:number,newSpan:number){
+  if(this.phase==="disposed")return;
+  if(this.phase==="dragging"&&this.dragOrigin){
+   this.dragOrigin={y:this.dragOrigin.lastY,lastY:this.dragOrigin.lastY,
+    p:clamp(physicalProgress),span:Math.max(1,newSpan)};
+   this.write(physicalProgress);
+   return;
+  }
+  if(this.phase!=="settling"||!this.run)return;
+  const to=this.run.to;
+  const elapsed=this.clock.now()-this.run.at;
+  const remaining=Math.max(1,this.run.duration-Math.max(0,elapsed));
+  this.stop();this.write(physicalProgress);
+  if(Math.abs(this.progress-to)<.0005){this.end(to);return;}
+  this.target=to;this.phase="settling";
+  this.run={from:this.progress,to,at:this.clock.now(),duration:remaining};
+  const generation=this.generation;
+  this.raf=this.clock.request(()=>this.frame(generation));
  }
  release(velocityY=0,cancelled=false){
   if(this.phase!=="dragging")return;
