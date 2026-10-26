@@ -24,7 +24,9 @@ try{
    const mask=photoMask(l,p),offset=photoOffset(l,p,800,1100);
    assert(mask.width>0&&mask.height>0&&mask.x>=0&&mask.y>=0);
    assert(mask.x+mask.width<=width+.001&&mask.y+mask.height<=height+.001);
-   assert(offset.width>=mask.width&&offset.height>=mask.height);
+   if(p===1)assert(offset.width>=mask.width&&offset.height>=mask.height);
+   if(p===0)assert(offset.width<=mask.width+.001&&offset.height<=mask.height+.001);
+   assert(l.expandedTop<=Math.max(395,height*.435)+1 || height<540);
    assert(Math.abs(offset.width/offset.height-800/1100)<1e-12);
   }
   assert(Math.abs(coverSize(800,1100,l.photo).width/coverSize(800,1100,l.photo).height-800/1100)<1e-12);
