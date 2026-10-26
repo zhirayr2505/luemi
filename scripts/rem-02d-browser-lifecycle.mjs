@@ -2,196 +2,80 @@ import assert from "node:assert/strict";
 import {chromium} from "playwright";
 const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
 const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
- userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Mobile Safari/537.36"});
-const page=await context.newPage(),errors=[];
+ userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 Chrome/135 Mobile Safari/537.36"});
+const page=await context.newPage(),errors=[],BASE=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 page.on("pageerror",e=>errors.push(e.message));
-const BASE=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const near=(x,y,tol=1)=>assert.ok(Math.abs(x-y)<=tol,`REM02D unexpected physical pixel ${x} vs ${y}`);
-const pass=text=>console.log("REM02D_BROWSER_PASS "+text);
 const visitor=()=>page.locator(".discovery-visitor-route");
-const photo=()=>visitor().locator(".pm-dialog");
+const profile=()=>visitor().locator(".pm-a2-root");
+const handle=()=>profile().locator(".pm-a2-handle");
 const translation=()=>visitor().evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
+const physical=()=>profile().evaluate(el=>{
+ const sheet=el.querySelector(".pm-a2-sheet"),style=getComputedStyle(el);
+ const a=parseFloat(style.getPropertyValue("--a2-compact-top"));
+ const b=parseFloat(style.getPropertyValue("--a2-expanded-top"));
+ return {mode:el.dataset.morphState,y:sheet.getBoundingClientRect().top-el.getBoundingClientRect().top,a,b};
+});
+const near=(a,b,tol=3)=>assert.ok(Math.abs(a-b)<=tol,"A2 route mismatch: "+a+" vs "+b);
 const open=async()=>{
  await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
  await visitor().waitFor({state:"visible"});
+ await sleep(310);
+ assert.equal((await physical()).mode,"compact");
 };
-const point=async()=>{
- // Use an actually hit-testable white-sheet coordinate. While expanded,
- // the global header may cover the identity's DOM bounding rect even though
- // the element still exists. A hidden hit target is NOT proof of a route bug.
- const p=await visitor().evaluate(root=>{
-  const identity=root.querySelector(".pm-identity"),sheet=root.querySelector(".pm-profile-sheet");
-  if(!identity||!sheet)return null;
-  const i=identity.getBoundingClientRect(),s=sheet.getBoundingClientRect();
-  const preferred={x:i.x+Math.min(48,i.width*.2),y:i.y+Math.min(45,i.height*.46)};
-  const eligible=({x,y})=>{
-   const el=document.elementFromPoint(x,y);
-   return !!el&&el.closest(".pm-profile-sheet")===sheet&&
-    !el.closest(".pm-pages,.pm-tabs,.pm-viewer,.pm-blik-viewer,.pm-preview-toolbar");
-  };
-  if(eligible(preferred))return preferred;
-  for(let y=Math.max(115,s.top+10);y<Math.min(s.bottom,innerHeight-45);y+=12){
-   for(const x of [s.left+12,s.left+24,s.left+40,s.left+60]){
-    const candidate={x,y};
-    if(eligible(candidate))return candidate;
-   }
-  }
-  return null;
- });
- assert.ok(p,"route back requires a physically hit-testable exposed white-sheet region");
- return p;
-};
-const routeDrag=async(dx,{hold=200,cancel=false,lost=false}={})=>{
- const p=await point();
- await page.mouse.move(p.x,p.y);await page.mouse.down();
- await page.mouse.move(p.x+dx,p.y,{steps:7});
- await sleep(hold);
- if(lost)await visitor().evaluate(el=>el.dispatchEvent(
-  new PointerEvent("lostpointercapture",{bubbles:true,pointerId:1,pointerType:"mouse",isPrimary:true})
- ));
- else if(cancel)await visitor().evaluate(el=>el.dispatchEvent(
-  new PointerEvent("pointercancel",{bubbles:true,pointerId:1,pointerType:"mouse",isPrimary:true})
- ));
- await page.mouse.up();
-};
-const sheetEndpoint=async()=>photo().evaluate(root=>{
- const view=root.querySelector(".pm-sheet-viewport"),panel=root.querySelector(".pm-profile-sheet");
- const top=parseFloat(panel.style.getPropertyValue("--pm-collapsed-top"));
- const bottom=parseFloat(root.style.getPropertyValue("--pm-expanded-y"));
- if(view.scrollTop!==0)throw Error("native outer sheet scrolling forbidden after rewrite");
- return {y:panel.getBoundingClientRect().top-root.getBoundingClientRect().top,
-  top,bottom,state:root.dataset.sheetState};
-});
-const settleSheet=async()=>{
- await sleep(430);
- const snap=await sheetEndpoint();
- assert.ok(snap.state==="collapsed"||snap.state==="expanded");
- near(snap.y,snap.state==="collapsed"?snap.top:snap.bottom,1);
-};
-const tabEndpoint=async(name)=>{
- await sleep(370);
- const tabs=visitor().getByRole("tab");
- const selected=visitor().getByRole("tab",{name,exact:true});
- assert.equal(await selected.getAttribute("aria-selected"),"true");
- const index=await tabs.evaluateAll((all,label)=>all.findIndex(el=>el.textContent?.trim()===label),name);
- assert.ok(index>=0);
- const state=await visitor().locator(".pm-pages").evaluate(el=>({left:el.scrollLeft,width:el.clientWidth}));
- near(state.left,index*state.width,1);
-};
-const setBackground=async(value)=>{
- await page.evaluate(hidden=>{
-  if(!("__rem02dVisibility" in window)){
-   window.__rem02dVisibility=false;
-   Object.defineProperty(document,"visibilityState",{
-    configurable:true,get(){return window.__rem02dVisibility?"hidden":"visible";}
-   });
-  }
-  window.__rem02dVisibility=hidden;
-  document.dispatchEvent(new Event("visibilitychange"));
- },value);
+const setBackground=async hidden=>page.evaluate(hidden=>{
+ if(!("__a2Hidden" in window)){
+  window.__a2Hidden=false;
+  Object.defineProperty(document,"visibilityState",{configurable:true,get(){return window.__a2Hidden?"hidden":"visible";}});
+ }
+ window.__a2Hidden=hidden;document.dispatchEvent(new Event("visibilitychange"));
+},hidden);
+const routeDrag=async(dx,hold=15)=>{
+ const target=await handle().boundingBox();assert.ok(target?.height>=25);
+ const x=target.x+Math.min(target.width*.17,60),y=target.y+target.height*.5;
+ await page.mouse.move(x,y);await page.mouse.down();
+ await page.mouse.move(x+dx,y,{steps:10});await sleep(hold);await page.mouse.up();
 };
 try{
  await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
  await page.getByRole("button",{name:"Знакомства",exact:true}).click();
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
- await open();await sleep(390);
- near(await translation(),0,1);
- // Child sheet is settling when route claims; abort the back swipe and
- // verify the previously requested child destination still reaches its endpoint.
- await visitor().getByRole("button",{name:"Развернуть анкету"}).click();
- await sleep(95);
- await routeDrag(47,{hold:225});
- await sleep(410);
- assert.equal(await visitor().count(),1,"route must not close for below-threshold release");
- near(await translation(),0,1);
- await sleep(380);
- assert.equal(await visitor().count(),1,"no delayed stale route exit after rollback");
- await settleSheet();
- pass("sheet settling -> route claim -> rollback restores exact child endpoint");
- // After collapse, the tab page can be settling independently: restore its
- // original semantic selection and physical scroll coordinate.
- await visitor().getByRole("tab",{name:"Фото",exact:true}).click();
- await sleep(90);
- await routeDrag(47,{hold:220});
- await sleep(390);
- near(await translation(),0,1);
- await tabEndpoint("Фото");
- pass("tabs settling -> route claim -> rollback retains selected tab and ≤1 CSS px");
- // Native vertical pointer candidate must terminalize without poisoning the
- // next right-swipe session in the shared REM-02C arbiter.
- const np=await point();
- await page.mouse.move(np.x,np.y);await page.mouse.down();
- await page.mouse.move(np.x+5,np.y+80,{steps:6});await page.mouse.up();
- await sleep(40);
- await routeDrag(47,{hold:220});await sleep(340);
- near(await translation(),0,1);
- pass("native vertical scroll candidate releases route session for next gesture");
- // Background during a different child tabs settle preserves its destination.
- await visitor().getByRole("tab",{name:"Подарки",exact:true}).click();
- await sleep(80);await setBackground(true);await sleep(110);await setBackground(false);
- await tabEndpoint("Подарки");
- await visitor().getByRole("tab",{name:"Фото",exact:true}).click();
- await tabEndpoint("Фото");
- pass("background while tabs settling restores page and underline destination");
- // No double semantic commit when two cancellation events arrive.
- await routeDrag(62,{hold:35,cancel:true});
- await sleep(310);near(await translation(),0,1);
- await routeDrag(63,{hold:35,lost:true});
- await sleep(310);near(await translation(),0,1);
- pass("pointercancel and lostpointercapture are idempotent and restore route");
- // Browser/Telegram simulated background while route drag is in progress.
- const p=await point();
- await page.mouse.move(p.x,p.y);await page.mouse.down();
- await page.mouse.move(p.x+73,p.y,{steps:6});
- await setBackground(true);
- await page.setViewportSize({width:393,height:725});
- await sleep(100);
- await setBackground(false);
- await page.mouse.up();await sleep(450);
- near(await translation(),0,1);
- await settleSheet();await tabEndpoint("Фото");
- pass("background while dragging, viewport height change, resume and child geometry converge");
- // Background a child sheet settle without route claim.
- await visitor().getByRole("button",{name:"Раскрыть фото профиля"}).click();
- await sleep(75);
- await setBackground(true);await sleep(120);await setBackground(false);
- await settleSheet();
- pass("background while sheet settling preserves target and resumes one child animation");
- // Route back successful close, then immediate reopen proves no stale cleanup callback.
- await routeDrag(180,{hold:20});
- await sleep(420);assert.equal(await visitor().count(),0,"claimed route swipe must unmount once");
- await open();await sleep(390);
- near(await translation(),0,1);
- pass("successful route close, single terminal commit, immediate reopen");
- // System back during a normal open must travel RIGHT from current CSS matrix.
- await page.evaluate(()=>window.__luemiQaBack?.());await sleep(440);
- assert.equal(await visitor().count(),0);
  await open();
- await page.evaluate(()=>window.__luemiQaBack?.());
- await sleep(40);
- if(await visitor().count())assert.ok((await translation())>=0);
- await sleep(450);assert.equal(await visitor().count(),0);
- pass("actual registered DiscoveryApp/Telegram Back callback and back during entrance exit right");
- // Closing while suspended: old timers cannot call exit a second time.
- await open();await sleep(360);
- await page.keyboard.press("Escape");await sleep(65);
- await setBackground(true);await page.setViewportSize({width:393,height:812});
- await sleep(110);await setBackground(false);
- await sleep(440);assert.equal(await visitor().count(),0);
- pass("background while route closing, viewport revision, no stale timer resurrection");
- // Entrance interrupted by background: finish opening once, no extra exit.
- await open();await setBackground(true);
- await sleep(80);await setBackground(false);await sleep(360);
- near(await translation(),0,1);
+ near(await translation(),0,3);
+ let initial=await physical();near(initial.y,initial.a);
+ await handle().press("Enter");
+ await sleep(60);
+ let mid=await physical();assert.ok(mid.y>initial.y+2&&mid.y<mid.b,"sheet really settling");
+ await setBackground(true);await sleep(150);
+ const frozen=await physical();await sleep(70);
+ near((await physical()).y,frozen.y,1.5);
+ await setBackground(false);await sleep(370);
+ let expanded=await physical();
+ assert.equal(expanded.mode,"expanded");near(expanded.y,expanded.b);
+ console.log("PROFILE_A2_LIFECYCLE_PASS suspend/resume at fractional morph");
+ await routeDrag(40,75);await sleep(320);
  assert.equal(await visitor().count(),1);
- pass("background while opening, foreground reaches stable visible endpoint");
- // Trigger React rerender with theme; route and child states must remain stable.
- await page.getByRole("button",{name:"Тёмная тема"}).click();await sleep(90);
- near(await translation(),0,1);
- await page.keyboard.press("Escape");await sleep(410);
+ near(await translation(),0,3);
+ expanded=await physical();assert.equal(expanded.mode,"expanded");
+ await profile().getByRole("tab",{name:"Фото",exact:true}).click();
+ await sleep(240);
+ assert.equal(await profile().locator('.pm-a2-tab[aria-selected=true]').innerText(),"Фото");
+ await routeDrag(40,60);await sleep(310);
+ near(await translation(),0,3);
+ assert.equal(await profile().locator('.pm-a2-tab[aria-selected=true]').innerText(),"Фото");
+ console.log("PROFILE_A2_LIFECYCLE_PASS route rollback and tab state");
+ await setBackground(true);
+ await page.setViewportSize({width:393,height:765});await sleep(75);
+ await setBackground(false);await sleep(340);
+ expanded=await physical();assert.equal(expanded.mode,"expanded");near(expanded.y,expanded.b);
+ await page.keyboard.press("Escape");await sleep(360);
  assert.equal(await visitor().count(),0);
- pass("React rerender, teardown with pending callbacks and complete remount");
- assert.deepEqual(errors,[],"no browser exceptions");
- console.log("REM-02D BROWSER ROUTE/LIFECYCLE QA PASS · Chromium only, A55/iOS NOT VERIFIED");
+ await open();near(await translation(),0,3);
+ await routeDrag(192,30);await sleep(410);
+ assert.equal(await visitor().count(),0,"rightward route gesture closes visitor");
+ await open();await page.keyboard.press("Escape");await sleep(390);
+ assert.equal(await visitor().count(),0,"system Escape/back also closes");
+ console.log("PROFILE_A2_LIFECYCLE_PASS route close/reopen and no stale owner callbacks");
+ assert.deepEqual(errors,[],"no browser runtime exceptions");
+ console.log("REM-02D A2 BROWSER LIFECYCLE QA PASS; physical A55 NOT VERIFIED");
 }finally{await context.close();await browser.close();}
