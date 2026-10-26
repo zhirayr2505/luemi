@@ -22,7 +22,7 @@
 .v3-int-photo-rail{position:absolute;inset:0 auto auto 0;width:100%;height:100%;
  transition:none;transform:translate3d(0,0,0)}
 .v3-int-photo-slide{position:absolute;top:0;height:var(--v3-photo-height);width:var(--v3-w);
- left:calc(var(--v3-w) * var(--v3-slide-index));overflow:visible}
+ left:calc(var(--v3-w) * var(--v3-slide-index));overflow:hidden;contain:paint}
 .v3-int-photo-slide img{position:absolute;top:0;left:0;max-width:none;max-height:none;
  display:block;object-fit:fill;user-select:none;pointer-events:none;-webkit-user-select:none}
 .v3-int-no-photo{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;
