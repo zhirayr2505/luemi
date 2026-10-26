@@ -529,7 +529,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(motion?.snapshot().phase==="settling")motion.suspend();
   const stageNode=stage.current,layer=surface.current;
   if(stageNode&&layer&&phase.current==="opening"){
-   interruptOpening();
+   interruptOpeningRef.current();
   }
  },()=>{
   const motion=runner.current;
