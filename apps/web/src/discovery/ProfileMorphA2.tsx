@@ -122,8 +122,12 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(face.current){
    face.current.style.transform=`translate3d(${frame.photoX}px,${frame.photoY}px,0) scale(${frame.scaleX},${frame.scaleY})`;
    face.current.style.borderRadius=frame.radius+"%";
-   // Counter-scale portrait pixels: the moving clip may change aspect but faces never stretch.
-   if(photoViewport.current)photoViewport.current.style.transform="scaleY("+(frame.scaleX/frame.scaleY)+")";
+   // Android WebView can lose/clobber composited pixels when a scaled,
+   // overflow-clipped viewport is nested in the nonuniformly transformed face.
+   // Keep the viewport's clipping surface completely untransformed and
+   // correct the image aspect ONLY inside each (already clipped) slide.
+   // This still preserves portrait proportions throughout the morph.
+   if(photoTrack.current)photoTrack.current.style.setProperty("--a2-pixel-ratio",String(frame.scaleX/frame.scaleY));
    if(photoRing.current)photoRing.current.style.opacity=String(Math.max(0,1-p*1.8));
   }
   if(compactText.current){compactText.current.style.opacity=String(frame.compactAlpha);compactText.current.style.pointerEvents=p<.2?"auto":"none";}
