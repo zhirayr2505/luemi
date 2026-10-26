@@ -332,7 +332,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     root.current?.setAttribute("data-active-photo-ready","true");
    painter.current(engine.current?.getProgress()??0);
    const pending=pendingPhotoRequest.current;
-   if(pending?.id===event.currentTarget.dataset.photoId&&current.current.photos[pending.index]?.id===pending.id){
+   if(pending && pending.id===event.currentTarget.dataset.photoId && current.current.photos[pending.index]?.id===pending.id){
     pendingPhotoRequest.current=null;commitPhoto(pending.index,pending.animate);
    }
   }
