@@ -193,8 +193,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   gesture.current={id:e.pointerId,kind,at:e.timeStamp,x:e.clientX,y:e.clientY,
    lastX:e.clientX,lastY:e.clientY,lastAt:e.timeStamp,velocity:0,claimed:false,startIndex:offset,
    startOffset:offset*layout.current.width,
-   scroll:kind==="tabs"?(e.target as Element).closest<HTMLElement>(".v3-int-page"):null,
-   scrollStart:kind==="tabs"?((e.target as Element).closest<HTMLElement>(".v3-int-page")?.scrollTop??0):0,
+   scroll:kind==="tabs"?((e.target as Element).closest<HTMLElement>(".v3-int-page")??pagesTrack.current?.querySelector<HTMLElement>('.v3-int-page[aria-hidden="false"]')??null):null,
+   scrollStart:kind==="tabs"?(((e.target as Element).closest<HTMLElement>(".v3-int-page")??pagesTrack.current?.querySelector<HTMLElement>('.v3-int-page[aria-hidden="false"]'))?.scrollTop??0):0,
    buttons:kind==="tabs"?Array.from(tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")??[])
     .map(b=>({x:b.offsetLeft,width:b.offsetWidth})):undefined};
  };
