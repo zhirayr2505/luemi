@@ -17,8 +17,8 @@
  object-fit:cover;object-position:50% 30%;filter:blur(9px);opacity:.35;pointer-events:none}
 .v3-int-root:not([data-active-photo-ready=true]) .v3-int-ambient img{opacity:0}
 .v3-int-ambient span{position:absolute;inset:0;background:linear-gradient(150deg,rgba(84,43,110,.4),rgba(230,167,217,.25) 65%,rgba(80,45,118,.2))}
-.v3-int-mask{position:absolute;left:0;top:0;z-index:2;overflow:hidden;touch-action:pan-y;
- background:linear-gradient(130deg,#ac8ac4,#d8b4d9);transform:translate3d(0,0,0);
+.v3-int-mask{position:absolute;z-index:2;overflow:hidden;touch-action:pan-y;
+ background:linear-gradient(130deg,#ac8ac4,#d8b4d9);border-radius:50%;
  user-select:none;-webkit-user-select:none;outline:0}
 .v3-int-mask:focus-visible{outline:3px solid #fff;outline-offset:-3px}
 .v3-int-photo-rail{position:absolute;inset:0 auto auto 0;width:100%;height:100%;
@@ -29,8 +29,8 @@
  display:block;transform-origin:0 0;user-select:none;pointer-events:none;-webkit-user-select:none}
 .v3-int-no-photo{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;
  align-items:center;gap:10px;text-align:center;padding:25px;color:#fff}
-.v3-int-ring{position:absolute;box-shadow:inset 0 0 0 3px rgba(255,255,255,.98);
- pointer-events:none}
+.v3-int-ring{position:absolute;inset:0;box-shadow:inset 0 0 0 3px rgba(255,255,255,.98);
+ border-radius:inherit;pointer-events:none}
 .v3-int-bliki-avatar{position:absolute;left:0;top:0;z-index:3;box-sizing:border-box;
  border:2px solid #d496f4;box-shadow:0 0 10px rgba(184,103,228,.6),inset 0 0 5px rgba(240,199,255,.5);
  pointer-events:none;opacity:1}
@@ -111,9 +111,10 @@
  .v3-int-compact-identity h2{font-size:20px}.v3-int-tab{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.v3-int-photo-rail,.v3-int-pages-track,.v3-int-ink{transition:none!important}}
 
-/* The hero and ambient remain stable containers. A paint containment boundary
-   around the changing photo clip forced repeated Android tile allocation. */
-.v3-int-ambient{isolation:isolate}
+/* A55 WebView raster guard: no animated filtered photo tile, no translucent
+   backdrop-filter over the entire hero. Stable opaque paint islands only. */
+.v3-int-ambient{isolation:isolate;contain:paint}
+.v3-int-hero{contain:paint}
 .v3-int-page{touch-action:none;overflow-anchor:none}
 
 /* Stable tab label and immutable original logo layers. No opacity animations
