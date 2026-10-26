@@ -198,12 +198,12 @@ console.log("REM02A_ADAPTER_PASS viewport revision bridge monotonicity and liste
 
 
 const a2=read("apps/web/src/discovery/ProfileMorphA2.tsx");
-const motion=read("apps/web/src/discovery/profile-morph-a2-motion.ts");
+const a2MotionSource=read("apps/web/src/discovery/profile-morph-a2-motion.ts");
 const css=read("apps/web/src/discovery/profile-morph-a2.css");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
-assert.ok(motion.includes("class ProfileMorphMotion")&&motion.includes("private generation=0")&&
- motion.includes("this.sample()")&&motion.includes("this.clock.cancel"),"A2 motion owns normalized progress, interruptible RAF");
+assert.ok(a2MotionSource.includes("class ProfileMorphMotion")&&a2MotionSource.includes("private generation=0")&&
+ a2MotionSource.includes("this.sample()")&&a2MotionSource.includes("this.clock.cancel"),"A2 motion owns normalized progress, interruptible RAF");
 assert.ok(a2.includes("new ProfileMorphMotion")&&a2.includes("morphFrame(geometry.current,p)")&&
  !a2.includes("ProfileSheetMotion")&&!a2.includes('style.top='),"A2 sheet uses one writer, no legacy top");
 assert.ok(css.includes(".pm-a2-sheet")&&css.includes("transform:translate3d")&&
