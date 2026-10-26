@@ -34,7 +34,7 @@
     "test:photo-headers": "node scripts/rem-01c-photo-header.test.mjs",
     "test:viewport-model": "node scripts/rem-01d-viewport-model.test.mjs",
     "test:profile-parity": "node scripts/rem-01e-profile-parity.test.mjs",
-    "test:motion-contract": "node scripts/rem-02a-motion-contract.test.mjs && node scripts/rem-profile-sheet-motion.test.mjs",
+    "test:motion-contract": "node scripts/rem-02a-motion-contract.test.mjs && node scripts/profile-morph-a2.test.mjs",
     "test:geometry-contract": "node scripts/rem-02b-geometry.test.mjs",
     "test:gesture-contract": "node scripts/rem-02c-gesture-contract.test.mjs",
     "test:lifecycle-contract": "node scripts/rem-02d-lifecycle.test.mjs",
@@ -43,7 +43,8 @@
     "test:photo-viewer-pinch": "node scripts/rem-03c-pinch.test.mjs",
     "test:photo-viewer-morph": "node scripts/rem-03d-morph-contract.test.mjs",
     "test:startup-coordinator": "node scripts/rem-04a-startup.test.mjs",
-    "test:motion-chaos": "node scripts/rem-motion-gesture-chaos.test.mjs"
+    "test:motion-chaos": "node scripts/rem-motion-gesture-chaos.test.mjs",
+    "test:profile-morph-a2": "node scripts/profile-morph-a2.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
