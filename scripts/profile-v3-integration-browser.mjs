@@ -130,8 +130,14 @@ try{
  const scrolledPage=await firstPage.boundingBox();assert(scrolledPage);
  const scrollX=scrolledPage.x+scrolledPage.width*.5;
  const scrollY=scrolledPage.y+Math.min(68,scrolledPage.height*.25);
- assert.equal(await page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest(".v3-int-page"),{x:scrollX,y:scrollY}),true,
-  "scroll test starts on visible tab content, never on an offscreen article");
+ const hit=await page.evaluate(({x,y})=>{
+  const el=document.elementFromPoint(x,y);
+  return {name:el?.tagName,cls:typeof el?.className==="string"?el.className:"",
+   page:!!el?.closest(".v3-int-page"),
+   sheet:document.querySelector(".v3-int-sheet")?.getBoundingClientRect().toJSON(),
+   origin:{x,y}};
+ },{x:scrollX,y:scrollY});
+ assert.equal(hit.page,true,"touch origin must be visible scroll page, got "+JSON.stringify(hit));
  await touch({x:scrollX,y:scrollY,dy:55});
  assert((await firstPage.evaluate(el=>el.scrollTop))<110,
   "downward gesture scrolls content before it is allowed to unfold profile");
