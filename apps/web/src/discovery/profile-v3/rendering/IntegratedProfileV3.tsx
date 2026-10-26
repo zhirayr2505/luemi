@@ -40,6 +40,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  const engine=useRef<ProfileMotionEngine|null>(null),layout=useRef<MorphLayout>(createProfileLayout({width:390,height:740}));
  const coordinator=useRef(new ProfileGestureCoordinator()),gesture=useRef<Session|null>(null);
  const suppressed=useRef(0),selectedTab=useRef(0),currentIndex=useRef(0);
+ const pendingPhotoCommit=useRef<string|null>(null);
  const [tab,setTab]=useState<V3TabId>("about");
  const [expanded,setExpanded]=useState(false);
  const photoIndex=Math.max(0,photos.findIndex(item=>item.id===photoId));
@@ -71,8 +72,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   if(track&&!gesture.current?.claimed)track.style.transform="translate3d("+(-currentIndex.current*l.width)+"px,0,0)";
   if(move){move.style.top=l.compactTop+"px";move.style.height=Math.max(0,l.height-l.compactTop)+"px";
    move.style.transform="translate3d(0,"+(l.span*progress)+"px,0)";}
-  if(identityCompact.current){identityCompact.current.style.opacity=String(clamp(1-progress*2.5,0,1));}
-  if(identityExpanded.current){identityExpanded.current.style.opacity=String(clamp((progress-.45)*2.5,0,1));}
+  if(identityCompact.current){identityCompact.current.style.opacity=String(clamp((.63-progress)/.31,0,1));}
+  if(identityExpanded.current){identityExpanded.current.style.opacity=String(clamp((progress-.36)/.31,0,1));}
   if(photoDots.current){photoDots.current.style.opacity=String(clamp((progress-.68)*3.4,0,1));
    photoDots.current.style.pointerEvents=progress>.98?"auto":"none";}
   if(ambient.current)ambient.current.style.opacity=String(clamp(1-progress*1.45,0,1));
@@ -133,6 +134,12 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  });
  useLayoutEffect(()=>{registerRouteMotion?.(actions.current);return ()=>registerRouteMotion?.(null);},[registerRouteMotion]);
  useLayoutEffect(()=>{
+  // A gesture-driven photo change has already launched the track settle.
+  // Do not cancel that visual transition on the parent's photoId React commit.
+  if(photoId&&pendingPhotoCommit.current===photoId){
+   pendingPhotoCommit.current=null;return;
+  }
+  pendingPhotoCommit.current=null;
   const idx=currentIndex.current;
   if(rail.current){rail.current.style.transition="none";
    rail.current.style.transform="translate3d("+(-idx*layout.current.width)+"px,0,0)";}
@@ -155,7 +162,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   const item=current.current.photos[idx];if(!item)return;
   if(rail.current){rail.current.style.transition=animate?"transform 210ms cubic-bezier(.2,.8,.2,1)":"none";
    rail.current.style.transform="translate3d("+(-idx*layout.current.width)+"px,0,0)";}
-  currentIndex.current=idx;current.current.onPhotoId(item.id);
+  currentIndex.current=idx;pendingPhotoCommit.current=item.id;current.current.onPhotoId(item.id);
  };
  const down=(e:ReactPointerEvent<HTMLDivElement>,kind:Session["kind"])=>{
   if(!e.isPrimary){coordinator.current.secondFinger();gesture.current=null;engine.current?.cancelDrag();return;}
