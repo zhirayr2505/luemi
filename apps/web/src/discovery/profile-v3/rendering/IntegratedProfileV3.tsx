@@ -68,13 +68,10 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   const surface=mask.current,move=sheet.current;
   if(surface){surface.style.transform="translate3d("+m.x+"px,"+m.y+"px,0)";
    surface.style.width=m.width+"px";surface.style.height=(m.height+elastic)+"px";
-   // Pixel radius is a true circle at compact (a square box), shrinking to
-   // zero without percentage radii turning into elliptical corners.
+   // A single rounded overflow clip owns both photo and white ring. Updating
+   // clip-path as well would rerasterize a second mask on every drag frame.
    const radius=Math.min(m.width,m.height)*(1-progress)/2;
-   surface.style.borderRadius=radius+"px";
-   // Explicit clipping keeps independently composited image tiles inside the
-   // visible circle in Android WebView; the ring inherits the same radius.
-   surface.style.clipPath="inset(0 round "+radius+"px)";}
+   surface.style.borderRadius=radius+"px";}
   // Only the active and immediately adjacent decoded images can enter
   // the clip. Avoid writing size/visibility for every photo at every frame.
   const idx=currentIndex.current;

@@ -54,9 +54,9 @@ export function photoOffset(layout:MorphLayout,p:number,sourceWidth:number,sourc
  // changes the aspect ratio between the endpoints, visibly warping faces.
  const w=Math.max(1,finite(sourceWidth,layout.avatar.width));
  const h=Math.max(1,finite(sourceHeight,layout.avatar.height));
- // Inscribe the entire rectangular source inside the circular viewport.
- // Fitting to the square's edges would still clip its corners at the circle.
- const portraitScale=Math.min(layout.avatar.width,layout.avatar.height)/Math.hypot(w,h);
+ // Cover the compact square before its circular clip is applied. Both ends
+ // use a uniform source scale, so the face keeps its proportions during morph.
+ const portraitScale=Math.max(layout.avatar.width/w,layout.avatar.height/h);
  const portraitW=w*portraitScale,portraitH=h*portraitScale;
  const compactX=(layout.avatar.width-portraitW)/2;
  const compactY=(layout.avatar.height-portraitH)/2;
