@@ -4,7 +4,10 @@ import {Images,Eye,PenLine,Heart,ShieldCheck} from "lucide-react";
 import {Flag} from "../../../ui/Flag";
 import {goals} from "../../../registration/model";
 import type {ProfileView} from "../../ProfileModel";
-import type {ProfileRouteMotionHandle} from "../../ProfileMasterV3";
+type ProfileRouteMotionHandle={
+ suspendForRoute:()=>void;rollbackRoute:()=>void;commitRouteClose:()=>void;
+ suspendForBackground:()=>void;resumeFromBackground:()=>void;
+};
 import type {GestureArbiter} from "../../../ui/gesture-arbiter";
 import {createProfileLayout,photoMask,photoOffset,clamp,type MorphLayout} from "../geometry/ProfileGeometry";
 import {ProfileMotionEngine} from "../motion/ProfileMotionEngine";
