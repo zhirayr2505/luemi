@@ -13,11 +13,11 @@
 .v3-int-ambient{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;
  background:linear-gradient(130deg,#ae86c9,#e7b2d6)}
 .v3-int-ambient img{position:absolute;left:-18px;top:-18px;width:calc(100% + 36px);height:calc(100% + 36px);
- object-fit:cover;object-position:50% 30%;filter:blur(17px);pointer-events:none}
+ object-fit:cover;object-position:50% 30%;opacity:.28;pointer-events:none}
 .v3-int-ambient span{position:absolute;inset:0;background:linear-gradient(150deg,rgba(84,43,110,.4),rgba(230,167,217,.25) 65%,rgba(80,45,118,.2))}
 .v3-int-mask{position:absolute;z-index:2;overflow:hidden;touch-action:pan-y;
  background:linear-gradient(130deg,#ac8ac4,#d8b4d9);border-radius:50%;
- user-select:none;-webkit-user-select:none;isolation:isolate;outline:0}
+ user-select:none;-webkit-user-select:none;isolation:isolate;contain:paint;outline:0}
 .v3-int-mask:focus-visible{outline:3px solid #fff;outline-offset:-3px}
 .v3-int-photo-rail{position:absolute;inset:0 auto auto 0;width:100%;height:100%;
  transition:none;transform:translate3d(0,0,0)}
@@ -93,3 +93,10 @@
 @media(max-width:370px){.v3-int-compact-identity{gap:6px}
  .v3-int-compact-identity h2{font-size:20px}.v3-int-tab{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.v3-int-photo-rail,.v3-int-pages-track,.v3-int-ink{transition:none!important}}
+
+/* A55 WebView raster guard: no animated filtered photo tile, no translucent
+   backdrop-filter over the entire hero. Stable opaque paint islands only. */
+.v3-int-ambient{isolation:isolate;contain:paint}
+.v3-int-photo-rail{backface-visibility:hidden}
+.v3-int-hero{contain:paint}
+.v3-int-page{touch-action:pan-y;overflow-anchor:none}
