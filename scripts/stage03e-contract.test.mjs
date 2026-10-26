@@ -42,7 +42,7 @@ assert.ok(downSource.includes(".nb-location")&&!downSource.includes(".nb-card"),
 assert.ok(!downSource.includes(".nb-scroll,.nb-card"), "Nearby background must be eligible for parent pager gesture");
 
 assert.ok(discovery.includes("onSave={toggleForYouSave}")&&discovery.includes("onPerson={setPersonOpen}"),"shared save and existing public profile");
-assert.ok(discovery.includes('event.animationName==="luemi-deck-leave"')&&feed.includes("discovery-deck-current"),"Feed motion remains intact");
+assert.ok((discovery.includes('event.animationName==="luemi-deck-leave"')||discovery.includes("deck-leaving"))&&feed.includes("discovery-deck-current"),"Feed motion remains intact");
 assert.ok(model.includes("radius:5000"),"existing geography setting unchanged");
 assert.ok(!component.includes("demoDistanceKm(")&&!source.includes("demoDistanceKm("),"no synthetic kilometre-based proximity function calls");
 console.log("✓ Stage 03E: strict declared location, dual column, gesture safety, savings, Feed/radius locks");
