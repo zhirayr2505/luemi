@@ -22,6 +22,8 @@ export function PhotoViewerSlide({photo,role,media,onDecoded,onError,currentRef}
  const mediaSrc=media?.phase==="ready"?media.src:photo?.src;
  const id=photo?.id??null;
  const photoKey=photo?resourceIdentity(photo):"empty-"+role;
+ const latestPhoto=useRef(photo);
+ latestPhoto.current=photo;
  // The image node moves between slots. A zoom transform written on the
  // current image must not travel with it into the neighboring slot.
  useLayoutEffect(()=>{
@@ -31,7 +33,8 @@ export function PhotoViewerSlide({photo,role,media,onDecoded,onError,currentRef}
   }
  },[role]);
  useEffect(()=>{
-  if(!photo||!readyKey||!media?.src)return;
+  const resource=latestPhoto.current;
+  if(!resource||!readyKey||!media?.src)return;
   const node=image.current;
   if(!node)return;
   let valid=true;
@@ -39,14 +42,14 @@ export function PhotoViewerSlide({photo,role,media,onDecoded,onError,currentRef}
   const complete=()=>{
    if(!valid||generation!==token.current||image.current!==node)return;
    if(node.naturalWidth<=0||node.naturalHeight<=0){
-    callbacks.current.onError(photo);return;
+    callbacks.current.onError(resource);return;
    }
    setDecoded(readyKey);
-   callbacks.current.onDecoded(photo.id,readyKey,true);
+   callbacks.current.onDecoded(resource.id,readyKey,true);
   };
   Promise.resolve().then(()=>node.decode()).then(complete).catch(()=>{
    if(valid&&generation===token.current&&image.current===node)
-    callbacks.current.onError(photo);
+    callbacks.current.onError(resource);
   });
   return ()=>{valid=false;};
  },[readyKey,media?.src,photoKey]);
