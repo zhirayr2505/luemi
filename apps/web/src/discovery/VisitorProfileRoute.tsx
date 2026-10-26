@@ -202,7 +202,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   if(isGestureModalBlocked(target))return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
   const collapsed=shell?.dataset.sheetState==="collapsed";
-  if(!collapsed&&!target.closest(".pm-a2-sheet,.pm-profile-sheet"))return;
+  if(!collapsed&&!target.closest(".pm-a2-sheet,.pm-profile-sheet,.v3-int-sheet"))return;
   const source:RouteDrag["source"]=target.closest(".pm-hero")?"photo":
    target.closest(".pm-a2-tabs,.pm-tabs")?"tabs":target.closest(".pm-a2-pages,.pm-pages")?"pages":"sheet";
   const serial=gestures.begin("pointer",e.pointerId,"route");
