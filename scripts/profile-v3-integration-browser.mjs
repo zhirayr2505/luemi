@@ -48,8 +48,8 @@ try{
  assert(expanded.height<page.viewportSize().height*.62,"expanded photo may not consume most of the screen");
  assert.equal(await root.locator(".v3-int-photo-slide").first().evaluate(el=>getComputedStyle(el).overflow),"hidden",
   "each large photo must be clipped to its own slide; adjacent portraits cannot overlap");
- assert.equal(await root.locator(".v3-int-ambient img").evaluate(el=>getComputedStyle(el).filter),"none",
-  "large blurred CSS photo cannot obscure the active portrait on A55");
+ assert.equal(await root.locator(".v3-int-ambient img").evaluate(el=>getComputedStyle(el).filter),"blur(9px)",
+  "approved moderate ambient blur only behind the isolated active photo");
  assert.equal(await page.locator(".pm-viewer").count(),0,"compact avatar must expand first, not open viewer");
  await page.screenshot({path:out+"/owner-expanded.png"});
  const photoId=await items.first().getAttribute("data-photo-id");
