@@ -194,7 +194,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    lastX:e.clientX,lastY:e.clientY,lastAt:e.timeStamp,velocity:0,claimed:false,startIndex:offset,
    startOffset:offset*layout.current.width,
    scroll:kind==="tabs"?(e.target as Element).closest<HTMLElement>(".v3-int-page"):null,
-   scrollStart:kind==="tabs"?(e.target as Element).closest<HTMLElement>(".v3-int-page")?.scrollTop??0,
+   scrollStart:kind==="tabs"?((e.target as Element).closest<HTMLElement>(".v3-int-page")?.scrollTop??0):0,
    buttons:kind==="tabs"?Array.from(tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")??[])
     .map(b=>({x:b.offsetLeft,width:b.offsetWidth})):undefined};
  };
