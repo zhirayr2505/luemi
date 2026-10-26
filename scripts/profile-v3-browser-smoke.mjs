@@ -45,7 +45,6 @@ try{
    // Browser touch emulation must dispatch touchscreen events; Playwright's
    // mouse.move is not a reliable substitute for Android PointerEvent touch.
    await page.evaluate(()=>{
-    const el=document.querySelector(".v3-handle");
     window.__v3TouchTrace=[];
     for(const name of ["pointerdown","pointermove","pointerup","pointercancel","gotpointercapture","lostpointercapture","touchstart","touchmove","touchend","click"]){
      document.addEventListener(name,e=>{
