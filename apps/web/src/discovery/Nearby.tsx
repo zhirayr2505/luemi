@@ -22,9 +22,9 @@ interface Props{
 }
 const pageSize=8;
 
-function PersonCard({person,draft,saved,onSave,onPerson}:{
+function PersonCard({person,draft,saved,onSave,onPerson,priority}:{
  person:DemoPerson;draft:RegistrationDraft;saved:boolean;
- onSave:(id:string)=>void;onPerson:(id:string)=>void;
+ onSave:(id:string)=>void;onPerson:(id:string)=>void;priority:boolean;
 }){
  const photo=person.photos[0];
  const common=draft.interests.find(id=>person.interests.includes(id));
@@ -32,7 +32,7 @@ function PersonCard({person,draft,saved,onSave,onPerson}:{
  return <article className="nb-card">
    <button className="nb-photo" type="button" onClick={()=>onPerson(person.id)}
      aria-label={"Открыть демо-профиль "+person.name+", "+person.age}>
-     <img src={photo.src} alt="" loading="lazy" decoding="async" draggable={false}
+     <img src={photo.src} alt="" loading={priority?"eager":"lazy"} decoding="async" draggable={false}
        onError={event=>{if(photo.fallback&&event.currentTarget.src!==photo.fallback)event.currentTarget.src=photo.fallback;}}/>
      <span className="nb-photo-shade" aria-hidden="true"/>
      <span className="nb-demo">Демо</span>
@@ -100,8 +100,8 @@ export const Nearby=memo(function Nearby({active=true,draft,filters,saved,onSave
        <button type="button" onClick={onFilters}>Изменить фильтры <ArrowRight size={16}/></button>
      </div>:<>
        <div className="nb-grid">
-         {shown.map(person=><MemoCard key={person.id} person={person} draft={draft}
-           saved={saved.includes(person.id)} onSave={onSave} onPerson={onPerson}/>)}
+         {shown.map((person,i)=><MemoCard key={person.id} person={person} draft={draft}
+           saved={saved.includes(person.id)} onSave={onSave} onPerson={onPerson} priority={i<4}/>)}
        </div>
        {hasMore&&<div ref={sentinel} className="nb-more">
          <button type="button" onClick={()=>setVisible(n=>Math.min(n+pageSize,people.length))}>

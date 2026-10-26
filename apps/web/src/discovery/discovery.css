@@ -23,7 +23,7 @@
 .discovery-tab-underline{position:absolute;left:11px;bottom:0;width:calc((100% - 22px)/3);height:3px;
  border-radius:99px;background:linear-gradient(90deg,#a67ede,#eda4cc);pointer-events:none;
  transform:translate3d(calc(var(--luemi-tab-offset,0%) + var(--luemi-underline-drag,0px)),0,0);
- transition:transform .3s cubic-bezier(.2,.76,.23,1)}
+ transition:transform .3s cubic-bezier(.2,.77,.21,1)}
 .discovery-pages{flex:1;min-height:0;overflow:hidden;touch-action:pan-y;position:relative}
 .discovery-page-track{width:100%;height:100%;min-height:0;display:flex;align-items:stretch;
  transform:translate3d(calc(var(--luemi-tab-offset,0%) + var(--luemi-drag,0px)),0,0);

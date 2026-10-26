@@ -15,15 +15,15 @@ assert.ok(forYouCss.includes("backdrop-filter:blur(17px)")&&forYouCss.includes("
 assert.ok(app.includes('pageTrack.current?.style.setProperty("--luemi-tab-offset"')&&
  app.includes('underline.current?.style.setProperty("--luemi-tab-offset"'),"both pager variables commit atomically before state selection");
 assert.ok(app.includes("settleDrag(target);")&&app.includes("if(target!==tabIndex)selectTab(target)")&&
- app.includes("browseMotion.current.cancel(g.token")&&app.includes("inputOwnership.current.finish(\"browse\",g.serial)"),
- "pager paints the new target once, and only after exclusive motion/gesture cancellation");
+ app.includes("browseMotion.current.paint(g.token")&&app.includes("inputOwnership.current.finish(\"browse\",g.serial)"),
+ "pager flushes the final finger position before one exclusive settle");
 assert.ok(style.includes(".discovery-page-track.is-settling,.discovery-tab-underline.is-settling"),"GPU hint scoped to track settle only");
 assert.ok(app.includes('event.propertyName==="transform"')&&app.includes("finishPagerSettle()"),"remove compositor hint on real transitionend");
 assert.ok(app.includes("},380)")&&app.includes("finishPagerSettle(token)")&&
  app.includes("browseMotion.current.owns(token)")&&app.includes("window.setTimeout(()=>finishPagerSettle(token),80)"),
  "WebView fallback retains original 380ms budget, one tokenized terminal commit and checks computed endpoint");
-assert.ok(app.includes("if(bounded===2)setNearbyPrepared(true)")&&app.includes("requestIdleCallback"),
- "For You's first critical frame does not synchronously mount Nearby");
+assert.ok(!app.includes("nearbyPrepared")&&app.includes("<Nearby active="),
+ "Nearby is mounted before it can be exposed by a finger drag");
 assert.ok(near.includes("const pageSize=8")&&near.includes("IntersectionObserver"),"Nearby pagination intact");
 assert.ok(app.includes("const savedRef=useRef(feed.saved)")&&app.includes("},[indicate]);"),
  "stable saved callback avoids rerendering unrelated memoized tiles");

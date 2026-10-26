@@ -12,7 +12,15 @@ const buttons=[
  ["undo","Отменить",Undo2],["pass","Пропустить",X],
  ["special","Особенная симпатия",Sparkles],["like","Нравится",Heart]
 ] as const;
-type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info";info:boolean;nativeScroll:boolean};
+type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info";
+ info:boolean;nativeScroll:boolean;startProgress:number;resumeTarget:0|1;
+ samples:{y:number;t:number}[]};
+type CardRun={from:number;target:0|1;velocity:number;start:number;frame:number|null};
+const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
+const spring=(run:CardRun,now:number)=>{
+ const t=Math.max(0,now-run.start),omega=.028,a=run.from-run.target;
+ return run.target+(a+(run.velocity+omega*a)*t)*Math.exp(-omega*t);
+};
 
 /** The keyed complete card remains mounted as it moves through the deck. */
 export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests}:{
@@ -24,31 +32,93 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
  const scroll=useRef<HTMLDivElement>(null);
+ const about=useRef<HTMLDivElement>(null);
+ const interests=useRef<HTMLDivElement>(null);
+ const interestBody=useRef<HTMLDivElement>(null);
  const photo=useRef<PhotoCarouselHandle>(null);
  const gesture=useRef<CardGesture|null>(null);
  const blockClickUntil=useRef(0);
  const multiTouch=useRef(false);
- const expansionLocked=useRef(false);
- const expansionTimer=useRef<number|null>(null);
+ const progress=useRef(0),target=useRef<0|1>(0);
+ const metrics=useRef({closed:174,open:430,aboutClosed:40,about:40,interests:120});
+ const run=useRef<CardRun|null>(null);
+ const suspend=useRef<()=>void>(()=>{});
+ const measureLive=useRef<()=>void>(()=>{});
+ const paint=(value:number)=>{
+  const p=progress.current=clamp(value,0,1),m=metrics.current;
+  if(details.current)details.current.style.height=(m.closed+(m.open-m.closed)*p)+"px";
+  if(about.current)about.current.style.maxHeight=(m.aboutClosed+(m.about-m.aboutClosed)*p)+"px";
+  if(interests.current)interests.current.style.maxHeight=(m.interests*p)+"px";
+  card.current?.style.setProperty("--feed-progress",String(p));
+ };
+ const freeze=()=>{
+  const current=run.current;
+  if(!current)return;
+  if(current.frame!==null)cancelAnimationFrame(current.frame);
+  run.current=null;paint(spring(current,performance.now()));
+ };
+ const settle=(next:0|1,velocity=0)=>{
+  freeze();target.current=next;setExpanded(next===1);
+  if(scroll.current)scroll.current.style.overflowY="hidden";
+  if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
+   paint(next);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
+  }
+  if(Math.abs(progress.current-next)<.002){
+   paint(next);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
+  }
+  const motion:CardRun={from:progress.current,target:next,velocity:clamp(velocity,-.006,.006),
+   start:performance.now(),frame:null};
+  run.current=motion;
+  const tick=(now:number)=>{
+   if(run.current!==motion)return;
+   const value=spring(motion,now);paint(value);
+   if(now-motion.start>=340||Math.abs(value-next)<.002){
+    run.current=null;paint(next);
+    if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";
+   }else motion.frame=requestAnimationFrame(tick);
+  };
+  motion.frame=requestAnimationFrame(tick);
+ };
+ const measure=()=>{
+  const element=card.current;if(!element)return;
+  const height=element.clientHeight;
+  element.dataset.size=height<320?"tiny":height<420?"compact":"regular";
+  const style=getComputedStyle(element);
+  const closed=Number.parseFloat(style.getPropertyValue("--feed-closed-height"))||174;
+  const actions=Number.parseFloat(style.getPropertyValue("--feed-actions-height"))||79;
+  const aboutClosed=Number.parseFloat(style.getPropertyValue("--feed-about-closed-height"))||40;
+  metrics.current={closed,open:Math.max(closed,Math.min(height*.72,430,height-actions)),
+   aboutClosed,about:Math.max(aboutClosed,about.current?.firstElementChild?.scrollHeight??aboutClosed),
+   interests:Math.min(120,(interestBody.current?.scrollHeight??0)+10)};
+  paint(progress.current);
+ };
+ measureLive.current=measure;
  useEffect(()=>{
   const element=card.current;
   if(!element)return;
-  const resize=new ResizeObserver(entries=>{
-   const height=entries[0]?.contentRect.height??0;
-   element.dataset.size=height<320?"tiny":height<420?"compact":"regular";
-  });
+  const resize=new ResizeObserver(()=>measureLive.current());
   resize.observe(element);
+  measureLive.current();
   const carousel=photo.current;
   return ()=>{resize.disconnect();carousel?.cancel();
-   if(expansionTimer.current!==null)window.clearTimeout(expansionTimer.current);};
+   const current=run.current;if(current?.frame!=null)
+    cancelAnimationFrame(current.frame);
+   run.current=null;};
+ },[]);
+ useEffect(()=>{
+  const stop=()=>suspend.current();
+  const hidden=()=>{if(document.hidden)stop();};
+  window.addEventListener("blur",stop);
+  document.addEventListener("visibilitychange",hidden);
+  return ()=>{window.removeEventListener("blur",stop);document.removeEventListener("visibilitychange",hidden);};
  },[]);
  const updateExpanded=(next:boolean)=>{
-  if(!active||busy||expansionLocked.current||next===expanded)return;
-  setExpanded(next);
-  if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)return;
-  expansionLocked.current=true;
-  expansionTimer.current=window.setTimeout(()=>{expansionLocked.current=false;
-   expansionTimer.current=null;},430);
+  if(!active||busy)return;
+  settle(next?1:0);
+ };
+ const photoRegion=(y:number)=>{
+  const edge=details.current?.getBoundingClientRect().top;
+  return edge!==undefined&&y<edge;
  };
  const down=(event:ReactPointerEvent<HTMLElement>)=>{
   if(!event.isPrimary){
@@ -56,14 +126,21 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    blockClickUntil.current=performance.now()+350;
    const old=gesture.current;gesture.current=null;
    if(old?.axis==="photo")photo.current?.finish(old.id,old.x,true);
-   details.current?.style.removeProperty("--feed-drag");
+   if(old?.axis==="info")settle(old.resumeTarget);
    return;
   }
   multiTouch.current=false;
   if(!active||busy||(event.pointerType==="mouse"&&event.button!==0))return;
-  gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,at:performance.now(),
-   axis:"pending",info:!!(event.target as Element).closest(".feed-v2-details"),
-   nativeScroll:!!(event.target as Element).closest(".feed-v2-scroll")};
+  const element=event.target as Element;
+  const interactive=element.closest("button,a,input,textarea,select,[contenteditable]");
+  if(interactive&&!interactive.matches(".discovery-name-button,.feed-v2-expand"))return;
+  const info=!!element.closest(".feed-v2-details");
+  if(!info&&!photoRegion(event.clientY))return;
+  if(info)freeze();
+  const now=performance.now();
+  gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,at:now,
+   axis:"pending",info,nativeScroll:!!element.closest(".feed-v2-scroll"),
+   startProgress:progress.current,resumeTarget:target.current,samples:[{y:event.clientY,t:now}]};
  };
  const move=(event:ReactPointerEvent<HTMLElement>)=>{
   const g=gesture.current;
@@ -74,10 +151,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    if(Math.abs(dx)>Math.abs(dy)*1.15){
     // A rightward gesture from the OS edge belongs to Telegram.
     if(dx>0&&g.x<26){gesture.current=null;return;}
-    g.axis="photo";
-    photo.current?.begin(g.id,g.x,g.y,g.at);
+    if(g.info){gesture.current=null;blockClickUntil.current=performance.now()+350;
+     settle(g.resumeTarget);return;}
+    g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
    }else if(Math.abs(dy)>Math.abs(dx)*1.15&&g.info){
-    if(expanded&&g.nativeScroll&&(dy<0||(scroll.current?.scrollTop??0)>0)){
+    if(progress.current>.99&&g.nativeScroll&&(dy<0||(scroll.current?.scrollTop??0)>0)){
      gesture.current=null;return;
     }
     g.axis="info";
@@ -87,19 +165,39 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   }
   if(event.cancelable)event.preventDefault();
   if(g.axis==="photo")photo.current?.move(g.id,event.clientX,event.clientY);
-  else details.current?.style.setProperty("--feed-drag",Math.max(-18,Math.min(18,dy*.22))+"px");
+  else{
+   const travel=Math.max(1,metrics.current.open-metrics.current.closed);
+   paint(g.startProgress-dy/travel);
+   const t=performance.now();g.samples.push({y:event.clientY,t});
+   if(g.samples.length>10)g.samples.shift();
+  }
  };
  const finish=(event:ReactPointerEvent<HTMLElement>,cancel=false)=>{
   const g=gesture.current;
   if(!g||g.id!==event.pointerId)return;
   gesture.current=null;
-  details.current?.style.removeProperty("--feed-drag");
   if(g.axis==="photo")photo.current?.finish(g.id,event.clientX,cancel);
-  if(g.axis==="info"&&!cancel){
-   const dy=event.clientY-g.y;
-   if(dy< -24)updateExpanded(true);
-   if(dy>24)updateExpanded(false);
-  }
+  if(g.axis==="info"){
+   if(cancel){settle(g.resumeTarget);return;}
+   const t=performance.now(),samples=[...g.samples,{y:event.clientY,t}];
+   let recent=samples[samples.length-1];
+   for(let i=samples.length-2;i>=0;i--){
+    if(t-samples[i].t>80)break;
+    recent=samples[i];
+   }
+   const velocity=t-recent.t>0?(event.clientY-recent.y)/(t-recent.t):0;
+   const travel=Math.max(1,metrics.current.open-metrics.current.closed);
+   paint(g.startProgress-(event.clientY-g.y)/travel);
+   const projected=progress.current-velocity*125/travel;
+   settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0,-velocity/travel);
+  }else if(g.axis==="pending"&&g.info)settle(g.resumeTarget);
+ };
+ suspend.current=()=>{
+  const g=gesture.current;gesture.current=null;multiTouch.current=false;
+  if(g?.axis==="photo")photo.current?.finish(g.id,g.x,true);
+  freeze();const resting=g?.axis==="info"?g.resumeTarget:target.current;
+  target.current=resting;setExpanded(resting===1);paint(resting);
+  if(scroll.current)scroll.current.style.overflowY=resting?"auto":"hidden";
  };
  const available=active&&!busy;
  return <div className="discovery-deck-current feed-v2" aria-hidden={!active}>
@@ -122,7 +220,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
        <div className="feed-v2-details" ref={details}>
          <button className="feed-v2-expand" type="button" disabled={!available}
            aria-label={expanded?"Свернуть информацию":"Раскрыть информацию"} aria-expanded={expanded}
-           onClick={()=>updateExpanded(!expanded)}>
+           onClick={()=>updateExpanded(target.current!==1)}>
            {expanded?<ChevronDown size={15}/>:<ChevronUp size={15}/>}
          </button>
          <div className="feed-v2-scroll" ref={scroll}>
@@ -139,11 +237,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
              <span>{person.city}{person.country?", "+person.country:""}</span>
            </div>
            {goal&&<div className="feed-v2-goal"><Heart size={13}/>{goal.label}</div>}
-           {person.about&&<div className="feed-v2-about">
+           {person.about&&<div className="feed-v2-about" ref={about}>
              <p className="discovery-short-about">{person.about}</p>
            </div>}
-           {person.interests.length>0&&<div className="feed-v2-interests" aria-hidden={!expanded} inert={!expanded}>
-             <div className="discovery-interests">
+           {person.interests.length>0&&<div className="feed-v2-interests" ref={interests} aria-hidden={!expanded} inert={!expanded}>
+             <div className="discovery-interests" ref={interestBody}>
                {person.interests.slice(0,6).map(id=><InterestChip key={id} id={id}/>)}
                {person.interests.length>6&&<button type="button" className="discovery-more"
                  onClick={onInterests} disabled={!available} aria-label={"Показать все интересы "+person.name}>

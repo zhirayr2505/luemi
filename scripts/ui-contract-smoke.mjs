@@ -61,7 +61,8 @@ assertCheck("Discovery retains four main navigation destinations and three disco
  ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Рядом"].every(x=>discovery.includes(x)));
 assertCheck("feed card retains four explicit reaction controls",["undo","pass","special","like"].every(x=>feedCard.includes('"'+x+'"')));
 assertCheck("photos remain an independent carousel",feedCard.includes("<PhotoCarousel")&&carousel.includes("requestAnimationFrame")&&discovery.includes("target.closest"));
-assertCheck("feed page excluded from tab swipe ownership",discovery.includes(".discovery-page[aria-label='Лента']"));
+assertCheck("photo and text have separate swipe ownership",discovery.includes(".feed-v2-details")&&
+ discovery.includes("details.getBoundingClientRect().top")&&feedCard.includes('if(g.info){gesture.current=null'));
 assertCheck("feed V2 overlays profile information on photo",feedCard.includes('className="feed-v2-information"')&&feedCard.includes('discovery-photo feed-v2-photo')&&feedCss.includes(".feed-v2-information"));
 assertCheck("collapsed about and expanded interests remain available",feedCard.includes("discovery-short-about")&&feedCard.includes("setExpanded")&&feedCard.includes("feed-v2-interests"));
 assertCheck("action buttons remain within the keyed card",feedCard.includes('className="discovery-actions"')&&discovery.includes("<FeedCard person={person}")&&discovery.includes("<FeedCard person={profiles[feed.index+1]}"));
