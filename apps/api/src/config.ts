@@ -53,8 +53,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   if (!stagingOnly && (!env.HEALTH_CHECK_KEY || env.HEALTH_CHECK_KEY.length < 24))
     throw new Error("HEALTH_CHECK_KEY must contain at least 24 characters");
   if (setupOnStart && (
-    env.APP_ORIGIN !== "https://luemi-stage01.onrender.com" ||
-    env.EXPECTED_TELEGRAM_BOT_USERNAME?.toLowerCase() !== "luemiappbot" ||
+    env.APP_ORIGIN !== "https://luemi.onrender.com" ||
     !/^[a-zA-Z0-9_-]{24,256}$/.test(env.TELEGRAM_WEBHOOK_SECRET ?? "")
   )) throw new Error("Telegram auto-setup requires verified LUEMI staging configuration");
   // Deliberately OFF for all existing Render deployments until separately authorized.
