@@ -282,6 +282,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   restoreVertical(false);
   phase.current="idle";
  };
+ const interruptOpeningRef=useRef<()=>void>(()=>{});
+ interruptOpeningRef.current=interruptOpening;
  /** One completion gate for opening/closing: transitionend and timeout
   * race on the SAME MotionController generation; old callbacks cannot commit.
   */
