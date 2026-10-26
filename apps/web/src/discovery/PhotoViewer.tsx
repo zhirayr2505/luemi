@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useLayoutEffect,useRef,useState} from "react";
+import "./profile-viewer.css";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import {X,MoreHorizontal,ChevronLeft,ChevronRight,Lock,Star,Share2,Link2,Flag as ReportIcon} from "lucide-react";
