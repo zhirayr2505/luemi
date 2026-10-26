@@ -41,13 +41,31 @@ try{
   // Explicitly drag further than half the range, so a slow or quick release
   // MUST resolve COMPACT. Do not add a second tap during an in-flight settle.
   const travel=expanded.y-initial.y,dragDistance=Math.max(110,Math.min(travel*.73,y-80));
-  await page.mouse.move(x,y);
-  await page.mouse.down();
-  await page.mouse.move(x,y-dragDistance,{steps:12});
-  const dragged=await progress();
-  assert(dragged>0&&dragged<.5,`drag should follow finger below midpoint; p=${dragged}`);
-  await page.screenshot({path:`${output}/${settings.label}-interrupted.png`});
-  await page.mouse.up();
+  if(settings.isMobile){
+   // Browser touch emulation must dispatch touchscreen events; Playwright's
+   // mouse.move is not a reliable substitute for Android PointerEvent touch.
+   const client=await context.newCDPSession(page);
+   const touch=(type,atY,touching=true)=>client.send("Input.dispatchTouchEvent",{
+    type,touchPoints:touching?[{x,y:atY,id:0,radiusX:1,radiusY:1,force:1}]:[]
+   });
+   await touch("touchStart",y);
+   for(let i=1;i<=12;i++){
+    await touch("touchMove",y-dragDistance*i/12);
+    await page.waitForTimeout(12);
+   }
+   const dragged=await progress();
+   assert(dragged>0&&dragged<.5,`touch drag should follow finger below midpoint; p=${dragged}`);
+   await page.screenshot({path:`${output}/${settings.label}-interrupted.png`});
+   await touch("touchEnd",y-dragDistance,false);
+  }else{
+   await page.mouse.move(x,y);
+   await page.mouse.down();
+   await page.mouse.move(x,y-dragDistance,{steps:12});
+   const dragged=await progress();
+   assert(dragged>0&&dragged<.5,`mouse drag should follow finger below midpoint; p=${dragged}`);
+   await page.screenshot({path:`${output}/${settings.label}-interrupted.png`});
+   await page.mouse.up();
+  }
   await page.waitForFunction(()=>Number(document.querySelector('[data-testid="v3-root"]')?.getAttribute("data-progress")??1)<.001,
    null,{timeout:2500});
   assert.equal(await img.count(),1,"same img survives full interrupted morph");
