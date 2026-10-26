@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useLayoutEffect,useRef,useState} from "react";
 import type {ProfilePhoto} from "./ProfileModel";
 import type {MediaState} from "./photo-readiness";
 import type {SlideRole} from "./photo-viewer-geometry";
@@ -21,6 +21,15 @@ export function PhotoViewerSlide({photo,role,media,onDecoded,onError,currentRef}
  callbacks.current={onDecoded,onError,currentRef};
  const mediaSrc=media?.phase==="ready"?media.src:photo?.src;
  const id=photo?.id??null;
+ const photoKey=photo?resourceIdentity(photo):"empty-"+role;
+ // The image node moves between slots. A zoom transform written on the
+ // current image must not travel with it into the neighboring slot.
+ useLayoutEffect(()=>{
+  if(role!=="current"&&image.current){
+   image.current.style.transition="none";
+   image.current.style.transform="none";
+  }
+ },[role]);
  useEffect(()=>{
   if(!photo||!readyKey||!media?.src)return;
   const node=image.current;
@@ -40,17 +49,16 @@ export function PhotoViewerSlide({photo,role,media,onDecoded,onError,currentRef}
     callbacks.current.onError(photo);
   });
   return ()=>{valid=false;};
- },[readyKey,media?.src,photo]);
+ },[readyKey,media?.src,photoKey]);
  useEffect(()=>{
   return ()=>{
    if(id&&readyKey)callbacks.current.onDecoded(id,readyKey,false);
   };
  },[id,readyKey]);
- const ref=(node:HTMLImageElement|null)=>{
+ const ref=useCallback((node:HTMLImageElement|null)=>{
   image.current=node;
   if(role==="current")callbacks.current.currentRef(node);
- };
- const photoKey=photo?resourceIdentity(photo):"empty-"+role;
+ },[role]);
  return <div className="pm-viewer-slide" data-slot={role} data-photo-id={id??undefined}
    data-resource-key={photoKey}>
    {photo&&<img ref={ref}

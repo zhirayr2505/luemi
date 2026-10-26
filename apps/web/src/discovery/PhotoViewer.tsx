@@ -149,7 +149,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   releasePointers();resetMedia(animate);restoreVertical(animate);
   if(wasTracking&&!closing.current&&Math.abs(trackX.current)>.1){
    const motion=runner.current;
-   const frozen=motion?.cancel()??trackX.current;
+   const frozen=freezeTrack();
    // A cancelled pinch cannot leave a half-visible neighboring slide.
    motion?.start(frozen,0,duration,easing,paintTrack,()=>{},geometryRevision.current);
   }
@@ -185,6 +185,16 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    track.current.style.transform="translate3d(calc(-100% + "+x+"px),0,0)";
    track.current.dataset.offset=String(x);
   }
+ };
+ // Pointer frames paint the track directly. The RAF runner's last value is
+ // stale while a finger owns it; only sample the runner during a settle.
+ const freezeTrack=():number=>{
+  const motion=runner.current;
+  const settling=motion?.snapshot().phase==="settling";
+  const sampled=motion?.cancel();
+  const x=settling&&sampled!==undefined?sampled:trackX.current;
+  paintTrack(x);
+  return x;
  };
  const restoreSource=()=>{
   const held=visibleSource.current;
@@ -264,6 +274,13 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   }
   const t=owner?.token();
   if(t&&interrupted)owner?.interrupt(t,"interrupted");
+ };
+ const interruptOpening=()=>{
+  if(phase.current!=="opening")return;
+  stopSurface();
+  morphCleanup.current();
+  restoreVertical(false);
+  phase.current="idle";
  };
  /** One completion gate for opening/closing: transitionend and timeout
   * race on the SAME MotionController generation; old callbacks cannot commit.
@@ -419,6 +436,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    runner.current?.start(0,0,0,easing,paintTrack,()=>{},geometryRevision.current);
    phase.current="idle";
   }else if(priorSignature.current!==signature||photoId!==committedPhotoId){
+   // A removed or replaced resource cannot keep ownership of a finger that
+   // started on the previous three-slide window.
+   releasePointers();resetMedia(false);restoreVertical(false);
    runner.current?.start(0,0,0,easing,paintTrack,()=>{},geometryRevision.current);
    pendingCommit.current=null;
    if(phase.current==="settling"||phase.current==="draggingX")phase.current="idle";
@@ -507,7 +527,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(motion?.snapshot().phase==="settling")motion.suspend();
   const stageNode=stage.current,layer=surface.current;
   if(stageNode&&layer&&phase.current==="opening"){
-   stopSurface();phase.current="idle";
+   interruptOpening();
   }
  },()=>{
   const motion=runner.current;
@@ -519,7 +539,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  }),[]);
  const settle=(target:0|-1|1,settleMs=duration)=>{
   const motion=runner.current;if(!motion||closing.current)return;
-  const start=motion.cancel(),w=width.current;
+  const start=freezeTrack(),w=width.current;
   const hasTarget=target===0||!!latest.current.photos[latest.current.index-target];
   if(!hasTarget)return settle(0);
   phase.current="settling";
@@ -542,13 +562,13 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(!target||target===selected.photoId)return false;
   if(gesture.current){gesture.current=null;pointer.current.clear();gestureArbiter.current?.cancel();}
   resetMedia(false);
+  interruptOpening();
   const nextIndex=photoIndex(selected.photos,target),shift=nextIndex-selected.index;
   if(Math.abs(shift)!==1){
    // Nonadjacent internal navigation is a non-animated, explicit rebase.
    runner.current?.cancel();paintTrack(0);morphCleanup.current();sourceRef.current=null;
    setMenu(false);setMessage("");setCommittedPhotoId(target);return true;
   }
-  if(phase.current==="opening"){stopSurface();phase.current="idle";}
   settle(shift===1?-1:1,_origin==="swipe"?duration:0);return true;
  };
  const requestClose=(force=false)=>{
@@ -558,7 +578,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   releasePointers();resetMedia(false);
   const motion=runner.current;
   if(motion){
-   const x=motion.cancel();
+   const x=freezeTrack();
    if(Math.abs(x)>.1)motion.start(x,0,duration,easing,paintTrack,()=>{},geometryRevision.current);
   }
   stopSurface();surfaceTransition(true);
@@ -580,10 +600,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(closing.current||menu||(e.pointerType==="mouse"&&e.button!==0))return;
   pointer.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pointer.current.size===1){
-   if(phase.current==="opening"){stopSurface();phase.current="idle";}
+   interruptOpening();
    const snap=runner.current?.snapshot();
-   const frozen=runner.current?.cancel()??trackX.current;
-   paintTrack(frozen);
+   const frozen=freezeTrack();
    const pose=freezeMedia();
    if(pose.scale>1.0001){
     // Re-touch mid media-reset transition: sample current DOMMatrix.
@@ -738,7 +757,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  };
  const phaseKey=phase.current;
  return createPortal(<section className="pm-viewer" ref={modal} role="dialog" aria-modal="true" aria-label="Просмотр фото"
-   tabIndex={-1} data-morph-active="false"
+   tabIndex={-1}
    data-motion-phase={phaseKey} data-semantic-commits={commitCount.current}>
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}
    onPointerUp={e=>finish(e,false)} onPointerCancel={e=>finish(e,true)}
