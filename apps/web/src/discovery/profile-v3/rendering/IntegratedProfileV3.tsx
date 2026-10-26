@@ -24,7 +24,7 @@ type SurfaceProps={
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
  gestureArbiter?:GestureArbiter;
 };
-type Session={id:number;kind:"handle"|"photo"|"tabs";at:number;x:number;y:number;
+type Session={id:number;kind:"handle"|"photo"|"tabs";scroll?:HTMLElement|null;scrollStart?:number;vertical?:boolean;at:number;x:number;y:number;
  lastX:number;lastY:number;lastAt:number;velocity:number;claimed:boolean;
  startIndex:number;startOffset:number;buttons?:Array<{x:number;width:number}>};
 export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress,
@@ -33,7 +33,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  const root=useRef<HTMLDivElement>(null),mask=useRef<HTMLDivElement>(null);
  const rail=useRef<HTMLDivElement>(null),sheet=useRef<HTMLDivElement>(null),identityCompact=useRef<HTMLDivElement>(null);
  const identityExpanded=useRef<HTMLDivElement>(null),photoDots=useRef<HTMLDivElement>(null);
- const ambient=useRef<HTMLImageElement>(null),pagesTrack=useRef<HTMLDivElement>(null),tabsRoot=useRef<HTMLDivElement>(null);
+ const ring=useRef<HTMLDivElement>(null),ambient=useRef<HTMLImageElement>(null),pagesTrack=useRef<HTMLDivElement>(null),tabsRoot=useRef<HTMLDivElement>(null);
  const ink=useRef<HTMLSpanElement>(null),refs=useRef(new Map<string,HTMLImageElement>());
  const current=useRef({photos,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress});
  current.current={photos,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress};
@@ -80,8 +80,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   if(identityExpanded.current){identityExpanded.current.style.opacity=String(clamp((progress-.36)/.31,0,1));}
   if(photoDots.current){photoDots.current.style.opacity=String(clamp((progress-.68)*3.4,0,1));
    photoDots.current.style.pointerEvents=progress>.98?"auto":"none";}
-  if(ambient.current)ambient.current.style.opacity=String(clamp(1-progress*1.45,0,1));
-  if(root.current)root.current.dataset.progress=progress.toFixed(4);
+  if(ring.current)ring.current.style.opacity=String(clamp((.96-progress)/.29,0,1));
+  // No React state or data-attribute writes during gesture frames.
   current.current.onMotionProgress?.(1-progress,engine.current?.getSnapshot().phase==="DRAGGING");
  };
  const painter=useRef(paint.current);painter.current=paint.current;
@@ -193,6 +193,8 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   gesture.current={id:e.pointerId,kind,at:e.timeStamp,x:e.clientX,y:e.clientY,
    lastX:e.clientX,lastY:e.clientY,lastAt:e.timeStamp,velocity:0,claimed:false,startIndex:offset,
    startOffset:offset*layout.current.width,
+   scroll:kind==="tabs"?(e.target as Element).closest<HTMLElement>(".v3-int-page"):null,
+   scrollStart:kind==="tabs"?(e.target as Element).closest<HTMLElement>(".v3-int-page")?.scrollTop??0,
    buttons:kind==="tabs"?Array.from(tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")??[])
     .map(b=>({x:b.offsetLeft,width:b.offsetWidth})):undefined};
  };
@@ -200,6 +202,18 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   const decision=coordinator.current.move({id:e.pointerId,x:e.clientX,y:e.clientY,time:e.timeStamp});
   const needed:Owner=g.kind==="handle"?"SHEET":g.kind==="photo"?"PHOTO":"TABS";
+  if(g.kind==="tabs"&&decision.owner==="NATIVE_SCROLL"){
+   const scroll=g.scroll;
+   const dy=e.clientY-g.y;
+   if(!scroll)return;
+   const remaining=Math.max(0,(g.scrollStart??0)-dy);
+   if(dy>0&&remaining===0){
+    if(!g.vertical){g.vertical=true;g.claimed=true;engine.current?.beginDrag(e.clientY);
+     try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* implicit */}}
+    engine.current?.updateDrag(e.clientY);
+   }else if(!g.vertical)scroll.scrollTop=remaining;
+   return;
+  }
   if(decision.owner!==needed)return;
   // For horizontal gestures in native-scroll pages, prevent browser panning
   // only after ownership was established. Vertical scroll is untouched.
@@ -233,7 +247,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   gesture.current=null;const decision=coordinator.current.end(e.pointerId);
   const dx=e.clientX-g.x,dy=e.clientY-g.y,elapsed=Math.max(1,e.timeStamp-g.at);
   if(g.claimed){
-   if(g.kind==="handle"){if(cancelled)engine.current?.cancelDrag();else engine.current?.endDrag(g.velocity);}
+   if(g.kind==="handle"||g.vertical){if(cancelled)engine.current?.cancelDrag();else engine.current?.endDrag(g.velocity);}
    else {
     const changed=!cancelled&&(Math.abs(dx)>layout.current.width*.18||Math.abs(dx)/elapsed>.43);
     const max=(g.kind==="photo"?current.current.photos.length:tabs.length)-1;
@@ -282,7 +296,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
      </div>)}
     </div>
     {!activePhoto&&<div className="v3-int-no-photo"><Images size={30}/>Нет доступных фотографий</div>}
-    <div className="v3-int-ring" aria-hidden="true"/>
+    <div className="v3-int-ring" ref={ring} aria-hidden="true"/>
    </div>
    <div className="v3-int-compact-identity" ref={identityCompact}>
     <h2>{title}</h2><p>{location}</p>{goalView}
