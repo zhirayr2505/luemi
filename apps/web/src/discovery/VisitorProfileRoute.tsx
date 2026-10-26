@@ -202,9 +202,9 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
   if(isGestureModalBlocked(target))return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
   const collapsed=shell?.dataset.sheetState==="collapsed";
-  if(!collapsed&&!target.closest(".pm-profile-sheet"))return;
+  if(!collapsed&&!target.closest(".pm-a2-sheet,.pm-profile-sheet"))return;
   const source:RouteDrag["source"]=target.closest(".pm-hero")?"photo":
-   target.closest(".pm-tabs")?"tabs":target.closest(".pm-pages")?"pages":"sheet";
+   target.closest(".pm-a2-tabs,.pm-tabs")?"tabs":target.closest(".pm-a2-pages,.pm-pages")?"pages":"sheet";
   const serial=gestures.begin("pointer",e.pointerId,"route");
   if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
@@ -230,10 +230,8 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
     const hero=route.current?.querySelector<HTMLElement>(".pm-hero");
     if(fractionalTrack(track??null,hero?.clientWidth??0,0)>.015)return;
    }
-   if(g.source==="pages"){
-    const page=route.current?.querySelector<HTMLElement>(".pm-pages");
-    if(page&&page.scrollLeft>1)return;
-   }
+   // A2: horizontal pager is exclusive even at the first tab; never steal its right swipe.
+   if(g.source==="pages"||g.source==="tabs")return;
    const tabStrip=route.current?.querySelector<HTMLElement>(".pm-tabs");
    if(g.source==="tabs"&&tabStrip&&tabStrip.scrollLeft>1)return;
    if(!gestures.claim("route",g.serial))return;
