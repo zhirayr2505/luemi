@@ -79,7 +79,7 @@ assertCheck("moving page and underline share a compositor-driven gesture",
  discovery.includes("paintBrowse(trackX,inkX)")&&discovery.includes("frozenBrowse()")&&
  discovery.includes("motionAuthority.current.run(\"browse\"")&&discovery.includes("pageTrack.current")&&
  discovery.includes("underline.current")&&!discovery.includes("setDragX")&&discovery.includes("clickBlockUntil"));
-assertCheck("entire profile and action controls share a single keyed card",read("apps/web/src/discovery/FeedCard.tsx").includes('className="discovery-card-overlay"')
+assertCheck("entire profile and action controls share a single keyed card",read("apps/web/src/discovery/FeedCard.tsx").includes('className="feed-v2-information"')
  && read("apps/web/src/discovery/FeedCard.tsx").includes('className="discovery-actions"')
  && discovery.includes('<FeedCard person={person}')&&discovery.includes('<FeedCard person={profiles[feed.index+1]}'));
 assertCheck("no old standalone glass action tray",!discoveryCss.includes(".discovery-card-facts")
