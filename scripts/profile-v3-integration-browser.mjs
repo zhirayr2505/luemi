@@ -13,10 +13,10 @@ const page=await context.newPage();
 const errors=[];page.on("pageerror",e=>errors.push(e.message));
 const frame=async()=>page.locator(".v3-profile-host.pm-inline");
 const progress=async(scope)=>scope.locator(".v3-int-root").evaluate(node=>{
- const translate=node.querySelector(".v3-int-sheet")?.style.transform??"";
- const m=translate.match(/translate3d\(0,([\d.-]+)px,0\)/);
+ const sheet=node.querySelector(".v3-int-sheet");
  const span=parseFloat(node.style.getPropertyValue("--v3-extra-scroll"))-24;
- return m&&span>0?Number(m[1])/span:0;
+ if(!sheet||!(span>0))return 0;
+ return new DOMMatrixReadOnly(getComputedStyle(sheet).transform).m42/span;
 });
 const touch=async({x,y,dx=0,dy=0,steps=12,each})=>{
  const client=await context.newCDPSession(page);
