@@ -68,7 +68,7 @@ assert.ok(profile.includes("reconcilePhotoId")&&profile.includes("resourceIdenti
  "media identity preserved on reorder and viewer return");
 assert.ok(css.includes(".pm-a2-backing")&&css.includes("isolation:isolate")&&
  css.includes(".pm-a2-sheet"),"opaque backing masks underlying feed throughout morph");
-// Integration-01 keeps A2 as the default fallback until real A55 approval.
+// Accepted V3 is the default across origins; explicit A2 remains diagnostic.
 const gateway=read("apps/web/src/discovery/ProfileV3Gateway.tsx");
 const v3=read("apps/web/src/discovery/ProfileMasterV3.tsx");
 const v3Surface=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.tsx");
@@ -76,10 +76,10 @@ assert.ok(discovery.includes('from "./ProfileV3Gateway"')&&
  visitorRoute.includes('from "./ProfileV3Gateway"')&&
  previewSource.includes('from "../discovery/ProfileV3Gateway"'),
  "owner/visitor/registration must all use the SAME controlled profile gateway");
-assert.ok(gateway.includes('value==="0"')&&gateway.includes('value==="1"')&&
- gateway.includes('window.location.hostname==="luemi-stage01.onrender.com"')&&
+assert.ok(gateway.includes('return value!=="0"')&&
+ !gateway.includes('window.location.hostname==="luemi-stage01.onrender.com"')&&
  gateway.includes('<ProfileV3 {...props}/>')&&gateway.includes('<ProfileA2 {...props}/>'),
- "V3 defaults on stage01 only with A2 fallback; profile renders remain mutually exclusive");
+ "V3 defaults on every origin with explicit A2 diagnostic fallback; profile renders remain mutually exclusive");
 assert.ok(v3.includes("projectProfile(data,mode)")&&
  v3.includes("PhotoViewer")&&v3.includes("initialPhotoId={viewer.photoId}")&&
  v3.includes("mode={data.source===")&&v3.includes("reconcilePhotoId")&&
