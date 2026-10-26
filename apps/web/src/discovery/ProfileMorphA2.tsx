@@ -200,6 +200,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(ids.join("\u0000")===oldPhotoIds.current.join("\u0000"))return;
   const reconciled=reconcilePhotoId(photoIdLive.current,oldPhotoIds.current,photos);
   oldPhotoIds.current=ids;
+  if(photoTrack.current){const index=Math.max(0,photos.findIndex(p=>p.id===reconciled));
+   photoTrack.current.style.transition="none";
+   photoTrack.current.style.transform=`translate3d(-${index*100}%,0,0)`;
+  }
   setPhotoId(reconciled);
  },[photos]);
  const choosePhoto=(index:number,animate=true)=>{
@@ -437,7 +441,10 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    </div>
    {nested&&<div className="pm-preview-toolbar"><button type="button" data-modal-initial onClick={onClose}>Закрыть предпросмотр</button></div>}
    {viewer&&<QaProfiler id="PhotoViewer"><PhotoViewer view={view} photos={photos} initialPhotoId={viewer.photoId}
-     source={viewer.source} contextId={viewerPhotoContext(view)} onClose={()=>setViewer(null)}
+     source={viewer.source} contextId={viewerPhotoContext(view)} onClose={returnId=>{
+      if(returnId){const index=photos.findIndex(p=>p.id===returnId);if(index>=0)choosePhoto(index,false);}
+      setViewer(null);
+     }}
      registerBack={handler=>{selectedViewerBack.current=handler;}}/></QaProfiler>}
    {preview&&<ProfileMaster data={data} mode={data.source==="local-draft"?"local-self-preview":"preview"}
      onClose={()=>setPreview(false)} registerBack={handler=>{selectedPreviewBack.current=handler;}}
