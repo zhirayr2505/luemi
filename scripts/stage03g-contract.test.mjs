@@ -68,10 +68,22 @@ assert.ok(profile.includes("reconcilePhotoId")&&profile.includes("resourceIdenti
  "media identity preserved on reorder and viewer return");
 assert.ok(css.includes(".pm-a2-backing")&&css.includes("isolation:isolate")&&
  css.includes(".pm-a2-sheet"),"opaque backing masks underlying feed throughout morph");
-assert.ok(discovery.includes('from "./ProfileMorphA2"')&&
- visitorRoute.includes('from "./ProfileMorphA2"')&&
- previewSource.includes('from "../discovery/ProfileMorphA2"'),
- "owner/visitor/registration all use one new profile component");
+// Integration-01 keeps A2 as the default fallback until real A55 approval.
+const gateway=read("apps/web/src/discovery/ProfileV3Gateway.tsx");
+const v3=read("apps/web/src/discovery/ProfileMasterV3.tsx");
+const v3Surface=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.tsx");
+assert.ok(discovery.includes('from "./ProfileV3Gateway"')&&
+ visitorRoute.includes('from "./ProfileV3Gateway"')&&
+ previewSource.includes('from "../discovery/ProfileV3Gateway"'),
+ "owner/visitor/registration must all use the SAME controlled profile gateway");
+assert.ok(gateway.includes('new URLSearchParams(window.location.search).get("profileV3")==="1"')&&
+ gateway.includes('<ProfileV3 {...props}/>')&&gateway.includes('<ProfileA2 {...props}/>'),
+ "one mutually exclusive renderer; V3 never simultaneously mounts legacy A2");
+assert.ok(v3.includes("projectProfile(data,mode)")&&
+ v3.includes("PhotoViewer")&&v3.includes("initialPhotoId={viewer.photoId}")&&
+ v3.includes("mode={data.source===")&&v3.includes("reconcilePhotoId")&&
+ v3.includes("resourceIdentity")&&v3Surface.includes("view.canEdit"),
+ "V3 must retain permissions, viewer source identity, draft-only preview and owner-only edits");
 assert.ok(!profile.includes("ProfileSheetMotion")&&!css.includes("pm-sheet-viewport"),
  "old sheet motion engine absent");
 console.log("PROFILE_A2_SOURCE_AND_PRIVACY_CONTRACT_PASS; browser/GPU validation separate");
