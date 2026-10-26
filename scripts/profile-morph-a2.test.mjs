@@ -79,4 +79,32 @@ const make=reduce=>{
   assert.ok(f.scaleX>0&&f.scaleY>0);
  }
 }
-console.log("Profile Morph A2 controller: interruption/reversal/geometry/reduced-motion PASS");
+{
+ const {engine,step,pending,commits}=make(false);
+ engine.dragStart(200,240);
+ engine.drag(320);
+ assert.ok(Math.abs(engine.snapshot().progress-.5)<1e-9);
+ const oldPixel=260+240*engine.snapshot().progress;
+ const rebased=(oldPixel-230)/300;
+ engine.rebaseActive(rebased,300);
+ assert.ok(Math.abs(230+engine.snapshot().progress*300-oldPixel)<1e-6,
+  "resize retains exact physical sheet Y while finger held");
+ engine.drag(350);
+ assert.ok(Math.abs(engine.snapshot().progress-(rebased+30/300))<1e-6,
+  "after viewport resize the same finger continues 1:1 without jumping");
+ engine.release(1);
+ for(let i=0;i<50;i++)step(16);
+ assert.equal(engine.snapshot().progress,1);
+ assert.equal(pending(),0);
+ engine.settle(0);step(60);
+ const first=engine.snapshot().progress,at=230+300*first;
+ engine.rebaseActive((at-246)/280,280);
+ assert.ok(Math.abs(246+280*engine.snapshot().progress-at)<1e-5,
+  "mid-settle viewport rebase keeps on-screen sheet position");
+ for(let i=0;i<50;i++)step(16);
+ assert.equal(engine.snapshot().progress,0);
+ assert.equal(commits.at(-1),0);
+ assert.equal(pending(),0);
+ engine.dispose();
+}
+console.log("Profile Morph A2 controller: interruption/reversal/geometry/reduced-motion/viewport-rebase PASS");
