@@ -30,7 +30,8 @@ export const ProfileMorphBackground=memo(function ProfileMorphBackground({photo}
    if(!success||disposed||generation!==revision.current)return;
    setIncoming(next);setVisible(false);
   });
-  return ()=>{disposed=true;revision.current++};
+  const liveRevision=revision;
+  return ()=>{disposed=true;liveRevision.current++};
  },[front,photo]);
  useEffect(()=>{
   if(!incoming)return;
