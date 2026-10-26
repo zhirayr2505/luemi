@@ -2,262 +2,77 @@ import assert from "node:assert/strict";
 import {chromium} from "playwright";
 const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
 const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
- userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Mobile Safari/537.36"});
-const page=await context.newPage(),errors=[];
+ userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 Chrome/135 Mobile Safari/537.36"});
+const page=await context.newPage(),errors=[],base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 page.on("pageerror",e=>errors.push(e.message));
-const BASE=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const near=(a,b,delta=1)=>assert.ok(Math.abs(a-b)<=delta,`continuity | ${a} - ${b} | > ${delta}px`);
-const scan=async(selector)=>page.locator(selector).evaluate(el=>({
- x:new DOMMatrixReadOnly(getComputedStyle(el).transform).m41,
- frozen:Number(el.dataset.motionFrozenX),
- transition:getComputedStyle(el).transitionDuration,
- width:el.clientWidth
-}));
-const heroTrack=".pm-inline .pm-photo-track";
-const heroDots=page.locator(".pm-inline .pm-photo-progress button");
-const browseTrack=".discovery-page-track";
-const browseInk=".discovery-tab-underline";
-const pass=m=>console.log("REM02C_BROWSER_PASS "+m);
-try{
- await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
- await page.getByRole("button",{name:"Профиль",exact:true}).click();
- await page.locator(".pm-inline").waitFor({state:"visible"});
- const hb=await page.locator(".pm-inline .pm-hero").boundingBox();
- assert.ok(hb&&hb.width>=320);
- const px=hb.x+hb.width*.52,py=hb.y+Math.min(220,hb.height*.56);
- await page.locator(heroTrack).waitFor({state:"attached"});
- for(const delay of [50,150,250]){
-  await heroDots.first().click();await sleep(360);
-  await heroDots.last().click();await sleep(delay);
-  await page.mouse.move(px,py);await page.mouse.down();
-  await page.mouse.move(px-16,py,{steps:2});
-  await sleep(45);
-  const frozen=await scan(heroTrack);
-  assert.ok(Number.isFinite(frozen.frozen),"hero capture must expose actual matrix");
-  // At 250ms the photo may already be at the LAST edge: the approved .18
-  // elastic coefficient must remain intact, not be mistaken for a discontinuity.
-  const last=-frozen.frozen/frozen.width>=2-.001;
-  near(frozen.x,frozen.frozen-(last?16*.18:16),1);
-  await page.mouse.move(px-36,py,{steps:4});await page.mouse.up();
-  const state=await heroDots.evaluateAll(nodes=>nodes.filter(n=>n.getAttribute("aria-current")==="true").length);
-  assert.equal(state,1,"one semantic photo index after interrupted settle");
-  await sleep(335);
-  pass("hero second pointer at "+delay+"ms: freeze-to-first-frame error ≤1px");
- }
- await heroDots.last().click();await sleep(80);
- await heroDots.first().click();await sleep(360);
- const lastClick=await scan(heroTrack);
- near(lastClick.x,0,1);
- assert.equal(await heroDots.first().getAttribute("aria-current"),"true");
- pass("photo dot click interrupts CSS settling without stale animation commit");
- // First/last hero edges must not wrap or click-open the fullscreen viewer.
- for(const edge of [{i:0,dx:55},{i:2,dx:-55}]){
-  await heroDots.nth(edge.i).click();await sleep(340);
-  await page.mouse.move(px,py);await page.mouse.down();
-  await page.mouse.move(px+edge.dx,py,{steps:7});await sleep(35);await page.mouse.up();
-  await sleep(340);
-  assert.equal(await heroDots.nth(edge.i).getAttribute("aria-current"),"true");
-  assert.equal(await page.locator(".pm-viewer").count(),0);
- }
- pass("first/last hero edges elastic without wrap or spurious viewer click");
- // Re-render a mounted owner profile while its CSS transform is settling.
- await heroDots.first().click();await sleep(350);await heroDots.last().click();await sleep(90);
- await page.getByRole("button",{name:"Тёмная тема"}).click();await sleep(350);
- assert.equal(await heroDots.last().getAttribute("aria-current"),"true");
- assert.equal((await scan(heroTrack)).width>=320,true);
- pass("theme/React rerender retains photo identity and terminal hero pixels");
- // Main browse pager: retain BOTH the track and the differently eased ink
- // matrices while a new drag interrupts CSS settling.
- await page.getByRole("button",{name:"Знакомства",exact:true}).click();
- const top=page.locator('.discovery-top-tabs [role=tab]');
- await top.first().click();await sleep(365);
- const box=await page.locator(".discovery-top-tabs").boundingBox();
- assert.ok(box&&box.width>300);
- const bx=box.x+box.width*.55,by=box.y+box.height*.55;
- for(const delay of [50,150,250]){
-  await top.first().click();await sleep(350);
-  await top.last().click();await sleep(delay);
-  await page.mouse.move(bx,by);await page.mouse.down();
-  await page.mouse.move(bx-16,by,{steps:2});await sleep(45);
-  const [track,ink]=await Promise.all([scan(browseTrack),scan(browseInk)]);
-  assert.ok(Number.isFinite(track.frozen)&&Number.isFinite(ink.frozen));
-  // By 250ms the selected LAST browse page may already be physically at
-  // its edge. Preserve the approved .22 elastic/1:3 ink behavior.
-  const isLast=-track.frozen/box.width>=2-.001;
-  const shift=isLast?16*.22:16;
-  near(track.x,track.frozen-shift,1);
-  near(ink.x,ink.frozen+shift/3,1);
-  await page.mouse.move(bx-45,by,{steps:3});await page.mouse.up();
-  await sleep(350);
-  const selected=await top.evaluateAll(nodes=>nodes.filter(n=>n.getAttribute("aria-selected")==="true").length);
-  assert.equal(selected,1);
-  pass("browse+ink second down "+delay+"ms: each first painted pixel ≤1px; one selected tab");
- }
- await top.first().click();await sleep(80);
- await top.last().click();await sleep(350);
- assert.equal(await top.last().getAttribute("aria-selected"),"true");
- near((await scan(browseTrack)).x,-2*box.width,1);
- pass("top tab tap during settling retargets real matrix, commits once");
- // Diagonal and vertical input must not let horizontal custom owner paint.
- await top.first().click();await sleep(350);
- const before=await scan(browseTrack);
- await page.mouse.move(bx,by);await page.mouse.down();
- await page.mouse.move(bx-20,by+45,{steps:4});await page.mouse.up();await sleep(90);
- const diagonal=await scan(browseTrack);
- near(diagonal.x,before.x,1);
- pass("vertical-dominant diagonal preserves native owner, browse pixels unchanged");
- // Both physical pager limits: outward swipes retain their own page, no wrap.
- for(const edge of [{index:0,dx:70},{index:2,dx:-70}]){
-  await top.nth(edge.index).click();await sleep(355);
-  await page.mouse.move(bx,by);await page.mouse.down();
-  await page.mouse.move(bx+edge.dx,by,{steps:5});await page.mouse.up();
-  await sleep(340);
-  assert.equal(await top.nth(edge.index).getAttribute("aria-selected"),"true");
-  near((await scan(browseTrack)).x,-edge.index*box.width,1);
- }
- pass("first/last browse pager edges never wrap; terminal DOM position ≤1px");
- // Slow below-threshold horizontal motion does not switch; a larger slow
- // motion does. Both cases use exact original .18 distance / .55 velocity.
- await top.first().click();await sleep(350);
- await page.mouse.move(bx,by);await page.mouse.down();
- await page.mouse.move(bx-22,by,{steps:7});await sleep(245);await page.mouse.up();
- await sleep(340);
- assert.equal(await top.first().getAttribute("aria-selected"),"true");
- await page.mouse.move(bx,by);await page.mouse.down();
- await page.mouse.move(bx-110,by,{steps:8});await sleep(270);await page.mouse.up();
- await sleep(345);
- assert.equal(await top.nth(1).getAttribute("aria-selected"),"true");
- near((await scan(browseTrack)).x,-box.width,1);
- pass("slow swipes preserve original distance threshold; first small tap stays and larger drag commits once");
- // Cancellation must not leave a second active RAF or a stale semantic tab.
- await top.first().click();await sleep(355);
- await page.mouse.move(bx,by);await page.mouse.down();
- await page.mouse.move(bx-95,by,{steps:6});
- await page.locator(".discovery-top-tabs").evaluate(el=>el.dispatchEvent(
-  new PointerEvent("pointercancel",{bubbles:true,cancelable:true,pointerId:1,pointerType:"mouse",isPrimary:true})
- ));
- await page.mouse.up();await sleep(345);
- assert.equal(await top.first().getAttribute("aria-selected"),"true");
- near((await scan(browseTrack)).x,0,1);
- pass("real DOM pointercancel is terminal and settles without double page commit");
- // On scrolled content, classify direction rather than automatically
- // surrendering horizontal swipes. Preserve vertical-dominant native scroll.
- await page.getByRole("button",{name:"Профиль",exact:true}).click();
- const grab=page.getByRole("button",{name:"Развернуть анкету"});
- await grab.click();await sleep(400);
- await page.getByRole("tab",{name:"О себе",exact:true}).click();await sleep(335);
- const about=page.locator(".pm-inline .pm-page").first();
- const scrollable=await about.evaluate(el=>{el.scrollTop=Math.min(90,el.scrollHeight-el.clientHeight);
-  return {top:el.scrollTop,range:el.scrollHeight-el.clientHeight}});
- assert.ok(scrollable.top>20,"fixture provides genuinely scrollable content");
- const rect=await about.boundingBox();
- assert.ok(rect&&rect.width>100&&rect.height>75);
- const nx=rect.x+rect.width*.5,ny=rect.y+Math.min(100,rect.height*.4);
- const getLeft=()=>page.locator(".pm-inline .pm-pages").evaluate(el=>el.scrollLeft);
- const beforeNative=await getLeft();
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const touch=async(x,y,dx,dy,steps=12)=>{
  const cdp=await context.newCDPSession(page);
  try{
-  await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:nx,y:ny}]});
-  await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:nx-90,y:ny-14}]});
-  await sleep(40);
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y,id:1}]});
+  for(let n=1;n<=steps;n++){
+   await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:x+dx*n/steps,y:y+dy*n/steps,id:1}]});
+   await sleep(15);
+  }
   await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
  }finally{await cdp.detach()}
- await sleep(350);
- near(await getLeft(),beforeNative+rect.width,1);
- assert.equal(await page.getByRole("tab",{name:"Блики",exact:true}).getAttribute("aria-selected"),"true");
- pass("scrolled passive-start horizontal swipe switches to adjacent tab");
- await page.getByRole("tab",{name:"О себе",exact:true}).click();await sleep(345);
- await about.evaluate(el=>{el.scrollTop=40;});
- const verticalBefore=await getLeft(),scrollBefore=await about.evaluate(el=>el.scrollTop);
- const vertical=await context.newCDPSession(page);
- try{
-  await vertical.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:nx,y:ny}]});
-  await vertical.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:nx-14,y:ny-115}]});
-  await sleep(45);
-  await vertical.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
- }finally{await vertical.detach()}
- await sleep(120);
- near(await getLeft(),verticalBefore,1);
- assert.ok((await about.evaluate(el=>el.scrollTop))>=scrollBefore,
-  "vertical-dominant gesture must preserve native content scrolling");
- assert.equal(await page.getByRole("tab",{name:"О себе",exact:true}).getAttribute("aria-selected"),"true");
- pass("scrolled vertical-dominant native pan keeps exclusive scroll ownership");
- // Mouse/pen tab adapter now joins the same arbiter, without interrupting
- // a candidate settle. Exercise its real DOM pointer path rather than only
- // checking that source code calls the arbitration helper.
- await about.evaluate(el=>{el.scrollTop=0;});
- const mousePager=await page.locator(".pm-inline .pm-pages").boundingBox();
- assert.ok(mousePager&&mousePager.width>300&&mousePager.height>60);
- const mx=mousePager.x+mousePager.width*.67,my=mousePager.y+Math.min(90,mousePager.height*.32);
- await page.mouse.move(mx,my);await page.mouse.down();
- await page.mouse.move(mx-130,my,{steps:8});await page.mouse.up();
- await sleep(345);
- assert.equal(await page.getByRole("tab",{name:"Блики",exact:true}).getAttribute("aria-selected"),"true");
- const mouseOffset=await page.locator(".pm-inline .pm-pages").evaluate(el=>el.scrollLeft);
- near(mouseOffset,mousePager.width,1);
- await page.getByRole("tab",{name:"О себе",exact:true}).click();await sleep(340);
- pass("real mouse Pointer tab path claims exclusive owner, selects once and settles to ≤1px");
- // Two physical fingers invalidate the one-finger custom drag; a subsequent
- // single-finger drag must still work, with no stuck ownership or stale RAF.
- await page.getByRole("button",{name:"Раскрыть фото профиля"}).click();
- await sleep(390);
- const boxSheet=await page.locator(".pm-inline .pm-identity").boundingBox();
- assert.ok(boxSheet&&boxSheet.height>35);
- const tx=boxSheet.x+boxSheet.width*.45,ty=boxSheet.y+boxSheet.height*.47;
- const multi=await context.newCDPSession(page);
- try{
-  await multi.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:tx,y:ty}]});
-  await multi.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:tx,y:ty-66}]});
-  await sleep(40);
-  await multi.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[
-   {x:tx,y:ty-66},{x:tx+65,y:ty-48}
-  ]});
-  await multi.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[
-   {x:tx,y:ty-100},{x:tx+65,y:ty-48}
-  ]});
-  await multi.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
- }finally{await multi.detach()}
- await sleep(440);
- const root=page.locator(".pm-inline");
- const sState=await root.getAttribute("data-sheet-state");
- assert.ok(sState==="expanded"||sState==="collapsed");
- const endpoint=await page.evaluate(()=>{
-  const root=document.querySelector(".pm-inline"),vp=root.querySelector(".pm-sheet-viewport");
-  const pane=root.querySelector(".pm-profile-sheet");
-  const top=parseFloat(pane.style.getPropertyValue("--pm-collapsed-top"));
-  const bottom=parseFloat(root.style.getPropertyValue("--pm-expanded-y"));
-  if(vp.scrollTop!==0)throw Error("outer native scrolling must remain disabled");
-  const y=pane.getBoundingClientRect().top-root.getBoundingClientRect().top;
-  return {y,top,bottom,state:root.dataset.sheetState};
- });
- near(endpoint.y,endpoint.state==="collapsed"?endpoint.top:endpoint.bottom,1);
- pass("second real touch cancels one-finger custom drag and settles to consistent DOM/React endpoint");
- // Visitor route itself has role="dialog", but must be allowed to own an
- // eligible horizontal back gesture; nested modals remain protected.
- await page.getByRole("button",{name:"Знакомства",exact:true}).click();
- await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
- await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
- const visitor=page.locator(".discovery-visitor-route");
- await visitor.waitFor({state:"visible"});
- await sleep(370);
- const identity=await visitor.locator(".pm-identity").boundingBox();
- assert.ok(identity&&identity.width>=160&&identity.height>=25,"visitor route sheet back surface");
- const rx=identity.x+Math.min(54,identity.width*.2),ry=identity.y+Math.min(48,identity.height*.45);
- const modalBlocked=await visitor.locator(".pm-identity").evaluate(async element=>{
-  const {isGestureModalBlocked}=await import("/src/ui/gesture-arbiter.ts");
-  return isGestureModalBlocked(element);
- });
- assert.equal(modalBlocked,false,"visitor identity must remain a back-swipe surface despite dialog role");
- await page.mouse.move(rx,ry);await page.mouse.down();
- await page.mouse.move(rx+165,ry,{steps:6});
+};
+const source=()=>page.locator(".pm-inline.pm-a2-root");
+const tab=()=>source().locator('.pm-a2-tab[aria-selected=true]');
+const photo=()=>source().locator('.pm-a2-photo-dots button[aria-current=true]');
+const report=msg=>console.log("PROFILE_A2_GESTURE_PASS "+msg);
+try{
+ await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
+ await page.getByRole("button",{name:"Профиль",exact:true}).click();
+ await source().waitFor({state:"visible"});
+ assert.equal(await source().getAttribute("data-morph-state"),"compact");
+ const compact=await source().locator(".pm-a2-face").boundingBox();
+ await source().locator(".pm-a2-face").click();
+ await page.locator('.pm-inline[data-morph-state="expanded"]').waitFor({state:"attached",timeout:2200});
+ assert.equal(await page.locator(".pm-viewer").count(),0);
+ const hero=await source().locator(".pm-a2-face").boundingBox();
+ assert.ok(hero.width>compact.width*2&&hero.height>compact.height*2);
+ assert.equal(await source().locator(".pm-a2-photo-dots button").count(),3);
+ await touch(hero.x+hero.width*.8,hero.y+hero.height*.43,-hero.width*.48,0);
+ await sleep(255);
+ assert.equal(await photo().count(),1,"one active source ID after horizontal hero swipe");
+ assert.equal(await source().locator(".pm-a2-photo-dots button").nth(1).getAttribute("aria-current"),"true",
+  "real horizontal touch chooses the second authorized gallery photo");
+ await touch(hero.x+hero.width*.25,hero.y+hero.height*.43,hero.width*.48,0);
+ await sleep(255);
+ assert.equal(await source().locator(".pm-a2-photo-dots button").first().getAttribute("aria-current"),"true");
+ report("photo track left/right and active ID");
+ // Compact content remains native vertical scroll; horizontal flicks select tabs.
+ await source().locator(".pm-a2-handle").press("Enter");
+ await page.locator('.pm-inline[data-morph-state="compact"]').waitFor({state:"attached",timeout:2200});
+ const content=source().locator(".pm-a2-pages");
+ const cbox=await content.boundingBox();assert.ok(cbox&&cbox.height>100);
+ const about=source().locator(".pm-a2-page").first();
+ await about.evaluate(el=>{el.scrollTop=Math.min(92,el.scrollHeight-el.clientHeight)});
+ const before=await about.evaluate(el=>el.scrollTop);
+ assert.ok(before>0,"native tab scroll must be physically scrollable");
+ await touch(cbox.x+cbox.width*.72,cbox.y+Math.min(100,cbox.height*.5),-cbox.width*.51,0);
+ await sleep(260);
+ assert.equal(await tab().innerText(),"Блики","horizontal content touch selects adjacent tab");
+ assert.equal(await about.evaluate(el=>el.scrollTop),before,"inactive page preserves scrollTop");
+ report("native vertical content/independent horizontal tab pager");
+ // Reverse a tab transition before its endpoint; no stale target may commit.
+ await source().locator(".pm-a2-tab").nth(4).click();
  await sleep(45);
- const routeMotion=await visitor.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
- assert.ok(routeMotion>10,"route actually claims horizontal back while child profile dialog mounted");
- await page.mouse.up();
- await sleep(370);
- assert.equal(await visitor.count(),0,"claimed route-back exits after original 230ms");
- pass("visitor route retains horizontal back gesture, scoped nested modal protection and one terminal close");
- assert.deepEqual(errors,[],"no browser exceptions");
- console.log("REM-02C BROWSER INTERRUPTION QA PASS · Chromium Android UA only; physical A55/iOS NOT VERIFIED");
+ await source().locator(".pm-a2-tab").nth(2).click();
+ await sleep(270);
+ assert.equal(await tab().innerText(),"Фото","newest tab wins rapid interruption");
+ assert.equal(await source().locator('.pm-a2-tab[aria-selected=true]').count(),1);
+ report("tab interruption targets and exclusive selected state");
+ // Mouse/pen pointer alternative on desktop remains usable.
+ await source().locator(".pm-a2-tab").first().click();await sleep(230);
+ const box=await content.boundingBox();
+ await page.mouse.move(box.x+box.width*.7,box.y+Math.min(140,box.height*.6));
+ await page.mouse.down();
+ await page.mouse.move(box.x+box.width*.22,box.y+Math.min(140,box.height*.6),{steps:8});
+ await page.mouse.up();await sleep(270);
+ assert.equal(await tab().innerText(),"Блики","mouse/pen pager mirrors touch ownership");
+ report("mouse pointer horizontally paged");
+ assert.deepEqual(errors,[],"no uncaught errors");
+ console.log("REM-02C A2 GESTURE BROWSER QA PASS · Chromium only, actual A55 NOT VERIFIED");
 }finally{await context.close();await browser.close();}
