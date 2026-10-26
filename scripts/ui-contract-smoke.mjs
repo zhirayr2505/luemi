@@ -104,7 +104,7 @@ assertCheck("correct inverse tracking of page and line",discovery.includes("g.or
  && discoveryCss.includes("--luemi-underline-drag")&&discoveryCss.includes("--luemi-drag"));
 assertCheck("rounded Liquid Glass bottom island and active icon only",discoveryCss.includes(".discovery-bottom-nav{")&&discoveryCss.includes("border-radius:29px")&&discoveryCss.includes(".discovery-nav-item.active{color:#aa76d8;background:transparent"));
 assertCheck("profile has independent photo swipe, tab swipe and native back",
- discoveryProfile.includes("photoSwipe.current")&&discoveryProfile.includes("tabSwipe.current")
+ discoveryProfile.includes('slideStart(e,"photo")')&&discoveryProfile.includes('slideStart(e,"tab")')
  && discoveryProfile.includes("registerBack?.(closeTop)")&&discoveryProfile.includes("setPointerCapture"));
 assertCheck("six women for exclusive demo fixture",fixture.includes('"alisa"')&&fixture.includes('"lina"')&&!fixture.includes('"aram"'));
 console.log("LUEMI Stage 03 Feed Polish 2 UI smoke PASS");
