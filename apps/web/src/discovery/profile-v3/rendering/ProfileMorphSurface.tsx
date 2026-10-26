@@ -34,6 +34,7 @@ export function ProfileMorphSurface({data=syntheticProfile,viewport}:ProfileMorp
  const painter=useRef(apply);painter.current=apply;
  useLayoutEffect(()=>{
   const node=root.current;if(!node)return;
+  const coordinator=gestures.current;
   const measure=()=>{
    const width=viewport?.width??node.clientWidth,height=viewport?.height??node.clientHeight;
    const next=createProfileLayout({...viewport,width,height});layout.current=next;
@@ -56,7 +57,7 @@ export function ProfileMorphSurface({data=syntheticProfile,viewport}:ProfileMorp
   document.addEventListener("visibilitychange",visibility);window.addEventListener("pagehide",pagehide);
   return ()=>{observer.disconnect();window.visualViewport?.removeEventListener("resize",schedule);
    document.removeEventListener("visibilitychange",visibility);window.removeEventListener("pagehide",pagehide);
-   if(pending)cancelAnimationFrame(pending);motion.dispose();gestures.current.dispose();engine.current=null;};
+   if(pending)cancelAnimationFrame(pending);motion.dispose();coordinator.dispose();engine.current=null;};
  },[viewport]);
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(!e.isPrimary){gestures.current.secondFinger();engine.current?.cancelDrag();drag.current=null;return;}
