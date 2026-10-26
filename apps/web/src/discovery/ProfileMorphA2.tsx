@@ -150,13 +150,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    const g=profileMorphGeometry(rect.width,rect.height,chromeBottom?chromeBottom-rect.top:86);
    const old=geometry.current;
    if(g.width===old.width&&g.height===old.height&&g.compactTop===old.compactTop&&g.expandedTop===old.expandedTop)return;
+   const sampled=engine.sample();
+   const previousPhysicalY=old.compactTop+old.span*sampled;
+   const moving=["dragging","settling"].includes(engine.snapshot().phase);
    geometry.current=g;
    el.style.setProperty("--a2-compact-top",g.compactTop+"px");
    el.style.setProperty("--a2-expanded-top",g.expandedTop+"px");
    el.style.setProperty("--a2-avatar-size",g.avatarSize+"px");
    el.style.setProperty("--a2-avatar-left",g.avatarX+"px");
    el.style.setProperty("--a2-avatar-top",g.avatarY+"px");
-   engine.snapshot();paint.current(engine.sample());
+   if(moving)engine.rebaseActive((previousPhysicalY-g.compactTop)/g.span,g.span);
+   else paint.current(engine.sample());
   };
   const scheduleMeasure=()=>{if(resizeFrame===null)resizeFrame=requestAnimationFrame(measure);};
   measure();
