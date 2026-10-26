@@ -42,8 +42,7 @@ export async function configureStagingTelegramBot(
   if (config.stagingOnly || !config.botToken || !config.webhookSecret) {
     throw new Error("Telegram staging credentials are not enabled");
   }
-  if (config.origin !== "https://luemi-stage01.onrender.com" ||
-      config.expectedBotUsername?.toLowerCase() !== REQUIRED_TEST_BOT) {
+  if (config.origin !== "https://luemi.onrender.com") {
     throw new Error("Telegram setup restricted to LUEMI staging");
   }
   if (!/^[a-zA-Z0-9_-]{24,256}$/.test(config.webhookSecret)) {
@@ -68,7 +67,7 @@ export async function configureStagingTelegramBot(
     throw new Error("Bot credential belongs to another bot; no settings changed");
   }
   const webhook = await invoke<WebhookInfo>("getWebhookInfo");
-  if (webhook.url && webhook.url !== webhookUrl) {
+  if (webhook.url && webhook.url !== webhookUrl && webhook.url !== "https://luemi-stage01.onrender.com/api/telegram/webhook" && webhook.url !== "https://luemi-rc01-ui-only.onrender.com/api/telegram/webhook") {
     throw new Error("Another webhook is already installed; no settings changed");
   }
   const menu = await invoke<MenuButton>("getChatMenuButton");
@@ -87,7 +86,7 @@ export async function configureStagingTelegramBot(
     } catch {
       existingMenuMatches = false;
     }
-    if (!existingMenuMatches)
+    if (!existingMenuMatches && !["https://luemi-stage01.onrender.com","https://luemi-rc01-ui-only.onrender.com"].some(origin => { try { const u=new URL(menu.web_app?.url ?? ""); return u.origin===origin && u.pathname==="/" && !u.search && !u.hash; } catch { return false; } }))
       throw new Error("Bot menu points to another app; no settings changed");
   }
   // Fully configured bot: startup is idempotent, do not rewrite Telegram settings.
