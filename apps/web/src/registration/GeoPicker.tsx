@@ -114,7 +114,7 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
   };
   // Telegram's native location API is preferred on Android WebView. Native init
   // may never call back; the same deadline protects both native and GPS paths.
-  gpsDeadline.current=window.setTimeout(()=>fail("Не удалось получить местоположение. Выбери город вручную."),11000);
+  gpsDeadline.current=window.setTimeout(()=>fail("Не удалось определить местоположение. Выбери город вручную."),11000);
   const native=(window.Telegram?.WebApp as {LocationManager?:TelegramLocationManager}|undefined)?.LocationManager;
   void requestDeviceCoordinates({native,browser:navigator.geolocation},signal).then(async coords=>{
    if(!gate.current.isCurrent(token))return;
