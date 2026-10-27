@@ -32,7 +32,7 @@ export function buildBlikiFeed(
       !candidate.stories.length || !Number.isFinite(candidate.lastPublishedAt)) continue;
     const activeStories = candidate.stories.filter(story => {
       const publishedAt = 'publishedAt' in story ? (story as { publishedAt?: unknown }).publishedAt : undefined;
-      if (publishedAt === undefined) return true; // Legacy server DTO; API remains authoritative.
+      if (publishedAt === undefined) return false; // Never render stories with unverifiable expiry.
       return typeof publishedAt === 'number' && Number.isFinite(publishedAt) &&
         publishedAt <= now && publishedAt > now - 24 * 60 * 60 * 1000;
     });
