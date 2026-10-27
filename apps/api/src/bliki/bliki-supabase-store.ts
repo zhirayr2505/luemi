@@ -63,7 +63,7 @@ export function createBlikiSupabaseStore(
         await response.body.cancel();
         throw new Error('bliki_storage_mime_mismatch');
       }
-      const chunks: Uint8Array[] = [];
+      const hash = createHash('sha256');
       let total = 0;
       const reader = response.body.getReader();
       try {
@@ -72,11 +72,10 @@ export function createBlikiSupabaseStore(
           if (done) break;
           total += value.length;
           if (total > 100 * 1024 * 1024) throw new Error('bliki_storage_oversized');
-          chunks.push(value);
+          hash.update(value);
         }
       } finally { await reader.cancel().catch(() => undefined); }
-      const hash = createHash('sha256');
-      for (const chunk of chunks) hash.update(chunk);
+      if (total < 1) throw new Error('bliki_storage_empty');
       return { size: total, mimeType: mime, sha256: hash.digest('hex') };
     },
     async remove(key) {
