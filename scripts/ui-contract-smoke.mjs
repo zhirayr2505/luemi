@@ -21,7 +21,7 @@ assertCheck("ten interest categories and floating selection",catalog.includes("e
 assertCheck("60 searchable languages with true vector flags",languages.includes("export const languages")&&read("apps/web/src/registration/LanguagePicker.tsx").includes("<Flag"));
 assertCheck("portal drag renders at actual viewport finger coordinates",sorter.includes("createPortal")&&sorter.includes("getBoundingClientRect")&&sorter.includes("setDrag"));
 assertCheck("photo reorder has FLIP animation and main label",sorter.includes("node.animate(")&&sorter.includes("Главное"));
-assertCheck("single profile preview and single edit button",preview.includes("Изменить анкету")&&!preview.includes("preview-tabs")&&!preview.includes("Изменить имя")&&!preview.includes("Изменить фото"));
+assertCheck("single static registration preview with explicit edit and confirm actions",preview.includes("registration-static-profile")&&preview.includes("registration-static-avatar")&&app.includes("registration-static-actions")&&app.includes("Редактировать")&&app.includes("Всё верно")&&!preview.includes("ProfileMaster")&&!preview.includes("preview-tabs"));
 assertCheck("local images remain local only",sorter.includes("snapshot")&&!app.includes("uploadPhoto"));
 
 const catalogSource=catalog.match(/const source=(\[.*?\]);\s*export const categories/s);
