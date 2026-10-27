@@ -9,6 +9,7 @@ import type {ErasureRequestOptions} from "./real-erasure.js";
 import type {SafetyAppealOptions} from "./safety-appeal-api.js";
 import type {Rem05dOptions} from "./rem05d-private.js";
 import type {ChatOptions} from "./chats-api.js";
+import {MemoryChatMediaStorage} from "./features/chats/chat-media.js";
 import type {MatchOptions} from "./matches-api.js";
 import type {RealRegistrationOptions} from "./real-registration-drafts.js";
 export interface ApiConfig {
@@ -195,8 +196,10 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     [env.REM05B_AUTH_DATABASE_URL,env.REM05B_REQUEST_DATABASE_URL,
      env.REM06_PUBLISHER_DATABASE_URL,env.REM06_DISCOVERY_DATABASE_URL]
      .includes(env.LUEMI_CHATS_DATABASE_URL)))throw new Error("Chats require approved policy and isolated DB role");
+  if(env.NODE_ENV==="production"&&env.LUEMI_CHATS_LOCAL_MEDIA==="1")throw new Error("Local chat media is forbidden in production");
   const chats:ChatOptions|undefined=chatsEnabled?{enabled:true,
-   databaseUrl:env.LUEMI_CHATS_DATABASE_URL??"",namespace:env.REM05B_BOT_NAMESPACE??""}:undefined;
+   databaseUrl:env.LUEMI_CHATS_DATABASE_URL??"",namespace:env.REM05B_BOT_NAMESPACE??"",
+   mediaStore:env.LUEMI_CHATS_LOCAL_MEDIA==="1"?new MemoryChatMediaStorage():undefined}:undefined;
   const matchesEnabled=env.LUEMI_MATCHES_V1_ENABLED==="1";
   if(matchesEnabled&&(!chatsEnabled||!publicationEnabled||!v2Enabled||stagingOnly||
     env.REM06_PRIVACY_APPROVED!=="1"||env.LUEMI_MATCHES_POLICY_APPROVED!=="1"||

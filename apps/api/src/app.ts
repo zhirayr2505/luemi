@@ -32,7 +32,7 @@ export function buildApp(config: ApiConfig) {
   app.register(cors, {
     origin: config.origin,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "X-Health-Key", "X-Luemi-CSRF"]
+    allowedHeaders: ["Content-Type", "X-Health-Key", "X-Luemi-CSRF", "X-Luemi-Client-Id"]
   });
   // One untrusted network peer must not consume static/health/geo actor quotas.
   // trustProxy stays FALSE until the real Render hop chain is independently proven.
