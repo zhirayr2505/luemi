@@ -90,12 +90,12 @@ export function RealChats(){
   if(body===null||body===message.body)return;
   if(!body.trim()||body!==body.trim()||[...body].length>4000){setError("Введите текст до 4000 символов");return;}
   setEditing(message.id);
-  try{const result=await api.edit(active,message.id,body);setMessages(old=>old.map(m=>m.id===message.id?result.message:m));setError("");}catch{setError("Не удалось изменить сообщение");}finally{setEditing(null);}
+  try{const result=await api.edit(active,message.id,body);if(activeRef.current===active)setMessages(old=>old.map(m=>m.id===message.id?result.message:m));setError("");}catch{setError("Не удалось изменить сообщение");}finally{setEditing(null);}
  };
  const deleteMessage=async(message:ChatWireMessage)=>{
   if(!api||!active||message.deletedAt||!window.confirm("Удалить сообщение?"))return;
   setEditing(message.id);
-  try{await api.remove(active,message.id);setMessages(old=>old.map(m=>m.id===message.id?{...m,body:"",deletedAt:new Date().toISOString()}:m));setError("");}catch{setError("Не удалось удалить сообщение");}finally{setEditing(null);}
+  try{await api.remove(active,message.id);if(activeRef.current===active)setMessages(old=>old.map(m=>m.id===message.id?{...m,body:"",deletedAt:new Date().toISOString()}:m));setError("");}catch{setError("Не удалось удалить сообщение");}finally{setEditing(null);}
  };
  const send=async()=>{
   if(!api||!active||!draft.trim()||sending)return;
@@ -107,7 +107,7 @@ export function RealChats(){
   try{
    const result=await api.send(active,text,clientId);
    if(activeRef.current===active)setMessages(old=>old.some(m=>m.id===result.message.id)?old:[...old,result.message]);
-   pending.current=null;setDraft("");requestAnimationFrame(()=>bottom.current?.scrollIntoView({block:"end"}));
+   if(activeRef.current===active){pending.current=null;setDraft("");requestAnimationFrame(()=>bottom.current?.scrollIntoView({block:"end"}));}
   }catch{setError("Сообщение не отправлено. Попробуйте ещё раз.");}
   finally{setSending(false);}
  };
