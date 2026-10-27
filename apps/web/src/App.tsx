@@ -593,7 +593,30 @@ export function App() {
         return;
       }
       if(decision==="review-needs-attention"){
-        setPublishFeedback("На сервере уже есть фотографии, требующие дополнительной проверки или исправления. Не отправляем повторно те же файлы.");
+        if(instantPhotoOnboarding&&existing.other===0&&existing.pending===0&&
+           existing.approved>0&&existing.approved<3){
+          // A prior request may have uploaded only one or two files. Reusing
+          // stable per-photo client keys resumes the same server intents;
+          // already received bytes are skipped, never uploaded twice.
+          setPublishFeedback("Продолжаем прерванную загрузку фотографий…");
+          await uploadPrivatePhotos([...photos],(done,total)=>
+            setPublishFeedback(`Загружено ${done} из ${total} фотографий.`));
+          const resumed=await ownerPublicationStatus();setPublishStatus(resumed);
+          if(resumed.approved>=3&&resumed.approved<=6&&resumed.pending===0&&resumed.other===0){
+            const draftOnServer=await readRemoteRevision();
+            if(draftOnServer.state!=="private")throw new Error("missing_draft");
+            await publishMyProfile(draftOnServer.revision);
+            const published=await ownerPublicationStatus();
+            if(published.state!=="published")throw new Error("publication_unconfirmed");
+            setPublishStatus(published);setRealHomeTab("feed");setRealHome(true);
+            setPublishFeedback("Анкета опубликована.");
+            return;
+          }
+          throw new Error("incomplete_photos");
+        }
+        setPublishFeedback(instantPhotoOnboarding?
+          "Некоторые фотографии нуждаются в замене. Вернись к загрузке и проверь их.":
+          "На сервере уже есть фотографии, требующие дополнительной проверки или исправления. Не отправляем повторно те же файлы.");
         setRealHomeTab("profile");setRealHome(true);
         return;
       }
