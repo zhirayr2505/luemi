@@ -43,7 +43,8 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  const holdFired=useRef(false);
  const gestureMoved=useRef(false);
  const lastTap=useRef<{id:string;at:number}>({id:"",at:0});
- const urls=useRef<string[]>([]);
+ const urls=useRef<Set<string>>(new Set());
+ const releasePhoto=(url:string|null)=>{if(url&&urls.current.has(url)){URL.revokeObjectURL(url);urls.current.delete(url);}};
  const nearBottom=useRef(true);
  const previousPositions=useRef<Map<string,number>|null>(null);
  const previousHeight=useRef(0);
@@ -53,9 +54,9 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
 
  const activeChat=chats.find(c=>c.id===active);
  const items=active?messages[active]??[]:[];
- const scrollBottom=()=>{requestAnimationFrame(()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight;setNewBelow(0);});};
+ const scrollBottom=()=>{requestAnimationFrame(()=>{if(list.current){list.current.scrollTop=list.current.scrollHeight;nearBottom.current=true;}setNewBelow(0);});};
  useEffect(()=>{if(active)scrollBottom();},[active]);
- useEffect(()=>()=>{urls.current.forEach(u=>URL.revokeObjectURL(u));if(hold.current)clearTimeout(hold.current);},[]);
+ useEffect(()=>()=>{urls.current.forEach(u=>URL.revokeObjectURL(u));urls.current.clear();if(hold.current)clearTimeout(hold.current);},[]);
  useEffect(()=>{
   if(!active)return;
   const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape"){if(lightbox)setLightbox(null);else if(menu)setMenu(null);else if(reply||editing){setReply(null);setEditing(null);}else setActive(null);}};
@@ -87,7 +88,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
   });
  },[messages,active]);
  const send=()=>{if(!active||blocked.includes(active))return;const text=draft.trim();if(!text&&!photo)return;
-  if(editing){if(!text)return;update(a=>a.map(m=>m.id===editing?{...m,text}:m));setEditing(null);}
+  if(editing){if(!text)return;update(a=>a.map(m=>m.id===editing?{...m,text}:m));setEditing(null);releasePhoto(photo);}
   else update(a=>[...a,{id:uid(),mine:true,text,image:photo??undefined,reply:reply?.text,time:new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}),status:"sent"}],true);
   setChats(a=>a.map(c=>c.id===active?{...c,last:text||"📷 Фото"}:c));
   setDraft("");setPhoto(null);setReply(null);};
@@ -111,7 +112,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
    if(action==="reply")setReply(m);
    if(action==="copy"&&m.text)void navigator.clipboard?.writeText(m.text).catch(()=>setNotice("Не удалось скопировать"));
    if(action==="edit"&&m.mine){setDraft(m.text);setEditing(m.id);}
-   if(action==="delete"&&m.mine)update(a=>a.filter(x=>x.id!==m.id));
+   if(action==="delete"&&m.mine){if(m.image)releasePhoto(m.image);update(a=>a.filter(x=>x.id!==m.id));}
    if(action==="report")setNotice("Жалоба: демонстрация интерфейса, отправка на сервер не выполняется.");
   }
   setMenu(null);
@@ -129,7 +130,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
   const dx=e.clientX-g.x,dy=e.clientY-g.y;
   if(Math.abs(dx)>62&&Math.abs(dx)>Math.abs(dy)*1.3){
    if(g.kind==="message"&&dx<0){const m=items.find(x=>x.id===g.id);if(m)setReply(m);}
-   if(g.kind==="screen"&&dx>0&&g.x<30){setActive(null);setMenu(null);}
+   if(g.kind==="screen"&&dx>0&&g.x<30){releasePhoto(photo);setPhoto(null);setActive(null);setMenu(null);}
    return;
   }
   if(g.kind==="message"&&!g.moved&&Math.abs(dx)<12&&Math.abs(dy)<12){
@@ -138,7 +139,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
    else lastTap.current={id:g.id,at:now};
   }
  };
- const open=(id:string)=>{nearBottom.current=true;setNewBelow(0);setActive(id);setMenu(null);setReply(null);setEditing(null);setDraft("");setPhoto(null);setChats(a=>a.map(c=>c.id===id?{...c,unread:0}:c));};
+ const open=(id:string)=>{releasePhoto(photo);nearBottom.current=true;setNewBelow(0);setActive(id);setMenu(null);setReply(null);setEditing(null);setDraft("");setPhoto(null);setChats(a=>a.map(c=>c.id===id?{...c,unread:0}:c));};
  const visible=chats.filter(c=>!!c.archived===archiveView&&c.name.toLocaleLowerCase("ru").includes(search.toLocaleLowerCase("ru"))).sort((a,b)=>Number(!!b.pinned)-Number(!!a.pinned));
  return <div className="luemi-chats" data-chat-preview="true">
   {!active?<><header className="lc-heading"><div><small>LUEMI · ДЕМО ИНТЕРФЕЙСА</small><h2>{archiveView?"Архив":"Чаты"}</h2></div><button type="button" aria-label="Архив" onClick={()=>setArchiveView(v=>!v)}>{archiveView?<ArrowLeft/>:<Archive/>}</button></header>
@@ -148,7 +149,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
     <button type="button" aria-label={"Действия с чатом "+c.name} className="lc-ellipsis" onClick={()=>setMenu({kind:"chat",id:c.id})}><MoreVertical size={18}/></button>
    </div>):<p className="lc-empty">Здесь пока нет переписок.</p>}</div>
    <p className="lc-footnote">Демо-сообщения не отправляются другим людям.</p>
-  </>:<><header className="lc-chat-header"><button type="button" aria-label="Назад" onClick={()=>setActive(null)}><ArrowLeft/></button><button type="button" className="lc-person" onClick={()=>onOpenProfile?onOpenProfile(active):setNotice("Профиль будет подключён к реальному мэтчу.")}><span className="lc-avatar">{activeChat?.avatar}</span><span><strong>{activeChat?.name}</strong><small>Демо-переписка</small></span></button><button type="button" aria-label="Меню собеседника" onClick={()=>setMenu({kind:"person",id:active})}><MoreVertical/></button></header>
+  </>:<><header className="lc-chat-header"><button type="button" aria-label="Назад" onClick={()=>{releasePhoto(photo);setPhoto(null);setActive(null);}}><ArrowLeft/></button><button type="button" className="lc-person" onClick={()=>onOpenProfile?onOpenProfile(active):setNotice("Профиль будет подключён к реальному мэтчу.")}><span className="lc-avatar">{activeChat?.avatar}</span><span><strong>{activeChat?.name}</strong><small>Демо-переписка</small></span></button><button type="button" aria-label="Меню собеседника" onClick={()=>setMenu({kind:"person",id:active})}><MoreVertical/></button></header>
    <div className="lc-history" ref={list} onScroll={e=>{const t=e.currentTarget;nearBottom.current=t.scrollHeight-t.scrollTop-t.clientHeight<95;if(nearBottom.current)setNewBelow(0);}} onPointerDown={e=>{if(e.clientX<30)pointerDown(e,"screen","screen");}} onPointerMove={pointerMove} onPointerUp={pointerUp}>
     <div className="lc-day">Сегодня · демо {showDemoControls&&<button type="button" className="lc-receive" onClick={receiveDemo}>Получить сообщение ↓</button>}<button type="button" className="lc-receive" onClick={()=>setShowDemoControls(v=>!v)} aria-label="Тест входящих сообщений">{showDemoControls?"Скрыть тест":"Тест"}</button></div>
     {items.map(m=><div key={m.id} data-message-id={m.id} className={"lc-msg-line "+(m.mine?"lc-own":"")} onPointerDown={e=>{e.stopPropagation();pointerDown(e,e.clientX<30?"screen":m.id,e.clientX<30?"screen":"message");}} onPointerMove={pointerMove} onPointerUp={e=>{e.stopPropagation();pointerUp(e);}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onContextMenu={e=>{e.preventDefault();setMenu({kind:"message",id:m.id});}}>
@@ -158,8 +159,8 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
    {newBelow>0&&<button className="lc-new" type="button" onClick={scrollBottom}>Новые сообщения · {newBelow} ↓</button>}
    {blocked.includes(active)?<p className="lc-blocked">Пользователь заблокирован. <button onClick={()=>setBlocked(a=>a.filter(x=>x!==active))}>Разблокировать</button></p>:<div className="lc-composer">
     {(reply||editing)&&<div className="lc-reply"><Reply size={16}/><span>{editing?"Редактирование сообщения":reply?.text}</span><button type="button" aria-label="Отменить" onClick={()=>{setReply(null);setEditing(null);setDraft("");}}><X size={16}/></button></div>}
-    {photo&&<div className="lc-attachment"><img src={photo} alt="Фото перед отправкой"/><button type="button" onClick={()=>setPhoto(null)} aria-label="Удалить вложение"><X size={16}/></button></div>}
-    <div className="lc-input-row"><input type="file" ref={file} accept="image/jpeg,image/png,image/webp" hidden onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(!f)return;if(f.size>10*1024*1024||!["image/jpeg","image/png","image/webp"].includes(f.type)){setNotice("Фото должно быть JPG, PNG или WebP до 10 МБ");return;}const u=URL.createObjectURL(f);urls.current.push(u);setPhoto(u);}}/><button type="button" aria-label="Добавить фото" onClick={()=>file.current?.click()}><ImagePlus/></button><textarea rows={1} value={draft} placeholder="Сообщение..." onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}/><button type="button" className="lc-send" disabled={!draft.trim()&&!photo} aria-label="Отправить" onClick={send}><Send size={19}/></button></div>
+    {photo&&<div className="lc-attachment"><img src={photo} alt="Фото перед отправкой"/><button type="button" onClick={()=>{releasePhoto(photo);setPhoto(null);}} aria-label="Удалить вложение"><X size={16}/></button></div>}
+    <div className="lc-input-row"><input type="file" ref={file} accept="image/jpeg,image/png,image/webp" hidden onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(!f)return;if(f.size>10*1024*1024||!["image/jpeg","image/png","image/webp"].includes(f.type)){setNotice("Фото должно быть JPG, PNG или WebP до 10 МБ");return;}const u=URL.createObjectURL(f);releasePhoto(photo);urls.current.add(u);setPhoto(u);}}/><button type="button" aria-label="Добавить фото" onClick={()=>file.current?.click()}><ImagePlus/></button><textarea rows={1} value={draft} placeholder="Сообщение..." onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}/><button type="button" className="lc-send" disabled={!draft.trim()&&!photo} aria-label="Отправить" onClick={send}><Send size={19}/></button></div>
    </div>}
   </>}
   {menu&&<div className="lc-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setMenu(null);}}><section className="lc-menu" role="dialog" aria-modal="true" aria-label="Действия">
