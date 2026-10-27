@@ -7,6 +7,9 @@ type Props = {
   onOpenAuthor: (authorId: string) => void;
   onCreate: () => void;
   initiallyExpanded?: boolean;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 };
 
 /** An avatar is displayed only from the app's authorized, same-origin media route. */
@@ -31,7 +34,8 @@ function AuthorAvatar({ author, size }: { author: BlikiFeedCandidate; size: numb
  * Deliberately avoids pointer capture and never claims Discovery's horizontal swipe.
  * Even with zero authors, the authenticated owner can start creating a Blik.
  */
-export function BlikiAvatarRail({ candidates, onOpenAuthor, onCreate, initiallyExpanded = false }: Props) {
+export function BlikiAvatarRail({ candidates, onOpenAuthor, onCreate,
+  initiallyExpanded = false, hasMore = false, loadingMore = false, onLoadMore }: Props) {
   const [expanded, setExpanded] = useState(initiallyExpanded);
   const feed = useMemo(() => buildBlikiFeed(candidates, { now: Date.now() }), [candidates]);
   const start = useRef({ y: 0, x: 0 });
@@ -72,6 +76,11 @@ export function BlikiAvatarRail({ candidates, onOpenAuthor, onCreate, initiallyE
           </button>
         </div>)}
       </div>
+      {hasMore && onLoadMore && <button type="button" disabled={loadingMore}
+        onClick={onLoadMore} style={{ margin: '8px 0', background: 'transparent',
+          color: 'inherit', border: '1px solid #a782be', borderRadius: 16, padding: '8px 12px' }}>
+        {loadingMore ? 'Загружаем…' : 'Показать ещё Блики'}
+      </button>}
       {!feed.entries.length && <p role="status">Пока нет Бликов. Твой может стать первым 💜</p>}
     </div>}
   </section>;
