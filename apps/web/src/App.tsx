@@ -136,6 +136,8 @@ export function App() {
   const [mediaSaving,setMediaSaving]=useState(false);
   const [mediaStatus,setMediaStatus]=useState("");
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
+  const [publicationCheck,setPublicationCheck]=useState<"idle"|"checking"|"ready"|"error">("idle");
+  const [publicationRetry,setPublicationRetry]=useState(0);
   const [publishBusy,setPublishBusy]=useState(false);
   const [publishFeedback,setPublishFeedback]=useState("");
   const [accountDeletionRequested,setAccountDeletionRequested]=useState(false);
@@ -233,16 +235,21 @@ export function App() {
   useEffect(()=>{
     if(auth!=="authorized"||!realFeedPilot.enabled)return;
     let disposed=false;
+    setPublicationCheck("checking");
     void ownerPublicationStatus().then(status=>{
       if(disposed)return;
       setPublishStatus(status);
+      setPublicationCheck("ready");
       if(status.state==="published")setRealHome(true);
       else setPhase("form");
     }).catch(()=>{
-      if(!disposed)setPublishFeedback("Не удалось проверить анкету. Повтори вход при восстановлении сети.");
+      if(!disposed){
+        setPublicationCheck("error");
+        setPublishFeedback("Не удалось проверить анкету на сервере. Ничего не потеряно — повтори проверку.");
+      }
     });
     return()=>{disposed=true;};
-  },[auth]);
+  },[auth,publicationRetry]);
   // LU-22: one frame-coalesced source of truth. The shell tracks the *visible*
   // viewport while the footer remains in the flex layout above the keyboard.
   // No modal/route motion code is changed by this stage.
@@ -478,7 +485,8 @@ export function App() {
     setSaveRetry(value=>value+1);
   };
   const beginRegistration=()=>{
-    if(welcomeExiting)return;
+    if(welcomeExiting||realOnly&&!realFeedPilot.enabled||
+      realFeedPilot.enabled&&publicationCheck!=="ready")return;
     if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
       setPhase("form");
       return;
@@ -746,9 +754,17 @@ export function App() {
       {auth==="needs-invite"&&<p role="status">Сейчас LUEMI открыт только двум приглашённым участникам. Отправь боту <strong>/myid</strong>, чтобы получить свой Telegram ID для приглашения.</p>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
       {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
-        <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
-          Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
-        </button>
+        {realFeedPilot.enabled&&publicationCheck==="checking"&&
+          <p role="status">Проверяем твою анкету на сервере…</p>}
+        {realFeedPilot.enabled&&publicationCheck==="error"&&
+          <><p role="alert">{publishFeedback}</p>
+          <button type="button" className="primary-action" onClick={()=>setPublicationRetry(v=>v+1)}>Повторить проверку</button></>}
+        {realOnly&&!realFeedPilot.enabled&&
+          <p role="status">Настоящая регистрация пока не подключена. Демонстрационные анкеты выключены.</p>}
+        {(!realFeedPilot.enabled&&!realOnly||publicationCheck==="ready")&&
+          <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
+            Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
+          </button>}
       </div>}
     </section>:<section className={"onboarding-screen"+(step===8?" registration-static-screen":"")}>
       <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
