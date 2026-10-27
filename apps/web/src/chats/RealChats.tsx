@@ -37,13 +37,14 @@ export function RealChats(){
   const controller=new AbortController();
   lastRead.current=null;
   setOlderCursor(null);
+  cursorInitialized.current=false;
   let running=false;
   const load=async()=>{
    if(running||controller.signal.aborted)return;
    running=true;
    try{
     const data=await api.messages(active,undefined,controller.signal);
-    if(!controller.signal.aborted){setMessages(previous=>{const byId=new Map(previous.map(m=>[m.id,m]));for(const m of data.messages)byId.set(m.id,m);return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});setOlderCursor(cursor=>cursor===null?data.nextCursor:cursor);setError("");
+    if(!controller.signal.aborted){setMessages(previous=>{const byId=new Map(previous.map(m=>[m.id,m]));for(const m of data.messages)byId.set(m.id,m);return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});if(!cursorInitialized.current){cursorInitialized.current=true;setOlderCursor(data.nextCursor);}setError("");
      const newest=[...data.messages].reverse().find(message=>message.senderId!==actorId&&!message.deletedAt);
      if(actorId&&newest&&document.visibilityState==="visible"&&lastRead.current!==newest.id){
       lastRead.current=newest.id;
