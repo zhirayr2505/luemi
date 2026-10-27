@@ -11,6 +11,9 @@ export function RealChats(){
  const [actorId,setActorId]=useState<string|null>(null);
  const [messages,setMessages]=useState<ChatWireMessage[]>([]);
  const [draft,setDraft]=useState("");
+ const [editing,setEditing]=useState<string|null>(null);
+ const [olderCursor,setOlderCursor]=useState<string|null>(null);
+ const [loadingOlder,setLoadingOlder]=useState(false);
  const [error,setError]=useState("");
  const [sending,setSending]=useState(false);
  const [loading,setLoading]=useState(true);
@@ -33,13 +36,14 @@ export function RealChats(){
   if(!active||!api)return;
   const controller=new AbortController();
   lastRead.current=null;
+  setOlderCursor(null);
   let running=false;
   const load=async()=>{
    if(running||controller.signal.aborted)return;
    running=true;
    try{
     const data=await api.messages(active,undefined,controller.signal);
-    if(!controller.signal.aborted){setMessages(data.messages);setError("");
+    if(!controller.signal.aborted){setMessages(previous=>{const byId=new Map(previous.map(m=>[m.id,m]));for(const m of data.messages)byId.set(m.id,m);return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});setOlderCursor(cursor=>cursor===null?data.nextCursor:cursor);setError("");
      const newest=[...data.messages].reverse().find(message=>message.senderId!==actorId&&!message.deletedAt);
      if(actorId&&newest&&document.visibilityState==="visible"&&lastRead.current!==newest.id){
       lastRead.current=newest.id;
@@ -72,6 +76,24 @@ export function RealChats(){
   document.addEventListener("visibilitychange",onVisible);
   return()=>{controller.abort();window.clearInterval(timer);document.removeEventListener("visibilitychange",onVisible);};
  },[csrf]);
+ const loadOlder=async()=>{
+  if(!api||!active||!olderCursor||loadingOlder)return;
+  setLoadingOlder(true);
+  try{const page=await api.messages(active,olderCursor);setMessages(old=>{const byId=new Map([...page.messages,...old].map(m=>[m.id,m]));return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});setOlderCursor(page.nextCursor);}catch{setError("Не удалось загрузить старые сообщения");}finally{setLoadingOlder(false);}
+ };
+ const editMessage=async(message:ChatWireMessage)=>{
+  if(!api||!active||message.deletedAt)return;
+  const body=window.prompt("Изменить сообщение",message.body);
+  if(body===null||body===message.body)return;
+  if(!body.trim()||body!==body.trim()||[...body].length>4000){setError("Введите текст до 4000 символов");return;}
+  setEditing(message.id);
+  try{const result=await api.edit(active,message.id,body);setMessages(old=>old.map(m=>m.id===message.id?result.message:m));setError("");}catch{setError("Не удалось изменить сообщение");}finally{setEditing(null);}
+ };
+ const deleteMessage=async(message:ChatWireMessage)=>{
+  if(!api||!active||message.deletedAt||!window.confirm("Удалить сообщение?"))return;
+  setEditing(message.id);
+  try{await api.remove(active,message.id);setMessages(old=>old.map(m=>m.id===message.id?{...m,body:"",deletedAt:new Date().toISOString()}:m));setError("");}catch{setError("Не удалось удалить сообщение");}finally{setEditing(null);}
+ };
  const send=async()=>{
   if(!api||!active||!draft.trim()||sending)return;
   const text=draft.trim();
@@ -93,8 +115,8 @@ export function RealChats(){
     <span className="lc-avatar">💜</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>
    </button>)}</div>}
   </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;setActive(null);}} aria-label="Назад">←</button><strong>Переписка</strong></header>
-   <div className="lc-history" role="log" aria-label="Сообщения">{messages.map(m=><div key={m.id} className={"lc-msg-line "+(m.senderId===actorId?"lc-own":"")}>
-    <div className="lc-bubble">{m.deletedAt?<i>Сообщение удалено</i>:m.body}<small>{new Date(m.createdAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small></div>
+   <div className="lc-history" role="log" aria-label="Сообщения">{olderCursor&&<button type="button" disabled={loadingOlder} onClick={()=>void loadOlder()} className="lc-load-older">{loadingOlder?"Загружаем…":"Показать старые сообщения"}</button>}{messages.map(m=><div key={m.id} className={"lc-msg-line "+(m.senderId===actorId?"lc-own":"")}>
+    <div className="lc-bubble">{m.deletedAt?<i>Сообщение удалено</i>:m.body}<small>{new Date(m.createdAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small>{m.senderId===actorId&&!m.deletedAt&&<span className="lc-msg-actions"><button type="button" disabled={editing===m.id} onClick={()=>void editMessage(m)} aria-label="Редактировать сообщение">Изменить</button><button type="button" disabled={editing===m.id} onClick={()=>void deleteMessage(m)} aria-label="Удалить сообщение">Удалить</button></span>}</div>
    </div>)}<div ref={bottom}/></div>
    <div className="lc-composer"><div className="lc-input-row"><textarea aria-label="Сообщение" maxLength={4000} value={draft} onChange={e=>{setDraft(e.target.value);if(pending.current?.body!==e.target.value.trim())pending.current=null;}} placeholder="Сообщение…"/><button type="button" disabled={sending||!draft.trim()} onClick={()=>void send()} aria-label="Отправить">➤</button></div></div>
   </>}
