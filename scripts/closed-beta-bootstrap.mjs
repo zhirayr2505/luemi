@@ -21,7 +21,8 @@ export const ROLES=Object.freeze([
  ["luemi_beta_discovery","luemi_discovery_reader","REM06_DISCOVERY_DATABASE_URL"],
  ["luemi_beta_chats","luemi_chats_writer","LUEMI_CHATS_DATABASE_URL"],
  ["luemi_beta_matches","luemi_match_writer","LUEMI_MATCHES_DATABASE_URL"],
- ["luemi_beta_geo","luemi_geo_budget","REM05C_BUDGET_DATABASE_URL"]
+ ["luemi_beta_geo","luemi_geo_budget","REM05C_BUDGET_DATABASE_URL"],
+ ["luemi_beta_erasure","luemi_erasure_requester","REM06_ERASURE_REQUEST_DATABASE_URL"]
 ]);
 
 export function validateOwnerConnection(raw){
@@ -116,11 +117,11 @@ export async function bootstrap({
    "WHERE r.rolname LIKE 'luemi_beta_%' "+
    "GROUP BY r.oid,r.rolname,r.rolcanlogin,r.rolsuper,"+
    "r.rolbypassrls,r.rolcreatedb,r.rolcreaterole");
-  // Check ten roles, including NOLOGIN human-review and erasure accounts;
-  // ordinary API roles must never inherit either operator's grant.
+  // Check nine independent API roles, plus the NOLOGIN human-review
+  // operator. The separate erasure requester must not inherit any API role.
   const appRows=result.rows.filter(r=>ROLES.some(([name])=>name===r.rolname));
   checkRoleMetadata(appRows);
-  for(const operator of ["luemi_beta_human","luemi_beta_erasure"]){
+  for(const operator of ["luemi_beta_human"]){
    const row=result.rows.find(r=>r.rolname===operator);
    if(!row||row.rolcanlogin||row.rolsuper||row.rolbypassrls)
     throw Error("Unsafe operator shell: "+operator);
@@ -158,7 +159,7 @@ export async function bootstrap({
   }catch(error){await db.query("ROLLBACK").catch(()=>{});throw error;}
   for(const [name,group] of ROLES)
    await checkConnection(makeScopedConnection(owner,name,credentials.get(name)),name,group);
-  console.info("LUEMI_DB_BOOTSTRAP_OK: 8 isolated LOGIN roles verified; Render credentials installed; admission="+admissionMode+".");
+  console.info("LUEMI_DB_BOOTSTRAP_OK: 9 isolated LOGIN roles verified; Render credentials installed; admission="+admissionMode+".");
   console.info("Feature flags remain OFF. No registration, storage review, or chat access was activated.");
  }catch(error){
   // Feature flags are OFF. Disable every known app role if bootstrap is partial;
