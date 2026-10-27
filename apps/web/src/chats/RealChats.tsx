@@ -21,6 +21,7 @@ export function RealChats(){
  const [selectedPeer,setSelectedPeer]=useState<ChatWireConversation|null>(null);
  const bottom=useRef<HTMLDivElement>(null);
  const lastRead=useRef<string|null>(null);
+ const cursorInitialized=useRef(false);
  const pending=useRef<{conversationId:string;body:string;clientId:string}|null>(null);
 
  const csrf=geoCsrf();
