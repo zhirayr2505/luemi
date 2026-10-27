@@ -16,11 +16,13 @@ const buttons=[
 type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info"|"scroll";
  info:boolean;zone:"photo"|"browse";nativeScroll:boolean;startProgress:number;resumeTarget:0|1;
  scrollStart:number;samples:{y:number;t:number}[]};
-type CardRun={from:number;target:0|1;start:number;duration:number;frame:number|null};
+type CardRun={from:number;target:0|1;start:number;duration:number;velocity:number;frame:number|null};
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 const position=(run:CardRun,now:number)=>{
  const t=clamp((now-run.start)/run.duration,0,1);
- return run.from+(run.target-run.from)*(1-(1-t)*(1-t)*(1-t));
+ const delta=run.target-run.from;
+ return clamp(run.from+run.velocity*run.duration*(t-2*t*t+t*t*t)+
+  delta*(3*t*t-2*t*t*t),0,1);
 };
 
 /** The keyed complete card remains mounted as it moves through the deck. */
@@ -73,7 +75,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(current.frame!==null)cancelAnimationFrame(current.frame);
   run.current=null;paint(position(current,performance.now()));
  };
- const settle=(next:0|1)=>{
+ const settle=(next:0|1,releaseVelocity=0)=>{
   freeze();target.current=next;
   if(scroll.current)scroll.current.style.overflowY="hidden";
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
@@ -84,9 +86,14 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    paint(next);setExpanded(next===1);
    if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
   }
-  const motion:CardRun={from:progress.current,target:next,
-   duration:Math.max(110,Math.round(270*Math.abs(next-progress.current))),
-   start:performance.now(),frame:null};
+  const distance=Math.abs(next-progress.current);
+  const duration=Math.max(160,Math.min(320,220+distance*90-Math.abs(releaseVelocity)*45));
+  // Limit the release slope to the remaining travel so a fast flick cannot
+  // overshoot the edge and then snap back on the terminal frame.
+  const velocity=Math.sign(next-progress.current)*
+   Math.min(Math.max(0,releaseVelocity*Math.sign(next-progress.current)),distance*2/duration);
+  const motion:CardRun={from:progress.current,target:next,duration,
+   velocity,start:performance.now(),frame:null};
   run.current=motion;
   const tick=(now:number)=>{
    if(run.current!==motion)return;
@@ -167,7 +174,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(!g||g.id!==event.pointerId||multiTouch.current)return;
   let dy=event.clientY-g.y;const dx=event.clientX-g.x;
   if(g.axis==="pending"){
-   if(Math.max(Math.abs(dx),Math.abs(dy))<9)return;
+   // Capture an in-range photo swipe before the parent tab pager's 6px claim.
+   if(Math.max(Math.abs(dx),Math.abs(dy))<6)return;
    if(Math.abs(dx)>Math.abs(dy)*1.15){
     // A rightward gesture from the OS edge belongs to Telegram.
     if(dx>0&&g.x<26){gesture.current=null;return;}
@@ -180,6 +188,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
     const canScroll=!!scroll.current&&scroll.current.scrollHeight>scroll.current.clientHeight+1;
     g.axis=g.startProgress>.99&&g.nativeScroll&&canScroll&&
      (dy<0||g.scrollStart>0)?"scroll":"info";
+    if(g.axis==="info"){g.y=event.clientY;dy=0;}
    }else return;
    blockClickUntil.current=performance.now()+350;
    try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older WebView */}
@@ -219,7 +228,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    const travel=Math.max(1,metrics.current.open-metrics.current.closed);
    paint(g.startProgress-(event.clientY-g.y)/travel);
    const projected=progress.current-velocity*125/travel;
-   settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0);
+   settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0,-velocity/travel);
   }
  };
  suspend.current=()=>{
@@ -253,7 +262,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
          <button className="feed-v2-expand" type="button" disabled={!available}
            aria-label={expanded?"Свернуть информацию":"Раскрыть информацию"} aria-expanded={expanded}
            onClick={()=>updateExpanded(target.current!==1)}>
-           {expanded?<ChevronDown size={15}/>:<ChevronUp size={15}/>}
+           <ChevronDown size={15} className="feed-v2-collapse-icon"/>
+           <ChevronUp size={15} className="feed-v2-expand-icon"/>
          </button>
          <div className="feed-v2-scroll" ref={scroll}>
            <div className="discovery-name-row">

@@ -8,15 +8,19 @@ const forYou=read("apps/web/src/discovery/ForYou.tsx");
 const forYouCss=read("apps/web/src/discovery/for-you.css");
 const near=read("apps/web/src/discovery/Nearby.tsx");
 const model=read("apps/web/src/discovery/model.ts");
+const feed=read("apps/web/src/discovery/FeedCard.tsx");
+const feedStyle=read("apps/web/src/discovery/feed-v2.css");
+const profile=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.tsx");
+const profileStyle=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.css");
 
 assert.ok(!app.includes("is-discovery-scrolling")&&!app.includes("is-discovery-moving"));
 assert.ok(!style.includes(".discovery-app:is(.is-discovery-scrolling"),"P0: never toggle blur layer topology in response to scroll");
 assert.ok(forYouCss.includes("backdrop-filter:blur(17px)")&&forYouCss.includes("backdrop-filter:blur(14px)"),"accepted Premium Glass intact at rest and in motion");
 assert.ok(app.includes('pageTrack.current?.style.setProperty("--luemi-tab-offset"')&&
  app.includes('underline.current?.style.setProperty("--luemi-tab-offset"'),"both pager variables commit atomically before state selection");
-assert.ok(app.includes("settleDrag(target);")&&app.includes("if(target!==tabIndex)selectTab(target)")&&
+assert.ok(app.includes("settleDrag(target,g.token);")&&app.includes("if(target!==tabIndex)selectTab(target)")&&
  app.includes("browseMotion.current.paint(g.token")&&app.includes("inputOwnership.current.finish(\"browse\",g.serial)"),
- "pager flushes the final finger position before one exclusive settle");
+ "pager flushes the final finger position into its original token before one settle");
 assert.ok(style.includes(".discovery-page-track.is-finger-tracking,.discovery-tab-underline.is-finger-tracking{transition:none}")&&
  !style.includes(".discovery-page-track.is-settling,.discovery-tab-underline.is-settling{will-change:transform}"),
  "pager does not promote giant layers mid-gesture");
@@ -37,5 +41,14 @@ assert.ok(carousel.includes("const cancel=(e:ReactPointerEvent)=>{if(!externalGe
  carousel.includes("finish:(id,x,cancelled)=>finishAt(id,x,cancelled)")&&
  carousel.includes("if(t.horizontal&&!canceled)"),"pointercancel never changes photos");
 assert.ok(style.includes("luemi-deck-leave")&&style.includes("luemi-deck-enter"),"original Deck Lift keyframes retained");
+assert.ok(feed.includes('const position=(run:CardRun,now:number)')&&
+ feed.includes('settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0,-velocity/travel)')&&
+ feedStyle.includes('position:absolute;left:0;right:0;bottom:var(--feed-actions-height);')&&
+ feedStyle.includes('position:absolute;left:0;right:0;bottom:0;z-index:7;'),
+ "card settles from release velocity while its buttons retain independent geometry");
+assert.ok(profile.includes('coordinator.current.claimSheetAtScrollTop(e.pointerId)')&&
+ !profile.includes('scroll.scrollTop=Math.max(0,(g.scrollStart??0)-dy)')&&
+ profileStyle.includes('touch-action:pan-down;-webkit-overflow-scrolling:touch'),
+ "profile pages delegate vertical momentum to native scrolling");
 assert.ok(model.includes("radius:5000"),"locked 1–5000km radius unchanged");
 console.log("✓ Stage 03F.2 P0/P1 regression: stable glass, atomic pager, idle Nearby, native carousels, photo cancel, shared bookmarks");
