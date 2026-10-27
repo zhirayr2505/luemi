@@ -20,7 +20,7 @@ test('ticket is private, owner scoped and expires after ten minutes', () => {
   assert.ok(!result.key.includes(operationId));
 });
 test('upload checks private storage integrity', async () => {
-  const bytes = new Uint8Array([255, 216, 255, 217]);
+  const bytes = new Uint8Array([255, 216, 255, 224, 0, 0, 255, 217]);
   let stored: Uint8Array | undefined;
   const store: BlikiPrivateMediaStore = {
     async put(_key, value) { stored = value; },
@@ -32,21 +32,21 @@ test('upload checks private storage integrity', async () => {
     },
     async remove() { stored = undefined; },
   };
-  const result = await storeBlikiUpload(store, ticket(), bytes, 1001);
-  assert.equal(result.size, 4);
+  const result = await storeBlikiUpload(store, ticket(bytes.length), bytes, 1001);
+  assert.equal(result.size, bytes.length);
   assert.equal(result.sha256.length, 64);
-  await assert.rejects(storeBlikiUpload(store, ticket(), bytes, 601000), /expired/);
-  await assert.rejects(storeBlikiUpload(store, ticket(5), bytes, 1001), /size_mismatch/);
+  await assert.rejects(storeBlikiUpload(store, ticket(bytes.length), bytes, 601000), /expired/);
+  await assert.rejects(storeBlikiUpload(store, ticket(bytes.length + 1), bytes, 1001), /size_mismatch/);
 });
 test('tampered storage is removed and never confirmed', async () => {
   let removed = false;
   const store: BlikiPrivateMediaStore = {
     async put() {},
-    async stat() { return { size: 4, mimeType: 'image/jpeg', sha256: '0'.repeat(64) }; },
+    async stat() { return { size: 8, mimeType: 'image/jpeg', sha256: '0'.repeat(64) }; },
     async remove() { removed = true; },
   };
   await assert.rejects(storeBlikiUpload(
-    store, ticket(), new Uint8Array([255, 216, 255, 217]), 1001,
+    store, ticket(8), new Uint8Array([255, 216, 255, 224, 0, 0, 255, 217]), 1001,
   ), /integrity_failed/);
   assert.equal(removed, true);
 });
