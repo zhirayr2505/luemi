@@ -10,6 +10,12 @@ type Guard={read:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;
  mutation:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>};
 export type PrivateObjectStore={put:(key:string,bytes:Buffer)=>Promise<void>;get:(key:string)=>Promise<Buffer|null>;
  delete:(key:string)=>Promise<void>};
+export function photoCommitPlan(instantApproval:boolean):{
+ state:"approved"|"pending_review";queueHumanReview:boolean
+}{
+ return instantApproval?{state:"approved",queueHumanReview:false}:
+  {state:"pending_review",queueHumanReview:true};
+}
 export type Rem05dOptions={enabled:boolean;requestDatabaseUrl:string;workerDatabaseUrl:string;
  namespace:string;consentVersion:string;storage:PrivateObjectStore;testOnly?:true;durablePrivateOnly?:true;
   /** Explicit public signup opt-in: publish sanitized PNGs immediately without human review. */
@@ -329,13 +335,13 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
     // re-encoding, dimension/size checks and private Storage write, it may
     // become eligible for publication immediately. This is deliberately NOT
     // a claim that its visual contents have been human-reviewed.
-    const mediaState=opts.instantPhotoApproval?"approved":"pending_review";
+    const plan=photoCommitPlan(opts.instantPhotoApproval===true);
     await db.query("UPDATE luemi_private.media_assets SET state=$6,"+
      "actual_mime='image/png',byte_count=$2,width=$3,height=$4,content_sha256=$5 WHERE id=$1",
      [req.params.id,clean.bytes.length,clean.width,clean.height,
-      createHash("sha256").update(clean.bytes).digest("hex"),mediaState]);
+      createHash("sha256").update(clean.bytes).digest("hex"),plan.state]);
     await db.query("UPDATE luemi_private.media_uploads SET state='received' WHERE asset_id=$1",[req.params.id]);
-    if(!opts.instantPhotoApproval)
+    if(plan.queueHumanReview)
      await db.query("INSERT INTO luemi_private.moderation_jobs(asset_id,generation) VALUES($1,1) ON CONFLICT DO NOTHING",
       [req.params.id]);
     // Critical D-R4 boundary: revalidate the *original* actor/session/token
