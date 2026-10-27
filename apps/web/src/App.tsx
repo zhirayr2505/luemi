@@ -241,8 +241,15 @@ export function App() {
       if(disposed)return;
       setPublishStatus(status);
       setPublicationCheck("ready");
-      if(status.state==="published")setRealHome(true);
-      else setPhase("form");
+      if(status.state==="published"){
+        setRealHome(true);
+      }else if(status.pending>0||status.approved>0||status.other>0){
+        // The Telegram account and private registration are real already.
+        // Continue to a private, non-discoverable review dashboard; do not
+        // incorrectly ask this person to start a demo registration again.
+        setRealHomeTab("profile");
+        setRealHome(true);
+      }else setPhase("form");
     }).catch(()=>{
       if(!disposed){
         setPublicationCheck("error");
@@ -565,7 +572,8 @@ export function App() {
         return;
       }
       if(decision==="awaiting-review"){
-        setPublishFeedback("Фотографии уже на сервере и проходят модерацию. Повторно отправлять их не нужно — нажми «Проверить модерацию и публикацию» позже.");
+        setPublishFeedback("Фотографии уже на сервере и проходят модерацию. Повторно отправлять их не нужно.");
+        setRealHomeTab("profile");setRealHome(true);
         return;
       }
       if(decision==="ready-to-publish"){
@@ -573,7 +581,8 @@ export function App() {
         return;
       }
       if(decision==="review-needs-attention"){
-        setPublishFeedback("На сервере уже есть фотографии, требующие дополнительной проверки или исправления. Не отправляем повторно те же файлы. Проверь статус модерации.");
+        setPublishFeedback("На сервере уже есть фотографии, требующие дополнительной проверки или исправления. Не отправляем повторно те же файлы.");
+        setRealHomeTab("profile");setRealHome(true);
         return;
       }
       setPublishFeedback("Сохраняем анкету…");
@@ -592,7 +601,8 @@ export function App() {
         setPublishStatus(confirmed);setRealHome(true);
         setPublishFeedback("Анкета опубликована.");
       }else{
-        setPublishFeedback("Анкета сохранена. Фотографии ожидают проверки. Вернись позже и проверь статус — публикация ещё не выполнена.");
+        setPublishFeedback("Анкета сохранена на сервере. Фото ожидают проверки; другие пользователи пока не видят её.");
+        setRealHomeTab("profile");setRealHome(true);
       }
     }catch(e){
       setPublishFeedback(e instanceof Error&&e.message==="revision_conflict"
@@ -724,7 +734,18 @@ export function App() {
         {themeButton}
       </header>
       <div className="luemi-real-home-main">
-        {realHomeTab==="profile"?<section className="luemi-real-account" aria-label="Моя анкета">
+        {publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
+          <h1>Анкета сохранена 💜</h1>
+          <p role="status">Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются.</p>
+          <p>Одобрено фото: {publishStatus?.approved??0} · на проверке: {publishStatus?.pending??0} · требуют внимания: {publishStatus?.other??0}</p>
+          <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>
+            {publishBusy?"Проверяем…":"Проверить модерацию и открыть анкету"}
+          </button>
+          <button type="button" disabled={publishBusy} onClick={()=>{setRealHome(false);setPhase("form");setStep(8);}}>
+            Вернуться к анкете и фотографиям
+          </button>
+          {publishFeedback&&<p role="status">{publishFeedback}</p>}
+        </section>:realHomeTab==="profile"?<section className="luemi-real-account" aria-label="Моя анкета">
           <h1>Моя анкета</h1>
           {publishStatus?.profile&&<article className="luemi-real-account-card">
             <div className="luemi-real-account-photos">
@@ -762,12 +783,12 @@ export function App() {
             <RealChats/>:<RealLiveFeed onMatched={()=>setRealHomeTab("chats")}/>}
         </Suspense>}
       </div>
-      <nav className="luemi-real-home-nav" aria-label="Разделы LUEMI">
+      {publishStatus?.state==="published"&&<nav className="luemi-real-home-nav" aria-label="Разделы LUEMI">
         <button type="button" aria-current={realHomeTab==="feed"?"page":undefined} onClick={()=>setRealHomeTab("feed")}>Знакомства</button>
         {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&
           <button type="button" aria-current={realHomeTab==="chats"?"page":undefined} onClick={()=>setRealHomeTab("chats")}>Чаты</button>}
         <button type="button" aria-current={realHomeTab==="profile"?"page":undefined} onClick={()=>setRealHomeTab("profile")}>Профиль</button>
-      </nav>
+      </nav>}
     </section>
   </main>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
