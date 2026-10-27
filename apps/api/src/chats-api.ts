@@ -37,10 +37,10 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     AND NOT pg_has_role(current_user,'pg_write_all_data','member')
     AND NOT has_schema_privilege(current_user,'luemi_chats','CREATE')
     AND NOT has_table_privilege(current_user,'luemi_chats.members','INSERT')
-    AND NOT has_table_privilege(current_user,'luemi_chats.members','UPDATE')
     AND NOT has_column_privilege(current_user,'luemi_chats.members','actor_id','UPDATE')
     AND NOT has_column_privilege(current_user,'luemi_chats.members','conversation_id','UPDATE')
     AND NOT has_column_privilege(current_user,'luemi_chats.members','environment','UPDATE')
+    AND has_column_privilege(current_user,'luemi_chats.members','last_read_at','UPDATE')
     AND NOT has_table_privilege(current_user,'luemi_chats.members','DELETE')
     AND NOT has_table_privilege(current_user,'luemi_chats.conversations','INSERT')
     AND NOT has_table_privilege(current_user,'luemi_chats.conversations','UPDATE')
@@ -103,7 +103,8 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     ORDER BY created_at DESC,id DESC LIMIT 51`,
    [req.params.id,options.namespace,req.query.before??null]);
   const more=q.rows.length>50;const page=q.rows.slice(0,50);
-  return {messages:page.reverse(),nextCursor:more&&page.length?page[page.length-1].id:null};
+  const nextCursor=more&&page.length?page[page.length-1].id:null;
+  return {messages:page.reverse(),nextCursor};
  }));
  app.post<{Params:{id:string};Body:{body?:unknown;clientId?:unknown}}>(
  "/api/v4/chats/:id/messages",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
