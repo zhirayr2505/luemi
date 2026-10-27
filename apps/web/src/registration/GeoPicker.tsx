@@ -145,7 +145,7 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
    if(!gate.current.isCurrent(token))return;
    const code=e instanceof Error?e.message:"location_unavailable";
    if(code==="location_cancelled")return;
-   fail(code==="location_denied"?"Разреши доступ к местоположению в Telegram или выбери город вручную.":
+   fail(code==="location_denied"?"Доступ к геолокации не предоставлен. Разреши его в Telegram или выбери город вручную.":
     "Не удалось получить координаты. Проверь разрешение геолокации или выбери город вручную.");
   });
  };
