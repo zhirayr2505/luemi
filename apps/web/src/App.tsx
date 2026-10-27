@@ -715,7 +715,7 @@ export function App() {
       <button type="button" disabled={publishBusy} onClick={()=>{void eraseMyAccount();}}>Запросить удаление аккаунта и фото</button>
       {publishFeedback&&<p role="status">{publishFeedback}</p>}
       <Suspense fallback={<p>Загрузка…</p>}>
-        {realHomeTab==="chats"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?<RealChats/>:<RealLiveFeed onClose={()=>setRealHome(false)}/>}
+        {realHomeTab==="chats"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?<RealChats/>:<RealLiveFeed onClose={()=>setRealHome(false)} onMatched={()=>setRealHomeTab("chats")}/>}
       </Suspense>
     </section>
   </main>;
