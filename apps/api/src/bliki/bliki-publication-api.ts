@@ -185,10 +185,10 @@ export function registerBlikiPublicationApi(
         // Only an inspected image may be published. Video requires a trusted worker.
         // Publication is still gated by storage integrity and actor-scoped RLS.
         const result = await db.query<Row>(`UPDATE luemi_bliki_private.stories
-          SET status='published',editor=$2::jsonb,published_at=clock_timestamp()
+          SET status='published',editor=$2::jsonb,caption=$3,published_at=clock_timestamp()
           WHERE id=$1 AND status='processing'
           RETURNING id,author_id,operation_id,media_kind,mime_type,media_key,media_bytes::text,status,published_at`,
-          [row.id, JSON.stringify(editor)]);
+          [row.id, JSON.stringify(editor), editor.caption ?? '']);
         if (result.rowCount !== 1) throw new Error('publication_transition_failed');
         return status(result.rows[0]);
       });
