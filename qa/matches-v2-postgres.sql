@@ -70,6 +70,36 @@ DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM luemi_chats.conversations) THEN RAISE EXCEPTION 'unmatched C saw conversations'; END IF;
 END $$;
 COMMIT;
+-- Actual message round-trip through the least-privilege chat role.
+BEGIN;
+SET LOCAL ROLE luemi_chats_writer;
+SET LOCAL luemi.actor_id='11111111-1111-4111-8111-111111111111';
+SET LOCAL luemi.environment='luemi';
+INSERT INTO luemi_chats.messages(conversation_id,sender_id,environment,client_id,body)
+ SELECT id,'11111111-1111-4111-8111-111111111111','luemi',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','Hello from A'
+ FROM luemi_chats.conversations;
+COMMIT;
+BEGIN;
+SET LOCAL ROLE luemi_chats_writer;
+SET LOCAL luemi.actor_id='22222222-2222-4222-8222-222222222222';
+SET LOCAL luemi.environment='luemi';
+DO $ BEGIN
+ IF (SELECT count(*) FROM luemi_chats.messages WHERE body='Hello from A')<>1 THEN
+  RAISE EXCEPTION 'matched B cannot read A message';
+ END IF;
+END $;
+COMMIT;
+BEGIN;
+SET LOCAL ROLE luemi_chats_writer;
+SET LOCAL luemi.actor_id='33333333-3333-4333-8333-333333333333';
+SET LOCAL luemi.environment='luemi';
+DO $ BEGIN
+ IF EXISTS(SELECT 1 FROM luemi_chats.messages) THEN
+  RAISE EXCEPTION 'unmatched actor C saw private messages';
+ END IF;
+END $;
+COMMIT;
 -- A block immediately revokes both participants' message access.
 INSERT INTO luemi_private.blocks(blocker_id,blocked_id,environment)
  VALUES('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','luemi');
@@ -77,9 +107,18 @@ BEGIN;
 SET LOCAL ROLE luemi_chats_writer;
 SET LOCAL luemi.actor_id='22222222-2222-4222-8222-222222222222';
 SET LOCAL luemi.environment='luemi';
-DO $$ BEGIN
+DO $ BEGIN
  IF EXISTS(SELECT 1 FROM luemi_chats.members) THEN RAISE EXCEPTION 'block did not revoke chat'; END IF;
-END $$;
+ IF EXISTS(SELECT 1 FROM luemi_chats.messages) THEN RAISE EXCEPTION 'block leaked messages'; END IF;
+ BEGIN
+  INSERT INTO luemi_chats.messages(conversation_id,sender_id,environment,client_id,body)
+   VALUES((SELECT id FROM luemi_chats.conversations LIMIT 1),
+    '22222222-2222-4222-8222-222222222222','luemi',
+    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','Post block');
+  RAISE EXCEPTION 'post-block send was incorrectly allowed';
+ EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+ END;
+END $;
 COMMIT;
 DELETE FROM luemi_private.blocks;
 -- Unmatching closes the pair and revokes visibility without deleting messages.
