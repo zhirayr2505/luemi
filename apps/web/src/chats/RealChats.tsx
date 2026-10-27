@@ -40,8 +40,8 @@ export function RealChats(){
    try{
     const data=await api.messages(active,undefined,controller.signal);
     if(!controller.signal.aborted){setMessages(data.messages);setError("");
-     const newest=data.messages[data.messages.length-1];
-     if(newest&&newest.senderId!==actorId&&document.visibilityState==="visible"&&lastRead.current!==newest.id){
+     const newest=[...data.messages].reverse().find(message=>message.senderId!==actorId&&!message.deletedAt);
+     if(actorId&&newest&&document.visibilityState==="visible"&&lastRead.current!==newest.id){
       lastRead.current=newest.id;
       void api.markRead(active,newest.id).catch(()=>{lastRead.current=null;});
      }
