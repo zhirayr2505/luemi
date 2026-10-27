@@ -91,7 +91,7 @@ export async function uploadPrivatePhotos(
     "PUT",png,"image/png");
    const receipt:unknown=await saved.json();
    if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
-     (receipt as {status?:unknown}).status!=="pending_review"||
+     !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
      (receipt as {published?:unknown}).published!==false)
     throw new Error("invalid_private_media_receipt");
   }
