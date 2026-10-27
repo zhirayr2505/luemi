@@ -121,6 +121,13 @@ export function BlikDraftEditor({ ownerId, onClose, onPreview, publishTransport,
               value={(state.editor.trimEndMs ?? 15000) / 1000}
               onChange={event => state.change({ ...state.editor, trimEndMs: Math.min(15000, Number(event.target.value) * 1000) })} /></label>
           </div>}
+          <label style={{ display: 'grid', gap: 6, marginTop: 12 }}>
+            Подпись к Блику
+            <textarea rows={2} maxLength={150} value={state.editor.caption ?? ''}
+              onChange={event => state.change({ ...state.editor, caption: event.target.value })}
+              placeholder="Добавь подпись…" aria-label="Подпись Блика" />
+            <small>{[...(state.editor.caption ?? '')].length}/150</small>
+          </label>
           {state.editor.layers.map(layer => <div key={layer.id} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <input aria-label={layer.type === 'text' ? 'Текст Блика' : 'Эмодзи Блика'}
               maxLength={150} value={layer.value}
