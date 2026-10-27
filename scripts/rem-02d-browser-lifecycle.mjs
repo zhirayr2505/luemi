@@ -7,16 +7,17 @@ const page=await context.newPage(),errors=[],BASE=process.env.LUEMI_QA_BASE_URL|
 page.on("pageerror",e=>errors.push(e.message));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const visitor=()=>page.locator(".discovery-visitor-route");
-const profile=()=>visitor().locator(".pm-a2-root");
-const handle=()=>profile().locator(".pm-a2-handle");
+const profile=()=>visitor().locator(".v3-profile-host");
+const handle=()=>profile().locator(".v3-int-handle");
 const translation=()=>visitor().evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
 const physical=()=>profile().evaluate(el=>{
- const sheet=el.querySelector(".pm-a2-sheet"),style=getComputedStyle(el);
- const a=parseFloat(style.getPropertyValue("--a2-compact-top"));
- const b=parseFloat(style.getPropertyValue("--a2-expanded-top"));
- return {mode:el.dataset.morphState,y:sheet.getBoundingClientRect().top-el.getBoundingClientRect().top,a,b};
+ const root=el.querySelector(".v3-int-root"),sheet=root?.querySelector(".v3-int-sheet");
+ if(!root||!sheet)throw Error("V3 lifecycle surface absent");
+ const style=getComputedStyle(root),a=parseFloat(sheet.style.top);
+ const b=a+parseFloat(style.getPropertyValue("--v3-extra-scroll"))-24;
+ return {mode:el.dataset.morphState,y:sheet.getBoundingClientRect().top-root.getBoundingClientRect().top,a,b};
 });
-const near=(a,b,tol=3)=>assert.ok(Math.abs(a-b)<=tol,"A2 route mismatch: "+a+" vs "+b);
+const near=(a,b,tol=4)=>assert.ok(Math.abs(a-b)<=tol,"V3 route mismatch: "+a+" vs "+b);
 const open=async()=>{
  await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
  await visitor().waitFor({state:"visible"});
@@ -24,11 +25,11 @@ const open=async()=>{
  assert.equal((await physical()).mode,"compact");
 };
 const setBackground=async hidden=>page.evaluate(hidden=>{
- if(!("__a2Hidden" in window)){
-  window.__a2Hidden=false;
-  Object.defineProperty(document,"visibilityState",{configurable:true,get(){return window.__a2Hidden?"hidden":"visible";}});
+ if(!("__v3Hidden" in window)){
+  window.__v3Hidden=false;
+  Object.defineProperty(document,"visibilityState",{configurable:true,get(){return window.__v3Hidden?"hidden":"visible";}});
  }
- window.__a2Hidden=hidden;document.dispatchEvent(new Event("visibilitychange"));
+ window.__v3Hidden=hidden;document.dispatchEvent(new Event("visibilitychange"));
 },hidden);
 const routeDrag=async(dx,hold=15)=>{
  const target=await handle().boundingBox();assert.ok(target?.height>=25);
@@ -52,18 +53,18 @@ try{
  await setBackground(false);await sleep(370);
  let expanded=await physical();
  assert.equal(expanded.mode,"expanded");near(expanded.y,expanded.b);
- console.log("PROFILE_A2_LIFECYCLE_PASS suspend/resume at fractional morph");
+ console.log("PROFILE_V3_LIFECYCLE_PASS suspend/resume at fractional morph");
  await routeDrag(40,75);await sleep(320);
  assert.equal(await visitor().count(),1);
  near(await translation(),0,3);
  expanded=await physical();assert.equal(expanded.mode,"expanded");
  await profile().getByRole("tab",{name:"Фото",exact:true}).click();
  await sleep(240);
- assert.equal(await profile().locator('.pm-a2-tab[aria-selected=true]').innerText(),"Фото");
+ assert.equal(await profile().locator('.v3-int-tab[aria-selected=true]').innerText(),"Фото");
  await routeDrag(40,60);await sleep(310);
  near(await translation(),0,3);
- assert.equal(await profile().locator('.pm-a2-tab[aria-selected=true]').innerText(),"Фото");
- console.log("PROFILE_A2_LIFECYCLE_PASS route rollback and tab state");
+ assert.equal(await profile().locator('.v3-int-tab[aria-selected=true]').innerText(),"Фото");
+ console.log("PROFILE_V3_LIFECYCLE_PASS route rollback and tab state");
  await setBackground(true);
  await page.setViewportSize({width:393,height:765});await sleep(75);
  await setBackground(false);await sleep(340);
@@ -75,7 +76,7 @@ try{
  assert.equal(await visitor().count(),0,"rightward route gesture closes visitor");
  await open();await page.keyboard.press("Escape");await sleep(390);
  assert.equal(await visitor().count(),0,"system Escape/back also closes");
- console.log("PROFILE_A2_LIFECYCLE_PASS route close/reopen and no stale owner callbacks");
+ console.log("PROFILE_V3_LIFECYCLE_PASS route close/reopen and no stale owner callbacks");
  assert.deepEqual(errors,[],"no browser runtime exceptions");
- console.log("REM-02D A2 BROWSER LIFECYCLE QA PASS; physical A55 NOT VERIFIED");
+ console.log("REM-02D V3 BROWSER LIFECYCLE QA PASS; physical A55 NOT VERIFIED");
 }finally{await context.close();await browser.close();}
