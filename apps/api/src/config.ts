@@ -159,16 +159,23 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
    };
   }
   const publicationEnabled=env.REM06_PUBLICATION_ENABLED==="1";
+  const instantPhotoApproval=env.REM06_AUTOPUBLISH_PHOTOS_ENABLED==="1";
+  if(instantPhotoApproval&&(!openSignups||betaInvites||!v2Enabled||
+    !mediaEnabled||!publicationEnabled||stagingOnly||
+    env.REM06_AUTOPUBLISH_APPROVED!=="1"||env.REM06_PRIVACY_APPROVED!=="1"||
+    !rem05d?.durablePrivateOnly))
+    throw new Error("Immediate photo publication requires approved open registration and private media");
+  if(instantPhotoApproval&&rem05d)rem05d={...rem05d,instantPhotoApproval:true};
   // Discovery is allowed only after ONE approved server-side admission policy.
   // Open registration is not an authorization bypass: it still requires
-  // verified Telegram sessions, reviewed private photographs, and independent
+  // verified Telegram sessions, validated private photographs, and independent
   // least-privilege database connections. Legacy beta defaults are unchanged.
   const admissionApproved=(rem05b?.inviteOnly===true&&
      env.REM06_BETA_INVITES_APPROVED==="1")||
     (openSignups&&!betaInvites&&env.REM06_OPEN_SIGNUPS_APPROVED==="1");
   if(publicationEnabled&&(!admissionApproved||
     !mediaEnabled||!rem05d?.durablePrivateOnly||
-    env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1"||
+    (!instantPhotoApproval&&env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1")||
     !env.REM06_PUBLISHER_DATABASE_URL||!env.REM06_DISCOVERY_DATABASE_URL||
     env.REM06_PUBLISHER_DATABASE_URL===env.REM06_DISCOVERY_DATABASE_URL))
     throw new Error("REG01D requires approved admission, private media, independent DB roles and accepted moderation");
