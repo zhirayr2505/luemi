@@ -124,5 +124,6 @@ jobs:
             20261027_bliki_retention.sql; do
             psql -v ON_ERROR_STOP=1 -f "apps/api/migrations/$migration"
           done
+          psql -v ON_ERROR_STOP=1 -f apps/api/migrations/20261027_registration_review_notifications.sql
       - name: Run synthetic multi-actor RLS and lifetime checks
         run: psql -v ON_ERROR_STOP=1 -f apps/api/secure-tests/bliki-rls-qa.sql
