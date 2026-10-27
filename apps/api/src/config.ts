@@ -171,7 +171,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1"||
     !env.REM06_PUBLISHER_DATABASE_URL||!env.REM06_DISCOVERY_DATABASE_URL||
     env.REM06_PUBLISHER_DATABASE_URL===env.REM06_DISCOVERY_DATABASE_URL))
-    throw new Error("Publication requires approved admission, private media, isolated DB roles and moderation");
+    throw new Error("REG01D requires approved admission, private media, independent DB roles and accepted moderation");
   const realPublication:PublicationOptions|undefined=publicationEnabled?{
     enabled:true,requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
     publisherDatabaseUrl:env.REM06_PUBLISHER_DATABASE_URL??"",
