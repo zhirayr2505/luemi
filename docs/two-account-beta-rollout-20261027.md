@@ -40,6 +40,20 @@
 - В Supabase применена миграция `luemi_two_account_beta_role_shells`: создано 10 ролей с раздельными группами привилегий, все `NOLOGIN`, без паролей и без суперпользовательских прав. Её SQL зафиксирован в `db/closed-beta/role-shells.sql` для аудита. **Не запускать повторно:** уже применена.
 - Реальных `actors`, черновиков, публичных анкет и сообщений на момент проверки **0**. Регистрация пока НЕ активна; не заявлять обратное.
 
+## Автоматизированная настройка DB-подключений через защищённый GitHub Actions (без паролей в чате)
+
+Добавлен ручной workflow `.github/workflows/luemi-beta-provision.yml` и скрипт `scripts/closed-beta-bootstrap.mjs`. Это альтернативный, менее трудоёмкий путь к пунктам 1–3 ниже. Процедура **не включает** регистрацию, платежи, геокодер, модерацию или чаты; для реального запуска по-прежнему необходима проверка политик и 2 Telegram E2E.
+
+1. В GitHub `Settings → Environments` создать окружение `beta-bootstrap`, по возможности включить защиту `Required reviewers`. Там же сохранить два *Environment Secrets*, а не значения в открытом workflow:
+   - `BETA_SUPABASE_OWNER_URL`: **полная** строка `Session pooler` для проекта LUEMI, взятая непосредственно из `Supabase → Connect`. Требуется порт `5432` и пользователь `postgres.czzyoxrwtnvbicypwrdd`. Не угадывать регион или индекс хоста.
+   - `BETA_RENDER_API_KEY`: API key администратора Render из `Render → Account Settings`. Не передавать ключ никому и не вставлять его в чат.
+2. В `GitHub → Actions → LUEMI beta DB and Render secret bootstrap (manual) → Run workflow` выбрать **main**. Код тестирует валидность групп доступа и безопасность DB-подключения, назначает отдельные случайные пароли 8 существующим `NOLOGIN`-ролям, передаёт только серверные connection strings и pepper в Render, затем разрешает `LOGIN` и проверяет каждый аккаунт через Supavisor. Роли оператора модерации и удаления остаются `NOLOGIN`.
+3. Проверить сообщение `BETA_DB_BOOTSTRAP_OK` и в Supabase — отсутствие новых ролей с `SUPERUSER`/`BYPASSRLS`. При ошибке скрипт пытается перевести все 8 ролей обратно в `NOLOGIN`. После неуспеха **не включать** флаги — сначала проверить роли и настройки.
+4. Даже при успехе workflow нужны `REM06_SUPABASE_STORAGE_SECRET` и `REM06_SUPABASE_PROJECT_REF` **на Render**, приватный bucket `luemi-profile-private`, политика данных, разрешение на обработку фотографий, человеческая модерация и корректно настроенный геокодер. Их нельзя заменить ролью DB.
+5. После завершения закрытой беты **удалить** временные environment secrets `BETA_SUPABASE_OWNER_URL` и `BETA_RENDER_API_KEY` из GitHub Settings либо ограничить повторные запуски workflow. Сами API/database пароли хранить и менять в секретном хранилище, не выводить в логи.
+
+Документы Supabase и Render подтверждают: custom-user имя Session pooler имеет вид `ROLE.PROJECT_REF`, а endpoint для одного server env `PUT /v1/services/{serviceId}/env-vars/{envVarKey}`; изменение env в REST API само по себе **не означает** включение пользовательских feature flags.
+
 ## Единственный безопасный путь к активации
 
 **Требуется действие оператора с секретами внутри Supabase Dashboard и Render Dashboard, не в чате и не в GitHub.** Пароли нельзя отправлять AI в тексте, коммитить или логировать.

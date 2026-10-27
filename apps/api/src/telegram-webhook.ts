@@ -24,7 +24,7 @@ interface TelegramUpdate {
  * Invalid/missing revision fails closed to the canonical root URL.
  */
 export function versionedWebAppUrl(origin: string, gitCommit: string | undefined): string {
-  if (origin !== "https://luemi-stage01.onrender.com" ||
+  if (!["https://luemi-stage01.onrender.com","https://luemi.onrender.com"].includes(origin) ||
       !gitCommit || !/^[0-9a-f]{40}$/i.test(gitCommit)) return origin;
   const url = new URL(origin);
   url.searchParams.set("luemiRelease", gitCommit.slice(0, 12));

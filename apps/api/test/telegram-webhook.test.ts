@@ -46,7 +46,10 @@ test("per-deploy versioned URL forces fresh Telegram document while preserving o
   assert.equal(parsed.searchParams.get("luemiRelease"),commit.slice(0,12));
   assert.equal(versionedWebAppUrl(origin,undefined),origin);
   assert.equal(versionedWebAppUrl(origin,"not-a-sha"),origin);
-  assert.equal(versionedWebAppUrl("https://luemi.onrender.com",commit),"https://luemi.onrender.com");
+  assert.equal(versionedWebAppUrl("https://luemi.onrender.com",commit),"https://luemi.onrender.com/?luemiRelease="+commit.slice(0,12));
+  assert.equal(versionedWebAppUrl("https://luemi.onrender.com",undefined),"https://luemi.onrender.com");
+  assert.equal(versionedWebAppUrl("https://luemi.onrender.com", "bad"),"https://luemi.onrender.com");
+  assert.equal(versionedWebAppUrl("https://attacker.example",commit),"https://attacker.example");
 });
 test("signed /start supplies a fresh versioned Web App button using the Render commit",async()=>{
   const previous=process.env.RENDER_GIT_COMMIT;

@@ -1,0 +1,31 @@
+name: LUEMI beta DB and Render secret bootstrap (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: luemi-beta-bootstrap
+  cancel-in-progress: false
+jobs:
+  provision:
+    if: github.repository == 'zhirayr2505/luemi' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Store the two sensitive values as Environment Secrets.
+    # Protect the beta-bootstrap environment with required approval before run.
+    environment: beta-bootstrap
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked application database client
+        run: npm ci --ignore-scripts --include=dev
+      - name: Validate bootstrap script without credentials
+        run: node --test scripts/closed-beta-bootstrap.test.mjs
+      - name: Provision and independently test least-privilege roles (no feature activation)
+        env:
+          BETA_SUPABASE_OWNER_URL: ${{ secrets.BETA_SUPABASE_OWNER_URL }}
+          BETA_RENDER_API_KEY: ${{ secrets.BETA_RENDER_API_KEY }}
+        run: node scripts/closed-beta-bootstrap.mjs
