@@ -37,6 +37,7 @@ export function registerBlikiInteractionApi(
   if (!options?.enabled) return;
   if (!guard || !options.databaseUrl || !/^[a-z0-9:_-]{1,96}$/i.test(options.namespace))
     throw new Error('Bliki interactions require isolated actor-scoped DB and session guards');
+  const auth: Guard = guard;
   const cfg = options;
   const pool = new Pool({ connectionString: cfg.databaseUrl, max: 3, connectionTimeoutMillis: 3000 });
   app.addHook('onClose', async () => { await pool.end(); });
@@ -96,7 +97,7 @@ export function registerBlikiInteractionApi(
            VALUES($1::uuid,$2::uuid,$3) ON CONFLICT DO NOTHING`,
           [...args, payload]);
       }
-      await guard.read(request, reply);
+      await auth.read(request, reply);
       if (reply.sent || !request.authActor ||
           request.authActor.actorId !== actor.actorId ||
           request.authActor.sessionId !== actor.sessionId ||
