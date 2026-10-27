@@ -63,6 +63,8 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     AND NOT has_schema_privilege(current_user,'public','CREATE')
     AND NOT has_table_privilege(current_user,'public.luemi_users','UPDATE')
     AND NOT has_table_privilege(current_user,'public.luemi_matches','UPDATE')
+    AND NOT has_table_privilege(current_user,'public.luemi_matches','INSERT')
+    AND NOT has_table_privilege(current_user,'public.luemi_matches','DELETE')
     AND NOT has_table_privilege(current_user,'public.luemi_blocks','INSERT')
     AND NOT has_table_privilege(current_user,'public.luemi_blocks','UPDATE')
     AND NOT has_table_privilege(current_user,'public.luemi_blocks','DELETE')
