@@ -15,7 +15,8 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
  if(!guard||!cfg.databaseUrl||!/^[a-z0-9:_-]{1,96}$/i.test(cfg.namespace))
   throw new Error("Chats require V2 auth, namespace and dedicated database role");
  const auth=guard;
- const pool=new Pool({connectionString:cfg.databaseUrl,max:5,connectionTimeoutMillis:3000,
+ const options=cfg;
+ const pool=new Pool({connectionString:options.databaseUrl,max:5,connectionTimeoutMillis:3000,
   statement_timeout:3000,query_timeout:4000});
  app.addHook("onClose",async()=>pool.end());
  async function scoped<T>(req:FastifyRequest,reply:FastifyReply,fn:(db:PoolClient,actor:string)=>Promise<T>):Promise<T|FastifyReply>{
@@ -40,7 +41,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    if(role.rowCount!==1||role.rows[0].safe!==true)deny(503,"service_unavailable");
    await db.query("BEGIN");
    await db.query("SELECT set_config('luemi.actor_id',$1,true)",[actor.actorId]);
-   await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+   await db.query("SELECT set_config('luemi.environment',$1,true)",[options.namespace]);
    const result=await fn(db,actor.actorId);
    await auth.read(req,reply);
    if(reply.sent||req.authActor?.actorId!==actor.actorId||
@@ -57,14 +58,14 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
  }
  async function member(db:PoolClient,conversationId:string,actor:string){
   const r=await db.query("SELECT 1 FROM luemi_chats.members WHERE conversation_id=$1 AND actor_id=$2 AND environment=$3",
-   [conversationId,actor,cfg.namespace]);
+   [conversationId,actor,options.namespace]);
   if(r.rowCount!==1)deny(404,"not_found");
  }
  app.get("/api/v4/chats",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
   const rows=await db.query<{id:string;unread_count:string}>(`
    SELECT m.conversation_id AS id,0::text AS unread_count
    FROM luemi_chats.members m WHERE m.actor_id=$1 AND m.environment=$2
-   ORDER BY m.conversation_id LIMIT 100`,[actor,cfg.namespace]);
+   ORDER BY m.conversation_id LIMIT 100`,[actor,options.namespace]);
   return {conversations:rows.rows.map(r=>({id:r.id,peerId:"",peerName:"",lastMessage:null,unreadCount:Number(r.unread_count)}))};
  }));
  app.get<{Params:{id:string};Querystring:{before?:string}}>(
@@ -79,7 +80,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     AND ($3::uuid IS NULL OR (created_at,id)<(
       SELECT created_at,id FROM luemi_chats.messages WHERE id=$3 AND conversation_id=$1))
     ORDER BY created_at DESC,id DESC LIMIT 51`,
-   [req.params.id,cfg.namespace,req.query.before??null]);
+   [req.params.id,options.namespace,req.query.before??null]);
   const more=q.rows.length>50;const page=q.rows.slice(0,50);
   return {messages:page.reverse(),nextCursor:more?page[page.length-1].id:null};
  }));
@@ -93,7 +94,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    ON CONFLICT(conversation_id,sender_id,client_id) DO NOTHING RETURNING
    id,conversation_id AS "conversationId",sender_id AS "senderId",body,
    created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt"`,
-   [req.params.id,actor,cfg.namespace,req.body.clientId,req.body.body]);
+   [req.params.id,actor,options.namespace,req.body.clientId,req.body.body]);
   if(q.rowCount!==1){
    const existing=await db.query(`SELECT id,conversation_id AS "conversationId",sender_id AS "senderId",body,
    created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt"
