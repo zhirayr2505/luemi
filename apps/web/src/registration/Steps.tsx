@@ -78,7 +78,9 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    {nameHint&&<div className="name-input-hint" role="status"><Info size={17} aria-hidden="true"/>Можно использовать только буквы, пробел, тире и апостроф.</div>}
    <GlassCheckbox checked={data.trialConsent} onChange={trialConsent=>patch({trialConsent})}>
      {realFeedPilot.enabled?
-      "Я понимаю, что фотографии пройдут проверку, а анкета появится другим пользователям только после подтверждённой публикации.":remoteDraftPilot.enabled?
+      (import.meta.env.VITE_LUEMI_AUTOPUBLISH_PHOTOS==="1"?
+       "Мне уже исполнилось 18 лет. После регистрации моя анкета и фотографии будут видны другим пользователям.":
+       "Я понимаю, что фотографии пройдут проверку, а анкета появится другим пользователям только после подтверждённой публикации."):remoteDraftPilot.enabled?
       "Я понимаю, что анкета пока не публикуется, а серверное сохранение требует отдельного согласия.":
       "Я понимаю, что это тест интерфейса. Данные и фотографии не публикуются и не передаются на сервер."}
    </GlassCheckbox>
