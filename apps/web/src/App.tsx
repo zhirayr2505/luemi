@@ -13,6 +13,7 @@ import {installViewportController} from "./viewport/viewport-controller";
 const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({default:m.DiscoveryApp})));
 const RealLiveFeed = lazy(() => import("./registration/RealLiveFeed").then(m=>({default:m.RealLiveFeed})));
 const RealChats = lazy(() => import("./chats/RealChats").then(m=>({default:m.RealChats})));
+const BlikiShowcase = lazy(() => import("./features/bliki/BlikiShowcase").then(m=>({default:m.BlikiShowcase})));
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
@@ -691,6 +692,7 @@ export function App() {
     <section className="onboarding-screen" style={{padding:"24px 14px",overflowY:"auto"}}>
       <div className="onboard-brand-row"><img src={logoSrc} alt="LUEMI" className="onboard-logo"/>{themeButton}</div>
       <h1>Твоя анкета опубликована</h1>
+      {import.meta.env.VITE_BLIKI_V1_ENABLED!=="1" && <Suspense fallback={null}><BlikiShowcase compact/></Suspense>}
       {publishStatus&&<p role="status">Статус: {publishStatus.state==="published"?"опубликована":"скрыта"}</p>}
       <p role="status">{import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?"Переписки доступны только после подтверждённого взаимного мэтча.":"В ленте только проверенные анкеты. Симпатии и чаты пока недоступны."}</p>
       {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&<nav className="registration-static-actions" aria-label="Разделы LUEMI">
