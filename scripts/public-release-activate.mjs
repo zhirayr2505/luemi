@@ -19,6 +19,9 @@ const PUBLIC_FLAGS=Object.freeze({
  REM06_OPEN_SIGNUPS_APPROVED:"1",
  REM06_BETA_INVITES_ENABLED:"0",
  REM06_BETA_INVITES_APPROVED:"0",
+ REM05D_PRIVATE_ENABLED:"0",
+ REM05D_PUBLICATION_ENABLED:"0",
+ REM06_SAFETY_APPEALS_ENABLED:"0",
  REM06_PRIVACY_APPROVED:"1",
  REM06_CONSENT_VERSION:"luemi-public-v1",
  REM06_PRIVATE_DRAFT_ENABLED:"1",
@@ -92,6 +95,8 @@ async function readEnv(apiKey){
   for(const item of rows){
    if(typeof item?.envVar?.key!=="string"||typeof item.envVar.value!=="string")
     throw Error("Render environment entry lacks a usable value");
+   if(/^\\*{3,}$/.test(item.envVar.value)||item.envVar.value==="[REDACTED]")
+    throw Error("Render returned a masked secret; refusing unsafe bulk overwrite");
    out.set(item.envVar.key,item.envVar.value);
   }
   cursor=rows.length===100?rows.at(-1)?.cursor:undefined;
