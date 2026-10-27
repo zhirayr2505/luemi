@@ -15,6 +15,7 @@ export function RealChats(){
  const [sending,setSending]=useState(false);
  const [loading,setLoading]=useState(true);
  const bottom=useRef<HTMLDivElement>(null);
+ const lastRead=useRef<string|null>(null);
  const pending=useRef<{conversationId:string;body:string;clientId:string}|null>(null);
 
  const csrf=geoCsrf();
@@ -51,7 +52,7 @@ export function RealChats(){
   const timer=window.setInterval(()=>{if(document.visibilityState==="visible")void load();},3500);
   return()=>{controller.abort();window.clearInterval(timer);};
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[active,csrf]);
+ },[active,csrf,actorId]);
  const send=async()=>{
   if(!api||!active||!draft.trim()||sending)return;
   const text=draft.trim();
