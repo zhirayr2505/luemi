@@ -1,7 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {selectionHaptic} from "../ui/haptic";
 import type {CSSProperties} from "react";
-import type {PointerEvent as ReactPointerEvent} from "react";
 import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
@@ -23,6 +22,7 @@ import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {GestureArbiter,computedTranslation,fractionalTrack} from "../ui/gesture-arbiter";
+import type {InputKind} from "../ui/gesture-arbiter";
 import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
@@ -34,7 +34,10 @@ const navigation=[["discover","Знакомства",Images],["likes","Симп�
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 const androidWebView=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 
-type Gesture={id:number;x:number;y:number;started:number;tracking:boolean;index:number;width:number;serial:number;token:MotionToken|null;originTrack:number;originInk:number;lastX:number;native?:boolean};
+type Gesture={id:number;kind:InputKind;x:number;y:number;started:number;tracking:boolean;index:number;width:number;serial:number;token:MotionToken|null;originTrack:number;originInk:number;lastX:number;native?:boolean};
+type BrowseInput={pointerId:number;clientX:number;clientY:number;target:EventTarget|null;
+ currentTarget:HTMLElement;cancelable:boolean;preventDefault:()=>void;
+ isPrimary?:boolean;pointerType?:string;button?:number};
 function Placeholder({title,text}:{title:string;text:string}){
  return <div className="discovery-placeholder"><Layers3 size={35} strokeWidth={1.4}/>
  <h2>{title}</h2><p>{text}</p><span>Следующий этап LUEMI</span></div>;
@@ -69,6 +72,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const suspendBrowse=useRef<()=>void>(()=>{});
  const clickBlockUntil=useRef(0);
  const pages=useRef<HTMLDivElement>(null);
+ const topTabsSurface=useRef<HTMLDivElement>(null);
  const pageTrack=useRef<HTMLDivElement>(null);
  const underline=useRef<HTMLSpanElement>(null);
  const pagerSettleTimer=useRef<number|null>(null);
@@ -314,13 +318,17 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  useEffect(()=>()=>{inputOwnership.current.dispose();browseMotion.current.dispose();
   if(pagerSettleTimer.current!==null)window.clearTimeout(pagerSettleTimer.current);
  },[]);
- const down=(event:ReactPointerEvent<HTMLDivElement>)=>{
+ const down=(event:BrowseInput,kind:InputKind="pointer")=>{
   ensureBrowseMotion();
-  if(!event.isPrimary){inputOwnership.current.secondFinger();cancelSwipe();return;}
+  if(event.isPrimary===false){inputOwnership.current.secondFinger();cancelSwipe();return;}
   if(event.pointerType==="mouse"&&event.button!==0)return;
-  const target=event.target as HTMLElement;
+  const target=event.target instanceof Element?event.target:null;
+  if(!target)return;
   if(target.closest("[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
   const feedCard=target.closest<HTMLElement>(".feed-v2-card");
+  // The photo recognizer owns the entire carousel surface. A parent candidate
+  // there races with photo pointer capture on Android touch sequences.
+  if(target.closest(".feed-v2-photo .carousel-frame"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
   if(interactive&&!interactive.matches(".discovery-name-button,.feed-v2-expand,.discovery-top-tabs [role=tab]"))return;
   if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
@@ -330,16 +338,16 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   if(feedCard){const rect=feedCard.getBoundingClientRect();
    if(!target.closest(".feed-v2-details,.feed-v2-photo .carousel-frame")&&
      cardGestureZone(event.clientY,rect.top,rect.height)!=="browse")return;}
-  const serial=inputOwnership.current.begin("pointer",event.pointerId,"browse");
+  const serial=inputOwnership.current.begin(kind,event.pointerId,"browse");
   if(serial===null)return;
-  inputOwnership.current.begin("pointer",event.pointerId,"native");
-  gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,
+  inputOwnership.current.begin(kind,event.pointerId,"native");
+  gesture.current={id:event.pointerId,kind,x:event.clientX,y:event.clientY,
    started:performance.now(),tracking:false,index:tabIndex,
    width:pages.current?.clientWidth||window.innerWidth,serial,token:null,
    originTrack:0,originInk:0,lastX:event.clientX};
  };
- const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  const g=gesture.current;if(!g||g.id!==event.pointerId||g.native)return;
+ const move=(event:BrowseInput,kind:InputKind="pointer")=>{
+  const g=gesture.current;if(!g||g.kind!==kind||g.id!==event.pointerId||g.native)return;
   let x=event.clientX-g.x;const y=event.clientY-g.y;
   g.lastX=event.clientX;
   if(!g.tracking){
@@ -362,7 +370,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    g.x=event.clientX;g.started=performance.now();x=0;
    g.token=browseMotion.current.begin(g.index);
    if(g.token)browseMotion.current.claim(g.token);
-   try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older WebView */}
+   if(kind==="pointer")try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older WebView */}
   }
   if(!g.token||!inputOwnership.current.owns("browse",g.serial))return;
   if(event.cancelable)event.preventDefault();
@@ -372,8 +380,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   // Coalesced one RAF with generation guard; no React renders during move.
   browseMotion.current.schedulePaint(g.token,trackX,()=>paintBrowse(trackX,inkX));
  };
- const up=(event:ReactPointerEvent<HTMLDivElement>,cancel=false)=>{
-  const g=gesture.current;if(!g||g.id!==event.pointerId)return;
+ const up=(event:BrowseInput,cancel=false,kind:InputKind="pointer")=>{
+  const g=gesture.current;if(!g||g.kind!==kind||g.id!==event.pointerId)return;
   gesture.current=null;
   if(!g.tracking||!g.token){
    if(g.native)inputOwnership.current.finish("native",g.serial);
@@ -386,7 +394,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    return;
   }
   if(!inputOwnership.current.finish("browse",g.serial))return;
-  try{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}catch{/* implicit release */}
+  if(kind==="pointer")try{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}catch{/* implicit release */}
   const x=event.clientX-g.x,elapsed=Math.max(1,performance.now()-g.started);
   const velocity=Math.abs(x)/elapsed;
   const rawTarget=!cancel&&(Math.abs(x)>g.width*.18||velocity>.55)
@@ -411,6 +419,40 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    settleDrag(tabIndex);
   }
  };
+ // Android WebView can cancel Pointer Events as soon as its native pan recognizer
+ // takes over. A non-passive touchmove recognizes horizontal intent on the same
+ // surface and prevents only that gesture; vertical scrolling stays native.
+ useEffect(()=>{
+  const surfaces=[pages.current,topTabsSurface.current].filter((node):node is HTMLDivElement=>!!node);
+  const input=(touch:Touch,event:TouchEvent,el:HTMLElement):BrowseInput=>({
+   pointerId:touch.identifier,clientX:touch.clientX,clientY:touch.clientY,
+   target:event.target,currentTarget:el,cancelable:event.cancelable,
+   preventDefault:()=>event.preventDefault(),isPrimary:true,pointerType:"touch"
+  });
+  const cleanups=surfaces.map(el=>{
+   const start=(event:TouchEvent)=>{
+    if(event.touches.length!==1){cancelSwipe();return;}
+    down(input(event.changedTouches[0],event,el),"touch");
+   };
+   const track=(event:TouchEvent)=>{
+    if(event.touches.length!==1){cancelSwipe();return;}
+    move(input(event.touches[0],event,el),"touch");
+   };
+   const end=(event:TouchEvent)=>{
+    for(const touch of Array.from(event.changedTouches))up(input(touch,event,el),false,"touch");
+   };
+   const cancel=(event:TouchEvent)=>{
+    for(const touch of Array.from(event.changedTouches))up(input(touch,event,el),true,"touch");
+   };
+   el.addEventListener("touchstart",start,{passive:true});
+   el.addEventListener("touchmove",track,{passive:false});
+   el.addEventListener("touchend",end,{passive:true});
+   el.addEventListener("touchcancel",cancel,{passive:true});
+   return ()=>{el.removeEventListener("touchstart",start);el.removeEventListener("touchmove",track);
+    el.removeEventListener("touchend",end);el.removeEventListener("touchcancel",cancel);};
+  });
+  return ()=>cleanups.forEach(cleanup=>cleanup());
+ });
  suspendBrowse.current=()=>{
   cancelSwipe();
   const pending=browseSettle.current;
@@ -482,7 +524,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
     />
    <div className="discovery-main-panels">
      <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
-       <div className="discovery-top-tabs" role="tablist" aria-label="Разделы знакомств"
+       <div className="discovery-top-tabs" ref={topTabsSurface} role="tablist" aria-label="Разделы знакомств"
          onKeyDown={event=>{
           const i=topTabs.findIndex(value=>value[0]===discoveryTab);
           const next=event.key==="ArrowRight"?Math.min(2,i+1):
@@ -495,16 +537,16 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
           if(next===i){keyboardBrowseFocus.current=null;
            document.querySelectorAll<HTMLButtonElement>(".discovery-top-tabs [role=tab]")[i]?.focus({preventScroll:true});}
          }}
-         onPointerDown={down} onPointerMove={move} onPointerUp={e=>up(e)} onPointerCancel={e=>up(e,true)} onLostPointerCapture={e=>up(e,true)}>
+         onPointerDown={e=>{if(e.pointerType!=="touch")down(e);}} onPointerMove={e=>{if(e.pointerType!=="touch")move(e);}} onPointerUp={e=>{if(e.pointerType!=="touch")up(e);}} onPointerCancel={e=>{if(e.pointerType!=="touch")up(e,true);}} onLostPointerCapture={e=>{if(e.pointerType!=="touch")up(e,true);}}>
          {topTabs.map(([value,label],i)=><button type="button" role="tab" key={value}
            aria-selected={discoveryTab===value} tabIndex={discoveryTab===value?0:-1} onClick={()=>{if(performance.now()>=clickBlockUntil.current)requestBrowseTab(i);}}
            className={discoveryTab===value?"active":""}>{label}</button>)}
          <span className="discovery-tab-underline" ref={underline} aria-hidden="true"
            style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
        </div>
-       <div className="discovery-pages" ref={pages} onPointerDown={down}
-         onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}
-         onLostPointerCapture={cancelSwipe}
+       <div className="discovery-pages" ref={pages} onPointerDown={e=>{if(e.pointerType!=="touch")down(e);}}
+         onPointerMove={e=>{if(e.pointerType!=="touch")move(e);}} onPointerUp={e=>{if(e.pointerType!=="touch")up(e);}} onPointerCancel={e=>{if(e.pointerType!=="touch")up(e,true);}}
+         onLostPointerCapture={e=>{if(e.pointerType!=="touch")cancelSwipe();}}
          onClickCapture={event=>{if(performance.now()<clickBlockUntil.current){event.preventDefault();event.stopPropagation();}}}>
          <div className="discovery-page-track" ref={pageTrack}
            onTransitionEnd={event=>{

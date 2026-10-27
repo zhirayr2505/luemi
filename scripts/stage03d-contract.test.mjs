@@ -60,7 +60,11 @@ assert.ok(forYou.includes("list.slice(0,6)")&&forYou.includes("memo(function For
 assert.ok(globalHeader.includes("lh-island")&&globalHeader.includes("wordmark_original_raster_alpha_W06.webp"),"original LUEMI logo in full profile");
 assert.ok(headerCss.includes(".lh-center")&&headerCss.includes("left:50%")&&demoProfile.includes('data-morph-state={state}')&&!globalHeader.includes("setProfileMorph"),"profile logo independently centered");
 assert.ok(discoveryStyles.includes(".discovery-page-track.is-finger-tracking")&&discoveryStyles.includes("font-weight:700"),"steady active-tab typography");
-assert.ok(active.includes("onPointerCancel={cancelSwipe}")&&active.includes("requestAnimationFrame")&&!active.includes("setDragX"),"gesture cancellation and rAF updates");
+assert.ok(active.includes('el.addEventListener("touchcancel",cancel')&&
+ active.includes('el.addEventListener("touchmove",track,{passive:false})')&&
+ active.includes('onPointerCancel={e=>{if(e.pointerType!=="touch")up(e,true);}}')&&
+ active.includes("requestAnimationFrame")&&!active.includes("setDragX"),
+ "touch and pointer cancellation retain one rAF-controlled pager");
 assert.ok(feedCard.includes("discovery-deck-current")&&active.includes('event.animationName==="luemi-deck-leave"')||active.includes("deck-leaving"),"Feed animation preserved");
 console.log("✓ Stage 03D.1 animation, scroll, logo and Feed regression contracts");
 

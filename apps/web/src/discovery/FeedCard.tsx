@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from "react";
+import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,X,Undo2} from "lucide-react";
 import {goals} from "../registration/model";
@@ -52,7 +52,10 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const measureLive=useRef<()=>void>(()=>{});
  const paint=(value:number)=>{
   const p=progress.current=clamp(value,0,1),m=metrics.current;
-  if(details.current)details.current.style.height=(m.closed+(m.open-m.closed)*p)+"px";
+  // Keep the card and its photograph at fixed geometry. Only the information
+  // viewport reveals more of its bottom-aligned content during the pull.
+  if(details.current)details.current.style.clipPath=
+   `inset(${(m.open-m.closed)*(1-p)}px 0 0 0)`;
   if(about.current)about.current.style.maxHeight=(m.aboutClosed+(m.about-m.aboutClosed)*p)+"px";
   if(interests.current){
    interests.current.style.maxHeight=(m.interests*p)+"px";
@@ -117,10 +120,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   metrics.current={closed,open:Math.max(closed,Math.min(height*.72,430,height-actions)),
    aboutClosed,about:Math.max(aboutClosed,about.current?.firstElementChild?.scrollHeight??aboutClosed),
    interests:Math.min(120,(interestBody.current?.scrollHeight??0)+10)};
+  details.current?.style.setProperty("height",metrics.current.open+"px");
   paint(progress.current);
  };
  measureLive.current=measure;
- useEffect(()=>{
+ useLayoutEffect(()=>{
   const element=card.current;
   if(!element)return;
   const resize=new ResizeObserver(()=>measureLive.current());
