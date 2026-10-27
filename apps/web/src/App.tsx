@@ -52,7 +52,7 @@ declare global {
   }
 }
 
-type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "error";
+type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "needs-invite" | "error";
 type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
@@ -216,7 +216,7 @@ export function App() {
       },
       onCritical:result=>{
         if(!isCurrent())return;
-        if(result.kind==="error"){setAuth("error");return;}
+        if(result.kind==="error"){setAuth(result.reason==="invitation_required"?"needs-invite":"error");return;}
         if(!initData){setAuth("outside-telegram");return;}
         const user=result.value;
         if(!user){setAuth("needs-bot");return;}
@@ -743,6 +743,7 @@ export function App() {
       <h1>Твоя история начинается здесь</h1>
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<p>Сервер авторизации пока недоступен. Повтори вход позже.</p>}
+      {auth==="needs-invite"&&<p role="status">Сейчас LUEMI открыт только двум приглашённым участникам. Отправь боту <strong>/myid</strong>, чтобы получить свой Telegram ID для приглашения.</p>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
       {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
         <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
