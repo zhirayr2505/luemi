@@ -167,19 +167,40 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
  app.get("/api/v3/profile/status",{preHandler:guards.read},async(req,reply)=>{
   reply.header("Cache-Control","private, no-store").header("Vary","Cookie");
   return transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
-   const p=await db.query<{publication_status:string;published_revision:string}>(
-    "SELECT publication_status,published_revision::text FROM luemi_private.public_profiles "+
+   const p=await db.query<{publication_status:string;published_revision:string;
+    display_name:string;city_label:string;country_code:string;about:string;goal:string;
+    birth_date:string;interests:string[]}>(
+    "SELECT publication_status,published_revision::text,display_name,city_label,country_code,"+
+    "about,goal,birth_date::text,interests FROM luemi_private.public_profiles "+
     "WHERE owner_id=$1 AND environment=$2",[id,cfg.namespace]);
    const media=await db.query<{state:string;n:string}>(
     "SELECT state,count(*)::text AS n FROM luemi_private.media_assets "+
     "WHERE owner_id=$1 AND environment=$2 AND state<>'revoked' GROUP BY state",
     [id,cfg.namespace]);
    const counts=Object.fromEntries(media.rows.map(r=>[r.state,Number(r.n)]));
+   const published=p.rows[0]?.publication_status==="published"?p.rows[0]:null;
+   const pictures=published?await db.query<{id:string}>(
+    "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 "+
+    "AND state='approved' AND publication_status='published' ORDER BY position,id LIMIT 6",
+    [id,cfg.namespace]):null;
+   const visible=pictures?.rows??[];
+   const ownProfile=published&&visible.length>=3&&visible.length<=6?{
+     name:published.display_name,
+     age:dateAge(published.birth_date),
+     city:published.city_label,
+     countryCode:published.country_code,
+     about:published.about??"",
+     goal:published.goal,
+     interests:published.interests,
+     photos:visible.map(photo=>"/api/v3/discovery/photo/"+photo.id)
+   }:null;
    return{state:p.rows[0]?.publication_status??"draft",
     publishedRevision:p.rows[0]?Number(p.rows[0].published_revision):0,
     approved:counts.approved??0,pending:counts.pending_review??0,
     other:Object.entries(counts).filter(([key])=>key!=="approved"&&key!=="pending_review")
-     .reduce((sum,[,value])=>sum+value,0)};
+     .reduce((sum,[,value])=>sum+value,0),
+    ...(ownProfile?{profile:ownProfile}:{})};
+
   });
  });
  app.post<{Body:unknown}>("/api/v3/profile/publish",{preHandler:guards.mutation},async(req,reply)=>

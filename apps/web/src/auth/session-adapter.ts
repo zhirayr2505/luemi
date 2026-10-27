@@ -12,6 +12,13 @@ export async function authenticateBootstrap(initData:string,signal:AbortSignal):
   body:JSON.stringify({initData}),signal,cache:"no-store"
  });
  if(response.status===503&&!enabled)return null;
+ if(enabled&&response.status===403){
+  let body:unknown;
+  try{body=await response.json();}catch{/* Non-JSON 403 is not an invite rejection. */}
+  if(body&&typeof body==="object"&&
+    (body as {error?:unknown}).error==="invitation_required")
+   throw new Error("invitation_required");
+ }
  if(!response.ok)throw new Error(enabled?"Session bootstrap rejected":"Telegram authorization failed");
  if(!enabled)return (await response.json()) as BootstrapResponse;
  const result:unknown=await response.json();

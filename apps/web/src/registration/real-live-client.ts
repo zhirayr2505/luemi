@@ -37,6 +37,10 @@ export interface RealPublishedProfile{
 export interface OwnerPublicationStatus{
  state:"draft"|"published"|"hidden";publishedRevision:number;
  approved:number;pending:number;other:number;
+ profile?:{
+  name:string;age:number;city:string;countryCode:string;about:string;
+  goal:string;interests:string[];photos:string[];
+ };
 }
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const photoPath=/^\/api\/v3\/discovery\/photo\/[0-9a-f-]{36}$/i;
@@ -59,6 +63,17 @@ export async function ownerPublicationStatus():Promise<OwnerPublicationStatus>{
   !Number.isSafeInteger(data.publishedRevision)||!Number.isSafeInteger(data.approved)||
   !Number.isSafeInteger(data.pending)||!Number.isSafeInteger(data.other))
   throw new Error("invalid_publication_status");
+ if(data.profile!==undefined){
+  const p=data.profile;
+  if(data.state!=="published"||!object(p)||typeof p.name!=="string"||
+   !Number.isInteger(p.age)||Number(p.age)<18||typeof p.city!=="string"||
+   typeof p.countryCode!=="string"||typeof p.about!=="string"||
+   typeof p.goal!=="string"||!Array.isArray(p.interests)||
+   !p.interests.every((v:unknown)=>typeof v==="string")||
+   !Array.isArray(p.photos)||p.photos.length<3||p.photos.length>6||
+   !p.photos.every((url:unknown)=>typeof url==="string"&&photoPath.test(url)))
+   throw new Error("invalid_owner_profile");
+ }
  return data as unknown as OwnerPublicationStatus;
 }
 export async function publishMyProfile(revision:number):Promise<void>{

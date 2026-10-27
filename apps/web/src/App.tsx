@@ -21,6 +21,7 @@ import {recoverServerFields} from "./registration/remote-recovery";
 import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
+import "./registration/real-home.css";
 
 declare global {
   interface Window {
@@ -51,9 +52,11 @@ declare global {
   }
 }
 
-type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "error";
+type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "needs-invite" | "error";
 type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
+// Closed beta may never enter the synthetic Discovery deck.
+const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
 
 /** Decode the exact brand raster before showing a screen that depends on it. */
 function prepareBrandImage(signal: AbortSignal): Promise<void> {
@@ -95,14 +98,14 @@ export function App() {
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [demoOpen,setDemoOpen] = useState(false);
   const [realHome,setRealHome] = useState(false);
-  const [realHomeTab,setRealHomeTab] = useState<"feed"|"chats">("feed");
+  const [realHomeTab,setRealHomeTab] = useState<"feed"|"chats"|"profile">("feed");
   const [publishedEditor,setPublishedEditor]=useState<{name:string;about:string;goal:string}|null>(null);
   const submitting=useRef(false);
   const [scope] = useState(()=>localScope());
   // Prewarm the optional Discovery chunk after the welcome screen appears.
   // Never let large profile/viewer modules block Telegram entry and registration.
   useEffect(()=>{
-    if(!introElapsed)return;
+    if(!introElapsed||realOnly)return;
     const timer=window.setTimeout(()=>{void import("./discovery/DiscoveryApp");},800);
     return ()=>window.clearTimeout(timer);
   },[introElapsed]);
@@ -133,6 +136,8 @@ export function App() {
   const [mediaSaving,setMediaSaving]=useState(false);
   const [mediaStatus,setMediaStatus]=useState("");
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
+  const [publicationCheck,setPublicationCheck]=useState<"idle"|"checking"|"ready"|"error">("idle");
+  const [publicationRetry,setPublicationRetry]=useState(0);
   const [publishBusy,setPublishBusy]=useState(false);
   const [publishFeedback,setPublishFeedback]=useState("");
   const [accountDeletionRequested,setAccountDeletionRequested]=useState(false);
@@ -213,7 +218,7 @@ export function App() {
       },
       onCritical:result=>{
         if(!isCurrent())return;
-        if(result.kind==="error"){setAuth("error");return;}
+        if(result.kind==="error"){setAuth(result.reason==="invitation_required"?"needs-invite":"error");return;}
         if(!initData){setAuth("outside-telegram");return;}
         const user=result.value;
         if(!user){setAuth("needs-bot");return;}
@@ -230,16 +235,21 @@ export function App() {
   useEffect(()=>{
     if(auth!=="authorized"||!realFeedPilot.enabled)return;
     let disposed=false;
+    setPublicationCheck("checking");
     void ownerPublicationStatus().then(status=>{
       if(disposed)return;
       setPublishStatus(status);
+      setPublicationCheck("ready");
       if(status.state==="published")setRealHome(true);
       else setPhase("form");
     }).catch(()=>{
-      if(!disposed)setPublishFeedback("Не удалось проверить анкету. Повтори вход при восстановлении сети.");
+      if(!disposed){
+        setPublicationCheck("error");
+        setPublishFeedback("Не удалось проверить анкету на сервере. Ничего не потеряно — повтори проверку.");
+      }
     });
     return()=>{disposed=true;};
-  },[auth]);
+  },[auth,publicationRetry]);
   // LU-22: one frame-coalesced source of truth. The shell tracks the *visible*
   // viewport while the footer remains in the flex layout above the keyboard.
   // No modal/route motion code is changed by this stage.
@@ -370,7 +380,7 @@ export function App() {
     contentRef.current?.scrollTo({top:0,behavior:"auto"});
   };
   const next=()=>{
-    const nextError=validateStep(draft,step,photos.length);
+    const nextError=validateStep(draft,step,photos.length,new Date(),realFeedPilot.enabled?"live":"demo");
     if(nextError){setError(nextError);return;}
     if(step<8)changeStep(step+1);
   };
@@ -475,7 +485,8 @@ export function App() {
     setSaveRetry(value=>value+1);
   };
   const beginRegistration=()=>{
-    if(welcomeExiting)return;
+    if(welcomeExiting||realOnly&&!realFeedPilot.enabled||
+      realFeedPilot.enabled&&publicationCheck!=="ready")return;
     if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
       setPhase("form");
       return;
@@ -489,13 +500,13 @@ export function App() {
   };
   const changeTheme=useCallback(()=>setTheme(value=>value==="light"?"dark":"light"),[]);
   const themeName=theme==="light"?"Тёмная":"Светлая";
-  const beginDemo=()=>{setDemoOpen(true);setError("");};
+  const beginDemo=()=>{if(realOnly){setError("Настоящая регистрация пока не подключена. Демонстрационные анкеты недоступны.");return;}setDemoOpen(true);setError("");};
   const exitDemo=useCallback(()=>{setDemoOpen(false);setPhase("form");setStep(8);},[]);
   const readyPhotos=useMemo(()=>readyRegistrationPhotos(photos),[photos]);
   const persistServerDraft=async()=>{
     if(!remoteDraftPilot.enabled||!serverConsent||serverSaving||auth!=="authorized")return;
     for(let n=1;n<=6;n++){
-      const problem=validateStep(draft,n,photos.length);
+      const problem=validateStep(draft,n,photos.length,new Date(),realFeedPilot.enabled?"live":"demo");
       if(problem){setServerStatus("Проверь шаг "+n+": "+problem);return;}
     }
     setServerSaving(true);setServerStatus("");
@@ -535,7 +546,7 @@ export function App() {
   const confirmRealRegistration=async()=>{
     if(!realFeedPilot.enabled||submitting.current)return;
     for(let n=1;n<=7;n++){
-      const problem=validateStep(draft,n,photos.length);
+      const problem=validateStep(draft,n,photos.length,new Date(),realFeedPilot.enabled?"live":"demo");
       if(problem){setError(`Проверь шаг ${n}: ${problem}`);return;}
     }
     if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready")){
@@ -686,37 +697,56 @@ export function App() {
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
   </button>;
   if(realHome&&auth==="authorized")return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
-    <section className="onboarding-screen" style={{padding:"24px 14px",overflowY:"auto"}}>
-      <div className="onboard-brand-row"><img src={logoSrc} alt="LUEMI" className="onboard-logo"/>{themeButton}</div>
-      <h1>Твоя анкета опубликована</h1>
-      {publishStatus&&<p role="status">Статус: {publishStatus.state==="published"?"опубликована":"скрыта"}</p>}
-      <p role="status">{import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?"Переписки доступны только после подтверждённого взаимного мэтча.":"В ленте только проверенные анкеты. Симпатии и чаты пока недоступны."}</p>
-      {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&<nav className="registration-static-actions" aria-label="Разделы LUEMI">
-        <button type="button" className="registration-static-edit" aria-current={realHomeTab==="feed"?"page":undefined} onClick={()=>setRealHomeTab("feed")}>Лента</button>
-        <button type="button" className="registration-static-edit" aria-current={realHomeTab==="chats"?"page":undefined} onClick={()=>setRealHomeTab("chats")}>Чаты</button>
-      </nav>}
-      <div className="registration-static-actions">
-        <button type="button" className="registration-static-edit" disabled={publishBusy} onClick={()=>{void openPublishedEditor();}}>Редактировать анкету</button>
-        <button type="button" className="registration-static-edit" disabled={publishBusy} onClick={()=>{void hideProfile();}}>Скрыть анкету</button>
+    <section className="luemi-real-home" aria-label="LUEMI — настоящие анкеты">
+      <header className="luemi-real-home-top">
+        <img src={logoSrc} alt="LUEMI" className="onboard-logo"/>
+        {themeButton}
+      </header>
+      <div className="luemi-real-home-main">
+        {realHomeTab==="profile"?<section className="luemi-real-account" aria-label="Моя анкета">
+          <h1>Моя анкета</h1>
+          {publishStatus?.profile&&<article className="luemi-real-account-card">
+            <div className="luemi-real-account-photos">
+              {publishStatus.profile.photos.map((photo,i)=>
+                <img key={photo} src={photo} alt={"Моё фото "+(i+1)} loading={i?"lazy":"eager"} decoding="async"/>)}
+            </div>
+            <h2>{publishStatus.profile.name}, {publishStatus.profile.age}</h2>
+            <p>{publishStatus.profile.city}</p>
+            <p>{publishStatus.profile.about}</p>
+            <div className="luemi-real-account-interests">{publishStatus.profile.interests.map(interest=>
+              <span key={interest}>{interest}</span>)}</div>
+          </article>}
+          <p role="status">{publishStatus?.state==="published"?"Анкета опубликована и доступна другим людям.":"Проверяем статус анкеты…"}</p>
+          <div className="registration-static-actions">
+            <button type="button" className="registration-static-edit" disabled={publishBusy} onClick={()=>{void openPublishedEditor();}}>Редактировать анкету</button>
+            <button type="button" className="registration-static-edit" disabled={publishBusy} onClick={()=>{void hideProfile();}}>Скрыть анкету</button>
+          </div>
+          {publishedEditor&&<section className="registration-preview-review" aria-label="Редактирование анкеты">
+            <label>Имя<input className="glass-control" value={publishedEditor.name} maxLength={48}
+              onChange={e=>setPublishedEditor(p=>p?{...p,name:cleanName(e.target.value)}:p)}/></label>
+            <label>Цель знакомства<select className="glass-control" value={publishedEditor.goal}
+              onChange={e=>setPublishedEditor(p=>p?{...p,goal:e.target.value}:p)}>
+              {goals.map(g=><option key={g.id} value={g.id}>{g.label}</option>)}
+            </select></label>
+            <label>О себе<textarea className="glass-control" value={publishedEditor.about} maxLength={750}
+              onChange={e=>setPublishedEditor(p=>p?{...p,about:e.target.value}:p)}/></label>
+            <button type="button" disabled={publishBusy} onClick={()=>{void savePublishedEditor();}}>Сохранить изменения</button>
+            <button type="button" disabled={publishBusy} onClick={()=>setPublishedEditor(null)}>Отмена</button>
+          </section>}
+          <button type="button" disabled={publishBusy} onClick={()=>{void withdrawPersonalConsent();}}>Отозвать согласие и скрыть анкету</button>
+          <button type="button" disabled={publishBusy} onClick={()=>{void eraseMyAccount();}}>Запросить удаление аккаунта и фото</button>
+          {publishFeedback&&<p role="status">{publishFeedback}</p>}
+        </section>:<Suspense fallback={<p role="status">Загружаем…</p>}>
+          {realHomeTab==="chats"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?
+            <RealChats/>:<RealLiveFeed onMatched={()=>setRealHomeTab("chats")}/>}
+        </Suspense>}
       </div>
-      {publishedEditor&&<section className="registration-preview-review" aria-label="Редактирование анкеты">
-        <label>Имя<input className="glass-control" value={publishedEditor.name} maxLength={48}
-          onChange={e=>setPublishedEditor(p=>p?{...p,name:cleanName(e.target.value)}:p)}/></label>
-        <label>Цель знакомства<select className="glass-control" value={publishedEditor.goal}
-          onChange={e=>setPublishedEditor(p=>p?{...p,goal:e.target.value}:p)}>
-          {goals.map(g=><option key={g.id} value={g.id}>{g.label}</option>)}
-        </select></label>
-        <label>О себе<textarea className="glass-control" value={publishedEditor.about} maxLength={750}
-          onChange={e=>setPublishedEditor(p=>p?{...p,about:e.target.value}:p)}/></label>
-        <button type="button" disabled={publishBusy} onClick={()=>{void savePublishedEditor();}}>Сохранить изменения</button>
-        <button type="button" disabled={publishBusy} onClick={()=>setPublishedEditor(null)}>Отмена</button>
-      </section>}
-      <button type="button" disabled={publishBusy} onClick={()=>{void withdrawPersonalConsent();}}>Отозвать согласие и скрыть анкету</button>
-      <button type="button" disabled={publishBusy} onClick={()=>{void eraseMyAccount();}}>Запросить удаление аккаунта и фото</button>
-      {publishFeedback&&<p role="status">{publishFeedback}</p>}
-      <Suspense fallback={<p>Загрузка…</p>}>
-        {realHomeTab==="chats"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?<RealChats/>:<RealLiveFeed onClose={()=>setRealHome(false)} onMatched={()=>setRealHomeTab("chats")}/>}
-      </Suspense>
+      <nav className="luemi-real-home-nav" aria-label="Разделы LUEMI">
+        <button type="button" aria-current={realHomeTab==="feed"?"page":undefined} onClick={()=>setRealHomeTab("feed")}>Знакомства</button>
+        {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&
+          <button type="button" aria-current={realHomeTab==="chats"?"page":undefined} onClick={()=>setRealHomeTab("chats")}>Чаты</button>}
+        <button type="button" aria-current={realHomeTab==="profile"?"page":undefined} onClick={()=>setRealHomeTab("profile")}>Профиль</button>
+      </nav>
     </section>
   </main>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
@@ -724,19 +754,28 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
-    {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
+    {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
       <h1>Твоя история начинается здесь</h1>
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
-      {auth==="needs-bot"&&<p>Тестовый сервер готов, но авторизация пока отключена.</p>}
+      {auth==="needs-bot"&&<p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>}
+      {auth==="needs-invite"&&<p role="status">Сейчас LUEMI открыт только двум приглашённым участникам. Отправь боту <strong>/myid</strong>, чтобы получить свой Telegram ID для приглашения.</p>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
       {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
-        <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
-          Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
-        </button>
+        {realFeedPilot.enabled&&publicationCheck==="checking"&&
+          <p role="status">Проверяем твою анкету на сервере…</p>}
+        {realFeedPilot.enabled&&publicationCheck==="error"&&
+          <><p role="alert">{publishFeedback}</p>
+          <button type="button" className="primary-action" onClick={()=>setPublicationRetry(v=>v+1)}>Повторить проверку</button></>}
+        {realOnly&&!realFeedPilot.enabled&&
+          <p role="status">Настоящая регистрация пока не подключена. Демонстрационные анкеты выключены.</p>}
+        {(!realFeedPilot.enabled&&!realOnly||publicationCheck==="ready")&&
+          <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
+            Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
+          </button>}
       </div>}
     </section>:<section className={"onboarding-screen"+(step===8?" registration-static-screen":"")}>
       <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
@@ -798,12 +837,13 @@ export function App() {
         {storageState==="saved"&&<p className="footer-hint" role="status">Черновик сохранён на устройстве</p>}
         {step===8?<div className="registration-static-actions">
           <button type="button" className="registration-static-edit" onClick={()=>changeStep(7)}>Редактировать</button>
-          <button type="button" className="registration-static-confirm" disabled={publishBusy}
-            onClick={realFeedPilot.enabled?()=>{void confirmRealRegistration();}:beginDemo}>
-            {publishBusy?"Сохраняем…":"Всё верно"}</button>
+          <button type="button" className="registration-static-confirm"
+            onClick={realFeedPilot.enabled?()=>{void confirmRealRegistration();}:beginDemo}
+            disabled={publishBusy||(realOnly&&!realFeedPilot.enabled)}>
+            {publishBusy?"Сохраняем…":realOnly&&!realFeedPilot.enabled?"Сервис недоступен":"Всё верно"}</button>
         </div>:<div className="footer-controls">
           <GlassArrow onClick={back}/>
-          <span className="footer-hint">Технический предпросмотр</span>
+          <span className="footer-hint">{realFeedPilot.enabled||realOnly?"Регистрация LUEMI":"Предпросмотр интерфейса"}</span>
           <GlassArrow forward onClick={next}/>
         </div>}
       </div>

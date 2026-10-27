@@ -1,0 +1,39 @@
+/* A real-data-only account shell. No synthetic profiles are imported here. */
+.luemi-real-home{width:100%;height:100%;min-height:0;display:flex;flex-direction:column;
+ color:#46364d;background:linear-gradient(180deg,#fffcff,#f7f0fa);overflow:hidden}
+.luemi-real-home-top{display:flex;align-items:center;justify-content:space-between;
+ padding:max(12px,env(safe-area-inset-top)) 17px 8px;flex:none;
+ background:rgba(255,251,255,.97);border-bottom:1px solid rgba(136,101,149,.09)}
+.luemi-real-home-top .onboard-logo{width:122px;height:auto;max-height:38px;object-fit:contain}
+.luemi-real-home-main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+ -webkit-overflow-scrolling:touch;padding:6px 10px 12px}
+.luemi-real-home-main>.luemi-real-feed{min-height:100%;height:auto}
+.luemi-real-home-main>.luemi-chats,.luemi-real-home-main .luemi-chats{
+ height:100%;min-height:0;width:100%;max-width:none;box-shadow:none}
+.luemi-real-home-nav{display:flex;align-items:center;justify-content:space-around;gap:5px;flex:none;
+ padding:7px 10px max(10px,env(safe-area-inset-bottom));background:#fffbff;
+ border-top:1px solid rgba(136,101,149,.14)}
+.luemi-real-home-nav button{flex:1;min-width:0;min-height:44px;border:0;border-radius:17px;
+ background:transparent;color:#8c7796;font-family:inherit;font-size:13px;font-weight:600;line-height:1.2;cursor:pointer;
+ -webkit-tap-highlight-color:transparent;transition:background-color .18s,color .18s}
+.luemi-real-home-nav button[aria-current="page"]{color:#764f94;background:#eee0f5}
+.luemi-real-account{padding:22px 14px 32px;display:flex;flex-direction:column;gap:15px}
+.luemi-real-account h1{font-size:26px;margin:0}
+.luemi-real-account p{color:#806f89;margin:0}
+.luemi-real-account>button{border:0;border-radius:15px;padding:12px 14px;
+ background:#eee6f2;color:#715982;text-align:left;font:inherit}
+@media(prefers-reduced-motion:reduce){
+ .luemi-real-home-nav button{transition:none}
+}
+
+.luemi-real-account-card{display:flex;flex-direction:column;gap:9px;padding:14px;border-radius:23px;
+ background:rgba(255,255,255,.9);border:1px solid rgba(151,104,172,.15)}
+.luemi-real-account-card h2{font-size:24px;font-weight:700;margin:3px 0 0}
+.luemi-real-account-photos{display:flex;gap:7px;overflow-x:auto;scroll-snap-type:x mandatory;
+ scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.luemi-real-account-photos::-webkit-scrollbar{display:none}
+.luemi-real-account-photos img{width:clamp(142px,48vw,220px);aspect-ratio:3/4;object-fit:cover;
+ flex:none;border-radius:17px;background:#eee5f1;scroll-snap-align:start}
+.luemi-real-account-interests{display:flex;flex-wrap:wrap;gap:6px}
+.luemi-real-account-interests span{padding:5px 10px;border-radius:100px;
+ background:#f0e3f5;color:#684d77;font-size:12px}

@@ -6,6 +6,7 @@ import {GlassField} from "../ui/Glass";
 import {Flag} from "../ui/Flag";
 import {createGeoOperationGate,type GeoOperation} from "./geo-operation";
 import {geoCsrf} from "../auth/session-adapter";
+import {requestDeviceCoordinates,type TelegramLocationManager} from "./geo-device";
 import type {RegistrationDraft,SearchScope} from "./model";
 export interface Place {id:string;city:string;country:string;countryCode:string;region?:string}
 interface SearchResult {results?:unknown;coverage?:"demo"|"world"}
@@ -63,17 +64,12 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
     const v2=import.meta.env.VITE_LUEMI_AUTH_V2==="1";
     const csrf=geoCsrf();
     let response:Response;
-    if(v2&&!csrf){
-      // No session proof; never attempt a chargeable upstream route.
-      response=await fetch("/api/geo/search?q="+encodeURIComponent(query.trim()),
-        {signal,credentials:"same-origin",cache:"no-store"});
-    }else{
-      response=await fetch(searchUrl,{signal,credentials:"same-origin",cache:"no-store",
-        ...(v2?{headers:{"X-Luemi-CSRF":csrf!}}:{})});
-    }
-    // Public legacy search is intentionally fixture-only. One bounded recovery
-    // after a v2 failure, never a retry to the paid provider.
-    if(!response.ok&&import.meta.env.VITE_LUEMI_AUTH_V2==="1")
+    if(v2&&!csrf)throw new Error("session_required");
+    response=await fetch(searchUrl,{signal,credentials:"same-origin",cache:"no-store",
+      ...(v2?{headers:{"X-Luemi-CSRF":csrf!}}:{})});
+    // In real-user mode NEVER silently replace a failed worldwide search with
+    // the synthetic/demo city fixtures. Tell the user and allow manual retry.
+    if(!response.ok&&v2&&import.meta.env.VITE_LUEMI_REAL_DISCOVERY_UI!=="1")
       response=await fetch("/api/geo/search?q="+encodeURIComponent(query.trim()),
         {signal,credentials:"same-origin",cache:"no-store"});
     if(!response.ok)throw new Error("Поиск сейчас недоступен");
@@ -104,58 +100,68 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
  const syntheticQa=import.meta.env.DEV&&window.location.pathname==="/geo-qa.html";
  const detect=()=>{
   cancelPending();
-  if(!syntheticQa&&(import.meta.env.VITE_LUEMI_AUTH_V2!=="1"||
-     import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"||!geoCsrf())){
-    setManual(true);setActivity("error");
-    setError("Автоматическое определение пока недоступно. Выбери город вручную.");
-    return; // Never transmit precise GPS coordinates to an unapproved endpoint.
+  if(!syntheticQa&&import.meta.env.VITE_LUEMI_REAL_ONLY==="1"&&
+     import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"){
+   setManual(true);setActivity("error");
+   setError("Определение города пока не подключено. Выбери город вручную.");
+   return; // Don't request precise coordinates without a working approved reverse service.
   }
-  const token=gate.current.begin();
-  setManual(false);setEditing(false);setResults([]);setError("");
-  if(!navigator.geolocation){
-   setManual(true);setActivity("error");setError("Геолокация недоступна. Выбери город вручную.");return;
+  if(!syntheticQa&&(import.meta.env.VITE_LUEMI_AUTH_V2!=="1"||!geoCsrf())){
+   setManual(true);setActivity("error");
+   setError("Войди в LUEMI через Telegram, чтобы определить город.");
+   return;
   }
-  setActivity("locating");
+  const token=gate.current.begin(),signal=gate.current.attach(token);
+  setManual(false);setEditing(false);setResults([]);setError("");setActivity("locating");
   const fail=(message:string)=>{
    if(!gate.current.isCurrent(token))return;
    clearGpsDeadline();setManual(true);setActivity("error");setError(message);
-   gate.current.cancel(token); // also abort a pending reverse fetch
+   gate.current.cancel(token);
   };
-  // Independent deadline protects against browser geolocation callbacks that never fire.
+  // Telegram's native location API is preferred on Android WebView. Native init
+  // may never call back; the same deadline protects both native and GPS paths.
   gpsDeadline.current=window.setTimeout(()=>fail("Не удалось определить местоположение. Выбери город вручную."),11000);
-  try{
-   navigator.geolocation.getCurrentPosition(async pos=>{
+  const native=(window.Telegram?.WebApp as {LocationManager?:TelegramLocationManager}|undefined)?.LocationManager;
+  void requestDeviceCoordinates({native,browser:navigator.geolocation},signal).then(async coords=>{
+   if(!gate.current.isCurrent(token))return;
+   clearGpsDeadline();setActivity("resolving");
+   const deadline=window.setTimeout(()=>fail("Автоматическое определение города сейчас недоступно. Выбери город вручную."),6500);
+   try{
+    // Coordinates are used only for the one requested reverse lookup; LUEMI
+    // does not put exact GPS coordinates into the registration draft.
+    const response=await fetch(syntheticQa?"/api/geo/reverse":"/api/v2/geo/reverse",{
+     method:"POST",credentials:"same-origin",cache:"no-store",
+     headers:syntheticQa?{"Content-Type":"application/json"}:
+      {"Content-Type":"application/json","X-Luemi-CSRF":geoCsrf()??""},
+     body:JSON.stringify(coords),signal
+    });
+    if(!response.ok)throw new Error(response.status===429?
+     "Лимит геолокации исчерпан. Выбери город вручную.":
+     "Сервис определения города недоступен. Выбери город вручную.");
+    const json=await response.json() as {result?:unknown};
     if(!gate.current.isCurrent(token))return;
-    clearGpsDeadline();setActivity("resolving");
-    const signal=gate.current.attach(token);
-    const deadline=window.setTimeout(()=>{
-     fail("Автоматическое определение сейчас недоступно. Выбери город вручную.");
-    },6500);
-    try {
-     const response=await fetch(syntheticQa?"/api/geo/reverse":"/api/v2/geo/reverse",{
-       method:"POST",credentials:"same-origin",cache:"no-store",
-       headers:syntheticQa?{"Content-Type":"application/json"}:
-        {"Content-Type":"application/json","X-Luemi-CSRF":geoCsrf()??""},
-       body:JSON.stringify({lat:pos.coords.latitude,lon:pos.coords.longitude}),signal});
-     if(!response.ok)throw new Error("Автоматическое определение сейчас недоступно. Выбери город вручную.");
-     const result=await response.json() as {result?:unknown};
-     if(!gate.current.isCurrent(token))return;
-     const place=asPlace(result?.result);
-     if(!place)throw new Error("Не удалось определить город.");
-     choose(place,token);
-    }catch(e){
-     if(gate.current.isCurrent(token))
-      fail(e instanceof Error?e.message:"Не удалось определить местоположение.");
-    }finally{window.clearTimeout(deadline);}
-   },()=>fail("Доступ к геолокации не предоставлен. Выбери город вручную."),
-   {enableHighAccuracy:false,timeout:9000,maximumAge:120000});
-  }catch {fail("Геолокация недоступна. Выбери город вручную.");}
+    const place=asPlace(json?.result);
+    if(!place)throw new Error("Не удалось определить город. Выбери его вручную.");
+    choose(place,token);
+   }catch(e){
+    if(gate.current.isCurrent(token))
+     fail(e instanceof Error?e.message:"Не удалось определить город.");
+   }finally{window.clearTimeout(deadline);}
+  }).catch(e=>{
+   if(!gate.current.isCurrent(token))return;
+   const code=e instanceof Error?e.message:"location_unavailable";
+   if(code==="location_cancelled")return;
+   fail(code==="location_denied"?"Доступ к геолокации не предоставлен. Разреши его в Telegram или выбери город вручную.":
+    "Не удалось получить координаты. Проверь разрешение геолокации или выбери город вручную.");
+  });
  };
  const switchMode=()=>{
   cancelPending();setActivity("cancelled");setError("");setResults([]);setDemo(false);setEditing(false);
   setManual(value=>!value);
   setQuery(selectedLabel);
  };
+ const nativeSettings=(window.Telegram?.WebApp as {LocationManager?:TelegramLocationManager}|undefined)?.LocationManager;
+ const canOpenGeoSettings=typeof nativeSettings?.openSettings==="function";
  const loading=activity==="searching"||activity==="locating"||activity==="resolving";
  const selectedScope=scopeOptions.find(x=>x[0]===data.searchScope)??scopeOptions[0];
  return <div className="geo-stack">
@@ -182,6 +188,11 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
    {data.placeId&&<div className="geo-selected"><Flag code={data.countryCode}/><MapPin size={15}/><strong>{data.city}</strong><span>{data.country}</span></div>}
    {manual&&editing&&query.trim().length>1&&!loading&&!results.length&&!error&&<p className="hint">Выбери реальный город из подсказок. Свободный текст не сохраняется.</p>}
    {error&&<p className="field-warning" role="alert">{error}</p>}
+   {error.startsWith("Доступ к геолокации")&&canOpenGeoSettings&&
+    <button type="button" className="geo-mode-toggle" onClick={()=>{
+      try{nativeSettings?.openSettings?.();}
+      catch{setError("Открой настройки местоположения Telegram вручную.");}
+    }}>Открыть настройки геолокации Telegram</button>}
    {demo&&<p className="hint">Тестовый справочник ограничен. Полный мировой поиск требует настройки провайдера.</p>}
    <div className="geo-scope">
      <span className="field-label">Где искать людей?</span>
@@ -207,6 +218,6 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
      </div>
      <div className="range-limits"><span>1 км</span><span>5 000 км</span></div>
    </div>
-   <p className="hint">Точные координаты никому не показываются. В режиме «Весь мир» радиус сохраняется для следующего локального поиска.</p>
+   <p className="hint">При нажатии «Моё местоположение» координаты однократно передаются серверу для определения города через геокодер. В анкету сохраняется только выбранный город. В режиме «Весь мир» радиус сохраняется.</p>
  </div>;
 }
