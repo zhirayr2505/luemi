@@ -37,7 +37,13 @@ export function RealChats(){
    running=true;
    try{
     const data=await api.messages(active,undefined,controller.signal);
-    if(!controller.signal.aborted){setMessages(data.messages);setError("");}
+    if(!controller.signal.aborted){setMessages(data.messages);setError("");
+     const newest=data.messages[data.messages.length-1];
+     if(newest&&newest.senderId!==actorId&&document.visibilityState==="visible"&&lastRead.current!==newest.id){
+      lastRead.current=newest.id;
+      void api.markRead(active,newest.id).catch(()=>{lastRead.current=null;});
+     }
+    }
    }catch{if(!controller.signal.aborted)setError("Связь прервана. Повторяем подключение…");}
    finally{running=false;}
   };
@@ -63,7 +69,7 @@ export function RealChats(){
  return <div className="luemi-chats" data-real-chats="true">
   {!active?<><header className="lc-heading"><div><small>LUEMI</small><h2>Чаты</h2></div></header>
    {loading?<p className="lc-empty">Загружаем переписки…</p>:conversations.length===0?<p className="lc-empty">Пока нет переписок. Они появятся после взаимного мэтча.</p>:
-   <div className="lc-conversations">{conversations.map(c=><button className="lc-chat-open" key={c.id} onClick={()=>{pending.current=null;setActive(c.id);setMessages([]);}}>
+   <div className="lc-conversations">{conversations.map(c=><button className="lc-chat-open" key={c.id} onClick={()=>{pending.current=null;lastRead.current=null;setActive(c.id);setMessages([]);}}>
     <span className="lc-avatar">💜</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>
    </button>)}</div>}
   </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;setActive(null);}} aria-label="Назад">←</button><strong>Переписка</strong></header>
