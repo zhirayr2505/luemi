@@ -7,7 +7,7 @@ export type ChatWireMessage = {
  createdAt:string;editedAt:string|null;deletedAt:string|null;
 };
 export type ChatWireConversation = {
- id:string;peerId:string;peerName:string;lastMessage:string|null;unreadCount:number;
+ id:string;peerId:string;peerName:string;peerPhotoUrl:string|null;lastMessage:string|null;unreadCount:number;
 };
 export class ChatTransportError extends Error {
  constructor(readonly status:number,readonly code:string){super(code);}
