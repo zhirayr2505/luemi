@@ -23,6 +23,20 @@ export function RealChats({transport:provided,onOpenProfile}:{transport?:ChatTra
  const showError=(e:unknown,fallback="Не удалось выполнить действие.")=>setError(e instanceof ChatTransportError?errorText(e.status,e.code):fallback);
  const refreshList=useCallback(async(signal?:AbortSignal)=>{if(!api)return;const data=await api.list(signal);setConversations([...data.conversations].sort((a,b)=>b.lastActivityAt.localeCompare(a.lastActivityAt)||a.id.localeCompare(b.id)));},[api]);
  useEffect(()=>{if(!api){setError("Требуется авторизация Telegram.");setLoading(false);return;}const controller=new AbortController();Promise.all([api.me(controller.signal),api.list(controller.signal)]).then(([me,data])=>{if(controller.signal.aborted)return;setActorId(me.actorId);setConversations([...data.conversations].sort((a,b)=>b.lastActivityAt.localeCompare(a.lastActivityAt)));setError("");}).catch(e=>{if(!controller.signal.aborted)showError(e,"Не удалось загрузить чаты.");}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();},[api]);
+ // Discover new mutual matches and unread badges even when the user has not opened a thread.
+ useEffect(()=>{
+  if(!api||active)return;
+  const controller=new AbortController();let busy=false;
+  const refresh=()=>{
+   if(controller.signal.aborted||busy||document.visibilityState!=="visible")return;
+   busy=true;
+   void refreshList(controller.signal).catch(()=>{/* Initial/retry state handles visible errors. */})
+    .finally(()=>{busy=false;});
+  };
+  const timer=window.setInterval(refresh,5000);
+  document.addEventListener("visibilitychange",refresh);
+  return()=>{controller.abort();window.clearInterval(timer);document.removeEventListener("visibilitychange",refresh);};
+ },[api,active,refreshList]);
  useEffect(()=>()=>{pollAbort.current?.abort();objectUrls.current.forEach(URL.revokeObjectURL);pendingFiles.current.clear();if(hold.current!==null)window.clearTimeout(hold.current);},[]);
  const applyIncoming=useCallback((incoming:LocalMessage[])=>{const el=history.current;autoScroll.current=!!el&&isNearBottom(el);if(el)listPositions.current=new Map([...el.querySelectorAll<HTMLElement>("[data-message-id]")].map(node=>[node.dataset.messageId??"",node.getBoundingClientRect().top]));setMessages(old=>{if(el&&!autoScroll.current&&incoming.some(message=>!old.some(current=>current.id===message.id)))setNewBelow(n=>n+1);return reconcileMessages(old,incoming);});},[]);
  useLayoutEffect(()=>{const el=history.current;if(!el)return;if(autoScroll.current){el.scrollTop=el.scrollHeight;setNewBelow(0);}else if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){for(const node of el.querySelectorAll<HTMLElement>("[data-message-id]")){const before=listPositions.current.get(node.dataset.messageId??"");if(before===undefined)continue;const delta=before-node.getBoundingClientRect().top;if(Math.abs(delta)>1&&Math.abs(delta)<700)node.animate([{transform:`translateY(${delta}px)`},{transform:"translateY(0)"}],{duration:240,easing:"cubic-bezier(.2,.72,.2,1)"});}}listPositions.current.clear();},[messages]);
