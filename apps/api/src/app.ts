@@ -39,6 +39,9 @@ export function buildApp(config: ApiConfig) {
   installNetworkLimits(hook=>app.addHook("onRequest",hook));
   installHttpPolicy(app,config.rem05c?.embedding);
 
+  // Stable consent URL. Served by the static public privacy.html shipped with
+  // each web build (no cookies, profile data or third-party tracking on the page).
+  app.get("/privacy", async (_request,reply) => reply.redirect("/privacy.html",302));
   app.get("/api/health/live", async (): Promise<HealthResponse> => ({ status: "ok" }));
   app.get("/api/health/ready", async (request, reply) => {
     const secret = request.headers["x-health-key"];
