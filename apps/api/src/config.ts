@@ -62,8 +62,17 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     env.APP_ORIGIN !== "https://luemi.onrender.com" ||
     !/^[a-zA-Z0-9_-]{24,256}$/.test(env.TELEGRAM_WEBHOOK_SECRET ?? "")
   )) throw new Error("Telegram auto-setup requires verified LUEMI staging configuration");
+  // Two alternative admission policies. Open signups still require verified
+  // Telegram initData, adult registration, private media, RLS and consent;
+  // they never use the invite table or a client-provided identity.
+  const openSignups = env.REM06_OPEN_SIGNUPS_ENABLED==="1";
+  const betaInvites = env.REM06_BETA_INVITES_ENABLED==="1";
   // Deliberately OFF for all existing Render deployments until separately authorized.
   const v2Enabled = env.REM05B_SESSIONS_ENABLED === "1";
+  if(openSignups&&(!v2Enabled||stagingOnly||betaInvites||
+    env.REM06_OPEN_SIGNUPS_APPROVED!=="1"||
+    env.REM06_PRIVACY_APPROVED!=="1"))
+    throw new Error("Open registration requires approved privacy policy, V2 identity and no invite gate");
   const rem05b: Rem05bOptions | undefined = v2Enabled ? {
     enabled: true,
     issuerDatabaseUrl: env.REM05B_AUTH_DATABASE_URL ?? "",
@@ -76,7 +85,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     idleMs: 12 * 60 * 60 * 1000,
     absoluteMs: 7 * 24 * 60 * 60 * 1000,
     maxSessions: 5,
-    inviteOnly: env.REM06_BETA_INVITES_ENABLED==="1"
+    inviteOnly: betaInvites
   } : undefined;
   if(env.REM06_BETA_INVITES_ENABLED==="1"&&(!v2Enabled||
     env.REM06_BETA_INVITES_APPROVED!=="1"||
@@ -150,15 +159,19 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
    };
   }
   const publicationEnabled=env.REM06_PUBLICATION_ENABLED==="1";
-  // 01G closed beta MUST NOT accidentally switch on public discovery while
-  // invite enforcement is absent, even if old publication keys are present.
-  if(publicationEnabled&&(!rem05b?.inviteOnly||
-    env.REM06_BETA_INVITES_APPROVED!=="1"||
+  // Discovery is allowed only after ONE approved server-side admission policy.
+  // Open registration is not an authorization bypass: it still requires
+  // verified Telegram sessions, reviewed private photographs, and independent
+  // least-privilege database connections. Legacy beta defaults are unchanged.
+  const admissionApproved=(rem05b?.inviteOnly===true&&
+     env.REM06_BETA_INVITES_APPROVED==="1")||
+    (openSignups&&!betaInvites&&env.REM06_OPEN_SIGNUPS_APPROVED==="1");
+  if(publicationEnabled&&(!admissionApproved||
     !mediaEnabled||!rem05d?.durablePrivateOnly||
     env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1"||
     !env.REM06_PUBLISHER_DATABASE_URL||!env.REM06_DISCOVERY_DATABASE_URL||
     env.REM06_PUBLISHER_DATABASE_URL===env.REM06_DISCOVERY_DATABASE_URL))
-    throw new Error("REG01D requires private media, independent DB roles and accepted moderation");
+    throw new Error("Publication requires approved admission, private media, isolated DB roles and moderation");
   const realPublication:PublicationOptions|undefined=publicationEnabled?{
     enabled:true,requestDatabaseUrl:env.REM05B_REQUEST_DATABASE_URL??"",
     publisherDatabaseUrl:env.REM06_PUBLISHER_DATABASE_URL??"",
@@ -179,7 +192,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
    namespace:env.REM05B_BOT_NAMESPACE??""
   }:undefined;
   const appealsEnabled=env.REM06_SAFETY_APPEALS_ENABLED==="1";
-  if(appealsEnabled&&(!publicationEnabled||!realErasure||!rem05b?.inviteOnly||
+  if(appealsEnabled&&(!publicationEnabled||!realErasure||!admissionApproved||
     env.REM06_SAFETY_POLICY_APPROVED!=="1"||
     !env.REM06_SAFETY_APPEAL_DATABASE_URL||
     [env.REM05B_AUTH_DATABASE_URL,env.REM05B_REQUEST_DATABASE_URL,
