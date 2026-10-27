@@ -106,6 +106,12 @@ export function registerBlikiPublicationApi(
     if (parsed.value.mediaKind === 'video') return reply.code(503).send({ error: 'video_pipeline_unavailable' });
     return transaction(request, reply, async (db, actor) => {
       const p = parsed.value;
+      // Writer may only read its own published profile projection, never actors/sessions.
+      // A draft/hidden/suspended account cannot create a new visible story.
+      const owner = await db.query(
+        "SELECT owner_id FROM luemi_private.public_profiles WHERE owner_id=$1 AND environment=$2 AND publication_status='published'",
+        [actor, cfg.namespace]);
+      if (owner.rowCount !== 1) fail(403, 'published_profile_required');
       let row = await find(db, actor, p.operationId, true);
       if (!row) {
         const ticket = createBlikiUploadTicket({ actorId: actor, operationId: p.operationId,
