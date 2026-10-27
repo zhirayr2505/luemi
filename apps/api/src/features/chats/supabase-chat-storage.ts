@@ -10,14 +10,14 @@ export interface SupabaseChatStorageSettings{
 }
 const PROJECT=/^[a-z]{20}$/;
 const NAMESPACE=/^[a-z0-9:_-]{1,96}$/i;
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EXTENSION:Record<ChatImageMime,string>={"image/jpeg":"jpg","image/png":"png","image/webp":"webp"};
 
 function objectPath(key:string,namespace:string):string{
  const parts=key.split("/");
  if(parts.length!==5||parts[0]!=="chat-media"||parts[1]!==namespace||
     !UUID.test(parts[2])||!UUID.test(parts[3])||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}\.(jpg|png|webp)$/i.test(parts[4]))
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp)$/i.test(parts[4]))
   throw new Error("invalid_chat_storage_path");
  return parts.map(encodeURIComponent).join("/");
 }
