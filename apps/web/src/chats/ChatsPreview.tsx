@@ -34,6 +34,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  const [notice,setNotice]=useState("");
  const [newBelow,setNewBelow]=useState(0);
  const [lightbox,setLightbox]=useState<string|null>(null);
+ const [showDemoControls,setShowDemoControls]=useState(false);
  const list=useRef<HTMLDivElement>(null);
  const file=useRef<HTMLInputElement>(null);
  const touch=useRef<{x:number;y:number;id:string;kind:"message"|"screen"|"chat";moved:boolean}|null>(null);
@@ -44,6 +45,8 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  const nearBottom=useRef(true);
  const previousPositions=useRef<Map<string,number>|null>(null);
  const previousHeight=useRef(0);
+ const previousScrollTop=useRef(0);
+
  const pendingAutoScroll=useRef(false);
 
  const activeChat=chats.find(c=>c.id===active);
@@ -55,6 +58,8 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
   const el=list.current;
   previousPositions.current=el?new Map(Array.from(el.querySelectorAll<HTMLElement>("[data-message-id]")).map(node=>[node.dataset.messageId!,node.getBoundingClientRect().top])):null;
   previousHeight.current=el?.scrollHeight??0;
+  previousScrollTop.current=el?.scrollTop??0;
+
   pendingAutoScroll.current=nearBottom.current;
   setMessages(prev=>({...prev,[active]:fn(prev[active]??[])}));
   if(append&&!nearBottom.current)setNewBelow(v=>v+1);
@@ -64,7 +69,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
   if(!el||!previousPositions.current)return;
   const before=previousPositions.current;previousPositions.current=null;
   if(pendingAutoScroll.current){el.scrollTop=el.scrollHeight;}
-  else if(el.scrollHeight!==previousHeight.current){/* Preserve reader position while new items arrive. */}
+  else if(el.scrollHeight!==previousHeight.current){el.scrollTop=previousScrollTop.current;}
   if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
   el.querySelectorAll<HTMLElement>("[data-message-id]").forEach(node=>{
    const oldTop=before.get(node.dataset.messageId!);
@@ -136,7 +141,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
    <p className="lc-footnote">Демо-сообщения не отправляются другим людям.</p>
   </>:<><header className="lc-chat-header"><button type="button" aria-label="Назад" onClick={()=>setActive(null)}><ArrowLeft/></button><button type="button" className="lc-person" onClick={()=>onOpenProfile?onOpenProfile(active):setNotice("Профиль будет подключён к реальному мэтчу.")}><span className="lc-avatar">{activeChat?.avatar}</span><span><strong>{activeChat?.name}</strong><small>Демо-переписка</small></span></button><button type="button" aria-label="Меню собеседника" onClick={()=>setMenu({kind:"person",id:active})}><MoreVertical/></button></header>
    <div className="lc-history" ref={list} onScroll={e=>{const t=e.currentTarget;nearBottom.current=t.scrollHeight-t.scrollTop-t.clientHeight<95;if(nearBottom.current)setNewBelow(0);}} onPointerDown={e=>{if(e.clientX<30)pointerDown(e,"screen","screen");}} onPointerMove={pointerMove} onPointerUp={pointerUp}>
-    <div className="lc-day">Сегодня · демо <button type="button" className="lc-receive" onClick={receiveDemo}>Получить сообщение ↓</button></div>
+    <div className="lc-day">Сегодня · демо {showDemoControls&&<button type="button" className="lc-receive" onClick={receiveDemo}>Получить сообщение ↓</button>}<button type="button" className="lc-receive" onClick={()=>setShowDemoControls(v=>!v)} aria-label="Тест входящих сообщений">{showDemoControls?"Скрыть тест":"Тест"}</button></div>
     {items.map(m=><div key={m.id} data-message-id={m.id} className={"lc-msg-line "+(m.mine?"lc-own":"")} onPointerDown={e=>{e.stopPropagation();pointerDown(e,e.clientX<30?"screen":m.id,e.clientX<30?"screen":"message");}} onPointerMove={pointerMove} onPointerUp={e=>{e.stopPropagation();pointerUp(e);}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onContextMenu={e=>{e.preventDefault();setMenu({kind:"message",id:m.id});}}>
      <div className="lc-bubble">{m.reply&&<div className="lc-quote">{m.reply}</div>}{m.image&&<button type="button" className="lc-photo-open" onClick={()=>setLightbox(m.image!)}><img src={m.image} alt="Отправленное фото"/></button>}{m.text&&<div>{m.text}</div>}<small>{m.time} {m.mine?"✓✓":""}</small>{m.reaction&&<span className="lc-reaction">{m.reaction}</span>}</div>
     </div>)}
