@@ -44,6 +44,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     AND has_table_privilege(current_user,'luemi_chats.messages','SELECT')
     AND has_table_privilege(current_user,'luemi_chats.messages','INSERT')
     AND has_table_privilege(current_user,'luemi_chats.messages','UPDATE')
+    AND NOT has_table_privilege(current_user,'luemi_chats.messages','DELETE')
     AND NOT has_table_privilege(current_user,'luemi_chats.members','DELETE')
     AND NOT has_table_privilege(current_user,'luemi_chats.conversations','INSERT')
     AND NOT has_table_privilege(current_user,'luemi_chats.conversations','UPDATE')
