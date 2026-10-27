@@ -57,3 +57,10 @@ No merge, deploy, Supabase migration, or paid service was performed.
 - `db/chats-v1-trusted-reconcile.sql` is a real transactional implementation rather than a dry-run: it joins public match participants to private Telegram V2 actors, excludes inactive profiles, invalid matches and bidirectional blocks, revokes obsolete memberships, and creates missing two-person conversations idempotently.
 - It uses an advisory transaction lock and checks that eligible conversations have exactly two members. It requires an audited privileged maintenance role; never run it as a client or expose it through the public API.
 - **Not production ready until synchronous revocation is wired** into unmatch, block and account disable paths. Running this SQL periodically is insufficient: a blocked actor could retain access until the next reconciliation. No migration was applied to live Supabase.
+
+## Live database audit — 2026-10-27
+- Connected Supabase project currently returns **0** rows in public.luemi_users and **0** rows in public.luemi_matches.
+- No luemi_private.actors relation was found in its information_schema. The private V2 auth issuer and public matchmaking data cannot currently be joined in this Supabase instance.
+- The trusted reconciliation script is **blocked** pending an audited identity bridge / verified single-database deployment. Never execute it against the current Supabase instance.
+- No real peer profile or photo can be truthfully projected from this empty dataset. RealChats now displays peerName when a trusted API supplies one, but the API intentionally does not invent identity or media URLs.
+- Deployment gate: populate verified users/matches through actual app flows; verify V2 actor mapping, revocation on unmatch/block, least-privileged DB roles, private photo storage, and two real-account E2E before enabling flags.
