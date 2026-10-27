@@ -36,10 +36,10 @@ WITH verified AS (
  JOIN public.luemi_users ul ON ul.id=m.user_low AND ul.status='active'
  JOIN public.luemi_users uh ON uh.id=m.user_high AND uh.status='active'
  JOIN luemi_private.actors low_actor
-   ON low_actor.telegram_id=ul.telegram_user_id::text
+   ON low_actor.telegram_id=ul.telegram_user_id
    AND low_actor.environment=c.environment AND low_actor.status='active'
  JOIN luemi_private.actors high_actor
-   ON high_actor.telegram_id=uh.telegram_user_id::text
+   ON high_actor.telegram_id=uh.telegram_user_id
    AND high_actor.environment=c.environment AND high_actor.status='active'
  WHERE c.environment='luemi' AND low_actor.id<>high_actor.id
 )
