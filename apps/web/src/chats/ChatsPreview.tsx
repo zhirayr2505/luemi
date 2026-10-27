@@ -36,7 +36,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  const [lightbox,setLightbox]=useState<string|null>(null);
  const list=useRef<HTMLDivElement>(null);
  const file=useRef<HTMLInputElement>(null);
- const touch=useRef<{x:number;y:number;id:string;kind:"message"|"screen";moved:boolean}|null>(null);
+ const touch=useRef<{x:number;y:number;id:string;kind:"message"|"screen"|"chat";moved:boolean}|null>(null);
  const hold=useRef<ReturnType<typeof setTimeout>|null>(null);
  const holdFired=useRef(false);
  const lastTap=useRef<{id:string;at:number}>({id:"",at:0});
@@ -75,7 +75,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
   if(e.pointerType==="mouse"&&e.button!==0)return;
   touch.current={x:e.clientX,y:e.clientY,id,kind,moved:false};holdFired.current=false;
   if(hold.current)clearTimeout(hold.current);
-  if(kind==="message")hold.current=setTimeout(()=>{holdFired.current=true;setMenu({kind:"message",id});},470);
+  if(kind==="message"||kind==="chat")hold.current=setTimeout(()=>{holdFired.current=true;setMenu({kind:kind==="chat"?"chat":"message",id});},470);
  };
  const pointerUp=(e:ReactPointerEvent<HTMLElement>)=>{
   if(hold.current)clearTimeout(hold.current);
@@ -97,15 +97,15 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  return <div className="luemi-chats" data-chat-preview="true">
   {!active?<><header className="lc-heading"><div><small>LUEMI · ДЕМО ИНТЕРФЕЙСА</small><h2>{archiveView?"Архив":"Чаты"}</h2></div><button type="button" aria-label="Архив" onClick={()=>setArchiveView(v=>!v)}>{archiveView?<ArrowLeft/>:<Archive/>}</button></header>
    <label className="lc-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Поиск переписок" aria-label="Поиск переписок"/></label>
-   <div className="lc-conversations">{visible.length?visible.map(c=><div className="lc-conversation" key={c.id} onContextMenu={e=>{e.preventDefault();setMenu({kind:"chat",id:c.id});}} onPointerDown={e=>pointerDown(e,c.id,"message")} onPointerUp={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);}}>
+   <div className="lc-conversations">{visible.length?visible.map(c=><div className="lc-conversation" key={c.id} onContextMenu={e=>{e.preventDefault();setMenu({kind:"chat",id:c.id});}} onPointerDown={e=>pointerDown(e,c.id,"chat")} onPointerUp={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);}}>
     <button type="button" className="lc-chat-open" onClick={()=>{if(!holdFired.current)open(c.id);}}><span className="lc-avatar">{c.avatar}</span><span className="lc-chat-summary"><strong>{c.name} {c.pinned?"📌":""}</strong><span>{c.last}</span></span><span className="lc-meta"><small>12:45</small>{c.unread>0&&<b>{c.unread}</b>}{c.muted&&<BellOff size={13}/>}</span></button>
     <button type="button" aria-label={"Действия с чатом "+c.name} className="lc-ellipsis" onClick={()=>setMenu({kind:"chat",id:c.id})}><MoreVertical size={18}/></button>
    </div>):<p className="lc-empty">Здесь пока нет переписок.</p>}</div>
    <p className="lc-footnote">Демо-сообщения не отправляются другим людям.</p>
   </>:<><header className="lc-chat-header"><button type="button" aria-label="Назад" onClick={()=>setActive(null)}><ArrowLeft/></button><button type="button" className="lc-person" onClick={()=>onOpenProfile?onOpenProfile(active):setNotice("Профиль будет подключён к реальному мэтчу.")}><span className="lc-avatar">{activeChat?.avatar}</span><span><strong>{activeChat?.name}</strong><small>Демо-переписка</small></span></button><button type="button" aria-label="Меню собеседника" onClick={()=>setMenu({kind:"person",id:active})}><MoreVertical/></button></header>
-   <div className="lc-history" ref={list} onScroll={e=>{const t=e.currentTarget;nearBottom.current=t.scrollHeight-t.scrollTop-t.clientHeight<95;if(nearBottom.current)setNewBelow(0);}} onPointerDown={e=>{if(e.target===e.currentTarget)pointerDown(e,"screen","screen");}} onPointerUp={pointerUp}>
+   <div className="lc-history" ref={list} onScroll={e=>{const t=e.currentTarget;nearBottom.current=t.scrollHeight-t.scrollTop-t.clientHeight<95;if(nearBottom.current)setNewBelow(0);}} onPointerDown={e=>{if(e.clientX<30)pointerDown(e,"screen","screen");}} onPointerUp={pointerUp}>
     <div className="lc-day">Сегодня</div>
-    {items.map(m=><div key={m.id} className={"lc-msg-line "+(m.mine?"lc-own":"")} onPointerDown={e=>{e.stopPropagation();pointerDown(e,m.id,"message");}} onPointerUp={e=>{e.stopPropagation();pointerUp(e);}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onContextMenu={e=>{e.preventDefault();setMenu({kind:"message",id:m.id});}}>
+    {items.map(m=><div key={m.id} className={"lc-msg-line "+(m.mine?"lc-own":"")} onPointerDown={e=>{e.stopPropagation();pointerDown(e,e.clientX<30?"screen":m.id,e.clientX<30?"screen":"message");}} onPointerUp={e=>{e.stopPropagation();pointerUp(e);}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onContextMenu={e=>{e.preventDefault();setMenu({kind:"message",id:m.id});}}>
      <div className="lc-bubble">{m.reply&&<div className="lc-quote">{m.reply}</div>}{m.image&&<button type="button" className="lc-photo-open" onClick={()=>setLightbox(m.image!)}><img src={m.image} alt="Отправленное фото"/></button>}{m.text&&<div>{m.text}</div>}<small>{m.time} {m.mine?"✓✓":""}</small>{m.reaction&&<span className="lc-reaction">{m.reaction}</span>}</div>
     </div>)}
    </div>
