@@ -273,6 +273,9 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    browseSettle.current=null;
    if(pagerSettleTimer.current!==null)clearTimeout(pagerSettleTimer.current);
    pagerSettleTimer.current=null;
+   // Keep React reconciliation, inert changes and Nearby activation out of
+   // the moving frame. The track/indicator have already reached the target.
+   selectTab(current.target);
   }}))return;
  };
  const settleDrag=(targetIndex:number,token:MotionToken|null=null)=>{
@@ -313,7 +316,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const requestBrowseTab=(i:number)=>{
   if(gesture.current?.tracking)return;
   settleDrag(i);
-  selectTab(i);
  };
  useEffect(()=>()=>{inputOwnership.current.dispose();browseMotion.current.dispose();
   if(pagerSettleTimer.current!==null)window.clearTimeout(pagerSettleTimer.current);
@@ -409,7 +411,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   browseMotion.current.paint(g.token,g.originTrack+shift,
    ()=>paintBrowse(g.originTrack+shift,g.originInk-shift/3));
   settleDrag(target,g.token);
-  if(target!==tabIndex)selectTab(target);
  };
  const cancelSwipe=()=>{const g=gesture.current;gesture.current=null;
   if(!g)return;

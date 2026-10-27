@@ -18,9 +18,9 @@ assert.ok(!style.includes(".discovery-app:is(.is-discovery-scrolling"),"P0: neve
 assert.ok(forYouCss.includes("backdrop-filter:blur(17px)")&&forYouCss.includes("backdrop-filter:blur(14px)"),"accepted Premium Glass intact at rest and in motion");
 assert.ok(app.includes('pageTrack.current?.style.setProperty("--luemi-tab-offset"')&&
  app.includes('underline.current?.style.setProperty("--luemi-tab-offset"'),"both pager variables commit atomically before state selection");
-assert.ok(app.includes("settleDrag(target,g.token);")&&app.includes("if(target!==tabIndex)selectTab(target)")&&
+assert.ok(app.includes("settleDrag(target,g.token);")&&app.includes("selectTab(current.target);")&&
  app.includes("browseMotion.current.paint(g.token")&&app.includes("inputOwnership.current.finish(\"browse\",g.serial)"),
- "pager flushes the final finger position into its original token before one settle");
+ "pager flushes the finger position before one settle and commits React state after motion");
 assert.ok(style.includes(".discovery-page-track.is-finger-tracking,.discovery-tab-underline.is-finger-tracking{transition:none}")&&
  !style.includes(".discovery-page-track.is-settling,.discovery-tab-underline.is-settling{will-change:transform}"),
  "pager does not promote giant layers mid-gesture");
@@ -33,8 +33,9 @@ assert.ok(!app.includes("nearbyPrepared")&&app.includes("<Nearby active="),
 assert.ok(near.includes("const pageSize=8")&&near.includes("IntersectionObserver"),"Nearby pagination intact");
 assert.ok(app.includes("const savedRef=useRef(feed.saved)")&&app.includes("},[indicate]);"),
  "stable saved callback avoids rerendering unrelated memoized tiles");
-assert.ok(forYou.includes("const PersonTile=memo(function PersonTile")&&forYouCss.includes("scroll-snap-type:x proximity"),
- "native horizontal For You carousels preserved");
+assert.ok(forYou.includes("const PersonTile=memo(function PersonTile")&&
+ forYouCss.includes("overflow-x:auto")&&!forYouCss.includes("scroll-snap-type:x proximity"),
+ "native horizontal For You rails retain free momentum without snap braking");
 assert.ok(carousel.includes("frameId.current=window.requestAnimationFrame")&&!carousel.includes("setDx("),
  "PhotoCarousel tracks finger without per-pointer React renders");
 assert.ok(carousel.includes("const cancel=(e:ReactPointerEvent)=>{if(!externalGesture)finishAt(e.pointerId,e.clientX,true)")&&

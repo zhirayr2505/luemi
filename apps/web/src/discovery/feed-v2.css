@@ -61,7 +61,7 @@
  min-height:0;height:var(--feed-closed-height);
  max-height:calc(100% - var(--feed-actions-height));
  padding:0 17px 5px;color:#fff;display:flex;flex-direction:column;
- justify-content:flex-end;overflow:hidden;pointer-events:auto;touch-action:none;contain:layout
+ overflow:hidden;pointer-events:none;touch-action:none;contain:layout
 }
 .feed-v2-expand{
  height:21px;min-height:21px;min-width:70px;margin:0 auto 4px;padding:0;
@@ -73,10 +73,12 @@
 .feed-v2-expand[aria-expanded=true] .feed-v2-collapse-icon{display:block}
 .feed-v2-expand[aria-expanded=true] .feed-v2-expand-icon{display:none}
 .feed-v2-scroll{
- min-height:0;max-height:calc(100% - 25px);overflow:hidden;
- display:flex;flex-direction:column;gap:5px;overscroll-behavior:contain;touch-action:none;
+ min-height:0;flex:1;overflow:hidden;
+ display:flex;flex-direction:column;overscroll-behavior:contain;touch-action:none;
  text-shadow:0 1px 9px rgba(18,9,27,.44)
 }
+.feed-v2-content{display:flex;flex-direction:column;gap:5px;flex:none;
+ margin-top:auto;pointer-events:auto}
 .feed-v2-card[data-expanded=true] .feed-v2-scroll{
  overflow-y:auto;-webkit-overflow-scrolling:touch;
  scrollbar-width:thin;scrollbar-color:rgba(245,218,255,.55) transparent
@@ -88,14 +90,14 @@
 .feed-v2 .discovery-place span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .feed-v2-goal{display:flex;gap:5px;align-items:center;font-size:12px;font-weight:690;min-height:18px}
 .feed-v2-goal svg{color:#ffbfdc}
-.feed-v2-about{flex:none;max-height:var(--feed-about-closed-height);overflow:hidden}
+.feed-v2-about{flex:none;overflow:hidden}
 .feed-v2 .discovery-short-about{
  flex:none;display:block;overflow:visible;color:rgba(255,255,255,.96);font-size:12px;line-height:1.45;
  -webkit-line-clamp:unset;line-clamp:unset;margin:1px 0 0;
  padding:1px 0 1px 11px;border-left:2px solid rgba(246,188,225,.9);
  font-style:italic;letter-spacing:.005em
 }
-.feed-v2-interests{max-height:0;opacity:0;overflow:hidden}
+.feed-v2-interests{max-height:120px;overflow:hidden}
 .feed-v2-interests .discovery-interests{padding:7px 0 3px}
 .feed-v2 .discovery-interests{flex-wrap:wrap;overflow:visible}
 .feed-v2 .discovery-interests>.chip{flex:none;max-width:100%}
@@ -120,13 +122,13 @@
 }
 .feed-v2-card[data-size=compact]{--feed-closed-height:155px;--feed-actions-height:69px}
 .feed-v2-card[data-size=compact] .feed-v2-details{padding:0 12px 2px}
-.feed-v2-card[data-size=compact] .feed-v2-scroll{gap:3px}
+.feed-v2-card[data-size=compact] .feed-v2-content{gap:3px}
 .feed-v2-card[data-size=compact] .discovery-short-about{font-size:11px}
 .feed-v2-card[data-size=compact] .discovery-actions{padding-bottom:4px}
 .feed-v2-card[data-size=tiny]{--feed-closed-height:130px;--feed-actions-height:55px;--feed-about-closed-height:22px}
 .feed-v2-card[data-size=tiny] .feed-v2-details{padding:0 11px 1px}
 .feed-v2-card[data-size=tiny] .feed-v2-expand{height:17px;min-height:17px;margin-bottom:1px}
-.feed-v2-card[data-size=tiny] .feed-v2-scroll{gap:2px;overflow-y:auto}
+.feed-v2-card[data-size=tiny] .feed-v2-content{gap:2px}
 .feed-v2-card[data-size=tiny] .discovery-short-about{-webkit-line-clamp:1;line-clamp:1}
 .feed-v2-card[data-size=tiny] .discovery-actions{padding:0 7px 2px}
 .feed-v2-card[data-size=tiny] .discovery-action.discovery-like{--diameter:54px}
