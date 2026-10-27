@@ -26,6 +26,20 @@ DO $$ BEGIN
  END IF;
 END $$;
 COMMIT;
+-- A compromised HTTP matching role still cannot mint a match from one like.
+BEGIN;
+SET LOCAL ROLE luemi_match_writer;
+SET LOCAL luemi.actor_id='11111111-1111-4111-8111-111111111111';
+SET LOCAL luemi.environment='luemi';
+DO $ BEGIN
+ BEGIN
+  INSERT INTO luemi_chats.matches(environment,actor_low,actor_high)
+   VALUES('luemi','11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222');
+  RAISE EXCEPTION 'one-sided forged match accepted';
+ EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+ END;
+END $;
+COMMIT;
 -- Opposite like creates an authorized match, conversation and exactly two members.
 BEGIN;
 SET LOCAL ROLE luemi_match_writer;
@@ -69,6 +83,20 @@ DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM luemi_chats.members) THEN RAISE EXCEPTION 'unmatched C saw members'; END IF;
  IF EXISTS(SELECT 1 FROM luemi_chats.conversations) THEN RAISE EXCEPTION 'unmatched C saw conversations'; END IF;
 END $$;
+COMMIT;
+-- A caller from an eligible pair cannot enroll an unrelated actor C.
+BEGIN;
+SET LOCAL ROLE luemi_match_writer;
+SET LOCAL luemi.actor_id='11111111-1111-4111-8111-111111111111';
+SET LOCAL luemi.environment='luemi';
+DO $ BEGIN
+ BEGIN
+  INSERT INTO luemi_chats.members(conversation_id,actor_id,environment)
+   SELECT id,'33333333-3333-4333-8333-333333333333','luemi' FROM luemi_chats.conversations;
+  RAISE EXCEPTION 'third-party chat membership allowed';
+ EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+ END;
+END $;
 COMMIT;
 -- Actual message round-trip through the least-privilege chat role.
 BEGIN;
