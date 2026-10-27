@@ -20,6 +20,14 @@ export async function likePublishedUser(id:string):Promise<{liked:true;matched:b
   throw new Error("invalid_like_receipt");
  return data as {liked:true;matched:boolean;conversationId?:string};
 }
+/** Remove both participants' access immediately without erasing conversation history. */
+export async function closeRealMatch(id:string):Promise<void>{
+ if(!realMatchPilot.enabled)throw new Error("matches_disabled");
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
+  throw new Error("invalid_match");
+ const data=await api("/api/v4/matches/"+id+"/close","POST",{});
+ if(!object(data)||data.closed!==true)throw new Error("invalid_unmatch_receipt");
+}
 export interface RealPublishedProfile{
  id:string;name:string;age:number;city:string;countryCode:string;
  about:string;gender:"man"|"woman"|"other";goal:string;
