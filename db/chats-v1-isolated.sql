@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS luemi_chats.messages (
  sender_id uuid NOT NULL,
  environment text NOT NULL,
  client_id uuid NOT NULL,
- body text NOT NULL CHECK (length(body) BETWEEN 1 AND 4000),
+ body text NOT NULL CHECK ((deleted_at IS NULL AND length(body) BETWEEN 1 AND 4000) OR (deleted_at IS NOT NULL AND body='')),
  created_at timestamptz NOT NULL DEFAULT now(),
  edited_at timestamptz,
  deleted_at timestamptz,
