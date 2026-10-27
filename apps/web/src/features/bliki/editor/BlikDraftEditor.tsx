@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { listBlikDrafts, deleteBlikDraft } from '../drafts/draftRepository';
 import { useBlikDraft } from '../drafts/useBlikDraft';
+import { BlikInteractiveCanvas } from './BlikInteractiveCanvas';
 import type { BlikDraft, BlikLayer } from '../drafts/draftTypes';
 
 type Props = {
@@ -50,22 +51,10 @@ export function BlikDraftEditor({ ownerId, onClose, onPreview }: Props) {
     } catch { setMessage('Не удалось сохранить изменения'); }
     finally { setBusy(false); }
   }
-  const frame = (
-    <div style={{ position: 'relative', width: '100%', aspectRatio: '9 / 16',
-      background: '#18131e', overflow: 'hidden', borderRadius: 16 }}>
-      {state.mediaUrl && (state.draft?.mediaKind === 'image'
-        ? <img src={state.mediaUrl} alt="Блик" style={{ width: '100%', height: '100%',
-            objectFit: state.editor.fit, transform: `translate(${state.editor.translateX}px, ${state.editor.translateY}px) scale(${state.editor.scale})` }} />
-        : <video src={state.mediaUrl} controls playsInline muted={state.editor.muted}
-            style={{ width: '100%', height: '100%', objectFit: state.editor.fit }} />)}
-      {state.editor.layers.map(layer => <span key={layer.id} style={{
-        position: 'absolute', left: `${layer.x * 100}%`, top: `${layer.y * 100}%`,
-        transform: `translate(-50%, -50%) scale(${layer.scale}) rotate(${layer.rotation}deg)`,
-        color: 'white', fontSize: 22, textShadow: '0 1px 5px #000',
-        pointerEvents: 'none', whiteSpace: 'pre-wrap', maxWidth: '85%',
-      }}>{layer.value}</span>)}
-    </div>
-  );
+  const frame = state.mediaUrl && state.draft
+    ? <BlikInteractiveCanvas editor={state.editor} mediaKind={state.draft.mediaKind}
+        mediaUrl={state.mediaUrl} onChange={state.change} />
+    : null;
   return (
     <section aria-label="Редактор Блика" style={{ position: 'fixed', inset: 0, zIndex: 2000,
       background: '#16111c', color: '#fff', overflowY: 'auto', padding: 'max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom))' }}>
@@ -101,6 +90,18 @@ export function BlikDraftEditor({ ownerId, onClose, onPreview }: Props) {
                 {state.editor.muted ? 'Включить звук' : 'Выключить звук'}
               </button>}
           </nav>
+          {state.draft.mediaKind === 'image' && <label>
+            Масштаб <input type="range" min="1" max="4" step="0.05" value={state.editor.scale}
+              onChange={event => state.change({ ...state.editor, scale: Number(event.target.value) })} />
+          </label>}
+          {state.draft.mediaKind === 'video' && <div style={{ display: 'flex', gap: 8 }}>
+            <label>Начало (сек) <input type="number" min="0" max="14" step="0.1"
+              value={(state.editor.trimStartMs ?? 0) / 1000}
+              onChange={event => state.change({ ...state.editor, trimStartMs: Math.max(0, Number(event.target.value) * 1000) })} /></label>
+            <label>Конец (сек) <input type="number" min="1" max="15" step="0.1"
+              value={(state.editor.trimEndMs ?? 15000) / 1000}
+              onChange={event => state.change({ ...state.editor, trimEndMs: Math.min(15000, Number(event.target.value) * 1000) })} /></label>
+          </div>}
           {state.editor.layers.map(layer => <div key={layer.id} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <input aria-label={layer.type === 'text' ? 'Текст Блика' : 'Эмодзи Блика'}
               maxLength={150} value={layer.value}
