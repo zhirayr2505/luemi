@@ -111,7 +111,9 @@ export function registerBlikiApi(app: FastifyInstance, guard: Guard | undefined,
            AND published_at > now() - interval '24 hours'
          ORDER BY published_at DESC, id DESC LIMIT 100`, [namespace],
       );
-      return { stories: result.rows, serverNow: new Date().toISOString(), nextCursor: null };
+      // This endpoint is not a renderable feed until audience filtering and media signing are implemented.
+      // Never expose partial story rows as if they were usable public stories.
+      return { stories: result.rows.map(row => ({ id: row.id, authorId: row.author_id, mediaKind: row.media_kind, publishedAt: row.published_at })), serverNow: new Date().toISOString(), nextCursor: null };
     });
   });
 }
