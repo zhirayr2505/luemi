@@ -82,9 +82,9 @@ CREATE POLICY match_likes_read ON luemi_chats.likes FOR SELECT TO luemi_match_wr
 CREATE POLICY match_likes_insert ON luemi_chats.likes FOR INSERT TO luemi_match_writer
  WITH CHECK(environment=current_setting('luemi.environment',true)
  AND sender_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
- AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=sender_id AND p.environment=environment AND p.publication_status='published')
- AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=receiver_id AND p.environment=environment AND p.publication_status='published')
- AND NOT EXISTS(SELECT 1 FROM luemi_private.blocks b WHERE b.environment=environment
+ AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=sender_id AND p.environment=luemi_chats.likes.environment AND p.publication_status='published')
+ AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=receiver_id AND p.environment=luemi_chats.likes.environment AND p.publication_status='published')
+ AND NOT EXISTS(SELECT 1 FROM luemi_private.blocks b WHERE b.environment=luemi_chats.likes.environment
  AND ((b.blocker_id=sender_id AND b.blocked_id=receiver_id) OR (b.blocker_id=receiver_id AND b.blocked_id=sender_id))));
 CREATE POLICY match_pair_read ON luemi_chats.matches FOR SELECT TO luemi_match_writer,luemi_chats_writer
  USING(environment=current_setting('luemi.environment',true)
@@ -93,8 +93,8 @@ CREATE POLICY match_pair_read ON luemi_chats.matches FOR SELECT TO luemi_match_w
 CREATE POLICY match_pair_insert ON luemi_chats.matches FOR INSERT TO luemi_match_writer
  WITH CHECK(environment=current_setting('luemi.environment',true) AND status='active'
  AND (actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid OR actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid)
- AND EXISTS(SELECT 1 FROM luemi_chats.likes l WHERE l.environment=environment AND l.sender_id=actor_low AND l.receiver_id=actor_high)
- AND EXISTS(SELECT 1 FROM luemi_chats.likes l WHERE l.environment=environment AND l.sender_id=actor_high AND l.receiver_id=actor_low));
+ AND EXISTS(SELECT 1 FROM luemi_chats.likes l WHERE l.environment=luemi_chats.matches.environment AND l.sender_id=actor_low AND l.receiver_id=actor_high)
+ AND EXISTS(SELECT 1 FROM luemi_chats.likes l WHERE l.environment=luemi_chats.matches.environment AND l.sender_id=actor_high AND l.receiver_id=actor_low));
 GRANT UPDATE(status,closed_at) ON luemi_chats.matches TO luemi_match_writer;
 CREATE POLICY match_pair_close ON luemi_chats.matches FOR UPDATE TO luemi_match_writer
  USING(environment=current_setting('luemi.environment',true)
@@ -107,33 +107,33 @@ CREATE POLICY match_pair_close ON luemi_chats.matches FOR UPDATE TO luemi_match_
  OR actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid));
 CREATE POLICY match_conversation_read ON luemi_chats.conversations FOR SELECT TO luemi_match_writer,luemi_chats_writer
  USING(environment=current_setting('luemi.environment',true) AND private_match_id IS NOT NULL
- AND EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.id=private_match_id AND m.environment=environment
+ AND EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.id=private_match_id AND m.environment=luemi_chats.conversations.environment
  AND (m.actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid
  OR m.actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid)));
 CREATE POLICY match_conversation_insert ON luemi_chats.conversations FOR INSERT TO luemi_match_writer
  WITH CHECK(environment=current_setting('luemi.environment',true) AND match_id IS NULL
- AND EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.id=private_match_id AND m.environment=environment
+ AND EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.id=private_match_id AND m.environment=luemi_chats.conversations.environment
  AND m.status='active' AND (m.actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid
  OR m.actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid)));
 CREATE POLICY match_member_insert ON luemi_chats.members FOR INSERT TO luemi_match_writer
  WITH CHECK(environment=current_setting('luemi.environment',true)
  AND EXISTS(SELECT 1 FROM luemi_chats.conversations c
  JOIN luemi_chats.matches m ON m.id=c.private_match_id AND m.environment=c.environment
- WHERE c.id=conversation_id AND c.environment=environment AND m.status='active'
+ WHERE c.id=luemi_chats.members.conversation_id AND c.environment=luemi_chats.members.environment AND m.status='active'
  AND (m.actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid
  OR m.actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid)
- AND actor_id IN (m.actor_low,m.actor_high)));
+ AND luemi_chats.members.actor_id IN (m.actor_low,m.actor_high)));
 
 -- A block, hidden profile, suspended actor or closed match revokes chat access
 -- at query time, even before maintenance removes obsolete membership rows.
 CREATE POLICY chat_peer_profile_read ON luemi_private.public_profiles FOR SELECT TO luemi_chats_writer
  USING(environment=current_setting('luemi.environment',true) AND publication_status='published'
- AND (owner_id=nullif(current_setting('luemi.actor_id',true),'')::uuid OR EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.environment=environment AND m.status='active'
+ AND (owner_id=nullif(current_setting('luemi.actor_id',true),'')::uuid OR EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.environment=luemi_private.public_profiles.environment AND m.status='active'
  AND ((m.actor_low=owner_id AND m.actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid)
  OR (m.actor_high=owner_id AND m.actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid)))));
 CREATE POLICY chat_peer_media_read ON luemi_private.media_assets FOR SELECT TO luemi_chats_writer
  USING(environment=current_setting('luemi.environment',true) AND state='approved' AND publication_status='published'
- AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=owner_id AND p.environment=environment AND p.publication_status='published'));
+ AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=luemi_private.media_assets.owner_id AND p.environment=luemi_private.media_assets.environment AND p.publication_status='published'));
 CREATE OR REPLACE FUNCTION luemi_chats.live_match(p_conversation uuid,p_actor uuid,p_environment text)
  RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path=pg_catalog AS $$
  SELECT EXISTS (
