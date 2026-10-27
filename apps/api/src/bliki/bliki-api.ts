@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { parseBlikiEditor } from './bliki-editor-validation.js';
+import { decodeBlikiCursor, encodeBlikiCursor } from './bliki-feed-cursor.js';
 
 type Guard = {
   read: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
@@ -14,7 +15,7 @@ export type BlikiApiOptions = {
 type StoryRow = {
   id: string; author_id: string; media_kind: 'image' | 'video';
   media_duration_ms: number | null;
-  published_at_ms: string; caption: string; editor: unknown;
+  published_at_ms: string; cursor_at: string; caption: string; editor: unknown;
   display_name: string; avatar_id: string | null;
   is_mutual_match: boolean; liked_by_viewer: boolean;
 };
@@ -107,8 +108,14 @@ export function registerBlikiApi(app: FastifyInstance, guard: Guard | undefined,
     }
   }
 
-  app.get('/api/v1/bliki/feed', { preHandler: guard.read }, async (request, reply) => {
+  app.get<{ Querystring: { cursor?: string } }>('/api/v1/bliki/feed',
+    { preHandler: guard.read }, async (request, reply) => {
     reply.header('Cache-Control', 'private, no-store').header('Vary', 'Cookie');
+    const keys = Object.keys(request.query ?? {});
+    if (keys.some(key => key !== 'cursor')) return reply.code(422).send({ error: 'invalid_cursor' });
+    const cursor = request.query?.cursor === undefined ? null : decodeBlikiCursor(request.query.cursor);
+    if (request.query?.cursor !== undefined && !cursor) return reply.code(422).send({ error: 'invalid_cursor' });
+    const anchorMs = cursor?.anchorMs ?? Date.now();
     return scoped(request, reply, async (db, viewer) => {
       // RLS independently verifies published viewer + published author, mutual
       // block visibility, environment and 24h lifetime. Joins only expose
@@ -116,6 +123,7 @@ export function registerBlikiApi(app: FastifyInstance, guard: Guard | undefined,
       const result = await db.query<StoryRow>(
         `SELECT s.id::text, s.author_id::text, s.media_kind, s.media_duration_ms,
             (extract(epoch from s.published_at)*1000)::bigint::text AS published_at_ms,
+            to_char(s.published_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_at,
             s.caption, s.editor, p.display_name,
             avatar.id::text AS avatar_id,
             EXISTS (SELECT 1 FROM luemi_chats.matches m
@@ -138,8 +146,11 @@ export function registerBlikiApi(app: FastifyInstance, guard: Guard | undefined,
          WHERE s.environment=$1 AND s.status='published'
            AND s.deleted_at IS NULL AND s.published_at <= now()
            AND s.published_at > now() - interval '24 hours'
-         ORDER BY s.published_at DESC, s.id DESC LIMIT 100`,
-        [namespace, viewer],
+           AND s.published_at <= to_timestamp($3::double precision/1000.0)
+           AND ($4::timestamptz IS NULL OR
+                (s.published_at,s.id) < ($4::timestamptz,$5::uuid))
+         ORDER BY s.published_at DESC, s.id DESC LIMIT 101`,
+        [namespace, viewer, anchorMs, cursor?.beforeAt ?? null, cursor?.beforeId ?? null],
       );
       type AuthorDTO = {
         id: string; name: string; avatarUrl?: string;
@@ -154,7 +165,8 @@ export function registerBlikiApi(app: FastifyInstance, guard: Guard | undefined,
       };
       const byId = new Map<string, AuthorDTO>();
       const now = Date.now();
-      for (const row of result.rows) {
+      const page = result.rows.slice(0, 100);
+      for (const row of page) {
         const publishedAt = Number(row.published_at_ms);
         if (!Number.isSafeInteger(publishedAt) ||
           publishedAt > now || publishedAt <= now - 86400000) continue;
@@ -185,9 +197,13 @@ export function registerBlikiApi(app: FastifyInstance, guard: Guard | undefined,
       const authors = Array.from(byId.values()).sort((a, b) =>
         priority(a) - priority(b) || b.lastPublishedAt - a.lastPublishedAt ||
         a.id.localeCompare(b.id));
-      // Cursor pagination requires stable snapshot semantics across expiring
-      // stories. Do not advertise a cursor until that contract is implemented.
-      return { authors, serverNow: new Date(now).toISOString(), nextCursor: null };
+      // Cursor follows the last *queried* row, including malformed editors,
+      // so one rejected row never repeats indefinitely on subsequent pages.
+      const tail = page[page.length - 1];
+      const nextCursor = result.rows.length > 100 && tail
+        ? encodeBlikiCursor({ v: 1, anchorMs,
+            beforeAt: tail.cursor_at, beforeId: tail.id }) : null;
+      return { authors, serverNow: new Date(now).toISOString(), nextCursor };
     });
   });
 }
