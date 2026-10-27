@@ -50,7 +50,7 @@ async function profileA2(browser,platform="android"){
   userAgent:android?androidUA:"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile Safari/604.1"});
  const page=await context.newPage(),errors=recordErrors(page);
  try{
-  await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
+  await page.goto(BASE+"/profile-qa.html?profileV3=0",{waitUntil:"domcontentloaded"});
   await page.getByRole("button",{name:"Профиль",exact:true}).click();
   const root=await required(page,".pm-inline.pm-a2-root","owner A2");
   const compact=await state(page);
