@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from "react";
 import {remoteDraftPilot} from "./server-draft";
+import {realFeedPilot} from "./real-live-client";
 import type {CSSProperties,ReactNode} from "react";
 import {Check,Info,Trash2} from "lucide-react";
 import {goals,goalIcons} from "../ui/Goals";
@@ -76,11 +77,14 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      placeholder="Как тебя зовут?" onChange={e=>updateName(e.target.value)}/></GlassField>
    {nameHint&&<div className="name-input-hint" role="status"><Info size={17} aria-hidden="true"/>Можно использовать только буквы, пробел, тире и апостроф.</div>}
    <GlassCheckbox checked={data.trialConsent} onChange={trialConsent=>patch({trialConsent})}>
-     {remoteDraftPilot.enabled?
+     {realFeedPilot.enabled?
+      "Я понимаю, что фотографии пройдут проверку, а анкета появится другим пользователям только после подтверждённой публикации.":remoteDraftPilot.enabled?
       "Я понимаю, что анкета пока не публикуется, а серверное сохранение требует отдельного согласия.":
       "Я понимаю, что это тест интерфейса. Данные и фотографии не публикуются и не передаются на сервер."}
    </GlassCheckbox>
-   <p className="hint">Тестовый черновик сохраняется только на этом устройстве. Очистка данных Telegram удалит его.</p>
+   <p className="hint">{realFeedPilot.enabled?
+    "Черновик сначала сохраняется на этом устройстве. Перед отправкой на сервер потребуется отдельное согласие.":
+    "Тестовый черновик сохраняется только на этом устройстве. Очистка данных Telegram удалит его."}</p>
    <button className="draft-clear-action" type="button" onClick={resetDraft}><Trash2 size={14}/> Очистить локальный черновик</button>
  </div>;
  if(step===2)return <div className="form-stack">
