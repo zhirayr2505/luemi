@@ -54,6 +54,8 @@ interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:str
 export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack,blikiOwnerId}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
  const [profilePrepared,setProfilePrepared]=useState(false);
+ const blikiBackRef=useRef<(()=>boolean)|null>(null);
+ const registerBlikiBack=useCallback((handler:(()=>boolean)|null)=>{blikiBackRef.current=handler;},[]);
  const visitorBackRef=useRef<(()=>boolean)|null>(null);
  const registerVisitorBack=useCallback((handler:(()=>boolean)|null)=>{visitorBackRef.current=handler;},[]);
  const profileBackRef=useRef<(()=>boolean)|null>(null);
@@ -166,6 +168,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack,bli
  useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
   transitionRef.current=null;pendingCommit.current=null;locked.current=false;},[]);
  const leave=useCallback(()=>{
+  if(blikiBackRef.current?.())return;
   if(personOpen&&visitorBackRef.current?.())return;
   if(mainTab==="profile"&&profileBackRef.current?.())return;
   if(personOpen){setPersonOpen(null);return;}
@@ -501,7 +504,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack,bli
            style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
        </div>
        {blikiOwnerId && discoveryTab==="feed" && <Suspense fallback={null}>
-         <BlikiDiscoverySlot ownerId={blikiOwnerId}/>
+         <BlikiDiscoverySlot ownerId={blikiOwnerId} registerBack={registerBlikiBack}/>
        </Suspense>}
        <div className="discovery-pages" ref={pages} onPointerDown={down}
          onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}
