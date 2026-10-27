@@ -1,0 +1,59 @@
+name: LUEMI Bliki V1 isolated validation
+on:
+  push:
+    branches:
+      - 'feature/bliki-v1-foundation-20261027'
+    paths:
+      - '.github/workflows/bliki-v1-focused.yml'
+      - 'apps/api/src/bliki/**'
+      - 'apps/api/test/bliki-*.test.ts'
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/config.ts'
+      - 'apps/api/src/real-publication.ts'
+      - 'apps/web/src/features/bliki/**'
+      - 'apps/web/src/discovery/DiscoveryApp.tsx'
+      - 'apps/web/src/App.tsx'
+      - 'apps/api/migrations/20261027_bliki_*.sql'
+      - 'scripts/bliki-v1-contract.test.mjs'
+  pull_request:
+    branches: ['main']
+    paths:
+      - '.github/workflows/bliki-v1-focused.yml'
+      - 'apps/api/src/bliki/**'
+      - 'apps/web/src/features/bliki/**'
+      - 'apps/api/migrations/20261027_bliki_*.sql'
+permissions:
+  contents: read
+concurrency:
+  group: bliki-v1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  bliki-check:
+    name: Bliki types, build and contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      STAGING_BOOTSTRAP_ONLY: '1'
+      REM05B_SESSIONS_ENABLED: '0'
+      BLIKI_V1_ENABLED: '0'
+      BLIKI_V1_PUBLICATION_ENABLED: '0'
+      BLIKI_V1_INTERACTION_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: API Bliki isolated tests
+        run: npm run test -w @luemi/api
+      - name: Bliki client source contracts
+        run: node scripts/bliki-v1-contract.test.mjs
+      - name: Build both API and Web
+        run: npm run build
