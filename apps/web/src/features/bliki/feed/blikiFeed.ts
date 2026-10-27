@@ -30,11 +30,18 @@ export function buildBlikiFeed(
   for (const candidate of candidates) {
     if (!candidate.id || seen.has(candidate.id) || candidate.isBlocked || !candidate.isEligible ||
       !candidate.stories.length || !Number.isFinite(candidate.lastPublishedAt)) continue;
+    const activeStories = candidate.stories.filter(story => {
+      const publishedAt = 'publishedAt' in story ? (story as { publishedAt?: unknown }).publishedAt : undefined;
+      if (publishedAt === undefined) return true; // Legacy server DTO; API remains authoritative.
+      return typeof publishedAt === 'number' && Number.isFinite(publishedAt) &&
+        publishedAt <= now && publishedAt > now - 24 * 60 * 60 * 1000;
+    });
+    if (!activeStories.length) continue;
     seen.add(candidate.id);
     const group: BlikiFeedGroup = candidate.isMutualMatch ? 'matches'
       : candidate.likedByViewer ? 'liked'
       : candidate.isNearby ? 'nearby' : 'world';
-    entries.push({ ...candidate, group });
+    entries.push({ ...candidate, stories: activeStories, group });
   }
   const priority: Record<BlikiFeedGroup, number> = { matches: 0, liked: 1, nearby: 2, world: 3 };
   entries.sort((a, b) => priority[a.group] - priority[b.group] ||
