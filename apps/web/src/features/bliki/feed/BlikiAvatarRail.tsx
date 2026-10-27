@@ -1,87 +1,71 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { buildBlikiFeed, type BlikiFeedCandidate } from './blikiFeed';
+import '../bliki-showcase.css';
 import './blikiRailMotion.css';
 
 type Props = {
-  candidates: BlikiFeedCandidate[];
-  onOpenAuthor: (authorId: string) => void;
-  onCreate: () => void;
-  initiallyExpanded?: boolean;
-  hasMore?: boolean;
-  loadingMore?: boolean;
-  onLoadMore?: () => void;
+ candidates: BlikiFeedCandidate[];
+ onOpenAuthor: (authorId: string) => void;
+ onCreate: () => void;
+ initiallyExpanded?: boolean;
+ hasMore?: boolean;
+ loadingMore?: boolean;
+ onLoadMore?: () => void;
 };
-
-/** An avatar is displayed only from the app's authorized, same-origin media route. */
-function avatarUrl(raw?: string): string | null {
-  if (!raw || !/^\/api\/(?:v\d+\/)?[a-z0-9/_-]+$/i.test(raw) ||
-      raw.includes('..') || raw.includes('//')) return null;
-  return raw;
+function safeAvatarUrl(raw?: string): string | null {
+ if (!raw || !/^\/api\/(?:v\d+\/)?[a-z0-9/_-]+$/i.test(raw) ||
+     raw.includes('..') || raw.includes('//')) return null;
+ return raw;
 }
-function AuthorAvatar({ author, size }: { author: BlikiFeedCandidate; size: number }) {
-  const src = avatarUrl(author.avatarUrl);
-  return <span className="bliki-rail-avatar" style={{ width: size, height: size, flexShrink: 0,
-    borderRadius: '50%', overflow: 'hidden', border: '2px solid #a782be',
-    background: '#3e3048', display: 'grid', placeItems: 'center' }}>
-    {src ? <img src={src} alt="" draggable={false} loading="lazy"
-      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      : <span aria-hidden="true">💜</span>}
-  </span>;
+function Avatar({url}:{url?:string}) {
+ const source=safeAvatarUrl(url);
+ return <span className="bliki-showcase-ring" aria-hidden="true">
+  {source?<img src={source} alt="" loading="lazy" draggable={false}/>:
+    <span style={{display:'grid',placeItems:'center',height:'100%',borderRadius:'50%',
+      background:'#755482',color:'#fff'}}>✦</span>}
+ </span>;
 }
-
-/**
- * Native overflow scrolling keeps Android WebView momentum intact.
- * Deliberately avoids pointer capture and never claims Discovery's horizontal swipe.
- * Even with zero authors, the authenticated owner can start creating a Blik.
- */
-export function BlikiAvatarRail({ candidates, onOpenAuthor, onCreate,
-  initiallyExpanded = false, hasMore = false, loadingMore = false, onLoadMore }: Props) {
-  const [expanded, setExpanded] = useState(initiallyExpanded);
-  const feed = useMemo(() => buildBlikiFeed(candidates, { now: Date.now() }), [candidates]);
-  const start = useRef({ y: 0, x: 0 });
-  return <section aria-label="Блики" onTouchStart={event => {
-    start.current.y = event.touches[0]?.clientY ?? 0;
-    start.current.x = event.touches[0]?.clientX ?? 0;
-  }} onTouchEnd={event => {
-    const dy = (event.changedTouches[0]?.clientY ?? 0) - start.current.y;
-    const dx = (event.changedTouches[0]?.clientX ?? 0) - start.current.x;
-    if (Math.abs(dy) > 45 && Math.abs(dy) > Math.abs(dx) * 1.5) setExpanded(dy > 0);
-  }} style={{ position: 'relative', touchAction: 'pan-x pan-y' }}>
-    {!expanded ? <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 6 }}>
-      <button type="button" onClick={onCreate} aria-label="Создать мой Блик"
-        style={{ flexShrink: 0, background: 'transparent', border: '1px solid #a782be',
-          borderRadius: 22, color: 'inherit', padding: '9px 12px' }}>＋ Мой Блик</button>
-      {feed.collapsedAvatars.length > 0 && <button type="button" aria-label="Раскрыть Блики"
-        onClick={() => setExpanded(true)}
-        style={{ display: 'flex', alignItems: 'center', padding: 4,
-          border: 0, background: 'transparent' }}>
-        {feed.collapsedAvatars.map((author, index) => <span key={author.id} title={author.name}
-          style={{ marginLeft: index ? -12 : 0 }}><AuthorAvatar author={author} size={40}/></span>)}
-      </button>}
-    </div> : <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <strong>Блики</strong><button type="button" onClick={() => setExpanded(false)}>Свернуть</button>
-      </div>
-      <div className="bliki-rail-scroll" style={{ display: 'flex', gap: 14, padding: '10px 0',
-        alignItems: 'center', touchAction: 'pan-x', scrollBehavior: 'auto' }}>
-        <button className="bliki-rail-item" type="button" onClick={onCreate}
-          style={{ flexShrink: 0 }}>＋ Мой Блик</button>
-        {feed.entries.map((author, index) => <div key={author.id} className="bliki-rail-item"
-          style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          {index === feed.worldStartsAt && <span aria-label="Другие города и страны">🌍 Мир</span>}
-          <button type="button" onClick={() => onOpenAuthor(author.id)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <AuthorAvatar author={author} size={48}/>
-            <span>{author.name}</span>
-          </button>
-        </div>)}
-      </div>
-      {hasMore && onLoadMore && <button type="button" disabled={loadingMore}
-        onClick={onLoadMore} style={{ margin: '8px 0', background: 'transparent',
-          color: 'inherit', border: '1px solid #a782be', borderRadius: 16, padding: '8px 12px' }}>
-        {loadingMore ? 'Загружаем…' : 'Показать ещё Блики'}
-      </button>}
-      {!feed.entries.length && <p role="status">Пока нет Бликов. Твой может стать первым 💜</p>}
-    </div>}
-  </section>;
+/** The same premium rail in real mode, but with ONLY RLS-authorized authors.
+ * No demo profiles, cached mock stories or local phantom publications. */
+export function BlikiAvatarRail({candidates,onOpenAuthor,onCreate,initiallyExpanded=false,
+ hasMore=false,loadingMore=false,onLoadMore}:Props) {
+ const [expanded,setExpanded]=useState(initiallyExpanded);
+ const feed=useMemo(()=>buildBlikiFeed(candidates,{now:Date.now()}),[candidates]);
+ return <section aria-label="Блики" className={'bliki-showcase'+(expanded?' is-expanded':'')}>
+  <div className="bliki-showcase-row">
+   <button type="button" className="bliki-showcase-create" onClick={onCreate}
+     aria-label="Создать мой Блик">
+    <span className="bliki-create-orbit" aria-hidden="true">＋</span>
+    <span className="bliki-rail-caption">Мой Блик</span>
+   </button>
+   {feed.entries.map(author=><button key={author.id} type="button"
+     className="bliki-showcase-author" aria-label={'Блики: '+author.name}
+     onClick={()=>onOpenAuthor(author.id)}>
+    <Avatar url={author.avatarUrl}/>
+    <span className="bliki-rail-caption">{author.name}</span>
+   </button>)}
+   <button type="button" className="bliki-expand-button"
+     onClick={()=>setExpanded(x=>!x)} aria-expanded={expanded}
+     aria-label={expanded?'Свернуть Блики':'Раскрыть Блики'}>{expanded?'⌃':'⌄'}</button>
+  </div>
+  <div className="bliki-showcase-reveal" aria-hidden={!expanded}>
+   <div className="bliki-showcase-inner">
+    <span className="bliki-showcase-intro">Блики твоего мира</span>
+    <span className="bliki-showcase-demo">ИСТОРИИ • 24 ЧАСА</span>
+    {feed.entries.length?<div className="bliki-showcase-tiles">
+     {feed.entries.slice(0,4).map(author=><button type="button" key={author.id}
+       className="bliki-showcase-tile" onClick={()=>onOpenAuthor(author.id)}>
+      {safeAvatarUrl(author.avatarUrl)?<img src={author.avatarUrl} alt="" loading="lazy"/>:
+        <span aria-hidden="true">💜</span>}
+      <span>{author.name}</span>
+     </button>)}
+    </div>:<p style={{fontSize:12}}>Пока нет Бликов. Создай первый 💜</p>}
+    {hasMore&&onLoadMore&&<button type="button" disabled={loadingMore}
+      onClick={onLoadMore} style={{borderRadius:12,padding:'8px 12px',
+      border:'1px solid #a782be',background:'transparent',color:'inherit'}}>
+      {loadingMore?'Загружаем…':'Показать ещё Блики'}
+    </button>}
+   </div>
+  </div>
+ </section>;
 }
