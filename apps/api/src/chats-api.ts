@@ -37,7 +37,9 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     AND NOT pg_has_role(current_user,'pg_write_all_data','member')
     AND NOT has_schema_privilege(current_user,'luemi_chats','CREATE')
     AND NOT has_table_privilege(current_user,'luemi_chats.members','INSERT')
-    AND NOT has_table_privilege(current_user,'luemi_chats.members','UPDATE')
+    AND NOT has_column_privilege(current_user,'luemi_chats.members','actor_id','UPDATE')
+    AND NOT has_column_privilege(current_user,'luemi_chats.members','conversation_id','UPDATE')
+    AND NOT has_column_privilege(current_user,'luemi_chats.members','environment','UPDATE')
     AND NOT has_table_privilege(current_user,'luemi_chats.members','DELETE')
     AND NOT has_table_privilege(current_user,'luemi_chats.conversations','INSERT')
     AND NOT has_table_privilege(current_user,'luemi_chats.conversations','UPDATE')
@@ -124,6 +126,21 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    return {message:existing.rows[0]};
   }
   return {message:q.rows[0]};
+ }));
+ app.post<{Params:{id:string};Body:{messageId?:unknown}}>(
+ "/api/v4/chats/:id/read",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
+  if(!validId(req.params.id)||!validId(req.body?.messageId))deny(422,"invalid_message");
+  await member(db,req.params.id,actor);
+  const q=await db.query<{created_at:string}>(`SELECT created_at FROM luemi_chats.messages
+   WHERE conversation_id=$1 AND id=$2 AND environment=$3`,
+   [req.params.id,req.body.messageId,options.namespace]);
+  if(q.rowCount!==1)deny(404,"not_found");
+  const updated=await db.query(`UPDATE luemi_chats.members
+   SET last_read_at=greatest(coalesce(last_read_at,'epoch'::timestamptz),$4::timestamptz)
+   WHERE conversation_id=$1 AND actor_id=$2 AND environment=$3 RETURNING actor_id`,
+   [req.params.id,actor,options.namespace,q.rows[0].created_at]);
+  if(updated.rowCount!==1)deny(404,"not_found");
+  return {read:true as const};
  }));
  app.patch<{Params:{id:string;messageId:string};Body:{body?:unknown}}>(
  "/api/v4/chats/:id/messages/:messageId",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
