@@ -123,16 +123,16 @@ export function BlikDraftEditor({ ownerId, onClose, onPreview, publishTransport,
           </div>}
           <label style={{ display: 'grid', gap: 6, marginTop: 12 }}>
             Подпись к Блику
-            <textarea rows={2} maxLength={150} value={state.editor.caption ?? ''}
-              onChange={event => state.change({ ...state.editor, caption: event.target.value })}
+            <textarea rows={2} maxLength={300} value={state.editor.caption ?? ''}
+              onChange={event => state.change({ ...state.editor, caption: Array.from(event.target.value).slice(0, 150).join('') })}
               placeholder="Добавь подпись…" aria-label="Подпись Блика" />
             <small>{[...(state.editor.caption ?? '')].length}/150</small>
           </label>
           {state.editor.layers.map(layer => <div key={layer.id} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <input aria-label={layer.type === 'text' ? 'Текст Блика' : 'Эмодзи Блика'}
-              maxLength={150} value={layer.value}
+              maxLength={300} value={layer.value}
               onChange={event => state.change({ ...state.editor,
-                layers: state.editor.layers.map(x => x.id === layer.id ? { ...x, value: event.target.value } : x) })} />
+                layers: state.editor.layers.map(x => x.id === layer.id ? { ...x, value: Array.from(event.target.value).slice(0, 150).join('') } : x) })} />
             <button onClick={() => state.change({ ...state.editor,
               layers: state.editor.layers.filter(x => x.id !== layer.id) })}>×</button>
             <select aria-label="Цвет слоя" value={layer.style ?? 'light'}
