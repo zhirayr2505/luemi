@@ -55,6 +55,27 @@ test("two authenticated actors create one durable conversation and revoke it on 
    VALUES($1,$2,$3,$4,$5,0,'approved','published')`,
    [peerPhotoId,B,ns,"synthetic-original-photo-".padEnd(48,"A"),
     "synthetic-derivative-photo-".padEnd(48,"B")]);
+  const strangerPhotoId="88888888-8888-4888-8888-888888888888";
+  await admin.query(`INSERT INTO luemi_private.media_assets
+   (id,owner_id,environment,original_key,derivative_key,position,state,publication_status)
+   VALUES($1,$2,$3,$4,$5,0,'approved','published')`,
+   [strangerPhotoId,C,ns,"synthetic-original-C-".padEnd(48,"C"),
+    "synthetic-derivative-C-".padEnd(48,"D")]);
+  const chatReader=new Pool({connectionString:url("MATCHES_HTTP_CHAT_URL")});
+  const visiblePhotoIds=async(actorId:string):Promise<string[]>=>{
+   const session=await chatReader.connect();
+   try{
+    await session.query("BEGIN");
+    await session.query("SELECT set_config('luemi.actor_id',$1,true)",[actorId]);
+    await session.query("SELECT set_config('luemi.environment',$1,true)",[ns]);
+    const result=await session.query<{id:string}>("SELECT id FROM luemi_private.media_assets ORDER BY id");
+    await session.query("COMMIT");
+    return result.rows.map(x=>x.id);
+   }catch(e){await session.query("ROLLBACK").catch(()=>{});throw e;}finally{session.release();}
+  };
+  try{
+   assert.deepEqual(await visiblePhotoIds(A),[],"no relation means no photo metadata");
+  }finally{await chatReader.end();}
   let result=await inject(A,"POST","/api/v4/matches/like",{targetId:B});
   assert.equal(result.status,200,JSON.stringify(result));assert.deepEqual(result.json,{liked:true,matched:false});
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});
@@ -71,6 +92,23 @@ test("two authenticated actors create one durable conversation and revoke it on 
   assert.equal(listed.json.conversations[0].peerPhotoUrl,
    "/api/v3/discovery/photo/"+peerPhotoId);
   const matchId=listed.json.conversations[0].matchId as string;
+  const sessionPhotoReader=new Pool({connectionString:url("MATCHES_HTTP_CHAT_URL")});
+  const scopedPhotos=async(actorId:string)=>{
+   const db=await sessionPhotoReader.connect();
+   try{
+    await db.query("BEGIN");
+    await db.query("SELECT set_config('luemi.actor_id',$1,true)",[actorId]);
+    await db.query("SELECT set_config('luemi.environment',$1,true)",[ns]);
+    const result=await db.query<{id:string}>("SELECT id FROM luemi_private.media_assets ORDER BY id");
+    await db.query("COMMIT");return result.rows.map(x=>x.id);
+   }catch(e){await db.query("ROLLBACK").catch(()=>{});throw e;}finally{db.release();}
+  };
+  try{
+   assert.deepEqual(await scopedPhotos(A),[peerPhotoId],
+    "matched A may only see B's approved photo");
+   assert.deepEqual(await scopedPhotos(C),[],
+    "stranger C must not see A or B media even if published");
+  }finally{await sessionPhotoReader.end();}
   const messagePath="/api/v4/chats/"+conversationId+"/messages";
   result=await inject(C,"GET",messagePath);
   assert.equal(result.status,404,"unmatched actor must never read chat");
