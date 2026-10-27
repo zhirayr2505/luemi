@@ -26,6 +26,9 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   if(!db)return reply.code(503).send({error:"service_unavailable"});
   try{
    // Reject privileged, cross-role or table-owning database connections.
+   await db.query("BEGIN");
+   await db.query("SELECT set_config('luemi.actor_id',$1,true)",[actor.actorId]);
+   await db.query("SELECT set_config('luemi.environment',$1,true)",[options.namespace]);
    const role=await db.query<{safe:boolean}>(`SELECT
     (r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreaterole
     AND NOT r.rolcreatedb AND session_user=current_user
@@ -45,9 +48,6 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
        ('luemi_chats.members'::regclass,'luemi_chats.messages'::regclass))) AS safe
     FROM pg_roles r WHERE r.rolname=current_user`);
    if(role.rowCount!==1||role.rows[0].safe!==true)deny(503,"service_unavailable");
-   await db.query("BEGIN");
-   await db.query("SELECT set_config('luemi.actor_id',$1,true)",[actor.actorId]);
-   await db.query("SELECT set_config('luemi.environment',$1,true)",[options.namespace]);
    const result=await fn(db,actor.actorId);
    await auth.read(req,reply);
    if(reply.sent||req.authActor?.actorId!==actor.actorId||
