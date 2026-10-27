@@ -48,9 +48,9 @@ export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig)
       return {method:"sendMessage",chat_id:chat.id,
        text:"Твой Telegram ID: "+senderId+"\nПередай его владельцу LUEMI для приглашения."};
     }
-    if (/^\\/support(?:@LuemiAppBot)?(?:\\s|$)/i.test(text)){
+    if (/^\/support(?:@LuemiAppBot)?(?:\s|$)/i.test(text)){
       if(!Number.isSafeInteger(senderId)||senderId!==chat.id)return {ok:true};
-      const body=text.replace(/^\\/support(?:@LuemiAppBot)?/i,"").trim();
+      const body=text.replace(/^\/support(?:@LuemiAppBot)?/i,"").trim();
       if(body.length<5||body.length>1000||!Number.isSafeInteger(request.body?.message?.message_id))
        return {method:"sendMessage",chat_id:chat.id,
         text:"Напиши /support и текст обращения (от 5 до 1000 символов) одним сообщением."};
