@@ -78,6 +78,11 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
   if(editing){if(!text)return;update(a=>a.map(m=>m.id===editing?{...m,text}:m));setEditing(null);}
   else update(a=>[...a,{id:uid(),mine:true,text,image:photo??undefined,reply:reply?.text,time:new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}),status:"sent"}],true);
   setDraft("");setPhoto(null);setReply(null);};
+ const receiveDemo=()=>{if(!active)return;
+  const samples=["А мне нравится эта идея 💜","Давай обязательно увидимся ☺️","Какой красивый день! ✨"];
+  const next=samples[(messages[active]?.length??0)%samples.length];
+  update(a=>[...a,{id:uid(),mine:false,text:next,time:new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}],true);
+ };
  const react=(id:string,value:string)=>{update(a=>a.map(m=>m.id===id?{...m,reaction:m.reaction===value?undefined:value}:m));setMenu(null);};
  const handleAction=(action:string)=>{
   if(!menu)return;
@@ -131,7 +136,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
    <p className="lc-footnote">Демо-сообщения не отправляются другим людям.</p>
   </>:<><header className="lc-chat-header"><button type="button" aria-label="Назад" onClick={()=>setActive(null)}><ArrowLeft/></button><button type="button" className="lc-person" onClick={()=>onOpenProfile?onOpenProfile(active):setNotice("Профиль будет подключён к реальному мэтчу.")}><span className="lc-avatar">{activeChat?.avatar}</span><span><strong>{activeChat?.name}</strong><small>Демо-переписка</small></span></button><button type="button" aria-label="Меню собеседника" onClick={()=>setMenu({kind:"person",id:active})}><MoreVertical/></button></header>
    <div className="lc-history" ref={list} onScroll={e=>{const t=e.currentTarget;nearBottom.current=t.scrollHeight-t.scrollTop-t.clientHeight<95;if(nearBottom.current)setNewBelow(0);}} onPointerDown={e=>{if(e.clientX<30)pointerDown(e,"screen","screen");}} onPointerMove={pointerMove} onPointerUp={pointerUp}>
-    <div className="lc-day">Сегодня</div>
+    <div className="lc-day">Сегодня · демо <button type="button" className="lc-receive" onClick={receiveDemo}>Получить сообщение ↓</button></div>
     {items.map(m=><div key={m.id} data-message-id={m.id} className={"lc-msg-line "+(m.mine?"lc-own":"")} onPointerDown={e=>{e.stopPropagation();pointerDown(e,e.clientX<30?"screen":m.id,e.clientX<30?"screen":"message");}} onPointerMove={pointerMove} onPointerUp={e=>{e.stopPropagation();pointerUp(e);}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onContextMenu={e=>{e.preventDefault();setMenu({kind:"message",id:m.id});}}>
      <div className="lc-bubble">{m.reply&&<div className="lc-quote">{m.reply}</div>}{m.image&&<button type="button" className="lc-photo-open" onClick={()=>setLightbox(m.image!)}><img src={m.image} alt="Отправленное фото"/></button>}{m.text&&<div>{m.text}</div>}<small>{m.time} {m.mine?"✓✓":""}</small>{m.reaction&&<span className="lc-reaction">{m.reaction}</span>}</div>
     </div>)}
