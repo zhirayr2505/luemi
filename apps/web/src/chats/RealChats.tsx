@@ -8,6 +8,7 @@ import "./chats.css";
 export function RealChats(){
  const [conversations,setConversations]=useState<ChatWireConversation[]>([]);
  const [active,setActive]=useState<string|null>(null);
+ const [actorId,setActorId]=useState<string|null>(null);
  const [messages,setMessages]=useState<ChatWireMessage[]>([]);
  const [draft,setDraft]=useState("");
  const [error,setError]=useState("");
@@ -21,7 +22,7 @@ export function RealChats(){
  useEffect(()=>{
   if(!api){setError("Требуется авторизация Telegram");setLoading(false);return;}
   const controller=new AbortController();
-  api.list(controller.signal).then(data=>setConversations(data.conversations))
+  Promise.all([api.me(controller.signal),api.list(controller.signal)]).then(([me,data])=>{setActorId(me.actorId);setConversations(data.conversations);})
    .catch(()=>{if(!controller.signal.aborted)setError("Не удалось загрузить чаты");})
    .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
   return()=>controller.abort();
@@ -66,7 +67,7 @@ export function RealChats(){
     <span className="lc-avatar">💜</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>
    </button>)}</div>}
   </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;setActive(null);}} aria-label="Назад">←</button><strong>Переписка</strong></header>
-   <div className="lc-history" role="log" aria-label="Сообщения">{messages.map(m=><div key={m.id} className="lc-msg-line">
+   <div className="lc-history" role="log" aria-label="Сообщения">{messages.map(m=><div key={m.id} className={"lc-msg-line "+(m.senderId===actorId?"lc-own":"")}>
     <div className="lc-bubble">{m.deletedAt?<i>Сообщение удалено</i>:m.body}<small>{new Date(m.createdAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small></div>
    </div>)}<div ref={bottom}/></div>
    <div className="lc-composer"><div className="lc-input-row"><textarea aria-label="Сообщение" maxLength={4000} value={draft} onChange={e=>{setDraft(e.target.value);if(pending.current?.body!==e.target.value.trim())pending.current=null;}} placeholder="Сообщение…"/><button type="button" disabled={sending||!draft.trim()} onClick={()=>void send()} aria-label="Отправить">➤</button></div></div>
