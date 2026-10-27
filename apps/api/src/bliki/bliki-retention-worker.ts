@@ -44,7 +44,7 @@ async function checkRole(db: PoolClient): Promise<void> {
     AND NOT pg_has_role(current_user,'pg_write_all_data','member')
     AND NOT has_schema_privilege(current_user,'luemi_bliki_private','CREATE')
     AND row_security_active('luemi_bliki_private.stories'::regclass)
-    AND NOT has_table_privilege(current_user,'luemi_private.sessions','SELECT')
+    AND NOT has_schema_privilege(current_user,'luemi_private','USAGE')
     AND NOT has_table_privilege(current_user,'luemi_bliki_private.stories','DELETE')
     AND NOT has_column_privilege(current_user,'luemi_bliki_private.stories','status','UPDATE')
     AND NOT has_column_privilege(current_user,'luemi_bliki_private.stories','media_key','UPDATE')
