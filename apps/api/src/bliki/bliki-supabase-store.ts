@@ -49,6 +49,44 @@ export function createBlikiSupabaseStore(
     return response;
   }
   return {
+    async open(key, range) {
+      const h = headers();
+      h.set('Accept-Encoding', 'identity');
+      if (range) {
+        if (!Number.isSafeInteger(range.start) || range.start < 0 ||
+            (range.end !== undefined &&
+             (!Number.isSafeInteger(range.end) || range.end < range.start)))
+          throw new Error('bliki_invalid_range');
+        h.set('Range', 'bytes=' + range.start + '-' + (range.end ?? ''));
+      }
+      const response = await transport(origin + 'authenticated/' + bucket + '/' + safeKey(key, namespace), {
+        method: 'GET', headers: h, cache: 'no-store', redirect: 'manual',
+        signal: AbortSignal.timeout(30000),
+      });
+      if (response.status === 404) { await response.body?.cancel(); return null; }
+      const expectedStatus = range ? 206 : 200;
+      if (response.status !== expectedStatus || !response.body) {
+        await response.body?.cancel();
+        throw new Error('bliki_storage_range_unsupported');
+      }
+      const mimeType = response.headers.get('content-type')?.split(';')[0].trim() ?? '';
+      if (!['image/jpeg', 'image/png', 'image/webp', 'video/mp4'].includes(mimeType)) {
+        await response.body.cancel();
+        throw new Error('bliki_storage_mime_mismatch');
+      }
+      const length = Number(response.headers.get('content-length'));
+      if (!Number.isSafeInteger(length) || length <= 0 || length > 100 * 1024 * 1024) {
+        await response.body.cancel();
+        throw new Error('bliki_storage_invalid_length');
+      }
+      const contentRange = response.headers.get('content-range');
+      if (range && (!contentRange || !/^bytes [0-9]+-[0-9]+\/[0-9]+$/.test(contentRange))) {
+        await response.body.cancel();
+        throw new Error('bliki_storage_invalid_content_range');
+      }
+      return { status: expectedStatus as 200 | 206, mimeType, length,
+        ...(contentRange ? { contentRange } : {}), body: response.body };
+    },
     async put(key, bytes, mime) {
       if (bytes.length < 1 || bytes.length > 100 * 1024 * 1024) throw new Error('invalid_bliki_size');
       const response = await request('POST', key, mime, bytes);
