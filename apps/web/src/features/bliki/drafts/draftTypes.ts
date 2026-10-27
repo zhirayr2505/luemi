@@ -16,6 +16,7 @@ export type BlikEditorState = {
   translateX: number;
   translateY: number;
   muted: boolean;
+  caption?: string;
   trimStartMs?: number;
   trimEndMs?: number;
   layers: BlikLayer[];
@@ -44,5 +45,5 @@ export type BlikDraftMedia = {
 };
 export const defaultBlikEditor = (): BlikEditorState => ({
   fit: 'cover', scale: 1, translateX: 0, translateY: 0,
-  muted: false, layers: [],
+  muted: false, caption: '', layers: [],
 });
