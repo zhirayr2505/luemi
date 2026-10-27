@@ -12,6 +12,17 @@ const PHOTO_MS = 5000;
 const SETTLE_MS = 210;
 type PointerStart = { x: number; y: number; at: number; pointerId: number };
 type Slide = { from: number; to: number; direction: -1 | 1 } | null;
+/** Display sanitized server-editor metadata without activating any editing gesture. */
+function StoryLayers({ story }: { story: BlikAuthor['stories'][number] }) {
+  return <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+    {story.editor?.layers.map(layer => <span key={layer.id} style={{
+      position: 'absolute', left: layer.x * 100 + '%', top: layer.y * 100 + '%',
+      transform: `translate(-50%,-50%) scale(${layer.scale}) rotate(${layer.rotation}deg)`,
+      color: layer.style === 'dark' ? '#18131e' : layer.style === 'accent' ? '#d6a9ff' : '#fff',
+      fontSize: 22, textShadow: '0 1px 5px #000', whiteSpace: 'pre-wrap', maxWidth: '85%',
+    }}>{layer.value}</span>)}
+  </div>;
+}
 
 export function BlikViewer({ authors, initial = { author: 0, story: 0 }, onClose, onOpenProfile }: Props) {
   const [position, setPosition] = useState(initial);
@@ -179,19 +190,23 @@ export function BlikViewer({ authors, initial = { author: 0, story: 0 }, onClose
       <div style={{ position: 'absolute', inset: 0 }}>
         {story.mediaKind === 'image'
           ? <img src={story.mediaUrl} alt={story.caption || 'Блик'} draggable={false}
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-          : <video ref={video} key={story.id} src={story.mediaUrl} playsInline
+              style={{ width: '100%', height: '100%', objectFit: story.editor?.fit ?? 'contain',
+                transform: story.editor ? `translate3d(${story.editor.translateX}px,${story.editor.translateY}px,0) scale(${story.editor.scale})` : undefined }} />
+          : <video ref={video} key={story.id} src={story.mediaUrl} playsInline muted={story.editor?.muted}
               onTimeUpdate={event => { const el = event.currentTarget;
                 if (el.duration > 0) setProgress(el.currentTime / el.duration); }}
-              onEnded={advance} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
+              onEnded={advance} style={{ width: '100%', height: '100%', objectFit: story.editor?.fit ?? 'contain' }} />}
+        <StoryLayers story={story} />
       </div>
       {otherStory && slide && <div style={{ position: 'absolute', top: 0, bottom: 0,
         left: slide.direction === 1 ? width : -width, width }}>
         {otherStory.mediaKind === 'image'
           ? <img src={otherStory.mediaUrl} alt={otherStory.caption || 'Следующий Блик'}
-              draggable={false} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              draggable={false} style={{ width: '100%', height: '100%', objectFit: otherStory.editor?.fit ?? 'contain',
+                transform: otherStory.editor ? `translate3d(${otherStory.editor.translateX}px,${otherStory.editor.translateY}px,0) scale(${otherStory.editor.scale})` : undefined }} />
           : <video src={otherStory.mediaUrl} playsInline preload="metadata"
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
+              style={{ width: '100%', height: '100%', objectFit: otherStory.editor?.fit ?? 'contain' }} />}
+        <StoryLayers story={otherStory} />
       </div>}
     </div>
     <footer style={{ padding: 12, textAlign: 'center' }}>{story.caption || ''}</footer>
