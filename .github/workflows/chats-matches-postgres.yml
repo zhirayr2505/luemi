@@ -55,8 +55,31 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/chats-v1-isolated.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v1-message-integrity.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v2-mutual-matches.sql
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked Node dependencies
+        run: |
+          set -euo pipefail
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+      - name: Provision separate synthetic matching and chat HTTP login roles
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE luemi_ci_match LOGIN PASSWORD 'synthetic_match_http' IN ROLE luemi_match_writer;
+          CREATE ROLE luemi_ci_chat LOGIN PASSWORD 'synthetic_chat_http' IN ROLE luemi_chats_writer;
+          SQL
       - name: Prove matched-user isolation, blocked delivery and unmatch revocation
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f qa/matches-v2-postgres.sql | tee /tmp/luemi-match-verdict.txt
           grep -q LUEMI_MATCH_RLS_PASS /tmp/luemi-match-verdict.txt
+      - name: Two-user authenticated HTTP API / RLS integration
+        env:
+          MATCHES_HTTP_ADMIN_URL: postgres://postgres:synthetic_match_admin@127.0.0.1:5432/matches_disposable
+          MATCHES_HTTP_MATCH_URL: postgres://luemi_ci_match:synthetic_match_http@127.0.0.1:5432/matches_disposable
+          MATCHES_HTTP_CHAT_URL: postgres://luemi_ci_chat:synthetic_chat_http@127.0.0.1:5432/matches_disposable
+        run: npx --no-install tsx --test apps/api/secure-tests/chats-matches-http.test.ts
