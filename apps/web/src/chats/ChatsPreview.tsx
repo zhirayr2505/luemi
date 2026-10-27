@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from "react";
+import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {ArrowLeft,Archive,BellOff,CheckCheck,Copy,Heart,ImagePlus,MoreVertical,Pin,Reply,Search,Send,ShieldBan,Trash2,X} from "lucide-react";
 import "./chats.css";
@@ -42,15 +42,41 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  const lastTap=useRef<{id:string;at:number}>({id:"",at:0});
  const urls=useRef<string[]>([]);
  const nearBottom=useRef(true);
+ const previousPositions=useRef<Map<string,number>|null>(null);
+ const previousHeight=useRef(0);
+ const pendingAutoScroll=useRef(false);
+
  const activeChat=chats.find(c=>c.id===active);
  const items=active?messages[active]??[]:[];
  const scrollBottom=()=>{requestAnimationFrame(()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight;setNewBelow(0);});};
  useEffect(()=>{if(active)scrollBottom();},[active]);
  useEffect(()=>()=>{urls.current.forEach(u=>URL.revokeObjectURL(u));if(hold.current)clearTimeout(hold.current);},[]);
- const update=(fn:(m:Message[])=>Message[])=>{if(!active)return;setMessages(prev=>({...prev,[active]:fn(prev[active]??[])}));if(nearBottom.current)scrollBottom();else setNewBelow(v=>v+1);};
+ const update=(fn:(m:Message[])=>Message[],append=false)=>{if(!active)return;
+  const el=list.current;
+  previousPositions.current=el?new Map(Array.from(el.querySelectorAll<HTMLElement>("[data-message-id]")).map(node=>[node.dataset.messageId!,node.getBoundingClientRect().top])):null;
+  previousHeight.current=el?.scrollHeight??0;
+  pendingAutoScroll.current=nearBottom.current;
+  setMessages(prev=>({...prev,[active]:fn(prev[active]??[])}));
+  if(append&&!nearBottom.current)setNewBelow(v=>v+1);
+ };
+ useLayoutEffect(()=>{
+  const el=list.current;
+  if(!el||!previousPositions.current)return;
+  const before=previousPositions.current;previousPositions.current=null;
+  if(pendingAutoScroll.current){el.scrollTop=el.scrollHeight;}
+  else if(el.scrollHeight!==previousHeight.current){/* Preserve reader position while new items arrive. */}
+  if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  el.querySelectorAll<HTMLElement>("[data-message-id]").forEach(node=>{
+   const oldTop=before.get(node.dataset.messageId!);
+   if(oldTop===undefined)return;
+   const dy=oldTop-node.getBoundingClientRect().top;
+   if(Math.abs(dy)<1||Math.abs(dy)>600)return;
+   node.animate([{transform:`translateY(${dy}px)`},{transform:"translateY(0)"}],{duration:320,easing:"cubic-bezier(.2,.75,.2,1)"});
+  });
+ },[messages,active]);
  const send=()=>{if(!active||blocked.includes(active))return;const text=draft.trim();if(!text&&!photo)return;
-  if(editing){update(a=>a.map(m=>m.id===editing?{...m,text}:m));setEditing(null);}
-  else update(a=>[...a,{id:uid(),mine:true,text,image:photo??undefined,reply:reply?.text,time:new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}),status:"sent"}]);
+  if(editing){if(!text)return;update(a=>a.map(m=>m.id===editing?{...m,text}:m));setEditing(null);}
+  else update(a=>[...a,{id:uid(),mine:true,text,image:photo??undefined,reply:reply?.text,time:new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}),status:"sent"}],true);
   setDraft("");setPhoto(null);setReply(null);};
  const react=(id:string,value:string)=>{update(a=>a.map(m=>m.id===id?{...m,reaction:m.reaction===value?undefined:value}:m));setMenu(null);};
  const handleAction=(action:string)=>{
@@ -65,18 +91,19 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
   }else{const m=items.find(x=>x.id===menu.id);if(!m)return;
    if(action==="reply")setReply(m);
    if(action==="copy"&&m.text)void navigator.clipboard?.writeText(m.text).catch(()=>setNotice("Не удалось скопировать"));
-   if(action==="edit"){setDraft(m.text);setEditing(m.id);}
-   if(action==="delete")update(a=>a.filter(x=>x.id!==m.id));
+   if(action==="edit"&&m.mine){setDraft(m.text);setEditing(m.id);}
+   if(action==="delete"&&m.mine)update(a=>a.filter(x=>x.id!==m.id));
    if(action==="report")setNotice("Жалоба: демонстрация интерфейса, отправка на сервер не выполняется.");
   }
   setMenu(null);
  };
- const pointerDown=(e:ReactPointerEvent<HTMLElement>,id:string,kind:"message"|"screen")=>{
+ const pointerDown=(e:ReactPointerEvent<HTMLElement>,id:string,kind:"message"|"screen"|"chat")=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
   touch.current={x:e.clientX,y:e.clientY,id,kind,moved:false};holdFired.current=false;
   if(hold.current)clearTimeout(hold.current);
   if(kind==="message"||kind==="chat")hold.current=setTimeout(()=>{holdFired.current=true;setMenu({kind:kind==="chat"?"chat":"message",id});},470);
  };
+ const pointerMove=(e:ReactPointerEvent<HTMLElement>)=>{const g=touch.current;if(!g)return;if(Math.hypot(e.clientX-g.x,e.clientY-g.y)>12){g.moved=true;if(hold.current)clearTimeout(hold.current);}};
  const pointerUp=(e:ReactPointerEvent<HTMLElement>)=>{
   if(hold.current)clearTimeout(hold.current);
   const g=touch.current;touch.current=null;if(!g||holdFired.current)return;
@@ -86,7 +113,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
    if(g.kind==="screen"&&dx>0&&g.x<30){setActive(null);setMenu(null);}
    return;
   }
-  if(g.kind==="message"&&Math.abs(dx)<12&&Math.abs(dy)<12){
+  if(g.kind==="message"&&!g.moved&&Math.abs(dx)<12&&Math.abs(dy)<12){
    const now=performance.now();
    if(lastTap.current.id===g.id&&now-lastTap.current.at<320){react(g.id,"❤️");lastTap.current={id:"",at:0};}
    else lastTap.current={id:g.id,at:now};
@@ -97,15 +124,15 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  return <div className="luemi-chats" data-chat-preview="true">
   {!active?<><header className="lc-heading"><div><small>LUEMI · ДЕМО ИНТЕРФЕЙСА</small><h2>{archiveView?"Архив":"Чаты"}</h2></div><button type="button" aria-label="Архив" onClick={()=>setArchiveView(v=>!v)}>{archiveView?<ArrowLeft/>:<Archive/>}</button></header>
    <label className="lc-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Поиск переписок" aria-label="Поиск переписок"/></label>
-   <div className="lc-conversations">{visible.length?visible.map(c=><div className="lc-conversation" key={c.id} onContextMenu={e=>{e.preventDefault();setMenu({kind:"chat",id:c.id});}} onPointerDown={e=>pointerDown(e,c.id,"chat")} onPointerUp={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);}}>
+   <div className="lc-conversations">{visible.length?visible.map(c=><div className="lc-conversation" key={c.id} onContextMenu={e=>{e.preventDefault();setMenu({kind:"chat",id:c.id});}} onPointerDown={e=>pointerDown(e,c.id,"chat")} onPointerMove={pointerMove} onPointerUp={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);}}>
     <button type="button" className="lc-chat-open" onClick={()=>{if(!holdFired.current)open(c.id);}}><span className="lc-avatar">{c.avatar}</span><span className="lc-chat-summary"><strong>{c.name} {c.pinned?"📌":""}</strong><span>{c.last}</span></span><span className="lc-meta"><small>12:45</small>{c.unread>0&&<b>{c.unread}</b>}{c.muted&&<BellOff size={13}/>}</span></button>
     <button type="button" aria-label={"Действия с чатом "+c.name} className="lc-ellipsis" onClick={()=>setMenu({kind:"chat",id:c.id})}><MoreVertical size={18}/></button>
    </div>):<p className="lc-empty">Здесь пока нет переписок.</p>}</div>
    <p className="lc-footnote">Демо-сообщения не отправляются другим людям.</p>
   </>:<><header className="lc-chat-header"><button type="button" aria-label="Назад" onClick={()=>setActive(null)}><ArrowLeft/></button><button type="button" className="lc-person" onClick={()=>onOpenProfile?onOpenProfile(active):setNotice("Профиль будет подключён к реальному мэтчу.")}><span className="lc-avatar">{activeChat?.avatar}</span><span><strong>{activeChat?.name}</strong><small>Демо-переписка</small></span></button><button type="button" aria-label="Меню собеседника" onClick={()=>setMenu({kind:"person",id:active})}><MoreVertical/></button></header>
-   <div className="lc-history" ref={list} onScroll={e=>{const t=e.currentTarget;nearBottom.current=t.scrollHeight-t.scrollTop-t.clientHeight<95;if(nearBottom.current)setNewBelow(0);}} onPointerDown={e=>{if(e.clientX<30)pointerDown(e,"screen","screen");}} onPointerUp={pointerUp}>
+   <div className="lc-history" ref={list} onScroll={e=>{const t=e.currentTarget;nearBottom.current=t.scrollHeight-t.scrollTop-t.clientHeight<95;if(nearBottom.current)setNewBelow(0);}} onPointerDown={e=>{if(e.clientX<30)pointerDown(e,"screen","screen");}} onPointerMove={pointerMove} onPointerUp={pointerUp}>
     <div className="lc-day">Сегодня</div>
-    {items.map(m=><div key={m.id} className={"lc-msg-line "+(m.mine?"lc-own":"")} onPointerDown={e=>{e.stopPropagation();pointerDown(e,e.clientX<30?"screen":m.id,e.clientX<30?"screen":"message");}} onPointerUp={e=>{e.stopPropagation();pointerUp(e);}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onContextMenu={e=>{e.preventDefault();setMenu({kind:"message",id:m.id});}}>
+    {items.map(m=><div key={m.id} data-message-id={m.id} className={"lc-msg-line "+(m.mine?"lc-own":"")} onPointerDown={e=>{e.stopPropagation();pointerDown(e,e.clientX<30?"screen":m.id,e.clientX<30?"screen":"message");}} onPointerMove={pointerMove} onPointerUp={e=>{e.stopPropagation();pointerUp(e);}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onContextMenu={e=>{e.preventDefault();setMenu({kind:"message",id:m.id});}}>
      <div className="lc-bubble">{m.reply&&<div className="lc-quote">{m.reply}</div>}{m.image&&<button type="button" className="lc-photo-open" onClick={()=>setLightbox(m.image!)}><img src={m.image} alt="Отправленное фото"/></button>}{m.text&&<div>{m.text}</div>}<small>{m.time} {m.mine?"✓✓":""}</small>{m.reaction&&<span className="lc-reaction">{m.reaction}</span>}</div>
     </div>)}
    </div>
