@@ -42,6 +42,9 @@ ALTER TABLE luemi_chats.members FORCE ROW LEVEL SECURITY;
 ALTER TABLE luemi_chats.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE luemi_chats.messages FORCE ROW LEVEL SECURITY;
 -- A dedicated application role receives SELECT on members, but only for its own actor.
+-- REVOKE ALL ON ALL TABLES IN SCHEMA luemi_chats FROM PUBLIC;
+-- Grant only: SELECT members, UPDATE(last_read_at) members, SELECT/INSERT/UPDATE messages.
+-- No DELETE grants, no CREATE grants, no conversation or membership writes.
 CREATE POLICY chats_members_read ON luemi_chats.members FOR SELECT USING (
  actor_id = nullif(current_setting('luemi.actor_id',true),'')::uuid
  AND environment = current_setting('luemi.environment',true)
