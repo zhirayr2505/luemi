@@ -24,12 +24,12 @@ export class ProfileGestureCoordinator {
   }
   return {owner:c.owner,dx,dy,claimed:c.owner!=="NONE"};
  }
- /** Only a downward pull from the top edge of a native page may hand its
-  * unclaimed vertical gesture to the sheet. The caller checks scrollTop. */
- claimSheetAtScrollTop(id:number):boolean{
+ /** The caller owns the scroll boundary decision. An expanded sheet claims
+  * upward content drags; a compact sheet claims downward pulls at the top. */
+ claimSheetFromContent(id:number,direction:"up"|"down"):boolean{
   const c=this.candidate;
   if(!c||c.pointer.id!==id||c.region!=="content"||c.owner!=="NATIVE_SCROLL"||
-   c.last.y<=c.pointer.y)return false;
+   (direction==="down"?c.last.y<=c.pointer.y:c.last.y>=c.pointer.y))return false;
   c.owner="SHEET";return true;
  }
  end(id:number):Decision{

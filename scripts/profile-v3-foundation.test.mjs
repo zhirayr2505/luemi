@@ -57,9 +57,13 @@ try{
  const g=new ProfileGestureCoordinator();assert(g.begin({id:1,x:0,y:0,time:0},"handle"));
  assert.equal(g.move({id:1,x:2,y:30,time:16}).owner,"SHEET");g.cancel();assert.equal(g.owner(),"NONE");
  assert(g.begin({id:2,x:0,y:0,time:0},"content"));assert.equal(g.move({id:2,x:0,y:25,time:16}).owner,"NATIVE_SCROLL");
- assert.equal(g.claimSheetAtScrollTop(3),false);
- assert.equal(g.claimSheetAtScrollTop(2),true);assert.equal(g.owner(),"SHEET");
- assert.equal(g.claimSheetAtScrollTop(2),false);
+ assert.equal(g.claimSheetFromContent(3,"down"),false);
+ assert.equal(g.claimSheetFromContent(2,"up"),false);
+ assert.equal(g.claimSheetFromContent(2,"down"),true);assert.equal(g.owner(),"SHEET");
+ assert.equal(g.claimSheetFromContent(2,"down"),false);
+ g.cancel();assert(g.begin({id:4,x:0,y:30,time:0},"content"));
+ assert.equal(g.move({id:4,x:0,y:0,time:16}).owner,"NATIVE_SCROLL");
+ assert.equal(g.claimSheetFromContent(4,"up"),true);assert.equal(g.owner(),"SHEET");
  g.secondFinger();assert.equal(g.owner(),"NONE");g.releaseSecondFinger();g.dispose();
  console.log("Profile V3 foundation: geometry 7 viewports, aspect, motion interruption/reversals, stale RAF, resize, dispose, gesture ownership PASS");
 }finally{rmSync(dir,{recursive:true,force:true});}

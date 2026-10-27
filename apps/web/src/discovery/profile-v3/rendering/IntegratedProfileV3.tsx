@@ -26,6 +26,7 @@ type SurfaceProps={
 };
 type Session={id:number;kind:"handle"|"photo"|"tabs";scroll?:HTMLElement|null;vertical?:boolean;at:number;x:number;y:number;
  lastX:number;lastY:number;lastAt:number;velocity:number;claimed:boolean;
+ sheetStartPx?:number;scrollStart?:number;
  startIndex:number;startOffset:number;buttons?:Array<{x:number}>};
 export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress,
  onEdit,onShowPreview,renderPage,registerRouteMotion}:SurfaceProps){
@@ -73,6 +74,14 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  const paint=useRef<(progress:number,elastic?:number)=>void>(()=>{});
  paint.current=(progress,elastic=0)=>{
   const l=layout.current,m=photoMask(l,progress);
+  // Touch-action is fixed by the browser at pointerdown. While the sheet is
+  // open, retain Pointer Events for its first upward drag; at compact, return
+  // ownership to the native inertial scroller (except a pull at its top).
+  const page=pagesTrack.current?.children[selectedTab.current] as HTMLElement|undefined;
+  if(page){
+   if(progress>.001){if(page.style.touchAction!=="none")page.style.touchAction="none";}
+   else if(page.style.touchAction==="none")page.style.touchAction=page.scrollTop<=1?"pan-down":"pan-y";
+  }
   const surface=mask.current,move=sheet.current;
   if(surface){surface.style.transform="translate3d("+m.x+"px,"+m.y+"px,0)";
    surface.style.width=m.width+"px";surface.style.height=(m.height+elastic)+"px";
@@ -209,6 +218,9 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  const setTabIndex=(index:number,animate=true)=>{
   const target=clamp(index,0,tabs.length-1);
   selectedTab.current=target;setTab(tabs[target][0]);
+  const page=pagesTrack.current?.children[target] as HTMLElement|undefined;
+  if(page){const action=(engine.current?.getProgress()??0)>.001?"none":page.scrollTop<=1?"pan-down":"pan-y";
+   if(page.style.touchAction!==action)page.style.touchAction=action;}
   const width=layout.current.width;
   if(pagesTrack.current){pagesTrack.current.style.transition=animate?"transform 220ms cubic-bezier(.2,.8,.2,1)":"none";
    pagesTrack.current.style.transform="translate3d("+(-target*width)+"px,0,0)";}
@@ -281,12 +293,17 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   const decision=coordinator.current.move({id:e.pointerId,x:e.clientX,y:e.clientY,time:e.timeStamp});
   const needed:Owner=g.kind==="handle"?"SHEET":g.kind==="photo"?"PHOTO":"TABS";
-  // At the top boundary pan-down leaves downward pulls to Pointer Events.
-  // Otherwise native WebView scrolling owns the page and retains its inertia.
+  // An open sheet consumes upward travel before content may scroll. At the
+  // compact top edge only a downward pull takes over native scrolling.
   if(g.kind==="tabs"&&decision.owner==="NATIVE_SCROLL"){
-   if(e.clientY-g.y>7&&(g.scroll?.scrollTop??1)<=1&&
-      coordinator.current.claimSheetAtScrollTop(e.pointerId)){
+   const dy=e.clientY-g.y,open=(engine.current?.getProgress()??0)>.001;
+   const direction=open&&dy< -7?"up":!open&&dy>7&&(g.scroll?.scrollTop??1)<=1?"down":null;
+   if(direction&&coordinator.current.claimSheetFromContent(e.pointerId,direction)){
     g.vertical=true;g.claimed=true;
+    if(direction==="up"){
+     g.sheetStartPx=(engine.current?.getProgress()??0)*layout.current.span;
+     g.scrollStart=g.scroll?.scrollTop??0;
+    }
     engine.current?.beginDrag(g.y);
     try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* implicit capture */}
    }else return;
@@ -295,7 +312,16 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const dt=e.timeStamp-g.lastAt;
    if(dt>0&&dt<125)g.velocity=(e.clientY-g.lastY)/dt;
    g.lastY=e.clientY;g.lastAt=e.timeStamp;
-   engine.current?.updateDrag(e.clientY);return;
+   engine.current?.updateDrag(e.clientY);
+   // The browser cannot switch touch-action mid-pointer. Consume only the
+   // excess distance after the sheet reaches compact, then let subsequent
+   // gestures use native scrolling and its momentum.
+   if(g.sheetStartPx!==undefined&&g.scroll){
+    const excess=Math.max(0,-(g.sheetStartPx+e.clientY-g.y));
+    const next=(g.scrollStart??0)+excess;
+    if(g.scroll.scrollTop!==next)g.scroll.scrollTop=next;
+   }
+   return;
   }
   if(decision.owner!==needed)return;
   // For horizontal gestures in native-scroll pages, prevent browser panning
@@ -460,7 +486,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     <div className="v3-int-pages-track" ref={pagesTrack}>
      {tabs.map(([id,label],i)=><section key={id} className="v3-int-page" role="tabpanel" data-tab-id={id}
       style={{left:"calc(var(--v3-w) * "+i+")"}}
-      onScroll={e=>{const el=e.currentTarget,next=el.scrollTop<=1?"pan-down":"pan-y";
+      onScroll={e=>{const el=e.currentTarget,next=(engine.current?.getProgress()??0)>.001?"none":el.scrollTop<=1?"pan-down":"pan-y";
        if(el.style.touchAction!==next)el.style.touchAction=next;}}
       aria-label={label} inert={tab!==id} aria-hidden={tab!==id}>
       {pageBodies[i]}
