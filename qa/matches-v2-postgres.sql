@@ -40,6 +40,16 @@ DO $$ BEGIN
  END;
 END $$;
 COMMIT;
+-- A one-sided like must not reveal the other actor's private display name.
+BEGIN;
+SET LOCAL ROLE luemi_chats_writer;
+SET LOCAL luemi.actor_id='11111111-1111-4111-8111-111111111111';
+SET LOCAL luemi.environment='luemi';
+DO $ BEGIN
+ IF EXISTS (SELECT 1 FROM luemi_private.public_profiles WHERE owner_id='22222222-2222-4222-8222-222222222222'::uuid)
+ THEN RAISE EXCEPTION 'one-sided like leaked peer profile'; END IF;
+END $;
+COMMIT;
 -- Opposite like creates an authorized match, conversation and exactly two members.
 BEGIN;
 SET LOCAL ROLE luemi_match_writer;
@@ -137,6 +147,9 @@ SET LOCAL luemi.actor_id='22222222-2222-4222-8222-222222222222';
 SET LOCAL luemi.environment='luemi';
 DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM luemi_chats.members) THEN RAISE EXCEPTION 'block did not revoke chat'; END IF;
+ IF EXISTS(SELECT 1 FROM luemi_private.public_profiles
+  WHERE owner_id='11111111-1111-4111-8111-111111111111'::uuid)
+ THEN RAISE EXCEPTION 'block leaked peer display name'; END IF;
  IF EXISTS(SELECT 1 FROM luemi_chats.messages) THEN RAISE EXCEPTION 'block leaked messages'; END IF;
  BEGIN
   INSERT INTO luemi_chats.messages(conversation_id,sender_id,environment,client_id,body)
