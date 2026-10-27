@@ -1,0 +1,66 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { geoCsrf } from '../../auth/session-adapter';
+import { BlikDraftEditor } from './editor/BlikDraftEditor';
+import { BlikiAvatarRail } from './feed/BlikiAvatarRail';
+import { fetchBlikiFeed } from './feed/blikiFeedClient';
+import type { BlikiFeedEntry } from './feed/blikiFeed';
+import { createBlikiHttpTransport } from './publishing/blikHttpTransport';
+import { BlikViewer } from './viewer/BlikViewer';
+
+/** Opt-in Discovery surface, isolated from the existing Profile Morph and deck gestures. */
+export function BlikiDiscoverySlot({ ownerId }: { ownerId: string }) {
+  const [entries, setEntries] = useState<BlikiFeedEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reload, setReload] = useState(0);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [openAuthor, setOpenAuthor] = useState<string | null>(null);
+  const transport = useMemo(() => {
+    const csrf = geoCsrf();
+    return csrf ? createBlikiHttpTransport(csrf) : undefined;
+  }, [ownerId]);
+  useEffect(() => {
+    const abort = new AbortController();
+    setLoading(true); setError('');
+    void fetchBlikiFeed(abort.signal).then(feed => {
+      if (!abort.signal.aborted) setEntries(feed.entries);
+    }).catch(err => {
+      if (abort.signal.aborted) return;
+      setError(err instanceof Error && /403/.test(err.message)
+        ? 'Сначала опубликуй настоящую анкету, чтобы увидеть Блики.'
+        : 'Не удалось загрузить Блики. Попробуй ещё раз.');
+      setEntries([]);
+    }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
+    return () => abort.abort();
+  }, [ownerId, reload]);
+  const authors = useMemo(() => entries.map(({ group: _group, ...author }) => author), [entries]);
+  const openIndex = authors.findIndex(author => author.id === openAuthor);
+  const closeViewer = useCallback(() => setOpenAuthor(null), []);
+  useEffect(() => {
+    if (!editorOpen && !openAuthor) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      if (editorOpen) setEditorOpen(false);
+      else setOpenAuthor(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [editorOpen, openAuthor]);
+  return <aside aria-label="Истории LUEMI" style={{
+    position: 'relative', zIndex: 8, flexShrink: 0, padding: '2px 12px 4px'
+  }}>
+    <BlikiAvatarRail candidates={entries} onOpenAuthor={setOpenAuthor}
+      onCreate={() => setEditorOpen(true)} />
+    {loading && <p role="status" style={{ margin: '0 6px', fontSize: 12 }}>Загружаем Блики…</p>}
+    {error && <div role="status" style={{ fontSize: 12, padding: '0 6px 8px' }}>
+      {error} <button type="button" onClick={() => setReload(value => value + 1)}>Повторить</button>
+    </div>}
+    {editorOpen && <BlikDraftEditor ownerId={ownerId}
+      publishTransport={transport}
+      onClose={() => setEditorOpen(false)}
+      onPublished={() => { setEditorOpen(false); setReload(value => value + 1); }} />}
+    {openIndex >= 0 && <BlikViewer key={openAuthor} authors={authors}
+      initial={{ author: openIndex, story: 0 }} onClose={closeViewer} />}
+  </aside>;
+}
