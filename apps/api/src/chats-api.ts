@@ -61,6 +61,8 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     AND NOT has_table_privilege(current_user,'luemi_chats.media','UPDATE')
     AND NOT has_table_privilege(current_user,'luemi_chats.media','DELETE')
     AND NOT has_schema_privilege(current_user,'public','CREATE')
+    AND NOT has_table_privilege(current_user,'public.luemi_users','UPDATE')
+    AND NOT has_table_privilege(current_user,'public.luemi_matches','UPDATE')
     AND (SELECT bool_and(c.relrowsecurity AND c.relforcerowsecurity
        AND c.relowner<>r.oid AND row_security_active(c.oid))
        FROM pg_class c WHERE c.oid IN
