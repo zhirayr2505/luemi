@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import Fastify from "fastify";
+import type {FastifyRequest,FastifyReply} from "fastify";
 import {Pool} from "pg";
 import {registerMatches} from "../src/matches-api.js";
 import {registerChats} from "../src/chats-api.js";
@@ -11,12 +12,12 @@ const C="66666666-6666-4666-8666-666666666666";
 const ns="luemi";
 const fixtures=[{id:A,tg:404,name:"HTTP A"},{id:B,tg:505,name:"HTTP B"},{id:C,tg:606,name:"HTTP C"}];
 const auth={
- read:async(req:any,reply:any)=>{
+ read:async(req:FastifyRequest,reply:FastifyReply)=>{
   const id=req.headers["x-test-actor"];
   if(!fixtures.some(a=>a.id===id)){reply.code(401).send({error:"unauthorized"});return;}
   req.authActor={actorId:id,sessionId:id,hash:Buffer.alloc(32,7),expiresAt:"2099-01-01",firstName:"Test"};
  },
- mutation:async(req:any,reply:any)=>{
+ mutation:async(req:FastifyRequest,reply:FastifyReply)=>{
   if(req.headers.origin!=="https://luemi.test"){reply.code(403).send({error:"forbidden"});return;}
   await auth.read(req,reply);
  }
@@ -72,7 +73,7 @@ test("two authenticated actors create one durable conversation and revoke it on 
   assert.equal(result.status,200);assert.equal(result.json.message.id,sent.json.message.id);
   result=await inject(B,"GET",messagePath);
   assert.equal(result.status,200,JSON.stringify(result));
-  assert.ok(result.json.messages.some((m:any)=>m.id===sent.json.message.id));
+  assert.ok(result.json.messages.some((m:{id:string})=>m.id===sent.json.message.id));
   result=await inject(B,"POST","/api/v4/chats/"+conversationId+"/read",{messageId:sent.json.message.id});
   assert.equal(result.status,200,JSON.stringify(result));
   result=await inject(C,"POST",messagePath,{
