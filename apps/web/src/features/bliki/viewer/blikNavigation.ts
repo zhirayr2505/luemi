@@ -1,3 +1,4 @@
+import type { BlikEditorState } from '../drafts/draftTypes';
 /** Pure Bliki navigation, independent from Discovery and Profile Morph gestures. */
 export type BlikStory = {
   id: string;
@@ -8,6 +9,7 @@ export type BlikStory = {
   /** Unix milliseconds, used to hide expired media even if a cached feed survives. */
   publishedAt?: number;
   caption?: string;
+  editor?: BlikEditorState;
 };
 export type BlikAuthor = { id: string; name: string; avatarUrl?: string; stories: BlikStory[] };
 export type BlikPosition = { author: number; story: number };
