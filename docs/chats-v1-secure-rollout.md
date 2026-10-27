@@ -40,3 +40,9 @@ No merge, deploy, Supabase migration, or paid service was performed.
 - V2 session `authActor.actorId` must be proven to map to the same UUID identity as `luemi_matches.user_low/user_high` before any membership reconciliation. Do not assume matching UUID formats imply matching users.
 - Match status values and revocation/block rules require verification; `db/chats-v1-match-reconciliation-review.sql` intentionally ends in ROLLBACK and must not be treated as an applied migration.
 - No production database writes or storage bucket changes were made.
+
+## Read receipts (27 October)
+- Added `POST /api/v4/chats/:id/read` accepting a UUID `messageId`, verifying actor membership and updating only the current member's `last_read_at` monotonically.
+- Grant **only** `UPDATE(last_read_at)` on `luemi_chats.members` to the isolated chat role, never table-wide UPDATE. Test RLS with both users.
+- Client acknowledges incoming messages only while the chat is visible and retries failures. Delivery and typing signals remain unimplemented.
+- The current self-only `members` SELECT policy deliberately hides the other member, so peer names and peer IDs cannot yet be populated from it. A separately authorized, privacy-reviewed peer projection is required.
