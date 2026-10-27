@@ -74,9 +74,9 @@ export function buildApp(config: ApiConfig) {
   registerSafetyAppeals(app,config.safetyAppeal);
   registerChats(app,guards,config.chats);
   registerMatches(app,guards,config.matches);
-  registerBlikiPublicationApi(app,guards,config.blikiPublication);
-  registerBlikiMediaApi(app,guards,config.blikiMedia);
-  registerBlikiInteractionApi(app,guards,config.blikiInteraction);
-  registerBlikiApi(app,guards,config.bliki);
+  registerBlikiPublicationApi(app, guards, config.blikiPublication);
+  registerBlikiMediaApi(app, guards, config.blikiMedia);
+  registerBlikiInteractionApi(app, guards, config.blikiInteraction);
+  registerBlikiApi(app, guards, config.bliki);
   return app;
 }
