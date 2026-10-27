@@ -3,6 +3,7 @@ export interface DeviceCoordinates {lat:number;lon:number}
 export interface TelegramLocationManager {
  isInited?:boolean;
  isLocationAvailable?:boolean;
+ openSettings?:()=>void;
  init:(callback:()=>void)=>void;
  getLocation:(callback:(value:{latitude:number;longitude:number}|null)=>void)=>void;
 }
