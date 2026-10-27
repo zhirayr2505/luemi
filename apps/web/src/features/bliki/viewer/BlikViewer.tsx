@@ -7,6 +7,10 @@ type Props = {
   initial?: BlikPosition;
   onClose: () => void;
   onOpenProfile?: (authorId: string) => void;
+  onView?: (storyId: string) => void;
+  onReact?: (storyId: string, reaction: 'heart' | 'fire' | 'smile') => Promise<void>;
+  onReport?: (storyId: string, reason: 'spam' | 'harassment' | 'nudity' | 'other') => Promise<void>;
+  viewerId?: string;
 };
 const PHOTO_MS = 5000;
 const SETTLE_MS = 210;
@@ -24,10 +28,15 @@ function StoryLayers({ story }: { story: BlikAuthor['stories'][number] }) {
   </div>;
 }
 
-export function BlikViewer({ authors, initial = { author: 0, story: 0 }, onClose, onOpenProfile }: Props) {
+export function BlikViewer({ authors, initial = { author: 0, story: 0 }, onClose, onOpenProfile,
+  onView, onReact, onReport, viewerId }: Props) {
   const [position, setPosition] = useState(initial);
   const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [reportOpen, setReportOpen] = useState(false);
+  const [socialBusy, setSocialBusy] = useState(false);
+  const recordedViews = useRef(new Set<string>());
   const [hidden, setHidden] = useState(document.visibilityState !== 'visible');
   const [slide, setSlide] = useState<Slide>(null);
   const [settling, setSettling] = useState(false);
@@ -43,6 +52,23 @@ export function BlikViewer({ authors, initial = { author: 0, story: 0 }, onClose
   positionRef.current = position;
   const author = authors[position.author];
   const story = author?.stories[position.story];
+  useEffect(() => {
+    if (!story || hidden || !onView || recordedViews.current.has(story.id)) return;
+    recordedViews.current.add(story.id);
+    onView(story.id);
+  }, [story?.id, hidden, onView]);
+  const interact = async (kind: 'react' | 'report', value: string) => {
+    if (!story || socialBusy) return;
+    setSocialBusy(true);
+    try {
+      if (kind === 'react') await onReact?.(story.id, value as 'heart' | 'fire' | 'smile');
+      else await onReport?.(story.id, value as 'spam' | 'harassment' | 'nudity' | 'other');
+      setFeedback(kind === 'react' ? 'Реакция отправлена 💜' : 'Жалоба отправлена на проверку');
+      setReportOpen(false);
+    } catch {
+      setFeedback('Не удалось отправить. Проверь соединение и повтори.');
+    } finally { setSocialBusy(false); }
+  };
   const advance = useCallback(() => {
     const next = nextBlik(authors, positionRef.current);
     if (next) setPosition(next);
@@ -57,6 +83,8 @@ export function BlikViewer({ authors, initial = { author: 0, story: 0 }, onClose
   useEffect(() => {
     progressRef.current = 0;
     setProgress(0);
+    setFeedback('');
+    setReportOpen(false);
     if (video.current) video.current.currentTime = 0;
   }, [story?.id]);
   useEffect(() => {
@@ -209,6 +237,29 @@ export function BlikViewer({ authors, initial = { author: 0, story: 0 }, onClose
         <StoryLayers story={otherStory} />
       </div>}
     </div>
-    <footer style={{ padding: 12, textAlign: 'center' }}>{story.caption || ''}</footer>
+    <footer style={{ padding: 12, textAlign: 'center' }}>
+      <div>{story.caption || ''}</div>
+      {onReact && author.id !== viewerId &&
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 8 }}>
+          <button type="button" disabled={socialBusy} aria-label="Реакция: нравится"
+            onClick={() => { void interact('react', 'heart'); }}>💜</button>
+          <button type="button" disabled={socialBusy} aria-label="Реакция: огонь"
+            onClick={() => { void interact('react', 'fire'); }}>🔥</button>
+          <button type="button" disabled={socialBusy} aria-label="Реакция: улыбка"
+            onClick={() => { void interact('react', 'smile'); }}>🥰</button>
+        </div>}
+      {onReport && author.id !== viewerId && <button type="button" disabled={socialBusy}
+        onClick={() => setReportOpen(value => !value)}>Пожаловаться</button>}
+      {reportOpen && <div role="group" aria-label="Причина жалобы" style={{
+        display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 6
+      }}>
+        {([['spam','Спам'],['harassment','Оскорбления'],['nudity','Неприемлемое содержимое'],
+          ['other','Другое']] as const).map(([key,label]) =>
+          <button key={key} disabled={socialBusy} onClick={() => { void interact('report', key); }}>
+            {label}
+          </button>)}
+      </div>}
+      {feedback && <p role="status" style={{ margin: 4, fontSize: 12 }}>{feedback}</p>}
+    </footer>
   </div>;
 }
