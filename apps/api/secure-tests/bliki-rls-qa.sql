@@ -163,7 +163,7 @@ DO $$ BEGIN
  END IF;
  IF has_column_privilege(current_user,'luemi_bliki_private.stories','status','UPDATE')
     OR has_column_privilege(current_user,'luemi_bliki_private.stories','media_key','UPDATE')
-    OR has_table_privilege(current_user,'luemi_private.sessions','SELECT') THEN
+    OR has_schema_privilege(current_user,'luemi_private','USAGE') THEN
   RAISE EXCEPTION 'retention principal has excessive privileges';
  END IF;
 END $$;
