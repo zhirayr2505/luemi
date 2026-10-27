@@ -40,7 +40,9 @@ test('publishes once, preserves identity and expires exactly 24h later', () => {
   const now = new Date('2026-10-27T10:00:00.000Z');
   const published = confirmBlikiPublication(record, { actorId: actor, editor: {}, now });
   assert.equal(published.state, 'published');
-  assert.equal(blikiPublicationStatus(published, actor).expiresAt, '2026-10-28T10:00:00.000Z');
+  const status = blikiPublicationStatus(published, actor);
+  assert.equal(status.state, 'published');
+  if (status.state === 'published') assert.equal(status.expiresAt, '2026-10-28T10:00:00.000Z');
   assert.deepEqual(confirmBlikiPublication(published, {
     actorId: actor, editor: { changed: true }, now: new Date('2026-10-27T11:00:00.000Z'),
   }), published);
