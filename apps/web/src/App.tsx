@@ -705,6 +705,17 @@ export function App() {
       <div className="luemi-real-home-main">
         {realHomeTab==="profile"?<section className="luemi-real-account" aria-label="Моя анкета">
           <h1>Моя анкета</h1>
+          {publishStatus?.profile&&<article className="luemi-real-account-card">
+            <div className="luemi-real-account-photos">
+              {publishStatus.profile.photos.map((photo,i)=>
+                <img key={photo} src={photo} alt={"Моё фото "+(i+1)} loading={i?"lazy":"eager"} decoding="async"/>)}
+            </div>
+            <h2>{publishStatus.profile.name}, {publishStatus.profile.age}</h2>
+            <p>{publishStatus.profile.city}</p>
+            <p>{publishStatus.profile.about}</p>
+            <div className="luemi-real-account-interests">{publishStatus.profile.interests.map(interest=>
+              <span key={interest}>{interest}</span>)}</div>
+          </article>}
           <p role="status">{publishStatus?.state==="published"?"Анкета опубликована и доступна другим людям.":"Проверяем статус анкеты…"}</p>
           <div className="registration-static-actions">
             <button type="button" className="registration-static-edit" disabled={publishBusy} onClick={()=>{void openPublishedEditor();}}>Редактировать анкету</button>
