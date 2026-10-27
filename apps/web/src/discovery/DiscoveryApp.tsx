@@ -5,6 +5,8 @@ import type {PointerEvent as ReactPointerEvent} from "react";
 import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
+import {RealChats} from "../chats/RealChats";
+import {ChatsPreview} from "../chats/ChatsPreview";
 import {cardGestureZone} from "./card-gesture-zone";
 import {demoPeople} from "./demo-people";
 import {forYouDemoPeople} from "./for-you-data";
@@ -551,7 +553,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        <Placeholder title="Симпатии" text="Настоящие мэтчи и входящие появятся только после безопасного серверного запуска."/>
      </section>
      <section className="discovery-panel" hidden={mainTab!=="chats"}>
-       <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
+       {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?<RealChats/>:import.meta.env.VITE_LUEMI_DEMO_CHATS==="1"?<ChatsPreview/>:<Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>}
      </section>
      <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
        {profilePrepared&&<ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"&&!selectedPerson} onMotionProgress={reportProfileMotion}/>}

@@ -1,0 +1,86 @@
+name: LUEMI mutual matches RLS PostgreSQL 16/17
+on:
+  push:
+    branches: ['integration/real-registration-chats-20261027']
+  pull_request:
+    branches: ['main']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mutual-matches-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ['16', '17']
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: synthetic_match_admin
+          POSTGRES_DB: matches_disposable
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d matches_disposable"
+          --health-interval 3s --health-timeout 3s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: matches_disposable
+      PGPASSWORD: synthetic_match_admin
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Provision synthetic legacy reference and isolated identity roles
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE TABLE public.luemi_matches(id uuid PRIMARY KEY);
+          CREATE TABLE public.luemi_users(id uuid PRIMARY KEY,telegram_user_id bigint,status text);
+          CREATE TABLE public.luemi_blocks(blocker_id uuid,blocked_id uuid);
+          SQL
+      - name: Apply V2 identity, publication and chat schema in throwaway PostgreSQL
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0002_rem05b_identity_sessions.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0003_rem05c_geo_budget.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0004_rem05d_private_media_moderation.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0005_reg01d_private_publication_feed.sql
+          psql -v ON_ERROR_STOP=1 -f db/chats-v1-isolated.sql
+          psql -v ON_ERROR_STOP=1 -f db/chats-v1-message-integrity.sql
+          psql -v ON_ERROR_STOP=1 -f db/chats-v2-mutual-matches.sql
+          psql -v ON_ERROR_STOP=1 -f db/chats-v2-peer-media-guard.sql
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked Node dependencies
+        run: |
+          set -euo pipefail
+          npm install --global npm@10.9.2 --no-audit --no-fund
+          npm ci --no-audit --no-fund
+      - name: Provision separate synthetic matching and chat HTTP login roles
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE luemi_ci_match LOGIN PASSWORD 'synthetic_match_http' IN ROLE luemi_match_writer;
+          CREATE ROLE luemi_ci_chat LOGIN PASSWORD 'synthetic_chat_http' IN ROLE luemi_chats_writer;
+          SQL
+      - name: Prove matched-user isolation, blocked delivery and unmatch revocation
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f qa/matches-v2-postgres.sql | tee /tmp/luemi-match-verdict.txt
+          grep -q LUEMI_MATCH_RLS_PASS /tmp/luemi-match-verdict.txt
+      - name: Two-user authenticated HTTP API / RLS integration
+        env:
+          MATCHES_HTTP_ADMIN_URL: postgres://postgres:synthetic_match_admin@127.0.0.1:5432/matches_disposable
+          MATCHES_HTTP_MATCH_URL: postgres://luemi_ci_match:synthetic_match_http@127.0.0.1:5432/matches_disposable
+          MATCHES_HTTP_CHAT_URL: postgres://luemi_ci_chat:synthetic_chat_http@127.0.0.1:5432/matches_disposable
+        run: npx --no-install tsx --test apps/api/secure-tests/chats-matches-http.test.ts

@@ -8,6 +8,8 @@ import type {PublicationOptions} from "./real-publication.js";
 import type {ErasureRequestOptions} from "./real-erasure.js";
 import type {SafetyAppealOptions} from "./safety-appeal-api.js";
 import type {Rem05dOptions} from "./rem05d-private.js";
+import type {ChatOptions} from "./chats-api.js";
+import type {MatchOptions} from "./matches-api.js";
 import type {RealRegistrationOptions} from "./real-registration-drafts.js";
 export interface ApiConfig {
   port: number;
@@ -26,6 +28,8 @@ export interface ApiConfig {
   realPublication?: PublicationOptions;
   realErasure?: ErasureRequestOptions;
   safetyAppeal?: SafetyAppealOptions;
+  chats?: ChatOptions;
+  matches?: MatchOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -185,10 +189,30 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
    enabled:true,databaseUrl:env.REM06_SAFETY_APPEAL_DATABASE_URL??"",
    namespace:env.REM05B_BOT_NAMESPACE??"",origin,botToken:env.TELEGRAM_BOT_TOKEN??""
   }:undefined;
+  const chatsEnabled=env.LUEMI_CHATS_V1_ENABLED==="1";
+  if(chatsEnabled&&(!v2Enabled||stagingOnly||env.REM06_PRIVACY_APPROVED!=="1"||
+    env.LUEMI_CHATS_POLICY_APPROVED!=="1"||!env.LUEMI_CHATS_DATABASE_URL||
+    [env.REM05B_AUTH_DATABASE_URL,env.REM05B_REQUEST_DATABASE_URL,
+     env.REM06_PUBLISHER_DATABASE_URL,env.REM06_DISCOVERY_DATABASE_URL]
+     .includes(env.LUEMI_CHATS_DATABASE_URL)))throw new Error("Chats require approved policy and isolated DB role");
+  const chats:ChatOptions|undefined=chatsEnabled?{enabled:true,
+   databaseUrl:env.LUEMI_CHATS_DATABASE_URL??"",namespace:env.REM05B_BOT_NAMESPACE??""}:undefined;
+  const matchesEnabled=env.LUEMI_MATCHES_V1_ENABLED==="1";
+  if(matchesEnabled&&(!chatsEnabled||!publicationEnabled||!v2Enabled||stagingOnly||
+    env.REM06_PRIVACY_APPROVED!=="1"||env.LUEMI_MATCHES_POLICY_APPROVED!=="1"||
+    !env.LUEMI_MATCHES_DATABASE_URL||
+    [env.LUEMI_CHATS_DATABASE_URL,env.REM05B_AUTH_DATABASE_URL,
+     env.REM05B_REQUEST_DATABASE_URL,env.REM06_PUBLISHER_DATABASE_URL,
+     env.REM06_DISCOVERY_DATABASE_URL].includes(env.LUEMI_MATCHES_DATABASE_URL)))
+    throw new Error("Matches require authenticated published profiles and isolated matching database role");
+  const matches:MatchOptions|undefined=matchesEnabled?{
+    enabled:true,databaseUrl:env.LUEMI_MATCHES_DATABASE_URL??"",
+    namespace:env.REM05B_BOT_NAMESPACE??""
+  }:undefined;
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
   return {
-    rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,
+    rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,chats,matches,
     rem05c:{geo,embedding},
     port,
     origin,

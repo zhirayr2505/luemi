@@ -1,11 +1,11 @@
 import {useEffect,useState} from "react";
-import {getPublishedFeed,blockPublishedUser,reportPublishedUser} from "./real-live-client";
+import {getPublishedFeed,blockPublishedUser,reportPublishedUser,likePublishedUser,realMatchPilot} from "./real-live-client";
 import type {RealPublishedProfile} from "./real-live-client";
 import {Flag} from "../ui/Flag";
 import "./real-live-feed.css";
 
 /** Beta-only real profiles. Never inserted into approved DEMO motion deck. */
-export function RealLiveFeed({onClose}:{onClose:()=>void}){
+export function RealLiveFeed({onClose,onMatched}:{onClose:()=>void;onMatched?:()=>void}){
  const [profiles,setProfiles]=useState<RealPublishedProfile[]>([]);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState("");
@@ -26,6 +26,19 @@ export function RealLiveFeed({onClose}:{onClose:()=>void}){
   });
   return()=>signal.abort();
  },[reload]);
+ const like=async(p:RealPublishedProfile)=>{
+  if(busy)return;
+  setBusy(p.id);setStatus("");
+  try{
+   const receipt=await likePublishedUser(p.id);
+   setProfiles(current=>current.filter(x=>x.id!==p.id));
+   if(receipt.matched){
+    setStatus("Взаимная симпатия! Теперь можно переписываться.");
+    onMatched?.();
+   }else setStatus("Симпатия отправлена 💜");
+  }catch{setStatus("Не удалось отправить симпатию. Попробуйте снова.");}
+  finally{setBusy(null);}
+ };
  const block=async(p:RealPublishedProfile)=>{
   if(busy||!window.confirm("Заблокировать анкету "+p.name+"? Вы больше не увидите друг друга."))return;
   setBusy(p.id);setStatus("");
@@ -76,6 +89,7 @@ export function RealLiveFeed({onClose}:{onClose:()=>void}){
        <p>{p.about}</p>
        <div className="luemi-real-feed-chips">{p.interests.slice(0,4).map(x=><span key={x}>{x}</span>)}</div>
        <div className="luemi-real-feed-actions">
+        {realMatchPilot.enabled&&<button type="button" disabled={busy!==null} onClick={()=>{void like(p);}}>💜 Нравится</button>}
         <button type="button" disabled={busy!==null} onClick={()=>{void block(p);}}>Заблокировать</button>
         <label>Причина жалобы
          <select value={reason} onChange={e=>setReason(e.target.value as typeof reason)}>
@@ -86,7 +100,7 @@ export function RealLiveFeed({onClose}:{onClose:()=>void}){
         </label>
         <button type="button" disabled={busy!==null} onClick={()=>{void report(p);}}>Пожаловаться</button>
        </div>
-       <p className="luemi-real-feed-footnote">Симпатии и чаты появятся после отдельной проверки сервера.</p>
+       {!realMatchPilot.enabled&&<p className="luemi-real-feed-footnote">Симпатии и чаты появятся после отдельной проверки сервера.</p>}
       </div>
      </article>;
     })}

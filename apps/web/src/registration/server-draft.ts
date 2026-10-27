@@ -12,27 +12,31 @@ export const remoteDraftPilot={
  policy
 };
 function ensurePilot(){if(!remoteDraftPilot.enabled)throw new Error("pilot_disabled");}
-export async function readRemoteRevision():Promise<{state:"private"|"empty";revision:number}>{
+export async function readRemoteRevision():Promise<{state:"private"|"empty";revision:number;fields:Record<string,unknown>}>{
  ensurePilot();
  const response=await fetch("/api/v3/registration/draft",{credentials:"same-origin",cache:"no-store"});
  if(!response.ok)throw new Error("read_failed");
  const data:unknown=await response.json();
  if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("invalid_read");
- const x=data as {state?:unknown;revision?:unknown};
+ const x=data as {state?:unknown;revision?:unknown;fields?:unknown};
  if((x.state!=="private"&&x.state!=="empty")||!Number.isSafeInteger(x.revision)||
-    typeof x.revision!=="number"||x.revision<0)throw new Error("invalid_read");
- return{state:x.state,revision:x.revision};
+    typeof x.revision!=="number"||x.revision<0||!x.fields||typeof x.fields!=="object"||Array.isArray(x.fields))throw new Error("invalid_read");
+ return{state:x.state,revision:x.revision,fields:x.fields as Record<string,unknown>};
 }
 export async function saveRemoteDraft(d:RegistrationDraft,revision:number):Promise<void>{
  ensurePilot();
- if(!Number.isSafeInteger(revision)||revision<0)throw new Error("invalid_revision");
- const csrf=geoCsrf();
- if(!csrf)throw new Error("session_required");
  const birthDate=[d.year,d.month.padStart(2,"0"),d.day.padStart(2,"0")].join("-");
  const fields={displayName:d.name.trim(),birthDate,gender:d.gender,city:d.city.trim(),
   countryCode:d.countryCode,placeId:d.placeId,radius:d.radius,searchScope:d.searchScope,
   audience:d.audience,ageMin:d.ageMin,ageMax:d.ageMax,goal:d.goal,
   interests:[...d.interests],about:d.about.trim(),languages:[...d.languages],consentVersion:version};
+ return saveRemoteFields(fields,revision);
+}
+export async function saveRemoteFields(fields:Record<string,unknown>,revision:number):Promise<void>{
+ ensurePilot();
+ if(!Number.isSafeInteger(revision)||revision<0)throw new Error("invalid_revision");
+ const csrf=geoCsrf();
+ if(!csrf)throw new Error("session_required");
  const response=await fetch("/api/v3/registration/draft",{
   method:"PUT",credentials:"same-origin",cache:"no-store",
   headers:{"Content-Type":"application/json","X-Luemi-CSRF":csrf},
