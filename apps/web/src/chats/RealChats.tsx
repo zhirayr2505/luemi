@@ -55,7 +55,7 @@ export function RealChats(){
       void api.markRead(active,newest.id).catch(()=>{lastRead.current=null;});
      }
     }
-   }catch{if(!controller.signal.aborted)setError("Связь прервана. Повторяем подключение…");}
+   }catch{if(!controller.signal.aborted&&activeRef.current===active)setError("Связь прервана. Повторяем подключение…");}
    finally{running=false;}
   };
   void load();
@@ -115,7 +115,7 @@ export function RealChats(){
  };
  return <div className="luemi-chats" data-real-chats="true">
   {!active?<><header className="lc-heading"><div><small>LUEMI</small><h2>Чаты</h2></div></header>
-   {loading?<p className="lc-empty">Загружаем переписки…</p>:conversations.length===0?<p className="lc-empty">Пока нет переписок. Они появятся после взаимного мэтча.</p>:
+   {loading?<p className="lc-empty">Загружаем переписки…</p>:error?<p className="lc-empty" role="status">Не удалось получить список переписок. Проверьте подключение и повторите попытку.</p>:conversations.length===0?<p className="lc-empty">Пока нет переписок. Они появятся после взаимного мэтча.</p>:
    <div className="lc-conversations">{conversations.map(c=><button className="lc-chat-open" key={c.id} onClick={()=>{pending.current=null;lastRead.current=null;activeRef.current=c.id;setActive(c.id);setSelectedPeer(c);setMessages([]);}}>
     <span className="lc-avatar">💜</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>{c.unreadCount>0&&<span className="lc-unread" aria-label={`${c.unreadCount} непрочитанных`}>{c.unreadCount>99?"99+":c.unreadCount}</span>}
    </button>)}</div>}
