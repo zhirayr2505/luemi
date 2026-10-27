@@ -101,9 +101,9 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   return {actorId:req.authActor.actorId};
  });
  app.get("/api/v4/chats",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
-  const rows=await db.query<{id:string;unread_count:string;last_message:string|null;
+  const rows=await db.query<{id:string;match_id:string;unread_count:string;last_message:string|null;
    peer_id:string;peer_name:string;peer_photo_id:string|null}>(`
-   SELECT m.conversation_id AS id,
+   SELECT m.conversation_id AS id,pair.id AS match_id,
    CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END AS peer_id,
    peer.display_name AS peer_name,
    (SELECT photo.id FROM luemi_private.media_assets photo
@@ -125,7 +125,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    WHERE m.actor_id=$1 AND m.environment=$2
    ORDER BY c.created_at DESC,c.id DESC LIMIT 100`,[actor,options.namespace]);
   return {conversations:rows.rows.map(r=>({
-   id:r.id,peerId:r.peer_id,peerName:r.peer_name,
+   id:r.id,matchId:r.match_id,peerId:r.peer_id,peerName:r.peer_name,
    peerPhotoUrl:r.peer_photo_id?"/api/v3/discovery/photo/"+r.peer_photo_id:null,
    lastMessage:r.last_message,unreadCount:Number(r.unread_count)
   }))};
