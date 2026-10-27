@@ -1,4 +1,5 @@
 import type { FastifyServerOptions } from "fastify";
+import type { BlikiApiOptions } from "./bliki/bliki-api.js";
 import type { Rem05bOptions } from "./rem05b-session.js";
 import type { GeoRuntime } from "./geo-routes.js";
 import type { EmbeddingPolicy } from "./rem05c-headers.js";
@@ -26,6 +27,7 @@ export interface ApiConfig {
   realPublication?: PublicationOptions;
   realErasure?: ErasureRequestOptions;
   safetyAppeal?: SafetyAppealOptions;
+  bliki?: BlikiApiOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -187,8 +189,16 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   }:undefined;
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
+  const blikiEnabled = env.BLIKI_V1_ENABLED === "1";
+  if (blikiEnabled && (!v2Enabled || stagingOnly || !env.BLIKI_V1_READ_DATABASE_URL ||
+      !env.REM05B_BOT_NAMESPACE || !publicationEnabled))
+    throw new Error("BLIKI V1 requires authenticated sessions, publication and scoped read database");
+  const bliki: BlikiApiOptions | undefined = blikiEnabled ? {
+    enabled: true, databaseUrl: env.BLIKI_V1_READ_DATABASE_URL!,
+    namespace: env.REM05B_BOT_NAMESPACE!
+  } : undefined;
   return {
-    rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,
+    bliki,rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,
     rem05c:{geo,embedding},
     port,
     origin,
