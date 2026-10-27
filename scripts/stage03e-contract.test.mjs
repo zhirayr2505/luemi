@@ -30,15 +30,15 @@ const model=readFileSync(new URL("../apps/web/src/discovery/model.ts",import.met
 const feed=readFileSync(new URL("../apps/web/src/discovery/FeedCard.tsx",import.meta.url),"utf8");
 assert.ok(component.includes('scope:"world"')&&component.includes("selectNearbyDemos"),"neutralize fake distance while preserving hard filters");
 assert.ok(component.includes("draft.interests.find(id=>person.interests.includes(id))"),"only actual shared-interest tags");
-assert.ok(component.includes("loading=\"lazy\"")&&component.includes("IntersectionObserver"),"lazy media and bounded incremental rendering");
+assert.ok(component.includes('loading={priority?"eager":"lazy"}')&&component.includes("priority={i<4}")&&component.includes("IntersectionObserver"),"bounded priority image loading, lazy remaining media and incremental rendering");
 assert.ok(css.includes("grid-template-columns:repeat(2,minmax(0,1fr))"),"two-column portrait grid");
 assert.ok(css.includes("touch-action:pan-y")&&css.includes("aspect-ratio:4/5"),"vertical scroll from photos, 4:5 geometry");
 // Source contract guards ownership boundaries; actual pointer/touch behavior is
 // exercised in rem-00c-browser-behavior.mjs (required browser CI lane).
 assert.match(discovery, /<Nearby\b[^>]*\bdraft=\{draft\}/, "Nearby must receive real draft with any additional props");
 const downSource=discovery.slice(discovery.indexOf("const down="),discovery.indexOf("const move="));
-assert.ok(downSource.includes(".nb-location")&&!downSource.includes(".nb-card"),
- "Nearby location controls retain child ownership, but photo cards allow horizontal pager gestures");
+assert.ok(downSource.includes("button,a,input")&&!downSource.includes(".nb-card"),
+ "Nearby controls retain click ownership while noninteractive card content can page horizontally");
 assert.ok(!downSource.includes(".nb-scroll,.nb-card"), "Nearby background must be eligible for parent pager gesture");
 
 assert.ok(discovery.includes("onSave={toggleForYouSave}")&&discovery.includes("onPerson={setPersonOpen}"),"shared save and existing public profile");
@@ -47,5 +47,6 @@ assert.ok(model.includes("radius:5000"),"existing geography setting unchanged");
 assert.ok(!component.includes("demoDistanceKm(")&&!source.includes("demoDistanceKm("),"no synthetic kilometre-based proximity function calls");
 console.log("✓ Stage 03E: strict declared location, dual column, gesture safety, savings, Feed/radius locks");
 
-assert.match(discovery, /nearbyPrepared\s*&&\s*<Nearby\b[^>]*\bdraft=\{draft\}/, "Nearby is rendered only when prepared, with real draft passed");
-assert.ok(discovery.includes("if(bounded===2)setNearbyPrepared(true)")&&discovery.includes("requestIdleCallback"),"Nearby prewarmed only outside the critical For You transition");
+assert.match(discovery, /<Nearby\b[^>]*\bdraft=\{draft\}/, "Nearby stays mounted with real draft during pager gestures");
+assert.ok(!discovery.includes("nearbyPrepared")&&discovery.includes('active={mainTab==="discover"'),
+ "Nearby's offscreen observer is inactive, but its page remains mounted");

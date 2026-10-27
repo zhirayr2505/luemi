@@ -39,11 +39,11 @@ function reason(p:DemoPerson,d:RegistrationDraft){
  if(ev.languages.length)return "Общий язык общения";
  return "Анкета · демо";
 }
-const PersonTile=memo(function PersonTile({person,draft,saved,onSave,onPerson,mediaActive}:{person:DemoPerson;draft:RegistrationDraft;saved:boolean;onSave:(id:string)=>void;onPerson:(id:string)=>void;mediaActive:boolean}){
+const PersonTile=memo(function PersonTile({person,draft,saved,onSave,onPerson,mediaActive,priority}:{person:DemoPerson;draft:RegistrationDraft;saved:boolean;onSave:(id:string)=>void;onPerson:(id:string)=>void;mediaActive:boolean;priority:boolean}){
  const pic=person.photos[0];
  return <article className="fy-tile">
   <button className="fy-tile-photo" type="button" data-person-id={person.id} onClick={()=>onPerson(person.id)} aria-label={"Открыть демо-профиль "+person.name+", "+person.age}>
-   {mediaActive&&<img src={pic.src} alt="" loading="lazy" decoding="async" draggable={false}
+   {mediaActive&&<img src={pic.src} alt="" loading={priority?"eager":"lazy"} decoding="async" draggable={false}
     onError={e=>{if(pic.fallback&&e.currentTarget.src!==pic.fallback)e.currentTarget.src=pic.fallback;}}/>}
    <span className="fy-tile-fade" aria-hidden="true"/>
    <span className="fy-tile-demo">Демо</span>
@@ -126,9 +126,9 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
  },[ranked,draft,filters]);
  const shown=useMemo(()=>prefs.order.filter(id=>!prefs.hidden.includes(id))
   .sort((a,b)=>Number(prefs.favorites.includes(b))-Number(prefs.favorites.includes(a))),[prefs]);
- const one=(p:DemoPerson,fromExpanded=false)=><PersonTile key={p.id} person={p} draft={draft} saved={saved.includes(p.id)} onSave={onSave} onPerson={onPerson}
-  mediaActive={fromExpanded||!expanded||!libraryWindow||libraryWindow.has(p.id)}/>;
- const rail=(list:DemoPerson[],name:string)=><div className="fy-rail" role="group" aria-label={name} onPointerDown={e=>e.stopPropagation()}>{list.slice(0,6).map(person=>one(person))}</div>;
+ const one=(p:DemoPerson,fromExpanded=false,priority=false)=><PersonTile key={p.id} person={p} draft={draft} saved={saved.includes(p.id)} onSave={onSave} onPerson={onPerson}
+  mediaActive={fromExpanded||!expanded||!libraryWindow||libraryWindow.has(p.id)} priority={priority}/>;
+ const rail=(list:DemoPerson[],name:string,priority=false)=><div className="fy-rail" role="group" aria-label={name} onPointerDown={e=>e.stopPropagation()}>{list.slice(0,6).map((person,i)=>one(person,false,priority&&i<2))}</div>;
  const flip=(id:CollectionId,field:"hidden"|"favorites")=>setPrefs(p=>({...p,[field]:p[field].includes(id)?p[field].filter(x=>x!==id):[...p[field],id]}));
  const shift=(id:CollectionId,n:number)=>setPrefs(p=>{
   const order=[...p.order],a=order.indexOf(id),b=a+n;if(b<0||b>=order.length)return p;
@@ -169,7 +169,7 @@ export const ForYou=memo(function ForYou({draft,filters,saved,onSave,onPerson,ex
     <div className="fy-section-header"><div><h3><Sparkles size={18}/>Лучшие совпадения сегодня</h3>
      <p>Подборка-пример по интересам, целям и языкам</p></div>
      {ranked.length>0&&<button type="button" onClick={()=>openCollection("best")}>Смотреть всех <ArrowRight size={14}/></button>}</div>
-    {ranked.length?rail(ranked,"Персональные рекомендации · демо"):<Empty text="По выбранным фильтрам нет тестовых анкет. Измени параметры поиска."/>}
+    {ranked.length?rail(ranked,"Персональные рекомендации · демо",true):<Empty text="По выбранным фильтрам нет тестовых анкет. Измени параметры поиска."/>}
    </section>
    {shown.map(section)}
    {!shown.length&&<Empty text="Все темы скрыты. Верни нужные подборки через «Настроить»."/>}

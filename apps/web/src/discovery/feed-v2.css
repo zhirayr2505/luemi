@@ -16,7 +16,8 @@
 @keyframes feed-v2-special{to{transform:translate3d(0,-27px,0) scale(1.035);opacity:0}}
 .feed-v2{height:100%}
 .feed-v2-card{
- --feed-actions-height:79px;--feed-closed-height:174px;
+ --feed-actions-height:79px;--feed-closed-height:174px;--feed-about-closed-height:40px;
+ --feed-progress:0;
  background:#ad8fba;border-radius:26px;overflow:hidden;
  border-color:rgba(255,255,255,.75);box-shadow:0 12px 30px rgba(71,35,91,.18)
 }
@@ -28,9 +29,8 @@
  content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
  background:linear-gradient(to bottom,transparent 20%,rgba(25,14,36,.13) 51%,
  rgba(25,14,36,.36) 78%,rgba(25,14,36,.3));
- opacity:0;transition:opacity .42s cubic-bezier(.22,.7,.24,1)
+ opacity:var(--feed-progress)
 }
-.feed-v2-card[data-expanded=true]::before{opacity:1}
 .feed-v2-photo>.carousel-frame{touch-action:pan-y}
 .feed-v2-photo .carousel-track img{
  width:100%;height:100%;object-fit:cover;object-position:center 35%;
@@ -62,13 +62,9 @@
  flex:none;min-height:0;height:var(--feed-closed-height);
  max-height:calc(100% - var(--feed-actions-height));
  padding:0 17px 5px;color:#fff;display:flex;flex-direction:column;
- justify-content:flex-end;overflow:hidden;pointer-events:auto;touch-action:none;
- transform:translate3d(0,var(--feed-drag,0px),0);
- transition:height .34s cubic-bezier(.21,.76,.24,1),transform .18s ease
+ justify-content:flex-end;overflow:hidden;pointer-events:auto;touch-action:none
 }
-.feed-v2-card[data-expanded=true] .feed-v2-details{
- height:min(72%,430px)
-}
+.feed-v2-card[data-expanded=true] .feed-v2-details{touch-action:pan-y}
 .feed-v2-expand{
  height:21px;min-height:21px;min-width:70px;margin:0 auto 4px;padding:0;
  display:flex;align-items:center;justify-content:center;gap:7px;
@@ -77,11 +73,11 @@
 .feed-v2-expand svg{filter:drop-shadow(0 1px 2px rgba(22,10,31,.5))}
 .feed-v2-scroll{
  min-height:0;max-height:calc(100% - 25px);overflow:hidden;
- display:flex;flex-direction:column;gap:5px;overscroll-behavior:contain;touch-action:none;
+ display:flex;flex-direction:column;gap:5px;overscroll-behavior:contain;touch-action:pan-y;
  text-shadow:0 1px 9px rgba(18,9,27,.44)
 }
 .feed-v2-card[data-expanded=true] .feed-v2-scroll{
- overflow-y:auto;touch-action:pan-y;scrollbar-width:thin;scrollbar-color:rgba(245,218,255,.55) transparent
+ scrollbar-width:thin;scrollbar-color:rgba(245,218,255,.55) transparent
 }
 .feed-v2-card[data-expanded=true] .discovery-name-row,
 .feed-v2-card[data-expanded=true] .discovery-place,
@@ -93,23 +89,15 @@
 .feed-v2 .discovery-place span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .feed-v2-goal{display:flex;gap:5px;align-items:center;font-size:12px;font-weight:690;min-height:18px}
 .feed-v2-goal svg{color:#ffbfdc}
-.feed-v2-about{flex:none;max-height:40px;overflow:hidden;
- transition:max-height .42s cubic-bezier(.22,.7,.24,1)}
-.feed-v2-card[data-expanded=true] .feed-v2-about{max-height:1400px}
+.feed-v2-about{flex:none;max-height:var(--feed-about-closed-height);overflow:hidden}
 .feed-v2 .discovery-short-about{
- flex:none;color:rgba(255,255,255,.96);font-size:12px;line-height:1.45;
- -webkit-line-clamp:2;line-clamp:2;margin:1px 0 0;
+ flex:none;display:block;overflow:visible;color:rgba(255,255,255,.96);font-size:12px;line-height:1.45;
+ -webkit-line-clamp:unset;line-clamp:unset;margin:1px 0 0;
  padding:1px 0 1px 11px;border-left:2px solid rgba(246,188,225,.9);
  font-style:italic;letter-spacing:.005em
 }
-.feed-v2-card[data-expanded=true] .discovery-short-about{
- display:block;overflow:visible;-webkit-line-clamp:unset;line-clamp:unset
-}
-.feed-v2-interests{padding:7px 0 3px;max-height:120px;opacity:1;
- transition:max-height .36s cubic-bezier(.22,.7,.24,1),opacity .26s ease}
-.feed-v2-card:not([data-expanded=true]) .feed-v2-interests{
- max-height:0;opacity:0;padding-top:0;padding-bottom:0;overflow:hidden
-}
+.feed-v2-interests{max-height:0;opacity:var(--feed-progress);overflow:hidden}
+.feed-v2-interests .discovery-interests{padding:7px 0 3px}
 .feed-v2 .discovery-interests{flex-wrap:wrap;overflow:visible}
 .feed-v2 .discovery-interests>.chip{flex:none;max-width:100%}
 .feed-v2 .discovery-actions{
@@ -134,7 +122,7 @@
 .feed-v2-card[data-size=compact] .feed-v2-scroll{gap:3px}
 .feed-v2-card[data-size=compact] .discovery-short-about{font-size:11px}
 .feed-v2-card[data-size=compact] .discovery-actions{padding-bottom:4px}
-.feed-v2-card[data-size=tiny]{--feed-closed-height:130px;--feed-actions-height:55px}
+.feed-v2-card[data-size=tiny]{--feed-closed-height:130px;--feed-actions-height:55px;--feed-about-closed-height:22px}
 .feed-v2-card[data-size=tiny] .feed-v2-details{padding:0 11px 1px}
 .feed-v2-card[data-size=tiny] .feed-v2-expand{height:17px;min-height:17px;margin-bottom:1px}
 .feed-v2-card[data-size=tiny] .feed-v2-scroll{gap:2px;overflow-y:auto}
@@ -145,7 +133,6 @@
 .feed-v2-card[data-size=tiny] .discovery-action{--diameter:44px}
 @media(max-width:350px){.feed-v2 .discovery-actions{gap:2px;padding-left:6px;padding-right:6px}}
 @media(prefers-reduced-motion:reduce){
- .feed-v2-details,.feed-v2-card::before,.feed-v2-interests,.feed-v2-about,
  .feed-v2-photo .photo-progress button::after{transition:none}
  .discovery-page[aria-label="Лента"] .deck-leaving,
  .discovery-page[aria-label="Лента"] .deck-entering{animation:none}

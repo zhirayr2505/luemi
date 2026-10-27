@@ -60,27 +60,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const [discoveryTab,setDiscoveryTab]=useState<DiscoveryTab>("feed");
  const keyboardBrowseFocus=useRef<number|null>(null);
  const [personOpen,setPersonOpen]=useState<string|null>(null);
- // Prepare Nearby when For You becomes current or Nearby is selected; keep it mounted thereafter.
- const [nearbyPrepared,setNearbyPrepared]=useState(false);
- // Prewarm Nearby only after For You's first pager transition, during an idle
- // interval. A direct first visit to Nearby still mounts synchronously.
- useEffect(()=>{
-  if(nearbyPrepared||discoveryTab!=="for-you"||mainTab!=="discover"||personOpen)return;
-  let cancelled=false;
-  let idleId:number|null=null;
-  const timer=window.setTimeout(()=>{
-   if("requestIdleCallback" in window){
-    idleId=window.requestIdleCallback(()=>{
-     if(!cancelled)setNearbyPrepared(true);
-    },{timeout:1800});
-   }else if(!cancelled)setNearbyPrepared(true);
-  },450);
-  return ()=>{
-   cancelled=true;window.clearTimeout(timer);
-   if(idleId!==null&&"cancelIdleCallback" in window)window.cancelIdleCallback(idleId);
-  };
- },[nearbyPrepared,discoveryTab,mainTab,personOpen]);
+ // All three pager children exist before a finger can expose a neighbor.
+ // Nearby's inactive observer remains disabled by its active prop.
  const gesture=useRef<Gesture|null>(null);
+ const suspendBrowse=useRef<()=>void>(()=>{});
  const clickBlockUntil=useRef(0);
  const pages=useRef<HTMLDivElement>(null);
  const pageTrack=useRef<HTMLDivElement>(null);
@@ -235,12 +218,10 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  const selectTab=(index:number)=>{
   const bounded=Math.max(0,Math.min(topTabs.length-1,index));
   if(topTabs[bounded][0]===discoveryTab)return;
-  if(bounded===2)setNearbyPrepared(true);
   setDiscoveryTab(topTabs[bounded][0]);
   selectionHaptic();
  };
  // One fractional coordinate drives the browse track and its underline.
- // CSS retains its original DIFFERENT track/ink easings during settle.
  const paintBrowse=(trackX:number,inkX:number)=>{
   motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse,()=>{
    pageTrack.current?.style.setProperty("--luemi-tab-offset","0px");
@@ -337,7 +318,15 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   if(!event.isPrimary){inputOwnership.current.secondFinger();cancelSwipe();return;}
   if(event.pointerType==="mouse"&&event.button!==0)return;
   const target=event.target as HTMLElement;
-  if(target.closest(".discovery-page[aria-label='Лента'],.discovery-action,[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage,.nb-location"))return;
+  if(target.closest("[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
+  const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
+  if(interactive&&!interactive.matches(".discovery-name-button"))return;
+  if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
+  const feedCard=target.closest<HTMLElement>(".feed-v2-card");
+  const details=feedCard?.querySelector<HTMLElement>(".feed-v2-details");
+  // The photo owns only the area above the measured information panel.
+  // Text and blank areas are candidates for the top-level pager.
+  if(details&&event.clientY<details.getBoundingClientRect().top)return;
   const serial=inputOwnership.current.begin("pointer",event.pointerId,"browse");
   if(serial===null)return;
   inputOwnership.current.begin("pointer",event.pointerId,"native");
@@ -398,11 +387,13 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    ?Math.round(g.index)+(x<0?1:-1):Math.round(g.index);
   const target=Math.max(0,Math.min(topTabs.length-1,rawTarget));
   clickBlockUntil.current=performance.now()+260;
-  // The transition begins at the LAST painted pixels. Pending drag RAF dies
-  // before the CSS transition is restarted.
-  browseMotion.current.cancel(g.token,"superseded");
-  const frozen=frozenBrowse();
-  void frozen;
+  // Flush the release position before cancelling a pending finger RAF. The
+  // CSS settle now starts at the actual final pointer location, not an older
+  // composited frame.
+  const limited=(g.index<=.001&&x>0)||(g.index>=topTabs.length-1-.001&&x<0);
+  const shift=limited?x*.22:Math.max(-g.width,Math.min(g.width,x));
+  browseMotion.current.paint(g.token,g.originTrack+shift,
+   ()=>paintBrowse(g.originTrack+shift,g.originInk-shift/3));
   settleDrag(target);
   if(target!==tabIndex)selectTab(target);
  };
@@ -411,9 +402,37 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   inputOwnership.current.cancel();
   if(g.tracking){
    if(g.token)browseMotion.current.cancel(g.token,"gesture-cancel");
-   settleDrag(Math.max(0,Math.min(topTabs.length-1,Math.round(g.index))));
+   settleDrag(tabIndex);
   }
  };
+ suspendBrowse.current=()=>{
+  cancelSwipe();
+  const pending=browseSettle.current;
+  if(!pending)return;
+  browseMotion.current.cancel(pending.token,"external");browseSettle.current=null;
+  if(pagerSettleTimer.current!==null)clearTimeout(pagerSettleTimer.current);
+  pagerSettleTimer.current=null;
+  pageTrack.current?.classList.remove("is-finger-tracking","is-settling");
+  underline.current?.classList.remove("is-finger-tracking","is-settling");
+  pageTrack.current?.classList.add("is-finger-tracking");
+  underline.current?.classList.add("is-finger-tracking");
+  motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse,()=>{
+   pageTrack.current?.style.setProperty("--luemi-tab-offset",(-tabIndex*100)+"%");
+   pageTrack.current?.style.setProperty("--luemi-drag","0px");
+   underline.current?.style.setProperty("--luemi-tab-offset",(tabIndex*100)+"%");
+   underline.current?.style.setProperty("--luemi-underline-drag","0px");
+  });
+  void pageTrack.current?.offsetWidth;
+  pageTrack.current?.classList.remove("is-finger-tracking");
+  underline.current?.classList.remove("is-finger-tracking");
+  browsePosition.current=tabIndex;
+ };
+ useEffect(()=>{
+  const stop=()=>suspendBrowse.current();
+  const hidden=()=>{if(document.hidden)stop();};
+  window.addEventListener("blur",stop);document.addEventListener("visibilitychange",hidden);
+  return ()=>{window.removeEventListener("blur",stop);document.removeEventListener("visibilitychange",hidden);};
+ },[]);
  const apply=(next:DiscoveryFilter)=>{
   if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
   transitionRef.current=null;pendingCommit.current=null;locked.current=false;setLeaving(null);setLeavingKind(null);
@@ -478,7 +497,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
            style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
        </div>
        <div className="discovery-pages" ref={pages} onPointerDown={down}
-         onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}>
+         onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}
+         onLostPointerCapture={cancelSwipe}>
          <div className="discovery-page-track" ref={pageTrack}
            onTransitionEnd={event=>{
              if(event.target===event.currentTarget&&event.propertyName==="transform")finishPagerSettle();
@@ -516,8 +536,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
                settingsOpen={forYouSettings} onSettingsOpen={setForYouSettings}/>
            </section>
            <section className="discovery-page" role="tabpanel" aria-label="Рядом" inert={discoveryTab!=="nearby"} aria-hidden={discoveryTab!=="nearby"}>
-             {nearbyPrepared&&<Nearby active={mainTab==="discover"&&discoveryTab==="nearby"&&!selectedPerson} draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportNearbyScroll} onSave={toggleForYouSave}
-               onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>}
+             <Nearby active={mainTab==="discover"&&discoveryTab==="nearby"&&!selectedPerson} draft={draft} filters={filters} saved={feed.saved} onScrollTop={reportNearbyScroll} onSave={toggleForYouSave}
+               onPerson={setPersonOpen} onFilters={openNearbyFilters} onEditLocation={onExit}/>
            </section>
          </div>
        </div>

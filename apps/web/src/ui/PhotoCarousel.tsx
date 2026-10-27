@@ -43,6 +43,10 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    }
    tracking.current={id,x,y,t:at,horizontal,startIndex,width};
  };
+ const dragOffset=(t:Tracking,delta:number)=>{
+   const atEdge=(t.startIndex<=0&&delta>0)||(t.startIndex>=photos.length-1&&delta<0);
+   return atEdge?delta*.2:Math.max(-t.width,Math.min(t.width,delta));
+ };
  const moveAt=(id:number,x:number,y:number,capture?:()=>void)=>{
    const t=tracking.current;
    if(!t||t.id!==id)return false;
@@ -53,8 +57,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
      capture?.();
    }
    if(!t.horizontal)return false;
-   const atEdge=(t.startIndex===0&&delta>0)||(t.startIndex===photos.length-1&&delta<0);
-   const offset=atEdge?delta*.2:Math.max(-t.width,Math.min(t.width,delta));
+   const offset=dragOffset(t,delta);
    flush();
    // Finger tracking bypasses React renders and never queues several old frames.
    frameId.current=window.requestAnimationFrame(()=>{
@@ -67,6 +70,12 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    const t=tracking.current;if(!t||t.id!==id)return;
    tracking.current=null;
    flush();
+   // A final pointer sample may arrive after the last scheduled RAF. Commit
+   // its position before re-enabling CSS easing, including a quick flick.
+   if(t.horizontal){
+     renderOffset(t.startIndex,dragOffset(t,x-t.x));
+     void photoTrack.current?.offsetWidth;
+   }
    let target=activeRef.current;
    if(t.horizontal&&!canceled){
      const delta=x-t.x;
