@@ -109,6 +109,21 @@ export function BlikDraftEditor({ ownerId, onClose, onPreview }: Props) {
                 layers: state.editor.layers.map(x => x.id === layer.id ? { ...x, value: event.target.value } : x) })} />
             <button onClick={() => state.change({ ...state.editor,
               layers: state.editor.layers.filter(x => x.id !== layer.id) })}>×</button>
+            <select aria-label="Цвет слоя" value={layer.style ?? 'light'}
+              onChange={event => state.change({ ...state.editor, layers: state.editor.layers.map(x =>
+                x.id === layer.id ? { ...x, style: event.target.value as BlikLayer['style'] } : x) })}>
+              <option value="light">Светлый</option>
+              <option value="dark">Тёмный</option>
+              <option value="accent">Акцент</option>
+            </select>
+            <input aria-label="Размер слоя" type="range" min="0.5" max="3" step="0.1"
+              value={layer.scale} onChange={event => state.change({ ...state.editor,
+                layers: state.editor.layers.map(x => x.id === layer.id ?
+                  { ...x, scale: Number(event.target.value) } : x) })} />
+            <input aria-label="Поворот слоя" type="range" min="-180" max="180" step="5"
+              value={layer.rotation} onChange={event => state.change({ ...state.editor,
+                layers: state.editor.layers.map(x => x.id === layer.id ?
+                  { ...x, rotation: Number(event.target.value) } : x) })} />
           </div>)}
           <button disabled={busy} onClick={() => void goPreview()}>Предпросмотр</button>
         </> : <>
