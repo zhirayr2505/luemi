@@ -34,6 +34,18 @@ jobs:
         run: npm ci --ignore-scripts --include=dev
       - name: Verify release plan, env safety and deployment gate
         run: node --test scripts/public-release-activate.test.mjs
+      - name: Assert real-only public Vite bundle has no demo pages
+        env:
+          VITE_LUEMI_REAL_ONLY: "1"
+          VITE_LUEMI_CHATS_DEMO: "0"
+        run: |
+          npm run build -w @luemi/contracts
+          npm run build -w @luemi/web
+          test -f apps/web/dist/privacy.html
+          if test -f apps/web/dist/chats-demo.html; then
+            echo "Public release bundle must never contain chats-demo.html"
+            exit 1
+          fi
       - name: Provision or validate separate least-privilege Postgres logins
         env:
           BETA_SUPABASE_OWNER_URL: ${{ secrets.BETA_SUPABASE_OWNER_URL }}
