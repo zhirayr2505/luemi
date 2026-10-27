@@ -5,6 +5,8 @@ import type {PointerEvent as ReactPointerEvent} from "react";
 import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
+import {RealChats} from "../chats/RealChats";
+import {ChatsPreview} from "../chats/ChatsPreview";
 import {cardGestureZone} from "./card-gesture-zone";
 import {demoPeople} from "./demo-people";
 import {forYouDemoPeople} from "./for-you-data";
@@ -322,14 +324,12 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   if(target.closest("[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
   const feedCard=target.closest<HTMLElement>(".feed-v2-card");
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
-  if(interactive&&!interactive.matches(".discovery-name-button,.feed-v2-expand,.discovery-top-tabs [role=tab]"))return;
+  if(interactive&&!interactive.matches(".discovery-name-button,.discovery-action"))return;
   if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
-  // The details subtree owns text gestures even when it reaches above the
-  // old cutoff. The carousel consumes in-range photo swipes in capture;
-  // a swipe past the final photo can pass through to this pager.
+  // Sample the card's real geometry once. Upper 85% belongs to the carousel;
+  // the bottom 15% belongs to this pager, including when the sheet is open.
   if(feedCard){const rect=feedCard.getBoundingClientRect();
-   if(!target.closest(".feed-v2-details,.feed-v2-photo .carousel-frame")&&
-     cardGestureZone(event.clientY,rect.top,rect.height)!=="browse")return;}
+   if(cardGestureZone(event.clientY,rect.top,rect.height)!=="browse")return;}
   const serial=inputOwnership.current.begin("pointer",event.pointerId,"browse");
   if(serial===null)return;
   inputOwnership.current.begin("pointer",event.pointerId,"native");
@@ -550,7 +550,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        <Placeholder title="Симпатии" text="Настоящие мэтчи и входящие появятся только после безопасного серверного запуска."/>
      </section>
      <section className="discovery-panel" hidden={mainTab!=="chats"}>
-       <Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>
+       {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?<RealChats/>:<ChatsPreview/>}
      </section>
      <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
        {profilePrepared&&<ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"&&!selectedPerson} onMotionProgress={reportProfileMotion}/>}
