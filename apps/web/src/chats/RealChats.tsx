@@ -14,6 +14,7 @@ export function RealChats(){
  const [editing,setEditing]=useState<string|null>(null);
  const [olderCursor,setOlderCursor]=useState<string|null>(null);
  const [loadingOlder,setLoadingOlder]=useState(false);
+ const activeRef=useRef<string|null>(null);
  const [error,setError]=useState("");
  const [sending,setSending]=useState(false);
  const [loading,setLoading]=useState(true);
@@ -36,6 +37,7 @@ export function RealChats(){
   if(!active||!api)return;
   const controller=new AbortController();
   lastRead.current=null;
+  activeRef.current=active;
   setOlderCursor(null);
   cursorInitialized.current=false;
   let running=false;
@@ -44,7 +46,7 @@ export function RealChats(){
    running=true;
    try{
     const data=await api.messages(active,undefined,controller.signal);
-    if(!controller.signal.aborted){setMessages(previous=>{const byId=new Map(previous.map(m=>[m.id,m]));for(const m of data.messages)byId.set(m.id,m);return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});if(!cursorInitialized.current){cursorInitialized.current=true;setOlderCursor(data.nextCursor);}setError("");
+    if(!controller.signal.aborted&&activeRef.current===active){setMessages(previous=>{const byId=new Map(previous.map(m=>[m.id,m]));for(const m of data.messages)byId.set(m.id,m);return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});if(!cursorInitialized.current){cursorInitialized.current=true;setOlderCursor(data.nextCursor);}setError("");
      const newest=[...data.messages].reverse().find(message=>message.senderId!==actorId&&!message.deletedAt);
      if(actorId&&newest&&document.visibilityState==="visible"&&lastRead.current!==newest.id){
       lastRead.current=newest.id;
@@ -80,7 +82,7 @@ export function RealChats(){
  const loadOlder=async()=>{
   if(!api||!active||!olderCursor||loadingOlder)return;
   setLoadingOlder(true);
-  try{const page=await api.messages(active,olderCursor);setMessages(old=>{const byId=new Map([...page.messages,...old].map(m=>[m.id,m]));return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});setOlderCursor(page.nextCursor);}catch{setError("Не удалось загрузить старые сообщения");}finally{setLoadingOlder(false);}
+  try{const page=await api.messages(active,olderCursor);if(activeRef.current!==active)return;setMessages(old=>{const byId=new Map([...page.messages,...old].map(m=>[m.id,m]));return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});setOlderCursor(page.nextCursor);}catch{setError("Не удалось загрузить старые сообщения");}finally{setLoadingOlder(false);}
  };
  const editMessage=async(message:ChatWireMessage)=>{
   if(!api||!active||message.deletedAt)return;
@@ -104,7 +106,7 @@ export function RealChats(){
   setSending(true);setError("");
   try{
    const result=await api.send(active,text,clientId);
-   setMessages(old=>old.some(m=>m.id===result.message.id)?old:[...old,result.message]);
+   if(activeRef.current===active)setMessages(old=>old.some(m=>m.id===result.message.id)?old:[...old,result.message]);
    pending.current=null;setDraft("");requestAnimationFrame(()=>bottom.current?.scrollIntoView({block:"end"}));
   }catch{setError("Сообщение не отправлено. Попробуйте ещё раз.");}
   finally{setSending(false);}
@@ -112,10 +114,10 @@ export function RealChats(){
  return <div className="luemi-chats" data-real-chats="true">
   {!active?<><header className="lc-heading"><div><small>LUEMI</small><h2>Чаты</h2></div></header>
    {loading?<p className="lc-empty">Загружаем переписки…</p>:conversations.length===0?<p className="lc-empty">Пока нет переписок. Они появятся после взаимного мэтча.</p>:
-   <div className="lc-conversations">{conversations.map(c=><button className="lc-chat-open" key={c.id} onClick={()=>{pending.current=null;lastRead.current=null;setActive(c.id);setMessages([]);}}>
+   <div className="lc-conversations">{conversations.map(c=><button className="lc-chat-open" key={c.id} onClick={()=>{pending.current=null;lastRead.current=null;activeRef.current=c.id;setActive(c.id);setMessages([]);}}>
     <span className="lc-avatar">💜</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>
    </button>)}</div>}
-  </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;setActive(null);}} aria-label="Назад">←</button><strong>Переписка</strong></header>
+  </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;activeRef.current=null;setActive(null);}} aria-label="Назад">←</button><strong>Переписка</strong></header>
    <div className="lc-history" role="log" aria-label="Сообщения">{olderCursor&&<button type="button" disabled={loadingOlder} onClick={()=>void loadOlder()} className="lc-load-older">{loadingOlder?"Загружаем…":"Показать старые сообщения"}</button>}{messages.map(m=><div key={m.id} className={"lc-msg-line "+(m.senderId===actorId?"lc-own":"")}>
     <div className="lc-bubble">{m.deletedAt?<i>Сообщение удалено</i>:m.body}<small>{new Date(m.createdAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small>{m.senderId===actorId&&!m.deletedAt&&<span className="lc-msg-actions"><button type="button" disabled={editing===m.id} onClick={()=>void editMessage(m)} aria-label="Редактировать сообщение">Изменить</button><button type="button" disabled={editing===m.id} onClick={()=>void deleteMessage(m)} aria-label="Удалить сообщение">Удалить</button></span>}</div>
    </div>)}<div ref={bottom}/></div>
