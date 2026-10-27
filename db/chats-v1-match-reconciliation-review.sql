@@ -16,6 +16,9 @@ END $$;
 INSERT INTO luemi_chats.conversations(environment,match_id)
 SELECT 'luemi',m.id FROM public.luemi_matches m
 WHERE m.status='active' AND m.user_low<>m.user_high
+ AND NOT EXISTS (SELECT 1 FROM public.luemi_blocks b
+  WHERE (b.blocker_id=m.user_low AND b.blocked_id=m.user_high)
+     OR (b.blocker_id=m.user_high AND b.blocked_id=m.user_low))
 ON CONFLICT(environment,match_id) DO NOTHING;
 -- The V2 actor ID is NOT the public user ID. Join through a verified
 -- Telegram identity, never by equating unrelated UUIDs.
@@ -27,6 +30,9 @@ WITH verified AS (
         low_actor.id AS low_actor_id, high_actor.id AS high_actor_id
  FROM luemi_chats.conversations c
  JOIN public.luemi_matches m ON m.id=c.match_id AND m.status='active'
+ AND NOT EXISTS (SELECT 1 FROM public.luemi_blocks b
+  WHERE (b.blocker_id=m.user_low AND b.blocked_id=m.user_high)
+     OR (b.blocker_id=m.user_high AND b.blocked_id=m.user_low))
  JOIN public.luemi_users ul ON ul.id=m.user_low AND ul.status='active'
  JOIN public.luemi_users uh ON uh.id=m.user_high AND uh.status='active'
  JOIN luemi_private.actors low_actor
