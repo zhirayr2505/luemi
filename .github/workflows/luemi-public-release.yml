@@ -1,0 +1,44 @@
+name: LUEMI PUBLIC launch (operator-approved)
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type RELEASE_PUBLIC_REAL_USERS. This will enable real signup for all 18+ Telegram users."
+        required: true
+        type: string
+      privacy_and_content_ack:
+        description: "I verified the privacy operator/contact/legal notice and approve immediate public photo publication."
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: luemi-public-release
+  cancel-in-progress: false
+jobs:
+  public-release:
+    if: github.repository == 'zhirayr2505/luemi' && github.ref == 'refs/heads/main' && inputs.confirmation == 'RELEASE_PUBLIC_REAL_USERS' && inputs.privacy_and_content_ack == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    # Protect the existing environment with a required reviewer. Secrets are
+    # accessed only by this job; GitHub repository source remains credential-free.
+    environment: beta-bootstrap
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --include=dev
+      - name: Verify release plan, env safety and deployment gate
+        run: node --test scripts/public-release-activate.test.mjs
+      - name: Deploy public LUEMI (no demo, no manual media approval)
+        env:
+          BETA_SUPABASE_OWNER_URL: ${{ secrets.BETA_SUPABASE_OWNER_URL }}
+          BETA_RENDER_API_KEY: ${{ secrets.BETA_RENDER_API_KEY }}
+          PUBLIC_SUPABASE_STORAGE_SECRET: ${{ secrets.PUBLIC_SUPABASE_STORAGE_SECRET }}
+          PUBLIC_GEOAPIFY_API_KEY: ${{ secrets.PUBLIC_GEOAPIFY_API_KEY }}
+          PUBLIC_RELEASE_APPROVAL: ${{ inputs.confirmation }}
+        run: node scripts/public-release-activate.mjs
