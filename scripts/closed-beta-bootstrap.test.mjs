@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {ROLES,validateOwnerConnection,makeScopedConnection,checkRoleMetadata} from "./closed-beta-bootstrap.mjs";
+import {ROLES,validateOwnerConnection,makeScopedConnection,checkRoleMetadata,admissionNamespace} from "./closed-beta-bootstrap.mjs";
 const project="czzyoxrwtnvbicypwrdd";
 const owner="postgresql://postgres."+project+":NOT_A_REAL_PASSWORD@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require";
 test("requires LUEMI owner and session-mode IPv4 pooler, never an assumed generic host",()=>{
@@ -35,5 +35,13 @@ test("fails closed when any shell is LOGIN, privileged, missing or shares a seco
   {rolcreatedb:true},{rolcreaterole:true},{count_memberships:2},{member_of:"postgres"}
  ]){
   assert.throws(()=>checkRoleMetadata([{...okay[0],...change},...okay.slice(1)]),/Unsafe beta role/);
+ }
+});
+
+test("open signups provision to the production namespace without requiring Telegram invitations",()=>{
+ assert.equal(admissionNamespace("open"),"luemi-production");
+ assert.equal(admissionNamespace("beta"),"luemi-beta-20261027");
+ for(const mode of ["all","everyone","",undefined,null]){
+  assert.throws(()=>admissionNamespace(mode),/Select approved/);
  }
 });
