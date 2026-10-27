@@ -44,7 +44,8 @@ export function BlikiDiscoverySlot({ ownerId }: { ownerId: string }) {
     }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
     return () => abort.abort();
   }, [ownerId, reload]);
-  const authors = useMemo(() => entries.map(({ group: _group, ...author }) => author), [entries]);
+  // BlikiFeedEntry structurally satisfies BlikAuthor; keep the secure DTO unchanged.
+  const authors = entries;
   const openIndex = authors.findIndex(author => author.id === openAuthor);
   const closeViewer = useCallback(() => setOpenAuthor(null), []);
   useEffect(() => {
