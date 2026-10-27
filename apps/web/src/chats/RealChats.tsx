@@ -54,6 +54,24 @@ export function RealChats(){
   return()=>{controller.abort();window.clearInterval(timer);};
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[active,csrf,actorId]);
+ useEffect(()=>{
+  if(!csrf)return;
+  const controller=new AbortController();
+  let busy=false;
+  const refresh=async()=>{
+   if(busy||controller.signal.aborted||document.visibilityState!=="visible")return;
+   busy=true;
+   try{
+    const data=await createChatTransport(csrf).list(controller.signal);
+    if(!controller.signal.aborted)setConversations(data.conversations);
+   }catch{/* The message poll reports active connectivity errors. */}
+   finally{busy=false;}
+  };
+  const timer=window.setInterval(()=>void refresh(),5000);
+  const onVisible=()=>{if(document.visibilityState==="visible")void refresh();};
+  document.addEventListener("visibilitychange",onVisible);
+  return()=>{controller.abort();window.clearInterval(timer);document.removeEventListener("visibilitychange",onVisible);};
+ },[csrf]);
  const send=async()=>{
   if(!api||!active||!draft.trim()||sending)return;
   const text=draft.trim();
