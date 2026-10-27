@@ -34,3 +34,9 @@
 - Validate blocking, report, erasure and moderation policy before any real-user beta.
 
 No merge, deploy, Supabase migration, or paid service was performed.
+
+## Verified against live LUEMI metadata (read-only)
+- `public.luemi_matches` exists and has `id`, `user_low`, `user_high` (UUID) and `status`; `public.luemi_users` has UUID `id` and BIGINT `telegram_user_id`.
+- V2 session `authActor.actorId` must be proven to map to the same UUID identity as `luemi_matches.user_low/user_high` before any membership reconciliation. Do not assume matching UUID formats imply matching users.
+- Match status values and revocation/block rules require verification; `db/chats-v1-match-reconciliation-review.sql` intentionally ends in ROLLBACK and must not be treated as an applied migration.
+- No production database writes or storage bucket changes were made.
