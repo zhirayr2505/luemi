@@ -154,6 +154,8 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
   setManual(value=>!value);
   setQuery(selectedLabel);
  };
+ const nativeSettings=(window.Telegram?.WebApp as {LocationManager?:TelegramLocationManager}|undefined)?.LocationManager;
+ const canOpenGeoSettings=typeof nativeSettings?.openSettings==="function";
  const loading=activity==="searching"||activity==="locating"||activity==="resolving";
  const selectedScope=scopeOptions.find(x=>x[0]===data.searchScope)??scopeOptions[0];
  return <div className="geo-stack">
@@ -180,6 +182,11 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
    {data.placeId&&<div className="geo-selected"><Flag code={data.countryCode}/><MapPin size={15}/><strong>{data.city}</strong><span>{data.country}</span></div>}
    {manual&&editing&&query.trim().length>1&&!loading&&!results.length&&!error&&<p className="hint">Выбери реальный город из подсказок. Свободный текст не сохраняется.</p>}
    {error&&<p className="field-warning" role="alert">{error}</p>}
+   {error.startsWith("Доступ к геолокации")&&canOpenGeoSettings&&
+    <button type="button" className="geo-mode-toggle" onClick={()=>{
+      try{nativeSettings?.openSettings?.();}
+      catch{setError("Открой настройки местоположения Telegram вручную.");}
+    }}>Открыть настройки геолокации Telegram</button>}
    {demo&&<p className="hint">Тестовый справочник ограничен. Полный мировой поиск требует настройки провайдера.</p>}
    <div className="geo-scope">
      <span className="field-label">Где искать людей?</span>
