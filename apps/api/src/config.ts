@@ -19,6 +19,7 @@ export interface ApiConfig {
   botToken: string;
   healthKey: string;
   webhookSecret: string;
+  supportChatId?: number;
   stagingOnly?: boolean;
   serveWeb?: boolean;
   expectedBotUsername?: string;
@@ -261,6 +262,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     botToken: stagingOnly ? "" : (env.TELEGRAM_BOT_TOKEN ?? ""),
     healthKey: env.HEALTH_CHECK_KEY ?? "",
     webhookSecret: stagingOnly ? "" : (env.TELEGRAM_WEBHOOK_SECRET ?? ""),
+    supportChatId:/^[1-9][0-9]{4,14}$/.test(env.LUEMI_SUPPORT_TELEGRAM_CHAT_ID??"")?
+      Number(env.LUEMI_SUPPORT_TELEGRAM_CHAT_ID):undefined,
     logger: env.NODE_ENV !== "test"
   };
 }
