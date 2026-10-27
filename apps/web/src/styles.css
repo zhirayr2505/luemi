@@ -208,47 +208,43 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .photo-drag-ghost svg{position:absolute;bottom:7px;right:7px;color:white}
 .sort-tip{display:flex;gap:9px;align-items:flex-start;color:var(--subtle);font-size:12px;line-height:1.5}
 .photo-count{font-size:13px;color:var(--subtle);margin:0}
-/* Shared preview carousel + profile */
-.preview-root{display:flex;flex-direction:column;gap:15px}
-/* LU-24: the real ProfileMaster inside step 8; registration header/footer and
-   previously approved profile physics remain untouched. No second GlobalHeader. */
-.registration-profile-simulator{position:relative;isolation:isolate;width:100%;
- height:min(720px,82svh);min-height:480px;overflow:hidden;border-radius:24px;
- background:var(--bg);border:1px solid var(--glass-edge);
- box-shadow:0 9px 24px var(--shadow)}
-.registration-profile-simulator .pm-shell{height:100%;min-height:0}
-.preview-root>.hint[role=status]{display:flex;align-items:flex-start;gap:5px}
-
-/* Registration preview is local-only: retain the accepted full ProfileMaster,
-   with a compact card perspective and direct edits instead of duplicate forms. */
-.registration-preview-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;
- border-radius:18px;background:var(--panel);border:1px solid var(--line)}
-.registration-preview-switch button{min-height:44px;border:0;border-radius:14px;background:none;
- color:var(--subtle);font-size:13px;font-weight:750}
-.registration-preview-switch button.active{background:linear-gradient(105deg,rgba(191,151,239,.28),rgba(247,191,222,.28));color:var(--ink);
- box-shadow:0 3px 12px var(--shadow)}
-.registration-preview-card{background:var(--panel);border-radius:24px;border:1px solid var(--glass-edge);
- overflow:hidden;box-shadow:0 9px 24px var(--shadow);padding-bottom:16px}
-.registration-preview-card-photo{position:relative;aspect-ratio:4/5;overflow:hidden;background:var(--line);color:white}
-.registration-preview-card-photo img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 20%}
-.registration-preview-empty{height:100%;display:grid;align-content:center;justify-items:center;gap:8px;color:var(--subtle)}
-.registration-preview-watermark{position:absolute;top:16px;left:16px;z-index:2;background:rgba(55,31,74,.65);
- border-radius:99px;padding:7px 11px;font-size:11px;font-weight:720;color:#fff}
-.registration-preview-card-details{position:absolute;left:0;right:0;bottom:0;padding:70px 20px 19px;
- display:flex;flex-direction:column;gap:9px;background:linear-gradient(transparent,rgba(28,12,41,.85));color:#fff}
-.registration-preview-card-details strong{font-size:26px;line-height:1.16}
-.registration-preview-card-details span{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:650}
-.registration-preview-card>p{margin:16px 19px 0;font-size:14px;line-height:1.5;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
-.registration-preview-interests{display:flex;flex-wrap:wrap;gap:6px;margin:12px 19px 0}
-.registration-preview-interests span{border:1px solid var(--line);background:var(--panel);color:var(--subtle);
- border-radius:99px;padding:6px 10px;font-size:12px}
+/* Step 8 is a static, local-only projection inside the native scroll container. */
+.luemi-shell[data-registration-preview=true] .milky-mist::before,
+.luemi-shell[data-registration-preview=true] .milky-mist::after,
+.registration-static-screen,.registration-static-screen .form-stack>*{animation:none}
+.registration-static-screen .progress-track span{transition:none}
+.registration-static-screen .onboard-body{touch-action:pan-y}
+.registration-static-profile{display:flex;flex-direction:column;gap:20px;padding:4px 0 20px}
+.registration-static-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:7px}
+.registration-static-avatar{width:clamp(180px,50vw,224px);aspect-ratio:1;border-radius:50%;overflow:hidden;
+ display:grid;place-items:center;background:linear-gradient(140deg,#eadbf7,#f6e0ec);border:4px solid var(--glass-edge);
+ box-shadow:0 12px 32px var(--shadow);color:var(--subtle);font-size:14px}
+.registration-static-avatar img{display:block;width:100%;height:100%;object-fit:contain}
+.registration-static-hero h2{font-size:clamp(25px,7vw,34px);line-height:1.18;letter-spacing:-.035em;margin:12px 0 0;
+ overflow-wrap:anywhere}
+.registration-static-hero p{font-size:15px;color:var(--subtle);margin:0;overflow-wrap:anywhere}
+.registration-static-sections{display:flex;flex-direction:column;gap:12px}
+.registration-static-section{padding:18px 20px;border:1px solid var(--glass-edge);border-radius:22px;
+ background:var(--panel);box-shadow:0 7px 22px var(--shadow);min-width:0}
+.registration-static-section h3{margin:0 0 10px;font-size:13px;font-weight:740;color:var(--subtle)}
+.registration-static-section p{margin:0;font-size:15px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.registration-static-interests{display:flex;flex-wrap:wrap;gap:8px}
+.registration-static-interests span{padding:8px 12px;border-radius:999px;background:rgba(183,140,230,.17);
+ border:1px solid var(--line);font-size:13px;overflow-wrap:anywhere}
+.registration-static-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.registration-static-gallery img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:14px;
+ background:var(--line)}
+.registration-static-note{margin:0;text-align:center;color:var(--subtle);font-size:12px;line-height:1.5}
+.registration-static-actions{max-width:470px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.registration-static-actions button{min-height:54px;border-radius:18px;font-size:15px;font-weight:730}
+.registration-static-edit{border:1px solid var(--line);color:var(--ink);background:var(--panel)}
+.registration-static-confirm{border:1px solid var(--glass-edge);color:#2c1a3f;
+ background:linear-gradient(115deg,rgba(183,134,230,.90),rgba(235,159,207,.91));
+ box-shadow:0 8px 22px rgba(155,91,179,.17)}
 .registration-preview-review{display:flex;flex-direction:column;gap:7px;padding:14px 16px;border:1px solid var(--line);
  border-radius:18px;background:var(--panel)}
 .registration-preview-review div,.registration-preview-review p[role=status]{display:flex;align-items:center;gap:7px}
 .registration-preview-review strong{font-size:14px}.registration-preview-review p{margin:0;color:var(--subtle);font-size:12px;line-height:1.5}
-.registration-preview-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-.registration-preview-edit-grid button{display:flex;align-items:center;justify-content:center;gap:8px;
- min-height:44px;border-radius:15px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:680}
 
 
 .carousel-frame{aspect-ratio:4/5;position:relative;overflow:hidden;background:linear-gradient(135deg,#d8c3ed,#f2c8df);
@@ -267,7 +263,6 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
  color:#54336e;font-size:14px;font-weight:760}
 
 
-.disabled-submit{width:100%;min-height:53px;border:0;border-radius:18px;background:var(--panel);color:var(--subtle)}
 @media (max-height:680px){.onboarding-screen{padding-top:calc(var(--top-safe) + 78px)}.onboard-head p{display:none}
  .entry-state{padding-top:64px;padding-bottom:105px}.intro-mark{height:74px}.intro-cta{bottom:calc(16px + var(--bottom-safe))}}
 /* LU-22: footer controls stay reachable even while an IME is visible.

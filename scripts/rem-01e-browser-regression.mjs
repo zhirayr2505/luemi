@@ -8,7 +8,7 @@ page.on("pageerror",e=>errors.push(e.message));
 const base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 const goto=async(mode,kind="six",theme="light")=>{
  await page.goto(base+"/rem-01e-qa.html?mode="+mode+"&kind="+kind+"&theme="+theme,{waitUntil:"domcontentloaded"});
- await page.locator(".pm-shell").waitFor({state:"visible"});
+ await page.locator(mode==="step8"?".registration-static-profile":".pm-shell").waitFor({state:"visible"});
  await page.waitForTimeout(180);
 };
 const read=()=>page.evaluate(()=>{
@@ -29,33 +29,30 @@ const read=()=>page.evaluate(()=>{
 const pass=s=>console.log("REM01E_BROWSER_PASS "+s);
 try{
  for(const theme of ["light","dark"])for(const kind of ["none","one","six","mixed","empty","undecided"]){
-  await goto("step8",kind,theme);const step=await read();
-  assert.equal(step.profileShells,1,"step 8 must not create second independent profile");
-  assert.equal(step.globalHeaders,0,"registration preview must not mount GlobalHeader");
-  assert.equal(step.sheetRenderer,"compact","step8 must open compact by default");
-  assert.equal(step.ownerActions,0,"local preview cannot edit/publish inside ProfileMaster");
-  assert.equal(step.verified,false);
-  assert.ok(step.disclaimer.some(s=>s.includes("не опубликована")),"local draft label must remain");
-  assert.deepEqual(step.photos,step.gallery,"hero and photo-tab source order identical");
-  assert.deepEqual(step.tabs,["О себе","Блики","Фото","Аккаунт","Подарки"]);
-  assert.equal(await page.locator(".disabled-submit").isDisabled(),true);
-  assert.ok((await page.locator(".preview-root").innerText()).includes("локальный"));
+  await goto("step8",kind,theme);
+  const preview=page.locator(".registration-static-profile");
   const expected=kind==="none"?0:kind==="one"?1:kind==="mixed"?4:6;
-  assert.equal(step.photos.length,expected,theme+"/"+kind);
-  if(kind==="none")assert.ok(step.noPhoto.toLowerCase().includes("нет доступных фото"));
-  if(kind==="undecided")assert.equal(step.goal,"");
+  assert.equal(await page.locator(".pm-shell").count(),0,"step 8 is static");
+  assert.equal(await page.locator(".lh-header").count(),0);
+  assert.ok((await preview.innerText()).includes("локальный черновик"));
+  assert.equal(await preview.locator("img").count(),expected,theme+"/"+kind);
+  assert.equal(await preview.locator(".registration-static-gallery img").count(),Math.max(0,expected-1));
+  if(kind==="none")assert.ok((await preview.innerText()).includes("Добавь фото"));
+  if(kind==="undecided")assert.ok((await preview.innerText()).includes("Пока не определился"));
+  assert.ok((await preview.innerText()).includes("Лея"));
+  assert.ok((await preview.innerText()).includes("Ереван, Армения"));
+  assert.ok((await preview.innerText()).includes("Цель знакомства"));
+  assert.ok((await preview.innerText()).includes("О себе"));
+  assert.ok((await preview.innerText()).includes("Интересы"));
   await goto("owner",kind,theme);const owner=await read();
-  for(const field of ["photos","gallery","tabs","identity","location","goal","about","noPhoto"]){
-   assert.deepEqual(step[field],owner[field],theme+"/"+kind+": step8 actual ProfileMaster "+field+" matches owner");
-  }
+  assert.equal(owner.photos.length,expected);
   assert.equal(owner.ownerActions,3);
   await goto("local",kind,theme);const local=await read();
-  assert.deepEqual(step.photos,local.photos,"explicit local-self projection and step 8 identical");
-  assert.deepEqual(step.gallery,local.gallery);
+  assert.deepEqual(owner.photos,local.photos);
   await goto("public",kind,theme);const pub=await read();
   assert.deepEqual(pub.photos,[],"public projection must never expose local draft photos");
   assert.equal(pub.ownerActions,0);
-  pass(theme+"/"+kind+" one renderer, 5 tabs, real fields, image order, published-only privacy");
+  pass(theme+"/"+kind+" static draft, image order, published-only privacy");
  }
  await goto("server");const server=await read();
  assert.equal(server.photos.length,3,"server owner sees published and pending, never hidden/rejected");
@@ -66,44 +63,13 @@ try{
  pass("server published/hidden/pending/rejected fixture remains restricted");
 
  await goto("step8","mixed");
- assert.equal(await page.locator('.registration-preview-switch [role="tab"]').count(),2);
- await page.getByRole("tab",{name:"Карточка в ленте"}).click();
- assert.equal(await page.locator(".registration-preview-card").count(),1,"local card preview available");
- assert.equal(await page.locator(".registration-preview-card-photo img").count(),1,"ready photo projected to local card");
- assert.equal(await page.locator(".registration-preview-card-details strong").count(),1);
- assert.ok((await page.locator(".registration-preview-watermark").innerText()).includes("не опубликовано"));
- await page.getByRole("tab",{name:"Полный профиль"}).click();
- assert.equal(await page.locator(".registration-profile-simulator .pm-shell").count(),1,"same accepted full profile");
- assert.equal((await page.locator(".preview-root").innerText()).includes("Фото в обработке:"),true);
- assert.equal((await page.locator(".preview-root").innerText()).includes("с ошибками:"),true);
- await page.getByRole("button",{name:"Изменить анкету"}).click();
+ assert.equal(await page.locator(".registration-static-gallery img").count(),3);
+ assert.equal(await page.locator(".registration-static-profile button").count(),0);
+ await page.getByRole("button",{name:"Редактировать"}).click();
  assert.equal(await page.locator("#events").innerText(),"edit-7");
- await page.getByRole("button",{name:/Открыть демо-Ленту/}).click();
+ await page.getByRole("button",{name:"Всё верно"}).click();
  assert.equal(await page.locator("#events").innerText(),"demo");
- pass("step-8 edit/back-to-registration and demo CTA retained without publication");
-
- await goto("step8","one");
- const face=page.locator(".registration-profile-simulator .pm-a2-face");
- await face.click();
- await page.locator('.registration-profile-simulator .pm-a2-root[data-morph-state="expanded"]').waitFor({state:"attached",timeout:2200});
- await face.click({position:{x:200,y:180}});
- await page.locator('.pm-viewer[aria-label="Просмотр фото"]').waitFor({state:"visible"});
- assert.equal(await page.locator(".pm-viewer-image").getAttribute("src"),(await read()).photos[0]);
- await page.getByRole("button",{name:"Действия с фото"}).click();
- assert.equal(await page.getByRole("menuitem",{name:/Сделать главным/}).count(),0);
- assert.equal(await page.getByRole("menuitem",{name:/Пожаловаться/}).count(),0);
- await page.getByRole("menuitem",{name:/Поделиться/}).click();
- assert.ok((await page.locator(".pm-viewer-message").innerText()).includes("недоступны"));
- await page.getByRole("button",{name:"Закрыть просмотр"}).click();
- await page.locator(".pm-viewer").waitFor({state:"hidden"});
- pass("real fullscreen viewer cannot report/make-main/publish/share successfully in local preview");
-
- await goto("step8","six");
- await page.locator(".registration-profile-simulator .pm-a2-tab").filter({hasText:"Фото"}).click();
- await page.waitForTimeout(220);
- assert.equal(await page.locator(".registration-profile-simulator .pm-a2-tab[aria-selected=true]").innerText(),"Фото");
- assert.equal(await page.locator(".registration-profile-simulator .pm-photo-tile").count(),6);
- pass("shared ProfileMaster tabs render six ordered photos, no fake blank slots");
+ pass("step-8 static preview, edit and demo CTA retained without publication");
  if(errors.length)throw new Error("Unexpected browser errors: "+errors.join(" | "));
  console.log("REM-01E BROWSER PARITY QA PASS · synthetic Chromium only, physical A55/iOS NOT VERIFIED");
 }finally{await context.close();await browser.close();}
