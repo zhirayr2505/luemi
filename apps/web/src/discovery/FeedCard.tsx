@@ -43,6 +43,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const progress=useRef(0),target=useRef<0|1>(0);
  const metrics=useRef({closed:174,open:430,aboutClosed:40,about:40,interests:120});
  const run=useRef<CardRun|null>(null);
+ const fingerFrame=useRef<number|null>(null);
+ const fingerValue=useRef(0);
  const suspend=useRef<()=>void>(()=>{});
  const measureLive=useRef<()=>void>(()=>{});
  const paint=(value:number)=>{
@@ -51,6 +53,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(about.current)about.current.style.maxHeight=(m.aboutClosed+(m.about-m.aboutClosed)*p)+"px";
   if(interests.current)interests.current.style.maxHeight=(m.interests*p)+"px";
   card.current?.style.setProperty("--feed-progress",String(p));
+ };
+ const flushFinger=()=>{
+  if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
+  paint(fingerValue.current);
+ };
+ const scheduleFinger=(value:number)=>{
+  fingerValue.current=value;
+  if(fingerFrame.current!==null)return;
+  fingerFrame.current=requestAnimationFrame(()=>{fingerFrame.current=null;paint(fingerValue.current);});
  };
  const freeze=()=>{
   const current=run.current;
@@ -103,6 +114,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   measureLive.current();
   const carousel=photo.current;
   return ()=>{resize.disconnect();carousel?.cancel();
+   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
    const current=run.current;if(current?.frame!=null)
     cancelAnimationFrame(current.frame);
    run.current=null;};
@@ -124,7 +136,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    blockClickUntil.current=performance.now()+350;
    const old=gesture.current;gesture.current=null;
    if(old?.axis==="photo")photo.current?.finish(old.id,old.x,true);
-   if(old?.axis==="info")settle(old.resumeTarget);
+   if(old?.axis==="info"){flushFinger();settle(old.resumeTarget);}
    return;
   }
   multiTouch.current=false;
@@ -167,7 +179,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(g.axis==="photo")photo.current?.move(g.id,event.clientX,event.clientY);
   else{
    const travel=Math.max(1,metrics.current.open-metrics.current.closed);
-   paint(g.startProgress-dy/travel);
+   scheduleFinger(g.startProgress-dy/travel);
    const t=performance.now();g.samples.push({y:event.clientY,t});
    if(g.samples.length>10)g.samples.shift();
   }
@@ -178,6 +190,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   gesture.current=null;
   if(g.axis==="photo")photo.current?.finish(g.id,event.clientX,cancel);
   if(g.axis==="info"){
+   flushFinger();
    if(cancel){settle(g.resumeTarget);return;}
    const t=performance.now(),samples=[...g.samples,{y:event.clientY,t}];
    let recent=samples[samples.length-1];
@@ -195,6 +208,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  suspend.current=()=>{
   const g=gesture.current;gesture.current=null;multiTouch.current=false;
   if(g?.axis==="photo")photo.current?.finish(g.id,g.x,true);
+  if(g?.axis==="info")flushFinger();
   freeze();const resting=g?.axis==="info"?g.resumeTarget:target.current;
   target.current=resting;setExpanded(resting===1);paint(resting);
   if(scroll.current)scroll.current.style.overflowY=resting?"auto":"hidden";
