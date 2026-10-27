@@ -56,7 +56,7 @@ export function validateStep(d:RegistrationDraft,step:number,count:number,today=
   switch(step) {
     case 1:
       if(!nameValid(d.name))return "Имя: 2–48 букв, разрешены пробелы, дефис и апостроф.";
-      if(!d.trialConsent)return "Подтверди условия тестового режима.";
+      if(!d.trialConsent)return "Подтверди условия регистрации.";
       return null;
     case 2:
       if(!birthDateValid(d.day,d.month,d.year,today))return "Укажи настоящую дату рождения. LUEMI доступен с 18 лет.";
