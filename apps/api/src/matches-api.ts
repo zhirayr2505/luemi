@@ -48,7 +48,7 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
     AND has_table_privilege(current_user,'luemi_chats.matches','INSERT')
     AND has_table_privilege(current_user,'luemi_chats.conversations','SELECT')
     AND has_column_privilege(current_user,'luemi_chats.conversations','private_match_id','INSERT')
-    AND has_table_privilege(current_user,'luemi_chats.members','INSERT')
+    AND has_column_privilege(current_user,'luemi_chats.members','actor_id','INSERT')
     AND NOT has_table_privilege(current_user,'luemi_chats.messages','INSERT')
     AND NOT has_table_privilege(current_user,'luemi_private.sessions','SELECT')
     AND NOT has_table_privilege(current_user,'luemi_private.public_profiles','UPDATE')
