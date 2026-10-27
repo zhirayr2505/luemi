@@ -9,7 +9,7 @@
 .bliki-create-orbit{width:54px;height:54px;display:grid;place-items:center;border-radius:50%;color:#9e73bf;font-size:22px;background:linear-gradient(135deg,#fbecf7,#e9d3f7);border:2px solid #dcc1ed}
 .bliki-rail-caption{font-size:10px;line-height:13px;max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 .bliki-expand-button{flex:0 0 22px;min-width:22px;height:26px;color:inherit;background:transparent;border:0;font-size:23px;align-self:center;cursor:pointer}
-.bliki-showcase-reveal{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows 250ms cubic-bezier(.2,.8,.2,1),opacity 200ms ease;pointer-events:none}
+.bliki-showcase-reveal{position:absolute;left:8px;right:8px;top:100%;z-index:15;border-radius:0 0 18px 18px;background:#302439;color:#fff;box-shadow:0 16px 32px #21152f35;display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows 250ms cubic-bezier(.2,.8,.2,1),opacity 200ms ease;pointer-events:none}
 .bliki-showcase.is-expanded .bliki-showcase-reveal{grid-template-rows:1fr;opacity:1;pointer-events:auto}
 .bliki-showcase-inner{min-height:0;overflow:hidden}
 .bliki-showcase-intro{display:block;font-size:12px;margin:5px 2px 1px;color:inherit;font-weight:600}
