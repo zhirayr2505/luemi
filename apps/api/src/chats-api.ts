@@ -62,6 +62,8 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     AND NOT has_table_privilege(current_user,'luemi_chats.media','DELETE')
     AND NOT has_schema_privilege(current_user,'public','CREATE')
     AND NOT has_table_privilege(current_user,'public.luemi_users','UPDATE')
+    AND NOT has_table_privilege(current_user,'public.luemi_users','INSERT')
+    AND NOT has_table_privilege(current_user,'public.luemi_users','DELETE')
     AND NOT has_table_privilege(current_user,'public.luemi_matches','UPDATE')
     AND NOT has_table_privilege(current_user,'public.luemi_matches','INSERT')
     AND NOT has_table_privilege(current_user,'public.luemi_matches','DELETE')
@@ -175,7 +177,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   if(!validBody(req.body?.body))deny(422,"invalid_message");
   await member(db,req.params.id,actor);
   const q=await db.query(`UPDATE luemi_chats.messages SET body=$4,edited_at=now()
-   WHERE conversation_id=$1 AND id=$2 AND sender_id=$3 AND deleted_at IS NULL
+   WHERE conversation_id=$1 AND id=$2 AND sender_id=$3 AND deleted_at IS NULL AND body<>$4
    RETURNING id,conversation_id AS "conversationId",sender_id AS "senderId",body,
    created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt"`,
    [req.params.id,req.params.messageId,actor,req.body.body]);
