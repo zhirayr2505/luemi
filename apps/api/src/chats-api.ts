@@ -110,7 +110,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
  async function hydrate(db:PoolClient,rows:MessageRow[]):Promise<ChatMessageContract[]>{
   if(!rows.length)return [];
   const ids=rows.map(row=>row.id);
-  const found=await db.query<{id:string;message_id:string;mime_type:ChatMediaContract["mimeType"];byte_size:number;object_path:string}>(`SELECT id,message_id,mime_type,byte_size,object_path FROM luemi_chats.media WHERE message_id=ANY($1::uuid[]) ORDER BY created_at,id`,[ids]);
+  const found=await db.query<{id:string;message_id:string;mime_type:ChatMediaContract["mimeType"];byte_size:number;object_path:string}>(`SELECT media.id,media.message_id,media.mime_type,media.byte_size,media.object_path FROM luemi_chats.media media JOIN luemi_chats.messages msg ON msg.id=media.message_id AND msg.conversation_id=media.conversation_id AND msg.environment=media.environment WHERE media.message_id=ANY($1::uuid[]) AND msg.deleted_at IS NULL ORDER BY media.created_at,media.id`,[ids]);
   const grouped=new Map<string,ChatMediaContract[]>();
   for(const item of found.rows){
    let url:string|null=null;
@@ -252,6 +252,6 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
  }));
  app.get<{Params:{id:string;mediaId:string} }>("/api/v4/chats/:id/media/:mediaId/url",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
   if(!validId(req.params.id)||!validId(req.params.mediaId))deny(404,"not_found");await member(db,req.params.id,actor);if(!options.mediaStore)deny(503,"media_unavailable");
-  const found=await db.query<{object_path:string}>("SELECT object_path FROM luemi_chats.media WHERE id=$1 AND conversation_id=$2 AND state='ready'",[req.params.mediaId,req.params.id]);if(found.rowCount!==1)deny(404,"not_found");return options.mediaStore.signedRead(found.rows[0].object_path,60);
+  const found=await db.query<{object_path:string}>("SELECT media.object_path FROM luemi_chats.media media JOIN luemi_chats.messages msg ON msg.id=media.message_id AND msg.conversation_id=media.conversation_id AND msg.environment=media.environment WHERE media.id=$1 AND media.conversation_id=$2 AND media.state='ready' AND msg.deleted_at IS NULL",[req.params.mediaId,req.params.id]);if(found.rowCount!==1)deny(404,"not_found");return options.mediaStore.signedRead(found.rows[0].object_path,60);
  }));
 }
