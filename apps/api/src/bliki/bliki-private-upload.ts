@@ -79,8 +79,19 @@ export async function storeBlikiUpload(
   if (!valid.ok) throw new Error(valid.error);
   if (!hasBlikiMediaSignature(ticket.mimeType, bytes)) throw new Error('invalid_media_signature');
   const sha256 = createHash('sha256').update(bytes).digest('hex');
-  await store.put(ticket.key, bytes, ticket.mimeType);
-  const stored = await store.stat(ticket.key);
+  // A previous upload may have reached private storage before the SQL
+  // transaction committed. Reusing the same idempotency key must be safe.
+  let stored = await store.stat(ticket.key);
+  if (!stored) {
+    try { await store.put(ticket.key, bytes, ticket.mimeType); }
+    catch (error) {
+      // If another request completed the same immutable write concurrently,
+      // compare its actual checksum instead of treating a conflict as success.
+      stored = await store.stat(ticket.key);
+      if (!stored) throw error;
+    }
+    stored = stored ?? await store.stat(ticket.key);
+  }
   const actual = stored?.sha256;
   if (!stored || stored.size !== bytes.byteLength ||
       stored.mimeType !== ticket.mimeType || !actual ||
