@@ -73,3 +73,32 @@ test("signed /start supplies a fresh versioned Web App button using the Render c
     else process.env.RENDER_GIT_COMMIT=previous;
   }
 });
+
+test("signed Telegram privacy support command forwards only the sender's private message",async()=>{
+ const app=buildApp({...config(),supportChatId:897203270});
+ try{
+  const headers={"x-telegram-bot-api-secret-token":"s".repeat(32)};
+  const payload={message:{message_id:72,text:"/support Хочу удалить мои данные",
+    chat:{id:345678,type:"private"},from:{id:345678}}};
+  const ok=await app.inject({method:"POST",url:"/api/telegram/webhook",headers,payload});
+  assert.equal(ok.statusCode,200);
+  assert.deepEqual(ok.json(),{method:"forwardMessage",chat_id:897203270,from_chat_id:345678,message_id:72});
+  const forged=await app.inject({method:"POST",url:"/api/telegram/webhook",headers,
+   payload:{message:{...payload.message,from:{id:999}}}});
+  assert.deepEqual(forged.json(),{ok:true});
+  const group=await app.inject({method:"POST",url:"/api/telegram/webhook",headers,
+   payload:{message:{...payload.message,chat:{id:-100001,type:"supergroup"}}}});
+  assert.deepEqual(group.json(),{ok:true});
+  const denied=await app.inject({method:"POST",url:"/api/telegram/webhook",
+   payload});
+  assert.equal(denied.statusCode,404);
+ }finally{await app.close();}
+});
+test("privacy policy has a stable redirect to a shipped static document",async()=>{
+ const app=buildApp(config());
+ try{
+  const response=await app.inject({method:"GET",url:"/privacy"});
+  assert.equal(response.statusCode,302);
+  assert.equal(response.headers.location,"/privacy.html");
+ }finally{await app.close();}
+});
