@@ -54,6 +54,8 @@ export function registerBlikiPublicationApi(
       const role = await db.query<{ safe: boolean }>(`SELECT
         (rolcanlogin AND NOT rolsuper AND NOT rolbypassrls AND NOT rolcreaterole
          AND NOT rolcreatedb AND current_user=session_user
+         AND pg_has_role(current_user,'luemi_bliki_request','member')
+         AND current_setting('row_security')='on'
          AND row_security_active('luemi_bliki_private.stories'::regclass)
          AND NOT pg_has_role(current_user,'pg_write_all_data','member')
          AND NOT pg_has_role(current_user,'pg_read_all_data','member')
@@ -64,11 +66,8 @@ export function registerBlikiPublicationApi(
       await db.query('BEGIN');
       await db.query("SELECT set_config('luemi.actor_id',$1,true)", [actor.actorId]);
       await db.query("SELECT set_config('luemi.environment',$1,true)", [cfg.namespace]);
-      const active = await db.query(
-        "SELECT id FROM luemi_private.actors WHERE id=$1 AND environment=$2 AND status='active'",
-        [actor.actorId, cfg.namespace],
-      );
-      if (active.rowCount !== 1) throw new Error('inactive_actor');
+      // Session guard already checks actor status using its own scoped identity DB.
+      // This database role intentionally has no access to session or actor tables.
       const result = await work(db, actor.actorId);
       await guard.read(request, reply);
       if (reply.sent || !request.authActor || request.authActor.actorId !== actor.actorId ||
