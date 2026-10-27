@@ -1,4 +1,4 @@
-/** Profile Morph A2 photo cardinality, 0-6 photo navigation, visibility/blur budget.
+/** Profile Morph V3 photo cardinality, 0-6 photo navigation, visibility/blur budget.
  * Browser Chromium samples are not a physical A55 WebView proof. */
 import assert from "node:assert/strict";
 import {mkdirSync,writeFileSync} from "node:fs";
@@ -10,16 +10,16 @@ const page=await ctx.newPage(),errors=[],records=[];
 page.on("pageerror",e=>errors.push(e.message));
 const dir="qa-artifacts/rem-04b/six";mkdirSync(dir,{recursive:true});
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
-const root=()=>page.locator(".pm-shell.pm-a2-root");
-const dot=async i=>root().locator(".pm-a2-photo-dots button").nth(i).evaluate(el=>el.click());
+const root=()=>page.locator(".v3-profile-host");
+const dot=async i=>root().locator(".v3-int-photo-dots button").nth(i).evaluate(el=>el.click());
 const read=()=>page.evaluate(()=>{
- const profile=document.querySelector(".pm-shell.pm-a2-root");
- const track=profile?.querySelector(".pm-a2-photo-track");
- const face=profile?.querySelector(".pm-a2-face");
- const photos=[...(track?.querySelectorAll(".pm-a2-photo-slide img")??[])];
- const layer=profile?.querySelector(".pm-a2-background");
+ const profile=document.querySelector(".v3-profile-host");
+ const track=profile?.querySelector(".v3-int-photo-rail");
+ const face=profile?.querySelector(".v3-int-mask");
+ const photos=[...(track?.querySelectorAll(".v3-int-photo-slide img")??[])];
+ const layer=profile?.querySelector(".v3-int-ambient");
  const back=[...(layer?.querySelectorAll("img")??[])];
- const current=profile?.querySelector(".pm-a2-photo-dots button[aria-current=true]");
+ const current=profile?.querySelector(".v3-int-photo-dots button[aria-current=true]");
  const index=[...(current?.parentElement?.children??[])].indexOf(current);
  const matrix=track?new DOMMatrixReadOnly(getComputedStyle(track).transform):null;
  return {mode:profile?.dataset.morphState,photos:photos.map(p=>({id:p.dataset.photoId,src:p.getAttribute("src"),
@@ -31,9 +31,9 @@ const read=()=>page.evaluate(()=>{
 const capture=async label=>{
  const r=await read();records.push({label,...r});
  await page.screenshot({path:dir+"/"+label+".png"});
- assert.ok(r.blurRenders<=2,"A2 background at most two decoded layers, not a 6-image blur track");
+ assert.ok(r.blurRenders<=2,"V3 ambient at most two decoded layers, not a 6-image blur track");
  assert.ok(r.photos.every(p=>typeof p.id==="string"&&p.id.length>0));
- console.log("PROFILE_A2_SIX "+JSON.stringify({label,count:r.photos.length,active:r.photoId,blurRenders:r.blurRenders}));
+ console.log("PROFILE_V3_SIX "+JSON.stringify({label,count:r.photos.length,active:r.photoId,blurRenders:r.blurRenders}));
  return r;
 };
 async function openFixture(mode,kind){
@@ -41,8 +41,8 @@ async function openFixture(mode,kind){
  await root().waitFor({state:"visible"});
  const first=await read();
  assert.equal(first.mode,"compact","photo variants all open compact");
- await root().locator(".pm-a2-face").evaluate(el=>el.click());
- await page.locator('.pm-a2-root[data-morph-state="expanded"]').waitFor({state:"attached",timeout:2500});
+ await root().locator(".v3-int-mask").evaluate(el=>el.click());
+ await page.locator('.v3-profile-host[data-morph-state="expanded"]').waitFor({state:"attached",timeout:2500});
  await pause(250);
  return first;
 }
@@ -51,7 +51,7 @@ const trace=async(label,trigger)=>{
   const frames=[],first=performance.now();
   await new Promise(resolve=>{
    const sample=t=>{
-    const el=document.querySelector(".pm-shell .pm-a2-photo-track");
+    const el=document.querySelector(".pm-shell .v3-int-photo-rail");
     if(el){const m=new DOMMatrixReadOnly(getComputedStyle(el).transform);
      frames.push({ms:t,tx:m.m41});}
     if(t-first>300)resolve();else requestAnimationFrame(sample);
@@ -65,7 +65,7 @@ const trace=async(label,trigger)=>{
  const values=[...intervals].sort((a,b)=>a-b),quant=q=>values[Math.min(values.length-1,Math.ceil(values.length*q)-1)]??0;
  const result={label,frames:rows.length,p50FrameMs:quant(.5),p95FrameMs:quant(.95),
   worstFrameMs:values.at(-1)??0,startX:rows[0]?.tx,endX:rows.at(-1)?.tx};
- records.push(result);console.log("PROFILE_A2_FRAME_INTERVALS "+JSON.stringify(result));
+ records.push(result);console.log("PROFILE_V3_FRAME_INTERVALS "+JSON.stringify(result));
  assert.ok(rows.length>=3&&rows.every(x=>Number.isFinite(x.tx)));
  return result;
 };
@@ -90,7 +90,7 @@ try{
  await dot(5);await pause(70);await page.setViewportSize({width:393,height:852});
  await pause(300);r=await capture("resize-during-photo-settle");
  assert.equal(r.current,5,"reflow preserves photoId across viewport changes");
- await root().locator(".pm-a2-face").evaluate(el=>el.click());
+ await root().locator(".v3-int-mask").evaluate(el=>el.click());
  await page.locator(".pm-viewer").waitFor({state:"visible",timeout:3500});
  assert.equal(await page.locator(".pm-viewer-image").getAttribute("data-photo-id"),r.photoId);
  await page.keyboard.press("Escape");await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
@@ -103,7 +103,7 @@ try{
   await openFixture(mode,kind);
   const v=await capture("cardinality-"+mode+"-"+kind);
   assert.equal(v.photos.length,count,"authorized photo count "+mode+"/"+kind);
-  assert.equal(await root().locator(".pm-a2-photo-dots button").count(),count>1?count:0);
+  assert.equal(await root().locator(".v3-int-photo-dots button").count(),count>1?count:0);
   if(count>1){
    await dot(count-1);await pause(260);
    const moved=await read();assert.equal(moved.current,count-1);
@@ -115,6 +115,6 @@ try{
  assert.ok(broken.photos.length>=3&&broken.blurRenders<=2,"bad media does not expand background cache");
  await dot(2);await pause(250);await capture("broken-selected-no-layer-leak");
  assert.deepEqual(errors,[],"no uncaught runtime errors");
- writeFileSync(dir+"/a2-records.json",JSON.stringify({records,errors},null,2));
- console.log("REM04B_SIX_A2_CARDINALITY_AND_PERF_PASS, synthetic Chromium only; physical A55 not measured");
-}finally{await ctx.tracing.stop({path:dir+"/a2-trace.zip"}).catch(()=>{});await ctx.close();await browser.close();}
+ writeFileSync(dir+"/v3-records.json",JSON.stringify({records,errors},null,2));
+ console.log("REM04B_SIX_V3_CARDINALITY_AND_PERF_PASS, synthetic Chromium only; physical A55 not measured");
+}finally{await ctx.tracing.stop({path:dir+"/v3-trace.zip"}).catch(()=>{});await ctx.close();await browser.close();}
