@@ -50,7 +50,8 @@ export function requestDeviceCoordinates(device:LocationDevice,signal:AbortSigna
     manager.getLocation(position=>{
      if(!position){finish(undefined,"location_denied");return;}
      const lat=position.latitude,lon=position.longitude;
-     valid(lat,lon)?finish({lat,lon}):finish(undefined,"location_invalid");
+     if(valid(lat,lon))finish({lat,lon});
+     else finish(undefined,"location_invalid");
     });
    }catch{browser();}
   };
