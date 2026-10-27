@@ -33,7 +33,8 @@ export function requestDeviceCoordinates(device:LocationDevice,signal:AbortSigna
     location.getCurrentPosition(
      pos=>{
       const lat=pos.coords.latitude,lon=pos.coords.longitude;
-      valid(lat,lon)?finish({lat,lon}):finish(undefined,"location_invalid");
+      if(valid(lat,lon))finish({lat,lon});
+      else finish(undefined,"location_invalid");
      },
      error=>finish(undefined,error.code===1?"location_denied":"location_unavailable"),
      {enableHighAccuracy:false,maximumAge:120000,timeout:9000}
