@@ -1,4 +1,5 @@
-import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
+import {lazy,Suspense,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
+const BlikiDiscoverySlot=lazy(()=>import("../features/bliki/BlikiDiscoverySlot").then(m=>({default:m.BlikiDiscoverySlot})));
 import {selectionHaptic} from "../ui/haptic";
 import type {CSSProperties} from "react";
 import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
@@ -53,11 +54,13 @@ function EmptyFeed({hasProfiles,canUndo,onUndo,onRestart}:{hasProfiles:boolean;c
    <button type="button" className="discovery-glass-button" onClick={onRestart}>Начать заново</button>
  </div>;
 }
-interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:string}>;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void}
+interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:string}>;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void;blikiOwnerId?:string|null}
 
-export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Props){
+export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack,blikiOwnerId}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
  const [profilePrepared,setProfilePrepared]=useState(false);
+ const blikiBackRef=useRef<(()=>boolean)|null>(null);
+ const registerBlikiBack=useCallback((handler:(()=>boolean)|null)=>{blikiBackRef.current=handler;},[]);
  const visitorBackRef=useRef<(()=>boolean)|null>(null);
  const registerVisitorBack=useCallback((handler:(()=>boolean)|null)=>{visitorBackRef.current=handler;},[]);
  const profileBackRef=useRef<(()=>boolean)|null>(null);
@@ -171,6 +174,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
   transitionRef.current=null;pendingCommit.current=null;locked.current=false;},[]);
  const leave=useCallback(()=>{
+  if(blikiBackRef.current?.())return;
   if(personOpen&&visitorBackRef.current?.())return;
   if(mainTab==="profile"&&profileBackRef.current?.())return;
   if(personOpen){setPersonOpen(null);return;}
@@ -545,6 +549,9 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
          <span className="discovery-tab-underline" ref={underline} aria-hidden="true"
            style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
        </div>
+       {blikiOwnerId && discoveryTab==="feed" && <Suspense fallback={null}>
+         <BlikiDiscoverySlot ownerId={blikiOwnerId} registerBack={registerBlikiBack}/>
+       </Suspense>}
        <div className="discovery-pages" ref={pages} onPointerDown={e=>{if(e.pointerType!=="touch")down(e);}}
          onPointerMove={e=>{if(e.pointerType!=="touch")move(e);}} onPointerUp={e=>{if(e.pointerType!=="touch")up(e);}} onPointerCancel={e=>{if(e.pointerType!=="touch")up(e,true);}}
          onLostPointerCapture={e=>{if(e.pointerType!=="touch")cancelSwipe();}}

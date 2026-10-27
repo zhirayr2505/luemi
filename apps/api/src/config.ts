@@ -1,4 +1,9 @@
 import type { FastifyServerOptions } from "fastify";
+import {createBlikiSupabaseStore} from "./bliki/bliki-supabase-store.js";
+import type {BlikiPublicationApiOptions} from "./bliki/bliki-publication-api.js";
+import type {BlikiApiOptions} from "./bliki/bliki-api.js";
+import type {BlikiMediaApiOptions} from "./bliki/bliki-media-api.js";
+import type {BlikiInteractionApiOptions} from "./bliki/bliki-interaction-api.js";
 import type { Rem05bOptions } from "./rem05b-session.js";
 import type { GeoRuntime } from "./geo-routes.js";
 import type { EmbeddingPolicy } from "./rem05c-headers.js";
@@ -30,6 +35,10 @@ export interface ApiConfig {
   safetyAppeal?: SafetyAppealOptions;
   chats?: ChatOptions;
   matches?: MatchOptions;
+  bliki?: BlikiApiOptions;
+  blikiPublication?: BlikiPublicationApiOptions;
+  blikiMedia?: BlikiMediaApiOptions;
+  blikiInteraction?: BlikiInteractionApiOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -211,8 +220,51 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   }:undefined;
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
+  const blikiEnabled = env.BLIKI_V1_ENABLED === "1";
+  if (blikiEnabled && (!v2Enabled || stagingOnly || !env.BLIKI_V1_READ_DATABASE_URL ||
+      !env.BLIKI_V1_MEDIA_DATABASE_URL || !env.REM05B_BOT_NAMESPACE || !publicationEnabled ||
+      !env.BLIKI_V1_STORAGE_SECRET ||
+      env.BLIKI_V1_STORAGE_PROJECT_REF !== "czzyoxrwtnvbicypwrdd" ||
+      env.BLIKI_V1_READ_DATABASE_URL === env.BLIKI_V1_MEDIA_DATABASE_URL))
+    throw new Error("BLIKI V1 requires independent read/media roles and private storage");
+  const bliki: BlikiApiOptions | undefined = blikiEnabled ? {
+    enabled: true, databaseUrl: env.BLIKI_V1_READ_DATABASE_URL!,
+    namespace: env.REM05B_BOT_NAMESPACE!
+  } : undefined;
+  const blikiMedia: BlikiMediaApiOptions | undefined = blikiEnabled ? {
+    enabled: true, databaseUrl: env.BLIKI_V1_MEDIA_DATABASE_URL!,
+    namespace: env.REM05B_BOT_NAMESPACE!,
+    store: createBlikiSupabaseStore({
+      projectRef: env.BLIKI_V1_STORAGE_PROJECT_REF!,
+      secret: env.BLIKI_V1_STORAGE_SECRET!, namespace: env.REM05B_BOT_NAMESPACE!,
+      bucket: "luemi-bliki-private"
+    })
+  } : undefined;
+  const blikiInteractionEnabled=env.BLIKI_V1_INTERACTION_ENABLED==="1";
+  if(blikiInteractionEnabled&&(!blikiEnabled||!env.BLIKI_V1_INTERACTION_DATABASE_URL||
+    [env.BLIKI_V1_READ_DATABASE_URL,env.BLIKI_V1_MEDIA_DATABASE_URL,
+     env.BLIKI_V1_WRITE_DATABASE_URL].includes(env.BLIKI_V1_INTERACTION_DATABASE_URL)))
+    throw new Error("BLIKI interactions require an isolated read/write principal");
+  const blikiInteraction:BlikiInteractionApiOptions|undefined=blikiInteractionEnabled?{
+    enabled:true,databaseUrl:env.BLIKI_V1_INTERACTION_DATABASE_URL!,
+    namespace:env.REM05B_BOT_NAMESPACE!
+  }:undefined;
+  const blikiPublicationEnabled = env.BLIKI_V1_PUBLICATION_ENABLED === "1";
+  if (blikiPublicationEnabled && (!blikiEnabled || !env.BLIKI_V1_WRITE_DATABASE_URL ||
+    !env.BLIKI_V1_STORAGE_SECRET || env.BLIKI_V1_STORAGE_PROJECT_REF !== "czzyoxrwtnvbicypwrdd" ||
+    env.BLIKI_V1_WRITE_DATABASE_URL === env.BLIKI_V1_READ_DATABASE_URL ||
+    env.BLIKI_V1_WRITE_DATABASE_URL === env.BLIKI_V1_MEDIA_DATABASE_URL))
+    throw new Error("BLIKI publication requires isolated database role and private storage");
+  const blikiPublication: BlikiPublicationApiOptions | undefined = blikiPublicationEnabled ? {
+    enabled: true, databaseUrl: env.BLIKI_V1_WRITE_DATABASE_URL!,
+    namespace: env.REM05B_BOT_NAMESPACE!,
+    store: createBlikiSupabaseStore({ projectRef: env.BLIKI_V1_STORAGE_PROJECT_REF!,
+      secret: env.BLIKI_V1_STORAGE_SECRET!, namespace: env.REM05B_BOT_NAMESPACE!,
+      bucket: "luemi-bliki-private" })
+  } : undefined;
   return {
     rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,chats,matches,
+    bliki,blikiPublication,blikiMedia,blikiInteraction,
     rem05c:{geo,embedding},
     port,
     origin,
