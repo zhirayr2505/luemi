@@ -46,6 +46,7 @@ export function registerBlikiPublicationApi(
   if (!guard || !options.databaseUrl || !/^[a-z0-9:_-]{1,96}$/i.test(options.namespace)) {
     throw new Error('Bliki publication requires authenticated actor-scoped storage');
   }
+  const auth: Guard = guard;
   const cfg = options;
   const pool = new Pool({ connectionString: cfg.databaseUrl, max: 3, connectionTimeoutMillis: 3000 });
   app.addHook('onClose', async () => { await pool.end(); });
@@ -76,7 +77,7 @@ export function registerBlikiPublicationApi(
       // Session guard already checks actor status using its own scoped identity DB.
       // This database role intentionally has no access to session or actor tables.
       const result = await work(db, actor.actorId);
-      await guard.read(request, reply);
+      await auth.read(request, reply);
       if (reply.sent || !request.authActor || request.authActor.actorId !== actor.actorId ||
           request.authActor.sessionId !== actor.sessionId ||
           request.authActor.hash.length !== actor.hash.length ||
