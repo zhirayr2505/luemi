@@ -55,6 +55,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/chats-v1-isolated.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v1-message-integrity.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v2-mutual-matches.sql
+          psql -v ON_ERROR_STOP=1 -f db/chats-v2-peer-media-guard.sql
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
