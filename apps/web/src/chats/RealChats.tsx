@@ -15,8 +15,7 @@ export function RealChats(){
  const [loading,setLoading]=useState(true);
  const bottom=useRef<HTMLDivElement>(null);
  const pending=useRef<{conversationId:string;body:string;clientId:string}|null>(null);
- const currentConversation=useRef<string|null>(null);
- currentConversation.current=active;
+
  const csrf=geoCsrf();
  const api=csrf?createChatTransport(csrf):null;
  useEffect(()=>{
@@ -37,7 +36,7 @@ export function RealChats(){
    running=true;
    try{
     const data=await api.messages(active,undefined,controller.signal);
-    if(!controller.signal.aborted&&currentConversation.current===active){setMessages(data.messages);setError("");}
+    if(!controller.signal.aborted){setMessages(data.messages);setError("");}
    }catch{if(!controller.signal.aborted)setError("Связь прервана. Повторяем подключение…");}
    finally{running=false;}
   };
