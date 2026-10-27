@@ -46,3 +46,9 @@ No merge, deploy, Supabase migration, or paid service was performed.
 - Grant **only** `UPDATE(last_read_at)` on `luemi_chats.members` to the isolated chat role, never table-wide UPDATE. Test RLS with both users.
 - Client acknowledges incoming messages only while the chat is visible and retries failures. Delivery and typing signals remain unimplemented.
 - The current self-only `members` SELECT policy deliberately hides the other member, so peer names and peer IDs cannot yet be populated from it. A separately authorized, privacy-reviewed peer projection is required.
+
+## Verified identity boundary and list refresh
+- `luemi_private.actors.id` is a V2 session actor UUID; `public.luemi_users.id` is a separate public profile UUID. They must **never** be equated directly.
+- Review-only reconciliation joins actors and public profiles using independently verified Telegram ID and active account state, then maps public match endpoints to actor IDs. It remains intentionally rolled back and is not a live integration.
+- Chat list now refreshes every 5 seconds in the foreground and immediately on visibility restoration, including unread counts.
+- Match revocation, blocking, photo storage and production credential provisioning remain blockers to turning on the feature.
