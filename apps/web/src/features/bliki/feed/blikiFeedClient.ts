@@ -23,5 +23,25 @@ export async function fetchBlikiFeed(signal?: AbortSignal): Promise<BlikiFeedRes
       typeof payload.serverNow !== 'string') throw new Error('Invalid Bliki feed response');
   const now = Date.parse(payload.serverNow);
   if (!Number.isFinite(now)) throw new Error('Invalid Bliki server time');
-  return buildBlikiFeed(payload.authors as BlikiFeedCandidate[], { now });
+  // The API must deliver server-authorized author groups with resolved media URLs.
+  // A raw story-row envelope is NOT safe or sufficient for rendering.
+  const authors = payload.authors as unknown[];
+  if (!authors.every(author => {
+    if (!author || typeof author !== 'object') return false;
+    const a = author as Record<string, unknown>;
+    if (typeof a.id !== 'string' || typeof a.name !== 'string' ||
+        typeof a.isBlocked !== 'boolean' || typeof a.isEligible !== 'boolean' ||
+        typeof a.isMutualMatch !== 'boolean' || typeof a.likedByViewer !== 'boolean' ||
+        typeof a.isNearby !== 'boolean' || typeof a.isSelf !== 'boolean' ||
+        typeof a.lastPublishedAt !== 'number' || !Array.isArray(a.stories)) return false;
+    return a.stories.every(story => {
+      if (!story || typeof story !== 'object') return false;
+      const item = story as Record<string, unknown>;
+      if (typeof item.id !== 'string' || typeof item.authorId !== 'string' ||
+          typeof item.mediaUrl !== 'string' || !item.mediaUrl.startsWith('/') ||
+          item.mediaUrl.startsWith('//')) return false;
+      return item.mediaKind === 'image' || item.mediaKind === 'video';
+    });
+  })) throw new Error('Invalid authorized Bliki author payload');
+  return buildBlikiFeed(authors as BlikiFeedCandidate[], { now });
 }
