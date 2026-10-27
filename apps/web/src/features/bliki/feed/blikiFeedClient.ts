@@ -22,6 +22,7 @@ export async function fetchBlikiFeed(signal?: AbortSignal): Promise<BlikiFeedRes
       !Array.isArray(payload.authors) || !('serverNow' in payload) ||
       typeof payload.serverNow !== 'string') throw new Error('Invalid Bliki feed response');
   const now = Date.parse(payload.serverNow);
+  if ('stories' in payload) throw new Error('Bliki server contract mismatch: expected author groups');
   if (!Number.isFinite(now)) throw new Error('Invalid Bliki server time');
   // The API must deliver server-authorized author groups with resolved media URLs.
   // A raw story-row envelope is NOT safe or sufficient for rendering.
