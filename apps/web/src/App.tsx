@@ -58,6 +58,8 @@ type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
 const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
+// Public self-publish UX is a build-time presentation switch, never an auth override.
+const instantPhotoOnboarding=import.meta.env.VITE_LUEMI_AUTOPUBLISH_PHOTOS==="1";
 
 /** Decode the exact brand raster before showing a screen that depends on it. */
 function prepareBrandImage(signal: AbortSignal): Promise<void> {
@@ -546,7 +548,7 @@ export function App() {
       await uploadPrivatePhotos([...photos],(done,total)=>
         setMediaStatus("Отправлено "+done+" из "+total+". Все фотографии приватны."));
       setPublishStatus(null);
-      setMediaStatus("Фотографии приняты в приватную очередь модерации. Они никому не видны и не опубликованы.");
+      setMediaStatus(instantPhotoOnboarding?"Фотографии загружены. Опубликуй анкету на последнем шаге.":"Фотографии приняты в приватную очередь модерации. Они никому не видны и не опубликованы.");
     }catch{
       setMediaStatus("Не все фотографии отправлены. Уже принятые остаются приватными. Проверь соединение перед повтором.");
     }finally{setMediaSaving(false);}
@@ -577,11 +579,44 @@ export function App() {
         return;
       }
       if(decision==="ready-to-publish"){
-        setPublishFeedback("Фотографии уже одобрены. Нажми «Проверить модерацию и публикацию», чтобы открыть анкету.");
+        if(instantPhotoOnboarding){
+          const draftOnServer=await readRemoteRevision();
+          if(draftOnServer.state!=="private")throw new Error("missing_draft");
+          await publishMyProfile(draftOnServer.revision);
+          const published=await ownerPublicationStatus();
+          if(published.state!=="published")throw new Error("publication_unconfirmed");
+          setPublishStatus(published);setRealHomeTab("feed");setRealHome(true);
+          setPublishFeedback("Анкета опубликована.");
+        }else{
+          setPublishFeedback("Фотографии уже одобрены. Нажми «Проверить модерацию и публикацию», чтобы открыть анкету.");
+        }
         return;
       }
       if(decision==="review-needs-attention"){
-        setPublishFeedback("На сервере уже есть фотографии, требующие дополнительной проверки или исправления. Не отправляем повторно те же файлы.");
+        if(instantPhotoOnboarding&&existing.other===0&&existing.pending===0&&
+           existing.approved>0&&existing.approved<3){
+          // A prior request may have uploaded only one or two files. Reusing
+          // stable per-photo client keys resumes the same server intents;
+          // already received bytes are skipped, never uploaded twice.
+          setPublishFeedback("Продолжаем прерванную загрузку фотографий…");
+          await uploadPrivatePhotos([...photos],(done,total)=>
+            setPublishFeedback(`Загружено ${done} из ${total} фотографий.`));
+          const resumed=await ownerPublicationStatus();setPublishStatus(resumed);
+          if(resumed.approved>=3&&resumed.approved<=6&&resumed.pending===0&&resumed.other===0){
+            const draftOnServer=await readRemoteRevision();
+            if(draftOnServer.state!=="private")throw new Error("missing_draft");
+            await publishMyProfile(draftOnServer.revision);
+            const published=await ownerPublicationStatus();
+            if(published.state!=="published")throw new Error("publication_unconfirmed");
+            setPublishStatus(published);setRealHomeTab("feed");setRealHome(true);
+            setPublishFeedback("Анкета опубликована.");
+            return;
+          }
+          throw new Error("incomplete_photos");
+        }
+        setPublishFeedback(instantPhotoOnboarding?
+          "Некоторые фотографии нуждаются в замене. Вернись к загрузке и проверь их.":
+          "На сервере уже есть фотографии, требующие дополнительной проверки или исправления. Не отправляем повторно те же файлы.");
         setRealHomeTab("profile");setRealHome(true);
         return;
       }
@@ -589,7 +624,7 @@ export function App() {
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
-      setPublishFeedback("Отправляем фотографии на проверку…");
+      setPublishFeedback(instantPhotoOnboarding?"Загружаем фотографии…":"Отправляем фотографии на проверку…");
       await uploadPrivatePhotos([...photos],(done,total)=>
         setPublishFeedback(`Отправлено ${done} из ${total} фотографий.`));
       const status=await ownerPublicationStatus();setPublishStatus(status);
@@ -601,7 +636,7 @@ export function App() {
         setPublishStatus(confirmed);setRealHome(true);
         setPublishFeedback("Анкета опубликована.");
       }else{
-        setPublishFeedback("Анкета сохранена на сервере. Фото ожидают проверки; другие пользователи пока не видят её.");
+        setPublishFeedback(instantPhotoOnboarding?"Фотографии сохранены, но публикация пока не подтверждена. Повтори завершение регистрации.":"Анкета сохранена на сервере. Фото ожидают проверки; другие пользователи пока не видят её.");
         setRealHomeTab("profile");setRealHome(true);
       }
     }catch(e){
@@ -617,7 +652,9 @@ export function App() {
       const status=await ownerPublicationStatus();setPublishStatus(status);
       if(status.state==="published"){setRealHome(true);return;}
       if(status.approved<3||status.approved>6||status.pending||status.other){
-        setPublishFeedback("Фотографии ещё проходят проверку или требуют исправления. Анкета пока скрыта.");return;
+        setPublishFeedback(instantPhotoOnboarding?
+          "Нужно от трёх до шести успешно загруженных фотографий. Проверь регистрацию и повтори.":
+          "Фотографии ещё проходят проверку или требуют исправления. Анкета пока скрыта.");return;
       }
       const draftOnServer=await readRemoteRevision();
       if(draftOnServer.state!=="private")throw new Error("missing_draft");
@@ -736,10 +773,12 @@ export function App() {
       <div className="luemi-real-home-main">
         {publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
           <h1>Анкета сохранена 💜</h1>
-          <p role="status">Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются.</p>
+          <p role="status">{instantPhotoOnboarding?
+            "Анкета и фотографии сохранены. Заверши публикацию, чтобы открыть знакомства.":
+            "Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются."}</p>
           <p>Одобрено фото: {publishStatus?.approved??0} · на проверке: {publishStatus?.pending??0} · требуют внимания: {publishStatus?.other??0}</p>
           <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>
-            {publishBusy?"Проверяем…":"Проверить модерацию и открыть анкету"}
+            {publishBusy?"Публикуем…":instantPhotoOnboarding?"Завершить регистрацию":"Проверить модерацию и открыть анкету"}
           </button>
           <button type="button" disabled={publishBusy} onClick={()=>{setRealHome(false);setPhase("form");setStep(8);}}>
             Вернуться к анкете и фотографиям
@@ -836,10 +875,10 @@ export function App() {
           addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} resetDraft={resetDraft}/>
         {step===8&&realFeedPilot.enabled&&<section className="registration-preview-review" aria-label="Публикация анкеты">
           <label><input type="checkbox" checked={serverConsent} onChange={e=>setServerConsent(e.target.checked)}/>
-            {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">политику обработки данных</a> и согласен(-на) сохранить анкету и отправить фотографии на проверку перед публикацией.
+            {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">политику обработки данных</a> и согласен(-на) сохранить и опубликовать анкету с фотографиями для других пользователей LUEMI.
           </label>
-          <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>Проверить модерацию и публикацию</button>
-          {publishStatus&&<p role="status">Одобрено фото: {publishStatus.approved} · ожидают проверки: {publishStatus.pending}</p>}
+          <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>{instantPhotoOnboarding?"Завершить публикацию":"Проверить модерацию и публикацию"}</button>
+          {publishStatus&&<p role="status">Загружено фото: {publishStatus.approved} · ожидают проверки: {publishStatus.pending}</p>}
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>}
         {step===8&&remoteDraftPilot.enabled&&!realFeedPilot.enabled&&<section className="registration-preview-review" aria-label="Приватное серверное сохранение">

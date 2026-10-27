@@ -10,8 +10,16 @@ type Guard={read:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>;
  mutation:(req:FastifyRequest,reply:FastifyReply)=>Promise<void>};
 export type PrivateObjectStore={put:(key:string,bytes:Buffer)=>Promise<void>;get:(key:string)=>Promise<Buffer|null>;
  delete:(key:string)=>Promise<void>};
+export function photoCommitPlan(instantApproval:boolean):{
+ state:"approved"|"pending_review";queueHumanReview:boolean
+}{
+ return instantApproval?{state:"approved",queueHumanReview:false}:
+  {state:"pending_review",queueHumanReview:true};
+}
 export type Rem05dOptions={enabled:boolean;requestDatabaseUrl:string;workerDatabaseUrl:string;
- namespace:string;consentVersion:string;storage:PrivateObjectStore;testOnly?:true;durablePrivateOnly?:true};
+ namespace:string;consentVersion:string;storage:PrivateObjectStore;testOnly?:true;durablePrivateOnly?:true;
+  /** Explicit public signup opt-in: publish sanitized PNGs immediately without human review. */
+  instantPhotoApproval?:true;};
 class Rejection extends Error{constructor(public status:number,public code:string){super(code);}}
 function reject(status:number,code:string):never{throw new Rejection(status,code);}
 function digest(text:string){return createHash("sha256").update(text).digest("hex");}
@@ -323,13 +331,19 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
     // after this point requires best-effort compensating deletion.
     stagedKey=m.derivative_key;
     await opts.storage.put(m.derivative_key,clean.bytes);
-    await db.query("UPDATE luemi_private.media_assets SET state='pending_review',"+
+    // Public self-publish: once the file has passed actual PNG decoding,
+    // re-encoding, dimension/size checks and private Storage write, it may
+    // become eligible for publication immediately. This is deliberately NOT
+    // a claim that its visual contents have been human-reviewed.
+    const plan=photoCommitPlan(opts.instantPhotoApproval===true);
+    await db.query("UPDATE luemi_private.media_assets SET state=$6,"+
      "actual_mime='image/png',byte_count=$2,width=$3,height=$4,content_sha256=$5 WHERE id=$1",
      [req.params.id,clean.bytes.length,clean.width,clean.height,
-      createHash("sha256").update(clean.bytes).digest("hex")]);
+      createHash("sha256").update(clean.bytes).digest("hex"),plan.state]);
     await db.query("UPDATE luemi_private.media_uploads SET state='received' WHERE asset_id=$1",[req.params.id]);
-    await db.query("INSERT INTO luemi_private.moderation_jobs(asset_id,generation) VALUES($1,1) ON CONFLICT DO NOTHING",
-     [req.params.id]);
+    if(plan.queueHumanReview)
+     await db.query("INSERT INTO luemi_private.moderation_jobs(asset_id,generation) VALUES($1,1) ON CONFLICT DO NOTHING",
+      [req.params.id]);
     // Critical D-R4 boundary: revalidate the *original* actor/session/token
     // after all async storage and SQL work but BEFORE the worker commits.
     // The issuer checks its own session tables; worker gets NO session grants.
@@ -344,7 +358,7 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    if(!changed)reject(503,"service_unavailable");
    await guard.read(req,reply);
    if(reply.sent)return reply;
-   return{assetId:req.params.id,status:"pending_review",published:false};
+   return{assetId:req.params.id,status:opts.instantPhotoApproval?"approved":"pending_review",published:false};
   }catch(e){
    if(!workerCommitted&&stagedKey){
     // Rollback cannot undo the already-written object. The private adapter

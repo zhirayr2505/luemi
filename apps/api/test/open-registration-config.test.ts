@@ -63,6 +63,28 @@ test("open registration cannot publish without private media or human moderation
  }
 });
 
+test("open signups can publish sanitized PNGs instantly with no human moderation or public object access",()=>{
+ const env={...base,REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1",
+  REM06_MODERATION_OPERATIONAL_APPROVED:"0",
+  REM06_AUTOPUBLISH_PHOTOS_ENABLED:"1",REM06_AUTOPUBLISH_APPROVED:"1"};
+ const cfg=readConfig(env);
+ assert.equal(cfg.rem05d?.instantPhotoApproval,true);
+ assert.equal(cfg.rem05d?.durablePrivateOnly,true);
+ assert.equal(cfg.realPublication?.enabled,true);
+ assert.equal(cfg.rem05b?.inviteOnly,false);
+});
+test("instant publication refuses beta, missing consent, absent private storage and absent operator approval",()=>{
+ const env={...base,REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1",
+  REM06_AUTOPUBLISH_PHOTOS_ENABLED:"1",REM06_AUTOPUBLISH_APPROVED:"1"};
+ for(const patch of [
+  {REM06_OPEN_SIGNUPS_ENABLED:"0",REM06_BETA_INVITES_ENABLED:"1",REM06_BETA_INVITES_APPROVED:"1"},
+  {REM06_AUTOPUBLISH_APPROVED:"0"},
+  {REM06_PRIVACY_APPROVED:"0"},
+  {REM06_MEDIA_ENABLED:"0"},
+  {REM06_PUBLICATION_ENABLED:"0"},
+  {STAGING_BOOTSTRAP_ONLY:"1"}
+ ])assert.throws(()=>readConfig({...env,...patch}),/Immediate photo publication|Open registration requires/);
+});
 test("legacy invite-only mode is unchanged when open registration is disabled",()=>{
  const cfg=readConfig({
   ...base,REM06_BETA_INVITES_ENABLED:"1",REM06_BETA_INVITES_APPROVED:"1"
