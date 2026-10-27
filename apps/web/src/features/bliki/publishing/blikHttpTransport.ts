@@ -3,6 +3,8 @@ import type { BlikPublishTransport } from './blikPublishClient';
 type PublishState =
   | { state: 'published'; storyId: string; expiresAt: string }
   | { state: 'processing' }
+  | { state: 'uploading' }
+  | { state: 'rejected' }
   | { state: 'missing' };
 
 function sameOriginPath(path: string): string {
@@ -18,6 +20,8 @@ function parseState(payload: unknown, allowMissing: boolean): PublishState {
   if (!payload || typeof payload !== 'object') throw new Error('Invalid publication response');
   const item = payload as Record<string, unknown>;
   if (item.state === 'processing') return { state: 'processing' };
+  if (item.state === 'uploading') return { state: 'uploading' };
+  if (item.state === 'rejected') return { state: 'rejected' };
   if (allowMissing && item.state === 'missing') return { state: 'missing' };
   if (item.state === 'published' && typeof item.storyId === 'string' &&
       typeof item.expiresAt === 'string' && Number.isFinite(Date.parse(item.expiresAt))) {
@@ -66,7 +70,8 @@ export function createBlikiHttpTransport(csrfToken: string): BlikPublishTranspor
       const result = parseState(
         await json('/api/v1/bliki/publications/' + encodeURIComponent(operationId) + '/confirm',
           'POST', { editor }), false);
-      if (result.state === 'missing') throw new Error('Publication not found');
+      if (result.state === 'missing' || result.state === 'rejected' || result.state === 'uploading')
+        throw new Error('Publication not ready');
       return result;
     },
     async lookup(operationId) {
