@@ -9,6 +9,12 @@ export interface BlikiPrivateMediaStore {
   put(key: string, bytes: Uint8Array, mimeType: string): Promise<void>;
   stat(key: string): Promise<{ size: number; sha256: string; mimeType: string } | null>;
   remove(key: string): Promise<void>;
+  /** Raw private read, never a signed/public URL. Implementations must enforce
+   * exact MIME and byte range semantics; the API checks actor RLS first. */
+  open?(key: string, range?: { start: number; end?: number }): Promise<{
+    status: 200 | 206; mimeType: string; length: number;
+    contentRange?: string; body: ReadableStream<Uint8Array>;
+  } | null>;
 }
 export type BlikiUploadTicket = {
   operationId: string;
