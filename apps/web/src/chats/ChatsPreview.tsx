@@ -33,6 +33,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  const [blocked,setBlocked]=useState<string[]>([]);
  const [notice,setNotice]=useState("");
  const [newBelow,setNewBelow]=useState(0);
+ const [announced,setAnnounced]=useState("");
  const [lightbox,setLightbox]=useState<string|null>(null);
  const [showDemoControls,setShowDemoControls]=useState(false);
 
@@ -97,6 +98,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
   const next=samples[(messages[active]?.length??0)%samples.length];
   update(a=>[...a,{id:uid(),mine:false,text:next,time:new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}],true);
   setChats(a=>a.map(c=>c.id===active?{...c,last:next}:c));
+  setAnnounced("Новое сообщение: "+next);
  };
  const react=(id:string,value:string)=>{update(a=>a.map(m=>m.id===id?{...m,reaction:m.reaction===value?undefined:value}:m));setMenu(null);};
  const handleAction=(action:string)=>{
@@ -110,7 +112,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
    if(action==="report")setNotice("Жалоба: демонстрация интерфейса, отправка на сервер не выполняется.");
   }else{const m=items.find(x=>x.id===menu.id);if(!m)return;
    if(action==="reply")setReply(m);
-   if(action==="copy"&&m.text)void navigator.clipboard?.writeText(m.text).catch(()=>setNotice("Не удалось скопировать"));
+   if(action==="copy"&&m.text){if(!navigator.clipboard?.writeText)setNotice("Копирование недоступно");else void navigator.clipboard.writeText(m.text).catch(()=>setNotice("Не удалось скопировать"));}
    if(action==="edit"&&m.mine){setDraft(m.text);setEditing(m.id);}
    if(action==="delete"&&m.mine){if(m.image)releasePhoto(m.image);update(a=>a.filter(x=>x.id!==m.id));}
    if(action==="report")setNotice("Жалоба: демонстрация интерфейса, отправка на сервер не выполняется.");
@@ -141,7 +143,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  };
  const open=(id:string)=>{releasePhoto(photo);nearBottom.current=true;setNewBelow(0);setActive(id);setMenu(null);setReply(null);setEditing(null);setDraft("");setPhoto(null);setChats(a=>a.map(c=>c.id===id?{...c,unread:0}:c));};
  const visible=chats.filter(c=>!!c.archived===archiveView&&c.name.toLocaleLowerCase("ru").includes(search.toLocaleLowerCase("ru"))).sort((a,b)=>Number(!!b.pinned)-Number(!!a.pinned));
- return <div className="luemi-chats" data-chat-preview="true">
+ return <div className="luemi-chats" data-chat-preview="true"><span className="lc-sr-only" role="status" aria-live="polite">{announced}</span>
   {!active?<><header className="lc-heading"><div><small>LUEMI · ДЕМО ИНТЕРФЕЙСА</small><h2>{archiveView?"Архив":"Чаты"}</h2></div><button type="button" aria-label="Архив" onClick={()=>setArchiveView(v=>!v)}>{archiveView?<ArrowLeft/>:<Archive/>}</button></header>
    <label className="lc-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Поиск переписок" aria-label="Поиск переписок"/></label>
    <div className="lc-conversations">{visible.length?visible.map(c=><div className="lc-conversation" key={c.id} onContextMenu={e=>{e.preventDefault();setMenu({kind:"chat",id:c.id});}} onPointerDown={e=>pointerDown(e,c.id,"chat")} onPointerMove={pointerMove} onPointerUp={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);}}>
@@ -160,7 +162,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
    {blocked.includes(active)?<p className="lc-blocked">Пользователь заблокирован. <button onClick={()=>setBlocked(a=>a.filter(x=>x!==active))}>Разблокировать</button></p>:<div className="lc-composer">
     {(reply||editing)&&<div className="lc-reply"><Reply size={16}/><span>{editing?"Редактирование сообщения":reply?.text}</span><button type="button" aria-label="Отменить" onClick={()=>{setReply(null);setEditing(null);setDraft("");}}><X size={16}/></button></div>}
     {photo&&<div className="lc-attachment"><img src={photo} alt="Фото перед отправкой"/><button type="button" onClick={()=>{releasePhoto(photo);setPhoto(null);}} aria-label="Удалить вложение"><X size={16}/></button></div>}
-    <div className="lc-input-row"><input type="file" ref={file} accept="image/jpeg,image/png,image/webp" hidden onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(!f)return;if(f.size>10*1024*1024||!["image/jpeg","image/png","image/webp"].includes(f.type)){setNotice("Фото должно быть JPG, PNG или WebP до 10 МБ");return;}const u=URL.createObjectURL(f);releasePhoto(photo);urls.current.add(u);setPhoto(u);}}/><button type="button" aria-label="Добавить фото" onClick={()=>file.current?.click()}><ImagePlus/></button><textarea rows={1} value={draft} placeholder="Сообщение..." onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}/><button type="button" className="lc-send" disabled={!draft.trim()&&!photo} aria-label="Отправить" onClick={send}><Send size={19}/></button></div>
+    <div className="lc-input-row"><input type="file" ref={file} accept="image/jpeg,image/png,image/webp" hidden onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(!f)return;if(f.size>10*1024*1024||!["image/jpeg","image/png","image/webp"].includes(f.type)){setNotice("Фото должно быть JPG, PNG или WebP до 10 МБ");return;}const u=URL.createObjectURL(f);releasePhoto(photo);urls.current.add(u);setPhoto(u);}}/><button type="button" aria-label="Добавить фото" onClick={()=>file.current?.click()}><ImagePlus/></button><textarea rows={1} value={draft} aria-label="Текст сообщения" maxLength={4000} placeholder="Сообщение..." onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}/><button type="button" className="lc-send" disabled={!draft.trim()&&!photo} aria-label="Отправить" onClick={send}><Send size={19}/></button></div>
    </div>}
   </>}
   {menu&&<div className="lc-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setMenu(null);}}><section className="lc-menu" role="dialog" aria-modal="true" aria-label="Действия">
@@ -172,7 +174,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
    <button type="button" onClick={()=>setMenu(null)}>Отмена</button>
   </section></div>}
   {confirmDelete&&<div className="lc-overlay"><section className="lc-menu" role="alertdialog" aria-modal="true" aria-label="Удаление переписки"><p>Удалить переписку из демо?</p><button type="button" onClick={()=>{setChats(a=>a.filter(c=>c.id!==confirmDelete));setConfirmDelete(null);}}>Удалить</button><button type="button" onClick={()=>setConfirmDelete(null)}>Отмена</button></section></div>}
-  {notice&&<div className="lc-notice" role="status">{notice}<button type="button" onClick={()=>setNotice("")}><X size={15}/></button></div>}
+  {notice&&<div className="lc-notice" role="status">{notice}<button type="button" aria-label="Закрыть уведомление" onClick={()=>setNotice("")}><X size={15}/></button></div>}
   {lightbox&&<div className="lc-overlay lc-lightbox" onClick={()=>setLightbox(null)}><button type="button" aria-label="Закрыть"><X/></button><img src={lightbox} alt="Просмотр фото"/></div>}
  </div>;
 }
