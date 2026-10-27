@@ -28,10 +28,11 @@ CREATE TABLE IF NOT EXISTS luemi_chats.messages (
  sender_id uuid NOT NULL,
  environment text NOT NULL,
  client_id uuid NOT NULL,
- body text NOT NULL CHECK ((deleted_at IS NULL AND length(body) BETWEEN 1 AND 4000) OR (deleted_at IS NOT NULL AND body='')),
+ body text NOT NULL,
  created_at timestamptz NOT NULL DEFAULT now(),
  edited_at timestamptz,
  deleted_at timestamptz,
+ CONSTRAINT chat_message_body_state CHECK ((deleted_at IS NULL AND length(body) BETWEEN 1 AND 4000) OR (deleted_at IS NOT NULL AND body='')),
  UNIQUE(conversation_id,sender_id,client_id)
 );
 CREATE INDEX IF NOT EXISTS chat_messages_page ON luemi_chats.messages(conversation_id,created_at DESC,id DESC);
@@ -72,9 +73,13 @@ CREATE POLICY chats_messages_insert ON luemi_chats.messages FOR INSERT WITH CHEC
 CREATE POLICY chats_messages_update ON luemi_chats.messages FOR UPDATE USING (
  sender_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
  AND environment=current_setting('luemi.environment',true)
+ AND EXISTS (SELECT 1 FROM luemi_chats.members m WHERE m.conversation_id=messages.conversation_id
+ AND m.actor_id=messages.sender_id AND m.environment=messages.environment)
 ) WITH CHECK (
  sender_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
  AND environment=current_setting('luemi.environment',true)
+ AND EXISTS (SELECT 1 FROM luemi_chats.members m WHERE m.conversation_id=messages.conversation_id
+ AND m.actor_id=messages.sender_id AND m.environment=messages.environment)
 );
 CREATE TABLE IF NOT EXISTS luemi_chats.media (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
