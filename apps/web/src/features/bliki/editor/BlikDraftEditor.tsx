@@ -77,7 +77,7 @@ export function BlikDraftEditor({ ownerId, onClose, onPreview }: Props) {
       {message && <p role="status">{message}</p>}
       {state.error && <p role="alert">{state.error}</p>}
       {!state.draft ? <>
-        <input ref={picker} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+        <input ref={picker} type="file" accept="image/jpeg,image/png,image/webp,video/mp4"
           style={{ display: 'none' }} onChange={event => void handleFile(event.target.files?.[0])} />
         <button disabled={busy} onClick={() => picker.current?.click()}>Выбрать из галереи</button>
         {existing.map(item => <div key={item.id} style={{ display: 'flex', gap: 12, marginTop: 12 }}>
