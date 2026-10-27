@@ -68,11 +68,20 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   if(r.rowCount!==1)deny(404,"not_found");
  }
  app.get("/api/v4/chats",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
-  const rows=await db.query<{id:string;unread_count:string}>(`
-   SELECT m.conversation_id AS id,0::text AS unread_count
+  const rows=await db.query<{id:string;unread_count:string;last_message:string|null;peer_id:string|null}>(`
+   SELECT m.conversation_id AS id,
+   (SELECT count(*)::text FROM luemi_chats.messages msg
+    WHERE msg.conversation_id=m.conversation_id AND msg.sender_id<>$1
+    AND msg.created_at>coalesce(m.last_read_at,'epoch'::timestamptz)) AS unread_count,
+   (SELECT msg.body FROM luemi_chats.messages msg
+    WHERE msg.conversation_id=m.conversation_id AND msg.deleted_at IS NULL
+    ORDER BY msg.created_at DESC,msg.id DESC LIMIT 1) AS last_message,
+   (SELECT other.actor_id FROM luemi_chats.members other
+    WHERE other.conversation_id=m.conversation_id AND other.actor_id<>$1
+    LIMIT 1) AS peer_id
    FROM luemi_chats.members m WHERE m.actor_id=$1 AND m.environment=$2
    ORDER BY m.conversation_id LIMIT 100`,[actor,options.namespace]);
-  return {conversations:rows.rows.map(r=>({id:r.id,peerId:"",peerName:"",lastMessage:null,unreadCount:Number(r.unread_count)}))};
+  return {conversations:rows.rows.map(r=>({id:r.id,peerId:r.peer_id??"",peerName:"",lastMessage:r.last_message,unreadCount:Number(r.unread_count)}))};
  }));
  app.get<{Params:{id:string};Querystring:{before?:string}}>(
  "/api/v4/chats/:id/messages",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
