@@ -120,7 +120,8 @@ jobs:
             20261027_bliki_social_priority_reader.sql \
             20261027_bliki_approved_avatars.sql \
             20261027_bliki_interactions.sql \
-            20261027_bliki_mutual_preferences.sql; do
+            20261027_bliki_mutual_preferences.sql \
+            20261027_bliki_retention.sql; do
             psql -v ON_ERROR_STOP=1 -f "apps/api/migrations/$migration"
           done
       - name: Run synthetic multi-actor RLS and lifetime checks
