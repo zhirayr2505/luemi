@@ -30,7 +30,7 @@ const model=readFileSync(new URL("../apps/web/src/discovery/model.ts",import.met
 const feed=readFileSync(new URL("../apps/web/src/discovery/FeedCard.tsx",import.meta.url),"utf8");
 assert.ok(component.includes('scope:"world"')&&component.includes("selectNearbyDemos"),"neutralize fake distance while preserving hard filters");
 assert.ok(component.includes("draft.interests.find(id=>person.interests.includes(id))"),"only actual shared-interest tags");
-assert.ok(component.includes("loading=\"lazy\"")&&component.includes("IntersectionObserver"),"lazy media and bounded incremental rendering");
+assert.ok(component.includes('loading={priority?"eager":"lazy"}')&&component.includes("priority={i<4}")&&component.includes("IntersectionObserver"),"bounded priority image loading, lazy remaining media and incremental rendering");
 assert.ok(css.includes("grid-template-columns:repeat(2,minmax(0,1fr))"),"two-column portrait grid");
 assert.ok(css.includes("touch-action:pan-y")&&css.includes("aspect-ratio:4/5"),"vertical scroll from photos, 4:5 geometry");
 // Source contract guards ownership boundaries; actual pointer/touch behavior is
