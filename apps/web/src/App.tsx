@@ -84,6 +84,7 @@ function prepareBrandImage(signal: AbortSignal): Promise<void> {
 
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
+  const [liveActorId,setLiveActorId] = useState<string|null>(null);
   const [introElapsed,setIntroElapsed] = useState(false);
   const [connectAttempt,setConnectAttempt]=useState(0);
   const startupGeneration=useRef(0);
@@ -213,6 +214,7 @@ export function App() {
         const user=result.value;
         if(!user){setAuth("needs-bot");return;}
         setDraft(current=>({...current,name:current.name||user.user.firstName}));
+        setLiveActorId(user.mode==="session_v2"?user.user.id:null);
         setAuth("authorized");
       }
     });
@@ -602,7 +604,8 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
-    {demoOpen&&auth==="authorized"?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
+    {demoOpen&&auth==="authorized"?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}
+       blikiOwnerId={import.meta.env.VITE_BLIKI_V1_ENABLED==="1" ? liveActorId : null}/></Suspense>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
