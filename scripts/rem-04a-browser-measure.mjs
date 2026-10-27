@@ -24,9 +24,9 @@ try{
  await page.waitForFunction(()=>!!window.__luemiQaPerf);
  await page.getByRole("tab",{name:"Для тебя"}).click();
  await page.locator(".fy-tile-photo").first().click();
- await page.locator(".discovery-visitor-route .pm-a2-face").evaluate(el=>el.click());
- await page.locator('.discovery-visitor-route .pm-a2-root[data-morph-state="expanded"]').waitFor({state:"attached",timeout:3000});
- await page.locator(".discovery-visitor-route .pm-a2-face").evaluate(el=>el.click());
+ await page.locator(".discovery-visitor-route .v3-int-mask").evaluate(el=>el.click());
+ await page.locator('.discovery-visitor-route .v3-profile-host[data-morph-state="expanded"]').waitFor({state:"attached",timeout:3000});
+ await page.locator(".discovery-visitor-route .v3-int-mask").evaluate(el=>el.click());
  await page.locator(".pm-viewer").waitFor({state:"visible",timeout:5000});
  await page.waitForFunction(()=>document.querySelector(".pm-viewer-image")?.style.opacity==="1");
  await delay(350);
