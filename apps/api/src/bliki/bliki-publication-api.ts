@@ -41,6 +41,8 @@ export function registerBlikiPublicationApi(
   const cfg = options;
   const pool = new Pool({ connectionString: cfg.databaseUrl, max: 3, connectionTimeoutMillis: 3000 });
   app.addHook('onClose', async () => { await pool.end(); });
+  app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer', bodyLimit: 100 * 1024 * 1024 },
+    (_request, body, done) => done(null, body));
   async function transaction<T>(request: FastifyRequest, reply: FastifyReply,
     work: (db: import('pg').PoolClient, actor: string) => Promise<T>): Promise<T | FastifyReply> {
     const actor = request.authActor;
