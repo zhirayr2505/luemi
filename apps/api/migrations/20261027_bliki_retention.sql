@@ -25,7 +25,8 @@ GRANT UPDATE (media_cleaned_at,cleanup_attempts,cleanup_attempt_at)
 CREATE POLICY bliki_retention_select ON luemi_bliki_private.stories FOR SELECT
  TO luemi_bliki_retention USING (
   environment=nullif(current_setting('luemi.environment',true),'')
-  AND media_cleaned_at IS NULL
+  -- SELECT must remain valid after marking the object cleaned; otherwise
+  -- PostgreSQL's UPDATE RLS check rejects the new row.
   AND (
    (status='deleted' AND deleted_at IS NOT NULL)
    OR (status='published' AND published_at < now()-interval '25 hours')
