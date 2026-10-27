@@ -106,6 +106,7 @@ export async function bootstrap({
  const credentials=new Map(ROLES.map(([name])=>[name,randomBytes(32).toString("hex")]));
  const pepper=randomBytes(32).toString("hex");
  let connected=false;
+ let provisioningStarted=false;
  try{
   await db.connect();connected=true;
   const result=await db.query(
@@ -137,6 +138,7 @@ export async function bootstrap({
   // credentials, privacy, profile/matches RLS and moderation still apply.
   // The script NEVER activates open signup, private media, or chats.
   // Keep the DB roles NOLOGIN until ALL credentials exist in Render.
+  provisioningStarted=true;
   await db.query("BEGIN");
   try{
    for(const [name] of ROLES){
@@ -164,7 +166,7 @@ export async function bootstrap({
  }catch(error){
   // Feature flags are OFF. Disable every known app role if bootstrap is partial;
   // Render may contain unusable credentials but can never connect after fail.
-  if(connected){
+  if(connected&&provisioningStarted){
    await db.query("ROLLBACK").catch(()=>{});
    try{
     await db.query("BEGIN");
