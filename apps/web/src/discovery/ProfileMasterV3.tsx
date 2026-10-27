@@ -1,5 +1,5 @@
 import {memo,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {FileText,Sparkles,Images,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
+import {FileText,Images,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
 import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import {languages} from "../ui/Languages";
@@ -12,6 +12,7 @@ import {resourceIdentity,viewerPhotoContext,reconcilePhotoId,type ViewerSource} 
 import {useModalLayer} from "../ui/modal-layer";
 import type {GestureArbiter} from "../ui/gesture-arbiter";
 import {IntegratedProfileV3,type V3TabId} from "./profile-v3/rendering/IntegratedProfileV3";
+import {BlikiStudio} from "./BlikiStudio";
 import {resolvePhotoFocus} from "./profile-v3/geometry/ProfileGeometry";
 import "./profile-morph-a2.css";
 import "./profile-v3/rendering/IntegratedProfileV3.css";
@@ -55,8 +56,6 @@ function About({view}:{view:ProfileView}){
    {view.profile.source==="fixture"?"Вымышленный демонстрационный персонаж — не реальный пользователь.":"Локальный черновик. Анкета не опубликована."}</p>}
  </div>;
 }
-function Bliki(){return <div className="pm-empty pm-bliki"><div className="pm-bliki-mark"><Sparkles size={47} strokeWidth={1.2}/></div>
- <h3>Пока нет бликов</h3><p>Здесь появятся короткие моменты из жизни.</p><span>Функция готовится</span></div>;}
 function Gifts({view}:{view:ProfileView}){return <div className="pm-card-stack">
  <p className="pm-demo-disclaimer"><Info size={15}/> Витрина подарков — только демонстрация, без покупок или полученных подарков.</p>
  <div className="pm-gift-pinned"><span>Пример закреплённого подарка · Демо</span><div aria-hidden="true">🧸</div><strong>Мишка любви</strong></div>
@@ -88,6 +87,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const [expanded,setExpanded]=useState(false);
  const root=useRef<HTMLElement>(null);
  const selectedViewerBack=useRef<(()=>boolean)|null>(null),selectedPreviewBack=useRef<(()=>boolean)|null>(null);
+ const selectedBlikiBack=useRef<(()=>boolean)|null>(null);
  const innerBack=useRef<()=>void>(()=>{});
  const nested=mode==="preview"||(mode==="local-self-preview"&&!!onClose);
  const inline=mode==="owner"||(mode==="local-self-preview"&&!onClose);
@@ -114,6 +114,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   setViewer({photoId:id,source});
  },[photos,view]);
  const closeTop=useCallback(():boolean=>{
+  if(selectedBlikiBack.current)return selectedBlikiBack.current();
   if(viewer){if(selectedViewerBack.current)return selectedViewerBack.current();setViewer(null);return true;}
   if(preview){if(selectedPreviewBack.current?.())return true;setPreview(false);return true;}
   if(onClose){onClose();return true;}
@@ -123,7 +124,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  useEffect(()=>{if(!active)return;registerBack?.(closeTop);return ()=>registerBack?.(null);},[active,closeTop,registerBack]);
  const renderPage=useCallback((id:V3TabId)=>{
   if(id==="about")return <About view={view}/>;
-  if(id==="bliki")return <Bliki/>;
+  if(id==="bliki")return <BlikiStudio name={view.profile.name} canCreate={view.mode==="owner"}
+   registerViewerBack={handler=>{selectedBlikiBack.current=handler;}}/>;
   if(id==="meta")return <Meta view={view}/>;
   if(id==="gifts")return <Gifts view={view}/>;
   return photos.length?<div className="pm-photos-grid">{photos.map((photo,i)=>
