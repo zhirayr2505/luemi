@@ -585,7 +585,7 @@ export function App() {
           await publishMyProfile(draftOnServer.revision);
           const published=await ownerPublicationStatus();
           if(published.state!=="published")throw new Error("publication_unconfirmed");
-          setPublishStatus(published);setRealHomeTab("profile");setRealHome(true);
+          setPublishStatus(published);setRealHomeTab("feed");setRealHome(true);
           setPublishFeedback("Анкета опубликована.");
         }else{
           setPublishFeedback("Фотографии уже одобрены. Нажми «Проверить модерацию и публикацию», чтобы открыть анкету.");
@@ -629,7 +629,9 @@ export function App() {
       const status=await ownerPublicationStatus();setPublishStatus(status);
       if(status.state==="published"){setRealHome(true);return;}
       if(status.approved<3||status.approved>6||status.pending||status.other){
-        setPublishFeedback("Фотографии ещё проходят проверку или требуют исправления. Анкета пока скрыта.");return;
+        setPublishFeedback(instantPhotoOnboarding?
+          "Нужно от трёх до шести успешно загруженных фотографий. Проверь регистрацию и повтори.":
+          "Фотографии ещё проходят проверку или требуют исправления. Анкета пока скрыта.");return;
       }
       const draftOnServer=await readRemoteRevision();
       if(draftOnServer.state!=="private")throw new Error("missing_draft");
@@ -748,10 +750,12 @@ export function App() {
       <div className="luemi-real-home-main">
         {publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
           <h1>Анкета сохранена 💜</h1>
-          <p role="status">Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются.</p>
+          <p role="status">{instantPhotoOnboarding?
+            "Анкета и фотографии сохранены. Заверши публикацию, чтобы открыть знакомства.":
+            "Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются."}</p>
           <p>Одобрено фото: {publishStatus?.approved??0} · на проверке: {publishStatus?.pending??0} · требуют внимания: {publishStatus?.other??0}</p>
           <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>
-            {publishBusy?"Проверяем…":"Проверить модерацию и открыть анкету"}
+            {publishBusy?"Публикуем…":instantPhotoOnboarding?"Завершить регистрацию":"Проверить модерацию и открыть анкету"}
           </button>
           <button type="button" disabled={publishBusy} onClick={()=>{setRealHome(false);setPhase("form");setStep(8);}}>
             Вернуться к анкете и фотографиям
