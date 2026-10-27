@@ -1,3 +1,4 @@
+import { getOrCreateBlikOperation } from './blikOperationStore';
 import type { BlikDraft } from '../drafts/draftTypes';
 import { loadBlikDraft } from '../drafts/draftRepository';
 
@@ -50,4 +51,15 @@ export function publishBlikDraft(
   inFlight.set(key, job);
   void job.finally(() => { if (inFlight.get(key) === job) inFlight.delete(key); }).catch(() => undefined);
   return job;
+}
+
+/**
+ * Preferred UI entry point. Reuses the same server idempotency key after
+ * a reload or interrupted upload; never generates a new operation per tap.
+ */
+export async function publishBlikDraftPersisted(
+  ownerId: string, draftId: string, transport: BlikPublishTransport,
+): Promise<PublishOutcome> {
+  const operationId = await getOrCreateBlikOperation(ownerId, draftId);
+  return publishBlikDraft(ownerId, draftId, transport, operationId);
 }
