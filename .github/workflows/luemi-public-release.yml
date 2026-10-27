@@ -34,6 +34,12 @@ jobs:
         run: npm ci --ignore-scripts --include=dev
       - name: Verify release plan, env safety and deployment gate
         run: node --test scripts/public-release-activate.test.mjs
+      - name: Provision or validate separate least-privilege Postgres logins
+        env:
+          BETA_SUPABASE_OWNER_URL: ${{ secrets.BETA_SUPABASE_OWNER_URL }}
+          BETA_RENDER_API_KEY: ${{ secrets.BETA_RENDER_API_KEY }}
+          LUEMI_BOOTSTRAP_MODE: open
+        run: node scripts/public-provision.mjs
       - name: Deploy public LUEMI (no demo, no manual media approval)
         env:
           BETA_SUPABASE_OWNER_URL: ${{ secrets.BETA_SUPABASE_OWNER_URL }}
