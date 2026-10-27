@@ -809,7 +809,7 @@ export function App() {
         {storageState==="saved"&&<p className="footer-hint" role="status">Черновик сохранён на устройстве</p>}
         {step===8?<div className="registration-static-actions">
           <button type="button" className="registration-static-edit" onClick={()=>changeStep(7)}>Редактировать</button>
-          <button type="button" className="registration-static-confirm" disabled={publishBusy}
+          <button type="button" className="registration-static-confirm"
             onClick={realFeedPilot.enabled?()=>{void confirmRealRegistration();}:beginDemo}
             disabled={publishBusy||(realOnly&&!realFeedPilot.enabled)}>
             {publishBusy?"Сохраняем…":realOnly&&!realFeedPilot.enabled?"Сервис недоступен":"Всё верно"}</button>
