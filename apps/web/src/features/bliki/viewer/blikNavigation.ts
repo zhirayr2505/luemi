@@ -5,6 +5,8 @@ export type BlikStory = {
   mediaUrl: string;
   mediaKind: 'image' | 'video';
   durationMs?: number;
+  /** Unix milliseconds, used to hide expired media even if a cached feed survives. */
+  publishedAt?: number;
   caption?: string;
 };
 export type BlikAuthor = { id: string; name: string; stories: BlikStory[] };
