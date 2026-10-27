@@ -119,7 +119,7 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
   void requestDeviceCoordinates({native,browser:navigator.geolocation},signal).then(async coords=>{
    if(!gate.current.isCurrent(token))return;
    clearGpsDeadline();setActivity("resolving");
-   const deadline=window.setTimeout(()=>fail("Сервис определения города не ответил. Выбери город вручную."),6500);
+   const deadline=window.setTimeout(()=>fail("Автоматическое определение города сейчас недоступно. Выбери город вручную."),6500);
    try{
     // Coordinates are used only for the one requested reverse lookup; LUEMI
     // does not put exact GPS coordinates into the registration draft.
