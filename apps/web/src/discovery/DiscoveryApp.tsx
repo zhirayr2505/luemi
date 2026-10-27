@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
+import {lazy,Suspense,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {selectionHaptic} from "../ui/haptic";
 import type {CSSProperties} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
@@ -27,6 +27,7 @@ import {QaProfiler} from "./qa-profiler";
 import {useModalLayer} from "../ui/modal-layer";
 import "./discovery.css";
 import "./feed-v2.css";
+const BlikiDiscoverySlot=lazy(()=>import("../features/bliki/BlikiDiscoverySlot").then(m=>({default:m.BlikiDiscoverySlot})));
 
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
@@ -48,9 +49,9 @@ function EmptyFeed({hasProfiles,canUndo,onUndo,onRestart}:{hasProfiles:boolean;c
    <button type="button" className="discovery-glass-button" onClick={onRestart}>Начать заново</button>
  </div>;
 }
-interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:string}>;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void}
+interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:string}>;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void;blikiOwnerId?:string|null}
 
-export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Props){
+export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack,blikiOwnerId}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
  const [profilePrepared,setProfilePrepared]=useState(false);
  const visitorBackRef=useRef<(()=>boolean)|null>(null);
@@ -499,6 +500,9 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
          <span className="discovery-tab-underline" ref={underline} aria-hidden="true"
            style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
        </div>
+       {blikiOwnerId && discoveryTab==="feed" && <Suspense fallback={null}>
+         <BlikiDiscoverySlot ownerId={blikiOwnerId}/>
+       </Suspense>}
        <div className="discovery-pages" ref={pages} onPointerDown={down}
          onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}
          onLostPointerCapture={cancelSwipe}
