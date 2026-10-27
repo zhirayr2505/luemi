@@ -5,7 +5,7 @@ import {Flag} from "../ui/Flag";
 import "./real-live-feed.css";
 
 /** Beta-only real profiles. Never inserted into approved DEMO motion deck. */
-export function RealLiveFeed({onClose,onMatched}:{onClose:()=>void;onMatched?:()=>void}){
+export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:()=>void}){
  const [profiles,setProfiles]=useState<RealPublishedProfile[]>([]);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState("");
@@ -58,8 +58,8 @@ export function RealLiveFeed({onClose,onMatched}:{onClose:()=>void;onMatched?:()
  };
  return <section className="luemi-real-feed" aria-label="Лента проверенных пользователей">
    <header className="luemi-real-feed-head">
-     <div><strong>Лента</strong><p>Только опубликованные анкеты · тестовый режим</p></div>
-     <button type="button" onClick={onClose} aria-label="Закрыть настоящую ленту">Закрыть</button>
+     <div><strong>Знакомства</strong><p>Только настоящие опубликованные анкеты</p></div>
+     {onClose&&<button type="button" onClick={onClose} aria-label="Закрыть ленту">Закрыть</button>}
    </header>
    {loading&&<p role="status">Загрузка анкет…</p>}
    {error&&<p role="alert">{error}</p>}
