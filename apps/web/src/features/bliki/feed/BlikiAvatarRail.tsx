@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { buildBlikiFeed, type BlikiFeedCandidate } from './blikiFeed';
 
 type Props = {
@@ -13,14 +13,14 @@ type Props = {
 export function BlikiAvatarRail({ candidates, onOpenAuthor, onCreate, initiallyExpanded = false }: Props) {
   const [expanded, setExpanded] = useState(initiallyExpanded);
   const feed = useMemo(() => buildBlikiFeed(candidates, { now: Date.now() }), [candidates]);
-  const start = { y: 0, x: 0 };
+  const start = useRef({ y: 0, x: 0 });
   if (!feed.entries.length) return null;
   return <section aria-label="Блики" onTouchStart={event => {
-    start.y = event.touches[0]?.clientY ?? 0;
-    start.x = event.touches[0]?.clientX ?? 0;
+    start.current.y = event.touches[0]?.clientY ?? 0;
+    start.current.x = event.touches[0]?.clientX ?? 0;
   }} onTouchEnd={event => {
-    const dy = (event.changedTouches[0]?.clientY ?? 0) - start.y;
-    const dx = (event.changedTouches[0]?.clientX ?? 0) - start.x;
+    const dy = (event.changedTouches[0]?.clientY ?? 0) - start.current.y;
+    const dx = (event.changedTouches[0]?.clientX ?? 0) - start.current.x;
     if (Math.abs(dy) > 45 && Math.abs(dy) > Math.abs(dx) * 1.5) setExpanded(dy > 0);
   }} style={{ position: 'relative' }}>
     {!expanded ? <button type="button" aria-label="Раскрыть Блики" onClick={() => setExpanded(true)}
