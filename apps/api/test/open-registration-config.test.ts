@@ -59,7 +59,7 @@ test("open registration cannot publish without private media or human moderation
  ]){
   assert.throws(()=>readConfig({
    ...base,REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1",...patch
-  }),/Publication requires/);
+  }),/REG01D requires/);
  }
 });
 
@@ -69,7 +69,7 @@ test("legacy invite-only mode is unchanged when open registration is disabled",(
  });
  assert.equal(cfg.rem05b?.inviteOnly,true);
  assert.equal(cfg.realPublication?.enabled,true);
- assert.throws(()=>readConfig({...base,REM06_OPEN_SIGNUPS_ENABLED:"0"}),/Publication requires/);
+ assert.throws(()=>readConfig({...base,REM06_OPEN_SIGNUPS_ENABLED:"0"}),/REG01D requires/);
 });
 
 test("open registration can opt into matches and chats only with isolated DB roles and explicit policies",()=>{
