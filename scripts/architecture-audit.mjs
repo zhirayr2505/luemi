@@ -53,6 +53,11 @@ const qaRoots=paths.filter(p=>/\/(?:profile-qa|rem-\d+[a-z]?(?:-[\w-]+)?-qa)\.ts
 // Track the entry as a QA root so all its transitive modules stay audited.
 const v3PreviewEntry="apps/web/src/discovery/profile-v3/prototype/preview-entry.tsx";
 if(all.has(v3PreviewEntry))qaRoots.push(v3PreviewEntry);
+// Chats has an explicitly development-only Vite entry for browser and device
+// acceptance. It is not reachable from the production application by design,
+// but its whole dependency graph must remain subject to the same audit.
+const chatsDemoEntry="apps/web/src/chats/demo-entry.tsx";
+if(all.has(chatsDemoEntry))qaRoots.push(chatsDemoEntry);
 const intentional={
  "apps/api/src/rem05e-telegram-rotation.ts":"standalone operator CLI; not a boot-time server import",
  "apps/api/src/real-erasure-worker.ts":"security-sensitive manually invoked worker, intentionally not reachable from HTTP startup",
