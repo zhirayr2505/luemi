@@ -57,7 +57,7 @@ export function createBlikiHttpTransport(csrfToken: string): BlikPublishTranspor
           blob.size < 1 || blob.size > 100 * 1024 * 1024) throw new Error('Invalid Bliki media');
       const response = await fetch(sameOriginPath(url), {
         method: 'PUT', credentials: 'same-origin', cache: 'no-store',
-        headers: { 'Content-Type': mimeType, 'X-Luemi-CSRF': csrfToken },
+        headers: { 'Content-Type': 'application/octet-stream', 'X-Luemi-CSRF': csrfToken },
         body: blob,
       });
       if (!response.ok) throw new Error('Bliki upload failed: ' + response.status);
