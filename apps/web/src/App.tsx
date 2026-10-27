@@ -12,6 +12,7 @@ import {installViewportController} from "./viewport/viewport-controller";
 // Load the heavy Discovery/profile route only after the entry shell can paint.
 const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({default:m.DiscoveryApp})));
 const RealLiveFeed = lazy(() => import("./registration/RealLiveFeed").then(m=>({default:m.RealLiveFeed})));
+const RealChats = lazy(() => import("./chats/RealChats").then(m=>({default:m.RealChats})));
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
@@ -94,6 +95,7 @@ export function App() {
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [demoOpen,setDemoOpen] = useState(false);
   const [realHome,setRealHome] = useState(false);
+  const [realHomeTab,setRealHomeTab] = useState<"feed"|"chats">("feed");
   const [publishedEditor,setPublishedEditor]=useState<{name:string;about:string;goal:string}|null>(null);
   const submitting=useRef(false);
   const [scope] = useState(()=>localScope());
@@ -688,7 +690,11 @@ export function App() {
       <div className="onboard-brand-row"><img src={logoSrc} alt="LUEMI" className="onboard-logo"/>{themeButton}</div>
       <h1>Твоя анкета опубликована</h1>
       {publishStatus&&<p role="status">Статус: {publishStatus.state==="published"?"опубликована":"скрыта"}</p>}
-      <p role="status">В ленте только проверенные анкеты. Симпатии и чаты пока недоступны.</p>
+      <p role="status">{import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?"Переписки доступны только после подтверждённого взаимного мэтча.":"В ленте только проверенные анкеты. Симпатии и чаты пока недоступны."}</p>
+      {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&<nav className="registration-static-actions" aria-label="Разделы LUEMI">
+        <button type="button" className="registration-static-edit" aria-current={realHomeTab==="feed"?"page":undefined} onClick={()=>setRealHomeTab("feed")}>Лента</button>
+        <button type="button" className="registration-static-edit" aria-current={realHomeTab==="chats"?"page":undefined} onClick={()=>setRealHomeTab("chats")}>Чаты</button>
+      </nav>}
       <div className="registration-static-actions">
         <button type="button" className="registration-static-edit" disabled={publishBusy} onClick={()=>{void openPublishedEditor();}}>Редактировать анкету</button>
         <button type="button" className="registration-static-edit" disabled={publishBusy} onClick={()=>{void hideProfile();}}>Скрыть анкету</button>
@@ -708,7 +714,9 @@ export function App() {
       <button type="button" disabled={publishBusy} onClick={()=>{void withdrawPersonalConsent();}}>Отозвать согласие и скрыть анкету</button>
       <button type="button" disabled={publishBusy} onClick={()=>{void eraseMyAccount();}}>Запросить удаление аккаунта и фото</button>
       {publishFeedback&&<p role="status">{publishFeedback}</p>}
-      <Suspense fallback={<p>Открываем ленту…</p>}><RealLiveFeed onClose={()=>setRealHome(false)}/></Suspense>
+      <Suspense fallback={<p>Загрузка…</p>}>
+        {realHomeTab==="chats"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?<RealChats/>:<RealLiveFeed onClose={()=>setRealHome(false)}/>}
+      </Suspense>
     </section>
   </main>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
