@@ -1,4 +1,6 @@
 import type { FastifyServerOptions } from "fastify";
+import { createBlikiSupabaseStore } from "./bliki/bliki-supabase-store.js";
+import type { BlikiPublicationApiOptions } from "./bliki/bliki-publication-api.js";
 import type { BlikiApiOptions } from "./bliki/bliki-api.js";
 import type { Rem05bOptions } from "./rem05b-session.js";
 import type { GeoRuntime } from "./geo-routes.js";
@@ -28,6 +30,7 @@ export interface ApiConfig {
   realErasure?: ErasureRequestOptions;
   safetyAppeal?: SafetyAppealOptions;
   bliki?: BlikiApiOptions;
+  blikiPublication?: BlikiPublicationApiOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -197,8 +200,20 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     enabled: true, databaseUrl: env.BLIKI_V1_READ_DATABASE_URL!,
     namespace: env.REM05B_BOT_NAMESPACE!
   } : undefined;
+  const blikiPublicationEnabled = env.BLIKI_V1_PUBLICATION_ENABLED === "1";
+  if (blikiPublicationEnabled && (!blikiEnabled || !env.BLIKI_V1_WRITE_DATABASE_URL ||
+    !env.BLIKI_V1_STORAGE_SECRET || env.BLIKI_V1_STORAGE_PROJECT_REF !== "czzyoxrwtnvbicypwrdd" ||
+    env.BLIKI_V1_WRITE_DATABASE_URL === env.BLIKI_V1_READ_DATABASE_URL))
+    throw new Error("BLIKI publication requires isolated database role and private storage");
+  const blikiPublication: BlikiPublicationApiOptions | undefined = blikiPublicationEnabled ? {
+    enabled: true, databaseUrl: env.BLIKI_V1_WRITE_DATABASE_URL!,
+    namespace: env.REM05B_BOT_NAMESPACE!,
+    store: createBlikiSupabaseStore({ projectRef: env.BLIKI_V1_STORAGE_PROJECT_REF!,
+      secret: env.BLIKI_V1_STORAGE_SECRET!, namespace: env.REM05B_BOT_NAMESPACE!,
+      bucket: "luemi-bliki-private" })
+  } : undefined;
   return {
-    bliki,rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,
+    bliki,blikiPublication,rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,
     rem05c:{geo,embedding},
     port,
     origin,
