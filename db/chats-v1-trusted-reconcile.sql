@@ -10,9 +10,9 @@ FROM public.luemi_matches m
 JOIN public.luemi_users u1 ON u1.id=m.user_low AND u1.status='active'
 JOIN public.luemi_users u2 ON u2.id=m.user_high AND u2.status='active'
 JOIN luemi_private.actors a1 ON a1.telegram_id=u1.telegram_user_id::text
- AND a1.environment='luemi' AND a1.status='active'
+ AND a1.environment='luemi'
 JOIN luemi_private.actors a2 ON a2.telegram_id=u2.telegram_user_id::text
- AND a2.environment='luemi' AND a2.status='active'
+ AND a2.environment='luemi'
 WHERE m.status='active' AND m.user_low<>m.user_high AND a1.id<>a2.id
  AND NOT EXISTS (
  SELECT 1 FROM public.luemi_blocks b
