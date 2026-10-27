@@ -14,6 +14,7 @@ import { registerRealRegistrationDrafts } from "./real-registration-drafts.js";
 import {registerPublishedProfiles} from "./real-publication.js";
 import {registerAccountErasure} from "./real-erasure.js";
 import {registerChats} from "./chats-api.js";
+import {registerMatches} from "./matches-api.js";
 import {registerSafetyAppeals} from "./safety-appeal-api.js";
 
 function equalSecret(a: string, b: string): boolean {
@@ -66,5 +67,6 @@ export function buildApp(config: ApiConfig) {
   registerAccountErasure(app,guards,config.realErasure);
   registerSafetyAppeals(app,config.safetyAppeal);
   registerChats(app,guards,config.chats);
+  registerMatches(app,guards,config.matches);
   return app;
 }
