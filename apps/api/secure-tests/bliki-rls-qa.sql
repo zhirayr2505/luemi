@@ -183,3 +183,24 @@ DO $$ BEGIN
   RAISE EXCEPTION 'retention opened public database privileges';
  END IF;
 END $$;
+
+-- New private registration notification table is owner-scoped and never
+-- exposed through the public Supabase Data API.
+BEGIN;
+SET LOCAL ROLE luemi_request;
+SELECT set_config('luemi.actor_id','11111111-1111-4111-8111-111111111111',true);
+SELECT set_config('luemi.environment','bliki_ci',true);
+INSERT INTO luemi_private.profile_review_requests(owner_id,environment,revision,photo_count)
+VALUES('11111111-1111-4111-8111-111111111111','bliki_ci',1,3);
+DO $$ BEGIN
+ IF (SELECT count(*) FROM luemi_private.profile_review_requests) <> 1
+ THEN RAISE EXCEPTION 'owner review receipt not visible'; END IF;
+END $$;
+ROLLBACK;
+DO $$ BEGIN
+ IF has_table_privilege('anon','luemi_private.profile_review_requests','SELECT')
+ OR has_table_privilege('authenticated','luemi_private.profile_review_requests','INSERT')
+ OR NOT (SELECT relforcerowsecurity FROM pg_class
+  WHERE oid='luemi_private.profile_review_requests'::regclass)
+ THEN RAISE EXCEPTION 'registration notification table is not private'; END IF;
+END $$;
