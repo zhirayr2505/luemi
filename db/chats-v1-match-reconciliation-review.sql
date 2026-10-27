@@ -48,6 +48,8 @@ SELECT conversation_id,low_actor_id,environment FROM verified
 UNION ALL
 SELECT conversation_id,high_actor_id,environment FROM verified
 ON CONFLICT(conversation_id,actor_id) DO NOTHING;
+-- Revoke membership for conversations whose match is no longer active, whose
+-- participants are blocked, or whose accounts are no longer active.
 -- A production reconciler must revoke access when matches, accounts or
 -- blocks change; a one-time backfill is insufficient for secure chat access.
 -- A scheduled trusted reconciliation must also revoke memberships immediately
