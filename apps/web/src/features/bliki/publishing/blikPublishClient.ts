@@ -39,7 +39,12 @@ export function publishBlikDraft(
     const { draft, media } = found;
     const prior = await transport.lookup(operationId);
     if (prior.state === 'published') return prior;
-    if (prior.state === 'processing') return { state: 'processing', operationId };
+    // An interrupted upload may leave a server session in processing.
+    // Never create a second upload; ask the server to finish the same operation.
+    if (prior.state === 'processing') {
+      const resumed = await transport.confirm(operationId, draft.editor);
+      return resumed.state === 'published' ? resumed : { state: 'processing', operationId };
+    }
     const session = await transport.createSession({
       draftId, mimeType: draft.mimeType, size: media.size, mediaKind: draft.mediaKind, operationId,
     });
