@@ -51,7 +51,8 @@
 }
 .feed-v2-photo .photo-progress button.current::after{width:17px;background:rgba(255,255,255,.98)}
 .feed-v2-photo>.discovery-demo-label{top:45px}
-.feed-v2-photo>.discovery-save-control{top:12px;right:12px}
+.feed-v2-photo>.discovery-save-control{top:12px;right:12px;
+ backdrop-filter:none;-webkit-backdrop-filter:none}
 .feed-v2-information{
  position:absolute;inset:0;z-index:6;pointer-events:none
 }
