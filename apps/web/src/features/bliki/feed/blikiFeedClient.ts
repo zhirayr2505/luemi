@@ -42,8 +42,8 @@ export async function fetchBlikiFeed(signal?: AbortSignal): Promise<BlikiFeedRes
           typeof item.mediaUrl !== 'string' || !item.mediaUrl.startsWith('/') ||
           item.mediaUrl.startsWith('//') || item.mediaUrl.includes('\\') ||
           /[?#]/.test(item.mediaUrl) || !item.mediaUrl.startsWith('/api/v1/bliki/media/')) return false;
-      if ('publishedAt' in item && (!Number.isFinite(item.publishedAt) ||
-          typeof item.publishedAt !== 'number')) return false;
+      if (typeof item.publishedAt !== 'number' || !Number.isFinite(item.publishedAt)) return false;
+      if (item.authorId !== a.id) return false;
       return item.mediaKind === 'image' || item.mediaKind === 'video';
     });
   })) throw new Error('Invalid authorized Bliki author payload');
