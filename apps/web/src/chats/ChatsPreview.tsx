@@ -1,5 +1,5 @@
 import {useEffect,useLayoutEffect,useRef,useState} from "react";
-import type {CSSProperties,PointerEvent as ReactPointerEvent} from "react";
+import type {PointerEvent as ReactPointerEvent} from "react";
 import {ArrowLeft,Archive,BellOff,CheckCheck,Copy,Heart,ImagePlus,MoreVertical,Pin,Reply,Search,Send,ShieldBan,Trash2,X} from "lucide-react";
 import "./chats.css";
 
@@ -35,7 +35,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  const [newBelow,setNewBelow]=useState(0);
  const [lightbox,setLightbox]=useState<string|null>(null);
  const [showDemoControls,setShowDemoControls]=useState(false);
- const [keyboardInset,setKeyboardInset]=useState(0);
+
  const list=useRef<HTMLDivElement>(null);
  const file=useRef<HTMLInputElement>(null);
  const touch=useRef<{x:number;y:number;id:string;kind:"message"|"screen"|"chat";moved:boolean}|null>(null);
@@ -56,14 +56,6 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  const scrollBottom=()=>{requestAnimationFrame(()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight;setNewBelow(0);});};
  useEffect(()=>{if(active)scrollBottom();},[active]);
  useEffect(()=>()=>{urls.current.forEach(u=>URL.revokeObjectURL(u));if(hold.current)clearTimeout(hold.current);},[]);
- useEffect(()=>{
-  if(!active)return;
-  const viewport=window.visualViewport;
-  if(!viewport)return;
-  const resize=()=>{const inset=Math.max(0,window.innerHeight-viewport.height-viewport.offsetTop);setKeyboardInset(inset>100?inset:0);};
-  viewport.addEventListener("resize",resize);viewport.addEventListener("scroll",resize);resize();
-  return()=>{viewport.removeEventListener("resize",resize);viewport.removeEventListener("scroll",resize);setKeyboardInset(0);};
- },[active]);
  useEffect(()=>{
   if(!active)return;
   const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape"){if(lightbox)setLightbox(null);else if(menu)setMenu(null);else if(reply||editing){setReply(null);setEditing(null);}else setActive(null);}};
@@ -148,7 +140,7 @@ export function ChatsPreview({onOpenProfile}:{onOpenProfile?:(id:string)=>void})
  };
  const open=(id:string)=>{nearBottom.current=true;setNewBelow(0);setActive(id);setMenu(null);setReply(null);setEditing(null);setDraft("");setPhoto(null);setChats(a=>a.map(c=>c.id===id?{...c,unread:0}:c));};
  const visible=chats.filter(c=>!!c.archived===archiveView&&c.name.toLocaleLowerCase("ru").includes(search.toLocaleLowerCase("ru"))).sort((a,b)=>Number(!!b.pinned)-Number(!!a.pinned));
- return <div className="luemi-chats" data-chat-preview="true" style={{"--lc-keyboard-inset":keyboardInset+"px"} as CSSProperties}>
+ return <div className="luemi-chats" data-chat-preview="true">
   {!active?<><header className="lc-heading"><div><small>LUEMI · ДЕМО ИНТЕРФЕЙСА</small><h2>{archiveView?"Архив":"Чаты"}</h2></div><button type="button" aria-label="Архив" onClick={()=>setArchiveView(v=>!v)}>{archiveView?<ArrowLeft/>:<Archive/>}</button></header>
    <label className="lc-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Поиск переписок" aria-label="Поиск переписок"/></label>
    <div className="lc-conversations">{visible.length?visible.map(c=><div className="lc-conversation" key={c.id} onContextMenu={e=>{e.preventDefault();setMenu({kind:"chat",id:c.id});}} onPointerDown={e=>pointerDown(e,c.id,"chat")} onPointerMove={pointerMove} onPointerUp={()=>{if(hold.current)clearTimeout(hold.current);touch.current=null;}} onPointerCancel={()=>{if(hold.current)clearTimeout(hold.current);}}>
