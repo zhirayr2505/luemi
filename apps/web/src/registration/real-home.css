@@ -14,7 +14,7 @@
  padding:7px 10px max(10px,env(safe-area-inset-bottom));background:#fffbff;
  border-top:1px solid rgba(136,101,149,.14)}
 .luemi-real-home-nav button{flex:1;min-width:0;min-height:44px;border:0;border-radius:17px;
- background:transparent;color:#8c7796;font:600 13px/1.2 inherit;cursor:pointer;
+ background:transparent;color:#8c7796;font-family:inherit;font-size:13px;font-weight:600;line-height:1.2;cursor:pointer;
  -webkit-tap-highlight-color:transparent;transition:background-color .18s,color .18s}
 .luemi-real-home-nav button[aria-current="page"]{color:#764f94;background:#eee0f5}
 .luemi-real-account{padding:22px 14px 32px;display:flex;flex-direction:column;gap:15px}
