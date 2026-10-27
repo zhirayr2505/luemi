@@ -134,7 +134,7 @@ export function registerBlikiPublicationApi(
           expiresAt: Date.now() + 60000 };
         if (row.media_kind === 'video') {
           try { inspectBlikiMp4(request.body); }
-          catch { return reply.code(422).send({ error: 'invalid_video' }); }
+          catch { return { error: 'invalid_video' }; }
         }
         await storeBlikiUpload(cfg.store, ticket, request.body);
         await db.query(`UPDATE luemi_bliki_private.stories SET status='processing'
