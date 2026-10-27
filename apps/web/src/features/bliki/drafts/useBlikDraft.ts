@@ -5,12 +5,12 @@ import { loadBlikDraft, saveNewBlikDraft, updateBlikDraftEditor } from './draftR
 const MAX_IMAGE = 25 * 1024 * 1024;
 const MAX_VIDEO = 100 * 1024 * 1024;
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const VIDEO_TYPES = new Set(['video/mp4', 'video/webm']);
+const VIDEO_TYPES = new Set(['video/mp4']);
 
 export function validateBlikMedia(file: File): 'image' | 'video' {
   const image = IMAGE_TYPES.has(file.type);
   const video = VIDEO_TYPES.has(file.type);
-  if (!image && !video) throw new Error('Выбери JPG, PNG, WebP, MP4 или WebM');
+  if (!image && !video) throw new Error('Выбери JPG, PNG, WebP или MP4');
   if (!file.size || file.size > (image ? MAX_IMAGE : MAX_VIDEO)) {
     throw new Error('Файл слишком большой или пустой');
   }
