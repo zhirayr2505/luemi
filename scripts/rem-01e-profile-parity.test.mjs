@@ -68,12 +68,13 @@ assert.equal(m.canMakeMain(m.projectProfile(server,"preview"),"pub-1"),false);
 assert.equal(m.canMakeMain(self,"local-2"),false);
 console.log("REM01E_MODEL_PASS server published/hidden/rejected policy unaffected; no local main/reports");
 const preview=read("apps/web/src/registration/Preview.tsx");
-assert.ok(preview.includes('<ProfileMaster data={profile} mode="local-self-preview"'));
-assert.ok(!preview.includes("PhotoCarousel"));
-assert.ok(preview.includes("editStep(7)")&&preview.includes("openDemo")&&
- preview.includes("disabled-submit"),"step-8 controls stay accessible");
+assert.ok(preview.includes("readyRegistrationPhotos(photos)"));
+assert.ok(preview.includes("draftAge(data)"));
+assert.ok(preview.includes("prepared.slice(1)"));
+assert.ok(!preview.includes("ProfileMaster")&&!preview.includes("PhotoCarousel"));
 const app=read("apps/web/src/App.tsx");
 assert.ok(app.includes("readyRegistrationPhotos(photos)"));
+assert.ok(app.includes("Редактировать")&&app.includes("Всё верно"),"step-8 controls stay accessible");
 const master=read("apps/web/src/discovery/ProfileMorphA2.tsx");
 assert.ok(master.includes('mode={data.source==="local-draft"?"local-self-preview":"preview"}'));
 assert.ok(!preview.includes("GlobalHeader"),"registration never creates another header");

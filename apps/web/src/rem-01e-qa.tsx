@@ -1,4 +1,4 @@
-/** Isolated, actual ProfileMaster and RegistrationPreview DOM parity harness. No server side effects. */
+/** Isolated registration preview and ProfileMaster fixtures. No server side effects. */
 import React from "react";
 import {createRoot} from "react-dom/client";
 import {RegistrationPreview} from "./registration/Preview";
@@ -27,7 +27,7 @@ const originals:PhotoItem[]=kind==="none"?[]:kind==="one"?[make(0)]:
  Array.from({length:6},(_,i)=>make(i));
 const draft={...newDraft(),name:"Лея",day:"29",month:"02",year:"2000",gender:"woman" as const,
  city:"Ереван",country:"Армения",countryCode:"AM",placeId:"city:123",goal:kind==="undecided"?"undecided" as const:"serious" as const,
- about:kind==="empty"?"":"Музыка и путешествия ✨",interests:kind==="empty"?[]:["travel","music"],
+ about:kind==="empty"?"":"Музыка и путешествия ✨",interests:kind==="empty"?[]:["путешествия","музыка"],
  languages:kind==="empty"?[]:["ru","hy"],trialConsent:true};
 const local=fromLocalDraft(draft,readyRegistrationPhotos(originals));
 const server:ProfileMasterData={...local,id:"server-01",source:"server",verified:true,premium:true,
@@ -41,15 +41,15 @@ const server:ProfileMasterData={...local,id:"server-01",source:"server",verified
 const action=(name:string)=>document.getElementById("events")!.textContent=name;
 createRoot(document.getElementById("root")!).render(<div className="luemi-shell" data-theme={theme}>
  <output id="events" data-testid="events" style={{position:"absolute",top:0,right:0,zIndex:300,pointerEvents:"none"}}/>
- {mode==="step8"?<section className="onboarding-screen">
+ {mode==="step8"?<section className="onboarding-screen registration-static-screen">
   <div className="onboard-brand"><div className="onboard-wordmark">LUEMI</div></div>
   <header className="onboard-head"><h1>Посмотри на себя</h1></header>
   <div className="onboard-body" style={{overflowY:"auto"}}>
-   <RegistrationPreview data={draft} photos={originals} editStep={step=>action("edit-"+step)} openDemo={()=>action("demo")}/>
+   <RegistrationPreview data={draft} photos={originals}/>
   </div>
-  <div className="onboard-footer"><div className="footer-controls">
-   <button type="button" className="nav-circle">‹</button><span>Регистрация · 8/8</span>
-   <button type="button" className="nav-circle forward">›</button>
+  <div className="onboard-footer"><div className="registration-static-actions">
+   <button type="button" className="registration-static-edit" onClick={()=>action("edit-7")}>Редактировать</button>
+   <button type="button" className="registration-static-confirm" onClick={()=>action("demo")}>Всё верно</button>
   </div></div>
  </section>:<div className="qa-master-host" style={{height:"100%",width:"100%"}}>
   <ProfileMaster data={mode==="server"||mode==="visitor"?server:local}

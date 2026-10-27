@@ -74,8 +74,9 @@ const v3=read("apps/web/src/discovery/ProfileMasterV3.tsx");
 const v3Surface=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.tsx");
 assert.ok(discovery.includes('from "./ProfileV3Gateway"')&&
  visitorRoute.includes('from "./ProfileV3Gateway"')&&
- previewSource.includes('from "../discovery/ProfileV3Gateway"'),
- "owner/visitor/registration must all use the SAME controlled profile gateway");
+ previewSource.includes("registration-static-profile")&&
+ !previewSource.includes("ProfileV3Gateway"),
+ "owner and visitor use controlled profile gateway; registration uses approved independent static preview");
 assert.ok(gateway.includes('return value!=="0"')&&
  !gateway.includes('window.location.hostname==="luemi-stage01.onrender.com"')&&
  gateway.includes('<ProfileV3 {...props}/>')&&gateway.includes('<ProfileA2 {...props}/>'),

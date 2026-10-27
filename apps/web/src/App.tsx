@@ -598,6 +598,7 @@ export function App() {
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
   </button>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
+    data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
@@ -615,7 +616,7 @@ export function App() {
           Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
         </button>
       </div>}
-    </section>:<section className="onboarding-screen">
+    </section>:<section className={"onboarding-screen"+(step===8?" registration-static-screen":"")}>
       <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
         <div className="onboard-brand-row">
           <div className="onboard-wordmark"><img src={logoSrc} alt="luemi" className="onboard-logo"/></div>
@@ -629,7 +630,7 @@ export function App() {
       </header>
       <div key={step} className="onboard-body" ref={contentRef}>
         <RegistrationStep data={draft} patch={patch} step={step} photos={photos}
-          addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} editStep={changeStep} resetDraft={resetDraft} openDemo={beginDemo}/>
+          addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} resetDraft={resetDraft}/>
         {step===8&&remoteDraftPilot.enabled&&<section className="registration-preview-review" aria-label="Приватное серверное сохранение">
           <strong>Приватное сохранение анкеты</strong>
           <p>На сервер отправятся только поля анкеты. Фотографии останутся на устройстве; анкета не будет опубликована.</p>
@@ -699,11 +700,14 @@ export function App() {
         {(storageState==="saving"||storageState==="dirty")&&
           <p className="footer-hint" role="status">Сохранение черновика…</p>}
         {storageState==="saved"&&<p className="footer-hint" role="status">Черновик сохранён на устройстве</p>}
-        <div className="footer-controls">
+        {step===8?<div className="registration-static-actions">
+          <button type="button" className="registration-static-edit" onClick={()=>changeStep(7)}>Редактировать</button>
+          <button type="button" className="registration-static-confirm" onClick={beginDemo}>Всё верно</button>
+        </div>:<div className="footer-controls">
           <GlassArrow onClick={back}/>
-          <span className="footer-hint">{step===8?"Публикация пока закрыта":"Технический предпросмотр"}</span>
-          <GlassArrow forward onClick={next} disabled={step===8}/>
-        </div>
+          <span className="footer-hint">Технический предпросмотр</span>
+          <GlassArrow forward onClick={next}/>
+        </div>}
       </div>
     </section>)}
   </main>;
