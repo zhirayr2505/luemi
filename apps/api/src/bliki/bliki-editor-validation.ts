@@ -8,7 +8,7 @@ export type ServerBlikiLayer = {
 };
 export type ServerBlikiEditor = {
   fit: 'cover' | 'contain'; scale: number; translateX: number; translateY: number;
-  muted: boolean; trimStartMs?: number; trimEndMs?: number;
+  muted: boolean; caption?: string; trimStartMs?: number; trimEndMs?: number;
   layers: ServerBlikiLayer[];
 };
 function plain(value: unknown): value is Record<string, unknown> {
@@ -26,12 +26,14 @@ function between(value: unknown, min: number, max: number): value is number {
 export function parseBlikiEditor(value: unknown): ServerBlikiEditor | null {
   if (!plain(value) || !fields(value,
       ['fit', 'scale', 'translateX', 'translateY', 'muted', 'layers'],
-      ['trimStartMs', 'trimEndMs']) ||
+      ['trimStartMs', 'trimEndMs', 'caption']) ||
       (value.fit !== 'cover' && value.fit !== 'contain') ||
       !between(value.scale, 1, 4) ||
       !between(value.translateX, -1000, 1000) ||
       !between(value.translateY, -1000, 1000) ||
       typeof value.muted !== 'boolean' ||
+      (value.caption !== undefined && (typeof value.caption !== 'string' ||
+        [...value.caption].length > 150)) ||
       !Array.isArray(value.layers) || value.layers.length > 20 ||
       (value.trimStartMs !== undefined && !between(value.trimStartMs, 0, 15000)) ||
       (value.trimEndMs !== undefined && !between(value.trimEndMs, 0, 15000)) ||
@@ -54,6 +56,7 @@ export function parseBlikiEditor(value: unknown): ServerBlikiEditor | null {
   }
   return { fit: value.fit, scale: value.scale, translateX: value.translateX,
     translateY: value.translateY, muted: value.muted, layers,
+    ...(value.caption === undefined ? {} : { caption: value.caption as string }),
     ...(value.trimStartMs === undefined ? {} : { trimStartMs: value.trimStartMs as number }),
     ...(value.trimEndMs === undefined ? {} : { trimEndMs: value.trimEndMs as number }) };
 }
