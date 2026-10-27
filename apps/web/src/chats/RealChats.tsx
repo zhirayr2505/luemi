@@ -18,6 +18,7 @@ export function RealChats(){
  const [error,setError]=useState("");
  const [sending,setSending]=useState(false);
  const [loading,setLoading]=useState(true);
+ const [selectedPeer,setSelectedPeer]=useState<ChatWireConversation|null>(null);
  const bottom=useRef<HTMLDivElement>(null);
  const lastRead=useRef<string|null>(null);
  const pending=useRef<{conversationId:string;body:string;clientId:string}|null>(null);
@@ -114,10 +115,10 @@ export function RealChats(){
  return <div className="luemi-chats" data-real-chats="true">
   {!active?<><header className="lc-heading"><div><small>LUEMI</small><h2>Чаты</h2></div></header>
    {loading?<p className="lc-empty">Загружаем переписки…</p>:conversations.length===0?<p className="lc-empty">Пока нет переписок. Они появятся после взаимного мэтча.</p>:
-   <div className="lc-conversations">{conversations.map(c=><button className="lc-chat-open" key={c.id} onClick={()=>{pending.current=null;lastRead.current=null;activeRef.current=c.id;setActive(c.id);setMessages([]);}}>
-    <span className="lc-avatar">💜</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>
+   <div className="lc-conversations">{conversations.map(c=><button className="lc-chat-open" key={c.id} onClick={()=>{pending.current=null;lastRead.current=null;activeRef.current=c.id;setActive(c.id);setSelectedPeer(c);setMessages([]);}}>
+    <span className="lc-avatar">💜</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>{c.unreadCount>0&&<span className="lc-unread" aria-label={`${c.unreadCount} непрочитанных`}>{c.unreadCount>99?"99+":c.unreadCount}</span>}
    </button>)}</div>}
-  </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;activeRef.current=null;setActive(null);}} aria-label="Назад">←</button><strong>Переписка</strong></header>
+  </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;activeRef.current=null;setActive(null);setSelectedPeer(null);}} aria-label="Назад">←</button><strong>{selectedPeer?.peerName||"Переписка"}</strong></header>
    <div className="lc-history" role="log" aria-label="Сообщения">{olderCursor&&<button type="button" disabled={loadingOlder} onClick={()=>void loadOlder()} className="lc-load-older">{loadingOlder?"Загружаем…":"Показать старые сообщения"}</button>}{messages.map(m=><div key={m.id} className={"lc-msg-line "+(m.senderId===actorId?"lc-own":"")}>
     <div className="lc-bubble">{m.deletedAt?<i>Сообщение удалено</i>:m.body}<small>{new Date(m.createdAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small>{m.senderId===actorId&&!m.deletedAt&&<span className="lc-msg-actions"><button type="button" disabled={editing===m.id} onClick={()=>void editMessage(m)} aria-label="Редактировать сообщение">Изменить</button><button type="button" disabled={editing===m.id} onClick={()=>void deleteMessage(m)} aria-label="Удалить сообщение">Удалить</button></span>}</div>
    </div>)}<div ref={bottom}/></div>
