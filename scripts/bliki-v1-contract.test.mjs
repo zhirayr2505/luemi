@@ -23,6 +23,6 @@ test('Bliki viewer navigation is isolated', () => {
   assert.match(code, /previousBlik/);
 });
 test('Bliki UI is not yet wired into live app', () => {
-  const code = read('../App.tsx');
+  const code = read('../../App.tsx');
   assert.doesNotMatch(code, /BlikDraftEditor|BlikViewer/);
 });
