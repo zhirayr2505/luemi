@@ -245,7 +245,7 @@ export function App() {
     if(!rootRef.current)return;
     const controller=installViewportController(rootRef.current,()=>window.Telegram?.WebApp);
     return ()=>controller.dispose();
-  },[]);
+  },[realHome,accountDeletionRequested]);
   // Restore text and photo manifest from the same validated revision.
   // Legacy import is read-only until a complete v2 write has committed.
   useEffect(()=>{
@@ -683,7 +683,7 @@ export function App() {
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
   </button>;
-  if(realHome&&auth==="authorized")return <main className="luemi-shell" data-theme={activeTheme}>
+  if(realHome&&auth==="authorized")return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
     <section className="onboarding-screen" style={{padding:"24px 14px",overflowY:"auto"}}>
       <div className="onboard-brand-row"><img src={logoSrc} alt="LUEMI" className="onboard-logo"/>{themeButton}</div>
       <h1>Твоя анкета опубликована</h1>
