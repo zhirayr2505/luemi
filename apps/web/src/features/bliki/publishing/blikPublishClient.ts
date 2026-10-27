@@ -16,7 +16,7 @@ export type BlikPublishTransport = {
   confirm: (operationId: string, editor: BlikDraft['editor']) =>
     Promise<{ state: 'published'; storyId: string; expiresAt: string } | { state: 'processing' }>;
   lookup: (operationId: string) =>
-    Promise<{ state: 'published'; storyId: string; expiresAt: string } | { state: 'processing' } | { state: 'missing' }>;
+    Promise<{ state: 'published'; storyId: string; expiresAt: string } | { state: 'processing' } | { state: 'uploading' } | { state: 'rejected' } | { state: 'missing' }>;
 };
 export type PublishOutcome =
   | { state: 'published'; storyId: string; expiresAt: string }
@@ -39,7 +39,9 @@ export function publishBlikDraft(
     const { draft, media } = found;
     const prior = await transport.lookup(operationId);
     if (prior.state === 'published') return prior;
-    // An interrupted upload may leave a server session in processing.
+    if (prior.state === 'rejected') throw new Error('Блик отклонён сервером. Проверь файл и создай новый черновик.');
+    // A successfully uploaded file is processing; do not send it again.
+    // 'uploading' means the previous network upload never committed and MUST retry.
     // Never create a second upload; ask the server to finish the same operation.
     if (prior.state === 'processing') {
       const resumed = await transport.confirm(operationId, draft.editor);
