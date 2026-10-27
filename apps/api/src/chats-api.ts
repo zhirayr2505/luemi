@@ -37,6 +37,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     AND NOT pg_has_role(current_user,'pg_write_all_data','member')
     AND NOT has_schema_privilege(current_user,'luemi_chats','CREATE')
     AND NOT has_table_privilege(current_user,'luemi_chats.members','INSERT')
+    AND NOT has_table_privilege(current_user,'luemi_chats.members','UPDATE')
     AND NOT has_column_privilege(current_user,'luemi_chats.members','actor_id','UPDATE')
     AND NOT has_column_privilege(current_user,'luemi_chats.members','conversation_id','UPDATE')
     AND NOT has_column_privilege(current_user,'luemi_chats.members','environment','UPDATE')
@@ -83,9 +84,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    (SELECT msg.body FROM luemi_chats.messages msg
     WHERE msg.conversation_id=m.conversation_id AND msg.deleted_at IS NULL
     ORDER BY msg.created_at DESC,msg.id DESC LIMIT 1) AS last_message,
-   (SELECT other.actor_id FROM luemi_chats.members other
-    WHERE other.conversation_id=m.conversation_id AND other.actor_id<>$1
-    LIMIT 1) AS peer_id
+   NULL::uuid AS peer_id
    FROM luemi_chats.members m WHERE m.actor_id=$1 AND m.environment=$2
    ORDER BY m.conversation_id LIMIT 100`,[actor,options.namespace]);
   return {conversations:rows.rows.map(r=>({id:r.id,peerId:r.peer_id??"",peerName:"",lastMessage:r.last_message,unreadCount:Number(r.unread_count)}))};
