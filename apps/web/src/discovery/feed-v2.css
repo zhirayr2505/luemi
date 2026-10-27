@@ -54,14 +54,14 @@
 .feed-v2-photo>.discovery-demo-label{top:45px}
 .feed-v2-photo>.discovery-save-control{top:12px;right:12px}
 .feed-v2-information{
- position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;
- justify-content:flex-end;pointer-events:none
+ position:absolute;inset:0;z-index:6;pointer-events:none
 }
 .feed-v2-details{
- flex:none;min-height:0;height:var(--feed-closed-height);
+ position:absolute;left:0;right:0;bottom:var(--feed-actions-height);
+ min-height:0;height:var(--feed-closed-height);
  max-height:calc(100% - var(--feed-actions-height));
  padding:0 17px 5px;color:#fff;display:flex;flex-direction:column;
- justify-content:flex-end;overflow:hidden;pointer-events:auto;touch-action:none;contain:layout paint
+ justify-content:flex-end;overflow:hidden;pointer-events:auto;touch-action:none;contain:layout
 }
 .feed-v2-expand{
  height:21px;min-height:21px;min-width:70px;margin:0 auto 4px;padding:0;
@@ -69,6 +69,9 @@
  border:0;background:transparent;color:rgba(255,255,255,.95);touch-action:none
 }
 .feed-v2-expand svg{filter:drop-shadow(0 1px 2px rgba(22,10,31,.5))}
+.feed-v2-expand .feed-v2-collapse-icon{display:none}
+.feed-v2-expand[aria-expanded=true] .feed-v2-collapse-icon{display:block}
+.feed-v2-expand[aria-expanded=true] .feed-v2-expand-icon{display:none}
 .feed-v2-scroll{
  min-height:0;max-height:calc(100% - 25px);overflow:hidden;
  display:flex;flex-direction:column;gap:5px;overscroll-behavior:contain;touch-action:pan-y;
@@ -97,7 +100,7 @@
 .feed-v2 .discovery-interests{flex-wrap:wrap;overflow:visible}
 .feed-v2 .discovery-interests>.chip{flex:none;max-width:100%}
 .feed-v2 .discovery-actions{
- position:relative;left:auto;right:auto;bottom:auto;z-index:7;flex:none;
+ position:absolute;left:0;right:0;bottom:0;z-index:7;
  height:var(--feed-actions-height);display:flex;justify-content:space-evenly;
  align-items:center;gap:5px;padding:3px 11px 9px;pointer-events:auto
 }

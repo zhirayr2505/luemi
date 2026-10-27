@@ -24,7 +24,7 @@ type SurfaceProps={
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
  gestureArbiter?:GestureArbiter;
 };
-type Session={id:number;kind:"handle"|"photo"|"tabs";scroll?:HTMLElement|null;scrollStart?:number;vertical?:boolean;at:number;x:number;y:number;
+type Session={id:number;kind:"handle"|"photo"|"tabs";at:number;x:number;y:number;
  lastX:number;lastY:number;lastAt:number;velocity:number;claimed:boolean;
  startIndex:number;startOffset:number;buttons?:Array<{x:number}>};
 export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress,
@@ -267,8 +267,6 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   gesture.current={id:e.pointerId,kind,at:e.timeStamp,x:e.clientX,y:e.clientY,
    lastX:e.clientX,lastY:e.clientY,lastAt:e.timeStamp,velocity:0,claimed:false,startIndex:offset,
    startOffset:offset*layout.current.width,
-   scroll:kind==="tabs"?((e.target as Element).closest<HTMLElement>(".v3-int-page")??pagesTrack.current?.querySelector<HTMLElement>('.v3-int-page[aria-hidden="false"]')??null):null,
-   scrollStart:kind==="tabs"?(((e.target as Element).closest<HTMLElement>(".v3-int-page")??pagesTrack.current?.querySelector<HTMLElement>('.v3-int-page[aria-hidden="false"]'))?.scrollTop??0):0,
    buttons:kind==="tabs"?Array.from(tabsRoot.current?.querySelectorAll<HTMLButtonElement>(".v3-int-tab")??[])
     .map(b=>({x:b.offsetLeft+(tabLabels.current?.offsetLeft??0)})):undefined};
  };
@@ -276,31 +274,9 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
   const decision=coordinator.current.move({id:e.pointerId,x:e.clientX,y:e.clientY,time:e.timeStamp});
   const needed:Owner=g.kind==="handle"?"SHEET":g.kind==="photo"?"PHOTO":"TABS";
-  if(g.kind==="tabs"&&decision.owner==="NATIVE_SCROLL"){
-   const scroll=g.scroll;
-   const dy=e.clientY-g.y;
-   if(!scroll)return;
-   const atTop=(g.scrollStart??0)<=1;
-   const toSheet=g.vertical||dy>0&&dy>=(g.scrollStart??0)-1||
-    atTop&&dy<0&&(engine.current?.getProgress()??0)>.02;
-   if(toSheet){
-    if(!g.vertical){
-     g.vertical=true;g.claimed=true;
-     // Hand off only the movement left after consuming the scroll distance.
-     const handoffY=g.y+(dy>0?(g.scrollStart??0):0);
-     scroll.scrollTop=0;
-     engine.current?.beginDrag(handoffY);
-     g.lastY=e.clientY;g.lastAt=e.timeStamp;g.velocity=0;
-     try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* implicit */}
-    }
-    const dt=e.timeStamp-g.lastAt;
-    if(dt>0&&dt<125)g.velocity=(e.clientY-g.lastY)/dt;
-    g.lastY=e.clientY;g.lastAt=e.timeStamp;
-    engine.current?.updateDrag(e.clientY);
-   }else {scroll.scrollTop=Math.max(0,(g.scrollStart??0)-dy);
-    g.lastY=e.clientY;g.lastAt=e.timeStamp;}
-   return;
-  }
+  // Native WebView scrolling owns vertical gestures from the page. The sheet
+  // remains draggable by its handle; no JS scrollTop writes interrupt inertia.
+  if(g.kind==="tabs"&&decision.owner==="NATIVE_SCROLL")return;
   if(decision.owner!==needed)return;
   // For horizontal gestures in native-scroll pages, prevent browser panning
   // only after ownership was established. Vertical scroll is untouched.
@@ -334,7 +310,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   gesture.current=null;const decision=coordinator.current.end(e.pointerId);
   const dx=e.clientX-g.x,dy=e.clientY-g.y,elapsed=Math.max(1,e.timeStamp-g.at);
   if(g.claimed){
-   if(g.kind==="handle"||g.vertical){
+   if(g.kind==="handle"){
     const releaseVelocity=e.timeStamp-g.lastAt>70?0:g.velocity;
     if(cancelled)engine.current?.cancelDrag();else engine.current?.endDrag(releaseVelocity);
    }
