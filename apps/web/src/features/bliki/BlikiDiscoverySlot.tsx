@@ -15,6 +15,17 @@ export function BlikiDiscoverySlot({ ownerId }: { ownerId: string }) {
   const [reload, setReload] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
   const [openAuthor, setOpenAuthor] = useState<string | null>(null);
+  const socialEnabled = import.meta.env.VITE_BLIKI_V1_INTERACTION_ENABLED === '1';
+  const sendAction = useCallback(async (id: string, endpoint: string, body: object) => {
+    const csrf = geoCsrf();
+    if (!csrf || !/^[0-9a-f-]{36}$/i.test(id)) throw new Error('Authenticated session required');
+    const response = await fetch('/api/v1/bliki/stories/' + encodeURIComponent(id) + '/' + endpoint, {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', 'X-Luemi-CSRF': csrf },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error('Bliki interaction unavailable');
+  }, []);
   const transport = useMemo(() => {
     const csrf = geoCsrf();
     return csrf ? createBlikiHttpTransport(csrf) : undefined;
@@ -61,6 +72,10 @@ export function BlikiDiscoverySlot({ ownerId }: { ownerId: string }) {
       onClose={() => setEditorOpen(false)}
       onPublished={() => { setEditorOpen(false); setReload(value => value + 1); }} />}
     {openIndex >= 0 && <BlikViewer key={openAuthor} authors={authors}
-      initial={{ author: openIndex, story: 0 }} onClose={closeViewer} />}
+      initial={{ author: openIndex, story: 0 }} onClose={closeViewer}
+      viewerId={ownerId}
+      onView={socialEnabled ? id => { void sendAction(id, 'view', {}).catch(() => undefined); } : undefined}
+      onReact={socialEnabled ? (id, reaction) => sendAction(id, 'reaction', { reaction }) : undefined}
+      onReport={socialEnabled ? (id, reason) => sendAction(id, 'report', { reason }) : undefined} />}
   </aside>;
 }
