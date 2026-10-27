@@ -23,7 +23,7 @@ let dbPromise: Promise<IDBDatabase> | undefined;
 function openDraftDb(): Promise<IDBDatabase> {
   if (typeof indexedDB === 'undefined') return Promise.reject(new Error('IndexedDB unavailable'));
   if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
+    dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(NAME, VERSION);
       req.onupgradeneeded = () => {
         const db = req.result;
@@ -42,7 +42,7 @@ function openDraftDb(): Promise<IDBDatabase> {
       req.onblocked = () => reject(new Error('IndexedDB upgrade blocked'));
     }).catch((error: unknown) => { dbPromise = undefined; throw error; });
   }
-  return dbPromise;
+  return dbPromise!;
 }
 export async function saveNewBlikDraft(draft: BlikDraft, media: BlikDraftMedia): Promise<void> {
   if (!draft.ownerId || draft.ownerId !== media.ownerId || draft.mediaId !== media.id) {
