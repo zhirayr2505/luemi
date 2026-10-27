@@ -25,3 +25,15 @@
 @media(prefers-reduced-motion:reduce){
  .luemi-real-home-nav button{transition:none}
 }
+
+.luemi-real-account-card{display:flex;flex-direction:column;gap:9px;padding:14px;border-radius:23px;
+ background:rgba(255,255,255,.9);border:1px solid rgba(151,104,172,.15)}
+.luemi-real-account-card h2{font-size:24px;font-weight:700;margin:3px 0 0}
+.luemi-real-account-photos{display:flex;gap:7px;overflow-x:auto;scroll-snap-type:x mandatory;
+ scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.luemi-real-account-photos::-webkit-scrollbar{display:none}
+.luemi-real-account-photos img{width:clamp(142px,48vw,220px);aspect-ratio:3/4;object-fit:cover;
+ flex:none;border-radius:17px;background:#eee5f1;scroll-snap-align:start}
+.luemi-real-account-interests{display:flex;flex-wrap:wrap;gap:6px}
+.luemi-real-account-interests span{padding:5px 10px;border-radius:100px;
+ background:#f0e3f5;color:#684d77;font-size:12px}
