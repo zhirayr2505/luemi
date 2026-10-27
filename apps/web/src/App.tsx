@@ -20,7 +20,7 @@ import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-ada
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
 import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
-import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
+import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,requestRegistrationReview} from "./registration/real-live-client";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 
 declare global {
@@ -563,7 +563,14 @@ export function App() {
         setPublishStatus(confirmed);setRealHome(true);
         setPublishFeedback("Анкета опубликована.");
       }else{
-        setPublishFeedback("Анкета сохранена. Фотографии ожидают проверки. Вернись позже и проверь статус — публикация ещё не выполнена.");
+        try {
+          const review=await requestRegistrationReview();
+          setPublishFeedback(review.notified
+            ?"Анкета и фотографии сохранены. Заявка отправлена модератору в Telegram. После проверки нажми «Проверить модерацию и публикацию»."
+            :"Анкета сохранена, но Telegram пока не принял уведомление. Нажми «Повторить уведомление» ниже.");
+        } catch {
+          setPublishFeedback("Анкета и фотографии сохранены приватно. Не удалось подтвердить отправку уведомления администратору. Повтори его отдельно.");
+        }
       }
     }catch(e){
       setPublishFeedback(e instanceof Error&&e.message==="revision_conflict"
@@ -763,6 +770,9 @@ export function App() {
             {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">политику обработки данных</a> и согласен(-на) сохранить анкету и отправить фотографии на проверку перед публикацией.
           </label>
           <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>Проверить модерацию и публикацию</button>
+          <button type="button" disabled={publishBusy} onClick={()=>{void requestRegistrationReview().then(r=>setPublishFeedback(r.notified?"Заявка доставлена в Telegram-бот модератора.":"Бот пока не принял уведомление. Повтори позже.")).catch(()=>setPublishFeedback("Отправить уведомление не удалось. Анкета остаётся сохранённой."));}}>
+            Повторить уведомление модератору
+          </button>
           {publishStatus&&<p role="status">Одобрено фото: {publishStatus.approved} · ожидают проверки: {publishStatus.pending}</p>}
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>}
