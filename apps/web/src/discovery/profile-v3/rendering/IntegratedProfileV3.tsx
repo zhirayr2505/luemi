@@ -124,8 +124,15 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    const logoBottom=header?.getBoundingClientRect().bottom;
    const next=createProfileLayout({width:rect.width,height:rect.height,
     chromeBottom:logoBottom?logoBottom-rect.top:undefined});
+   const widthChanged=Math.abs(layout.current.width-next.width)>.5;
    layout.current=next;
    node.style.setProperty("--v3-w",next.width+"px");
+   // The pager uses pixel translations: a width change must rebase the
+   // selected page and underline together, not stretch the previous offset.
+   if(widthChanged){
+    if(gesture.current?.kind==="tabs"){gesture.current=null;hostGestures.cancel();}
+    restoreTabTrack();
+   }
    node.style.setProperty("--v3-photo-height",next.expandedTop+"px");
    node.style.setProperty("--v3-hero-bleed",next.heroBleed+"px");
    node.style.setProperty("--v3-identity-compact-x",next.compactIdentity.x+"px");
