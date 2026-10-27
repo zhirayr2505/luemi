@@ -30,6 +30,11 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     (r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreaterole
     AND NOT r.rolcreatedb AND session_user=current_user
     AND current_setting('row_security')='on'
+    AND pg_has_role(current_user,'luemi_chats_writer','member')
+    AND NOT pg_has_role(current_user,'luemi_auth_issuer','member')
+    AND NOT pg_has_role(current_user,'luemi_request','member')
+    AND NOT pg_has_role(current_user,'luemi_profile_publisher','member')
+    AND NOT pg_has_role(current_user,'luemi_discovery_reader','member')
     AND NOT pg_has_role(current_user,'pg_read_all_data','member')
     AND NOT pg_has_role(current_user,'pg_write_all_data','member')
     AND NOT has_schema_privilege(current_user,'luemi_chats','CREATE')
