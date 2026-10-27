@@ -47,7 +47,7 @@
     "test:profile-morph-a2": "node scripts/profile-morph-a2.test.mjs",
     "test:chats": "node --import tsx --test apps/api/test/chat-domain.test.ts apps/api/test/chat-media.test.ts apps/api/test/chats-gate.test.ts && node scripts/chats-v1-contract.test.mjs",
     "test:chats:browser": "node scripts/chats-v1-browser-smoke.mjs",
-    "test:beta-bootstrap": "node --test scripts/closed-beta-bootstrap.test.mjs"
+    "test:beta-bootstrap": "node --check scripts/public-provision.mjs && node --check scripts/public-release-activate.mjs && node --test scripts/closed-beta-bootstrap.test.mjs scripts/public-release-activate.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
