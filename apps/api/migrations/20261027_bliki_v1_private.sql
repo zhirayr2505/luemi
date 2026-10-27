@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS luemi_bliki_private.stories (
   status text NOT NULL DEFAULT 'uploading' CHECK (status IN ('uploading','processing','published','rejected','deleted')),
   created_at timestamptz NOT NULL DEFAULT now(),
   published_at timestamptz,
-  expires_at timestamptz GENERATED ALWAYS AS (published_at + interval '24 hours') STORED,
+  -- Expiry is computed from published_at in queries (timestamptz + interval is not immutable).
   deleted_at timestamptz,
   CONSTRAINT bliki_publication_time CHECK (
     (status = 'published' AND published_at IS NOT NULL) OR status <> 'published'
