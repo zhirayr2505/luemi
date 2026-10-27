@@ -1,3 +1,4 @@
+import { publishBlikDraftPersisted, type BlikPublishTransport } from '../publishing/blikPublishClient';
 import { useEffect, useRef, useState } from 'react';
 import { listBlikDrafts, deleteBlikDraft } from '../drafts/draftRepository';
 import { useBlikDraft } from '../drafts/useBlikDraft';
@@ -10,9 +11,12 @@ type Props = {
   onClose: () => void;
   /** Optional integration callback; does not publish on its own. */
   onPreview?: (draftId: string) => void;
+  /** Only pass after the authenticated publication API is actually available. */
+  publishTransport?: BlikPublishTransport;
+  onPublished?: (storyId: string) => void;
 };
 
-export function BlikDraftEditor({ ownerId, onClose, onPreview }: Props) {
+export function BlikDraftEditor({ ownerId, onClose, onPreview, publishTransport, onPublished }: Props) {
   const state = useBlikDraft(ownerId);
   const picker = useRef<HTMLInputElement>(null);
   const [existing, setExisting] = useState<BlikDraft[]>([]);
@@ -50,6 +54,21 @@ export function BlikDraftEditor({ ownerId, onClose, onPreview }: Props) {
       if (state.draft) onPreview?.(state.draft.id);
     } catch { setMessage('Не удалось сохранить изменения'); }
     finally { setBusy(false); }
+  }
+  async function publish() {
+    if (!publishTransport || !state.draft || busy) return;
+    setBusy(true);
+    setMessage('Публикуем Блик…');
+    try {
+      await state.flush();
+      const result = await publishBlikDraftPersisted(ownerId, state.draft.id, publishTransport);
+      if (result.state === 'published') {
+        setMessage('Блик опубликован');
+        onPublished?.(result.storyId);
+      } else setMessage('Блик обрабатывается. Можно проверить публикацию позже.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Не удалось опубликовать Блик');
+    } finally { setBusy(false); }
   }
   const frame = state.mediaUrl && state.draft
     ? <BlikInteractiveCanvas editor={state.editor} mediaKind={state.draft.mediaKind}
@@ -127,9 +146,11 @@ export function BlikDraftEditor({ ownerId, onClose, onPreview }: Props) {
           </div>)}
           <button disabled={busy} onClick={() => void goPreview()}>Предпросмотр</button>
         </> : <>
-          <p>Так будет выглядеть твой Блик. Публикация станет доступна после подключения сервера.</p>
+          <p>Так будет выглядеть твой Блик.</p>
           <button onClick={() => setPreview(false)}>Изменить</button>
-          <button disabled>Опубликовать (сервер не подключён)</button>
+          <button disabled={busy || !publishTransport} onClick={() => void publish()}>
+            {busy ? 'Публикация…' : publishTransport ? 'Опубликовать' : 'Публикация пока недоступна'}
+          </button>
         </>}
       </>}
     </section>
