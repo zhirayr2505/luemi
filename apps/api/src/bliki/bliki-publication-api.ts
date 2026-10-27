@@ -4,7 +4,6 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Pool } from 'pg';
 import { createBlikiUploadTicket, storeBlikiUpload, type BlikiPrivateMediaStore } from './bliki-private-upload.js';
 import { validateBlikiSession } from './bliki-publication-validation.js';
-import { inspectBlikiMp4 } from './bliki-video-validation.js';
 import { parseBlikiEditor } from './bliki-editor-validation.js';
 
 type Guard = {
@@ -153,10 +152,6 @@ export function registerBlikiPublicationApi(
         const ticket = { operationId: row.operation_id, actorId: actor, mediaKind: row.media_kind,
           mimeType: row.mime_type, size: Number(row.media_bytes), key: row.media_key,
           expiresAt: Date.now() + 60000 };
-        if (row.media_kind === 'video') {
-          try { inspectBlikiMp4(request.body); }
-          catch { fail(422, 'invalid_video'); }
-        }
         try { await storeBlikiUpload(cfg.store, ticket, request.body); }
         catch (error) {
           if (error instanceof Error && /^(invalid_|upload_size_mismatch|upload_too_large)/.test(error.message))
