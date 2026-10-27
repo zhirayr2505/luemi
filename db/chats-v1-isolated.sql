@@ -17,8 +17,10 @@ CREATE TABLE IF NOT EXISTS luemi_chats.members (
  actor_id uuid NOT NULL,
  environment text NOT NULL,
  last_read_at timestamptz,
+ CONSTRAINT chat_member_environment CHECK (length(environment) BETWEEN 1 AND 96),
  PRIMARY KEY(conversation_id,actor_id)
 );
+-- Policy must be declared after enabling row security.
 CREATE INDEX IF NOT EXISTS chat_members_actor ON luemi_chats.members(actor_id,environment);
 CREATE TABLE IF NOT EXISTS luemi_chats.messages (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,6 +45,13 @@ ALTER TABLE luemi_chats.messages FORCE ROW LEVEL SECURITY;
 CREATE POLICY chats_members_read ON luemi_chats.members FOR SELECT USING (
  actor_id = nullif(current_setting('luemi.actor_id',true),'')::uuid
  AND environment = current_setting('luemi.environment',true)
+);
+CREATE POLICY chats_members_update_read ON luemi_chats.members FOR UPDATE USING (
+ actor_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
+ AND environment=current_setting('luemi.environment',true)
+) WITH CHECK (
+ actor_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
+ AND environment=current_setting('luemi.environment',true)
 );
 -- Message membership is checked via the members policy, not a client-supplied sender.
 CREATE POLICY chats_messages_read ON luemi_chats.messages FOR SELECT USING (
