@@ -13,6 +13,7 @@ import { registerRem05d } from "./rem05d-private.js";
 import { registerRealRegistrationDrafts } from "./real-registration-drafts.js";
 import {registerPublishedProfiles} from "./real-publication.js";
 import {registerAccountErasure} from "./real-erasure.js";
+import {registerChats} from "./chats-api.js";
 import {registerSafetyAppeals} from "./safety-appeal-api.js";
 
 function equalSecret(a: string, b: string): boolean {
@@ -29,7 +30,7 @@ export function buildApp(config: ApiConfig) {
   });
   app.register(cors, {
     origin: config.origin,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "X-Health-Key", "X-Luemi-CSRF"]
   });
   // One untrusted network peer must not consume static/health/geo actor quotas.
@@ -64,5 +65,6 @@ export function buildApp(config: ApiConfig) {
   registerPublishedProfiles(app,guards,config.realPublication);
   registerAccountErasure(app,guards,config.realErasure);
   registerSafetyAppeals(app,config.safetyAppeal);
+  registerChats(app,guards,config.chats);
   return app;
 }
