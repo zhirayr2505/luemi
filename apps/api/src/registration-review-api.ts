@@ -16,7 +16,7 @@ export type RegistrationReviewOptions = {
  adminChatId: string;
 };
 export function reviewNotificationMessage(id: string, count: number): string {
- if (!/^[0-9a-f]{8}-[0-9a-f-]{28}$/i.test(id) ||
+ if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ||
      !Number.isSafeInteger(count) || count < 3 || count > 6)
   throw new Error('invalid_review_notification');
  // Avoid sending names, DOB, media, Telegram IDs or private Storage keys.
