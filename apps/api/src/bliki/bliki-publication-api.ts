@@ -197,4 +197,25 @@ export function registerBlikiPublicationApi(
         return status(result.rows[0]);
       });
     });
+  // Tombstone immediately hides the media through RLS and the media read API.
+  // Physical object deletion still requires a separately audited retention worker.
+  app.delete<{ Params: { storyId: string } }>('/api/v1/bliki/stories/:storyId',
+    { preHandler: guard.mutation }, async (request, reply) => {
+      if (!UUID.test(request.params.storyId)) return reply.code(404).send({ error: 'not_found' });
+      return transaction(request, reply, async (db, actor) => {
+        const found = await db.query<{ id: string; status: string }>(
+          `SELECT id,status FROM luemi_bliki_private.stories
+           WHERE id=$1 AND author_id=$2 AND environment=$3 FOR UPDATE`,
+          [request.params.storyId, actor, cfg.namespace]);
+        if (found.rowCount !== 1) fail(404, 'not_found');
+        if (found.rows[0].status !== 'deleted') {
+          const result = await db.query(
+            `UPDATE luemi_bliki_private.stories SET status='deleted',deleted_at=clock_timestamp()
+             WHERE id=$1 AND author_id=$2 AND environment=$3 AND status<>'deleted'`,
+            [request.params.storyId, actor, cfg.namespace]);
+          if (result.rowCount !== 1) throw new Error('delete_transition_failed');
+        }
+        return { state: 'deleted', storyId: request.params.storyId };
+      });
+    });
 }
