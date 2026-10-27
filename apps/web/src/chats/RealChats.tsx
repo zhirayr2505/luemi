@@ -1,153 +1,60 @@
-import {useEffect,useRef,useState} from "react";
-import {createChatTransport} from "./chat-transport.js";
-import type {ChatWireConversation,ChatWireMessage} from "./chat-transport.js";
+import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
+import {ArrowLeft,Check,CheckCheck,Copy,ImagePlus,MoreVertical,Pencil,RefreshCw,Send,Trash2,X} from "lucide-react";
+import {createChatTransport,ChatTransportError,type ChatTransport,type ChatWireConversation} from "./chat-transport.js";
+import {errorText,isNearBottom,prependPage,reconcileMessages,type LocalMessage,validateChatImage} from "./chat-domain.js";
+import {ChatPhotoViewer} from "./ChatPhotoViewer.js";
 import {geoCsrf} from "../auth/session-adapter.js";
-import {closeRealMatch,blockPublishedUser,realMatchPilot} from "../registration/real-live-client.js";
 import "./chats.css";
 
-/** Explicitly opt-in real transport; never substitutes fixtures on errors. */
-export function RealChats(){
- const [conversations,setConversations]=useState<ChatWireConversation[]>([]);
- const [active,setActive]=useState<string|null>(null);
- const [actorId,setActorId]=useState<string|null>(null);
- const [messages,setMessages]=useState<ChatWireMessage[]>([]);
- const [draft,setDraft]=useState("");
- const [editing,setEditing]=useState<string|null>(null);
- const [olderCursor,setOlderCursor]=useState<string|null>(null);
- const [loadingOlder,setLoadingOlder]=useState(false);
- const activeRef=useRef<string|null>(null);
- const [error,setError]=useState("");
- const [sending,setSending]=useState(false);
- const [manageBusy,setManageBusy]=useState(false);
- const [loading,setLoading]=useState(true);
- const [selectedPeer,setSelectedPeer]=useState<ChatWireConversation|null>(null);
- const bottom=useRef<HTMLDivElement>(null);
- const lastRead=useRef<string|null>(null);
- const cursorInitialized=useRef(false);
- const pending=useRef<{conversationId:string;body:string;clientId:string}|null>(null);
+type Action={message:LocalMessage;kind:"menu"|"edit"|"delete"}|null;
+type Attachment={file:File;url:string;progress:number;error:string|null};
+const dayKey=(iso:string)=>new Date(iso).toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"});
+const time=(iso:string)=>new Date(iso).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+const status=(m:LocalMessage,own:boolean)=>!own?null:m.localState==="failed"?"Ошибка":m.localState==="sending"?"Отправка…":m.readAt?"Прочитано":m.deliveredAt?"Доставлено":"Отправлено";
 
- const csrf=geoCsrf();
- const api=csrf?createChatTransport(csrf):null;
- useEffect(()=>{
-  if(!api){setError("Требуется авторизация Telegram");setLoading(false);return;}
-  const controller=new AbortController();
-  Promise.all([api.me(controller.signal),api.list(controller.signal)]).then(([me,data])=>{if(!controller.signal.aborted){setActorId(me.actorId);setConversations(data.conversations);}})
-   .catch(()=>{if(!controller.signal.aborted)setError("Не удалось загрузить чаты");})
-   .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
-  return()=>controller.abort();
- // eslint-disable-next-line react-hooks/exhaustive-deps
- },[csrf]);
- useEffect(()=>{
-  if(!active||!api)return;
-  const controller=new AbortController();
-  lastRead.current=null;
-  activeRef.current=active;
-  setOlderCursor(null);
-  cursorInitialized.current=false;
-  let running=false;
-  const load=async()=>{
-   if(running||controller.signal.aborted)return;
-   running=true;
-   try{
-    const data=await api.messages(active,undefined,controller.signal);
-    if(!controller.signal.aborted&&activeRef.current===active){setMessages(previous=>{const byId=new Map(previous.map(m=>[m.id,m]));for(const m of data.messages)byId.set(m.id,m);return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});if(!cursorInitialized.current){cursorInitialized.current=true;setOlderCursor(data.nextCursor);}setError("");
-     const newest=[...data.messages].reverse().find(message=>message.senderId!==actorId&&!message.deletedAt);
-     if(actorId&&newest&&document.visibilityState==="visible"&&lastRead.current!==newest.id){
-      lastRead.current=newest.id;
-      void api.markRead(active,newest.id).catch(()=>{lastRead.current=null;});
-     }
-    }
-   }catch{if(!controller.signal.aborted&&activeRef.current===active)setError("Связь прервана. Повторяем подключение…");}
-   finally{running=false;}
-  };
-  void load();
-  const timer=window.setInterval(()=>{if(document.visibilityState==="visible")void load();},3500);
-  return()=>{controller.abort();window.clearInterval(timer);};
- // eslint-disable-next-line react-hooks/exhaustive-deps
- },[active,csrf,actorId]);
- useEffect(()=>{
-  if(!csrf)return;
-  const controller=new AbortController();
-  let busy=false;
-  const refresh=async()=>{
-   if(busy||controller.signal.aborted||document.visibilityState!=="visible")return;
-   busy=true;
-   try{
-    const data=await createChatTransport(csrf).list(controller.signal);
-    if(!controller.signal.aborted)setConversations(data.conversations);
-   }catch{/* The message poll reports active connectivity errors. */}
-   finally{busy=false;}
-  };
-  const timer=window.setInterval(()=>void refresh(),5000);
-  const onVisible=()=>{if(document.visibilityState==="visible")void refresh();};
-  document.addEventListener("visibilitychange",onVisible);
-  return()=>{controller.abort();window.clearInterval(timer);document.removeEventListener("visibilitychange",onVisible);};
- },[csrf]);
- const loadOlder=async()=>{
-  if(!api||!active||!olderCursor||loadingOlder)return;
-  setLoadingOlder(true);
-  try{const page=await api.messages(active,olderCursor);if(activeRef.current!==active)return;setMessages(old=>{const byId=new Map([...page.messages,...old].map(m=>[m.id,m]));return [...byId.values()].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));});setOlderCursor(page.nextCursor);}catch{setError("Не удалось загрузить старые сообщения");}finally{setLoadingOlder(false);}
- };
- const editMessage=async(message:ChatWireMessage)=>{
-  if(!api||!active||message.deletedAt)return;
-  const body=window.prompt("Изменить сообщение",message.body);
-  if(body===null||body===message.body)return;
-  if(!body.trim()||body!==body.trim()||[...body].length>4000){setError("Введите текст до 4000 символов");return;}
-  setEditing(message.id);
-  try{const result=await api.edit(active,message.id,body);if(activeRef.current===active)setMessages(old=>old.map(m=>m.id===message.id?result.message:m));setError("");}catch{setError("Не удалось изменить сообщение");}finally{setEditing(null);}
- };
- const deleteMessage=async(message:ChatWireMessage)=>{
-  if(!api||!active||message.deletedAt||!window.confirm("Удалить сообщение?"))return;
-  setEditing(message.id);
-  try{await api.remove(active,message.id);if(activeRef.current===active)setMessages(old=>old.map(m=>m.id===message.id?{...m,body:"",deletedAt:new Date().toISOString()}:m));setError("");}catch{setError("Не удалось удалить сообщение");}finally{setEditing(null);}
- };
- const manageMatch=async(kind:"close"|"block")=>{
-  if(!selectedPeer||manageBusy)return;
-  const id=selectedPeer.id;
-  const accepted=window.confirm(kind==="block"
-   ?"Заблокировать этого человека? Переписка станет недоступна."
-   :"Разорвать мэтч? Переписка станет недоступна.");
-  if(!accepted)return;
-  setManageBusy(true);setError("");
-  try{
-   if(kind==="block")await blockPublishedUser(selectedPeer.peerId);
-   else await closeRealMatch(selectedPeer.matchId);
-   activeRef.current=null;setActive(null);setSelectedPeer(null);
-   setConversations(previous=>previous.filter(c=>c.id!==id));
-   setMessages([]);pending.current=null;
-  }catch{setError("Не удалось изменить статус мэтча. Попробуйте снова.");}
-  finally{setManageBusy(false);}
- };
- const send=async()=>{
-  if(!api||!active||!draft.trim()||sending)return;
-  const text=draft.trim();
-  if(!pending.current||pending.current.conversationId!==active||pending.current.body!==text)
-   pending.current={conversationId:active,body:text,clientId:crypto.randomUUID()};
-  const clientId=pending.current.clientId;
-  setSending(true);setError("");
-  try{
-   const result=await api.send(active,text,clientId);
-   if(activeRef.current===active)setMessages(old=>old.some(m=>m.id===result.message.id)?old:[...old,result.message]);
-   if(activeRef.current===active){pending.current=null;setDraft("");requestAnimationFrame(()=>bottom.current?.scrollIntoView({block:"end"}));}
-  }catch{setError("Сообщение не отправлено. Попробуйте ещё раз.");}
-  finally{setSending(false);}
- };
- return <div className="luemi-chats" data-real-chats="true">
-  {!active?<><header className="lc-heading"><div><small>LUEMI</small><h2>Чаты</h2></div></header>
-   {loading?<p className="lc-empty">Загружаем переписки…</p>:error?<p className="lc-empty" role="status">Не удалось получить список переписок. Проверьте подключение и повторите попытку.</p>:conversations.length===0?<p className="lc-empty">Пока нет переписок. Они появятся после взаимного мэтча.</p>:
-   <div className="lc-conversations">{conversations.map(c=><button className="lc-chat-open" key={c.id} onClick={()=>{pending.current=null;lastRead.current=null;activeRef.current=c.id;setActive(c.id);setSelectedPeer(c);setMessages([]);}}>
-    <span className="lc-avatar">{c.peerPhotoUrl?<img src={c.peerPhotoUrl} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"/>:"💜"}</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>{c.unreadCount>0&&<span className="lc-unread" aria-label={`${c.unreadCount} непрочитанных`}>{c.unreadCount>99?"99+":c.unreadCount}</span>}
-   </button>)}</div>}
-  </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;activeRef.current=null;setActive(null);setSelectedPeer(null);}} aria-label="Назад">←</button><span className="lc-avatar lc-avatar-small">{selectedPeer?.peerPhotoUrl?<img src={selectedPeer.peerPhotoUrl} alt="" decoding="async" referrerPolicy="no-referrer"/>:"💜"}</span><strong>{selectedPeer?.peerName||"Переписка"}</strong>
-    {realMatchPilot.enabled&&<div className="lc-match-tools">
-      <button type="button" disabled={manageBusy} onClick={()=>void manageMatch("close")}>Разорвать мэтч</button>
-      <button type="button" disabled={manageBusy} onClick={()=>void manageMatch("block")}>Блок</button>
-    </div>}</header>
-   <div className="lc-history" role="log" aria-label="Сообщения">{olderCursor&&<button type="button" disabled={loadingOlder} onClick={()=>void loadOlder()} className="lc-load-older">{loadingOlder?"Загружаем…":"Показать старые сообщения"}</button>}{messages.map(m=><div key={m.id} className={"lc-msg-line "+(m.senderId===actorId?"lc-own":"")}>
-    <div className="lc-bubble">{m.deletedAt?<i>Сообщение удалено</i>:m.body}<small>{new Date(m.createdAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small>{m.senderId===actorId&&!m.deletedAt&&<span className="lc-msg-actions"><button type="button" disabled={editing===m.id} onClick={()=>void editMessage(m)} aria-label="Редактировать сообщение">Изменить</button><button type="button" disabled={editing===m.id} onClick={()=>void deleteMessage(m)} aria-label="Удалить сообщение">Удалить</button></span>}</div>
-   </div>)}<div ref={bottom}/></div>
-   <div className="lc-composer"><div className="lc-input-row"><textarea aria-label="Сообщение" maxLength={4000} value={draft} onChange={e=>{setDraft(e.target.value);if(pending.current?.body!==e.target.value.trim())pending.current=null;}} placeholder="Сообщение…"/><button type="button" disabled={sending||manageBusy||!draft.trim()} onClick={()=>void send()} aria-label="Отправить">➤</button></div></div>
-  </>}
-  {error&&<p className="lc-footnote" role="alert">{error}</p>}
- </div>;
+export function RealChats({transport:provided,onOpenProfile}:{transport?:ChatTransport;onOpenProfile?:(profileId:string)=>void}={}){
+ const csrf=geoCsrf();const api=useMemo(()=>provided??(csrf?createChatTransport(csrf):null),[provided,csrf]);
+ const [actorId,setActorId]=useState("");const [conversations,setConversations]=useState<ChatWireConversation[]>([]);const [active,setActive]=useState<ChatWireConversation|null>(null);
+ const [messages,setMessages]=useState<LocalMessage[]>([]);const [cursor,setCursor]=useState<string|null>(null);const [draft,setDraft]=useState("");const [attachment,setAttachment]=useState<Attachment|null>(null);
+ const [loading,setLoading]=useState(true);const [loadingOlder,setLoadingOlder]=useState(false);const [error,setError]=useState("");const [action,setAction]=useState<Action>(null);const [editValue,setEditValue]=useState("");const [viewer,setViewer]=useState<string|null>(null);const [newBelow,setNewBelow]=useState(0);
+ const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);const hold=useRef<number|null>(null);const pointer=useRef<{x:number;y:number;id:string}|null>(null);
+ const listPositions=useRef(new Map<string,number>());const autoScroll=useRef(false);
+ const releaseAttachment=useCallback(()=>setAttachment(old=>{if(old){URL.revokeObjectURL(old.url);objectUrls.current.delete(old.url);}return null;}),[]);
+ const showError=(e:unknown,fallback="Не удалось выполнить действие.")=>setError(e instanceof ChatTransportError?errorText(e.status,e.code):fallback);
+ const refreshList=useCallback(async(signal?:AbortSignal)=>{if(!api)return;const data=await api.list(signal);setConversations([...data.conversations].sort((a,b)=>b.lastActivityAt.localeCompare(a.lastActivityAt)||a.id.localeCompare(b.id)));},[api]);
+ useEffect(()=>{if(!api){setError("Требуется авторизация Telegram.");setLoading(false);return;}const controller=new AbortController();Promise.all([api.me(controller.signal),api.list(controller.signal)]).then(([me,data])=>{if(controller.signal.aborted)return;setActorId(me.actorId);setConversations([...data.conversations].sort((a,b)=>b.lastActivityAt.localeCompare(a.lastActivityAt)));setError("");}).catch(e=>{if(!controller.signal.aborted)showError(e,"Не удалось загрузить чаты.");}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();},[api]);
+ useEffect(()=>()=>{pollAbort.current?.abort();objectUrls.current.forEach(URL.revokeObjectURL);pendingFiles.current.clear();if(hold.current!==null)window.clearTimeout(hold.current);},[]);
+ const applyIncoming=useCallback((incoming:LocalMessage[])=>{const el=history.current;autoScroll.current=!!el&&isNearBottom(el);if(el)listPositions.current=new Map([...el.querySelectorAll<HTMLElement>("[data-message-id]")].map(node=>[node.dataset.messageId??"",node.getBoundingClientRect().top]));setMessages(old=>{if(el&&!autoScroll.current&&incoming.some(message=>!old.some(current=>current.id===message.id)))setNewBelow(n=>n+1);return reconcileMessages(old,incoming);});},[]);
+ useLayoutEffect(()=>{const el=history.current;if(!el)return;if(autoScroll.current){el.scrollTop=el.scrollHeight;setNewBelow(0);}else if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){for(const node of el.querySelectorAll<HTMLElement>("[data-message-id]")){const before=listPositions.current.get(node.dataset.messageId??"");if(before===undefined)continue;const delta=before-node.getBoundingClientRect().top;if(Math.abs(delta)>1&&Math.abs(delta)<700)node.animate([{transform:`translateY(${delta}px)`},{transform:"translateY(0)"}],{duration:240,easing:"cubic-bezier(.2,.72,.2,1)"});}}listPositions.current.clear();},[messages]);
+ useEffect(()=>{if(!api||!active)return;const generation=++requestGeneration.current;activeId.current=active.id;pollAbort.current?.abort();const controller=new AbortController();pollAbort.current=controller;setMessages([]);setCursor(null);setError("");nearBottom.current=true;let busy=false;
+  const load=async()=>{if(busy||controller.signal.aborted||document.visibilityState!=="visible")return;busy=true;try{const page=await api.messages(active.id,undefined,controller.signal);if(generation!==requestGeneration.current||controller.signal.aborted)return;applyIncoming(page.messages);setCursor(old=>old??page.nextCursor);const newest=[...page.messages].reverse().find(m=>m.senderId!==actorId&&!m.deletedAt);if(newest)void api.markRead(active.id,newest.id,controller.signal).catch(()=>{});setError("");}catch(e){if(!controller.signal.aborted)showError(e,"Связь прервана.");}finally{busy=false;}};
+  void load();const timer=window.setInterval(()=>void load(),3500);return()=>{controller.abort();window.clearInterval(timer);};},[active,api,actorId,applyIncoming]);
+ const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
+ const close=()=>{pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setMessages([]);setAction(null);releaseAttachment();void refreshList().catch(()=>{});};
+ const loadOlder=async()=>{if(!api||!active||!cursor||loadingOlder)return;const el=history.current;const oldHeight=el?.scrollHeight??0;setLoadingOlder(true);try{const page=await api.messages(active.id,cursor);if(activeId.current!==active.id)return;setMessages(old=>prependPage(old,page.messages));setCursor(page.nextCursor);requestAnimationFrame(()=>{if(el)el.scrollTop+=el.scrollHeight-oldHeight;});}catch(e){showError(e);}finally{setLoadingOlder(false);}};
+ const chooseFile=(file:File|undefined)=>{if(!file)return;const problem=validateChatImage(file);if(problem){setError(problem);return;}releaseAttachment();const url=URL.createObjectURL(file);objectUrls.current.add(url);setAttachment({file,url,progress:0,error:null});setError("");};
+ const send=async(existing?:LocalMessage)=>{if(!api||!active)return;const body=existing?.body??draft.trim();const clientId=existing?.clientId??crypto.randomUUID();const mediaFile=existing?pendingFiles.current.get(clientId):attachment?.file;if(!body&&!mediaFile)return;const localId=existing?.id??"local:"+clientId;const createdAt=existing?.createdAt??new Date().toISOString();const preview=existing?.localPreviewUrl??attachment?.url;if(mediaFile)pendingFiles.current.set(clientId,mediaFile);const optimistic:LocalMessage={id:localId,conversationId:active.id,senderId:actorId,clientId,body,createdAt,editedAt:null,deletedAt:null,deliveredAt:null,readAt:null,media:[],localState:"sending",localPreviewUrl:preview};
+  autoScroll.current=true;setMessages(old=>reconcileMessages(old.filter(m=>m.id!==localId),[optimistic]));if(!existing){setDraft("");setAttachment(null);}try{let mediaIds:string[]=[];if(mediaFile){const uploaded=await api.createMedia(active.id,mediaFile,clientId);mediaIds=[uploaded.media.id];}const result=await api.send(active.id,body,clientId,mediaIds);if(activeId.current!==active.id)return;pendingFiles.current.delete(clientId);setMessages(old=>reconcileMessages(old,[result.message]));if(preview&&objectUrls.current.has(preview)){URL.revokeObjectURL(preview);objectUrls.current.delete(preview);}void refreshList();}catch(e){if(activeId.current===active.id)setMessages(old=>old.map(m=>m.id===localId?{...m,localState:"failed"}:m));showError(e,"Сообщение не отправлено.");}};
+ const edit=async()=>{if(!api||!active||!action||action.kind!=="edit")return;const body=editValue.trim();if(!body||body.length>4000)return;try{const result=await api.edit(active.id,action.message.id,body);setMessages(old=>reconcileMessages(old,[result.message]));setAction(null);}catch(e){showError(e);}};
+ const remove=async()=>{if(!api||!active||!action||action.kind!=="delete")return;try{const result=await api.remove(active.id,action.message.id);setMessages(old=>reconcileMessages(old,[result.message]));setAction(null);}catch(e){showError(e);}};
+ const pointerDown=(e:React.PointerEvent,id:string)=>{if(e.pointerType==="mouse"&&e.button!==0)return;pointer.current={x:e.clientX,y:e.clientY,id};hold.current=window.setTimeout(()=>{const message=messages.find(m=>m.id===id);if(message&&!message.localState)setAction({message,kind:"menu"});},470);};
+ const pointerMove=(e:React.PointerEvent)=>{if(pointer.current&&Math.hypot(e.clientX-pointer.current.x,e.clientY-pointer.current.y)>12&&hold.current!==null){window.clearTimeout(hold.current);hold.current=null;}};
+ const pointerEnd=()=>{if(hold.current!==null)window.clearTimeout(hold.current);hold.current=null;pointer.current=null;};
+ const grouped=messages.reduce<Array<{day:string;items:LocalMessage[]}>>((days,message)=>{const day=dayKey(message.createdAt);const last=days[days.length-1];if(last?.day===day)last.items.push(message);else days.push({day,items:[message]});return days;},[]);
+ if(!active)return <section className="luemi-chats lc-route lc-list-route" data-real-chats="true"><header className="lc-heading"><div><small>LUEMI</small><h2>Чаты</h2></div><button type="button" aria-label="Обновить" onClick={()=>void refreshList().catch(showError)}><RefreshCw size={19}/></button></header>
+  {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:error&&conversations.length===0?<div className="lc-state lc-error"><p>{error}</p><button onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button></div>:conversations.length===0?<div className="lc-state"><div className="lc-empty-mark">💜</div><h3>Пока тихо</h3><p>Переписка появится после взаимной симпатии.</p></div>:<div className="lc-conversations">{conversations.map(chat=><button className="lc-chat-row" key={chat.id} onClick={()=>open(chat)}><span className="lc-avatar">{chat.peerPhotoUrl?<img src={chat.peerPhotoUrl} alt="" loading="lazy" decoding="async"/>:<span>{chat.peerName.slice(0,1)}</span>}</span><span className="lc-chat-summary"><strong>{chat.peerName}</strong><span>{chat.lastMessage??"Начните разговор"}</span></span><span className="lc-meta"><time>{time(chat.lastActivityAt)}</time>{chat.unreadCount>0&&<b>{Math.min(chat.unreadCount,99)}{chat.unreadCount>99?"+":""}</b>}</span></button>)}</div>}
+ </section>;
+ return <section className="luemi-chats lc-route lc-thread-route" data-real-chats="true"><header className="lc-chat-header"><button type="button" aria-label="Назад" onClick={close}><ArrowLeft/></button><button type="button" className="lc-person" onClick={()=>onOpenProfile?.(active.peerProfileId)}><span className="lc-avatar lc-avatar-small">{active.peerPhotoUrl?<img src={active.peerPhotoUrl} alt=""/>:active.peerName.slice(0,1)}</span><span><strong>{active.peerName}</strong><small>Открыть профиль</small></span></button><button type="button" aria-label="Меню"><MoreVertical/></button></header>
+  <div ref={history} className="lc-history" role="log" aria-live="polite" onScroll={e=>{nearBottom.current=isNearBottom(e.currentTarget);if(nearBottom.current)setNewBelow(0);}} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
+   {cursor&&<button className="lc-load-older" disabled={loadingOlder} onClick={()=>void loadOlder()}>{loadingOlder?"Загрузка…":"Показать раньше"}</button>}
+   {grouped.map(group=><div className="lc-day-group" key={group.day}><div className="lc-day">{group.day}</div>{group.items.map(message=>{const own=message.senderId===actorId;const label=status(message,own);return <div data-message-id={message.id} key={message.id} className={"lc-msg-line "+(own?"lc-own ":"")+(message.localState??"")} onPointerDown={e=>pointerDown(e,message.id)} onContextMenu={e=>{e.preventDefault();if(!message.localState)setAction({message,kind:"menu"});}}><div className="lc-bubble">{message.deletedAt?<em>Сообщение удалено</em>:<>{(message.localPreviewUrl||message.media[0]?.url)&&<button className="lc-photo-open" onClick={()=>setViewer(message.localPreviewUrl||message.media[0]?.url||null)}><img src={message.localPreviewUrl||message.media[0]?.url||""} alt="Фото в сообщении"/></button>}{message.body&&<span>{message.body}</span>}</>}<small><time>{time(message.createdAt)}</time>{message.editedAt&&" · изм."}{label&&<span title={label}>{message.readAt?<CheckCheck size={13}/>:<Check size={13}/>}</span>}</small>{message.localState==="failed"&&<button className="lc-retry" onClick={()=>void send(message)}>Повторить</button>}</div></div>;})}</div>)}
+  </div>
+  {newBelow>0&&<button className="lc-new" onClick={()=>{if(history.current)history.current.scrollTop=history.current.scrollHeight;setNewBelow(0);}}>Новые сообщения · {newBelow}</button>}
+  <footer className="lc-composer">{attachment&&<div className="lc-attachment"><img src={attachment.url} alt="Фото перед отправкой"/><span style={{width:`${attachment.progress}%`}}/><button onClick={releaseAttachment} aria-label="Убрать фото"><X size={16}/></button></div>}<div className="lc-input-row"><input ref={fileInput} hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{chooseFile(e.target.files?.[0]);e.target.value="";}}/><button type="button" aria-label="Добавить фото" onClick={()=>fileInput.current?.click()}><ImagePlus/></button><textarea rows={1} value={draft} maxLength={4000} placeholder="Сообщение…" aria-label="Сообщение" onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}}}/><button type="button" className="lc-send" disabled={!draft.trim()&&!attachment} onClick={()=>void send()} aria-label="Отправить"><Send size={18}/></button></div></footer>
+  {error&&<div className="lc-notice" role="alert">{error}<button onClick={()=>setError("")} aria-label="Закрыть"><X size={15}/></button></div>}
+  {action?.kind==="menu"&&<div className="lc-overlay" onClick={e=>{if(e.target===e.currentTarget)setAction(null);}}><div className="lc-menu" role="dialog" aria-modal="true"><button onClick={()=>void navigator.clipboard.writeText(action.message.body).then(()=>setAction(null)).catch(()=>setError("Не удалось скопировать."))}><Copy size={18}/>Копировать</button>{action.message.senderId===actorId&&!action.message.deletedAt&&<><button onClick={()=>{setEditValue(action.message.body);setAction({...action,kind:"edit"});}}><Pencil size={18}/>Редактировать</button><button className="danger" onClick={()=>setAction({...action,kind:"delete"})}><Trash2 size={18}/>Удалить</button></>}<button onClick={()=>setAction(null)}>Отмена</button></div></div>}
+  {action?.kind==="edit"&&<div className="lc-overlay"><form className="lc-dialog" onSubmit={e=>{e.preventDefault();void edit();}}><h3>Редактировать сообщение</h3><textarea autoFocus maxLength={4000} value={editValue} onChange={e=>setEditValue(e.target.value)}/><div><button type="button" onClick={()=>setAction(null)}>Отмена</button><button type="submit" disabled={!editValue.trim()}>Сохранить</button></div></form></div>}
+  {action?.kind==="delete"&&<div className="lc-overlay"><div className="lc-dialog" role="alertdialog" aria-modal="true"><h3>Удалить сообщение?</h3><p>У собеседника останется отметка «Сообщение удалено».</p><div><button onClick={()=>setAction(null)}>Отмена</button><button className="danger" onClick={()=>void remove()}>Удалить</button></div></div></div>}
+  {viewer&&<ChatPhotoViewer src={viewer} onClose={()=>setViewer(null)}/>}
+ </section>;
 }

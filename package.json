@@ -44,7 +44,9 @@
     "test:photo-viewer-morph": "node scripts/rem-03d-morph-contract.test.mjs",
     "test:startup-coordinator": "node scripts/rem-04a-startup.test.mjs",
     "test:motion-chaos": "node scripts/rem-motion-gesture-chaos.test.mjs",
-    "test:profile-morph-a2": "node scripts/profile-morph-a2.test.mjs"
+    "test:profile-morph-a2": "node scripts/profile-morph-a2.test.mjs",
+    "test:chats": "node --import tsx --test apps/api/test/chat-domain.test.ts apps/api/test/chat-media.test.ts apps/api/test/chats-gate.test.ts && node scripts/chats-v1-contract.test.mjs",
+    "test:chats:browser": "node scripts/chats-v1-browser-smoke.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
