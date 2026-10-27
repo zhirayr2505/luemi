@@ -40,7 +40,10 @@ export async function fetchBlikiFeed(signal?: AbortSignal): Promise<BlikiFeedRes
       const item = story as Record<string, unknown>;
       if (typeof item.id !== 'string' || typeof item.authorId !== 'string' ||
           typeof item.mediaUrl !== 'string' || !item.mediaUrl.startsWith('/') ||
-          item.mediaUrl.startsWith('//')) return false;
+          item.mediaUrl.startsWith('//') || item.mediaUrl.includes('\\\\') ||
+          /[?#]/.test(item.mediaUrl) || !item.mediaUrl.startsWith('/api/v1/bliki/media/')) return false;
+      if ('publishedAt' in item && (!Number.isFinite(item.publishedAt) ||
+          typeof item.publishedAt !== 'number')) return false;
       return item.mediaKind === 'image' || item.mediaKind === 'video';
     });
   })) throw new Error('Invalid authorized Bliki author payload');
