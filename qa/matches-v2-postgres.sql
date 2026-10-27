@@ -45,10 +45,10 @@ BEGIN;
 SET LOCAL ROLE luemi_chats_writer;
 SET LOCAL luemi.actor_id='11111111-1111-4111-8111-111111111111';
 SET LOCAL luemi.environment='luemi';
-DO $ BEGIN
+DO $$ BEGIN
  IF EXISTS (SELECT 1 FROM luemi_private.public_profiles WHERE owner_id='22222222-2222-4222-8222-222222222222'::uuid)
  THEN RAISE EXCEPTION 'one-sided like leaked peer profile'; END IF;
-END $;
+END $$;
 COMMIT;
 -- Opposite like creates an authorized match, conversation and exactly two members.
 BEGIN;
