@@ -373,7 +373,7 @@ export function App() {
     contentRef.current?.scrollTo({top:0,behavior:"auto"});
   };
   const next=()=>{
-    const nextError=validateStep(draft,step,photos.length);
+    const nextError=validateStep(draft,step,photos.length,new Date(),realFeedPilot.enabled?"live":"demo");
     if(nextError){setError(nextError);return;}
     if(step<8)changeStep(step+1);
   };
@@ -498,7 +498,7 @@ export function App() {
   const persistServerDraft=async()=>{
     if(!remoteDraftPilot.enabled||!serverConsent||serverSaving||auth!=="authorized")return;
     for(let n=1;n<=6;n++){
-      const problem=validateStep(draft,n,photos.length);
+      const problem=validateStep(draft,n,photos.length,new Date(),realFeedPilot.enabled?"live":"demo");
       if(problem){setServerStatus("Проверь шаг "+n+": "+problem);return;}
     }
     setServerSaving(true);setServerStatus("");
@@ -538,7 +538,7 @@ export function App() {
   const confirmRealRegistration=async()=>{
     if(!realFeedPilot.enabled||submitting.current)return;
     for(let n=1;n<=7;n++){
-      const problem=validateStep(draft,n,photos.length);
+      const problem=validateStep(draft,n,photos.length,new Date(),realFeedPilot.enabled?"live":"demo");
       if(problem){setError(`Проверь шаг ${n}: ${problem}`);return;}
     }
     if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready")){
