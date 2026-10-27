@@ -32,16 +32,22 @@ try{
   {waitUntil:"domcontentloaded"});
  await page.locator(".feed-v2-card[data-expanded=false]").first().waitFor();
  const image=page.locator(".deck-active .feed-v2-photo .carousel-track img").first();
+ const info=page.locator(".deck-active .feed-v2-details");
+ const text=page.locator(".deck-active .feed-v2-content");
+ const height=await info.evaluate(node=>node.clientHeight);
+ const offset=()=>text.evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node).transform).m42);
+ const compactOffset=await offset();
  const before=await image.evaluate(node=>{window.__feedPhoto=node;return node.src;});
  await swipe(".deck-active .feed-v2-details .discovery-place",0,-180);
  await page.locator(".deck-active .feed-v2-card[data-expanded=true]").waitFor({timeout:1800});
  assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
- assert.ok(await page.locator(".deck-active .feed-v2-details").evaluate(node=>
-  getComputedStyle(node).clipPath.startsWith("inset(0px")),"Expanded information reaches the visible endpoint");
+ assert.ok(Math.abs(await offset())<1,"Expanded text reaches the visible endpoint");
+ assert.equal(await info.evaluate(node=>node.clientHeight),height,"Reveal does not resize the information surface");
  await swipe(".deck-active .feed-v2-details .discovery-place",0,190);
  await page.locator(".deck-active .feed-v2-card[data-expanded=false]").waitFor({timeout:1800});
  assert.ok(await image.evaluate(node=>node===window.__feedPhoto),"Close preserves the same photo");
+ assert.ok(Math.abs(await offset()-compactOffset)<1,"Close restores compact text position");
 
  await swipe(".deck-active .feed-v2-details .discovery-place",-205,0);
  await page.waitForTimeout(430);
@@ -52,10 +58,19 @@ try{
  await swipe(".nb-head h2",205,0);
  await page.waitForTimeout(430);
  assert.equal((await selected())?.trim(),"Для тебя","Nearby text swipes back to For You");
+ const rail=page.locator(".fy-rail").first();
+ const railStart=await rail.evaluate(node=>node.scrollLeft);
+ await swipe(".fy-rail .fy-tile-photo",-210,0);
+ const railRelease=await rail.evaluate(node=>node.scrollLeft);
+ await page.waitForTimeout(120);
+ const railAfter=await rail.evaluate(node=>node.scrollLeft);
+ assert.ok(railRelease>railStart+20&&railAfter>=railRelease,
+  "For You portraits scroll natively with continued horizontal motion");
+ assert.equal((await selected())?.trim(),"Для тебя","Portrait rail never changes the top tab");
  await swipe(".fy-hero h2",0,-220);
  const scrollTop=await page.locator(".fy-scroll").evaluate(node=>node.scrollTop);
  assert.ok(scrollTop>10,"Vertical For You swipe remains native scrolling");
  assert.equal((await selected())?.trim(),"Для тебя","Vertical scroll never changes tabs");
  assert.deepEqual(errors,[],"No browser exceptions during gestures");
- console.log("DISCOVERY_GESTURE_BROWSER_PASS touch tabs, reveal, photo identity and vertical scroll");
+ console.log("DISCOVERY_GESTURE_BROWSER_PASS touch tabs, fixed-layout reveal, photo identity and native rails");
 }finally{await browser.close();}

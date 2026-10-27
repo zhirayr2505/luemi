@@ -36,15 +36,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const details=useRef<HTMLDivElement>(null);
  const dim=useRef<HTMLDivElement>(null);
  const scroll=useRef<HTMLDivElement>(null);
+ const content=useRef<HTMLDivElement>(null);
  const about=useRef<HTMLDivElement>(null);
  const interests=useRef<HTMLDivElement>(null);
- const interestBody=useRef<HTMLDivElement>(null);
  const photo=useRef<PhotoCarouselHandle>(null);
  const gesture=useRef<CardGesture|null>(null);
  const blockClickUntil=useRef(0);
  const multiTouch=useRef(false);
  const progress=useRef(0),target=useRef<0|1>(0);
- const metrics=useRef({closed:174,open:430,aboutClosed:40,about:40,interests:120});
+ const metrics=useRef({closed:174,open:430,reveal:0});
  const run=useRef<CardRun|null>(null);
  const fingerFrame=useRef<number|null>(null);
  const fingerValue=useRef(0);
@@ -52,15 +52,10 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const measureLive=useRef<()=>void>(()=>{});
  const paint=(value:number)=>{
   const p=progress.current=clamp(value,0,1),m=metrics.current;
-  // Keep the card and its photograph at fixed geometry. Only the information
-  // viewport reveals more of its bottom-aligned content during the pull.
-  if(details.current)details.current.style.clipPath=
-   `inset(${(m.open-m.closed)*(1-p)}px 0 0 0)`;
-  if(about.current)about.current.style.maxHeight=(m.aboutClosed+(m.about-m.aboutClosed)*p)+"px";
-  if(interests.current){
-   interests.current.style.maxHeight=(m.interests*p)+"px";
-   interests.current.style.opacity=String(p);
-  }
+  // A single small text surface moves behind the fixed information viewport.
+  // Its layout, clipping rectangle, photograph and action buttons stay fixed.
+  if(content.current)content.current.style.transform=
+   `translate3d(0,${m.reveal*(1-p)}px,0)`;
   if(dim.current)dim.current.style.opacity=String(p);
  };
  const flushFinger=()=>{
@@ -117,10 +112,12 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const closed=Number.parseFloat(style.getPropertyValue("--feed-closed-height"))||174;
   const actions=Number.parseFloat(style.getPropertyValue("--feed-actions-height"))||79;
   const aboutClosed=Number.parseFloat(style.getPropertyValue("--feed-about-closed-height"))||40;
-  metrics.current={closed,open:Math.max(closed,Math.min(height*.72,430,height-actions)),
-   aboutClosed,about:Math.max(aboutClosed,about.current?.firstElementChild?.scrollHeight??aboutClosed),
-   interests:Math.min(120,(interestBody.current?.scrollHeight??0)+10)};
-  details.current?.style.setProperty("height",metrics.current.open+"px");
+  const open=Math.max(closed,Math.min(height*.72,430,height-actions));
+  details.current?.style.setProperty("height",open+"px");
+  const full=content.current?.scrollHeight??0;
+  const collapsed=full-Math.max(0,(about.current?.clientHeight??0)-aboutClosed)-
+   (interests.current?.clientHeight??0);
+  metrics.current={closed,open,reveal:Math.max(0,Math.min(full,scroll.current?.clientHeight??0)-collapsed)};
   paint(progress.current);
  };
  measureLive.current=measure;
@@ -263,13 +260,14 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      <div className="feed-v2-dim" ref={dim} aria-hidden="true"/>
      <div className="feed-v2-information">
        <div className="feed-v2-details" ref={details}>
-         <button className="feed-v2-expand" type="button" disabled={!available}
-           aria-label={expanded?"Свернуть информацию":"Раскрыть информацию"} aria-expanded={expanded}
-           onClick={()=>updateExpanded(target.current!==1)}>
-           <ChevronDown size={15} className="feed-v2-collapse-icon"/>
-           <ChevronUp size={15} className="feed-v2-expand-icon"/>
-         </button>
          <div className="feed-v2-scroll" ref={scroll}>
+          <div className="feed-v2-content" ref={content}>
+           <button className="feed-v2-expand" type="button" disabled={!available}
+             aria-label={expanded?"Свернуть информацию":"Раскрыть информацию"} aria-expanded={expanded}
+             onClick={()=>updateExpanded(target.current!==1)}>
+             <ChevronDown size={15} className="feed-v2-collapse-icon"/>
+             <ChevronUp size={15} className="feed-v2-expand-icon"/>
+           </button>
            <div className="discovery-name-row">
              <button className="discovery-name-button" type="button" onClick={onOpenProfile} disabled={!available}
                aria-label={"Посмотреть профиль "+person.name+", "+person.age}>
@@ -287,7 +285,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
              <p className="discovery-short-about">{person.about}</p>
            </div>}
            {person.interests.length>0&&<div className="feed-v2-interests" ref={interests} aria-hidden={!expanded} inert={!expanded}>
-             <div className="discovery-interests" ref={interestBody}>
+             <div className="discovery-interests">
                {person.interests.slice(0,6).map(id=><InterestChip key={id} id={id}/>)}
                {person.interests.length>6&&<button type="button" className="discovery-more"
                  onClick={onInterests} disabled={!available} aria-label={"Показать все интересы "+person.name}>
@@ -295,6 +293,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
                </button>}
              </div>
            </div>}
+          </div>
          </div>
        </div>
        <div className="discovery-actions" aria-label="Демо-действия с анкетой">
