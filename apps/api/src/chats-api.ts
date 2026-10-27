@@ -101,18 +101,34 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   return {actorId:req.authActor.actorId};
  });
  app.get("/api/v4/chats",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
-  const rows=await db.query<{id:string;unread_count:string;last_message:string|null;peer_id:string|null}>(`
+  const rows=await db.query<{id:string;unread_count:string;last_message:string|null;
+   peer_id:string;peer_name:string;peer_photo_id:string|null}>(`
    SELECT m.conversation_id AS id,
+   CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END AS peer_id,
+   peer.display_name AS peer_name,
+   (SELECT photo.id FROM luemi_private.media_assets photo
+     WHERE photo.owner_id=peer.owner_id AND photo.environment=$2
+       AND photo.state='approved' AND photo.publication_status='published'
+     ORDER BY photo.position,photo.id LIMIT 1) AS peer_photo_id,
    (SELECT count(*)::text FROM luemi_chats.messages msg
     WHERE msg.conversation_id=m.conversation_id AND msg.sender_id<>$1
     AND msg.deleted_at IS NULL AND msg.created_at>coalesce(m.last_read_at,'epoch'::timestamptz)) AS unread_count,
    (SELECT msg.body FROM luemi_chats.messages msg
     WHERE msg.conversation_id=m.conversation_id AND msg.deleted_at IS NULL
-    ORDER BY msg.created_at DESC,msg.id DESC LIMIT 1) AS last_message,
-   NULL::uuid AS peer_id
-   FROM luemi_chats.members m WHERE m.actor_id=$1 AND m.environment=$2
-   ORDER BY m.conversation_id LIMIT 100`,[actor,options.namespace]);
-  return {conversations:rows.rows.map(r=>({id:r.id,peerId:r.peer_id??"",peerName:"",lastMessage:r.last_message,unreadCount:Number(r.unread_count)}))};
+    ORDER BY msg.created_at DESC,msg.id DESC LIMIT 1) AS last_message
+   FROM luemi_chats.members m
+   JOIN luemi_chats.conversations c ON c.id=m.conversation_id AND c.environment=m.environment
+   JOIN luemi_chats.matches pair ON pair.id=c.private_match_id AND pair.environment=c.environment AND pair.status='active'
+   JOIN luemi_private.public_profiles peer
+     ON peer.owner_id=(CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END)
+    AND peer.environment=$2 AND peer.publication_status='published'
+   WHERE m.actor_id=$1 AND m.environment=$2
+   ORDER BY c.created_at DESC,c.id DESC LIMIT 100`,[actor,options.namespace]);
+  return {conversations:rows.rows.map(r=>({
+   id:r.id,peerId:r.peer_id,peerName:r.peer_name,
+   peerPhotoUrl:r.peer_photo_id?"/api/v3/discovery/photo/"+r.peer_photo_id:null,
+   lastMessage:r.last_message,unreadCount:Number(r.unread_count)
+  }))};
  }));
  app.get<{Params:{id:string};Querystring:{before?:string}}>(
  "/api/v4/chats/:id/messages",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
