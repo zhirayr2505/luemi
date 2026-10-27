@@ -237,8 +237,6 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   // Both CSS transitions can have different in-flight matrix values.
   const trackX=computedTranslation(pageTrack.current),inkX=computedTranslation(underline.current);
   const fraction=fractionalTrack(pageTrack.current,width,browsePosition.current);
-  if(pageTrack.current)pageTrack.current.dataset.motionFrozenX=String(trackX);
-  if(underline.current)underline.current.dataset.motionFrozenX=String(inkX);
   const old=browseSettle.current;
   if(old){browseMotion.current.interrupt(old.token,"interrupted");browseSettle.current=null;}
   if(pagerSettleTimer.current!==null){clearTimeout(pagerSettleTimer.current);pagerSettleTimer.current=null;}
@@ -340,7 +338,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==event.pointerId||g.native)return;
-  const x=event.clientX-g.x,y=event.clientY-g.y;
+  let x=event.clientX-g.x;const y=event.clientY-g.y;
   g.lastX=event.clientX;
   if(!g.tracking){
    if(Math.abs(y)>12&&Math.abs(y)>Math.abs(x)){
@@ -357,6 +355,9 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    const frozen=frozenBrowse();
    g.tracking=true;g.width=frozen.width;g.index=frozen.fraction;
    g.originTrack=frozen.trackX;g.originInk=frozen.inkX;
+   // The axis threshold is a recognition phase, not movement of the track.
+   // Start from the visible frame when ownership is claimed.
+   g.x=event.clientX;g.started=performance.now();x=0;
    g.token=browseMotion.current.begin(g.index);
    if(g.token)browseMotion.current.claim(g.token);
    try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older WebView */}
@@ -397,7 +398,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   const shift=limited?x*.22:Math.max(-g.width,Math.min(g.width,x));
   browseMotion.current.paint(g.token,g.originTrack+shift,
    ()=>paintBrowse(g.originTrack+shift,g.originInk-shift/3));
-  settleDrag(target);
+  settleDrag(target,g.token);
   if(target!==tabIndex)selectTab(target);
  };
  const cancelSwipe=()=>{const g=gesture.current;gesture.current=null;

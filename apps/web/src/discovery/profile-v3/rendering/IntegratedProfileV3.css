@@ -68,7 +68,7 @@
 .v3-int-sheet{position:absolute;left:0;right:0;z-index:5;display:flex;flex-direction:column;
  min-height:0;overflow:hidden;box-sizing:border-box;border-radius:31px 31px 0 0;
  color:var(--ink,#41334f);background:var(--bg,#fbf9fe);
- transform:translate3d(0,0,0);contain:layout style;touch-action:none}
+ transform:translate3d(0,0,0);contain:layout style;touch-action:pan-y}
 .v3-int-handle{flex:none;width:100%;height:43px;display:grid;place-items:start center;
  box-sizing:border-box;padding-top:13px;touch-action:none;user-select:none;
  cursor:grab;outline-offset:-3px}
@@ -89,7 +89,7 @@
 .v3-int-tab.active{color:#955bd2}
 .v3-int-ink{position:absolute;bottom:0;left:0;width:calc((100% - 14px)/5);height:4px;border-radius:12px;
  background:#ac75dc;z-index:1;pointer-events:none;transform:translate3d(7px,0,0)}
-.v3-int-pages{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;
+.v3-int-pages{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:pan-y;
  overscroll-behavior:contain;contain:paint}
 .v3-int-pages-track{position:absolute;inset:0;width:100%;height:100%;transition:none;
  transform:translate3d(0,0,0)}
@@ -97,7 +97,7 @@
  top:0;width:var(--v3-w);height:100%;box-sizing:border-box;
  padding:14px 14px calc(110px + var(--v3-extra-scroll));
  overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;
- touch-action:none;-webkit-overflow-scrolling:touch;overflow-anchor:none;scrollbar-width:none}
+ touch-action:pan-down;-webkit-overflow-scrolling:touch;overflow-anchor:none;scrollbar-width:none}
 .v3-int-page::-webkit-scrollbar{display:none}
 .v3-profile-host .pm-photos-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 .v3-profile-host .pm-photo-tile{aspect-ratio:1;border-radius:18px;touch-action:none}
@@ -115,7 +115,7 @@
    backdrop-filter over the entire hero. Stable opaque paint islands only. */
 .v3-int-ambient{isolation:isolate;contain:paint}
 .v3-int-hero{contain:paint}
-.v3-int-page{touch-action:none;overflow-anchor:none}
+.v3-int-page{overflow-anchor:none}
 
 /* Stable tab label and immutable original logo layers. No opacity animations
    on labels: only underline + page rail move during the gesture. */
