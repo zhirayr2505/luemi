@@ -97,7 +97,7 @@
  top:0;width:var(--v3-w);height:100%;box-sizing:border-box;
  padding:14px 14px calc(110px + var(--v3-extra-scroll));
  overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;
- touch-action:pan-y;-webkit-overflow-scrolling:touch;overflow-anchor:none;scrollbar-width:none}
+ touch-action:pan-down;-webkit-overflow-scrolling:touch;overflow-anchor:none;scrollbar-width:none}
 .v3-int-page::-webkit-scrollbar{display:none}
 .v3-profile-host .pm-photos-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 .v3-profile-host .pm-photo-tile{aspect-ratio:1;border-radius:18px;touch-action:none}
@@ -115,7 +115,7 @@
    backdrop-filter over the entire hero. Stable opaque paint islands only. */
 .v3-int-ambient{isolation:isolate;contain:paint}
 .v3-int-hero{contain:paint}
-.v3-int-page{touch-action:pan-y;overflow-anchor:none}
+.v3-int-page{overflow-anchor:none}
 
 /* Stable tab label and immutable original logo layers. No opacity animations
    on labels: only underline + page rail move during the gesture. */

@@ -46,9 +46,9 @@ assert.ok(feed.includes('const position=(run:CardRun,now:number)')&&
  feedStyle.includes('position:absolute;left:0;right:0;bottom:var(--feed-actions-height);')&&
  feedStyle.includes('position:absolute;left:0;right:0;bottom:0;z-index:7;'),
  "card settles from release velocity while its buttons retain independent geometry");
-assert.ok(profile.includes('decision.owner==="NATIVE_SCROLL")return')&&
+assert.ok(profile.includes('coordinator.current.claimSheetAtScrollTop(e.pointerId)')&&
  !profile.includes('scroll.scrollTop=Math.max(0,(g.scrollStart??0)-dy)')&&
- profileStyle.includes('touch-action:pan-y;-webkit-overflow-scrolling:touch'),
+ profileStyle.includes('touch-action:pan-down;-webkit-overflow-scrolling:touch'),
  "profile pages delegate vertical momentum to native scrolling");
 assert.ok(model.includes("radius:5000"),"locked 1–5000km radius unchanged");
 console.log("✓ Stage 03F.2 P0/P1 regression: stable glass, atomic pager, idle Nearby, native carousels, photo cancel, shared bookmarks");
