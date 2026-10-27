@@ -52,11 +52,11 @@ export function selectedCityValid(data:RegistrationDraft):boolean {
   return /^[a-z0-9:_-]{3,180}$/i.test(data.placeId)&&normalizeCountryCode(data.countryCode)!==null&&
     data.country.trim().length>1&&data.city.trim().length>1;
 }
-export function validateStep(d:RegistrationDraft,step:number,count:number,today=new Date()):string|null {
+export function validateStep(d:RegistrationDraft,step:number,count:number,today=new Date(),mode:"demo"|"live"="demo"):string|null {
   switch(step) {
     case 1:
       if(!nameValid(d.name))return "Имя: 2–48 букв, разрешены пробелы, дефис и апостроф.";
-      if(!d.trialConsent)return "Подтверди условия регистрации.";
+      if(!d.trialConsent)return mode==="live"?"Подтверди условия регистрации.":"Подтверди условия тестового режима.";
       return null;
     case 2:
       if(!birthDateValid(d.day,d.month,d.year,today))return "Укажи настоящую дату рождения. LUEMI доступен с 18 лет.";
