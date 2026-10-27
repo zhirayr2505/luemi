@@ -28,8 +28,7 @@ const expiredClause = `(
 )`;
 function verifyKey(namespace: string, row: Candidate): boolean {
   return uuid.test(row.author_id) &&
-    new RegExp('^' + namespace.replace(/[.*+?^$()|[\]{}\\]/g, '\\$&') +
-      '/' + row.author_id + '/' + UUID + '$', 'i').test(row.media_key);
+    new RegExp('^' + namespace + '/' + row.author_id + '/' + UUID + '$', 'i').test(row.media_key);
 }
 async function checkRole(db: PoolClient): Promise<void> {
   const role = await db.query<{ safe: boolean }>(`SELECT (
