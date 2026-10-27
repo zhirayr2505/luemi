@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { createBlikiUploadTicket, storeBlikiUpload, type BlikiPrivateMediaStore } from './bliki-private-upload.js';
 import { validateBlikiSession } from './bliki-publication-validation.js';
 import { inspectBlikiMp4 } from './bliki-video-validation.js';
+import { parseBlikiEditor } from './bliki-editor-validation.js';
 
 type Guard = {
   read: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
@@ -22,12 +23,18 @@ type Row = {
   mime_type: string; media_key: string; media_bytes: string; status: string;
   published_at: Date | null;
 };
+class RequestError extends Error {
+  constructor(readonly statusCode: number, readonly code: string) { super(code); }
+}
+function fail(statusCode: number, code: string): never { throw new RequestError(statusCode, code); }
 function status(row: Row) {
   if (row.status === 'published' && row.published_at) {
     return { state: 'published', storyId: row.id,
       expiresAt: new Date(new Date(row.published_at).getTime() + 86400000).toISOString() };
   }
-  return { state: 'processing' };
+  if (row.status === 'uploading') return { state: 'uploading' };
+  if (row.status === 'processing') return { state: 'processing' };
+  return { state: 'rejected' };
 }
 /**
  * Opt-in API only. Database must have a dedicated actor-scoped RLS role with
@@ -43,7 +50,7 @@ export function registerBlikiPublicationApi(
   const cfg = options;
   const pool = new Pool({ connectionString: cfg.databaseUrl, max: 3, connectionTimeoutMillis: 3000 });
   app.addHook('onClose', async () => { await pool.end(); });
-  app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer', bodyLimit: 20 * 1024 * 1024 },
+  app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer', bodyLimit: 25 * 1024 * 1024 },
     (_request, body, done) => done(null, body));
   async function transaction<T>(request: FastifyRequest, reply: FastifyReply,
     work: (db: import('pg').PoolClient, actor: string) => Promise<T>): Promise<T | FastifyReply> {
@@ -77,9 +84,11 @@ export function registerBlikiPublicationApi(
           !timingSafeEqual(request.authActor.hash, actor.hash)) throw new Error('session_changed');
       await db.query('COMMIT');
       return result;
-    } catch {
+    } catch (error) {
       await db.query('ROLLBACK').catch(() => undefined);
-      return reply.sent ? reply : reply.code(503).send({ error: 'service_unavailable' });
+      if (reply.sent) return reply;
+      if (error instanceof RequestError) return reply.code(error.statusCode).send({ error: error.code });
+      return reply.code(503).send({ error: 'service_unavailable' });
     } finally { db.release(); }
   }
   async function find(db: import('pg').PoolClient, actor: string, operation: string, lock = false) {
@@ -92,6 +101,9 @@ export function registerBlikiPublicationApi(
   app.post<{ Body: unknown }>('/api/v1/bliki/publications', { preHandler: guard.mutation }, async (request, reply) => {
     const parsed = validateBlikiSession(request.body);
     if (!parsed.ok) return reply.code(422).send({ error: parsed.error });
+    // Fail closed until a bounded codec validation/transcoding worker is available.
+    // MP4 movie-header inspection alone does not prove decodable or safe video.
+    if (parsed.value.mediaKind === 'video') return reply.code(503).send({ error: 'video_pipeline_unavailable' });
     return transaction(request, reply, async (db, actor) => {
       const p = parsed.value;
       let row = await find(db, actor, p.operationId, true);
@@ -107,9 +119,9 @@ export function registerBlikiPublicationApi(
         row = created.rows[0] ?? await find(db, actor, p.operationId, true);
       }
       if (!row || row.media_kind !== p.mediaKind || row.mime_type !== p.mimeType ||
-          Number(row.media_bytes) !== p.size || row.status !== 'uploading') {
-        return { error: 'operation_conflict' };
-      }
+          Number(row.media_bytes) !== p.size) fail(409, 'operation_conflict');
+      if (row.status === 'processing' || row.status === 'published') return status(row);
+      if (row.status !== 'uploading') fail(409, 'operation_conflict');
       return { operationId: p.operationId, uploadUrl: '/api/v1/bliki/uploads/' + p.operationId };
     });
   });
@@ -122,23 +134,32 @@ export function registerBlikiPublicationApi(
       });
     });
   app.put<{ Params: { operationId: string }; Body: Buffer }>('/api/v1/bliki/uploads/:operationId',
-    { preHandler: guard.mutation, bodyLimit: 20 * 1024 * 1024 }, async (request, reply) => {
+    { preHandler: guard.mutation, bodyLimit: 25 * 1024 * 1024 }, async (request, reply) => {
       if (!UUID.test(request.params.operationId) || !Buffer.isBuffer(request.body)) {
         return reply.code(422).send({ error: 'invalid_upload' });
       }
       return transaction(request, reply, async (db, actor) => {
         const row = await find(db, actor, request.params.operationId, true);
-        if (!row || row.status !== 'uploading') return { error: 'operation_unavailable' };
+        if (!row) fail(404, 'operation_not_found');
+        if (row.status === 'processing' || row.status === 'published') return status(row);
+        if (row.status !== 'uploading') fail(409, 'operation_unavailable');
+        if (row.media_kind === 'video') fail(503, 'video_pipeline_unavailable');
         const ticket = { operationId: row.operation_id, actorId: actor, mediaKind: row.media_kind,
           mimeType: row.mime_type, size: Number(row.media_bytes), key: row.media_key,
           expiresAt: Date.now() + 60000 };
         if (row.media_kind === 'video') {
           try { inspectBlikiMp4(request.body); }
-          catch { return { error: 'invalid_video' }; }
+          catch { fail(422, 'invalid_video'); }
         }
-        await storeBlikiUpload(cfg.store, ticket, request.body);
-        await db.query(`UPDATE luemi_bliki_private.stories SET status='processing'
+        try { await storeBlikiUpload(cfg.store, ticket, request.body); }
+        catch (error) {
+          if (error instanceof Error && /^(invalid_|upload_size_mismatch|upload_too_large)/.test(error.message))
+            fail(422, 'invalid_upload');
+          throw error;
+        }
+        const updated = await db.query(`UPDATE luemi_bliki_private.stories SET status='processing'
           WHERE id=$1 AND author_id=$2 AND status='uploading'`, [row.id, actor]);
+        if (updated.rowCount !== 1) throw new Error('upload_transition_failed');
         return { state: 'processing' };
       });
     });
@@ -148,23 +169,24 @@ export function registerBlikiPublicationApi(
       if (!UUID.test(request.params.operationId)) return reply.code(422).send({ error: 'invalid_id' });
       return transaction(request, reply, async (db, actor) => {
         const row = await find(db, actor, request.params.operationId, true);
-        if (!row) return { state: 'missing' };
+        if (!row) fail(404, 'operation_not_found');
         if (row.status === 'published') return status(row);
-        if (row.status !== 'processing' || !request.body?.editor ||
-            typeof request.body.editor !== 'object' || Array.isArray(request.body.editor)) {
-          return { state: 'processing' };
-        }
+        if (row.status === 'rejected' || row.status === 'deleted') fail(409, 'operation_unavailable');
+        if (row.status !== 'processing') fail(409, 'upload_not_ready');
+        if (row.media_kind === 'video') fail(503, 'video_pipeline_unavailable');
+        const editor = parseBlikiEditor(request.body?.editor);
+        if (!editor) fail(422, 'invalid_editor');
         const stored = await cfg.store.stat(row.media_key);
         if (!stored || stored.size !== Number(row.media_bytes) || stored.mimeType !== row.mime_type) {
-          return { state: 'processing' };
+          fail(503, 'media_integrity_unavailable');
         }
-        // Video duration was verified from the uploaded MP4 header before private storage.
+        // Only an inspected image may be published. Video requires a trusted worker.
         // Publication is still gated by storage integrity and actor-scoped RLS.
         const result = await db.query<Row>(`UPDATE luemi_bliki_private.stories
           SET status='published',editor=$2::jsonb,published_at=clock_timestamp()
           WHERE id=$1 AND status='processing'
           RETURNING id,author_id,operation_id,media_kind,mime_type,media_key,media_bytes::text,status,published_at`,
-          [row.id, JSON.stringify(request.body.editor)]);
+          [row.id, JSON.stringify(editor)]);
         if (result.rowCount !== 1) throw new Error('publication_transition_failed');
         return status(result.rows[0]);
       });
