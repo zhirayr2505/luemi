@@ -7,19 +7,20 @@ import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
 import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import type {DemoKind,DemoPerson} from "./model";
+import {cardGestureZone} from "./card-gesture-zone";
 
 const buttons=[
  ["undo","Отменить",Undo2],["pass","Пропустить",X],
  ["special","Особенная симпатия",Sparkles],["like","Нравится",Heart]
 ] as const;
 type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info";
- info:boolean;nativeScroll:boolean;startProgress:number;resumeTarget:0|1;
+ info:boolean;zone:"photo"|"browse";nativeScroll:boolean;startProgress:number;resumeTarget:0|1;
  samples:{y:number;t:number}[]};
-type CardRun={from:number;target:0|1;velocity:number;start:number;frame:number|null};
+type CardRun={from:number;target:0|1;start:number;duration:number;frame:number|null};
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
-const spring=(run:CardRun,now:number)=>{
- const t=Math.max(0,now-run.start),omega=.028,a=run.from-run.target;
- return run.target+(a+(run.velocity+omega*a)*t)*Math.exp(-omega*t);
+const position=(run:CardRun,now:number)=>{
+ const t=clamp((now-run.start)/run.duration,0,1);
+ return run.from+(run.target-run.from)*(1-(1-t)*(1-t)*(1-t));
 };
 
 /** The keyed complete card remains mounted as it moves through the deck. */
@@ -42,6 +43,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const progress=useRef(0),target=useRef<0|1>(0);
  const metrics=useRef({closed:174,open:430,aboutClosed:40,about:40,interests:120});
  const run=useRef<CardRun|null>(null);
+ const fingerFrame=useRef<number|null>(null);
+ const fingerValue=useRef(0);
  const suspend=useRef<()=>void>(()=>{});
  const measureLive=useRef<()=>void>(()=>{});
  const paint=(value:number)=>{
@@ -51,13 +54,22 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(interests.current)interests.current.style.maxHeight=(m.interests*p)+"px";
   card.current?.style.setProperty("--feed-progress",String(p));
  };
+ const flushFinger=()=>{
+  if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
+  paint(fingerValue.current);
+ };
+ const scheduleFinger=(value:number)=>{
+  fingerValue.current=value;
+  if(fingerFrame.current!==null)return;
+  fingerFrame.current=requestAnimationFrame(()=>{fingerFrame.current=null;paint(fingerValue.current);});
+ };
  const freeze=()=>{
   const current=run.current;
   if(!current)return;
   if(current.frame!==null)cancelAnimationFrame(current.frame);
-  run.current=null;paint(spring(current,performance.now()));
+  run.current=null;paint(position(current,performance.now()));
  };
- const settle=(next:0|1,velocity=0)=>{
+ const settle=(next:0|1)=>{
   freeze();target.current=next;setExpanded(next===1);
   if(scroll.current)scroll.current.style.overflowY="hidden";
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
@@ -66,13 +78,14 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(Math.abs(progress.current-next)<.002){
    paint(next);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
   }
-  const motion:CardRun={from:progress.current,target:next,velocity:clamp(velocity,-.006,.006),
+  const motion:CardRun={from:progress.current,target:next,
+   duration:Math.max(110,Math.round(270*Math.abs(next-progress.current))),
    start:performance.now(),frame:null};
   run.current=motion;
   const tick=(now:number)=>{
    if(run.current!==motion)return;
-   const value=spring(motion,now);paint(value);
-   if(now-motion.start>=340||Math.abs(value-next)<.002){
+   const value=position(motion,now);paint(value);
+   if(now-motion.start>=motion.duration){
     run.current=null;paint(next);
     if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";
    }else motion.frame=requestAnimationFrame(tick);
@@ -101,6 +114,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   measureLive.current();
   const carousel=photo.current;
   return ()=>{resize.disconnect();carousel?.cancel();
+   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
    const current=run.current;if(current?.frame!=null)
     cancelAnimationFrame(current.frame);
    run.current=null;};
@@ -116,17 +130,13 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(!active||busy)return;
   settle(next?1:0);
  };
- const photoRegion=(y:number)=>{
-  const edge=details.current?.getBoundingClientRect().top;
-  return edge!==undefined&&y<edge;
- };
  const down=(event:ReactPointerEvent<HTMLElement>)=>{
   if(!event.isPrimary){
    multiTouch.current=true;
    blockClickUntil.current=performance.now()+350;
    const old=gesture.current;gesture.current=null;
    if(old?.axis==="photo")photo.current?.finish(old.id,old.x,true);
-   if(old?.axis==="info")settle(old.resumeTarget);
+   if(old?.axis==="info"){flushFinger();settle(old.resumeTarget);}
    return;
   }
   multiTouch.current=false;
@@ -135,11 +145,14 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const interactive=element.closest("button,a,input,textarea,select,[contenteditable]");
   if(interactive&&!interactive.matches(".discovery-name-button,.feed-v2-expand"))return;
   const info=!!element.closest(".feed-v2-details");
-  if(!info&&!photoRegion(event.clientY))return;
+  const rect=card.current?.getBoundingClientRect();
+  const zone=rect?cardGestureZone(event.clientY,rect.top,rect.height):null;
+  if(!zone||(!info&&zone!=="photo"))return;
   if(info)freeze();
   const now=performance.now();
   gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,at:now,
    axis:"pending",info,nativeScroll:!!element.closest(".feed-v2-scroll"),
+   zone,
    startProgress:progress.current,resumeTarget:target.current,samples:[{y:event.clientY,t:now}]};
  };
  const move=(event:ReactPointerEvent<HTMLElement>)=>{
@@ -151,8 +164,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    if(Math.abs(dx)>Math.abs(dy)*1.15){
     // A rightward gesture from the OS edge belongs to Telegram.
     if(dx>0&&g.x<26){gesture.current=null;return;}
-    if(g.info){gesture.current=null;blockClickUntil.current=performance.now()+350;
-     settle(g.resumeTarget);return;}
+    if(g.zone!=="photo"){gesture.current=null;return;}
     g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
    }else if(Math.abs(dy)>Math.abs(dx)*1.15&&g.info){
     if(progress.current>.99&&g.nativeScroll&&(dy<0||(scroll.current?.scrollTop??0)>0)){
@@ -167,7 +179,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(g.axis==="photo")photo.current?.move(g.id,event.clientX,event.clientY);
   else{
    const travel=Math.max(1,metrics.current.open-metrics.current.closed);
-   paint(g.startProgress-dy/travel);
+   scheduleFinger(g.startProgress-dy/travel);
    const t=performance.now();g.samples.push({y:event.clientY,t});
    if(g.samples.length>10)g.samples.shift();
   }
@@ -178,6 +190,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   gesture.current=null;
   if(g.axis==="photo")photo.current?.finish(g.id,event.clientX,cancel);
   if(g.axis==="info"){
+   flushFinger();
    if(cancel){settle(g.resumeTarget);return;}
    const t=performance.now(),samples=[...g.samples,{y:event.clientY,t}];
    let recent=samples[samples.length-1];
@@ -189,12 +202,13 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    const travel=Math.max(1,metrics.current.open-metrics.current.closed);
    paint(g.startProgress-(event.clientY-g.y)/travel);
    const projected=progress.current-velocity*125/travel;
-   settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0,-velocity/travel);
+   settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0);
   }else if(g.axis==="pending"&&g.info)settle(g.resumeTarget);
  };
  suspend.current=()=>{
   const g=gesture.current;gesture.current=null;multiTouch.current=false;
   if(g?.axis==="photo")photo.current?.finish(g.id,g.x,true);
+  if(g?.axis==="info")flushFinger();
   freeze();const resting=g?.axis==="info"?g.resumeTarget:target.current;
   target.current=resting;setExpanded(resting===1);paint(resting);
   if(scroll.current)scroll.current.style.overflowY=resting?"auto":"hidden";

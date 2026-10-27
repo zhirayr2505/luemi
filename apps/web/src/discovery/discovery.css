@@ -233,3 +233,10 @@
 @media(prefers-reduced-motion:reduce){
  .discovery-visitor-route{transition:none!important}
 }
+/* Blur on controls inside the moving pager repeatedly samples the photo and
+   the neighboring page on Android WebView. Keep their existing fills, borders
+   and geometry, while avoiding backdrop reads during card and list motion. */
+.discovery-app[data-profile-renderer=android] :is(
+ .discovery-action,.discovery-save-control,.discovery-bottom-nav,
+ .fy-toolbar button,.fy-tile-demo,.fy-save,.nb-location,.nb-bookmark
+){backdrop-filter:none;-webkit-backdrop-filter:none}

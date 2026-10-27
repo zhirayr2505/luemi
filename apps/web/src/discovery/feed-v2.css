@@ -77,6 +77,7 @@
  text-shadow:0 1px 9px rgba(18,9,27,.44)
 }
 .feed-v2-card[data-expanded=true] .feed-v2-scroll{
+ overflow-y:auto;-webkit-overflow-scrolling:touch;
  scrollbar-width:thin;scrollbar-color:rgba(245,218,255,.55) transparent
 }
 .feed-v2-card[data-expanded=true] .discovery-name-row,
