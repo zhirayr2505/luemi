@@ -22,7 +22,14 @@ test('Bliki viewer navigation is isolated', () => {
   assert.match(code, /nextBlik/);
   assert.match(code, /previousBlik/);
 });
-test('Bliki UI is not yet wired into live app', () => {
-  const code = read('../../App.tsx');
-  assert.doesNotMatch(code, /BlikDraftEditor|BlikViewer/);
+test('Bliki UI uses an explicit opt-in and preserves default Discovery gestures', () => {
+  const app = read('../../App.tsx');
+  const discovery = read('../../discovery/DiscoveryApp.tsx');
+  const slot = read('BlikiDiscoverySlot.tsx');
+  assert.match(app, /VITE_BLIKI_V1_ENABLED/);
+  assert.match(discovery, /BlikiDiscoverySlot/);
+  assert.match(slot, /fetchBlikiFeed/);
+  assert.match(slot, /BlikDraftEditor/);
+  assert.match(slot, /BlikViewer/);
+  assert.doesNotMatch(app, /import.*BlikViewer/);
 });
