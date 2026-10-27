@@ -20,6 +20,7 @@ import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} fr
 import {recoverServerFields} from "./registration/remote-recovery";
 import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
+import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 import "./registration/real-home.css";
 
@@ -555,6 +556,26 @@ export function App() {
     if(!serverConsent){setError("Подтверди согласие на обработку данных и публикацию анкеты.");return;}
     submitting.current=true;setPublishBusy(true);setError("");setPublishFeedback("");
     try{
+      const existing=await ownerPublicationStatus();
+      setPublishStatus(existing);
+      const decision=registrationSubmissionDecision(existing);
+      if(decision==="already-published"){
+        setRealHome(true);
+        setPublishFeedback("Анкета уже опубликована.");
+        return;
+      }
+      if(decision==="awaiting-review"){
+        setPublishFeedback("Фотографии уже на сервере и проходят модерацию. Повторно отправлять их не нужно — нажми «Проверить модерацию и публикацию» позже.");
+        return;
+      }
+      if(decision==="ready-to-publish"){
+        setPublishFeedback("Фотографии уже одобрены. Нажми «Проверить модерацию и публикацию», чтобы открыть анкету.");
+        return;
+      }
+      if(decision==="review-needs-attention"){
+        setPublishFeedback("На сервере уже есть фотографии, требующие дополнительной проверки или исправления. Не отправляем повторно те же файлы. Проверь статус модерации.");
+        return;
+      }
       setPublishFeedback("Сохраняем анкету…");
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
