@@ -38,6 +38,28 @@ export function createBlikiUploadTicket(input: {
     size: input.size, key, expiresAt: now + 10 * 60 * 1000,
   };
 }
+/** Reject renamed executables and mismatched file signatures before storage. */
+export function hasBlikiMediaSignature(mimeType: string, bytes: Uint8Array): boolean {
+  if (mimeType === 'image/jpeg') return bytes.length >= 4 &&
+    bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff &&
+    bytes[bytes.length - 2] === 0xff && bytes[bytes.length - 1] === 0xd9;
+  if (mimeType === 'image/png') {
+    const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+    return bytes.length >= 24 && signature.every((byte, i) => bytes[i] === byte);
+  }
+  if (mimeType === 'image/webp') {
+    return bytes.length >= 16 &&
+      String.fromCharCode(...bytes.subarray(0, 4)) === 'RIFF' &&
+      String.fromCharCode(...bytes.subarray(8, 12)) === 'WEBP';
+  }
+  if (mimeType === 'video/mp4') {
+    return bytes.length >= 16 &&
+      String.fromCharCode(...bytes.subarray(4, 8)) === 'ftyp' &&
+      ['isom', 'iso2', 'mp41', 'mp42', 'avc1', 'M4V ']
+        .includes(String.fromCharCode(...bytes.subarray(8, 12)));
+  }
+  return false;
+}
 export async function storeBlikiUpload(
   store: BlikiPrivateMediaStore, ticket: BlikiUploadTicket,
   bytes: Uint8Array, now = Date.now(),
@@ -49,6 +71,7 @@ export async function storeBlikiUpload(
     kind: ticket.mediaKind, mime: ticket.mimeType, size: bytes.byteLength,
   });
   if (!valid.ok) throw new Error(valid.error);
+  if (!hasBlikiMediaSignature(ticket.mimeType, bytes)) throw new Error('invalid_media_signature');
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   await store.put(ticket.key, bytes, ticket.mimeType);
   const stored = await store.stat(ticket.key);
