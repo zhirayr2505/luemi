@@ -48,6 +48,13 @@ test("two authenticated actors create one durable conversation and revoke it on 
     VALUES($1,$2,'published',1,$3,'Test','DE','Synthetic',ARRAY['music'],'woman','serious',ARRAY['ru'],'1995-01-01',clock_timestamp())`,
     [a.id,ns,a.name]);
   }
+  // The chat list must project a peer photo only after server moderation.
+  const peerPhotoId="77777777-7777-4777-8777-777777777777";
+  await admin.query(`INSERT INTO luemi_private.media_assets
+   (id,owner_id,environment,original_key,derivative_key,position,state,publication_status)
+   VALUES($1,$2,$3,$4,$5,0,'approved','published')`,
+   [peerPhotoId,B,ns,"synthetic-original-photo-".padEnd(48,"A"),
+    "synthetic-derivative-photo-".padEnd(48,"B")]);
   let result=await inject(A,"POST","/api/v4/matches/like",{targetId:B});
   assert.equal(result.status,200,JSON.stringify(result));assert.deepEqual(result.json,{liked:true,matched:false});
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});
@@ -61,6 +68,8 @@ test("two authenticated actors create one durable conversation and revoke it on 
   assert.equal(listed.json.conversations.length,1);
   assert.equal(listed.json.conversations[0].peerName,"HTTP B");
   assert.equal(listed.json.conversations[0].peerId,B);
+  assert.equal(listed.json.conversations[0].peerPhotoUrl,
+   "/api/v3/discovery/photo/"+peerPhotoId);
   const matchId=listed.json.conversations[0].matchId as string;
   const messagePath="/api/v4/chats/"+conversationId+"/messages";
   result=await inject(C,"GET",messagePath);
