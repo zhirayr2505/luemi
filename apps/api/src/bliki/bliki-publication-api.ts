@@ -159,6 +159,7 @@ export function registerBlikiPublicationApi(
           WHERE id=$1 AND status='processing'
           RETURNING id,author_id,operation_id,media_kind,mime_type,media_key,media_bytes::text,status,published_at`,
           [row.id, JSON.stringify(request.body.editor)]);
+        if (result.rowCount !== 1) throw new Error('publication_transition_failed');
         return status(result.rows[0]);
       });
     });
