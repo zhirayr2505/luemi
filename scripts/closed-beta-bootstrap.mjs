@@ -97,9 +97,9 @@ export async function bootstrap({
  const db=new Client({connectionString:owner.href,connectionTimeoutMillis:7000});
  const credentials=new Map(ROLES.map(([name])=>[name,randomBytes(32).toString("hex")]));
  const pepper=randomBytes(32).toString("hex");
- const configured=[];
+ let connected=false;
  try{
-  await db.connect();
+  await db.connect();connected=true;
   const result=await db.query(
    "SELECT r.rolname,r.rolcanlogin,r.rolsuper,r.rolbypassrls,"+
    "r.rolcreatedb,r.rolcreaterole,COUNT(g.oid)::int AS count_memberships,"+
@@ -131,7 +131,6 @@ export async function bootstrap({
   for(const [name,,renderKey] of ROLES){
    const url=makeScopedConnection(owner,name,credentials.get(name));
    await setRenderEnv(renderApiKey,renderKey,url);
-   configured.push(renderKey);
   }
   await setRenderEnv(renderApiKey,"REM05B_SESSION_PEPPER",pepper);
   await db.query("BEGIN");
@@ -146,11 +145,17 @@ export async function bootstrap({
  }catch(error){
   // Feature flags are OFF. Disable every known app role if bootstrap is partial;
   // Render may contain unusable credentials but can never connect after fail.
-  await db.query("BEGIN").catch(()=>{});
-  for(const [name] of ROLES){
-   try{await db.query("ALTER ROLE "+name+" WITH NOLOGIN");}catch{/* failure reported below */}
+  if(connected){
+   await db.query("ROLLBACK").catch(()=>{});
+   try{
+    await db.query("BEGIN");
+    for(const [name] of ROLES)await db.query("ALTER ROLE "+name+" WITH NOLOGIN");
+    await db.query("COMMIT");
+   }catch{
+    await db.query("ROLLBACK").catch(()=>{});
+    console.error("Security rollback needs operator verification.");
+   }
   }
-  await db.query("COMMIT").catch(()=>{});
   console.error("BETA_DB_BOOTSTRAP_FAILED (no secrets logged): "+(error instanceof Error?error.message:"unknown"));
   console.error("Do not enable any runtime feature flag. Check role LOGIN states and rerun only after resolving the cause.");
   process.exitCode=1;
