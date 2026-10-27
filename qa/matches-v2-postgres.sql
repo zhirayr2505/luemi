@@ -31,14 +31,14 @@ BEGIN;
 SET LOCAL ROLE luemi_match_writer;
 SET LOCAL luemi.actor_id='11111111-1111-4111-8111-111111111111';
 SET LOCAL luemi.environment='luemi';
-DO $ BEGIN
+DO $$ BEGIN
  BEGIN
   INSERT INTO luemi_chats.matches(environment,actor_low,actor_high)
    VALUES('luemi','11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222');
   RAISE EXCEPTION 'one-sided forged match accepted';
  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
  END;
-END $;
+END $$;
 COMMIT;
 -- Opposite like creates an authorized match, conversation and exactly two members.
 BEGIN;
@@ -89,14 +89,14 @@ BEGIN;
 SET LOCAL ROLE luemi_match_writer;
 SET LOCAL luemi.actor_id='11111111-1111-4111-8111-111111111111';
 SET LOCAL luemi.environment='luemi';
-DO $ BEGIN
+DO $$ BEGIN
  BEGIN
   INSERT INTO luemi_chats.members(conversation_id,actor_id,environment)
    SELECT id,'33333333-3333-4333-8333-333333333333','luemi' FROM luemi_chats.conversations;
   RAISE EXCEPTION 'third-party chat membership allowed';
  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
  END;
-END $;
+END $$;
 COMMIT;
 -- Actual message round-trip through the least-privilege chat role.
 BEGIN;
@@ -112,21 +112,21 @@ BEGIN;
 SET LOCAL ROLE luemi_chats_writer;
 SET LOCAL luemi.actor_id='22222222-2222-4222-8222-222222222222';
 SET LOCAL luemi.environment='luemi';
-DO $ BEGIN
+DO $$ BEGIN
  IF (SELECT count(*) FROM luemi_chats.messages WHERE body='Hello from A')<>1 THEN
   RAISE EXCEPTION 'matched B cannot read A message';
  END IF;
-END $;
+END $$;
 COMMIT;
 BEGIN;
 SET LOCAL ROLE luemi_chats_writer;
 SET LOCAL luemi.actor_id='33333333-3333-4333-8333-333333333333';
 SET LOCAL luemi.environment='luemi';
-DO $ BEGIN
+DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM luemi_chats.messages) THEN
   RAISE EXCEPTION 'unmatched actor C saw private messages';
  END IF;
-END $;
+END $$;
 COMMIT;
 -- A block immediately revokes both participants' message access.
 INSERT INTO luemi_private.blocks(blocker_id,blocked_id,environment)
@@ -135,7 +135,7 @@ BEGIN;
 SET LOCAL ROLE luemi_chats_writer;
 SET LOCAL luemi.actor_id='22222222-2222-4222-8222-222222222222';
 SET LOCAL luemi.environment='luemi';
-DO $ BEGIN
+DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM luemi_chats.members) THEN RAISE EXCEPTION 'block did not revoke chat'; END IF;
  IF EXISTS(SELECT 1 FROM luemi_chats.messages) THEN RAISE EXCEPTION 'block leaked messages'; END IF;
  BEGIN
@@ -146,7 +146,7 @@ DO $ BEGIN
   RAISE EXCEPTION 'post-block send was incorrectly allowed';
  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
  END;
-END $;
+END $$;
 COMMIT;
 DELETE FROM luemi_private.blocks;
 -- Unmatching closes the pair and revokes visibility without deleting messages.
