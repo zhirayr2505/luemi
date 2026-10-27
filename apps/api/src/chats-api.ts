@@ -121,7 +121,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt"
    FROM luemi_chats.messages WHERE conversation_id=$1 AND sender_id=$2 AND client_id=$3`,
    [req.params.id,actor,req.body.clientId]);
-   if(existing.rowCount!==1||existing.rows[0].body!==req.body.body)deny(409,"idempotency_conflict");
+   if(existing.rowCount!==1||existing.rows[0].body!==req.body.body||existing.rows[0].deletedAt)deny(409,"idempotency_conflict");
    return {message:existing.rows[0]};
   }
   return {message:q.rows[0]};
