@@ -29,7 +29,8 @@ export function buildBlikiFeed(
   const entries: BlikiFeedEntry[] = [];
   for (const candidate of candidates) {
     if (!candidate.id || seen.has(candidate.id) || candidate.isBlocked || !candidate.isEligible ||
-      !candidate.stories.length || !Number.isFinite(candidate.lastPublishedAt)) continue;
+      !candidate.stories.length || !Number.isFinite(candidate.lastPublishedAt) ||
+      candidate.lastPublishedAt > now || candidate.lastPublishedAt <= now - 86400000) continue;
     const activeStories = candidate.stories.filter(story => {
       const publishedAt = 'publishedAt' in story ? (story as { publishedAt?: unknown }).publishedAt : undefined;
       if (publishedAt === undefined) return false; // Never render stories with unverifiable expiry.
