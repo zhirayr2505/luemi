@@ -23,7 +23,7 @@ export function RealChats(){
  useEffect(()=>{
   if(!api){setError("Требуется авторизация Telegram");setLoading(false);return;}
   const controller=new AbortController();
-  Promise.all([api.me(controller.signal),api.list(controller.signal)]).then(([me,data])=>{setActorId(me.actorId);setConversations(data.conversations);})
+  Promise.all([api.me(controller.signal),api.list(controller.signal)]).then(([me,data])=>{if(!controller.signal.aborted){setActorId(me.actorId);setConversations(data.conversations);}})
    .catch(()=>{if(!controller.signal.aborted)setError("Не удалось загрузить чаты");})
    .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
   return()=>controller.abort();
@@ -32,6 +32,7 @@ export function RealChats(){
  useEffect(()=>{
   if(!active||!api)return;
   const controller=new AbortController();
+  lastRead.current=null;
   let running=false;
   const load=async()=>{
    if(running||controller.signal.aborted)return;
