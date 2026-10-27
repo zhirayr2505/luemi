@@ -10,6 +10,7 @@ function constantTimeMatch(received: unknown, expected: string): boolean {
 }
 interface TelegramMessage {
   text?: string;
+  message_id?: number;
   from?: { id?: number };
   chat?: { id?: number; type?: string };
 }
@@ -46,6 +47,20 @@ export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig)
       if (!Number.isSafeInteger(senderId)||senderId!==chat.id)return {ok:true};
       return {method:"sendMessage",chat_id:chat.id,
        text:"Твой Telegram ID: "+senderId+"\nПередай его владельцу LUEMI для приглашения."};
+    }
+    if (/^\\/support(?:@LuemiAppBot)?(?:\\s|$)/i.test(text)){
+      if(!Number.isSafeInteger(senderId)||senderId!==chat.id)return {ok:true};
+      const body=text.replace(/^\\/support(?:@LuemiAppBot)?/i,"").trim();
+      if(body.length<5||body.length>1000||!Number.isSafeInteger(request.body?.message?.message_id))
+       return {method:"sendMessage",chat_id:chat.id,
+        text:"Напиши /support и текст обращения (от 5 до 1000 символов) одним сообщением."};
+      if(!config.supportChatId)
+       return {method:"sendMessage",chat_id:chat.id,
+        text:"Приём обращений временно недоступен. Повтори попытку позже."};
+      // A verified Telegram webhook response forwards the original message
+      // to the private owner chat. The bot never stores or logs its body.
+      return {method:"forwardMessage",chat_id:config.supportChatId,
+        from_chat_id:chat.id,message_id:request.body!.message!.message_id!};
     }
     if (!/^\/start(?:\s|$)/.test(text))return {ok:true};
     // Telegram accepts an API method in the webhook response; no bot token is sent to clients.
