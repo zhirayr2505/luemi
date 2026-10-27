@@ -67,6 +67,11 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    [conversationId,actor,options.namespace]);
   if(r.rowCount!==1)deny(404,"not_found");
  }
+ app.get("/api/v4/chats/me",{preHandler:auth.read},async(req,reply)=>{
+  if(reply.sent||!req.authActor)return reply;
+  reply.header("Cache-Control","private, no-store");
+  return {actorId:req.authActor.actorId};
+ });
  app.get("/api/v4/chats",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
   const rows=await db.query<{id:string;unread_count:string;last_message:string|null;peer_id:string|null}>(`
    SELECT m.conversation_id AS id,
