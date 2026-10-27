@@ -7,8 +7,10 @@ CREATE SCHEMA IF NOT EXISTS luemi_chats;
 CREATE TABLE IF NOT EXISTS luemi_chats.conversations (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  environment text NOT NULL,
+ match_id uuid NOT NULL,
  created_at timestamptz NOT NULL DEFAULT now(),
- CONSTRAINT chat_environment_len CHECK (length(environment) BETWEEN 1 AND 96)
+ CONSTRAINT chat_environment_len CHECK (length(environment) BETWEEN 1 AND 96),
+ UNIQUE(environment,match_id)
 );
 CREATE TABLE IF NOT EXISTS luemi_chats.members (
  conversation_id uuid NOT NULL REFERENCES luemi_chats.conversations(id) ON DELETE CASCADE,
