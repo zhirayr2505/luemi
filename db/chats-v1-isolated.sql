@@ -46,6 +46,7 @@ CREATE POLICY chats_members_read ON luemi_chats.members FOR SELECT USING (
  actor_id = nullif(current_setting('luemi.actor_id',true),'')::uuid
  AND environment = current_setting('luemi.environment',true)
 );
+-- Only UPDATE(last_read_at) may be granted to the chat login role.
 CREATE POLICY chats_members_update_read ON luemi_chats.members FOR UPDATE USING (
  actor_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
  AND environment=current_setting('luemi.environment',true)
@@ -99,6 +100,7 @@ CREATE POLICY chats_media_insert ON luemi_chats.media FOR INSERT WITH CHECK (
  WHERE m.conversation_id=media.conversation_id
  AND m.actor_id=media.owner_id AND m.environment=media.environment)
 );
--- The role must NOT receive UPDATE/DELETE on members or conversations.
+-- The role may receive UPDATE(last_read_at) on members ONLY; never UPDATE on other columns,
+-- and never INSERT/DELETE on members or any writes on conversations.
 -- Explicit grants require a separately audited login role, intentionally not created here.
 COMMIT;
