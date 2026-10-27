@@ -52,3 +52,8 @@ No merge, deploy, Supabase migration, or paid service was performed.
 - Review-only reconciliation joins actors and public profiles using independently verified Telegram ID and active account state, then maps public match endpoints to actor IDs. It remains intentionally rolled back and is not a live integration.
 - Chat list now refreshes every 5 seconds in the foreground and immediately on visibility restoration, including unread counts.
 - Match revocation, blocking, photo storage and production credential provisioning remain blockers to turning on the feature.
+
+## Trusted reconciliation implementation (not yet deployed)
+- `db/chats-v1-trusted-reconcile.sql` is a real transactional implementation rather than a dry-run: it joins public match participants to private Telegram V2 actors, excludes inactive profiles, invalid matches and bidirectional blocks, revokes obsolete memberships, and creates missing two-person conversations idempotently.
+- It uses an advisory transaction lock and checks that eligible conversations have exactly two members. It requires an audited privileged maintenance role; never run it as a client or expose it through the public API.
+- **Not production ready until synchronous revocation is wired** into unmatch, block and account disable paths. Running this SQL periodically is insufficient: a blocked actor could retain access until the next reconciliation. No migration was applied to live Supabase.
