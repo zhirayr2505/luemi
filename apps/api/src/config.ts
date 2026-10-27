@@ -1,4 +1,5 @@
 import type { FastifyServerOptions } from "fastify";
+import type {RegistrationReviewOptions} from "./registration-review-api.js";
 import {createBlikiSupabaseStore} from "./bliki/bliki-supabase-store.js";
 import type {BlikiPublicationApiOptions} from "./bliki/bliki-publication-api.js";
 import type {BlikiApiOptions} from "./bliki/bliki-api.js";
@@ -35,6 +36,7 @@ export interface ApiConfig {
   safetyAppeal?: SafetyAppealOptions;
   chats?: ChatOptions;
   matches?: MatchOptions;
+  registrationReview?: RegistrationReviewOptions;
   bliki?: BlikiApiOptions;
   blikiPublication?: BlikiPublicationApiOptions;
   blikiMedia?: BlikiMediaApiOptions;
@@ -220,6 +222,16 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   }:undefined;
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
+  const reviewNotifyEnabled=env.REM06_REVIEW_BOT_NOTIFY_ENABLED==="1";
+  if(reviewNotifyEnabled&&(!regEnabled||!mediaEnabled||!v2Enabled||stagingOnly||
+    env.REM06_PRIVACY_APPROVED!=="1"||!env.REM05B_REQUEST_DATABASE_URL||
+    !env.REM06_REVIEW_ADMIN_CHAT_ID||!env.TELEGRAM_BOT_TOKEN))
+    throw new Error("Review bot requires real authenticated private registration and explicit admin chat");
+  const registrationReview:RegistrationReviewOptions|undefined=reviewNotifyEnabled?{
+    enabled:true,databaseUrl:env.REM05B_REQUEST_DATABASE_URL!,
+    namespace:env.REM05B_BOT_NAMESPACE??"",consentVersion:env.REM06_CONSENT_VERSION??"",
+    botToken:env.TELEGRAM_BOT_TOKEN!,adminChatId:env.REM06_REVIEW_ADMIN_CHAT_ID!
+  }:undefined;
   const blikiEnabled = env.BLIKI_V1_ENABLED === "1";
   if (blikiEnabled && (!v2Enabled || stagingOnly || !env.BLIKI_V1_READ_DATABASE_URL ||
       !env.BLIKI_V1_MEDIA_DATABASE_URL || !env.REM05B_BOT_NAMESPACE || !publicationEnabled ||
@@ -264,7 +276,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   } : undefined;
   return {
     rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,chats,matches,
-    bliki,blikiPublication,blikiMedia,blikiInteraction,
+    bliki,blikiPublication,blikiMedia,blikiInteraction,registrationReview,
     rem05c:{geo,embedding},
     port,
     origin,
