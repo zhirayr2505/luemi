@@ -61,7 +61,7 @@ try{
  const expanded=await snap("owner-expanded");
  assert.ok(expanded.face?.w>compact.face.w*2.4,"one persistent hero grows from compact avatar");
  // Overlay opacity and sheet compositor samples across repeated rapid reversals.
- const handle=root.locator(".pm-a2-handle");
+ const handle=root.locator(".v3-int-handle");
  await ctx.tracing.startChunk({title:"V3 24 reversals"}).catch(()=>{});
  for(let i=0;i<24;i++){
   await handle.press("Enter");await delay(22);
