@@ -11,6 +11,7 @@ on:
       - 'apps/web/src/discovery/VisitorProfileRoute.tsx'
       - 'apps/web/src/registration/Preview.tsx'
       - 'scripts/profile-v3-*.mjs'
+      - 'scripts/discovery-gesture-browser.mjs'
       - '.github/workflows/profile-v3-browser.yml'
   workflow_dispatch:
 permissions:
@@ -62,6 +63,7 @@ jobs:
           if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-v3-vite.log; exit 1; fi
           node scripts/profile-v3-browser-smoke.mjs
           node scripts/profile-v3-integration-browser.mjs
+          node scripts/discovery-gesture-browser.mjs
       - name: Preserve isolated screenshots
         if: always()
         continue-on-error: true
