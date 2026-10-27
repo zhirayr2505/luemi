@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Pool } from 'pg';
@@ -55,6 +56,7 @@ export function registerBlikiPublicationApi(
          AND NOT rolcreatedb AND current_user=session_user
          AND row_security_active('luemi_bliki_private.stories'::regclass)
          AND NOT pg_has_role(current_user,'pg_write_all_data','member')
+         AND NOT pg_has_role(current_user,'pg_read_all_data','member')
          AND NOT has_schema_privilege(current_user,'luemi_bliki_private','CREATE')
          AND NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='luemi_bliki_private.stories'::regclass AND relowner=pg_roles.oid)
         ) AS safe FROM pg_roles WHERE rolname=current_user`);
@@ -70,7 +72,9 @@ export function registerBlikiPublicationApi(
       const result = await work(db, actor.actorId);
       await guard.read(request, reply);
       if (reply.sent || !request.authActor || request.authActor.actorId !== actor.actorId ||
-          request.authActor.sessionId !== actor.sessionId) throw new Error('session_changed');
+          request.authActor.sessionId !== actor.sessionId ||
+          request.authActor.hash.length !== actor.hash.length ||
+          !timingSafeEqual(request.authActor.hash, actor.hash)) throw new Error('session_changed');
       await db.query('COMMIT');
       return result;
     } catch {
