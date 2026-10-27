@@ -27,6 +27,7 @@ async function request<T>(path:string,csrf:string,init?:RequestInit):Promise<T>{
 export function createChatTransport(csrf:string){
  if(!/^[A-Za-z0-9_-]{8,128}$/.test(csrf))throw new Error("Missing authenticated chat session");
  return {
+  me:(signal?:AbortSignal)=>request<{actorId:string}>("/me",csrf,{signal}),
   list:(signal?:AbortSignal)=>request<{conversations:ChatWireConversation[]}>("",csrf,{signal}),
   messages:(conversationId:string,before?:string,signal?:AbortSignal)=>{
    const query=before?"?before="+encodeURIComponent(before):"";
