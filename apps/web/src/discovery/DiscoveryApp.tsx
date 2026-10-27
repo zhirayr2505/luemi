@@ -5,6 +5,7 @@ import type {PointerEvent as ReactPointerEvent} from "react";
 import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
+import {cardGestureZone} from "./card-gesture-zone";
 import {demoPeople} from "./demo-people";
 import {forYouDemoPeople} from "./for-you-data";
 import type {CollectionId} from "./for-you-ranking";
@@ -319,14 +320,14 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   if(event.pointerType==="mouse"&&event.button!==0)return;
   const target=event.target as HTMLElement;
   if(target.closest("[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
-  const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
-  if(interactive&&!interactive.matches(".discovery-name-button"))return;
-  if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
   const feedCard=target.closest<HTMLElement>(".feed-v2-card");
-  const details=feedCard?.querySelector<HTMLElement>(".feed-v2-details");
-  // The photo owns only the area above the measured information panel.
-  // Text and blank areas are candidates for the top-level pager.
-  if(details&&event.clientY<details.getBoundingClientRect().top)return;
+  const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
+  if(interactive&&!interactive.matches(".discovery-name-button,.discovery-action"))return;
+  if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
+  // Sample the card's real geometry once. Upper 85% belongs to the carousel;
+  // the bottom 15% belongs to this pager, including when the sheet is open.
+  if(feedCard){const rect=feedCard.getBoundingClientRect();
+   if(cardGestureZone(event.clientY,rect.top,rect.height)!=="browse")return;}
   const serial=inputOwnership.current.begin("pointer",event.pointerId,"browse");
   if(serial===null)return;
   inputOwnership.current.begin("pointer",event.pointerId,"native");
@@ -498,7 +499,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
        </div>
        <div className="discovery-pages" ref={pages} onPointerDown={down}
          onPointerMove={move} onPointerUp={up} onPointerCancel={cancelSwipe}
-         onLostPointerCapture={cancelSwipe}>
+         onLostPointerCapture={cancelSwipe}
+         onClickCapture={event=>{if(performance.now()<clickBlockUntil.current){event.preventDefault();event.stopPropagation();}}}>
          <div className="discovery-page-track" ref={pageTrack}
            onTransitionEnd={event=>{
              if(event.target===event.currentTarget&&event.propertyName==="transform")finishPagerSettle();
