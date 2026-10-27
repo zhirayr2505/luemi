@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
 import {
-  createBlikiUploadTicket, storeBlikiUpload, type BlikiPrivateMediaStore,
+  createBlikiUploadTicket, storeBlikiUpload, hasBlikiMediaSignature, type BlikiPrivateMediaStore,
 } from '../src/bliki/bliki-private-upload.js';
 
 const actorId = '25f1d44d-35d2-4c55-8c9d-2bb2b7e021a1';
@@ -49,4 +49,14 @@ test('tampered storage is removed and never confirmed', async () => {
     store, ticket(), new Uint8Array([255, 216, 255, 217]), 1001,
   ), /integrity_failed/);
   assert.equal(removed, true);
+});
+
+test('rejects media disguised as an image or video', () => {
+  const fake = new TextEncoder().encode('<script>alert(1)</script>');
+  assert.equal(hasBlikiMediaSignature('image/jpeg', fake), false);
+  assert.equal(hasBlikiMediaSignature('image/png', fake), false);
+  assert.equal(hasBlikiMediaSignature('image/webp', fake), false);
+  assert.equal(hasBlikiMediaSignature('video/mp4', fake), false);
+  assert.equal(hasBlikiMediaSignature('image/jpeg',
+    new Uint8Array([255, 216, 255, 217])), true);
 });
