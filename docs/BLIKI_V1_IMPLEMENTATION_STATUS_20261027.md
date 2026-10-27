@@ -16,6 +16,8 @@ No merge, deployment, global feature enablement or new Render service has been p
 - Live feed returns `{authors,serverNow,nextCursor}` with real published profiles,
   approved avatar IDs, real mutual matches/incoming likes, active stories, millisecond
   timestamps and same-origin media paths. No demo author records are inserted.
+  Stable microsecond-precision keyset pagination uses an anchored bounded cursor;
+  Discovery explicitly loads further pages and deduplicates authors/stories.
 - Published dating audience and age ranges are copied to real profiles. Restrictive story
   RLS denies mutually incompatible viewers and unknown audience settings. Nearby sorting
   remains disabled until explicit location permission and server proximity rules exist.
@@ -28,8 +30,12 @@ No merge, deployment, global feature enablement or new Render service has been p
   tombstones are implemented. Persistent cleanup of deleted/expired objects is **not** done.
 - Opt-in Discovery avatar rail/editor/viewer surface preserves existing behavior when OFF.
   A create entry is available even when no stories exist.
-- Story captions (up to 150 Unicode codepoints) persist in local drafts and are validated
-  and stored on publication; Telegram Back closes the Bliki overlay before navigating away.
+- Story captions and text layers (up to 150 Unicode codepoints) persist in local drafts;
+  client and server now agree on emoji/codepoint limits. Telegram Back closes
+  the Bliki overlay before navigating away.
+- An isolated, explicitly approved one-shot private-media retention processor is implemented,
+  with a dedicated NOLOGIN role, FORCE RLS, ownership/key checks, durable retry markers,
+  concurrency-safe row locks, and 25h/48h retention guards. **No automatic schedule is on**.
 
 ## Applied Supabase LUEMI migrations
 
@@ -40,9 +46,13 @@ These were applied to project `czzyoxrwtnvbicypwrdd` and inspected read-only aft
 3. `20261027_bliki_approved_avatars.sql`
 4. `20261027_bliki_interactions.sql`
 5. `20261027_bliki_mutual_preferences.sql`
+6. `20261027_bliki_retention.sql`
 
 No public API policy was granted; all four Bliki tables have ENABLE + FORCE RLS.
-At verification time there were 0 real stories and 0 real published profiles.
+The retention migration was applied to Supabase LUEMI and its privileges validated
+read-only: cannot modify media keys/status or access the identity schema; anon and
+authenticated have no story SELECT. At verification time there were 0 real stories
+and 0 real published profiles. No storage objects were removed.
 
 ## Feature flags — all OFF by default
 
@@ -63,10 +73,12 @@ At verification time there were 0 real stories and 0 real published profiles.
    Video publication intentionally returns 503 until then.
 2. Configured isolated DB login principals and safe production secrets; full scoped
    RLS runtime tests using real multi-user Telegram accounts.
-3. Durably scheduled Storage cleanup after deletion/24-hour expiry, with retries and
-   reconciliation. Current tombstone immediately denies view but may retain object bytes.
-4. Stable keyset pagination, verified server-nearby ranking (only with permission),
-   reply-to-chat routing and anti-spam rate limit integration.
+3. Approve/operate a separately credentialed retention runner and reliable schedule;
+   current one-shot processor and retry bookkeeping exist but are NOT activated.
+   Tombstones and 24h expiry deny reads immediately; physical removal is untested live.
+4. Verified server-nearby ranking (only with location permission), reply-to-chat
+   routing and anti-spam rate limit integration. Pagination exists but still needs
+   end-to-end high-volume live testing.
 5. Moderation of user-uploaded photos/overlays, safe image decodes and full
    read/publish integration verification. Magic bytes alone do not equal image sanitization.
 6. End-to-end and physical-device QA, including Android A55 and iOS WKWebView.
@@ -76,20 +88,25 @@ At verification time there were 0 real stories and 0 real published profiles.
 
 ## Verified GitHub Actions (2026-10-27)
 
-Run: https://github.com/zhirayr2505/luemi/actions/runs/40532867182
-Source commit: `c7d7e1d3bb585799ccd283a464276a0683d22129`.
+Run: https://github.com/zhirayr2505/luemi/actions/runs/40535700990
+Source commit: `9272b787bd87eb60bdc1dddc75e5aeb9bf678bcb`.
 Both CI jobs passed on a disposable runner:
 
 - `npm run typecheck` — PASS (API and web)
 - `npm run test -w @luemi/api` — PASS
 - `node scripts/bliki-v1-contract.test.mjs` — PASS
 - `npm run build` — PASS
-- PostgreSQL 16 RLS smoke, applying version-controlled Bliki migrations on a
+- PostgreSQL 16 RLS smoke, applying all version-controlled Bliki migrations on a
   synthetic database — PASS. Verified compatible viewer, incompatible viewer,
   both block directions, 24-hour expiry, self-read, key privilege isolation,
-  public access denial and idempotent views.
+  public access denial, idempotent views, and retention restrictions preventing
+  live/cross-namespace object selection or unauthorized status/key changes.
+- Added cursor round-trip/bad-input API unit tests and pagination client integration.
+- Supabase live read-only follow-up confirmed new NOLOGIN retention role, FORCE RLS,
+  no SELECT by public roles, no story data and no unauthorized table privileges.
 
-These results **do not** establish real Supabase runtime credentials, successful
+These results **do not** establish a working retention schedule, real Supabase
+runtime credentials, successful
 production image upload, safe 100 MB MP4 processing, end-to-end UI behavior,
 or Samsung A55 smoothness. Feature flags remain OFF.
 
