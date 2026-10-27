@@ -16,11 +16,6 @@ import {registerAccountErasure} from "./real-erasure.js";
 import {registerChats} from "./chats-api.js";
 import {registerMatches} from "./matches-api.js";
 import {registerSafetyAppeals} from "./safety-appeal-api.js";
-import {registerBlikiApi} from "./bliki/bliki-api.js";
-import {registerRegistrationReview} from "./registration-review-api.js";
-import {registerBlikiPublicationApi} from "./bliki/bliki-publication-api.js";
-import {registerBlikiMediaApi} from "./bliki/bliki-media-api.js";
-import {registerBlikiInteractionApi} from "./bliki/bliki-interaction-api.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -68,15 +63,10 @@ export function buildApp(config: ApiConfig) {
   registerGeography(app,config.rem05c?.geo,guards);
   registerRem05d(app,guards,config.rem05d);
   registerRealRegistrationDrafts(app,guards,config.realRegistration);
-  registerRegistrationReview(app,guards,config.registrationReview);
   registerPublishedProfiles(app,guards,config.realPublication);
   registerAccountErasure(app,guards,config.realErasure);
   registerSafetyAppeals(app,config.safetyAppeal);
   registerChats(app,guards,config.chats);
   registerMatches(app,guards,config.matches);
-  registerBlikiPublicationApi(app, guards, config.blikiPublication);
-  registerBlikiMediaApi(app, guards, config.blikiMedia);
-  registerBlikiInteractionApi(app, guards, config.blikiInteraction);
-  registerBlikiApi(app, guards, config.bliki);
   return app;
 }

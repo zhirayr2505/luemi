@@ -13,14 +13,13 @@ import {installViewportController} from "./viewport/viewport-controller";
 const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({default:m.DiscoveryApp})));
 const RealLiveFeed = lazy(() => import("./registration/RealLiveFeed").then(m=>({default:m.RealLiveFeed})));
 const RealChats = lazy(() => import("./chats/RealChats").then(m=>({default:m.RealChats})));
-const BlikiShowcase = lazy(() => import("./features/bliki/BlikiShowcase").then(m=>({default:m.BlikiShowcase})));
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
 import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
-import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,requestRegistrationReview} from "./registration/real-live-client";
+import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 
 declare global {
@@ -87,7 +86,6 @@ function prepareBrandImage(signal: AbortSignal): Promise<void> {
 
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
-  const [liveActorId,setLiveActorId] = useState<string|null>(null);
   const [introElapsed,setIntroElapsed] = useState(false);
   const [connectAttempt,setConnectAttempt]=useState(0);
   const startupGeneration=useRef(0);
@@ -220,7 +218,6 @@ export function App() {
         const user=result.value;
         if(!user){setAuth("needs-bot");return;}
         setDraft(current=>({...current,name:current.name||user.user.firstName}));
-        setLiveActorId(user.mode==="session_v2"?user.user.id:null);
         setAuth("authorized");
       }
     });
@@ -563,14 +560,7 @@ export function App() {
         setPublishStatus(confirmed);setRealHome(true);
         setPublishFeedback("Анкета опубликована.");
       }else{
-        try {
-          const review=await requestRegistrationReview();
-          setPublishFeedback(review.notified
-            ?"Анкета и фотографии сохранены. Заявка отправлена модератору в Telegram. После проверки нажми «Проверить модерацию и публикацию»."
-            :"Анкета сохранена, но Telegram пока не принял уведомление. Нажми «Повторить уведомление» ниже.");
-        } catch {
-          setPublishFeedback("Анкета и фотографии сохранены приватно. Не удалось подтвердить отправку уведомления администратору. Повтори его отдельно.");
-        }
+        setPublishFeedback("Анкета сохранена. Фотографии ожидают проверки. Вернись позже и проверь статус — публикация ещё не выполнена.");
       }
     }catch(e){
       setPublishFeedback(e instanceof Error&&e.message==="revision_conflict"
@@ -699,7 +689,6 @@ export function App() {
     <section className="onboarding-screen" style={{padding:"24px 14px",overflowY:"auto"}}>
       <div className="onboard-brand-row"><img src={logoSrc} alt="LUEMI" className="onboard-logo"/>{themeButton}</div>
       <h1>Твоя анкета опубликована</h1>
-      {import.meta.env.VITE_BLIKI_V1_ENABLED!=="1" && <Suspense fallback={null}><BlikiShowcase compact/></Suspense>}
       {publishStatus&&<p role="status">Статус: {publishStatus.state==="published"?"опубликована":"скрыта"}</p>}
       <p role="status">{import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?"Переписки доступны только после подтверждённого взаимного мэтча.":"В ленте только проверенные анкеты. Симпатии и чаты пока недоступны."}</p>
       {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&<nav className="registration-static-actions" aria-label="Разделы LUEMI">
@@ -735,8 +724,7 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
-    {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}
-      blikiOwnerId={import.meta.env.VITE_BLIKI_V1_ENABLED==="1" ? liveActorId : null}/></Suspense>:null}
+    {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
@@ -770,9 +758,6 @@ export function App() {
             {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">политику обработки данных</a> и согласен(-на) сохранить анкету и отправить фотографии на проверку перед публикацией.
           </label>
           <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>Проверить модерацию и публикацию</button>
-          <button type="button" disabled={publishBusy} onClick={()=>{void requestRegistrationReview().then(r=>setPublishFeedback(r.notified?"Заявка доставлена в Telegram-бот модератора.":"Бот пока не принял уведомление. Повтори позже.")).catch(()=>setPublishFeedback("Отправить уведомление не удалось. Анкета остаётся сохранённой."));}}>
-            Повторить уведомление модератору
-          </button>
           {publishStatus&&<p role="status">Одобрено фото: {publishStatus.approved} · ожидают проверки: {publishStatus.pending}</p>}
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>}

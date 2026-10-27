@@ -30,8 +30,6 @@ function dateAge(iso:string):number{
 const goalOk=(v:unknown):v is string=>typeof v==="string"&&
  ["serious","relationship","dates","friendship","communication","undecided"].includes(v);
 const genderOk=(v:unknown):v is string=>typeof v==="string"&&["man","woman","other"].includes(v);
-const audienceOk=(v:unknown):v is "men"|"women"|"everyone"=>
- typeof v==="string"&&["men","women","everyone"].includes(v);
 function validList(v:unknown,n:number):v is string[]{
  return Array.isArray(v)&&v.length<=n&&
   v.every(x=>typeof x==="string"&&x.length>0&&x.length<=40)&&
@@ -44,18 +42,14 @@ function validatedProjection(payload:unknown,birthDate:string|null){
  if(typeof name!=="string"||name.trim()!==name||name.length<2||name.length>48||
   typeof city!=="string"||city.trim()!==city||city.length<2||city.length>120||
   typeof country!=="string"||!/^[A-Z]{2}$/.test(country)||
-  !genderOk(data.gender)||!goalOk(data.goal)||!audienceOk(data.audience)||
-  !Number.isInteger(data.ageMin)||!Number.isInteger(data.ageMax)||
-  (data.ageMin as number)<18||(data.ageMax as number)>80||
-  (data.ageMin as number)>(data.ageMax as number)||
+  !genderOk(data.gender)||!goalOk(data.goal)||
   typeof data.placeId!=="string"||!/^[a-z0-9:_-]{3,180}$/i.test(data.placeId)||
   !validList(data.interests,15)||!validList(data.languages,10)||
   typeof data.about!=="string"||[...data.about].length>750||
   !birthDate||dateAge(birthDate)<18||dateAge(birthDate)>=130)
    fail(422,"incomplete_profile");
  return {name,city,country,gender:data.gender,goal:data.goal,
-  about:data.about,interests:data.interests,languages:data.languages,birthDate,
-  audience:data.audience,ageMin:data.ageMin as number,ageMax:data.ageMax as number};
+  about:data.about,interests:data.interests,languages:data.languages,birthDate};
 }
 type Kind="luemi_profile_publisher"|"luemi_discovery_reader";
 async function checkedRole(db:PoolClient,role:Kind):Promise<boolean>{
@@ -219,19 +213,17 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   const result=await db.query(
    "INSERT INTO luemi_private.public_profiles "+
    "(owner_id,environment,publication_status,published_revision,display_name,city_label,country_code,"+
-   "about,interests,gender,goal,languages,birth_date,audience,age_min,age_max,published_at,updated_at) "+
-   "VALUES($1,$2,'published',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,clock_timestamp(),clock_timestamp()) "+
+   "about,interests,gender,goal,languages,birth_date,published_at,updated_at) "+
+   "VALUES($1,$2,'published',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,clock_timestamp(),clock_timestamp()) "+
    "ON CONFLICT (owner_id) DO UPDATE SET publication_status='published',"+
    "published_revision=EXCLUDED.published_revision,display_name=EXCLUDED.display_name,"+
    "city_label=EXCLUDED.city_label,country_code=EXCLUDED.country_code,"+
-   "audience=EXCLUDED.audience,age_min=EXCLUDED.age_min,age_max=EXCLUDED.age_max,"+
    "about=EXCLUDED.about,interests=EXCLUDED.interests,gender=EXCLUDED.gender,"+
    "goal=EXCLUDED.goal,languages=EXCLUDED.languages,birth_date=EXCLUDED.birth_date,"+
    "published_at=clock_timestamp(),updated_at=clock_timestamp() "+
    "WHERE luemi_private.public_profiles.environment=EXCLUDED.environment RETURNING owner_id",
    [id,cfg.namespace,expected,profile.name,profile.city,profile.country,profile.about,
-    profile.interests,profile.gender,profile.goal,profile.languages,profile.birthDate,
-    profile.audience,profile.ageMin,profile.ageMax]);
+    profile.interests,profile.gender,profile.goal,profile.languages,profile.birthDate]);
   if(result.rowCount!==1)fail(409,"publication_conflict");
   const updated=await db.query(
    "UPDATE luemi_private.media_assets SET publication_status='published' "+
