@@ -13,6 +13,8 @@ test('typed Bliki editor accepts only UI-supported safe fields', () => {
   assert.deepEqual(parseBlikiEditor(editor), editor);
   assert.equal(parseBlikiEditor({ ...editor, dangerous: '<script>' }), null);
   assert.equal(parseBlikiEditor({ ...editor, scale: Infinity }), null);
+  assert.equal(parseBlikiEditor({ ...editor, caption: '❤️' })?.caption, '❤️');
+  assert.equal(parseBlikiEditor({ ...editor, caption: 'x'.repeat(151) }), null);
   assert.equal(parseBlikiEditor({ ...editor, layers: [{ ...editor.layers[0], x: 900 }] }), null);
   assert.equal(parseBlikiEditor({ ...editor, layers: [{ ...editor.layers[0], value: 'a'.repeat(151) }] }), null);
 });
