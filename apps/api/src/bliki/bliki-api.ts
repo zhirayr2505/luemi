@@ -40,6 +40,7 @@ export function registerBlikiApi(app: FastifyInstance, guard: Guard | undefined,
   if (!guard || !options.databaseUrl || !/^[a-z0-9:_-]{1,96}$/i.test(options.namespace)) {
     throw new Error('Bliki API requires scoped DB and authenticated sessions');
   }
+  const auth: Guard = guard;
   const namespace = options.namespace;
   const pool = new Pool({ connectionString: options.databaseUrl, max: 4, connectionTimeoutMillis: 3000 });
   app.addHook('onClose', async () => { await pool.end(); });
@@ -89,7 +90,7 @@ export function registerBlikiApi(app: FastifyInstance, guard: Guard | undefined,
         [actor.actorId, namespace]);
       if (eligible.rowCount !== 1) reject(403, 'published_profile_required');
       const result = await work(db, actor.actorId);
-      await guard.read(request, reply);
+      await auth.read(request, reply);
       if (reply.sent || !request.authActor ||
         request.authActor.actorId !== actor.actorId ||
         request.authActor.sessionId !== actor.sessionId ||
