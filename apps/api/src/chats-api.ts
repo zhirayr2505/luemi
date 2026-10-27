@@ -84,7 +84,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    SELECT m.conversation_id AS id,
    (SELECT count(*)::text FROM luemi_chats.messages msg
     WHERE msg.conversation_id=m.conversation_id AND msg.sender_id<>$1
-    AND msg.created_at>coalesce(m.last_read_at,'epoch'::timestamptz)) AS unread_count,
+    AND msg.deleted_at IS NULL AND msg.created_at>coalesce(m.last_read_at,'epoch'::timestamptz)) AS unread_count,
    (SELECT msg.body FROM luemi_chats.messages msg
     WHERE msg.conversation_id=m.conversation_id AND msg.deleted_at IS NULL
     ORDER BY msg.created_at DESC,msg.id DESC LIMIT 1) AS last_message,
@@ -98,6 +98,10 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   if(!validId(req.params.id))deny(404,"not_found");
   if(req.query.before!==undefined&&!validId(req.query.before))deny(422,"invalid_cursor");
   await member(db,req.params.id,actor);
+  if(req.query.before){
+   const cursor=await db.query("SELECT 1 FROM luemi_chats.messages WHERE id=$1 AND conversation_id=$2 AND environment=$3",[req.query.before,req.params.id,options.namespace]);
+   if(cursor.rowCount!==1)deny(422,"invalid_cursor");
+  }
   const q=await db.query(`SELECT id,conversation_id AS "conversationId",sender_id AS "senderId",
     CASE WHEN deleted_at IS NULL THEN body ELSE '' END AS body,
     created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt"
