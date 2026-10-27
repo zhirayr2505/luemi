@@ -8,7 +8,8 @@ export type BlikiStorageSettings = {
   bucket: 'luemi-bliki-private';
   namespace: string;
 };
-const KEY = /^[a-z0-9:_-]{1,96}\/([0-9a-f]{8}-[0-9a-f-]{27})\/([0-9a-f]{8}-[0-9a-f-]{27})$/i;
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+const KEY = new RegExp('^[a-z0-9:_-]{1,96}/' + UUID + '/' + UUID + '$', 'i');
 const PROJECT = /^[a-z]{20}$/;
 function safeKey(key: string, namespace: string): string {
   if (!KEY.test(key) || !key.startsWith(namespace + '/')) throw new Error('invalid_bliki_key');
