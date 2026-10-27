@@ -171,7 +171,7 @@ UPDATE luemi_bliki_private.stories SET media_cleaned_at=clock_timestamp(),
  cleanup_attempts=cleanup_attempts+1,cleanup_attempt_at=clock_timestamp()
  WHERE id='44444444-4444-4444-8444-444444444444';
 DO $$ BEGIN
- IF (SELECT count(*) FROM luemi_bliki_private.stories) <> 2 THEN
+ IF (SELECT count(*) FROM luemi_bliki_private.stories WHERE media_cleaned_at IS NULL) <> 2 THEN
   RAISE EXCEPTION 'cleaned object remains eligible for another deletion';
  END IF;
 END $$;
