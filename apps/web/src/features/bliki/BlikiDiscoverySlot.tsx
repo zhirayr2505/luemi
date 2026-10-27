@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { geoCsrf } from '../../auth/session-adapter';
 import { BlikDraftEditor } from './editor/BlikDraftEditor';
 import { BlikiAvatarRail } from './feed/BlikiAvatarRail';
-import { fetchBlikiFeed } from './feed/blikiFeedClient';
+import { fetchBlikiFeedPage as fetchBlikiFeed } from './feed/blikiFeedClient';
+import { buildBlikiFeed } from './feed/blikiFeed';
 import type { BlikiFeedEntry } from './feed/blikiFeed';
 import { createBlikiHttpTransport } from './publishing/blikHttpTransport';
 import { BlikViewer } from './viewer/BlikViewer';
@@ -13,6 +14,9 @@ export function BlikiDiscoverySlot({ ownerId, registerBack }: {
   registerBack: (handler: (() => boolean) | null) => void;
 }) {
   const [entries, setEntries] = useState<BlikiFeedEntry[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const pageAbortRef = useRef<AbortController | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
@@ -35,18 +39,47 @@ export function BlikiDiscoverySlot({ ownerId, registerBack }: {
   }, [ownerId]);
   useEffect(() => {
     const abort = new AbortController();
-    setLoading(true); setError('');
+    pageAbortRef.current?.abort();
+    setLoading(true); setError(''); setNextCursor(null);
     void fetchBlikiFeed(abort.signal).then(feed => {
-      if (!abort.signal.aborted) setEntries(feed.entries);
+      if (!abort.signal.aborted) { setEntries(feed.entries); setNextCursor(feed.nextCursor); }
     }).catch(err => {
       if (abort.signal.aborted) return;
       setError(err instanceof Error && /403/.test(err.message)
         ? 'Сначала опубликуй настоящую анкету, чтобы увидеть Блики.'
         : 'Не удалось загрузить Блики. Попробуй ещё раз.');
-      setEntries([]);
+      setEntries([]); setNextCursor(null);
     }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
-    return () => abort.abort();
+    return () => { abort.abort(); pageAbortRef.current?.abort(); };
   }, [ownerId, reload]);
+  const loadMore = useCallback(() => {
+    if (!nextCursor || loadingMore || loading) return;
+    const abort = new AbortController();
+    pageAbortRef.current?.abort();
+    pageAbortRef.current = abort;
+    setLoadingMore(true);
+    void fetchBlikiFeed(abort.signal, nextCursor).then(feed => {
+      if (abort.signal.aborted) return;
+      setEntries(previous => {
+        const combined = new Map(previous.map(author => [author.id, author]));
+        for (const incoming of feed.entries) {
+          const prior = combined.get(incoming.id);
+          if (!prior) { combined.set(incoming.id, incoming); continue; }
+          const seen = new Set(prior.stories.map(story => story.id));
+          const stories = [...prior.stories];
+          for (const story of incoming.stories) {
+            if (!seen.has(story.id)) { seen.add(story.id); stories.push(story); }
+          }
+          combined.set(incoming.id, { ...prior, stories,
+            lastPublishedAt: Math.max(prior.lastPublishedAt, incoming.lastPublishedAt) });
+        }
+        return buildBlikiFeed([...combined.values()], { now: Date.now() }).entries;
+      });
+      setNextCursor(feed.nextCursor);
+    }).catch(() => {
+      if (!abort.signal.aborted) setError('Не удалось загрузить следующие Блики. Попробуй ещё раз.');
+    }).finally(() => { if (!abort.signal.aborted) setLoadingMore(false); });
+  }, [nextCursor, loadingMore, loading]);
   // BlikiFeedEntry structurally satisfies BlikAuthor; keep the secure DTO unchanged.
   const authors = entries;
   const openIndex = authors.findIndex(author => author.id === openAuthor);
@@ -64,6 +97,7 @@ export function BlikiDiscoverySlot({ ownerId, registerBack }: {
     position: 'relative', zIndex: 8, flexShrink: 0, padding: '2px 12px 4px'
   }}>
     <BlikiAvatarRail candidates={entries} onOpenAuthor={setOpenAuthor}
+      hasMore={nextCursor !== null} loadingMore={loadingMore} onLoadMore={loadMore}
       onCreate={() => setEditorOpen(true)} />
     {loading && <p role="status" style={{ margin: '0 6px', fontSize: 12 }}>Загружаем Блики…</p>}
     {error && <div role="status" style={{ fontSize: 12, padding: '0 6px 8px' }}>
