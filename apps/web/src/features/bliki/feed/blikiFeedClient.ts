@@ -11,8 +11,10 @@ export type BlikiFeedEnvelope = {
  * Only accepts already-authorized story DTOs returned by the private API.
  * A missing endpoint is an error, never a synthetic empty feed.
  */
-export async function fetchBlikiFeed(signal?: AbortSignal): Promise<BlikiFeedResult> {
-  const response = await fetch('/api/v1/bliki/feed', {
+export async function fetchBlikiFeedPage(signal?: AbortSignal, cursor?: string): Promise<BlikiFeedResult & { nextCursor: string | null }> {
+  if (cursor !== undefined && (!cursor || cursor.length > 512 || !/^[A-Za-z0-9_-]+$/.test(cursor)))
+    throw new Error('Invalid Bliki pagination cursor');
+  const response = await fetch('/api/v1/bliki/feed' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''), {
     method: 'GET', credentials: 'same-origin', cache: 'no-store', signal,
     headers: { Accept: 'application/json' },
   });
@@ -47,5 +49,13 @@ export async function fetchBlikiFeed(signal?: AbortSignal): Promise<BlikiFeedRes
       return item.mediaKind === 'image' || item.mediaKind === 'video';
     });
   })) throw new Error('Invalid authorized Bliki author payload');
-  return buildBlikiFeed(authors as BlikiFeedCandidate[], { now });
+  const nextCursor = 'nextCursor' in payload ? payload.nextCursor : undefined;
+  if (nextCursor !== null && (typeof nextCursor !== 'string' ||
+      nextCursor.length > 512 || !/^[A-Za-z0-9_-]+$/.test(nextCursor)))
+    throw new Error('Invalid next Bliki pagination cursor');
+  return { ...buildBlikiFeed(authors as BlikiFeedCandidate[], { now }), nextCursor };
+}
+
+export async function fetchBlikiFeed(signal?: AbortSignal): Promise<BlikiFeedResult> {
+  return fetchBlikiFeedPage(signal);
 }
