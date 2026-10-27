@@ -48,6 +48,7 @@ export function registerBlikiMediaApi(
       !/^[a-z0-9:_-]{1,96}$/i.test(options.namespace)) {
     throw new Error('Bliki media requires independent read DB, storage and REM-05B session');
   }
+  const auth: Guard = guard;
   const cfg = options;
   const pool = new Pool({ connectionString: cfg.databaseUrl, max: 3, connectionTimeoutMillis: 3000 });
   app.addHook('onClose', async () => { await pool.end(); });
@@ -90,7 +91,7 @@ export function registerBlikiMediaApi(
       );
       // Explicit session revalidation before commit. Policy independently
       // applies published viewer, published author and both block directions.
-      await guard.read(req, reply);
+      await auth.read(req, reply);
       if (reply.sent || !req.authActor || req.authActor.actorId !== actor.actorId ||
           req.authActor.sessionId !== actor.sessionId ||
           req.authActor.hash.length !== actor.hash.length ||
