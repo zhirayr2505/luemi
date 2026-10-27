@@ -28,6 +28,8 @@ No merge, deployment, global feature enablement or new Render service has been p
   tombstones are implemented. Persistent cleanup of deleted/expired objects is **not** done.
 - Opt-in Discovery avatar rail/editor/viewer surface preserves existing behavior when OFF.
   A create entry is available even when no stories exist.
+- Story captions (up to 150 Unicode codepoints) persist in local drafts and are validated
+  and stored on publication; Telegram Back closes the Bliki overlay before navigating away.
 
 ## Applied Supabase LUEMI migrations
 
@@ -68,10 +70,28 @@ At verification time there were 0 real stories and 0 real published profiles.
 5. Moderation of user-uploaded photos/overlays, safe image decodes and full
    read/publish integration verification. Magic bytes alone do not equal image sanitization.
 6. End-to-end and physical-device QA, including Android A55 and iOS WKWebView.
-7. Current-head GitHub CI and local `npm run typecheck`, `npm run build`,
-   `npm run test -w @luemi/api`, `node scripts/bliki-v1-contract.test.mjs`.
-   These commands are **not verified as run/passed** in this chat; only 15/15
-   source invariants and live DB metadata/ACL checks were confirmed.
+7. Real live end-to-end integration QA is still pending: there were no authentic
+   published profiles/stories, active role LOGIN credentials or real device access.
+   No local test commands were executed against a cloned checkout in this chat.
+
+## Verified GitHub Actions (2026-10-27)
+
+Run: https://github.com/zhirayr2505/luemi/actions/runs/40532867182
+Source commit: `c7d7e1d3bb585799ccd283a464276a0683d22129`.
+Both CI jobs passed on a disposable runner:
+
+- `npm run typecheck` — PASS (API and web)
+- `npm run test -w @luemi/api` — PASS
+- `node scripts/bliki-v1-contract.test.mjs` — PASS
+- `npm run build` — PASS
+- PostgreSQL 16 RLS smoke, applying version-controlled Bliki migrations on a
+  synthetic database — PASS. Verified compatible viewer, incompatible viewer,
+  both block directions, 24-hour expiry, self-read, key privilege isolation,
+  public access denial and idempotent views.
+
+These results **do not** establish real Supabase runtime credentials, successful
+production image upload, safe 100 MB MP4 processing, end-to-end UI behavior,
+or Samsung A55 smoothness. Feature flags remain OFF.
 
 ## Manual device checklist (after a separately authorized staging release)
 
