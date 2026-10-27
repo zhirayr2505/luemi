@@ -42,12 +42,12 @@ export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig)
       return {ok:true};
     const senderId=request.body?.message?.from?.id;
     // Private /myid replies expose only the requesting Telegram sender's ID.
-    if (/^\\/(?:id|myid)(?:@LuemiAppBot)?(?:\\s|$)/i.test(text)) {
+    if (/^\/(?:id|myid)(?:@LuemiAppBot)?(?:\s|$)/i.test(text)) {
       if (!Number.isSafeInteger(senderId)||senderId!==chat.id)return {ok:true};
       return {method:"sendMessage",chat_id:chat.id,
-       text:"Твой Telegram ID: "+senderId+"\\nПередай его владельцу LUEMI для приглашения."};
+       text:"Твой Telegram ID: "+senderId+"\nПередай его владельцу LUEMI для приглашения."};
     }
-    if (!/^\\/start(?:\\s|$)/.test(text))return {ok:true};
+    if (!/^\/start(?:\s|$)/.test(text))return {ok:true};
     // Telegram accepts an API method in the webhook response; no bot token is sent to clients.
     return {
       method: "sendMessage",
