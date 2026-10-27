@@ -35,7 +35,7 @@ try{
  const before=await image.evaluate(node=>{window.__feedPhoto=node;return node.src;});
  await swipe(".deck-active .feed-v2-details .discovery-place",0,-180);
  await page.locator(".deck-active .feed-v2-card[data-expanded=true]").waitFor({timeout:1800});
- assert.ok(await image.evaluate(node=>node===window.__feedPhoto&&node.src===before),
+ assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
  assert.ok(await page.locator(".deck-active .feed-v2-details").evaluate(node=>
   getComputedStyle(node).clipPath.startsWith("inset(0px")),"Expanded information reaches the visible endpoint");
