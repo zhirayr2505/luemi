@@ -32,7 +32,7 @@ export function BlikiAvatarRail({candidates,onOpenAuthor,onCreate,initiallyExpan
  const [expanded,setExpanded]=useState(initiallyExpanded);
  const feed=useMemo(()=>buildBlikiFeed(candidates,{now:Date.now()}),[candidates]);
  return <section aria-label="Блики" className={'bliki-showcase'+(expanded?' is-expanded':'')}>
-  <div className="bliki-showcase-row">
+  <div className="bliki-showcase-row bliki-rail-scroll">
    <button type="button" className="bliki-showcase-create" onClick={onCreate}
      aria-label="Создать мой Блик">
     <span className="bliki-create-orbit" aria-hidden="true">＋</span>
