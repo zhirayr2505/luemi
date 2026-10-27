@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Pool } from 'pg';
 import { createBlikiUploadTicket, storeBlikiUpload, type BlikiPrivateMediaStore } from './bliki-private-upload.js';
 import { validateBlikiSession } from './bliki-publication-validation.js';
+import { inspectBlikiMp4 } from './bliki-video-validation.js';
 
 type Guard = {
   read: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
@@ -131,6 +132,10 @@ export function registerBlikiPublicationApi(
         const ticket = { operationId: row.operation_id, actorId: actor, mediaKind: row.media_kind,
           mimeType: row.mime_type, size: Number(row.media_bytes), key: row.media_key,
           expiresAt: Date.now() + 60000 };
+        if (row.media_kind === 'video') {
+          try { inspectBlikiMp4(request.body); }
+          catch { return reply.code(422).send({ error: 'invalid_video' }); }
+        }
         await storeBlikiUpload(cfg.store, ticket, request.body);
         await db.query(`UPDATE luemi_bliki_private.stories SET status='processing'
           WHERE id=$1 AND author_id=$2 AND status='uploading'`, [row.id, actor]);
@@ -153,7 +158,8 @@ export function registerBlikiPublicationApi(
         if (!stored || stored.size !== Number(row.media_bytes) || stored.mimeType !== row.mime_type) {
           return { state: 'processing' };
         }
-        if (row.media_kind === 'video') return { state: 'processing' }; // duration verification not yet implemented
+        // Video duration was verified from the uploaded MP4 header before private storage.
+        // Publication is still gated by storage integrity and actor-scoped RLS.
         const result = await db.query<Row>(`UPDATE luemi_bliki_private.stories
           SET status='published',editor=$2::jsonb,published_at=clock_timestamp()
           WHERE id=$1 AND status='processing'
