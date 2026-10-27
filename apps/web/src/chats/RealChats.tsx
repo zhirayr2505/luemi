@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from "react";
 import {createChatTransport} from "./chat-transport.js";
 import type {ChatWireConversation,ChatWireMessage} from "./chat-transport.js";
 import {geoCsrf} from "../auth/session-adapter.js";
+import {closeRealMatch,blockPublishedUser,realMatchPilot} from "../registration/real-live-client.js";
 import "./chats.css";
 
 /** Explicitly opt-in real transport; never substitutes fixtures on errors. */
@@ -17,6 +18,7 @@ export function RealChats(){
  const activeRef=useRef<string|null>(null);
  const [error,setError]=useState("");
  const [sending,setSending]=useState(false);
+ const [manageBusy,setManageBusy]=useState(false);
  const [loading,setLoading]=useState(true);
  const [selectedPeer,setSelectedPeer]=useState<ChatWireConversation|null>(null);
  const bottom=useRef<HTMLDivElement>(null);
@@ -99,6 +101,23 @@ export function RealChats(){
   setEditing(message.id);
   try{await api.remove(active,message.id);if(activeRef.current===active)setMessages(old=>old.map(m=>m.id===message.id?{...m,body:"",deletedAt:new Date().toISOString()}:m));setError("");}catch{setError("Не удалось удалить сообщение");}finally{setEditing(null);}
  };
+ const manageMatch=async(kind:"close"|"block")=>{
+  if(!selectedPeer||manageBusy)return;
+  const id=selectedPeer.id;
+  const accepted=window.confirm(kind==="block"
+   ?"Заблокировать этого человека? Переписка станет недоступна."
+   :"Разорвать мэтч? Переписка станет недоступна.");
+  if(!accepted)return;
+  setManageBusy(true);setError("");
+  try{
+   if(kind==="block")await blockPublishedUser(selectedPeer.peerId);
+   else await closeRealMatch(selectedPeer.matchId);
+   activeRef.current=null;setActive(null);setSelectedPeer(null);
+   setConversations(previous=>previous.filter(c=>c.id!==id));
+   setMessages([]);pending.current=null;
+  }catch{setError("Не удалось изменить статус мэтча. Попробуйте снова.");}
+  finally{setManageBusy(false);}
+ };
  const send=async()=>{
   if(!api||!active||!draft.trim()||sending)return;
   const text=draft.trim();
@@ -119,11 +138,15 @@ export function RealChats(){
    <div className="lc-conversations">{conversations.map(c=><button className="lc-chat-open" key={c.id} onClick={()=>{pending.current=null;lastRead.current=null;activeRef.current=c.id;setActive(c.id);setSelectedPeer(c);setMessages([]);}}>
     <span className="lc-avatar">{c.peerPhotoUrl?<img src={c.peerPhotoUrl} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"/>:"💜"}</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>{c.unreadCount>0&&<span className="lc-unread" aria-label={`${c.unreadCount} непрочитанных`}>{c.unreadCount>99?"99+":c.unreadCount}</span>}
    </button>)}</div>}
-  </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;activeRef.current=null;setActive(null);setSelectedPeer(null);}} aria-label="Назад">←</button><span className="lc-avatar lc-avatar-small">{selectedPeer?.peerPhotoUrl?<img src={selectedPeer.peerPhotoUrl} alt="" decoding="async" referrerPolicy="no-referrer"/>:"💜"}</span><strong>{selectedPeer?.peerName||"Переписка"}</strong></header>
+  </>:<><header className="lc-chat-header"><button type="button" onClick={()=>{pending.current=null;activeRef.current=null;setActive(null);setSelectedPeer(null);}} aria-label="Назад">←</button><span className="lc-avatar lc-avatar-small">{selectedPeer?.peerPhotoUrl?<img src={selectedPeer.peerPhotoUrl} alt="" decoding="async" referrerPolicy="no-referrer"/>:"💜"}</span><strong>{selectedPeer?.peerName||"Переписка"}</strong>
+    {realMatchPilot.enabled&&<div className="lc-match-tools">
+      <button type="button" disabled={manageBusy} onClick={()=>void manageMatch("close")}>Разорвать мэтч</button>
+      <button type="button" disabled={manageBusy} onClick={()=>void manageMatch("block")}>Блок</button>
+    </div>}</header>
    <div className="lc-history" role="log" aria-label="Сообщения">{olderCursor&&<button type="button" disabled={loadingOlder} onClick={()=>void loadOlder()} className="lc-load-older">{loadingOlder?"Загружаем…":"Показать старые сообщения"}</button>}{messages.map(m=><div key={m.id} className={"lc-msg-line "+(m.senderId===actorId?"lc-own":"")}>
     <div className="lc-bubble">{m.deletedAt?<i>Сообщение удалено</i>:m.body}<small>{new Date(m.createdAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small>{m.senderId===actorId&&!m.deletedAt&&<span className="lc-msg-actions"><button type="button" disabled={editing===m.id} onClick={()=>void editMessage(m)} aria-label="Редактировать сообщение">Изменить</button><button type="button" disabled={editing===m.id} onClick={()=>void deleteMessage(m)} aria-label="Удалить сообщение">Удалить</button></span>}</div>
    </div>)}<div ref={bottom}/></div>
-   <div className="lc-composer"><div className="lc-input-row"><textarea aria-label="Сообщение" maxLength={4000} value={draft} onChange={e=>{setDraft(e.target.value);if(pending.current?.body!==e.target.value.trim())pending.current=null;}} placeholder="Сообщение…"/><button type="button" disabled={sending||!draft.trim()} onClick={()=>void send()} aria-label="Отправить">➤</button></div></div>
+   <div className="lc-composer"><div className="lc-input-row"><textarea aria-label="Сообщение" maxLength={4000} value={draft} onChange={e=>{setDraft(e.target.value);if(pending.current?.body!==e.target.value.trim())pending.current=null;}} placeholder="Сообщение…"/><button type="button" disabled={sending||manageBusy||!draft.trim()} onClick={()=>void send()} aria-label="Отправить">➤</button></div></div>
   </>}
   {error&&<p className="lc-footnote" role="alert">{error}</p>}
  </div>;
