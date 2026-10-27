@@ -27,6 +27,7 @@ export function useBlikDraft(ownerId: string) {
   const revision = useRef(0);
   const current = useRef<BlikDraft | null>(null);
   const pending = useRef<BlikEditorState | null>(null);
+  const editGeneration = useRef(0);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const url = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,6 +38,7 @@ export function useBlikDraft(ownerId: string) {
     current.current = next;
     revision.current = next.revision;
     pending.current = null;
+    editGeneration.current += 1;
     setDraft(next);
     setEditor(next.editor);
     setMediaUrl(url.current);
@@ -77,16 +79,19 @@ export function useBlikDraft(ownerId: string) {
     const target = current.current;
     if (!nextEditor || !target) return queue.current;
     pending.current = null;
+    const generation = editGeneration.current;
     setSaving(true);
     queue.current = queue.current.catch(() => undefined).then(async () => {
       try {
         const saved = await updateBlikDraftEditor(target.id, target.ownerId, revision.current, nextEditor);
-        revision.current = saved.revision;
-        current.current = saved;
-        setDraft(saved);
+        if (current.current?.id === target.id && generation === editGeneration.current) {
+          revision.current = saved.revision;
+          current.current = saved;
+          setDraft(saved);
+        }
         setError(null);
       } catch (cause) {
-        pending.current = nextEditor;
+        if (generation === editGeneration.current && pending.current === null) pending.current = nextEditor;
         setError(cause instanceof Error ? cause.message : 'Ошибка сохранения');
         throw cause;
       } finally {
