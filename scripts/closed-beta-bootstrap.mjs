@@ -118,6 +118,12 @@ export async function bootstrap({
    if(!row||row.rolcanlogin||row.rolsuper||row.rolbypassrls)
     throw Error("Unsafe operator shell: "+operator);
   }
+  const invites=await db.query(
+   "SELECT COUNT(*)::int AS active FROM luemi_private.beta_invites "+
+   "WHERE environment=$1 AND state='active'",
+   ["luemi-beta-20261027"]);
+  if(invites.rows[0]?.active!==2)
+   throw Error("Refusing beta bootstrap: expected exactly two active invitations");
   // Keep the DB roles NOLOGIN until ALL credentials exist in Render.
   await db.query("BEGIN");
   try{
@@ -133,6 +139,7 @@ export async function bootstrap({
    await setRenderEnv(renderApiKey,renderKey,url);
   }
   await setRenderEnv(renderApiKey,"REM05B_SESSION_PEPPER",pepper);
+  await setRenderEnv(renderApiKey,"REM05B_BOT_NAMESPACE","luemi-beta-20261027");
   await db.query("BEGIN");
   try{
    for(const [name] of ROLES)await db.query("ALTER ROLE "+name+" WITH LOGIN");
