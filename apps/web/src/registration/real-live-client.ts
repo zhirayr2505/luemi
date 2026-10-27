@@ -5,6 +5,21 @@ import {remoteMediaPilot} from "./server-media";
 export const realFeedPilot={
  enabled:remoteMediaPilot.enabled&&import.meta.env.VITE_LUEMI_REAL_DISCOVERY_UI==="1"
 };
+export const realMatchPilot={
+ enabled:realFeedPilot.enabled&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&
+  import.meta.env.VITE_LUEMI_REAL_MATCHES==="1"
+};
+/** Server verifies both adult published profiles, blocks and mutual likes. */
+export async function likePublishedUser(id:string):Promise<{liked:true;matched:boolean;conversationId?:string}>{
+ if(!realMatchPilot.enabled)throw new Error("matches_disabled");
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
+  throw new Error("invalid_target");
+ const data=await api("/api/v4/matches/like","POST",{targetId:id});
+ if(!object(data)||data.liked!==true||typeof data.matched!=="boolean"||
+    (data.matched&&(typeof data.conversationId!=="string"||!uuid.test(data.conversationId))))
+  throw new Error("invalid_like_receipt");
+ return data as {liked:true;matched:boolean;conversationId?:string};
+}
 export interface RealPublishedProfile{
  id:string;name:string;age:number;city:string;countryCode:string;
  about:string;gender:"man"|"woman"|"other";goal:string;
