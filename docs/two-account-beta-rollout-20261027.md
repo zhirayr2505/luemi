@@ -32,7 +32,37 @@
 - При необходимости закрыть invite state конкретного ID, отозвать его сессии штатным путём и проверить `RLS`; не трогать других.
 - Сохранить миграции (после появления данных — только forward-fix, не destructive rollback).
 
-## Состояние на момент подготовки
-- `luemi_private.actors`, `luemi_private.beta_invites`, `luemi_private.public_profiles`, `luemi_chats.matches` — на момент аудита ноль строк.
-- Текущие SQL-роли `luemi_auth_issuer`, `luemi_request`, `luemi_match_writer`, `luemi_chats_writer` — NOLOGIN. Фактические credentials/Render env не были доступны для аудита.
-- В этой ветке **не добавлены приглашения**, **не введены секреты**, **не снята обязательная модерация** и **не активировано** production.
+## Фактический статус · 27 октября 2026 (закрытая бета)
+
+- В Supabase `luemi_private.beta_invites` есть **ровно два активных приглашения** для `luemi-beta-20261027`, других активных приглашений в этом пространстве нет. Личные Telegram ID намеренно НЕ публикуем в GitHub.
+- Render `luemi` использует `REM05B_BOT_NAMESPACE=luemi-beta-20261027`. Код PR #117 объединён с `main`, деплой `dep-dbgfvvi9lscs73f2glo0` подтверждён LIVE.
+- Файлы профиля и чатов располагаются в закрытых Supabase Storage buckets: `luemi-profile-private` и `luemi-chat-private`.
+- В Supabase применена миграция `luemi_two_account_beta_role_shells`: создано 10 ролей с раздельными группами привилегий, все `NOLOGIN`, без паролей и без суперпользовательских прав. Её SQL зафиксирован в `db/closed-beta/role-shells.sql` для аудита. **Не запускать повторно:** уже применена.
+- Реальных `actors`, черновиков, публичных анкет и сообщений на момент проверки **0**. Регистрация пока НЕ активна; не заявлять обратное.
+
+## Единственный безопасный путь к активации
+
+**Требуется действие оператора с секретами внутри Supabase Dashboard и Render Dashboard, не в чате и не в GitHub.** Пароли нельзя отправлять AI в тексте, коммитить или логировать.
+
+1. Для каждой из ролей ниже назначить отдельный длинный случайный пароль и разрешить `LOGIN` через защищённый SQL Editor Supabase. Каждая роль имеет только **одну** конкретную группу доступа (см. SQL-миграцию). Не выдавать `BYPASSRLS`, `CREATEROLE`, `CREATEDB`, не использовать Postgres owner/password на API.
+2. Внести соответствующие **серверные** connection strings только в Render Environment и проверить фактический вход с Render, `session_user=current_user`, `row_security=on`, запрет чтения чужих таблиц и RLS. Для Free IPv4 может понадобиться именно **Session pooler** с портом `5432` (не transaction pooler), но точный host/username взять из Supabase Connect; примеры из документации нельзя считать проверенными.
+3. Таблица соответствия:
+
+| Render env | DB LOGIN user | Privilege group |
+|---|---|---|
+| `REM05B_AUTH_DATABASE_URL` | `luemi_beta_auth` | `luemi_auth_issuer` |
+| `REM05B_REQUEST_DATABASE_URL` | `luemi_beta_request` | `luemi_request` |
+| `REM06_MEDIA_WORKER_DATABASE_URL` | `luemi_beta_media` | `luemi_media_worker` |
+| `REM06_PUBLISHER_DATABASE_URL` | `luemi_beta_publisher` | `luemi_profile_publisher` |
+| `REM06_DISCOVERY_DATABASE_URL` | `luemi_beta_discovery` | `luemi_discovery_reader` |
+| `LUEMI_CHATS_DATABASE_URL` | `luemi_beta_chats` | `luemi_chats_writer` |
+| `LUEMI_MATCHES_DATABASE_URL` | `luemi_beta_matches` | `luemi_match_writer` |
+| `REM05C_BUDGET_DATABASE_URL` | `luemi_beta_geo` | `luemi_geo_budget` |
+| operator-only (NOT ordinary Render API) | `luemi_beta_human` | `luemi_human_moderator` |
+| `REM06_ERASURE_REQUEST_DATABASE_URL` (policy approval required) | `luemi_beta_erasure` | `luemi_erasure_requester` |
+
+4. Для каждого флага конфигурации подтвердить необходимые реальные политики/согласия: `REM06_PRIVACY_APPROVED`, `REM06_BETA_INVITES_APPROVED`, `REM06_MODERATION_OPERATIONAL_APPROVED`, `LUEMI_CHATS_POLICY_APPROVED`, `LUEMI_MATCHES_POLICY_APPROVED` — **не проставлять 1 автоматически**. Проверить actual revision privacy notice and operator review capability.
+5. Только после необходимых политик/доступов и проверки двух аккаунтов последовательно включить серверные `REM05B_SESSIONS_ENABLED`, `REM06_BETA_INVITES_ENABLED`, `REM06_PRIVATE_DRAFT_ENABLED`, `REM06_MEDIA_ENABLED`, `REM06_PUBLICATION_ENABLED`, `LUEMI_CHATS_V1_ENABLED`, `LUEMI_MATCHES_V1_ENABLED`. Client-side `VITE_*` values требуют **новой сборки**. Для реальной GPS reverse дополнительно нужен геокодер, ключ Geoapify и безопасные лимиты.
+6. Фотографии 3–6 должны проходить настоящую ручную модерацию через `apps/api/src/human-moderation.ts`; `pending_review` нельзя автоматически считать одобренными. Проверить публикацию, повторный вход, Discovery/mutual match/chats и запрет для третьего аккаунта на настоящих устройствах.
+
+**Status gate:** приглашения готовы; NOLOGIN role shells готовы; подключения/секреты/операционная модерация/политики/реальное E2E ещё не подтверждены. Не включать real-only клиент до полной серверной готовности.
