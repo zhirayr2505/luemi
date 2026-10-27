@@ -63,6 +63,33 @@ CREATE POLICY chats_messages_update ON luemi_chats.messages FOR UPDATE USING (
  sender_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
  AND environment=current_setting('luemi.environment',true)
 );
+CREATE TABLE IF NOT EXISTS luemi_chats.media (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ conversation_id uuid NOT NULL REFERENCES luemi_chats.conversations(id) ON DELETE CASCADE,
+ owner_id uuid NOT NULL,
+ environment text NOT NULL,
+ object_path text NOT NULL UNIQUE,
+ mime_type text NOT NULL CHECK (mime_type IN ('image/jpeg','image/png','image/webp')),
+ byte_size integer NOT NULL CHECK (byte_size BETWEEN 1 AND 10485760),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(conversation_id,object_path)
+);
+ALTER TABLE luemi_chats.media ENABLE ROW LEVEL SECURITY;
+ALTER TABLE luemi_chats.media FORCE ROW LEVEL SECURITY;
+CREATE POLICY chats_media_read ON luemi_chats.media FOR SELECT USING (
+ environment=current_setting('luemi.environment',true)
+ AND EXISTS (SELECT 1 FROM luemi_chats.members m
+ WHERE m.conversation_id=media.conversation_id
+ AND m.actor_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
+ AND m.environment=media.environment)
+);
+CREATE POLICY chats_media_insert ON luemi_chats.media FOR INSERT WITH CHECK (
+ owner_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
+ AND environment=current_setting('luemi.environment',true)
+ AND EXISTS (SELECT 1 FROM luemi_chats.members m
+ WHERE m.conversation_id=media.conversation_id
+ AND m.actor_id=media.owner_id AND m.environment=media.environment)
+);
 -- The role must NOT receive UPDATE/DELETE on members or conversations.
 -- Explicit grants require a separately audited login role, intentionally not created here.
 COMMIT;
