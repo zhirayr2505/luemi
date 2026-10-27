@@ -9,6 +9,8 @@ import type {ErasureRequestOptions} from "./real-erasure.js";
 import type {SafetyAppealOptions} from "./safety-appeal-api.js";
 import type {Rem05dOptions} from "./rem05d-private.js";
 import type {ChatOptions} from "./chats-api.js";
+import {MemoryChatMediaStorage} from "./features/chats/chat-media.js";
+import {createSupabaseChatMediaStorage} from "./features/chats/supabase-chat-storage.js";
 import type {MatchOptions} from "./matches-api.js";
 import type {RealRegistrationOptions} from "./real-registration-drafts.js";
 export interface ApiConfig {
@@ -195,8 +197,24 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     [env.REM05B_AUTH_DATABASE_URL,env.REM05B_REQUEST_DATABASE_URL,
      env.REM06_PUBLISHER_DATABASE_URL,env.REM06_DISCOVERY_DATABASE_URL]
      .includes(env.LUEMI_CHATS_DATABASE_URL)))throw new Error("Chats require approved policy and isolated DB role");
+  const localChatMedia=env.LUEMI_CHATS_LOCAL_MEDIA==="1";
+  const durableChatMedia=env.LUEMI_CHATS_MEDIA_ENABLED==="1";
+  if(env.NODE_ENV==="production"&&localChatMedia)
+    throw new Error("Local chat media is forbidden in production");
+  if(localChatMedia&&durableChatMedia)throw new Error("Chat media providers are mutually exclusive");
+  if(durableChatMedia&&(!chatsEnabled||stagingOnly||
+    env.LUEMI_CHATS_MEDIA_BUCKET!=="luemi-chat-private"||
+    !env.REM06_SUPABASE_PROJECT_REF||!env.REM06_SUPABASE_STORAGE_SECRET))
+    throw new Error("Chat private media requires approved chats, a dedicated private bucket and server credentials");
   const chats:ChatOptions|undefined=chatsEnabled?{enabled:true,
-   databaseUrl:env.LUEMI_CHATS_DATABASE_URL??"",namespace:env.REM05B_BOT_NAMESPACE??""}:undefined;
+   databaseUrl:env.LUEMI_CHATS_DATABASE_URL??"",namespace:env.REM05B_BOT_NAMESPACE??"",
+   mediaStore:localChatMedia?new MemoryChatMediaStorage():
+    durableChatMedia?createSupabaseChatMediaStorage({
+     projectRef:env.REM06_SUPABASE_PROJECT_REF!,
+     secret:env.REM06_SUPABASE_STORAGE_SECRET!,
+     namespace:env.REM05B_BOT_NAMESPACE??"",
+     bucket:"luemi-chat-private"
+    }):undefined}:undefined;
   const matchesEnabled=env.LUEMI_MATCHES_V1_ENABLED==="1";
   if(matchesEnabled&&(!chatsEnabled||!publicationEnabled||!v2Enabled||stagingOnly||
     env.REM06_PRIVACY_APPROVED!=="1"||env.LUEMI_MATCHES_POLICY_APPROVED!=="1"||

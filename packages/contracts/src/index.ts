@@ -23,6 +23,46 @@ export interface SessionV2Me {
 export interface ApiError {
   error: "invalid_init_data" | "service_unavailable" | "not_found" | "unauthorized" | "forbidden" | "account_unavailable" | "session_limit";
 }
+
+export type ChatDeliveryState = "queued" | "sending" | "sent" | "delivered" | "read" | "failed";
+export type ChatMediaState = "pending" | "ready" | "failed";
+export interface ChatMediaContract {
+  id:string;
+  messageId:string|null;
+  mimeType:"image/jpeg"|"image/png"|"image/webp";
+  byteSize:number;
+  width:number|null;
+  height:number|null;
+  state:ChatMediaState;
+  url:string|null;
+}
+export interface ChatMessageContract {
+  id:string;
+  conversationId:string;
+  senderId:string;
+  clientId:string;
+  body:string;
+  createdAt:string;
+  editedAt:string|null;
+  deletedAt:string|null;
+  deliveredAt:string|null;
+  readAt:string|null;
+  media:ChatMediaContract[];
+}
+export interface ChatConversationContract {
+  id:string;
+  matchId:string;
+  peerId:string;
+  peerProfileId:string;
+  peerName:string;
+  peerPhotoUrl:string|null;
+  lastMessage:string|null;
+  lastActivityAt:string;
+  unreadCount:number;
+  access:"active"|"blocked"|"unmatched"|"profile_unavailable";
+}
+export interface ChatPageContract<T> {items:T[];nextCursor:string|null;}
+export interface ChatApiFailure {error:string;retryAfterMs?:number;}
 export const productStages = [
   "00-contracts",
   "01-telegram-bootstrap",
