@@ -11,6 +11,18 @@
 - Уже имеющаяся `luemi_private.beta_invites` НЕ удаляется и не используется в open signups; изменение политики admission не удаляет пользователей и сессии.
 - `VITE_LUEMI_REAL_ONLY=1` + остальные UI VITE-флаги создают production сборку, которая не входит в синтетическую Discovery-колоду.
 
+## Защищённая настройка 8 DB-подключений за один запуск
+
+Репозиторий уже содержит ручной [workflow](../.github/workflows/luemi-beta-provision.yml), который создаёт уникальные случайные пароли для изолированных Postgres ролей и **сам** передаёт connection strings в Render через Render API — без секретов в репозитории или диалоге.
+
+Для режима **open** GitHub Environment `beta-bootstrap` должен содержать два закрытых секрета: `BETA_SUPABASE_OWNER_URL` (полный *Session pooler* URL из Supabase Connect проекта LUEMI) и `BETA_RENDER_API_KEY` (Render API key с правами обновлять environment сервиса). Окружение стоит защитить required reviewer; сами секреты в PR никогда не вставлять.
+
+Запуск: `GitHub → Actions → LUEMI open or beta database credentials bootstrap (manual) → Run workflow`, ветка `main`, `admission_mode: open`, `confirmation: PROVISION_SCOPED_DB`.
+
+При успехе скрипт сообщает `LUEMI_DB_BOOTSTRAP_OK`, проверяет отдельные SQL principal, наследование только одной роли, включённый RLS и передаёт `REM05B_SESSION_PEPPER` только в Render. **Он не включает** никакие runtime/Vite флаги и не утверждает политику обработки данных. В случае ошибки попытка возврата в `NOLOGIN` предотвращает доступ с частичной конфигурацией.
+
+После успешной настройки оператору НЕ нужно вручную генерировать 8 паролей. Если workflow уже запускался успешно и роли `LOGIN`, повторно не запускать — для ротации нужен отдельный процесс.
+
 ## Серверная последовательность активации
 
 1. В Supabase Database созданы 10 изолированных NOLOGIN-групповых оболочек, их привилегии раздельны. **До включения** оператор должен назначить каждому LOGIN право входа и уникальный случайный пароль в **Supabase Dashboard**, а connection strings положить в **Render Environment**, не в GitHub, логи или чат.

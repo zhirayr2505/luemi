@@ -1,6 +1,19 @@
-name: LUEMI beta DB and Render secret bootstrap (manual)
+name: LUEMI open or beta database credentials bootstrap (manual)
 on:
   workflow_dispatch:
+    inputs:
+      admission_mode:
+        description: "Open = anyone with verified Telegram login; beta = invited users only"
+        required: true
+        type: choice
+        options:
+          - open
+          - beta
+        default: open
+      confirmation:
+        description: "Type PROVISION_SCOPED_DB to confirm credential setup (NO feature activation)"
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -8,11 +21,11 @@ concurrency:
   cancel-in-progress: false
 jobs:
   provision:
-    if: github.repository == 'zhirayr2505/luemi' && github.ref == 'refs/heads/main'
+    if: github.repository == 'zhirayr2505/luemi' && github.ref == 'refs/heads/main' && inputs.confirmation == 'PROVISION_SCOPED_DB'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    # Store the two sensitive values as Environment Secrets.
-    # Protect the beta-bootstrap environment with required approval before run.
+    # Secrets are stored only in the protected GitHub Environment.
+    # Require an environment reviewer in repository Settings.
     environment: beta-bootstrap
     steps:
       - uses: actions/checkout@v4
@@ -20,12 +33,13 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Install locked application database client
+      - name: Install pinned app database client
         run: npm ci --ignore-scripts --include=dev
-      - name: Validate bootstrap script without credentials
+      - name: Check closed-scope role bootstrap input handling (no credentials)
         run: node --test scripts/closed-beta-bootstrap.test.mjs
-      - name: Provision and independently test least-privilege roles (no feature activation)
+      - name: Provision separate SQL credentials; verify RLS principals; leave application flags OFF
         env:
           BETA_SUPABASE_OWNER_URL: ${{ secrets.BETA_SUPABASE_OWNER_URL }}
           BETA_RENDER_API_KEY: ${{ secrets.BETA_RENDER_API_KEY }}
+          LUEMI_BOOTSTRAP_MODE: ${{ inputs.admission_mode }}
         run: node scripts/closed-beta-bootstrap.mjs

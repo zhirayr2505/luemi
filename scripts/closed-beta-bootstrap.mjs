@@ -8,6 +8,11 @@ import {pathToFileURL} from "node:url";
 
 const PROJECT="czzyoxrwtnvbicypwrdd";
 const RENDER_SERVICE="srv-dbahj0e7bikc73elkcv0";
+export function admissionNamespace(mode){
+ if(mode==="open")return "luemi-production";
+ if(mode==="beta")return "luemi-beta-20261027";
+ throw Error("Select approved open or beta admission mode");
+}
 export const ROLES=Object.freeze([
  ["luemi_beta_auth","luemi_auth_issuer","REM05B_AUTH_DATABASE_URL"],
  ["luemi_beta_request","luemi_request","REM05B_REQUEST_DATABASE_URL"],
@@ -89,8 +94,10 @@ async function checkConnection(url,role,group){
 }
 export async function bootstrap({
  ownerUrl=process.env.BETA_SUPABASE_OWNER_URL,
- renderApiKey=process.env.BETA_RENDER_API_KEY
+ renderApiKey=process.env.BETA_RENDER_API_KEY,
+ admissionMode=process.env.LUEMI_BOOTSTRAP_MODE??"open"
 }={}){
+ const namespace=admissionNamespace(admissionMode);
  if(typeof renderApiKey!=="string"||renderApiKey.length<20)
   throw Error("BETA_RENDER_API_KEY is missing");
  const owner=validateOwnerConnection(ownerUrl);
@@ -118,12 +125,16 @@ export async function bootstrap({
    if(!row||row.rolcanlogin||row.rolsuper||row.rolbypassrls)
     throw Error("Unsafe operator shell: "+operator);
   }
-  const invites=await db.query(
-   "SELECT COUNT(*)::int AS active FROM luemi_private.beta_invites "+
-   "WHERE environment=$1 AND state='active'",
-   ["luemi-beta-20261027"]);
-  if(invites.rows[0]?.active!==2)
-   throw Error("Refusing beta bootstrap: expected exactly two active invitations");
+  if(admissionMode==="beta"){
+   const invites=await db.query(
+    "SELECT COUNT(*)::int AS active FROM luemi_private.beta_invites "+
+    "WHERE environment=$1 AND state='active'",[namespace]);
+   if(invites.rows[0]?.active!==2)
+    throw Error("Refusing beta bootstrap: expected exactly two active invitations");
+  }
+  // Open registration has no invitation dependency: verified Telegram
+  // credentials, privacy, profile/matches RLS and moderation still apply.
+  // The script NEVER activates open signup, private media, or chats.
   // Keep the DB roles NOLOGIN until ALL credentials exist in Render.
   await db.query("BEGIN");
   try{
@@ -139,7 +150,7 @@ export async function bootstrap({
    await setRenderEnv(renderApiKey,renderKey,url);
   }
   await setRenderEnv(renderApiKey,"REM05B_SESSION_PEPPER",pepper);
-  await setRenderEnv(renderApiKey,"REM05B_BOT_NAMESPACE","luemi-beta-20261027");
+  await setRenderEnv(renderApiKey,"REM05B_BOT_NAMESPACE",namespace);
   await db.query("BEGIN");
   try{
    for(const [name] of ROLES)await db.query("ALTER ROLE "+name+" WITH LOGIN");
@@ -147,7 +158,7 @@ export async function bootstrap({
   }catch(error){await db.query("ROLLBACK").catch(()=>{});throw error;}
   for(const [name,group] of ROLES)
    await checkConnection(makeScopedConnection(owner,name,credentials.get(name)),name,group);
-  console.info("BETA_DB_BOOTSTRAP_OK: 8 isolated LOGIN roles verified; Render credentials installed.");
+  console.info("LUEMI_DB_BOOTSTRAP_OK: 8 isolated LOGIN roles verified; Render credentials installed; admission="+admissionMode+".");
   console.info("Feature flags remain OFF. No registration, storage review, or chat access was activated.");
  }catch(error){
   // Feature flags are OFF. Disable every known app role if bootstrap is partial;
@@ -163,7 +174,7 @@ export async function bootstrap({
     console.error("Security rollback needs operator verification.");
    }
   }
-  console.error("BETA_DB_BOOTSTRAP_FAILED (no secrets logged): "+(error instanceof Error?error.message:"unknown"));
+  console.error("LUEMI_DB_BOOTSTRAP_FAILED (no secrets logged): "+(error instanceof Error?error.message:"unknown"));
   console.error("Do not enable any runtime feature flag. Check role LOGIN states and rerun only after resolving the cause.");
   process.exitCode=1;
  }finally{
