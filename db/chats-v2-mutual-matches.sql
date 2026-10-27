@@ -95,6 +95,16 @@ CREATE POLICY match_pair_insert ON luemi_chats.matches FOR INSERT TO luemi_match
  AND (actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid OR actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid)
  AND EXISTS(SELECT 1 FROM luemi_chats.likes l WHERE l.environment=environment AND l.sender_id=actor_low AND l.receiver_id=actor_high)
  AND EXISTS(SELECT 1 FROM luemi_chats.likes l WHERE l.environment=environment AND l.sender_id=actor_high AND l.receiver_id=actor_low));
+GRANT UPDATE(status,closed_at) ON luemi_chats.matches TO luemi_match_writer;
+CREATE POLICY match_pair_close ON luemi_chats.matches FOR UPDATE TO luemi_match_writer
+ USING(environment=current_setting('luemi.environment',true)
+ AND status='active'
+ AND (actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid
+ OR actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid))
+ WITH CHECK(environment=current_setting('luemi.environment',true)
+ AND status='closed' AND closed_at IS NOT NULL
+ AND (actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid
+ OR actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid));
 CREATE POLICY match_conversation_read ON luemi_chats.conversations FOR SELECT TO luemi_match_writer,luemi_chats_writer
  USING(environment=current_setting('luemi.environment',true) AND private_match_id IS NOT NULL
  AND EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.id=private_match_id AND m.environment=environment
