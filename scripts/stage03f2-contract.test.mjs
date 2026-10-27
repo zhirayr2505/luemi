@@ -17,8 +17,10 @@ assert.ok(app.includes('pageTrack.current?.style.setProperty("--luemi-tab-offset
 assert.ok(app.includes("settleDrag(target);")&&app.includes("if(target!==tabIndex)selectTab(target)")&&
  app.includes("browseMotion.current.paint(g.token")&&app.includes("inputOwnership.current.finish(\"browse\",g.serial)"),
  "pager flushes the final finger position before one exclusive settle");
-assert.ok(style.includes(".discovery-page-track.is-settling,.discovery-tab-underline.is-settling"),"GPU hint scoped to track settle only");
-assert.ok(app.includes('event.propertyName==="transform"')&&app.includes("finishPagerSettle()"),"remove compositor hint on real transitionend");
+assert.ok(style.includes(".discovery-page-track.is-finger-tracking,.discovery-tab-underline.is-finger-tracking{transition:none}")&&
+ !style.includes(".discovery-page-track.is-settling,.discovery-tab-underline.is-settling{will-change:transform}"),
+ "pager does not promote giant layers mid-gesture");
+assert.ok(app.includes('event.propertyName==="transform"')&&app.includes("finishPagerSettle()"),"finish pager on real transitionend");
 assert.ok(app.includes("},380)")&&app.includes("finishPagerSettle(token)")&&
  app.includes("browseMotion.current.owns(token)")&&app.includes("window.setTimeout(()=>finishPagerSettle(token),80)"),
  "WebView fallback retains original 380ms budget, one tokenized terminal commit and checks computed endpoint");

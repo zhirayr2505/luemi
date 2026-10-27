@@ -13,9 +13,9 @@ const buttons=[
  ["undo","Отменить",Undo2],["pass","Пропустить",X],
  ["special","Особенная симпатия",Sparkles],["like","Нравится",Heart]
 ] as const;
-type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info";
+type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info"|"scroll";
  info:boolean;zone:"photo"|"browse";nativeScroll:boolean;startProgress:number;resumeTarget:0|1;
- samples:{y:number;t:number}[]};
+ scrollStart:number;samples:{y:number;t:number}[]};
 type CardRun={from:number;target:0|1;start:number;duration:number;frame:number|null};
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 const position=(run:CardRun,now:number)=>{
@@ -32,6 +32,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const [expanded,setExpanded]=useState(false);
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
+ const dim=useRef<HTMLDivElement>(null);
  const scroll=useRef<HTMLDivElement>(null);
  const about=useRef<HTMLDivElement>(null);
  const interests=useRef<HTMLDivElement>(null);
@@ -51,8 +52,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const p=progress.current=clamp(value,0,1),m=metrics.current;
   if(details.current)details.current.style.height=(m.closed+(m.open-m.closed)*p)+"px";
   if(about.current)about.current.style.maxHeight=(m.aboutClosed+(m.about-m.aboutClosed)*p)+"px";
-  if(interests.current)interests.current.style.maxHeight=(m.interests*p)+"px";
-  card.current?.style.setProperty("--feed-progress",String(p));
+  if(interests.current){
+   interests.current.style.maxHeight=(m.interests*p)+"px";
+   interests.current.style.opacity=String(p);
+  }
+  if(dim.current)dim.current.style.opacity=String(p);
  };
  const flushFinger=()=>{
   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
@@ -70,13 +74,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   run.current=null;paint(position(current,performance.now()));
  };
  const settle=(next:0|1)=>{
-  freeze();target.current=next;setExpanded(next===1);
+  freeze();target.current=next;
   if(scroll.current)scroll.current.style.overflowY="hidden";
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
-   paint(next);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
+   paint(next);setExpanded(next===1);
+   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
   }
   if(Math.abs(progress.current-next)<.002){
-   paint(next);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
+   paint(next);setExpanded(next===1);
+   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
   }
   const motion:CardRun={from:progress.current,target:next,
    duration:Math.max(110,Math.round(270*Math.abs(next-progress.current))),
@@ -86,7 +92,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    if(run.current!==motion)return;
    const value=position(motion,now);paint(value);
    if(now-motion.start>=motion.duration){
-    run.current=null;paint(next);
+    run.current=null;paint(next);setExpanded(next===1);
     if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";
    }else motion.frame=requestAnimationFrame(tick);
   };
@@ -95,7 +101,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const measure=()=>{
   const element=card.current;if(!element)return;
   const height=element.clientHeight;
-  element.dataset.size=height<320?"tiny":height<420?"compact":"regular";
+  const size=height<320?"tiny":height<420?"compact":"regular";
+  if(element.dataset.size!==size)element.dataset.size=size;
   const style=getComputedStyle(element);
   const closed=Number.parseFloat(style.getPropertyValue("--feed-closed-height"))||174;
   const actions=Number.parseFloat(style.getPropertyValue("--feed-actions-height"))||79;
@@ -146,38 +153,48 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(interactive&&!interactive.matches(".discovery-name-button,.feed-v2-expand"))return;
   const info=!!element.closest(".feed-v2-details");
   const rect=card.current?.getBoundingClientRect();
-  const zone=rect?cardGestureZone(event.clientY,rect.top,rect.height):null;
+  const zone=info?"browse":rect?cardGestureZone(event.clientY,rect.top,rect.height):null;
   if(!zone||(!info&&zone!=="photo"))return;
-  if(info)freeze();
   const now=performance.now();
   gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,at:now,
    axis:"pending",info,nativeScroll:!!element.closest(".feed-v2-scroll"),
    zone,
-   startProgress:progress.current,resumeTarget:target.current,samples:[{y:event.clientY,t:now}]};
+   startProgress:progress.current,resumeTarget:target.current,
+   scrollStart:scroll.current?.scrollTop??0,samples:[{y:event.clientY,t:now}]};
  };
  const move=(event:ReactPointerEvent<HTMLElement>)=>{
   const g=gesture.current;
   if(!g||g.id!==event.pointerId||multiTouch.current)return;
-  const dy=event.clientY-g.y,dx=event.clientX-g.x;
+  let dy=event.clientY-g.y;const dx=event.clientX-g.x;
   if(g.axis==="pending"){
    if(Math.max(Math.abs(dx),Math.abs(dy))<9)return;
    if(Math.abs(dx)>Math.abs(dy)*1.15){
     // A rightward gesture from the OS edge belongs to Telegram.
     if(dx>0&&g.x<26){gesture.current=null;return;}
-    if(g.zone!=="photo"){gesture.current=null;return;}
-    g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
-   }else if(Math.abs(dy)>Math.abs(dx)*1.15&&g.info){
-    if(progress.current>.99&&g.nativeScroll&&(dy<0||(scroll.current?.scrollTop??0)>0)){
+    if(g.zone!=="photo"||!photo.current?.canAdvance(dx<0?1:-1)){
      gesture.current=null;return;
     }
-    g.axis="info";
+    g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
+   }else if(Math.abs(dy)>Math.abs(dx)*1.15&&g.info){
+    freeze();g.startProgress=progress.current;
+    const canScroll=!!scroll.current&&scroll.current.scrollHeight>scroll.current.clientHeight+1;
+    g.axis=g.startProgress>.99&&g.nativeScroll&&canScroll&&
+     (dy<0||g.scrollStart>0)?"scroll":"info";
    }else return;
    blockClickUntil.current=performance.now()+350;
    try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older WebView */}
   }
+  if(g.axis==="photo")event.stopPropagation();
   if(event.cancelable)event.preventDefault();
   if(g.axis==="photo")photo.current?.move(g.id,event.clientX,event.clientY);
-  else{
+  else if(g.axis==="scroll"){
+   if(scroll.current)scroll.current.scrollTop=Math.max(0,g.scrollStart-dy);
+   if(dy>g.scrollStart){
+    g.axis="info";g.y+=g.scrollStart;g.startProgress=progress.current;
+    dy=event.clientY-g.y;
+   }else return;
+  }
+  if(g.axis==="info"){
    const travel=Math.max(1,metrics.current.open-metrics.current.closed);
    scheduleFinger(g.startProgress-dy/travel);
    const t=performance.now();g.samples.push({y:event.clientY,t});
@@ -203,7 +220,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    paint(g.startProgress-(event.clientY-g.y)/travel);
    const projected=progress.current-velocity*125/travel;
    settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0);
-  }else if(g.axis==="pending"&&g.info)settle(g.resumeTarget);
+  }
  };
  suspend.current=()=>{
   const g=gesture.current;gesture.current=null;multiTouch.current=false;
@@ -230,6 +247,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
          <Bookmark size={19} fill={saved?"currentColor":"none"} strokeWidth={1.9}/>
        </button>
      </div>
+     <div className="feed-v2-dim" ref={dim} aria-hidden="true"/>
      <div className="feed-v2-information">
        <div className="feed-v2-details" ref={details}>
          <button className="feed-v2-expand" type="button" disabled={!available}

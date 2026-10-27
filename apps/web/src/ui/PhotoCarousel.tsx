@@ -4,6 +4,7 @@ interface Slide {id:string;src:string;fallback?:string}
 interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
 export interface PhotoCarouselHandle {
+ canAdvance:(direction:-1|1)=>boolean;
  begin:(id:number,x:number,y:number,at:number)=>void;
  move:(id:number,x:number,y:number)=>void;
  finish:(id:number,x:number,cancelled:boolean)=>void;
@@ -89,6 +90,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(target!==activeRef.current){activeRef.current=target;setIndex(target);}
  };
  useImperativeHandle(ref,()=>({
+  canAdvance:(direction:-1|1)=>activeRef.current+direction>=0&&activeRef.current+direction<photos.length,
   begin:(id,x,y,at)=>startAt(id,x,y,at,true),
   move:(id,x,y)=>{moveAt(id,x,y);},
   finish:(id,x,cancelled)=>finishAt(id,x,cancelled),

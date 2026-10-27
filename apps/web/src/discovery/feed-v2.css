@@ -17,7 +17,6 @@
 .feed-v2{height:100%}
 .feed-v2-card{
  --feed-actions-height:79px;--feed-closed-height:174px;--feed-about-closed-height:40px;
- --feed-progress:0;
  background:#ad8fba;border-radius:26px;overflow:hidden;
  border-color:rgba(255,255,255,.75);box-shadow:0 12px 30px rgba(71,35,91,.18)
 }
@@ -25,11 +24,11 @@
  background:linear-gradient(to bottom,transparent 27%,rgba(25,14,36,.025) 43%,
  rgba(25,14,36,.22) 61%,rgba(25,14,36,.62) 79%,rgba(25,14,36,.88) 100%)
 }
-.feed-v2-card::before{
- content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+.feed-v2-dim{
+ position:absolute;inset:0;z-index:2;pointer-events:none;
  background:linear-gradient(to bottom,transparent 20%,rgba(25,14,36,.13) 51%,
  rgba(25,14,36,.36) 78%,rgba(25,14,36,.3));
- opacity:var(--feed-progress)
+ opacity:0
 }
 .feed-v2-photo>.carousel-frame{touch-action:pan-y}
 .feed-v2-photo .carousel-track img{
@@ -62,9 +61,8 @@
  flex:none;min-height:0;height:var(--feed-closed-height);
  max-height:calc(100% - var(--feed-actions-height));
  padding:0 17px 5px;color:#fff;display:flex;flex-direction:column;
- justify-content:flex-end;overflow:hidden;pointer-events:auto;touch-action:none
+ justify-content:flex-end;overflow:hidden;pointer-events:auto;touch-action:none;contain:layout paint
 }
-.feed-v2-card[data-expanded=true] .feed-v2-details{touch-action:pan-y}
 .feed-v2-expand{
  height:21px;min-height:21px;min-width:70px;margin:0 auto 4px;padding:0;
  display:flex;align-items:center;justify-content:center;gap:7px;
@@ -80,9 +78,6 @@
  overflow-y:auto;-webkit-overflow-scrolling:touch;
  scrollbar-width:thin;scrollbar-color:rgba(245,218,255,.55) transparent
 }
-.feed-v2-card[data-expanded=true] .discovery-name-row,
-.feed-v2-card[data-expanded=true] .discovery-place,
-.feed-v2-card[data-expanded=true] .feed-v2-goal{touch-action:none}
 .feed-v2 .discovery-name-row{min-height:29px}
 .feed-v2 .discovery-name-button{max-width:calc(100% - 34px)}
 .feed-v2 .discovery-name-button span{font-size:clamp(22px,6vw,28px)}
@@ -97,7 +92,7 @@
  padding:1px 0 1px 11px;border-left:2px solid rgba(246,188,225,.9);
  font-style:italic;letter-spacing:.005em
 }
-.feed-v2-interests{max-height:0;opacity:var(--feed-progress);overflow:hidden}
+.feed-v2-interests{max-height:0;opacity:0;overflow:hidden}
 .feed-v2-interests .discovery-interests{padding:7px 0 3px}
 .feed-v2 .discovery-interests{flex-wrap:wrap;overflow:visible}
 .feed-v2 .discovery-interests>.chip{flex:none;max-width:100%}
