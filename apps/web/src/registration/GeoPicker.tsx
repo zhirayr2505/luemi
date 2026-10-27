@@ -100,6 +100,12 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
  const syntheticQa=import.meta.env.DEV&&window.location.pathname==="/geo-qa.html";
  const detect=()=>{
   cancelPending();
+  if(!syntheticQa&&import.meta.env.VITE_LUEMI_REAL_ONLY==="1"&&
+     import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"){
+   setManual(true);setActivity("error");
+   setError("Определение города пока не подключено. Выбери город вручную.");
+   return; // Don't request precise coordinates without a working approved reverse service.
+  }
   if(!syntheticQa&&(import.meta.env.VITE_LUEMI_AUTH_V2!=="1"||!geoCsrf())){
    setManual(true);setActivity("error");
    setError("Войди в LUEMI через Telegram, чтобы определить город.");
