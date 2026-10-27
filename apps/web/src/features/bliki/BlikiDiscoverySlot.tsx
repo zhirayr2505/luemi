@@ -8,7 +8,10 @@ import { createBlikiHttpTransport } from './publishing/blikHttpTransport';
 import { BlikViewer } from './viewer/BlikViewer';
 
 /** Opt-in Discovery surface, isolated from the existing Profile Morph and deck gestures. */
-export function BlikiDiscoverySlot({ ownerId }: { ownerId: string }) {
+export function BlikiDiscoverySlot({ ownerId, registerBack }: {
+  ownerId: string;
+  registerBack: (handler: (() => boolean) | null) => void;
+}) {
   const [entries, setEntries] = useState<BlikiFeedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -48,17 +51,15 @@ export function BlikiDiscoverySlot({ ownerId }: { ownerId: string }) {
   const authors = entries;
   const openIndex = authors.findIndex(author => author.id === openAuthor);
   const closeViewer = useCallback(() => setOpenAuthor(null), []);
-  useEffect(() => {
-    if (!editorOpen && !openAuthor) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.stopPropagation();
-      if (editorOpen) setEditorOpen(false);
-      else setOpenAuthor(null);
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
+  const backFromBliki = useCallback((): boolean => {
+    if (editorOpen) { setEditorOpen(false); return true; }
+    if (openAuthor) { setOpenAuthor(null); return true; }
+    return false;
   }, [editorOpen, openAuthor]);
+  useEffect(() => {
+    registerBack(backFromBliki);
+    return () => registerBack(null);
+  }, [registerBack, backFromBliki]);
   return <aside aria-label="Истории LUEMI" style={{
     position: 'relative', zIndex: 8, flexShrink: 0, padding: '2px 12px 4px'
   }}>
