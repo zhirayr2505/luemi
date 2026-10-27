@@ -9,7 +9,7 @@ export type BlikStory = {
   publishedAt?: number;
   caption?: string;
 };
-export type BlikAuthor = { id: string; name: string; stories: BlikStory[] };
+export type BlikAuthor = { id: string; name: string; avatarUrl?: string; stories: BlikStory[] };
 export type BlikPosition = { author: number; story: number };
 export function nextBlik(authors: BlikAuthor[], at: BlikPosition): BlikPosition | null {
   const current = authors[at.author];
