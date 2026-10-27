@@ -60,7 +60,7 @@ export function RealChats(){
     <span className="lc-avatar">💜</span><span className="lc-chat-summary"><strong>{c.peerName||"Переписка"}</strong><span>{c.lastMessage??"Начните разговор"}</span></span>
    </button>)}</div>}
   </>:<><header className="lc-chat-header"><button type="button" onClick={()=>setActive(null)} aria-label="Назад">←</button><strong>Переписка</strong></header>
-   <div className="lc-history" role="log" aria-label="Сообщения">{messages.map(m=><div key={m.id} className={"lc-msg-line "+(m.senderId===undefined?"lc-own":"")}>
+   <div className="lc-history" role="log" aria-label="Сообщения">{messages.map(m=><div key={m.id} className="lc-msg-line">
     <div className="lc-bubble">{m.deletedAt?<i>Сообщение удалено</i>:m.body}<small>{new Date(m.createdAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</small></div>
    </div>)}<div ref={bottom}/></div>
    <div className="lc-composer"><div className="lc-input-row"><textarea aria-label="Сообщение" maxLength={4000} value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Сообщение…"/><button type="button" disabled={sending||!draft.trim()} onClick={()=>void send()} aria-label="Отправить">➤</button></div></div>
