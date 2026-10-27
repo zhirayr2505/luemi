@@ -44,8 +44,8 @@ ALTER TABLE luemi_chats.likes FORCE ROW LEVEL SECURITY;
 ALTER TABLE luemi_chats.matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE luemi_chats.matches FORCE ROW LEVEL SECURITY;
 
-REVOKE ALL ON luemi_chats.likes,luemi_chats.matches FROM PUBLIC,anon,authenticated;
-REVOKE ALL ON SCHEMA luemi_chats FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON luemi_chats.likes,luemi_chats.matches FROM PUBLIC;
+REVOKE ALL ON SCHEMA luemi_chats FROM PUBLIC;
 GRANT USAGE ON SCHEMA luemi_chats TO luemi_match_writer,luemi_chats_writer;
 GRANT USAGE ON SCHEMA luemi_private TO luemi_match_writer,luemi_chats_writer;
 GRANT SELECT,INSERT ON luemi_chats.likes,luemi_chats.matches TO luemi_match_writer;
@@ -118,9 +118,9 @@ CREATE POLICY match_member_insert ON luemi_chats.members FOR INSERT TO luemi_mat
 -- at query time, even before maintenance removes obsolete membership rows.
 CREATE POLICY chat_peer_profile_read ON luemi_private.public_profiles FOR SELECT TO luemi_chats_writer
  USING(environment=current_setting('luemi.environment',true) AND publication_status='published'
- AND EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.environment=environment AND m.status='active'
+ AND (owner_id=nullif(current_setting('luemi.actor_id',true),'')::uuid OR EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.environment=environment AND m.status='active'
  AND ((m.actor_low=owner_id AND m.actor_high=nullif(current_setting('luemi.actor_id',true),'')::uuid)
- OR (m.actor_high=owner_id AND m.actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid))));
+ OR (m.actor_high=owner_id AND m.actor_low=nullif(current_setting('luemi.actor_id',true),'')::uuid)))));
 CREATE POLICY chat_peer_media_read ON luemi_private.media_assets FOR SELECT TO luemi_chats_writer
  USING(environment=current_setting('luemi.environment',true) AND state='approved' AND publication_status='published'
  AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=owner_id AND p.environment=environment AND p.publication_status='published'));
@@ -140,7 +140,7 @@ CREATE OR REPLACE FUNCTION luemi_chats.live_match(p_conversation uuid,p_actor uu
  AND ((bl.blocker_id=m.actor_low AND bl.blocked_id=m.actor_high)
  OR (bl.blocker_id=m.actor_high AND bl.blocked_id=m.actor_low)))
  ) $$;
-REVOKE ALL ON FUNCTION luemi_chats.live_match(uuid,uuid,text) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION luemi_chats.live_match(uuid,uuid,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION luemi_chats.live_match(uuid,uuid,text) TO luemi_chats_writer;
 DROP POLICY chats_members_read ON luemi_chats.members;
 CREATE POLICY chats_members_read ON luemi_chats.members FOR SELECT TO luemi_chats_writer
