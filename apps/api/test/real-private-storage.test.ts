@@ -85,6 +85,36 @@ test("01C Supabase HTTP 400 NoSuchKey is absence only for read and idempotent de
  await assert.rejects(store.put(key,Buffer.from([1])),/private_storage_put_denied/);
  assert.deepEqual(calls,["GET","DELETE","POST"]);
 });
+test("01C documented Supabase JSON code NoSuchKey handles missing private objects",async()=>{
+ const settings={projectRef,namespace,secret,bucket} as const;
+ // The actual Supabase Storage response carries `code`, not `errorCode`.
+ // HTTP status is 400 while the body says 404 (verified on live service).
+ const actualShape={statusCode:"404",error:"not_found",
+  message:"Object not found",code:"NoSuchKey"};
+ const observed:typeof fetch=async()=>new Response(JSON.stringify(actualShape),{
+  status:400,headers:{"Content-Type":"application/json; charset=utf-8"}});
+ const store=createDurablePrivateStore(settings,observed);
+ assert.equal(await store.get(key),null);
+ await assert.doesNotReject(store.delete(key));
+ await assert.rejects(store.put(key,Buffer.from([1])),/put_denied/);
+});
+test("01C malformed or contradictory JSON code is not mistaken for absence",async()=>{
+ const settings={projectRef,namespace,secret,bucket} as const;
+ const variants=[
+  {statusCode:"403",error:"not_found",code:"NoSuchKey"},
+  {statusCode:"400",error:"not_found",code:"NoSuchKey"},
+  {statusCode:"404",error:"not_found",code:"AccessDenied"},
+  {statusCode:"404",error:"not_found"},
+  {statusCode:"404",message:"Object not found"}
+ ];
+ for(const obj of variants){
+  const fake:typeof fetch=async()=>new Response(JSON.stringify(obj),{
+   status:400,headers:{"Content-Type":"application/json"}});
+  const store=createDurablePrivateStore(settings,fake);
+  await assert.rejects(store.get(key),/private_storage_get_denied/);
+  await assert.rejects(store.delete(key),/private_storage_delete_denied/);
+ }
+});
 test("01C rejects other HTTP 400 errors, malformed bodies and oversized error responses",async()=>{
  const settings={projectRef,namespace,secret,bucket} as const;
  const payloads=[
