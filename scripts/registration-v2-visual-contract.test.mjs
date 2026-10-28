@@ -9,6 +9,7 @@ import {strict as assert} from "node:assert";
 const runtime=readFileSync("apps/web/src/registration/v2/runtime.css","utf8");
 const form=readFileSync("apps/web/src/registration/v2/RealRegistration.tsx","utf8");
 const draftClient=readFileSync("apps/web/src/registration/server-draft.ts","utf8");
+const app=readFileSync("apps/web/src/App.tsx","utf8");
 const geo=readFileSync("apps/web/src/registration/GeoPicker.tsx","utf8");
 const language=readFileSync("apps/web/src/registration/LanguagePicker.tsx","utf8");
 const required=[
@@ -29,6 +30,9 @@ assert.match(form,/const noticeLabel=friendsTest\?/,"Registration notice disting
 assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
 assert.match(form,/p\.publicationEnabled\?/,"Registration must disclose publication separately from private saving");
+assert.match(form,/"Всё верно 💜"/,"Confirmation CTA is consistently labeled in supported modes");
+assert.match(app,/realOnly\|\|import\.meta\.env\.VITE_LUEMI_REGISTRATION_V2/,
+ "Real-only private registration must use V2, even without the legacy V2 opt-in");
 assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого теста<\/a>/,
  "Public registration cannot hardcode closed-beta consent links");
 assert.match(geo,/<Search size=\{20\}/,"City field needs search icon");
