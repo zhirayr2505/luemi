@@ -60,6 +60,10 @@ type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
 const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
+// A public build cannot silently fall back to local-only media or beta notices.
+const publicMediaUiMissing=import.meta.env.VITE_LUEMI_OPEN_SIGNUPS_UI==="1"&&
+ (!remoteDraftPilot.enabled||!remoteMediaPilot.enabled||
+  import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1");
 // Safe invited-only routing; real publication remains gated until trusted FaceTrust.
 // REAL_ONLY must never fall back to the legacy registration form.
 const registrationV2Pilot=remoteDraftPilot.enabled&&
@@ -536,7 +540,7 @@ export function App() {
     setSaveRetry(value=>value+1);
   };
   const beginRegistration=()=>{
-    if(welcomeExiting||realOnly&&!remoteDraftPilot.enabled||
+    if(publicMediaUiMissing||welcomeExiting||realOnly&&!remoteDraftPilot.enabled||
       realFeedPilot.enabled&&publicationCheck!=="ready")return;
     if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
       setPhase("form");
@@ -940,7 +944,8 @@ export function App() {
           <button type="button" className="primary-action" onClick={()=>setPublicationRetry(v=>v+1)}>Повторить проверку</button></>}
         {realOnly&&!remoteDraftPilot.enabled&&
           <p role="status">Настоящая регистрация пока не подключена. Демонстрационные анкеты выключены.</p>}
-        {(!realFeedPilot.enabled&&(!realOnly||remoteDraftPilot.enabled)||publicationCheck==="ready")&&
+        {publicMediaUiMissing&&<p role="alert">Загрузка фотографий на сервер не подключена. Регистрация временно недоступна, чтобы не потерять данные.</p>}
+        {!publicMediaUiMissing&&(!realFeedPilot.enabled&&(!realOnly||remoteDraftPilot.enabled)||publicationCheck==="ready")&&
           <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
             Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
           </button>}
