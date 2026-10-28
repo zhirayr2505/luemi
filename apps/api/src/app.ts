@@ -17,6 +17,7 @@ import {registerChats} from "./chats-api.js";
 import {registerMatches} from "./matches-api.js";
 import {registerSafetyAppeals} from "./safety-appeal-api.js";
 import {describeReleaseConfig} from "./release-readiness.js";
+import {registerFaceTrustCapabilities} from "./facetrust-status.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -73,6 +74,7 @@ export function buildApp(config: ApiConfig) {
   registerGeography(app,config.rem05c?.geo,guards);
   registerRem05d(app,guards,config.rem05d);
   registerRealRegistrationDrafts(app,guards,config.realRegistration);
+  registerFaceTrustCapabilities(app,guards);
   registerPublishedProfiles(app,guards,config.realPublication);
   registerAccountErasure(app,guards,config.realErasure);
   registerSafetyAppeals(app,config.safetyAppeal);
