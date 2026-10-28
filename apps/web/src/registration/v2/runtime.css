@@ -1,0 +1,38 @@
+/* Runtime-only additions: import is lazy and opt-in for invited draft beta.
+   No backdrop-filter, mask or 3D transforms on camera / scroll hot paths. */
+.v2-runtime{height:100dvh;overflow:hidden;min-height:0;background:transparent}
+.v2-runtime .v2-device{height:100dvh;max-height:950px;min-height:0}
+.v2-runtime .v2-logo img{width:96px;max-width:100%}
+.v2-runtime .v2-body{animation:none;scroll-padding-top:16px}
+.v2-runtime .v2-body .form-stack{gap:12px;padding:0 0 12px}
+.v2-runtime .v2-body .form-stack>*{animation:none}
+.v2-runtime .v2-real-groups{display:flex;flex-direction:column;gap:18px}
+.v2-runtime .v2-real-groups>.form-stack+.form-stack{border-top:1px solid rgba(157,112,186,.16);padding-top:16px}
+.v2-runtime .glass-control{font-size:16px;min-height:49px}
+.v2-runtime .v2-fields a{color:#8551a7;text-decoration:underline;text-underline-offset:2px}
+.v2-runtime .category-row{max-width:100%;overflow-x:auto}
+.v2-runtime .v2-camera{height:clamp(210px,32dvh,305px);flex:none}
+.v2-live-camera>video{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+ transform:scaleX(-1);background:#e3d4ee}
+.v2-face-camera{display:flex;flex-direction:column;gap:13px}
+.v2-camera-prompt{text-align:center;color:#624076;font-weight:750;font-size:16px;line-height:1.35;margin:5px 0}
+.v2-camera-indicators{display:flex;justify-content:center;gap:6px}
+.v2-camera-indicators span{height:5px;flex:1;max-width:65px;background:#e7dcee;border-radius:4px}
+.v2-camera-indicators .is-done{background:#ae8ad1}
+.v2-camera-stop{background:transparent;border:0;color:#8b668e;
+ display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;font-size:13px}
+.v2-runtime .v2-draft-save{width:100%;background:linear-gradient(110deg,#a87adc,#dda4d3)}
+.v2-runtime .v2-draft-save:disabled{background:#d8c7df}
+.v2-runtime .registration-static-profile{padding:0;gap:12px}
+.v2-runtime .registration-static-avatar{width:min(160px,43vw)}
+.v2-runtime .registration-static-hero h2{font-size:24px}
+.v2-runtime .v2-consent{font-size:13px}
+.v2-runtime .v2-next:disabled{background:#e7dce8;color:#a491aa}
+@media(max-width:720px){
+ .v2-runtime .v2-device{height:100dvh;max-height:none}
+ .v2-runtime .v2-header{height:67px}
+ .v2-runtime .v2-body{padding:20px 22px 20px}
+ .v2-runtime .v2-footer{padding-bottom:max(14px,env(safe-area-inset-bottom))}
+ .v2-runtime .v2-subtitle{margin-bottom:20px}
+ .v2-runtime .v2-body h1{font-size:clamp(27px,7vw,34px)}
+}
