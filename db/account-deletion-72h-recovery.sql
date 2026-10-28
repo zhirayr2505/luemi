@@ -23,8 +23,21 @@ GRANT SELECT(eligible_at),UPDATE(reason_code,reason_details)
 -- Auth issuer may look up and cancel ONLY the actor identified by a valid
 -- server-verified Telegram initData. The role already has narrowly scoped
 -- identity issuance and MUST NOT receive direct Storage credentials.
-GRANT SELECT(id,actor_id,environment,state,eligible_at),DELETE
+-- SELECT ... FOR UPDATE requires a column UPDATE privilege. Grant only
+-- finished_at, and prohibit changes to its NULL value via RLS. This lets a
+-- verified Telegram recovery lock the queue row against a concurrent purge,
+-- without allowing the issuer to change eligible_at or deletion reasons.
+GRANT SELECT(id,actor_id,environment,state,eligible_at),DELETE,
+ UPDATE(finished_at)
  ON luemi_private.erasure_requests TO luemi_auth_issuer;
+CREATE POLICY auth_recovery_queue_lock ON luemi_private.erasure_requests
+ FOR UPDATE TO luemi_auth_issuer
+ USING (actor_id=NULLIF(current_setting('luemi.actor_id',true),'')::uuid
+  AND environment=current_setting('luemi.environment',true) AND state='pending'
+  AND eligible_at>clock_timestamp() AND finished_at IS NULL)
+ WITH CHECK (actor_id=NULLIF(current_setting('luemi.actor_id',true),'')::uuid
+  AND environment=current_setting('luemi.environment',true) AND state='pending'
+  AND eligible_at>clock_timestamp() AND finished_at IS NULL);
 CREATE POLICY auth_recovery_queue_select ON luemi_private.erasure_requests
  FOR SELECT TO luemi_auth_issuer
  USING (actor_id=NULLIF(current_setting('luemi.actor_id',true),'')::uuid
