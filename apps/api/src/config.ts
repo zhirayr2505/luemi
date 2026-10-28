@@ -75,25 +75,37 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   // they never use the invite table or a client-provided identity.
   const openSignups = env.REM06_OPEN_SIGNUPS_ENABLED==="1";
   const betaInvites = env.REM06_BETA_INVITES_ENABLED==="1";
+  // Short-lived, capacity-bounded early beta: adults may create a private draft
+  // using their own signed Telegram account without owner-managed invitations.
+  // This is NOT REM06_OPEN_SIGNUPS: publication/media/chats remain disabled.
+  const selfServiceBeta=env.REM06_SELF_SERVICE_BETA_ENABLED==="1";
+  const selfServiceCap=Number(env.REM06_SELF_SERVICE_BETA_MAX_ACCOUNTS??"20");
+  if(selfServiceBeta&&(!Number.isSafeInteger(selfServiceCap)||
+      selfServiceCap<2||selfServiceCap>50))
+    throw new Error("Self-service beta requires an explicit 2..50 account ceiling");
   // Deliberately OFF for all existing Render deployments until separately authorized.
   const v2Enabled = env.REM05B_SESSIONS_ENABLED === "1";
   // Invite-only private-draft pilot: not public registration, never public media.
   const friendsTest=env.REM06_FRIENDS_TEST_ENABLED==="1";
-  if(friendsTest&&(!v2Enabled||stagingOnly||!betaInvites||openSignups||
+  if(friendsTest&&(!v2Enabled||stagingOnly||
+    (selfServiceBeta?betaInvites||openSignups:!betaInvites||openSignups)||
     env.REM06_PRIVATE_DRAFT_ENABLED!=="1"||
-    env.REM06_BETA_INVITES_APPROVED!=="1"||
+    (!selfServiceBeta&&env.REM06_BETA_INVITES_APPROVED!=="1")||
     env.REM06_FRIENDS_TEST_NOTICE_ACCEPTED!=="1"||
     env.REM06_PUBLICATION_ENABLED==="1"||
     env.REM06_MEDIA_ENABLED==="1"||
     env.LUEMI_CHATS_V1_ENABLED==="1"||
     env.LUEMI_MATCHES_V1_ENABLED==="1"||
     env.REM06_ERASURE_REQUEST_ENABLED==="1"))
-    throw new Error("Friends test must be invite-only private drafts with accepted test disclosure");
+    throw new Error("Friends test must be explicitly bounded private drafts with accepted test disclosure");
+  if(selfServiceBeta&&(!friendsTest||betaInvites||openSignups||
+    env.REM06_FRIENDS_TEST_NOTICE_ACCEPTED!=="1"))
+    throw new Error("Self-service beta requires explicit private friends-test notice and no public signup");
   const privateDraftDisclosure=env.REM06_PRIVACY_APPROVED==="1"||friendsTest;
   // A partial configuration must never silently make Telegram signup public.
   // Isolated unit tests can still instantiate their deliberately restricted
   // session fixtures without a production admission policy.
-  if(env.NODE_ENV==="production"&&v2Enabled&&!openSignups&&!betaInvites)
+  if(env.NODE_ENV==="production"&&v2Enabled&&!openSignups&&!betaInvites&&!selfServiceBeta)
     throw new Error("Production V2 requires an explicitly approved admission mode");
   if(openSignups&&(!v2Enabled||stagingOnly||betaInvites||
     env.REM06_OPEN_SIGNUPS_APPROVED!=="1"||
@@ -111,7 +123,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     idleMs: 12 * 60 * 60 * 1000,
     absoluteMs: 7 * 24 * 60 * 60 * 1000,
     maxSessions: 5,
-    inviteOnly: betaInvites
+    inviteOnly: betaInvites,
+    maxNewActors: selfServiceBeta?selfServiceCap:undefined
   } : undefined;
   if(env.REM06_BETA_INVITES_ENABLED==="1"&&(!v2Enabled||
     env.REM06_BETA_INVITES_APPROVED!=="1"||!privateDraftDisclosure))
