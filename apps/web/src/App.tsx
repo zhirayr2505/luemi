@@ -607,9 +607,9 @@ export function App() {
     }
     setMediaSaving(true);setMediaStatus("");
     try{
-      await uploadPrivatePhotos([...photos],(done,total)=>
+      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
         setMediaStatus("Отправлено "+done+" из "+total+". Все фотографии приватны."));
-      const received=await readConfirmedPrivateMediaCount(photos.length);
+      const received=await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       setServerPhotoCount(received);
       setPublishStatus(null);
       setMediaStatus("Сервер подтвердил сохранение "+received+" фотографий. До проверки они никому не видны.");
@@ -635,9 +635,9 @@ export function App() {
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
       setServerStatus("Загружаем фотографии в приватное хранилище…");
-      await uploadPrivatePhotos([...photos],(done,total)=>
+      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
         setServerStatus("Отправлено фотографий: "+done+" из "+total+"."));
-      const received=await readConfirmedPrivateMediaCount(photos.length);
+      const received=await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       setServerPhotoCount(received);
       setServerStatus("Сервер подтвердил анкету и "+received+" фотографий.");
       setRealHomeTab("profile");setRealHome(true);
@@ -686,8 +686,9 @@ export function App() {
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
       setPublishFeedback("Отправляем фотографии на проверку…");
-      await uploadPrivatePhotos([...photos],(done,total)=>
+      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
         setPublishFeedback(`Отправлено ${done} из ${total} фотографий.`));
+      await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       const status=await ownerPublicationStatus();setPublishStatus(status);
       if(status.approved>=3&&status.approved<=6&&status.pending===0&&status.other===0){
         const saved=await readRemoteRevision();
