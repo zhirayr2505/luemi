@@ -154,8 +154,13 @@ test("01H: report must be human triaged, suspend revokes all sessions and hides 
    headers:{origin,"sec-fetch-site":"same-origin",
     cookie:String(newLogin.headers["set-cookie"]).split(";")[0],
     "x-luemi-csrf":newLogin.json().csrfToken},
-   payload:{confirmation:"DELETE MY LUEMI ACCOUNT"}});
+   payload:{confirmation:"DELETE MY LUEMI ACCOUNT",reason:"privacy",details:""}});
   assert.equal(deletion.statusCode,202,deletion.body);
+  assert.equal(deletion.json().state,"deletion_grace");
+  const early=await runErasureBatch({databaseUrl:eraseWorker,namespace:ns,storage:store,limit:1});
+  assert.deepEqual(early,{completed:0,failed:0,pending:false});
+  await admin.query("UPDATE luemi_private.erasure_requests "+
+   "SET eligible_at=clock_timestamp()-interval '1 second' WHERE actor_id=$1",[owner.id]);
   const erased=await runErasureBatch({databaseUrl:eraseWorker,namespace:ns,storage:store,limit:1});
   assert.deepEqual(erased,{completed:1,failed:0,pending:false});
   assert.equal((await admin.query("SELECT 1 FROM luemi_private.account_enforcements "+
