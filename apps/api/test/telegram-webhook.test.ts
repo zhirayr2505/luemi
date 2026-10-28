@@ -73,3 +73,19 @@ test("signed /start supplies a fresh versioned Web App button using the Render c
     else process.env.RENDER_GIT_COMMIT=previous;
   }
 });
+
+
+test("signed /myid never instructs public users to seek invitations",async()=>{
+  const app=buildApp(config());
+  try{
+    const response=await app.inject({method:"POST",url:"/api/telegram/webhook",
+      headers:{"x-telegram-bot-api-secret-token":"s".repeat(32)},
+      payload:{message:{text:"/myid",chat:{id:12345,type:"private"},from:{id:12345}}}});
+    assert.equal(response.statusCode,200);
+    const message=response.json();
+    assert.equal(message.chat_id,12345);
+    assert.match(message.text,/Твой Telegram ID: 12345/);
+    assert.match(message.text,/\/start/);
+    assert.doesNotMatch(message.text,/для приглашения/i);
+  }finally{await app.close();}
+});

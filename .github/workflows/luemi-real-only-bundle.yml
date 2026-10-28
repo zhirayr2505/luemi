@@ -1,0 +1,41 @@
+name: LUEMI real-only public bundle smoke
+on:
+  pull_request:
+    paths:
+      - "apps/web/vite.config.ts"
+      - "apps/web/chats-demo.html"
+      - "apps/web/src/**"
+      - "package*.json"
+      - ".github/workflows/luemi-real-only-bundle.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/vite.config.ts"
+      - ".github/workflows/luemi-real-only-bundle.yml"
+permissions:
+  contents: read
+jobs:
+  check-public-bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts --include=dev
+      - run: npm run build -w @luemi/contracts
+      - name: Build real-only web
+        env:
+          VITE_LUEMI_REAL_ONLY: "1"
+          VITE_LUEMI_CHATS_DEMO: "0"
+        run: npm run build -w @luemi/web
+      - name: Reject publicly served demo entry
+        run: |
+          test -s apps/web/dist/index.html
+          if test -e apps/web/dist/chats-demo.html; then
+            echo "::error::Real-only release must not ship chats-demo.html"
+            exit 1
+          fi
+          echo "REAL_ONLY_BUNDLE_OK"

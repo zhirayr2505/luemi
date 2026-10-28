@@ -45,7 +45,7 @@ export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig)
     if (/^\/(?:id|myid)(?:@LuemiAppBot)?(?:\s|$)/i.test(text)) {
       if (!Number.isSafeInteger(senderId)||senderId!==chat.id)return {ok:true};
       return {method:"sendMessage",chat_id:chat.id,
-       text:"Твой Telegram ID: "+senderId+"\nПередай его владельцу LUEMI для приглашения."};
+       text:"Твой Telegram ID: "+senderId+"\nДля регистрации открой LUEMI через /start. Отправлять ID владельцу не требуется."};
     }
     if (!/^\/start(?:\s|$)/.test(text))return {ok:true};
     // Telegram accepts an API method in the webhook response; no bot token is sent to clients.
