@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "Enter RETRY_LUEMI_STORAGE_AFTER_NOSUCHKEY_FIX (exactly one synthetic PNG, no real users)"
+        description: "Enter VERIFY_LUEMI_PRIVATE_STORAGE_ONCE (exactly one synthetic PNG, no real users)"
         required: true
         type: string
 permissions:
@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   synthetic-storage:
-    # First run failed before upload. Permit ONLY the first owner-confirmed retry (run #2). Further runs are refused.
-    if: github.repository == 'zhirayr2505/luemi' && github.ref == 'refs/heads/main' && github.actor == 'zhirayr2505' && github.run_number == 2 && github.run_attempt == 1 && inputs.confirmation == 'RETRY_LUEMI_STORAGE_AFTER_NOSUCHKEY_FIX'
+    # First two runs failed before upload; permit ONLY the owner's explicit new third attempt. All later runs are refused.
+    if: github.repository == 'zhirayr2505/luemi' && github.ref == 'refs/heads/main' && github.actor == 'zhirayr2505' && github.run_number == 3 && github.run_attempt == 1 && inputs.confirmation == 'VERIFY_LUEMI_PRIVATE_STORAGE_ONCE'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     environment: beta-bootstrap
