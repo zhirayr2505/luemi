@@ -8,6 +8,7 @@ import {readFileSync} from "node:fs";
 import {strict as assert} from "node:assert";
 const runtime=readFileSync("apps/web/src/registration/v2/runtime.css","utf8");
 const form=readFileSync("apps/web/src/registration/v2/RealRegistration.tsx","utf8");
+const draftClient=readFileSync("apps/web/src/registration/server-draft.ts","utf8");
 const geo=readFileSync("apps/web/src/registration/GeoPicker.tsx","utf8");
 const language=readFileSync("apps/web/src/registration/LanguagePicker.tsx","utf8");
 const required=[
@@ -25,6 +26,8 @@ for(const [description,pattern] of required)
 assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"\}/,
  "Only actual Telegram surface should reserve native controls clearance");
 assert.match(form,/const noticeLabel=friendsTest\?/,"Registration notice distinguishes closed beta from public privacy policy");
+assert.match(draftClient,/policy!=="\/friends-test\.html"/,
+ "Public remote drafts may not use beta-only privacy notices");
 assert.match(form,/p\.publicationEnabled\?/,"Registration must disclose publication separately from private saving");
 assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого теста<\/a>/,
  "Public registration cannot hardcode closed-beta consent links");
