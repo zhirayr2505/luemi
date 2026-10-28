@@ -58,6 +58,7 @@ type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
 const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
+const testingNotice=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1"?"условия закрытого теста":"политику обработки данных";
 
 /** Decode the exact brand raster before showing a screen that depends on it. */
 function prepareBrandImage(signal: AbortSignal): Promise<void> {
@@ -838,7 +839,7 @@ export function App() {
           addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} resetDraft={resetDraft}/>
         {step===8&&realFeedPilot.enabled&&<section className="registration-preview-review" aria-label="Публикация анкеты">
           <label><input type="checkbox" checked={serverConsent} onChange={e=>setServerConsent(e.target.checked)}/>
-            {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">политику обработки данных</a> и согласен(-на) сохранить анкету и отправить фотографии на проверку перед публикацией.
+            {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">{testingNotice}</a> и согласен(-на) сохранить анкету и отправить фотографии на проверку перед публикацией.
           </label>
           <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>Проверить модерацию и публикацию</button>
           {publishStatus&&<p role="status">Одобрено фото: {publishStatus.approved} · ожидают проверки: {publishStatus.pending}</p>}
@@ -850,7 +851,7 @@ export function App() {
           <label>
             <input type="checkbox" checked={serverConsent} onChange={e=>setServerConsent(e.target.checked)}/>
             {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">
-              политику обработки данных</a> и согласен(-на) сохранить черновик на сервере.
+              {testingNotice}</a> и согласен(-на) сохранить черновик на сервере.
           </label>
           <button type="button" className="primary-action" disabled={!serverConsent||serverSaving}
             onClick={()=>{void persistServerDraft();}}>
