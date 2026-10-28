@@ -195,6 +195,10 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   if(!db)return deny(reply,503);
   try{
    await db.query("BEGIN");
+   // A restrictive actor UPDATE policy binds both the ordinary login refresh
+   // and any explicit recovery to this verified Telegram ID and namespace.
+   await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+   await db.query("SELECT set_config('luemi.telegram_id',$1,true)",[String(verified.user.id)]);
    if(cfg.inviteOnly){
     await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
     const allowed=await db.query(
@@ -321,6 +325,8 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
    if(!db)return deny(reply,503);
    try{
     await db.query("BEGIN");
+    await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+    await db.query("SELECT set_config('luemi.telegram_id',$1,true)",[String(telegram.user.id)]);
     const actor=await db.query<{id:string;status:string}>(
      "SELECT id,status FROM luemi_private.actors WHERE environment=$1 AND telegram_id=$2",
      [cfg.namespace,String(telegram.user.id)]);
@@ -337,18 +343,21 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     if(pending.rowCount!==1||new Date(pending.rows[0].eligible_at).getTime()<=Date.now()){
      await db.query("ROLLBACK");return reply.code(410).send({error:"recovery_expired"});
     }
-    // Delete ONLY the pending outbox, never the user's retained photo objects.
+    // Restore while the locked pending request still exists: restrictive
+    // issuer actor RLS forbids undeleting anyone without a valid grace period.
+    const restored=await db.query(
+     "UPDATE luemi_private.actors SET status='active',first_name=$2,updated_at=clock_timestamp() "+
+     "WHERE id=$1 AND environment=$3 AND status='deleted' RETURNING id",
+     [actor.rows[0].id,telegram.user.first_name,cfg.namespace]);
+    if(restored.rowCount!==1)throw Error("recovery_actor_conflict");
+    // Cancel pending Storage deletion snapshots atomically in the same txn;
+    // uncommitted active status is never visible to a concurrent worker.
     await db.query("DELETE FROM luemi_private.erasure_objects WHERE request_id=$1",
      [pending.rows[0].id]);
     const cancelled=await db.query(
      "DELETE FROM luemi_private.erasure_requests WHERE id=$1 AND actor_id=$2 RETURNING id",
      [pending.rows[0].id,actor.rows[0].id]);
     if(cancelled.rowCount!==1)throw Error("recovery_cancel_conflict");
-    const restored=await db.query(
-     "UPDATE luemi_private.actors SET status='active',first_name=$2,updated_at=clock_timestamp() "+
-     "WHERE id=$1 AND environment=$3 AND status='deleted' RETURNING id",
-     [actor.rows[0].id,telegram.user.first_name,cfg.namespace]);
-    if(restored.rowCount!==1)throw Error("recovery_actor_conflict");
     await db.query("COMMIT");
     reply.header("Cache-Control","private, no-store");
     return{state:"restored_hidden",republicationRequired:true};
