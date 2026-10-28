@@ -119,7 +119,7 @@ async function main(){
   // Fail closed on a first provision attempt. Never disable an already-live operator.
   if(connected){
    const current=await Promise.all(entries.map(e=>renderValue(token,e.key).catch(()=>null)));
-   if(current.some((v,i)=>v===null))for(const e of entries)
+   if(current.some(v=>v===null))for(const e of entries)
     await db.query("ALTER ROLE "+e.role+" WITH NOLOGIN").catch(()=>{});
   }
   throw Error("operator_provisioning_not_verified");
