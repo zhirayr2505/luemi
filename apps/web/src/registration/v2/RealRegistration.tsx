@@ -23,6 +23,7 @@ interface Props{
  theme:"light"|"dark";
  onTheme:()=>void;
  onSave:()=>void;
+ mediaEnabled:boolean;
  serverSaving:boolean;
  serverStatus:string;
  storageError:string|null;
@@ -179,19 +180,26 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="review"&&<div className="v2-fields">
         <RegistrationPreview data={draft} photos={photos}/>
         <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
-          <strong>FaceTrust ещё не подключён</strong>
-          <p>Никакие фото не одобрены автоматически. Публикация закрыта до настоящей проверки.</p>
+          <strong>{p.mediaEnabled?"Твоя анкета готова":"Закрытый тест LUEMI"}</strong>
+          <p>{p.mediaEnabled
+           ?"После подтверждения данные и фотографии отправятся в защищённое хранилище. Другие люди увидят их только после проверки и публикации."
+           :"Сейчас сервер сохраняет поля анкеты, фотографии остаются на этом устройстве."}</p>
         </div></div>
         <label className="v2-consent"><input type="checkbox"
           checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
           <span>Я прочитал(а) <a href={pubNotice} target="_blank" rel="noopener noreferrer">
-           условия закрытого теста</a> и согласен(-на) сохранить мою анкету в закрытой базе LUEMI.</span>
+           условия закрытого теста</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI.</span>
         </label>
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
-          <LockKeyhole size={18}/> {p.serverSaving?"Сохраняем…":"Сохранить мою анкету"}
+          {p.mediaEnabled?<Check size={18}/>:<LockKeyhole size={18}/>}
+          {p.serverSaving?"Сохраняем и проверяем…":p.mediaEnabled?"Всё верно 💜":"Сохранить приватную анкету"}
         </button>
-        <p className="v2-footnote">Только приватное сохранение: фотографии остаются на устройстве, лента и переписки пока недоступны.</p>
+        <button type="button" className="v2-secondary" onClick={()=>nav(4)}
+          disabled={p.serverSaving}>Изменить анкету или фотографии</button>
+        <p className="v2-footnote">{p.mediaEnabled
+          ?"В приложение войдёшь после подтверждения сервером. Публикация фото зависит от модерации."
+          :"Фотографии пока только на устройстве, лента и переписки закрыты."}</p>
         {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
        </div>}
        {p.storageError&&<p role="alert" className="v2-feedback">
