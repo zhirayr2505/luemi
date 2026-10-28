@@ -43,7 +43,7 @@ async function main(){
  }else if(action==="report"&&id&&
   ["triaged","dismissed"].includes(arg??"")&&path){
   await triageReviewReport(opts,id,arg as "triaged"|"dismissed",
-   path as "spam"|"harassment"|"impersonation"|"unsafe_media"|"no_violation");
+   path as "spam"|"harassment"|"impersonation"|"unsafe_media"|"minor_suspected"|"nonconsensual_photo"|"no_violation");
   process.stdout.write("Report decision recorded.\n");
  }else throw new Error("invalid_operator_operation");
 }

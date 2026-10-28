@@ -132,7 +132,7 @@ export async function decideReviewPhoto(o:HumanReviewOptions,assetId:string,
 }
 export async function triageReviewReport(o:HumanReviewOptions,reportId:string,
  action:"triaged"|"dismissed",
- reason:"spam"|"harassment"|"impersonation"|"unsafe_media"|"no_violation"){
+ reason:"spam"|"harassment"|"impersonation"|"unsafe_media"|"minor_suspected"|"nonconsensual_photo"|"no_violation"){
  if(!idOK(reportId)|| (action==="dismissed")!==(reason==="no_violation"))
   throw new Error("invalid_human_report_decision");
  return guarded(o,async db=>{

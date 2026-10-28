@@ -12,9 +12,9 @@ async function main(){
   namespace:env.REM05B_BOT_NAMESPACE,operatorLabel:env.REG01H_OPERATOR_LABEL};
  const [action,id,...parts]=process.argv.slice(2);
  if(action==="suspend"&&id&&
-  ["spam","harassment","impersonation","unsafe_media","minor_suspected"].includes(parts[0]??"")){
+  ["spam","harassment","impersonation","unsafe_media","minor_suspected","nonconsensual_photo"].includes(parts[0]??"")){
    await suspendReportedActor(o,id,parts[0] as
-    "spam"|"harassment"|"impersonation"|"unsafe_media"|"minor_suspected");
+    "spam"|"harassment"|"impersonation"|"unsafe_media"|"minor_suspected"|"nonconsensual_photo");
    process.stdout.write("Safety action recorded.\n");
  }else if(action==="appeals"&&!id){
    const pending=await pendingSafetyAppeals(o);

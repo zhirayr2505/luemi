@@ -224,6 +224,12 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
   const report=await mutate(app,a,"/api/v2/profile/reports",{
    targetId:b.id,reason:"spam",clientRef:"reg01f-report-0001"});
   assert.equal(report.statusCode,200);
+  const suspectedMinor=await mutate(app,a,"/api/v2/profile/reports",{
+   targetId:b.id,reason:"minor_suspected",clientRef:"reg01f-minor-report-0001"});
+  assert.equal(suspectedMinor.statusCode,200,suspectedMinor.body);
+  const noConsent=await mutate(app,a,"/api/v2/profile/reports",{
+   targetId:b.id,reason:"nonconsensual_photo",clientRef:"reg01f-no-consent-0001"});
+  assert.equal(noConsent.statusCode,200,noConsent.body);
   const uri="/api/v3/account/request-deletion";
   const missing=await mutate(app,a,uri,{confirmation:"not the exact phrase"});
   assert.equal(missing.statusCode,422);

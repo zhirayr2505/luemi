@@ -102,6 +102,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0008_reg01g_human_moderation.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0009_reg01h_enforcement_appeals.sql
           psql -v ON_ERROR_STOP=1 -f db/account-deletion-72h-recovery.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0010_post_publication_report_reasons.sql
           psql -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE reg01_ci_issuer LOGIN PASSWORD 'synthetic_reg01_issuer' IN ROLE luemi_auth_issuer;
           CREATE ROLE reg01_ci_request LOGIN PASSWORD 'synthetic_reg01_request' IN ROLE luemi_request;
