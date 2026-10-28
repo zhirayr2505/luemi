@@ -82,7 +82,8 @@ async function readRenderEnv(apiKey,key){
   throw Error("Render environment read denied: "+key+" (HTTP "+response.status+")");
  }
  // The response contains production credentials. Never log it.
- const value=await response.json();
+ const body=await response.json();
+ const value=body?.envVar??body;
  if(value?.key!==key||typeof value.value!=="string"||value.value.length>2048)
   throw Error("Invalid stored Render environment value: "+key);
  return value.value;
