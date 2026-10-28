@@ -61,9 +61,9 @@ async function withSafety<T>(o:SafetyOperatorOptions,fn:(db:PoolClient)=>Promise
   finally{db.release();}
  }finally{await pool.end();}
 }
-const reportReasons=new Set(["spam","harassment","impersonation","unsafe_media","minor_suspected"]);
+const reportReasons=new Set(["spam","harassment","impersonation","unsafe_media","minor_suspected","nonconsensual_photo"]);
 export async function suspendReportedActor(o:SafetyOperatorOptions,reportId:string,
- reason:"spam"|"harassment"|"impersonation"|"unsafe_media"|"minor_suspected"){
+ reason:"spam"|"harassment"|"impersonation"|"unsafe_media"|"minor_suspected"|"nonconsensual_photo"){
  if(!uuid(reportId)||!reportReasons.has(reason))throw Error("invalid_safety_case");
  return withSafety(o,async db=>{
   const report=await db.query<{subject_id:string;state:string}>(
