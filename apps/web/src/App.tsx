@@ -285,7 +285,7 @@ export function App() {
         setDraft(snapshot.draft);
         setStep(snapshot.step);
         if(realFeedPilot.enabled)setPhase("form");
-      }else if(realFeedPilot.enabled){
+      }else if(remoteDraftPilot.enabled&&auth==="authorized"){
         // A new device can recover fields, but must select its city and photos
         // again. Never claim that private media bytes are in this response.
         try{
@@ -332,7 +332,7 @@ export function App() {
       if(!disposed){retryKind.current="load";setStorageCode("io");setStorageState("error");}
     });
     return ()=>{disposed=true;controller.abort();};
-  },[scope,loadRetry]);
+  },[scope,loadRetry,auth]);
   useEffect(()=>{
     if(!photosRestored||!scope||!persistEnabled.current)return;
     const current=++saveSequence.current;
@@ -493,7 +493,7 @@ export function App() {
     setSaveRetry(value=>value+1);
   };
   const beginRegistration=()=>{
-    if(welcomeExiting||realOnly&&!realFeedPilot.enabled||
+    if(welcomeExiting||realOnly&&!remoteDraftPilot.enabled||
       realFeedPilot.enabled&&publicationCheck!=="ready")return;
     if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
       setPhase("form");
@@ -805,7 +805,7 @@ export function App() {
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<><p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>
         {realOnly&&<button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button>}</>}
-      {auth==="needs-invite"&&<><p role="alert">Сервер пока не разрешил вход. Открытая регистрация LUEMI временно недоступна.</p>
+      {auth==="needs-invite"&&<><p role="alert">Идёт закрытый тест LUEMI. Для приглашения отправь владельцу свой Telegram ID из команды /myid в @LuemiAppBot.</p>
         <button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button></>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
       {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
@@ -814,9 +814,9 @@ export function App() {
         {realFeedPilot.enabled&&publicationCheck==="error"&&
           <><p role="alert">{publishFeedback}</p>
           <button type="button" className="primary-action" onClick={()=>setPublicationRetry(v=>v+1)}>Повторить проверку</button></>}
-        {realOnly&&!realFeedPilot.enabled&&
+        {realOnly&&!remoteDraftPilot.enabled&&
           <p role="status">Настоящая регистрация пока не подключена. Демонстрационные анкеты выключены.</p>}
-        {(!realFeedPilot.enabled&&!realOnly||publicationCheck==="ready")&&
+        {(!realFeedPilot.enabled&&(!realOnly||remoteDraftPilot.enabled)||publicationCheck==="ready")&&
           <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
             Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
           </button>}
@@ -845,8 +845,8 @@ export function App() {
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>}
         {step===8&&remoteDraftPilot.enabled&&!realFeedPilot.enabled&&<section className="registration-preview-review" aria-label="Приватное серверное сохранение">
-          <strong>Приватное сохранение анкеты</strong>
-          <p>На сервер отправятся только поля анкеты. Фотографии останутся на устройстве; анкета не будет опубликована.</p>
+          <strong>Закрытый тест — настоящая серверная анкета</strong>
+          <p>Поля анкеты сохранятся в закрытой базе LUEMI. Фотографии пока останутся на устройстве; анкету не увидят другие участники до включения публикации.</p>
           <label>
             <input type="checkbox" checked={serverConsent} onChange={e=>setServerConsent(e.target.checked)}/>
             {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">
@@ -882,9 +882,9 @@ export function App() {
         {step===8?<div className="registration-static-actions">
           <button type="button" className="registration-static-edit" onClick={()=>changeStep(7)}>Редактировать</button>
           <button type="button" className="registration-static-confirm"
-            onClick={realFeedPilot.enabled?()=>{void confirmRealRegistration();}:beginDemo}
-            disabled={publishBusy||(realOnly&&!realFeedPilot.enabled)}>
-            {publishBusy?"Сохраняем…":realOnly&&!realFeedPilot.enabled?"Сервис недоступен":"Всё верно"}</button>
+            onClick={realFeedPilot.enabled?()=>{void confirmRealRegistration();}:remoteDraftPilot.enabled?()=>{void persistServerDraft();}:beginDemo}
+            disabled={publishBusy||serverSaving||(realOnly&&!remoteDraftPilot.enabled)}>
+            {publishBusy||serverSaving?"Сохраняем…":remoteDraftPilot.enabled&&!realFeedPilot.enabled?"Сохранить анкету":realOnly&&!realFeedPilot.enabled?"Сервис недоступен":"Всё верно"}</button>
         </div>:<div className="footer-controls">
           <GlassArrow onClick={back}/>
           <span className="footer-hint">{realFeedPilot.enabled||realOnly?"Регистрация LUEMI":"Предпросмотр интерфейса"}</span>
