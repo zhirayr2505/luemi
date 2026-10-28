@@ -178,6 +178,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   // Real private media is an independent opt-in; never activated merely by
   // installing Storage credentials. No live state or storage is touched at boot.
   const mediaEnabled=env.REM06_MEDIA_ENABLED==="1";
+  // Owner-controlled alternative to a manual PRE-publication review.
+  // Not a bypass for approved privacy, adult Telegram login or post-publication takedown.
+  const instantPublishing=env.REM06_INSTANT_PUBLICATION_ENABLED==="1";
+  if(instantPublishing&&(!openSignups||!mediaEnabled||!regEnabled||
+     env.REM06_INSTANT_PUBLICATION_OWNER_ACCEPTED!=="1"))
+    throw new Error("Instant publication requires expressly accepted open admission and server media");
   // Public onboarding must never accept unlimited private accounts while
   // claiming photo registration without a real server-side media pipeline.
   // The existing 20-account friends beta is unaffected by this release gate.
@@ -201,10 +207,13 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       namespace:env.REM05B_BOT_NAMESPACE??"",
       bucket:"luemi-profile-private",
       secret:env.REM06_SUPABASE_STORAGE_SECRET
-    })
+    }),
+    ...(instantPublishing?{instantAcceptance:true as const}:{})
    };
   }
   const publicationEnabled=env.REM06_PUBLICATION_ENABLED==="1";
+  if(instantPublishing&&!publicationEnabled)
+    throw new Error("Instant publication requires an approved published-only feed");
   // Discovery is allowed only after ONE approved server-side admission policy.
   // Open registration is not an authorization bypass: it still requires
   // verified Telegram sessions, reviewed private photographs, and independent
@@ -214,7 +223,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     (openSignups&&!betaInvites&&env.REM06_OPEN_SIGNUPS_APPROVED==="1");
   if(publicationEnabled&&(!admissionApproved||
     !mediaEnabled||!rem05d?.durablePrivateOnly||
-    env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1"||
+    (!instantPublishing&&env.REM06_MODERATION_OPERATIONAL_APPROVED!=="1")||
     !env.REM06_PUBLISHER_DATABASE_URL||!env.REM06_DISCOVERY_DATABASE_URL||
     env.REM06_PUBLISHER_DATABASE_URL===env.REM06_DISCOVERY_DATABASE_URL))
     throw new Error("REG01D requires approved admission, private media, independent DB roles and accepted moderation");
@@ -322,6 +331,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       /^[A-Za-z0-9_-]{3,64}$/.test(env.REG01H_OPERATOR_LABEL??"")&&
       isolated(env.REG01H_SAFETY_OPERATOR_DATABASE_URL)
   };
+  // Immediate publication still requires a real post-publication report removal
+  // operator and account/photo erasure. Do not treat environment flags as proof
+  // the human on-call and erasure procedures have actually run successfully.
+  if(instantPublishing&&(!realErasure||!releaseOperations.erasureWorkerCliConfigured||
+    !releaseOperations.safetyOperatorCliConfigured))
+    throw new Error("Instant publication requires working safety takedown and erasure operators");
   return {
     releaseOperations,
     rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,chats,matches,

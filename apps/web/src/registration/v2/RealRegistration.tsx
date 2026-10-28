@@ -40,11 +40,12 @@ const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
 const messageFor=(raw:string)=>raw||"Заполни обязательные поля.";
 export function RealRegistrationV2(p:Props){
  const {draft,photos}=p;
+ const instantPublication=p.publicationEnabled&&import.meta.env.VITE_LUEMI_INSTANT_PUBLICATION_UI==="1";
  // Private registration never requests a non-operational biometric selfie.
  // Keep the full FaceTrust workflow available only to separately approved publication.
- const stages=useMemo(()=>p.publicationEnabled?registrationV2Stages:
+ const stages=useMemo(()=>p.publicationEnabled&&!instantPublication?registrationV2Stages:
   registrationV2Stages.filter(stage=>stage.id!=="face-consent"&&stage.id!=="liveness"),
-  [p.publicationEnabled]);
+  [p.publicationEnabled,instantPublication]);
  const [index,setIndex]=useState(()=>p.resumeReview?stages.length-1:0);
  const recoveryApplied=useRef(false);
  const [biometricNotice,setBiometricNotice]=useState(false);
@@ -82,8 +83,8 @@ export function RealRegistrationV2(p:Props){
   recoveryApplied.current=true;
   if(p.resumeReview)return;
   setIndex(!identityReady?0:!gate.hasLocation?1:!gate.hasIntent?2:
-    !photoReady(photos)?4:p.publicationEnabled?5:stages.length-1);
- },[p.restored,p.resumeReview,p.publicationEnabled,identityReady,gate.hasLocation,gate.hasIntent,photos,stages.length]);
+    !photoReady(photos)?4:p.publicationEnabled&&!instantPublication?5:stages.length-1);
+ },[p.restored,p.resumeReview,p.publicationEnabled,instantPublication,identityReady,gate.hasLocation,gate.hasIntent,photos,stages.length]);
  const nav=(target:number)=>{setHint("");setIndex(Math.min(stages.length-1,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
  const back=()=>{if(index===0)p.onExit();else nav(index-1);};
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
@@ -189,13 +190,13 @@ export function RealRegistrationV2(p:Props){
         <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
           <strong>{p.mediaEnabled?"Твоя анкета готова":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
           <p>{p.mediaEnabled
-           ?"После подтверждения данные и фотографии отправятся в защищённое хранилище. Другие люди увидят их только после проверки и публикации."
+           ?(instantPublication?"После подтверждения фотографии сохранятся на сервере, а анкета сразу станет видна другим совершеннолетним пользователям. Ручной проверки до публикации нет.":"После подтверждения данные и фотографии отправятся в защищённое хранилище. Другие люди увидят их только после проверки и публикации.")
            :"Сейчас сервер сохраняет поля анкеты, фотографии остаются на этом устройстве."}</p>
         </div></div>
         <label className="v2-consent"><input type="checkbox"
           checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
           <span>Я прочитал(а) <a href={pubNotice} target="_blank" rel="noopener noreferrer">
-           {noticeLabel}</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI{p.publicationEnabled?", а после проверки опубликовать её для других подходящих пользователей":""}.</span>
+           {noticeLabel}</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI{p.publicationEnabled?(instantPublication?", а также сразу опубликовать анкету и фотографии для других пользователей":", а после проверки опубликовать её для других подходящих пользователей"):""}.</span>
         </label>
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
@@ -205,7 +206,7 @@ export function RealRegistrationV2(p:Props){
         <button type="button" className="v2-secondary" onClick={()=>nav(4)}
           disabled={p.serverSaving}>Изменить анкету или фотографии</button>
         <p className="v2-footnote">{p.mediaEnabled
-          ?"В приложение войдёшь после подтверждения сервером. Публикация фото зависит от модерации."
+          ?(instantPublication?"После загрузки и подтверждения сервера анкета публикуется сразу. Пожаловаться на пользователя или заблокировать его можно в ленте.":"В приложение войдёшь после подтверждения сервером. Публикация фото зависит от модерации.")
           :"Фотографии пока только на устройстве, лента и переписки закрыты."}</p>
         {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
        </div>}
@@ -226,7 +227,7 @@ export function RealRegistrationV2(p:Props){
        </div>
        <p className="v2-prototype-caption"><ShieldCheck size={12}/>
         {friendsTest?"Закрытый тест: только приватная анкета, без публикации.":
-         p.publicationEnabled?"Фото проходят проверку перед публикацией. Автоматического одобрения нет.":
+         p.publicationEnabled?(instantPublication?"Ручной проверки фотографий до публикации нет.":"Фото проходят проверку перед публикацией. Автоматического одобрения нет."):
          p.mediaEnabled?"Фотографии остаются приватными до проверки и отдельной публикации.":
          "Приватное сохранение анкеты. Фотографии пока на устройстве."}
        </p>

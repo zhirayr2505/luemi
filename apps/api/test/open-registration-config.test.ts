@@ -86,6 +86,43 @@ test("open signups fail closed when real private photo upload is disabled",()=>{
   REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1",...overrides}),
   /Open registration requires server-backed private photo uploads/);
 });
+test("express owner approval enables no-pre-review publishing only with real safety and deletion operations",()=>{
+ const flags={
+  REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1",
+  REM06_MODERATION_OPERATIONAL_APPROVED:"0",
+  REM06_INSTANT_PUBLICATION_ENABLED:"1",
+  REM06_INSTANT_PUBLICATION_OWNER_ACCEPTED:"1",
+  REM06_ERASURE_REQUEST_ENABLED:"1",REM06_ERASURE_POLICY_APPROVED:"1",
+  REM06_ERASURE_REQUEST_DATABASE_URL:"postgres://erasure_req.example.invalid/postgres",
+  REM06_ERASURE_WORKER_ENABLED:"1",REM06_ERASURE_MAINTENANCE_APPROVED:"1",
+  REM06_ERASURE_WORKER_DATABASE_URL:"postgres://erasure_worker.example.invalid/postgres",
+  REG01H_SAFETY_OPERATOR_ENABLED:"1",REG01H_SAFETY_POLICY_APPROVED:"1",
+  REG01H_OPERATOR_LABEL:"abuse_team",
+  REG01H_SAFETY_OPERATOR_DATABASE_URL:"postgres://safety_worker.example.invalid/postgres"
+ };
+ const c=readConfig({...base,...flags});
+ assert.equal(c.rem05b?.maxNewActors,undefined);
+ assert.equal(c.rem05d?.instantAcceptance,true);
+ assert.equal(c.realPublication?.enabled,true);
+ assert.equal(c.realErasure?.enabled,true);
+ assert.equal(c.releaseOperations?.safetyOperatorCliConfigured,true);
+ assert.equal(c.releaseOperations?.erasureWorkerCliConfigured,true);
+ for(const patch of [
+  {REM06_INSTANT_PUBLICATION_OWNER_ACCEPTED:"0"},
+  {REM06_PRIVACY_APPROVED:"0"},
+  {REM06_MEDIA_ENABLED:"0"},
+  {REM06_ERASURE_WORKER_ENABLED:"0"},
+  {REG01H_SAFETY_OPERATOR_ENABLED:"0"},
+  {REM06_ERASURE_REQUEST_ENABLED:"0"},
+  {REM06_OPEN_SIGNUPS_ENABLED:"0"},
+  {REM06_PUBLICATION_ENABLED:"0"}
+ ])assert.throws(()=>readConfig({...base,...flags,...patch}),
+  /Instant publication|Open registration|REG01D requires|Production V2 requires/);
+});
+test("legacy manual review remains the default",()=>{
+ const c=readConfig({...base,REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1"});
+ assert.equal(c.rem05d?.instantAcceptance,undefined);
+});
 test("legacy invite-only mode is unchanged when open registration is disabled",()=>{
  const cfg=readConfig({
   ...base,REM06_BETA_INVITES_ENABLED:"1",REM06_BETA_INVITES_APPROVED:"1"

@@ -60,6 +60,7 @@ type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
 const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
+const instantPublicationUi=import.meta.env.VITE_LUEMI_INSTANT_PUBLICATION_UI==="1";
 // A public build cannot silently fall back to local-only media or beta notices.
 const publicMediaUiMissing=import.meta.env.VITE_LUEMI_OPEN_SIGNUPS_UI==="1"&&
  (!remoteDraftPilot.enabled||!remoteMediaPilot.enabled||
@@ -677,7 +678,19 @@ export function App() {
         return;
       }
       if(decision==="ready-to-publish"){
-        setPublishFeedback("Фотографии уже одобрены. Нажми «Проверить модерацию и публикацию», чтобы открыть анкету.");
+        // Resume a fully uploaded registration after an interrupted browser session.
+        // A server draft + exact accepted photo set is required; nothing auto-public.
+        if(instantPublicationUi){
+          const saved=await readRemoteRevision();
+          if(saved.state!=="private")throw new Error("missing_draft");
+          await publishMyProfile(saved.revision);
+          const published=await ownerPublicationStatus();
+          if(published.state!=="published")throw new Error("publication_unconfirmed");
+          setPublishStatus(published);setRealHomeTab("feed");setRealHome(true);
+          setPublishFeedback("Анкета опубликована и видна другим людям.");
+        }else{
+          setPublishFeedback("Фотографии уже одобрены. Нажми «Проверить модерацию и публикацию», чтобы открыть анкету.");
+        }
         return;
       }
       if(decision==="review-needs-attention"){
@@ -689,7 +702,7 @@ export function App() {
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
-      setPublishFeedback("Отправляем фотографии на проверку…");
+      setPublishFeedback(instantPublicationUi?"Загружаем фотографии на сервер…":"Отправляем фотографии на проверку…");
       const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
         setPublishFeedback(`Отправлено ${done} из ${total} фотографий.`));
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
@@ -699,7 +712,7 @@ export function App() {
         await publishMyProfile(saved.revision);
         const confirmed=await ownerPublicationStatus();
         if(confirmed.state!=="published")throw new Error("publication_unconfirmed");
-        setPublishStatus(confirmed);setRealHome(true);
+        setPublishStatus(confirmed);setRealHomeTab("feed");setRealHome(true);
         setPublishFeedback("Анкета опубликована.");
       }else{
         setPublishFeedback("Анкета сохранена на сервере. Фото ожидают проверки; другие пользователи пока не видят её.");
