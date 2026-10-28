@@ -50,7 +50,14 @@ async function absentPrivateObject(response:Response):Promise<boolean>{
   const data:unknown=JSON.parse(Buffer.concat(pieces,total).toString("utf8"));
   if(!data||typeof data!=="object"||Array.isArray(data))return false;
   const error=data as Record<string,unknown>;
-  return error.errorCode==="NoSuchKey"||error.error==="NoSuchKey";
+  // Supabase returns `{"statusCode":"404","error":"not_found",
+  // "message":"Object not found","code":"NoSuchKey"}` behind HTTP 400.
+  // The error string alone ("not_found") is ambiguous with RLS denial:
+  // require a structured NoSuchKey code and refuse contradictory status.
+  if(error.statusCode!==undefined&&error.statusCode!=="404"&&
+     error.statusCode!==404)return false;
+  return error.code==="NoSuchKey"||error.errorCode==="NoSuchKey"||
+    error.error==="NoSuchKey";
  }catch{return false;}
 }
 
