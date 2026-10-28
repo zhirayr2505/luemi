@@ -885,6 +885,7 @@ export function App() {
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
           remoteMediaPilot.enabled?confirmPrivateRegistration():persistServerDraft());}}
         mediaEnabled={remoteMediaPilot.enabled}
+        publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
