@@ -178,6 +178,14 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   if(typeof raw!=="string"||Buffer.byteLength(raw,"utf8")>8192)return reply.code(401).send({error:"invalid_init_data"});
   const verified=validateTelegramInitData(raw,cfg.botToken);
   if(!verified||!verified.user.first_name.trim())return reply.code(401).send({error:"invalid_init_data"});
+  // Public signups cannot consume unbounded sessions through replayed, valid
+  // Telegram initData. Rate-limit each verified identity as well as the shared
+  // network ceiling; never trust a browser-provided Telegram ID.
+  const throttle=perActorRate.check("telegram-login:"+verified.user.id,12);
+  if(!throttle.allowed){
+   reply.header("Retry-After",String(throttle.retryAfter));
+   return reply.code(429).send({error:"rate_limited"});
+  }
   const db=await roleClient(issuer,"luemi_auth_issuer");
   if(!db)return deny(reply,503);
   try{
@@ -200,12 +208,44 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     [cfg.namespace,String(verified.user.id),verified.user.first_name]);
    if(result.rowCount!==1){await db.query("ROLLBACK");return reply.code(403).send({error:"account_unavailable"});}
    const actor=result.rows[0];
+   // Serialize concurrent logins for one Telegram account, without locking
+   // different users. This also enforces the active-session upper bound.
+   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [cfg.namespace+":"+actor.id+":auth-bootstrap"]);
+   const presented=tokenFrom(req);
+   if(presented){
+    const priorHash=hash(cfg.pepper,presented);
+    const previous=await db.query<{expires_at:string}>(
+     "UPDATE luemi_private.sessions SET last_seen_at=clock_timestamp(),"+
+     "idle_expires_at=LEAST(absolute_expires_at,clock_timestamp()+($4::bigint * interval '1 millisecond')) "+
+     "WHERE actor_id=$1 AND environment=$2 AND token_hash=$3 AND revoked_at IS NULL "+
+     "AND idle_expires_at>clock_timestamp() AND absolute_expires_at>clock_timestamp() "+
+     "RETURNING absolute_expires_at AS expires_at",
+     [actor.id,cfg.namespace,priorHash,cfg.idleMs]);
+    if(previous.rowCount===1){
+     await db.query("COMMIT");
+     return{mode:"session_v2",user:{id:actor.id,firstName:actor.first_name},
+      csrfToken:csrf(cfg.pepper,priorHash),expiresAt:previous.rows[0].expires_at};
+    }
+   }
    const counted=await db.query<{count:string}>(
     "SELECT count(*)::text AS count FROM luemi_private.sessions WHERE actor_id=$1 AND environment=$2 "+
     "AND revoked_at IS NULL AND idle_expires_at>clock_timestamp() AND absolute_expires_at>clock_timestamp()",
     [actor.id,cfg.namespace]);
    if(Number(counted.rows[0].count)>=cfg.maxSessions){
-    await db.query("ROLLBACK");return reply.code(429).send({error:"session_limit"});
+    // Ordinary returning users must not be permanently locked out after
+    // relaunching Telegram five times. Retire the least-recent session under
+    // this actor's advisory lock, then create one fresh session atomically.
+    const retired=await db.query(
+     "UPDATE luemi_private.sessions SET revoked_at=clock_timestamp() "+
+     "WHERE id=(SELECT id FROM luemi_private.sessions WHERE actor_id=$1 AND environment=$2 "+
+     "AND revoked_at IS NULL AND idle_expires_at>clock_timestamp() "+
+     "AND absolute_expires_at>clock_timestamp() "+
+     "ORDER BY last_seen_at ASC,created_at ASC,id ASC LIMIT 1 FOR UPDATE) RETURNING id",
+     [actor.id,cfg.namespace]);
+    if(retired.rowCount!==1){
+     await db.query("ROLLBACK");return deny(reply,503);
+    }
    }
    const token=randomBytes(32).toString("base64url"),h=hash(cfg.pepper,token);
    const inserted=await db.query<{expires_at:string}>(
