@@ -22,6 +22,15 @@ export async function authenticateBootstrap(initData:string,signal:AbortSignal):
     (body as {error?:unknown}).error==="test_full")
    throw new Error("test_full");
  }
+ if(enabled&&response.status===409){
+  const body:unknown=await response.json().catch(()=>null);
+  if(body&&typeof body==="object"&&!Array.isArray(body)){
+   const p=body as {error?:unknown;restoreUntil?:unknown};
+   if(p.error==="account_pending_deletion"&&typeof p.restoreUntil==="string"&&
+      Number.isFinite(Date.parse(p.restoreUntil)))
+    throw new Error("deletion_pending:"+p.restoreUntil);
+  }
+ }
  if(!response.ok)throw new Error(enabled?"Session bootstrap rejected":"Telegram authorization failed");
  if(!enabled)return (await response.json()) as BootstrapResponse;
  const result:unknown=await response.json();
@@ -41,4 +50,19 @@ export async function authenticateBootstrap(initData:string,signal:AbortSignal):
    throw new Error("Invalid session CSRF token");
  geoCsrfToken=csrf; // memory-only, never persisted
  return {mode:"session_v2",user:{id:user.id,firstName:user.firstName}};
+}
+
+/** Explicit recovery, never triggered automatically by a Telegram launch. */
+export async function recoverDeletion(initData:string):Promise<void>{
+ if(!initData)throw new Error("telegram_required");
+ const r=await fetch("/api/v2/auth/recover-deletion",{
+  method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
+  cache:"no-store",body:JSON.stringify({initData,confirmation:"RESTORE MY LUEMI ACCOUNT"})
+ });
+ if(!r.ok)throw new Error(r.status===410?"recovery_expired":r.status===401?"reopen_telegram":"restore_failed");
+ const result:unknown=await r.json();
+ if(!result||typeof result!=="object"||Array.isArray(result)||
+    (result as {state?:unknown}).state!=="restored_hidden"||
+    (result as {republicationRequired?:unknown}).republicationRequired!==true)
+  throw new Error("invalid_recovery_receipt");
 }
