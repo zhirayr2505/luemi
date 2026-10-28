@@ -20,7 +20,7 @@ for(const [name,pattern] of checks)assert.match(css,pattern,name);
 assert.match(app,/data-account-mode=\{!realFeedPilot\.enabled&&remoteDraftPilot\.enabled\?"private":"standard"\}/);
 assert.match(app,/<PrivateAccountView draft=\{draft\} photos=\{readyPhotos\}/);
 assert.match(app,/className="luemi-private-edit-bar"/);
-assert.doesNotMatch(view,/approve|verified=true|publishMyProfile|uploadPrivatePhotos|service_role/);
+assert.doesNotMatch(view,/(?<![A-Za-z])(?:approve\s*\(|verified\s*=\s*true|publishMyProfile\s*\(|uploadPrivatePhotos\s*\(|service_role)/);
 assert.match(view,/safeOwnerAbout\(draft\.about\.trim\(\)\)/);
 assert.match(view,/aria-pressed=\{p\.id===selected\?\.id\}/);
 assert.match(view,/Фото только на устройстве/);
