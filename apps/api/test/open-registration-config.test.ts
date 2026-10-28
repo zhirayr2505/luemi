@@ -117,7 +117,7 @@ test("express owner approval enables no-pre-review publishing only with real saf
   {REM06_OPEN_SIGNUPS_ENABLED:"0"},
   {REM06_PUBLICATION_ENABLED:"0"}
  ])assert.throws(()=>readConfig({...base,...flags,...patch}),
-  /Instant publication|Open registration|REG01D requires/);
+  /Instant publication|Open registration|REG01D requires|Production V2 requires/);
 });
 test("legacy manual review remains the default",()=>{
  const c=readConfig({...base,REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1"});
