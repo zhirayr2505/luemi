@@ -40,7 +40,12 @@ const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
 const messageFor=(raw:string)=>raw||"Заполни обязательные поля.";
 export function RealRegistrationV2(p:Props){
  const {draft,photos}=p;
- const [index,setIndex]=useState(()=>p.resumeReview?7:0);
+ // Private registration never requests a non-operational biometric selfie.
+ // Keep the full FaceTrust workflow available only to separately approved publication.
+ const stages=useMemo(()=>p.publicationEnabled?registrationV2Stages:
+  registrationV2Stages.filter(stage=>stage.id!=="face-consent"&&stage.id!=="liveness"),
+  [p.publicationEnabled]);
+ const [index,setIndex]=useState(()=>p.resumeReview?stages.length-1:0);
  const recoveryApplied=useRef(false);
  const [biometricNotice,setBiometricNotice]=useState(false);
  const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
@@ -60,7 +65,7 @@ export function RealRegistrationV2(p:Props){
   }).catch(()=>{if(!controller.signal.aborted)setEngine("error");});
   return()=>controller.abort();
  },[]);
- const stage=registrationV2Stages[index];
+ const stage=stages[index];
  const body=useRef<HTMLElement|null>(null);
  const dateValid=birthDateValid(draft.day,draft.month,draft.year);
  const identityReady=nameValid(draft.name)&&dateValid&&!!draft.gender&&draft.trialConsent;
@@ -70,7 +75,6 @@ export function RealRegistrationV2(p:Props){
   selectedPhotos:photos.length,biometricConsent:biometricNotice,
   faceTrust:"awaiting_provider"
  };
- const stages=registrationV2Stages;
  // Restore the next incomplete real-data stage once local persistence has
  // finished loading; never blindly restart from the first question.
  useEffect(()=>{
@@ -78,9 +82,9 @@ export function RealRegistrationV2(p:Props){
   recoveryApplied.current=true;
   if(p.resumeReview)return;
   setIndex(!identityReady?0:!gate.hasLocation?1:!gate.hasIntent?2:
-    !photoReady(photos)?4:5);
+    !photoReady(photos)?4:p.publicationEnabled?5:stages.length-1);
  },[p.restored,p.resumeReview,identityReady,gate.hasLocation,gate.hasIntent,photos]);
- const nav=(target:number)=>{setHint("");setIndex(Math.min(7,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
+ const nav=(target:number)=>{setHint("");setIndex(Math.min(stages.length-1,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
  const back=()=>{if(index===0)p.onExit();else nav(index-1);};
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
  const advance=()=>{
@@ -105,11 +109,11 @@ export function RealRegistrationV2(p:Props){
    case "face-consent":
     // Consent is only necessary for biometric processing. A user may
     // still save a private draft without granting biometric consent.
-    if(!biometricNotice){nav(7);return;}
+    if(!biometricNotice){nav(stages.length-1);return;}
     break;
    case "liveness":
     // No server/provider result exists. Never claim verification or publish.
-    nav(7);return;
+    nav(stages.length-1);return;
    case "review":return;
   }
   if(issue){setHint(messageFor(issue));return;}
@@ -131,13 +135,13 @@ export function RealRegistrationV2(p:Props){
      <div className="v2-backdrop" aria-hidden="true"/>
      <header className="v2-header">
        <div className="v2-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI"/></div>
-       <div className="v2-head-actions"><span className="v2-count">{index+1} из 8</span>
+       <div className="v2-head-actions"><span className="v2-count">{index+1} из {stages.length}</span>
         <button type="button" className="v2-theme" onClick={p.onTheme}
           aria-label={p.theme==="light"?"Включить тёмную тему":"Включить светлую тему"}>
           {p.theme==="light"?<Moon size={17}/>:<Sun size={17}/>}</button></div>
      </header>
      <div className="v2-progress" role="progressbar" aria-label="Прогресс регистрации"
-       aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={8}>
+       aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={stages.length}>
        {stages.map((s,i)=><span key={s.id} className={i<=index?"v2-filled":""}/>)}
      </div>
      <section key={stage.id} ref={body} className="v2-body" aria-labelledby="v2-title">
@@ -170,13 +174,13 @@ export function RealRegistrationV2(p:Props){
           <span>Я хочу посмотреть экран селфи-камеры. Понимаю, что сейчас это только предпросмотр без распознавания, записи и передачи биометрии.</span>
         </label>
         <p className="v2-footnote">Это НЕ согласие на будущую обработку лица. Перед настоящей проверкой мы отдельно покажем назначение, получателей данных, сроки хранения и возможность отзыва.</p>
-        <button type="button" className="v2-secondary" onClick={()=>nav(7)}>
+        <button type="button" className="v2-secondary" onClick={()=>nav(stages.length-1)}>
           <LockKeyhole size={17}/> Сохранить анкету без FaceTrust
         </button>
        </div>}
        {stage.id==="liveness"&&<div className="v2-fields">
         <FaceTrustCamera/>
-        <button type="button" className="v2-secondary" onClick={()=>nav(7)}>
+        <button type="button" className="v2-secondary" onClick={()=>nav(stages.length-1)}>
          Продолжить с приватным черновиком <ChevronRight size={17}/>
         </button>
        </div>}
