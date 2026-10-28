@@ -1,6 +1,6 @@
 /** Trust only the authenticated server manifest, never a local upload bar. */
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-export function confirmedPrivateMediaCount(value:unknown,expected:number):number{
+export function confirmedPrivateMediaCount(value:unknown,expected:number,uploadedIds:readonly string[]=[]):number{
  if(!Number.isSafeInteger(expected)||expected<3||expected>6)
   throw new Error("invalid_expected_photo_count");
  if(!value||typeof value!=="object"||Array.isArray(value))
@@ -19,5 +19,15 @@ export function confirmedPrivateMediaCount(value:unknown,expected:number):number
   ids.add(asset.id);
  }
  if(ids.size<expected||ids.size>6)throw new Error("incomplete_private_media");
+ // A count alone could include previously saved images and falsely report
+ // today's upload as finished. Every newly received asset must be in the
+ // authenticated owner's server manifest, with no duplicate claimed IDs.
+ if(uploadedIds.length){
+  if(uploadedIds.length!==expected||
+     uploadedIds.some(id=>!uuid.test(id))||
+     new Set(uploadedIds).size!==uploadedIds.length||
+     uploadedIds.some(id=>!ids.has(id)))
+    throw new Error("uploaded_media_not_confirmed");
+ }
  return ids.size;
 }
