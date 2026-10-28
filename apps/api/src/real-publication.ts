@@ -299,7 +299,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "SELECT p.owner_id,p.display_name,p.city_label,p.country_code,p.about,p.interests,"+
     "p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text "+
     "FROM luemi_private.public_profiles p WHERE p.environment=$1 "+
-    "AND p.owner_id<>$2 AND p.publication_status='published' "+
+    "AND p.owner_id<>$2 AND p.publication_status='published' AND p.published_at IS NOT NULL "+
     "AND (SELECT count(*) FROM luemi_private.media_assets a WHERE a.owner_id=p.owner_id "+
     "AND a.environment=p.environment AND a.state='approved' "+
     "AND a.publication_status='published') BETWEEN 3 AND 6 "+
