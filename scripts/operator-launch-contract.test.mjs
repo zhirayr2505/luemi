@@ -53,3 +53,19 @@ test("scheduled erasure requires disabled-by-default repository variable and app
  assert.match(maintenance,/REM06_ERASURE_POLICY_APPROVED/);
  assert.match(maintenance,/REM06_ERASURE_MAINTENANCE_APPROVED/);
 });
+
+test("read-only operator verification accepts private beta but refuses destructive erasure there",()=>{
+ assert.match(maintenance,/\["luemi-beta-20261027","luemi-production"\]\.includes\(namespace\)/);
+ assert.match(maintenance,/action==="erase"&&namespace!=="luemi-production"/);
+ assert.match(maintenance,/erasure_requires_production_namespace/);
+ assert.match(maintenance,/if\(action==="verify"\)return/);
+});
+test("operator diagnostics expose fixed phases, never database errors or credentials",()=>{
+ for(const step of ["namespace","operator_credentials","requester_login","worker_login",
+   "safety_login","reviewer_login_and_queue","erasure_approval",
+   "private_storage_configuration","approved_erasure_batch"]){
+  assert.ok(maintenance.includes('diagnosticPhase="'+step+'"'));
+ }
+ assert.match(maintenance,/LUEMI_OPERATOR_OPERATION_REFUSED phase=/);
+ assert.doesNotMatch(maintenance,/process\.stderr\.write\(.*(?:error\.message|error\.stack|token|password|secret)/i);
+});
