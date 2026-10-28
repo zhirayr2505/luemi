@@ -177,6 +177,34 @@ test("01H: report must be human triaged, suspend revokes all sessions and hides 
   }finally{await spy.end();}
  }finally{await app.close();}
 });
+test("01H: minor and nonconsensual-photo reports can be triaged and suspended after publication",async()=>{
+ const app=makeApp();
+ try{
+  const reporter=await enter(app,9300053);
+  for(const [telegram,reason,clientRef] of [
+   [9300054,"minor_suspected","urgent-minor-postpub-001"],
+   [9300055,"nonconsensual_photo","urgent-nonconsent-001"]
+  ] as const){
+   const subject=await enter(app,telegram);
+   const created=await app.inject({method:"POST",url:"/api/v2/profile/reports",
+    headers:headers(reporter),
+    payload:{targetId:subject.id,reason,clientRef}});
+   assert.equal(created.statusCode,200,created.body);
+   const reportId=created.json().id as string;
+   const triaged=await triageReviewReport(reviewerOpts,reportId,"triaged",reason);
+   assert.equal(triaged.state,"triaged");
+   const suspended=await suspendReportedActor(operator,reportId,reason);
+   assert.equal(suspended.state,"suspended");
+   const inaccessible=await app.inject({method:"GET",url:"/api/v2/auth/session",
+    headers:{cookie:subject.cookie}});
+   assert.equal(inaccessible.statusCode,401);
+   const record=await admin.query(
+    "SELECT 1 FROM luemi_private.account_enforcements WHERE actor_id=$1 AND reason_code=$2 AND state='suspended'",
+    [subject.id,reason]);
+   assert.equal(record.rowCount,1);
+  }
+ }finally{await app.close();}
+});
 test("01H: normal user DB role cannot masquerade as safety operator",async()=>{
  await assert.rejects(
   pendingSafetyAppeals({...operator,databaseUrl:request}),
