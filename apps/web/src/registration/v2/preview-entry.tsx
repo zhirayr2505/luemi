@@ -20,11 +20,14 @@ function RegistrationV2Preview(){
  const [name,setName]=useState("");
  const [birthday,setBirthday]=useState("");
  const [gender,setGender]=useState("");
+ const [profileConsent,setProfileConsent]=useState(false);
  const [city,setCity]=useState("");
  const [goal,setGoal]=useState("");
  const [audience,setAudience]=useState("");
  const [ageMin,setAgeMin]=useState(18);
  const [ageMax,setAgeMax]=useState(35);
+ const [radius,setRadius]=useState(100);
+ const [languages,setLanguages]=useState<string[]>(["Русский"]);
  const [interests,setInterests]=useState<string[]>([]);
  const [about,setAbout]=useState("");
  const [photos,setPhotos]=useState<LocalPhoto[]>([]);
@@ -38,7 +41,7 @@ function RegistrationV2Preview(){
  const cutoff=new Date();
  cutoff.setFullYear(cutoff.getFullYear()-18);
  const identityReady=name.trim().length>=2&&birthday.length===10&&
-   Number.isFinite(date.getTime())&&date<=cutoff&&!!gender;
+   Number.isFinite(date.getTime())&&date<=cutoff&&!!gender&&profileConsent;
  const gate:RegistrationV2Gate={
    hasIdentity:identityReady,hasLocation:city.trim().length>=2,
    hasIntent:!!audience&&!!goal&&ageMin<=ageMax,
@@ -111,6 +114,10 @@ function RegistrationV2Preview(){
          <div className="v2-label">Как ты себя определяешь?
           <div className="v2-choices">{["Мужчина","Женщина","Другое"].map(x=>button(x,gender===x,()=>setGender(x)))}</div>
          </div>
+         <label className="v2-consent"><input type="checkbox" checked={profileConsent}
+          onChange={e=>setProfileConsent(e.target.checked)}/>
+          <span>Я согласен(-на) сохранить профиль для регистрации в закрытом тесте LUEMI. Условия доступны перед отправкой на сервер.</span>
+         </label>
          <div className="v2-note"><ShieldCheck size={18}/> Только 18+. Дату рождения нельзя подтвердить лишь по лицу.</div>
        </div>}
 
@@ -138,6 +145,9 @@ function RegistrationV2Preview(){
           <input type="range" min={18} max={80} value={ageMax}
            aria-label="Максимальный возраст" onChange={e=>setAgeMax(Math.max(+e.target.value,ageMin))}/>
          </div>
+         <div className="v2-age"><span>Расстояние поиска</span><strong>{radius} км</strong>
+          <input type="range" min={1} max={500} value={radius} aria-label="Радиус поиска"
+           onChange={e=>setRadius(+e.target.value)}/></div>
        </div>}
 
        {stage==="personality"&&<div className="v2-fields">
@@ -148,6 +158,9 @@ function RegistrationV2Preview(){
           maxLength={250} placeholder="Люблю ночные прогулки, красивые места и душевные разговоры..."
           value={about} onChange={e=>setAbout(e.target.value)}/></label>
          <span className="v2-remaining">{about.length} / 250</span>
+         <div className="v2-label">Языки общения<div className="v2-choices">
+           {["Русский","Армянский","Английский"].map(x=>button(x,languages.includes(x),()=>
+            setLanguages(prev=>prev.includes(x)?prev.filter(z=>z!==x):[...prev,x])))}</div></div>
          <p className="v2-footnote">Можно пропустить. Позже всё можно изменить в профиле.</p>
        </div>}
 
