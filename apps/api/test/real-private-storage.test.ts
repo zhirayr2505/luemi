@@ -74,7 +74,7 @@ test("01C Supabase HTTP 400 NoSuchKey is absence only for read and idempotent de
  const calls:string[]=[];
  const transport:typeof fetch=async(_url,init)=>{
   const method=init?.method??"GET";calls.push(method);
-  return new Response(JSON.stringify({statusCode:"400",error:"NoSuchKey",
+  return new Response(JSON.stringify({statusCode:"404",error:"NoSuchKey",
     message:"Object not found",errorCode:"NoSuchKey"}),{
    status:400,headers:{"Content-Type":"application/json; charset=utf-8"}
   });
