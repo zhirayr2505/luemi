@@ -836,9 +836,10 @@ export function App() {
         {themeButton}
       </header>
       <div className="luemi-real-home-main">
-        {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos} serverPhotoCount={serverPhotoCount}/>:publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
+        {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos} serverPhotoCount={serverPhotoCount}/>:publishStatus?.state!=="published"&&realHomeTab==="profile"?<section className="luemi-real-account" aria-label="Статус регистрации">
           <h1>Анкета сохранена 💜</h1>
-          <p role="status">Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются.</p>
+          <p role="status">Твой Telegram-аккаунт зарегистрирован. Пока фотографии проходят модерацию, твоя анкета скрыта от других.</p>
+          <p>Уже опубликованные и проверенные анкеты других людей можно смотреть во вкладке «Знакомства».</p>
           <p>Одобрено фото: {publishStatus?.approved??0} · на проверке: {publishStatus?.pending??0} · требуют внимания: {publishStatus?.other??0}</p>
           <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>
             {publishBusy?"Проверяем…":"Проверить модерацию и открыть анкету"}
@@ -890,9 +891,9 @@ export function App() {
           <Pencil size={19} aria-hidden="true"/> Редактировать анкету <ArrowRight size={19} aria-hidden="true"/>
         </button>
       </footer>}
-      {publishStatus?.state==="published"&&<nav className="luemi-real-home-nav" aria-label="Разделы LUEMI">
+      {realFeedPilot.enabled&&publishStatus!==null&&<nav className="luemi-real-home-nav" aria-label="Разделы LUEMI">
         <button type="button" aria-current={realHomeTab==="feed"?"page":undefined} onClick={()=>setRealHomeTab("feed")}>Знакомства</button>
-        {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&
+        {publishStatus?.state==="published"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&
           <button type="button" aria-current={realHomeTab==="chats"?"page":undefined} onClick={()=>setRealHomeTab("chats")}>Чаты</button>}
         <button type="button" aria-current={realHomeTab==="profile"?"page":undefined} onClick={()=>setRealHomeTab("profile")}>Профиль</button>
       </nav>}
