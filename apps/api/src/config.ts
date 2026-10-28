@@ -77,6 +77,18 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const betaInvites = env.REM06_BETA_INVITES_ENABLED==="1";
   // Deliberately OFF for all existing Render deployments until separately authorized.
   const v2Enabled = env.REM05B_SESSIONS_ENABLED === "1";
+  // Invite-only private-draft pilot: not public registration, never public media.
+  const friendsTest=env.REM06_FRIENDS_TEST_ENABLED==="1";
+  if(friendsTest&&(!v2Enabled||stagingOnly||!betaInvites||openSignups||
+    env.REM06_BETA_INVITES_APPROVED!=="1"||
+    env.REM06_FRIENDS_TEST_NOTICE_ACCEPTED!=="1"||
+    env.REM06_PUBLICATION_ENABLED==="1"||
+    env.REM06_MEDIA_ENABLED==="1"||
+    env.LUEMI_CHATS_V1_ENABLED==="1"||
+    env.LUEMI_MATCHES_V1_ENABLED==="1"||
+    env.REM06_ERASURE_REQUEST_ENABLED==="1"))
+    throw new Error("Friends test must be invite-only private drafts with accepted test disclosure");
+  const privateDraftDisclosure=env.REM06_PRIVACY_APPROVED==="1"||friendsTest;
   // A partial configuration must never silently make Telegram signup public.
   // Isolated unit tests can still instantiate their deliberately restricted
   // session fixtures without a production admission policy.
@@ -101,9 +113,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     inviteOnly: betaInvites
   } : undefined;
   if(env.REM06_BETA_INVITES_ENABLED==="1"&&(!v2Enabled||
-    env.REM06_BETA_INVITES_APPROVED!=="1"||
-    env.REM06_PRIVACY_APPROVED!=="1"))
-    throw new Error("REG01G invite gate requires V2 and approved beta/privacy policy");
+    env.REM06_BETA_INVITES_APPROVED!=="1"||!privateDraftDisclosure))
+    throw new Error("REG01G invite gate requires V2 and explicit test notice or approved privacy policy");
   // No opt-in flags are set in existing deployments. Key presence alone NEVER
   // activates a charged upstream call.
   const geoEnabled=env.REM05C_ENABLED==="1";
@@ -143,7 +154,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   }:undefined;
   // REAL-REG-01 is explicit opt-in, independent of the synthetic media prototype.
   const regEnabled=env.REM06_PRIVATE_DRAFT_ENABLED==="1";
-  if(regEnabled&&(!v2Enabled||stagingOnly||env.REM06_PRIVACY_APPROVED!=="1"||
+  if(regEnabled&&(!v2Enabled||stagingOnly||!privateDraftDisclosure||
     !env.REM06_CONSENT_VERSION||!env.REM05B_REQUEST_DATABASE_URL))
     throw new Error("REAL-REG-01 requires v2 sessions and approved privacy/DB gates");
   const realRegistration:RealRegistrationOptions|undefined=regEnabled?{
