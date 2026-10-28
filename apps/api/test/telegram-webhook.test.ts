@@ -89,3 +89,29 @@ test("signed /myid never instructs public users to seek invitations",async()=>{
     assert.doesNotMatch(message.text,/для приглашения/i);
   }finally{await app.close();}
 });
+
+test("private invited friends see accurate enrollment instructions and only their own Telegram ID",async()=>{
+ const betaConfig=config();
+ betaConfig.rem05b={enabled:false,inviteOnly:true} as NonNullable<ApiConfig["rem05b"]>;
+ const app=buildApp(betaConfig);
+ try{
+  const headers={"x-telegram-bot-api-secret-token":"s".repeat(32)};
+  const own=await app.inject({method:"POST",url:"/api/telegram/webhook",headers,
+   payload:{message:{text:"/myid",chat:{id:12345,type:"private"},from:{id:12345}}}});
+  assert.equal(own.statusCode,200);
+  assert.match(own.json().text,/Твой Telegram ID: 12345/);
+  assert.match(own.json().text,/закрытый тест/i);
+  assert.match(own.json().text,/@zhiiirro/);
+  const notOwn=await app.inject({method:"POST",url:"/api/telegram/webhook",headers,
+   payload:{message:{text:"/myid",chat:{id:12345,type:"private"},from:{id:67890}}}});
+  assert.equal(notOwn.statusCode,200);
+  assert.equal(notOwn.json().ok,true);
+  assert.equal(notOwn.json().text,undefined);
+  const start=await app.inject({method:"POST",url:"/api/telegram/webhook",headers,
+   payload:{message:{text:"/start",chat:{id:12345,type:"private"},from:{id:12345}}}});
+  assert.equal(start.statusCode,200);
+  assert.match(start.json().text,/закрытый тест/i);
+  assert.equal(start.json().reply_markup.inline_keyboard[0][0].web_app.url,
+   versionedWebAppUrl(betaConfig.origin,process.env.RENDER_GIT_COMMIT));
+ }finally{await app.close();}
+});
