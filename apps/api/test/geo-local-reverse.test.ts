@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import Fastify from "fastify";
+import type {FastifyRequest} from "fastify";
 import {localReverseCity} from "../src/geo-data.js";
 import {registerGeography} from "../src/geo-routes.js";
 
@@ -20,7 +21,12 @@ test("offline reverse never assigns a distant or malformed coordinate to a city"
 });
 test("authenticated explicit limited reverse works without provider key or budget",async()=>{
  const app=Fastify({logger:false});
- const guard={read:async()=>{},geoRead:async()=>{},mutation:async()=>{}};
+ const authenticate=async(request:FastifyRequest)=>{
+  request.authActor={actorId:"11111111-1111-4111-8111-111111111111",
+   sessionId:"22222222-2222-4222-8222-222222222222",hash:Buffer.alloc(32),
+   firstName:"Tester",expiresAt:new Date(Date.now()+60_000).toISOString()};
+ };
+ const guard={read:authenticate,geoRead:authenticate,mutation:authenticate};
  registerGeography(app,{enabled:true,providerEnabled:false,localReverseEnabled:true,providerKey:""},guard);
  try{
   const reverse=await app.inject({method:"POST",url:"/api/v2/geo/reverse",
@@ -42,7 +48,12 @@ test("authenticated explicit limited reverse works without provider key or budge
 });
 test("legacy mode stays denied for reverse without explicit opt-in",async()=>{
  const app=Fastify({logger:false});
- const guard={read:async()=>{},geoRead:async()=>{},mutation:async()=>{}};
+ const authenticate=async(request:FastifyRequest)=>{
+  request.authActor={actorId:"11111111-1111-4111-8111-111111111111",
+   sessionId:"22222222-2222-4222-8222-222222222222",hash:Buffer.alloc(32),
+   firstName:"Tester",expiresAt:new Date(Date.now()+60_000).toISOString()};
+ };
+ const guard={read:authenticate,geoRead:authenticate,mutation:authenticate};
  registerGeography(app,{enabled:true,providerEnabled:false,providerKey:""},guard);
  try{
   const response=await app.inject({method:"POST",url:"/api/v2/geo/reverse",
