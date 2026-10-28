@@ -80,6 +80,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   // Invite-only private-draft pilot: not public registration, never public media.
   const friendsTest=env.REM06_FRIENDS_TEST_ENABLED==="1";
   if(friendsTest&&(!v2Enabled||stagingOnly||!betaInvites||openSignups||
+    env.REM06_PRIVATE_DRAFT_ENABLED!=="1"||
     env.REM06_BETA_INVITES_APPROVED!=="1"||
     env.REM06_FRIENDS_TEST_NOTICE_ACCEPTED!=="1"||
     env.REM06_PUBLICATION_ENABLED==="1"||
