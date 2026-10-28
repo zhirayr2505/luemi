@@ -47,6 +47,21 @@ Technical ground truth:
 
 `apps/web/registration-v2-preview.html` is an isolated **non-production** entry for local Vite/dev and QA. It is included only when `VITE_LUEMI_REAL_ONLY` is not `1`. It allows browsing all screen designs and uploading local photos **without any server request**, but it NEVER records consent, opens the camera, declares a face verified, or publishes a profile. An explicit footer and disabled publish CTA make this clear. The stage chooser lets the owner inspect the entire flow; it does not represent a bypass in any live runtime.
 
+## Integrated invited-user V2 path — implementation progress
+
+The branch also contains a **feature-flagged real registration UI**, `apps/web/src/registration/v2/RealRegistration.tsx`, with opt-in build flag `VITE_LUEMI_REGISTRATION_V2=1`.
+
+- It uses the **existing authenticated Telegram account**, registration fields, live city picker, existing reorderable `PhotoSorter`, data validation, local draft recovery, private PostgreSQL save and same consent-version rules. This is not the mock design preview.
+- It appears **only** when private server draft mode is enabled and the public-media/discovery feature is OFF. Old V1 is preserved as a fallback; existing invited accounts with a stored draft still open their real private account view.
+- It groups V1 fields into the new eight-stage structure and restores the next unfinished stage after local storage loads.
+- It performs a **free, local SHA-256 check for byte-identical photos** before FaceTrust. This is *not* same-face detection or a reliable detector of manipulated/near-duplicate photos.
+- The camera screen uses `getUserMedia({video:{facingMode:"user"},audio:false})` on explicit tap, closes streams when leaving, and permits a guided preview of head movement. No frame capture, embedding, video upload or pretend liveness verification takes place.
+- `GET /api/v2/facetrust/status` is authenticated, cache-disabled and reports `provider_not_connected` / `verified:false` / `publicProfileEligible:false`. The frontend uses that factual server state; it cannot earn a verified badge through manual gestures.
+- There is a separate opt-in for camera rehearsal, **not** a biometric-processing consent for any future identity service. A full biometric consent and notification must be implemented before actual AI biometric processing.
+- The owner may save a private draft **without FaceTrust**. Neither photo upload nor publishing becomes available merely by enabling `VITE_LUEMI_REGISTRATION_V2`. Only the original server-controlled moderation/publication gates can grant real approval.
+
+**What is NOT yet implemented:** working open-source models for photo content/person count and same-face matching, secure anti-spoof liveness with a server-trusted provider, calibration/false-match testing, privileged AI-review SQL worker, stored verification grants or automatic publication. Mark this stage as private registration UX, not completed FaceTrust identity verification.
+
 ## Required implementation stages to replace V1
 
 - A. Approve the design on a real device; fix QA findings without altering existing production visuals. Source of truth: `apps/web/src/registration/v2/flow.ts` for design stage order and V1 data migration plan. No production switchover.
