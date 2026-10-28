@@ -19,7 +19,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
@@ -61,8 +61,9 @@ const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
 const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
 // Safe invited-only routing; real publication remains gated until trusted FaceTrust.
-const registrationV2Pilot=remoteDraftPilot.enabled&&!realFeedPilot.enabled&&
- import.meta.env.VITE_LUEMI_REGISTRATION_V2==="1";
+// REAL_ONLY must never fall back to the legacy registration form.
+const registrationV2Pilot=remoteDraftPilot.enabled&&
+ (realOnly||import.meta.env.VITE_LUEMI_REGISTRATION_V2==="1");
 const testingNotice=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1"?"условия закрытого теста":"политику обработки данных";
 
 /** Decode the exact brand raster before showing a screen that depends on it. */
@@ -140,6 +141,7 @@ export function App() {
   const [serverSaving,setServerSaving]=useState(false);
   const [serverStatus,setServerStatus]=useState("");
   const [privateDraftSaved,setPrivateDraftSaved]=useState(false);
+  const [serverPhotoCount,setServerPhotoCount]=useState(0);
   const [mediaSaving,setMediaSaving]=useState(false);
   const [mediaStatus,setMediaStatus]=useState("");
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
@@ -305,7 +307,21 @@ export function App() {
       if(savedTester){
         setDraft(savedTester);setStep(8);setPhase("form");
         setPrivateDraftSaved(true);
-        setRealHomeTab("profile");setRealHome(true);
+        if(remoteMediaPilot.enabled){
+          // Returning accounts must have a confirmed durable media set.
+          try{
+            const received=await readConfirmedPrivateMediaCount(3);
+            if(disposed)return;
+            setServerPhotoCount(received);
+            setRealHomeTab("profile");setRealHome(true);
+          }catch{
+            if(disposed)return;
+            setServerStatus("Поля восстановлены с сервера. Для завершения нужны сохранённые фотографии.");
+            setRealHome(false);
+          }
+        }else{
+          setRealHomeTab("profile");setRealHome(true);
+        }
       }else if(snapshot){
         setDraft(snapshot.draft);
         setStep(snapshot.step);
@@ -488,7 +504,7 @@ export function App() {
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
     draftId.current=crypto.randomUUID();revision.current=0;
-    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);
+    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setServerPhotoCount(0);setMediaStatus("");setPublishStatus(null);
     setStorageState("saving");setStorageCode(null);
     if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
     void clearDraftSnapshot(scope).then(result=>{
@@ -575,11 +591,43 @@ export function App() {
     try{
       await uploadPrivatePhotos([...photos],(done,total)=>
         setMediaStatus("Отправлено "+done+" из "+total+". Все фотографии приватны."));
+      const received=await readConfirmedPrivateMediaCount(photos.length);
+      setServerPhotoCount(received);
       setPublishStatus(null);
-      setMediaStatus("Фотографии приняты в приватную очередь модерации. Они никому не видны и не опубликованы.");
+      setMediaStatus("Сервер подтвердил сохранение "+received+" фотографий. До проверки они никому не видны.");
     }catch{
       setMediaStatus("Не все фотографии отправлены. Уже принятые остаются приватными. Проверь соединение перед повтором.");
     }finally{setMediaSaving(false);}
+  };
+  /** A private account is complete only when its photos are durably stored. */
+  const confirmPrivateRegistration=async()=>{
+    if(!remoteDraftPilot.enabled||!remoteMediaPilot.enabled||submitting.current||
+       auth!=="authorized")return;
+    for(let n=1;n<=7;n++){
+      const problem=validateStep(draft,n,photos.length,new Date(),"live");
+      if(problem){setServerStatus("Проверь анкету: "+problem);return;}
+    }
+    if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready")){
+      setServerStatus("Для сохранения нужны 3–6 готовых фотографий.");return;
+    }
+    if(!serverConsent){setServerStatus("Подтверди согласие на хранение анкеты и фотографий.");return;}
+    submitting.current=true;setServerSaving(true);setServerStatus("Сохраняем анкету на сервере…");
+    try{
+      const previous=await readRemoteRevision();
+      await saveRemoteDraft(draft,previous.revision);
+      setPrivateDraftSaved(true);
+      setServerStatus("Загружаем фотографии в приватное хранилище…");
+      await uploadPrivatePhotos([...photos],(done,total)=>
+        setServerStatus("Отправлено фотографий: "+done+" из "+total+"."));
+      const received=await readConfirmedPrivateMediaCount(photos.length);
+      setServerPhotoCount(received);
+      setServerStatus("Сервер подтвердил анкету и "+received+" фотографий.");
+      setRealHomeTab("profile");setRealHome(true);
+    }catch(e){
+      setServerStatus(e instanceof Error&&e.message==="revision_conflict"
+       ?"Анкета изменена на другом устройстве. Локальные данные сохранены; проверь их и повтори."
+       :"Сервер не подтвердил сохранение всех фотографий. Локальные данные не удалены; повтори отправку.");
+    }finally{submitting.current=false;setServerSaving(false);}
   };
   const confirmRealRegistration=async()=>{
     if(!realFeedPilot.enabled||submitting.current)return;
@@ -765,7 +813,7 @@ export function App() {
         {themeButton}
       </header>
       <div className="luemi-real-home-main">
-        {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos}/>:publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
+        {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos} serverPhotoCount={serverPhotoCount}/>:publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
           <h1>Анкета сохранена 💜</h1>
           <p role="status">Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются.</p>
           <p>Одобрено фото: {publishStatus?.approved??0} · на проверке: {publishStatus?.pending??0} · требуют внимания: {publishStatus?.other??0}</p>
@@ -834,8 +882,13 @@ export function App() {
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} serverConsent={serverConsent}
        theme={theme} onTheme={changeTheme}
-       setServerConsent={setServerConsent} onSave={()=>{void persistServerDraft();}}
-       serverSaving={serverSaving} serverStatus={serverStatus}
+       setServerConsent={setServerConsent}
+        onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
+          remoteMediaPilot.enabled?confirmPrivateRegistration():persistServerDraft());}}
+        mediaEnabled={remoteMediaPilot.enabled}
+        publicationEnabled={realFeedPilot.enabled}
+       serverSaving={serverSaving||publishBusy}
+        serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}

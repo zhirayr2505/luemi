@@ -3,6 +3,7 @@
 import type {PhotoItem} from "./PhotoSorter";
 import {geoCsrf} from "../auth/session-adapter";
 import {remoteDraftPilot} from "./server-draft";
+import {confirmedPrivateMediaCount} from "./private-media-confirmation";
 export const remoteMediaPilot={
  enabled:remoteDraftPilot.enabled&&import.meta.env.VITE_LUEMI_PRIVATE_MEDIA_UI==="1"
 };
@@ -99,4 +100,14 @@ export async function uploadPrivatePhotos(
   progress(done,photos.length);
  }
  return done;
+}
+
+/** Verify server-side media state instead of trusting an upload progress bar. */
+export async function readConfirmedPrivateMediaCount(expected:number):Promise<number>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ const response=await fetch("/api/v2/profile/preview",{
+  method:"GET",credentials:"same-origin",cache:"no-store"
+ });
+ if(!response.ok)throw new Error("private_manifest_unavailable");
+ return confirmedPrivateMediaCount(await response.json(),expected);
 }

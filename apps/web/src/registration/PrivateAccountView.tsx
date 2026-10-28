@@ -7,14 +7,14 @@ import {itemOf} from "../ui/InterestCatalog";
 import {safeOwnerAbout} from "./private-account-copy";
 
 interface Photo {id:string;src:string}
-interface Props {draft:RegistrationDraft;photos:ReadonlyArray<Photo>}
+interface Props {draft:RegistrationDraft;photos:ReadonlyArray<Photo>;serverPhotoCount?:number}
 
 /**
  * A real, PRIVATE account; do not confuse it with an approved/public profile.
  * Local photo URLs never leave the owner device and should never be rendered
  * in Discovery. This component displays exactly what is available locally.
  */
-export function PrivateAccountView({draft,photos}:Props){
+export function PrivateAccountView({draft,photos,serverPhotoCount=0}:Props){
  const [selectedPhotoId,setSelectedPhotoId]=useState<string|null>(null);
  const selected=photos.find(p=>p.id===selectedPhotoId)??photos[0];
  const age=draftAge(draft);
@@ -31,8 +31,10 @@ export function PrivateAccountView({draft,photos}:Props){
    <div className="luemi-private-status" role="status">
      <span className="luemi-private-status-icon"><LockKeyhole size={21} aria-hidden="true"/></span>
      <div>
-       <strong>Анкета сохранена</strong>
-       <p>Данные восстановятся с сервера при следующем входе. Сейчас эту анкету видишь только ты.</p>
+       <strong>{serverPhotoCount>=3?"Анкета и фотографии на сервере":"Анкета сохранена"}</strong>
+       <p>{serverPhotoCount>=3
+        ?"Твои данные и "+serverPhotoCount+" фотографий сохранены приватно. Публикация только после проверки."
+        :"Поля анкеты восстановятся с сервера при следующем входе. Сейчас эту анкету видишь только ты."}</p>
      </div>
    </div>
 
@@ -42,9 +44,9 @@ export function PrivateAccountView({draft,photos}:Props){
          <div className="luemi-private-hero">
            <img src={selected.src} alt="Выбранное фото моей анкеты" decoding="async"/>
            <span className="luemi-private-photo-count"><Images size={15} aria-hidden="true"/> {Math.max(0,photos.findIndex(x=>x.id===selected.id))+1} / {photos.length}</span>
-           <span className="luemi-private-photo-label">Фото только на устройстве</span>
+           <span className="luemi-private-photo-label">{serverPhotoCount>=3?"Фото сохранены приватно":"Фото только на устройстве"}</span>
          </div>:
-         <div className="luemi-private-hero luemi-private-empty"><Camera size={36} aria-hidden="true"/><span>Добавь свои фотографии в редакторе</span></div>}
+         <div className="luemi-private-hero luemi-private-empty"><Camera size={36} aria-hidden="true"/><span>{serverPhotoCount>=3?serverPhotoCount+" фотографий сохранены на сервере. Просмотр после проверки.":"Добавь свои фотографии в редакторе"}</span></div>}
        {photos.length>1&&<div className="luemi-private-thumbnails" role="group" aria-label="Мои фотографии">
          {photos.map((p,i)=><button type="button" key={p.id}
            className={"luemi-private-thumb"+(p.id===selected?.id?" is-active":"")}
@@ -79,7 +81,9 @@ export function PrivateAccountView({draft,photos}:Props){
 
    <div className="luemi-private-notice">
      <LockKeyhole size={19} aria-hidden="true"/>
-     <p>Закрытый тест. Фотографии пока только на этом устройстве; лента, симпатии и чаты ещё не включены.</p>
+     <p>{serverPhotoCount>=3
+       ?"Фотографии сохранены в приватном хранилище. Лента и чаты доступны после разрешённой публикации."
+       :"Закрытый тест. Фотографии пока только на этом устройстве; лента, симпатии и чаты ещё не включены."}</p>
    </div>
    <p className="luemi-private-support">Помощь и удаление данных: <a href="https://t.me/zhiiirro" target="_blank" rel="noopener noreferrer">@zhiiirro <ArrowUpRight size={13} aria-hidden="true"/></a></p>
  </section>;
