@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles} from "lucide-react";
+import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
 import {RegistrationStep,type PhotoItem} from "../Steps";
 import {RegistrationPreview} from "../Preview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
@@ -20,6 +20,8 @@ interface Props{
  resetDraft:()=>void;
  serverConsent:boolean;
  setServerConsent:(next:boolean)=>void;
+ theme:"light"|"dark";
+ onTheme:()=>void;
  onSave:()=>void;
  serverSaving:boolean;
  serverStatus:string;
@@ -117,12 +119,15 @@ export function RealRegistrationV2(p:Props){
  const savedDraftAllowed=p.serverConsent&&identityReady&&gate.hasLocation&&
   gate.hasIntent&&photoReady(photos)&&!p.serverSaving;
  const pubNotice=remoteDraftPilot.policy;
- return <main className="v2-canvas v2-runtime" aria-label="Регистрация LUEMI V2">
+ return <main className="v2-canvas v2-runtime" data-theme={p.theme} aria-label="Регистрация LUEMI V2">
    <div className="v2-device" data-screen={stage.id}>
      <div className="v2-backdrop" aria-hidden="true"/>
      <header className="v2-header">
        <div className="v2-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI"/></div>
-       <span className="v2-count">{index+1} из 8</span>
+       <div className="v2-head-actions"><span className="v2-count">{index+1} из 8</span>
+        <button type="button" className="v2-theme" onClick={p.onTheme}
+          aria-label={p.theme==="light"?"Включить тёмную тему":"Включить светлую тему"}>
+          {p.theme==="light"?<Moon size={17}/>:<Sun size={17}/>}</button></div>
      </header>
      <div className="v2-progress" role="progressbar" aria-label="Прогресс регистрации"
        aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={8}>
