@@ -41,6 +41,15 @@ assert.match(app,/publicMediaUiMissing=import\.meta\.env\.VITE_LUEMI_OPEN_SIGNUP
  "Open public signup UI must fail closed without private server media");
 assert.match(app,/readConfirmedPrivateMediaCount\(photos\.length,uploadedIds\)/,
  "Registration cannot confirm unrelated older private photos");
+assert.match(app,/setPublishStatus\(confirmed\);setRealHomeTab\("profile"\);setRealHome\(true\)/,
+ "After publishing exact server assets, registration must open owner's photo profile");
+assert.match(app,/setPublishStatus\(published\);setRealHomeTab\("profile"\);setRealHome\(true\)/,
+ "Resuming interrupted registration must open own profile, not an empty feed");
+assert.match(form,/instantPublication\?"Загружаем и публикуем…"/,
+ "No manual-review copy while direct photo publication is active");
+assert.match(app,/instantPublicationUi\?"Завершить публикацию":"Проверить модерацию и открыть анкету"/,
+ "Pending instant accounts must not be told to wait for manual photo review");
+
 assert.match(app,/await saveDraftSnapshot\(scope,draftId\.current,photoRevision,draft,8,photos\)/,
  "Private signup requires a confirmed local photo snapshot before server save");
 assert.match(app,/publishStatus\?\.state!=="published"&&realHomeTab==="profile"/,
