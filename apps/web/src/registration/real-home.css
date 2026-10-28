@@ -222,3 +222,8 @@
 @media(prefers-reduced-motion:reduce){
  .luemi-private-thumb,.luemi-private-edit-bar>button{transition:none;transform:none}
 }
+
+.luemi-legal-link,.luemi-private-privacy{font-size:12px;line-height:1.5;margin:0}
+.luemi-legal-link a,.luemi-private-privacy a{color:#845aa2;text-underline-offset:3px}
+.luemi-private-privacy{text-align:center}
+[data-theme="dark"] .luemi-legal-link a,[data-theme="dark"] .luemi-private-privacy a{color:#dcb9f3}
