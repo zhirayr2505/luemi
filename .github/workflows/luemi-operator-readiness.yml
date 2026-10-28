@@ -1,0 +1,39 @@
+name: LUEMI operator role readiness check (read-only)
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Owner only: RUN_LUEMI_OPERATOR_CHECK"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: luemi-read-only-operator-check
+  cancel-in-progress: false
+jobs:
+  verify-operators:
+    if: github.repository == 'zhirayr2505/luemi' && github.ref == 'refs/heads/main' && github.actor == 'zhirayr2505' && inputs.confirmation == 'RUN_LUEMI_OPERATOR_CHECK'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: beta-bootstrap
+    env:
+      BETA_RENDER_API_KEY: ${{ secrets.BETA_RENDER_API_KEY }}
+      LUEMI_OP_ACTION: verify
+      LUEMI_OP_CONFIRM: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install locked app packages without scripts
+        run: npm ci --ignore-scripts --include=dev --no-audit --no-fund
+      - name: Compile operator role policy checks
+        run: |
+          npm run build -w @luemi/contracts
+          npm run build -w @luemi/api
+      - name: Verify four isolated logins, TLS, RLS and count of open reports only
+        run: node scripts/operate-erasure-queue.mjs
