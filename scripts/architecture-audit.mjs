@@ -59,6 +59,9 @@ if(all.has(v3PreviewEntry))qaRoots.push(v3PreviewEntry);
 const chatsDemoEntry="apps/web/src/chats/demo-entry.tsx";
 if(all.has(chatsDemoEntry))qaRoots.push(chatsDemoEntry);
 const intentional={
+ // This contract is intentionally offline until an audited AI provider and
+ // biometric safeguards are ready. Its tests import it directly.
+ "apps/api/src/automatic-photo-review.ts":"standalone fail-closed AI evaluation contract; no live provider, SQL worker or publication route enabled",
  "apps/api/src/rem05e-telegram-rotation.ts":"standalone operator CLI; not a boot-time server import",
  "apps/api/src/real-erasure-worker.ts":"security-sensitive manually invoked worker, intentionally not reachable from HTTP startup",
  "apps/api/src/erasure-runner.ts":"explicitly gated maintenance CLI; never imported by web server",
