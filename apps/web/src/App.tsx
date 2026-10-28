@@ -941,7 +941,7 @@ export function App() {
             <button type="button" disabled={publishBusy} onClick={()=>{void eraseMyAccount();}}>
               {publishBusy?"Отправляем запрос…":"Начать удаление"}
             </button>
-           </section>
+           </section>}
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>:<Suspense fallback={<p role="status">Загружаем…</p>}>
           {realHomeTab==="chats"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?
