@@ -24,6 +24,10 @@ for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
 assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"\}/,
  "Only actual Telegram surface should reserve native controls clearance");
+assert.match(form,/const noticeLabel=friendsTest\?/,"Registration notice distinguishes closed beta from public privacy policy");
+assert.match(form,/p\.publicationEnabled\?/,"Registration must disclose publication separately from private saving");
+assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого теста<\/a>/,
+ "Public registration cannot hardcode closed-beta consent links");
 assert.match(geo,/<Search size=\{20\}/,"City field needs search icon");
 assert.match(geo,/<LocateFixed size=\{15\}/,"Manual city search needs detect icon");
 assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
