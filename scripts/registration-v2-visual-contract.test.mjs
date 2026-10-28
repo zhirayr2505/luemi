@@ -31,8 +31,16 @@ assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
 assert.match(form,/p\.publicationEnabled\?/,"Registration must disclose publication separately from private saving");
 assert.match(form,/"Всё верно 💜"/,"Confirmation CTA is consistently labeled in supported modes");
+assert.match(form,/registrationV2Stages\.filter\(stage=>stage\.id!=="face-consent"&&stage\.id!=="liveness"\)/,
+ "Private signup must skip unavailable biometric verification screens");
+assert.match(form,/aria-valuemax=\{stages\.length\}/,
+ "Progress count must reflect actual signup steps");
 assert.match(app,/realOnly\|\|import\.meta\.env\.VITE_LUEMI_REGISTRATION_V2/,
  "Real-only private registration must use V2, even without the legacy V2 opt-in");
+assert.match(app,/await saveDraftSnapshot\(scope,draftId\.current,photoRevision,draft,8,photos\)/,
+ "Private signup requires a confirmed local photo snapshot before server save");
+assert.match(app,/if\(!local\.ok\)\{/,
+ "Private signup must refuse entry when photo persistence fails");
 assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого теста<\/a>/,
  "Public registration cannot hardcode closed-beta consent links");
 assert.match(geo,/<Search size=\{20\}/,"City field needs search icon");
