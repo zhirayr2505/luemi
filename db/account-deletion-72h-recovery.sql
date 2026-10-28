@@ -12,6 +12,14 @@ ALTER TABLE luemi_private.erasure_requests
 -- Existing requests preserve their old immediate worker semantics.
 -- New requests supply eligible_at=clock_timestamp() + interval '72 hours'.
 
+-- Requester must be able to insert the timestamp and reason, and read the
+-- returned deadline. Worker may read the deadline and clear reason text upon
+-- completion. No grants to anon/authenticated/browser roles.
+GRANT INSERT(eligible_at,reason_code,reason_details),
+ SELECT(eligible_at) ON luemi_private.erasure_requests TO luemi_erasure_requester;
+GRANT SELECT(eligible_at),UPDATE(reason_code,reason_details)
+ ON luemi_private.erasure_requests TO luemi_erasure_worker;
+
 -- Auth issuer may look up and cancel ONLY the actor identified by a valid
 -- server-verified Telegram initData. The role already has narrowly scoped
 -- identity issuance and MUST NOT receive direct Storage credentials.
