@@ -55,7 +55,7 @@ declare global {
   }
 }
 
-type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "needs-invite" | "error";
+type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "needs-invite" | "test-full" | "error";
 type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
@@ -226,7 +226,8 @@ export function App() {
       },
       onCritical:result=>{
         if(!isCurrent())return;
-        if(result.kind==="error"){setAuth(result.reason==="invitation_required"?"needs-invite":"error");return;}
+        if(result.kind==="error"){setAuth(result.reason==="invitation_required"?"needs-invite":
+          result.reason==="test_full"?"test-full":"error");return;}
         if(!initData){setAuth("outside-telegram");return;}
         const user=result.value;
         if(!user){setAuth("needs-bot");return;}
@@ -854,6 +855,8 @@ export function App() {
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<><p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>
         {realOnly&&<button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button>}</>}
+      {auth==="test-full"&&<><p role="status">Все места в текущей тестовой группе LUEMI заняты. Уже зарегистрированные участники могут продолжить вход.</p>
+        <button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button></>}
       {auth==="needs-invite"&&<><p role="alert">Идёт закрытый тест LUEMI. Для приглашения отправь владельцу свой Telegram ID из команды /myid в @LuemiAppBot.</p>
         <button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button></>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
