@@ -406,4 +406,66 @@ test("01F: miswired requester role, worker role or unapproved feature fail close
  await assert.rejects(runErasureBatch({databaseUrl:erasureRequestUrl!,namespace,
   storage:memoryPrivateStore()}),/erasure_worker_role_denied/);
 });
+test("72h recovery requires signed same-owner Telegram confirmation and retains private pixels",async()=>{
+ const storage=memoryPrivateStore(),app=makeApp({erasure:true,storage});
+ try{
+  const owner=await identity(app,8011041);
+  const photos=await prepare(app,owner);
+  const deleteReply=await mutate(app,owner,"/api/v3/account/request-deletion",deletionBody);
+  assert.equal(deleteReply.statusCode,202,deleteReply.body);
+  const queue=await admin.query<{id:string}>(
+   "SELECT id FROM luemi_private.erasure_requests WHERE actor_id=$1 AND state='pending'",[owner.id]);
+  assert.equal(queue.rowCount,1);
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/auth/session",
+   headers:{cookie:owner.cookie}})).statusCode,401);
+  const pending=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(8011041)}});
+  assert.equal(pending.statusCode,409,pending.body);
+  assert.equal(pending.json().error,"account_pending_deletion");
+  const recoverUrl="/api/v2/auth/recover-deletion";
+  const unsigned=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},
+   payload:{initData:"forged",confirmation:"RESTORE MY LUEMI ACCOUNT"}});
+  assert.equal(unsigned.statusCode,401);
+  const passive=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(8011041)}});
+  assert.equal(passive.statusCode,422);
+  const stranger=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},
+   payload:{initData:sign(8011042),confirmation:"RESTORE MY LUEMI ACCOUNT"}});
+  assert.equal(stranger.statusCode,409);
+  const restored=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},
+   payload:{initData:sign(8011041),confirmation:"RESTORE MY LUEMI ACCOUNT"}});
+  assert.equal(restored.statusCode,200,restored.body);
+  assert.deepEqual(restored.json(),{state:"restored_hidden",republicationRequired:true});
+  const q=await admin.query("SELECT id FROM luemi_private.erasure_requests WHERE actor_id=$1",[owner.id]);
+  assert.equal(q.rowCount,0,"recover must cancel deletion outbox");
+  const returned=await admin.query<{state:string;publication_status:string}>(
+   "SELECT state,publication_status FROM luemi_private.media_assets WHERE owner_id=$1",[owner.id]);
+  assert.equal(returned.rowCount,3);
+  assert(returned.rows.every(x=>x.publication_status==="private"));
+  assert.equal((await admin.query(
+   "SELECT id FROM luemi_private.actors WHERE id=$1 AND status='active'",[owner.id])).rowCount,1);
+  const reauth=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(8011041)}});
+  assert.equal(reauth.statusCode,200,reauth.body);
+  const worker=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,storage,limit:1});
+  assert.deepEqual(worker,{completed:0,failed:0,pending:false});
+  const files=await admin.query<{derivative_key:string}>(
+   "SELECT derivative_key FROM luemi_private.media_assets WHERE owner_id=$1",[owner.id]);
+  for(const file of files.rows)assert.ok(await storage.get(file.derivative_key));
+  // Force an unrelated synthetic deletion into the past and verify no recovery.
+  const overdue=await identity(app,8011043);
+  await consent(app,overdue);
+  assert.equal((await mutate(app,overdue,"/api/v3/account/request-deletion",deletionBody)).statusCode,202);
+  await admin.query("UPDATE luemi_private.erasure_requests "+
+   "SET eligible_at=clock_timestamp()-interval '1 second' WHERE actor_id=$1",[overdue.id]);
+  const expired=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},
+   payload:{initData:sign(8011043),confirmation:"RESTORE MY LUEMI ACCOUNT"}});
+  assert.equal(expired.statusCode,410,expired.body);
+  await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,storage,limit:1});
+ }finally{await app.close();}
+});
 test("01D admin connection cleanup",async()=>{await admin.end();await reader.end();});
