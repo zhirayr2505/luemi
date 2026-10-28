@@ -844,7 +844,7 @@ export function App() {
        setServerConsent={setServerConsent} onSave={()=>{void persistServerDraft();}}
        serverSaving={serverSaving} serverStatus={serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
-       onRetryStorage={retryStorage}
+       restored={photosRestored} onRetryStorage={retryStorage}
        onExit={()=>setPhase("welcome")} registerBack={registerV2Back}/>
     </Suspense>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
