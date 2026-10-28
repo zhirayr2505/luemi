@@ -81,6 +81,7 @@ async function main(){
  }
  const db=new Client({connectionString:makeEncryptedConnection(owner).href,connectionTimeoutMillis:7000});
  let connected=false;
+ const previouslyLogin=new Set();
  try{
   await db.connect();connected=true;assertEncryptedClient(db);
   await db.query("BEGIN");
@@ -88,9 +89,10 @@ async function main(){
    for(const e of entries){
     const existing=await db.query("SELECT rolcanlogin FROM pg_roles WHERE rolname=$1",[e.role]);
     if(existing.rowCount===0)await db.query("CREATE ROLE "+e.role+" WITH NOLOGIN INHERIT");
+    else if(existing.rows[0].rolcanlogin===true)previouslyLogin.add(e.role);
     await db.query("GRANT "+e.parent+" TO "+e.role);
     // A 64-character random HMAC digest is ASCII hex and SQL-safe after validation.
-    await db.query("ALTER ROLE "+e.role+" WITH NOLOGIN PASSWORD '"+e.password+"'");
+    if(!previouslyLogin.has(e.role))await db.query("ALTER ROLE "+e.role+" WITH NOLOGIN PASSWORD '"+e.password+"'");
    }
    await db.query("COMMIT");
   }catch{await db.query("ROLLBACK").catch(()=>{});throw Error("operator_role_staging_failed");}
@@ -120,7 +122,7 @@ async function main(){
   if(connected){
    const current=await Promise.all(entries.map(e=>renderValue(token,e.key).catch(()=>null)));
    if(current.some(v=>v===null))for(const e of entries)
-    await db.query("ALTER ROLE "+e.role+" WITH NOLOGIN").catch(()=>{});
+    if(!previouslyLogin.has(e.role))await db.query("ALTER ROLE "+e.role+" WITH NOLOGIN").catch(()=>{});
   }
   throw Error("operator_provisioning_not_verified");
  }finally{await db.end().catch(()=>{});}
