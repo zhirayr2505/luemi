@@ -5,6 +5,7 @@ import type {PoolClient} from "pg";
 import type {FastifyInstance,FastifyReply,FastifyRequest} from "fastify";
 import type {PrivateObjectStore} from "./rem05d-private.js";
 import {safeDb} from "./rem05d-private.js";
+import {encodePublishedFeedCursor,decodePublishedFeedCursor} from "./real-feed-cursor.js";
 export interface PublicationOptions {
  enabled:true;requestDatabaseUrl:string;publisherDatabaseUrl:string;discoveryDatabaseUrl:string;
  namespace:string;consentVersion:string;storage:PrivateObjectStore;
@@ -286,8 +287,11 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   return{state:"consent_withdrawn",dataDeleted:false};
  }));
 
- app.get("/api/v3/discovery/feed",{preHandler:guards.read},async(req,reply)=>{
+ app.get<{Querystring:{after?:string}}>("/api/v3/discovery/feed",{preHandler:guards.read},async(req,reply)=>{
   reply.header("Cache-Control","private, no-store").header("Vary","Cookie");
+  let cursor:ReturnType<typeof decodePublishedFeedCursor>;
+  try{cursor=decodePublishedFeedCursor(req.query?.after);}
+  catch{return reply.code(422).send({error:"invalid_feed_cursor"});}
   return transaction(req,reply,"luemi_discovery_reader",async(db,viewer)=>{
    const results=await db.query<{owner_id:string;display_name:string;city_label:string;
     country_code:string;about:string;interests:string[];gender:string;goal:string;
@@ -299,9 +303,14 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "AND (SELECT count(*) FROM luemi_private.media_assets a WHERE a.owner_id=p.owner_id "+
     "AND a.environment=p.environment AND a.state='approved' "+
     "AND a.publication_status='published') BETWEEN 3 AND 6 "+
-    "ORDER BY p.published_at DESC,p.owner_id DESC LIMIT 20",
-    [cfg.namespace,viewer]);
-   const ids=results.rows.map(r=>r.owner_id);
+    "AND ($3::timestamptz IS NULL OR (p.published_at,p.owner_id)<($3::timestamptz,$4::uuid)) "+
+    "ORDER BY p.published_at DESC,p.owner_id DESC LIMIT 21",
+    [cfg.namespace,viewer,cursor?.at??null,cursor?.id??null]);
+   const page=results.rows.slice(0,20);
+   const last=page[page.length-1];
+   const nextCursor=results.rows.length>20&&last?
+    encodePublishedFeedCursor({at:new Date(last.published_at).toISOString(),id:last.owner_id}):null;
+   const ids=page.map(r=>r.owner_id);
    const photoRows=ids.length?await db.query<{owner_id:string;id:string;position:number}>(
     "SELECT owner_id,id,position FROM luemi_private.media_assets "+
     "WHERE owner_id=ANY($1::uuid[]) AND environment=$2 AND state='approved' "+
@@ -311,7 +320,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     const list=photos.get(row.owner_id)??[];
     list.push(row.id);photos.set(row.owner_id,list);
    }
-   return{status:"published_only",profiles:results.rows.map(p=>({
+   return{status:"published_only",nextCursor,profiles:page.map(p=>({
     id:p.owner_id,name:p.display_name,age:dateAge(p.birth_date),
     city:p.city_label,countryCode:p.country_code,about:p.about??"",
     interests:p.interests,gender:p.gender,goal:p.goal,languages:p.languages,
