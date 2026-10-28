@@ -803,8 +803,10 @@ export function App() {
       </div>
       <h1>Твоя история начинается здесь</h1>
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
-      {auth==="needs-bot"&&<p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>}
-      {auth==="needs-invite"&&<p role="status">Сейчас LUEMI открыт только двум приглашённым участникам. Отправь боту <strong>/myid</strong>, чтобы получить свой Telegram ID для приглашения.</p>}
+      {auth==="needs-bot"&&<><p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>
+        {realOnly&&<button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button>}</>}
+      {auth==="needs-invite"&&<><p role="alert">Сервер пока не разрешил вход. Открытая регистрация LUEMI временно недоступна.</p>
+        <button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button></>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
       {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
         {realFeedPilot.enabled&&publicationCheck==="checking"&&
