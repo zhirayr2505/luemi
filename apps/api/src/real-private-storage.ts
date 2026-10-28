@@ -42,7 +42,10 @@ async function absentPrivateObject(response:Response):Promise<boolean>{
    pieces.push(Buffer.from(value));
   }
  }catch{return false;}
- finally{await reader.cancel().catch(()=>{});}
+ finally{
+  await reader.cancel().catch(()=>{});
+  reader.releaseLock();
+ }
  try{
   const data:unknown=JSON.parse(Buffer.concat(pieces,total).toString("utf8"));
   if(!data||typeof data!=="object"||Array.isArray(data))return false;
