@@ -37,7 +37,22 @@ export function RealRegistrationV2(p:Props){
  const [index,setIndex]=useState(0);
  const recoveryApplied=useRef(false);
  const [biometricNotice,setBiometricNotice]=useState(false);
+ const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
  const [hint,setHint]=useState("");
+ useEffect(()=>{
+  const controller=new AbortController();
+  void fetch("/api/v2/facetrust/status",{method:"GET",credentials:"same-origin",
+   cache:"no-store",signal:controller.signal}).then(async res=>{
+    if(!res.ok)throw new Error("facetrust_status_unavailable");
+    const data:unknown=await res.json();
+    if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("invalid_status");
+    const state=data as Record<string,unknown>;
+    // Client never interprets the network response as a trusted liveness verdict.
+    setEngine(state.state==="provider_not_connected"&&state.verified===false?
+      "unavailable":"error");
+  }).catch(()=>{if(!controller.signal.aborted)setEngine("error");});
+  return()=>controller.abort();
+ },[]);
  const stage=registrationV2Stages[index];
  const body=useRef<HTMLElement|null>(null);
  const dateValid=birthDateValid(draft.day,draft.month,draft.year);
@@ -125,7 +140,7 @@ export function RealRegistrationV2(p:Props){
           <span><Check size={17}/> Сравним лица на всех снимках</span>
           <span><Check size={17}/> Попросим живое селфи</span>
         </div>
-        <p className="v2-footnote">Алгоритм FaceTrust ещё готовится. В закрытом тесте можно сохранить анкету без биометрии; другим пользователям она пока не показывается.</p>
+        <p className="v2-footnote" role="status">{engine==="checking"?"Проверяем доступность FaceTrust…":engine==="unavailable"?"Сервер подтвердил: AI FaceTrust ещё не включён. Можно сохранить анкету приватно.":"Состояние проверки неизвестно. Лицо не подтверждено; доступно только приватное сохранение."}</p>
         <label className="v2-consent">
           <input type="checkbox" checked={biometricNotice}
            onChange={e=>setBiometricNotice(e.target.checked)}/>
