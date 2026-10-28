@@ -370,3 +370,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 @media (hover:none) and (pointer:coarse){
  .milky-mist::before,.milky-mist::after{animation:none!important}
 }
+
+/* Informational privacy route must stay discoverable without changing entry motion. */
+.luemi-privacy-footer{margin-top:22px;font-size:12px;max-width:300px;text-align:center;line-height:1.45}
+.luemi-privacy-footer a{color:var(--lavender,#9664b2);text-decoration:underline;text-underline-offset:3px}
