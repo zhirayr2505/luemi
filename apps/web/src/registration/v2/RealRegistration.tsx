@@ -6,6 +6,7 @@ import {birthDateValid,nameValid,selectedCityValid,validateStep,type Registratio
 import {remoteDraftPilot} from "../server-draft";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
 import {FaceTrustCamera} from "./FaceTrustCamera";
+import {findExactDuplicatePhotoIds} from "./duplicate-photos";
 import "./preview.css";
 import "./runtime.css";
 
@@ -39,6 +40,7 @@ export function RealRegistrationV2(p:Props){
  const [biometricNotice,setBiometricNotice]=useState(false);
  const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
  const [hint,setHint]=useState("");
+ const [photoChecking,setPhotoChecking]=useState(false);
  useEffect(()=>{
   const controller=new AbortController();
   void fetch("/api/v2/facetrust/status",{method:"GET",credentials:"same-origin",
@@ -84,7 +86,16 @@ export function RealRegistrationV2(p:Props){
    case "intent":issue=validateStep(draft,4,photos.length,new Date(),"live");break;
    case "personality":issue=validateStep(draft,5,photos.length,new Date(),"live")||
      validateStep(draft,6,photos.length,new Date(),"live");break;
-   case "photos":if(!photoReady(photos))issue="Выбери от 3 до 6 готовых фотографий.";break;
+   case "photos":
+    if(!photoReady(photos)){issue="Выбери от 3 до 6 готовых фотографий.";break;}
+    if(photoChecking)return;
+    setPhotoChecking(true);
+    void findExactDuplicatePhotoIds(photos).then(ids=>{
+      if(ids.length)setHint("Обнаружены одинаковые фотографии. Замени повторяющиеся снимки.");
+      else nav(index+1);
+    }).catch(()=>setHint("Не удалось проверить повтор фотографий. Попробуй снова."))
+      .finally(()=>setPhotoChecking(false));
+    return;
    case "face-consent":
     // Consent is only necessary for biometric processing. A user may
     // still save a private draft without granting biometric consent.
@@ -184,9 +195,9 @@ export function RealRegistrationV2(p:Props){
        <div className="v2-footer-nav">
         <button type="button" className="v2-back" onClick={back}
           aria-label={index===0?"Вернуться на приветствие":"Назад"}><ArrowLeft size={22}/></button>
-        <button type="button" className="v2-next" disabled={stage.id==="review"}
+        <button type="button" className="v2-next" disabled={stage.id==="review"||photoChecking}
           onClick={advance}>
-          {stage.id==="liveness"?"К черновику":stage.id==="face-consent"?
+          {photoChecking?"Проверяем фото…":stage.id==="liveness"?"К черновику":stage.id==="face-consent"?
            (biometricNotice?"Посмотреть камеру":"К черновику"):"Продолжить"}<ArrowRight size={18}/>
         </button>
        </div>
