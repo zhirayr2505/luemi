@@ -69,17 +69,80 @@ async function setRenderEnv(apiKey,key,value){
  await response.body?.cancel();
  if(!response.ok)throw Error("Render environment write denied: "+key+" (HTTP "+response.status+")");
 }
+
+async function readRenderEnv(apiKey,key){
+ const response=await fetch(
+  "https://api.render.com/v1/services/"+RENDER_SERVICE+"/env-vars/"+encodeURIComponent(key),{
+  headers:{"Authorization":"Bearer "+apiKey,"Accept":"application/json"},
+  signal:AbortSignal.timeout(12000),redirect:"error"
+ });
+ if(response.status===404){await response.body?.cancel();return null;}
+ if(!response.ok){
+  await response.body?.cancel();
+  throw Error("Render environment read denied: "+key+" (HTTP "+response.status+")");
+ }
+ // The response contains production credentials. Never log it.
+ const body=await response.json();
+ const value=body?.envVar??body;
+ if(value?.key!==key||typeof value.value!=="string"||value.value.length>2048)
+  throw Error("Invalid stored Render environment value: "+key);
+ return value.value;
+}
+export function validateSavedScopedConnection(owner,role,raw){
+ if(typeof raw!=="string"||raw.length>2048)throw Error("Invalid stored scoped role URL");
+ let parsed;
+ try{parsed=new URL(raw);}catch{throw Error("Invalid stored scoped role URL");}
+ if(!/^[a-f0-9]{64}$/.test(parsed.password)||
+    parsed.href!==makeScopedConnection(owner,role,parsed.password))
+  throw Error("Stored scoped role URL does not match approved LUEMI connection");
+ return parsed.password;
+}
+async function loadPreviousCredentials(apiKey,owner,namespace){
+ // Restore the previously generated, strong and already persisted credentials
+ // after a failed attempt; rotating each retry defeats Supavisor auth caching.
+ const found=await Promise.all(ROLES.map(async ([name,,key])=>({
+  name,raw:await readRenderEnv(apiKey,key)
+ })));
+ const present=found.filter(x=>x.raw!==null);
+ if(!present.length)return null;
+ if(present.length!==ROLES.length)
+  throw Error("Partial stored Render credentials; abort rather than rotate blindly");
+ const credentials=new Map(found.map(({name,raw})=>[
+  name,validateSavedScopedConnection(owner,name,raw)
+ ]));
+ const pepper=await readRenderEnv(apiKey,"REM05B_SESSION_PEPPER");
+ const storedNamespace=await readRenderEnv(apiKey,"REM05B_BOT_NAMESPACE");
+ if(!/^[a-f0-9]{64}$/.test(pepper??"")||storedNamespace!==namespace)
+  throw Error("Stored session pepper or namespace mismatch; refusing unsafe reuse");
+ return {credentials,pepper};
+}
+export function classifyScopedConnectionFailure(error){
+ const code=typeof error?.code==="string"?error.code:"";
+ const message=typeof error?.message==="string"?error.message.toLowerCase():"";
+ if(code==="28P01"||/password authentication failed|invalid password/.test(message))return "AUTH_REJECTED";
+ if(/tenant.*not found|user.*not found/.test(message))return "TENANT_USER_NOT_FOUND";
+ if(/circuit breaker/.test(message))return "POOLER_CIRCUIT_BREAKER";
+ if(/eauthquery|unsupported or invalid secret format/.test(message))return "POOLER_AUTH_QUERY";
+ if(code==="42501"||/permission denied/.test(message))return "PERMISSION_DENIED";
+ if(code==="ECONNREFUSED"||/connection refused/.test(message))return "CONNECTION_REFUSED";
+ if(code==="ETIMEDOUT"||/timeout|timed out/.test(message))return "TIMEOUT";
+ if(/certificate|\bssl\b|\btls\b/.test(message))return "TLS_FAILURE";
+ return "OTHER";
+}
+
 const delay=ms=>new Promise(done=>setTimeout(done,ms));
 // Supavisor can briefly cache a previous password/NOLOGIN state following a
 // role rotation. Never retry a successful connection whose RLS/session check is
 // unsafe. Retry only connection failures with bounded, spaced attempts.
 async function checkConnection(url,role,group){
- let lastFailure="unknown";
- const maxAttempts=12;
+ let lastFailure="OTHER";
+ const maxAttempts=6;
  for(let attempt=0;attempt<maxAttempts;attempt++){
   const db=new Client({connectionString:url,connectionTimeoutMillis:5000});
+  let phase="connect";
   try{
    await db.connect();
+   phase="verify";
    const {rows}=await db.query(
     "SELECT current_user AS principal,session_user AS sess,"+
     "current_setting('row_security') AS rls,"+
@@ -94,14 +157,14 @@ async function checkConnection(url,role,group){
   }catch(error){
    if(error instanceof Error&&error.message.startsWith("Unsafe scoped role session:"))
     throw error;
-   // Never log connection strings, credentials or server-supplied messages.
-   const code=error&&typeof error.code==="string"?error.code:"";
-   lastFailure=/^[A-Z0-9]{5}$/.test(code)?code:
-    code==="ECONNREFUSED"||code==="ENOTFOUND"||code==="ETIMEDOUT"?code:"unclassified";
-   if(attempt===maxAttempts-1)
-    throw Error("Scoped connection failed: "+role+" (code "+lastFailure+
-     "); check Supavisor role cache and pooled credentials");
-   await delay(5000);
+   // Never log DB errors verbatim: server strings may include sensitive data.
+   lastFailure=classifyScopedConnectionFailure(error);
+   // Only temporary pooler credential propagation receives bounded retries.
+   if(phase==="verify"||!["AUTH_REJECTED","TIMEOUT","CONNECTION_REFUSED"].includes(lastFailure)||
+      attempt===maxAttempts-1)
+    throw Error("Scoped connection failed: "+role+" ("+phase+", "+lastFailure+
+     "); check Supavisor authentication without weakening RLS");
+   await delay(7000);
   }finally{await db.end().catch(()=>{});}
  }
 }
@@ -115,8 +178,11 @@ export async function bootstrap({
   throw Error("BETA_RENDER_API_KEY is missing");
  const owner=validateOwnerConnection(ownerUrl);
  const db=new Client({connectionString:owner.href,connectionTimeoutMillis:7000});
- const credentials=new Map(ROLES.map(([name])=>[name,randomBytes(32).toString("hex")]));
- const pepper=randomBytes(32).toString("hex");
+ // Reuse complete, previously stored credentials rather than rotating on every
+ // retry. The failed-run rollback leaves roles NOLOGIN but preserves valid secrets.
+ const saved=await loadPreviousCredentials(renderApiKey,owner,namespace);
+ const credentials=saved?.credentials??new Map(ROLES.map(([name])=>[name,randomBytes(32).toString("hex")]));
+ const pepper=saved?.pepper??randomBytes(32).toString("hex");
  let connected=false;
  try{
   await db.connect();connected=true;
@@ -148,22 +214,25 @@ export async function bootstrap({
   // Open registration has no invitation dependency: verified Telegram
   // credentials, privacy, profile/matches RLS and moderation still apply.
   // The script NEVER activates open signup, private media, or chats.
-  // Keep the DB roles NOLOGIN until ALL credentials exist in Render.
-  await db.query("BEGIN");
-  try{
-   for(const [name] of ROLES){
-    const secret=credentials.get(name);
-    // Names are compile-time constants and passwords are fixed-format random hex.
-    await db.query("ALTER ROLE "+name+" WITH NOLOGIN PASSWORD '"+secret+"'");
+  // Preserve previously provisioned passwords and session pepper on retry:
+  // re-running ALTER ROLE PASSWORD invalidates Supavisor's credential cache.
+  // Roles remain NOLOGIN until all Render credentials are persisted.
+  if(!saved){
+   await db.query("BEGIN");
+   try{
+    for(const [name] of ROLES){
+     const secret=credentials.get(name);
+     await db.query("ALTER ROLE "+name+" WITH NOLOGIN PASSWORD '"+secret+"'");
+    }
+    await db.query("COMMIT");
+   }catch(error){await db.query("ROLLBACK").catch(()=>{});throw error;}
+   for(const [name,,renderKey] of ROLES){
+    const url=makeScopedConnection(owner,name,credentials.get(name));
+    await setRenderEnv(renderApiKey,renderKey,url);
    }
-   await db.query("COMMIT");
-  }catch(error){await db.query("ROLLBACK").catch(()=>{});throw error;}
-  for(const [name,,renderKey] of ROLES){
-   const url=makeScopedConnection(owner,name,credentials.get(name));
-   await setRenderEnv(renderApiKey,renderKey,url);
+   await setRenderEnv(renderApiKey,"REM05B_SESSION_PEPPER",pepper);
+   await setRenderEnv(renderApiKey,"REM05B_BOT_NAMESPACE",namespace);
   }
-  await setRenderEnv(renderApiKey,"REM05B_SESSION_PEPPER",pepper);
-  await setRenderEnv(renderApiKey,"REM05B_BOT_NAMESPACE",namespace);
   await db.query("BEGIN");
   try{
    for(const [name] of ROLES)await db.query("ALTER ROLE "+name+" WITH LOGIN");

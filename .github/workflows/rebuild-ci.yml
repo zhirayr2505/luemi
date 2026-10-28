@@ -46,6 +46,7 @@ jobs:
           - type-contracts
           - source-marker-contracts
           - api-isolated
+          - beta-bootstrap-contract
           - build
           - local-smoke
     env:
@@ -82,6 +83,7 @@ jobs:
             type-contracts) npm run typecheck ;;
             source-marker-contracts) npm run test:source-contracts ;;
             api-isolated) npm run test:api:isolated ;;
+            beta-bootstrap-contract) node --test scripts/closed-beta-bootstrap.test.mjs ;;
             build) npm run build ;;
             local-smoke) npm run build && npm run smoke ;;
             *) echo "Unknown required gate: $GATE" >&2; exit 2 ;;
