@@ -38,6 +38,7 @@ export function PrivateAccountView({draft,photos,serverPhotoCount=0}:Props){
      </div>
    </div>
 
+   <p className="luemi-private-privacy"><a href="/privacy" target="_blank" rel="noopener noreferrer">Как LUEMI хранит и защищает данные</a></p>
    <article className="luemi-private-card" aria-label="Предпросмотр моей анкеты">
      <div className="luemi-private-gallery">
        {selected?
