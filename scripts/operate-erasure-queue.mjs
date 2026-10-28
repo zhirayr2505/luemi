@@ -62,6 +62,7 @@ async function roleProbe(raw,role,group,kind){
    throw Error("safety_operator_role_denied");
  }finally{await db.end().catch(()=>{});}
 }
+let diagnosticPhase="scope";
 async function main(){
  const action=process.env.LUEMI_OP_ACTION;
  if(process.env.GITHUB_ACTIONS!=="true"||
@@ -77,21 +78,33 @@ async function main(){
   throw Error("owner_confirmation_required");
  const token=process.env.BETA_RENDER_API_KEY;
  if(typeof token!=="string"||token.length<20)throw Error("missing_protected_render_access");
+ diagnosticPhase="namespace";
  const namespace=await get(token,"REM05B_BOT_NAMESPACE");
- if(namespace!=="luemi-production")throw Error("wrong_operator_namespace");
+ // Read-only readiness must also work for the existing private beta.
+ // Destructive maintenance stays production-only until the release gates pass.
+ if(!["luemi-beta-20261027","luemi-production"].includes(namespace))
+  throw Error("wrong_operator_namespace");
+ if(action==="erase"&&namespace!=="luemi-production")
+  throw Error("erasure_requires_production_namespace");
+ diagnosticPhase="operator_credentials";
  const request=await get(token,"REM06_ERASURE_REQUEST_DATABASE_URL");
  const worker=await get(token,"REM06_ERASURE_WORKER_DATABASE_URL");
  const safety=await get(token,"REG01H_SAFETY_OPERATOR_DATABASE_URL");
  const reports=await get(token,"REG01G_MODERATOR_DATABASE_URL");
+ diagnosticPhase="requester_login";
  await roleProbe(request,expected.REM06_ERASURE_REQUEST_DATABASE_URL,"luemi_erasure_requester","request");
+ diagnosticPhase="worker_login";
  await roleProbe(worker,expected.REM06_ERASURE_WORKER_DATABASE_URL,"luemi_erasure_worker","worker");
+ diagnosticPhase="safety_login";
  await roleProbe(safety,expected.REG01H_SAFETY_OPERATOR_DATABASE_URL,"luemi_safety_operator","safety");
  // A report reviewer may be permitted to inspect case IDs, but not user rows.
+ diagnosticPhase="reviewer_login_and_queue";
  const review=await listReviewQueue({databaseUrl:validateConnection(reports,
   expected.REG01G_MODERATOR_DATABASE_URL),namespace,operatorLabel:"luemi_report_check"});
  process.stdout.write("LUEMI_OPERATOR_ROLES_VERIFIED: 4 scoped logins; pending reports (bounded): "+
   review.reports.length+(review.reports.length===25?"+":"")+"\n");
  if(action==="verify")return;
+ diagnosticPhase="erasure_approval";
  // "approved" flags MUST reflect an externally approved, real operational policy.
  for(const key of ["REM06_ERASURE_WORKER_ENABLED","REM06_ERASURE_POLICY_APPROVED",
   "REM06_ERASURE_MAINTENANCE_APPROVED"])
@@ -99,7 +112,9 @@ async function main(){
  if(await get(token,"REM06_MEDIA_BUCKET")!=="luemi-profile-private"||
    await get(token,"REM06_SUPABASE_PROJECT_REF")!==project)
   throw Error("wrong_private_storage");
+ diagnosticPhase="private_storage_configuration";
  const secret=await get(token,"REM06_SUPABASE_STORAGE_SECRET");
+ diagnosticPhase="approved_erasure_batch";
  const result=await runErasureBatch({
   databaseUrl:validateConnection(worker,expected.REM06_ERASURE_WORKER_DATABASE_URL),
   namespace,storage:createDurablePrivateStore({
@@ -111,6 +126,7 @@ async function main(){
  if(result.failed>0||result.pending)process.exitCode=1;
 }
 main().catch(()=>{
- process.stderr.write("LUEMI_OPERATOR_OPERATION_REFUSED (no sensitive logs).\n");
+ // Only fixed phase names are emitted. Never log exceptions, URLs, secrets or rows.
+ process.stderr.write("LUEMI_OPERATOR_OPERATION_REFUSED phase="+diagnosticPhase+" (no sensitive logs).\n");
  process.exitCode=1;
 });
