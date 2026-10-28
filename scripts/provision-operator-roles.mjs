@@ -102,8 +102,18 @@ async function main(){
    await db.query("COMMIT");
   }catch{await db.query("ROLLBACK").catch(()=>{});throw Error("operator_enable_failed");}
   for(const e of entries)await verify(db,e.role,e.parent);
-  // Supavisor may cache NOLOGIN roles briefly. Do not silently waive connect tests.
-  for(const e of entries)await connectScoped(owner,e.role,e.parent,e.password);
+  // Supavisor may cache prior NOLOGIN/password states. Retry only a small,
+  // bounded number of times; never waive the identity/TLS/RLS checks.
+  for(const e of entries){
+   let passed=false;
+   for(let attempt=0;attempt<5;attempt++){
+    try{await connectScoped(owner,e.role,e.parent,e.password);passed=true;break;}
+    catch{
+     if(attempt<4)await new Promise(done=>setTimeout(done,6000));
+    }
+   }
+   assert(passed,"operator_connection_not_verified:"+e.role);
+  }
   process.stdout.write("LUEMI_OPERATOR_LOGIN_PROVISIONED: 4 isolated credentials verified; no feature flags activated.\n");
  }catch{
   // Fail closed on a first provision attempt. Never disable an already-live operator.
