@@ -196,7 +196,7 @@ export function RealRegistrationV2(p:Props){
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
           {p.mediaEnabled?<Check size={18}/>:<LockKeyhole size={18}/>}
-          {p.serverSaving?"Сохраняем и проверяем…":p.mediaEnabled?"Всё верно 💜":"Сохранить приватную анкету"}
+          {p.serverSaving?"Сохраняем и проверяем…":"Всё верно 💜"}
         </button>
         <button type="button" className="v2-secondary" onClick={()=>nav(4)}
           disabled={p.serverSaving}>Изменить анкету или фотографии</button>
