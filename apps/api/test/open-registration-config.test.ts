@@ -69,7 +69,7 @@ test("legacy invite-only mode is unchanged when open registration is disabled",(
  });
  assert.equal(cfg.rem05b?.inviteOnly,true);
  assert.equal(cfg.realPublication?.enabled,true);
- assert.throws(()=>readConfig({...base,REM06_OPEN_SIGNUPS_ENABLED:"0"}),/REG01D requires/);
+ assert.throws(()=>readConfig({...base,REM06_OPEN_SIGNUPS_ENABLED:"0"}),/Production V2 requires|REG01D requires/);
 });
 
 test("open registration can opt into matches and chats only with isolated DB roles and explicit policies",()=>{
@@ -82,4 +82,21 @@ test("open registration can opt into matches and chats only with isolated DB rol
  assert.equal(cfg.chats?.enabled,true);
  assert.equal(cfg.matches?.enabled,true);
  assert.throws(()=>readConfig({...env,LUEMI_MATCHES_DATABASE_URL:env.LUEMI_CHATS_DATABASE_URL}),/Matches require/);
+});
+
+test("production cannot silently open Telegram signups without an approved admission mode",()=>{
+ assert.throws(()=>readConfig({...base,REM06_PUBLICATION_ENABLED:"0",
+  REM06_OPEN_SIGNUPS_ENABLED:"0",REM06_BETA_INVITES_ENABLED:"0"}),
+  /Production V2 requires an explicitly approved admission mode/);
+});
+test("authenticated beta can enable first-party limited city reverse without paid provider credentials",()=>{
+ const env={...base,REM06_BETA_INVITES_ENABLED:"1",REM06_BETA_INVITES_APPROVED:"1",
+  REM05C_ENABLED:"1",REM05C_LOCAL_REVERSE_ENABLED:"1",
+  REM05C_GEO_PROVIDER_ENABLED:"0",REM06_PUBLICATION_ENABLED:"0"};
+ const cfg=readConfig(env);
+ assert.equal(cfg.rem05c?.geo?.localReverseEnabled,true);
+ assert.equal(cfg.rem05c?.geo?.providerEnabled,false);
+ assert.throws(()=>readConfig({...env,NODE_ENV:"test",REM05B_SESSIONS_ENABLED:"0",
+  REM06_BETA_INVITES_ENABLED:"0"}),
+  /Local reverse geolocation requires authenticated V2 sessions/);
 });

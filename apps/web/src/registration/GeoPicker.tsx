@@ -9,7 +9,7 @@ import {geoCsrf} from "../auth/session-adapter";
 import {requestDeviceCoordinates,type TelegramLocationManager} from "./geo-device";
 import type {RegistrationDraft,SearchScope} from "./model";
 export interface Place {id:string;city:string;country:string;countryCode:string;region?:string}
-interface SearchResult {results?:unknown;coverage?:"demo"|"world"}
+interface SearchResult {results?:unknown;coverage?:"demo"|"limited"|"world"}
 const scopeOptions:[SearchScope,string,string][]=[
  ["radius","По радиусу","В пределах выбранного расстояния"],
  ["country","В своей стране","Без ограничения по километрам"],
@@ -101,7 +101,8 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
  const detect=()=>{
   cancelPending();
   if(!syntheticQa&&import.meta.env.VITE_LUEMI_REAL_ONLY==="1"&&
-     import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"){
+     import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"&&
+     import.meta.env.VITE_LUEMI_GEO_LOCAL_ENABLED!=="1"){
    setManual(true);setActivity("error");
    setError("Определение города пока не подключено. Выбери город вручную.");
    return; // Don't request precise coordinates without a working approved reverse service.
@@ -193,7 +194,11 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
       try{nativeSettings?.openSettings?.();}
       catch{setError("Открой настройки местоположения Telegram вручную.");}
     }}>Открыть настройки геолокации Telegram</button>}
-   {demo&&<p className="hint">Тестовый справочник ограничен. Полный мировой поиск требует настройки провайдера.</p>}
+   {demo&&import.meta.env.VITE_LUEMI_REAL_ONLY!=="1"&&
+     <p className="hint">Тестовый справочник ограничен. Полный мировой поиск требует настройки провайдера.</p>}
+   {import.meta.env.VITE_LUEMI_GEO_LOCAL_ENABLED==="1"&&
+    import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"&&
+    <p className="hint">Определение города доступно в некоторых регионах. Если город не найден, выбери его вручную.</p>}
    <div className="geo-scope">
      <span className="field-label">Где искать людей?</span>
      <button className="glass-control scope-control" type="button" aria-expanded={scopeOpen} onClick={()=>setScopeOpen(x=>!x)}>

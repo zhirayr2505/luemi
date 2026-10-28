@@ -69,6 +69,11 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const betaInvites = env.REM06_BETA_INVITES_ENABLED==="1";
   // Deliberately OFF for all existing Render deployments until separately authorized.
   const v2Enabled = env.REM05B_SESSIONS_ENABLED === "1";
+  // A partial configuration must never silently make Telegram signup public.
+  // Isolated unit tests can still instantiate their deliberately restricted
+  // session fixtures without a production admission policy.
+  if(env.NODE_ENV==="production"&&v2Enabled&&!openSignups&&!betaInvites)
+    throw new Error("Production V2 requires an explicitly approved admission mode");
   if(openSignups&&(!v2Enabled||stagingOnly||betaInvites||
     env.REM06_OPEN_SIGNUPS_APPROVED!=="1"||
     env.REM06_PRIVACY_APPROVED!=="1"))
@@ -95,7 +100,10 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   // activates a charged upstream call.
   const geoEnabled=env.REM05C_ENABLED==="1";
   const providerEnabled=geoEnabled&&env.REM05C_GEO_PROVIDER_ENABLED==="1";
-  const geo:GeoRuntime={enabled:geoEnabled,providerEnabled,
+  const localReverseEnabled=geoEnabled&&env.REM05C_LOCAL_REVERSE_ENABLED==="1";
+  if(localReverseEnabled&&(!v2Enabled||stagingOnly))
+    throw new Error("Local reverse geolocation requires authenticated V2 sessions");
+  const geo:GeoRuntime={enabled:geoEnabled,providerEnabled,localReverseEnabled,
     providerKey:providerEnabled?(env.GEOAPIFY_API_KEY??""):"",
     budget:providerEnabled?{
       databaseUrl:env.REM05C_BUDGET_DATABASE_URL??"",
