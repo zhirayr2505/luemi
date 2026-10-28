@@ -411,6 +411,7 @@ test("72h recovery requires signed same-owner Telegram confirmation and retains 
  try{
   const owner=await identity(app,8011041);
   const photos=await prepare(app,owner);
+  assert.equal(photos.length,3);
   const deleteReply=await mutate(app,owner,"/api/v3/account/request-deletion",deletionBody);
   assert.equal(deleteReply.statusCode,202,deleteReply.body);
   const queue=await admin.query<{id:string}>(
