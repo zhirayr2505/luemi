@@ -7,14 +7,19 @@ const client=read("../../../apps/web/src/registration/real-live-client.ts");
 const css=read("../../../apps/web/src/registration/real-live-feed.css");
 const api=read("../src/rem05d-private.ts");
 const safety=read("../src/safety-operator.ts");
+const human=read("../src/human-moderation.ts");
+const humanCli=read("../src/human-review-runner.ts");
+const safetyCli=read("../src/safety-runner.ts");
 const sql=read("../../../infra/migrations/0010_post_publication_report_reasons.sql");
 test("nonconsensual photos and suspected minors have aligned reason names on every layer",()=>{
  for(const reason of ["minor_suspected","nonconsensual_photo"]){
-  for(const source of [ui,client,api,safety,sql])
+  for(const source of [ui,client,api,safety,sql,human,humanCli,safetyCli])
    assert(source.includes(reason),"missing "+reason);
  }
  assert.match(sql,/DROP CONSTRAINT reports_reason_code_check/);
  assert.match(sql,/ADD CONSTRAINT reports_reason_code_check/);
+ assert.match(sql,/ADD CONSTRAINT human_report_reviews_reason_code_check/);
+ assert.match(sql,/ADD CONSTRAINT account_enforcements_reason_code_check/);
  assert.doesNotMatch(sql,/GRANT .* TO (anon|authenticated)/);
 });
 test("reports use an intentional accessible modal, no pre-publication moderation",()=>{
