@@ -70,9 +70,14 @@ async function setRenderEnv(apiKey,key,value){
  if(!response.ok)throw Error("Render environment write denied: "+key+" (HTTP "+response.status+")");
 }
 const delay=ms=>new Promise(done=>setTimeout(done,ms));
+// Supavisor can briefly cache a previous password/NOLOGIN state following a
+// role rotation. Never retry a successful connection whose RLS/session check is
+// unsafe. Retry only connection failures with bounded, spaced attempts.
 async function checkConnection(url,role,group){
- for(let attempt=0;attempt<4;attempt++){
-  const db=new Client({connectionString:url,connectionTimeoutMillis:4000});
+ let lastFailure="unknown";
+ const maxAttempts=12;
+ for(let attempt=0;attempt<maxAttempts;attempt++){
+  const db=new Client({connectionString:url,connectionTimeoutMillis:5000});
   try{
    await db.connect();
    const {rows}=await db.query(
@@ -86,9 +91,17 @@ async function checkConnection(url,role,group){
      rows[0]?.rls!=="on"||rows[0]?.member!==true||rows[0]?.safe!==true)
     throw Error("Unsafe scoped role session: "+role);
    return;
-  }catch{
-   if(attempt===3)throw Error("Scoped connection failed: "+role+"; check Supavisor role cache and Render URLs");
-   await delay(1200);
+  }catch(error){
+   if(error instanceof Error&&error.message.startsWith("Unsafe scoped role session:"))
+    throw error;
+   // Never log connection strings, credentials or server-supplied messages.
+   const code=error&&typeof error.code==="string"?error.code:"";
+   lastFailure=/^[A-Z0-9]{5}$/.test(code)?code:
+    code==="ECONNREFUSED"||code==="ENOTFOUND"||code==="ETIMEDOUT"?code:"unclassified";
+   if(attempt===maxAttempts-1)
+    throw Error("Scoped connection failed: "+role+" (code "+lastFailure+
+     "); check Supavisor role cache and pooled credentials");
+   await delay(5000);
   }finally{await db.end().catch(()=>{});}
  }
 }
@@ -156,6 +169,9 @@ export async function bootstrap({
    for(const [name] of ROLES)await db.query("ALTER ROLE "+name+" WITH LOGIN");
    await db.query("COMMIT");
   }catch(error){await db.query("ROLLBACK").catch(()=>{});throw error;}
+  // A newly enabled LOGIN role may still appear NOLOGIN to Supavisor until
+  // the pooler's credential cache refreshes. Allow propagation before probing.
+  await delay(15000);
   for(const [name,group] of ROLES)
    await checkConnection(makeScopedConnection(owner,name,credentials.get(name)),name,group);
   console.info("LUEMI_DB_BOOTSTRAP_OK: 8 isolated LOGIN roles verified; Render credentials installed; admission="+admissionMode+".");
