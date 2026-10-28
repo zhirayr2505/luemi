@@ -7,5 +7,9 @@ export default defineConfig({
   server: {
     proxy: { "/api": { target: "http://localhost:3001", changeOrigin: true } }
   },
-  build:{rollupOptions:{input:{app:resolve(__dirname,"index.html"),chatsDemo:resolve(__dirname,"chats-demo.html")}}}
+  // Real-only release must not ship separately-addressable demo chat HTML.
+  // Local/QA builds retain the preview entry for isolated testing.
+  build:{rollupOptions:{input:process.env.VITE_LUEMI_REAL_ONLY==="1"
+    ?{app:resolve(__dirname,"index.html")}
+    :{app:resolve(__dirname,"index.html"),chatsDemo:resolve(__dirname,"chats-demo.html")}}}
 });
