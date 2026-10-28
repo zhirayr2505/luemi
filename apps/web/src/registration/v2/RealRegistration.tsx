@@ -33,7 +33,7 @@ interface Props{
  onRetryStorage:()=>void;
  onExit:()=>void;
  registerBack:(fn:()=>void)=>void;
- /** No published profile or real liveness result exists in this pilot. */
+ /** Real profile and media publication use the independently authenticated server. */
 }
 const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
  photos.every(p=>p.status==="ready");
@@ -201,7 +201,7 @@ export function RealRegistrationV2(p:Props){
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
           {p.mediaEnabled?<Check size={18}/>:<LockKeyhole size={18}/>}
-          {p.serverSaving?"Сохраняем и проверяем…":"Всё верно 💜"}
+          {p.serverSaving?(instantPublication?"Загружаем и публикуем…":"Сохраняем и проверяем…"):"Всё верно 💜"}
         </button>
         <button type="button" className="v2-secondary" onClick={()=>nav(4)}
           disabled={p.serverSaving}>Изменить анкету или фотографии</button>
