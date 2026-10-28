@@ -1,7 +1,7 @@
 import {createRoot} from "react-dom/client";
 import {useEffect,useRef,useState} from "react";
 import {
- ArrowLeft,ArrowRight,Camera,Check,ChevronRight,Heart,Images,
+ ArrowLeft,ArrowRight,Camera,Check,ChevronRight,Images,
  LockKeyhole,MapPin,ShieldCheck,Sparkles,UserRound,Users,X
 } from "lucide-react";
 import {
