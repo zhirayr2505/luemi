@@ -1,12 +1,14 @@
 import type {FastifyInstance,FastifyReply,FastifyRequest} from "fastify";
 import {normalizeCountryCode} from "@luemi/contracts";
-import {localSearch,normalizeGeoapify} from "./geo-data.js";
+import {localSearch,localReverseCity,normalizeGeoapify} from "./geo-data.js";
 import {GeoBudget} from "./rem05c-quota.js";
 import type {GeoBudgetConfig,GeoOperation} from "./rem05c-quota.js";
 
 export interface GeoRuntime {
   enabled:boolean;
   providerEnabled:boolean;
+  /** Explicitly enabled coarse, no-vendor geocoding limited to known cities. */
+  localReverseEnabled?:boolean;
   providerKey:string;
   budget?:GeoBudgetConfig;
   /** Test seam: synthetic fake upstream. No user-selected URLs or hosts. */
@@ -86,7 +88,14 @@ export function registerGeography(app:FastifyInstance,runtime?:GeoRuntime,guards
   if(budget)app.addHook("onClose",()=>budget.close());
   async function execute(op:GeoOperation,actor:string,input:string|{lat:number;lon:number},
     reply:FastifyReply){
-    if(!providerEnabled||!budget)return reply.code(503).send({error:"geocoder_unavailable"});
+    if(!providerEnabled||!budget){
+      if(op==="reverse"&&runtime?.localReverseEnabled===true){
+        const coords=input as {lat:number;lon:number};
+        const place=localReverseCity(coords.lat,coords.lon);
+        return place?{result:place}:reply.code(404).send({error:"city_not_found"});
+      }
+      return reply.code(503).send({error:"geocoder_unavailable"});
+    }
     const reserve=await budget.reserve(actor,op);
     if(!reserve.ok){
       reply.header("Retry-After",String(reserve.retryAfter));
@@ -115,7 +124,8 @@ export function registerGeography(app:FastifyInstance,runtime?:GeoRuntime,guards
   app.get<{Querystring:SearchQuery}>("/api/v2/geo/search",{preHandler:v2Read},async(request,reply)=>{
     const q=query(request.query?.q);
     if(q===null)return reply.code(400).send({error:"invalid_query"});
-    if(!providerEnabled)return{results:localSearch(q),coverage:"demo"};
+    if(!providerEnabled)return{results:localSearch(q),
+      coverage:runtime?.localReverseEnabled===true?"limited":"demo"};
     return execute("search",request.authActor!.actorId,q,reply);
   });
   app.post<{Body:ReverseBody}>("/api/v2/geo/reverse",{preHandler:v2Mutation,
