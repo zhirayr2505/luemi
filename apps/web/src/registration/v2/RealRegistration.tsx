@@ -198,6 +198,7 @@ export function RealRegistrationV2(p:Props){
           <span>Я прочитал(а) <a href={pubNotice} target="_blank" rel="noopener noreferrer">
            {noticeLabel}</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI{p.publicationEnabled?(instantPublication?", а также сразу опубликовать анкету и фотографии для других пользователей":", а после проверки опубликовать её для других подходящих пользователей"):""}.</span>
         </label>
+        <p className="v2-footnote">Подробнее о данных: <a href="/privacy" target="_blank" rel="noopener noreferrer">конфиденциальность LUEMI (проект)</a>. Это информационная страница, она не заменяет документ согласия по ссылке выше.</p>
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
           {p.mediaEnabled?<Check size={18}/>:<LockKeyhole size={18}/>}

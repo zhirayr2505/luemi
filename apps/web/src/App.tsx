@@ -857,6 +857,7 @@ export function App() {
     }finally{setRecoveryBusy(false);}
   };
   const deletionSettingsPanel=realFeedPilot.enabled?<>
+   <p className="luemi-legal-link"><a href="/privacy" target="_blank" rel="noopener noreferrer">Конфиденциальность и использование данных</a></p>
    <button type="button" disabled={publishBusy} onClick={()=>setAccountSettingsOpen(v=>!v)}>Настройки аккаунта</button>
            {accountSettingsOpen&&<section className="registration-preview-review" aria-label="Настройки удаления аккаунта">
             <h2>Удалить аккаунт</h2>
@@ -888,6 +889,7 @@ export function App() {
     {recoveryError&&<p role="alert">{recoveryError}</p>}
     {localDeletionFailed&&<p role="alert">Локальный черновик на устройстве не удалось очистить. Можно очистить данные Mini App вручную.</p>}
     <p>После срока сервер начнёт безвозвратное удаление файлов и записей.</p>
+    <p><a href="/privacy" target="_blank" rel="noopener noreferrer">Как LUEMI обрабатывает данные</a></p>
   </main>;
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
@@ -1017,6 +1019,7 @@ export function App() {
             Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
           </button>}
       </div>}
+      <p className="luemi-privacy-footer"><a href="/privacy" target="_blank" rel="noopener noreferrer">Конфиденциальность и использование данных</a></p>
     </section>:<section className={"onboarding-screen"+(step===8?" registration-static-screen":"")}>
       <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
         <div className="onboard-brand-row">
