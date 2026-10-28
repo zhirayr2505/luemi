@@ -101,15 +101,19 @@ export async function requestMyAccountDeletion():Promise<void>{
    result.storagePending!==true||result.dataDeleted!==false)
   throw new Error("invalid_deletion_queue_receipt");
 }
-export async function getPublishedFeed(signal:AbortSignal):Promise<RealPublishedProfile[]>{
+export interface PublishedFeedPage{profiles:RealPublishedProfile[];nextCursor:string|null}
+export async function getPublishedFeed(signal:AbortSignal,cursor:string|null=null):Promise<PublishedFeedPage>{
  requirePilot();
- const res=await fetch("/api/v3/discovery/feed",{
+ if(cursor!==null&&!/^[A-Za-z0-9_-]{12,256}$/.test(cursor))throw new Error("invalid_feed_cursor");
+ const res=await fetch("/api/v3/discovery/feed"+(cursor?"?after="+encodeURIComponent(cursor):""),{
   credentials:"same-origin",cache:"no-store",signal});
  if(!res.ok)throw new Error("feed_"+res.status);
  const data:unknown=await res.json();
- if(!object(data)||data.status!=="published_only"||!Array.isArray(data.profiles))
+ if(!object(data)||data.status!=="published_only"||!Array.isArray(data.profiles)||
+   (data.nextCursor!==null&&(typeof data.nextCursor!=="string"||
+     !/^[A-Za-z0-9_-]{12,256}$/.test(data.nextCursor))))
   throw new Error("invalid_feed");
- return data.profiles.flatMap((item:unknown)=>{
+ const profiles:RealPublishedProfile[]=data.profiles.flatMap((item:unknown)=>{
   if(!object(item)||typeof item.id!=="string"||!uuid.test(item.id)||
    typeof item.name!=="string"||!Number.isInteger(item.age)||Number(item.age)<18||
    typeof item.city!=="string"||typeof item.countryCode!=="string"||
@@ -128,7 +132,8 @@ export async function getPublishedFeed(signal:AbortSignal):Promise<RealPublished
    countryCode:item.countryCode,gender:item.gender as "man"|"woman"|"other",
    goal:item.goal,about:item.about,interests:item.interests as string[],
    languages:item.languages as string[],photos}];
- }).slice(0,20);
+ });
+ return{profiles,nextCursor:data.nextCursor as string|null};
 }
 export async function blockPublishedUser(id:string){
  if(!uuid.test(id))throw new Error("invalid_target");

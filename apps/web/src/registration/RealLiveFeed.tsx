@@ -1,4 +1,4 @@
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import {getPublishedFeed,blockPublishedUser,reportPublishedUser,likePublishedUser,realMatchPilot} from "./real-live-client";
 import type {RealPublishedProfile} from "./real-live-client";
 import {Flag} from "../ui/Flag";
@@ -14,18 +14,42 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
  const [photo,setPhoto]=useState<Record<string,number>>({});
  const [status,setStatus]=useState("");
  const [reload,setReload]=useState(0);
+ const [nextCursor,setNextCursor]=useState<string|null>(null);
+ const [loadingMore,setLoadingMore]=useState(false);
+ const pageAbort=useRef<AbortController|null>(null);
  useEffect(()=>{
   const signal=new AbortController();
-  setLoading(true);setError("");
+  pageAbort.current?.abort();
+  setLoading(true);setError("");setProfiles([]);setNextCursor(null);
   void getPublishedFeed(signal.signal).then(data=>{
    if(signal.signal.aborted)return;
-   setProfiles(data);setLoading(false);
+   setProfiles(data.profiles);setNextCursor(data.nextCursor);setLoading(false);
   }).catch(()=>{
    if(signal.signal.aborted)return;
    setError("Не удалось получить подтверждённые анкеты.");setLoading(false);
   });
-  return()=>signal.abort();
+  return()=>{signal.abort();pageAbort.current?.abort();};
  },[reload]);
+ const loadMore=async()=>{
+  if(!nextCursor||loading||loadingMore||busy)return;
+  const controller=new AbortController();
+  pageAbort.current?.abort();
+  pageAbort.current=controller;
+  setLoadingMore(true);setStatus("");
+  try{
+   const page=await getPublishedFeed(controller.signal,nextCursor);
+   if(controller.signal.aborted)return;
+   setProfiles(existing=>{
+    const ids=new Set(existing.map(p=>p.id));
+    return [...existing,...page.profiles.filter(p=>!ids.has(p.id))];
+   });
+   setNextCursor(page.nextCursor);
+  }catch{
+   if(!controller.signal.aborted)setStatus("Следующие анкеты не загрузились. Попробуй ещё раз.");
+  }finally{
+   if(pageAbort.current===controller){pageAbort.current=null;setLoadingMore(false);}
+  }
+ };
  const like=async(p:RealPublishedProfile)=>{
   if(busy)return;
   setBusy(p.id);setStatus("");
@@ -105,5 +129,9 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
      </article>;
     })}
    </div>
+   {!loading&&!error&&nextCursor&&<button type="button" className="luemi-real-feed-refresh"
+    disabled={loadingMore||busy!==null} onClick={()=>{void loadMore();}}>
+    {loadingMore?"Загружаем ещё…":"Показать ещё анкеты"}
+   </button>}
  </section>;
 }
