@@ -43,5 +43,27 @@ Agency 2026 adequacy decision: https://dataprotection.moj.gov.am/
 - Rebuild Vite with `VITE_LUEMI_REAL_ONLY=1`, `VITE_LUEMI_AUTH_V2=1`, `VITE_LUEMI_PRIVATE_DRAFT_UI=1`, `VITE_LUEMI_PRIVATE_MEDIA_UI=1`, `VITE_LUEMI_OPEN_SIGNUPS_UI=1`, `VITE_LUEMI_INSTANT_PUBLICATION_UI=1`, `VITE_LUEMI_FRIENDS_TEST_MODE=0`, real published-feed client and the approved notice URL.
 - In Telegram Android WebView, test two independent 18+ accounts end-to-end: signup, 3–6 photos on server, publication on preview confirmation, photos seen mutually, refresh and new device recovery, block and report, hide, actual deletion, and public denial of private Storage access. Preserve all profiles if a deployment is rolled back.
 
+
+## 29 October 2026 — confirmed erasure BLOCKER (fail-closed)
+The four operator credentials passed protected TLS/RLS readiness (GitHub Actions #40781311250).
+However, live catalog inspection found cross-schema foreign keys from `luemi_chats.likes`
+and `luemi_chats.matches` to `luemi_private.actors`, plus actor-linked chat
+messages, media and Bliki stories/objects without complete erasure handling.
+The prior profile-only worker could permanently remove sanitized Storage objects
+before a later relational FK rejection; the account would remain queued.
+Therefore the worker now checks those schema dependencies **before the first
+Storage DELETE** and refuses an unsupported account purge. This intentionally
+blocks final erasure on the existing schema rather than falsely reporting
+irreversible deletion. No real user data was removed.
+
+**Remaining release work:** define treatment of two-sided chats (including the
+other participant's messages and attachments), implement actor-scoped cleanup for
+likes/matches, chat media and Bliki Storage with the minimum new PostgreSQL
+privileges and RLS, ensure failure/retry idempotence across buckets, run an
+isolated synthetic 72-hour/recovery/deletion test, then explicitly approve
+retention policy and enable the worker. **Never set
+`LUEMI_ERASURE_AUTOMATION_ENABLED=1`, `REM06_ERASURE_WORKER_ENABLED=1` or
+`REM06_ERASURE_POLICY_APPROVED=1` just because the readiness workflow passed.**
+
 ## Current STOP conditions
 **No public rollout until:** legally reviewed notice, active safety response, verified erasure request/worker and first two-account E2E. Merge and CI checks alone do not satisfy these gates. Do not claim unlimited operational capacity on a free Render service.
