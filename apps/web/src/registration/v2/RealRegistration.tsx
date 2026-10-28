@@ -4,7 +4,7 @@ import {RegistrationStep,type PhotoItem} from "../Steps";
 import {RegistrationPreview} from "../Preview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {remoteDraftPilot} from "../server-draft";
-import {registrationV2Stages,type RegistrationV2StageId,type RegistrationV2Gate} from "./flow";
+import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
 import {FaceTrustCamera} from "./FaceTrustCamera";
 import "./preview.css";
 import "./runtime.css";
@@ -32,7 +32,7 @@ const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
  photos.every(p=>p.status==="ready");
 const messageFor=(raw:string)=>raw||"Заполни обязательные поля.";
 export function RealRegistrationV2(p:Props){
- const {draft,patch,photos}=p;
+ const {draft,photos}=p;
  const [index,setIndex]=useState(0);
  const [biometricNotice,setBiometricNotice]=useState(false);
  const [hint,setHint]=useState("");
