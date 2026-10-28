@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {deletionRequestReason} from "../src/real-erasure.js";
-const worker=readFileSync("apps/api/src/real-erasure-worker.ts","utf8");
-const auth=readFileSync("apps/api/src/rem05b-session.ts","utf8");
-const migration=readFileSync("db/account-deletion-72h-recovery.sql","utf8");
-const app=readFileSync("apps/web/src/App.tsx","utf8");
+const worker=readFileSync(new URL("../src/real-erasure-worker.ts",import.meta.url),"utf8");
+const auth=readFileSync(new URL("../src/rem05b-session.ts",import.meta.url),"utf8");
+const migration=readFileSync(new URL("../../../db/account-deletion-72h-recovery.sql",import.meta.url),"utf8");
+const app=readFileSync(new URL("../../../apps/web/src/App.tsx",import.meta.url),"utf8");
 
 test("deletion reason is selectable and private free-text has bounded length",()=>{
  assert.deepEqual(deletionRequestReason({confirmation:"DELETE MY LUEMI ACCOUNT",reason:"privacy",details:"  Неуютно  "}),
