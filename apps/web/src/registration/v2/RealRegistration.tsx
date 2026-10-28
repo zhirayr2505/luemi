@@ -24,6 +24,7 @@ interface Props{
  onTheme:()=>void;
  onSave:()=>void;
  mediaEnabled:boolean;
+ publicationEnabled:boolean;
  serverSaving:boolean;
  serverStatus:string;
  storageError:string|null;
@@ -122,6 +123,8 @@ export function RealRegistrationV2(p:Props){
  const savedDraftAllowed=p.serverConsent&&identityReady&&gate.hasLocation&&
   gate.hasIntent&&photoReady(photos)&&!p.serverSaving;
  const pubNotice=remoteDraftPilot.policy;
+ const friendsTest=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1";
+ const noticeLabel=friendsTest?"условия закрытого теста":"политику обработки персональных данных";
  return <main className="v2-canvas v2-runtime" data-theme={p.theme}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div className="v2-device" data-screen={stage.id}>
@@ -180,7 +183,7 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="review"&&<div className="v2-fields">
         <RegistrationPreview data={draft} photos={photos}/>
         <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
-          <strong>{p.mediaEnabled?"Твоя анкета готова":"Закрытый тест LUEMI"}</strong>
+          <strong>{p.mediaEnabled?"Твоя анкета готова":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
           <p>{p.mediaEnabled
            ?"После подтверждения данные и фотографии отправятся в защищённое хранилище. Другие люди увидят их только после проверки и публикации."
            :"Сейчас сервер сохраняет поля анкеты, фотографии остаются на этом устройстве."}</p>
@@ -188,7 +191,7 @@ export function RealRegistrationV2(p:Props){
         <label className="v2-consent"><input type="checkbox"
           checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
           <span>Я прочитал(а) <a href={pubNotice} target="_blank" rel="noopener noreferrer">
-           условия закрытого теста</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI.</span>
+           {noticeLabel}</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI{p.publicationEnabled?", а после проверки опубликовать её для других подходящих пользователей":""}.</span>
         </label>
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
@@ -218,7 +221,10 @@ export function RealRegistrationV2(p:Props){
         </button>
        </div>
        <p className="v2-prototype-caption"><ShieldCheck size={12}/>
-        Закрытый тест: только приватная анкета, без автоматической публикации.
+        {friendsTest?"Закрытый тест: только приватная анкета, без публикации.":
+         p.publicationEnabled?"Фото проходят проверку перед публикацией. Автоматического одобрения нет.":
+         p.mediaEnabled?"Фотографии остаются приватными до проверки и отдельной публикации.":
+         "Приватное сохранение анкеты. Фотографии пока на устройстве."}
        </p>
      </footer>
    </div>
