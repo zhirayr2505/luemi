@@ -413,7 +413,7 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
  app.post<{Body:unknown}>("/api/v2/profile/reports",{preHandler:guard.mutation},async(req,reply)=>owner(req,reply,async(db,id)=>{
   if(!object(req.body)||Object.keys(req.body).some(k=>!["targetId","reason","clientRef"].includes(k))||
     !uuid(req.body.targetId)||req.body.targetId===id||
-    !["spam","harassment","impersonation","unsafe_media"].includes(String(req.body.reason))||
+    !["spam","harassment","impersonation","unsafe_media","minor_suspected","nonconsensual_photo"].includes(String(req.body.reason))||
     !str(req.body.clientRef,8,64))reject(422,"invalid_report");
   const q=await db.query<{id:string;reason_code:string}>(
    "INSERT INTO luemi_private.reports(reporter_id,subject_id,environment,reason_code,client_ref) "+
