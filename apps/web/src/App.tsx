@@ -61,8 +61,9 @@ const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
 const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
 // Safe invited-only routing; real publication remains gated until trusted FaceTrust.
+// REAL_ONLY must never fall back to the legacy registration form.
 const registrationV2Pilot=remoteDraftPilot.enabled&&
- import.meta.env.VITE_LUEMI_REGISTRATION_V2==="1";
+ (realOnly||import.meta.env.VITE_LUEMI_REGISTRATION_V2==="1");
 const testingNotice=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1"?"условия закрытого теста":"политику обработки данных";
 
 /** Decode the exact brand raster before showing a screen that depends on it. */
