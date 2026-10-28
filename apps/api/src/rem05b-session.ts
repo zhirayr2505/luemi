@@ -218,7 +218,8 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
      const count=await db.query<{count:string}>(
       "SELECT count(*)::text AS count FROM luemi_private.actors WHERE environment=$1",
       [cfg.namespace]);
-     if(Number(count.rows[0]?.count??NaN)>=cfg.maxNewActors){
+     const used=Number(count.rows[0]?.count);
+     if(!Number.isSafeInteger(used)||used<0||used>=cfg.maxNewActors){
       await db.query("ROLLBACK");
       return reply.code(403).send({error:"test_full"});
      }
