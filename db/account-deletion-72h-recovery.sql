@@ -20,6 +20,31 @@ GRANT INSERT(eligible_at,reason_code,reason_details),
 GRANT SELECT(eligible_at),UPDATE(reason_code,reason_details)
  ON luemi_private.erasure_requests TO luemi_erasure_worker;
 
+-- Telegram issuer may restore ONLY a signed-in matching Telegram identity and
+-- ONLY when a still-cancelable deletion exists. Restrictive RLS also applies
+-- to its existing ON CONFLICT active-account updated_at login path.
+-- No INSERT/UPDATE grant on public-facing roles.
+GRANT UPDATE(status,first_name) ON luemi_private.actors TO luemi_auth_issuer;
+CREATE POLICY auth_recovery_actor_restrict AS RESTRICTIVE
+ ON luemi_private.actors FOR UPDATE TO luemi_auth_issuer
+ USING (
+  environment=current_setting('luemi.environment',true)
+  AND telegram_id=NULLIF(current_setting('luemi.telegram_id',true),'')::bigint
+  AND (
+   status='active'
+   OR (status='deleted' AND EXISTS(
+    SELECT 1 FROM luemi_private.erasure_requests q
+    WHERE q.actor_id=actors.id AND q.environment=actors.environment
+      AND q.state='pending' AND q.eligible_at>clock_timestamp()
+   ))
+  )
+ )
+ WITH CHECK (
+  environment=current_setting('luemi.environment',true)
+  AND telegram_id=NULLIF(current_setting('luemi.telegram_id',true),'')::bigint
+  AND status='active'
+ );
+
 -- Auth issuer may look up and cancel ONLY the actor identified by a valid
 -- server-verified Telegram initData. The role already has narrowly scoped
 -- identity issuance and MUST NOT receive direct Storage credentials.
