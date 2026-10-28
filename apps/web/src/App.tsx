@@ -766,6 +766,8 @@ export function App() {
           <h1>Моя анкета 💜</h1>
           <p role="status">Анкета сохранена в LUEMI. При повторном входе она восстановится с сервера.</p>
           <article className="luemi-real-account-card" aria-label="Данные моей анкеты">
+            {readyPhotos.length>0&&<div className="luemi-real-account-photos" aria-label="Локальные фотографии">
+              {readyPhotos.map((photo,i)=><img key={photo.id} src={photo.src} alt={"Моё фото на устройстве "+(i+1)} loading="lazy" decoding="async"/>)}</div>}
             <h2>{draft.name}</h2>
             <p>{draft.city}{draft.countryCode?" · "+draft.countryCode:""}</p>
             {draft.goal&&<p>{goals.find(g=>g.id===draft.goal)?.label??draft.goal}</p>}
@@ -845,7 +847,8 @@ export function App() {
        setServerConsent={setServerConsent} onSave={()=>{void persistServerDraft();}}
        serverSaving={serverSaving} serverStatus={serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
-       restored={photosRestored} onRetryStorage={retryStorage}
+       restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
+       onRetryStorage={retryStorage}
        onExit={()=>setPhase("welcome")} registerBack={registerV2Back}/>
     </Suspense>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
