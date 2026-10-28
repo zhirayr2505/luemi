@@ -280,13 +280,30 @@ export function App() {
         retryKind.current="load";setStorageCode(result.code);setStorageState("error");return;
       }
       const snapshot=result.snapshot;
+      // An invited account must restore the confirmed server draft, not
+      // mistake old device-only demo fields for its registered identity.
+      let savedTester:RegistrationDraft|null=null;
+      if(remoteDraftPilot.enabled&&!realFeedPilot.enabled&&auth==="authorized"){
+        try{
+          const remote=await readRemoteRevision();
+          if(disposed)return;
+          if(remote.state==="private")
+            savedTester=recoverServerFields(remote.fields);
+        }catch{/* The offline local draft remains recoverable. */}
+      }
       if(snapshot){
         draftId.current=snapshot.draftId;
         revision.current=snapshot.revision;
+      }
+      if(savedTester){
+        setDraft(savedTester);setStep(8);setPhase("form");
+        setPrivateDraftSaved(true);
+        setRealHomeTab("profile");setRealHome(true);
+      }else if(snapshot){
         setDraft(snapshot.draft);
         setStep(snapshot.step);
         if(realFeedPilot.enabled)setPhase("form");
-      }else if(remoteDraftPilot.enabled&&auth==="authorized"){
+      }else if(realFeedPilot.enabled){
         // A new device can recover fields, but must select its city and photos
         // again. Never claim that private media bytes are in this response.
         try{
@@ -528,6 +545,9 @@ export function App() {
       setPrivateDraftSaved(true);
       setPublishStatus(null);
       setServerStatus("Поля анкеты сохранены на сервере. Публикация закрыта, фотографии остались на этом устройстве.");
+      // A private test account exists already. Show its server-backed
+      // profile instead of leaving the user on the last registration step.
+      if(!realFeedPilot.enabled){setRealHomeTab("profile");setRealHome(true);}
     }catch(e){
       setPrivateDraftSaved(false);
       setServerStatus(e instanceof Error&&e.message==="revision_conflict"?
@@ -735,7 +755,23 @@ export function App() {
         {themeButton}
       </header>
       <div className="luemi-real-home-main">
-        {publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
+        {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<section className="luemi-real-account" aria-label="Моя закрытая анкета">
+          <h1>Моя анкета 💜</h1>
+          <p role="status">Анкета сохранена в LUEMI. При повторном входе она восстановится с сервера.</p>
+          <article className="luemi-real-account-card" aria-label="Данные моей анкеты">
+            <h2>{draft.name}</h2>
+            <p>{draft.city}{draft.countryCode?" · "+draft.countryCode:""}</p>
+            {draft.goal&&<p>{goals.find(g=>g.id===draft.goal)?.label??draft.goal}</p>}
+            {draft.about&&<p>{draft.about}</p>}
+            <div className="luemi-real-account-interests">{draft.interests.map(interest=>
+              <span key={interest}>{interest}</span>)}</div>
+          </article>
+          <p>Это закрытый тест. Анкету видишь только ты. Фотографии остаются на твоём устройстве, а лента, симпатии и чаты пока не включены.</p>
+          <button type="button" onClick={()=>{setRealHome(false);setPhase("form");setStep(8);}}>
+            Редактировать анкету
+          </button>
+          <p>Чтобы прекратить участие и запросить удаление данных, напиши в Telegram <a href="https://t.me/zhiiirro">@zhiiirro</a>.</p>
+        </section>:publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
           <h1>Анкета сохранена 💜</h1>
           <p role="status">Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются.</p>
           <p>Одобрено фото: {publishStatus?.approved??0} · на проверке: {publishStatus?.pending??0} · требуют внимания: {publishStatus?.other??0}</p>
