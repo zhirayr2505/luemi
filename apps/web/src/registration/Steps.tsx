@@ -84,6 +84,8 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    </GlassCheckbox>
    <p className="hint">{realFeedPilot.enabled?
     "Черновик сначала сохраняется на этом устройстве. Перед отправкой на сервер потребуется отдельное согласие.":
+    remoteDraftPilot.enabled?
+    "Незаполненный черновик остаётся на телефоне. После твоего отдельного согласия готовая анкета сохранится в закрытой базе LUEMI. Фото пока останутся на устройстве.":
     "Тестовый черновик сохраняется только на этом устройстве. Очистка данных Telegram удалит его."}</p>
    <button className="draft-clear-action" type="button" onClick={resetDraft}><Trash2 size={14}/> Очистить локальный черновик</button>
  </div>;

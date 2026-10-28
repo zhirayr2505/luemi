@@ -17,3 +17,17 @@ test("free on-device duplicate filter finds identical image bytes but is not fac
   Object.defineProperty(globalThis,"crypto",{configurable:true,value:old});
  }
 });
+
+test("missing WebCrypto never silently marks unchecked photos as distinct",async()=>{
+ const old=globalThis.crypto;
+ Object.defineProperty(globalThis,"crypto",{configurable:true,value:undefined});
+ try{
+  const a=new Blob(["unverified"]);
+  await assert.rejects(
+   findExactDuplicatePhotoIds([{id:"one",file:a}] as Parameters<typeof findExactDuplicatePhotoIds>[0]),
+   /photo_digest_unavailable/
+  );
+ }finally{
+  Object.defineProperty(globalThis,"crypto",{configurable:true,value:old});
+ }
+});
