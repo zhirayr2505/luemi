@@ -16,11 +16,11 @@ const RealChats = lazy(() => import("./chats/RealChats").then(m=>({default:m.Rea
 const RealRegistrationV2 = lazy(() => import("./registration/v2/RealRegistration").then(m=>({default:m.RealRegistrationV2})));
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
-import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
+import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
 import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
-import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
+import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason} from "./registration/real-live-client";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 import {PrivateAccountView} from "./registration/PrivateAccountView";
@@ -55,7 +55,7 @@ declare global {
   }
 }
 
-type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "needs-invite" | "test-full" | "error";
+type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "needs-invite" | "test-full" | "pending-deletion" | "error";
 type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
@@ -155,6 +155,18 @@ export function App() {
   const [publishBusy,setPublishBusy]=useState(false);
   const [publishFeedback,setPublishFeedback]=useState("");
   const [accountDeletionRequested,setAccountDeletionRequested]=useState(false);
+  const [deletionUntil,setDeletionUntil]=useState<string|null>(null);
+  const [deletionReason,setDeletionReason]=useState<DeletionReason>("prefer_not_to_say");
+  const [deletionDetails,setDeletionDetails]=useState("");
+  const [accountSettingsOpen,setAccountSettingsOpen]=useState(false);
+  const [recoveryBusy,setRecoveryBusy]=useState(false);
+  const [recoveryError,setRecoveryError]=useState("");
+  const [clockNow,setClockNow]=useState(()=>Date.now());
+  useEffect(()=>{
+   if(!accountDeletionRequested&&auth!=="pending-deletion")return;
+   const timer=window.setInterval(()=>setClockNow(Date.now()),1000);
+   return()=>window.clearInterval(timer);
+  },[accountDeletionRequested,auth]);
   const [localDeletionFailed,setLocalDeletionFailed]=useState(false);
   const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
   const rootRef=useRef<HTMLElement>(null);
@@ -233,7 +245,7 @@ export function App() {
       },
       onCritical:result=>{
         if(!isCurrent())return;
-        if(result.kind==="error"){setAuth(result.reason==="invitation_required"?"needs-invite":
+        if(result.kind==="error"){if(result.reason.startsWith("deletion_pending:")){setDeletionUntil(result.reason.slice("deletion_pending:".length));setAuth("pending-deletion");return;}setAuth(result.reason==="invitation_required"?"needs-invite":
           result.reason==="test_full"?"test-full":"error");return;}
         if(!initData){setAuth("outside-telegram");return;}
         const user=result.value;
@@ -802,13 +814,11 @@ export function App() {
   };
   const eraseMyAccount=async()=>{
     if(!realFeedPilot.enabled||publishBusy||auth!=="authorized")return;
-    if(window.prompt("Для запроса полного удаления аккаунта впиши УДАЛИТЬ")!=="УДАЛИТЬ")return;
-    if(!window.confirm(
-      "Удалить доступ к аккаунту навсегда? Сессии будут отозваны сразу. Файлы и записи будут удаляться отдельно. Отменить запрос после отправки нельзя."
-    ))return;
+    if(!window.confirm("Начать удаление? Анкета и фото сразу исчезнут из знакомств. Через 72 часа, если ты не восстановишь аккаунт, начнётся окончательная очистка."))return;
     setPublishBusy(true);setPublishFeedback("");
     try{
-      await requestMyAccountDeletion();
+      const until=await requestMyAccountDeletion(deletionReason,deletionDetails);
+      setDeletionUntil(until);
       // Server receipt means all sessions were revoked, but remote file/database
       // purge is still pending. Never label this a completed deletion.
       setAccountDeletionRequested(true);setRealHome(false);setServerConsent(false);
@@ -829,13 +839,38 @@ export function App() {
       setPublishFeedback("Не удалось отправить запрос на удаление. Аккаунт не считается удалённым.");
     }finally{setPublishBusy(false);}
   };
-  if(accountDeletionRequested)return <main className="luemi-shell" data-theme={activeTheme}
+  const restoreMyAccount=async()=>{
+    if(recoveryBusy)return;
+    const initData=window.Telegram?.WebApp?.initData;
+    if(!initData){setRecoveryError("Для восстановления открой LUEMI внутри Telegram.");return;}
+    setRecoveryBusy(true);setRecoveryError("");
+    try{
+      await recoverDeletion(initData);
+      setAccountDeletionRequested(false);setDeletionUntil(null);setAuth("connecting");
+      setConnectAttempt(v=>v+1);
+    }catch(e){
+      setRecoveryError(e instanceof Error&&e.message==="recovery_expired"
+        ?"Срок восстановления истёк. Удаление уже нельзя отменить."
+        :e instanceof Error&&e.message==="reopen_telegram"
+        ?"Закрой и заново открой LUEMI через Telegram, затем повтори."
+        :"Не удалось восстановить аккаунт. Попробуй ещё раз.");
+    }finally{setRecoveryBusy(false);}
+  };
+  const remainingMs=deletionUntil?Math.max(0,new Date(deletionUntil).getTime()-clockNow):0;
+  const remainingTime=`${Math.floor(remainingMs/86400000)} дн. ${String(Math.floor(remainingMs%86400000/3600000)).padStart(2,"0")}:${String(Math.floor(remainingMs%3600000/60000)).padStart(2,"0")}:${String(Math.floor(remainingMs%60000/1000)).padStart(2,"0")}`;
+  if(accountDeletionRequested||auth==="pending-deletion")return <main className="luemi-shell" data-theme={activeTheme}
     data-scene="intro" role="status" style={{padding:"32px 22px",display:"grid",alignContent:"center",gap:18}}>
     <img src={logoSrc} alt="LUEMI" style={{width:150,maxWidth:"100%",justifySelf:"center"}}/>
-    <h2>Запрос на удаление принят</h2>
-    <p>Ваш аккаунт отключён, активные сессии закрыты, анкета и фотографии скрыты. Удаление файлов из хранилища и остальных данных ещё выполняется.</p>
-    {localDeletionFailed&&<p role="alert">Локальный черновик на этом устройстве не удалось очистить. Удалите данные Telegram Mini App вручную.</p>}
-    <p>Не закрывайте этот текст с ожиданием мгновенного полного удаления: подтверждения завершения очистки сервер ещё не выдавал.</p>
+    <h2>Аккаунт готовится к удалению</h2>
+    <p>Анкета и фото уже скрыты от других людей, а прежние сессии отключены.</p>
+    <p role="timer" aria-live="off">До окончательного удаления: <strong>{remainingTime}</strong></p>
+    {deletionUntil&&<p>Срок до {new Date(deletionUntil).toLocaleString("ru-RU")} по времени устройства.</p>}
+    <p>Восстановить аккаунт можно только отдельным подтверждением. Простой вход в Telegram не отменяет удаление.</p>
+    <button type="button" className="primary-action" disabled={recoveryBusy||remainingMs===0}
+     onClick={()=>{void restoreMyAccount();}}>{recoveryBusy?"Восстанавливаем…":"Восстановить аккаунт"}</button>
+    {recoveryError&&<p role="alert">{recoveryError}</p>}
+    {localDeletionFailed&&<p role="alert">Локальный черновик на устройстве не удалось очистить. Можно очистить данные Mini App вручную.</p>}
+    <p>После срока сервер начнёт безвозвратное удаление файлов и записей.</p>
   </main>;
   const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
     aria-label={"Включить тему: "+themeName}>
@@ -892,7 +927,21 @@ export function App() {
             <button type="button" disabled={publishBusy} onClick={()=>setPublishedEditor(null)}>Отмена</button>
           </section>}
           <button type="button" disabled={publishBusy} onClick={()=>{void withdrawPersonalConsent();}}>Отозвать согласие и скрыть анкету</button>
-          <button type="button" disabled={publishBusy} onClick={()=>{void eraseMyAccount();}}>Запросить удаление аккаунта и фото</button>
+          <button type="button" disabled={publishBusy} onClick={()=>setAccountSettingsOpen(v=>!v)}>Настройки аккаунта</button>
+           {accountSettingsOpen&&<section className="registration-preview-review" aria-label="Настройки удаления аккаунта">
+            <h2>Удалить аккаунт</h2>
+            <p>Анкета и фотографии сразу исчезнут из знакомств. В течение 72 часов можно восстановить аккаунт.</p>
+            <label>Причина удаления<select className="glass-control" value={deletionReason}
+              onChange={e=>setDeletionReason(e.target.value as DeletionReason)}>
+              {deletionReasons.map(([value,title])=><option key={value} value={value}>{title}</option>)}
+            </select></label>
+            <label>Комментарий (необязательно)<textarea className="glass-control" value={deletionDetails}
+              maxLength={500} placeholder="Расскажи, что можно улучшить"
+              onChange={e=>setDeletionDetails(e.target.value)}/></label>
+            <button type="button" disabled={publishBusy} onClick={()=>{void eraseMyAccount();}}>
+              {publishBusy?"Отправляем запрос…":"Начать удаление"}
+            </button>
+           </section>
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>:<Suspense fallback={<p role="status">Загружаем…</p>}>
           {realHomeTab==="chats"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?
