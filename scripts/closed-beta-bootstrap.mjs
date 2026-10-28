@@ -32,18 +32,37 @@ export function validateOwnerConnection(raw){
     !/^aws-\d+-[a-z0-9-]+\.pooler\.supabase\.com$/.test(url.hostname)||
     url.port!=="5432"||url.pathname!=="/postgres"||
     decodeURIComponent(url.username)!=="postgres."+PROJECT||
-    !url.password||url.hash||url.searchParams.has("options"))
+    !url.password||url.hash||
+    [...url.searchParams.keys()].some(key=>!["sslmode","uselibpqcompat"].includes(key))||
+    url.searchParams.getAll("sslmode").length>1||
+    url.searchParams.getAll("uselibpqcompat").length>1||
+    (url.searchParams.has("sslmode")&&!["require","verify-full"].includes(url.searchParams.get("sslmode")))||
+    (url.searchParams.has("uselibpqcompat")&&url.searchParams.get("uselibpqcompat")!=="true"))
   throw Error("Owner DB URL must match the correct LUEMI project SESSION pooler on port 5432");
+ return url;
+}
+// node-postgres 8 treats sslmode=require like verify-full, while the pooler's
+// root CA may be unavailable to GitHub runners. Use explicit libpq compatibility:
+// TLS is mandatory, but root/hostname verification must be gated separately.
+// Never fall back to sslmode=disable, prefer or plaintext.
+export function makeEncryptedConnection(owner){
+ const url=new URL(owner.href);
+ url.search="";
+ url.searchParams.set("uselibpqcompat","true");
+ url.searchParams.set("sslmode","require");
  return url;
 }
 export function makeScopedConnection(owner,role,password){
  if(!ROLES.some(([name])=>name===role)||!/^[a-f0-9]{64}$/.test(password))
   throw Error("Invalid scoped database principal");
- const url=new URL(owner.href);
- url.username=encodeURIComponent(role+"."+PROJECT);
+ const url=makeEncryptedConnection(owner);
+ url.username=role+"."+PROJECT;
  url.password=password;
- url.searchParams.set("sslmode","require");
  return url.toString();
+}
+export function assertEncryptedClient(client){
+ if(client?.connection?.stream?.encrypted!==true)
+  throw Error("Unencrypted database connection rejected");
 }
 export function checkRoleMetadata(rows){
  if(rows.length!==ROLES.length)throw Error("Database beta roles incomplete");
@@ -92,8 +111,14 @@ export function validateSavedScopedConnection(owner,role,raw){
  if(typeof raw!=="string"||raw.length>2048)throw Error("Invalid stored scoped role URL");
  let parsed;
  try{parsed=new URL(raw);}catch{throw Error("Invalid stored scoped role URL");}
- if(!/^[a-f0-9]{64}$/.test(parsed.password)||
-    parsed.href!==makeScopedConnection(owner,role,parsed.password))
+ if(!/^[a-f0-9]{64}$/.test(parsed.password))
+  throw Error("Stored scoped role URL does not match approved LUEMI connection");
+ const current=makeScopedConnection(owner,role,parsed.password);
+ const legacy=new URL(owner.href);
+ legacy.username=role+"."+PROJECT;
+ legacy.password=parsed.password;
+ legacy.searchParams.set("sslmode","require");
+ if(parsed.href!==current&&parsed.href!==legacy.href)
   throw Error("Stored scoped role URL does not match approved LUEMI connection");
  return parsed.password;
 }
@@ -114,7 +139,8 @@ async function loadPreviousCredentials(apiKey,owner,namespace){
  const storedNamespace=await readRenderEnv(apiKey,"REM05B_BOT_NAMESPACE");
  if(!/^[a-f0-9]{64}$/.test(pepper??"")||storedNamespace!==namespace)
   throw Error("Stored session pepper or namespace mismatch; refusing unsafe reuse");
- return {credentials,pepper};
+ return {credentials,pepper,needsUpgrade:found.some(({name,raw})=>
+  raw!==makeScopedConnection(owner,name,credentials.get(name)))};
 }
 export function classifyScopedConnectionFailure(error){
  const code=typeof error?.code==="string"?error.code:"";
@@ -126,6 +152,9 @@ export function classifyScopedConnectionFailure(error){
  if(code==="42501"||/permission denied/.test(message))return "PERMISSION_DENIED";
  if(code==="ECONNREFUSED"||/connection refused/.test(message))return "CONNECTION_REFUSED";
  if(code==="ETIMEDOUT"||/timeout|timed out/.test(message))return "TIMEOUT";
+ if(["UNABLE_TO_VERIFY_LEAF_SIGNATURE","SELF_SIGNED_CERT_IN_CHAIN",
+      "DEPTH_ZERO_SELF_SIGNED_CERT","ERR_TLS_CERT_ALTNAME_INVALID",
+      "CERT_HAS_EXPIRED"].includes(code))return "TLS_CERT_VERIFY_FAILED";
  if(/certificate|\bssl\b|\btls\b/.test(message))return "TLS_FAILURE";
  return "OTHER";
 }
@@ -143,6 +172,7 @@ async function checkConnection(url,role,group){
   try{
    await db.connect();
    phase="verify";
+   assertEncryptedClient(db);
    const {rows}=await db.query(
     "SELECT current_user AS principal,session_user AS sess,"+
     "current_setting('row_security') AS rls,"+
@@ -177,7 +207,7 @@ export async function bootstrap({
  if(typeof renderApiKey!=="string"||renderApiKey.length<20)
   throw Error("BETA_RENDER_API_KEY is missing");
  const owner=validateOwnerConnection(ownerUrl);
- const db=new Client({connectionString:owner.href,connectionTimeoutMillis:7000});
+ const db=new Client({connectionString:makeEncryptedConnection(owner).href,connectionTimeoutMillis:7000});
  // Reuse complete, previously stored credentials rather than rotating on every
  // retry. The failed-run rollback leaves roles NOLOGIN but preserves valid secrets.
  const saved=await loadPreviousCredentials(renderApiKey,owner,namespace);
@@ -186,6 +216,7 @@ export async function bootstrap({
  let connected=false;
  try{
   await db.connect();connected=true;
+  assertEncryptedClient(db);
   const result=await db.query(
    "SELECT r.rolname,r.rolcanlogin,r.rolsuper,r.rolbypassrls,"+
    "r.rolcreatedb,r.rolcreaterole,COUNT(g.oid)::int AS count_memberships,"+
@@ -217,6 +248,12 @@ export async function bootstrap({
   // Preserve previously provisioned passwords and session pepper on retry:
   // re-running ALTER ROLE PASSWORD invalidates Supavisor's credential cache.
   // Roles remain NOLOGIN until all Render credentials are persisted.
+  if(saved?.needsUpgrade){
+   // Idempotent transport upgrade: keep existing random passwords and pepper.
+   // Legacy URLs stay valid while each of the 8 Render URLs is rewritten.
+   for(const [name,,key] of ROLES)
+    await setRenderEnv(renderApiKey,key,makeScopedConnection(owner,name,credentials.get(name)));
+  }
   if(!saved){
    await db.query("BEGIN");
    try{
