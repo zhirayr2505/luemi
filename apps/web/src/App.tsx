@@ -686,7 +686,7 @@ export function App() {
           await publishMyProfile(saved.revision);
           const published=await ownerPublicationStatus();
           if(published.state!=="published")throw new Error("publication_unconfirmed");
-          setPublishStatus(published);setRealHomeTab("feed");setRealHome(true);
+          setPublishStatus(published);setRealHomeTab("profile");setRealHome(true);
           setPublishFeedback("Анкета опубликована и видна другим людям.");
         }else{
           setPublishFeedback("Фотографии уже одобрены. Нажми «Проверить модерацию и публикацию», чтобы открыть анкету.");
@@ -712,8 +712,8 @@ export function App() {
         await publishMyProfile(saved.revision);
         const confirmed=await ownerPublicationStatus();
         if(confirmed.state!=="published")throw new Error("publication_unconfirmed");
-        setPublishStatus(confirmed);setRealHomeTab("feed");setRealHome(true);
-        setPublishFeedback("Анкета опубликована.");
+        setPublishStatus(confirmed);setRealHomeTab("profile");setRealHome(true);
+        setPublishFeedback("Анкета опубликована. Фотографии уже в твоём профиле.");
       }else{
         setPublishFeedback("Анкета сохранена на сервере. Фото ожидают проверки; другие пользователи пока не видят её.");
         setRealHomeTab("profile");setRealHome(true);
@@ -851,11 +851,11 @@ export function App() {
       <div className="luemi-real-home-main">
         {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos} serverPhotoCount={serverPhotoCount}/>:publishStatus?.state!=="published"&&realHomeTab==="profile"?<section className="luemi-real-account" aria-label="Статус регистрации">
           <h1>Анкета сохранена 💜</h1>
-          <p role="status">Твой Telegram-аккаунт зарегистрирован. Пока фотографии проходят модерацию, твоя анкета скрыта от других.</p>
-          <p>Уже опубликованные и проверенные анкеты других людей можно смотреть во вкладке «Знакомства».</p>
-          <p>Одобрено фото: {publishStatus?.approved??0} · на проверке: {publishStatus?.pending??0} · требуют внимания: {publishStatus?.other??0}</p>
+          <p role="status">{instantPublicationUi?"Твоя анкета ещё не опубликована. Проверь сохранение всех фотографий на сервере.":"Твой Telegram-аккаунт зарегистрирован. Пока фотографии проходят модерацию, твоя анкета скрыта от других."}</p>
+          <p>Опубликованные анкеты других людей можно смотреть во вкладке «Знакомства».</p>
+          <p>{instantPublicationUi?"Загружено фото: ":"Принято фото: "}{publishStatus?.approved??0}{!instantPublicationUi&&<> · на проверке: {publishStatus?.pending??0}</>} · требуют внимания: {publishStatus?.other??0}</p>
           <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>
-            {publishBusy?"Проверяем…":"Проверить модерацию и открыть анкету"}
+            {publishBusy?"Сохраняем…":instantPublicationUi?"Завершить публикацию":"Проверить модерацию и открыть анкету"}
           </button>
           <button type="button" disabled={publishBusy} onClick={()=>{setRealHome(false);setPhase("form");setStep(8);}}>
             Вернуться к анкете и фотографиям
@@ -984,7 +984,7 @@ export function App() {
             {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">{testingNotice}</a> и согласен(-на) сохранить анкету и отправить фотографии на проверку перед публикацией.
           </label>
           <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>Проверить модерацию и публикацию</button>
-          {publishStatus&&<p role="status">Одобрено фото: {publishStatus.approved} · ожидают проверки: {publishStatus.pending}</p>}
+          {publishStatus&&<p role="status">{instantPublicationUi?"Загружено фото: ":"Принято фото: "}{publishStatus.approved}{!instantPublicationUi&&<> · ожидают проверки: {publishStatus.pending}</>}</p>}
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>}
         {step===8&&remoteDraftPilot.enabled&&!realFeedPilot.enabled&&<section className="registration-preview-review" aria-label="Приватное серверное сохранение">
