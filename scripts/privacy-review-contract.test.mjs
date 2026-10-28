@@ -23,11 +23,9 @@ test("public /privacy route serves a transparent review-only notice without auth
  const privateHome=readFileSync("apps/web/src/registration/PrivateAccountView.tsx","utf8");
  for(const field of [
   "Гулгулджян Жирайр Григорьевич","@zhiiirro","Республика Армения",
-  "Telegram","Render","Supabase","Предварительной ручной",
-  "после публикации","72 часа","Условия","review-only"
+  "Telegram","Render","Supabase","ручную предварительную проверку",
+  "после публикации","72 часа","review-only"
  ]){
-  // "Условия" is represented by the cross-border conditions, not a hidden flag.
-  if(field==="Условия")continue;
   assert(notice.includes(field),field+" missing");
  }
  assert.match(notice,/name="robots" content="noindex,nofollow/);
