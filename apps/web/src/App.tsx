@@ -306,7 +306,21 @@ export function App() {
       if(savedTester){
         setDraft(savedTester);setStep(8);setPhase("form");
         setPrivateDraftSaved(true);
-        setRealHomeTab("profile");setRealHome(true);
+        if(remoteMediaPilot.enabled){
+          // Returning accounts must have a confirmed durable media set.
+          try{
+            const received=await readConfirmedPrivateMediaCount(3);
+            if(disposed)return;
+            setServerPhotoCount(received);
+            setRealHomeTab("profile");setRealHome(true);
+          }catch{
+            if(disposed)return;
+            setServerStatus("Поля восстановлены с сервера. Для завершения нужны сохранённые фотографии.");
+            setRealHome(false);
+          }
+        }else{
+          setRealHomeTab("profile");setRealHome(true);
+        }
       }else if(snapshot){
         setDraft(snapshot.draft);
         setStep(snapshot.step);
@@ -489,7 +503,7 @@ export function App() {
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
     draftId.current=crypto.randomUUID();revision.current=0;
-    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);
+    setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setServerPhotoCount(0);setMediaStatus("");setPublishStatus(null);
     setStorageState("saving");setStorageCode(null);
     if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
     void clearDraftSnapshot(scope).then(result=>{
@@ -576,8 +590,10 @@ export function App() {
     try{
       await uploadPrivatePhotos([...photos],(done,total)=>
         setMediaStatus("Отправлено "+done+" из "+total+". Все фотографии приватны."));
+      const received=await readConfirmedPrivateMediaCount(photos.length);
+      setServerPhotoCount(received);
       setPublishStatus(null);
-      setMediaStatus("Фотографии приняты в приватную очередь модерации. Они никому не видны и не опубликованы.");
+      setMediaStatus("Сервер подтвердил сохранение "+received+" фотографий. До проверки они никому не видны.");
     }catch{
       setMediaStatus("Не все фотографии отправлены. Уже принятые остаются приватными. Проверь соединение перед повтором.");
     }finally{setMediaSaving(false);}
