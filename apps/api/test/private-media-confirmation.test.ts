@@ -15,3 +15,13 @@ test("forged, duplicate, rejected media never pass confirmation",()=>{
  assert.throws(()=>confirmedPrivateMediaCount({status:"unpublished",photos:Array(3).fill({id:ids[0],state:"approved"})},3));
  assert.throws(()=>confirmedPrivateMediaCount(manifest(["approved","approved","approved"]),7));
 });
+
+test("same count but different server photos never confirms a new upload",()=>{
+ const saved=manifest(["pending_review","approved","approved"]);
+ assert.equal(confirmedPrivateMediaCount(saved,3,ids),3);
+ const absent="00000000-0000-4000-8000-000000000099";
+ assert.throws(()=>confirmedPrivateMediaCount(saved,3,[ids[0],ids[1],absent]),/uploaded_media_not_confirmed/);
+ assert.throws(()=>confirmedPrivateMediaCount(saved,3,[ids[0],ids[0],ids[2]]),/uploaded_media_not_confirmed/);
+ assert.throws(()=>confirmedPrivateMediaCount(saved,3,[ids[0],ids[1]]),/uploaded_media_not_confirmed/);
+ assert.throws(()=>confirmedPrivateMediaCount(saved,3,["forged",ids[1],ids[2]]),/uploaded_media_not_confirmed/);
+});
