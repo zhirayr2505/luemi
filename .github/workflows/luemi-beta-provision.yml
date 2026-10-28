@@ -1,15 +1,7 @@
-name: LUEMI open or beta database credentials bootstrap (manual)
+name: LUEMI public signup DB credential bootstrap (manual)
 on:
   workflow_dispatch:
     inputs:
-      admission_mode:
-        description: "Open = anyone with verified Telegram login; beta = invited users only"
-        required: true
-        type: choice
-        options:
-          - open
-          - beta
-        default: open
       confirmation:
         description: "Type PROVISION_SCOPED_DB to confirm credential setup (NO feature activation)"
         required: true
@@ -17,7 +9,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: luemi-beta-bootstrap
+  group: luemi-public-bootstrap
   cancel-in-progress: false
 jobs:
   provision:
@@ -41,5 +33,5 @@ jobs:
         env:
           BETA_SUPABASE_OWNER_URL: ${{ secrets.BETA_SUPABASE_OWNER_URL }}
           BETA_RENDER_API_KEY: ${{ secrets.BETA_RENDER_API_KEY }}
-          LUEMI_BOOTSTRAP_MODE: ${{ inputs.admission_mode }}
+          LUEMI_BOOTSTRAP_MODE: open
         run: node scripts/closed-beta-bootstrap.mjs
