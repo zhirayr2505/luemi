@@ -17,6 +17,40 @@ function pathFor(key:string,namespace:string):string{
     segments[5]!=="sanitized")throw new Error("invalid_private_storage_path");
  return segments.map(encodeURIComponent).join("/");
 }
+/** Supabase Storage may answer an absent object with HTTP 400 + NoSuchKey,
+ * instead of 404. Interpret ONLY that explicit Storage code as not-found.
+ * Do not turn other 400s (invalid credentials, denial, invalid path) into success.
+ * Never expose the upstream response body or credentials to callers/logs. */
+async function absentPrivateObject(response:Response):Promise<boolean>{
+ if(response.status===404){
+  await response.body?.cancel();
+  return true;
+ }
+ if(response.status!==400||
+   response.headers.get("content-type")?.split(";")[0].trim()!=="application/json")
+  return false;
+ if(!response.body)return false;
+ const reader=response.body.getReader();
+ const pieces:Buffer[]=[];
+ let total=0;
+ try{
+  for(;;){
+   const {done,value}=await reader.read();
+   if(done)break;
+   total+=value.length;
+   if(total>2048)return false;
+   pieces.push(Buffer.from(value));
+  }
+ }catch{return false;}
+ finally{await reader.cancel().catch(()=>{});}
+ try{
+  const data:unknown=JSON.parse(Buffer.concat(pieces,total).toString("utf8"));
+  if(!data||typeof data!=="object"||Array.isArray(data))return false;
+  const error=data as Record<string,unknown>;
+  return error.errorCode==="NoSuchKey"||error.error==="NoSuchKey";
+ }catch{return false;}
+}
+
 export function createDurablePrivateStore(
  settings:DurablePrivateStoreSettings,transport:typeof fetch=fetch
 ):PrivateObjectStore{
@@ -58,7 +92,7 @@ export function createDurablePrivateStore(
   },
   get:async key=>{
    const r=await remote("GET",key);
-   if(r.status===404)return null;
+   if(await absentPrivateObject(r))return null;
    if(r.status!==200||r.headers.get("content-type")?.split(";")[0].trim()!=="image/png")
     throw new Error("private_storage_get_denied");
    const size=r.headers.get("content-length");
@@ -81,7 +115,7 @@ export function createDurablePrivateStore(
   },
   delete:async key=>{
    const r=await remote("DELETE",key);
-   if(r.status!==200&&r.status!==204&&r.status!==404)
+   if(r.status!==200&&r.status!==204&&await absentPrivateObject(r)===false)
     throw new Error("private_storage_delete_denied");
    await r.body?.cancel();
   }
