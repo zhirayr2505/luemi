@@ -20,7 +20,7 @@ export function deletionRequestReason(value:unknown):{reason:DeletionReason;deta
     typeof x.reason!=="string"||
     !deletionReasonCodes.some(y=>y===x.reason)||
     typeof x.details!=="string"||x.details.length>500||
-    /[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/.test(x.details))return null;
+    [...x.details].some(ch=>{const code=ch.charCodeAt(0);return code<32&&code!==9&&code!==10&&code!==13;}))return null;
  return{reason:x.reason as DeletionReason,details:x.details.trim()};
 }
 
