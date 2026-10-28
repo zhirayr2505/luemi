@@ -90,7 +90,7 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
    {!loading&&<button className="luemi-real-feed-refresh" type="button"
      onClick={()=>setReload(n=>n+1)}>Обновить ленту</button>}
    {!loading&&!error&&!profiles.length&&
-    <p className="luemi-real-feed-empty">Сейчас нет доступных проверенных анкет. Здесь никогда не показываются вымышленные пользователи.</p>}
+    <p className="luemi-real-feed-empty">Сейчас нет опубликованных анкет. Здесь никогда не показываются вымышленные пользователи.</p>}
    {status&&<p role="status">{status}</p>}
    <div className="luemi-real-feed-cards">
     {profiles.map(p=>{
