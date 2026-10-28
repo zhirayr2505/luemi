@@ -27,6 +27,7 @@ interface Props{
  serverStatus:string;
  storageError:string|null;
  restored:boolean;
+ resumeReview:boolean;
  onRetryStorage:()=>void;
  onExit:()=>void;
  registerBack:(fn:()=>void)=>void;
@@ -37,7 +38,7 @@ const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
 const messageFor=(raw:string)=>raw||"Заполни обязательные поля.";
 export function RealRegistrationV2(p:Props){
  const {draft,photos}=p;
- const [index,setIndex]=useState(0);
+ const [index,setIndex]=useState(()=>p.resumeReview?7:0);
  const recoveryApplied=useRef(false);
  const [biometricNotice,setBiometricNotice]=useState(false);
  const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
@@ -73,6 +74,7 @@ export function RealRegistrationV2(p:Props){
  useEffect(()=>{
   if(!p.restored||recoveryApplied.current)return;
   recoveryApplied.current=true;
+  if(p.resumeReview)return;
   setIndex(!identityReady?0:!gate.hasLocation?1:!gate.hasIntent?2:
     !photoReady(photos)?4:5);
  },[p.restored,identityReady,gate.hasLocation,gate.hasIntent,photos]);
