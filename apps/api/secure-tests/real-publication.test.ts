@@ -19,6 +19,7 @@ if(!adminUrl||!issuerUrl||!requestUrl||!workerUrl||!moderatorUrl||!publisherUrl|
 const admin=new Pool({connectionString:adminUrl}),reader=new Pool({connectionString:readerUrl});
 const namespace="ci_reg01",origin="https://ci.luemi.invalid",token="123456:synthetic_reg01_bot";
 const consentVersion="beta-consent-v1";
+const deletionBody={confirmation:"DELETE MY LUEMI ACCOUNT",reason:"prefer_not_to_say",details:""};
 function sign(id:number){
  const d={auth_date:String(Math.floor(Date.now()/1000)),user:JSON.stringify({id,first_name:"Synthetic"})};
  const message=Object.entries(d).sort(([a],[b])=>a.localeCompare(b,"en"))
@@ -226,15 +227,20 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
   const uri="/api/v3/account/request-deletion";
   const missing=await mutate(app,a,uri,{confirmation:"not the exact phrase"});
   assert.equal(missing.statusCode,422);
-  assert.equal((await mutate(app,a,uri,{confirmation:"DELETE MY LUEMI ACCOUNT",ownerId:b.id})).statusCode,422);
+  assert.equal((await mutate(app,a,uri,{...deletionBody,ownerId:b.id})).statusCode,422);
   const noOrigin=await app.inject({method:"POST",url:uri,
    headers:{cookie:a.cookie,"x-luemi-csrf":a.csrf},
-   payload:{confirmation:"DELETE MY LUEMI ACCOUNT"}});
+   payload:deletionBody});
   assert.equal(noOrigin.statusCode,403);
-  const deleted=await mutate(app,a,uri,{confirmation:"DELETE MY LUEMI ACCOUNT"});
+  const deleted=await mutate(app,a,uri,deletionBody);
   assert.equal(deleted.statusCode,202,deleted.body);
-  assert.deepEqual(deleted.json(),{state:"deletion_queued",publicAccessRevoked:true,
-   sessionsRevoked:true,storagePending:true,dataDeleted:false});
+  assert.equal(deleted.json().state,"deletion_grace");
+  assert.equal(deleted.json().publicAccessRevoked,true);
+  assert.equal(deleted.json().sessionsRevoked,true);
+  assert.equal(deleted.json().storagePending,true);
+  assert.equal(deleted.json().dataDeleted,false);
+  assert.equal(deleted.json().canRestore,true);
+  assert.ok(Date.parse(deleted.json().restoreUntil)>Date.now()+70*3600000);
   assert.match(String(deleted.headers["set-cookie"]),/Max-Age=0/);
   assert.equal((await feed(app,b)).json().profiles.length,0);
   assert.equal((await photo(app,b,ids[0])).statusCode,404);
@@ -242,8 +248,9 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
    headers:{cookie:a.cookie}})).statusCode,401);
   const relogin=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
    headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(8011010)}});
-  assert.equal(relogin.statusCode,403,"a deleted actor cannot sign back in during erasure");
-  assert.equal((await mutate(app,a,uri,{confirmation:"DELETE MY LUEMI ACCOUNT"})).statusCode,401);
+  assert.equal(relogin.statusCode,409,"login must offer explicit recovery, not silently restore");
+  assert.equal(relogin.json().error,"account_pending_deletion");
+  assert.equal((await mutate(app,a,uri,deletionBody)).statusCode,401);
   const q=await admin.query<{id:string;state:string}>(
    "SELECT id,state FROM luemi_private.erasure_requests WHERE actor_id=$1",[a.id]);
   assert.equal(q.rowCount,1);
@@ -279,6 +286,11 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
     "SELECT id FROM luemi_private.audit_events WHERE id=$1",[foreignAudit.rows[0].id])).rowCount,1);
   }finally{await workerProbe.end();}
   for(const object of objects.rows)assert.ok(await storage.get(object.object_key));
+  const tooEarly=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,storage,limit:1});
+  assert.deepEqual(tooEarly,{completed:0,failed:0,pending:false},
+   "worker MUST NOT delete before the 72h deadline");
+  await admin.query("UPDATE luemi_private.erasure_requests "+
+   "SET eligible_at=clock_timestamp()-interval '1 second' WHERE id=$1",[q.rows[0].id]);
   // First deletion succeeds in external Storage, second fails. SQL must
   // roll back, and a retry must treat the missing first object as deleted.
   let deletions=0;
@@ -354,7 +366,7 @@ test("01F: erasure waits for in-flight Storage write and queues its derivative",
   // Media worker owns the per-user advisory lock; erasure must wait until
   // its SQL and Storage operation have finished before taking its outbox snapshot.
   const deleting=mutate(app,user,"/api/v3/account/request-deletion",
-   {confirmation:"DELETE MY LUEMI ACCOUNT"});
+   deletionBody);
   release();
   const [uploaded,disabled]=await Promise.all([uploading,deleting]);
   if(uploaded.statusCode!==200){
@@ -369,6 +381,8 @@ test("01F: erasure waits for in-flight Storage write and queues its derivative",
    "SELECT object_key FROM luemi_private.erasure_objects WHERE request_id=$1",
    [receipt.rows[0].id]);
   assert.equal(files.rowCount,1,"in-flight derivative must appear in deletion queue");
+  await admin.query("UPDATE luemi_private.erasure_requests "+
+   "SET eligible_at=clock_timestamp()-interval '1 second' WHERE id=$1",[receipt.rows[0].id]);
   const done=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,
    storage,limit:1});
   assert.deepEqual(done,{completed:1,failed:0,pending:false});
@@ -380,7 +394,7 @@ test("01F: miswired requester role, worker role or unapproved feature fail close
  try{
   const user=await identity(miswired,8011012);
   assert.equal((await mutate(miswired,user,"/api/v3/account/request-deletion",
-   {confirmation:"DELETE MY LUEMI ACCOUNT"})).statusCode,503);
+   deletionBody)).statusCode,503);
   assert.equal((await miswired.inject({method:"GET",url:"/api/v2/auth/session",
    headers:{cookie:user.cookie}})).statusCode,200);
  }finally{await miswired.close();}
@@ -391,5 +405,68 @@ test("01F: miswired requester role, worker role or unapproved feature fail close
  }finally{await normal.close();}
  await assert.rejects(runErasureBatch({databaseUrl:erasureRequestUrl!,namespace,
   storage:memoryPrivateStore()}),/erasure_worker_role_denied/);
+});
+test("72h recovery requires signed same-owner Telegram confirmation and retains private pixels",async()=>{
+ const storage=memoryPrivateStore(),app=makeApp({erasure:true,storage});
+ try{
+  const owner=await identity(app,8011041);
+  const photos=await prepare(app,owner);
+  assert.equal(photos.length,3);
+  const deleteReply=await mutate(app,owner,"/api/v3/account/request-deletion",deletionBody);
+  assert.equal(deleteReply.statusCode,202,deleteReply.body);
+  const queue=await admin.query<{id:string}>(
+   "SELECT id FROM luemi_private.erasure_requests WHERE actor_id=$1 AND state='pending'",[owner.id]);
+  assert.equal(queue.rowCount,1);
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/auth/session",
+   headers:{cookie:owner.cookie}})).statusCode,401);
+  const pending=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(8011041)}});
+  assert.equal(pending.statusCode,409,pending.body);
+  assert.equal(pending.json().error,"account_pending_deletion");
+  const recoverUrl="/api/v2/auth/recover-deletion";
+  const unsigned=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},
+   payload:{initData:"forged",confirmation:"RESTORE MY LUEMI ACCOUNT"}});
+  assert.equal(unsigned.statusCode,401);
+  const passive=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(8011041)}});
+  assert.equal(passive.statusCode,422);
+  const stranger=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},
+   payload:{initData:sign(8011042),confirmation:"RESTORE MY LUEMI ACCOUNT"}});
+  assert.equal(stranger.statusCode,409);
+  const restored=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},
+   payload:{initData:sign(8011041),confirmation:"RESTORE MY LUEMI ACCOUNT"}});
+  assert.equal(restored.statusCode,200,restored.body);
+  assert.deepEqual(restored.json(),{state:"restored_hidden",republicationRequired:true});
+  const q=await admin.query("SELECT id FROM luemi_private.erasure_requests WHERE actor_id=$1",[owner.id]);
+  assert.equal(q.rowCount,0,"recover must cancel deletion outbox");
+  const returned=await admin.query<{state:string;publication_status:string}>(
+   "SELECT state,publication_status FROM luemi_private.media_assets WHERE owner_id=$1",[owner.id]);
+  assert.equal(returned.rowCount,3);
+  assert(returned.rows.every(x=>x.publication_status==="private"));
+  assert.equal((await admin.query(
+   "SELECT id FROM luemi_private.actors WHERE id=$1 AND status='active'",[owner.id])).rowCount,1);
+  const reauth=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
+   headers:{origin,"sec-fetch-site":"same-origin"},payload:{initData:sign(8011041)}});
+  assert.equal(reauth.statusCode,200,reauth.body);
+  const worker=await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,storage,limit:1});
+  assert.deepEqual(worker,{completed:0,failed:0,pending:false});
+  const files=await admin.query<{derivative_key:string}>(
+   "SELECT derivative_key FROM luemi_private.media_assets WHERE owner_id=$1",[owner.id]);
+  for(const file of files.rows)assert.ok(await storage.get(file.derivative_key));
+  // Force an unrelated synthetic deletion into the past and verify no recovery.
+  const overdue=await identity(app,8011043);
+  await consent(app,overdue);
+  assert.equal((await mutate(app,overdue,"/api/v3/account/request-deletion",deletionBody)).statusCode,202);
+  await admin.query("UPDATE luemi_private.erasure_requests "+
+   "SET eligible_at=clock_timestamp()-interval '1 second' WHERE actor_id=$1",[overdue.id]);
+  const expired=await app.inject({method:"POST",url:recoverUrl,
+   headers:{origin,"sec-fetch-site":"same-origin"},
+   payload:{initData:sign(8011043),confirmation:"RESTORE MY LUEMI ACCOUNT"}});
+  assert.equal(expired.statusCode,410,expired.body);
+  await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,storage,limit:1});
+ }finally{await app.close();}
 });
 test("01D admin connection cleanup",async()=>{await admin.end();await reader.end();});

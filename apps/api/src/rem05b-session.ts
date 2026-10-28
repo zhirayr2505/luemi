@@ -195,6 +195,10 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   if(!db)return deny(reply,503);
   try{
    await db.query("BEGIN");
+   // A restrictive actor UPDATE policy binds both the ordinary login refresh
+   // and any explicit recovery to this verified Telegram ID and namespace.
+   await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+   await db.query("SELECT set_config('luemi.telegram_id',$1,true)",[String(verified.user.id)]);
    if(cfg.inviteOnly){
     await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
     const allowed=await db.query(
@@ -230,7 +234,27 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     "ON CONFLICT(environment,telegram_id) DO UPDATE SET updated_at=clock_timestamp() "+
     "WHERE luemi_private.actors.status='active' RETURNING id,first_name",
     [cfg.namespace,String(verified.user.id),verified.user.first_name]);
-   if(result.rowCount!==1){await db.query("ROLLBACK");return reply.code(403).send({error:"account_unavailable"});}
+   if(result.rowCount!==1){
+    const inactive=await db.query<{id:string;status:string}>(
+     "SELECT id,status FROM luemi_private.actors WHERE environment=$1 AND telegram_id=$2",
+     [cfg.namespace,String(verified.user.id)]);
+    if(inactive.rowCount===1&&inactive.rows[0].status==="deleted"){
+     await db.query("SELECT set_config('luemi.actor_id',$1,true)",[inactive.rows[0].id]);
+     await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+     const pending=await db.query<{eligible_at:string}>(
+      "SELECT eligible_at FROM luemi_private.erasure_requests "+
+      "WHERE actor_id=$1 AND environment=$2 AND state='pending' LIMIT 1",
+      [inactive.rows[0].id,cfg.namespace]);
+     await db.query("ROLLBACK");
+     if(pending.rowCount===1){
+      const deadline=new Date(pending.rows[0].eligible_at);
+      if(Number.isFinite(deadline.getTime())&&deadline.getTime()>Date.now())
+       return reply.code(409).send({error:"account_pending_deletion",restoreUntil:deadline.toISOString()});
+     }
+     return reply.code(403).send({error:"account_unavailable"});
+    }
+    await db.query("ROLLBACK");return reply.code(403).send({error:"account_unavailable"});
+   }
    const actor=result.rows[0];
    // Serialize concurrent logins for one Telegram account, without locking
    // different users. This also enforces the active-session upper bound.
@@ -284,6 +308,64 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   }catch{await db.query("ROLLBACK").catch(()=>{});return deny(reply,503);}
   finally{db.release();}
  });
+ // A signed, recent Telegram login plus an explicit button is required;
+ // a passive app launch NEVER cancels the requested account deletion.
+ app.post<{Body:{initData?:unknown;confirmation?:unknown}}>("/api/v2/auth/recover-deletion",
+  async(req,reply)=>{
+   if(!validOrigin(req,cfg.origin))return reply.code(403).send({error:"forbidden"});
+   const raw=req.body?.initData;
+   if(typeof raw!=="string"||Buffer.byteLength(raw,"utf8")>8192||
+      req.body?.confirmation!=="RESTORE MY LUEMI ACCOUNT")
+    return reply.code(422).send({error:"explicit_confirmation_required"});
+   const telegram=validateTelegramInitData(raw,cfg.botToken,Math.floor(Date.now()/1000),300);
+   if(!telegram)return reply.code(401).send({error:"invalid_init_data"});
+   const rate=perActorRate.check("deletion-recover:"+telegram.user.id,5);
+   if(!rate.allowed){reply.header("Retry-After",String(rate.retryAfter));return reply.code(429).send({error:"rate_limited"});}
+   const db=await roleClient(issuer,"luemi_auth_issuer");
+   if(!db)return deny(reply,503);
+   try{
+    await db.query("BEGIN");
+    await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+    await db.query("SELECT set_config('luemi.telegram_id',$1,true)",[String(telegram.user.id)]);
+    const actor=await db.query<{id:string;status:string}>(
+     "SELECT id,status FROM luemi_private.actors WHERE environment=$1 AND telegram_id=$2",
+     [cfg.namespace,String(telegram.user.id)]);
+    if(actor.rowCount!==1||actor.rows[0].status!=="deleted"){
+     await db.query("ROLLBACK");return reply.code(409).send({error:"not_recoverable"});
+    }
+    await db.query("SELECT set_config('luemi.actor_id',$1,true)",[actor.rows[0].id]);
+    await db.query("SELECT set_config('luemi.environment',$1,true)",[cfg.namespace]);
+    // Queue lock first, matching erasure worker ordering, eliminates races.
+    const pending=await db.query<{id:string;eligible_at:string}>(
+     "SELECT id,eligible_at FROM luemi_private.erasure_requests "+
+     "WHERE actor_id=$1 AND environment=$2 AND state='pending' FOR UPDATE",
+     [actor.rows[0].id,cfg.namespace]);
+    if(pending.rowCount!==1||new Date(pending.rows[0].eligible_at).getTime()<=Date.now()){
+     await db.query("ROLLBACK");return reply.code(410).send({error:"recovery_expired"});
+    }
+    // Restore while the locked pending request still exists: restrictive
+    // issuer actor RLS forbids undeleting anyone without a valid grace period.
+    const restored=await db.query(
+     "UPDATE luemi_private.actors SET status='active',first_name=$2,updated_at=clock_timestamp() "+
+     "WHERE id=$1 AND environment=$3 AND status='deleted' RETURNING id",
+     [actor.rows[0].id,telegram.user.first_name,cfg.namespace]);
+    if(restored.rowCount!==1)throw Error("recovery_actor_conflict");
+    // Cancel pending Storage deletion snapshots atomically in the same txn;
+    // uncommitted active status is never visible to a concurrent worker.
+    await db.query("DELETE FROM luemi_private.erasure_objects WHERE request_id=$1",
+     [pending.rows[0].id]);
+    const cancelled=await db.query(
+     "DELETE FROM luemi_private.erasure_requests WHERE id=$1 AND actor_id=$2 RETURNING id",
+     [pending.rows[0].id,actor.rows[0].id]);
+    if(cancelled.rowCount!==1)throw Error("recovery_cancel_conflict");
+    await db.query("COMMIT");
+    reply.header("Cache-Control","private, no-store");
+    return{state:"restored_hidden",republicationRequired:true};
+   }catch{
+    await db.query("ROLLBACK").catch(()=>{});
+    return deny(reply,503);
+   }finally{db.release();}
+  });
  app.get("/api/v2/auth/session",{preHandler:authenticated},async(req)=>{
   const s=req.authActor!;
   return{mode:"session_v2",user:{id:s.actorId,firstName:s.firstName},

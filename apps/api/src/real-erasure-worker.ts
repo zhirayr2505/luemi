@@ -27,7 +27,7 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
     // A crashed worker rolls back; remote DELETE is idempotently retried on next run.
     const request=await db.query<{id:string;actor_id:string}>(
      "SELECT id,actor_id FROM luemi_private.erasure_requests "+
-     "WHERE environment=$1 AND state='pending' ORDER BY requested_at,id "+
+     "WHERE environment=$1 AND state='pending' AND eligible_at<=clock_timestamp() ORDER BY eligible_at,id "+
      "LIMIT 1 FOR UPDATE SKIP LOCKED",[options.namespace]);
     if(request.rowCount!==1){
      await db.query("COMMIT");began=false;
@@ -99,6 +99,7 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
     await db.query("DELETE FROM luemi_private.erasure_objects WHERE request_id=$1",[id]);
     const finalized=await db.query(
      "UPDATE luemi_private.erasure_requests SET state='complete',"+
+     "reason_code='prefer_not_to_say',reason_details='',"+
      "finished_at=clock_timestamp() WHERE id=$1 AND state='pending' RETURNING id",[id]);
     if(finalized.rowCount!==1)throw new Error("erasure_finalize_conflict");
     await db.query("COMMIT");began=false;completed++;
@@ -124,7 +125,7 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
     throw new Error("erasure_worker_role_denied");
    const q=await db.query(
     "SELECT id FROM luemi_private.erasure_requests "+
-    "WHERE environment=$1 AND state='pending' LIMIT 1",[options.namespace]);
+    "WHERE environment=$1 AND state='pending' AND eligible_at<=clock_timestamp() LIMIT 1",[options.namespace]);
    pending=q.rowCount!==0;
   }finally{db.release();}
   return{completed,failed,pending};

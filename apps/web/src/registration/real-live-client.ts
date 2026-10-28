@@ -92,14 +92,28 @@ export async function withdrawRealConsent():Promise<void>{
  if(!object(result)||result.state!=="consent_withdrawn"||result.dataDeleted!==false)
   throw new Error("invalid_consent_withdrawal_receipt");
 }
-/** Request immediate account lockout and queued Storage/DB purge. NOT completed erasure. */
-export async function requestMyAccountDeletion():Promise<void>{
+export const deletionReasons=[
+ ["met_someone","Нашёл(ла) человека"],
+ ["not_useful","Не подошло приложение"],
+ ["privacy","Беспокоит конфиденциальность"],
+ ["technical","Технические проблемы"],
+ ["other","Другая причина"],
+ ["prefer_not_to_say","Не хочу указывать"]
+] as const;
+export type DeletionReason=(typeof deletionReasons)[number][0];
+/** Immediately hides the owner; final irreversible cleanup starts no earlier than 72h. */
+export async function requestMyAccountDeletion(reason:DeletionReason,details:string):Promise<string>{
+ if(!deletionReasons.some(item=>item[0]===reason)||details.length>500)
+  throw new Error("invalid_deletion_reason");
  const result=await api("/api/v3/account/request-deletion","POST",
-  {confirmation:"DELETE MY LUEMI ACCOUNT"});
- if(!object(result)||result.state!=="deletion_queued"||
+  {confirmation:"DELETE MY LUEMI ACCOUNT",reason,details});
+ if(!object(result)||result.state!=="deletion_grace"||
    result.publicAccessRevoked!==true||result.sessionsRevoked!==true||
-   result.storagePending!==true||result.dataDeleted!==false)
-  throw new Error("invalid_deletion_queue_receipt");
+   result.storagePending!==true||result.dataDeleted!==false||
+   result.canRestore!==true||typeof result.restoreUntil!=="string"||
+   !Number.isFinite(Date.parse(result.restoreUntil)))
+  throw new Error("invalid_deletion_grace_receipt");
+ return result.restoreUntil;
 }
 export interface PublishedFeedPage{profiles:RealPublishedProfile[];nextCursor:string|null}
 export async function getPublishedFeed(signal:AbortSignal,cursor:string|null=null):Promise<PublishedFeedPage>{
