@@ -4,7 +4,7 @@ import type {RealPublishedProfile} from "./real-live-client";
 import {Flag} from "../ui/Flag";
 import "./real-live-feed.css";
 
-/** Beta-only real profiles. Never inserted into approved DEMO motion deck. */
+/** Only real, signed-in users and published profiles. No DEMO records. */
 export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:()=>void}){
  const [profiles,setProfiles]=useState<RealPublishedProfile[]>([]);
  const [loading,setLoading]=useState(true);
@@ -26,7 +26,7 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
    setProfiles(data.profiles);setNextCursor(data.nextCursor);setLoading(false);
   }).catch(()=>{
    if(signal.signal.aborted)return;
-   setError("Не удалось получить подтверждённые анкеты.");setLoading(false);
+   setError("Не удалось получить опубликованные анкеты.");setLoading(false);
   });
   return()=>{signal.abort();pageAbort.current?.abort();};
  },[reload]);
@@ -80,7 +80,7 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
   catch{setStatus("Не удалось отправить жалобу.");}
   finally{setBusy(null);}
  };
- return <section className="luemi-real-feed" aria-label="Лента проверенных пользователей">
+ return <section className="luemi-real-feed" aria-label="Лента опубликованных пользователей">
    <header className="luemi-real-feed-head">
      <div><strong>Знакомства</strong><p>Только настоящие опубликованные анкеты</p></div>
      {onClose&&<button type="button" onClick={onClose} aria-label="Закрыть ленту">Закрыть</button>}
