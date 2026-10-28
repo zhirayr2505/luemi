@@ -598,6 +598,36 @@ export function App() {
       setMediaStatus("Не все фотографии отправлены. Уже принятые остаются приватными. Проверь соединение перед повтором.");
     }finally{setMediaSaving(false);}
   };
+  /** A private account is complete only when its photos are durably stored. */
+  const confirmPrivateRegistration=async()=>{
+    if(!remoteDraftPilot.enabled||!remoteMediaPilot.enabled||submitting.current||
+       auth!=="authorized")return;
+    for(let n=1;n<=7;n++){
+      const problem=validateStep(draft,n,photos.length,new Date(),"live");
+      if(problem){setServerStatus("Проверь анкету: "+problem);return;}
+    }
+    if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready")){
+      setServerStatus("Для сохранения нужны 3–6 готовых фотографий.");return;
+    }
+    if(!serverConsent){setServerStatus("Подтверди согласие на хранение анкеты и фотографий.");return;}
+    submitting.current=true;setServerSaving(true);setServerStatus("Сохраняем анкету на сервере…");
+    try{
+      const previous=await readRemoteRevision();
+      await saveRemoteDraft(draft,previous.revision);
+      setPrivateDraftSaved(true);
+      setServerStatus("Загружаем фотографии в приватное хранилище…");
+      await uploadPrivatePhotos([...photos],(done,total)=>
+        setServerStatus("Отправлено фотографий: "+done+" из "+total+"."));
+      const received=await readConfirmedPrivateMediaCount(photos.length);
+      setServerPhotoCount(received);
+      setServerStatus("Сервер подтвердил анкету и "+received+" фотографий.");
+      setRealHomeTab("profile");setRealHome(true);
+    }catch(e){
+      setServerStatus(e instanceof Error&&e.message==="revision_conflict"
+       ?"Анкета изменена на другом устройстве. Локальные данные сохранены; проверь их и повтори."
+       :"Сервер не подтвердил сохранение всех фотографий. Локальные данные не удалены; повтори отправку.");
+    }finally{submitting.current=false;setServerSaving(false);}
+  };
   const confirmRealRegistration=async()=>{
     if(!realFeedPilot.enabled||submitting.current)return;
     for(let n=1;n<=7;n++){
@@ -851,8 +881,12 @@ export function App() {
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} serverConsent={serverConsent}
        theme={theme} onTheme={changeTheme}
-       setServerConsent={setServerConsent} onSave={()=>{void persistServerDraft();}}
-       serverSaving={serverSaving} serverStatus={serverStatus}
+       setServerConsent={setServerConsent}
+        onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
+          remoteMediaPilot.enabled?confirmPrivateRegistration():persistServerDraft());}}
+        mediaEnabled={remoteMediaPilot.enabled}
+       serverSaving={serverSaving||publishBusy}
+        serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
