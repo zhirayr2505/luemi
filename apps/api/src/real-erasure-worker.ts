@@ -99,6 +99,7 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
     await db.query("DELETE FROM luemi_private.erasure_objects WHERE request_id=$1",[id]);
     const finalized=await db.query(
      "UPDATE luemi_private.erasure_requests SET state='complete',"+
+     "reason_code='prefer_not_to_say',reason_details='',"+
      "finished_at=clock_timestamp() WHERE id=$1 AND state='pending' RETURNING id",[id]);
     if(finalized.rowCount!==1)throw new Error("erasure_finalize_conflict");
     await db.query("COMMIT");began=false;completed++;
