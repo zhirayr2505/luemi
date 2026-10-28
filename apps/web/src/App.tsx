@@ -560,12 +560,30 @@ export function App() {
       const problem=validateStep(draft,n,photos.length,new Date(),realFeedPilot.enabled?"live":"demo");
       if(problem){setServerStatus("Проверь шаг "+n+": "+problem);return;}
     }
-    setServerSaving(true);setServerStatus("");
+    if(photos.length<3||photos.length>6||photos.some(photo=>photo.status!=="ready")){
+      setServerStatus("Выбери от 3 до 6 готовых фотографий.");return;
+    }
+    if(!scope||!photosRestored){
+      setServerStatus("Фотографии ещё восстанавливаются. Попробуй повторить сохранение.");return;
+    }
+    setServerSaving(true);setServerStatus("Сохраняем фотографии на этом устройстве…");
     try{
+      // The private beta intentionally has NO server photo upload. Check a
+      // committed, verified IndexedDB copy before ever saying registration
+      // succeeded or navigating away from the preview.
+      const token=++saveSequence.current,photoRevision=++revision.current;
+      const local=await saveDraftSnapshot(scope,draftId.current,photoRevision,draft,8,photos);
+      if(!local.ok){
+        retryKind.current="save";setStorageState("error");setStorageCode(local.code);
+        setServerStatus("Не удалось сохранить фотографии на устройстве. Освободи место или проверь хранилище и повтори.");
+        return;
+      }
+      if(token===saveSequence.current){setStorageState("saved");setStorageCode(null);}
+      setServerStatus("Фотографии сохранены. Подтверждаем анкету на сервере…");
       const previous=await readRemoteRevision();
       if(previous.state==="private"&&!window.confirm(
-        "На сервере уже есть приватный черновик. Заменить его текущими полями? Фотографии останутся на этом устройстве."
-      )){setServerStatus("Серверный черновик оставлен без изменений.");return;}
+        "На сервере уже есть приватная анкета. Обновить её текущими данными?"
+      )){setServerStatus("Серверная анкета оставлена без изменений.");return;}
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
       setPublishStatus(null);
