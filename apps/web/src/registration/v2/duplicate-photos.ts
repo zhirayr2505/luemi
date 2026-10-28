@@ -8,7 +8,9 @@ import type {PhotoItem} from "../PhotoSorter";
 export async function findExactDuplicatePhotoIds(
   photos:readonly Pick<PhotoItem,"id"|"file"|"preview">[]
 ):Promise<string[]>{
- if(!globalThis.crypto?.subtle)return [];
+ // A browser without WebCrypto must not silently treat unchecked images
+ // as distinct. The user can retry using a supported secure WebView.
+ if(!globalThis.crypto?.subtle)throw new Error("photo_digest_unavailable");
  const seen=new Map<string,string>();
  const duplicates:string[]=[];
  for(const photo of photos){
