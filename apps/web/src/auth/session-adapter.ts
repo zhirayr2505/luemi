@@ -18,6 +18,9 @@ export async function authenticateBootstrap(initData:string,signal:AbortSignal):
   if(body&&typeof body==="object"&&
     (body as {error?:unknown}).error==="invitation_required")
    throw new Error("invitation_required");
+  if(body&&typeof body==="object"&&
+    (body as {error?:unknown}).error==="test_full")
+   throw new Error("test_full");
  }
  if(!response.ok)throw new Error(enabled?"Session bootstrap rejected":"Telegram authorization failed");
  if(!enabled)return (await response.json()) as BootstrapResponse;
