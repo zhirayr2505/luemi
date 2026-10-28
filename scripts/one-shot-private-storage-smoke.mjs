@@ -6,7 +6,7 @@ import {spawn} from "node:child_process";
 
 const PROJECT="czzyoxrwtnvbicypwrdd";
 const SERVICE="srv-dbahj0e7bikc73elkcv0";
-const CONFIRM="PROBE_LUEMI_PRIVATE_STORAGE_ONCE";
+const CONFIRM="RETRY_LUEMI_STORAGE_AFTER_NOSUCHKEY_FIX";
 const allowedKeys=new Set(["REM06_SUPABASE_STORAGE_SECRET","REM06_SUPABASE_PROJECT_REF"]);
 async function readRenderVariable(key,renderKey){
  if(!allowedKeys.has(key))throw Error("unexpected_render_variable");
@@ -29,7 +29,7 @@ async function main(){
     process.env.GITHUB_ACTOR!=="zhirayr2505"||
     process.env.GITHUB_REF!=="refs/heads/main"||
     process.env.GITHUB_EVENT_NAME!=="workflow_dispatch"||
-    process.env.GITHUB_RUN_NUMBER!=="1"||
+    process.env.GITHUB_RUN_NUMBER!=="2"||
     process.env.GITHUB_RUN_ATTEMPT!=="1"||
     process.env.OWNER_PROBE_CONFIRM!==CONFIRM)
   throw Error("scope_not_approved");
@@ -39,7 +39,7 @@ async function main(){
  if(projectRef!==PROJECT)throw Error("wrong_project");
  const storageSecret=await readRenderVariable("REM06_SUPABASE_STORAGE_SECRET",renderKey);
  const safeNamespace="ci_luemi_"+randomBytes(12).toString("hex");
- // REG01K gate approvals apply ONLY to this zero-personal-data, one-run test.
+ // REG01K approvals apply only to the owner-triggered second synthetic attempt.
  // Production REM06_* feature/policy flags are intentionally unchanged.
  const runnerEnv={
   ...process.env,

@@ -69,6 +69,47 @@ test("01C fail closed on redirect, oversize and unexpected MIME",async()=>{
  assert.equal(await createDurablePrivateStore(settings,missing).get(key),null);
  await assert.rejects(createDurablePrivateStore(settings,bad).delete(key),/delete_denied/);
 });
+test("01C Supabase HTTP 400 NoSuchKey is absence only for read and idempotent delete",async()=>{
+ const settings={projectRef,namespace,secret,bucket} as const;
+ const calls:string[]=[];
+ const transport:typeof fetch=async(_url,init)=>{
+  const method=init?.method??"GET";calls.push(method);
+  return new Response(JSON.stringify({statusCode:"400",error:"NoSuchKey",
+    message:"Object not found",errorCode:"NoSuchKey"}),{
+   status:400,headers:{"Content-Type":"application/json; charset=utf-8"}
+  });
+ };
+ const store=createDurablePrivateStore(settings,transport);
+ assert.equal(await store.get(key),null);
+ await assert.doesNotReject(store.delete(key));
+ await assert.rejects(store.put(key,Buffer.from([1])),/private_storage_put_denied/);
+ assert.deepEqual(calls,["GET","DELETE","POST"]);
+});
+test("01C rejects other HTTP 400 errors, malformed bodies and oversized error responses",async()=>{
+ const settings={projectRef,namespace,secret,bucket} as const;
+ const payloads=[
+  {errorCode:"AccessDenied",message:"Object not found"},
+  {errorCode:"NoSuchBucket",message:"Object not found"},
+  {statusCode:"400",error:"BadRequest"},
+  {errorCode:"InvalidKey",message:"Object not found"}
+ ];
+ for(const payload of payloads){
+  const transport:typeof fetch=async()=>new Response(JSON.stringify(payload),{
+   status:400,headers:{"Content-Type":"application/json"}});
+  const store=createDurablePrivateStore(settings,transport);
+  await assert.rejects(store.get(key),/private_storage_get_denied/);
+  await assert.rejects(store.delete(key),/private_storage_delete_denied/);
+ }
+ const html:typeof fetch=async()=>new Response('{"errorCode":"NoSuchKey"}',{
+  status:400,headers:{"Content-Type":"text/html"}});
+ await assert.rejects(createDurablePrivateStore(settings,html).get(key),/get_denied/);
+ const huge:typeof fetch=async()=>new Response(JSON.stringify({errorCode:"NoSuchKey",
+  padding:"x".repeat(5000)}),{status:400,headers:{"Content-Type":"application/json"}});
+ await assert.rejects(createDurablePrivateStore(settings,huge).get(key),/get_denied/);
+ const malformed:typeof fetch=async()=>new Response("{not json",{status:400,
+  headers:{"Content-Type":"application/json"}});
+ await assert.rejects(createDurablePrivateStore(settings,malformed).get(key),/get_denied/);
+});
 test("01C network failures and invalid object lengths never leak bytes",async()=>{
  const settings={projectRef,namespace,secret,bucket} as const;
  const broken:typeof fetch=async()=>{throw new Error("transport offline: "+secret);};
