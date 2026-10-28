@@ -12,6 +12,8 @@ export type SubmissionDecision=
  "review-needs-attention"|"fresh-upload";
 export function registrationSubmissionDecision(status:ServerRegistrationMediaStatus):SubmissionDecision{
  if(status.state==="published")return"already-published";
+ if(status.pending>0&&status.other===0&&status.pending+status.approved<3)
+  return"fresh-upload"; // interrupted 1–2-photo upload, safe idempotent resume
  if(status.pending>0)return"awaiting-review";
  if(status.approved>=3&&status.approved<=6&&status.other===0)
   return"ready-to-publish";
