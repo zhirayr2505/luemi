@@ -13,6 +13,14 @@ async function start(): Promise<void> {
   try {
     if (config.serveWeb) {
       await app.register(fastifyStatic, { root: staticRoot, prefix: "/", wildcard: false });
+      // Public, authentication-free privacy information. The legal notice stays
+      // explicitly review-only until the owner approves its live policy version.
+      app.get("/privacy", async (_request,reply) =>
+        reply.header("Cache-Control","no-store")
+         .header("X-Robots-Tag","noindex, nofollow")
+         .header("X-Content-Type-Options","nosniff")
+         .type("text/html; charset=utf-8").sendFile("privacy.html")
+      );
       app.setNotFoundHandler((request, reply) => {
         if (request.method === "GET" &&
           !request.url.startsWith("/api/") &&
