@@ -4,11 +4,10 @@
  * When a Telegram bot-token-like credential is pasted into "О себе", show
  * a redacted preview and instruct the owner to remove/revoke it.
  */
-const telegramCredential=/\b\d{7,12}:[A-Za-z0-9_-]{28,}(?![A-Za-z0-9_-])/g;
 export function safeOwnerAbout(value:string):{text:string;containsCredential:boolean}{
  const containsCredential=/\b\d{7,12}:[A-Za-z0-9_-]{28,}(?![A-Za-z0-9_-])/.test(value);
  return{
-  text:value.replace(telegramCredential,"[скрытый ключ]"),
+  text:containsCredential?"Описание скрыто: обнаружена строка, похожая на секретный ключ.":value,
   containsCredential
  };
 }
