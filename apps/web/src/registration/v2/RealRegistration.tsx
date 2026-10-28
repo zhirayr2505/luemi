@@ -83,7 +83,7 @@ export function RealRegistrationV2(p:Props){
   if(p.resumeReview)return;
   setIndex(!identityReady?0:!gate.hasLocation?1:!gate.hasIntent?2:
     !photoReady(photos)?4:p.publicationEnabled?5:stages.length-1);
- },[p.restored,p.resumeReview,identityReady,gate.hasLocation,gate.hasIntent,photos]);
+ },[p.restored,p.resumeReview,p.publicationEnabled,identityReady,gate.hasLocation,gate.hasIntent,photos,stages.length]);
  const nav=(target:number)=>{setHint("");setIndex(Math.min(stages.length-1,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
  const back=()=>{if(index===0)p.onExit();else nav(index-1);};
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
