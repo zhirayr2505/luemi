@@ -73,3 +73,161 @@
 .v2-runtime[data-theme="dark"] .v2-body .form-stack .hint,
 .v2-runtime[data-theme="dark"] .v2-body .field-label,
 .v2-runtime[data-theme="dark"] .v2-body .glass-field-label{color:#d6bedf}
+
+
+/* TELEGRAM A55 VISUAL REGRESSION (2026-10-28).
+ * The V2 screen is rendered as its own <main>, not inside .luemi-shell.
+ * Keep the approved V1 form token values here instead of relying on missing
+ * inherited custom properties. Only the V2 runtime is affected.
+ */
+.v2-runtime{
+ --bg:#fffafd;
+ --ink:#392d49;
+ --subtle:#756980;
+ --panel:rgba(255,255,255,.96);
+ --glass-edge:#e3d3eb;
+ --line:rgba(148,109,165,.18);
+ --lavender:#b88ce6;
+ --pink:#eca8cf;
+ --shadow:rgba(102,71,142,.10);
+ color:var(--ink);
+}
+
+/* The Telegram native back/menu pill is overlaid *inside* the WebView.
+ * Reserve real space for it BEFORE the V2 wordmark/progress/title; padding
+ * inside the flex device does not shrink the footer's touch target.
+ * Prefer Telegram content-safe-area when supplied, but keep an A55-safe
+ * minimum when Telegram reports 0 on cold start.
+ */
+@media(max-width:720px){
+ .v2-runtime[data-telegram-ui="true"] .v2-device{
+   padding-top:max(116px,
+     var(--tg-content-safe-area-inset-top,0px),
+     calc(var(--tg-safe-area-inset-top,0px) + 70px),
+     calc(env(safe-area-inset-top,0px) + 72px));
+ }
+ .v2-runtime .v2-header{min-height:66px;}
+ .v2-runtime .v2-logo img{display:block;max-width:96px;height:auto;}
+ .v2-runtime .v2-count,.v2-runtime .v2-theme{flex-shrink:0;}
+ .v2-runtime .v2-progress{padding-bottom:12px;}
+}
+
+/* Fields are readable cards, not barely-visible transparent areas.
+ * In particular this restores name, day/month/year and city input styling.
+ * No backdrop filter during scrolling (Android Telegram WebView).
+ */
+.v2-runtime .glass-control{
+ color:var(--ink);
+ background:#fffaff;
+ border:1px solid #d9c2e5;
+ border-radius:17px;
+ box-shadow:0 3px 12px rgba(123,78,154,.075),inset 0 1px 0 #fff;
+ backdrop-filter:none;
+ -webkit-backdrop-filter:none;
+ opacity:1;
+}
+.v2-runtime .glass-control:focus,
+.v2-runtime .glass-control:focus-visible{
+ border-color:#ac7fc9;
+ box-shadow:0 0 0 3px rgba(184,140,230,.16),0 3px 12px rgba(123,78,154,.07);
+ outline:none;
+}
+.v2-runtime .glass-control::placeholder{color:#9581a0;opacity:1;}
+.v2-runtime .glass-field-label,
+.v2-runtime .field-label{color:var(--ink);font-weight:730;}
+.v2-runtime .glass-field{color:var(--subtle);}
+.v2-runtime .dob-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.v2-runtime .dob-grid .glass-field{min-width:0;}
+.v2-runtime .dob-grid .glass-control{min-width:0;width:100%;text-align:center;padding:13px 7px;}
+.v2-runtime .step-name .glass-control{min-height:55px;}
+
+/* The city and language search buttons have positioned icons. Restore a
+ * consistent 44px icon gutter and avoid the default browser search padding. */
+.v2-runtime .geo-input-wrap{position:relative;min-width:0;}
+.v2-runtime .geo-input-wrap>svg:first-child{
+ position:absolute;left:15px;top:50%;transform:translateY(-50%);
+ color:#84629c;z-index:1;pointer-events:none;opacity:1;
+}
+.v2-runtime .geo-input-wrap>.glass-control.geo-input,
+.v2-runtime .geo-input-wrap>input[type="search"]{
+ padding-left:47px;padding-right:17px;min-height:54px;
+ -webkit-appearance:none;appearance:none;
+}
+.v2-runtime .geo-input-wrap>.spin{z-index:1;right:14px;left:auto;}
+.v2-runtime .geo-selected{flex-wrap:wrap;gap:8px;min-height:32px;}
+.v2-runtime .geo-selected>svg{color:#816095;flex-shrink:0;}
+.v2-runtime .geo-mode-toggle{min-height:46px;color:#7952a0;}
+.v2-runtime .geo-mode-toggle svg{flex:none;stroke:currentColor;}
+.v2-runtime .language-picker .language-option{
+ background:#fffaff;
+ border:1px solid #e1cfeb;
+ color:var(--ink);
+}
+.v2-runtime .language-picker .language-selected button{background:#fffaff;border-color:#e1cfeb;}
+
+/* Search scope: dropdown MUST be opaque, have a clear selected state and
+ * remain above the rest of the form without bleeding the background through.
+ */
+.v2-runtime .geo-scope{position:relative;isolation:isolate;}
+.v2-runtime .scope-control{
+ min-height:65px;padding:13px 17px;
+ background:#fffaff;
+ border:1px solid #d9c2e5;
+ box-shadow:0 5px 15px rgba(102,71,142,.075);
+}
+.v2-runtime .scope-control>svg{color:#78578d;flex:none;}
+.v2-runtime .scope-options{
+ position:relative;top:auto;left:auto;right:auto;
+ z-index:10;
+ width:100%;margin-top:7px;
+ padding:6px;background:#fffaff;opacity:1;
+ border:1px solid #d9c2e5;
+ border-radius:17px;
+ box-shadow:0 10px 25px rgba(105,66,135,.17);
+}
+.v2-runtime .scope-options button{
+ background:#fffaff;
+ color:var(--ink);
+ min-height:54px;padding:12px;
+}
+.v2-runtime .scope-options button[aria-selected="true"]{
+ background:#eee0f7;
+ color:#684887;
+}
+.v2-runtime .scope-options small{color:#7d6988;}
+.v2-runtime .geo-results{
+ background:#fffaff;border:1px solid #dac6e7;
+ box-shadow:0 10px 25px rgba(105,66,135,.13);
+}
+.v2-runtime .geo-results button{background:#fffaff;color:var(--ink);}
+.v2-runtime .geo-results button:active{background:#f1e5f8;}
+
+/* Dark mode gets its OWN inherited tokens; otherwise input text and icons
+ * revert to undefined --ink/--panel after theme switch. */
+.v2-runtime[data-theme="dark"]{
+ --bg:#191322;
+ --ink:#f6effb;
+ --subtle:#d0bfdc;
+ --panel:#33253f;
+ --glass-edge:#624c6f;
+ --line:rgba(232,200,255,.21);
+ --shadow:rgba(0,0,0,.25);
+}
+.v2-runtime[data-theme="dark"] .glass-control,
+.v2-runtime[data-theme="dark"] .scope-control,
+.v2-runtime[data-theme="dark"] .scope-options,
+.v2-runtime[data-theme="dark"] .scope-options button,
+.v2-runtime[data-theme="dark"] .geo-results,
+.v2-runtime[data-theme="dark"] .geo-results button,
+.v2-runtime[data-theme="dark"] .language-picker .language-option,
+.v2-runtime[data-theme="dark"] .language-picker .language-selected button{
+ background:#33253f;color:#f8eefa;border-color:#624c6f;
+ box-shadow:none;
+}
+.v2-runtime[data-theme="dark"] .scope-options button[aria-selected="true"],
+.v2-runtime[data-theme="dark"] .geo-results button:active{background:#503961;}
+.v2-runtime[data-theme="dark"] .scope-options small,
+.v2-runtime[data-theme="dark"] .glass-control::placeholder{color:#d1b9dc;}
+.v2-runtime[data-theme="dark"] .geo-input-wrap>svg:first-child,
+.v2-runtime[data-theme="dark"] .scope-control>svg,
+.v2-runtime[data-theme="dark"] .geo-selected>svg{color:#ddc0f3;}

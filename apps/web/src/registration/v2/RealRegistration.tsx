@@ -121,7 +121,8 @@ export function RealRegistrationV2(p:Props){
  const savedDraftAllowed=p.serverConsent&&identityReady&&gate.hasLocation&&
   gate.hasIntent&&photoReady(photos)&&!p.serverSaving;
  const pubNotice=remoteDraftPilot.policy;
- return <main className="v2-canvas v2-runtime" data-theme={p.theme} aria-label="Регистрация LUEMI V2">
+ return <main className="v2-canvas v2-runtime" data-theme={p.theme}
+   data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div className="v2-device" data-screen={stage.id}>
      <div className="v2-backdrop" aria-hidden="true"/>
      <header className="v2-header">
