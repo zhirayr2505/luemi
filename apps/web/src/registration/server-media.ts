@@ -70,11 +70,12 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
 }
 export async function uploadPrivatePhotos(
  photos:PhotoItem[],progress:(completed:number,total:number)=>void
-):Promise<number>{
+):Promise<string[]>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
  if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready"||!p.id))
   throw new Error("three_to_six_ready_photos_required");
  let done=0;
+ const assetIds:string[]=[];
  for(const photo of photos){
   const png=await normalizedPng(photo);
   const response=await request("/api/v2/media/intents","POST",
@@ -96,18 +97,20 @@ export async function uploadPrivatePhotos(
      (receipt as {published?:unknown}).published!==false)
     throw new Error("invalid_private_media_receipt");
   }
+  assetIds.push(intent.assetId);
   done++;
   progress(done,photos.length);
  }
- return done;
+ if(new Set(assetIds).size!==assetIds.length)throw new Error("duplicate_upload_receipt");
+ return assetIds;
 }
 
 /** Verify server-side media state instead of trusting an upload progress bar. */
-export async function readConfirmedPrivateMediaCount(expected:number):Promise<number>{
+export async function readConfirmedPrivateMediaCount(expected:number,uploadedIds:readonly string[]=[]):Promise<number>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
  const response=await fetch("/api/v2/profile/preview",{
   method:"GET",credentials:"same-origin",cache:"no-store"
  });
  if(!response.ok)throw new Error("private_manifest_unavailable");
- return confirmedPrivateMediaCount(await response.json(),expected);
+ return confirmedPrivateMediaCount(await response.json(),expected,uploadedIds);
 }

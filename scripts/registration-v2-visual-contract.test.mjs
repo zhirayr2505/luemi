@@ -37,6 +37,10 @@ assert.match(form,/aria-valuemax=\{stages\.length\}/,
  "Progress count must reflect actual signup steps");
 assert.match(app,/realOnly\|\|import\.meta\.env\.VITE_LUEMI_REGISTRATION_V2/,
  "Real-only private registration must use V2, even without the legacy V2 opt-in");
+assert.match(app,/publicMediaUiMissing=import\.meta\.env\.VITE_LUEMI_OPEN_SIGNUPS_UI/,
+ "Open public signup UI must fail closed without private server media");
+assert.match(app,/readConfirmedPrivateMediaCount\(photos\.length,uploadedIds\)/,
+ "Registration cannot confirm unrelated older private photos");
 assert.match(app,/await saveDraftSnapshot\(scope,draftId\.current,photoRevision,draft,8,photos\)/,
  "Private signup requires a confirmed local photo snapshot before server save");
 assert.match(app,/if\(!local\.ok\)\{/,

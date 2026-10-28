@@ -178,6 +178,11 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   // Real private media is an independent opt-in; never activated merely by
   // installing Storage credentials. No live state or storage is touched at boot.
   const mediaEnabled=env.REM06_MEDIA_ENABLED==="1";
+  // Public onboarding must never accept unlimited private accounts while
+  // claiming photo registration without a real server-side media pipeline.
+  // The existing 20-account friends beta is unaffected by this release gate.
+  if(openSignups&&(!regEnabled||!mediaEnabled))
+   throw new Error("Open registration requires server-backed private photo uploads");
   if(mediaEnabled){
    if(dFlag||!regEnabled||!v2Enabled||stagingOnly||
      env.REM06_PRIVACY_APPROVED!=="1"||

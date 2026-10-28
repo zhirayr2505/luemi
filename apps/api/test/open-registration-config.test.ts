@@ -59,10 +59,33 @@ test("open registration cannot publish without private media or human moderation
  ]){
   assert.throws(()=>readConfig({
    ...base,REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1",...patch
-  }),/REG01D requires/);
+  }),/REG01D requires|Open registration requires server-backed private photo uploads/);
  }
 });
 
+test("open signups may save server photos privately without publishing or a 20-person cap",()=>{
+ const env={...base,
+  REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1",
+  REM06_PUBLICATION_ENABLED:"0",
+  REM06_MODERATION_OPERATIONAL_APPROVED:"0",
+  REM06_PUBLISHER_DATABASE_URL:"",
+  REM06_DISCOVERY_DATABASE_URL:""};
+ const cfg=readConfig(env);
+ assert.equal(cfg.rem05b?.inviteOnly,false);
+ assert.equal(cfg.rem05b?.maxNewActors,undefined,
+  "public signup must not inherit the 20-account self-service beta cap");
+ assert.equal(cfg.rem05d?.durablePrivateOnly,true);
+ assert.equal(cfg.realRegistration?.enabled,true);
+ assert.equal(cfg.realPublication,undefined);
+});
+test("open signups fail closed when real private photo upload is disabled",()=>{
+ for(const overrides of [
+  {REM06_MEDIA_ENABLED:"0"},
+  {REM06_PRIVATE_DRAFT_ENABLED:"0"}
+ ]) assert.throws(()=>readConfig({...base,REM06_PUBLICATION_ENABLED:"0",
+  REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1",...overrides}),
+  /Open registration requires server-backed private photo uploads/);
+});
 test("legacy invite-only mode is unchanged when open registration is disabled",()=>{
  const cfg=readConfig({
   ...base,REM06_BETA_INVITES_ENABLED:"1",REM06_BETA_INVITES_APPROVED:"1"
