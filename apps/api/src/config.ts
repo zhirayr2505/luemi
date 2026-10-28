@@ -33,6 +33,14 @@ export interface ApiConfig {
   chats?: ChatOptions;
   matches?: MatchOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
+  // Presence of operator-gated CLI configuration ONLY; no connection, legal
+  // approval, photo review or erasure has been demonstrated by these booleans.
+  releaseOperations?:{
+    privacyFlagConfigured:boolean;
+    humanReviewCliConfigured:boolean;
+    erasureWorkerCliConfigured:boolean;
+    safetyOperatorCliConfigured:boolean;
+  };
 }
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const port = Number(env.PORT ?? "3001");
@@ -250,7 +258,42 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   }:undefined;
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
+  // CLI-only maintenance is separate from the public HTTP server. Do not
+  // interpret a public feature flag as evidence that a real moderator,
+  // suspension operator or irreversible erasure worker can actually work.
+  const operatorLoginUrls=[
+    env.REG01G_MODERATOR_DATABASE_URL,env.REM06_ERASURE_WORKER_DATABASE_URL,
+    env.REG01H_SAFETY_OPERATOR_DATABASE_URL
+  ];
+  const otherLoginUrls=[
+    env.REM05B_AUTH_DATABASE_URL,env.REM05B_REQUEST_DATABASE_URL,
+    env.REM06_MEDIA_WORKER_DATABASE_URL,env.REM06_PUBLISHER_DATABASE_URL,
+    env.REM06_DISCOVERY_DATABASE_URL,env.LUEMI_CHATS_DATABASE_URL,
+    env.LUEMI_MATCHES_DATABASE_URL,env.REM05C_BUDGET_DATABASE_URL
+  ].filter(Boolean);
+  const isolated=(value:string|undefined)=>!!value &&
+    !otherLoginUrls.includes(value) &&
+    operatorLoginUrls.filter(x=>x===value).length===1;
+  const releaseOperations={
+    privacyFlagConfigured:env.REM06_PRIVACY_APPROVED==="1"&&
+      !!env.REM06_CONSENT_VERSION,
+    humanReviewCliConfigured:env.REG01G_HUMAN_REVIEW_ENABLED==="1"&&
+      env.REG01G_HUMAN_REVIEW_POLICY_APPROVED==="1"&&
+      /^[A-Za-z0-9_-]{3,64}$/.test(env.REG01G_MODERATOR_LABEL??"")&&
+      isolated(env.REG01G_MODERATOR_DATABASE_URL),
+    erasureWorkerCliConfigured:env.REM06_ERASURE_WORKER_ENABLED==="1"&&
+      env.REM06_ERASURE_POLICY_APPROVED==="1"&&
+      env.REM06_ERASURE_MAINTENANCE_APPROVED==="1"&&
+      isolated(env.REM06_ERASURE_WORKER_DATABASE_URL)&&
+      env.REM06_MEDIA_BUCKET==="luemi-profile-private"&&
+      !!env.REM06_SUPABASE_PROJECT_REF&&!!env.REM06_SUPABASE_STORAGE_SECRET,
+    safetyOperatorCliConfigured:env.REG01H_SAFETY_OPERATOR_ENABLED==="1"&&
+      env.REG01H_SAFETY_POLICY_APPROVED==="1"&&
+      /^[A-Za-z0-9_-]{3,64}$/.test(env.REG01H_OPERATOR_LABEL??"")&&
+      isolated(env.REG01H_SAFETY_OPERATOR_DATABASE_URL)
+  };
   return {
+    releaseOperations,
     rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,chats,matches,
     rem05c:{geo,embedding},
     port,

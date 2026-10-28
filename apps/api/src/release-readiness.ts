@@ -15,12 +15,18 @@ export function describeReleaseConfig(config: ApiConfig){
   accountDeletion:config.realErasure?.enabled===true,
   safetyAppeals:config.safetyAppeal?.enabled===true,
   localGeolocation:config.rem05c?.geo?.localReverseEnabled===true,
-  externalGeocoder:config.rem05c?.geo?.providerEnabled===true
+  externalGeocoder:config.rem05c?.geo?.providerEnabled===true,
+  privacyFlagConfigured:config.releaseOperations?.privacyFlagConfigured===true,
+  humanReviewCliConfigured:config.releaseOperations?.humanReviewCliConfigured===true,
+  erasureWorkerCliConfigured:config.releaseOperations?.erasureWorkerCliConfigured===true,
+  safetyOperatorCliConfigured:config.releaseOperations?.safetyOperatorCliConfigured===true
  };
  // Full end-to-end signoff is necessarily external to a process config.
  const required=["signedTelegramSessions","openAdmission","privateDrafts",
   "privatePhotos","reviewedPublication","realMatches","realChats",
-  "accountDeletion","safetyAppeals"] as const;
+  "accountDeletion","safetyAppeals","privacyFlagConfigured",
+  "humanReviewCliConfigured","erasureWorkerCliConfigured",
+  "safetyOperatorCliConfigured"] as const;
  const missing=required.filter(k=>!capabilities[k]);
  return{
   state:missing.length===0?"configured_not_verified":"blocked",
@@ -29,6 +35,11 @@ export function describeReleaseConfig(config: ApiConfig){
   storage:"not_probed",
   endToEnd:"not_probed",
   privacyAndHumanModeration:"requires_operator_verification",
+  legalReview:"unverified",
+  armeniaCrossBorderTransfer:"unverified",
+  databaseTlsPeerVerification:"unverified",
+  // Never claim that configured CLI switches prove human availability,
+  // successful account erasure, actual TLS peer verification or legal signoff.
   capabilities,
   missing
  };
