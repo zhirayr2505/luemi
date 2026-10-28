@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import {ArrowRight,Moon,Sun} from "lucide-react";
+import {ArrowRight,Moon,Sun,Pencil} from "lucide-react";
 import {SafetyAppealPanel} from "./SafetyAppealPanel";
 import {GlassArrow} from "./ui/Glass";
 import type { HealthResponse } from "@luemi/contracts";
@@ -23,6 +23,7 @@ import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media"
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
+import {PrivateAccountView} from "./registration/PrivateAccountView";
 import "./registration/real-home.css";
 
 declare global {
@@ -756,31 +757,14 @@ export function App() {
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
   </button>;
   if(realHome&&auth==="authorized")return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
-    <section className="luemi-real-home" aria-label="LUEMI — настоящие анкеты">
+    <section className="luemi-real-home" data-account-mode={!realFeedPilot.enabled&&remoteDraftPilot.enabled?"private":"standard"}
+      data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="LUEMI — настоящие анкеты">
       <header className="luemi-real-home-top">
         <img src={logoSrc} alt="LUEMI" className="onboard-logo"/>
         {themeButton}
       </header>
       <div className="luemi-real-home-main">
-        {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<section className="luemi-real-account" aria-label="Моя закрытая анкета">
-          <h1>Моя анкета 💜</h1>
-          <p role="status">Анкета сохранена в LUEMI. При повторном входе она восстановится с сервера.</p>
-          <article className="luemi-real-account-card" aria-label="Данные моей анкеты">
-            {readyPhotos.length>0&&<div className="luemi-real-account-photos" aria-label="Локальные фотографии">
-              {readyPhotos.map((photo,i)=><img key={photo.id} src={photo.src} alt={"Моё фото на устройстве "+(i+1)} loading="lazy" decoding="async"/>)}</div>}
-            <h2>{draft.name}</h2>
-            <p>{draft.city}{draft.countryCode?" · "+draft.countryCode:""}</p>
-            {draft.goal&&<p>{goals.find(g=>g.id===draft.goal)?.label??draft.goal}</p>}
-            {draft.about&&<p>{draft.about}</p>}
-            <div className="luemi-real-account-interests">{draft.interests.map(interest=>
-              <span key={interest}>{interest}</span>)}</div>
-          </article>
-          <p>Это закрытый тест. Анкету видишь только ты. Фотографии остаются на твоём устройстве, а лента, симпатии и чаты пока не включены.</p>
-          <button type="button" onClick={()=>{setRealHome(false);setPhase("form");setStep(8);}}>
-            Редактировать анкету
-          </button>
-          <p>Чтобы прекратить участие и запросить удаление данных, напиши в Telegram <a href="https://t.me/zhiiirro">@zhiiirro</a>.</p>
-        </section>:publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
+        {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos}/>:publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
           <h1>Анкета сохранена 💜</h1>
           <p role="status">Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются.</p>
           <p>Одобрено фото: {publishStatus?.approved??0} · на проверке: {publishStatus?.pending??0} · требуют внимания: {publishStatus?.other??0}</p>
@@ -829,6 +813,11 @@ export function App() {
             <RealChats/>:<RealLiveFeed onMatched={()=>setRealHomeTab("chats")}/>}
         </Suspense>}
       </div>
+      {!realFeedPilot.enabled&&remoteDraftPilot.enabled&&<footer className="luemi-private-edit-bar">
+        <button type="button" onClick={()=>{setRealHome(false);setPhase("form");setStep(8);}}>
+          <Pencil size={19} aria-hidden="true"/> Редактировать анкету <ArrowRight size={19} aria-hidden="true"/>
+        </button>
+      </footer>}
       {publishStatus?.state==="published"&&<nav className="luemi-real-home-nav" aria-label="Разделы LUEMI">
         <button type="button" aria-current={realHomeTab==="feed"?"page":undefined} onClick={()=>setRealHomeTab("feed")}>Знакомства</button>
         {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&

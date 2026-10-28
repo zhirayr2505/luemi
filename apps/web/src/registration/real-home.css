@@ -37,3 +37,188 @@
 .luemi-real-account-interests{display:flex;flex-wrap:wrap;gap:6px}
 .luemi-real-account-interests span{padding:5px 10px;border-radius:100px;
  background:#f0e3f5;color:#684d77;font-size:12px}
+
+/* PRIVATE BETA ACCOUNT — LUEMI premium owner screen (not a published profile).
+ * Scoped to the private-draft home so Discovery, real published profiles,
+ * existing registration and chats retain their approved styles. No backdrop
+ * filters or continuously moving gradients in the scroll/photo hot path.
+ */
+.luemi-real-home[data-account-mode="private"]{
+ background:radial-gradient(ellipse at 15% 4%,#f3e5fa 0%,transparent 48%),
+  radial-gradient(ellipse at 85% 83%,#faeaf4 0%,transparent 50%),#fffbff;
+ color:#422d4f;
+}
+.luemi-real-home[data-account-mode="private"] .luemi-real-home-top{
+ position:relative;z-index:2;min-height:70px;
+ padding:16px 22px 12px;
+ background:rgba(255,250,255,.97);
+ border-bottom:1px solid rgba(153,106,184,.14);
+}
+.luemi-real-home[data-account-mode="private"][data-telegram-ui="true"] .luemi-real-home-top{
+ /* The Telegram Back/menu pill is a native overlay at the top, not app
+  * content. Avoid overlapping the logo as on the owner's A55 screenshot.
+  * MAX, not additive, to avoid double-counting WebApp contentSafeAreaInset. */
+ padding-top:max(72px,var(--top-safe,0px),calc(env(safe-area-inset-top,0px) + 12px));
+}
+.luemi-real-home[data-account-mode="private"] .luemi-real-home-top .onboard-logo{
+ width:108px;max-height:42px;object-fit:contain;display:block;
+}
+.luemi-real-home[data-account-mode="private"] .luemi-real-home-main{
+ padding:0 0 12px;
+ scroll-padding-top:20px;
+ scrollbar-width:none;
+}
+.luemi-real-home[data-account-mode="private"] .luemi-real-home-main::-webkit-scrollbar{display:none}
+.luemi-private-profile{
+ display:flex;flex-direction:column;gap:18px;
+ max-width:560px;margin:0 auto;
+ min-width:0;padding:22px 18px 30px;
+}
+.luemi-private-heading{display:flex;flex-direction:column;gap:8px}
+.luemi-private-eyebrow{display:flex;align-items:center;gap:7px;font-size:10px;
+ letter-spacing:.18em;font-weight:800;color:#a17bb8}
+.luemi-private-heading h1{display:flex;align-items:center;gap:10px;margin:0;
+ font-size:clamp(29px,7.6vw,36px);letter-spacing:-.038em;
+ font-weight:800;line-height:1.16;color:#432b50}
+.luemi-private-heading h1 svg{color:#b984dc;flex:none;filter:drop-shadow(0 2px 5px rgba(177,110,212,.16))}
+.luemi-private-heading>p{color:#907d9a;font-size:14px;line-height:1.5;margin:0}
+.luemi-private-status{
+ display:flex;align-items:flex-start;gap:12px;border-radius:19px;
+ padding:15px;background:#f2eaf8;border:1px solid #e9d8f0;color:#745782;
+}
+.luemi-private-status-icon{display:grid;place-items:center;flex:none;
+ width:39px;height:39px;border-radius:13px;
+ background:linear-gradient(135deg,#ddc1f0,#f1d5ec);color:#82549d;
+}
+.luemi-private-status>div{min-width:0}
+.luemi-private-status strong{font-size:14px;line-height:1.4;color:#664475}
+.luemi-private-status p{margin:4px 0 0;color:#856d90;font-size:12px;line-height:1.6}
+.luemi-private-card{
+ min-width:0;overflow:hidden;border-radius:27px;
+ border:1px solid rgba(153,105,177,.22);background:#fff;
+ box-shadow:0 15px 35px rgba(105,73,130,.10),0 2px 8px rgba(105,73,130,.045);
+}
+.luemi-private-gallery{padding:12px 12px 0;min-width:0}
+.luemi-private-hero{
+ width:100%;height:clamp(295px,52dvh,440px);position:relative;overflow:hidden;
+ border-radius:19px;background:linear-gradient(140deg,#e7d7f3,#f6e8f3);
+}
+.luemi-private-hero>img{width:100%;height:100%;display:block;object-fit:cover;object-position:center 27%}
+.luemi-private-hero:after{
+ content:"";pointer-events:none;position:absolute;left:0;right:0;bottom:0;height:88px;
+ background:linear-gradient(to top,rgba(44,24,55,.47),transparent);
+}
+.luemi-private-photo-count,.luemi-private-photo-label{
+ position:absolute;z-index:1;display:flex;align-items:center;gap:5px;
+ color:#fff;font-size:11px;font-weight:700;
+ background:rgba(51,34,67,.54);border:1px solid rgba(255,255,255,.25);
+ border-radius:999px;padding:7px 10px;
+}
+.luemi-private-photo-count{right:12px;top:12px}
+.luemi-private-photo-label{left:12px;bottom:12px;background:rgba(63,43,77,.52)}
+.luemi-private-empty{display:flex;flex-direction:column;align-items:center;
+ justify-content:center;gap:12px;color:#977bac;font-size:14px;padding:24px;text-align:center}
+.luemi-private-empty:after{display:none}
+.luemi-private-thumbnails{
+ display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+ padding:10px 2px 5px;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+}
+.luemi-private-thumbnails::-webkit-scrollbar{display:none}
+.luemi-private-thumb{
+ width:70px;height:81px;flex:0 0 70px;min-width:0;overflow:hidden;
+ border:2px solid transparent;border-radius:13px;
+ padding:2px;background:#f1e8f5;
+ opacity:.8;transition:border-color .14s,opacity .14s,transform .14s;
+}
+.luemi-private-thumb img{display:block;width:100%;height:100%;border-radius:9px;object-fit:cover}
+.luemi-private-thumb.is-active{border-color:#b583d4;background:#fff;opacity:1}
+.luemi-private-thumb:focus-visible{outline:3px solid #a87ccf;outline-offset:2px}
+.luemi-private-thumb:active{transform:scale(.97)}
+.luemi-private-details{display:flex;flex-direction:column;gap:15px;padding:20px 20px 24px;min-width:0}
+.luemi-private-name-row{display:flex;align-items:center;gap:12px;min-width:0}
+.luemi-private-name-row h2{margin:0;flex:1;min-width:0;overflow-wrap:anywhere;
+ font-size:clamp(22px,6vw,29px);font-weight:800;letter-spacing:-.025em;color:#3f2b4f}
+.luemi-private-lock{display:grid;place-items:center;flex:none;
+ width:34px;height:34px;background:#f3e8f8;color:#8e65ab;border-radius:11px}
+.luemi-private-location{display:flex;align-items:center;gap:8px;margin:-4px 0 0;
+ font-size:13px;color:#8e7699;line-height:1.4;overflow-wrap:anywhere}
+.luemi-private-location svg{flex:none;color:#a77bbe}
+.luemi-private-goal{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;
+ max-width:100%;min-width:0;padding:9px 13px;border-radius:999px;
+ background:linear-gradient(105deg,#ecdbf8,#f5e1f0);color:#754992;
+ font-size:12px;font-weight:740;overflow-wrap:anywhere}
+.luemi-private-goal svg{flex:none}
+.luemi-private-about,.luemi-private-interests{border-top:1px solid #eee5f2;padding-top:15px;min-width:0}
+.luemi-private-about h3,.luemi-private-interests h3{
+ font-size:12px;color:#a17fad;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+ margin:0 0 10px;
+}
+.luemi-private-about p{font-size:14px;line-height:1.65;color:#65526e;margin:0;
+ white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;max-width:100%}
+.luemi-private-secret-warning{display:flex;align-items:flex-start;gap:8px;
+ margin-top:12px;padding:12px;border-radius:13px;background:#fff0f2;
+ border:1px solid #efcfda;color:#975270;font-size:12px;line-height:1.5;
+ overflow-wrap:anywhere}
+.luemi-private-secret-warning svg{flex:none}
+.luemi-private-chips{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
+.luemi-private-chips span{
+ display:inline-flex;max-width:100%;padding:7px 11px;border-radius:999px;
+ color:#78588e;background:#f2e7f8;border:1px solid #e9d8f2;
+ font-size:12px;font-weight:610;overflow-wrap:anywhere;
+}
+.luemi-private-notice{display:flex;align-items:flex-start;gap:11px;
+ color:#947d9e;background:#faf4fc;border:1px solid #eddff2;
+ border-radius:17px;padding:15px}
+.luemi-private-notice svg{flex:none;margin-top:2px;color:#a67abb}
+.luemi-private-notice p{margin:0;font-size:12px;line-height:1.6;color:#8c7596}
+.luemi-private-support{margin:0;text-align:center;font-size:12px;color:#917c9a}
+.luemi-private-support a{display:inline-flex;align-items:center;gap:3px;
+ color:#8c60aa;font-weight:730;text-decoration:none}
+.luemi-private-edit-bar{flex:none;z-index:3;
+ padding:12px 18px max(16px,var(--bottom-safe,env(safe-area-inset-bottom,0px)));
+ background:#fffbff;border-top:1px solid #eee0f2;
+ box-shadow:0 -7px 18px rgba(115,77,144,.055)}
+.luemi-private-edit-bar>button{
+ display:flex;align-items:center;justify-content:center;gap:11px;
+ width:100%;max-width:524px;margin:0 auto;min-height:55px;
+ border:1px solid rgba(178,125,203,.44);border-radius:18px;
+ background:linear-gradient(110deg,#b994eb,#e5a9d4);color:#503263;
+ font-size:15px;font-weight:760;letter-spacing:.005em;
+ box-shadow:0 8px 19px rgba(151,90,178,.17);
+}
+.luemi-private-edit-bar>button svg:last-child{margin-left:auto;margin-right:14px}
+.luemi-private-edit-bar>button svg:first-child{margin-left:13px}
+.luemi-private-edit-bar>button:focus-visible{outline:3px solid #9c69c5;outline-offset:2px}
+.luemi-private-edit-bar>button:active{transform:scale(.99)}
+
+/* An account should be just as legible after switching the LUEMI theme. */
+.luemi-shell[data-theme="dark"] .luemi-real-home[data-account-mode="private"]{
+ color:#f6eafb;background:radial-gradient(ellipse at 10% 8%,#35253d,transparent 54%),#201728;
+}
+.luemi-shell[data-theme="dark"] .luemi-real-home[data-account-mode="private"] .luemi-real-home-top,
+.luemi-shell[data-theme="dark"] .luemi-private-edit-bar{background:#271c30;border-color:#45334c}
+.luemi-shell[data-theme="dark"] .luemi-private-heading h1,
+.luemi-shell[data-theme="dark"] .luemi-private-name-row h2{color:#f6eafb}
+.luemi-shell[data-theme="dark"] .luemi-private-card{background:#2e2238;border-color:#614569;box-shadow:none}
+.luemi-shell[data-theme="dark"] .luemi-private-status,
+.luemi-shell[data-theme="dark"] .luemi-private-notice{background:#382943;border-color:#5d4770}
+.luemi-shell[data-theme="dark"] .luemi-private-status p,
+.luemi-shell[data-theme="dark"] .luemi-private-status strong,
+.luemi-shell[data-theme="dark"] .luemi-private-notice p,
+.luemi-shell[data-theme="dark"] .luemi-private-about p{color:#e3cde9}
+.luemi-shell[data-theme="dark"] .luemi-private-about,
+.luemi-shell[data-theme="dark"] .luemi-private-interests{border-color:#493755}
+.luemi-shell[data-theme="dark"] .luemi-private-chips span,
+.luemi-shell[data-theme="dark"] .luemi-private-goal,
+.luemi-shell[data-theme="dark"] .luemi-private-lock{background:#4b335d;color:#ead4f7;border-color:#654874}
+.luemi-shell[data-theme="dark"] .luemi-private-secret-warning{background:#4c293e;color:#f7c2d7;border-color:#8d5269}
+.luemi-shell[data-theme="dark"] .luemi-private-edit-bar>button{color:#43274e}
+@media(max-width:400px){
+ .luemi-private-profile{padding:19px 14px 27px;gap:16px}
+ .luemi-private-details{padding:17px 15px 21px}
+ .luemi-private-hero{height:clamp(285px,47dvh,410px)}
+ .luemi-private-edit-bar{padding-left:14px;padding-right:14px}
+}
+@media(prefers-reduced-motion:reduce){
+ .luemi-private-thumb,.luemi-private-edit-bar>button{transition:none;transform:none}
+}
