@@ -154,8 +154,9 @@ export async function blockPublishedUser(id:string){
  const data=await api("/api/v2/profile/blocks","POST",{targetId:id});
  if(!object(data)||data.ok!==true)throw new Error("block_failed");
 }
+export type PublishedReportReason="spam"|"harassment"|"impersonation"|"unsafe_media"|"minor_suspected"|"nonconsensual_photo";
 export async function reportPublishedUser(
- id:string,reason:"spam"|"harassment"|"impersonation"|"unsafe_media"
+ id:string,reason:PublishedReportReason
 ){
  if(!uuid.test(id))throw new Error("invalid_target");
  const data=await api("/api/v2/profile/reports","POST",
