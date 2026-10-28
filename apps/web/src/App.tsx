@@ -856,6 +856,23 @@ export function App() {
         :"Не удалось восстановить аккаунт. Попробуй ещё раз.");
     }finally{setRecoveryBusy(false);}
   };
+  const deletionSettingsPanel=realFeedPilot.enabled?<>
+   <button type="button" disabled={publishBusy} onClick={()=>setAccountSettingsOpen(v=>!v)}>Настройки аккаунта</button>
+           {accountSettingsOpen&&<section className="registration-preview-review" aria-label="Настройки удаления аккаунта">
+            <h2>Удалить аккаунт</h2>
+            <p>Анкета и фотографии сразу исчезнут из знакомств. В течение 72 часов можно восстановить аккаунт.</p>
+            <label>Причина удаления<select className="glass-control" value={deletionReason}
+              onChange={e=>setDeletionReason(e.target.value as DeletionReason)}>
+              {deletionReasons.map(([value,title])=><option key={value} value={value}>{title}</option>)}
+            </select></label>
+            <label>Комментарий (необязательно)<textarea className="glass-control" value={deletionDetails}
+              maxLength={500} placeholder="Расскажи, что можно улучшить"
+              onChange={e=>setDeletionDetails(e.target.value)}/></label>
+            <button type="button" disabled={publishBusy} onClick={()=>{void eraseMyAccount();}}>
+              {publishBusy?"Отправляем запрос…":"Начать удаление"}
+            </button>
+           </section>}
+  </>:null;
   const remainingMs=deletionUntil?Math.max(0,new Date(deletionUntil).getTime()-clockNow):0;
   const remainingTime=`${Math.floor(remainingMs/86400000)} дн. ${String(Math.floor(remainingMs%86400000/3600000)).padStart(2,"0")}:${String(Math.floor(remainingMs%3600000/60000)).padStart(2,"0")}:${String(Math.floor(remainingMs%60000/1000)).padStart(2,"0")}`;
   if(accountDeletionRequested||auth==="pending-deletion")return <main className="luemi-shell" data-theme={activeTheme}
@@ -895,6 +912,7 @@ export function App() {
           <button type="button" disabled={publishBusy} onClick={()=>{setRealHome(false);setPhase("form");setStep(8);}}>
             Вернуться к анкете и фотографиям
           </button>
+          {deletionSettingsPanel}
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>:realHomeTab==="profile"?<section className="luemi-real-account" aria-label="Моя анкета">
           <h1>Моя анкета</h1>
@@ -927,21 +945,7 @@ export function App() {
             <button type="button" disabled={publishBusy} onClick={()=>setPublishedEditor(null)}>Отмена</button>
           </section>}
           <button type="button" disabled={publishBusy} onClick={()=>{void withdrawPersonalConsent();}}>Отозвать согласие и скрыть анкету</button>
-          <button type="button" disabled={publishBusy} onClick={()=>setAccountSettingsOpen(v=>!v)}>Настройки аккаунта</button>
-           {accountSettingsOpen&&<section className="registration-preview-review" aria-label="Настройки удаления аккаунта">
-            <h2>Удалить аккаунт</h2>
-            <p>Анкета и фотографии сразу исчезнут из знакомств. В течение 72 часов можно восстановить аккаунт.</p>
-            <label>Причина удаления<select className="glass-control" value={deletionReason}
-              onChange={e=>setDeletionReason(e.target.value as DeletionReason)}>
-              {deletionReasons.map(([value,title])=><option key={value} value={value}>{title}</option>)}
-            </select></label>
-            <label>Комментарий (необязательно)<textarea className="glass-control" value={deletionDetails}
-              maxLength={500} placeholder="Расскажи, что можно улучшить"
-              onChange={e=>setDeletionDetails(e.target.value)}/></label>
-            <button type="button" disabled={publishBusy} onClick={()=>{void eraseMyAccount();}}>
-              {publishBusy?"Отправляем запрос…":"Начать удаление"}
-            </button>
-           </section>}
+          {deletionSettingsPanel}
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>:<Suspense fallback={<p role="status">Загружаем…</p>}>
           {realHomeTab==="chats"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?
