@@ -1,0 +1,41 @@
+name: LUEMI approved erasure batch (OFF until owner enables automation)
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Owner only: RUN_LUEMI_APPROVED_ERASURE_BATCH"
+        required: true
+        type: string
+  schedule:
+    - cron: '*/15 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: luemi-approved-erasure-worker
+  cancel-in-progress: false
+jobs:
+  erase-approved:
+    if: github.repository == 'zhirayr2505/luemi' && github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && github.actor == 'zhirayr2505' && inputs.confirmation == 'RUN_LUEMI_APPROVED_ERASURE_BATCH') || (github.event_name == 'schedule' && vars.LUEMI_ERASURE_AUTOMATION_ENABLED == '1'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    environment: beta-bootstrap
+    env:
+      BETA_RENDER_API_KEY: ${{ secrets.BETA_RENDER_API_KEY }}
+      LUEMI_OP_ACTION: erase
+      LUEMI_OP_CONFIRM: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install locked app packages without scripts
+        run: npm ci --ignore-scripts --include=dev --no-audit --no-fund
+      - name: Compile independently scoped erasure processor
+        run: |
+          npm run build -w @luemi/contracts
+          npm run build -w @luemi/api
+      - name: Validate four TLS/RLS logins and operator approvals; process at most five due requests
+        run: node scripts/operate-erasure-queue.mjs
