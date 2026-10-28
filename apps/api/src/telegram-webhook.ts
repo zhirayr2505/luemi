@@ -45,14 +45,19 @@ export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig)
     if (/^\/(?:id|myid)(?:@LuemiAppBot)?(?:\s|$)/i.test(text)) {
       if (!Number.isSafeInteger(senderId)||senderId!==chat.id)return {ok:true};
       return {method:"sendMessage",chat_id:chat.id,
-       text:"Твой Telegram ID: "+senderId+"\nДля регистрации открой LUEMI через /start. Отправлять ID владельцу не требуется."};
+       text:"Твой Telegram ID: "+senderId+
+        (config.rem05b?.inviteOnly===true?
+         "\nЭто закрытый тест. Для приглашения отправь свой ID владельцу: @zhiiirro. После подтверждения снова открой /start.":
+         "\nДля регистрации открой LUEMI через /start.")};
     }
     if (!/^\/start(?:\s|$)/.test(text))return {ok:true};
     // Telegram accepts an API method in the webhook response; no bot token is sent to clients.
     return {
       method: "sendMessage",
       chat_id: chat.id,
-      text: "LUEMI 💜\nТвоя история начинается здесь. Открой приложение прямо в Telegram.",
+      text: config.rem05b?.inviteOnly===true?
+        "LUEMI 💜\nИдёт закрытый тест для приглашённых друзей. Нажми кнопку ниже, чтобы открыть приложение. Для получения Telegram ID отправь /myid.":
+        "LUEMI 💜\nТвоя история начинается здесь. Открой приложение прямо в Telegram.",
       reply_markup: {
         inline_keyboard: [[{
           text: "Открыть LUEMI 💜",
