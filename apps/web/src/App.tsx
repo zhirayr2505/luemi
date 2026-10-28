@@ -13,6 +13,7 @@ import {installViewportController} from "./viewport/viewport-controller";
 const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({default:m.DiscoveryApp})));
 const RealLiveFeed = lazy(() => import("./registration/RealLiveFeed").then(m=>({default:m.RealLiveFeed})));
 const RealChats = lazy(() => import("./chats/RealChats").then(m=>({default:m.RealChats})));
+const RealRegistrationV2 = lazy(() => import("./registration/v2/RealRegistration").then(m=>({default:m.RealRegistrationV2})));
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
@@ -58,6 +59,9 @@ type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
 const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
+// Safe invited-only routing; real publication remains gated until trusted FaceTrust.
+const registrationV2Pilot=remoteDraftPilot.enabled&&!realFeedPilot.enabled&&
+ import.meta.env.VITE_LUEMI_REGISTRATION_V2==="1";
 const testingNotice=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1"?"условия закрытого теста":"политику обработки данных";
 
 /** Decode the exact brand raster before showing a screen that depends on it. */
@@ -148,6 +152,7 @@ export function App() {
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
   const discoveryBackRef=useRef<()=>void>(()=>{});
+  const v2BackRef=useRef<()=>void>(()=>{});
   const activeTheme=theme;
   const patch = useCallback((change:Partial<RegistrationDraft>)=>{
     persistEnabled.current=true;
@@ -381,9 +386,11 @@ export function App() {
     ownedUrls.current=[];
   },[]);
   const registerDiscoveryBack=useCallback((handler:()=>void)=>{discoveryBackRef.current=handler;},[]);
+  const registerV2Back=useCallback((handler:()=>void)=>{v2BackRef.current=handler;},[]);
   const back=useCallback(()=>{
     setError("");
     if(phase==="form"){
+      if(registrationV2Pilot){v2BackRef.current();return;}
       if(step>1)setStep(step-1);
       else setPhase("welcome");
     }
@@ -828,6 +835,18 @@ export function App() {
       </nav>}
     </section>
   </main>;
+  if(auth==="authorized"&&phase==="form"&&registrationV2Pilot&&!demoOpen)
+    return <Suspense fallback={<main className="luemi-shell" data-theme={activeTheme}
+      role="status" style={{padding:24}}>Открываем регистрацию…</main>}>
+      <RealRegistrationV2 draft={draft} patch={patch} photos={photos}
+       addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
+       resetDraft={resetDraft} serverConsent={serverConsent}
+       setServerConsent={setServerConsent} onSave={()=>{void persistServerDraft();}}
+       serverSaving={serverSaving} serverStatus={serverStatus}
+       storageError={storageState==="error"?(storageCode??"io"):null}
+       onRetryStorage={retryStorage}
+       onExit={()=>setPhase("welcome")} registerBack={registerV2Back}/>
+    </Suspense>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
