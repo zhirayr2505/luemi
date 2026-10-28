@@ -58,6 +58,10 @@ if(all.has(v3PreviewEntry))qaRoots.push(v3PreviewEntry);
 // but its whole dependency graph must remain subject to the same audit.
 const chatsDemoEntry="apps/web/src/chats/demo-entry.tsx";
 if(all.has(chatsDemoEntry))qaRoots.push(chatsDemoEntry);
+// Registration V2 is a clearly labeled design preview, never shipped by
+// production real-only Vite bundles or mounted in authenticated App.
+const registrationV2PreviewEntry="apps/web/src/registration/v2/preview-entry.tsx";
+if(all.has(registrationV2PreviewEntry))qaRoots.push(registrationV2PreviewEntry);
 const intentional={
  // This contract is intentionally offline until an audited AI provider and
  // biometric safeguards are ready. Its tests import it directly.
