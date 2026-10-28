@@ -181,6 +181,10 @@ test("01H: minor and nonconsensual-photo reports can be triaged and suspended af
  const app=makeApp();
  try{
   const reporter=await enter(app,9300053);
+  const allowed=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
+   headers:headers(reporter),payload:{revision:0,fields:{
+    displayName:"Reporter",birthDate:"1995-01-01",consentVersion:cv}}});
+  assert.equal(allowed.statusCode,200,allowed.body);
   for(const [telegram,reason,clientRef] of [
    [9300054,"minor_suspected","urgent-minor-postpub-001"],
    [9300055,"nonconsensual_photo","urgent-nonconsent-001"]
