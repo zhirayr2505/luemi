@@ -19,7 +19,7 @@
     "dev:api": "npm run dev -w @luemi/api",
     "dev:web": "npm run dev -w @luemi/web",
     "build": "npm run build -w @luemi/contracts && npm run build -w @luemi/api && npm run build -w @luemi/web",
-    "test:ui": "node scripts/runtime-audit.mjs && node scripts/ui-contract-smoke.mjs && node scripts/registration-v2-visual-contract.test.mjs && node scripts/private-account-visual-contract.test.mjs",
+    "test:ui": "node scripts/runtime-audit.mjs && node scripts/ui-contract-smoke.mjs && node scripts/registration-v2-visual-contract.test.mjs && node scripts/private-account-visual-contract.test.mjs && node --test scripts/privacy-review-contract.test.mjs",
     "audit:code": "node scripts/runtime-audit.mjs",
     "audit:architecture": "node scripts/architecture-audit.mjs --strict",
     "prebuild": "npm run build -w @luemi/contracts && npm run lint && npm run test:ui && npm run test -w @luemi/api",
