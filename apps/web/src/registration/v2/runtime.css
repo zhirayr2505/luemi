@@ -93,18 +93,18 @@
  color:var(--ink);
 }
 
-/* The Telegram native back/menu pill is overlaid *inside* the WebView.
- * Reserve real space for it BEFORE the V2 wordmark/progress/title; padding
- * inside the flex device does not shrink the footer's touch target.
- * Prefer Telegram content-safe-area when supplied, but keep an A55-safe
- * minimum when Telegram reports 0 on cold start.
+/* Telegram overlays the Back/overflow pill in the upper WebView.
+ * A55 device screenshot: old 116px padding left a ~60 CSS-px empty gap.
+ * Keep the logo just below the native pill (~10px separation), while letting
+ * actual Telegram/safe-area insets increase the clearance when needed.
+ * This only moves the V2 content up; footer, controls and data are unchanged.
  */
 @media(max-width:720px){
  .v2-runtime[data-telegram-ui="true"] .v2-device{
-   padding-top:max(116px,
+   padding-top:max(64px,
      var(--tg-content-safe-area-inset-top,0px),
-     calc(var(--tg-safe-area-inset-top,0px) + 70px),
-     calc(env(safe-area-inset-top,0px) + 72px));
+     calc(var(--tg-safe-area-inset-top,0px) + 12px),
+     calc(env(safe-area-inset-top,0px) + 12px));
  }
  .v2-runtime .v2-header{min-height:66px;}
  .v2-runtime .v2-logo img{display:block;max-width:96px;height:auto;}
