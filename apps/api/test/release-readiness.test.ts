@@ -21,7 +21,8 @@ test("release diagnostic is private, no-cache, and never leaks config secrets",a
   const r=await app.inject({method:"GET",url:"/api/health/release",
    headers:{"x-health-key":healthKey}});
   assert.equal(r.statusCode,200,r.body);
-  assert.equal(r.headers["cache-control"],"no-store");
+  assert.match(String(r.headers["cache-control"]),/\\bno-store\\b/);
+  assert.match(String(r.headers["cache-control"]),/\\bprivate\\b/);
   const status=r.json();
   assert.equal(status.state,"blocked");
   assert.equal(status.verification,"configuration_only");
