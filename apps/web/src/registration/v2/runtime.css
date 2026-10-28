@@ -36,3 +36,40 @@
  .v2-runtime .v2-subtitle{margin-bottom:20px}
  .v2-runtime .v2-body h1{font-size:clamp(27px,7vw,34px)}
 }
+
+.v2-head-actions{display:flex;align-items:center;gap:8px}
+.v2-theme{width:34px;height:34px;border-radius:50%;border:1px solid rgba(173,134,198,.3);
+ background:#f3eafa;color:#7b5b92;display:grid;place-items:center}
+.v2-runtime[data-theme="dark"] .v2-device{background:linear-gradient(180deg,#241a2c,#1c1824);color:#f5e9fc;
+ border-color:#5b4369}
+.v2-runtime[data-theme="dark"] .v2-subtitle,
+.v2-runtime[data-theme="dark"] .v2-footnote,
+.v2-runtime[data-theme="dark"] .v2-prototype-caption,
+.v2-runtime[data-theme="dark"] .v2-label{color:#d1b9dc}
+.v2-runtime[data-theme="dark"] .v2-eyebrow{color:#d5a6ed}
+.v2-runtime[data-theme="dark"] .v2-footer{background:#251a2e;border-color:#49354d}
+.v2-runtime[data-theme="dark"] .v2-theme,
+.v2-runtime[data-theme="dark"] .v2-count,
+.v2-runtime[data-theme="dark"] .v2-back{background:#3b2a48;color:#f2d5fc;border-color:#664879}
+.v2-runtime[data-theme="dark"] .v2-input,
+.v2-runtime[data-theme="dark"] .glass-control,
+.v2-runtime[data-theme="dark"] .glass-choice,
+.v2-runtime[data-theme="dark"] .glass-panel,
+.v2-runtime[data-theme="dark"] .glass-check,
+.v2-runtime[data-theme="dark"] .v2-consent,
+.v2-runtime[data-theme="dark"] .v2-review-card,
+.v2-runtime[data-theme="dark"] .v2-trust-steps span,
+.v2-runtime[data-theme="dark"] .registration-static-section{
+ background:#33253f;color:#f8eefa;border-color:#624c6f;
+ box-shadow:none}
+.v2-runtime[data-theme="dark"] .v2-note,
+.v2-runtime[data-theme="dark"] .v2-verification-pending,
+.v2-runtime[data-theme="dark"] .v2-secondary{background:#362942;color:#e3c6f3;border-color:#674777}
+.v2-runtime[data-theme="dark"] .v2-camera{background:radial-gradient(ellipse at center,#4a365b,#271e34)}
+.v2-runtime[data-theme="dark"] .v2-review-content p,
+.v2-runtime[data-theme="dark"] .v2-review-content>span{color:#ceb9d7}
+.v2-runtime[data-theme="dark"] .v2-review-chip{background:#553c69;color:#f6dffa}
+.v2-runtime[data-theme="dark"] .v2-progress span:not(.v2-filled){background:#4a3852}
+.v2-runtime[data-theme="dark"] .v2-body .form-stack .hint,
+.v2-runtime[data-theme="dark"] .v2-body .field-label,
+.v2-runtime[data-theme="dark"] .v2-body .glass-field-label{color:#d6bedf}
