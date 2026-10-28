@@ -841,6 +841,7 @@ export function App() {
       <RealRegistrationV2 draft={draft} patch={patch} photos={photos}
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} serverConsent={serverConsent}
+       theme={theme} onTheme={changeTheme}
        setServerConsent={setServerConsent} onSave={()=>{void persistServerDraft();}}
        serverSaving={serverSaving} serverStatus={serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
