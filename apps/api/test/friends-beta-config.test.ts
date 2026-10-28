@@ -70,3 +70,52 @@ test("friends disclosure exception cannot accidentally authorize global open sig
  assert.throws(()=>readConfig({...trial,REM06_FRIENDS_TEST_ENABLED:"0"}),
   /REG01G invite gate requires/);
 });
+
+test("self-service friends pilot admits signed Telegram identities WITHOUT owner invitations, but never public profiles",()=>{
+ const c=readConfig({...trial,
+  REM06_BETA_INVITES_ENABLED:"0",
+  REM06_BETA_INVITES_APPROVED:"0",
+  REM06_SELF_SERVICE_BETA_ENABLED:"1",
+  REM06_SELF_SERVICE_BETA_MAX_ACCOUNTS:"20"});
+ assert.equal(c.rem05b?.inviteOnly,false);
+ assert.equal(c.rem05b?.maxNewActors,20);
+ assert.equal(c.realRegistration?.enabled,true);
+ assert.equal(c.rem05d,undefined);
+ assert.equal(c.realPublication,undefined);
+ assert.equal(c.chats,undefined);
+ assert.equal(c.matches,undefined);
+ assert.equal(c.releaseOperations?.privacyFlagConfigured,false);
+});
+
+test("self-service friend access fails closed for missing notice, missing cap or public gates",()=>{
+ const beta={...trial,REM06_BETA_INVITES_ENABLED:"0",
+  REM06_BETA_INVITES_APPROVED:"0",REM06_SELF_SERVICE_BETA_ENABLED:"1"};
+ const problems=[
+  {REM06_FRIENDS_TEST_ENABLED:"0"},
+  {REM06_FRIENDS_TEST_NOTICE_ACCEPTED:"0"},
+  {REM06_PRIVATE_DRAFT_ENABLED:"0"},
+  {REM05B_SESSIONS_ENABLED:"0"},
+  {REM06_BETA_INVITES_ENABLED:"1"},
+  {REM06_OPEN_SIGNUPS_ENABLED:"1"},
+  {REM06_MEDIA_ENABLED:"1"},
+  {REM06_PUBLICATION_ENABLED:"1"},
+  {LUEMI_CHATS_V1_ENABLED:"1"},
+  {LUEMI_MATCHES_V1_ENABLED:"1"},
+  {REM06_ERASURE_REQUEST_ENABLED:"1"},
+  {STAGING_BOOTSTRAP_ONLY:"1"},
+  {REM06_SELF_SERVICE_BETA_MAX_ACCOUNTS:"0"},
+  {REM06_SELF_SERVICE_BETA_MAX_ACCOUNTS:"1000"},
+  {REM06_SELF_SERVICE_BETA_MAX_ACCOUNTS:"NaN"}
+ ];
+ for(const patch of problems){
+  assert.throws(()=>readConfig({...beta,...patch}),
+   /Friends test|Self-service beta|Self-service beta requires/,
+   JSON.stringify(patch));
+ }
+});
+
+test("returning invite pilot unchanged when self service flag is absent",()=>{
+ const c=readConfig(trial);
+ assert.equal(c.rem05b?.inviteOnly,true);
+ assert.equal(c.rem05b?.maxNewActors,undefined);
+});
