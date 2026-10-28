@@ -8,8 +8,8 @@ export const remoteDraftPilot={
  enabled:import.meta.env.VITE_LUEMI_AUTH_V2==="1"&&
    import.meta.env.VITE_LUEMI_PRIVATE_DRAFT_UI==="1"&&
    /^[a-z0-9][a-z0-9._:-]{2,63}$/i.test(version)&&
-   (/^\/[a-z0-9][a-z0-9/_-]*$/i.test(policy)||
-    (import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1"&&policy==="/friends-test.html")),
+   /^\/[a-z0-9][a-z0-9/_-]*$/i.test(policy)&&
+   (import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1"||policy!=="/friends-test.html"),
  policy
 };
 function ensurePilot(){if(!remoteDraftPilot.enabled)throw new Error("pilot_disabled");}
