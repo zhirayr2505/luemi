@@ -118,7 +118,8 @@ export function evaluateAutomaticPhotoReview(input:AutoReviewInput):PhotoVerdict
     !Number.isSafeInteger(p.faces)||!Number.isSafeInteger(p.persons)||
     !finiteScore(p.similarityToLiveSelfie)))
    return verdict("not_verified","provider_incomplete");
- if(photos.some(p=>p.faces>1||p.persons>1))
+ if(photos.some(p=>typeof p.faces==="number"&&p.faces>1||
+                   typeof p.persons==="number"&&p.persons>1))
    return verdict("replace_photo","more_than_one_person");
  if(photos.some(p=>p.faces!==1||p.persons!==1))
    return verdict("replace_photo","face_missing");
