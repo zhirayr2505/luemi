@@ -23,6 +23,7 @@ interface Props{
  serverSaving:boolean;
  serverStatus:string;
  storageError:string|null;
+ restored:boolean;
  onRetryStorage:()=>void;
  onExit:()=>void;
  registerBack:(fn:()=>void)=>void;
@@ -34,6 +35,7 @@ const messageFor=(raw:string)=>raw||"Заполни обязательные п�
 export function RealRegistrationV2(p:Props){
  const {draft,photos}=p;
  const [index,setIndex]=useState(0);
+ const recoveryApplied=useRef(false);
  const [biometricNotice,setBiometricNotice]=useState(false);
  const [hint,setHint]=useState("");
  const stage=registrationV2Stages[index];
@@ -47,6 +49,14 @@ export function RealRegistrationV2(p:Props){
   faceTrust:"awaiting_provider"
  };
  const stages=registrationV2Stages;
+ // Restore the next incomplete real-data stage once local persistence has
+ // finished loading; never blindly restart from the first question.
+ useEffect(()=>{
+  if(!p.restored||recoveryApplied.current)return;
+  recoveryApplied.current=true;
+  setIndex(!identityReady?0:!gate.hasLocation?1:!gate.hasIntent?2:
+    !photoReady(photos)?4:5);
+ },[p.restored,identityReady,gate.hasLocation,gate.hasIntent,photos]);
  const nav=(target:number)=>{setHint("");setIndex(Math.min(7,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
  const back=()=>{if(index===0)p.onExit();else nav(index-1);};
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
