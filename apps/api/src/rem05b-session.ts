@@ -9,6 +9,8 @@ export interface Rem05bOptions {
  enabled:boolean; issuerDatabaseUrl:string; requestDatabaseUrl:string; pepper:string;
  namespace:string; origin:string; botToken:string; idleMs:number; absoluteMs:number; maxSessions:number;
  inviteOnly?:boolean;
+ /** Capacity-bounded self-service test, distinct from global public signup. */
+ maxNewActors?:number;
 }
 type Session={actorId:string;sessionId:string;hash:Buffer;expiresAt:string;firstName:string};
 declare module "fastify" {interface FastifyRequest{authActor?:Session}}
@@ -34,7 +36,10 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
  if(!cfg.issuerDatabaseUrl||!cfg.requestDatabaseUrl||!cfg.botToken||!cfg.namespace||
  !/^[a-z0-9:_-]{1,96}$/i.test(cfg.namespace)||Buffer.byteLength(cfg.pepper)<32||
  cfg.idleMs<60000||cfg.absoluteMs<cfg.idleMs||!Number.isSafeInteger(cfg.maxSessions)||
- cfg.maxSessions<1||cfg.maxSessions>20)throw new Error("Invalid REM-05B test-only config");
+ cfg.maxSessions<1||cfg.maxSessions>20||
+ (cfg.maxNewActors!==undefined&&(!Number.isSafeInteger(cfg.maxNewActors)||
+  cfg.maxNewActors<2||cfg.maxNewActors>50||cfg.inviteOnly)))
+  throw new Error("Invalid REM-05B test-only config");
  const perActorRate=new RateBuckets();
  const issuer=new Pool({connectionString:cfg.issuerDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  const scoped=new Pool({connectionString:cfg.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
@@ -199,6 +204,25 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     if(allowed.rowCount!==1){
      await db.query("ROLLBACK");
      return reply.code(403).send({error:"invitation_required"});
+    }
+   }
+   if(cfg.maxNewActors!==undefined){
+    // Admission must be serialized for the WHOLE namespace, not per user,
+    // to stop concurrent distinct Telegram logins exceeding the quota.
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [cfg.namespace+":self-service-admission"]);
+    const existing=await db.query(
+     "SELECT id FROM luemi_private.actors WHERE environment=$1 AND telegram_id=$2",
+     [cfg.namespace,String(verified.user.id)]);
+    if(existing.rowCount===0){
+     const count=await db.query<{count:string}>(
+      "SELECT count(*)::text AS count FROM luemi_private.actors WHERE environment=$1",
+      [cfg.namespace]);
+     const used=Number(count.rows[0]?.count);
+     if(!Number.isSafeInteger(used)||used<0||used>=cfg.maxNewActors){
+      await db.query("ROLLBACK");
+      return reply.code(403).send({error:"test_full"});
+     }
     }
    }
    const result=await db.query<{id:string;first_name:string}>(
