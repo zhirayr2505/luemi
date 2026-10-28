@@ -50,3 +50,36 @@ export function normalizeGeoapify(input:unknown):GeoPlace[] {
   }
   return normalized;
 }
+
+/**
+ * No-key, first-party coarse reverse lookup for the small set of known cities.
+ * This is NOT a worldwide geocoder: return null outside the conservative
+ * centre radius; never guess a nearby unrelated town. Exact coordinates are
+ * consumed in memory and are never returned or persisted by this function.
+ * City centres are reference coordinates, not user's position.
+ */
+const cityCentres:ReadonlyArray<{id:string;lat:number;lon:number;maxKm:number}>=[
+ {id:"offline:ru:krasnodar",lat:45.032778,lon:38.976944,maxKm:22},
+ {id:"offline:ru:moscow",lat:55.75393,lon:37.620795,maxKm:18},
+ {id:"offline:ru:saint-petersburg",lat:59.939095,lon:30.315868,maxKm:18},
+ {id:"offline:am:yerevan",lat:40.1792,lon:44.4991,maxKm:15},
+ {id:"offline:am:armavir",lat:40.1545,lon:44.0383,maxKm:12},
+ {id:"offline:am:gyumri",lat:40.7894,lon:43.8475,maxKm:13},
+ {id:"offline:ge:tbilisi",lat:41.7151,lon:44.8271,maxKm:17}
+];
+function distanceKm(lat1:number,lon1:number,lat2:number,lon2:number):number{
+ const radians=Math.PI/180,dLat=(lat2-lat1)*radians,dLon=(lon2-lon1)*radians;
+ const a=Math.sin(dLat/2)**2+
+  Math.cos(lat1*radians)*Math.cos(lat2*radians)*Math.sin(dLon/2)**2;
+ return 6371*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+export function localReverseCity(lat:number,lon:number):GeoPlace|null{
+ if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return null;
+ let nearest:{id:string;km:number}|null=null;
+ for(const centre of cityCentres){
+  const km=distanceKm(lat,lon,centre.lat,centre.lon);
+  if(km<=centre.maxKm&&(!nearest||km<nearest.km))nearest={id:centre.id,km};
+ }
+ const item=nearest?local.find(p=>p.id===nearest.id):null;
+ return item?{...item}:null;
+}
