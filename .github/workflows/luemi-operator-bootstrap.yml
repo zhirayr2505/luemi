@@ -1,0 +1,35 @@
+name: LUEMI isolated safety and erasure operator bootstrap
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Owner only: PROVISION_LUEMI_PROTECTED_OPERATORS (no public signup activation)"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: luemi-protected-operator-bootstrap
+  cancel-in-progress: false
+jobs:
+  provision:
+    if: github.repository == 'zhirayr2505/luemi' && github.ref == 'refs/heads/main' && github.actor == 'zhirayr2505' && inputs.confirmation == 'PROVISION_LUEMI_PROTECTED_OPERATORS'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    environment: beta-bootstrap
+    env:
+      BETA_RENDER_API_KEY: ${{ secrets.BETA_RENDER_API_KEY }}
+      BETA_SUPABASE_OWNER_URL: ${{ secrets.BETA_SUPABASE_OWNER_URL }}
+      LUEMI_OPERATOR_CONFIRM: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install existing locked client without scripts
+        run: npm ci --ignore-scripts --include=dev --no-audit --no-fund
+      - name: Provision four isolated logins, validate TLS/RLS, save Render secrets, leave all feature flags OFF
+        run: node scripts/provision-operator-roles.mjs
