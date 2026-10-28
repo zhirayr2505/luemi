@@ -43,6 +43,12 @@ assert.match(app,/readConfirmedPrivateMediaCount\(photos\.length,uploadedIds\)/,
  "Registration cannot confirm unrelated older private photos");
 assert.match(app,/await saveDraftSnapshot\(scope,draftId\.current,photoRevision,draft,8,photos\)/,
  "Private signup requires a confirmed local photo snapshot before server save");
+assert.match(app,/publishStatus\?\.state!=="published"&&realHomeTab==="profile"/,
+ "Pending registration must still allow switching to the approved public feed");
+assert.match(app,/realFeedPilot\.enabled&&publishStatus!==null&&<nav/,
+ "A fully registered adult can see the discovery navigation while own photos await review");
+assert.match(app,/publishStatus\?\.state==="published"&&import\.meta\.env\.VITE_LUEMI_REAL_CHATS/,
+ "Pending users cannot enter chats requiring published profiles");
 assert.match(app,/if\(!local\.ok\)\{/,
  "Private signup must refuse entry when photo persistence fails");
 assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого теста<\/a>/,
