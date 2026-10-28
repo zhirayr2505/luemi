@@ -16,6 +16,7 @@ import {registerAccountErasure} from "./real-erasure.js";
 import {registerChats} from "./chats-api.js";
 import {registerMatches} from "./matches-api.js";
 import {registerSafetyAppeals} from "./safety-appeal-api.js";
+import {describeReleaseConfig} from "./release-readiness.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -40,11 +41,20 @@ export function buildApp(config: ApiConfig) {
   installHttpPolicy(app,config.rem05c?.embedding);
 
   app.get("/api/health/live", async (): Promise<HealthResponse> => ({ status: "ok" }));
+  const hasHealthAuthorization=(header:unknown):boolean=>
+    typeof header==="string"&&!!config.healthKey&&equalSecret(header,config.healthKey);
   app.get("/api/health/ready", async (request, reply) => {
-    const secret = request.headers["x-health-key"];
-    if (!config.healthKey || typeof secret !== "string" || !equalSecret(secret, config.healthKey))
-      return reply.code(404).send({ error: "not_found" });
-    return { status: "ready", database: "not_connected", stage: "01" };
+    if(!hasHealthAuthorization(request.headers["x-health-key"]))
+      return reply.code(404).send({error:"not_found"});
+    // HTTP readiness is NOT a successful DB/policy/E2E probe.
+    const gate=describeReleaseConfig(config);
+    return {status:"ready",database:"not_probed",stage:gate.state};
+  });
+  app.get("/api/health/release", async (request, reply) => {
+    if(!hasHealthAuthorization(request.headers["x-health-key"]))
+      return reply.code(404).send({error:"not_found"});
+    reply.header("Cache-Control","no-store");
+    return describeReleaseConfig(config);
   });
   app.post<{ Body: { initData?: unknown } }>("/api/auth/telegram", async (request, reply) => {
     if (!config.botToken) return reply.code(503).send({ error: "service_unavailable" });
