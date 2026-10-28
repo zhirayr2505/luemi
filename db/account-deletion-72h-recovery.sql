@@ -25,8 +25,8 @@ GRANT SELECT(eligible_at),UPDATE(reason_code,reason_details)
 -- to its existing ON CONFLICT active-account updated_at login path.
 -- No INSERT/UPDATE grant on public-facing roles.
 GRANT UPDATE(status,first_name) ON luemi_private.actors TO luemi_auth_issuer;
-CREATE POLICY auth_recovery_actor_restrict AS RESTRICTIVE
- ON luemi_private.actors FOR UPDATE TO luemi_auth_issuer
+CREATE POLICY auth_recovery_actor_restrict
+ ON luemi_private.actors AS RESTRICTIVE FOR UPDATE TO luemi_auth_issuer
  USING (
   environment=current_setting('luemi.environment',true)
   AND telegram_id=NULLIF(current_setting('luemi.telegram_id',true),'')::bigint
