@@ -673,7 +673,7 @@ export function App() {
         return;
       }
       if(decision==="awaiting-review"){
-        setPublishFeedback("Фотографии уже на сервере и проходят модерацию. Повторно отправлять их не нужно.");
+        setPublishFeedback(instantPublicationUi?"На сервере найдены фотографии из незавершённой регистрации. Повторно отправлять их не будем.":"Фотографии уже на сервере и проходят модерацию. Повторно отправлять их не нужно.");
         setRealHomeTab("profile");setRealHome(true);
         return;
       }
@@ -689,7 +689,7 @@ export function App() {
           setPublishStatus(published);setRealHomeTab("profile");setRealHome(true);
           setPublishFeedback("Анкета опубликована и видна другим людям.");
         }else{
-          setPublishFeedback("Фотографии уже одобрены. Нажми «Проверить модерацию и публикацию», чтобы открыть анкету.");
+          setPublishFeedback("Фотографии уже загружены. Заверши публикацию, чтобы открыть анкету.");
         }
         return;
       }
@@ -715,7 +715,7 @@ export function App() {
         setPublishStatus(confirmed);setRealHomeTab("profile");setRealHome(true);
         setPublishFeedback("Анкета опубликована. Фотографии уже в твоём профиле.");
       }else{
-        setPublishFeedback("Анкета сохранена на сервере. Фото ожидают проверки; другие пользователи пока не видят её.");
+        setPublishFeedback(instantPublicationUi?"Анкета сохранена. Не все фотографии готовы для публикации — проверь загруженные файлы.":"Анкета сохранена на сервере. Фото ожидают проверки; другие пользователи пока не видят её.");
         setRealHomeTab("profile");setRealHome(true);
       }
     }catch(e){
@@ -731,7 +731,7 @@ export function App() {
       const status=await ownerPublicationStatus();setPublishStatus(status);
       if(status.state==="published"){setRealHome(true);return;}
       if(status.approved<3||status.approved>6||status.pending||status.other){
-        setPublishFeedback("Фотографии ещё проходят проверку или требуют исправления. Анкета пока скрыта.");return;
+        setPublishFeedback(instantPublicationUi?"Не все фотографии успешно загружены. Анкета пока скрыта.":"Фотографии ещё проходят проверку или требуют исправления. Анкета пока скрыта.");return;
       }
       const draftOnServer=await readRemoteRevision();
       if(draftOnServer.state!=="private")throw new Error("missing_draft");
@@ -981,9 +981,9 @@ export function App() {
           addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} resetDraft={resetDraft}/>
         {step===8&&realFeedPilot.enabled&&<section className="registration-preview-review" aria-label="Публикация анкеты">
           <label><input type="checkbox" checked={serverConsent} onChange={e=>setServerConsent(e.target.checked)}/>
-            {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">{testingNotice}</a> и согласен(-на) сохранить анкету и отправить фотографии на проверку перед публикацией.
+            {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">{testingNotice}</a> и согласен(-на) сохранить анкету и {instantPublicationUi?"сразу опубликовать фотографии в профиле.":"отправить фотографии на проверку перед публикацией."}
           </label>
-          <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>Проверить модерацию и публикацию</button>
+          <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>{instantPublicationUi?"Опубликовать анкету":"Проверить модерацию и публикацию"}</button>
           {publishStatus&&<p role="status">{instantPublicationUi?"Загружено фото: ":"Принято фото: "}{publishStatus.approved}{!instantPublicationUi&&<> · ожидают проверки: {publishStatus.pending}</>}</p>}
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>}
