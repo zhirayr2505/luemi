@@ -59,7 +59,7 @@ test("pilot refuses missing owner invite approval, test disclosure, signed sessi
   {REM06_ERASURE_REQUEST_ENABLED:"1"}
  ];
  for(const item of bad)
-  assert.throws(()=>readConfig({...trial,...item}),/Friends test must be invite-only/,
+  assert.throws(()=>readConfig({...trial,...item}),/Friends test must be explicitly bounded/,
    JSON.stringify(item));
 });
 
