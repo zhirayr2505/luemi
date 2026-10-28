@@ -77,7 +77,7 @@ export function RealRegistrationV2(p:Props){
   if(p.resumeReview)return;
   setIndex(!identityReady?0:!gate.hasLocation?1:!gate.hasIntent?2:
     !photoReady(photos)?4:5);
- },[p.restored,identityReady,gate.hasLocation,gate.hasIntent,photos]);
+ },[p.restored,p.resumeReview,identityReady,gate.hasLocation,gate.hasIntent,photos]);
  const nav=(target:number)=>{setHint("");setIndex(Math.min(7,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
  const back=()=>{if(index===0)p.onExit();else nav(index-1);};
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
