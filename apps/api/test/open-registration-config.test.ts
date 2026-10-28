@@ -69,7 +69,7 @@ test("legacy invite-only mode is unchanged when open registration is disabled",(
  });
  assert.equal(cfg.rem05b?.inviteOnly,true);
  assert.equal(cfg.realPublication?.enabled,true);
- assert.throws(()=>readConfig({...base,REM06_OPEN_SIGNUPS_ENABLED:"0"}),/REG01D requires/);
+ assert.throws(()=>readConfig({...base,REM06_OPEN_SIGNUPS_ENABLED:"0"}),/Production V2 requires|REG01D requires/);
 });
 
 test("open registration can opt into matches and chats only with isolated DB roles and explicit policies",()=>{
@@ -96,6 +96,7 @@ test("authenticated beta can enable first-party limited city reverse without pai
  const cfg=readConfig(env);
  assert.equal(cfg.rem05c?.geo?.localReverseEnabled,true);
  assert.equal(cfg.rem05c?.geo?.providerEnabled,false);
- assert.throws(()=>readConfig({...env,REM05B_SESSIONS_ENABLED:"0"}),
+ assert.throws(()=>readConfig({...env,NODE_ENV:"test",REM05B_SESSIONS_ENABLED:"0",
+  REM06_BETA_INVITES_ENABLED:"0"}),
   /Local reverse geolocation requires authenticated V2 sessions/);
 });
