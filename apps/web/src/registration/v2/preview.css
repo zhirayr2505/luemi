@@ -1,7 +1,7 @@
 /* LUEMI Registration V2 design proof. No backdrop-filter or expensive masks
  * in gesture/scroll/camera paths. Independent of current shipping styles. */
-:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#3e2f49;background:#f7f0fa;font-synthesis:none}
-*{box-sizing:border-box}body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer}
+.v2-canvas{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#3e2f49;font-synthesis:none}
+.v2-canvas,.v2-canvas *{box-sizing:border-box}.v2-canvas button,.v2-canvas input,.v2-canvas textarea{font:inherit}.v2-canvas button{cursor:pointer}
 .v2-canvas{display:flex;align-items:center;justify-content:center;gap:32px;min-height:100dvh;padding:28px 20px;
  background:radial-gradient(ellipse at 20% 5%,#fae6f2 0%,transparent 50%),
  linear-gradient(135deg,#faf6fd,#f5eafb 48%,#fdf8fb)}
