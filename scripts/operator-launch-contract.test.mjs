@@ -69,3 +69,16 @@ test("operator diagnostics expose fixed phases, never database errors or credent
  assert.match(maintenance,/LUEMI_OPERATOR_OPERATION_REFUSED phase=/);
  assert.doesNotMatch(maintenance,/process\.stderr\.write\(.*(?:error\.message|error\.stack|token|password|secret)/i);
 });
+
+test("erasure refuses incomplete social dependencies before ANY private Storage deletion",()=>{
+ const worker=readFileSync("apps/api/src/real-erasure-worker.ts","utf8");
+ const guard=worker.indexOf("const coverage=await db.query");
+ const deleteObject=worker.indexOf("await options.storage.delete");
+ assert.ok(guard>0&&deleteObject>guard);
+ for(const fragment of ["pg_constraint","luemi_private.actors",
+   "luemi_bliki_private","stories","luemi_chats","messages",
+   "erasure_social_dependencies_unhandled"]){
+  assert.ok(worker.includes(fragment),"missing coverage guard: "+fragment);
+ }
+ assert.ok(worker.indexOf("erasure_social_dependencies_unhandled")<deleteObject);
+});

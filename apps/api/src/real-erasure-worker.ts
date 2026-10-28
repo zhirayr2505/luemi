@@ -39,6 +39,36 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
      "WHERE id=$1 AND environment=$2 AND status='deleted'",
      [actor,options.namespace]);
     if(active.rowCount!==1)throw new Error("erasure_actor_not_disabled");
+    // Fail CLOSED before the first irreversible Storage DELETE. The profile-only
+    // worker does not yet purge cross-schema chat likes/matches, shared messages
+    // or Bliki media/interaction rows. Deleting the profile bucket first would
+    // permanently remove photos and then fail at a foreign-key constraint.
+    // This conservative schema guard is retired only after an independently
+    // tested, actor-scoped social/media erasure migration is deployed.
+    const coverage=await db.query<{unsupported:boolean}>(`
+      SELECT
+        EXISTS (
+          SELECT 1 FROM pg_constraint fk
+          JOIN pg_class linked ON linked.oid=fk.conrelid
+          JOIN pg_namespace ns ON ns.oid=linked.relnamespace
+          WHERE fk.contype='f'
+            AND fk.confrelid='luemi_private.actors'::regclass
+            AND ns.nspname<>'luemi_private'
+        ) OR EXISTS (
+          SELECT 1 FROM pg_class linked
+          JOIN pg_namespace ns ON ns.oid=linked.relnamespace
+          WHERE ns.nspname='luemi_bliki_private'
+            AND linked.relname IN ('stories','views','reactions','reports')
+            AND linked.relkind IN ('r','p')
+        ) OR EXISTS (
+          SELECT 1 FROM pg_class linked
+          JOIN pg_namespace ns ON ns.oid=linked.relnamespace
+          WHERE ns.nspname='luemi_chats'
+            AND linked.relname IN ('conversations','members','messages','media')
+            AND linked.relkind IN ('r','p')
+        ) AS unsupported`);
+    if(coverage.rowCount!==1||coverage.rows[0]?.unsupported!==false)
+      throw new Error("erasure_social_dependencies_unhandled");
     const objects=await db.query<{object_key:string;deleted_at:string|null}>(
      "SELECT object_key,deleted_at::text FROM luemi_private.erasure_objects "+
      "WHERE request_id=$1 ORDER BY object_key",[id]);
