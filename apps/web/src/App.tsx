@@ -19,7 +19,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion} from "./registration/real-live-client";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
@@ -61,7 +61,7 @@ const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
 const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
 // Safe invited-only routing; real publication remains gated until trusted FaceTrust.
-const registrationV2Pilot=remoteDraftPilot.enabled&&!realFeedPilot.enabled&&
+const registrationV2Pilot=remoteDraftPilot.enabled&&
  import.meta.env.VITE_LUEMI_REGISTRATION_V2==="1";
 const testingNotice=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1"?"условия закрытого теста":"политику обработки данных";
 
@@ -140,6 +140,7 @@ export function App() {
   const [serverSaving,setServerSaving]=useState(false);
   const [serverStatus,setServerStatus]=useState("");
   const [privateDraftSaved,setPrivateDraftSaved]=useState(false);
+  const [serverPhotoCount,setServerPhotoCount]=useState(0);
   const [mediaSaving,setMediaSaving]=useState(false);
   const [mediaStatus,setMediaStatus]=useState("");
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
@@ -765,7 +766,7 @@ export function App() {
         {themeButton}
       </header>
       <div className="luemi-real-home-main">
-        {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos}/>:publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
+        {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos} serverPhotoCount={serverPhotoCount}/>:publishStatus?.state!=="published"?<section className="luemi-real-account" aria-label="Статус регистрации">
           <h1>Анкета сохранена 💜</h1>
           <p role="status">Твой Telegram-аккаунт зарегистрирован. До завершения проверки фотографии и анкета никому не показываются.</p>
           <p>Одобрено фото: {publishStatus?.approved??0} · на проверке: {publishStatus?.pending??0} · требуют внимания: {publishStatus?.other??0}</p>
