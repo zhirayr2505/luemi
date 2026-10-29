@@ -74,14 +74,18 @@ export class RegistrationMediaSync {
  }
  /** Called before local removal, also works if the browser lost the receipt. */
  removePhoto(id:string){
+  const alreadyUploaded=this.uploaded.get(id);
   this.removed.add(id);this.uploaded.delete(id);
   this.deps.onState(id,"deleting");
   void this.enqueue(async()=>{
-   if(!this.allowed)return;
+   // A user may remove an image and immediately revoke the photo checkbox.
+   // Keep cleanup authorized by the earlier server draft, not the current UI.
+   if(!this.prepared&&!alreadyUploaded)return;
+   if(alreadyUploaded){await this.deps.remove!(alreadyUploaded);return;}
    const hash=await this.deps.digest!(id);
    const item=(await this.deps.manifest!()).find(x=>x.clientDigest===hash);
    if(item)await this.deps.remove!(item.id);
-  }).catch(()=>this.deps.onError("Фото скрыто локально, но удаление с сервера не подтверждено. Повтори при подключении к сети."));
+  }).catch(()=>this.deps.onError("Удаление фото с сервера не подтверждено. Проверь сеть и повтори удаление."));
  }
  /** Final commit reconciles all selected IDs with the authenticated server,
  * removes unselected legacy assets and persists the user's actual first photo.
@@ -92,12 +96,17 @@ export class RegistrationMediaSync {
   if(ready.length<3||ready.length>6)throw new Error("three_to_six_ready_photos_required");
   await this.queue;
   await this.prepare();
-  // A previous failed background upload is retried with the SAME client key.
+  // An earlier successful upload may have survived browser restart.
+  // Adopt its authenticated digest receipt rather than re-encoding/duplicating it.
+  const before=await this.deps.manifest!();
+  const existingByDigest=new Map(before.map(x=>[x.clientDigest,x]));
   for(const photo of ready){
-   if(!this.uploaded.has(photo.id)){
-    const asset=await this.deps.upload!(photo);
-    this.uploaded.set(photo.id,asset);this.deps.onState(photo.id,"uploaded");
-   }
+   if(this.uploaded.has(photo.id))continue;
+   const digest=await this.deps.digest!(photo.id);
+   const previous=existingByDigest.get(digest);
+   const asset=previous&&["approved","pending_review"].includes(previous.state)?
+    previous.id:await this.deps.upload!(photo);
+   this.uploaded.set(photo.id,asset);this.deps.onState(photo.id,"uploaded");
   }
   const desired=new Map<string,string>();
   for(const photo of ready)desired.set(await this.deps.digest!(photo.id),photo.id);
