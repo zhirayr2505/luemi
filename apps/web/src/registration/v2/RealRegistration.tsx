@@ -27,6 +27,7 @@ interface Props{
  publicationEnabled:boolean;
  serverSaving:boolean;
  serverStatus:string;
+ photoSyncStatus?:string;
  storageError:string|null;
  restored:boolean;
  resumeReview:boolean;
@@ -162,6 +163,9 @@ export function RealRegistrationV2(p:Props){
           Анкета публикуется только после кнопки «Создать анкету».</span>
         </label>}
         {step(7)}
+        {p.mediaEnabled&&p.photoSyncStatus&&<p className="v2-photo-sync-status" role="status">
+         {p.photoSyncStatus}
+        </p>}
         <div className="v2-note"><ShieldCheck size={18}/>
          Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
          Сейчас фото остаются приватными. Автоматическая AI-проверка ещё не включена.
