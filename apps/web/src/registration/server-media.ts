@@ -68,6 +68,27 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
  if(!res.ok)throw new Error("private_media_http_"+res.status);
  return res;
 }
+/** Resolve the durable asset from a stable private client key, without
+ * uploading its bytes. Used to clean up previously uploaded photos after
+ * a reload or an in-flight selection removal. */
+export async function resolvePrivatePhotoAssetId(photo:PhotoItem):Promise<string>{
+ const png=await normalizedPng(photo);
+ const result:unknown=await (await request("/api/v2/media/intents","POST",
+  JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
+  "application/json")).json();
+ if(!result||typeof result!=="object"||Array.isArray(result)||
+   typeof (result as {assetId?:unknown}).assetId!=="string"||
+   !UUID.test((result as {assetId:string}).assetId))
+   throw new Error("invalid_private_intent");
+ return (result as {assetId:string}).assetId;
+}
+export async function savePrivatePhotoOrder(assetIds:readonly string[]):Promise<void>{
+ if(assetIds.length<3||assetIds.length>6||assetIds.some(id=>!UUID.test(id))||
+    new Set(assetIds).size!==assetIds.length)
+  throw new Error("invalid_photo_order");
+ await request("/api/v2/media/order","PUT",
+  JSON.stringify({assetIds}),"application/json");
+}
 export async function uploadOnePrivatePhoto(photo:PhotoItem):Promise<string>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
  if(photo.status!=="ready"||!photo.id)throw new Error("photo_not_ready");
