@@ -573,7 +573,7 @@ test("72h recovery requires signed same-owner Telegram confirmation and retains 
   await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,storage,limit:1});
  }finally{await app.close();}
 });
-test("01D admin connection cleanup",async()=>{await admin.end();await reader.end();});
+
 
 test("01D: background private photos can be deleted by their owner's original client key and reordered",async()=>{
  const storage=memoryPrivateStore();
@@ -643,3 +643,4 @@ test("01D: background private photos can be deleted by their owner's original cl
   assert.equal(foreignOrder.statusCode,409,"other member must not change image order");
  }finally{await app.close();}
 });
+test("01D admin connection cleanup",async()=>{await admin.end();await reader.end();});
