@@ -264,6 +264,58 @@ test("01D: incomplete 1/3 photo upload retries expired intent without duplicate 
   assert.equal(Number(count.rows[0].total),3,"retry created a duplicate asset");
  }finally{await app.close();}
 });
+test("01D: select/upload/delete/reorder private photos before publication remains owner-only",async()=>{
+ const store=memoryPrivateStore(),app=makeApp({storage:store,instant:true});
+ try{
+  const owner=await identity(app,8011488),stranger=await identity(app,8011489);
+  await consent(app,stranger);
+  const png=makeSyntheticPng(),ids:string[]=[];
+  // Background uploads start before the registration preview even with <3.
+  await consent(app,owner);
+  for(let i=0;i<4;i++){
+   const intent=await mutate(app,owner,"/api/v2/media/intents",{
+    bytes:png.length,mime:"image/png",clientKey:"background-png-"+i+"-"+owner.id});
+   assert.equal(intent.statusCode,200,intent.body);
+   ids.push(intent.json().assetId);
+   const uploaded=await app.inject({method:"PUT",url:"/api/v2/media/"+ids[i]+"/bytes",
+    headers:{...headers(owner),"content-type":"image/png"},payload:png});
+   assert.equal(uploaded.statusCode,200,uploaded.body);
+  }
+  const key=await admin.query<{derivative_key:string}>(
+   "SELECT derivative_key FROM luemi_private.media_assets WHERE id=$1",[ids[3]]);
+  assert.equal(key.rowCount,1);
+  assert.ok(await store.get(key.rows[0].derivative_key));
+  const strangerDelete=await app.inject({method:"DELETE",url:"/api/v2/media/"+ids[3],
+   headers:headers(stranger)});
+  assert.equal(strangerDelete.statusCode,404,"a third party cannot remove a private asset");
+  const deletePhoto=await app.inject({method:"DELETE",url:"/api/v2/media/"+ids[3],
+   headers:headers(owner)});
+  assert.equal(deletePhoto.statusCode,200,deletePhoto.body);
+  assert.deepEqual(deletePhoto.json(),{deleted:true,assetId:ids[3]});
+  assert.equal(await store.get(key.rows[0].derivative_key),null,
+   "removed selection must delete the derivative from private Storage");
+  const after=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:owner.cookie}});
+  assert.equal(after.statusCode,200,after.body);
+  assert.deepEqual(after.json().photos.map((p:{id:string})=>p.id),ids.slice(0,3));
+  const mainPhoto=ids[2],order=[ids[2],ids[0],ids[1]];
+  const sorted=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(owner),payload:{assetIds:order}});
+  assert.equal(sorted.statusCode,200,sorted.body);
+  assert.deepEqual(sorted.json(),{ordered:true,mainPhotoId:mainPhoto});
+  const strangerOrder=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(stranger),payload:{assetIds:order}});
+  assert.equal(strangerOrder.statusCode,409,"unmatched actor cannot reorder another profile");
+  const observed=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:owner.cookie}});
+  assert.deepEqual(observed.json().photos.map((p:{id:string})=>p.id),order);
+  const published=await mutate(app,owner,"/api/v3/profile/publish",{revision:1});
+  assert.equal(published.statusCode,409,
+   "missing required profile fields cannot publish even with approved media");
+  assert.equal((await app.inject({method:"DELETE",url:"/api/v2/media/"+ids[3],
+   headers:headers(owner)})).statusCode,200,"repeated deletion stays idempotent");
+ }finally{await app.close();}
+});
 test("01D: reusing the requester login for publishing is rejected at bootstrap",()=>{
  assert.throws(()=>makeApp({publisher:requestUrl!}),
   /separate publisher\/discovery roles/);
