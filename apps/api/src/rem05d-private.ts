@@ -237,7 +237,8 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    "SELECT revision::text,payload FROM luemi_private.private_profile_drafts WHERE owner_id=$1 AND environment=$2",
    [id,opts.namespace]);
   const m=await db.query<{id:string;state:string;generation:number}>(
-   "SELECT id,state,generation FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 ORDER BY position,id",
+   "SELECT id,state,generation FROM luemi_private.media_assets "+
+   "WHERE owner_id=$1 AND environment=$2 AND state<>'revoked' ORDER BY position,id",
    [id,opts.namespace]);
   return{status:"unpublished",revision:q.rowCount?Number(q.rows[0].revision):0,
    preview:q.rowCount?{...q.rows[0].payload}:null,
@@ -291,6 +292,97 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    [intentId,assetId,id,opts.namespace,bytes,keyDigest,bodyDigest]);
   return{assetId,state:"reserved",upload:"private_proxy"};
  }));
+ // Only private registration media may be removed here. Never expose a
+ // storage key to the browser; revoke SQL access before/with object cleanup.
+ app.delete<{Params:{id:string}}>("/api/v2/media/:id",
+ {preHandler:guard.mutation},async(req,reply)=>{
+  if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});
+  const checked=await owner(req,reply,async(db,id)=>{
+   const q=await db.query<{id:string}>(
+    "SELECT id FROM luemi_private.media_assets "+
+    "WHERE id=$1 AND owner_id=$2 AND environment=$3 "+
+    "AND publication_status='private'",
+    [req.params.id,id,opts.namespace]);
+   if(q.rowCount!==1)reject(404,"not_found");
+   return{id};
+  });
+  if(reply.sent||!("id" in checked))return checked;
+  const originalAuth=req.authActor;
+  try{
+   const completed=await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+checked.id+":profile_media_slots"]);
+    const row=await db.query<{derivative_key:string;original_key:string;state:string}>(
+     "SELECT derivative_key,original_key,state FROM luemi_private.media_assets "+
+     "WHERE id=$1 AND owner_id=$2 AND environment=$3 "+
+     "AND publication_status='private' FOR UPDATE",
+     [req.params.id,checked.id,opts.namespace]);
+    if(row.rowCount!==1)reject(404,"not_found");
+    // Keep the revoked SQL record for idempotency and audit; it no longer
+    // consumes one of the 6 active media slots.
+    const asset=row.rows[0];
+    if(asset.state!=="revoked"){
+     await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
+      "WHERE id=$1 AND owner_id=$2 AND environment=$3",
+      [req.params.id,checked.id,opts.namespace]);
+    }
+    // A failed remote deletion must not be reported as successful. SQL
+    // transaction rolls back, keeping the user able to retry deletion.
+    await opts.storage.delete(asset.derivative_key);
+    await opts.storage.delete(asset.original_key);
+    await auth.read(req,reply);
+    if(reply.sent||!originalAuth||!req.authActor||
+      req.authActor.actorId!==originalAuth.actorId||
+      req.authActor.sessionId!==originalAuth.sessionId||
+      !timingSafeEqual(req.authActor.hash,originalAuth.hash))
+      reject(401,"unauthorized");
+    return true;
+   });
+   if(!completed)reject(503,"service_unavailable");
+   return{deleted:true,assetId:req.params.id};
+  }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
+ });
+ // Order is the profile's principal photo. Protect it with the same
+ // per-owner transaction lock used by uploads/deletions.
+ app.put<{Body:unknown}>("/api/v2/media/order",
+ {preHandler:guard.mutation},async(req,reply)=>{
+  const body=req.body;
+  if(!object(body)||Object.keys(body).length!==1||!Array.isArray(body.assetIds)||
+    body.assetIds.length<3||body.assetIds.length>6||
+    body.assetIds.some((x:unknown)=>!uuid(x))||
+    new Set(body.assetIds).size!==body.assetIds.length)
+    return reply.code(422).send({error:"invalid_photo_order"});
+  const ids=body.assetIds as string[];
+  const checked=await owner(req,reply,async(db,id)=>{
+   const q=await db.query<{id:string}>(
+    "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 "+
+    "AND state='approved' AND publication_status='private'",
+    [id,opts.namespace]);
+   if(q.rows.length!==ids.length||q.rows.some(x=>!ids.includes(x.id)))
+    reject(409,"photo_order_conflict");
+   return{id};
+  });
+  if(reply.sent||!("id" in checked))return checked;
+  try{
+   await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+checked.id+":profile_media_slots"]);
+    const rows=await db.query<{id:string}>(
+     "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 "+
+     "AND state='approved' AND publication_status='private' FOR UPDATE",
+     [checked.id,opts.namespace]);
+    if(rows.rows.length!==ids.length||rows.rows.some(x=>!ids.includes(x.id)))
+     reject(409,"photo_order_conflict");
+    for(let i=0;i<ids.length;i++)
+     await db.query("UPDATE luemi_private.media_assets SET position=$1 "+
+      "WHERE id=$2 AND owner_id=$3 AND environment=$4",
+      [i,ids[i],checked.id,opts.namespace]);
+    await auth.read(req,reply);
+    if(reply.sent)reject(401,"unauthorized");
+   });
+   return{ordered:true,mainPhotoId:ids[0]};
+  }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
+ });
  app.put<{Params:{id:string};Body:Buffer}>("/api/v2/media/:id/bytes",
  {preHandler:guard.mutation,bodyLimit:MAX_BYTES},async(req,reply)=>{
   if(!uuid(req.params.id)||!Buffer.isBuffer(req.body))

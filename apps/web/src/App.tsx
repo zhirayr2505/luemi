@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,removePrivatePhoto,updatePrivatePhotoOrder,listPrivatePhotoAssets,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -134,6 +134,11 @@ export function App() {
   const photoTimers=useRef(new Map<string,number>());
   const photoQueue=useRef<Promise<void>>(Promise.resolve());
   const photoIds=useRef(new Set<string>());
+  const backgroundQueue=useRef<Promise<void>>(Promise.resolve());
+  const backgroundInFlight=useRef(new Set<string>());
+  const backgroundAssetIds=useRef(new Map<string,string>());
+  const backgroundUploaded=useRef(new Set<string>());
+  const [backgroundBusy,setBackgroundBusy]=useState(0);
   const photoGeneration=useRef(0);
   const [photosRestored,setPhotosRestored] = useState(false);
   const draftId=useRef<string>(crypto.randomUUID());
@@ -499,6 +504,22 @@ export function App() {
     setError(problem);
   };
   const removePhoto=(id:string)=>{
+    // Deleting a selected photo also schedules deletion of its private object.
+    // The queue lets any concurrent PUT finish first, then revokes its asset.
+    if(realFeedPilot.enabled&&serverConsent){
+      backgroundQueue.current=backgroundQueue.current.catch(()=>{}).then(async()=>{
+        const asset=backgroundAssetIds.current.get(id);
+        if(!asset)return;
+        try{
+          await removePrivatePhoto(asset);
+          backgroundAssetIds.current.delete(id);
+          backgroundUploaded.current.delete(id);
+          setServerPhotoCount(backgroundUploaded.current.size);
+        }catch{
+          setMediaStatus("Не удалось удалить фото с сервера. Повтори попытку перед публикацией.");
+        }
+      });
+    }
     setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
     photoJobs.current.get(id)?.abort();photoJobs.current.delete(id);
@@ -517,6 +538,43 @@ export function App() {
       const next=[...prev];const [item]=next.splice(from,1);next.splice(to,0,item);return next;
     });
   };
+  // Start uploading each selected photo immediately after local processing,
+  // not when the user visits review or presses Publish. Uploads are serialized
+  // under one owner to keep the durable remote draft and slot allocation safe.
+  useEffect(()=>{
+    if(!realFeedPilot.enabled||!remoteMediaPilot.enabled||!serverConsent||
+      auth!=="authorized"||!photosRestored||realHome)return;
+    for(const photo of photos){
+      if(photo.status!=="ready"||!photoIds.current.has(photo.id)||
+        backgroundUploaded.current.has(photo.id)||
+        backgroundInFlight.current.has(photo.id))continue;
+      const valid=[1,2,3,4,5,6].every(n=>
+        !validateStep(draft,n,photos.length,new Date(),"live"));
+      if(!valid)continue;
+      backgroundInFlight.current.add(photo.id);
+      setBackgroundBusy(n=>n+1);
+      backgroundQueue.current=backgroundQueue.current.catch(()=>{}).then(async()=>{
+        if(!photoIds.current.has(photo.id)||!serverConsent)return;
+        const remote=await readRemoteRevision();
+        await saveRemoteDraft(draft,remote.revision);
+        setPrivateDraftSaved(true);
+        const asset=await uploadPrivatePhoto(photo,id=>backgroundAssetIds.current.set(photo.id,id));
+        if(!photoIds.current.has(photo.id)){
+          await removePrivatePhoto(asset);
+          backgroundAssetIds.current.delete(photo.id);
+          return;
+        }
+        backgroundUploaded.current.add(photo.id);
+        setServerPhotoCount(backgroundUploaded.current.size);
+        setMediaStatus("Фотографии уже сохраняются приватно на сервере.");
+      }).catch(()=>{
+        setMediaStatus("Не все фото удалось сохранить на сервере. Создание анкеты повторит загрузку.");
+      }).finally(()=>{
+        backgroundInFlight.current.delete(photo.id);
+        setBackgroundBusy(n=>Math.max(0,n-1));
+      });
+    }
+  },[photos,draft,serverConsent,auth,photosRestored,realHome]);
   const resetDraft=()=>{
     if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
     photoGeneration.current++;
@@ -709,13 +767,28 @@ export function App() {
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
-      // Always reconcile the selected photo IDs against the server manifest,
-      // even when the server already has >=3 other approved photos. Count-only
-      // checks can publish stale images instead of the user's current choice.
-      // Per-photo idempotency keys make this safe on normal repeated submits.
-      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      // Most uploads were already completed during photo selection.
+      // Wait for any pending transfer; only retry genuinely missing items.
+      await backgroundQueue.current.catch(()=>{});
+      const uploadedIds:string[]=[];
+      for(const photo of photos){
+        if(!photoIds.current.has(photo.id))throw new Error("photo_selection_changed");
+        let asset=backgroundAssetIds.current.get(photo.id);
+        if(!asset||!backgroundUploaded.current.has(photo.id)){
+          asset=await uploadPrivatePhoto(photo,id=>backgroundAssetIds.current.set(photo.id,id));
+          backgroundUploaded.current.add(photo.id);
+        }
+        uploadedIds.push(asset);
+      }
+      // Previous attempts (including the user's '1 ready photo' case) may
+      // have left old authorized assets no longer in the selected gallery.
+      // Remove only obsolete PRIVATE assets, never published user photos.
+      const manifest=await listPrivatePhotoAssets();
+      for(const previous of manifest)
+        if(!uploadedIds.includes(previous.id))await removePrivatePhoto(previous.id);
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
+      await updatePrivatePhotoOrder(uploadedIds);
+      setServerPhotoCount(uploadedIds.length);
       const media=await ownerPublicationStatus();setPublishStatus(media);
       if(media.approved<photos.length||media.pending!==0||media.other!==0)
         throw new Error("incomplete_media");
@@ -1037,7 +1110,9 @@ export function App() {
         mediaEnabled={remoteMediaPilot.enabled}
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
-        serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
+        serverStatus={realFeedPilot.enabled?
+          (backgroundBusy>0?"Сохраняем выбранные фото на сервере…":mediaStatus||publishFeedback):
+          serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
