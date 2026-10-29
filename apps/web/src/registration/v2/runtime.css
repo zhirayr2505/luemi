@@ -1,11 +1,11 @@
-/* Runtime-only additions: import is lazy and opt-in for invited draft beta.
+/* Runtime-only additions for the single server-backed registration flow.
    No backdrop-filter, mask or 3D transforms on camera / scroll hot paths. */
 .v2-runtime{height:100dvh;overflow:hidden;min-height:0;background:transparent}
 .v2-runtime .v2-device{height:100dvh;max-height:950px;min-height:0}
 .v2-runtime .v2-logo img{width:96px;max-width:100%}
 .v2-runtime .v2-body{animation:none;scroll-padding-top:16px}
-.v2-runtime .v2-stage-transition{animation:v2-stage-in .42s cubic-bezier(.22,.8,.25,1) both}
-@keyframes v2-stage-in{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+.v2-runtime .v2-stage-transition{animation:v2-stage-in .34s ease both}
+@keyframes v2-stage-in{from{opacity:0}to{opacity:1}}
 .v2-runtime .v2-body .form-stack{gap:12px;padding:0 0 12px}
 .v2-runtime .v2-body .form-stack>*{animation:none}
 .v2-runtime .v2-real-groups{display:flex;flex-direction:column;gap:18px}
@@ -79,8 +79,8 @@
 
 /* TELEGRAM A55 VISUAL REGRESSION (2026-10-28).
  * The V2 screen is rendered as its own <main>, not inside .luemi-shell.
- * Keep the approved V1 form token values here instead of relying on missing
- * inherited custom properties. Only the V2 runtime is affected.
+ * Keep the registration token values local instead of relying on missing
+ * inherited custom properties. Only the server-backed flow is affected.
  */
 .v2-runtime{
  --bg:#fffafd;
@@ -138,15 +138,24 @@
 .v2-runtime .glass-field-label,
 .v2-runtime .field-label{color:var(--ink);font-weight:730;}
 .v2-runtime .glass-field{color:var(--subtle);}
-.v2-runtime .name-focus-shell,.v2-runtime .dob-focus-shell{position:relative;z-index:1;transform-origin:center center;
- transition:transform .48s cubic-bezier(.22,.8,.25,1),filter .28s ease;}
-.v2-runtime .name-focus-shell.is-focused,.v2-runtime .dob-focus-shell.is-focused{z-index:42;
- transform:translateY(var(--focus-shift,0px)) scale(1.045);}
+.v2-runtime .focus-field-slot{position:relative;min-height:86px}
+.v2-runtime .focus-field-slot-textarea{min-height:176px}
+.v2-runtime .language-focus-slot{min-height:310px}
+.v2-runtime .focus-field-shell{position:relative;z-index:1;width:100%}
+.v2-runtime .focus-field-shell.is-focused{
+ position:fixed;z-index:92;top:var(--field-focus-top,120px);
+ left:max(22px,calc((100vw - 680px)/2 + 22px));right:max(22px,calc((100vw - 680px)/2 + 22px));width:auto;
+ animation:field-dock-in .34s cubic-bezier(.22,.8,.25,1) both;
+}
+@keyframes field-dock-in{from{opacity:.65;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
 .v2-runtime .name-focus-shell .glass-control{min-height:61px;width:100%;padding:13px 16px;font-size:19px;}
 .v2-runtime .dob-focus-shell .glass-control{min-height:61px;width:100%;text-align:center;padding:13px 16px;
  font-size:21px;letter-spacing:.055em;font-variant-numeric:tabular-nums;}
-.v2-runtime .name-focus-shell.is-focused .glass-control,.v2-runtime .dob-focus-shell.is-focused .glass-control{
+.v2-runtime .focus-field-shell.is-focused .glass-control{
  border-color:#a875c7;box-shadow:0 0 0 5px rgba(184,140,230,.15),0 15px 34px rgba(113,74,136,.18),inset 0 1px 0 #fff;}
+.v2-runtime .language-focus-shell{display:flex;flex-direction:column;gap:11px}
+.v2-runtime .language-focus-shell.is-focused .language-results{max-height:min(176px,28dvh)}
+.v2-runtime .language-focus-shell.is-focused .hint{display:none}
 .v2-runtime .name-focus-shell.has-error .glass-control,.v2-runtime .dob-focus-shell.has-error .glass-control{
  border-color:#c56c91;box-shadow:0 0 0 4px rgba(197,108,145,.13),0 7px 20px rgba(159,76,112,.12);}
 .v2-runtime .field-inline-hint{display:flex;align-items:flex-start;gap:8px;margin:8px 2px 0;padding:10px 12px;
@@ -157,11 +166,11 @@
 @keyframes field-hint-in{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:none}}
 .v2-runtime .dob-focus-shell .glass-field-label{font-size:14px;}
 .v2-runtime .dob-focus-shell .glass-field small{display:block;margin:7px 2px 0;color:#9b84a5;font-size:11px;text-align:center;}
-.v2-runtime .field-focus-overlay{position:absolute;inset:0;z-index:0;background:rgba(64,39,79,.12);
+.v2-runtime .field-focus-overlay{position:fixed;inset:0;z-index:90;background:rgba(64,39,79,.12);
  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:dob-focus-in .28s ease both;}
 @keyframes dob-focus-in{from{opacity:0}to{opacity:1}}
 .v2-runtime .step-name .glass-control{min-height:55px;}
-.v2-runtime .v2-footer.is-focus-confirm{position:relative;z-index:0;}
+.v2-runtime .v2-footer.is-focus-confirm{position:relative;z-index:93;}
 .v2-runtime .v2-footer-nav.is-focus-confirm{justify-content:space-between;}
 .v2-runtime .v2-next.v2-next-confirm{flex:0 0 58px;width:58px;height:58px;min-height:58px;padding:0;
  border-radius:50%;display:grid;place-items:center;gap:0;color:#fff;border-color:#ae80d2;
@@ -231,12 +240,8 @@
 .v2-runtime .geo-results button{background:#fffaff;color:var(--ink);}
 .v2-runtime .geo-results button:active{background:#f1e5f8;}
 
-/* City search follows the same keyboard choreography as name and birthday. */
-.v2-runtime .geo-focus-overlay{position:absolute;inset:0;z-index:0;background:rgba(64,39,79,.10);
- backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);animation:dob-focus-in .28s ease both;}
-.v2-runtime .city-focus-shell{position:relative;z-index:1;transform:translateY(0);transform-origin:center top;
- transition:transform .48s cubic-bezier(.22,.8,.25,1),filter .28s ease;}
-.v2-runtime .city-focus-shell.is-focused{z-index:42;transform:translateY(var(--city-focus-shift,0px)) scale(1.045);}
+/* City search follows the same keyboard choreography as every text field. */
+.v2-runtime .city-focus-shell{position:relative;z-index:1;}
 .v2-runtime .city-focus-shell.is-focused .glass-control{border-color:#a875c7;box-shadow:0 0 0 5px rgba(184,140,230,.15),0 15px 34px rgba(113,74,136,.18),inset 0 1px 0 #fff;}
 .v2-runtime .city-focus-shell.has-error .glass-control{border-color:#c56c91;box-shadow:0 0 0 4px rgba(197,108,145,.13),0 7px 20px rgba(159,76,112,.12);}
 .v2-runtime .city-focus-shell .geo-results{position:relative;z-index:43;margin-top:7px;animation:field-hint-in .24s ease both;}
