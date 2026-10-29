@@ -4,6 +4,8 @@
 .v2-runtime .v2-device{height:100dvh;max-height:950px;min-height:0}
 .v2-runtime .v2-logo img{width:96px;max-width:100%}
 .v2-runtime .v2-body{animation:none;scroll-padding-top:16px}
+.v2-runtime .v2-stage-transition{animation:v2-stage-in .42s cubic-bezier(.22,.8,.25,1) both}
+@keyframes v2-stage-in{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
 .v2-runtime .v2-body .form-stack{gap:12px;padding:0 0 12px}
 .v2-runtime .v2-body .form-stack>*{animation:none}
 .v2-runtime .v2-real-groups{display:flex;flex-direction:column;gap:18px}
@@ -228,6 +230,57 @@
 }
 .v2-runtime .geo-results button{background:#fffaff;color:var(--ink);}
 .v2-runtime .geo-results button:active{background:#f1e5f8;}
+
+/* City search follows the same keyboard choreography as name and birthday. */
+.v2-runtime .geo-focus-overlay{position:fixed;inset:0;z-index:40;background:rgba(64,39,79,.12);
+ backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:dob-focus-in .28s ease both;}
+.v2-runtime .city-focus-shell{position:relative;z-index:1;transform:translateY(0);transform-origin:center top;
+ transition:transform .48s cubic-bezier(.22,.8,.25,1),filter .28s ease;}
+.v2-runtime .city-focus-shell.is-focused{z-index:42;transform:translateY(calc(var(--city-focus-shift,0px) * -1)) scale(1.035);}
+.v2-runtime .city-focus-shell.is-focused .glass-control{border-color:#a875c7;box-shadow:0 0 0 5px rgba(184,140,230,.15),0 15px 34px rgba(113,74,136,.18),inset 0 1px 0 #fff;}
+.v2-runtime .city-focus-shell.has-error .glass-control{border-color:#c56c91;box-shadow:0 0 0 4px rgba(197,108,145,.13),0 7px 20px rgba(159,76,112,.12);}
+.v2-runtime .city-focus-shell .geo-results{position:relative;z-index:43;margin-top:7px;animation:field-hint-in .24s ease both;}
+.v2-runtime .city-field-warning{margin:8px 2px 0;}
+.v2-runtime .v2-next.is-incomplete{background:#ded3e1;color:#95899b;border-color:#d1c3d5;box-shadow:none;}
+.v2-runtime .v2-next.is-incomplete.v2-next-confirm{background:linear-gradient(135deg,#aa7cdd,#e6a7d0);color:#fff;border-color:#ae80d2;box-shadow:0 8px 22px rgba(151,91,187,.3);}
+.v2-runtime .optional-profile-details{border:1px solid var(--glass-edge);border-radius:19px;background:rgba(255,255,255,.66);overflow:hidden;}
+.v2-runtime .optional-profile-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 15px;border:0;background:transparent;color:var(--ink);text-align:left;}
+.v2-runtime .optional-profile-toggle>span{display:grid;grid-template-columns:20px 1fr;gap:2px 8px;align-items:center;}
+.v2-runtime .optional-profile-toggle svg:first-child{grid-row:1 / span 2;color:#a16dc1;}
+.v2-runtime .optional-profile-toggle strong{font-size:14px;}
+.v2-runtime .optional-profile-toggle small{grid-column:2;color:var(--subtle);font-size:11px;}
+.v2-runtime .optional-profile-details.is-open .optional-profile-toggle>svg:last-child{transform:rotate(180deg);}
+.v2-runtime .optional-profile-fields{display:grid;gap:11px;padding:0 13px 14px;border-top:1px solid var(--line);}
+.v2-runtime .optional-field-row{display:grid;grid-template-columns:1fr 1.25fr;gap:9px;}
+.v2-runtime .optional-input-wrap{position:relative;}
+.v2-runtime .optional-input-wrap>svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#84629c;z-index:1;}
+.v2-runtime .optional-input-wrap .glass-control{padding-left:38px;width:100%;}
+.v2-runtime .optional-choice-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.v2-runtime .optional-choice-grid .glass-choice{min-height:36px;padding:8px 10px;font-size:12px;}
+.v2-runtime .optional-facts{width:100%;min-height:68px;padding:11px 13px;resize:none;font:inherit;}
+.v2-runtime .luemi-simple-review-meta em{font-style:normal;}
+.v2-runtime .luemi-simple-review-meta .round-flag{width:18px;height:18px;}
+.v2-runtime .luemi-simple-review-details{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;}
+.v2-runtime .luemi-simple-review-details span{border-radius:999px;padding:5px 8px;background:#f5eafa;color:#76558a;font-size:10px;}
+
+/* The location step is intentionally a compact, non-scrolling composition on
+   ordinary phone heights. Keyboard focus temporarily restores the overlay flow. */
+.v2-runtime .v2-device[data-screen="location"] .v2-body{overflow:hidden;}
+.v2-runtime .v2-device[data-screen="location"] .v2-subtitle{margin-bottom:11px;}
+.v2-runtime .v2-device[data-screen="location"] .geo-stack{gap:9px;}
+.v2-runtime .v2-device[data-screen="location"] .geo-location-primary{min-height:58px;padding:10px 13px;}
+.v2-runtime .v2-device[data-screen="location"] .geo-mode-toggle{min-height:32px;}
+.v2-runtime .v2-device[data-screen="location"] .geo-selected{min-height:26px;}
+.v2-runtime .v2-device[data-screen="location"] .geo-scope{margin-top:0;}
+.v2-runtime .v2-device[data-screen="location"] .scope-control{min-height:51px;padding:9px 13px;}
+.v2-runtime .v2-device[data-screen="location"] .radius-control{margin-top:-2px;}
+.v2-runtime .v2-device[data-screen="location"] .v2-body>.form-stack>.geo-stack>.hint:last-child{display:none;}
+@media(max-height:760px) and (min-width:361px){
+ .v2-runtime .v2-device[data-screen="location"] .v2-body{padding-top:11px;padding-bottom:8px;}
+ .v2-runtime .v2-device[data-screen="location"] .v2-eyebrow{margin-bottom:7px;}
+ .v2-runtime .v2-device[data-screen="location"] .v2-body h1{font-size:29px;line-height:1.03;}
+ .v2-runtime .v2-device[data-screen="location"] .v2-subtitle{font-size:14px;line-height:1.3;}
+}
 
 /* Dark mode gets its OWN inherited tokens; otherwise input text and icons
  * revert to undefined --ink/--panel after theme switch. */
