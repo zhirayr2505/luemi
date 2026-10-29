@@ -158,10 +158,15 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    FROM luemi_chats.members m
    JOIN luemi_chats.conversations c ON c.id=m.conversation_id AND c.environment=m.environment
    JOIN luemi_chats.matches pair ON pair.id=c.private_match_id AND pair.environment=c.environment AND pair.status='active'
-   JOIN luemi_private.public_profiles peer
+   LEFT JOIN luemi_private.public_profiles peer
      ON peer.owner_id=(CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END)
     AND peer.environment=$2 AND peer.publication_status='published'
    WHERE m.actor_id=$1 AND m.environment=$2
+     AND (NOT EXISTS (SELECT 1 FROM luemi_chats.conversation_clear_events cuts
+       WHERE cuts.conversation_id=m.conversation_id AND cuts.environment=m.environment
+         AND (cuts.scope='everyone' OR cuts.actor_id=$1))
+       OR EXISTS (SELECT 1 FROM luemi_chats.messages msg
+         WHERE msg.conversation_id=m.conversation_id AND ${visibleMessage("msg")}))
    ORDER BY last_activity_at DESC,c.id DESC LIMIT 100`,[actor,options.namespace]);
   return {conversations:rows.rows.map(r=>({
    id:r.id,matchId:r.match_id,peerId:r.peer_id,peerProfileId:r.peer_id,peerName:r.peer_name,
@@ -181,7 +186,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   const q=await db.query<MessageRow>(`SELECT id,conversation_id AS "conversationId",sender_id AS "senderId",client_id AS "clientId",
     CASE WHEN deleted_at IS NULL THEN body ELSE '' END AS body,
     created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt",created_at AS "deliveredAt",NULL::timestamptz AS "readAt"
-    FROM luemi_chats.messages WHERE conversation_id=$1 AND environment=$2
+    FROM luemi_chats.messages m WHERE conversation_id=$1 AND environment=$2
     AND ${visibleMessage("m","$4")}
      AND ($3::uuid IS NULL OR (created_at,id)<(
       SELECT created_at,id FROM luemi_chats.messages WHERE id=$3 AND conversation_id=$1))
@@ -308,6 +313,6 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
  }));
  app.get<{Params:{id:string;mediaId:string} }>("/api/v4/chats/:id/media/:mediaId/url",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
   if(!validId(req.params.id)||!validId(req.params.mediaId))deny(404,"not_found");await member(db,req.params.id,actor);if(!options.mediaStore)deny(503,"media_unavailable");
-  const found=await db.query<{object_path:string}>("SELECT media.object_path FROM luemi_chats.media media JOIN luemi_chats.messages msg ON msg.id=media.message_id AND msg.conversation_id=media.conversation_id AND msg.environment=media.environment WHERE media.id=$1 AND media.conversation_id=$2 AND media.state='ready' AND msg.deleted_at IS NULL AND ${visibleMessage("msg","$3")}`,[req.params.mediaId,req.params.id,actor]);if(found.rowCount!==1)deny(404,"not_found");return options.mediaStore.signedRead(found.rows[0].object_path,60);
+  const found=await db.query<{object_path:string}>(`SELECT media.object_path FROM luemi_chats.media media JOIN luemi_chats.messages msg ON msg.id=media.message_id AND msg.conversation_id=media.conversation_id AND msg.environment=media.environment WHERE media.id=$1 AND media.conversation_id=$2 AND media.state='ready' AND msg.deleted_at IS NULL AND ${visibleMessage("msg","$3")}`,[req.params.mediaId,req.params.id,actor]);if(found.rowCount!==1)deny(404,"not_found");return options.mediaStore.signedRead(found.rows[0].object_path,60);
  }));
 }
