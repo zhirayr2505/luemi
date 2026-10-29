@@ -3,7 +3,7 @@ import type {ChatConversationContract,ChatMessageContract,ChatMediaContract} fro
 export type ChatWireConversation=ChatConversationContract;
 export type ChatWireMessage=ChatMessageContract;
 export type ChatWireMedia=ChatMediaContract;
-export type ChatMessagePage={messages:ChatWireMessage[];nextCursor:string|null};
+export type ChatMessagePage={messages:ChatWireMessage[];nextCursor:string|null;visibilityRevision?:string|null};
 
 export class ChatTransportError extends Error {
  constructor(readonly status:number,readonly code:string,readonly retryAfterMs?:number){super(code);}
