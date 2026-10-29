@@ -26,21 +26,21 @@ BEGIN;
 SET LOCAL ROLE luemi_chats_writer;
 SET LOCAL luemi.actor_id='11111111-1111-4111-8111-111111111111';
 SET LOCAL luemi.environment='luemi';
-DO $$ DECLARE id uuid; BEGIN
- SELECT c.id INTO id FROM luemi_chats.conversations c
+DO $ DECLARE chat_id uuid; BEGIN
+ SELECT c.id INTO chat_id FROM luemi_chats.conversations c
  JOIN luemi_chats.matches m ON m.id=c.private_match_id
  WHERE m.actor_high='33333333-3333-4333-8333-333333333333';
- IF NOT luemi_chats.archived_peer_history(id,'11111111-1111-4111-8111-111111111111','luemi')
+ IF NOT luemi_chats.archived_peer_history(chat_id,'11111111-1111-4111-8111-111111111111','luemi')
  THEN RAISE EXCEPTION 'surviving member cannot view original chat';END IF;
- IF luemi_chats.live_match(id,'11111111-1111-4111-8111-111111111111','luemi')
+ IF luemi_chats.live_match(chat_id,'11111111-1111-4111-8111-111111111111','luemi')
  THEN RAISE EXCEPTION 'archived chat is still writable'; END IF;
- IF (SELECT count(*) FROM luemi_chats.messages WHERE conversation_id=id)<>1
+ IF (SELECT count(*) FROM luemi_chats.messages WHERE conversation_id=chat_id)<>1
  THEN RAISE EXCEPTION 'original message inaccessible to recipient'; END IF;
  IF has_column_privilege(current_user,'luemi_private.actors','telegram_id','SELECT')
  THEN RAISE EXCEPTION 'Telegram ID exposed'; END IF;
  BEGIN
   INSERT INTO luemi_chats.messages(conversation_id,sender_id,environment,client_id,body)
-  VALUES(id,'11111111-1111-4111-8111-111111111111','luemi',
+  VALUES(chat_id,'11111111-1111-4111-8111-111111111111','luemi',
    'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','forbidden');
   RAISE EXCEPTION 'write allowed to deleted account';
  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
