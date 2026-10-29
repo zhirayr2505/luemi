@@ -1,6 +1,10 @@
 import {execFileSync} from "node:child_process";
 import assert from "node:assert/strict";
-const accepted="bc994acfb815d4712431fad5c13070793d361af6";
+const originalAccepted="bc994acfb815d4712431fad5c13070793d361af6";
+const configured=process.env.LUEMI_DIFF_BASE_SHA;
+if(configured&&!/^[a-f0-9]{40}$/i.test(configured))
+ throw new Error("LUEMI_DIFF_BASE_SHA must be a 40-character Git commit SHA");
+const accepted=configured??originalAccepted;
 const files=execFileSync("git",["diff","--name-only",accepted,"HEAD"],{encoding:"utf8",maxBuffer:8*1024*1024})
  .trim().split("\n").filter(Boolean);
 const patch=execFileSync("git",["diff","--unified=0",accepted,"HEAD"],{encoding:"utf8",maxBuffer:16*1024*1024});
