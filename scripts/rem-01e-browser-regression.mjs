@@ -34,9 +34,9 @@ try{
   const expected=kind==="none"?0:kind==="one"?1:kind==="mixed"?4:6;
   assert.equal(await page.locator(".pm-shell").count(),0,"step 8 is static");
   assert.equal(await page.locator(".lh-header").count(),0);
-  assert.ok((await preview.innerText()).includes("локальный черновик"));
-  assert.equal(await preview.locator("img").count(),expected,theme+"/"+kind);
-  assert.equal(await preview.locator(".registration-static-gallery img").count(),Math.max(0,expected-1));
+  assert.ok((await preview.innerText()).includes("Проверь данные и фотографии"));
+  assert.equal(await preview.locator("img").count(),expected===0?0:expected+1,theme+"/"+kind);
+  assert.equal(await preview.locator(".registration-static-gallery img").count(),expected);
   if(kind==="none")assert.ok((await preview.innerText()).includes("Добавь фото"));
   if(kind==="undecided")assert.ok((await preview.innerText()).includes("Пока не определился"));
   assert.ok((await preview.innerText()).includes("Лея"));
