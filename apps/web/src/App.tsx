@@ -770,8 +770,18 @@ export function App() {
       // even when the server already has >=3 other approved photos. Count-only
       // checks can publish stale images instead of the user's current choice.
       // Per-photo idempotency keys make this safe on normal repeated submits.
-      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      // Most photos were sent during selection. Reuse confirmed asset IDs,
+      // and retry ONLY those whose background transfer did not finish.
+      const uploadedIds:string[]=[];
+      for(const photo of photos){
+        let assetId=serverPhotoUploaded.current.get(photo.id);
+        if(!assetId){
+          assetId=await uploadPrivatePhoto(photo);
+          serverPhotoUploaded.current.set(photo.id,assetId);
+        }
+        uploadedIds.push(assetId);
+        setPublishFeedback("Сохранено "+uploadedIds.length+" из "+photos.length+" фотографий.");
+      }
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       await orderPrivatePhotos(photos);
       const media=await ownerPublicationStatus();setPublishStatus(media);
