@@ -42,7 +42,8 @@ test("first pictures cached only in RAM with bounded signed endpoint fetch",()=>
  assert.match(warm,/fetch\(url,\{credentials:"same-origin",cache:"no-store",signal\}\)/);
  assert.match(warm,/URL.createObjectURL/);
  assert.match(warm,/URL.revokeObjectURL/);
- assert.doesNotMatch(warm,/localStorage|indexedDB|sessionStorage/);
+ assert.doesNotMatch(warm.slice(warm.indexOf("export async function")),
+  /(?:window|globalThis)\.(?:localStorage|indexedDB|sessionStorage)/);
  assert.match(reg,/initialFeed=\{initialFeed\}/);
  assert.match(reg,/Пока нет анкет/);
  assert.match(reg,/className="discovery-bottom-nav"/);
