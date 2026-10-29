@@ -27,7 +27,9 @@ export function recoverServerFields(fields:Record<string,unknown>):RegistrationD
   country:countryName(fields.countryCode),
   radius:fields.radius,searchScope:fields.searchScope,audience:fields.audience,
   ageMin:fields.ageMin,ageMax:fields.ageMax,goal:fields.goal,
-  interests:fields.interests,about:fields.about,languages:fields.languages};
+  interests:fields.interests,about:fields.about,languages:fields.languages,
+  height:fields.height,occupation:fields.occupation,education:fields.education,
+  lifestyle:fields.lifestyle,pets:fields.pets,facts:fields.facts};
  const parsed=parseRegistrationDraft(raw);
  return parsed.ok?parsed.value:null;
 }
