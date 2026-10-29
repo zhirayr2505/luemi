@@ -50,11 +50,16 @@ export function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChang
 
 
 export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,step,deferConsent}:StepProps){
- const month=useRef<HTMLInputElement>(null),year=useRef<HTMLInputElement>(null);
+ const dobInput=useRef<HTMLInputElement>(null);
  const [category,setCategory]=useState("Популярное");
+ const [dobFocused,setDobFocused]=useState(false);
  const [nameHint,setNameHint]=useState(false);
  const hintTimer=useRef<number|null>(null);
- useEffect(()=>()=>{if(hintTimer.current!==null)window.clearTimeout(hintTimer.current);},[]);
+ const dobTimer=useRef<number|null>(null);
+ useEffect(()=>()=>{
+   if(hintTimer.current!==null)window.clearTimeout(hintTimer.current);
+   if(dobTimer.current!==null)window.clearTimeout(dobTimer.current);
+ },[]);
  const updateName=(raw:string)=>{
    const clean=cleanName(raw);
    patch({name:clean});
@@ -64,12 +69,20 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      hintTimer.current=window.setTimeout(()=>setNameHint(false),2600);
    }else setNameHint(false);
  };
- const date=(field:"day"|"month"|"year",value:string)=>{
-   const clean=value.replace(/\D/g,"").slice(0,field==="year"?4:2);
-   patch({[field]:clean});
-   if(field==="day"&&clean.length===2)month.current?.focus();
-   if(field==="month"&&clean.length===2)year.current?.focus();
-   if(field==="year"&&clean.length===4)year.current?.blur();
+ const dateDigits=`${data.day}${data.month}${data.year}`.replace(/\D/g,"").slice(0,8);
+ const dateValue=dateDigits.length<=2?dateDigits:
+   dateDigits.length<=4?`${dateDigits.slice(0,2)}.${dateDigits.slice(2)}`:
+   `${dateDigits.slice(0,2)}.${dateDigits.slice(2,4)}.${dateDigits.slice(4)}`;
+ const updateDate=(raw:string)=>{
+   const digits=raw.replace(/\D/g,"").slice(0,8);
+   patch({day:digits.slice(0,2),month:digits.slice(2,4),year:digits.slice(4,8)});
+   if(digits.length===8){
+     if(dobTimer.current!==null)window.clearTimeout(dobTimer.current);
+     dobTimer.current=window.setTimeout(()=>{
+       dobInput.current?.blur();
+       setDobFocused(false);
+     },120);
+   }
  };
  const toggleInterest=(value:string)=>patch({interests:data.interests.includes(value)
    ?data.interests.filter(x=>x!==value):data.interests.length>=15?data.interests:[...data.interests,value]});
@@ -79,12 +92,18 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    {nameHint&&<div className="name-input-hint" role="status"><Info size={17} aria-hidden="true"/>Можно использовать только буквы, пробел, тире и апостроф.</div>}
    {!deferConsent&&<RegistrationConsent data={data} patch={patch}/>}
  </div>;
- if(step===2)return <div className="form-stack">
-   <div className="field-label">Дата рождения</div>
-   <div className="dob-grid">
-     <GlassField label="День"><GlassTextInput inputMode="numeric" autoComplete="bday-day" placeholder="ДД" value={data.day} onChange={e=>date("day",e.target.value)}/></GlassField>
-     <GlassField label="Месяц"><GlassTextInput ref={month} inputMode="numeric" autoComplete="bday-month" placeholder="ММ" value={data.month} onChange={e=>date("month",e.target.value)}/></GlassField>
-     <GlassField label="Год"><GlassTextInput ref={year} inputMode="numeric" autoComplete="bday-year" placeholder="ГГГГ" value={data.year} onChange={e=>date("year",e.target.value)}/></GlassField>
+ if(step===2)return <div className="form-stack dob-step">
+   {dobFocused&&<div className="dob-focus-overlay" aria-hidden="true" onMouseDown={()=>dobInput.current?.blur()}/>} 
+   <div className={"dob-focus-shell"+(dobFocused?" is-focused":"")}>
+     <GlassField label="Дата рождения" hint="Например, 12.05.1998">
+       <GlassTextInput ref={dobInput} inputMode="numeric" autoComplete="bday" placeholder="ДД.ММ.ГГГГ"
+         aria-label="Дата рождения, день месяц год" value={dateValue}
+         onFocus={()=>{
+           setDobFocused(true);
+           window.requestAnimationFrame(()=>dobInput.current?.scrollIntoView({behavior:"smooth",block:"center"}));
+         }}
+         onBlur={()=>setDobFocused(false)} onChange={e=>updateDate(e.target.value)}/>
+     </GlassField>
    </div>
    <ChoiceRow label="Пол">
      <GlassChoice chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<GenderIcon type="man"/>}>Мужчина</GlassChoice>
