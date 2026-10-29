@@ -132,12 +132,23 @@ test("01D: early private upload, delete selected photo and reorder without leaki
   assert.deepEqual(preview.json().photos,[],"revoked photo must disappear from server preview");
   assert.equal((await app.inject({method:"GET",url:"/api/v2/media/"+old,
    headers:{cookie:owner.cookie}})).statusCode,404);
+  // Simulate a previous aborted signup which left one accepted asset on
+  // the server but is no longer selected in the local gallery.
+  const stale=await add("reg01c-photo-"+randomUUID());
   const chosen:string[]=[],keys:string[]=[];
   for(let n=0;n<3;n++){
    const key="reg01c-photo-"+randomUUID();
    keys.push(key);chosen.push(await add(key));
   }
   const reversed=[...chosen].reverse();
+  const reconciled=await app.inject({method:"POST",url:"/api/v2/media/reconcile",
+   headers:headers(owner),payload:{assetIds:reversed}});
+  assert.equal(reconciled.statusCode,200,reconciled.body);
+  const again=await app.inject({method:"POST",url:"/api/v2/media/reconcile",
+   headers:headers(owner),payload:{assetIds:reversed}});
+  assert.equal(again.statusCode,200,"cleanup retry must be idempotent");
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/media/"+stale,
+   headers:{cookie:owner.cookie}})).statusCode,404);
   const denied=await app.inject({method:"PUT",url:"/api/v2/media/order",
    headers:headers(stranger),payload:{assetIds:reversed}});
   assert.notEqual(denied.statusCode,200,"only owner may order photos");
