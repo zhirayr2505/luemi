@@ -65,7 +65,7 @@ test("removing a photo mid-upload deletes server bytes after receipt even when c
 });
 
 test("new browser session adopts existing uploaded receipts and removes stale unselected images before publishing",async()=>{
- let selected=ids.map(make),uploads=0;
+ const selected=ids.map(make);let uploads=0;
  const assets=new Map<string,{id:string;state:string;clientDigest:string|null}>();
  for(const id of ids)assets.set("asset-"+id,
   {id:"asset-"+id,state:"approved",clientDigest:"hash-"+id});
