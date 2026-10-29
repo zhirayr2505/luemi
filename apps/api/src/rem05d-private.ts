@@ -262,8 +262,8 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   const clientKeys=req.body.clientKeys as string[];
   const keyByDigest=new Map(clientKeys.map(key=>[digest(key),key]));
   const digests=[...keyByDigest.keys()];
-  const matched=await db.query<{asset_id:string;idempotency_digest:string;state:string}>(
-   "SELECT u.asset_id,u.idempotency_digest,a.state FROM luemi_private.media_uploads u "+
+  const matched=await db.query<{asset_id:string;idempotency_digest:string;state:string;derivative_key:string}>(
+   "SELECT u.asset_id,u.idempotency_digest,a.state,a.derivative_key FROM luemi_private.media_uploads u "+
    "JOIN luemi_private.media_assets a ON a.id=u.asset_id "+
    "WHERE u.owner_id=$1 AND u.environment=$2 AND a.owner_id=$1 AND a.environment=$2 "+
    "AND a.publication_status='private' AND a.state<>'revoked' "+
@@ -276,10 +276,20 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    "AND a.state<>'revoked' AND (u.idempotency_digest IS NULL OR NOT(u.idempotency_digest=ANY($3::text[]))) "+
    "ORDER BY a.position,a.id",
    [id,opts.namespace,digests]);
+  // SQL state alone is not enough: a previously interrupted external Storage
+  // write can leave an approved row whose object is unavailable. Verify the
+  // private derivative before reusing it so a new profile never publishes a
+  // broken image. Reserved rows are intentionally resumed by the bytes route.
+  const reusable:typeof matched.rows=[],missing:string[]=[];
+  for(const row of matched.rows){
+   if(row.state==="reserved"){reusable.push(row);continue;}
+   const bytes=await opts.storage.get(row.derivative_key).catch(()=>null);
+   if(bytes?.length)reusable.push(row);else missing.push(row.asset_id);
+  }
   return{
-   assets:matched.rows.map(row=>({clientKey:keyByDigest.get(row.idempotency_digest),
+   assets:reusable.map(row=>({clientKey:keyByDigest.get(row.idempotency_digest),
     assetId:row.asset_id,state:row.state})),
-   staleAssetIds:stale.rows.map(row=>row.id)
+   staleAssetIds:[...new Set([...stale.rows.map(row=>row.id),...missing])]
   };
  }));
  app.post<{Body:unknown}>("/api/v2/media/intents",{preHandler:guard.mutation},async(req,reply)=>owner(req,reply,async(db,id)=>{
@@ -292,11 +302,27 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   // Serialize all concurrent intents for this owner in the DATABASE, not process memory.
   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
    [opts.namespace+":"+id+":profile_media_slots"]);
-  const existing=await db.query<{asset_id:string;expected_bytes:number;request_digest:string;state:string}>(
-   "SELECT asset_id,expected_bytes,request_digest,state FROM luemi_private.media_uploads "+
-   "WHERE owner_id=$1 AND environment=$2 AND idempotency_digest=$3",
+  const existing=await db.query<{asset_id:string;expected_bytes:number;request_digest:string;state:string;asset_state:string}>(
+   "SELECT u.asset_id,u.expected_bytes,u.request_digest,u.state,a.state AS asset_state "+
+   "FROM luemi_private.media_uploads u JOIN luemi_private.media_assets a ON a.id=u.asset_id "+
+   "WHERE u.owner_id=$1 AND u.environment=$2 AND u.idempotency_digest=$3",
    [id,opts.namespace,keyDigest]);
   if(existing.rowCount){
+   if(existing.rows[0].asset_state==="revoked"){
+    const used=await db.query<{n:string}>(
+     "SELECT count(*)::text AS n FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 AND state<>'revoked'",
+     [id,opts.namespace]);
+    if(Number(used.rows[0].n)>=6)reject(409,"photo_limit");
+    const assetId=randomUUID();
+    const prefix="private/"+opts.namespace+"/"+id+"/"+assetId+"/"+randomBytes(24).toString("hex");
+    await db.query("INSERT INTO luemi_private.media_assets(id,owner_id,environment,original_key,derivative_key,position) "+
+     "VALUES($1,$2,$3,$4,$5,$6)",[assetId,id,opts.namespace,prefix+"/original",prefix+"/sanitized",Number(used.rows[0].n)]);
+    await db.query("UPDATE luemi_private.media_uploads SET asset_id=$4,expected_bytes=$5,"+
+     "expected_mime='image/png',request_digest=$6,state='reserved',expires_at=clock_timestamp()+interval '1 hour' "+
+     "WHERE owner_id=$1 AND environment=$2 AND idempotency_digest=$3",
+     [id,opts.namespace,keyDigest,assetId,bytes,bodyDigest]);
+    return{assetId,state:"reserved",upload:"private_proxy"};
+   }
    if(existing.rows[0].request_digest!==bodyDigest)reject(409,"idempotency_conflict");
    if(existing.rows[0].state==="reserved"){
     // The caller may return hours after a network interruption. Renew ONLY

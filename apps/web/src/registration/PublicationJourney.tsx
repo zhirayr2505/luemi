@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import {RefreshCw,ArrowLeft,Check} from "lucide-react";
+import {RefreshCw,ArrowLeft,Check,Sparkles} from "lucide-react";
 import "./publication-journey.css";
 
 export type PublishJourneyPhase="publishing"|"recommendations"|"nearby"|"photos"|"complete"|"error";
@@ -44,15 +44,23 @@ export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
  return <main className={"luemi-publication-journey"+(complete?" is-complete":"")+(leaving?" is-leaving":"")} role="status" aria-live="polite"
   aria-label="Создание анкеты LUEMI">
   <div className="luemi-publication-glow" aria-hidden="true"/>
+  <div className="luemi-publication-orbs" aria-hidden="true"><i/><i/><i/></div>
+  <div className="luemi-publication-stars" aria-hidden="true"><i/><i/><i/><i/><i/></div>
   <div className="luemi-publication-brand">
-   <span className="luemi-publication-orbit" aria-hidden="true"/>
-   <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi"/>
+   <span className="luemi-publication-orbit is-outer" aria-hidden="true"/>
+   <span className="luemi-publication-orbit is-inner" aria-hidden="true"/>
+   <div className="luemi-publication-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi"/></div>
   </div>
   <div className="luemi-publication-bottom">
    {complete?<span className="luemi-publication-complete" aria-hidden="true"><Check size={24}/></span>:
     failed?<span className="luemi-publication-failed-icon" aria-hidden="true">♡</span>:null}
+   {!failed&&<span className="luemi-publication-kicker"><Sparkles size={13}/> LUEMI · ТВОЯ ИСТОРИЯ</span>}
    <h1>{failed?"Не удалось закончить создание анкеты":complete?"Всё готово 💜":publishingCopy[displayPhase]}</h1>
-   <p>{failed?error:complete?"Открываем LUEMI":"LUEMI подготавливает твоё знакомство 💜"}</p>
+   <p>{failed?error:complete?"Открываем LUEMI":displayPhase==="publishing"?
+    "Сохраняем фотографии и создаём анкету":"LUEMI подготавливает твоё знакомство 💜"}</p>
+   {!failed&&<div className="luemi-publication-progress" aria-hidden="true">
+    <span style={{width:complete?"100%":Math.max(12,(current+1)/stages.length*100)+"%"}}/>
+   </div>}
    {!failed?<div className="luemi-publication-dots" aria-hidden="true">
     {stages.map((stage,i)=><span key={stage} className={i===current?"is-current":i<current||complete?"is-done":""}/>)}
    </div>:<div className="luemi-publication-recovery">

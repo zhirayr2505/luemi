@@ -78,13 +78,12 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      placeholder="Как тебя зовут?" onChange={e=>updateName(e.target.value)}/></GlassField>
    {nameHint&&<div className="name-input-hint" role="status"><Info size={17} aria-hidden="true"/>Можно использовать только буквы, пробел, тире и апостроф.</div>}
    <GlassCheckbox checked={data.trialConsent} onChange={trialConsent=>patch({trialConsent})}>
-     {realFeedPilot.enabled?
-      "Я понимаю, что фотографии пройдут проверку, а анкета появится другим пользователям только после подтверждённой публикации.":remoteDraftPilot.enabled?
-      "Я понимаю, что анкета пока не публикуется, а серверное сохранение требует отдельного согласия.":
+     {realFeedPilot.enabled?<span>Я принимаю <a href="/privacy" target="_blank" rel="noopener noreferrer">политику конфиденциальности и условия использования LUEMI</a>, подтверждаю, что мне исполнилось 18 лет, и согласен(-на) на сохранение и публикацию анкеты и выбранных фотографий.</span>:remoteDraftPilot.enabled?
+      <span>Я принимаю <a href="/privacy" target="_blank" rel="noopener noreferrer">политику конфиденциальности и условия использования LUEMI</a> и согласен(-на) на сохранение анкеты.</span>:
       "Я понимаю, что это тест интерфейса. Данные и фотографии не публикуются и не передаются на сервер."}
    </GlassCheckbox>
    <p className="hint">{realFeedPilot.enabled?
-    "Черновик сначала сохраняется на этом устройстве. Перед отправкой на сервер потребуется отдельное согласие.":
+    "Это согласие принимается один раз на первом шаге. Повторно подтверждать его при загрузке фотографий не потребуется.":
     remoteDraftPilot.enabled?
     remoteMediaPilot.enabled?
     "До подтверждения черновик остаётся на телефоне. После согласия анкета и выбранные фото загрузятся в закрытое серверное хранилище LUEMI.":

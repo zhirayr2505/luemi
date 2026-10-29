@@ -1,10 +1,8 @@
 import {goals,type RegistrationDraft} from "./model";
 import type {PhotoItem} from "./PhotoSorter";
-import {CheckCircle2,Image as ImageIcon,LoaderCircle,MapPin,Sparkles,Target} from "lucide-react";
+import {Image as ImageIcon,MapPin,Sparkles,Target} from "lucide-react";
 import "./simple-profile-review.css";
-export function SimpleProfileReview({draft,photos,uploaded,uploading,error}:{
- draft:RegistrationDraft;photos:PhotoItem[];uploaded:number;uploading:boolean;error:string;
-}){
+export function SimpleProfileReview({draft,photos}:{draft:RegistrationDraft;photos:PhotoItem[]}){
  const valid=photos.filter(photo=>photo.status==="ready"&&photo.src),main=valid[0];
  const today=new Date(),year=Number(draft.year),month=Number(draft.month),day=Number(draft.day);
  const age=year&&month&&day?today.getFullYear()-year-
@@ -34,11 +32,6 @@ export function SimpleProfileReview({draft,photos,uploaded,uploading,error}:{
     {i===0&&<span className="luemi-simple-review-main">Главное фото</span>}
     <span className="luemi-simple-review-number">{i+1} / {valid.length}</span>
    </div>)}
-  </div>
-  <div className="luemi-simple-review-sync" role="status" aria-live="polite">
-   {error?<span className="luemi-simple-review-sync-error">{error}</span>:
-    <>{uploading?<LoaderCircle className="luemi-simple-review-spinner" size={17}/>:<CheckCircle2 size={17}/>}<span>{uploading?"Сохраняем фотографии на сервере…":
-      "Сохранено на сервере: "+uploaded+" из "+photos.length}</span></>}
   </div>
  </section>;
 }

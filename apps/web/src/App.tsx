@@ -132,8 +132,8 @@ export function App() {
   const photosLive=useRef<PhotoItem[]>([]);
   photosLive.current=photos;
   const draftLive=useRef(draft);draftLive.current=draft;
-  // Each chosen photo is uploaded independently as soon as processing and
-  // photo-storage consent are complete; queue serializes deletion and reorder.
+  // Upload begins only after the final preview, under the branded publication
+  // curtain. Choosing and sorting photos stays completely local and instant.
   const privateAssetIds=useRef(new Map<string,string>());
   const privateMediaQueue=useRef<Promise<unknown>>(Promise.resolve());
   const [photoSyncBusy,setPhotoSyncBusy]=useState(false);
@@ -203,7 +203,11 @@ export function App() {
     setPrivateDraftSaved(false);
     setPublishStatus(null);
     setError("");
+    if(typeof change.trialConsent==="boolean")setServerConsent(change.trialConsent);
   },[]);
+  useEffect(()=>{
+    if(draft.trialConsent)setServerConsent(true);
+  },[draft.trialConsent]);
   useEffect(()=>{
     // Telegram's native white loading screen must disappear as soon as the
     // app shell can paint. The separate branded intro remains visible.
@@ -538,13 +542,6 @@ export function App() {
     privateMediaQueue.current=task.catch(()=>{});
     return task;
   },[auth]);
-  const readyPhotoSignature=photos.filter(p=>p.status==="ready").map(p=>p.id).join("|");
-  const allPhotoSignature=photos.map(p=>p.id).join("|");
-  useEffect(()=>{
-    if(!photosRestored||!remoteMediaPilot.enabled||auth!=="authorized"||
-      (!serverConsent&&privateAssetIds.current.size===0))return;
-    void syncChosenPhotos(serverConsent).catch(()=>{/* feedback is displayed in the photo step */});
-  },[photosRestored,auth,serverConsent,readyPhotoSignature,allPhotoSignature,syncChosenPhotos]);
   const addPhotos=(files:File[])=>{
     if(!files.length)return;
     setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);
@@ -781,7 +778,7 @@ export function App() {
     if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready")){
       setPublishFeedback("Для создания анкеты нужно 3–6 готовых фотографий.");return;
     }
-    if(!serverConsent){setPublishFeedback("Прими условия обработки и публикации анкеты.");return;}
+    if(!draft.trialConsent){setPublishFeedback("Прими условия регистрации на первом шаге.");return;}
     submitting.current=true;setPublishBusy(true);setPublishFeedback("");
     setJourneyError("");setJourney("publishing");
     try{
@@ -793,8 +790,9 @@ export function App() {
       // A failed second upload must not strand an already accepted first photo.
       // Stable per-photo clientKey reuses successful uploads and retries the
       // missing photos; one approved image never redirects to account settings.
-      // Photo-step background sync has already stored most images. Wait for
-      // pending work and only upload missing ones. Never use a count alone.
+      // All network photo work deliberately starts here, after the preview.
+      // The publication curtain remains visible until the profile and feed
+      // are both ready, so no extra upload page can flash between them.
       const uploadedIds=await syncChosenPhotos(true);
       if(uploadedIds.length!==photos.length)throw new Error("incomplete_media");
       await reconcilePrivatePhotos(uploadedIds);
@@ -997,7 +995,7 @@ export function App() {
    return <><main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
     <Suspense fallback={<div className="discovery-empty" role="status">Открываем LUEMI…</div>}>
      <RealDiscoveryHome draft={draft} theme={theme} onTheme={changeTheme}
-      initialFeed={warmFeed} publishedProfile={publishStatus?.profile}
+       initialFeed={warmFeed} publishedProfile={publishStatus?.profile} ownerPhotoPreview={readyPhotos}
       onEdit={()=>{setRealHome(false);setPhase("form");setStep(8);}}
       accountPanel={<section className="luemi-real-account" aria-label="Настройки аккаунта">
        <h1>Мой аккаунт</h1>
@@ -1113,18 +1111,12 @@ export function App() {
       role="status" style={{padding:24}}>Открываем регистрацию…</main>}>
       <RealRegistrationV2 draft={draft} patch={patch} photos={photos}
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
-       resetDraft={resetDraft} serverConsent={serverConsent}
-       theme={theme} onTheme={changeTheme}
-       setServerConsent={setServerConsent}
+       resetDraft={resetDraft} theme={theme} onTheme={changeTheme}
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
           remoteMediaPilot.enabled?confirmPrivateRegistration():persistServerDraft());}}
         mediaEnabled={remoteMediaPilot.enabled}
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
-        photoServerCount={photoServerReady}
-        photoSyncBusy={photoSyncBusy}
-        photoSyncError={photoSyncError}
-        onRetryPhotoSync={()=>{void syncChosenPhotos(serverConsent).catch(()=>{});}}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
@@ -1135,13 +1127,16 @@ export function App() {
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
-    {(auth!=="authorized"||phase==="welcome")&&<div className="theme-dock">{themeButton}</div>}
+    {(auth!=="authorized"||phase==="welcome")&&auth!=="connecting"&&
+     !(auth==="authorized"&&realFeedPilot.enabled&&publicationCheck==="checking")&&
+     <div className="theme-dock">{themeButton}</div>}
     {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
-      <h1>Твоя история начинается здесь</h1>
+      {auth!=="connecting"&&!(auth==="authorized"&&realFeedPilot.enabled&&publicationCheck==="checking")&&
+       <h1>Твоя история начинается здесь</h1>}
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<><p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>
         {realOnly&&<button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button>}</>}
@@ -1150,9 +1145,8 @@ export function App() {
       {auth==="needs-invite"&&<><p role="alert">Идёт закрытый тест LUEMI. Для приглашения отправь владельцу свой Telegram ID из команды /myid в @LuemiAppBot.</p>
         <button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button></>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
-      {auth==="authorized"&&introElapsed&&visualReady&&<div className="intro-cta">
-        {realFeedPilot.enabled&&publicationCheck==="checking"&&
-          <p role="status">Проверяем твою анкету на сервере…</p>}
+      {auth==="authorized"&&introElapsed&&visualReady&&
+       !(realFeedPilot.enabled&&publicationCheck==="checking")&&<div className="intro-cta">
         {realFeedPilot.enabled&&publicationCheck==="error"&&
           <><p role="alert">{publishFeedback}</p>
           <button type="button" className="primary-action" onClick={()=>setPublicationRetry(v=>v+1)}>Повторить проверку</button></>}
@@ -1164,7 +1158,6 @@ export function App() {
             Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
           </button>}
       </div>}
-      <p className="luemi-privacy-footer"><a href="/privacy" target="_blank" rel="noopener noreferrer">Конфиденциальность и использование данных</a></p>
     </section>:<section className={"onboarding-screen"+(step===8?" registration-static-screen":"")}>
       <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
         <div className="onboard-brand-row">

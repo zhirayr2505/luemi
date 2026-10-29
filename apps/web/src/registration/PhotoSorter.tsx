@@ -240,10 +240,6 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
            </div>}
            {photo.status==="success"&&<div className="photo-processed" aria-label="Фотография готова"><CheckCircle2 size={25}/></div>}
            {photo.status==="error"&&<span className="photo-processing-error">Ошибка фото</span>}
-           {photo.status==="ready"&&photo.serverStatus&&<span className={"photo-server-state is-"+photo.serverStatus}>
-            {photo.serverStatus==="uploading"?"На сервер…":photo.serverStatus==="saved"?"Сохранено ✓":
-             photo.serverStatus==="error"?"Повторим загрузку":"Ожидает"}
-           </span>}
          </>:i===photos.length?<button type="button" className="add-photo" onClick={()=>input.current?.click()} aria-label="Добавить фотографии"><Plus size={30}/></button>:
            <span className="empty-number">{i+1}</span>}
        </div>;
@@ -253,7 +249,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      style={{left:0,top:0,width:drag.width,height:drag.height}}>
      <img src={photos[drag.source]?.src} alt=""/><GripVertical size={16}/>
    </div>,document.body)}
-   <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Первое фото станет главным, а статус сохранения виден прямо на каждом снимке.</span></div>
+   <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Первое фото станет главным.</span></div>
    <p className="photo-count" role="status">Выбрано: {photos.length} / 6 · Первое фото главное</p>
    <p className="hint">Порядок фотографий сохранится в анкете. Главное фото — первое.</p>
  </div>;

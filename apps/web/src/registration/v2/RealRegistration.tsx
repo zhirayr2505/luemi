@@ -1,9 +1,8 @@
 import {useEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun,RefreshCw} from "lucide-react";
+import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
 import {RegistrationStep,type PhotoItem} from "../Steps";
 import {SimpleProfileReview} from "../SimpleProfileReview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
-import {remoteDraftPilot} from "../server-draft";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
 import {FaceTrustCamera} from "./FaceTrustCamera";
 import {findExactDuplicatePhotoIds} from "./duplicate-photos";
@@ -18,8 +17,6 @@ interface Props{
  removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;
  resetDraft:()=>void;
- serverConsent:boolean;
- setServerConsent:(next:boolean)=>void;
  theme:"light"|"dark";
  onTheme:()=>void;
  onSave:()=>void;
@@ -27,10 +24,6 @@ interface Props{
  publicationEnabled:boolean;
  serverSaving:boolean;
  serverStatus:string;
- photoServerCount:number;
- photoSyncBusy:boolean;
- photoSyncError:string;
- onRetryPhotoSync:()=>void;
  storageError:string|null;
  restored:boolean;
  resumeReview:boolean;
@@ -129,12 +122,9 @@ export function RealRegistrationV2(p:Props){
   movePhoto:p.movePhoto,resetDraft:p.resetDraft,step:1
  }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft]);
  const step=(n:number)=><RegistrationStep {...stepProps} step={n}/>;
- const savedDraftAllowed=p.serverConsent&&identityReady&&gate.hasLocation&&
-  gate.hasIntent&&photoReady(photos)&&!p.serverSaving&&
-  (!p.mediaEnabled||p.photoServerCount===photos.length&&!p.photoSyncBusy&&!p.photoSyncError);
- const pubNotice=remoteDraftPilot.policy;
+ const savedDraftAllowed=identityReady&&gate.hasLocation&&gate.hasIntent&&
+  photoReady(photos)&&!p.serverSaving;
  const friendsTest=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1";
- const noticeLabel=friendsTest?"условия закрытого теста":"политику обработки персональных данных";
  return <main className="v2-canvas v2-runtime" data-theme={p.theme}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div className="v2-device" data-screen={stage.id}>
@@ -159,21 +149,9 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="intent"&&step(4)}
        {stage.id==="personality"&&<div className="v2-real-groups">{step(5)}{step(6)}</div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
-        {p.mediaEnabled&&<label className="v2-consent"><input type="checkbox"
-         checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
-         <span>Я согласен(-на) с <a href={pubNotice} target="_blank" rel="noopener noreferrer">{noticeLabel}</a> на приватное хранение моих фото в LUEMI и их публикацию после создания анкеты.</span>
-        </label>}
         {step(7)}
-        {p.mediaEnabled&&<p className="v2-footnote" role="status">
-         {!p.serverConsent?"Подтверди согласие для фоновой загрузки фотографий.":
-          p.photoSyncError?p.photoSyncError:p.photoSyncBusy?"Сохраняем фото на сервере…":
-          "На сервере: "+p.photoServerCount+" из "+photos.length}
-        </p>}
-        {p.mediaEnabled&&p.photoSyncError&&<button type="button" className="v2-photo-retry"
-         disabled={p.photoSyncBusy} onClick={p.onRetryPhotoSync}><RefreshCw size={16}/> Повторить загрузку</button>}
         <div className="v2-note"><ShieldCheck size={18}/>
-         Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
-         Сейчас фото остаются приватными. Автоматическая AI-проверка ещё не включена.
+         Добавь свои чёткие фотографии. Удерживай снимок пальцем, чтобы поменять порядок — первый станет главным.
         </div>
        </div>}
        {stage.id==="face-consent"&&<div className="v2-fields">
@@ -202,19 +180,7 @@ export function RealRegistrationV2(p:Props){
         </button>
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
-        <SimpleProfileReview draft={draft} photos={photos}
-         uploaded={p.photoServerCount} uploading={p.photoSyncBusy} error={p.photoSyncError}/>
-        <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
-          <strong>{p.mediaEnabled?"Твоя анкета готова":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
-          <p>{p.mediaEnabled
-           ?(instantPublication?"После подтверждения фотографии сохранятся на сервере, а анкета сразу станет видна другим совершеннолетним пользователям. Ручной проверки до публикации нет.":"После подтверждения данные и фотографии отправятся в защищённое хранилище. Другие люди увидят их только после проверки и публикации.")
-           :"Сейчас сервер сохраняет поля анкеты, фотографии остаются на этом устройстве."}</p>
-        </div></div>
-        {!p.mediaEnabled&&<label className="v2-consent"><input type="checkbox"
-         checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
-         <span>Я согласен(-на) с <a href={pubNotice} target="_blank" rel="noopener noreferrer">{noticeLabel}</a>.</span>
-        </label>}
-        <p className="v2-footnote"><a href="/privacy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности LUEMI</a></p>
+        <SimpleProfileReview draft={draft} photos={photos}/>
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
           {p.mediaEnabled?<Check size={18}/>:<LockKeyhole size={18}/>}
@@ -222,7 +188,7 @@ export function RealRegistrationV2(p:Props){
         </button>
         <button type="button" className="v2-secondary" onClick={()=>nav(4)}
           disabled={p.serverSaving}>Изменить анкету или фотографии</button>
-        <p className="v2-footnote">{instantPublication?"После создания LUEMI автоматически подготовит ленту и откроет приложение.":"Твои фотографии будут сохранены приватно."}</p>
+        <p className="v2-footnote">После нажатия LUEMI сохранит фотографии, создаст анкету и подготовит первую ленту.</p>
         {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
        </div>}
        {p.storageError&&<p role="alert" className="v2-feedback">

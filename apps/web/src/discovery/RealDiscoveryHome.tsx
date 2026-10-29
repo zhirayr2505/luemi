@@ -26,13 +26,14 @@ type MainTab=typeof navigation[number][0];
 type BrowseTab=typeof tabs[number][0];
 
 const photoId=(url:string,i:number)=>/([0-9a-f-]{36})$/i.exec(url)?.[1]??"owner-photo-"+i;
-export function publishedToMaster(status:OwnerPublicationStatus["profile"]):ProfileMasterData|null{
+export function publishedToMaster(status:OwnerPublicationStatus["profile"],localPhotos:ReadonlyArray<{src:string}>=[]):ProfileMasterData|null{
  if(!status)return null;
+ const localReady=localPhotos.length===status.photos.length&&localPhotos.every(photo=>photo.src);
  return {id:null,source:"server",name:status.name,age:status.age,city:status.city,
   country:"",countryCode:status.countryCode,goal:status.goal,about:status.about,
   interests:status.interests,languages:[],premium:false,verified:false,
   registeredAt:null,updatedAt:null,
-  photos:status.photos.map((src,i)=>({id:photoId(src,i),src,status:"published" as const}))};
+  photos:status.photos.map((src,i)=>({id:photoId(src,i),src:localReady?localPhotos[i].src:src,status:"published" as const}))};
 }
 const visitorToMaster=(p:RealPublishedProfile):ProfileMasterData=>({
  id:p.id,source:"server",name:p.name,age:p.age,city:p.city,country:"",
@@ -197,9 +198,10 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched}:{
  </div>;
 }
 
-export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,initialFeed,accountPanel,onEdit}:{
+export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPhotoPreview=[],initialFeed,accountPanel,onEdit}:{
  draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;
  publishedProfile:OwnerPublicationStatus["profile"]|undefined;initialFeed?:PublishedFeedPage|null;
+ ownerPhotoPreview?:ReadonlyArray<{src:string}>;
  accountPanel:ReactNode;onEdit:()=>void;
 }){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
@@ -209,7 +211,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,initialF
  const index=tabs.findIndex(t=>t[0]===browse);
  const start=useRef<{id:number;x:number;y:number;claimed:boolean}|null>(null);
  const suppressClick=useRef(0);
- const owner=useMemo(()=>publishedToMaster(publishedProfile),[publishedProfile]);
+ const owner=useMemo(()=>publishedToMaster(publishedProfile,ownerPhotoPreview),[publishedProfile,ownerPhotoPreview]);
  const onDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
   if((e.target as Element).closest("button,a,input,textarea,select,[role=dialog],.discovery-card"))return;
