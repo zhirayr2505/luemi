@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,orderPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,syncPrivateSelectedPhotos,orderPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -158,6 +158,7 @@ export function App() {
   const uploadedAssets=useRef(new Map<string,string>());
   const uploadChain=useRef<Promise<void>>(Promise.resolve());
   const serverCleanupErrors=useRef(new Set<string>());
+  const lastSyncedSelection=useRef<string|null>(null);
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
   const [publicationCheck,setPublicationCheck]=useState<"idle"|"checking"|"ready"|"error">("idle");
   const [publicationRetry,setPublicationRetry]=useState(0);
@@ -522,6 +523,12 @@ export function App() {
         const previous=await readRemoteRevision();
         await saveRemoteDraft(draft,previous.revision);
         setPrivateDraftSaved(true);
+        const localIds=[...photoIds.current];
+        const selectionKey=[...localIds].sort().join("|");
+        if(lastSyncedSelection.current!==selectionKey){
+          await syncPrivateSelectedPhotos(localIds);
+          lastSyncedSelection.current=selectionKey;
+        }
         if(!photoIds.current.has(photo.id))return;
         const assetId=await uploadPrivatePhoto(photo);
         if(!photoIds.current.has(photo.id)){
@@ -549,6 +556,7 @@ export function App() {
     if(item?.src){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
     setPhotos(prev=>prev.filter(p=>p.id!==id));
     uploadedAssets.current.delete(id);
+    lastSyncedSelection.current=null;
     if(remoteMediaPilot.enabled&&serverConsent&&auth==="authorized"){
       // A removed photo always wins over an upload already in flight.
       const work=uploadChain.current.catch(()=>{}).then(async()=>{
@@ -574,6 +582,15 @@ export function App() {
   };
   const resetDraft=()=>{
     if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
+    if(remoteMediaPilot.enabled&&serverConsent&&auth==="authorized"){
+      const work=uploadChain.current.catch(()=>{}).then(async()=>{
+        try{await syncPrivateSelectedPhotos([]);}
+        catch{setMediaStatus("Не удалось удалить старые серверные фотографии. Повтори очистку.");}
+      });
+      uploadChain.current=work;
+    }
+    lastSyncedSelection.current=null;
+    uploadedAssets.current.clear();
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();photoIds.current.clear();
@@ -770,6 +787,8 @@ export function App() {
       // Per-photo idempotency keys make this safe on normal repeated submits.
       await uploadChain.current;
       if(serverCleanupErrors.current.size)throw new Error("photo_cleanup_pending");
+      await syncPrivateSelectedPhotos(photos.map(p=>p.id));
+      lastSyncedSelection.current=photos.map(p=>p.id).sort().join("|");
       const uploadedIds:string[]=[];
       for(const photo of photos){
         let assetId=uploadedAssets.current.get(photo.id);
