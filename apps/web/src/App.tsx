@@ -676,7 +676,7 @@ export function App() {
     setPublishStatus(status);
     const controller=new AbortController(),timeout=window.setTimeout(()=>controller.abort(),9000);
     try{
-      const warmed=await warmPublishedRecommendations(controller.signal,phase=>setJourney(phase));
+      const warmed=await warmPublishedRecommendations(controller.signal,phase=>setJourney(phase),draft);
       warmRef.current?.release();warmRef.current=warmed;
       setWarmFeed(warmed.page);
     }catch{
