@@ -72,6 +72,11 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
      "SELECT 1 FROM luemi_private.erasure_objects "+
      "WHERE request_id=$1 AND deleted_at IS NULL LIMIT 1",[id]);
     if(outstanding.rowCount!==0)throw new Error("erasure_object_pending");
+    // Actor-scoped social activity may be removed only under the isolated
+    // worker's existing pending, due and disabled-account RLS policies.
+    await db.query("DELETE FROM luemi_bliki_private.reactions WHERE actor_id=$1",[actor]);
+    await db.query("DELETE FROM luemi_bliki_private.views WHERE viewer_id=$1",[actor]);
+    await db.query("DELETE FROM luemi_chats.likes WHERE sender_id=$1 OR receiver_id=$1",[actor]);
     // Only account-specific geo queries/quotas are erased. Global budget
     // reservations cannot be safely attributed to one actor.
     await db.query("DELETE FROM luemi_private.geo_daily_usage "+
