@@ -21,6 +21,7 @@ export class RegistrationMediaSync {
  private queue:Promise<unknown>=Promise.resolve();
  private busy=new Set<string>();
  private removed=new Set<string>();
+ private pendingDeletes=new Set<string>();
  private uploaded=new Map<string,string>();
  private prepared=false;
  private deps:Required<PhotoSyncDeps>;
@@ -67,18 +68,27 @@ export class RegistrationMediaSync {
  }
  /** Called before local removal, also works if the browser lost the receipt. */
  removePhoto(id:string){
-  const alreadyUploaded=this.uploaded.get(id);
+  const receipt=this.uploaded.get(id);
   this.removed.add(id);this.uploaded.delete(id);
+  this.pendingDeletes.add(id);
   this.deps.onState(id,"deleting");
   void this.enqueue(async()=>{
-   // A user may remove an image and immediately revoke the photo checkbox.
-   // Keep cleanup authorized by the earlier server draft, not the current UI.
-   if(!this.prepared&&!alreadyUploaded)return;
-   if(alreadyUploaded){await this.deps.remove!(alreadyUploaded);return;}
-   const hash=await this.deps.digest!(id);
-   const item=(await this.deps.manifest!()).find(x=>x.clientDigest===hash);
-   if(item)await this.deps.remove!(item.id);
-  }).catch(()=>this.deps.onError("Удаление фото с сервера не подтверждено. Проверь сеть и повтори удаление."));
+   if(!this.prepared&&!receipt){this.pendingDeletes.delete(id);return;}
+   const hash=receipt?null:await this.deps.digest!(id);
+   const asset=receipt??(await this.deps.manifest!()).find(x=>x.clientDigest===hash)?.id;
+   if(asset)await this.deps.remove!(asset);
+   this.pendingDeletes.delete(id);
+  }).catch(()=>this.deps.onError("Не удалось подтвердить удаление фото с сервера. Проверь сеть и повтори."));
+ }
+ retryPendingDeletes(){
+  for(const id of this.pendingDeletes){
+   void this.enqueue(async()=>{
+    const hash=await this.deps.digest!(id);
+    const asset=(await this.deps.manifest!()).find(x=>x.clientDigest===hash)?.id;
+    if(asset)await this.deps.remove!(asset);
+    this.pendingDeletes.delete(id);
+   }).catch(()=>this.deps.onError("Сервер пока недоступен. Повторим удаление после восстановления сети."));
+  }
  }
  /** Final commit reconciles all selected IDs with the authenticated server,
  * removes unselected legacy assets and persists the user's actual first photo.
