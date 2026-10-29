@@ -7,10 +7,13 @@ const local:GeoPlace[]=[
   {id:"offline:am:yerevan",city:"Ереван",country:"Армения",countryCode:"AM"},
   {id:"offline:am:armavir",city:"Армавир",country:"Армения",countryCode:"AM"},
   {id:"offline:am:gyumri",city:"Гюмри",country:"Армения",countryCode:"AM"},
+  {id:"offline:ru:armavir",city:"Армавир",country:"Россия",countryCode:"RU",region:"Краснодарский край"},
   {id:"offline:ru:krasnodar",city:"Краснодар",country:"Россия",countryCode:"RU",region:"Краснодарский край"},
   {id:"offline:ru:moscow",city:"Москва",country:"Россия",countryCode:"RU"},
   {id:"offline:ru:saint-petersburg",city:"Санкт-Петербург",country:"Россия",countryCode:"RU"},
-  {id:"offline:ge:tbilisi",city:"Тбилиси",country:"Грузия",countryCode:"GE"}
+  {id:"offline:ge:tbilisi",city:"Тбилиси",country:"Грузия",countryCode:"GE"},
+  {id:"offline:de:frankfurt-am-main",city:"Франкфурт-на-Майне",country:"Германия",countryCode:"DE",region:"Гессен"},
+  {id:"offline:de:frankfurt-oder",city:"Франкфурт-на-Одере",country:"Германия",countryCode:"DE",region:"Бранденбург"}
 ];
 const alias=new Map<string,string>([
   ["yerevan","offline:am:yerevan"],["erevan","offline:am:yerevan"],
