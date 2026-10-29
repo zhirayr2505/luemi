@@ -5,6 +5,8 @@ const src=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const app=src("apps/web/src/App.tsx");
 const shell=src("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const card=src("apps/web/src/discovery/FeedCard.tsx");
+const forYou=src("apps/web/src/discovery/RealForYou.tsx");
+const nearby=src("apps/web/src/discovery/RealNearby.tsx");
 
 test("REAL_ONLY runs the approved LUEMI shell, not the provisional list shell",()=>{
  const live=app.indexOf('if(realHome&&auth==="authorized"&&realFeedPilot.enabled)');
@@ -58,4 +60,27 @@ test("real matches, reports and account actions stay available even when feed is
  assert.match(shell,/className="real-discovery-settings"/);
  assert.match(shell,/accountPanel/);
  assert.match(shell,/setMainTab\(id\)/);
+});
+
+
+test("real For You and Nearby restore their approved distinct layouts, never three decks",()=>{
+ assert.match(shell,/tab!=="feed"/);
+ assert.match(shell,/<RealForYou draft=\{draft\} people=\{rows\}/);
+ assert.match(shell,/<RealNearby draft=\{draft\} people=\{rows\}/);
+ assert.match(forYou,/className="fy-hero"/);
+ assert.match(forYou,/className="fy-rail"/);
+ assert.match(forYou,/className="fy-section"/);
+ assert.match(forYou,/className="fy-expanded"/);
+ assert.match(forYou,/className="fy-manage"/);
+ assert.match(nearby,/className="nb-location"/);
+ assert.match(nearby,/className="nb-grid"/);
+ assert.match(nearby,/className="nb-photo"/);
+ assert.match(nearby,/scope==="city"/);
+ assert.match(nearby,/scope==="country"/);
+ assert.match(nearby,/scope==="world"/);
+ assert.doesNotMatch(forYou+nearby,/demoPeople|forYouDemoPeople|fetch\(|localStorage|Math\.random/);
+ assert.match(shell,/onPerson=\{onPerson\}/);
+ assert.match(shell,/const matchedRows=rows/);
+ assert.match(forYou,/const score=/);
+ assert.match(nearby,/person\.countryCode===draft\.countryCode/);
 });

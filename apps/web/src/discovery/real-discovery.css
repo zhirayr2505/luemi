@@ -57,3 +57,21 @@
 .real-discovery-account-sheet>.discovery-glass-button{margin:8px 14px 20px}
 .real-discovery-account-sheet .luemi-real-account{padding:12px 7px 22px}
 .real-discovery-account-sheet .luemi-real-account h1{font-size:22px}
+
+/* Bring back the approved For You shelves and Nearby photo grid for real accounts.
+   Existing FeedCard / Profile Morph styles are intentionally unchanged. */
+.real-discovery-home .real-discovery-collections{overflow:hidden}
+.real-discovery-home .real-discovery-collections>.fy-root,
+.real-discovery-home .real-discovery-collections>.nb-root{flex:1;min-height:0}
+.real-discovery-home .real-nearby-scope{
+ display:flex;flex-wrap:wrap;gap:7px;padding:10px 5px;margin:6px 0 2px;
+ border-radius:16px;background:var(--panel);border:1px solid var(--glass-edge)
+}
+.real-discovery-home .real-nearby-scope button{
+ min-height:38px;padding:7px 11px;border-radius:13px;color:var(--ink);
+ border:1px solid var(--glass-edge);background:var(--bg);font:inherit;font-size:12px
+}
+.real-discovery-home .real-nearby-scope button[aria-pressed=true]{
+ background:linear-gradient(120deg,#b18de0,#dfa4ce);color:white
+}
+.real-discovery-home .real-nearby-scope small{width:100%;color:var(--subtle);font-size:11px}

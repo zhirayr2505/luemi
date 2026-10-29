@@ -6,6 +6,8 @@ import type {RegistrationDraft} from "../registration/model";
 import type {DemoKind,DemoPerson} from "./model";
 import type {ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
+import {RealForYou} from "./RealForYou";
+import {RealNearby} from "./RealNearby";
 import {GlobalHeader} from "./GlobalHeader";
 import {ProfileMaster} from "./ProfileV3Gateway";
 import {VisitorProfileRoute} from "./VisitorProfileRoute";
@@ -77,9 +79,10 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
  </section>;
 }
 
-function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched}:{
+function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation}:{
  active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
- onPerson:(p:RealPublishedProfile)=>void;onMatched:()=>void
+ onPerson:(p:RealPublishedProfile)=>void;onMatched:()=>void;
+ saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void
 }){
  const [rows,setRows]=useState<RealPublishedProfile[]>([]);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
@@ -106,11 +109,9 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched}:{
   }).catch(()=>{if(!controller.signal.aborted){setLoading(false);setError("Не удалось загрузить анкеты.");}});
   return ()=>controller.abort();
  },[active,refresh,initialFeed]);
- const matchedRows=useMemo(()=>{
-  if(tab==="nearby")return rows.filter(p=>p.city.trim().toLocaleLowerCase("ru")===draft.city.trim().toLocaleLowerCase("ru"));
-  if(tab==="for-you")return rows.filter(p=>p.interests.some(id=>draft.interests.includes(id)));
-  return rows;
- },[rows,tab,draft.city,draft.interests]);
+ // Each tab now owns its approved presentation. Only Feed renders a full-screen deck;
+ // For You and Nearby sort/filter the complete real server page themselves.
+ const matchedRows=rows;
  const current=matchedRows[page];
  const more=async()=>{
   if(!cursor||moreBusy||busy)return;
@@ -153,6 +154,17 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched}:{
   catch{setMessage("Не удалось отправить жалобу.");}
   finally{setBusy(false);}
  };
+ if(tab!=="feed")return <div className="real-discovery-deck real-discovery-collections">
+  {message&&<div className="real-discovery-notice" role="status">{message}</div>}
+  {loading?<div className="discovery-empty" role="status"><Heart size={36}/><h2>Загружаем анкеты…</h2></div>:
+   error?<div className="discovery-empty" role="alert"><h2>Анкеты не загрузились</h2><p>{error}</p>
+    <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></div>:
+   tab==="for-you"?
+    <RealForYou draft={draft} people={rows} onPerson={onPerson} saved={saved} onSave={onSave}
+     onMore={()=>{void more();}} hasMore={!!cursor} moreBusy={moreBusy}/>:
+    <RealNearby draft={draft} people={rows} onPerson={onPerson} saved={saved} onSave={onSave}
+     onMore={()=>{void more();}} hasMore={!!cursor} moreBusy={moreBusy} onEditLocation={onEditLocation}/>}
+ </div>;
  return <div className="real-discovery-deck">
   {message&&<div className="real-discovery-notice" role="status">{message}</div>}
   {loading?<div className="discovery-empty" role="status"><Heart size={36}/><h2>Загружаем анкеты…</h2></div>:
@@ -208,6 +220,11 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  const [browse,setBrowse]=useState<BrowseTab>("feed");
  const [person,setPerson]=useState<RealPublishedProfile|null>(null);
  const [accountOpen,setAccountOpen]=useState(false);
+ // Session-only bookmarks: the API has no durable saved-profiles endpoint yet.
+ const [savedIds,setSavedIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
+ const onSave=(id:string)=>setSavedIds(previous=>{
+  const next=new Set(previous);if(next.has(id))next.delete(id);else next.add(id);return next;
+ });
  const index=tabs.findIndex(t=>t[0]===browse);
  const start=useRef<{id:number;x:number;y:number;claimed:boolean}|null>(null);
  const suppressClick=useRef(0);
@@ -246,7 +263,8 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
       {tabs.map(([id,label])=><section key={id} className="discovery-page" role="tabpanel" aria-label={label}
        aria-hidden={browse!==id} inert={browse!==id}>
        <LiveDeck active={mainTab==="discover"&&browse===id} tab={id} draft={draft}
-        initialFeed={initialFeed}
+        initialFeed={initialFeed} saved={savedIds} onSave={onSave}
+        onEditLocation={()=>setMainTab("profile")}
         onPerson={setPerson} onMatched={()=>setMainTab("chats")}/>
       </section>)}
      </div>
