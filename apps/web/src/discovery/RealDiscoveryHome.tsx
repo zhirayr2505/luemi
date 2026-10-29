@@ -6,6 +6,7 @@ import type {RegistrationDraft} from "../registration/model";
 import type {DemoKind,DemoPerson} from "./model";
 import type {ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
+import {cardGestureZone} from "./card-gesture-zone";
 import {selectionHaptic} from "../ui/haptic";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {GestureArbiter,computedTranslation,fractionalTrack} from "../ui/gesture-arbiter";
@@ -113,18 +114,19 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   if(!active||lastRefresh.current===refresh)return;
   lastRefresh.current=refresh;
   const controller=new AbortController();abort.current?.abort();abort.current=controller;
+  let complete=false;
   setLoading(true);setError("");setMessage("");
   if(initialFeed&&refresh===0){
    // First paint already has the actual signed server recommendations and
    // the first decoded image blobs from the publication handoff.
    setRows(initialFeed.profiles);setCursor(initialFeed.nextCursor);
-   setPage(0);setLoading(false);return()=>controller.abort();
+   setPage(0);setLoading(false);complete=true;return()=>controller.abort();
   }
   void getPublishedFeed(controller.signal).then(result=>{
    if(controller.signal.aborted)return;
-   setRows(result.profiles);setCursor(result.nextCursor);setPage(0);setLoading(false);
-  }).catch(()=>{if(!controller.signal.aborted){setLoading(false);setError("Не удалось загрузить анкеты.");}});
-  return ()=>controller.abort();
+   setRows(result.profiles);setCursor(result.nextCursor);setPage(0);setLoading(false);complete=true;
+  }).catch(()=>{if(!controller.signal.aborted){setLoading(false);setError("Не удалось загрузить анкеты.");complete=true;}});
+  return ()=>{if(!complete&&lastRefresh.current===refresh)lastRefresh.current=-1;controller.abort();};
  },[active,refresh,initialFeed]);
  // Each tab now owns its approved presentation. Only Feed renders a full-screen deck;
  // For You and Nearby sort/filter the complete real server page themselves.
@@ -488,7 +490,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  // takes over. A non-passive touchmove recognizes horizontal intent on the same
  // surface and prevents only that gesture; vertical scrolling stays native.
  useEffect(()=>{
-  const surfaces=[pages.current,tabsSurface.current].filter((node):node is HTMLDivElement=>!!node);
+  const surfaces=[pages.current,topTabsSurface.current].filter((node):node is HTMLDivElement=>!!node);
   const input=(touch:Touch,event:TouchEvent,el:HTMLElement):BrowseInput=>({
    pointerId:touch.identifier,clientX:touch.clientX,clientY:touch.clientY,
    target:event.target,currentTarget:el,cancelable:event.cancelable,
