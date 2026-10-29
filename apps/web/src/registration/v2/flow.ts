@@ -8,7 +8,7 @@ export const registrationV2Stages=[
  {id:"identity",title:"Начнём с тебя",eyebrow:"О ТЕБЕ",subtitle:"Имя, дата рождения и немного о тебе.",required:true},
  {id:"location",title:"Где начинается твоя история?",eyebrow:"ТВОЙ ГОРОД",subtitle:"Покажем людей рядом, не раскрывая твои координаты.",required:true},
  {id:"intent",title:"Кого ты хочешь встретить?",eyebrow:"ЗНАКОМСТВА",subtitle:"Настроим знакомства под тебя.",required:true},
- {id:"personality",title:"Чем ты живёшь?",eyebrow:"ТВОЙ МИР",subtitle:"Пусть общение начинается с общего.",required:false},
+ {id:"personality",title:"Чем ты живёшь?",eyebrow:"ТВОЙ МИР",subtitle:"Пару слов о тебе — это обязательная часть анкеты. Интересы и языки можно добавить позже.",required:false},
  {id:"photos",title:"Твои лучшие моменты",eyebrow:"ФОТОГРАФИИ",subtitle:"Добавь три фотографии. Ещё три — по желанию.",required:true},
  {id:"face-consent",title:"Знакомства с доверием",eyebrow:"FACETRUST",subtitle:"Расскажем, как проходит проверка лица.",required:true},
  {id:"liveness",title:"Это действительно ты?",eyebrow:"ЖИВОЕ СЕЛФИ",subtitle:"Короткая проверка через камеру перед публикацией.",required:true},
