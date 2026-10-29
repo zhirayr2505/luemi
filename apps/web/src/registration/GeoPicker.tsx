@@ -58,15 +58,24 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
  // callback cannot update this component OR its still-mounted parent draft.
  useEffect(()=>{const current=gate.current;current.resume();return ()=>{current.dispose();clearGpsDeadline();};},[]);
  const selectedLabel=data.placeId?data.city+", "+data.country:"";
+ const refreshFocusPosition=()=>{
+  const input=inputRef.current;if(!input)return;
+  const viewport=window.visualViewport;
+  const keyboardTop=viewport?viewport.offsetTop+viewport.height:window.innerHeight;
+  const rect=input.getBoundingClientRect();
+  const idealCenter=keyboardTop-Math.min(132,Math.max(84,(viewport?.height??window.innerHeight)*.18));
+  const raw=idealCenter-(rect.top+rect.height/2);
+  const minShift=18-rect.top;
+  const maxShift=keyboardTop-18-rect.bottom;
+  setFocusShift(Math.round(Math.max(minShift,Math.min(maxShift,raw))));
+ };
  useEffect(()=>{
   if(!cityFocused)return;
   const viewport=window.visualViewport;
-  const update=()=>{
-   const keyboard=Math.max(0,window.innerHeight-(viewport?.height??window.innerHeight));
-   setFocusShift(Math.min(170,Math.round(keyboard*.22)));
-  };
+  const update=()=>window.requestAnimationFrame(refreshFocusPosition);
   update();viewport?.addEventListener("resize",update);viewport?.addEventListener("scroll",update);
-  return()=>{viewport?.removeEventListener("resize",update);viewport?.removeEventListener("scroll",update);setFocusShift(0);};
+  window.addEventListener("resize",update);
+  return()=>{viewport?.removeEventListener("resize",update);viewport?.removeEventListener("scroll",update);window.removeEventListener("resize",update);setFocusShift(0);};
  },[cityFocused]);
  useEffect(()=>{
   if(!manual)return; // GPS remains owned by the detect operation.
@@ -115,7 +124,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
   cancelPending();
   patch({city:normalized.city,country:normalized.country,placeId:normalized.id,countryCode:normalized.countryCode});
   setQuery(normalized.city+", "+normalized.country);setEditing(false);
-  setResults([]);setError("");setActivity("success");
+  setResults([]);setError("");setActivity("success");inputRef.current?.blur();setCityFocused(false);setFocusShift(0);onFieldFocus?.(null);
  };
  const syntheticQa=import.meta.env.DEV&&window.location.pathname==="/geo-qa.html";
  const detect=()=>{
@@ -198,7 +207,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
            <input ref={inputRef} className="glass-control geo-input" role="combobox" autoComplete="off"
              aria-expanded={results.length>0} aria-controls="luemi-geo-results" aria-autocomplete="list"
              maxLength={80} placeholder="Введи город или страну" value={query}
-             onFocus={()=>{setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();window.setTimeout(()=>inputRef.current?.scrollIntoView({block:"center",behavior:"smooth"}),0);}}
+             onFocus={()=>{setFocusShift(0);setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();window.requestAnimationFrame(()=>{inputRef.current?.scrollIntoView({block:"nearest",behavior:"smooth"});window.requestAnimationFrame(refreshFocusPosition);});}}
              onBlur={()=>window.setTimeout(()=>{setCityFocused(false);onFieldFocus?.(null);},120)}
              onChange={e=>{cancelPending();setQuery(e.target.value);setEditing(true);setError("");clearFieldError?.();setResults([]);setActivity("idle");}}/>
            {loading&&<LoaderCircle className="spin" size={18}/>}
