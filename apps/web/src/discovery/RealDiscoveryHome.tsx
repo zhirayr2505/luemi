@@ -21,7 +21,7 @@ import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {RealChats} from "../chats/RealChats";
 import {createChatTransport,type ChatWireConversation} from "../chats/chat-transport";
 import {geoCsrf} from "../auth/session-adapter";
-import {getPublishedFeed,likePublishedUser,blockPublishedUser,reportPublishedUser,type PublishedFeedPage} from "../registration/real-live-client";
+import {getPublishedFeed,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,realMatchPilot,type PublishedFeedPage,type IncomingLike} from "../registration/real-live-client";
 import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
 import "./discovery.css";
 import "./feed-v2.css";
@@ -68,6 +68,7 @@ const toCard=(p:RealPublishedProfile):DemoPerson=>({
 
 function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
  const [items,setItems]=useState<ChatWireConversation[]>([]);
+ const [incoming,setIncoming]=useState<IncomingLike[]>([]);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [refresh,setRefresh]=useState(0);
  useEffect(()=>{
@@ -75,8 +76,10 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
   const csrf=geoCsrf(),controller=new AbortController();
   if(!csrf){setError("Войди через Telegram, чтобы увидеть симпатии.");setLoading(false);return;}
   setLoading(true);setError("");
-  void createChatTransport(csrf).list(controller.signal).then(data=>{
-   if(!controller.signal.aborted){setItems(data.conversations);setLoading(false);}
+  const chats=realMatchPilot.enabled?createChatTransport(csrf).list(controller.signal):Promise.resolve({conversations:[]});
+  const likes=realMatchPilot.enabled?getIncomingLikes(controller.signal):Promise.resolve([]);
+  void Promise.all([chats,likes]).then(([data,liked])=>{
+   if(!controller.signal.aborted){setItems(data.conversations);setIncoming(liked);setLoading(false);}
   }).catch(()=>{if(!controller.signal.aborted){setError("Не удалось загрузить симпатии.");setLoading(false);}});
   return ()=>controller.abort();
  },[active,refresh]);
@@ -84,13 +87,20 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
   <div className="real-discovery-matches-head"><h2>Симпатии</h2>
    <button type="button" aria-label="Обновить симпатии" onClick={()=>setRefresh(x=>x+1)}><RefreshCw size={19}/></button></div>
   {loading?<p role="status">Загружаем симпатии…</p>:error?<p role="alert">{error}</p>:
-   !items.length?<div className="discovery-placeholder"><Heart size={36}/><h2>Пока нет взаимных симпатий</h2>
-    <p>Когда появится взаимная симпатия, она будет здесь.</p></div>:
-   <div className="real-discovery-match-list">{items.map(item=>
+  !items.length&&!incoming.length?<div className="discovery-placeholder"><Heart size={36}/><h2>Пока нет взаимных симпатий</h2>
+    <p>Здесь появятся люди, которым ты понравился, и ваши взаимные симпатии.</p></div>:
+   <div className="real-discovery-match-list">
+    {incoming.length>0&&<div className="real-discovery-like-section"><h3>Тебе поставили симпатию</h3>
+     {incoming.map(item=><div key={item.id} className="real-discovery-match real-discovery-incoming-like">
+      <span className="real-discovery-avatar">{item.name.slice(0,1).toUpperCase()}</span>
+      <span><b>{item.name}</b><small>Поставил(а) тебе симпатию 💜</small></span><Heart size={20}/>
+     </div>)}</div>}
+    {items.length>0&&<div className="real-discovery-like-section"><h3>Взаимные симпатии</h3>{items.map(item=>
     <button type="button" key={item.id} className="real-discovery-match" onClick={onChat}>
      <span className="real-discovery-avatar">{item.peerPhotoUrl?<img src={item.peerPhotoUrl} alt="" loading="lazy"/>:item.peerName.slice(0,1)}</span>
      <span><b>{item.peerName}</b><small>Взаимная симпатия · Открыть чаты</small></span>
      <Heart size={20}/></button>)}</div>}
+   </div>}
  </section>;
 }
 
@@ -281,7 +291,9 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  ownerPhotoPreview?:ReadonlyArray<{src:string}>;
  accountPanel:ReactNode;onEdit:()=>void;
 }){
- const [mainTab,setMainTab]=useState<MainTab>("discover");
+ const [mainTab,setMainTab]=useState<MainTab>(()=>(
+  new URLSearchParams(typeof window==="undefined"?"":window.location.search).get("luemiRoute")==="likes"||
+  window.Telegram?.WebApp?.initDataUnsafe?.start_param==="likes"?"likes":"discover"));
  const [browse,setBrowse]=useState<BrowseTab>("feed");
  const [person,setPerson]=useState<RealPublishedProfile|null>(null);
  const [accountOpen,setAccountOpen]=useState(false);
