@@ -35,11 +35,11 @@ function Tile({person,draft,saved,onPerson,onSave,priority}:{
   {interest&&<div className="nb-interest"><span aria-hidden="true">✦</span><span>{interest}</span></div>}
  </article>;
 }
-export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,moreBusy,onEditLocation}:{
+export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,moreBusy,onEditLocation,onScrollTop}:{
  draft:RegistrationDraft;people:RealPublishedProfile[];
  onPerson:(person:RealPublishedProfile)=>void;saved:ReadonlySet<string>;
  onSave:(id:string)=>void;onMore:()=>void;hasMore:boolean;moreBusy:boolean;
- onEditLocation:()=>void
+ onEditLocation:()=>void;onScrollTop?:(top:number)=>void
 }){
  const [scope,setScope]=useState<Scope>("city");
  const [settings,setSettings]=useState(false);
@@ -62,7 +62,7 @@ export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
   scope==="country"?"Показываем людей из выбранной страны.":"Опубликованные анкеты людей со всего мира.";
  const hasArea=scope==="world"||(scope==="country"?!!draft.countryCode:!!draft.city&&!!draft.countryCode);
  return <section className="nb-root" aria-label="Рядом · опубликованные анкеты">
-  <div className="nb-scroll">
+  <div className="nb-scroll" onScroll={e=>onScrollTop?.(e.currentTarget.scrollTop)}>
    <button className="nb-location" type="button" onClick={()=>setSettings(s=>!s)}
     aria-expanded={settings} aria-label={"Настройки географического поиска: "+heading}>
     <span className="nb-location-icon">{scope==="world"?<Globe2 size={23}/>:<MapPin size={23}/>}</span>

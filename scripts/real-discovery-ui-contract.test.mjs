@@ -84,3 +84,19 @@ test("real For You and Nearby restore their approved distinct layouts, never thr
  assert.match(forYou,/const score=/);
  assert.match(nearby,/person\.countryCode===draft\.countryCode/);
 });
+
+test("real pages reuse approved 1:1 gesture and inertial settle without duplicated profile engine",()=>{
+ assert.match(shell,/new MotionController\("browse"/);
+ assert.match(shell,/new GestureArbiter\(\)/);
+ assert.match(shell,/const frozenBrowse=/);
+ assert.match(shell,/const settleDrag=/);
+ assert.match(shell,/schedulePaint\(g\.token/);
+ assert.match(shell,/addEventListener\("touchmove",track,\{passive:false\}\)/);
+ assert.match(shell,/onTransitionEnd=/);
+ assert.match(shell,/onScrollTop=\{top=>onScrollTop\(id,top\)\}/);
+ assert.match(shell,/onMotionProgress=\{\(progress,dragging\)=>header\.current\?\.setProfileProgress/);
+ assert.match(shell,/registerBack=\{registerVisitorBack\}/);
+ assert.match(shell,/ownerPhotoPreview=EMPTY_OWNER_PREVIEW/);
+ assert.match(forYou,/onScroll=\{e=>\{if\(!expanded\)onScrollTop/);
+ assert.match(nearby,/onScroll=\{e=>onScrollTop/);
+});

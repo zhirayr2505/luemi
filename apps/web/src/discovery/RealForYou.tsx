@@ -77,10 +77,10 @@ const emptyMessage=(id:Topic)=>{
  if(id==="new")return "Сервер пока не передаёт дату регистрации — не будем выдумывать её.";
  return "В этой подборке пока нет подходящих опубликованных анкет.";
 };
-export function RealForYou({draft,people,onPerson,saved,onSave,onMore,hasMore,moreBusy}:{
+export function RealForYou({draft,people,onPerson,saved,onSave,onMore,hasMore,moreBusy,onScrollTop}:{
  draft:RegistrationDraft;people:RealPublishedProfile[];
  onPerson:(person:RealPublishedProfile)=>void;saved:ReadonlySet<string>;onSave:(id:string)=>void;
- onMore:()=>void;hasMore:boolean;moreBusy:boolean
+ onMore:()=>void;hasMore:boolean;moreBusy:boolean;onScrollTop?:(top:number)=>void
 }){
  const [order,setOrder]=useState<Topic[]>(allIds);
  const [hidden,setHidden]=useState<Topic[]>([]);
@@ -122,7 +122,8 @@ export function RealForYou({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
  const heading=expanded==="best"?"Лучшие совпадения сегодня":topics.find(t=>t.id===expanded)?.title;
  const expandedPeople=expanded===null?[]:expanded==="best"?ranked:members(expanded,ranked,draft);
  return <div className="fy-root">
-  <div className="fy-scroll" ref={scroll} inert={!!expanded} aria-hidden={!!expanded}>
+  <div className="fy-scroll" ref={scroll} inert={!!expanded} aria-hidden={!!expanded}
+   onScroll={e=>{if(!expanded)onScrollTop?.(e.currentTarget.scrollTop);}}>
    <div className="fy-hero">
     <div className="fy-hero-glow" aria-hidden="true"/>
     <div className="fy-hero-mark" aria-hidden="true"><Heart size={89} strokeWidth={.85}/><Sparkles size={29}/></div>
@@ -154,7 +155,7 @@ export function RealForYou({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
   {expanded&&<section className="fy-expanded" role="region" aria-label={"Подборка: "+heading}>
    <header><button type="button" className="fy-back" onClick={()=>setExpanded(null)} aria-label="Назад к подборкам">
     <ArrowLeft size={20}/></button><div><h2>{heading}</h2><p>Опубликованные анкеты LUEMI</p></div></header>
-   {expandedPeople.length?<div className="fy-grid">
+   {expandedPeople.length?<div className="fy-grid" onScroll={e=>onScrollTop?.(e.currentTarget.scrollTop)}>
     {expandedPeople.map(p=><Tile key={p.id} person={p} draft={draft}
      saved={saved.has(p.id)} onSave={onSave} onPerson={onPerson}/>)}
    </div>:<div className="fy-empty">Пока никого не нашли.</div>}
