@@ -61,7 +61,10 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
  const refreshFocusPosition=()=>{
   const input=inputRef.current;if(!input)return;
   const viewport=window.visualViewport;
-  const keyboardTop=viewport?viewport.offsetTop+viewport.height:window.innerHeight;
+  const footer=input.closest<HTMLElement>(".v2-device")?.querySelector<HTMLElement>(".v2-footer");
+  const footerTop=footer?.getBoundingClientRect().top;
+  const keyboardTop=footerTop!==undefined&&footerTop>0?footerTop:
+   viewport?viewport.offsetTop+viewport.height:window.innerHeight;
   const rect=input.getBoundingClientRect();
   const idealCenter=keyboardTop-Math.min(132,Math.max(84,(viewport?.height??window.innerHeight)*.18));
   const raw=idealCenter-(rect.top+rect.height/2);
