@@ -19,6 +19,7 @@ type SurfaceProps={
  view:ProfileView;photoId:string|null;onPhotoId:(id:string)=>void;
  onPhotoOpen:(id:string,element:HTMLImageElement|null)=>void;
  onState?:(expanded:boolean)=>void;onMotionProgress?:(progress:number,dragging:boolean)=>void;
+ initialExpanded?:boolean;
  onEdit?:()=>void;onShowPreview?:()=>void;
  renderPage:(id:V3TabId)=>ReactNode;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
@@ -29,7 +30,7 @@ type Session={id:number;kind:"handle"|"photo"|"tabs";scroll?:HTMLElement|null;ve
  sheetStartPx?:number;scrollStart?:number;
  startIndex:number;startOffset:number;buttons?:Array<{x:number}>};
 export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,onMotionProgress,
- onEdit,onShowPreview,renderPage,registerRouteMotion}:SurfaceProps){
+ initialExpanded=false,onEdit,onShowPreview,renderPage,registerRouteMotion}:SurfaceProps){
  const p=view.profile,photos=view.photos;
  const root=useRef<HTMLDivElement>(null),mask=useRef<HTMLDivElement>(null);
  const rail=useRef<HTMLDivElement>(null),sheet=useRef<HTMLDivElement>(null),identityCompact=useRef<HTMLDivElement>(null);
@@ -46,7 +47,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
  const pendingPhotoCommit=useRef<string|null>(null);
  const pendingPhotoRequest=useRef<{id:string;index:number;animate:boolean}|null>(null);
  const [tab,setTab]=useState<V3TabId>("about");
- const [expanded,setExpanded]=useState(false);
+ const [expanded,setExpanded]=useState(initialExpanded);
  const photoIndex=Math.max(0,photos.findIndex(item=>item.id===photoId));
  currentIndex.current=photoIndex;
  const activePhoto=photos[photoIndex]??null;
@@ -160,8 +161,9 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   measure();
   const controller=new ProfileMotionEngine(layout.current,(progress,elastic)=>painter.current(progress,elastic),to=>{
    setExpanded(to===1);current.current.onState?.(to===1);
-  },()=>window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  },()=>window.matchMedia("(prefers-reduced-motion: reduce)").matches,undefined,initialExpanded?1:0);
   engine.current=controller;
+  current.current.onState?.(initialExpanded);
   const ro=new ResizeObserver(schedule);ro.observe(node);
   window.addEventListener("resize",schedule);window.visualViewport?.addEventListener("resize",schedule);
   const web=window.Telegram?.WebApp;
@@ -185,7 +187,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
    if(resizeRaf)cancelAnimationFrame(resizeRaf);
    gesture.current=null;hostGestures.dispose();controller.dispose();engine.current=null;
   };
- },[]);
+ },[initialExpanded]);
  const actions=useRef<ProfileRouteMotionHandle>({
   suspendForRoute:()=>{const interrupted=gesture.current;
    gesture.current=null;coordinator.current.cancel();
