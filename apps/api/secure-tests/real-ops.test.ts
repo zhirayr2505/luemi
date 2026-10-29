@@ -100,7 +100,8 @@ test("01G: photo review and report triage use scoped human role, not browser/adm
   const draft=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
    headers:sessionHeaders(owner),payload:{revision:0,fields:{
     displayName:"Adult",birthDate:"1997-02-03",gender:"woman",city:"Yerevan",
-    countryCode:"AM",placeId:"offline:am:yerevan",goal:"friendship",interests:["music"],
+    countryCode:"AM",placeId:"offline:am:yerevan",goal:"friendship",
+    audience:"everyone",ageMin:18,ageMax:80,interests:["music"],
     languages:["hy"],about:"Synthetic profile",consentVersion:cv
    }}});
   assert.equal(draft.statusCode,200,draft.body);

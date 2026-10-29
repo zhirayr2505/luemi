@@ -71,6 +71,7 @@ async function prepare(app:ReturnType<typeof makeApp>,user:User){
   headers:headers(user),payload:{revision:0,fields:{
    displayName:"Ани",birthDate:"1997-05-12",gender:"woman",city:"Ереван",
    countryCode:"AM",placeId:"offline:am:yerevan",goal:"friendship",
+   audience:"everyone",ageMin:18,ageMax:80,
    interests:["music"],languages:["hy"],about:"Тестовый взрослый пользователь",consentVersion
   }}});
  assert.equal(d.statusCode,200,d.body);
