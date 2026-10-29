@@ -378,6 +378,44 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    return statusError(reply,e);
   }
  });
+ // Synchronize only the signed owner's explicitly selected, unpublished
+ // draft photos. Orphaned/reserved uploads from interrupted attempts otherwise
+ // consume slots forever and make the next registration fail at photo 2/3.
+ // The original approved live profile, if any, is NEVER touched here.
+ app.put<{Body:unknown}>("/api/v2/media/sync-selection",
+ {preHandler:guard.mutation},async(req,reply)=>{
+  if(!object(req.body)||Object.keys(req.body).length!==1||
+     !Array.isArray(req.body.photoIds)||req.body.photoIds.length>6||
+     !req.body.photoIds.every(uuid)||
+     new Set(req.body.photoIds).size!==req.body.photoIds.length)
+   return reply.code(422).send({error:"invalid_photo_selection"});
+  const selection=req.body.photoIds as string[];
+  const allowed=new Set(selection.map(id=>digest("reg01c-photo-"+id)));
+  const authorized=await owner(req,reply,async(_db,id)=>({id}));
+  if(reply.sent||!("id" in authorized))return authorized;
+  try{
+   return await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+authorized.id+":profile_media_slots"]);
+    const q=await db.query<{id:string;derivative_key:string;idempotency_digest:string}>(
+     "SELECT a.id,a.derivative_key,u.idempotency_digest "+
+     "FROM luemi_private.media_assets a JOIN luemi_private.media_uploads u ON u.asset_id=a.id "+
+     "WHERE a.owner_id=$1 AND a.environment=$2 AND a.state<>'revoked' "+
+     "AND a.publication_status='private' FOR UPDATE OF a,u",
+     [authorized.id,opts.namespace]);
+    const removed=q.rows.filter(row=>!allowed.has(row.idempotency_digest));
+    // A failed Storage deletion fails the call. The row is never falsely
+    // marked successfully deleted; all operations remain owner-scoped.
+    for(const row of removed){
+     await opts.storage.delete(row.derivative_key);
+     await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
+      "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+      [row.id,authorized.id,opts.namespace]);
+    }
+    return{removed:removed.length};
+   });
+  }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
+ });
  // Delete a selected unpublished photo. The per-owner advisory lock serializes
  // removal with any in-flight upload or new photo intent.
  app.delete<{Params:{id:string}}>("/api/v2/media/by-photo/:id",
