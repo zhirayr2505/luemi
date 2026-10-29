@@ -39,9 +39,32 @@ export async function exportMyAvailableData():Promise<void>{
   if(cursor)throw new Error("export_incomplete");
   conversations.push({id:item.id,messages:messages.reverse()});
  }
+ // A private draft can expose media IDs but never Storage keys. Ask the
+ // authenticated server for sanitized copies only; never call Supabase directly.
+ const media:Array<{id:string;mime:string;dataBase64:string}>=[];
+ const snapshotPhotos=(preview as {photos?:Array<{id?:unknown}>})?.photos;
+ if(Array.isArray(snapshotPhotos)){
+  for(const item of snapshotPhotos.slice(0,6)){
+   const id=item?.id;
+   if(typeof id!=="string"||!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id))continue;
+   let response=await fetch("/api/v2/media/"+encodeURIComponent(id),{
+    credentials:"same-origin",headers,cache:"no-store"});
+   if(!response.ok)response=await fetch("/api/v3/discovery/photo/"+encodeURIComponent(id),{
+    credentials:"same-origin",headers,cache:"no-store"});
+   if(!response.ok)continue;
+   const mime=response.headers.get("content-type")?.split(";")[0]??"";
+   if(!["image/png","image/jpeg","image/webp"].includes(mime))continue;
+   const bytes=new Uint8Array(await response.arrayBuffer());
+   if(bytes.length===0||bytes.length>1048576)continue;
+   let binary="";
+   for(let offset=0;offset<bytes.length;offset+=8192)
+    binary+=String.fromCharCode(...bytes.subarray(offset,offset+8192));
+   media.push({id,mime,dataBase64:btoa(binary)});
+  }
+ }
  const document={format:"luemi-my-data-v1",generatedAt:new Date().toISOString(),
-  notice:"Личный экспорт доступных данных. Не включает скрытые для обоих сообщения, чужие закрытые сведения, оригинальные фото с устройства, материалы закрытых жалоб или данные, подлежащие отдельной юридической процедуре.",
-  identity,draft,profile,preview,conversations};
+  notice:"Личный экспорт доступных данных и доступных обработанных фото. Не включает скрытые для обоих сообщения, чужие закрытые сведения, исходные фото устройства, материалы закрытых жалоб или данные отдельной юридической процедуры.",
+  identity,draft,profile,preview,conversations,sanitizedPhotos:media};
  const json=JSON.stringify(document,null,2);
  if(json.length>16*1024*1024)throw new Error("export_too_large");
  const url=URL.createObjectURL(new Blob([json],{type:"application/json;charset=utf-8"}));
