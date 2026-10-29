@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadOnePrivatePhoto,deleteOnePrivatePhoto,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -133,6 +133,12 @@ export function App() {
   const photoJobs=useRef(new Map<string,AbortController>());
   const photoTimers=useRef(new Map<string,number>());
   const photoQueue=useRef<Promise<void>>(Promise.resolve());
+  // All private uploads and removals execute serially; no racing PUT/DELETE.
+  const bgQueue=useRef<Promise<void>>(Promise.resolve());
+  const bgQueued=useRef(new Set<string>());
+  const bgUploaded=useRef(new Map<string,string>());
+  const bgRemoved=useRef(new Set<string>());
+  const bgDraftInit=useRef<Promise<void>|null>(null);
   const photoIds=useRef(new Set<string>());
   const photoGeneration=useRef(0);
   const [photosRestored,setPhotosRestored] = useState(false);
@@ -499,6 +505,19 @@ export function App() {
     setError(problem);
   };
   const removePhoto=(id:string)=>{
+    bgRemoved.current.add(id);
+    bgQueue.current=bgQueue.current.catch(()=>{}).then(async()=>{
+      const assetId=bgUploaded.current.get(id);
+      if(!assetId)return;
+      try{
+        await deleteOnePrivatePhoto(assetId);
+        bgUploaded.current.delete(id);
+        setServerPhotoCount(bgUploaded.current.size);
+        setMediaStatus("Фотография удалена с сервера.");
+      }catch{
+        setMediaStatus("Не удалось удалить фото с сервера. Проверь соединение.");
+      }
+    });
     setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
     photoJobs.current.get(id)?.abort();photoJobs.current.delete(id);
@@ -517,7 +536,47 @@ export function App() {
       const next=[...prev];const [item]=next.splice(from,1);next.splice(to,0,item);return next;
     });
   };
+  // Background synchronization is explicit-consent gated. One photo is
+  // uploaded when its local derivative is ready, before final preview.
+  useEffect(()=>{
+    if(auth!=="authorized"||!remoteMediaPilot.enabled||!realFeedPilot.enabled||
+      !photosRestored||!serverConsent||submitting.current)return;
+    if(![1,2,3,4,5,6].every(n=>
+      validateStep(draft,n,photos.length,new Date(),"live")===null))return;
+    for(const photo of photos){
+      if(photo.status!=="ready"||!photo.src||bgRemoved.current.has(photo.id)||
+        bgQueued.current.has(photo.id)||bgUploaded.current.has(photo.id))continue;
+      bgQueued.current.add(photo.id);
+      bgQueue.current=bgQueue.current.catch(()=>{}).then(async()=>{
+        if(bgRemoved.current.has(photo.id))return;
+        setMediaSaving(true);
+        try{
+          if(!bgDraftInit.current){
+            bgDraftInit.current=(async()=>{
+              const existing=await readRemoteRevision();
+              await saveRemoteDraft(draft,existing.revision);
+              setPrivateDraftSaved(true);
+            })().catch(error=>{bgDraftInit.current=null;throw error;});
+          }
+          await bgDraftInit.current;
+          if(bgRemoved.current.has(photo.id))return;
+          const assetId=await uploadOnePrivatePhoto(photo);
+          bgUploaded.current.set(photo.id,assetId);
+          if(bgRemoved.current.has(photo.id)){
+            await deleteOnePrivatePhoto(assetId);bgUploaded.current.delete(photo.id);
+          }else{
+            setServerPhotoCount(bgUploaded.current.size);
+            setMediaStatus("На сервере "+bgUploaded.current.size+" из "+photos.length+" фотографий.");
+          }
+        }catch{
+          setMediaStatus("Не все фотографии загружены. Уже сохранённые не потеряны.");
+        }finally{bgQueued.current.delete(photo.id);setMediaSaving(false);}
+      });
+    }
+  },[auth,serverConsent,photosRestored,photos,draft]);
   const resetDraft=()=>{
+    // Keep the server cleanup queue even when the local manifest is reset.
+    for(const id of bgUploaded.current.keys())removePhoto(id);
     if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
@@ -1037,6 +1096,7 @@ export function App() {
         mediaEnabled={remoteMediaPilot.enabled}
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
+       serverPhotoCount={serverPhotoCount} mediaStatus={mediaStatus}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
