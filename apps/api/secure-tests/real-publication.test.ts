@@ -573,4 +573,64 @@ test("72h recovery requires signed same-owner Telegram confirmation and retains 
   await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,storage,limit:1});
  }finally{await app.close();}
 });
+test("01D: selected private photo is physically deleted; replacement and main-photo reorder are server verified",async()=>{
+ const storage=memoryPrivateStore(),app=makeApp({instant:true,storage});
+ try{
+  const owner=await identity(app,8011801),other=await identity(app,8011802);
+  await consent(app,other);
+  const photos=await prepare(app,owner);
+  assert.equal(photos.length,3);
+  const q=await admin.query<{derivative_key:string}>(
+   "SELECT derivative_key FROM luemi_private.media_assets WHERE id=$1",[photos[1]]);
+  assert.equal(q.rowCount,1);
+  const before=await storage.get(q.rows[0].derivative_key);
+  assert.ok(before,"server initially contains private derivative");
+  const denied=await mutate(app,other,"/api/v2/media/forget",{assetId:photos[1]});
+  assert.equal(denied.statusCode,200,denied.body);
+  assert.equal(denied.json().forgotten,true);
+  assert.ok(await storage.get(q.rows[0].derivative_key),"stranger cannot remove owner's pixels");
+  const removed=await mutate(app,owner,"/api/v2/media/forget",{
+   clientKey:"reg01d-photo-1-"+owner.id
+  });
+  assert.equal(removed.statusCode,200,removed.body);
+  assert.equal(removed.json().forgotten,true);
+  assert.equal(await storage.get(q.rows[0].derivative_key),null,
+   "forget must delete actual Storage bytes, not just hide photo in UI");
+  const again=await mutate(app,owner,"/api/v2/media/forget",{assetId:photos[1]});
+  assert.equal(again.statusCode,200,again.body);
+  const visible=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:owner.cookie}});
+  assert.equal(visible.statusCode,200,visible.body);
+  assert.deepEqual(visible.json().photos.map((x:{id:string})=>x.id),
+   [photos[0],photos[2]],"revoked asset never appears in authenticated manifest");
+  const png=makeSyntheticPng();
+  const intent=await mutate(app,owner,"/api/v2/media/intents",
+   {bytes:png.length,mime:"image/png",clientKey:"reg01d-replacement-"+owner.id});
+  assert.equal(intent.statusCode,200,intent.body);
+  const replacement=intent.json().assetId as string;
+  const put=await app.inject({method:"PUT",url:"/api/v2/media/"+replacement+"/bytes",
+   headers:{...headers(owner),"content-type":"image/png"},payload:png});
+  assert.equal(put.statusCode,200,put.body);
+  const order=[replacement,photos[0],photos[2]];
+  const foreignOrder=await mutate(app,other,"/api/v2/media/reorder",{assetIds:order});
+  assert.equal(foreignOrder.statusCode,409,foreignOrder.body);
+  const sorted=await mutate(app,owner,"/api/v2/media/reorder",{assetIds:order});
+  assert.equal(sorted.statusCode,200,sorted.body);
+  assert.equal(sorted.json().mainPhotoId,replacement);
+  const receipt=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:owner.cookie}});
+  assert.deepEqual(receipt.json().photos.map((x:{id:string})=>x.id),order);
+  const published=await mutate(app,owner,"/api/v3/profile/publish",{revision:1});
+  assert.equal(published.statusCode,200,published.body);
+  const status=await app.inject({method:"GET",url:"/api/v3/profile/status",
+   headers:{cookie:owner.cookie}});
+  assert.equal(status.statusCode,200,status.body);
+  assert.equal(status.json().profile.photos[0],"/api/v3/discovery/photo/"+replacement);
+  const noDeletePublished=await mutate(app,owner,"/api/v2/media/forget",{assetId:replacement});
+  assert.equal(noDeletePublished.statusCode,409);
+  assert.ok(await storage.get((await admin.query<{derivative_key:string}>(
+   "SELECT derivative_key FROM luemi_private.media_assets WHERE id=$1",[replacement]
+  )).rows[0].derivative_key));
+ }finally{await app.close();}
+});
 test("01D admin connection cleanup",async()=>{await admin.end();await reader.end();});

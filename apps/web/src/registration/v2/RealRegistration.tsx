@@ -1,8 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
 import {RegistrationStep,type PhotoItem} from "../Steps";
-import {fromLocalDraft,readyRegistrationPhotos} from "../../discovery/ProfileModel";
-import {ProfileMaster} from "../../discovery/ProfileV3Gateway";
+import {SimpleRegistrationPreview} from "../SimpleRegistrationPreview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {remoteDraftPilot} from "../server-draft";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
@@ -32,6 +31,7 @@ interface Props{
  restored:boolean;
  resumeReview:boolean;
  onRetryStorage:()=>void;
+ photoServerStatus?:string;
  onExit:()=>void;
  registerBack:(fn:()=>void)=>void;
  /** Real profile and media publication use the independently authenticated server. */
@@ -99,6 +99,7 @@ export function RealRegistrationV2(p:Props){
    case "personality":issue=validateStep(draft,5,photos.length,new Date(),"live")||
      validateStep(draft,6,photos.length,new Date(),"live");break;
    case "photos":
+    if(p.mediaEnabled&&!p.serverConsent){issue="Подтверди согласие перед загрузкой фотографий на сервер.";break;}
     if(!photoReady(photos)){issue="Выбери от 3 до 6 готовых фотографий.";break;}
     if(photoChecking)return;
     setPhotoChecking(true);
@@ -156,6 +157,12 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="personality"&&<div className="v2-real-groups">{step(5)}{step(6)}</div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
         {step(7)}
+        {p.mediaEnabled&&<label className="v2-consent">
+         <input type="checkbox" checked={p.serverConsent}
+          onChange={e=>p.setServerConsent(e.target.checked)}/>
+         <span>Согласен(-на) на приватное сохранение выбранных фото на сервере LUEMI сразу после выбора. Удалённые мной фото будут удалены и из хранилища. <a href="/privacy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности</a>.</span>
+        </label>}
+        {p.photoServerStatus&&<p className="v2-footnote" role="status">{p.photoServerStatus}</p>}
         <div className="v2-note"><ShieldCheck size={18}/>
          Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
          Сейчас фото остаются приватными. Автоматическая AI-проверка ещё не включена.
@@ -187,14 +194,11 @@ export function RealRegistrationV2(p:Props){
         </button>
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
-        <div className="v2-profile-v3-preview" aria-label="Предпросмотр анкеты в Profile Morph V3">
-         <ProfileMaster data={fromLocalDraft(draft,readyRegistrationPhotos(photos))}
-          mode="local-self-preview" active/>
-        </div>
+        <SimpleRegistrationPreview draft={draft} photos={photos} movePhoto={p.movePhoto}/>
         <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
           <strong>{p.mediaEnabled?"Твоя анкета готова":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
           <p>{p.mediaEnabled
-           ?(instantPublication?"После подтверждения фотографии сохранятся на сервере, а анкета сразу станет видна другим совершеннолетним пользователям. Ручной проверки до публикации нет.":"После подтверждения данные и фотографии отправятся в защищённое хранилище. Другие люди увидят их только после проверки и публикации.")
+           ?(instantPublication?"Фотографии загружаются приватно ещё на предыдущем шаге. После создания анкета станет доступна подходящим пользователям.":"Фотографии приватно сохраняются на сервере.")
            :"Сейчас сервер сохраняет поля анкеты, фотографии остаются на этом устройстве."}</p>
         </div></div>
         <label className="v2-consent"><input type="checkbox"
