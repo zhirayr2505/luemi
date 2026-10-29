@@ -8,9 +8,9 @@ const v2=load("apps/web/src/registration/v2/RealRegistration.tsx");
 const warm=load("apps/web/src/registration/recommendation-warmup.ts");
 const reg=load("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const media=load("apps/api/src/rem05d-private.ts");
-test("user performs one action from accepted V3 review",()=>{
- assert.match(v2,/<ProfileMaster data=\{fromLocalDraft\(draft,readyRegistrationPhotos\(photos\)\)\}/);
- assert.match(v2,/mode="local-self-preview" active/);
+test("user performs one action from a static avatar and photo carousel review",()=>{
+ assert.match(v2,/<RegistrationPreview data=\{draft\} photos=\{photos\}\/>/);
+ assert.doesNotMatch(v2,/<ProfileMaster/);
  assert.match(v2,/Создать анкету 💜/);
  assert.doesNotMatch(v2,/Проверить модерацию и публикацию/);
  assert.match(app,/onSave=\{\(\)=>\{void \(realFeedPilot.enabled\?confirmRealRegistration\(\)/);
@@ -20,10 +20,10 @@ test("incomplete upload never opens a fake registration dashboard",()=>{
  const end=app.indexOf('const resumePublication=async()=>',start);
  assert(start>0&&end>start);
  const submit=app.slice(start,end);
- assert.match(submit,/const uploadedIds=await uploadPrivatePhotos/);
+ assert.match(submit,/const uploadedIds=await photoSync\.current\?\.flush\(\)/);
  assert.doesNotMatch(submit,/existing.approved<photos.length\|\|existing.pending>0\|\|existing.other>0/);
  assert.match(submit,/readConfirmedPrivateMediaCount\(photos.length,uploadedIds\)/);
- assert.match(submit,/await uploadPrivatePhotos/);
+ assert.match(submit,/await photoSync\.current\?\.idle\(\)/);
  assert.match(submit,/await readConfirmedPrivateMediaCount\(photos.length,uploadedIds\)/);
  assert.match(submit,/media.approved<photos.length\|\|media.pending!==0\|\|media.other!==0/);
  assert.match(submit,/confirmed.state!=="published"/);
