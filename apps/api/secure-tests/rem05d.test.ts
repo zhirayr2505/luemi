@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {createHmac} from "node:crypto";
+import {createHash,createHmac} from "node:crypto";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
 import {addSyntheticMetadata,makeSyntheticPng,makeSynthetic50MpHeader,sanitizePng} from "../src/rem05d-image.js";
@@ -202,6 +202,58 @@ test("M: actual RLS media, intent concurrency, sanitized PNG, moderator-only app
   assert.equal((await get(server,"/api/v2/profile/draft",a)).statusCode,401);
   assert.equal((await get(server,"/api/v2/media/"+chosen,a)).statusCode,401);
   console.log("REM05D_MEDIA_PRIVATE_DERIVATIVE_MODERATION_REVOKE_PASS");
+ }finally{await server.close();}
+});
+test("M12: prepublication media removal physically deletes private bytes, per-user ACL and main photo order",async()=>{
+ const store=memoryPrivateStore(),server=app({storage:store});
+ try{
+  const owner=await identity(server,93617),stranger=await identity(server,93618);
+  const png=makeSyntheticPng();
+  const keys=["reg01c-photo-11111111-1111-4111-8111-111111111111",
+   "reg01c-photo-22222222-2222-4222-8222-222222222222"];
+  const ids:string[]=[];
+  for(const key of keys){
+   const intent=await post(server,"/api/v2/media/intents",owner,
+    {bytes:png.length,mime:"image/png",clientKey:key});
+   assert.equal(intent.statusCode,200,intent.body);
+   const id=intent.json().assetId as string;ids.push(id);
+   const putResponse=await server.inject({method:"PUT",url:"/api/v2/media/"+id+"/bytes",
+    headers:{...headers(owner.cookie,owner.csrf),"content-type":"image/png"},payload:png});
+   assert.equal(putResponse.statusCode,200,putResponse.body);
+  }
+  const preview=await get(server,"/api/v2/profile/preview",owner);
+  assert.equal(preview.statusCode,200);
+  assert.deepEqual(preview.json().photos.map((p:{id:string})=>p.id),ids);
+  assert.equal(preview.json().photos[0].clientDigest,
+   createHash("sha256").update(keys[0]).digest("hex"));
+  const ordered=await server.inject({method:"PATCH",url:"/api/v2/profile/photos/order",
+   headers:headers(owner.cookie,owner.csrf),payload:{ids:[ids[1],ids[0]]}});
+  assert.equal(ordered.statusCode,200,ordered.body);
+  const reversed=await get(server,"/api/v2/profile/preview",owner);
+  assert.deepEqual(reversed.json().photos.map((p:{id:string})=>p.id),[ids[1],ids[0]]);
+  const foreign=await server.inject({method:"DELETE",url:"/api/v2/media/"+ids[0],
+   headers:headers(stranger.cookie,stranger.csrf)});
+  assert.equal(foreign.statusCode,404,"another account cannot delete owner's photo");
+  const badCsrf=await server.inject({method:"DELETE",url:"/api/v2/media/"+ids[0],
+   headers:headers(owner.cookie,"invalid")});
+  assert.equal(badCsrf.statusCode,403);
+  const row=await admin.query<{derivative_key:string}>(
+   "SELECT derivative_key FROM luemi_private.media_assets WHERE id=$1",[ids[0]]);
+  assert.ok(await store.get(row.rows[0].derivative_key),"private bytes exist before removal");
+  const deleted=await server.inject({method:"DELETE",url:"/api/v2/media/"+ids[0],
+   headers:headers(owner.cookie,owner.csrf)});
+  assert.equal(deleted.statusCode,200,deleted.body);
+  assert.deepEqual(deleted.json(),{ok:true,deleted:true});
+  assert.equal(await store.get(row.rows[0].derivative_key),null,
+   "server removed sanitized image bytes from private object storage");
+  const again=await server.inject({method:"DELETE",url:"/api/v2/media/"+ids[0],
+   headers:headers(owner.cookie,owner.csrf)});
+  assert.equal(again.statusCode,200,"delete must be idempotent");
+  const after=await get(server,"/api/v2/profile/preview",owner);
+  assert.deepEqual(after.json().photos.map((p:{id:string})=>p.id),[ids[1]]);
+  assert.equal((await get(server,"/api/v2/media/"+ids[0],owner)).statusCode,404);
+  assert.equal((await get(server,"/api/v2/media/"+ids[1],stranger)).statusCode,404);
+  console.log("REM05D_PREPUBLICATION_MEDIA_DELETE_ORDER_RLS_PASS");
  }finally{await server.close();}
 });
 test("D09: session revoked while draft UPDATE waits on a real PostgreSQL row lock must ROLLBACK",async()=>{
