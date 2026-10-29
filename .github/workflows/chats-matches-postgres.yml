@@ -99,3 +99,8 @@ jobs:
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f qa/chats-v3-visibility-postgres.sql | tee /tmp/luemi-chats-visibility-verdict.txt
           grep -q LUEMI_CHATS_VISIBILITY_RLS_PASS /tmp/luemi-chats-visibility-verdict.txt
+      - name: Prove read-only deleted-account history cannot leak or receive new messages
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f qa/chats-v3-tombstone-postgres.sql | tee /tmp/luemi-archived-chat-verdict.txt
+          grep -q LUEMI_ARCHIVED_CHAT_RLS_PASS /tmp/luemi-archived-chat-verdict.txt
