@@ -41,7 +41,9 @@ async function nonRailPoint(page){
   const sc=document.querySelector(".fy-scroll");
   if(!(sc instanceof HTMLElement))return null;
   const r=sc.getBoundingClientRect();
-  const excluded=".fy-rail,.fy-expanded,.fy-manage,.discovery-action,[role=dialog]";
+  // The browse pager intentionally ignores buttons/links. Pick an actual
+  // noninteractive scroller pixel so the test measures a supported swipe.
+  const excluded=".fy-rail,.fy-expanded,.fy-manage,.discovery-action,[role=dialog],button,a,input,textarea,select,[contenteditable],[role=button]";
   for(const yf of [.20,.35,.50,.65,.80]){
    for(const xf of [.78,.55,.35,.15]){
     const x=Math.round(r.left+r.width*xf),y=Math.round(r.top+r.height*yf);
