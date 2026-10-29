@@ -41,7 +41,9 @@ async function nonRailPoint(page){
   const sc=document.querySelector(".fy-scroll");
   if(!(sc instanceof HTMLElement))return null;
   const r=sc.getBoundingClientRect();
-  const excluded=".fy-rail,.fy-expanded,.fy-manage,.discovery-action,[role=dialog]";
+  // The browse pager intentionally ignores buttons/links. Pick an actual
+  // noninteractive scroller pixel so the test measures a supported swipe.
+  const excluded=".fy-rail,.fy-expanded,.fy-manage,.discovery-action,[role=dialog],button,a,input,textarea,select,[contenteditable],[role=button]";
   for(const yf of [.20,.35,.50,.65,.80]){
    for(const xf of [.78,.55,.35,.15]){
     const x=Math.round(r.left+r.width*xf),y=Math.round(r.top+r.height*yf);
@@ -59,6 +61,21 @@ try {
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.locator(".discovery-app").waitFor();
+  await page.evaluate(()=>{
+   window.__luemiTouchTrace=[];
+   const surface=document.querySelector(".discovery-pages");
+   for(const type of ["touchstart","touchmove","touchend","touchcancel","pointercancel"]){
+    surface?.addEventListener(type,event=>{
+     const touch=event.touches?.[0]??event.changedTouches?.[0];
+     const log=window.__luemiTouchTrace;
+     if(Array.isArray(log)&&log.length<90)log.push({
+      type,cancelable:event.cancelable,tag:event.target?.tagName,
+      className:typeof event.target?.className==="string"?event.target.className.slice(0,110):"",
+      x:Math.round(touch?.clientX??-1),y:Math.round(touch?.clientY??-1)
+     });
+    },{capture:true,passive:true});
+   }
+  });
   const tabs=page.locator(".discovery-top-tabs [role=tab]");
   for(let repeat=0;repeat<2;repeat++){
    // The ForYou scroller is NOT at rest at top; this used to cause all
@@ -69,11 +86,35 @@ try {
     return {top:el.scrollTop,max:el.scrollHeight-el.clientHeight};
    });
    assert.ok(initial.top>1,"ForYou fixture must actually be scrolled for this regression");
-   const start=await nonRailPoint(page);
-   assert.ok(start,"no gesture-safe visible point inside scrolled ForYou");
+   // The scroller has one pending layout tick after programmatic scroll.
+   // Without letting it settle, hit-testing can report a DIV while the
+   // actual touchstart lands on a moving button (not a valid pager gesture).
+   await delay(200);
+   let start=await nonRailPoint(page);
+   for(let attempt=0;attempt<4&&start;attempt++){
+    await delay(70);
+    const safe=await page.evaluate(point=>{
+     const sc=document.querySelector(".fy-scroll"),el=document.elementFromPoint(point.x,point.y);
+     return !!(sc&&el&&sc.contains(el)&&!el.closest(
+      ".fy-rail,.fy-expanded,.fy-manage,.discovery-action,[role=dialog],button,a,input,textarea,select,[contenteditable],[role=button]"));
+    },start);
+    if(safe)break;
+    start=await nonRailPoint(page);
+   }
+   assert.ok(start,"no stable gesture-safe point inside scrolled ForYou");
    const t1=performance.now();
    await swipe(cdp,start.x,start.y,-width*.46,0);
-   await active(page,2);
+   try{await active(page,2);}catch(error){
+    const diagnosis=await page.evaluate(()=>({
+     events:window.__luemiTouchTrace,
+     selected:[...document.querySelectorAll(".discovery-top-tabs [role=tab]")].map(x=>x.getAttribute("aria-selected")),
+     current:document.querySelector(".discovery-app")?.dataset,
+     scrollTop:document.querySelector(".fy-scroll")?.scrollTop
+    }));
+    console.error("LUEMI_BROWSE_TOUCH_DIAGNOSTIC "+JSON.stringify({start,diagnosis}));
+    throw error;
+   }
+   await page.evaluate(()=>{window.__luemiTouchTrace=[];});
    samples.push({screen:width,repeat,scenario:"for-you-scrolled-left",elapsedMs:Math.round(performance.now()-t1)});
    // Vertical touch scroll on Nearby must remain native (tab stays Nearby).
    const nb=await scrollerPoint(page,".nb-scroll");

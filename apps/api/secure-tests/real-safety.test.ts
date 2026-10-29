@@ -162,11 +162,17 @@ test("01H: report must be human triaged, suspend revokes all sessions and hides 
   await admin.query("UPDATE luemi_private.erasure_requests "+
    "SET eligible_at=clock_timestamp()-interval '1 second' WHERE actor_id=$1",[owner.id]);
   const erased=await runErasureBatch({databaseUrl:eraseWorker,namespace:ns,storage:store,limit:1});
-  assert.deepEqual(erased,{completed:1,failed:0,pending:false});
+  // A previously reviewed safety report is an unresolved retention decision.
+  // A protected worker must REFUSE irreversible erasure until human/legal
+  // evidence-handling approval, not discard the appeal/report automatically.
+  assert.deepEqual(erased,{completed:0,failed:1,pending:true});
   assert.equal((await admin.query("SELECT 1 FROM luemi_private.account_enforcements "+
-   "WHERE actor_id=$1",[owner.id])).rowCount,0);
+   "WHERE actor_id=$1",[owner.id])).rowCount,1);
   assert.equal((await admin.query("SELECT 1 FROM luemi_private.account_appeals "+
-   "WHERE actor_id=$1",[owner.id])).rowCount,0);
+   "WHERE actor_id=$1",[owner.id])).rowCount,1);
+  const queued=await admin.query<{state:string}>(
+   "SELECT state FROM luemi_private.erasure_requests WHERE actor_id=$1",[owner.id]);
+  assert.equal(queued.rows[0].state,"pending");
   assert.equal((await admin.query("SELECT 1 FROM luemi_private.actors "+
    "WHERE id=$1",[viewer.id])).rowCount,1);
   // Safety operator must never access raw Telegram identities or stored sessions.

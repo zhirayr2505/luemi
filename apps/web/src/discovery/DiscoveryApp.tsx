@@ -332,7 +332,15 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
   // there races with photo pointer capture on Android touch sequences.
   if(target.closest(".feed-v2-photo .carousel-frame"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
-  if(interactive&&!interactive.matches(".discovery-name-button,.feed-v2-expand,.discovery-top-tabs [role=tab]"))return;
+  // Browse touch starts can land on a ForYou/Nearby tile button after a
+  // scroller layout tick. A TAP is still handled by its native onClick; only
+  // an axis-confirmed horizontal DRAG claims the pager and suppresses click.
+  // Keep modal controls, rails, edit fields and other custom gestures isolated.
+  const tileSwipe=!!interactive?.matches("button")&&
+    !!interactive.closest(".fy-scroll,.nb-scroll")&&
+    !interactive.closest(".fy-rail,.fy-expanded,.fy-manage,.discovery-action");
+  if(interactive&&!tileSwipe&&
+     !interactive.matches(".discovery-name-button,.feed-v2-expand,.discovery-top-tabs [role=tab]"))return;
   if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
   // The details subtree owns text gestures even when it reaches above the
   // old cutoff. The carousel consumes in-range photo swipes in capture;

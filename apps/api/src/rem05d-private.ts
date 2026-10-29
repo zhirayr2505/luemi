@@ -365,7 +365,8 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   const record=await owner(req,reply,async(db,id)=>{
    const q=await db.query<{derivative_key:string;generation:number;state:string}>(
     "SELECT derivative_key,generation,state FROM luemi_private.media_assets "+
-    "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND state='approved' AND publication_status='private'",
+    "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND state='approved' "+
+    "AND publication_status IN ('private','published')",
     [req.params.id,id,opts.namespace]);
    if(!q.rowCount)reject(404,"not_found");
    return q.rows[0];
@@ -379,7 +380,7 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    const rechecked=await owner(req,reply,async(db,id)=>{
     const q=await db.query(
      "SELECT id FROM luemi_private.media_assets WHERE id=$1 AND owner_id=$2 "+
-     "AND environment=$3 AND state='approved' AND publication_status='private' "+
+     "AND environment=$3 AND state='approved' AND publication_status IN ('private','published') "+
      "AND generation=$4 AND derivative_key=$5",
      [req.params.id,id,opts.namespace,record.generation,record.derivative_key]);
     if(!q.rowCount)reject(404,"not_found");

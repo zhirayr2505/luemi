@@ -39,36 +39,27 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
      "WHERE id=$1 AND environment=$2 AND status='deleted'",
      [actor,options.namespace]);
     if(active.rowCount!==1)throw new Error("erasure_actor_not_disabled");
-    // Fail CLOSED before the first irreversible Storage DELETE. The profile-only
-    // worker does not yet purge cross-schema chat likes/matches, shared messages
-    // or Bliki media/interaction rows. Deleting the profile bucket first would
-    // permanently remove photos and then fail at a foreign-key constraint.
-    // This conservative schema guard is retired only after an independently
-    // tested, actor-scoped social/media erasure migration is deployed.
+    // Fail CLOSED before any irreversible Storage DELETE. A separate retention
+    // flow must first clear all authored Bliki and involved safety evidence.
+    // Cross-schema conversation IDs remain intentionally intact for the
+    // surviving chat member; the actor's Telegram identity will be shredded.
     const coverage=await db.query<{unsupported:boolean}>(`
-      SELECT
-        EXISTS (
-          SELECT 1 FROM pg_constraint fk
-          JOIN pg_class linked ON linked.oid=fk.conrelid
-          JOIN pg_namespace ns ON ns.oid=linked.relnamespace
-          WHERE fk.contype='f'
-            AND fk.confrelid='luemi_private.actors'::regclass
-            AND ns.nspname<>'luemi_private'
-        ) OR EXISTS (
-          SELECT 1 FROM pg_class linked
-          JOIN pg_namespace ns ON ns.oid=linked.relnamespace
-          WHERE ns.nspname='luemi_bliki_private'
-            AND linked.relname IN ('stories','views','reactions','reports')
-            AND linked.relkind IN ('r','p')
-        ) OR EXISTS (
-          SELECT 1 FROM pg_class linked
-          JOIN pg_namespace ns ON ns.oid=linked.relnamespace
-          WHERE ns.nspname='luemi_chats'
-            AND linked.relname IN ('conversations','members','messages','media')
-            AND linked.relkind IN ('r','p')
-        ) AS unsupported`);
+      SELECT EXISTS(
+       SELECT 1 FROM luemi_bliki_private.stories
+       WHERE author_id=$1 AND environment=$2
+      ) OR EXISTS(
+       SELECT 1 FROM luemi_private.human_report_reviews h
+       JOIN luemi_private.reports r ON r.id=h.report_id
+       WHERE r.reporter_id=$1 OR r.subject_id=$1
+      ) OR EXISTS(
+       SELECT 1 FROM luemi_private.account_enforcements
+       WHERE actor_id=$1 AND environment=$2
+      ) OR EXISTS(
+       SELECT 1 FROM luemi_bliki_private.reports
+       WHERE reporter_id=$1
+      ) AS unsupported`,[actor,options.namespace]);
     if(coverage.rowCount!==1||coverage.rows[0]?.unsupported!==false)
-      throw new Error("erasure_social_dependencies_unhandled");
+      throw new Error("erasure_unsupported_evidence_or_bliki");
     const objects=await db.query<{object_key:string;deleted_at:string|null}>(
      "SELECT object_key,deleted_at::text FROM luemi_private.erasure_objects "+
      "WHERE request_id=$1 ORDER BY object_key",[id]);
@@ -87,6 +78,11 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
      "SELECT 1 FROM luemi_private.erasure_objects "+
      "WHERE request_id=$1 AND deleted_at IS NULL LIMIT 1",[id]);
     if(outstanding.rowCount!==0)throw new Error("erasure_object_pending");
+    // Actor-scoped social activity may be removed only under the isolated
+    // worker's existing pending, due and disabled-account RLS policies.
+    await db.query("DELETE FROM luemi_bliki_private.reactions WHERE actor_id=$1",[actor]);
+    await db.query("DELETE FROM luemi_bliki_private.views WHERE viewer_id=$1",[actor]);
+    await db.query("DELETE FROM luemi_chats.likes WHERE sender_id=$1 OR receiver_id=$1",[actor]);
     // Only account-specific geo queries/quotas are erased. Global budget
     // reservations cannot be safely attributed to one actor.
     await db.query("DELETE FROM luemi_private.geo_daily_usage "+
@@ -120,10 +116,17 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
      "WHERE owner_id=$1 AND environment=$2",[actor,options.namespace]);
     await db.query("DELETE FROM luemi_private.sessions "+
      "WHERE actor_id=$1 AND environment=$2",[actor,options.namespace]);
+    // Preserve only an opaque FK tombstone so the other party can read
+    // messages they already received. The real Telegram ID and display name
+    // are irreversibly replaced by values uncorrelated with the original.
+    // This happens only after the 72-hour due date and private-photo cleanup.
     const removed=await db.query(
-     "DELETE FROM luemi_private.actors WHERE id=$1 AND environment=$2 AND status='deleted'",
-     [actor,options.namespace]);
-    if(removed.rowCount!==1)throw new Error("erasure_actor_delete_denied");
+     "UPDATE luemi_private.actors SET "+
+     "telegram_id=nextval('luemi_private.deleted_account_sentinel_seq'),"+
+     "first_name='Удалённый аккаунт',anonymized_at=clock_timestamp(),updated_at=clock_timestamp() "+
+     "WHERE id=$1 AND environment=$2 AND status='deleted' AND anonymized_at IS NULL "+
+     "RETURNING id",[actor,options.namespace]);
+    if(removed.rowCount!==1)throw new Error("erasure_actor_anonymize_denied");
     // Keep the opaque request ID for limited operational verification;
     // exact retention is not approved and must be defined before launch.
     await db.query("DELETE FROM luemi_private.erasure_objects WHERE request_id=$1",[id]);
@@ -137,7 +140,7 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
     if(process.env.NODE_ENV==='test'||process.env.CI==='true'){
      const code=typeof e==='object'&&e!==null&&'code' in e?String(e.code):'NON_SQL';
      const whitelist=new Set(['erasure_actor_not_disabled','erasure_object_marker_conflict',
-      'erasure_object_pending','erasure_actor_delete_denied','erasure_finalize_conflict']);
+      'erasure_object_pending','erasure_actor_delete_denied','erasure_actor_anonymize_denied','erasure_finalize_conflict']);
      const reason=e instanceof Error&&whitelist.has(e.message)?e.message:'unspecified';
      process.stderr.write('REG01F_WORKER_ERROR_CODE '+code.slice(0,5)+' '+reason+'\n');
     }

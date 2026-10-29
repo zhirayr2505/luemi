@@ -103,6 +103,11 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0009_reg01h_enforcement_appeals.sql
           psql -v ON_ERROR_STOP=1 -f db/account-deletion-72h-recovery.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0010_post_publication_report_reasons.sql
+          # CI-only isolated dependency fixture: never applied to live Supabase.
+          psql -v ON_ERROR_STOP=1 -f qa/reg01-v3-eraser-synthetic.sql
+          # Verify the ACTUAL operator-only grants migration against disposable
+          # PG16/17, never the live Supabase project.
+          psql -v ON_ERROR_STOP=1 -f db/chats-v3-anonymous-history.sql
           psql -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE reg01_ci_issuer LOGIN PASSWORD 'synthetic_reg01_issuer' IN ROLE luemi_auth_issuer;
           CREATE ROLE reg01_ci_request LOGIN PASSWORD 'synthetic_reg01_request' IN ROLE luemi_request;

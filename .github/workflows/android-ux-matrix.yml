@@ -11,7 +11,7 @@ jobs:
   android-ux:
     # Avoid an always-on extra runner once LUEMI becomes a private repository.
     # This focused QA is automatic only for its hardening branch; manual afterwards.
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/android-webview-interaction-stability-matrix-20261024' || github.head_ref == 'fix/gesture-scroll-tab-ownership-20261025' || github.head_ref == 'fix/profile-scroll-handoff-theme-preview-20261025' || github.head_ref == 'refactor/architecture-dead-code-motion-20261025'
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/android-webview-interaction-stability-matrix-20261024' || github.head_ref == 'fix/gesture-scroll-tab-ownership-20261025' || github.head_ref == 'fix/profile-scroll-handoff-theme-preview-20261025' || github.head_ref == 'refactor/architecture-dead-code-motion-20261025' || github.head_ref == 'feature/open-launch-preflight-20261029'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
@@ -51,5 +51,7 @@ jobs:
           if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-android-vite.log >&2; exit 1; fi
           timeout --signal=TERM --kill-after=10s 260s node scripts/android-profile-ux-matrix.mjs
           timeout --signal=TERM --kill-after=10s 230s node scripts/android-browse-touch-matrix.mjs
-          timeout --signal=TERM --kill-after=10s 220s node scripts/profile-scroll-handoff-qa.mjs
-          timeout --signal=TERM --kill-after=10s 140s node scripts/theme-switch-mobile-qa.mjs
+          # The following are accepted V3-specific checks. Historical A2-only
+          # scripts refer to .pm-shell and are not a valid V3 launch gate.
+          timeout --signal=TERM --kill-after=10s 220s node scripts/profile-v3-integration-browser.mjs
+          timeout --signal=TERM --kill-after=10s 180s node scripts/discovery-gesture-browser.mjs
