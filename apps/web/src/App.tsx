@@ -24,7 +24,7 @@ import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} fro
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
 import {PublicationJourney,type PublishJourneyPhase} from "./registration/PublicationJourney";
-import {registrationSubmissionDecision} from "./registration/real-submit-gate";
+
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 import {PrivateAccountView} from "./registration/PrivateAccountView";
 import "./registration/real-home.css";
