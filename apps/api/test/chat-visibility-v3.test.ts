@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-const migration=readFileSync("db/chats-v3-visibility.sql","utf8");
-const api=readFileSync("apps/api/src/chats-api.ts","utf8");
-const client=readFileSync("apps/web/src/chats/chat-transport.ts","utf8");
-const ui=readFileSync("apps/web/src/chats/RealChats.tsx","utf8");
+const migration=readFileSync(new URL("../../../db/chats-v3-visibility.sql",import.meta.url),"utf8");
+const api=readFileSync(new URL("../src/chats-api.ts",import.meta.url),"utf8");
+const client=readFileSync(new URL("../../../apps/web/src/chats/chat-transport.ts",import.meta.url),"utf8");
+const ui=readFileSync(new URL("../../../apps/web/src/chats/RealChats.tsx",import.meta.url),"utf8");
 test("visibility tables are private, enforced by RLS, and append-only to the chat role",()=>{
  for(const table of ["message_visibility","conversation_clear_events"]){
   assert.match(migration,new RegExp("CREATE TABLE IF NOT EXISTS luemi_chats\\."+table));
