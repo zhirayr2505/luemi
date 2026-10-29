@@ -237,7 +237,8 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    "SELECT revision::text,payload FROM luemi_private.private_profile_drafts WHERE owner_id=$1 AND environment=$2",
    [id,opts.namespace]);
   const m=await db.query<{id:string;state:string;generation:number}>(
-   "SELECT id,state,generation FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 ORDER BY position,id",
+   "SELECT id,state,generation FROM luemi_private.media_assets "+
+   "WHERE owner_id=$1 AND environment=$2 AND state<>\'revoked\' ORDER BY position,id",
    [id,opts.namespace]);
   return{status:"unpublished",revision:q.rowCount?Number(q.rows[0].revision):0,
    preview:q.rowCount?{...q.rows[0].payload}:null,
@@ -291,6 +292,94 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    [intentId,assetId,id,opts.namespace,bytes,keyDigest,bodyDigest]);
   return{assetId,state:"reserved",upload:"private_proxy"};
  }));
+ // In the same owner scope as PUT, a private image can be removed at any
+ // time, including when the browser has just retried an interrupted upload.
+ app.post<{Body:unknown}>("/api/v2/media/forget",
+  {preHandler:guard.mutation},async(req,reply)=>{
+   if(!object(req.body)||Object.keys(req.body).length!==1||
+     !str(req.body.clientKey,8,80))
+    return reply.code(422).send({error:"invalid_client_key"});
+   const idempotency=digest(String(req.body.clientKey));
+   const target=await owner(req,reply,async(db,id)=>{
+    const q=await db.query<{asset_id:string;publication_status:string}>(
+     "SELECT u.asset_id,a.publication_status FROM luemi_private.media_uploads u "+
+     "JOIN luemi_private.media_assets a ON a.id=u.asset_id "+
+     "WHERE u.owner_id=$1 AND u.environment=$2 AND u.idempotency_digest=$3",
+     [id,opts.namespace,idempotency]);
+    if(!q.rowCount)return{assetId:null,actorId:id};
+    if(q.rows[0].publication_status!=="private")reject(409,"already_published");
+    return{assetId:q.rows[0].asset_id,actorId:id};
+   });
+   if(reply.sent||!("assetId" in target))return target;
+   if(!target.assetId)return{forgotten:true};
+   const initial=req.authActor;
+   try{
+    await worker(async db=>{
+     await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+      [opts.namespace+":"+target.actorId+":profile_media_slots"]);
+     const q=await db.query<{original_key:string;derivative_key:string}>(
+      "SELECT original_key,derivative_key FROM luemi_private.media_assets "+
+      "WHERE id=$1 AND owner_id=$2 AND environment=$3 "+
+      "AND publication_status='private' FOR UPDATE",
+      [target.assetId,target.actorId,opts.namespace]);
+     if(!q.rowCount)reject(409,"already_published");
+     // Recheck exact signed session before deleting any storage object.
+     await auth.read(req,reply);
+     if(reply.sent||!initial||!req.authActor||
+        req.authActor.actorId!==initial.actorId||
+        req.authActor.sessionId!==initial.sessionId||
+        !timingSafeEqual(req.authActor.hash,initial.hash))
+      reject(401,"unauthorized");
+     await opts.storage.delete(q.rows[0].derivative_key);
+     await opts.storage.delete(q.rows[0].original_key);
+     await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
+      "WHERE id=$1 AND owner_id=$2 AND environment=$3",
+      [target.assetId,target.actorId,opts.namespace]);
+     await db.query("UPDATE luemi_private.media_uploads SET state='failed' "+
+      "WHERE asset_id=$1 AND owner_id=$2 AND environment=$3",
+      [target.assetId,target.actorId,opts.namespace]);
+    });
+    return{forgotten:true};
+   }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
+  });
+ // Private-only ordering, checked twice against exactly this owner and all
+ // approved assets. Positions define the main photo (position 0).
+ app.post<{Body:unknown}>("/api/v2/media/reorder",
+  {preHandler:guard.mutation},async(req,reply)=>{
+   if(!object(req.body)||Object.keys(req.body).length!==1||
+     !Array.isArray(req.body.assetIds)||req.body.assetIds.length<3||
+     req.body.assetIds.length>6||!req.body.assetIds.every(uuid)||
+     new Set(req.body.assetIds).size!==req.body.assetIds.length)
+    return reply.code(422).send({error:"invalid_media_order"});
+   const assetIds=req.body.assetIds as string[];
+   const target=await owner(req,reply,async(db,id)=>{
+    const q=await db.query<{id:string}>(
+     "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 "+
+     "AND environment=$2 AND state='approved' AND publication_status='private'",
+     [id,opts.namespace]);
+    if(q.rows.length!==assetIds.length||q.rows.some(row=>!assetIds.includes(row.id)))
+     reject(409,"media_order_mismatch");
+    return{id};
+   });
+   if(reply.sent||!("id" in target))return target;
+   try{
+    await worker(async db=>{
+     await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+      [opts.namespace+":"+target.id+":profile_media_slots"]);
+     const q=await db.query<{id:string}>(
+      "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 "+
+      "AND environment=$2 AND state='approved' AND publication_status='private' FOR UPDATE",
+      [target.id,opts.namespace]);
+     if(q.rows.length!==assetIds.length||q.rows.some(row=>!assetIds.includes(row.id)))
+      reject(409,"media_order_mismatch");
+     for(let i=0;i<assetIds.length;i++)
+      await db.query("UPDATE luemi_private.media_assets SET position=$2 "+
+       "WHERE id=$1 AND owner_id=$3 AND environment=$4",
+       [assetIds[i],i,target.id,opts.namespace]);
+    });
+    return{ordered:true,mainPhotoId:assetIds[0]};
+   }catch(e){return statusError(reply,e);}
+  });
  app.put<{Params:{id:string};Body:Buffer}>("/api/v2/media/:id/bytes",
  {preHandler:guard.mutation,bodyLimit:MAX_BYTES},async(req,reply)=>{
   if(!uuid(req.params.id)||!Buffer.isBuffer(req.body))
