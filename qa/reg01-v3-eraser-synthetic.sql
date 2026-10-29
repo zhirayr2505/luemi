@@ -67,3 +67,21 @@ CREATE POLICY ci_delete_views ON luemi_bliki_private.views FOR ALL TO luemi_eras
  USING(EXISTS(SELECT 1 FROM luemi_private.erasure_requests q WHERE
   q.actor_id=views.viewer_id AND q.state='pending' AND
   q.eligible_at<=clock_timestamp()));
+
+CREATE TABLE IF NOT EXISTS luemi_bliki_private.reports(
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),story_id uuid,reporter_id uuid NOT NULL);
+ALTER TABLE luemi_bliki_private.reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE luemi_bliki_private.reports FORCE ROW LEVEL SECURITY;
+GRANT SELECT(reporter_id) ON luemi_bliki_private.reports TO luemi_erasure_worker;
+CREATE POLICY ci_bliki_safety_hold ON luemi_bliki_private.reports FOR SELECT
+ TO luemi_erasure_worker USING(EXISTS (
+  SELECT 1 FROM luemi_private.erasure_requests q
+  WHERE q.actor_id=reporter_id AND q.state='pending'
+    AND q.eligible_at<=clock_timestamp()));
+GRANT SELECT(actor_id,environment) ON luemi_private.account_enforcements TO luemi_erasure_worker;
+CREATE POLICY ci_safety_enforcement_hold ON luemi_private.account_enforcements FOR SELECT
+ TO luemi_erasure_worker USING(EXISTS(
+  SELECT 1 FROM luemi_private.erasure_requests q
+  WHERE q.actor_id=account_enforcements.actor_id
+   AND q.environment=account_enforcements.environment
+   AND q.state='pending' AND q.eligible_at<=clock_timestamp()));
