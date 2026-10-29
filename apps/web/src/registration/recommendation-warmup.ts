@@ -47,7 +47,7 @@ export async function warmPublishedRecommendations(
      if(signal.aborted)return;
      if(bytes.size<1||bytes.size>MAX_IMAGE_BYTES)continue;
      blobs.set(url,URL.createObjectURL(bytes));
-    }catch(e){
+    }catch{
      if(signal.aborted)break;
      // A failed derivative prefetch must NOT block admission or replace
      // the server-backed photo URI with a broken cached resource.
