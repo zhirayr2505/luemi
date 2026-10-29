@@ -3,7 +3,7 @@ import type {PointerEvent as ReactPointerEvent,ChangeEvent} from "react";
 import {createPortal} from "react-dom";
 import {selectionHaptic} from "../ui/haptic";
 import {Plus,X,GripVertical,CheckCircle2} from "lucide-react";
-import type {PhotoServerState} from "./background-photo-sync";
+export type PhotoServerState="uploading"|"uploaded"|"failed"|"deleting";
 export interface PhotoItem {id:string;src:string;file:File;preview?:Blob;status?:"reading"|"success"|"ready"|"error";progress?:number}
 interface Props {photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void;serverStates?:Record<string,PhotoServerState>}
 interface Drag {id:string;source:number;target:number;x:number;y:number;width:number;height:number}
