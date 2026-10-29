@@ -773,15 +773,30 @@ export function App() {
       // A failed second upload must not strand an already accepted first photo.
       // Stable per-photo clientKey reuses successful uploads and retries the
       // missing photos; one approved image never redirects to account settings.
+      // Finish any in-flight background uploads/deletions before deciding what
+      // to publish. A retry of an interrupted PUT uses the same client key.
+      await earlyPhotoQueue.current;
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
-      // Always reconcile the selected photo IDs against the server manifest,
-      // even when the server already has >=3 other approved photos. Count-only
-      // checks can publish stale images instead of the user's current choice.
-      // Per-photo idempotency keys make this safe on normal repeated submits.
-      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      const uploadedIds:string[]=[];
+      for(const photo of photos){
+        if(earlyPhotoDeleted.current.has(photo.id))throw new Error("incomplete_media");
+        let asset=earlyPhotoAssets.current.get(photo.id);
+        if(!asset){
+          asset=await uploadPrivatePhoto(photo);
+          earlyPhotoAssets.current.set(photo.id,asset);
+        }
+        uploadedIds.push(asset);
+        setPublishFeedback("Подтверждено "+uploadedIds.length+" из "+photos.length+" фотографий.");
+      }
+      // A previous interrupted registration might have a stale reserved or
+      // approved asset. Remove its real Storage bytes instead of silently
+      // allowing that old photo to become somebody's current profile.
+      const manifest=await privatePhotoManifest();
+      for(const stale of manifest.filter(item=>!uploadedIds.includes(item.id)))
+        await forgetPrivatePhotoAsset(stale.id);
+      await reorderPrivatePhotos(uploadedIds);
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       const media=await ownerPublicationStatus();setPublishStatus(media);
       if(media.approved<photos.length||media.pending!==0||media.other!==0)
