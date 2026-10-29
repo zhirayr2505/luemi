@@ -134,6 +134,22 @@ export async function uploadPrivatePhotos(
  return assetIds;
 }
 
+export async function listPrivatePhotoAssets():Promise<Array<{id:string;state:string}>>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ const response=await fetch("/api/v2/profile/preview",{
+  credentials:"same-origin",cache:"no-store"
+ });
+ if(!response.ok)throw new Error("private_manifest_unavailable");
+ const value:unknown=await response.json();
+ if(!value||typeof value!=="object"||Array.isArray(value)||
+  (value as {status?:unknown}).status!=="unpublished"||
+  !Array.isArray((value as {photos?:unknown}).photos))
+  throw new Error("invalid_private_media_manifest");
+ const rows=(value as {photos:Array<{id?:unknown;state?:unknown}>}).photos;
+ if(rows.some(p=>!p||typeof p.id!=="string"||!UUID.test(p.id)||
+   typeof p.state!=="string"))throw new Error("invalid_private_media_manifest");
+ return rows.map(p=>({id:p.id as string,state:p.state as string}));
+}
 /** Verify server-side media state instead of trusting an upload progress bar. */
 export async function readConfirmedPrivateMediaCount(expected:number,uploadedIds:readonly string[]=[]):Promise<number>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
