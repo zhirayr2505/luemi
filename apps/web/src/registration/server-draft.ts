@@ -32,7 +32,7 @@ export async function saveRemoteDraft(d:RegistrationDraft,revision:number):Promi
   audience:d.audience,ageMin:d.ageMin,ageMax:d.ageMax,goal:d.goal,
   interests:[...d.interests],about:d.about.trim(),languages:[...d.languages],
   height:d.height,occupation:d.occupation.trim(),education:d.education.trim(),
-  lifestyle:[...d.lifestyle],pets:[...d.pets],facts:[...d.facts],consentVersion:version};
+  lifestyle:[...d.lifestyle],pets:[...d.pets],facts:[...d.facts],family:[...d.family],consentVersion:version};
  return saveRemoteFields(fields,revision);
 }
 export async function saveRemoteFields(fields:Record<string,unknown>,revision:number):Promise<void>{
