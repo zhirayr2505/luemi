@@ -378,6 +378,80 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    return statusError(reply,e);
   }
  });
+ // Delete is owner-scoped, idempotent, and limited to UNPUBLISHED media.
+ // Worker owns the state transition; the request role never receives UPDATE.
+ // Persist revocation before touching Storage, so a failed external deletion
+ // cannot expose previously removed photos in the profile or publisher.
+ app.delete<{Params:{id:string}}>("/api/v2/media/:id",{preHandler:guard.mutation},async(req,reply)=>{
+  if(!uuid(req.params.id))return reply.code(422).send({error:"invalid_asset"});
+  const authorized=await owner(req,reply,async(db,id)=>{
+   const row=await db.query("SELECT id FROM luemi_private.media_assets "+
+    "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+    [req.params.id,id,opts.namespace]);
+   if(!row.rowCount)reject(404,"not_found");
+   return{id};
+  });
+  if(reply.sent||!("id" in authorized))return authorized;
+  const revoked=await worker(async db=>{
+   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [opts.namespace+":"+authorized.id+":profile_media_slots"]);
+   const q=await db.query<{derivative_key:string;original_key:string;state:string}>(
+    "SELECT derivative_key,original_key,state FROM luemi_private.media_assets "+
+    "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private' FOR UPDATE",
+    [req.params.id,authorized.id,opts.namespace]);
+   if(!q.rowCount)reject(404,"not_found");
+   if(q.rows[0].state!=="revoked"){
+    await db.query("UPDATE luemi_private.media_assets SET state='revoked',generation=generation+1 "+
+     "WHERE id=$1 AND owner_id=$2 AND environment=$3",
+     [req.params.id,authorized.id,opts.namespace]);
+   }
+   return q.rows[0];
+  }).catch(e=>{return statusError(reply,e);});
+  if(reply.sent||!("derivative_key" in revoked))return revoked;
+  // Storage deletion is external and nontransactional. A failure is explicitly
+  // reported, and retrying DELETE on the same id reattempts both keys.
+  try{
+   await opts.storage.delete(revoked.derivative_key);
+   await opts.storage.delete(revoked.original_key);
+   return {deleted:true,storageCleaned:true};
+  }catch{return reply.code(503).send({error:"storage_cleanup_pending"});}
+ });
+ // Reorder the server's approved private assets to match the gallery, without
+ // giving request clients SQL UPDATE or revealing object keys.
+ app.put<{Body:unknown}>("/api/v2/media/order",{preHandler:guard.mutation},async(req,reply)=>{
+  const raw=req.body;
+  if(!object(raw)||Object.keys(raw).length!==1||!Array.isArray(raw.ids)||
+    raw.ids.length<1||raw.ids.length>6||!raw.ids.every(uuid)||
+    new Set(raw.ids).size!==raw.ids.length)
+   return reply.code(422).send({error:"invalid_photo_order"});
+  const ids=raw.ids as string[];
+  const ownerResult=await owner(req,reply,async(db,id)=>{
+   const list=await db.query<{id:string}>(
+    "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 "+
+    "AND state='approved' AND publication_status='private' ORDER BY position,id",
+    [id,opts.namespace]);
+   if(list.rows.length!==ids.length||list.rows.some(r=>!ids.includes(r.id)))
+    reject(409,"photo_order_conflict");
+   return{id};
+  });
+  if(reply.sent||!("id" in ownerResult))return ownerResult;
+  const result=await worker(async db=>{
+   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [opts.namespace+":"+ownerResult.id+":profile_media_slots"]);
+   const all=await db.query<{id:string}>(
+    "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 "+
+    "AND state='approved' AND publication_status='private' FOR UPDATE",
+    [ownerResult.id,opts.namespace]);
+   if(all.rows.length!==ids.length||all.rows.some(r=>!ids.includes(r.id)))
+    reject(409,"photo_order_conflict");
+   await db.query("UPDATE luemi_private.media_assets SET position=t.ord-1 "+
+    "FROM unnest($3::uuid[]) WITH ORDINALITY AS t(asset_id,ord) "+
+    "WHERE id=t.asset_id AND owner_id=$1 AND environment=$2",
+    [ownerResult.id,opts.namespace,ids]);
+   return{ok:true,ids};
+  }).catch(e=>statusError(reply,e));
+  return result;
+ });
  app.get<{Params:{id:string}}>("/api/v2/media/:id",{preHandler:guard.read},async(req,reply)=>{
   if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});
   const record=await owner(req,reply,async(db,id)=>{
