@@ -155,7 +155,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
    const rect=element.getBoundingClientRect();
    const value:Drag={id,source,target:source,x:pendingItem.lastX,y:pendingItem.lastY,
     width:rect.width,height:rect.height};
-   const region=mosaic.current?.closest(".onboard-body");
+   const region=mosaic.current?.closest(".onboard-body,.v2-body");
    scrollBounds.current=region?{node:region}:null;
    dragRef.current=value;setDrag(value);setPhase("dragging");
    try{mosaic.current?.setPointerCapture(pendingItem.pointer);}
