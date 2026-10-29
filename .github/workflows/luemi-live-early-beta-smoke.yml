@@ -29,11 +29,11 @@ jobs:
           done
           test "$ready" = 1 || { echo "LIVE health unreachable"; exit 1; }
           echo 'Health: OK'
-          curl -fsSL --connect-timeout 15 --max-time 40 "$LUEMI_ORIGIN/privacy" |
-            grep -Fq 'Zhirayr2505@gmail.com' || { echo 'Privacy owner contact unavailable'; exit 1; }
+          privacy="$(curl -fsSL --connect-timeout 15 --max-time 40 "$LUEMI_ORIGIN/privacy")"
+          grep -Fq 'Zhirayr2505@gmail.com' <<< "$privacy" || { echo 'Privacy owner contact unavailable'; exit 1; }
           echo 'Public privacy: OK'
-          curl -fsSL --connect-timeout 15 --max-time 40 --header 'Accept: text/html' "$LUEMI_ORIGIN/" |
-            grep -Fq 'id="root"' || { echo 'App HTML unavailable'; exit 1; }
+          page="$(curl -fsSL --connect-timeout 15 --max-time 40 --header 'Accept: text/html' "$LUEMI_ORIGIN/")"
+          grep -Fq 'id="root"' <<< "$page" || { echo 'App HTML unavailable'; exit 1; }
           echo 'App HTML: OK'
           for path in \
             /api/v2/auth/session \
