@@ -20,6 +20,21 @@ export async function likePublishedUser(id:string):Promise<{liked:true;matched:b
   throw new Error("invalid_like_receipt");
  return data as {liked:true;matched:boolean;conversationId?:string};
 }
+export interface IncomingLike{ id:string; name:string; createdAt:string; }
+export async function getIncomingLikes(signal?:AbortSignal):Promise<IncomingLike[]>{
+ if(!realMatchPilot.enabled)throw new Error("matches_disabled");
+ const res=await fetch("/api/v4/matches/incoming",{credentials:"same-origin",cache:"no-store",signal});
+ if(!res.ok)throw new Error("incoming_likes_"+res.status);
+ const data:unknown=await res.json();
+ if(!object(data)||!Array.isArray(data.likes))throw new Error("invalid_incoming_likes");
+ const likes=data.likes.flatMap((item:unknown)=>{
+  if(!object(item)||typeof item.id!=="string"||!uuid.test(item.id)||
+     typeof item.name!=="string"||item.name.length<1||item.name.length>80||
+     typeof item.createdAt!=="string"||!Number.isFinite(Date.parse(item.createdAt)))return [];
+  return [{id:item.id,name:item.name,createdAt:item.createdAt}];
+ });
+ return likes as IncomingLike[];
+}
 /** Remove both participants' access immediately without erasing conversation history. */
 export async function closeRealMatch(id:string):Promise<void>{
  if(!realMatchPilot.enabled)throw new Error("matches_disabled");
