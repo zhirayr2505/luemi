@@ -8,6 +8,7 @@ import {readFileSync} from "node:fs";
 import {strict as assert} from "node:assert";
 const runtime=readFileSync("apps/web/src/registration/v2/runtime.css","utf8");
 const form=readFileSync("apps/web/src/registration/v2/RealRegistration.tsx","utf8");
+const preview=readFileSync("apps/web/src/registration/Preview.tsx","utf8");
 const draftClient=readFileSync("apps/web/src/registration/server-draft.ts","utf8");
 const app=readFileSync("apps/web/src/App.tsx","utf8");
 const geo=readFileSync("apps/web/src/registration/GeoPicker.tsx","utf8");
