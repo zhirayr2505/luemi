@@ -146,7 +146,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    <p className="hint"><Check size={14} aria-hidden="true"/> Этот шаг можно пропустить.</p>
  </div>;
  if(step===7)return <div className="form-stack"><PhotoSorter photos={photos} addPhotos={addPhotos}
-   removePhoto={removePhoto} movePhoto={movePhoto}/></div>;
+   removePhoto={removePhoto} movePhoto={movePhoto} serverStates={photoServerStates}/></div>;
  return <div className="form-stack"><RegistrationPreview data={data} photos={photos}/></div>;
 }
 
