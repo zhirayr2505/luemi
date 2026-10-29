@@ -427,7 +427,7 @@ export function App() {
     return ()=>window.clearTimeout(timer);
   },[scope,photosRestored,draft,step,photos,saveRetry]);
   useEffect(()=>()=>{
-    for(const photo of photos)queuePrivateRemoval(photo);
+    // Keep server-backed draft when the page is closed or refreshed.
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();
@@ -574,6 +574,7 @@ export function App() {
   };
   const resetDraft=()=>{
     if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
+    for(const photo of photos)queuePrivateRemoval(photo);
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();photoIds.current.clear();
@@ -1095,6 +1096,7 @@ export function App() {
         uploadingPhotos={mediaSaving}
         uploadedPhotoCount={serverPhotoCount}
         photoUploadStatus={mediaStatus}
+        onRetryPhotoUpload={()=>setPhotoRetry(x=>x+1)}
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
