@@ -30,13 +30,14 @@ function sign(id:number){
 const session={enabled:true,issuerDatabaseUrl:issuerUrl!,requestDatabaseUrl:requestUrl!,
  pepper:"synthetic-reg01-pepper-1234567890-1234567890",namespace,origin,botToken:token,
  idleMs:43200000,absoluteMs:604800000,maxSessions:5};
-const makeApp=(opts:{storage?:PrivateObjectStore;publisher?:string;reader?:string;erasure?:boolean;erasureUrl?:string}={})=>{
+const makeApp=(opts:{storage?:PrivateObjectStore;publisher?:string;reader?:string;erasure?:boolean;erasureUrl?:string;instant?:boolean}={})=>{
  const storage=opts.storage??memoryPrivateStore();
  return buildApp({port:3001,origin,botToken:token,
   healthKey:"synthetic_health_key_123456789012345",logger:false,rem05b:session,
   realRegistration:{enabled:true,requestDatabaseUrl:requestUrl!,namespace,consentVersion},
   rem05d:{enabled:true,durablePrivateOnly:true,requestDatabaseUrl:requestUrl!,
-   workerDatabaseUrl:workerUrl!,namespace,consentVersion,storage},
+   workerDatabaseUrl:workerUrl!,namespace,consentVersion,storage,
+   ...(opts.instant?{instantAcceptance:true as const}:{})},
   realPublication:{enabled:true,requestDatabaseUrl:requestUrl!,publisherDatabaseUrl:opts.publisher??publisherUrl!,
    discoveryDatabaseUrl:opts.reader??readerUrl!,namespace,consentVersion,storage},
   realErasure:opts.erasure?{enabled:true,databaseUrl:opts.erasureUrl??erasureRequestUrl!,namespace}:undefined
@@ -177,6 +178,37 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
    await assert.rejects(anon.query("SELECT * FROM luemi_private.public_profiles"));
    await anon.query("ROLLBACK");
   }finally{anon.release();}
+ }finally{await app.close();}
+});
+test("01D: public no-invite admission and instantly published sanitized photos without pre-review",async()=>{
+ const app=makeApp({instant:true});
+ try{
+  const owner=await identity(app,8011451),viewer=await identity(app,8011452);
+  await consent(app,viewer);
+  const photos=await prepare(app,owner);
+  assert.equal(photos.length,3);
+  const ready=await app.inject({method:"GET",url:"/api/v3/profile/status",
+   headers:{cookie:owner.cookie}});
+  assert.equal(ready.statusCode,200,ready.body);
+  assert.equal(ready.json().approved,3);
+  assert.equal(ready.json().pending,0);
+  const before=await admin.query<{total:string}>(
+   "SELECT count(*)::text AS total FROM luemi_private.moderation_jobs j "+
+   "JOIN luemi_private.media_assets a ON a.id=j.asset_id WHERE a.owner_id=$1",[owner.id]);
+  assert.equal(Number(before.rows[0].total),0,"instant mode must not enqueue manual pre-review");
+  const published=await mutate(app,owner,"/api/v3/profile/publish",{revision:1});
+  assert.equal(published.statusCode,200,published.body);
+  assert.equal(published.json().photoCount,3);
+  const discovered=await feed(app,viewer);
+  assert.equal(discovered.statusCode,200,discovered.body);
+  assert.ok(discovered.json().profiles.some((x:{id:string})=>x.id===owner.id));
+  const pixel=await photo(app,viewer,photos[0]);
+  assert.equal(pixel.statusCode,200,"private derivative must be read via authorized server");
+  for(let n=0;n<21;n++){
+   const user=await identity(app,8011500+n);
+   assert.match(user.id,/^[0-9a-f-]{36}$/i);
+  }
+  // No owner-managed invite table, test beta max or fake 20-user limit.
  }finally{await app.close();}
 });
 test("01D: reusing the requester login for publishing is rejected at bootstrap",()=>{
