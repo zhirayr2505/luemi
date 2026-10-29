@@ -312,7 +312,7 @@ test("01D: select/upload/delete/reorder private photos before publication remain
   const readyDraft=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
    headers:headers(owner),payload:{revision:1,fields:{
     displayName:"Անի",birthDate:"1997-05-12",gender:"woman",city:"Ереван",
-    countryCode:"AM",goal:"friendship",interests:["music"],about:"Тестовая анкета",
+    countryCode:"AM",placeId:"offline:am:yerevan",goal:"friendship",interests:["music"],about:"Тестовая анкета",
     languages:["hy"],consentVersion
    }}});
   assert.equal(readyDraft.statusCode,200,readyDraft.body);
