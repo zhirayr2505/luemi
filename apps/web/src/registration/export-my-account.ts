@@ -55,11 +55,20 @@ export async function exportMyAvailableData():Promise<void>{
  // A private draft can expose media IDs but never Storage keys. Ask the
  // authenticated server for sanitized copies only; never call Supabase directly.
  const media:Array<{id:string;mime:string;dataBase64:string}>=[];
- const snapshotPhotos=(preview as {photos?:Array<{id?:unknown}>})?.photos;
- if(Array.isArray(snapshotPhotos)){
-  for(const item of snapshotPhotos.slice(0,6)){
-   const id=item?.id;
-   if(typeof id!=="string"||!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id))continue;
+ const snapshotPhotos=(preview as {photos?:Array<{id?:unknown}>}|null)?.photos;
+ const publishedPhotos=(profile as {ownProfile?:{photos?:unknown[]}}|null)?.ownProfile?.photos;
+ const ids:string[]=[];
+ const isUuid=(value:unknown):value is string=>
+  typeof value==="string"&&/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value);
+ if(Array.isArray(snapshotPhotos))
+  for(const item of snapshotPhotos)if(isUuid(item?.id))ids.push(item.id);
+ if(Array.isArray(publishedPhotos))
+  for(const url of publishedPhotos){
+   if(typeof url!=="string")continue;
+   const found=/^\/api\/v3\/discovery\/photo\/([0-9a-f-]{36})$/i.exec(url);
+   if(found&&isUuid(found[1]))ids.push(found[1]);
+  }
+ for(const id of [...new Set(ids)].slice(0,6)){
    let response=await fetch("/api/v2/media/"+encodeURIComponent(id),{
     credentials:"same-origin",headers,cache:"no-store"});
    if(!response.ok)response=await fetch("/api/v3/discovery/photo/"+encodeURIComponent(id),{
@@ -73,7 +82,6 @@ export async function exportMyAvailableData():Promise<void>{
    for(let offset=0;offset<bytes.length;offset+=8192)
     binary+=String.fromCharCode(...bytes.subarray(offset,offset+8192));
    media.push({id,mime,dataBase64:btoa(binary)});
-  }
  }
  const document={format:"luemi-my-data-v1",generatedAt:new Date().toISOString(),
   notice:"Личный экспорт доступных данных и доступных обработанных фото. Не включает скрытые для обоих сообщения, чужие закрытые сведения, исходные фото устройства, материалы закрытых жалоб или данные отдельной юридической процедуры.",
