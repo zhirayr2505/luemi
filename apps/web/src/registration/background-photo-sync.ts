@@ -34,6 +34,8 @@ export class RegistrationMediaSync {
    order:deps.order??updatePrivatePhotoOrder};
  }
  setAllowed(allowed:boolean){this.allowed=allowed;}
+ async idle():Promise<void>{await this.queue;}
+ resetDraft(){this.prepared=false;this.uploaded.clear();this.removed.clear();}
  private enqueue<T>(operation:()=>Promise<T>):Promise<T>{
   const task=this.queue.then(operation);
   this.queue=task.catch(()=>undefined);
@@ -62,6 +64,9 @@ export class RegistrationMediaSync {
     }
     this.uploaded.set(photo.id,assetId);
     this.deps.onState(photo.id,"uploaded");
+    // Persist the chosen first photo as soon as the last active upload lands.
+    if(this.deps.getPhotos().every(p=>p.status!=="ready"||this.uploaded.has(p.id)))
+      this.syncOrder();
    }).catch(()=>{if(this.selected(photo.id)){
     this.deps.onState(photo.id,"failed");
     this.deps.onError("Не удалось загрузить фото. Повтори отправку.");
