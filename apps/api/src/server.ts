@@ -2,9 +2,15 @@ import { fileURLToPath } from "node:url";
 import { resolve, dirname } from "node:path";
 import fastifyStatic from "@fastify/static";
 import { readConfig } from "./config.js";
+import {describeRealBetaPrerequisites} from "./beta-preflight.js";
 import { buildApp } from "./app.js";
 import { configureStagingTelegramBot } from "./telegram-setup.js";
 
+if(process.env.LUEMI_BETA_PREFLIGHT==="1"){
+  // Never log env values or credentials. This only describes missing field
+  // names for the owner before applying high-risk admission switches.
+  process.stdout.write(JSON.stringify(describeRealBetaPrerequisites(process.env))+"\\n");
+}
 const config = readConfig();
 const app = buildApp(config);
 const staticRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../web/dist");
