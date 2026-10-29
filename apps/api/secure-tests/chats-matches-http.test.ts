@@ -121,6 +121,14 @@ test("two authenticated actors create one durable conversation and revoke it on 
   result=await inject(B,"GET",messagePath);
   assert.equal(result.status,200,JSON.stringify(result));
   assert.ok(result.json.messages.some((m:{id:string})=>m.id===sent.json.message.id));
+  const exportPath="/api/v4/chats/"+conversationId+"/export";
+  const selfExport=await inject(A,"GET",exportPath);
+  assert.equal(selfExport.status,200,JSON.stringify(selfExport));
+  assert.equal(selfExport.json.format,"luemi-chat-export-v1");
+  assert.ok(selfExport.json.messages.some((m:{id:string})=>m.id===sent.json.message.id));
+  const unrelatedExport=await inject(C,"GET",exportPath);
+  assert.equal(unrelatedExport.status,404,"stranger cannot export another user's chat");
+
   result=await inject(B,"POST","/api/v4/chats/"+conversationId+"/read",{messageId:sent.json.message.id});
   assert.equal(result.status,200,JSON.stringify(result));
   result=await inject(C,"POST",messagePath,{
@@ -152,6 +160,10 @@ test("two authenticated actors create one durable conversation and revoke it on 
    assert.equal(result.status,200);
    assert.ok(!result.json.messages.some((m:{id:string})=>m.id===sent.json.message.id),"globally hidden for each");
   }
+  const afterGlobalHide=await inject(A,"GET",exportPath);
+  assert.equal(afterGlobalHide.status,200);
+  assert.ok(!afterGlobalHide.json.messages.some((m:{id:string})=>m.id===sent.json.message.id),
+    "global deletion cannot be bypassed through private export");
   const original=await admin.query("SELECT body FROM luemi_chats.messages WHERE id=$1",[sent.json.message.id]);
   assert.equal(original.rows[0].body,"hello edited","visibility does not rewrite original message");
   const later=await inject(A,"POST",messagePath,{
