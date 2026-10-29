@@ -28,3 +28,27 @@
 .luemi-publication-recovery button{background:rgba(255,255,255,.85);border:1px solid rgba(132,84,167,.22);
  border-radius:16px;padding:12px 18px;display:flex;align-items:center;gap:7px;color:#54326e;font:inherit;font-weight:650;}
 @media(prefers-reduced-motion:reduce){.luemi-publication-ring{animation-duration:2.2s}.luemi-publication-dots span{transition:none}}
+
+/* The original W06 mark remains untouched; subtle white silhouette and
+   layered light shadow add dimension without altering its colors or shape. */
+.luemi-publication-journey{
+ opacity:0;animation:luemi-publish-enter 480ms cubic-bezier(.17,.8,.22,1) both;
+}
+@keyframes luemi-publish-enter{
+ from{opacity:0;transform:translate3d(0,10px,0);}
+ to{opacity:1;transform:translate3d(0,0,0);}
+}
+.luemi-publication-brand img{
+ filter:drop-shadow(0 2px 1px rgba(255,255,255,.88))
+  drop-shadow(0 -1px 1px rgba(255,255,255,.63))
+  drop-shadow(0 11px 17px rgba(101,50,138,.22))
+  drop-shadow(0 3px 4px rgba(132,66,159,.18));
+ animation:luemi-brand-entrance 650ms cubic-bezier(.18,.82,.24,1) both;
+}
+@keyframes luemi-brand-entrance{
+ from{transform:scale(.96) translateY(10px);opacity:.4;}
+ to{transform:scale(1) translateY(0);opacity:1;}
+}
+@media(prefers-reduced-motion:reduce){
+ .luemi-publication-journey,.luemi-publication-brand img{animation:none;opacity:1;}
+}
