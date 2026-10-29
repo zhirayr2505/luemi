@@ -48,7 +48,7 @@ test("real FeedCard retains canonical photo/sheet gestures and removes demo badg
  assert.match(card,/\{!real&&<span className="discovery-demo-label">Демо<\/span>\}/);
  assert.match(card,/real\?<button type="button"/);
  assert.match(card,/\{buttons.map\(\(\[kind,label,Icon\]\)=>/);
- assert.match(card,/!real\|\|kind!=="undo"/);
+ assert.match(card,/\{buttons.map\(\(\[kind,label,Icon\]\)=>/);
  assert.match(card,/PhotoCarousel/);
  assert.match(card,/data-expanded=\{expanded\}/);
 });
@@ -81,7 +81,7 @@ test("real For You and Nearby restore their approved distinct layouts, never thr
  assert.match(nearby,/scope==="world"/);
  assert.doesNotMatch(forYou+nearby,/demoPeople|forYouDemoPeople|fetch\(|localStorage|Math\.random/);
  assert.match(shell,/onPerson=\{onPerson\}/);
- assert.match(shell,/const matchedRows=rows/);
+ assert.match(shell,/const matchedRows=useMemo\(\(\)=>rows.filter\(p=>!hiddenIds.has\(p.id\)\)/);
  assert.match(forYou,/const score=/);
  assert.match(nearby,/person\.countryCode===draft\.countryCode/);
 });
