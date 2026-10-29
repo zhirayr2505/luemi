@@ -28,7 +28,7 @@
 .lc-chat-row+.lc-chat-row .lc-chat-summary{border-top:1px solid rgba(90,53,108,.07);padding-top:10px;margin-top:-10px}
 .lc-chat-header{padding-top:max(8px,env(safe-area-inset-top));min-height:60px;box-shadow:0 1px 0 rgba(70,38,85,.06);z-index:3}
 .lc-chat-header>button{width:42px;height:42px;border-radius:50%;flex:none}.lc-chat-header>button:active{background:#f0e8f4}
-.lc-history{background:linear-gradient(155deg,#fbf8fc,#f5eef8);padding-bottom:18px;scroll-behavior:auto;overflow-anchor:none}
+.lc-history{background:linear-gradient(155deg,#fbf8fc,#f5eef8);padding-bottom:18px;scroll-behavior:smooth;overflow-anchor:none}
 .lc-day-group{display:contents}.lc-day{position:sticky;top:0;z-index:1;width:max-content;background:rgba(251,248,252,.94);border:1px solid rgba(109,75,125,.08);border-radius:999px;margin:4px auto 8px;padding:5px 10px}
 .lc-msg-line{will-change:auto}.lc-msg-line.sending{opacity:.72}.lc-msg-line.failed .lc-bubble{outline:1px solid #c65d73}
 .lc-bubble{contain:content}.lc-bubble>small{display:flex;align-items:center;justify-content:flex-end;gap:3px}.lc-bubble>small svg{color:#8b64a1}
