@@ -37,7 +37,7 @@ interface Props{
 const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
  photos.every(p=>p.status==="ready");
 const messageFor=(raw:string)=>raw||"Заполни обязательные поля.";
-type IdentityError={field:"name"|"date"|"city";message:string};
+type IdentityError={field:"name"|"date"|"city"|"about";message:string};
 function dateIssue(draft:RegistrationDraft,today=new Date()):string|null{
  if(!draft.day||!draft.month||!draft.year)return "Введи дату рождения";
  const y=Number(draft.year),m=Number(draft.month),d=Number(draft.day);
@@ -121,8 +121,7 @@ export function RealRegistrationV2(p:Props){
     break;
    }
    case "intent":issue=validateStep(draft,4,photos.length,new Date(),"live");break;
-   case "personality":issue=validateStep(draft,5,photos.length,new Date(),"live")||
-     validateStep(draft,6,photos.length,new Date(),"live");break;
+   case "personality":issue=validateStep(draft,6,photos.length,new Date(),"live");break;
    case "photos":
     if(!photoReady(photos)){issue="Выбери от 3 до 6 готовых фотографий.";break;}
     if(photoChecking)return;
@@ -149,7 +148,7 @@ export function RealRegistrationV2(p:Props){
  const stepProps=useMemo(()=>({
   data:draft,patch:p.patch,photos,addPhotos:p.addPhotos,removePhoto:p.removePhoto,
   movePhoto:p.movePhoto,resetDraft:p.resetDraft,deferConsent:true,step:1,
-  fieldError:identityError,clearFieldError:(field:"name"|"date"|"city")=>{
+  fieldError:identityError,clearFieldError:(field:"name"|"date"|"city"|"about")=>{
     setIdentityError(previous=>previous?.field===field?null:previous);
   },onFieldFocus:(field:"name"|"date"|"city"|null)=>{
     setFocusedField(field);
@@ -161,6 +160,7 @@ export function RealRegistrationV2(p:Props){
  const continueReady=stage.id==="identity"?identityReady:
    stage.id==="location"?gate.hasLocation:
    stage.id==="intent"?gate.hasIntent:
+   stage.id==="personality"?validateStep(draft,6,photos.length,new Date(),"live")===null:
    stage.id==="photos"?photoReady(photos):true;
  const fieldConfirmActive=(stage.id==="identity"||stage.id==="location")&&focusedField!==null;
 
@@ -186,7 +186,7 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="identity"&&<div className="v2-real-groups">{step(1)}{step(2)}<RegistrationConsent data={draft} patch={p.patch}/></div>}
        {stage.id==="location"&&step(3)}
        {stage.id==="intent"&&step(4)}
-       {stage.id==="personality"&&<div className="v2-real-groups">{step(5)}{step(6)}</div>}
+       {stage.id==="personality"&&<div className="v2-real-groups">{step(6)}{step(5)}</div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
         {step(7)}
         <div className="v2-note"><ShieldCheck size={18}/>
@@ -227,7 +227,7 @@ export function RealRegistrationV2(p:Props){
        {p.storageError&&<p role="alert" className="v2-feedback">
         Не удалось сохранить черновик на устройстве.<button type="button" onClick={p.onRetryStorage}>Повторить</button>
        </p>}
-       {p.mediaStatus&&<p role="status" className="v2-feedback">{p.mediaStatus}</p>}
+       {(stage.id==="photos"||stage.id==="review")&&p.mediaStatus&&<p role="status" className="v2-feedback">{p.mediaStatus}</p>}
        {hint&&<p role="alert" className="v2-feedback">{hint}</p>}
      </section>
      <footer className={"v2-footer"+(fieldConfirmActive?" is-focus-confirm":"")}>
@@ -245,7 +245,14 @@ export function RealRegistrationV2(p:Props){
           aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
          aria-disabled={!continueReady||undefined}
           onPointerDown={e=>{if(fieldConfirmActive)e.preventDefault();}}
-          onClick={advance}>
+          onClick={()=>{
+            if(fieldConfirmActive){
+              if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+              setFocusedField(null);
+              return;
+            }
+            advance();
+          }}>
           {fieldConfirmActive?<Check size={25} strokeWidth={2.3}/>:<>{photoChecking?"Проверяем фото…":stage.id==="liveness"?"К черновику":stage.id==="face-consent"?
            (biometricNotice?"Посмотреть камеру":"К черновику"):"Продолжить"}<ArrowRight size={18}/></>}
         </button>
