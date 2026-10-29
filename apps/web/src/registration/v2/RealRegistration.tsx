@@ -24,6 +24,7 @@ interface Props{
  publicationEnabled:boolean;
  serverSaving:boolean;
  serverStatus:string;
+ mediaStatus?:string;
  storageError:string|null;
  restored:boolean;
  resumeReview:boolean;
@@ -185,8 +186,9 @@ export function RealRegistrationV2(p:Props){
         {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
        </div>}
        {p.storageError&&<p role="alert" className="v2-feedback">
-        Ошибка локального черновика: {p.storageError}.<button type="button" onClick={p.onRetryStorage}>Повторить</button>
+        Не удалось сохранить черновик на устройстве.<button type="button" onClick={p.onRetryStorage}>Повторить</button>
        </p>}
+       {p.mediaStatus&&<p role="status" className="v2-feedback">{p.mediaStatus}</p>}
        {hint&&<p role="alert" className="v2-feedback">{hint}</p>}
      </section>
      <footer className="v2-footer">
