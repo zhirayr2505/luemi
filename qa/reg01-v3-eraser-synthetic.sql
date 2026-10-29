@@ -1,3 +1,10 @@
+-- Chats run in their own CI matrix; REG01 isolates only actor erasure.
+-- Re-create the group role here without granting it to the public API.
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='luemi_chats_writer') THEN
+  CREATE ROLE luemi_chats_writer NOLOGIN NOINHERIT;
+ END IF;
+END $$;
 -- CI-ONLY: disposable PostgreSQL worker compatibility fixture.
 -- Deliberately NOT a production migration or an endorsement of permanent retention.
 CREATE SCHEMA IF NOT EXISTS luemi_bliki_private;
