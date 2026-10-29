@@ -26,7 +26,7 @@ BEGIN;
 SET LOCAL ROLE luemi_chats_writer;
 SET LOCAL luemi.actor_id='11111111-1111-4111-8111-111111111111';
 SET LOCAL luemi.environment='luemi';
-DO $ DECLARE chat_id uuid; BEGIN
+DO $qaarchive$ DECLARE chat_id uuid; BEGIN
  SELECT c.id INTO chat_id FROM luemi_chats.conversations c
  JOIN luemi_chats.matches m ON m.id=c.private_match_id
  WHERE m.actor_high='33333333-3333-4333-8333-333333333333';
@@ -45,7 +45,7 @@ DO $ DECLARE chat_id uuid; BEGIN
   RAISE EXCEPTION 'write allowed to deleted account';
  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
  END;
-END $$;
+END $qaarchive$;
 COMMIT;
 BEGIN;
 SET LOCAL ROLE luemi_chats_writer;
