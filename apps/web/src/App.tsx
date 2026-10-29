@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,orderPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,reconcilePrivatePhotos,orderPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -799,6 +799,8 @@ export function App() {
         uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
           setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
       }
+      // Earlier interrupted 1-photo drafts cannot contaminate the gallery.
+      await reconcilePrivatePhotos(uploadedIds);
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       await orderPrivatePhotos(uploadedIds);
       const media=await ownerPublicationStatus();setPublishStatus(media);
