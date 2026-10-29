@@ -3,7 +3,7 @@ import type {ChatConversationContract,ChatMessageContract,ChatMediaContract} fro
 export type ChatWireConversation=ChatConversationContract;
 export type ChatWireMessage=ChatMessageContract;
 export type ChatWireMedia=ChatMediaContract;
-export type ChatMessagePage={messages:ChatWireMessage[];nextCursor:string|null};
+export type ChatMessagePage={messages:ChatWireMessage[];nextCursor:string|null;visibilityRevision?:string|null};
 
 export class ChatTransportError extends Error {
  constructor(readonly status:number,readonly code:string,readonly retryAfterMs?:number){super(code);}
@@ -34,7 +34,8 @@ export interface ChatTransport {
  messages(conversationId:string,before?:string,signal?:AbortSignal):Promise<ChatMessagePage>;
  send(conversationId:string,body:string,clientId:string,mediaIds?:string[],signal?:AbortSignal):Promise<{message:ChatWireMessage}>;
  edit(conversationId:string,messageId:string,body:string,signal?:AbortSignal):Promise<{message:ChatWireMessage}>;
- remove(conversationId:string,messageId:string,signal?:AbortSignal):Promise<{message:ChatWireMessage}>;
+ remove(conversationId:string,messageId:string,scope:"me"|"everyone",signal?:AbortSignal):Promise<{removed:true;scope:"me"|"everyone";messageId:string}>;
+ clear(conversationId:string,scope:"me"|"everyone",signal?:AbortSignal):Promise<{removed:true;scope:"me"|"everyone";conversationId:string}>;
  markRead(conversationId:string,messageId:string,signal?:AbortSignal):Promise<{read:true;readAt:string}>;
  createMedia(conversationId:string,file:File,clientId:string,signal?:AbortSignal):Promise<{media:ChatWireMedia}>;
  mediaUrl(conversationId:string,mediaId:string,signal?:AbortSignal):Promise<{url:string;expiresAt:string}>;
@@ -49,7 +50,8 @@ export function createChatTransport(csrf:string):ChatTransport{
   messages:(conversationId,before,signal)=>request("/"+id(conversationId)+"/messages"+(before?"?before="+id(before):""),csrf,{signal}),
   send:(conversationId,body,clientId,mediaIds=[],signal)=>request("/"+id(conversationId)+"/messages",csrf,{method:"POST",body:JSON.stringify({body,clientId,mediaIds}),signal}),
   edit:(conversationId,messageId,body,signal)=>request("/"+id(conversationId)+"/messages/"+id(messageId),csrf,{method:"PATCH",body:JSON.stringify({body}),signal}),
-  remove:(conversationId,messageId,signal)=>request("/"+id(conversationId)+"/messages/"+id(messageId),csrf,{method:"DELETE",signal}),
+  remove:(conversationId,messageId,scope,signal)=>request("/"+id(conversationId)+"/messages/"+id(messageId)+"/visibility",csrf,{method:"POST",body:JSON.stringify({scope}),signal}),
+  clear:(conversationId,scope,signal)=>request("/"+id(conversationId)+"/clear",csrf,{method:"POST",body:JSON.stringify({scope}),signal}),
   markRead:(conversationId,messageId,signal)=>request("/"+id(conversationId)+"/read",csrf,{method:"POST",body:JSON.stringify({messageId}),signal}),
   createMedia:(conversationId,file,clientId,signal)=>request("/"+id(conversationId)+"/media",csrf,{method:"POST",body:file,headers:{"Content-Type":file.type,"X-Luemi-Client-Id":clientId},signal}),
   mediaUrl:(conversationId,mediaId,signal)=>request("/"+id(conversationId)+"/media/"+id(mediaId)+"/url",csrf,{signal})

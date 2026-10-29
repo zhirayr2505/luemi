@@ -130,6 +130,55 @@ test("two authenticated actors create one durable conversation and revoke it on 
   assert.equal(result.status,404,"only the sender can delete");
   result=await inject(A,"PATCH",messagePath+"/"+sent.json.message.id,{body:"hello edited"});
   assert.equal(result.status,200,JSON.stringify(result));
+  // Incoming-message deletion for myself and both participants, without altering original payload.
+  result=await inject(C,"POST",messagePath+"/"+sent.json.message.id+"/visibility",{scope:"everyone"});
+  assert.equal(result.status,404,"stranger cannot erase another conversation");
+  const preHide=await inject(B,"GET",messagePath);
+  assert.equal(preHide.status,200);
+  const beforeRevision=preHide.json.visibilityRevision??null;
+  result=await inject(B,"POST",messagePath+"/"+sent.json.message.id+"/visibility",{scope:"me"});
+  assert.equal(result.status,200,JSON.stringify(result));
+  result=await inject(B,"GET",messagePath);
+  assert.equal(result.status,200);
+  assert.notEqual(result.json.visibilityRevision??null,beforeRevision,"local hide revision must invalidate open pages");
+  assert.ok(!result.json.messages.some((m:{id:string})=>m.id===sent.json.message.id),"locally hidden for B");
+  result=await inject(A,"GET",messagePath);
+  assert.equal(result.status,200);
+  assert.ok(result.json.messages.some((m:{id:string})=>m.id===sent.json.message.id),"still visible for A");
+  result=await inject(B,"POST",messagePath+"/"+sent.json.message.id+"/visibility",{scope:"everyone"});
+  assert.equal(result.status,200,JSON.stringify(result));
+  for(const participant of [A,B]){
+   result=await inject(participant,"GET",messagePath);
+   assert.equal(result.status,200);
+   assert.ok(!result.json.messages.some((m:{id:string})=>m.id===sent.json.message.id),"globally hidden for each");
+  }
+  const original=await admin.query("SELECT body FROM luemi_chats.messages WHERE id=$1",[sent.json.message.id]);
+  assert.equal(original.rows[0].body,"hello edited","visibility does not rewrite original message");
+  const later=await inject(A,"POST",messagePath,{
+   clientId:"edededed-eded-4ded-8ded-edededededed",body:"a visible new message"});
+  assert.equal(later.status,200,JSON.stringify(later));
+  result=await inject(B,"POST","/api/v4/chats/"+conversationId+"/clear",{scope:"me"});
+  assert.equal(result.status,200);
+  result=await inject(B,"GET",messagePath);
+  assert.equal(result.status,200);
+  assert.equal(result.json.messages.length,0,"locally cleared thread for B");
+  result=await inject(A,"GET",messagePath);
+  assert.equal(result.status,200);
+  assert.ok(result.json.messages.some((m:{id:string})=>m.id===later.json.message.id),"A retains thread");
+  result=await inject(A,"POST","/api/v4/chats/"+conversationId+"/clear",{scope:"everyone"});
+  assert.equal(result.status,200);
+  for(const participant of [A,B]){
+   result=await inject(participant,"GET",messagePath);
+   assert.equal(result.status,200);
+   assert.equal(result.json.messages.length,0,"cleared for both members");
+  }
+  const afterClear=await inject(A,"POST",messagePath,{
+   clientId:"ffffffff-ffff-4fff-8fff-fffffffbffff",body:"post-clear new message"});
+  assert.equal(afterClear.status,200,JSON.stringify(afterClear));
+  result=await inject(B,"GET",messagePath);
+  assert.equal(result.status,200);
+  assert.ok(result.json.messages.some((m:{id:string})=>m.id===afterClear.json.message.id),
+    "new messages appear after full clear");
   await admin.query("INSERT INTO luemi_private.blocks(blocker_id,blocked_id,environment) VALUES($1,$2,$3)",[B,A,ns]);
   result=await inject(A,"GET",messagePath);
   assert.equal(result.status,404,"blocking must immediately revoke access");
