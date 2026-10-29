@@ -35,6 +35,7 @@ declare global {
     Telegram?: {
       WebApp?: {
         initData?: string;
+        initDataUnsafe?: {start_param?: string};
         onEvent?: (event:string,handler:()=>void) => void;
         offEvent?: (event:string,handler:()=>void) => void;
         viewportStableHeight?: number;
@@ -119,7 +120,8 @@ export function App() {
   const [publishedEditor,setPublishedEditor]=useState<{name:string;about:string;goal:string}|null>(null);
   const submitting=useRef(false);
   const [scope,setScope] = useState<string|null>(()=>localScope());
-   const actorScopeRef=useRef<string|null>(scope);
+  const actorScopeRef=useRef<string|null>(scope);
+  const accountEpoch=useRef(0);
   // Prewarm the optional Discovery chunk after the welcome screen appears.
   // Never let large profile/viewer modules block Telegram entry and registration.
   useEffect(()=>{
@@ -133,8 +135,8 @@ export function App() {
   const photosLive=useRef<PhotoItem[]>([]);
   photosLive.current=photos;
   const draftLive=useRef(draft);draftLive.current=draft;
-  // Upload begins only after the final preview, under the branded publication
-  // curtain. Choosing and sorting photos stays completely local and instant.
+  // Photo bytes are queued as soon as the current actor has consented. The
+  // final preview still reconciles the manifest before publication.
   const privateAssetIds=useRef(new Map<string,string>());
   const privateMediaQueue=useRef<Promise<unknown>>(Promise.resolve());
   const ownedUrls = useRef<string[]>([]);
@@ -273,13 +275,16 @@ export function App() {
         if(!initData){setAuth("outside-telegram");return;}
         const user=result.value;
         if(!user){setAuth("needs-bot");return;}
-        const authenticatedScope=localScope();
+        // Use the server-verified actor returned by the bootstrap response.
+        // Reading the module-level scope here can race a second Telegram login.
+        const authenticatedScope=("mode" in user&&user.mode==="session_v2")?user.user.id:localScope();
         if(!authenticatedScope&&import.meta.env.VITE_LUEMI_AUTH_V2==="1"){
           setAuth("error");return;
         }
         if(authenticatedScope&&actorScopeRef.current!==authenticatedScope){
           // A new verified Telegram actor cannot inherit any previous in-memory data.
           actorScopeRef.current=authenticatedScope;
+          ++accountEpoch.current;
           ++saveSequence.current;++photoGeneration.current;
           persistEnabled.current=false;
           for(const job of photoJobs.current.values())job.abort();
@@ -288,7 +293,11 @@ export function App() {
           ownedUrls.current=[];photoIds.current.clear();privateAssetIds.current.clear();
           setPhotos([]);setPhotosRestored(false);
           setStep(1);setDraft(newDraft(user.user.firstName));
+          draftId.current=crypto.randomUUID();revision.current=0;
           setPrivateDraftSaved(false);setServerPhotoCount(0);setServerConsent(false);
+          setRealHome(false);setRealHomeTab("feed");setPhase("welcome");
+          setPublishStatus(null);setPublicationCheck("idle");setServerStatus("");
+          setMediaStatus("");setJourney(null);setJourneyError("");
           setScope(authenticatedScope);
         }else setDraft(current=>({...current,name:current.name||user.user.firstName}));
         setAuth("authorized");
@@ -337,9 +346,12 @@ export function App() {
     let disposed=false;
     const controller=new AbortController(),generation=photoGeneration.current;
     if(auth!=="authorized"||!scope)return;
+    const accountScope=scope,epoch=accountEpoch.current;
+    const isLive=()=>!disposed&&generation===photoGeneration.current&&
+      accountEpoch.current===epoch&&actorScopeRef.current===accountScope&&scope===accountScope;
     setStorageState("loading");
     void loadDraftSnapshot(scope).then(async result=>{
-      if(disposed)return;
+      if(!isLive())return;
       if(!result.ok){
         retryKind.current="load";setStorageCode(result.code);setStorageState("error");return;
       }
@@ -350,7 +362,7 @@ export function App() {
       if(remoteDraftPilot.enabled&&!realFeedPilot.enabled&&auth==="authorized"){
         try{
           const remote=await readRemoteRevision();
-          if(disposed)return;
+          if(!isLive())return;
           if(remote.state==="private")
             savedTester=recoverServerFields(remote.fields);
         }catch{/* The offline local draft remains recoverable. */}
@@ -366,11 +378,11 @@ export function App() {
           // Returning accounts must have a confirmed durable media set.
           try{
             const received=await readConfirmedPrivateMediaCount(3);
-            if(disposed)return;
+            if(!isLive())return;
             setServerPhotoCount(received);
             setRealHomeTab("profile");setRealHome(true);
           }catch{
-            if(disposed)return;
+            if(!isLive())return;
             setServerStatus("Поля восстановлены с сервера. Для завершения нужны сохранённые фотографии.");
             setRealHome(false);
           }
@@ -386,7 +398,7 @@ export function App() {
         // again. Never claim that private media bytes are in this response.
         try{
           const remote=await readRemoteRevision();
-          if(disposed)return;
+          if(!isLive())return;
           if(remote.state==="private"){
             const recovered=recoverServerFields(remote.fields);
             if(recovered){setDraft(recovered);setStep(3);setPhase("form");}
@@ -395,26 +407,26 @@ export function App() {
       }
       const restoredPhotos:PhotoItem[]=[];
       for(const item of snapshot?.photos??[]){
-        if(disposed||generation!==photoGeneration.current)break;
+        if(!isLive())break;
         let preview=item.preview;
         if(!preview){
           const job=photoQueue.current.then(async()=>{preview=await preparePhotoPreview(item.file,controller.signal);});
           photoQueue.current=job.catch(()=>{});
           try{await job;}catch{
-            if(disposed||controller.signal.aborted)break;
+            if(!isLive()||controller.signal.aborted)break;
             restoredPhotos.push({...item,src:"",status:"error"});continue;
           }
         }
-        if(disposed||generation!==photoGeneration.current)break;
+        if(!isLive())break;
         const src=URL.createObjectURL(preview!);ownedUrls.current.push(src);
         restoredPhotos.push({...item,preview,src,status:"ready"});
       }
-      if(disposed||generation!==photoGeneration.current||photoIds.current.size){
+      if(!isLive()||photoIds.current.size){
         for(const photo of restoredPhotos)if(photo.src){
           URL.revokeObjectURL(photo.src);
           ownedUrls.current=ownedUrls.current.filter(url=>url!==photo.src);
         }
-        if(!disposed){setPhotosRestored(true);setStorageState("idle");}
+        if(isLive()){setPhotosRestored(true);setStorageState("idle");}
         return;
       }
       photoIds.current=new Set(restoredPhotos.map(p=>p.id));
@@ -425,7 +437,7 @@ export function App() {
       setStorageState(result.source==="legacy"?"dirty":"idle");
       setPhotosRestored(true);
     }).catch(()=>{
-      if(!disposed){retryKind.current="load";setStorageCode("io");setStorageState("error");}
+      if(isLive()){retryKind.current="load";setStorageCode("io");setStorageState("error");}
     });
     return ()=>{disposed=true;controller.abort();};
   },[scope,loadRetry,auth]);
@@ -498,13 +510,16 @@ export function App() {
     if(step<8)changeStep(step+1);
   };
   const syncChosenPhotos=useCallback((consented:boolean):Promise<string[]>=>{
+    const taskEpoch=accountEpoch.current;
     const run=async():Promise<string[]>=>{
-      if(!remoteMediaPilot.enabled||auth!=="authorized")return[];
+      if(!remoteMediaPilot.enabled||auth!=="authorized"||taskEpoch!==accountEpoch.current)return[];
       try{
         if(consented){
+          if(taskEpoch!==accountEpoch.current)return[];
           // The request role accepts bytes only AFTER the server has stored
           // an 18+ private draft and current consent version.
           const previous=await readRemoteRevision();
+          if(taskEpoch!==accountEpoch.current)return[];
           await saveRemoteDraft(draftLive.current,previous.revision);
           const ready=photosLive.current.filter(p=>p.status==="ready");
           if(ready.length){
@@ -519,10 +534,15 @@ export function App() {
               if(matched&&matched.state!=="reserved")privateAssetIds.current.set(photo.id,matched.assetId);
               else if(matched?.state==="reserved")privateAssetIds.current.delete(photo.id);
             }
-            setPhotos(current=>current.map(photo=>{
-              const matched=plan.matched.get(photo.id);
-              return matched&&matched.state!=="reserved"?{...photo,serverStatus:"saved"}:photo;
-            }));
+            setPhotos(current=>{
+              let changed=false;
+              const next=current.map(photo=>{
+                const matched=plan.matched.get(photo.id);
+                if(!matched||matched.state==="reserved"||photo.serverStatus==="saved")return photo;
+                changed=true;return {...photo,serverStatus:"saved" as const};
+              });
+              return changed?next:current;
+            });
           }
           for(const photo of ready){
             if(!photoIds.current.has(photo.id)||privateAssetIds.current.has(photo.id))continue;
@@ -548,7 +568,7 @@ export function App() {
         return ids;
       }catch(e){
         setPhotos(current=>current.map(photo=>photo.status==="ready"&&!privateAssetIds.current.has(photo.id)
-          ?{...photo,serverStatus:"error"}:photo));
+          ?{...photo,serverStatus:"error" as const}:photo));
         throw e;
       }
     };
@@ -556,6 +576,14 @@ export function App() {
     privateMediaQueue.current=task.catch(()=>{});
     return task;
   },[auth]);
+  useEffect(()=>{
+    if(!remoteMediaPilot.enabled||auth!=="authorized"||!serverConsent||!scope||
+      !photos.some(photo=>photo.status==="ready"&&!privateAssetIds.current.has(photo.id)))return;
+    const epoch=accountEpoch.current;
+    void syncChosenPhotos(true).catch(()=>{
+      if(epoch===accountEpoch.current)setMediaStatus("Не все фотографии загрузились. Повторим при следующем изменении.");
+    });
+  },[auth,photos,scope,serverConsent,syncChosenPhotos]);
   const addPhotos=(files:File[])=>{
     if(!files.length)return;
     setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);
@@ -602,6 +630,13 @@ export function App() {
     if(timer!==undefined)window.clearTimeout(timer);
     photoTimers.current.delete(id);photoIds.current.delete(id);
     const item=photos.find(p=>p.id===id);
+    const assetId=privateAssetIds.current.get(id);
+    if(assetId){
+      privateAssetIds.current.delete(id);
+      const task=privateMediaQueue.current.then(()=>deletePrivatePhoto(assetId));
+      privateMediaQueue.current=task.catch(()=>{});
+      void task.catch(()=>setMediaStatus("Фото убрано из анкеты. Серверное удаление повторится позже."));
+    }
     if(item?.src){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
     setPhotos(prev=>prev.filter(p=>p.id!==id));
   };
@@ -1127,7 +1162,7 @@ export function App() {
   if(auth==="authorized"&&phase==="form"&&registrationV2Pilot&&!demoOpen)
     return <Suspense fallback={<main className="luemi-shell" data-theme={activeTheme}
       role="status" style={{padding:24}}>Открываем регистрацию…</main>}>
-      <RealRegistrationV2 draft={draft} patch={patch} photos={photos}
+      <RealRegistrationV2 draft={draft} key={scope??"registration"} patch={patch} photos={photos}
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} theme={theme} onTheme={changeTheme}
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
@@ -1135,7 +1170,8 @@ export function App() {
         mediaEnabled={remoteMediaPilot.enabled}
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
-        serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
+       serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
+       mediaStatus={mediaStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
