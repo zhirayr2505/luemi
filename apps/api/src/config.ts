@@ -344,7 +344,11 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   // Immediate publication still requires a real post-publication report removal
   // operator and account/photo erasure. Do not treat environment flags as proof
   // the human on-call and erasure procedures have actually run successfully.
-  if(instantPublishing&&(!realErasure||!releaseOperations.erasureWorkerCliConfigured||
+  if(instantPublishing&&(!realErasure||
+    // A strictly limited, owner-handled beta may receive deletion requests
+    // without running an irreversible automated worker. For all public
+    // releases the verified worker remains mandatory.
+    (!earlyBeta&&!releaseOperations.erasureWorkerCliConfigured)||
     !releaseOperations.safetyOperatorCliConfigured))
     throw new Error("Instant publication requires working safety takedown and erasure operators");
   return {
