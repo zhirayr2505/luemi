@@ -31,7 +31,12 @@ assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
 assert.match(form,/p\.publicationEnabled\?/,"Registration must disclose publication separately from private saving");
 assert.match(form,/Создать анкету 💜/,"Single real signup confirmation creates published profile");
-assert.match(form,/mode="local-self-preview" active/,"Signup preview must show approved Profile Morph V3");
+assert.match(form,/<SimpleRegistrationPreview draft=\{draft\} photos=\{photos\} movePhoto=\{p\.movePhoto\}/,
+ "Signup preview must show round primary photo and swipe gallery as approved by owner");
+assert.doesNotMatch(form,/mode="local-self-preview" active/,
+ "Registration review must not invoke the full interactive Profile Morph V3");
+assert.match(app,/<RealDiscoveryHome/,
+ "Approved real Discovery and owner Profile Morph V3 must remain untouched");
 assert.match(form,/registrationV2Stages\.filter\(stage=>stage\.id!=="face-consent"&&stage\.id!=="liveness"\)/,
  "Private signup must skip unavailable biometric verification screens");
 assert.match(form,/aria-valuemax=\{stages\.length\}/,
