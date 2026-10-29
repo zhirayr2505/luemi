@@ -709,11 +709,13 @@ export function App() {
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
-      if(existing.approved<photos.length||existing.pending>0||existing.other>0){
-        const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-          setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
-        await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
-      }else await readConfirmedPrivateMediaCount(photos.length);
+      // Always reconcile the selected photo IDs against the server manifest,
+      // even when the server already has >=3 other approved photos. Count-only
+      // checks can publish stale images instead of the user's current choice.
+      // Per-photo idempotency keys make this safe on normal repeated submits.
+      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
+        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       const media=await ownerPublicationStatus();setPublishStatus(media);
       if(media.approved<photos.length||media.pending!==0||media.other!==0)
         throw new Error("incomplete_media");
