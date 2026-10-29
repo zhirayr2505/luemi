@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,reconcilePrivatePhotos,orderPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,syncPrivatePhotoSelection,reconcilePrivatePhotos,orderPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -158,6 +158,7 @@ export function App() {
   const backgroundFailed=useRef(new Set<string>());
   const backgroundQueue=useRef<Promise<void>>(Promise.resolve());
   const backgroundDraftReady=useRef(false);
+  const backgroundSelection=useRef("");
   const [backgroundStatus,setBackgroundStatus]=useState("");
   const [backgroundRetry,setBackgroundRetry]=useState(0);
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
@@ -544,7 +545,7 @@ export function App() {
       }).catch(()=>setBackgroundStatus("Не удалось очистить все фото на сервере. Повтори удаление позже."));
       backgroundQueue.current=cleanup;
     }
-    backgroundDraftReady.current=false;
+    backgroundDraftReady.current=false;backgroundSelection.current="";
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();photoIds.current.clear();
@@ -626,6 +627,15 @@ export function App() {
           backgroundDraftReady.current=true;setPrivateDraftSaved(true);
         }
         if(!photoIds.current.has(photo.id))return;
+        const selected=photos.filter(p=>photoIds.current.has(p.id)).map(p=>p.id);
+        const signature=[...selected].sort().join(",");
+        if(signature!==backgroundSelection.current){
+          // Clear stale reserved/approved slots before a new private PUT.
+          // This also fixes the original 4 approved + 1 reserved beta case.
+          await syncPrivatePhotoSelection(selected);
+          backgroundSelection.current=signature;
+        }
+        if(!photoIds.current.has(photo.id))return;
         const assetId=await uploadPrivatePhoto(photo);
         if(!photoIds.current.has(photo.id)){
           await deletePrivatePhoto(photo.id);return;
@@ -643,7 +653,8 @@ export function App() {
     }
   },[auth,serverConsent,photos,photosRestored,backgroundRetry,draft]);
   const retryBackgroundPhotos=()=>{
-    backgroundFailed.current.clear();setBackgroundRetry(n=>n+1);
+    backgroundFailed.current.clear();backgroundSelection.current="";
+    setBackgroundRetry(n=>n+1);
   };
   const updateServerConsent=(next:boolean)=>{
     setServerConsent(next);
@@ -653,7 +664,7 @@ export function App() {
       const ids=photos.map(photo=>photo.id);
       const cleanup=backgroundQueue.current.then(async()=>{
         for(const id of ids)await deletePrivatePhoto(id);
-        backgroundUploaded.current.clear();backgroundDraftReady.current=false;
+        backgroundUploaded.current.clear();backgroundDraftReady.current=false;backgroundSelection.current="";
         setServerPhotoCount(0);setBackgroundStatus("Фотографии удалены с сервера.");
       }).catch(()=>setBackgroundStatus("Не удалось удалить все фотографии. Повтори при соединении."));
       backgroundQueue.current=cleanup;
