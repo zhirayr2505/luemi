@@ -67,6 +67,14 @@ export function RealRegistrationV2(p:Props){
  const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|null>(null);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
  useEffect(()=>{
+  // Android WebView can restore the last focused input when a Mini App is
+  // reopened. Registration must start as a clean screen, without reopening
+  // the keyboard and hiding the first fields behind the footer.
+  const active=document.activeElement;
+  if(active instanceof HTMLElement)active.blur();
+  setFocusedField(null);
+ },[]);
+ useEffect(()=>{
   const controller=new AbortController();
   void fetch("/api/v2/facetrust/status",{method:"GET",credentials:"same-origin",
    cache:"no-store",signal:controller.signal}).then(async res=>{
