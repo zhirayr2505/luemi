@@ -243,3 +243,55 @@
 .v2-runtime .v2-profile-v3-preview .v3-int-root{position:relative;}
 .v2-runtime .v2-profile-v3-preview img{max-width:none;}
 @media(max-width:720px){.v2-runtime .v2-profile-v3-preview{height:min(64dvh,540px);min-height:385px;}}
+
+/* Simple registration-only preview. Keep Profile Morph V3 unchanged. */
+.v2-runtime .luemi-simple-preview{display:flex;flex-direction:column;gap:16px;width:100%;
+ color:#54405f}
+.v2-runtime .luemi-preview-identity{display:flex;flex-direction:column;align-items:center;
+ padding:22px 14px 18px;border-radius:24px;border:1px solid rgba(176,128,203,.23);
+ background:linear-gradient(160deg,rgba(255,255,255,.96),rgba(245,228,251,.75));
+ box-shadow:0 9px 23px rgba(111,74,147,.08);text-align:center;gap:7px}
+.v2-runtime .luemi-preview-avatar{width:108px;height:108px;border-radius:50%;
+ padding:4px;overflow:hidden;display:grid;place-items:center;
+ background:linear-gradient(135deg,#b88ad9,#e9a9d3);box-shadow:0 8px 22px rgba(124,76,173,.2)}
+.v2-runtime .luemi-preview-avatar img{display:block;width:100%;height:100%;
+ border-radius:50%;object-fit:cover;border:3px solid #fff}
+.v2-runtime .luemi-preview-avatar span{font-size:12px;color:#6f5182}
+.v2-runtime .luemi-preview-name{margin-top:7px;font-size:24px;line-height:1.25;font-weight:780;
+ letter-spacing:-.035em;color:#443250}
+.v2-runtime .luemi-preview-city{font-size:14px;color:#8b7298}
+.v2-runtime .luemi-preview-goal{margin-top:5px;max-width:100%;padding:7px 13px;
+ border-radius:99px;background:#f1e3f8;color:#8053a2;font-size:12px;font-weight:700}
+.v2-runtime .luemi-preview-section{border-radius:22px;padding:15px 12px;
+ background:rgba(255,255,255,.88);border:1px solid rgba(172,131,192,.20)}
+.v2-runtime .luemi-preview-section h3{margin:0 0 9px;font-size:15px;color:#553f63}
+.v2-runtime .luemi-preview-section p{margin:0;line-height:1.55;font-size:13px}
+.v2-runtime .luemi-preview-section-head{display:flex;justify-content:space-between;align-items:center;
+ padding:0 4px 3px}
+.v2-runtime .luemi-preview-section-head span{font-size:12px;color:#a28aaf}
+.v2-runtime .luemi-preview-gallery{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;
+ scroll-snap-type:x mandatory;scroll-padding:6px;overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;padding:4px 2px 8px;touch-action:pan-x}
+.v2-runtime .luemi-preview-photo{position:relative;flex:0 0 74%;height:245px;
+ scroll-snap-align:center;border-radius:17px;overflow:hidden;background:#e6d3ef}
+.v2-runtime .luemi-preview-photo img{width:100%;height:100%;display:block;object-fit:cover}
+.v2-runtime .luemi-preview-main-label{position:absolute;bottom:12px;left:12px;border-radius:12px;
+ background:rgba(255,255,255,.92);color:#694883;font-size:12px;font-weight:750;padding:7px 11px}
+.v2-runtime .luemi-preview-swipe-hint{padding:0 4px;font-size:11px!important;color:#9b83a7}
+.v2-runtime .luemi-preview-interests{display:flex;gap:7px;flex-wrap:wrap}
+.v2-runtime .luemi-preview-interests span{font-size:12px;color:#8058a4;border-radius:99px;
+ padding:7px 11px;background:#f1e5f7}
+.v2-runtime .luemi-preview-note{font-size:11px;color:#967da1;line-height:1.55;text-align:center}
+.v2-runtime .v2-photo-upload-consent{background:#fbf5ff}
+.v2-runtime .v2-photo-upload-error{border-radius:15px;padding:12px;background:#fff3f6;color:#8e5279;font-size:13px}
+.v2-runtime .v2-photo-upload-error p{margin:0 0 9px}
+.v2-runtime .v2-photo-upload-error button{border-radius:12px;padding:8px 11px;border:1px solid #dcb9da;
+ color:#8055a1;background:#fff}
+.v2-runtime .photo-server-state{position:absolute;left:4px;right:4px;bottom:4px;z-index:2;
+ padding:3px 5px;border-radius:8px;background:rgba(250,244,255,.96);
+ font-size:10px;color:#72518a;font-weight:650;text-align:center}
+.v2-runtime .photo-server-state.is-failed{color:#a43762;background:#ffedf3}
+.v2-runtime[data-theme="dark"] .luemi-preview-identity,
+.v2-runtime[data-theme="dark"] .luemi-preview-section{background:#33253f;color:#eedaf4;border-color:#624c6f}
+.v2-runtime[data-theme="dark"] .luemi-preview-name,
+.v2-runtime[data-theme="dark"] .luemi-preview-section h3{color:#f6ebfa}
