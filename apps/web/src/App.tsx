@@ -25,6 +25,7 @@ import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
 import {PublicationJourney,type PublishJourneyPhase} from "./registration/PublicationJourney";
+import {LuemiLaunchSplash} from "./startup/LuemiLaunchSplash";
 
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 import {PrivateAccountView} from "./registration/PrivateAccountView";
@@ -111,11 +112,13 @@ export function App() {
   const [connectAttempt,setConnectAttempt]=useState(0);
   const startupGeneration=useRef(0);
   const [visualReady,setVisualReady] = useState(false);
+  const [introText,setIntroText] = useState("");
   const [welcomeExiting,setWelcomeExiting] = useState(false);
   const transitionTimer = useRef<number | null>(null);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [demoOpen,setDemoOpen] = useState(false);
   const [realHome,setRealHome] = useState(false);
+  const [registeredSplash,setRegisteredSplash] = useState(false);
   const [realHomeTab,setRealHomeTab] = useState<"feed"|"chats"|"profile">("feed");
   const [publishedEditor,setPublishedEditor]=useState<{name:string;about:string;goal:string}|null>(null);
   const submitting=useRef(false);
@@ -233,6 +236,20 @@ export function App() {
     return ()=>window.clearTimeout(timer);
   },[visualReady]);
   useEffect(()=>{
+    if(!visualReady||auth==="connecting")return;
+    const phrase=auth==="authorized"&&step>1?"Твоя история уже началась":"Твоя история начинается здесь";
+    setIntroText("");
+    let index=0;
+    let timer:number|null=null;
+    const start=window.setTimeout(()=>{
+      timer=window.setInterval(()=>{
+        index+=1;setIntroText(phrase.slice(0,index));
+        if(index>=phrase.length&&timer!==null)window.clearInterval(timer);
+      },34);
+    },420);
+    return()=>{window.clearTimeout(start);if(timer!==null)window.clearInterval(timer);};
+  },[auth,step,visualReady]);
+  useEffect(()=>{
     const webApp=window.Telegram?.WebApp;
     try{
       const background=activeTheme==="dark"?"#181320":"#fffbfd";
@@ -295,7 +312,7 @@ export function App() {
           setStep(1);setDraft(newDraft(user.user.firstName));
           draftId.current=crypto.randomUUID();revision.current=0;
           setPrivateDraftSaved(false);setServerPhotoCount(0);setServerConsent(false);
-          setRealHome(false);setRealHomeTab("feed");setPhase("welcome");
+          setRealHome(false);setRegisteredSplash(false);setRealHomeTab("feed");setPhase("welcome");
           setPublishStatus(null);setPublicationCheck("idle");setServerStatus("");
           setMediaStatus("");setJourney(null);setJourneyError("");
           setScope(authenticatedScope);
@@ -318,7 +335,7 @@ export function App() {
       setPublishStatus(status);
       setPublicationCheck("ready");
       if(status.state==="published"){
-        setRealHome(true);
+        setRegisteredSplash(true);setRealHome(true);
       }else{
         // An interrupted upload (e.g. only one photo) is not a profile.
         // Keep the user in registration and resume idempotently on retry.
@@ -380,14 +397,14 @@ export function App() {
             const received=await readConfirmedPrivateMediaCount(3);
             if(!isLive())return;
             setServerPhotoCount(received);
-            setRealHomeTab("profile");setRealHome(true);
+            setRealHomeTab("profile");setRegisteredSplash(true);setRealHome(true);
           }catch{
             if(!isLive())return;
             setServerStatus("Поля восстановлены с сервера. Для завершения нужны сохранённые фотографии.");
             setRealHome(false);
           }
         }else{
-          setRealHomeTab("profile");setRealHome(true);
+          setRealHomeTab("profile");setRegisteredSplash(true);setRealHome(true);
         }
       }else if(snapshot){
         setDraft(snapshot.draft);
@@ -746,7 +763,7 @@ export function App() {
       setServerStatus("Поля анкеты сохранены на сервере. Публикация закрыта, фотографии остались на этом устройстве.");
       // A private test account exists already. Show its server-backed
       // profile instead of leaving the user on the last registration step.
-      if(!realFeedPilot.enabled){setRealHomeTab("profile");setRealHome(true);}
+      if(!realFeedPilot.enabled){setRealHomeTab("profile");setRegisteredSplash(true);setRealHome(true);}
     }catch(e){
       setPrivateDraftSaved(false);
       setServerStatus(e instanceof Error&&e.message==="revision_conflict"?
@@ -796,7 +813,7 @@ export function App() {
       const received=await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       setServerPhotoCount(received);
       setServerStatus("Сервер подтвердил анкету и "+received+" фотографий.");
-      setRealHomeTab("profile");setRealHome(true);
+      setRealHomeTab("profile");setRegisteredSplash(true);setRealHome(true);
     }catch(e){
       setServerStatus(e instanceof Error&&e.message==="revision_conflict"
        ?"Анкета изменена на другом устройстве. Локальные данные сохранены; проверь их и повтори."
@@ -816,6 +833,7 @@ export function App() {
     }finally{window.clearTimeout(timeout);}
     // Mount the real app behind the branded curtain first, then let the
     // completion transition reveal an already-painted first feed.
+    setRegisteredSplash(true);
     setRealHomeTab("feed");setRealHome(true);setJourney("complete");
   };
   const confirmRealRegistration=async()=>{
@@ -875,7 +893,7 @@ export function App() {
     submitting.current=true;setPublishBusy(true);setPublishFeedback("");
     try{
       const status=await ownerPublicationStatus();setPublishStatus(status);
-      if(status.state==="published"){setRealHome(true);return;}
+      if(status.state==="published"){setRegisteredSplash(true);setRealHome(true);return;}
       if(status.approved<3||status.approved>6||status.pending||status.other){
         setPublishFeedback(instantPublicationUi?"Не все фотографии успешно загружены. Анкета пока скрыта.":"Фотографии ещё проходят проверку или требуют исправления. Анкета пока скрыта.");return;
       }
@@ -884,7 +902,7 @@ export function App() {
       await publishMyProfile(draftOnServer.revision);
       const confirmed=await ownerPublicationStatus();
       if(confirmed.state!=="published")throw new Error("publication_unconfirmed");
-      setPublishStatus(confirmed);setRealHome(true);
+      setPublishStatus(confirmed);setRegisteredSplash(true);setRealHome(true);
     }catch{setPublishFeedback("Проверка не завершилась. Повтори при стабильном соединении.");}
     finally{submitting.current=false;setPublishBusy(false);}
   };
@@ -1042,6 +1060,8 @@ export function App() {
     onRetry={()=>{setJourney(null);void confirmRealRegistration();}}
     onBack={()=>{setJourney(null);setPhase("form");}}
     onComplete={closePublicationJourney}/>:null;
+  if(realHome&&auth==="authorized"&&registeredSplash)
+    return <LuemiLaunchSplash logoSrc={logoSrc} onComplete={()=>setRegisteredSplash(false)}/>;
   // All signed-in accounts retain the approved LUEMI four-tab Discovery,
   // cinematic photo cards and Profile Morph V3. REAL_ONLY changes data, not UI.
   if(realHome&&auth==="authorized"&&realFeedPilot.enabled)
@@ -1190,7 +1210,7 @@ export function App() {
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
       {auth!=="connecting"&&!(auth==="authorized"&&realFeedPilot.enabled&&publicationCheck==="checking")&&
-       <h1>Твоя история начинается здесь</h1>}
+       <h1 aria-label={introText}>{introText}<span className="intro-type-cursor" aria-hidden="true">|</span></h1>}
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<><p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>
         {realOnly&&<button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button>}</>}
@@ -1209,7 +1229,7 @@ export function App() {
         {publicMediaUiMissing&&<p role="alert">Загрузка фотографий на сервер не подключена. Регистрация временно недоступна, чтобы не потерять данные.</p>}
         {!publicMediaUiMissing&&(!realFeedPilot.enabled&&(!realOnly||remoteDraftPilot.enabled)||publicationCheck==="ready")&&
           <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
-            Начать <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
+            {step>1?"Продолжить регистрацию":"Начать знакомство"} <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
           </button>}
       </div>}
     </section>:<section className={"onboarding-screen"+(step===8?" registration-static-screen":"")}>
