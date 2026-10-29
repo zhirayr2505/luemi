@@ -1,17 +1,16 @@
 import type {PhotoItem,PhotoServerState} from "./PhotoSorter";
-import {uploadPrivatePhoto,deletePrivateMedia,privateClientDigest,
- readPrivateMediaManifest,updatePrivatePhotoOrder} from "./server-media";
+interface PrivateMediaRow{ id:string;state:string;clientDigest:string|null }
 
 interface PhotoSyncDeps{
  getPhotos:()=>PhotoItem[];
  ensureDraft:()=>Promise<void>;
  onState:(id:string,state:PhotoServerState)=>void;
  onError:(message:string)=>void;
- upload?:(photo:PhotoItem)=>Promise<string>;
- remove?:(id:string)=>Promise<void>;
- manifest?:typeof readPrivateMediaManifest;
- digest?:typeof privateClientDigest;
- order?:typeof updatePrivatePhotoOrder;
+ upload:(photo:PhotoItem)=>Promise<string>;
+ remove:(id:string)=>Promise<void>;
+ manifest:()=>Promise<PrivateMediaRow[]>;
+ digest:(id:string)=>Promise<string>;
+ order:(ids:readonly string[])=>Promise<void>;
 }
 /** All operations serialize. Upload/delete/reorder share the per-owner SQL lock,
  * and no operation starts until the owner has explicitly accepted media consent.
@@ -25,13 +24,7 @@ export class RegistrationMediaSync {
  private uploaded=new Map<string,string>();
  private prepared=false;
  private deps:Required<PhotoSyncDeps>;
- constructor(deps:PhotoSyncDeps){
-  this.deps={...deps,upload:deps.upload??uploadPrivatePhoto,
-   remove:deps.remove??deletePrivateMedia,
-   manifest:deps.manifest??readPrivateMediaManifest,
-   digest:deps.digest??privateClientDigest,
-   order:deps.order??updatePrivatePhotoOrder};
- }
+ constructor(deps:PhotoSyncDeps){this.deps=deps;}
  setAllowed(allowed:boolean){this.allowed=allowed;}
  async idle():Promise<void>{await this.queue;}
  resetDraft(){this.prepared=false;this.uploaded.clear();this.removed.clear();}
