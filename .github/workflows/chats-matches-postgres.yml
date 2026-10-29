@@ -61,11 +61,10 @@ jobs:
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f db/chats-v3-visibility.sql
-      - name: Add synthetic deleted-peer marker column (full migration remains release gated)
+      - name: Apply read-only deleted-peer RLS migration to PG16/17
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -c "ALTER TABLE luemi_private.actors ADD COLUMN IF NOT EXISTS anonymized_at timestamptz"
-          psql -v ON_ERROR_STOP=1 -c "GRANT SELECT(anonymized_at) ON luemi_private.actors TO luemi_chats_writer"
+          psql -v ON_ERROR_STOP=1 -f db/chats-v3-tombstone-reader.sql
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
