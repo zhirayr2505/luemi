@@ -64,7 +64,7 @@ test("selected photos upload from step seven and deleted private bytes are revok
  assert.match(mediaClient,/export async function uploadPrivatePhoto/);
  assert.match(mediaClient,/export async function deletePrivatePhoto/);
  assert.match(mediaClient,/export async function syncPrivateSelectedPhotos/);
- assert.match(media,/\/api\/v2\/media\/by-photo\/\:id/);
+ assert.match(media,/\/api\/v2\/media\/by-photo\/:id/);
  assert.match(media,/\/api\/v2\/media\/sync-selection/);
 });
 test("server resumes same expired media intent without new asset",()=>{
