@@ -61,7 +61,7 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
    if(!controller.signal.aborted){setItems(data.conversations);setLoading(false);}
   }).catch(()=>{if(!controller.signal.aborted){setError("Не удалось загрузить симпатии.");setLoading(false);}});
   return ()=>controller.abort();
- },[active,refresh,initialFeed]);
+ },[active,refresh]);
  return <section className="real-discovery-matches" aria-label="Взаимные симпатии">
   <div className="real-discovery-matches-head"><h2>Симпатии</h2>
    <button type="button" aria-label="Обновить симпатии" onClick={()=>setRefresh(x=>x+1)}><RefreshCw size={19}/></button></div>
@@ -104,7 +104,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched}:{
    setRows(result.profiles);setCursor(result.nextCursor);setPage(0);setLoading(false);
   }).catch(()=>{if(!controller.signal.aborted){setLoading(false);setError("Не удалось загрузить анкеты.");}});
   return ()=>controller.abort();
- },[active,refresh]);
+ },[active,refresh,initialFeed]);
  const matchedRows=useMemo(()=>{
   if(tab==="nearby")return rows.filter(p=>p.city.trim().toLocaleLowerCase("ru")===draft.city.trim().toLocaleLowerCase("ru"));
   if(tab==="for-you")return rows.filter(p=>p.interests.some(id=>draft.interests.includes(id)));
