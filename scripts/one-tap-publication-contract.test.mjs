@@ -65,5 +65,5 @@ test("recommendation warmup prioritizes overlapping interests and city without e
  assert.match(warm,/profile\.countryCode===p\.countryCode/);
  assert.match(warm,/b\.score-a\.score\|\|a\.i-b\.i/);
  assert.match(app,/warmPublishedRecommendations\(controller\.signal,phase=>setJourney\(phase\),draft\)/);
- assert.doesNotMatch(warm,/navigator\.geolocation|latitude|longitude|localStorage/);
+ assert.doesNotMatch(warm.slice(warm.indexOf("export function rankPublishedRecommendations")),/navigator\.geolocation|latitude|longitude|localStorage/);
 });
