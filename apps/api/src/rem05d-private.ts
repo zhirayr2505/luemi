@@ -414,7 +414,9 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    // SQL revocation committed first, so Storage latency/errors cannot
    // accidentally leave the old photo visible. Retried DELETE cleans orphans.
    await opts.storage.delete(target.derivativeKey!);
-   await opts.storage.delete(target.originalKey!);
+   // The private gateway writes only sanitized derivatives; original_key
+   // is metadata and deliberately has no Storage object.
+
    return{removed:true};
   }catch{return reply.code(503).send({error:"photo_cleanup_retry"});}
  });
@@ -460,7 +462,9 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   try{
    for(const row of deleted){
     await opts.storage.delete(row.derivativeKey);
-    await opts.storage.delete(row.originalKey);
+   // The private gateway writes only sanitized derivatives; original_key
+   // is metadata and deliberately has no Storage object.
+
    }
   }catch{return reply.code(503).send({error:"photo_cleanup_retry"});}
   return{ok:true,selected:keep.size};
@@ -505,7 +509,9 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   try{
    for(const row of extras){
     await opts.storage.delete(row.derivativeKey);
-    await opts.storage.delete(row.originalKey);
+   // The private gateway writes only sanitized derivatives; original_key
+   // is metadata and deliberately has no Storage object.
+
    }
   }catch{return reply.code(503).send({error:"private_media_cleanup_retry"});}
   return{ok:true,selected:selected.length};
