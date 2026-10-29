@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,forgetPrivatePhoto,forgetPrivatePhotoAsset,reorderPrivatePhotos,privatePhotoManifest,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -153,6 +153,18 @@ export function App() {
   const [serverPhotoCount,setServerPhotoCount]=useState(0);
   const [mediaSaving,setMediaSaving]=useState(false);
   const [mediaStatus,setMediaStatus]=useState("");
+  // All early photo PUT / forget actions share the same serialization queue,
+  // so removing a photo while it is uploading always deletes it afterwards.
+  const earlyPhotoQueue=useRef<Promise<void>>(Promise.resolve());
+  const earlyPhotoStarted=useRef(new Set<string>());
+  const earlyPhotoDeleted=useRef(new Set<string>());
+  const earlyPhotoAssets=useRef(new Map<string,string>());
+  const [earlyPhotoCount,setEarlyPhotoCount]=useState(0);
+  const [earlyPhotoStatus,setEarlyPhotoStatus]=useState("");
+  const [earlyPhotoRetry,setEarlyPhotoRetry]=useState(0);
+  const freshPhotos=useRef(photos);freshPhotos.current=photos;
+  const freshDraft=useRef(draft);freshDraft.current=draft;
+
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
   const [publicationCheck,setPublicationCheck]=useState<"idle"|"checking"|"ready"|"error">("idle");
   const [publicationRetry,setPublicationRetry]=useState(0);
@@ -421,6 +433,16 @@ export function App() {
   },[scope,photosRestored,draft,step,photos,saveRetry]);
   useEffect(()=>()=>{
     photoGeneration.current++;
+    const oldIds=[...earlyPhotoStarted.current];
+    for(const id of oldIds)earlyPhotoDeleted.current.add(id);
+    if(serverConsent&&remoteMediaPilot.enabled){
+      const task=earlyPhotoQueue.current.then(async()=>{
+        for(const id of oldIds)await forgetPrivatePhoto(id);
+      }).catch(()=>setEarlyPhotoStatus("Не все старые фото удалились. Проверь интернет."));
+      earlyPhotoQueue.current=task;
+    }
+    earlyPhotoStarted.current.clear();earlyPhotoAssets.current.clear();
+    setEarlyPhotoCount(0);
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();
     for(const timer of photoTimers.current.values())window.clearTimeout(timer);
@@ -498,6 +520,39 @@ export function App() {
     }
     setError(problem);
   };
+  // At the photo step a signed adult has already consented to this early
+  // server save. Upload each ready photo immediately, without waiting for the
+  // final review. A stable clientKey makes refresh/retry idempotent.
+  useEffect(()=>{
+    if(!realFeedPilot.enabled||!remoteMediaPilot.enabled||
+       !photosRestored||!serverConsent||auth!=="authorized"||
+       realHome||phase!=="form")return;
+    for(const photo of photos){
+      if(photo.status!=="ready"||earlyPhotoDeleted.current.has(photo.id)||
+         earlyPhotoStarted.current.has(photo.id))continue;
+      earlyPhotoStarted.current.add(photo.id);
+      const job=earlyPhotoQueue.current.then(async()=>{
+        if(earlyPhotoDeleted.current.has(photo.id))return;
+        setEarlyPhotoStatus("Сохраняем фотографии в защищённом хранилище…");
+        const revision=await readRemoteRevision();
+        await saveRemoteDraft(freshDraft.current,revision.revision);
+        setPrivateDraftSaved(true);
+        if(earlyPhotoDeleted.current.has(photo.id))return;
+        const current=freshPhotos.current.find(p=>p.id===photo.id);
+        if(!current||current.status!=="ready")return;
+        const id=await uploadPrivatePhoto(current);
+        earlyPhotoAssets.current.set(photo.id,id);
+        if(!earlyPhotoDeleted.current.has(photo.id)){
+          setEarlyPhotoCount(earlyPhotoAssets.current.size);
+          setEarlyPhotoStatus("Фото сохранено на сервере.");
+        }
+      }).catch(()=>{
+        earlyPhotoStarted.current.delete(photo.id);
+        setEarlyPhotoStatus("Не удалось отправить одно из фото. Повторим при создании анкеты.");
+      });
+      earlyPhotoQueue.current=job;
+    }
+  },[photos,serverConsent,photosRestored,auth,realHome,phase,earlyPhotoRetry]);
   const removePhoto=(id:string)=>{
     setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
@@ -505,6 +560,18 @@ export function App() {
     const timer=photoTimers.current.get(id);
     if(timer!==undefined)window.clearTimeout(timer);
     photoTimers.current.delete(id);photoIds.current.delete(id);
+    const attempted=earlyPhotoStarted.current.has(id)||earlyPhotoAssets.current.has(id);
+    earlyPhotoDeleted.current.add(id);earlyPhotoStarted.current.delete(id);
+    earlyPhotoAssets.current.delete(id);
+    if(attempted&&remoteMediaPilot.enabled&&serverConsent){
+      // Never abort the in-flight server request and then forget early: wait
+      // for it to finish, THEN physically revoke/delete its Storage objects.
+      const task=earlyPhotoQueue.current.then(()=>forgetPrivatePhoto(id))
+       .then(()=>{setEarlyPhotoCount(earlyPhotoAssets.current.size);
+        setEarlyPhotoStatus("Удалённое фото убрано с сервера.");})
+       .catch(()=>{setEarlyPhotoStatus("Не удалось удалить фото с сервера. Проверь соединение перед созданием анкеты.");});
+      earlyPhotoQueue.current=task;
+    }
     const item=photos.find(p=>p.id===id);
     if(item?.src){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
     setPhotos(prev=>prev.filter(p=>p.id!==id));
@@ -1038,6 +1105,9 @@ export function App() {
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
+        photoServerStatus={earlyPhotoStatus||(
+          serverConsent&&remoteMediaPilot.enabled?
+            "Сохранено фотографий: "+earlyPhotoCount+" из "+photos.length:"")}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
