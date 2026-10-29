@@ -4,7 +4,7 @@ import {ArrowRight,Moon,Sun,Pencil} from "lucide-react";
 import {SafetyAppealPanel} from "./SafetyAppealPanel";
 import {GlassArrow} from "./ui/Glass";
 import type { HealthResponse } from "@luemi/contracts";
-import { cleanName,nameValid,newDraft,goals, steps, validateStep, type RegistrationDraft } from "./registration/model";
+import { birthDateValid,cleanName,nameValid,newDraft,goals,selectedCityValid,steps,validateStep,type RegistrationDraft } from "./registration/model";
 import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registration/Steps";
 import {localScope,loadDraftSnapshot,saveDraftSnapshot,clearDraftSnapshot,type StorageCode} from "./registration/local-draft";
 import {preparePhotoPreview} from "./registration/photo-preview";
@@ -337,9 +337,10 @@ export function App() {
       if(status.state==="published"){
         setRegisteredSplash(true);setRealHome(true);
       }else{
-        // An interrupted upload (e.g. only one photo) is not a profile.
-        // Keep the user in registration and resume idempotently on retry.
-        setRealHome(false);setPhase("form");
+        // A new account must see the branded welcome screen. A private draft
+        // is restored by the draft loader below, which is the only place that
+        // may deliberately enter the registration form.
+        setRealHome(false);
       }
     }).catch(()=>{
       if(!disposed){
@@ -407,9 +408,13 @@ export function App() {
           setRealHomeTab("profile");setRegisteredSplash(true);setRealHome(true);
         }
       }else if(snapshot){
-        setDraft(snapshot.draft);
+        const restoredDraft=snapshot.draft.name.trim()?snapshot.draft:
+          {...snapshot.draft,name:draftLive.current.name};
+        setDraft(restoredDraft);
         setStep(snapshot.step);
-        if(realFeedPilot.enabled)setPhase("form");
+        const hasDraftProgress=snapshot.step>1||snapshot.draft.name.trim().length>0||
+          snapshot.draft.day.length>0||snapshot.draft.city.length>0||snapshot.photos.length>0;
+        if(realFeedPilot.enabled&&hasDraftProgress)setPhase("form");
       }else if(realFeedPilot.enabled){
         // A new device can recover fields, but must select its city and photos
         // again. Never claim that private media bytes are in this response.
@@ -593,14 +598,18 @@ export function App() {
     privateMediaQueue.current=task.catch(()=>{});
     return task;
   },[auth]);
+  const draftReadyForPrivateMedia=nameValid(draft.name)&&
+    birthDateValid(draft.day,draft.month,draft.year)&&!!draft.gender&&draft.trialConsent&&
+    selectedCityValid(draft)&&!!draft.audience&&!!draft.goal;
   useEffect(()=>{
     if(!remoteMediaPilot.enabled||auth!=="authorized"||!serverConsent||!scope||
+      !draftReadyForPrivateMedia||photos.length<3||
       !photos.some(photo=>photo.status==="ready"&&!privateAssetIds.current.has(photo.id)))return;
     const epoch=accountEpoch.current;
     void syncChosenPhotos(true).catch(()=>{
       if(epoch===accountEpoch.current)setMediaStatus("Не все фотографии загрузились. Повторим при следующем изменении.");
     });
-  },[auth,photos,scope,serverConsent,syncChosenPhotos]);
+  },[auth,photos,scope,serverConsent,draftReadyForPrivateMedia,syncChosenPhotos]);
   const addPhotos=(files:File[])=>{
     if(!files.length)return;
     setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);
@@ -628,7 +637,7 @@ export function App() {
           photoTimers.current.set(photo.id,window.setTimeout(()=>{
             photoTimers.current.delete(photo.id);
             if(!controller.signal.aborted)setPhotos(current=>current.map(p=>p.id===photo.id?{...p,status:"ready"}:p));
-          },850));
+          },180));
         }catch{
           if(!controller.signal.aborted){
             setPhotos(current=>current.map(p=>p.id===photo.id?{...p,status:"error"}:p));
@@ -709,7 +718,7 @@ export function App() {
     setSaveRetry(value=>value+1);
   };
   const beginRegistration=()=>{
-    if(publicMediaUiMissing||welcomeExiting||realOnly&&!remoteDraftPilot.enabled||
+    if(welcomeExiting||realOnly&&!remoteDraftPilot.enabled||
       realFeedPilot.enabled&&publicationCheck!=="ready")return;
     if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
       setPhase("form");
@@ -1226,8 +1235,7 @@ export function App() {
           <button type="button" className="primary-action" onClick={()=>setPublicationRetry(v=>v+1)}>Повторить проверку</button></>}
         {realOnly&&!remoteDraftPilot.enabled&&
           <p role="status">Настоящая регистрация пока не подключена. Демонстрационные анкеты выключены.</p>}
-        {publicMediaUiMissing&&<p role="alert">Загрузка фотографий на сервер не подключена. Регистрация временно недоступна, чтобы не потерять данные.</p>}
-        {!publicMediaUiMissing&&(!realFeedPilot.enabled&&(!realOnly||remoteDraftPilot.enabled)||publicationCheck==="ready")&&
+        {(!realFeedPilot.enabled&&(!realOnly||remoteDraftPilot.enabled)||publicationCheck==="ready")&&
           <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
             {step>1?"Продолжить регистрацию":"Начать знакомство"} <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
           </button>}
@@ -1247,6 +1255,7 @@ export function App() {
       <div key={step} className="onboard-body" ref={contentRef}>
         <RegistrationStep data={draft} patch={patch} step={step} photos={photos}
           addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto} resetDraft={resetDraft}/>
+        {step===8&&publicMediaUiMissing&&<p className="footer-hint" role="status">Фотографии будут доступны после подключения защищённого хранилища.</p>}
         {step===8&&realFeedPilot.enabled&&<section className="registration-preview-review" aria-label="Публикация анкеты">
           <label><input type="checkbox" checked={serverConsent} onChange={e=>setServerConsent(e.target.checked)}/>
             {" "}Я прочитал(а) <a href={remoteDraftPilot.policy} target="_blank" rel="noopener noreferrer">{testingNotice}</a> и согласен(-на) сохранить анкету и {instantPublicationUi?"сразу опубликовать фотографии в профиле.":"отправить фотографии на проверку перед публикацией."}
