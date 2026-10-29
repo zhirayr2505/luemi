@@ -66,6 +66,9 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0002_rem05b_identity_sessions.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0003_rem05c_geo_budget.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0004_rem05d_private_media_moderation.sql
+          # The live beta request role already has this column-scoped grant;
+          # mirror it in the disposable media fixture, never broaden UPDATE.
+          psql -v ON_ERROR_STOP=1 -c "GRANT UPDATE(expires_at) ON luemi_private.media_uploads TO luemi_request"
           psql -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE rem05d_ci_issuer LOGIN PASSWORD 'synthetic_rem05d_issuer' IN ROLE luemi_auth_issuer;
           CREATE ROLE rem05d_ci_request LOGIN PASSWORD 'synthetic_rem05d_request' IN ROLE luemi_request;
