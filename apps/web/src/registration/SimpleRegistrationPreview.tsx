@@ -4,8 +4,8 @@ import type {PhotoItem} from "./PhotoSorter";
 import "./simple-registration-preview.css";
 
 /** A lightweight static review, NOT the interactive owner/visitor profile. */
-export function SimpleRegistrationPreview({draft,photos,synced}:{
- draft:RegistrationDraft;photos:PhotoItem[];synced:number
+export function SimpleRegistrationPreview({draft,photos,synced,consented}:{
+ draft:RegistrationDraft;photos:PhotoItem[];synced:number;consented:boolean
 }){
  const ready=photos.filter(p=>p.src&&p.status==="ready");
  const slider=useRef<HTMLDivElement>(null);
@@ -49,6 +49,7 @@ export function SimpleRegistrationPreview({draft,photos,synced}:{
     <span key={p.id} className={index===i?"is-active":""}/>)}</div>
   </section>
   <p className="luemi-simple-preview-sync" role="status">{
+   !consented?"Для загрузки фотографий нужно согласие на предыдущем шаге.":
    synced===photos.length&&synced>=3?"Фотографии сохранены на сервере 💜":
    "Фотографии сохраняются в защищённое хранилище…"
   }</p>
