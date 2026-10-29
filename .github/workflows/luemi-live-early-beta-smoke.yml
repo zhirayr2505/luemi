@@ -1,0 +1,51 @@
+name: LUEMI live early-beta HTTP smoke (read-only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/luemi-live-early-beta-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  external-read-only-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Probe actual LIVE origin without Telegram credentials or user writes
+        shell: bash
+        env:
+          LUEMI_ORIGIN: https://luemi.onrender.com
+        run: |
+          set -euo pipefail
+          ready=0
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL --connect-timeout 15 --max-time 70 --retry 1 --retry-delay 2 \
+                --header 'Accept: application/json' \
+                "$LUEMI_ORIGIN/api/health/live" | grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"'; then
+              ready=1
+              break
+            fi
+            sleep 8
+          done
+          test "$ready" = 1 || { echo "LIVE health unreachable"; exit 1; }
+          echo 'Health: OK'
+          curl -fsSL --connect-timeout 15 --max-time 40 "$LUEMI_ORIGIN/privacy" |
+            grep -Fq 'Zhirayr2505@gmail.com' || { echo 'Privacy owner contact unavailable'; exit 1; }
+          echo 'Public privacy: OK'
+          curl -fsSL --connect-timeout 15 --max-time 40 --header 'Accept: text/html' "$LUEMI_ORIGIN/" |
+            grep -Fq 'id="root"' || { echo 'App HTML unavailable'; exit 1; }
+          echo 'App HTML: OK'
+          for path in \
+            /api/v2/auth/session \
+            /api/v3/registration/draft \
+            /api/v3/profile/status \
+            /api/v3/discovery/feed \
+            /api/v4/chats; do
+            code="$(curl -sS --connect-timeout 15 --max-time 40 -o /dev/null \
+              -w '%{http_code}' --header 'Accept: application/json' "$LUEMI_ORIGIN$path")"
+            case "$code" in
+              401|403) echo "$path: authenticated gate enforced ($code)" ;;
+              *) echo "$path: expected an auth denial (401/403), got $code"; exit 1 ;;
+            esac
+          done
+          echo 'All read-only external live probes PASS'
