@@ -219,6 +219,51 @@ test("01D: public no-invite admission and instantly published sanitized photos w
   // No owner-managed invite table, test beta max or fake 20-user limit.
  }finally{await app.close();}
 });
+test("01D: incomplete 1/3 photo upload retries expired intent without duplicate assets",async()=>{
+ const app=makeApp({instant:true});
+ try{
+  const owner=await identity(app,8011483),intruder=await identity(app,8011484);
+  await consent(app,owner);await consent(app,intruder);
+  const png=makeSyntheticPng(),ids:string[]=[];
+  const key=(n:number)=>"reg01c-resume-"+owner.id+"-"+n;
+  for(let i=0;i<3;i++){
+   const intent=await mutate(app,owner,"/api/v2/media/intents",
+    {bytes:png.length,mime:"image/png",clientKey:key(i)});
+   assert.equal(intent.statusCode,200,intent.body);
+   ids.push(intent.json().assetId);
+   if(i===0){
+    const put=await app.inject({method:"PUT",url:"/api/v2/media/"+ids[i]+"/bytes",
+     headers:{...headers(owner),"content-type":"image/png"},payload:png});
+    assert.equal(put.statusCode,200,put.body);
+   }
+  }
+  const partial=await app.inject({method:"GET",url:"/api/v3/profile/status",headers:{cookie:owner.cookie}});
+  assert.equal(partial.json().approved,1);
+  assert.ok(partial.json().other>=2,"two reserved uploads remain");
+  await admin.query("UPDATE luemi_private.media_uploads SET expires_at=clock_timestamp()-interval '1 minute' "+
+    "WHERE asset_id=$1",[ids[1]]);
+  const denied=await mutate(app,intruder,"/api/v2/media/intents",
+   {bytes:png.length,mime:"image/png",clientKey:key(1)});
+  assert.notEqual(denied.json().assetId,ids[1],"other actor cannot claim owner slot");
+  for(let i=1;i<3;i++){
+   const retried=await mutate(app,owner,"/api/v2/media/intents",
+    {bytes:png.length,mime:"image/png",clientKey:key(i)});
+   assert.equal(retried.statusCode,200,retried.body);
+   assert.equal(retried.json().assetId,ids[i],"clientKey must reuse original asset");
+   const put=await app.inject({method:"PUT",url:"/api/v2/media/"+ids[i]+"/bytes",
+    headers:{...headers(owner),"content-type":"image/png"},payload:png});
+   assert.equal(put.statusCode,200,put.body);
+  }
+  const finished=await app.inject({method:"GET",url:"/api/v3/profile/status",
+   headers:{cookie:owner.cookie}});
+  assert.equal(finished.statusCode,200,finished.body);
+  assert.equal(finished.json().approved,3);
+  assert.equal(finished.json().other,0);
+  const count=await admin.query<{total:string}>(
+   "SELECT count(*)::text AS total FROM luemi_private.media_assets WHERE owner_id=$1",[owner.id]);
+  assert.equal(Number(count.rows[0].total),3,"retry created a duplicate asset");
+ }finally{await app.close();}
+});
 test("01D: reusing the requester login for publishing is rejected at bootstrap",()=>{
  assert.throws(()=>makeApp({publisher:requestUrl!}),
   /separate publisher\/discovery roles/);

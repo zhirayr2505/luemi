@@ -96,6 +96,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0002_rem05b_identity_sessions.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0003_rem05c_geo_budget.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0004_rem05d_private_media_moderation.sql
+          psql -v ON_ERROR_STOP=1 -f db/reg01-resume-photo-intents.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0005_reg01d_private_publication_feed.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0006_reg01f_account_erasure.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0007_reg01g_invite_gate.sql

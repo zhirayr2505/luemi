@@ -1,7 +1,8 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
 import {RegistrationStep,type PhotoItem} from "../Steps";
-import {RegistrationPreview} from "../Preview";
+import {fromLocalDraft,readyRegistrationPhotos} from "../../discovery/ProfileModel";
+import {ProfileMaster} from "../../discovery/ProfileV3Gateway";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {remoteDraftPilot} from "../server-draft";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
@@ -186,7 +187,10 @@ export function RealRegistrationV2(p:Props){
         </button>
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
-        <RegistrationPreview data={draft} photos={photos}/>
+        <div className="v2-profile-v3-preview" aria-label="Предпросмотр анкеты в Profile Morph V3">
+         <ProfileMaster data={fromLocalDraft(draft,readyRegistrationPhotos(photos))}
+          mode="local-self-preview" active/>
+        </div>
         <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
           <strong>{p.mediaEnabled?"Твоя анкета готова":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
           <p>{p.mediaEnabled
@@ -198,17 +202,15 @@ export function RealRegistrationV2(p:Props){
           <span>Я прочитал(а) <a href={pubNotice} target="_blank" rel="noopener noreferrer">
            {noticeLabel}</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI{p.publicationEnabled?(instantPublication?", а также сразу опубликовать анкету и фотографии для других пользователей":", а после проверки опубликовать её для других подходящих пользователей"):""}.</span>
         </label>
-        <p className="v2-footnote">Подробнее о данных: <a href="/privacy" target="_blank" rel="noopener noreferrer">конфиденциальность LUEMI (проект)</a>. Это информационная страница, она не заменяет документ согласия по ссылке выше.</p>
+        <p className="v2-footnote"><a href="/privacy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности LUEMI</a></p>
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
           {p.mediaEnabled?<Check size={18}/>:<LockKeyhole size={18}/>}
-          {p.serverSaving?(instantPublication?"Загружаем и публикуем…":"Сохраняем и проверяем…"):"Всё верно 💜"}
+          {p.serverSaving?"Создаём анкету…":instantPublication?"Создать анкету 💜":"Сохранить анкету"}
         </button>
         <button type="button" className="v2-secondary" onClick={()=>nav(4)}
           disabled={p.serverSaving}>Изменить анкету или фотографии</button>
-        <p className="v2-footnote">{p.mediaEnabled
-          ?(instantPublication?"После загрузки и подтверждения сервера анкета публикуется сразу. Пожаловаться на пользователя или заблокировать его можно в ленте.":"В приложение войдёшь после подтверждения сервером. Публикация фото зависит от модерации.")
-          :"Фотографии пока только на устройстве, лента и переписки закрыты."}</p>
+        <p className="v2-footnote">{instantPublication?"После создания LUEMI автоматически подготовит ленту и откроет приложение.":"Твои фотографии будут сохранены приватно."}</p>
         {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
        </div>}
        {p.storageError&&<p role="alert" className="v2-feedback">

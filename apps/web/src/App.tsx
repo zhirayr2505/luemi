@@ -21,8 +21,11 @@ import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
 import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
-import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason} from "./registration/real-live-client";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
+import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
+import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
+import {PublicationJourney,type PublishJourneyPhase} from "./registration/PublicationJourney";
+
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 import {PrivateAccountView} from "./registration/PrivateAccountView";
 import "./registration/real-home.css";
@@ -155,6 +158,11 @@ export function App() {
   const [publicationRetry,setPublicationRetry]=useState(0);
   const [publishBusy,setPublishBusy]=useState(false);
   const [publishFeedback,setPublishFeedback]=useState("");
+  const [journey,setJourney]=useState<PublishJourneyPhase|null>(null);
+  const [journeyError,setJourneyError]=useState("");
+  const [warmFeed,setWarmFeed]=useState<PublishedFeedPage|null>(null);
+  const warmRef=useRef<WarmRecommendationSet|null>(null);
+  useEffect(()=>()=>{warmRef.current?.release();warmRef.current=null;},[]);
   const [accountDeletionRequested,setAccountDeletionRequested]=useState(false);
   const [deletionUntil,setDeletionUntil]=useState<string|null>(null);
   const [deletionReason,setDeletionReason]=useState<DeletionReason>("prefer_not_to_say");
@@ -272,13 +280,11 @@ export function App() {
       setPublicationCheck("ready");
       if(status.state==="published"){
         setRealHome(true);
-      }else if(status.pending>0||status.approved>0||status.other>0){
-        // The Telegram account and private registration are real already.
-        // Continue to a private, non-discoverable review dashboard; do not
-        // incorrectly ask this person to start a demo registration again.
-        setRealHomeTab("profile");
-        setRealHome(true);
-      }else setPhase("form");
+      }else{
+        // An interrupted upload (e.g. only one photo) is not a profile.
+        // Keep the user in registration and resume idempotently on retry.
+        setRealHome(false);setPhase("form");
+      }
     }).catch(()=>{
       if(!disposed){
         setPublicationCheck("error");
@@ -666,76 +672,68 @@ export function App() {
        :"Сервер не подтвердил сохранение всех фотографий. Локальные данные не удалены; повтори отправку.");
     }finally{submitting.current=false;setServerSaving(false);}
   };
+  const finishSuccessfulPublication=async(status:OwnerPublicationStatus)=>{
+    setPublishStatus(status);
+    const controller=new AbortController(),timeout=window.setTimeout(()=>controller.abort(),9000);
+    try{
+      const warmed=await warmPublishedRecommendations(controller.signal,phase=>setJourney(phase),draft);
+      warmRef.current?.release();warmRef.current=warmed;
+      setWarmFeed(warmed.page);
+    }catch{
+      // Published status is durable. Warmup failure does not lock the UI.
+      setWarmFeed(null);
+    }finally{window.clearTimeout(timeout);}
+    setJourney(null);setRealHomeTab("feed");setRealHome(true);
+  };
   const confirmRealRegistration=async()=>{
     if(!realFeedPilot.enabled||submitting.current)return;
     for(let n=1;n<=7;n++){
-      const problem=validateStep(draft,n,photos.length,new Date(),realFeedPilot.enabled?"live":"demo");
-      if(problem){setError(`Проверь шаг ${n}: ${problem}`);return;}
+      const problem=validateStep(draft,n,photos.length,new Date(),"live");
+      if(problem){setPublishFeedback("Проверь анкету: "+problem);return;}
     }
     if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready")){
-      setError("Нужно от 3 до 6 готовых фотографий.");return;
+      setPublishFeedback("Для создания анкеты нужно 3–6 готовых фотографий.");return;
     }
-    if(!serverConsent){setError("Подтверди согласие на обработку данных и публикацию анкеты.");return;}
-    submitting.current=true;setPublishBusy(true);setError("");setPublishFeedback("");
+    if(!serverConsent){setPublishFeedback("Прими условия обработки и публикации анкеты.");return;}
+    submitting.current=true;setPublishBusy(true);setPublishFeedback("");
+    setJourneyError("");setJourney("publishing");
     try{
-      const existing=await ownerPublicationStatus();
-      setPublishStatus(existing);
-      const decision=registrationSubmissionDecision(existing);
-      if(decision==="already-published"){
-        setRealHome(true);
-        setPublishFeedback("Анкета уже опубликована.");
-        return;
+      const existing=await ownerPublicationStatus();setPublishStatus(existing);
+      if(registrationSubmissionDecision(existing)==="already-published"){
+        await finishSuccessfulPublication(existing);return;
       }
-      if(decision==="awaiting-review"){
-        setPublishFeedback(instantPublicationUi?"На сервере найдены фотографии из незавершённой регистрации. Повторно отправлять их не будем.":"Фотографии уже на сервере и проходят модерацию. Повторно отправлять их не нужно.");
-        setRealHomeTab("profile");setRealHome(true);
-        return;
-      }
-      if(decision==="ready-to-publish"){
-        // Resume a fully uploaded registration after an interrupted browser session.
-        // A server draft + exact accepted photo set is required; nothing auto-public.
-        if(instantPublicationUi){
-          const saved=await readRemoteRevision();
-          if(saved.state!=="private")throw new Error("missing_draft");
-          await publishMyProfile(saved.revision);
-          const published=await ownerPublicationStatus();
-          if(published.state!=="published")throw new Error("publication_unconfirmed");
-          setPublishStatus(published);setRealHomeTab("profile");setRealHome(true);
-          setPublishFeedback("Анкета опубликована и видна другим людям.");
-        }else{
-          setPublishFeedback("Фотографии уже загружены. Заверши публикацию, чтобы открыть анкету.");
-        }
-        return;
-      }
-      if(decision==="review-needs-attention"){
-        setPublishFeedback("На сервере уже есть фотографии, требующие дополнительной проверки или исправления. Не отправляем повторно те же файлы.");
-        setRealHomeTab("profile");setRealHome(true);
-        return;
-      }
-      setPublishFeedback("Сохраняем анкету…");
+      // Reserved uploads (other>0) are retried by the same photo id, not rejected.
+      // A failed second upload must not strand an already accepted first photo.
+      // Stable per-photo clientKey reuses successful uploads and retries the
+      // missing photos; one approved image never redirects to account settings.
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
-      setPublishFeedback(instantPublicationUi?"Загружаем фотографии на сервер…":"Отправляем фотографии на проверку…");
+      // Always reconcile the selected photo IDs against the server manifest,
+      // even when the server already has >=3 other approved photos. Count-only
+      // checks can publish stale images instead of the user's current choice.
+      // Per-photo idempotency keys make this safe on normal repeated submits.
       const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback(`Отправлено ${done} из ${total} фотографий.`));
+        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
-      const status=await ownerPublicationStatus();setPublishStatus(status);
-      if(status.approved>=3&&status.approved<=6&&status.pending===0&&status.other===0){
-        const saved=await readRemoteRevision();
-        await publishMyProfile(saved.revision);
-        const confirmed=await ownerPublicationStatus();
-        if(confirmed.state!=="published")throw new Error("publication_unconfirmed");
-        setPublishStatus(confirmed);setRealHomeTab("profile");setRealHome(true);
-        setPublishFeedback("Анкета опубликована. Фотографии уже в твоём профиле.");
-      }else{
-        setPublishFeedback(instantPublicationUi?"Анкета сохранена. Не все фотографии готовы для публикации — проверь загруженные файлы.":"Анкета сохранена на сервере. Фото ожидают проверки; другие пользователи пока не видят её.");
-        setRealHomeTab("profile");setRealHome(true);
-      }
+      const media=await ownerPublicationStatus();setPublishStatus(media);
+      if(media.approved<photos.length||media.pending!==0||media.other!==0)
+        throw new Error("incomplete_media");
+      const saved=await readRemoteRevision();
+      if(saved.state!=="private")throw new Error("missing_draft");
+      await publishMyProfile(saved.revision);
+      const confirmed=await ownerPublicationStatus();
+      if(confirmed.state!=="published"||!confirmed.profile)
+        throw new Error("publication_unconfirmed");
+      await finishSuccessfulPublication(confirmed);
     }catch(e){
-      setPublishFeedback(e instanceof Error&&e.message==="revision_conflict"
-        ?"Анкета изменилась в другой сессии. Твои данные остались на устройстве; проверь их и повтори."
-        :"Не удалось завершить сохранение или публикацию. Черновик остаётся на устройстве; повтори после восстановления сети.");
+      const reason=e instanceof Error?e.message:"";
+      const message=reason==="revision_conflict"
+       ?"Анкета изменилась в другой сессии. Проверь данные и повтори создание.":
+       reason==="incomplete_media"
+       ?"Не все фотографии подтверждены сервером. Повтори: уже сохранённые фото не пропадут.":
+       "Не удалось завершить публикацию. Анкета и уже загруженные фотографии сохранены. Повтори попытку.";
+      setPublishFeedback(message);setJourneyError(message);setJourney("error");
     }finally{submitting.current=false;setPublishBusy(false);}
   };
   const resumePublication=async()=>{
@@ -912,7 +910,7 @@ export function App() {
    return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
     <Suspense fallback={<div className="discovery-empty" role="status">Открываем LUEMI…</div>}>
      <RealDiscoveryHome draft={draft} theme={theme} onTheme={changeTheme}
-      publishedProfile={publishStatus?.profile}
+      initialFeed={warmFeed} publishedProfile={publishStatus?.profile}
       onEdit={()=>{setRealHome(false);setPhase("form");setStep(8);}}
       accountPanel={<section className="luemi-real-account" aria-label="Настройки аккаунта">
        <h1>Мой аккаунт</h1>
@@ -1022,6 +1020,10 @@ export function App() {
       </nav>}
     </section>
   </main>;
+  if(auth==="authorized"&&journey!==null)
+    return <PublicationJourney phase={journey} error={journeyError}
+      onRetry={()=>{setJourney(null);void confirmRealRegistration();}}
+      onBack={()=>{setJourney(null);setPhase("form");}}/>;
   if(auth==="authorized"&&phase==="form"&&registrationV2Pilot&&!demoOpen)
     return <Suspense fallback={<main className="luemi-shell" data-theme={activeTheme}
       role="status" style={{padding:24}}>Открываем регистрацию…</main>}>

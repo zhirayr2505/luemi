@@ -263,6 +263,19 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    [id,opts.namespace,keyDigest]);
   if(existing.rowCount){
    if(existing.rows[0].request_digest!==bodyDigest)reject(409,"idempotency_conflict");
+   if(existing.rows[0].state==="reserved"){
+    // The caller may return hours after a network interruption. Renew ONLY
+    // the same pending asset/clientKey under the requester's existing RLS
+    // and advisory owner lock. Never allocate another slot or touch media
+    // already received / submitted for review.
+    await db.query("UPDATE luemi_private.media_uploads SET "+
+     "expires_at=clock_timestamp()+interval '1 hour' "+
+     "WHERE owner_id=$1 AND environment=$2 AND idempotency_digest=$3 "+
+     "AND state='reserved' AND expires_at<=clock_timestamp() "+
+     "AND EXISTS(SELECT 1 FROM luemi_private.media_assets a "+
+     "WHERE a.id=asset_id AND a.owner_id=$1 AND a.environment=$2 AND a.state='reserved')",
+     [id,opts.namespace,keyDigest]);
+   }
    return{assetId:existing.rows[0].asset_id,state:existing.rows[0].state,upload:"private_proxy"};
   }
   const used=await db.query<{n:string}>(

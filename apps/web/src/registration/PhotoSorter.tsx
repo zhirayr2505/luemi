@@ -250,6 +250,6 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
    </div>,document.body)}
    <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Также доступно Alt + стрелки на клавиатуре. Индикатор показывает только локальную подготовку фото, не загрузку на сервер.</span></div>
    <p className="photo-count" role="status">Выбрано: {photos.length} / 6 · Первое фото главное</p>
-   <p className="hint">Это локальный предпросмотр. Для будущей публикации потребуется 3–6 фото и модерация.</p>
+   <p className="hint">Порядок фотографий сохранится в анкете. Главное фото — первое.</p>
  </div>;
 }
