@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent,ReactNode} from "react";
 import type {CSSProperties} from "react";
 import {Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2} from "lucide-react";
@@ -126,6 +126,7 @@ function LiveDeck({active,tab,draft,onPerson,onMatched}:{
   try{
    const result=await likePublishedUser(current.id);
    setRows(prev=>prev.filter(p=>p.id!==current.id));
+   setPage(n=>Math.max(0,n-1));
    setMessage(result.matched?"Взаимная симпатия! 💜":"Симпатия отправлена 💜");
    if(result.matched)onMatched();
   }catch{setMessage("Не удалось поставить симпатию. Повтори попытку.");}
