@@ -412,8 +412,10 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   // Storage deletion is external and nontransactional. A failure is explicitly
   // reported, and retrying DELETE on the same id reattempts both keys.
   try{
+   // The durable private adapter stores ONLY sanitized derivatives. The
+   // original_key is a reserved DB identifier and is deliberately never
+   // uploaded; passing it to Storage is invalid and would fail every delete.
    await opts.storage.delete(revoked.derivative_key);
-   await opts.storage.delete(revoked.original_key);
    return {deleted:true,storageCleaned:true};
   }catch{return reply.code(503).send({error:"storage_cleanup_pending"});}
  });
