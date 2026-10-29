@@ -204,6 +204,33 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
 
   });
  });
+ // Order only the CURRENT owner's unpublished sanitized photos. The first
+ // UUID becomes the circular avatar and the first discovery carousel slide.
+ app.put<{Body:unknown}>("/api/v3/profile/photos/order",
+ {preHandler:guards.mutation},async(req,reply)=>
+ transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
+  if(!object(req.body)||Object.keys(req.body).length!==1||
+     !Array.isArray(req.body.assetIds))fail(422,"invalid_photo_order");
+  const ids=req.body.assetIds;
+  if(ids.length<3||ids.length>6||ids.some(x=>!idOk(x))||
+     new Set(ids).size!==ids.length)fail(422,"invalid_photo_order");
+  await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+   [cfg.namespace+":"+id+":publication"]);
+  const rows=await db.query<{id:string}>(
+   "SELECT id FROM luemi_private.media_assets "+
+   "WHERE owner_id=$1 AND environment=$2 AND state='approved' "+
+   "AND publication_status='private' ORDER BY position,id FOR UPDATE",
+   [id,cfg.namespace]);
+  if(rows.rowCount!==ids.length||rows.rows.some(row=>!ids.includes(row.id)))
+   fail(409,"photo_order_conflict");
+  const updated=await db.query(
+   "UPDATE luemi_private.media_assets SET position=array_position($3::uuid[],id)-1 "+
+   "WHERE owner_id=$1 AND environment=$2 AND state='approved' AND publication_status='private' "+
+   "AND id=ANY($3::uuid[])",
+   [id,cfg.namespace,ids]);
+  if(updated.rowCount!==ids.length)fail(409,"photo_order_conflict");
+  return{ok:true,count:ids.length};
+ }));
  app.post<{Body:unknown}>("/api/v3/profile/publish",{preHandler:guards.mutation},async(req,reply)=>
  transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
   const body=req.body;
