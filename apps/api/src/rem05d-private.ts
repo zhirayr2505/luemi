@@ -418,6 +418,53 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    return{removed:true};
   }catch{return reply.code(503).send({error:"photo_cleanup_retry"});}
  });
+ // Apply the photo picker's CURRENT selection before sending any bytes.
+ // This frees slots held by interrupted previous signups (including reserved
+ // intents) without discarding any still-selected idempotent uploads.
+ // Never touch public media or another Telegram actor's assets.
+ app.post<{Body:unknown}>("/api/v2/media/sync-selection",{preHandler:guard.mutation},
+ async(req,reply)=>{
+  const body=req.body;
+  if(!object(body)||Object.keys(body).length!==1||!Array.isArray(body.clientKeys)||
+   body.clientKeys.length<1||body.clientKeys.length>6||
+   body.clientKeys.some(x=>!str(x,8,80))||
+   new Set(body.clientKeys).size!==body.clientKeys.length)
+   return reply.code(422).send({error:"invalid_photo_selection"});
+  const keep=new Set((body.clientKeys as string[]).map(key=>digest(key)));
+  const deleted=await owner(req,reply,async(db,id)=>{
+   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [opts.namespace+":"+id+":profile_media_slots"]);
+   const rows=await db.query<{id:string;state:string;publication_status:string;derivative_key:string;original_key:string;digest:string|null}>(
+    "SELECT a.id,a.state,a.publication_status,a.derivative_key,a.original_key,"+
+    "u.idempotency_digest AS digest FROM luemi_private.media_assets a "+
+    "LEFT JOIN luemi_private.media_uploads u ON u.asset_id=a.id "+
+    "WHERE a.owner_id=$1 AND a.environment=$2 FOR UPDATE OF a",
+    [id,opts.namespace]);
+   if(rows.rows.some(r=>r.publication_status==="published"))
+    reject(409,"profile_already_published");
+   const extras=rows.rows.filter(r=>r.publication_status==="private"&&
+     (!r.digest||!keep.has(r.digest)));
+   for(const row of extras){
+    if(row.state!=="revoked"){
+     await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
+      "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+      [row.id,id,opts.namespace]);
+     await db.query("UPDATE luemi_private.media_uploads SET state='failed' "+
+      "WHERE asset_id=$1 AND owner_id=$2 AND environment=$3",
+      [row.id,id,opts.namespace]);
+    }
+   }
+   return extras.map(x=>({derivativeKey:x.derivative_key,originalKey:x.original_key}));
+  });
+  if(reply.sent||!Array.isArray(deleted))return deleted;
+  try{
+   for(const row of deleted){
+    await opts.storage.delete(row.derivativeKey);
+    await opts.storage.delete(row.originalKey);
+   }
+  }catch{return reply.code(503).send({error:"photo_cleanup_retry"});}
+  return{ok:true,selected:keep.size};
+ });
  // The selected gallery is authoritative. A previous interrupted signup
  // may have left a stale, privately stored accepted photo (the user's "1
  // ready" case). On explicit Create, keep ONLY verified selected IDs and
