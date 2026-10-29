@@ -21,6 +21,7 @@ import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
 import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
 import {PublicationJourney,type PublishJourneyPhase} from "./registration/PublicationJourney";
@@ -698,7 +699,9 @@ export function App() {
     setJourneyError("");setJourney("publishing");
     try{
       const existing=await ownerPublicationStatus();setPublishStatus(existing);
-      if(existing.state==="published"){await finishSuccessfulPublication(existing);return;}
+      if(registrationSubmissionDecision(existing)==="already-published"){
+        await finishSuccessfulPublication(existing);return;
+      }
       // Reserved uploads (other>0) are retried by the same photo id, not rejected.
       // A failed second upload must not strand an already accepted first photo.
       // Stable per-photo clientKey reuses successful uploads and retries the
