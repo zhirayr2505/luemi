@@ -68,7 +68,7 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
  if(!res.ok)throw new Error("private_media_http_"+res.status);
  return res;
 }
-export async function uploadPrivatePhoto(photo:PhotoItem):Promise<string>{
+export async function uploadPrivatePhoto(photo:PhotoItem,onReserved?:(id:string)=>void):Promise<string>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
  if(photo.status!=="ready"||!photo.id)throw new Error("photo_not_ready");
  const png=await normalizedPng(photo);
@@ -82,6 +82,7 @@ export async function uploadPrivatePhoto(photo:PhotoItem):Promise<string>{
    intent.upload!=="private_proxy"||
    (intent.state!=="reserved"&&intent.state!=="received"))
   throw new Error("invalid_private_intent");
+ onReserved?.(intent.assetId);
  if(intent.state==="reserved"){
   const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
    "PUT",png,"image/png");
