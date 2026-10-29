@@ -157,11 +157,11 @@
 @keyframes field-hint-in{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:none}}
 .v2-runtime .dob-focus-shell .glass-field-label{font-size:14px;}
 .v2-runtime .dob-focus-shell .glass-field small{display:block;margin:7px 2px 0;color:#9b84a5;font-size:11px;text-align:center;}
-.v2-runtime .dob-focus-overlay{position:fixed;inset:0;z-index:40;background:rgba(64,39,79,.12);
+.v2-runtime .field-focus-overlay{position:absolute;inset:0;z-index:0;background:rgba(64,39,79,.12);
  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:dob-focus-in .28s ease both;}
 @keyframes dob-focus-in{from{opacity:0}to{opacity:1}}
 .v2-runtime .step-name .glass-control{min-height:55px;}
-.v2-runtime .v2-footer.is-focus-confirm{position:relative;z-index:43;}
+.v2-runtime .v2-footer.is-focus-confirm{position:relative;z-index:0;}
 .v2-runtime .v2-footer-nav.is-focus-confirm{justify-content:space-between;}
 .v2-runtime .v2-next.v2-next-confirm{flex:0 0 58px;width:58px;height:58px;min-height:58px;padding:0;
  border-radius:50%;display:grid;place-items:center;gap:0;color:#fff;border-color:#ae80d2;
@@ -232,7 +232,7 @@
 .v2-runtime .geo-results button:active{background:#f1e5f8;}
 
 /* City search follows the same keyboard choreography as name and birthday. */
-.v2-runtime .geo-focus-overlay{position:fixed;inset:0;z-index:40;background:rgba(64,39,79,.10);
+.v2-runtime .geo-focus-overlay{position:absolute;inset:0;z-index:0;background:rgba(64,39,79,.10);
  backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);animation:dob-focus-in .28s ease both;}
 .v2-runtime .city-focus-shell{position:relative;z-index:1;transform:translateY(0);transform-origin:center top;
  transition:transform .48s cubic-bezier(.22,.8,.25,1),filter .28s ease;}
@@ -249,8 +249,6 @@
 .v2-runtime .optional-profile-toggle svg:first-child{grid-row:1 / span 2;color:#a16dc1;}
 .v2-runtime .optional-profile-toggle strong{font-size:14px;}
 .v2-runtime .optional-profile-toggle small{grid-column:2;color:var(--subtle);font-size:11px;}
-.v2-runtime .optional-profile-details.is-open .optional-profile-toggle>svg:last-child{transform:rotate(180deg);}
-.v2-runtime .optional-profile-fields{display:grid;gap:11px;padding:0 13px 14px;border-top:1px solid var(--line);}
 .v2-runtime .optional-field-row{display:grid;grid-template-columns:1fr 1.25fr;gap:9px;}
 .v2-runtime .optional-input-wrap{position:relative;}
 .v2-runtime .optional-input-wrap>svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#84629c;z-index:1;}
