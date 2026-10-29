@@ -107,7 +107,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   if(r.rowCount!==1)deny(404,"not_found");
  }
  // SQL predicate is built only with hard-coded aliases, never user input.
- function visibleMessage(alias:"msg"|"m", actorParameter:"$1"|"$4"="$1"):string{
+ function visibleMessage(alias:"msg"|"m", actorParameter:"$1"|"$3"|"$4"="$1"):string{
   return `NOT EXISTS (
     SELECT 1 FROM luemi_chats.message_visibility hidden
     WHERE hidden.message_id=${alias}.id AND hidden.environment=${alias}.environment
