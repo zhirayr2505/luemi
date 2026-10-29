@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,orderPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -129,6 +129,16 @@ export function App() {
   const [step,setStep] = useState(1);
   const [draft,setDraft] = useState<RegistrationDraft>(()=>newDraft());
   const [photos,setPhotos] = useState<PhotoItem[]>([]);
+  const photosLive=useRef<PhotoItem[]>([]);
+  photosLive.current=photos;
+  const draftLive=useRef(draft);draftLive.current=draft;
+  // Each chosen photo is uploaded independently as soon as processing and
+  // photo-storage consent are complete; queue serializes deletion and reorder.
+  const privateAssetIds=useRef(new Map<string,string>());
+  const privateMediaQueue=useRef<Promise<unknown>>(Promise.resolve());
+  const [photoSyncBusy,setPhotoSyncBusy]=useState(false);
+  const [photoSyncError,setPhotoSyncError]=useState("");
+  const [photoServerReady,setPhotoServerReady]=useState(0);
   const ownedUrls = useRef<string[]>([]);
   const photoJobs=useRef(new Map<string,AbortController>());
   const photoTimers=useRef(new Map<string,number>());
@@ -460,6 +470,53 @@ export function App() {
     if(nextError){setError(nextError);return;}
     if(step<8)changeStep(step+1);
   };
+  const syncChosenPhotos=useCallback((consented:boolean):Promise<string[]>=>{
+    const run=async():Promise<string[]>=>{
+      if(!remoteMediaPilot.enabled||auth!=="authorized")return[];
+      setPhotoSyncBusy(true);setPhotoSyncError("");
+      try{
+        if(consented){
+          // The request role accepts bytes only AFTER the server has stored
+          // an 18+ private draft and current consent version.
+          const previous=await readRemoteRevision();
+          await saveRemoteDraft(draftLive.current,previous.revision);
+          for(const photo of photosLive.current.filter(p=>p.status==="ready")){
+            if(!photoIds.current.has(photo.id)||privateAssetIds.current.has(photo.id))continue;
+            const id=await uploadPrivatePhoto(photo);
+            privateAssetIds.current.set(photo.id,id);
+          }
+        }
+        // Always clean owner-removed objects even if consent is later unchecked.
+        for(const [localId,assetId] of [...privateAssetIds.current]){
+          if(photoIds.current.has(localId))continue;
+          await deletePrivatePhoto(assetId);
+          privateAssetIds.current.delete(localId);
+        }
+        const ids=photosLive.current.map(p=>privateAssetIds.current.get(p.id))
+          .filter((id):id is string=>!!id);
+        if(consented&&ids.length===photosLive.current.filter(p=>p.status==="ready").length&&ids.length){
+          await orderPrivatePhotos(ids);
+        }
+        setPhotoServerReady(ids.length);return ids;
+      }catch(e){
+        const code=e instanceof Error?e.message:"";
+        setPhotoSyncError(code.includes("409")||code==="photo_order_conflict"
+          ?"Список фотографий изменился на сервере. Повтори загрузку.":
+          "Не удалось синхронизировать фотографии. Проверь соединение.");
+        throw e;
+      }finally{setPhotoSyncBusy(false);}
+    };
+    const task=privateMediaQueue.current.then(run,run);
+    privateMediaQueue.current=task.catch(()=>{});
+    return task;
+  },[auth]);
+  const readyPhotoSignature=photos.filter(p=>p.status==="ready").map(p=>p.id).join("|");
+  const allPhotoSignature=photos.map(p=>p.id).join("|");
+  useEffect(()=>{
+    if(!photosRestored||!remoteMediaPilot.enabled||auth!=="authorized"||
+      (!serverConsent&&privateAssetIds.current.size===0))return;
+    void syncChosenPhotos(serverConsent).catch(()=>{/* feedback is displayed in the photo step */});
+  },[photosRestored,auth,serverConsent,readyPhotoSignature,allPhotoSignature,syncChosenPhotos]);
   const addPhotos=(files:File[])=>{
     if(!files.length)return;
     setPrivateDraftSaved(false);setMediaStatus("");setPublishStatus(null);
@@ -1037,6 +1094,9 @@ export function App() {
         mediaEnabled={remoteMediaPilot.enabled}
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
+        photoServerCount={photoServerReady}
+        photoSyncBusy={photoSyncBusy}
+        photoSyncError={photoSyncError}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
