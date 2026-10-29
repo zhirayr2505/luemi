@@ -30,7 +30,9 @@ export async function saveRemoteDraft(d:RegistrationDraft,revision:number):Promi
  const fields={displayName:d.name.trim(),birthDate,gender:d.gender,city:d.city.trim(),
   countryCode:d.countryCode,placeId:d.placeId,radius:d.radius,searchScope:d.searchScope,
   audience:d.audience,ageMin:d.ageMin,ageMax:d.ageMax,goal:d.goal,
-  interests:[...d.interests],about:d.about.trim(),languages:[...d.languages],consentVersion:version};
+  interests:[...d.interests],about:d.about.trim(),languages:[...d.languages],
+  height:d.height,occupation:d.occupation.trim(),education:d.education.trim(),
+  lifestyle:[...d.lifestyle],pets:[...d.pets],facts:[...d.facts],consentVersion:version};
  return saveRemoteFields(fields,revision);
 }
 export async function saveRemoteFields(fields:Record<string,unknown>,revision:number):Promise<void>{
