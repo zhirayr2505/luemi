@@ -238,7 +238,7 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    [id,opts.namespace]);
   const m=await db.query<{id:string;state:string;generation:number}>(
    "SELECT id,state,generation FROM luemi_private.media_assets "+
-   "WHERE owner_id=$1 AND environment=$2 AND state<>\'revoked\' ORDER BY position,id",
+   "WHERE owner_id=$1 AND environment=$2 AND state<>'revoked' ORDER BY position,id",
    [id,opts.namespace]);
   return{status:"unpublished",revision:q.rowCount?Number(q.rows[0].revision):0,
    preview:q.rowCount?{...q.rows[0].payload}:null,
