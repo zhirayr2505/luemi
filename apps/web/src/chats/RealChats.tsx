@@ -18,7 +18,7 @@ export function RealChats({transport:provided,onOpenProfile}:{transport?:ChatTra
  const [messages,setMessages]=useState<LocalMessage[]>([]);const [cursor,setCursor]=useState<string|null>(null);const [draft,setDraft]=useState("");const [attachment,setAttachment]=useState<Attachment|null>(null);
  const [deleteScope,setDeleteScope]=useState<"me"|"everyone">("me");const [chatMenu,setChatMenu]=useState(false);const [clearDialog,setClearDialog]=useState(false);
  const [loading,setLoading]=useState(true);const [loadingOlder,setLoadingOlder]=useState(false);const [error,setError]=useState("");const [action,setAction]=useState<Action>(null);const [editValue,setEditValue]=useState("");const [viewer,setViewer]=useState<string|null>(null);const [newBelow,setNewBelow]=useState(0);
- const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);const hold=useRef<number|null>(null);const pointer=useRef<{x:number;y:number;id:string}|null>(null);
+ const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);const hold=useRef<number|null>(null);const pointer=useRef<{x:number;y:number;id:string}|null>(null);
  const listPositions=useRef(new Map<string,number>());const autoScroll=useRef(false);
  const releaseAttachment=useCallback(()=>setAttachment(old=>{if(old){URL.revokeObjectURL(old.url);objectUrls.current.delete(old.url);}return null;}),[]);
  const showError=(e:unknown,fallback="Не удалось выполнить действие.")=>setError(e instanceof ChatTransportError?errorText(e.status,e.code):fallback);
@@ -43,8 +43,19 @@ export function RealChats({transport:provided,onOpenProfile}:{transport?:ChatTra
  const preserved=earliest?old.filter(m=>m.localState||m.createdAt<earliest):old.filter(m=>!!m.localState);
  return reconcileMessages(preserved,incoming);});},[]);
  useLayoutEffect(()=>{const el=history.current;if(!el)return;if(autoScroll.current){el.scrollTop=el.scrollHeight;setNewBelow(0);}else if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){for(const node of el.querySelectorAll<HTMLElement>("[data-message-id]")){const before=listPositions.current.get(node.dataset.messageId??"");if(before===undefined)continue;const delta=before-node.getBoundingClientRect().top;if(Math.abs(delta)>1&&Math.abs(delta)<700)node.animate([{transform:`translateY(${delta}px)`},{transform:"translateY(0)"}],{duration:240,easing:"cubic-bezier(.2,.72,.2,1)"});}}listPositions.current.clear();},[messages]);
- useEffect(()=>{if(!api||!active)return;const generation=++requestGeneration.current;activeId.current=active.id;pollAbort.current?.abort();const controller=new AbortController();pollAbort.current=controller;setMessages([]);setCursor(null);setError("");nearBottom.current=true;let busy=false;
-  const load=async()=>{if(busy||controller.signal.aborted||document.visibilityState!=="visible")return;busy=true;try{const page=await api.messages(active.id,undefined,controller.signal);if(generation!==requestGeneration.current||controller.signal.aborted)return;applyIncoming(page.messages);setCursor(old=>old??page.nextCursor);const newest=[...page.messages].reverse().find(m=>m.senderId!==actorId&&!m.deletedAt);if(newest)void api.markRead(active.id,newest.id,controller.signal).catch(()=>{});setError("");}catch(e){if(!controller.signal.aborted)showError(e,"Связь прервана.");}finally{busy=false;}};
+ useEffect(()=>{if(!api||!active)return;const generation=++requestGeneration.current;activeId.current=active.id;pollAbort.current?.abort();const controller=new AbortController();pollAbort.current=controller;observedVisibility.current=null;setMessages([]);setCursor(null);setError("");nearBottom.current=true;let busy=false;
+  const load=async()=>{if(busy||controller.signal.aborted||document.visibilityState!=="visible")return;busy=true;try{const page=await api.messages(active.id,undefined,controller.signal);if(generation!==requestGeneration.current||controller.signal.aborted)return;const previous=observedVisibility.current;
+    if(previous?.id===active.id&&previous.revision!==(page.visibilityRevision??null)){
+      // Invalidate every already-loaded page when either peer hides old content.
+      // A stale page must never resurrect a message removed for both members.
+      autoScroll.current=false;
+      setMessages(old=>reconcileMessages(old.filter(m=>!!m.localState),page.messages));
+      setCursor(page.nextCursor);
+    }else{
+      applyIncoming(page.messages);setCursor(old=>old??page.nextCursor);
+    }
+    observedVisibility.current={id:active.id,revision:page.visibilityRevision??null};
+    const newest=[...page.messages].reverse().find(m=>m.senderId!==actorId&&!m.deletedAt);if(newest)void api.markRead(active.id,newest.id,controller.signal).catch(()=>{});setError("");}catch(e){if(!controller.signal.aborted)showError(e,"Связь прервана.");}finally{busy=false;}};
   void load();const timer=window.setInterval(()=>void load(),3500);return()=>{controller.abort();window.clearInterval(timer);};},[active,api,actorId,applyIncoming]);
  const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setChatMenu(false);setClearDialog(false);setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
  const close=()=>{pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setMessages([]);setAction(null);setChatMenu(false);setClearDialog(false);releaseAttachment();void refreshList().catch(()=>{});};
