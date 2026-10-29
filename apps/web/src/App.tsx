@@ -185,8 +185,15 @@ export function App() {
   },[auth,photosRestored,serverConsent,photos]);
   const retryBackgroundPhotos=()=>{
     setBackgroundPhotoError("");
+    photoSync.current?.retryPendingDeletes();
     photoSync.current?.schedule();
   };
+  useEffect(()=>{
+    if(auth!=="authorized"||!realFeedPilot.enabled)return;
+    const restored=()=>{photoSync.current?.retryPendingDeletes();photoSync.current?.schedule();};
+    window.addEventListener("online",restored);
+    return()=>window.removeEventListener("online",restored);
+  },[auth]);
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
   const [publicationCheck,setPublicationCheck]=useState<"idle"|"checking"|"ready"|"error">("idle");
   const [publicationRetry,setPublicationRetry]=useState(0);
