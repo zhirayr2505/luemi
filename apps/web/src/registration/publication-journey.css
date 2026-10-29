@@ -9,7 +9,11 @@
 .luemi-publication-glow{position:absolute;inset:0;pointer-events:none;
  background:radial-gradient(ellipse 75% 35% at 50% 31%,rgba(255,255,255,.32),transparent 85%);}
 .luemi-publication-brand{position:relative;align-self:center;max-width:72vw;}
-.luemi-publication-brand img{display:block;width:clamp(175px,57vw,256px);height:auto;object-fit:contain;}
+.luemi-publication-brand img{display:block;width:clamp(175px,57vw,256px);height:auto;object-fit:contain;
+ filter:drop-shadow(0 2px 1px rgba(255,255,255,.94))
+        drop-shadow(0 6px 10px rgba(113,65,158,.19))
+        drop-shadow(0 17px 26px rgba(90,54,135,.12));
+ animation:luemi-logo-arrive .64s cubic-bezier(.16,.89,.2,1) both;}
 .luemi-publication-bottom{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:390px;}
 .luemi-publication-ring{width:28px;height:28px;border:3px solid rgba(113,57,143,.2);
  border-top-color:#754299;border-radius:50%;animation:luemi-publish-spin .85s linear infinite;}
@@ -28,3 +32,23 @@
 .luemi-publication-recovery button{background:rgba(255,255,255,.85);border:1px solid rgba(132,84,167,.22);
  border-radius:16px;padding:12px 18px;display:flex;align-items:center;gap:7px;color:#54326e;font:inherit;font-weight:650;}
 @media(prefers-reduced-motion:reduce){.luemi-publication-ring{animation-duration:2.2s}.luemi-publication-dots span{transition:none}}
+
+/* Soft, non-blocking scene entry. Only this new transition animates. The
+   accepted LUEMI main-app palette, Morph V3 and gesture paths are unchanged. */
+.luemi-publication-journey{animation:luemi-publication-enter .42s ease-out both}
+.luemi-publication-bottom{animation:luemi-caption-arrive .55s .08s ease-out both}
+@keyframes luemi-publication-enter{
+ from{opacity:0;filter:brightness(1.08)}to{opacity:1;filter:brightness(1)}
+}
+@keyframes luemi-logo-arrive{
+ from{opacity:.7;transform:translateY(10px) scale(.965)}
+ to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes luemi-caption-arrive{
+ from{opacity:0;transform:translateY(12px)}
+ to{opacity:1;transform:translateY(0)}
+}
+@media(prefers-reduced-motion:reduce){
+ .luemi-publication-journey,.luemi-publication-brand img,
+ .luemi-publication-bottom{animation:none}
+}
