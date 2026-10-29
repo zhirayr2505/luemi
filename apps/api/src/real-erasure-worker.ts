@@ -51,6 +51,12 @@ export async function runErasureBatch(options:ErasureBatchOptions):Promise<Erasu
        SELECT 1 FROM luemi_private.human_report_reviews h
        JOIN luemi_private.reports r ON r.id=h.report_id
        WHERE r.reporter_id=$1 OR r.subject_id=$1
+      ) OR EXISTS(
+       SELECT 1 FROM luemi_private.account_enforcements
+       WHERE actor_id=$1 AND environment=$2
+      ) OR EXISTS(
+       SELECT 1 FROM luemi_bliki_private.reports
+       WHERE reporter_id=$1
       ) AS unsupported`,[actor,options.namespace]);
     if(coverage.rowCount!==1||coverage.rows[0]?.unsupported!==false)
       throw new Error("erasure_unsupported_evidence_or_bliki");
