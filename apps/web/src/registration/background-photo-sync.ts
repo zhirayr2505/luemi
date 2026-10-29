@@ -1,8 +1,7 @@
-import type {PhotoItem} from "./PhotoSorter";
+import type {PhotoItem,PhotoServerState} from "./PhotoSorter";
 import {uploadPrivatePhoto,deletePrivateMedia,privateClientDigest,
  readPrivateMediaManifest,updatePrivatePhotoOrder} from "./server-media";
 
-export type PhotoServerState="uploading"|"uploaded"|"failed"|"deleting";
 interface PhotoSyncDeps{
  getPhotos:()=>PhotoItem[];
  ensureDraft:()=>Promise<void>;
