@@ -699,13 +699,14 @@ export function App() {
     try{
       const existing=await ownerPublicationStatus();setPublishStatus(existing);
       if(existing.state==="published"){await finishSuccessfulPublication(existing);return;}
-      if(existing.other>0)throw new Error("incomplete_media");
+      // Reserved uploads (other>0) are retried by the same photo id, not rejected.
+      // A failed second upload must not strand an already accepted first photo.
       // Stable per-photo clientKey reuses successful uploads and retries the
       // missing photos; one approved image never redirects to account settings.
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
-      if(existing.approved<photos.length||existing.pending>0){
+      if(existing.approved<photos.length||existing.pending>0||existing.other>0){
         const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
           setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
         await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
