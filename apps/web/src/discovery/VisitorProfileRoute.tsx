@@ -294,7 +294,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
     onPointerDownCapture={down} onPointerMoveCapture={move}
     onPointerUpCapture={e=>end(e)} onPointerCancelCapture={e=>end(e,true)}
     onLostPointerCapture={e=>{if(e.target===e.currentTarget)end(e,true);}}>
-   <QaProfiler id="ProfileMaster"><ProfileMaster data={data} mode="visitor" onClose={close}
+   <QaProfiler id="ProfileMaster"><ProfileMaster data={data} mode="visitor" initialExpanded onClose={close}
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
      onMotionProgress={reportMotion}/></QaProfiler>
