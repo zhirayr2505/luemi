@@ -108,6 +108,31 @@ export async function forgetPrivatePhoto(id:string):Promise<void>{
    (data as {forgotten?:unknown}).forgotten!==true)
   throw new Error("invalid_forget_receipt");
 }
+export async function forgetPrivatePhotoAsset(assetId:string):Promise<void>{
+ if(!remoteMediaPilot.enabled||!UUID.test(assetId))throw new Error("invalid_asset_id");
+ const response=await request("/api/v2/media/forget","POST",
+  JSON.stringify({assetId}),"application/json");
+ const result:unknown=await response.json();
+ if(!result||typeof result!=="object"||Array.isArray(result)||
+   (result as {forgotten?:unknown}).forgotten!==true)
+  throw new Error("invalid_forget_receipt");
+}
+/** Owner-scoped manifest, includes reserved IDs so stale uploads can be
+ * safely revoked before publication rather than silently padded to 3 photos.
+ */
+export async function privatePhotoManifest():Promise<Array<{id:string;state:string}>>{
+ const response=await fetch("/api/v2/profile/preview",{
+  credentials:"same-origin",cache:"no-store"});
+ if(!response.ok)throw new Error("private_manifest_unavailable");
+ const data:unknown=await response.json();
+ if(!data||typeof data!=="object"||Array.isArray(data)||
+   !Array.isArray((data as {photos?:unknown}).photos))
+  throw new Error("invalid_private_media_manifest");
+ const photos=(data as {photos:Array<{id?:unknown;state?:unknown}>}).photos;
+ if(!photos.every(p=>p&&UUID.test(String(p.id))&&typeof p.state==="string"))
+  throw new Error("invalid_private_media_manifest");
+ return photos as Array<{id:string;state:string}>;
+}
 export async function reorderPrivatePhotos(assetIds:readonly string[]):Promise<void>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
  if(assetIds.length<3||assetIds.length>6||assetIds.some(id=>!UUID.test(id))||
