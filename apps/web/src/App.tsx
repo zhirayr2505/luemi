@@ -1085,6 +1085,7 @@ export function App() {
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
+       backgroundStatus={mediaStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
