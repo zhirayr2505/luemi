@@ -160,3 +160,50 @@ test("authenticated beta can enable first-party limited city reverse without pai
   REM06_BETA_INVITES_ENABLED:"0"}),
   /Local reverse geolocation requires authenticated V2 sessions/);
 });
+
+test("real early beta admits signed accounts without invites, caps at 10 and preserves private photo publication",()=>{
+ const env={...base,
+  REM06_OPEN_SIGNUPS_ENABLED:"1",REM06_OPEN_SIGNUPS_APPROVED:"1",
+  REM06_MODERATION_OPERATIONAL_APPROVED:"0",
+  REM06_EARLY_BETA_ENABLED:"1",
+  REM06_EARLY_BETA_MAX_ACCOUNTS:"10",
+  REM06_INSTANT_PUBLICATION_ENABLED:"1",
+  REM06_INSTANT_PUBLICATION_OWNER_ACCEPTED:"1",
+  REM06_ERASURE_REQUEST_ENABLED:"1",
+  REM06_ERASURE_POLICY_APPROVED:"1",
+  REM06_ERASURE_REQUEST_DATABASE_URL:"postgres://beta.erase.example.invalid/postgres",
+  REG01H_SAFETY_OPERATOR_ENABLED:"1",
+  REG01H_SAFETY_POLICY_APPROVED:"1",
+  REG01H_OPERATOR_LABEL:"beta_owner",
+  REG01H_SAFETY_OPERATOR_DATABASE_URL:"postgres://beta.safety.example.invalid/postgres",
+  REM06_ERASURE_WORKER_ENABLED:"0"
+ };
+ const config=readConfig(env);
+ assert.equal(config.rem05b?.inviteOnly,false);
+ assert.equal(config.rem05b?.maxNewActors,10);
+ assert.equal(config.rem05d?.durablePrivateOnly,true);
+ assert.equal(config.rem05d?.instantAcceptance,true);
+ assert.equal(config.realRegistration?.enabled,true);
+ assert.equal(config.realPublication?.enabled,true);
+ assert.equal(config.realErasure?.enabled,true);
+ assert.equal(config.releaseOperations?.erasureWorkerCliConfigured,false,
+  "manual request beta cannot pretend irreversible worker is operational");
+ for(const patch of [
+  {REM06_EARLY_BETA_MAX_ACCOUNTS:"1"},
+  {REM06_EARLY_BETA_MAX_ACCOUNTS:"51"},
+  {REM06_EARLY_BETA_MAX_ACCOUNTS:"10.5"},
+  {REM06_EARLY_BETA_MAX_ACCOUNTS:"NaN"},
+  {REM06_FRIENDS_TEST_ENABLED:"1"},
+  {REM06_SELF_SERVICE_BETA_ENABLED:"1"},
+  {REM06_BETA_INVITES_ENABLED:"1"},
+  {REM06_OPEN_SIGNUPS_ENABLED:"0"},
+  {REM06_ERASURE_REQUEST_ENABLED:"0"},
+  {REG01H_SAFETY_OPERATOR_ENABLED:"0"}
+ ])assert.throws(()=>readConfig({...env,...patch}),
+  /Real early beta requires|Friends test must|Self-service beta requires|Open registration requires|Production V2 requires|Instant publication|REG01F requires/);
+});
+test("legacy public release remains unlimited without explicit early beta cap",()=>{
+ const cfg=readConfig({...base,REM06_OPEN_SIGNUPS_ENABLED:"1",
+  REM06_OPEN_SIGNUPS_APPROVED:"1",REM06_EARLY_BETA_MAX_ACCOUNTS:"10"});
+ assert.equal(cfg.rem05b?.maxNewActors,undefined);
+});

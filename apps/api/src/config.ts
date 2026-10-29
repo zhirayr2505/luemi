@@ -75,6 +75,16 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   // they never use the invite table or a client-provided identity.
   const openSignups = env.REM06_OPEN_SIGNUPS_ENABLED==="1";
   const betaInvites = env.REM06_BETA_INVITES_ENABLED==="1";
+  // Real early beta is intentionally capacity-bounded, but unlike
+  // REM06_SELF_SERVICE_BETA it uses server photos, live publication, discovery
+  // and chats. One signed adult Telegram actor owns one quota slot.
+  const earlyBeta=env.REM06_EARLY_BETA_ENABLED==="1";
+  const earlyBetaCap=Number(env.REM06_EARLY_BETA_MAX_ACCOUNTS??"10");
+  if(earlyBeta&&(!openSignups||betaInvites||
+    env.REM06_FRIENDS_TEST_ENABLED==="1"||
+    env.REM06_SELF_SERVICE_BETA_ENABLED==="1"||
+    !Number.isSafeInteger(earlyBetaCap)||earlyBetaCap<2||earlyBetaCap>50))
+    throw new Error("Real early beta requires open admission and a strict 2..50 account ceiling");
   // Short-lived, capacity-bounded early beta: adults may create a private draft
   // using their own signed Telegram account without owner-managed invitations.
   // This is NOT REM06_OPEN_SIGNUPS: publication/media/chats remain disabled.
@@ -124,7 +134,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     absoluteMs: 7 * 24 * 60 * 60 * 1000,
     maxSessions: 5,
     inviteOnly: betaInvites,
-    maxNewActors: selfServiceBeta?selfServiceCap:undefined
+    maxNewActors: selfServiceBeta?selfServiceCap:earlyBeta?earlyBetaCap:undefined
   } : undefined;
   if(env.REM06_BETA_INVITES_ENABLED==="1"&&(!v2Enabled||
     env.REM06_BETA_INVITES_APPROVED!=="1"||!privateDraftDisclosure))
@@ -334,7 +344,11 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   // Immediate publication still requires a real post-publication report removal
   // operator and account/photo erasure. Do not treat environment flags as proof
   // the human on-call and erasure procedures have actually run successfully.
-  if(instantPublishing&&(!realErasure||!releaseOperations.erasureWorkerCliConfigured||
+  if(instantPublishing&&(!realErasure||
+    // A strictly limited, owner-handled beta may receive deletion requests
+    // without running an irreversible automated worker. For all public
+    // releases the verified worker remains mandatory.
+    (!earlyBeta&&!releaseOperations.erasureWorkerCliConfigured)||
     !releaseOperations.safetyOperatorCliConfigured))
     throw new Error("Instant publication requires working safety takedown and erasure operators");
   return {
