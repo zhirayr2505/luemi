@@ -389,15 +389,16 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   const target=await owner(req,reply,async(db,id)=>{
    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
     [opts.namespace+":"+id+":profile_media_slots"]);
-   const rows=await db.query<{asset_id:string;derivative_key:string;original_key:string;state:string}>(
-    "SELECT a.id AS asset_id,a.derivative_key,a.original_key,a.state "+
+   const rows=await db.query<{asset_id:string;derivative_key:string;original_key:string;state:string;publication_status:string}>(
+    "SELECT a.id AS asset_id,a.derivative_key,a.original_key,a.state,a.publication_status "+
     "FROM luemi_private.media_uploads u JOIN luemi_private.media_assets a ON a.id=u.asset_id "+
     "WHERE u.owner_id=$1 AND u.environment=$2 AND u.idempotency_digest=$3 "+
-    "AND a.owner_id=$1 AND a.environment=$2 AND a.publication_status='private' "+
+    "AND a.owner_id=$1 AND a.environment=$2 "+
     "FOR UPDATE OF a,u",
     [id,opts.namespace,digest(key)]);
    if(!rows.rowCount)return {found:false};
    const row=rows.rows[0];
+   if(row.publication_status!=="private")reject(409,"photo_already_published");
    if(row.state!=="revoked"){
     await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
      "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
