@@ -18,9 +18,9 @@ export interface StepProps {
  data:RegistrationDraft;patch:(values:Partial<RegistrationDraft>)=>void;
  photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;resetDraft:()=>void;step:number;
- fieldError?:{field:"name"|"date";message:string}|null;
- clearFieldError?:(field:"name"|"date")=>void;
- onFieldFocus?:(field:"name"|"date"|null)=>void;
+ fieldError?:{field:"name"|"date"|"city";message:string}|null;
+ clearFieldError?:(field:"name"|"date"|"city")=>void;
+ onFieldFocus?:(field:"name"|"date"|"city"|null)=>void;
 }
 function GenderIcon({type}:{type:"man"|"woman"|"everyone"}){
  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -193,7 +193,9 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    </ChoiceRow>
    
  </div>;
- if(step===3)return <div className="form-stack compact-step"><GeoPicker data={data} patch={patch}/></div>;
+ if(step===3)return <div className="form-stack compact-step"><GeoPicker data={data} patch={patch}
+   fieldError={fieldError?.field==="city"?fieldError.message:undefined}
+   clearFieldError={()=>clearFieldError?.("city")} onFieldFocus={onFieldFocus}/></div>;
  if(step===4)return <div className="form-stack compact-step preferences-step">
    <ChoiceRow label="Кого хочешь встретить?">
      <GlassChoice chosen={data.audience==="women"} onClick={()=>patch({audience:"women"})} icon={<GenderIcon type="woman"/>}>Женщин</GlassChoice>
