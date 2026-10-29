@@ -309,9 +309,23 @@ test("01D: select/upload/delete/reorder private photos before publication remain
   const observed=await app.inject({method:"GET",url:"/api/v2/profile/preview",
    headers:{cookie:owner.cookie}});
   assert.deepEqual(observed.json().photos.map((p:{id:string})=>p.id),order);
-  const published=await mutate(app,owner,"/api/v3/profile/publish",{revision:1});
-  assert.equal(published.statusCode,409,
-   "missing required profile fields cannot publish even with approved media");
+  const readyDraft=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
+   headers:headers(owner),payload:{revision:1,fields:{
+    displayName:"Անի",birthDate:"1997-05-12",gender:"woman",city:"Ереван",
+    countryCode:"AM",goal:"friendship",interests:["music"],about:"Тестовая анкета",
+    languages:["hy"],consentVersion
+   }}});
+  assert.equal(readyDraft.statusCode,200,readyDraft.body);
+  const published=await mutate(app,owner,"/api/v3/profile/publish",{revision:2});
+  assert.equal(published.statusCode,200,published.body);
+  const own=await app.inject({method:"GET",url:"/api/v3/profile/status",
+   headers:{cookie:owner.cookie}});
+  assert.equal(own.statusCode,200,own.body);
+  assert.equal(own.json().profile.photos[0],"/api/v3/discovery/photo/"+mainPhoto,
+   "first reordered image is actual main photo");
+  assert.equal((await app.inject({method:"DELETE",url:"/api/v2/media/"+ids[0],
+   headers:headers(owner)})).statusCode,404,
+   "pre-publication delete route must not affect published photos");
   assert.equal((await app.inject({method:"DELETE",url:"/api/v2/media/"+ids[3],
    headers:headers(owner)})).statusCode,200,"repeated deletion stays idempotent");
  }finally{await app.close();}
