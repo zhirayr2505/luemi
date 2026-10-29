@@ -136,9 +136,6 @@ export function App() {
   // curtain. Choosing and sorting photos stays completely local and instant.
   const privateAssetIds=useRef(new Map<string,string>());
   const privateMediaQueue=useRef<Promise<unknown>>(Promise.resolve());
-  const [photoSyncBusy,setPhotoSyncBusy]=useState(false);
-  const [photoSyncError,setPhotoSyncError]=useState("");
-  const [photoServerReady,setPhotoServerReady]=useState(0);
   const ownedUrls = useRef<string[]>([]);
   const photoJobs=useRef(new Map<string,AbortController>());
   const photoTimers=useRef(new Map<string,number>());
@@ -478,7 +475,6 @@ export function App() {
   const syncChosenPhotos=useCallback((consented:boolean):Promise<string[]>=>{
     const run=async():Promise<string[]>=>{
       if(!remoteMediaPilot.enabled||auth!=="authorized")return[];
-      setPhotoSyncBusy(true);setPhotoSyncError("");
       try{
         if(consented){
           // The request role accepts bytes only AFTER the server has stored
@@ -498,7 +494,6 @@ export function App() {
               if(matched&&matched.state!=="reserved")privateAssetIds.current.set(photo.id,matched.assetId);
               else if(matched?.state==="reserved")privateAssetIds.current.delete(photo.id);
             }
-            setPhotoServerReady(privateAssetIds.current.size);
             setPhotos(current=>current.map(photo=>{
               const matched=plan.matched.get(photo.id);
               return matched&&matched.state!=="reserved"?{...photo,serverStatus:"saved"}:photo;
@@ -509,7 +504,6 @@ export function App() {
             setPhotos(current=>current.map(item=>item.id===photo.id?{...item,serverStatus:"uploading"}:item));
             const id=await uploadPrivatePhoto(photo);
             privateAssetIds.current.set(photo.id,id);
-            setPhotoServerReady(privateAssetIds.current.size);
             setPhotos(current=>current.map(item=>item.id===photo.id?{...item,serverStatus:"saved"}:item));
           }
         }
@@ -526,17 +520,12 @@ export function App() {
         if(consented&&ids.length===photosLive.current.filter(p=>p.status==="ready").length&&ids.length){
           await orderPrivatePhotos(ids);
         }
-        setPhotoServerReady(ids.length);return ids;
-      }catch(e){
-        const code=e instanceof Error?e.message:"";
+        return ids;
+      }catch{
         setPhotos(current=>current.map(photo=>photo.status==="ready"&&!privateAssetIds.current.has(photo.id)
           ?{...photo,serverStatus:"error"}:photo));
-        setPhotoServerReady(privateAssetIds.current.size);
-        setPhotoSyncError(code.includes("409")||code==="photo_order_conflict"
-          ?"Список фотографий изменился на сервере. Нажми «Повторить» — сохранённые снимки не пропадут.":
-          "Не удалось синхронизировать фотографии. Проверь соединение и повтори.");
         throw e;
-      }finally{setPhotoSyncBusy(false);}
+      }
     };
     const task=privateMediaQueue.current.then(run,run);
     privateMediaQueue.current=task.catch(()=>{});

@@ -8,7 +8,7 @@ const model=read("apps/web/src/registration/model.ts");
 const catalog=read("apps/web/src/ui/InterestCatalog.tsx");
 const languages=read("apps/web/src/ui/Languages.ts");
 const assertCheck=(s,test)=>{assert.ok(test,s);console.log("✓",s)};
-assertCheck("approved single intro without duplicated white raster shimmer",app.includes('visualReady&&<div className="intro-cta"')&&style.includes("text-enter")&&!style.includes("brand-liquid")&&!style.includes(".intro-mark::after"));
+assertCheck("approved single intro keeps the auth/publication gate without duplicated white raster shimmer",/auth==="authorized"&&introElapsed&&visualReady&&\s*!\(realFeedPilot\.enabled&&publicationCheck==="checking"\)&&<div className="intro-cta">/.test(app)&&style.includes("text-enter")&&!style.includes("brand-liquid")&&!style.includes(".intro-mark::after"));
 assertCheck("no old loader overlay",!style.includes("loading-track")&&!app.includes("welcome-screen"));
 assertCheck("Telegram native BackButton; NO custom top back button",app.includes("BackButton")&&app.includes("onboard-brand-row")&&!app.includes("top-back"));
 assertCheck("theme switch stays beside original raster logo",app.includes("onboard-brand-row")&&app.includes("themeButton")&&style.includes(".onboard-brand-row .theme-switch"));
@@ -23,6 +23,40 @@ assertCheck("portal drag renders at actual viewport finger coordinates",sorter.i
 assertCheck("photo reorder has FLIP animation and main label",sorter.includes("node.animate(")&&sorter.includes("Главное"));
 assertCheck("single static registration preview with explicit edit and confirm actions",preview.includes("registration-static-profile")&&preview.includes("registration-static-avatar")&&app.includes("registration-static-actions")&&app.includes("Редактировать")&&app.includes("Всё верно")&&!preview.includes("ProfileMaster")&&!preview.includes("preview-tabs"));
 assertCheck("local images remain local only",sorter.includes("snapshot")&&!app.includes("uploadPhoto"));
+
+const realRegistration=read("apps/web/src/registration/v2/RealRegistration.tsx");
+const simpleReview=read("apps/web/src/registration/SimpleProfileReview.tsx");
+const journey=read("apps/web/src/registration/PublicationJourney.tsx");
+assertCheck("single registration consent appears on identity step",
+ steps.includes('Я принимаю <a href="/privacy"')&&
+ realRegistration.includes('stage.id==="identity"')&&
+ realRegistration.includes("step(1)")&&
+ !realRegistration.includes("setServerConsent")&&
+ !realRegistration.includes("photoServerCount")&&
+ !realRegistration.includes("onRetryPhotoSync"));
+assertCheck("photo selection and sorting finish before network publication",
+ realRegistration.includes('stage.id==="photos"')&&
+ realRegistration.includes("findExactDuplicatePhotoIds(photos)")&&
+ !app.includes("void syncChosenPhotos(serverConsent)")&&
+ !realRegistration.includes("syncChosenPhotos"));
+assertCheck("new review is simple and has a single create-profile action",
+ realRegistration.includes('<SimpleProfileReview draft={draft} photos={photos}/>')&&
+ realRegistration.includes('onClick={p.onSave}')&&
+ realRegistration.includes("Создать анкету")&&
+ simpleReview.includes("luemi-simple-review")&&
+ !simpleReview.includes("Сохраняем фотографии на сервере"));
+assertCheck("branded publication curtain starts before private photo upload",
+ app.includes('setJourney("publishing")')&&
+ app.includes("const uploadedIds=await syncChosenPhotos(true)")&&
+ app.indexOf('setJourney("publishing")')<app.indexOf("const uploadedIds=await syncChosenPhotos(true)")&&
+ journey.includes("luemi-publication-orbit")&&
+ journey.includes("luemi-publication-progress")&&
+ journey.includes("onRetry")&&journey.includes("onBack"));
+assertCheck("connecting and existing-profile checks display logo without extra welcome copy",
+ app.includes('auth!=="connecting"')&&
+ app.includes('publicationCheck==="checking"')&&
+ !app.includes('className="luemi-privacy-footer"'));
+
 
 const catalogSource=catalog.match(/const source=(\[.*?\]);\s*export const categories/s);
 assertCheck("catalog contains exactly ten 12–16 item categories",Boolean(catalogSource) && (() => {
