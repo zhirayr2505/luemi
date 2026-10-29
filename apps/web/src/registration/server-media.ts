@@ -125,6 +125,16 @@ export async function deletePrivatePhoto(photoId:string):Promise<void>{
   headers:{"X-Luemi-CSRF":csrf}});
  if(!response.ok)throw new Error("delete_private_photo_http_"+response.status);
 }
+/** Remove old server-side photos not present in this explicit, confirmed
+ * 3–6-photo selection. This is needed after interrupted prior signups. */
+export async function reconcilePrivatePhotos(ids:string[]):Promise<void>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ if(ids.length<3||ids.length>6||new Set(ids).size!==ids.length||ids.some(id=>!UUID.test(id)))
+  throw new Error("invalid_photo_selection");
+ const response=await request("/api/v2/media/reconcile","POST",
+  JSON.stringify({assetIds:ids}),"application/json");
+ if(!response.ok)throw new Error("private_media_reconcile_failed");
+}
 export async function orderPrivatePhotos(ids:string[]):Promise<void>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
  if(ids.length<1||ids.length>6||new Set(ids).size!==ids.length||ids.some(id=>!UUID.test(id)))
