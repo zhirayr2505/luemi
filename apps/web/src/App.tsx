@@ -21,6 +21,7 @@ import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
 import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {RegistrationMediaSync,type PhotoServerState} from "./registration/background-photo-sync";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -153,6 +154,31 @@ export function App() {
   const [serverPhotoCount,setServerPhotoCount]=useState(0);
   const [mediaSaving,setMediaSaving]=useState(false);
   const [mediaStatus,setMediaStatus]=useState("");
+  const [photoServerStates,setPhotoServerStates]=useState<Record<string,PhotoServerState>>({});
+  const [backgroundPhotoError,setBackgroundPhotoError]=useState("");
+  const photosLive=useRef(photos);photosLive.current=photos;
+  const draftLive=useRef(draft);draftLive.current=draft;
+  const photoSync=useRef<RegistrationMediaSync|null>(null);
+  if(photoSync.current===null)photoSync.current=new RegistrationMediaSync({
+    getPhotos:()=>photosLive.current,
+    ensureDraft:async()=>{
+      const remote=await readRemoteRevision();
+      await saveRemoteDraft(draftLive.current,remote.revision);
+      setPrivateDraftSaved(true);
+    },
+    onState:(id,state)=>setPhotoServerStates(prev=>({...prev,[id]:state})),
+    onError:setBackgroundPhotoError
+  });
+  useEffect(()=>{
+    const enabled=remoteMediaPilot.enabled&&realFeedPilot.enabled&&
+      auth==="authorized"&&photosRestored&&serverConsent;
+    photoSync.current?.setAllowed(enabled);
+    if(enabled)photoSync.current?.schedule();
+  },[auth,photosRestored,serverConsent,photos]);
+  const retryBackgroundPhotos=()=>{
+    setBackgroundPhotoError("");
+    photoSync.current?.schedule();
+  };
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
   const [publicationCheck,setPublicationCheck]=useState<"idle"|"checking"|"ready"|"error">("idle");
   const [publicationRetry,setPublicationRetry]=useState(0);
@@ -420,6 +446,9 @@ export function App() {
     return ()=>window.clearTimeout(timer);
   },[scope,photosRestored,draft,step,photos,saveRetry]);
   useEffect(()=>()=>{
+    // A reset must also revoke any private server media from this draft.
+    if(remoteMediaPilot.enabled&&realFeedPilot.enabled)
+      for(const photo of photosLive.current)photoSync.current?.removePhoto(photo.id);
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();
@@ -499,6 +528,7 @@ export function App() {
     setError(problem);
   };
   const removePhoto=(id:string)=>{
+    if(remoteMediaPilot.enabled&&realFeedPilot.enabled)photoSync.current?.removePhoto(id);
     setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
     photoJobs.current.get(id)?.abort();photoJobs.current.delete(id);
@@ -508,6 +538,7 @@ export function App() {
     const item=photos.find(p=>p.id===id);
     if(item?.src){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
     setPhotos(prev=>prev.filter(p=>p.id!==id));
+    setPhotoServerStates(prev=>{const next={...prev};delete next[id];return next;});
   };
   const movePhoto=(from:number,to:number)=>{
     setPrivateDraftSaved(false);setMediaStatus("");
@@ -516,6 +547,7 @@ export function App() {
       if(from<0||from>=prev.length||to<0||to>=prev.length)return prev;
       const next=[...prev];const [item]=next.splice(from,1);next.splice(to,0,item);return next;
     });
+    if(remoteMediaPilot.enabled&&realFeedPilot.enabled)photoSync.current?.syncOrder();
   };
   const resetDraft=()=>{
     if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
@@ -530,6 +562,7 @@ export function App() {
     ownedUrls.current=[];
     draftId.current=crypto.randomUUID();revision.current=0;
     setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setServerPhotoCount(0);setMediaStatus("");setPublishStatus(null);
+    setPhotoServerStates({});setBackgroundPhotoError("");
     setStorageState("saving");setStorageCode(null);
     if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
     void clearDraftSnapshot(scope).then(result=>{
@@ -709,12 +742,13 @@ export function App() {
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
-      // Always reconcile the selected photo IDs against the server manifest,
-      // even when the server already has >=3 other approved photos. Count-only
-      // checks can publish stale images instead of the user's current choice.
-      // Per-photo idempotency keys make this safe on normal repeated submits.
-      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      // Background uploads begin on the photos step. Here we only await
+      // any pending bytes, retry missing ones with stable client keys,
+      // discard previously removed assets and persist the selected order.
+      await photoSync.current?.idle();
+      const uploadedIds=await photoSync.current?.flush();
+      if(!uploadedIds||uploadedIds.length!==photos.length)
+        throw new Error("incomplete_media");
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       const media=await ownerPublicationStatus();setPublishStatus(media);
       if(media.approved<photos.length||media.pending!==0||media.other!==0)
@@ -1030,6 +1064,9 @@ export function App() {
       <RealRegistrationV2 draft={draft} patch={patch} photos={photos}
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} serverConsent={serverConsent}
+       photoServerStates={photoServerStates}
+       photoServerError={backgroundPhotoError}
+       onRetryPhotos={retryBackgroundPhotos}
        theme={theme} onTheme={changeTheme}
        setServerConsent={setServerConsent}
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
