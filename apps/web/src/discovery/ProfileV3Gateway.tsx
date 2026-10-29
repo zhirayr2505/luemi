@@ -11,7 +11,8 @@ const v3Enabled=()=>{
  const value=new URLSearchParams(window.location.search).get("profileV3");
  return value!=="0";
 };
-export const ProfileMaster=memo(function ProfileMaster(props:ComponentProps<typeof ProfileA2>){
+type ProfileProps=ComponentProps<typeof ProfileA2>&{initialExpanded?:boolean};
+export const ProfileMaster=memo(function ProfileMaster(props:ProfileProps){
  return v3Enabled()?<ProfileV3 {...props}/>:<ProfileA2 {...props}/>;
 });
 export type {ProfileRouteMotionHandle} from "./ProfileMasterV3";
