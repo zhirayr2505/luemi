@@ -9,7 +9,7 @@ import { configureStagingTelegramBot } from "./telegram-setup.js";
 if(process.env.LUEMI_BETA_PREFLIGHT==="1"){
   // Never log env values or credentials. This only describes missing field
   // names for the owner before applying high-risk admission switches.
-  process.stdout.write(JSON.stringify(describeRealBetaPrerequisites(process.env))+"\\n");
+  process.stdout.write(JSON.stringify(describeRealBetaPrerequisites(process.env))+"\n");
 }
 const config = readConfig();
 const app = buildApp(config);
