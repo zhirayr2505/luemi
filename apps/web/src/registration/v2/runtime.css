@@ -136,19 +136,37 @@
 .v2-runtime .glass-field-label,
 .v2-runtime .field-label{color:var(--ink);font-weight:730;}
 .v2-runtime .glass-field{color:var(--subtle);}
-.v2-runtime .dob-focus-shell{position:relative;z-index:1;transform-origin:center center;
- transition:transform .38s cubic-bezier(.22,.8,.25,1),filter .28s ease;}
-.v2-runtime .dob-focus-shell.is-focused{z-index:42;transform:translateY(clamp(-190px,-17vh,-94px)) scale(1.06);}
+.v2-runtime .name-focus-shell,.v2-runtime .dob-focus-shell{position:relative;z-index:1;transform-origin:center center;
+ transition:transform .48s cubic-bezier(.22,.8,.25,1),filter .28s ease;}
+.v2-runtime .name-focus-shell.is-focused,.v2-runtime .dob-focus-shell.is-focused{z-index:42;
+ transform:translateY(var(--focus-shift,0px)) scale(1.045);}
+.v2-runtime .name-focus-shell .glass-control{min-height:61px;width:100%;padding:13px 16px;font-size:19px;}
 .v2-runtime .dob-focus-shell .glass-control{min-height:61px;width:100%;text-align:center;padding:13px 16px;
  font-size:21px;letter-spacing:.055em;font-variant-numeric:tabular-nums;}
+.v2-runtime .name-focus-shell.is-focused .glass-control,.v2-runtime .dob-focus-shell.is-focused .glass-control{
+ border-color:#a875c7;box-shadow:0 0 0 5px rgba(184,140,230,.15),0 15px 34px rgba(113,74,136,.18),inset 0 1px 0 #fff;}
+.v2-runtime .name-focus-shell.has-error .glass-control,.v2-runtime .dob-focus-shell.has-error .glass-control{
+ border-color:#c56c91;box-shadow:0 0 0 4px rgba(197,108,145,.13),0 7px 20px rgba(159,76,112,.12);}
+.v2-runtime .field-inline-hint{display:flex;align-items:flex-start;gap:8px;margin:8px 2px 0;padding:10px 12px;
+ border:1px solid rgba(197,108,145,.3);border-radius:14px;background:rgba(255,247,251,.94);
+ color:#914e72;font-size:12px;line-height:1.35;box-shadow:0 7px 18px rgba(159,76,112,.08);
+ animation:field-hint-in .24s cubic-bezier(.22,.8,.25,1) both;}
+.v2-runtime .field-inline-hint svg{flex:none;margin-top:1px;color:#b95e88;}
+@keyframes field-hint-in{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:none}}
 .v2-runtime .dob-focus-shell .glass-field-label{font-size:14px;}
 .v2-runtime .dob-focus-shell .glass-field small{display:block;margin:7px 2px 0;color:#9b84a5;font-size:11px;text-align:center;}
-.v2-runtime .dob-focus-shell.is-focused .glass-control{border-color:#a875c7;
- box-shadow:0 0 0 5px rgba(184,140,230,.15),0 15px 34px rgba(113,74,136,.18),inset 0 1px 0 #fff;}
 .v2-runtime .dob-focus-overlay{position:fixed;inset:0;z-index:40;background:rgba(64,39,79,.12);
  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:dob-focus-in .28s ease both;}
 @keyframes dob-focus-in{from{opacity:0}to{opacity:1}}
 .v2-runtime .step-name .glass-control{min-height:55px;}
+.v2-runtime .v2-footer.is-focus-confirm{position:relative;z-index:43;}
+.v2-runtime .v2-footer-nav.is-focus-confirm{justify-content:space-between;}
+.v2-runtime .v2-next.v2-next-confirm{flex:0 0 58px;width:58px;height:58px;min-height:58px;padding:0;
+ border-radius:50%;display:grid;place-items:center;gap:0;color:#fff;border-color:#ae80d2;
+ background:linear-gradient(135deg,#aa7cdd,#e6a7d0);box-shadow:0 8px 22px rgba(151,91,187,.3),inset 0 1px 0 rgba(255,255,255,.45);
+ animation:confirm-button-in .3s cubic-bezier(.22,.8,.25,1) both;}
+.v2-runtime .v2-next.v2-next-confirm:active{transform:scale(.94);}
+@keyframes confirm-button-in{from{opacity:0;transform:scale(.7) rotate(-12deg)}to{opacity:1;transform:scale(1) rotate(0)}}
 
 /* The city and language search buttons have positioned icons. Restore a
  * consistent 44px icon gutter and avoid the default browser search padding. */
