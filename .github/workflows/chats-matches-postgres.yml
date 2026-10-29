@@ -57,6 +57,10 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/chats-v2-mutual-matches.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v1/001_complete_messages_media.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v2-peer-media-guard.sql
+      - name: Apply Chats V3 actor-scoped presentation visibility in disposable PostgreSQL
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f db/chats-v3-visibility.sql
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -86,10 +90,6 @@ jobs:
           MATCHES_HTTP_CHAT_URL: postgres://luemi_ci_chat:synthetic_chat_http@127.0.0.1:5432/matches_disposable
         run: npx --no-install tsx --test apps/api/secure-tests/chats-matches-http.test.ts
 
-      - name: Apply Chats V3 actor-scoped presentation visibility in disposable PostgreSQL
-        run: |
-          set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -f db/chats-v3-visibility.sql
       - name: Prove private message and entire-chat scopes on PostgreSQL 16 and 17
         run: |
           set -euo pipefail
