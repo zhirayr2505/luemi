@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {createHmac} from "node:crypto";
+import {createHmac,randomUUID} from "node:crypto";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
 import {memoryPrivateStore,syntheticModerate} from "../src/rem05d-private.js";
@@ -88,6 +88,100 @@ async function prepare(app:ReturnType<typeof makeApp>,user:User){
  }
  return ids;
 }
+test("01D: early private upload, delete selected photo and reorder without leaking another account",async()=>{
+ const app=makeApp({instant:true});
+ try{
+  const owner=await identity(app,8011801),stranger=await identity(app,8011802);
+  const drafted=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
+   headers:headers(owner),payload:{revision:0,fields:{
+    displayName:"Ани",birthDate:"1997-05-12",gender:"woman",city:"Ереван",
+    countryCode:"AM",placeId:"offline:am:yerevan",goal:"friendship",
+    interests:["music"],languages:["hy"],about:"Новая анкета",consentVersion
+   }}});
+  assert.equal(drafted.statusCode,200,drafted.body);
+  const png=makeSyntheticPng();
+  async function add(key:string){
+   const intent=await mutate(app,owner,"/api/v2/media/intents",
+    {bytes:png.length,mime:"image/png",clientKey:key});
+   assert.equal(intent.statusCode,200,intent.body);
+   const id=intent.json().assetId as string;
+   const upload=await app.inject({method:"PUT",url:"/api/v2/media/"+id+"/bytes",
+    headers:{...headers(owner),"content-type":"image/png"},payload:png});
+   assert.equal(upload.statusCode,200,upload.body);
+   return id;
+  }
+  const key1="reg01c-photo-"+randomUUID();
+  const old=await add(key1);
+  const peek=await app.inject({method:"GET",url:"/api/v2/media/"+old,
+   headers:{cookie:owner.cookie}});
+  assert.equal(peek.statusCode,200,peek.body);
+  const strangerDelete=await app.inject({method:"DELETE",
+   url:"/api/v2/media/by-client-key/"+key1,headers:headers(stranger)});
+  assert.notEqual(strangerDelete.statusCode,500,"stranger cannot crash/delete owner's asset");
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/media/"+old,
+   headers:{cookie:owner.cookie}})).statusCode,200);
+  const removed=await app.inject({method:"DELETE",url:"/api/v2/media/by-client-key/"+key1,
+   headers:headers(owner)});
+  assert.equal(removed.statusCode,200,removed.body);
+  const second=await app.inject({method:"DELETE",url:"/api/v2/media/by-client-key/"+key1,
+   headers:headers(owner)});
+  assert.equal(second.statusCode,200,"deleted photo cleanup must be retryable");
+  const preview=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:owner.cookie}});
+  assert.equal(preview.statusCode,200,preview.body);
+  assert.deepEqual(preview.json().photos,[],"revoked photo must disappear from server preview");
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/media/"+old,
+   headers:{cookie:owner.cookie}})).statusCode,404);
+  // Production evidence showed 4 approved + 1 reserved after an aborted
+  // registration, so a new 3-image choice needs private slot reconciliation
+  // BEFORE any upload is attempted.
+  const stale=await add("reg01c-photo-"+randomUUID());
+  for(let n=0;n<3;n++)await add("reg01c-photo-"+randomUUID());
+  const reserved=await mutate(app,owner,"/api/v2/media/intents",{
+   bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+randomUUID()});
+  assert.equal(reserved.statusCode,200,reserved.body);
+  assert.equal(reserved.json().state,"reserved");
+  const keys:string[]=Array.from({length:3},()=>"reg01c-photo-"+randomUUID());
+  const strangerSync=await mutate(app,stranger,"/api/v2/media/sync-selection",
+   {clientKeys:keys});
+  assert.notEqual(strangerSync.statusCode,200,"other actor must not clear private uploads");
+  const synced=await mutate(app,owner,"/api/v2/media/sync-selection",
+   {clientKeys:keys});
+  assert.equal(synced.statusCode,200,synced.body);
+  const syncedAgain=await mutate(app,owner,"/api/v2/media/sync-selection",
+   {clientKeys:keys});
+  assert.equal(syncedAgain.statusCode,200,"sync before upload must be retryable");
+  const chosen:string[]=[];
+  for(const key of keys)chosen.push(await add(key));
+  const reversed=[...chosen].reverse();
+  const reconciled=await app.inject({method:"POST",url:"/api/v2/media/reconcile",
+   headers:headers(owner),payload:{assetIds:reversed}});
+  assert.equal(reconciled.statusCode,200,reconciled.body);
+  const again=await app.inject({method:"POST",url:"/api/v2/media/reconcile",
+   headers:headers(owner),payload:{assetIds:reversed}});
+  assert.equal(again.statusCode,200,"cleanup retry must be idempotent");
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/media/"+stale,
+   headers:{cookie:owner.cookie}})).statusCode,404);
+  const denied=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(stranger),payload:{assetIds:reversed}});
+  assert.notEqual(denied.statusCode,200,"only owner may order photos");
+  const ordered=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(owner),payload:{assetIds:reversed}});
+  assert.equal(ordered.statusCode,200,ordered.body);
+  const manifest=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:owner.cookie}});
+  assert.deepEqual(manifest.json().photos.map((x:{id:string})=>x.id),reversed);
+  const published=await mutate(app,owner,"/api/v3/profile/publish",{revision:1});
+  assert.equal(published.statusCode,200,published.body);
+  const tooLate=await app.inject({method:"DELETE",url:"/api/v2/media/by-client-key/"+
+   keys[0],headers:headers(owner)});
+  // Published assets cannot be revoked by the pre-publication picker route.
+  assert.equal(tooLate.statusCode,409);
+  const publishedPhoto=await app.inject({method:"GET",url:"/api/v2/media/"+chosen[0],
+   headers:{cookie:owner.cookie}});
+  assert.equal(publishedPhoto.statusCode,200,"published image must be preserved");
+ }finally{await app.close();}
+});
 test("01D: default-deny unauthenticated and unapproved, publish only moderated 3/3, block and hide",async()=>{
  const app=makeApp();
  try{

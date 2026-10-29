@@ -1,8 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
 import {RegistrationStep,type PhotoItem} from "../Steps";
-import {fromLocalDraft,readyRegistrationPhotos} from "../../discovery/ProfileModel";
-import {ProfileMaster} from "../../discovery/ProfileV3Gateway";
+import {SimpleProfilePreview} from "../SimpleProfilePreview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {remoteDraftPilot} from "../server-draft";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
@@ -28,6 +27,8 @@ interface Props{
  publicationEnabled:boolean;
  serverSaving:boolean;
  serverStatus:string;
+ backgroundPhotoStatus?:string;
+ onRetryPhotoUpload?:()=>void;
  storageError:string|null;
  restored:boolean;
  resumeReview:boolean;
@@ -155,6 +156,16 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="intent"&&step(4)}
        {stage.id==="personality"&&<div className="v2-real-groups">{step(5)}{step(6)}</div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
+        {p.mediaEnabled&&<div className="v2-bg-upload-status" role="status">
+         <label className="v2-consent">
+          <input type="checkbox" checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
+          <span>Согласен(-на) приватно сохранять выбранные фотографии и поля анкеты на сервере LUEMI. Фотографии не публикуются до нажатия «Создать анкету».</span>
+         </label>
+         <p>{!p.serverConsent?"После согласия фотографии начнут загружаться в фоне.":
+           p.backgroundPhotoStatus||"Сохраняем выбранные фото в защищённом хранилище."}</p>
+         {p.onRetryPhotoUpload&&p.backgroundPhotoStatus?.includes("Не удалось")&&
+          <button type="button" className="v2-secondary" onClick={p.onRetryPhotoUpload}>Повторить загрузку</button>}
+        </div>}
         {step(7)}
         <div className="v2-note"><ShieldCheck size={18}/>
          Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
@@ -187,14 +198,11 @@ export function RealRegistrationV2(p:Props){
         </button>
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
-        <div className="v2-profile-v3-preview" aria-label="Предпросмотр анкеты в Profile Morph V3">
-         <ProfileMaster data={fromLocalDraft(draft,readyRegistrationPhotos(photos))}
-          mode="local-self-preview" active/>
-        </div>
+        <SimpleProfilePreview draft={draft} photos={photos}/>
         <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
           <strong>{p.mediaEnabled?"Твоя анкета готова":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
           <p>{p.mediaEnabled
-           ?(instantPublication?"После подтверждения фотографии сохранятся на сервере, а анкета сразу станет видна другим совершеннолетним пользователям. Ручной проверки до публикации нет.":"После подтверждения данные и фотографии отправятся в защищённое хранилище. Другие люди увидят их только после проверки и публикации.")
+           ?(instantPublication?"Фотографии сохраняются приватно уже на этапе выбора. После создания анкета станет видна подходящим совершеннолетним пользователям.":"Фотографии сохраняются приватно. Публикация зависит от проверки.")
            :"Сейчас сервер сохраняет поля анкеты, фотографии остаются на этом устройстве."}</p>
         </div></div>
         <label className="v2-consent"><input type="checkbox"
