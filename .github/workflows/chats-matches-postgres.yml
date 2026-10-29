@@ -85,3 +85,13 @@ jobs:
           MATCHES_HTTP_MATCH_URL: postgres://luemi_ci_match:synthetic_match_http@127.0.0.1:5432/matches_disposable
           MATCHES_HTTP_CHAT_URL: postgres://luemi_ci_chat:synthetic_chat_http@127.0.0.1:5432/matches_disposable
         run: npx --no-install tsx --test apps/api/secure-tests/chats-matches-http.test.ts
+
+      - name: Apply Chats V3 actor-scoped presentation visibility in disposable PostgreSQL
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f db/chats-v3-visibility.sql
+      - name: Prove private message and entire-chat scopes on PostgreSQL 16 and 17
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f qa/chats-v3-visibility-postgres.sql | tee /tmp/luemi-chats-visibility-verdict.txt
+          grep -q LUEMI_CHATS_VISIBILITY_RLS_PASS /tmp/luemi-chats-visibility-verdict.txt
