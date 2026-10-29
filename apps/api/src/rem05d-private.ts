@@ -262,7 +262,12 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    "WHERE owner_id=$1 AND environment=$2 AND idempotency_digest=$3",
    [id,opts.namespace,keyDigest]);
   if(existing.rowCount){
-   if(existing.rows[0].request_digest!==bodyDigest)reject(409,"idempotency_conflict");
+   // An already received image is immutable. A restart may re-encode the
+   // same photo with different PNG bytes: reuse the existing accepted asset,
+   // never overwrite it or allocate another slot for the same local UUID.
+   if(existing.rows[0].state!=="received"&&
+      existing.rows[0].request_digest!==bodyDigest)
+    reject(409,"idempotency_conflict");
    if(existing.rows[0].state==="reserved"){
     // The caller may return hours after a network interruption. Renew ONLY
     // the same pending asset/clientKey under the requester's existing RLS
