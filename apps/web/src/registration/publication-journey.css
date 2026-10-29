@@ -28,3 +28,17 @@
 .luemi-publication-recovery button{background:rgba(255,255,255,.85);border:1px solid rgba(132,84,167,.22);
  border-radius:16px;padding:12px 18px;display:flex;align-items:center;gap:7px;color:#54326e;font:inherit;font-weight:650;}
 @media(prefers-reduced-motion:reduce){.luemi-publication-ring{animation-duration:2.2s}.luemi-publication-dots span{transition:none}}
+
+/* Smooth screen reveal with the existing original LUEMI raster wordmark.
+   No replacement logo or expensive backdrop filters on the hot path. */
+.luemi-publication-journey{animation:luemi-journey-arrive .36s cubic-bezier(.22,.82,.24,1) both}
+.luemi-publication-brand{filter:
+ drop-shadow(0 2px 0 rgba(255,255,255,.94))
+ drop-shadow(0 7px 13px rgba(105,57,134,.24))
+ drop-shadow(0 0 2px rgba(255,255,255,.9));
+ animation:luemi-logo-gentle-arrive .52s cubic-bezier(.19,1,.22,1) both}
+@keyframes luemi-journey-arrive{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes luemi-logo-gentle-arrive{from{opacity:.3;transform:translateY(7px) scale(.975)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){
+ .luemi-publication-journey,.luemi-publication-brand{animation:none}
+}

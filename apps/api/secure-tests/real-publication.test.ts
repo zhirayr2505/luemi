@@ -573,4 +573,74 @@ test("72h recovery requires signed same-owner Telegram confirmation and retains 
   await runErasureBatch({databaseUrl:erasureWorkerUrl!,namespace,storage,limit:1});
  }finally{await app.close();}
 });
+
+
+test("01D: background private photos can be deleted by their owner's original client key and reordered",async()=>{
+ const storage=memoryPrivateStore();
+ const app=makeApp({instant:true,storage});
+ const localIds=[
+  "a0000000-0000-4000-8000-000000000001",
+  "a0000000-0000-4000-8000-000000000002",
+  "a0000000-0000-4000-8000-000000000003",
+  "a0000000-0000-4000-8000-000000000004"
+ ];
+ try{
+  const a=await identity(app,8011650),stranger=await identity(app,8011651);
+  await consent(app,a);await consent(app,stranger);
+  const png=makeSyntheticPng(),ids:string[]=[];
+  for(const photoId of localIds.slice(0,3)){
+   const intent=await mutate(app,a,"/api/v2/media/intents",
+    {bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+photoId});
+   assert.equal(intent.statusCode,200,intent.body);
+   const assetId=intent.json().assetId as string;
+   const upload=await app.inject({method:"PUT",url:"/api/v2/media/"+assetId+"/bytes",
+    headers:{...headers(a),"content-type":"image/png"},payload:png});
+   assert.equal(upload.statusCode,200,upload.body);
+   ids.push(assetId);
+  }
+  const before=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:a.cookie}});
+  assert.equal(before.statusCode,200,before.body);
+  assert.equal(before.json().photos.length,3);
+  const serverKey=await admin.query<{derivative_key:string}>(
+   "SELECT derivative_key FROM luemi_private.media_assets WHERE id=$1",[ids[0]]);
+  assert.equal(serverKey.rowCount,1);
+  assert.ok(await storage.get(serverKey.rows[0].derivative_key));
+  const foreign=await app.inject({method:"DELETE",
+   url:"/api/v2/media/registration/"+localIds[0],headers:headers(stranger)});
+  assert.equal(foreign.statusCode,200,foreign.body);
+  assert.equal(foreign.json().deleted,false);
+  const deleted=await app.inject({method:"DELETE",
+   url:"/api/v2/media/registration/"+localIds[0],headers:headers(a)});
+  assert.equal(deleted.statusCode,200,deleted.body);
+  assert.equal(deleted.json().deleted,true);
+  assert.equal(await storage.get(serverKey.rows[0].derivative_key),null,
+   "deleted registration photo must not remain in object storage");
+  const again=await app.inject({method:"DELETE",
+   url:"/api/v2/media/registration/"+localIds[0],headers:headers(a)});
+  assert.equal(again.statusCode,200,"deletion must be retryable");
+  const filtered=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:a.cookie}});
+  assert.equal(filtered.statusCode,200,filtered.body);
+  assert.equal(filtered.json().photos.length,2,"revoked asset hidden from manifest");
+  const newIntent=await mutate(app,a,"/api/v2/media/intents",{
+   bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+localIds[3]});
+  assert.equal(newIntent.statusCode,200,newIntent.body);
+  const newId=newIntent.json().assetId as string;
+  const receipt=await app.inject({method:"PUT",url:"/api/v2/media/"+newId+"/bytes",
+   headers:{...headers(a),"content-type":"image/png"},payload:png});
+  assert.equal(receipt.statusCode,200,receipt.body);
+  const order=[localIds[3],localIds[2],localIds[1]];
+  const change=await app.inject({method:"PUT",url:"/api/v2/media/registration/order",
+   headers:headers(a),payload:{photoIds:order}});
+  assert.equal(change.statusCode,200,change.body);
+  const reordered=await admin.query<{id:string;position:number}>(
+   "SELECT id,position FROM luemi_private.media_assets "+
+   "WHERE owner_id=$1 AND state='approved' ORDER BY position,id",[a.id]);
+  assert.deepEqual(reordered.rows.map(x=>x.id),[newId,ids[2],ids[1]]);
+  const foreignOrder=await app.inject({method:"PUT",url:"/api/v2/media/registration/order",
+   headers:headers(stranger),payload:{photoIds:order}});
+  assert.equal(foreignOrder.statusCode,409,"other member must not change image order");
+ }finally{await app.close();}
+});
 test("01D admin connection cleanup",async()=>{await admin.end();await reader.end();});

@@ -8,9 +8,9 @@ const v2=load("apps/web/src/registration/v2/RealRegistration.tsx");
 const warm=load("apps/web/src/registration/recommendation-warmup.ts");
 const reg=load("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const media=load("apps/api/src/rem05d-private.ts");
-test("user performs one action from accepted V3 review",()=>{
- assert.match(v2,/<ProfileMaster data=\{fromLocalDraft\(draft,readyRegistrationPhotos\(photos\)\)\}/);
- assert.match(v2,/mode="local-self-preview" active/);
+test("user confirms from a compact gallery review while real V3 remains in main app",()=>{
+ assert.match(v2,/<RegistrationPreview data=\{draft\} photos=\{photos\}\/>/);
+ assert.doesNotMatch(v2,/<ProfileMaster/);
  assert.match(v2,/Создать анкету 💜/);
  assert.doesNotMatch(v2,/Проверить модерацию и публикацию/);
  assert.match(app,/onSave=\{\(\)=>\{void \(realFeedPilot.enabled\?confirmRealRegistration\(\)/);
