@@ -74,7 +74,10 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    const input=focusInput.current;
    if(!input)return;
    const viewport=window.visualViewport;
-   const keyboardTop=viewport?viewport.offsetTop+viewport.height:window.innerHeight;
+   const footer=input.closest<HTMLElement>(".v2-device")?.querySelector<HTMLElement>(".v2-footer");
+   const footerTop=footer?.getBoundingClientRect().top;
+   const keyboardTop=footerTop!==undefined&&footerTop>0?footerTop:
+     viewport?viewport.offsetTop+viewport.height:window.innerHeight;
    const rect=input.getBoundingClientRect();
    const idealCenter=keyboardTop-Math.min(132,Math.max(84,(viewport?.height??window.innerHeight)*.18));
    const raw=idealCenter-(rect.top+rect.height/2);
@@ -147,7 +150,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const toggleInterest=(value:string)=>patch({interests:data.interests.includes(value)
    ?data.interests.filter(x=>x!==value):data.interests.length>=15?data.interests:[...data.interests,value]});
  if(step===1)return <div className="form-stack step-name">
-   {nameFocused&&<div className="dob-focus-overlay" aria-hidden="true" onMouseDown={()=>nameInput.current?.blur()}/>}
+   {nameFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>nameInput.current?.blur()}/>}
    <div className={"name-focus-shell"+(nameFocused?" is-focused":"")+(fieldError?.field==="name"?" has-error":"")}
      style={{"--focus-shift":`${focusShift}px`} as CSSProperties}>
      <GlassField label="Твоё имя"><GlassTextInput ref={nameInput} autoComplete="given-name" enterKeyHint="next" maxLength={48} value={data.name}
@@ -166,7 +169,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    {!deferConsent&&<RegistrationConsent data={data} patch={patch}/>}
  </div>;
  if(step===2)return <div className="form-stack dob-step">
-   {dobFocused&&<div className="dob-focus-overlay" aria-hidden="true" onMouseDown={()=>dobInput.current?.blur()}/>}
+   {dobFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>dobInput.current?.blur()}/>}
    <div className={"dob-focus-shell"+(dobFocused?" is-focused":"")+(fieldError?.field==="date"?" has-error":"")}
      style={{"--focus-shift":`${focusShift}px`} as CSSProperties}>
      <GlassField label="Дата рождения" hint="Например, 12.05.1998">
