@@ -231,3 +231,15 @@
 .v2-runtime[data-theme="dark"] .geo-input-wrap>svg:first-child,
 .v2-runtime[data-theme="dark"] .scope-control>svg,
 .v2-runtime[data-theme="dark"] .geo-selected>svg{color:#ddc0f3;}
+
+/* Local self-preview uses the very same approved Profile Morph V3. It stays
+   a contained preview inside registration, never an alternate fake card. */
+.v2-runtime .v2-profile-v3-preview{position:relative;isolation:isolate;
+  width:100%;height:clamp(410px,65dvh,580px);overflow:hidden;
+  background:#fffafd;border:1px solid rgba(157,112,186,.18);
+  border-radius:23px;box-shadow:0 4px 24px rgba(102,71,142,.09);}
+.v2-runtime .v2-profile-v3-preview>.pm-root,
+.v2-runtime .v2-profile-v3-preview>.v3-int-root{height:100%;min-height:0;}
+.v2-runtime .v2-profile-v3-preview .v3-int-root{position:relative;}
+.v2-runtime .v2-profile-v3-preview img{max-width:none;}
+@media(max-width:720px){.v2-runtime .v2-profile-v3-preview{height:min(64dvh,540px);min-height:385px;}}
