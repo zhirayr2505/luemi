@@ -48,3 +48,13 @@
 @keyframes lc-sheet-in{from{transform:translate3d(0,28px,0);opacity:.6}to{transform:none;opacity:1}}
 @keyframes lc-spin{to{transform:rotate(1turn)}}
 @media(prefers-reduced-motion:reduce){.lc-route,.lc-overlay,.lc-menu,.lc-dialog,.lc-spinner{animation:none!important}.lc-viewer img{transition:none}}
+
+
+/* Two-scope removal: only local rendering changes; no heavy visual effects. */
+.luemi-chats .lc-delete-choice {
+ display:flex;align-items:center;gap:10px;min-height:44px;
+ margin:8px 0;padding:9px 12px;border:1px solid rgba(125,113,158,.17);
+ border-radius:12px;font-size:14px;line-height:1.35;
+}
+.luemi-chats .lc-delete-choice input {width:17px;height:17px;flex-shrink:0;accent-color:#8c65da;}
+.luemi-chats .lc-person:disabled {cursor:default;opacity:.83;}
