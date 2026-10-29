@@ -25,12 +25,16 @@ export interface RegistrationDraft {
   radius: number; searchScope: SearchScope;
   audience: Audience; ageMin: number; ageMax: number; goal: Goal;
   interests: string[]; about: string; languages: string[];
+  // Optional profile details. They never block publication and can be added later.
+  height: number | null; occupation: string; education: string;
+  lifestyle: string[]; pets: string[]; facts: string[];
 }
 export const newDraft=(name=""):RegistrationDraft=>({
   name,trialConsent:false,day:"",month:"",year:"",gender:"",
   country:"",city:"",placeId:"",countryCode:"",radius:100,searchScope:"radius",
   audience:"",ageMin:18,ageMax:35,goal:"",
-  interests:[],about:"",languages:[]
+  interests:[],about:"",languages:[],height:null,occupation:"",education:"",
+  lifestyle:[],pets:[],facts:[]
 });
 export const cleanName=(name:string):string=>
   name.normalize("NFC").replace(/[^\p{L}\p{M}'’\- ]/gu,"").slice(0,48);
