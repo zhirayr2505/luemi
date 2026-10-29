@@ -1,16 +1,26 @@
-import {useMemo,useState} from "react";
+import {useMemo,useRef,useState} from "react";
 import {Search,Check} from "lucide-react";
 import {Flag} from "../ui/Flag";
 import {languages,findLanguages} from "../ui/Languages";
-export function LanguagePicker({selected,onChange}:{selected:string[];onChange:(value:string[])=>void}){
+import {useFieldFocusDock} from "./use-field-focus";
+export function LanguagePicker({selected,onChange,onFocusChange}:{selected:string[];onChange:(value:string[])=>void;onFocusChange?:(focused:boolean)=>void}){
  const [query,setQuery]=useState("");
+ const [focused,setFocused]=useState(false);
+ const inputRef=useRef<HTMLInputElement>(null);
+ const dock=useFieldFocusDock(focused);
  const filtered=useMemo(()=>findLanguages(query),[query]);
  const toggle=(id:string)=>onChange(selected.includes(id)?selected.filter(x=>x!==id):[...selected,id]);
  return <div className="language-picker">
+   {focused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>inputRef.current?.blur()}/>}
+   <div className="focus-field-slot language-focus-slot"><div ref={node=>{dock.shellRef.current=node;}}
+    className={"focus-field-shell language-focus-shell"+(focused?" is-focused":"")} style={dock.style}>
    <div className="field-label">Языки общения</div>
    <label className="geo-input-wrap">
      <Search size={18} aria-hidden="true"/>
-     <input className="glass-control geo-input" type="search" placeholder="Найди язык из 60" value={query} onChange={e=>setQuery(e.target.value)}/>
+     <input ref={inputRef} className="glass-control geo-input" type="search" placeholder="Найди язык из 60" value={query}
+       onFocus={()=>{setFocused(true);onFocusChange?.(true);}}
+       onBlur={()=>window.setTimeout(()=>{setFocused(false);onFocusChange?.(false);},120)}
+       onChange={e=>setQuery(e.target.value)}/>
    </label>
    {selected.length>0&&<div className="language-selected">
      {selected.map(id=>{const data=languages.find(x=>x.id===id);return data?<button type="button" key={id}
@@ -26,5 +36,6 @@ export function LanguagePicker({selected,onChange}:{selected:string[];onChange:(
      </button>)}
    </div>
    <p className="hint">Флаги — иллюстрация, а не утверждение, что на языке говорят только в одной стране.</p>
+   </div></div>
  </div>;
 }
