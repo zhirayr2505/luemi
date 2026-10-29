@@ -30,6 +30,7 @@ interface Props{
  photoUploadStatus?:string;
  uploadingPhotos?:boolean;
  uploadedPhotoCount?:number;
+ onRetryPhotoUpload?:()=>void;
  storageError:string|null;
  restored:boolean;
  resumeReview:boolean;
@@ -170,6 +171,10 @@ export function RealRegistrationV2(p:Props){
          p.photoUploadStatus||(p.serverConsent?"Выбранные фото автоматически отправляются на сервер.":"Разреши приватную загрузку, чтобы фотографии сохранялись заранее.")}</p>
         {typeof p.uploadedPhotoCount==="number"&&p.uploadedPhotoCount>0&&
          <p className="v2-footnote">На сервере: {p.uploadedPhotoCount} из {photos.length}</p>}
+        {p.photoUploadStatus?.includes("Не удалось")&&p.onRetryPhotoUpload&&
+         <button type="button" className="v2-secondary" onClick={p.onRetryPhotoUpload}>
+          Повторить загрузку фотографий
+         </button>}
         <div className="v2-note"><ShieldCheck size={18}/>
          Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
          Сейчас фото остаются приватными. Автоматическая AI-проверка ещё не включена.
