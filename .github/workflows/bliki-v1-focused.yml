@@ -1,0 +1,134 @@
+name: LUEMI Bliki V1 isolated validation
+on:
+  push:
+    branches:
+      - 'feature/bliki-v1-**'
+    paths:
+      - '.github/workflows/bliki-v1-focused.yml'
+      - 'apps/api/src/bliki/**'
+      - 'apps/api/test/bliki-*.test.ts'
+      - 'apps/api/src/app.ts'
+      - 'apps/api/src/config.ts'
+      - 'apps/api/src/real-publication.ts'
+      - 'apps/web/src/features/bliki/**'
+      - 'apps/web/src/discovery/DiscoveryApp.tsx'
+      - 'apps/web/src/App.tsx'
+      - 'apps/api/migrations/*_bliki_*.sql'
+      - 'scripts/bliki-v1-contract.test.mjs'
+      - 'apps/api/secure-tests/bliki-rls-qa.sql'
+  pull_request:
+    branches: ['main']
+    paths:
+      - '.github/workflows/bliki-v1-focused.yml'
+      - 'apps/api/src/bliki/**'
+      - 'apps/web/src/features/bliki/**'
+      - 'apps/web/src/registration/RealLiveFeed.tsx'
+      - 'apps/api/migrations/*_bliki_*.sql'
+      - 'apps/api/test/bliki-*.test.ts'
+      - 'scripts/bliki-v1-contract.test.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: bliki-v1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  bliki-check:
+    name: Bliki types, build and contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      STAGING_BOOTSTRAP_ONLY: '1'
+      REM05B_SESSIONS_ENABLED: '0'
+      BLIKI_V1_ENABLED: '0'
+      BLIKI_V1_PUBLICATION_ENABLED: '0'
+      BLIKI_V1_INTERACTION_ENABLED: '0'
+      BLIKI_V1_MEDIA_PIPELINE_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: API Bliki isolated tests
+        run: npm run test -w @luemi/api
+      - name: Bliki client source contracts
+        run: node scripts/bliki-v1-contract.test.mjs
+      - name: Build both API and Web
+        run: npm run build
+
+  postgres-rls:
+    name: Bliki isolated PostgreSQL 16 RLS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: synthetic_bliki_admin
+          POSTGRES_DB: bliki_disposable
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bliki_disposable"
+          --health-interval 3s --health-timeout 3s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: bliki_disposable
+      PGPASSWORD: synthetic_bliki_admin
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Bootstrap isolated core tables and social graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE SCHEMA luemi_chats;
+          CREATE TABLE luemi_chats.likes (
+            environment text NOT NULL, sender_id uuid NOT NULL, receiver_id uuid NOT NULL,
+            created_at timestamptz DEFAULT now(), PRIMARY KEY(environment,sender_id,receiver_id)
+          );
+          CREATE TABLE luemi_chats.matches (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            environment text NOT NULL, actor_low uuid NOT NULL, actor_high uuid NOT NULL,
+            status text NOT NULL, created_at timestamptz DEFAULT now(), closed_at timestamptz
+          );
+          ALTER TABLE luemi_chats.likes ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE luemi_chats.likes FORCE ROW LEVEL SECURITY;
+          ALTER TABLE luemi_chats.matches ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE luemi_chats.matches FORCE ROW LEVEL SECURITY;
+          SQL
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0002_rem05b_identity_sessions.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0003_rem05c_geo_budget.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0004_rem05d_private_media_moderation.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0005_reg01d_private_publication_feed.sql
+      - name: Apply all version-controlled Bliki policies
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in \
+            20261027_bliki_v1_private.sql \
+            20261027_bliki_actor_role.sql \
+            20261027_bliki_read_media_roles.sql \
+            20261027_bliki_social_priority_reader.sql \
+            20261027_bliki_approved_avatars.sql \
+            20261027_bliki_interactions.sql \
+            20261027_bliki_mutual_preferences.sql \
+            20261027_bliki_retention.sql \
+            20261029_bliki_v1_complete.sql \
+            20261029_bliki_v1_privilege_tightening.sql; do
+            psql -v ON_ERROR_STOP=1 -f "apps/api/migrations/$migration"
+          done
+      - name: Run synthetic multi-actor RLS and lifetime checks
+        run: psql -v ON_ERROR_STOP=1 -f apps/api/secure-tests/bliki-rls-qa.sql

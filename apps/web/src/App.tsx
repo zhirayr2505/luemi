@@ -102,6 +102,7 @@ function prepareBrandImage(signal: AbortSignal): Promise<void> {
 
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
+  const [liveActorId,setLiveActorId]=useState<string|null>(null);
   const [introElapsed,setIntroElapsed] = useState(false);
   const [connectAttempt,setConnectAttempt]=useState(0);
   const startupGeneration=useRef(0);
@@ -172,6 +173,8 @@ export function App() {
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
   const discoveryBackRef=useRef<()=>void>(()=>{});
+  const overlayBackRef=useRef<(()=>boolean)|null>(null);
+  const [overlayBackActive,setOverlayBackActive]=useState(false);
   const v2BackRef=useRef<()=>void>(()=>{});
   const activeTheme=theme;
   const patch = useCallback((change:Partial<RegistrationDraft>)=>{
@@ -251,6 +254,7 @@ export function App() {
         const user=result.value;
         if(!user){setAuth("needs-bot");return;}
         setDraft(current=>({...current,name:current.name||user.user.firstName}));
+        setLiveActorId(user.mode==="session_v2"?user.user.id:null);
         setAuth("authorized");
       }
     });
@@ -421,6 +425,9 @@ export function App() {
     ownedUrls.current=[];
   },[]);
   const registerDiscoveryBack=useCallback((handler:()=>void)=>{discoveryBackRef.current=handler;},[]);
+  const registerOverlayBack=useCallback((handler:(()=>boolean)|null)=>{
+    overlayBackRef.current=handler;setOverlayBackActive(!!handler);
+  },[]);
   const registerV2Back=useCallback((handler:()=>void)=>{v2BackRef.current=handler;},[]);
   const back=useCallback(()=>{
     setError("");
@@ -433,13 +440,14 @@ export function App() {
   useEffect(()=>{
     const button=window.Telegram?.WebApp?.BackButton;
     if(!button)return;
-    if(auth==="authorized"&&(demoOpen||phase==="form")){
-      const handle=demoOpen?()=>discoveryBackRef.current():back;
+    if(auth==="authorized"&&(demoOpen||phase==="form"||realHome&&overlayBackActive)){
+      const handle=realHome&&overlayBackActive?()=>{overlayBackRef.current?.();}:
+        demoOpen?()=>discoveryBackRef.current():back;
       button.show();button.onClick(handle);
       return ()=>{button.offClick(handle);button.hide();};
     }
     button.hide();
-  },[phase,auth,back,demoOpen]);
+  },[phase,auth,back,demoOpen,realHome,overlayBackActive]);
   const changeStep=(target:number)=>{
     persistEnabled.current=true;
     setStorageState("dirty");
@@ -951,7 +959,11 @@ export function App() {
           {publishFeedback&&<p role="status">{publishFeedback}</p>}
         </section>:<Suspense fallback={<p role="status">Загружаем…</p>}>
           {realHomeTab==="chats"&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?
-            <RealChats/>:<RealLiveFeed onMatched={()=>setRealHomeTab("chats")}/>}
+            <RealChats/>:<RealLiveFeed
+              ownerId={liveActorId}
+              registerOverlayBack={registerOverlayBack}
+              onMatched={()=>setRealHomeTab("chats")}
+            />}
         </Suspense>}
       </div>
       {!realFeedPilot.enabled&&remoteDraftPilot.enabled&&<footer className="luemi-private-edit-bar">

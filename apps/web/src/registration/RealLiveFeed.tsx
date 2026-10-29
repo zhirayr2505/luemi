@@ -1,11 +1,13 @@
-import {useEffect,useRef,useState} from "react";
+import {lazy,Suspense,useCallback,useEffect,useRef,useState} from "react";
 import {getPublishedFeed,blockPublishedUser,reportPublishedUser,likePublishedUser,realMatchPilot} from "./real-live-client";
 import type {RealPublishedProfile,PublishedReportReason} from "./real-live-client";
 import {Flag} from "../ui/Flag";
 import "./real-live-feed.css";
+const BlikiDiscoverySlot=lazy(()=>import("../features/bliki/BlikiDiscoverySlot").then(m=>({default:m.BlikiDiscoverySlot})));
 
 /** Only real, signed-in users and published profiles. No DEMO records. */
-export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:()=>void}){
+export function RealLiveFeed({onClose,onMatched,ownerId,registerOverlayBack}:{onClose?:()=>void;onMatched?:()=>void;
+ ownerId?:string|null;registerOverlayBack?:(handler:(()=>boolean)|null)=>void}){
  const [profiles,setProfiles]=useState<RealPublishedProfile[]>([]);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState("");
@@ -18,6 +20,7 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
  const [reload,setReload]=useState(0);
  const [nextCursor,setNextCursor]=useState<string|null>(null);
  const [loadingMore,setLoadingMore]=useState(false);
+ const registerBlikiBack=useCallback((handler:(()=>boolean)|null)=>registerOverlayBack?.(handler),[registerOverlayBack]);
  const pageAbort=useRef<AbortController|null>(null);
  useEffect(()=>{
   if(!reportTarget)return;
@@ -102,6 +105,9 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
      <div><strong>Знакомства</strong><p>Только настоящие опубликованные анкеты</p></div>
      {onClose&&<button type="button" onClick={onClose} aria-label="Закрыть ленту">Закрыть</button>}
    </header>
+   {ownerId&&import.meta.env.VITE_BLIKI_V1_ENABLED==="1"&&<Suspense fallback={<p role="status">Загружаем Блики…</p>}>
+    <BlikiDiscoverySlot ownerId={ownerId} registerBack={registerBlikiBack}/>
+   </Suspense>}
    {loading&&<p role="status">Загрузка анкет…</p>}
    {error&&<p role="alert">{error}</p>}
    {!loading&&<button className="luemi-real-feed-refresh" type="button"

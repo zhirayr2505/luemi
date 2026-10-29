@@ -1,0 +1,22 @@
+/* Bliki showcase: intentional, offscreen-free animation for Android Telegram WebView. */
+.bliki-showcase{position:relative;z-index:9;flex:0 0 auto;min-width:0;width:100%;padding:6px 12px 4px;color:inherit;contain:layout style}
+.bliki-showcase-row{display:flex;gap:9px;align-items:center;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:3px 0 5px}
+.bliki-showcase-row::-webkit-scrollbar{display:none}
+.bliki-showcase-author,.bliki-showcase-create{border:0;background:none;color:inherit;display:flex;flex:0 0 auto;flex-direction:column;align-items:center;gap:5px;padding:0;cursor:pointer;min-width:56px}
+.bliki-showcase-ring{width:54px;height:54px;border-radius:50%;padding:3px;background:conic-gradient(from 35deg,#f7b5d8,#a77dda,#c6abe9,#eec2f5,#f7b5d8);box-shadow:0 1px 9px #7d4ea41f;display:block}
+.bliki-showcase-ring img{display:block;width:100%;height:100%;object-fit:cover;border:2px solid #fff;border-radius:50%;background:#725e87}
+.bliki-showcase-create{position:relative}
+.bliki-create-orbit{width:54px;height:54px;display:grid;place-items:center;border-radius:50%;color:#9e73bf;font-size:22px;background:linear-gradient(135deg,#fbecf7,#e9d3f7);border:2px solid #dcc1ed}
+.bliki-rail-caption{font-size:10px;line-height:13px;max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.bliki-expand-button{flex:0 0 22px;min-width:22px;height:26px;color:inherit;background:transparent;border:0;font-size:23px;align-self:center;cursor:pointer}
+.bliki-showcase-reveal{position:absolute;left:8px;right:8px;top:100%;z-index:15;border-radius:0 0 18px 18px;background:#302439;color:#fff;box-shadow:0 16px 32px #21152f35;display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows 250ms cubic-bezier(.2,.8,.2,1),opacity 200ms ease;pointer-events:none}
+.bliki-showcase.is-expanded .bliki-showcase-reveal{grid-template-rows:1fr;opacity:1;pointer-events:auto}
+.bliki-showcase-inner{min-height:0;overflow:hidden}
+.bliki-showcase-intro{display:block;font-size:12px;margin:5px 2px 1px;color:inherit;font-weight:600}
+.bliki-showcase-demo{display:block;font-size:9px;letter-spacing:.08em;opacity:.66;margin:0 2px 9px}
+.bliki-showcase-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding-bottom:8px}
+.bliki-showcase-tile{position:relative;display:block;aspect-ratio:4/5;border-radius:13px;overflow:hidden;padding:0;border:1px solid #ffffff36;background:#362c49;color:white;cursor:pointer}
+.bliki-showcase-tile img{width:100%;height:100%;object-fit:cover;display:block}
+.bliki-showcase-tile span{position:absolute;inset:auto 4px 7px;z-index:1;text-align:center;font-size:10px;font-weight:600;text-shadow:0 1px 6px #000}
+.bliki-showcase.is-compact{padding-left:0;padding-right:0}
+@media (prefers-reduced-motion:reduce){.bliki-showcase-reveal{transition:none}}

@@ -13,6 +13,11 @@ import {MemoryChatMediaStorage} from "./features/chats/chat-media.js";
 import {createSupabaseChatMediaStorage} from "./features/chats/supabase-chat-storage.js";
 import type {MatchOptions} from "./matches-api.js";
 import type {RealRegistrationOptions} from "./real-registration-drafts.js";
+import {createBlikiSupabaseStore} from "./bliki/bliki-supabase-store.js";
+import type {BlikiPublicationApiOptions} from "./bliki/bliki-publication-api.js";
+import type {BlikiApiOptions} from "./bliki/bliki-api.js";
+import type {BlikiMediaApiOptions} from "./bliki/bliki-media-api.js";
+import type {BlikiInteractionApiOptions} from "./bliki/bliki-interaction-api.js";
 export interface ApiConfig {
   port: number;
   origin: string;
@@ -32,6 +37,10 @@ export interface ApiConfig {
   safetyAppeal?: SafetyAppealOptions;
   chats?: ChatOptions;
   matches?: MatchOptions;
+  bliki?:BlikiApiOptions;
+  blikiPublication?:BlikiPublicationApiOptions;
+  blikiMedia?:BlikiMediaApiOptions;
+  blikiInteraction?:BlikiInteractionApiOptions;
   rem05c?: {geo?:GeoRuntime;embedding?:EmbeddingPolicy};
   // Presence of operator-gated CLI configuration ONLY; no connection, legal
   // approval, photo review or erasure has been demonstrated by these booleans.
@@ -295,6 +304,45 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     enabled:true,databaseUrl:env.LUEMI_MATCHES_DATABASE_URL??"",
     namespace:env.REM05B_BOT_NAMESPACE??""
   }:undefined;
+  const blikiEnabled=env.BLIKI_V1_ENABLED==="1";
+  const blikiPublicationEnabled=env.BLIKI_V1_PUBLICATION_ENABLED==="1";
+  const blikiInteractionEnabled=env.BLIKI_V1_INTERACTION_ENABLED==="1";
+  const blikiUrls=[env.BLIKI_V1_READ_DATABASE_URL,env.BLIKI_V1_MEDIA_DATABASE_URL,
+    env.BLIKI_V1_WRITE_DATABASE_URL,env.BLIKI_V1_INTERACTION_DATABASE_URL].filter(Boolean);
+  const nonBlikiAppUrls=[env.REM05B_AUTH_DATABASE_URL,env.REM05B_REQUEST_DATABASE_URL,
+    env.REM06_MEDIA_WORKER_DATABASE_URL,env.REM06_PUBLISHER_DATABASE_URL,
+    env.REM06_DISCOVERY_DATABASE_URL,env.LUEMI_CHATS_DATABASE_URL,
+    env.LUEMI_MATCHES_DATABASE_URL,env.REM05C_BUDGET_DATABASE_URL].filter(Boolean);
+  if(blikiEnabled&&(!v2Enabled||stagingOnly||!publicationEnabled||
+    env.REM06_PRIVACY_APPROVED!=="1"||env.BLIKI_V1_STORAGE_PROJECT_REF!=="czzyoxrwtnvbicypwrdd"||
+    !env.BLIKI_V1_STORAGE_SECRET||!env.BLIKI_V1_READ_DATABASE_URL||
+    !env.BLIKI_V1_MEDIA_DATABASE_URL||env.BLIKI_V1_READ_DATABASE_URL===env.BLIKI_V1_MEDIA_DATABASE_URL))
+    throw new Error("BLIKI V1 requires real profiles, isolated read/media roles and private LUEMI storage");
+  if(blikiEnabled&&new Set(blikiUrls).size!==blikiUrls.length)
+    throw new Error("BLIKI V1 database principals must be independent");
+  if(blikiEnabled&&blikiUrls.some(value=>nonBlikiAppUrls.includes(value)))
+    throw new Error("BLIKI V1 database principals cannot be reused by another subsystem");
+  if(blikiPublicationEnabled&&(!blikiEnabled||env.BLIKI_V1_MEDIA_PIPELINE_ENABLED!=="1"||
+    !env.BLIKI_V1_WRITE_DATABASE_URL))
+    throw new Error("BLIKI publication requires the bounded image/video pipeline and isolated writer");
+  if(blikiInteractionEnabled&&(!blikiEnabled||!env.BLIKI_V1_INTERACTION_DATABASE_URL))
+    throw new Error("BLIKI interactions require an isolated interaction principal");
+  if(!blikiEnabled&&(blikiPublicationEnabled||blikiInteractionEnabled))
+    throw new Error("BLIKI subfeatures cannot run while BLIKI V1 is disabled");
+  const blikiStore=blikiEnabled?createBlikiSupabaseStore({
+    projectRef:env.BLIKI_V1_STORAGE_PROJECT_REF!,secret:env.BLIKI_V1_STORAGE_SECRET!,
+    namespace:env.REM05B_BOT_NAMESPACE??"",bucket:"luemi-bliki-private"
+  }):undefined;
+  const bliki:BlikiApiOptions|undefined=blikiEnabled?{enabled:true,
+    databaseUrl:env.BLIKI_V1_READ_DATABASE_URL!,namespace:env.REM05B_BOT_NAMESPACE??""}:undefined;
+  const blikiMedia:BlikiMediaApiOptions|undefined=blikiEnabled?{enabled:true,
+    databaseUrl:env.BLIKI_V1_MEDIA_DATABASE_URL!,namespace:env.REM05B_BOT_NAMESPACE??"",
+    store:blikiStore!}:undefined;
+  const blikiPublication:BlikiPublicationApiOptions|undefined=blikiPublicationEnabled?{enabled:true,
+    databaseUrl:env.BLIKI_V1_WRITE_DATABASE_URL!,namespace:env.REM05B_BOT_NAMESPACE??"",
+    store:blikiStore!}:undefined;
+  const blikiInteraction:BlikiInteractionApiOptions|undefined=blikiInteractionEnabled?{enabled:true,
+    databaseUrl:env.BLIKI_V1_INTERACTION_DATABASE_URL!,namespace:env.REM05B_BOT_NAMESPACE??""}:undefined;
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
   // CLI-only maintenance is separate from the public HTTP server. Do not
@@ -308,7 +356,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     env.REM05B_AUTH_DATABASE_URL,env.REM05B_REQUEST_DATABASE_URL,
     env.REM06_MEDIA_WORKER_DATABASE_URL,env.REM06_PUBLISHER_DATABASE_URL,
     env.REM06_DISCOVERY_DATABASE_URL,env.LUEMI_CHATS_DATABASE_URL,
-    env.LUEMI_MATCHES_DATABASE_URL,env.REM05C_BUDGET_DATABASE_URL
+    env.LUEMI_MATCHES_DATABASE_URL,env.REM05C_BUDGET_DATABASE_URL,...blikiUrls
   ].filter(Boolean);
   const isolated=(value:string|undefined)=>!!value &&
     !otherLoginUrls.includes(value) &&
@@ -340,6 +388,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   return {
     releaseOperations,
     rem05b,rem05d,realRegistration,realPublication,realErasure,safetyAppeal,chats,matches,
+    bliki,blikiPublication,blikiMedia,blikiInteraction,
     rem05c:{geo,embedding},
     port,
     origin,
