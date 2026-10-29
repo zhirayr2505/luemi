@@ -109,7 +109,15 @@ export function registerGeography(app:FastifyInstance,runtime?:GeoRuntime,guards
         return reply.code(response.status).send({
           error:response.status===429?"provider_rate_limited":"geocoder_unavailable"});
       }
-      if(op==="search")return{results:normalizeGeoapify(response.raw),coverage:"world"};
+      if(op==="search"){
+        const merged=[...localSearch(input as string),...normalizeGeoapify(response.raw)];
+        const seen=new Set<string>();
+        return{results:merged.filter(place=>{
+          const key=place.city.toLocaleLowerCase("ru")+"|"+place.countryCode;
+          if(seen.has(key))return false;
+          seen.add(key);return true;
+        }).slice(0,8),coverage:"world"};
+      }
       const items=(response.raw as {results:Record<string,unknown>[]}).results;
       const first=items.find(x=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&
         typeof x.city==="string"&&typeof x.country==="string"&&
