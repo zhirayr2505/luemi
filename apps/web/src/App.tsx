@@ -488,7 +488,9 @@ export function App() {
         }
         // Always clean owner-removed objects even if consent is later unchecked.
         for(const [localId,assetId] of [...privateAssetIds.current]){
-          if(photoIds.current.has(localId))continue;
+          // Unchecking consent withdraws the authorization to retain any
+          // unpublished photo, even when it is still selected locally.
+          if(consented&&photoIds.current.has(localId))continue;
           await deletePrivatePhoto(assetId);
           privateAssetIds.current.delete(localId);
         }
