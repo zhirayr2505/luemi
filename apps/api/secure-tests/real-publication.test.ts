@@ -324,12 +324,22 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
   assert.equal((await admin.query(
    "SELECT actor_id FROM luemi_private.geo_daily_usage WHERE actor_id=$1",[b.id])).rowCount,1);
   for(const [table,column] of [
-   ["actors","id"],["sessions","actor_id"],["private_profile_drafts","owner_id"],
+   ["sessions","actor_id"],["private_profile_drafts","owner_id"],
    ["public_profiles","owner_id"],["media_assets","owner_id"],["media_uploads","owner_id"]
   ]){
    const found=await admin.query("SELECT 1 FROM luemi_private."+table+" WHERE "+column+"=$1",[a.id]);
    assert.equal(found.rowCount,0,table+" retains a deleted owner");
   }
+  // A minimal FK-only tombstone remains so recipients can retain their own
+  // history. It must not contain the prior Telegram identifier or profile.
+  const tombstone=await admin.query<{status:string;first_name:string;telegram_id:string;anonymized_at:string|null}>(
+   "SELECT status,first_name,telegram_id::text,anonymized_at::text "+
+   "FROM luemi_private.actors WHERE id=$1",[a.id]);
+  assert.equal(tombstone.rowCount,1);
+  assert.equal(tombstone.rows[0].status,"deleted");
+  assert.equal(tombstone.rows[0].first_name,"Удалённый аккаунт");
+  assert.ok(tombstone.rows[0].anonymized_at);
+  assert.ok(BigInt(tombstone.rows[0].telegram_id)>=9000000000000000000n);
   assert.equal((await admin.query(
    "SELECT 1 FROM luemi_private.reports WHERE reporter_id=$1 OR subject_id=$1",[a.id])).rowCount,0);
   assert.equal((await admin.query(

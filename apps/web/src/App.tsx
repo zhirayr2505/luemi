@@ -159,6 +159,7 @@ export function App() {
   const [deletionReason,setDeletionReason]=useState<DeletionReason>("prefer_not_to_say");
   const [deletionDetails,setDeletionDetails]=useState("");
   const [accountSettingsOpen,setAccountSettingsOpen]=useState(false);
+  const [exportBusy,setExportBusy]=useState(false);
   const [recoveryBusy,setRecoveryBusy]=useState(false);
   const [recoveryError,setRecoveryError]=useState("");
   const [clockNow,setClockNow]=useState(()=>Date.now());
@@ -860,6 +861,15 @@ export function App() {
    <p className="luemi-legal-link"><a href="/privacy" target="_blank" rel="noopener noreferrer">Конфиденциальность и использование данных</a></p>
    <button type="button" disabled={publishBusy} onClick={()=>setAccountSettingsOpen(v=>!v)}>Настройки аккаунта</button>
            {accountSettingsOpen&&<section className="registration-preview-review" aria-label="Настройки удаления аккаунта">
+            <h2>Мои данные</h2>
+            <p>Экспорт доступной анкеты и истории чатов. Оригинальные фото устройства, скрытые у обоих сообщения и материалы закрытых жалоб сюда не входят.</p>
+            <button type="button" disabled={exportBusy||auth!=="authorized"} onClick={()=>{
+              setExportBusy(true);setPublishFeedback("");
+              void import("./registration/export-my-account")
+                .then(module=>module.exportMyAvailableData())
+                .catch(()=>setPublishFeedback("Не удалось подготовить экспорт. Проверь сессию Telegram и повтори."))
+                .finally(()=>setExportBusy(false));
+             }}>{exportBusy?"Готовим файл…":"Скачать доступные данные"}</button>
             <h2>Удалить аккаунт</h2>
             <p>Анкета и фотографии сразу исчезнут из знакомств. В течение 72 часов можно восстановить аккаунт.</p>
             <label>Причина удаления<select className="glass-control" value={deletionReason}

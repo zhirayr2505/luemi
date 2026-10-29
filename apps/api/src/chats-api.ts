@@ -141,10 +141,11 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
  });
  app.get("/api/v4/chats",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
   const rows=await db.query<{id:string;match_id:string;unread_count:string;last_message:string|null;last_activity_at:string;
-   peer_id:string;peer_name:string;peer_photo_id:string|null}>(`
+   peer_id:string;peer_name:string;peer_photo_id:string|null;access:"active"|"profile_unavailable"}>(`
    SELECT m.conversation_id AS id,pair.id AS match_id,
    CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END AS peer_id,
    coalesce(peer.display_name,'Удалённый аккаунт') AS peer_name,
+   CASE WHEN peer.owner_id IS NULL THEN 'profile_unavailable' ELSE 'active' END AS access,
    (SELECT photo.id FROM luemi_private.media_assets photo
      WHERE photo.owner_id=peer.owner_id AND photo.environment=$2
        AND photo.state='approved' AND photo.publication_status='published'
@@ -162,6 +163,10 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
      ON peer.owner_id=(CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END)
     AND peer.environment=$2 AND peer.publication_status='published'
    WHERE m.actor_id=$1 AND m.environment=$2
+     AND (peer.owner_id IS NOT NULL OR EXISTS(
+       SELECT 1 FROM luemi_private.actors erased
+       WHERE erased.id=CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END
+       AND erased.environment=$2 AND erased.status='deleted' AND erased.anonymized_at IS NOT NULL))
      AND (NOT EXISTS (SELECT 1 FROM luemi_chats.conversation_clear_events cuts
        WHERE cuts.conversation_id=m.conversation_id AND cuts.environment=m.environment
          AND (cuts.scope='everyone' OR cuts.actor_id=$1))
@@ -171,7 +176,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   return {conversations:rows.rows.map(r=>({
    id:r.id,matchId:r.match_id,peerId:r.peer_id,peerProfileId:r.peer_id,peerName:r.peer_name,
    peerPhotoUrl:r.peer_photo_id?"/api/v3/discovery/photo/"+r.peer_photo_id:null,
-   lastMessage:r.last_message,lastActivityAt:r.last_activity_at,unreadCount:Number(r.unread_count),access:"active" as const
+   lastMessage:r.last_message,lastActivityAt:r.last_activity_at,unreadCount:Number(r.unread_count),access:r.access
   }))};
  }));
  app.get<{Params:{id:string};Querystring:{before?:string}}>(
@@ -211,6 +216,10 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   if(!validBody(req.body?.body)&&mediaIds.length===0)deny(422,"invalid_message");
   if(!validId(req.body?.clientId)||req.body?.mediaIds!==undefined&&(!Array.isArray(req.body.mediaIds)||mediaIds.length!==req.body.mediaIds.length))deny(422,"invalid_message");
   await member(db,req.params.id,actor);
+  const canWrite=await db.query<{allowed:boolean}>(
+   "SELECT luemi_chats.live_match($1,$2,$3) AS allowed",
+   [req.params.id,actor,options.namespace]);
+  if(canWrite.rows[0]?.allowed!==true)deny(403,"conversation_read_only");
   const q=await db.query(`INSERT INTO luemi_chats.messages(conversation_id,sender_id,environment,client_id,body)
    VALUES($1,$2,$3,$4,$5)
    ON CONFLICT(conversation_id,sender_id,client_id) DO NOTHING RETURNING
@@ -259,6 +268,38 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
 
  // Display-level erasure never destroys original payloads. A separate lifecycle
  // policy governs irreversible deletion, legal holds and data subject requests.
+ // Privacy-limited account export: only the requesting, authenticated member may
+ // export the chat they can already read. Global deletions are never bypassed.
+ // Page at most 100 messages; no admin actor-id parameter, no Storage secrets.
+ app.get<{Params:{id:string};Querystring:{before?:string}}>(
+ "/api/v4/chats/:id/export",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
+  if(!validId(req.params.id)||req.query.before!==undefined&&!validId(req.query.before))
+   deny(422,"invalid_export_cursor");
+  await member(db,req.params.id,actor);
+  if(req.query.before){
+   const cursor=await db.query("SELECT 1 FROM luemi_chats.messages WHERE id=$1 AND conversation_id=$2 AND environment=$3",
+    [req.query.before,req.params.id,options.namespace]);
+   if(cursor.rowCount!==1)deny(422,"invalid_export_cursor");
+  }
+  const page=await db.query<{id:string;senderId:string;body:string;createdAt:string;editedAt:string|null}>(`
+   SELECT id,sender_id AS "senderId",
+    CASE WHEN deleted_at IS NULL THEN body ELSE '' END AS body,
+    created_at AS "createdAt",edited_at AS "editedAt"
+   FROM luemi_chats.messages m
+   WHERE conversation_id=$1 AND environment=$2
+    AND ${visibleMessage("m","$4")}
+    AND ($3::uuid IS NULL OR (created_at,id)<(
+      SELECT created_at,id FROM luemi_chats.messages WHERE id=$3 AND conversation_id=$1))
+   ORDER BY created_at DESC,id DESC LIMIT 101`,
+   [req.params.id,options.namespace,req.query.before??null,actor]);
+  const messages=page.rows.slice(0,100);
+  return {format:"luemi-chat-export-v1" as const,conversationId:req.params.id,
+   generatedAt:new Date().toISOString(),
+   notice:"Выдана только доступная вам история. Скрытые у обоих сообщения и удалённые исходные фото не включены.",
+   messages:messages.map(m=>({id:m.id,own:m.senderId===actor,body:m.body,
+    createdAt:m.createdAt,editedAt:m.editedAt})),
+   nextCursor:page.rows.length>100&&messages.length?messages[messages.length-1].id:null};
+ }));
  app.post<{Params:{id:string;messageId:string};Body:{scope?:unknown}}>(
  "/api/v4/chats/:id/messages/:messageId/visibility",{preHandler:auth.mutation},
  (req,reply)=>scoped(req,reply,async(db,actor)=>{

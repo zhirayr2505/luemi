@@ -75,10 +75,10 @@ test("erasure refuses incomplete social dependencies before ANY private Storage 
  const guard=worker.indexOf("const coverage=await db.query");
  const deleteObject=worker.indexOf("await options.storage.delete");
  assert.ok(guard>0&&deleteObject>guard);
- for(const fragment of ["pg_constraint","luemi_private.actors",
-   "luemi_bliki_private","stories","luemi_chats","messages",
-   "erasure_social_dependencies_unhandled"]){
+ for(const fragment of ["luemi_bliki_private.stories","author_id",
+   "luemi_private.human_report_reviews","erasure_unsupported_evidence_or_bliki",
+   "erasure_actor_anonymize_denied","deleted_account_sentinel_seq"]){
   assert.ok(worker.includes(fragment),"missing coverage guard: "+fragment);
  }
- assert.ok(worker.indexOf("erasure_social_dependencies_unhandled")<deleteObject);
+ assert.ok(worker.indexOf("erasure_unsupported_evidence_or_bliki")<deleteObject);
 });
