@@ -507,8 +507,6 @@ export function App() {
   const removePhoto=(id:string)=>{
     bgRemoved.current.add(id);
     bgQueue.current=bgQueue.current.catch(()=>{}).then(async()=>{
-      const assetId=bgUploaded.current.get(id);
-      if(!assetId)return;
       try{
         await deleteOnePrivatePhoto(id);
         bgUploaded.current.delete(id);
@@ -575,9 +573,10 @@ export function App() {
     }
   },[auth,serverConsent,photosRestored,photos,draft]);
   const resetDraft=()=>{
-    // Keep the server cleanup queue even when the local manifest is reset.
-    for(const id of bgUploaded.current.keys())removePhoto(id);
     if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
+    // A canceled reset NEVER triggers a remote erase. After confirmation,
+    // even prior-session photo IDs are revoked using their permanent keys.
+    for(const item of photos)removePhoto(item.id);
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();photoIds.current.clear();
