@@ -60,13 +60,65 @@ async function normalizedPng(photo:PhotoItem):Promise<Blob>{
   canvas.width=0;canvas.height=0;
  }
 }
-async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string){
+async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string,signal?:AbortSignal){
  const token=geoCsrf();
  if(!token)throw new Error("missing_session_csrf");
  const res=await fetch(url,{method,body,credentials:"same-origin",cache:"no-store",
-  headers:{"Content-Type":mime,"X-Luemi-CSRF":token}});
+  headers:{"Content-Type":mime,"X-Luemi-CSRF":token},signal});
  if(!res.ok)throw new Error("private_media_http_"+res.status);
  return res;
+}
+/** Safe idempotent background upload of one selected photo. Requires a
+ * separately consented and saved private profile on the server. */
+export async function uploadPrivatePhoto(photo:PhotoItem,signal?:AbortSignal):Promise<string>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ if(photo.status!=="ready"||!photo.id||signal?.aborted)
+  throw new Error("photo_not_ready");
+ const png=await normalizedPng(photo);
+ if(signal?.aborted)throw new DOMException("Aborted","AbortError");
+ const response=await request("/api/v2/media/intents","POST",
+  JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
+  "application/json",signal);
+ const result:unknown=await response.json();
+ if(!result||typeof result!=="object"||Array.isArray(result))
+  throw new Error("invalid_private_intent");
+ const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
+ if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
+   intent.upload!=="private_proxy"||
+   (intent.state!=="reserved"&&intent.state!=="received"))
+  throw new Error("invalid_private_intent");
+ if(intent.state==="reserved"){
+  const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
+    "PUT",png,"image/png",signal);
+  const receipt:unknown=await saved.json();
+  if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
+    !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
+    (receipt as {published?:unknown}).published!==false)
+   throw new Error("invalid_private_media_receipt");
+ }
+ return intent.assetId;
+}
+export async function deletePrivatePhoto(clientId:string):Promise<void>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ if(!UUID.test(clientId))throw new Error("invalid_photo_id");
+ const token=geoCsrf();
+ if(!token)throw new Error("missing_session_csrf");
+ const res=await fetch("/api/v2/media/by-client/"+encodeURIComponent(clientId),{
+  method:"DELETE",credentials:"same-origin",cache:"no-store",
+  headers:{"X-Luemi-CSRF":token}});
+ if(!res.ok)throw new Error("delete_private_media_http_"+res.status);
+}
+export async function orderPrivatePhotos(photos:readonly PhotoItem[]):Promise<void>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ if(photos.length<3||photos.length>6||photos.some(p=>!UUID.test(p.id)))
+  throw new Error("invalid_photo_order");
+ const csrf=geoCsrf();
+ if(!csrf)throw new Error("missing_session_csrf");
+ const res=await fetch("/api/v2/media/order",{
+  method:"PUT",credentials:"same-origin",cache:"no-store",
+  headers:{"X-Luemi-CSRF":csrf,"Content-Type":"application/json"},
+  body:JSON.stringify({clientIds:photos.map(p=>p.id)})});
+ if(!res.ok)throw new Error("photo_order_http_"+res.status);
 }
 export async function uploadPrivatePhotos(
  photos:PhotoItem[],progress:(completed:number,total:number)=>void
@@ -74,32 +126,10 @@ export async function uploadPrivatePhotos(
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
  if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready"||!p.id))
   throw new Error("three_to_six_ready_photos_required");
- let done=0;
  const assetIds:string[]=[];
  for(const photo of photos){
-  const png=await normalizedPng(photo);
-  const response=await request("/api/v2/media/intents","POST",
-   JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
-   "application/json");
-  const result:unknown=await response.json();
-  if(!result||typeof result!=="object"||Array.isArray(result))throw new Error("invalid_private_intent");
-  const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
-  if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
-    intent.upload!=="private_proxy"||
-    (intent.state!=="reserved"&&intent.state!=="received"))
-    throw new Error("invalid_private_intent");
-  if(intent.state==="reserved"){
-   const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
-    "PUT",png,"image/png");
-   const receipt:unknown=await saved.json();
-   if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
-     !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
-     (receipt as {published?:unknown}).published!==false)
-    throw new Error("invalid_private_media_receipt");
-  }
-  assetIds.push(intent.assetId);
-  done++;
-  progress(done,photos.length);
+  assetIds.push(await uploadPrivatePhoto(photo));
+  progress(assetIds.length,photos.length);
  }
  if(new Set(assetIds).size!==assetIds.length)throw new Error("duplicate_upload_receipt");
  return assetIds;

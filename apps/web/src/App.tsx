@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,orderPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -133,6 +133,9 @@ export function App() {
   const photoJobs=useRef(new Map<string,AbortController>());
   const photoTimers=useRef(new Map<string,number>());
   const photoQueue=useRef<Promise<void>>(Promise.resolve());
+  const serverPhotoQueue=useRef<Promise<void>>(Promise.resolve());
+  const serverPhotoJobs=useRef(new Set<string>());
+  const serverPhotoUploaded=useRef(new Map<string,string>());
   const photoIds=useRef(new Set<string>());
   const photoGeneration=useRef(0);
   const [photosRestored,setPhotosRestored] = useState(false);
@@ -420,6 +423,17 @@ export function App() {
     return ()=>window.clearTimeout(timer);
   },[scope,photosRestored,draft,step,photos,saveRetry]);
   useEffect(()=>()=>{
+    // A reset is also a deletion of every draft photo on the real server;
+    // do not leave stale private assets occupying the six-photo quota.
+    if(realFeedPilot.enabled&&remoteMediaPilot.enabled&&auth==="authorized"){
+      const ids=photos.map(p=>p.id);
+      const clean=serverPhotoQueue.current.then(async()=>{
+        for(const id of ids)await deletePrivatePhoto(id);
+        for(const id of ids)serverPhotoUploaded.current.delete(id);
+        setServerPhotoCount(0);
+      }).catch(()=>setMediaStatus("Сброс выполнен локально, но удаление фото с сервера не подтверждено."));
+      serverPhotoQueue.current=clean;
+    }
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();
@@ -428,6 +442,38 @@ export function App() {
     for(const url of ownedUrls.current)URL.revokeObjectURL(url);
     ownedUrls.current=[];
   },[]);
+  // The photo step streams each ready image to the existing PRIVATE Storage,
+  // after explicit consent and a saved adult draft. Work is serialized to
+  // protect the six-slot quota, idempotency keys and camera/WebView memory.
+  // Deleted photos are revoked even if their PUT finishes after a user tap.
+  useEffect(()=>{
+    if(!realFeedPilot.enabled||!remoteMediaPilot.enabled||
+      auth!=="authorized"||!serverConsent||!photosRestored)return;
+    for(const photo of photos){
+      if(photo.status!=="ready"||serverPhotoJobs.current.has(photo.id)||
+         serverPhotoUploaded.current.has(photo.id))continue;
+      serverPhotoJobs.current.add(photo.id);
+      const work=serverPhotoQueue.current.then(async()=>{
+        if(!photoIds.current.has(photo.id))return;
+        const prev=await readRemoteRevision();
+        await saveRemoteDraft(draft,prev.revision);
+        setPrivateDraftSaved(true);
+        if(!photoIds.current.has(photo.id))return;
+        const id=await uploadPrivatePhoto(photo);
+        if(!photoIds.current.has(photo.id)){
+          await deletePrivatePhoto(photo.id);
+          return;
+        }
+        serverPhotoUploaded.current.set(photo.id,id);
+        setServerPhotoCount(serverPhotoUploaded.current.size);
+        setMediaStatus("Сохранено на сервере: "+serverPhotoUploaded.current.size+" из "+photos.length);
+      }).catch(()=>{
+        if(photoIds.current.has(photo.id))
+         setMediaStatus("Не удалось загрузить все фотографии. Создание анкеты повторит отправку.");
+      }).finally(()=>serverPhotoJobs.current.delete(photo.id));
+      serverPhotoQueue.current=work;
+    }
+  },[photos,serverConsent,draft,auth,photosRestored]);
   const registerDiscoveryBack=useCallback((handler:()=>void)=>{discoveryBackRef.current=handler;},[]);
   const registerV2Back=useCallback((handler:()=>void)=>{v2BackRef.current=handler;},[]);
   const back=useCallback(()=>{
@@ -508,6 +554,16 @@ export function App() {
     const item=photos.find(p=>p.id===id);
     if(item?.src){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
     setPhotos(prev=>prev.filter(p=>p.id!==id));
+    if(realFeedPilot.enabled&&remoteMediaPilot.enabled&&auth==="authorized"){
+      // Same per-owner serial queue as uploads; an in-flight PUT completes
+      // before its matching revocation. We never delete another user's media.
+      const revocation=serverPhotoQueue.current.then(()=>deletePrivatePhoto(id))
+       .then(()=>{
+         serverPhotoUploaded.current.delete(id);
+         setServerPhotoCount(serverPhotoUploaded.current.size);
+       }).catch(()=>setMediaStatus("Фото скрыто из предпросмотра, но удалить его с сервера не удалось. Повтори удаление."));
+      serverPhotoQueue.current=revocation;
+    }
   };
   const movePhoto=(from:number,to:number)=>{
     setPrivateDraftSaved(false);setMediaStatus("");
@@ -656,6 +712,7 @@ export function App() {
     if(!serverConsent){setServerStatus("Подтверди согласие на хранение анкеты и фотографий.");return;}
     submitting.current=true;setServerSaving(true);setServerStatus("Сохраняем анкету на сервере…");
     try{
+      await serverPhotoQueue.current;
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
@@ -713,9 +770,20 @@ export function App() {
       // even when the server already has >=3 other approved photos. Count-only
       // checks can publish stale images instead of the user's current choice.
       // Per-photo idempotency keys make this safe on normal repeated submits.
-      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      // Most photos were sent during selection. Reuse confirmed asset IDs,
+      // and retry ONLY those whose background transfer did not finish.
+      const uploadedIds:string[]=[];
+      for(const photo of photos){
+        let assetId=serverPhotoUploaded.current.get(photo.id);
+        if(!assetId){
+          assetId=await uploadPrivatePhoto(photo);
+          serverPhotoUploaded.current.set(photo.id,assetId);
+        }
+        uploadedIds.push(assetId);
+        setPublishFeedback("Сохранено "+uploadedIds.length+" из "+photos.length+" фотографий.");
+      }
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
+      await orderPrivatePhotos(photos);
       const media=await ownerPublicationStatus();setPublishStatus(media);
       if(media.approved<photos.length||media.pending!==0||media.other!==0)
         throw new Error("incomplete_media");
@@ -1038,6 +1106,7 @@ export function App() {
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
+       backgroundStatus={mediaStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}

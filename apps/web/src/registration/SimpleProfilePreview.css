@@ -1,0 +1,26 @@
+/* Only the onboarding review. Existing LUEMI profile cards and morphing are untouched. */
+.luemi-simple-preview{width:100%;padding:18px 15px 20px;border-radius:26px;background:rgba(255,251,255,.92);
+ border:1px solid #ead8ef;box-shadow:0 12px 34px rgba(107,69,130,.09);color:#49334f}
+.luemi-simple-preview-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+.luemi-simple-preview-avatar{height:100px;width:100px;flex:none;object-fit:cover;border-radius:50%;
+ background:#efdcf6;border:4px solid #fff;box-shadow:0 8px 25px rgba(131,74,157,.19)}
+.luemi-simple-preview-head h2{font-size:24px;line-height:1.2;letter-spacing:-.02em;font-weight:760;margin:3px 0 0;color:#3a2b43}
+.luemi-simple-preview-head p{font-size:14px;color:#826d8c;margin:0}
+.luemi-simple-preview-goal{padding:6px 13px;border-radius:999px;font-size:12px;
+ color:#8455a5;background:#f2e7f8;font-weight:650}
+.luemi-simple-preview-about{margin:17px 0 10px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.luemi-simple-preview-interests{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
+.luemi-simple-preview-interests span{font-size:12px;color:#8b5bb1;border:1px solid #e6d0f1;
+ padding:7px 11px;border-radius:999px;background:#f8f0fc}
+.luemi-simple-preview-gallery-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:18px 0 10px}
+.luemi-simple-preview-gallery-head h3{font-size:15px;color:#3a2b43;font-weight:750;margin:0}
+.luemi-simple-preview-gallery-head span{font-size:12px;color:#8d7898}
+.luemi-simple-preview-gallery{display:flex;overflow-x:auto;gap:10px;scroll-snap-type:x mandatory;
+ touch-action:pan-x;overscroll-behavior-x:contain;scrollbar-width:none;padding:0 0 4px}
+.luemi-simple-preview-gallery::-webkit-scrollbar{display:none}
+.luemi-simple-preview-gallery figure{position:relative;margin:0;min-width:132px;width:132px;height:184px;
+ overflow:hidden;flex:none;scroll-snap-align:start;border-radius:18px;background:#eadef1}
+.luemi-simple-preview-gallery img{width:100%;height:100%;object-fit:cover;display:block}
+.luemi-simple-preview-gallery figcaption{position:absolute;left:8px;bottom:8px;background:rgba(255,255,255,.94);
+ padding:5px 10px;border-radius:999px;font-size:11px;color:#714393;font-weight:700}
+.luemi-simple-preview-note{font-size:12px;line-height:1.5;color:#806b8c;margin:16px 0 0}
