@@ -194,7 +194,15 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    [req.params.id,options.namespace,req.query.before??null,actor]);
   const more=q.rows.length>50;const page=q.rows.slice(0,50);
   const nextCursor=more&&page.length?page[page.length-1].id:null;
-  return {messages:await hydrate(db,page.reverse()),nextCursor};
+  const v=await db.query<{revision:string|null}>(`
+   SELECT max(created_at)::text AS revision FROM (
+    SELECT created_at FROM luemi_chats.message_visibility
+     WHERE conversation_id=$1 AND environment=$2 AND (scope='everyone' OR actor_id=$3)
+    UNION ALL
+    SELECT created_at FROM luemi_chats.conversation_clear_events
+     WHERE conversation_id=$1 AND environment=$2 AND (scope='everyone' OR actor_id=$3)
+   ) visibility_changes`,[req.params.id,options.namespace,actor]);
+  return {messages:await hydrate(db,page.reverse()),nextCursor,visibilityRevision:v.rows[0]?.revision??null};
  }));
  app.post<{Params:{id:string};Body:{body?:unknown;clientId?:unknown;mediaIds?:unknown}}>(
  "/api/v4/chats/:id/messages",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
