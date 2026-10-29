@@ -107,6 +107,19 @@ export async function deleteOnePrivatePhoto(assetId:string):Promise<void>{
  });
  if(!response.ok)throw new Error("private_photo_delete_"+response.status);
 }
+/** Commit the user's chosen main photo and gallery order on the server. */
+export async function setPrivatePhotoOrder(ids:readonly string[]):Promise<void>{
+ if(ids.length<3||ids.length>6||new Set(ids).size!==ids.length||
+   ids.some(id=>!UUID.test(id)))throw new Error("invalid_photo_order");
+ const csrf=geoCsrf();
+ if(!csrf)throw new Error("session_required");
+ const response=await fetch("/api/v3/profile/photos/order",{
+  method:"PUT",credentials:"same-origin",cache:"no-store",
+  headers:{"X-Luemi-CSRF":csrf,"Content-Type":"application/json"},
+  body:JSON.stringify({assetIds:ids})
+ });
+ if(!response.ok)throw new Error("photo_order_http_"+response.status);
+}
 export async function uploadPrivatePhotos(
  photos:PhotoItem[],progress:(completed:number,total:number)=>void
 ):Promise<string[]>{
