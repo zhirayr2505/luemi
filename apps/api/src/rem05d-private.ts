@@ -248,6 +248,22 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   reply.code(404).send({error:"not_found"}));
  app.post("/api/v2/profile/submit",{preHandler:guard.mutation},async(_req,reply)=>
   reply.code(403).send({error:"publication_disabled"}));
+ // Non-creating lookup to reconcile existing on-server private photos after
+ // an interrupted registration. The stable random clientKey is scoped to
+ // the verified owner; it never exposes Storage object keys to the browser.
+ app.get<{Params:{clientKey:string}}>("/api/v2/media/client/:clientKey",
+  {preHandler:guard.read},async(req,reply)=>owner(req,reply,async(db,id)=>{
+   if(!str(req.params.clientKey,8,80))reject(422,"invalid_client_key");
+   const q=await db.query<{asset_id:string;state:string}>(
+    "SELECT u.asset_id,a.state FROM luemi_private.media_uploads u "+
+    "JOIN luemi_private.media_assets a ON a.id=u.asset_id "+
+    "WHERE u.owner_id=$1 AND u.environment=$2 AND "+
+    "u.idempotency_digest=$3 AND a.owner_id=$1 "+
+    "AND a.environment=$2 AND a.state<>'revoked'",
+    [id,opts.namespace,digest(req.params.clientKey)]);
+   return q.rowCount===1?{assetId:q.rows[0].asset_id,state:q.rows[0].state}:
+     {assetId:null,state:"missing"};
+  }));
  app.post<{Body:unknown}>("/api/v2/media/intents",{preHandler:guard.mutation},async(req,reply)=>owner(req,reply,async(db,id)=>{
   if(!object(req.body)||Object.keys(req.body).some(k=>!["bytes","mime","clientKey"].includes(k))||
     req.body.mime!=="image/png"||!Number.isSafeInteger(req.body.bytes)||
