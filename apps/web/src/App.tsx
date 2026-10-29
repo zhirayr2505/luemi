@@ -161,7 +161,6 @@ export function App() {
   const earlyPhotoAssets=useRef(new Map<string,string>());
   const [earlyPhotoCount,setEarlyPhotoCount]=useState(0);
   const [earlyPhotoStatus,setEarlyPhotoStatus]=useState("");
-  const [earlyPhotoRetry,setEarlyPhotoRetry]=useState(0);
   const freshPhotos=useRef(photos);freshPhotos.current=photos;
   const freshDraft=useRef(draft);freshDraft.current=draft;
 
@@ -552,7 +551,7 @@ export function App() {
       });
       earlyPhotoQueue.current=job;
     }
-  },[photos,serverConsent,photosRestored,auth,realHome,phase,earlyPhotoRetry]);
+  },[photos,serverConsent,photosRestored,auth,realHome,phase]);
   const removePhoto=(id:string)=>{
     setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
