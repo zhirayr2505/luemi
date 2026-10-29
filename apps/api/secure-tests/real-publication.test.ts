@@ -132,14 +132,27 @@ test("01D: early private upload, delete selected photo and reorder without leaki
   assert.deepEqual(preview.json().photos,[],"revoked photo must disappear from server preview");
   assert.equal((await app.inject({method:"GET",url:"/api/v2/media/"+old,
    headers:{cookie:owner.cookie}})).statusCode,404);
-  // Simulate a previous aborted signup which left one accepted asset on
-  // the server but is no longer selected in the local gallery.
+  // Production evidence showed 4 approved + 1 reserved after an aborted
+  // registration, so a new 3-image choice needs private slot reconciliation
+  // BEFORE any upload is attempted.
   const stale=await add("reg01c-photo-"+randomUUID());
-  const chosen:string[]=[],keys:string[]=[];
-  for(let n=0;n<3;n++){
-   const key="reg01c-photo-"+randomUUID();
-   keys.push(key);chosen.push(await add(key));
-  }
+  for(let n=0;n<3;n++)await add("reg01c-photo-"+randomUUID());
+  const reserved=await mutate(app,owner,"/api/v2/media/intents",{
+   bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+randomUUID()});
+  assert.equal(reserved.statusCode,200,reserved.body);
+  assert.equal(reserved.json().state,"reserved");
+  const keys:string[]=Array.from({length:3},()=>"reg01c-photo-"+randomUUID());
+  const strangerSync=await mutate(app,stranger,"/api/v2/media/sync-selection",
+   {clientKeys:keys});
+  assert.notEqual(strangerSync.statusCode,200,"other actor must not clear private uploads");
+  const synced=await mutate(app,owner,"/api/v2/media/sync-selection",
+   {clientKeys:keys});
+  assert.equal(synced.statusCode,200,synced.body);
+  const syncedAgain=await mutate(app,owner,"/api/v2/media/sync-selection",
+   {clientKeys:keys});
+  assert.equal(syncedAgain.statusCode,200,"sync before upload must be retryable");
+  const chosen:string[]=[];
+  for(const key of keys)chosen.push(await add(key));
   const reversed=[...chosen].reverse();
   const reconciled=await app.inject({method:"POST",url:"/api/v2/media/reconcile",
    headers:headers(owner),payload:{assetIds:reversed}});
