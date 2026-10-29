@@ -156,7 +156,6 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="intent"&&step(4)}
        {stage.id==="personality"&&<div className="v2-real-groups">{step(5)}{step(6)}</div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
-        {step(7)}
         {p.mediaEnabled&&<div className="v2-bg-upload-status" role="status">
          <label className="v2-consent">
           <input type="checkbox" checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
@@ -167,6 +166,7 @@ export function RealRegistrationV2(p:Props){
          {p.onRetryPhotoUpload&&p.backgroundPhotoStatus?.includes("Не удалось")&&
           <button type="button" className="v2-secondary" onClick={p.onRetryPhotoUpload}>Повторить загрузку</button>}
         </div>}
+        {step(7)}
         <div className="v2-note"><ShieldCheck size={18}/>
          Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
          Сейчас фото остаются приватными. Автоматическая AI-проверка ещё не включена.
