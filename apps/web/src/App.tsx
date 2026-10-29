@@ -21,7 +21,8 @@ import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
 import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
-import {RegistrationMediaSync,type PhotoServerState} from "./registration/background-photo-sync";
+import {RegistrationMediaSync} from "./registration/background-photo-sync";
+import type {PhotoServerState} from "./registration/PhotoSorter";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
