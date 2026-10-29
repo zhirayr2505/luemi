@@ -257,7 +257,8 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
   const ids=await prepare(app,a);
   for(const id of ids)await syntheticModerate(moderatorUrl!,id,"approved");
   assert.equal((await mutate(app,a,"/api/v3/profile/publish",{revision:1})).statusCode,200);
-  assert.equal((await feed(app,b)).json().profiles.length,1);
+  assert.ok((await feed(app,b)).json().profiles.some((p:{id:string})=>p.id===a.id),
+    "own published actor visible despite unrelated synthetic profiles");
   assert.equal((await photo(app,b,ids[0])).statusCode,200);
   const block=await mutate(app,a,"/api/v2/profile/blocks",{targetId:b.id});
   assert.equal(block.statusCode,200);
@@ -288,7 +289,8 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
   assert.equal(deleted.json().canRestore,true);
   assert.ok(Date.parse(deleted.json().restoreUntil)>Date.now()+70*3600000);
   assert.match(String(deleted.headers["set-cookie"]),/Max-Age=0/);
-  assert.equal((await feed(app,b)).json().profiles.length,0);
+  assert.ok(!(await feed(app,b)).json().profiles.some((p:{id:string})=>p.id===a.id),
+    "deleted owner's profile absent without suppressing unrelated users");
   assert.equal((await photo(app,b,ids[0])).statusCode,404);
   assert.equal((await app.inject({method:"GET",url:"/api/v2/auth/session",
    headers:{cookie:a.cookie}})).statusCode,401);
@@ -392,7 +394,8 @@ test("01F: delete-account queues exactly owner assets, immediately revokes acces
    "SELECT state,finished_at FROM luemi_private.erasure_requests WHERE id=$1",[q.rows[0].id]);
   assert.equal(receipt.rows[0].state,"complete");
   assert.ok(receipt.rows[0].finished_at);
-  assert.equal((await feed(app,b)).json().profiles.length,0);
+  assert.ok(!(await feed(app,b)).json().profiles.some((p:{id:string})=>p.id===a.id),
+    "deleted owner's profile absent without suppressing unrelated users");
   assert.equal((await app.inject({method:"GET",url:"/api/v2/auth/session",
    headers:{cookie:b.cookie}})).statusCode,200,"other adults remain authenticated");
  }finally{await app.close();}
