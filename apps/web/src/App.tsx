@@ -20,7 +20,9 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount,
+ uploadPrivatePhoto,deletePrivateMedia,readPrivateMediaManifest,privateClientDigest,
+ updatePrivatePhotoOrder} from "./registration/server-media";
 import {RegistrationMediaSync} from "./registration/background-photo-sync";
 import type {PhotoServerState} from "./registration/PhotoSorter";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
@@ -162,6 +164,11 @@ export function App() {
   const photoSync=useRef<RegistrationMediaSync|null>(null);
   if(photoSync.current===null)photoSync.current=new RegistrationMediaSync({
     getPhotos:()=>photosLive.current,
+    upload:uploadPrivatePhoto,
+    remove:deletePrivateMedia,
+    manifest:readPrivateMediaManifest,
+    digest:privateClientDigest,
+    order:updatePrivatePhotoOrder,
     ensureDraft:async()=>{
       const remote=await readRemoteRevision();
       await saveRemoteDraft(draftLive.current,remote.revision);
