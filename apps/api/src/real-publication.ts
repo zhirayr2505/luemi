@@ -29,7 +29,7 @@ function dateAge(iso:string):number{
  return age;
 }
 const goalOk=(v:unknown):v is string=>typeof v==="string"&&
- ["serious","relationship","dates","friendship","communication","undecided"].includes(v);
+ ["serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided"].includes(v);
 const genderOk=(v:unknown):v is string=>typeof v==="string"&&["man","woman","other"].includes(v);
 function validList(v:unknown,n:number):v is string[]{
  return Array.isArray(v)&&v.length<=n&&
