@@ -378,6 +378,47 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    return statusError(reply,e);
   }
  });
+ // Delete from the SAME private bucket when a draft photo is removed.
+ // Never remove published media here; owner must unpublish or use the account
+ // deletion flow. Request role only proves ownership; isolated worker
+ // serializes with upload PUT, marks revoked first, then deletes object bytes.
+ app.delete<{Params:{id:string}}>("/api/v2/media/:id",
+ {preHandler:guard.mutation},async(req,reply)=>{
+  if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});
+  const verified=await owner(req,reply,async(db,id)=>{
+   const q=await db.query<{id:string}>(
+    "SELECT id FROM luemi_private.media_assets "+
+    "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+    [req.params.id,id,opts.namespace]);
+   if(!q.rowCount)reject(404,"not_found");
+   return{id};
+  });
+  if(reply.sent||!("id" in verified))return verified;
+  const actor=req.authActor;
+  if(!actor||actor.actorId!==verified.id)return reply.code(401).send({error:"unauthorized"});
+  try{
+   const keys=await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+actor.actorId+":profile_media_slots"]);
+    const q=await db.query<{original_key:string;derivative_key:string;state:string}>(
+     "SELECT original_key,derivative_key,state FROM luemi_private.media_assets "+
+     "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private' FOR UPDATE",
+     [req.params.id,actor.actorId,opts.namespace]);
+    if(!q.rowCount)reject(404,"not_found");
+    // Only state revocation, never DELETE across users or public profiles.
+    if(q.rows[0].state!=="revoked")
+     await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
+      "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+      [req.params.id,actor.actorId,opts.namespace]);
+    return q.rows[0];
+   });
+   // Both paths use randomized Storage keys inaccessible to the client.
+   // Delete is idempotent: retry if Storage is temporarily unavailable.
+   await Promise.all([opts.storage.delete(keys.derivative_key),
+    opts.storage.delete(keys.original_key)]);
+   return reply.header("Cache-Control","no-store").send({removed:true});
+  }catch(e){return statusError(reply,e);}
+ });
  app.get<{Params:{id:string}}>("/api/v2/media/:id",{preHandler:guard.read},async(req,reply)=>{
   if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});
   const record=await owner(req,reply,async(db,id)=>{
