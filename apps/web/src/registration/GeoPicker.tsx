@@ -8,6 +8,7 @@ import {createGeoOperationGate,type GeoOperation} from "./geo-operation";
 import {geoCsrf} from "../auth/session-adapter";
 import {requestDeviceCoordinates,type TelegramLocationManager} from "./geo-device";
 import type {RegistrationDraft,SearchScope} from "./model";
+import {useFieldFocusDock} from "./use-field-focus";
 export interface Place {id:string;city:string;country:string;countryCode:string;region?:string}
 interface SearchResult {results?:unknown;coverage?:"demo"|"limited"|"world"}
 const scopeOptions:[SearchScope,string,string][]=[
@@ -43,8 +44,8 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
  const [demo,setDemo]=useState(false);
  const [scopeOpen,setScopeOpen]=useState(false);
  const [cityFocused,setCityFocused]=useState(false);
- const [focusShift,setFocusShift]=useState(0);
  const inputRef=useRef<HTMLInputElement>(null);
+ const cityDock=useFieldFocusDock(cityFocused);
  const gate=useRef(createGeoOperationGate());
  const gpsDeadline=useRef<number|null>(null);
  const clearGpsDeadline=()=>{
@@ -58,28 +59,6 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
  // callback cannot update this component OR its still-mounted parent draft.
  useEffect(()=>{const current=gate.current;current.resume();return ()=>{current.dispose();clearGpsDeadline();};},[]);
  const selectedLabel=data.placeId?data.city+", "+data.country:"";
- const refreshFocusPosition=()=>{
-  const input=inputRef.current;if(!input)return;
-  const viewport=window.visualViewport;
-  const footer=input.closest<HTMLElement>(".v2-device")?.querySelector<HTMLElement>(".v2-footer");
-  const footerTop=footer?.getBoundingClientRect().top;
-  const keyboardTop=footerTop!==undefined&&footerTop>0?footerTop:
-   viewport?viewport.offsetTop+viewport.height:window.innerHeight;
-  const rect=input.getBoundingClientRect();
-  const idealCenter=keyboardTop-Math.min(132,Math.max(84,(viewport?.height??window.innerHeight)*.18));
-  const raw=idealCenter-(rect.top+rect.height/2);
-  const minShift=18-rect.top;
-  const maxShift=keyboardTop-18-rect.bottom;
-  setFocusShift(Math.round(Math.max(minShift,Math.min(maxShift,raw))));
- };
- useEffect(()=>{
-  if(!cityFocused)return;
-  const viewport=window.visualViewport;
-  const update=()=>window.requestAnimationFrame(refreshFocusPosition);
-  update();viewport?.addEventListener("resize",update);viewport?.addEventListener("scroll",update);
-  window.addEventListener("resize",update);
-  return()=>{viewport?.removeEventListener("resize",update);viewport?.removeEventListener("scroll",update);window.removeEventListener("resize",update);setFocusShift(0);};
- },[cityFocused]);
  useEffect(()=>{
   if(!manual)return; // GPS remains owned by the detect operation.
   if(!editing||query.trim().length<2){
@@ -127,7 +106,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
   cancelPending();
   patch({city:normalized.city,country:normalized.country,placeId:normalized.id,countryCode:normalized.countryCode});
   setQuery(normalized.city+", "+normalized.country);setEditing(false);
-  setResults([]);setError("");setActivity("success");inputRef.current?.blur();setCityFocused(false);setFocusShift(0);onFieldFocus?.(null);
+  setResults([]);setError("");setActivity("success");inputRef.current?.blur();setCityFocused(false);onFieldFocus?.(null);
  };
  const syntheticQa=import.meta.env.DEV&&window.location.pathname==="/geo-qa.html";
  const detect=()=>{
@@ -202,15 +181,16 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
      {loading?<LoaderCircle className="spin" size={22}/>:<LocateFixed size={22}/>}
      <span><strong>{data.placeId?"Определить местоположение снова":"Моё местоположение"}</strong><small>По разрешению Telegram или устройства</small></span>
    </button>:<>
-     {cityFocused&&<div className="geo-focus-overlay" aria-hidden="true" onPointerDown={()=>inputRef.current?.focus()}/>}
-     <div className={"city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")} style={{"--city-focus-shift":`${focusShift}px`} as CSSProperties}>
+     {cityFocused&&<div className="field-focus-overlay" aria-hidden="true" onPointerDown={()=>inputRef.current?.blur()}/>}
+     <div className="focus-field-slot"><div ref={node=>{cityDock.shellRef.current=node;}}
+       className={"focus-field-shell city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")} style={cityDock.style}>
        <GlassField label="Страна и город">
          <div className="geo-input-wrap">
            <Search size={20} aria-hidden="true"/>
            <input ref={inputRef} className="glass-control geo-input" role="combobox" autoComplete="off"
              aria-expanded={results.length>0} aria-controls="luemi-geo-results" aria-autocomplete="list"
              maxLength={80} placeholder="Введи город или страну" value={query}
-             onFocus={()=>{setFocusShift(0);setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();window.requestAnimationFrame(()=>{inputRef.current?.scrollIntoView({block:"nearest",behavior:"smooth"});window.requestAnimationFrame(refreshFocusPosition);});}}
+             onFocus={()=>{setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();}}
              onBlur={()=>window.setTimeout(()=>{setCityFocused(false);onFieldFocus?.(null);},120)}
              onChange={e=>{cancelPending();setQuery(e.target.value);setEditing(true);setError("");clearFieldError?.();setResults([]);setActivity("idle");}}/>
            {loading&&<LoaderCircle className="spin" size={18}/>}
@@ -222,7 +202,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
          </button>)}
        </div>}
        {fieldError&&<p className="field-warning city-field-warning" role="alert">{fieldError}</p>}
-     </div>
+     </div></div>
    </>}
    {!manual?<button type="button" className="geo-mode-toggle" onClick={switchMode}>Выбрать город вручную</button>:
      <button type="button" className="geo-mode-toggle" onClick={switchMode}><LocateFixed size={15}/> Определить моё местоположение</button>}
