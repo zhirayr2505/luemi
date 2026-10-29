@@ -303,7 +303,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     throw new Error("Matches require authenticated published profiles and isolated matching database role");
   const matches:MatchOptions|undefined=matchesEnabled?{
     enabled:true,databaseUrl:env.LUEMI_MATCHES_DATABASE_URL??"",
-    namespace:env.REM05B_BOT_NAMESPACE??""
+    namespace:env.REM05B_BOT_NAMESPACE??"",
+    notificationDatabaseUrl:env.REM05B_AUTH_DATABASE_URL??"",
+    botToken:env.TELEGRAM_BOT_TOKEN??"",origin
   }:undefined;
   if(env.REM05D_PUBLICATION_ENABLED==="1")
     throw new Error("REM-05D publication is HARD DISABLED");
