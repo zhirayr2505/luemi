@@ -71,10 +71,10 @@ const instantPublicationUi=import.meta.env.VITE_LUEMI_INSTANT_PUBLICATION_UI==="
 const publicMediaUiMissing=import.meta.env.VITE_LUEMI_OPEN_SIGNUPS_UI==="1"&&
  (!remoteDraftPilot.enabled||!remoteMediaPilot.enabled||
   import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1");
-// Safe invited-only routing; real publication remains gated until trusted FaceTrust.
-// REAL_ONLY must never fall back to the legacy registration form.
-const registrationV2Pilot=remoteDraftPilot.enabled&&
- (realOnly||import.meta.env.VITE_LUEMI_REGISTRATION_V2==="1");
+// Every server-backed account uses one registration implementation. The old
+// local demo flow is isolated below and can no longer replace V2 because of a
+// stale deployment flag.
+const registrationV2Pilot=remoteDraftPilot.enabled;
 const testingNotice=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1"?"условия закрытого теста":"политику обработки данных";
 
 /** Decode the exact brand raster before showing a screen that depends on it. */
@@ -135,6 +135,10 @@ export function App() {
   const [step,setStep] = useState(1);
   const [draft,setDraft] = useState<RegistrationDraft>(()=>newDraft());
   const [photos,setPhotos] = useState<PhotoItem[]>([]);
+  // Telegram may prefill a first name for a brand-new account; that alone is
+  // not registration progress and must still show “Начать знакомство”.
+  const registrationStarted=step>1||draft.day.length>0||!!draft.gender||
+    draft.city.length>0||draft.about.trim().length>0||photos.length>0;
   const photosLive=useRef<PhotoItem[]>([]);
   photosLive.current=photos;
   const draftLive=useRef(draft);draftLive.current=draft;
@@ -236,8 +240,14 @@ export function App() {
     return ()=>window.clearTimeout(timer);
   },[visualReady]);
   useEffect(()=>{
+    // Telegram may delay a font/image decode callback. The welcome screen and
+    // its CTA must still become usable while those assets finish in background.
+    const fallback=window.setTimeout(()=>setVisualReady(true),650);
+    return()=>window.clearTimeout(fallback);
+  },[]);
+  useEffect(()=>{
     if(!visualReady||auth==="connecting")return;
-    const phrase=auth==="authorized"&&step>1?"Твоя история уже началась":"Твоя история начинается здесь";
+    const phrase=auth==="authorized"&&registrationStarted?"Твоя история уже началась":"Твоя история начинается здесь";
     setIntroText("");
     let index=0;
     let timer:number|null=null;
@@ -248,7 +258,7 @@ export function App() {
       },34);
     },420);
     return()=>{window.clearTimeout(start);if(timer!==null)window.clearInterval(timer);};
-  },[auth,step,visualReady]);
+  },[auth,registrationStarted,visualReady]);
   useEffect(()=>{
     const webApp=window.Telegram?.WebApp;
     try{
@@ -412,9 +422,8 @@ export function App() {
           {...snapshot.draft,name:draftLive.current.name};
         setDraft(restoredDraft);
         setStep(snapshot.step);
-        const hasDraftProgress=snapshot.step>1||snapshot.draft.name.trim().length>0||
-          snapshot.draft.day.length>0||snapshot.draft.city.length>0||snapshot.photos.length>0;
-        if(realFeedPilot.enabled&&hasDraftProgress)setPhase("form");
+        // Keep an unfinished account on the branded welcome. Restored progress
+        // changes the CTA to “Продолжить регистрацию” but never bypasses it.
       }else if(realFeedPilot.enabled){
         // A new device can recover fields, but must select its city and photos
         // again. Never claim that private media bytes are in this response.
@@ -423,7 +432,7 @@ export function App() {
           if(!isLive())return;
           if(remote.state==="private"){
             const recovered=recoverServerFields(remote.fields);
-            if(recovered){setDraft(recovered);setStep(3);setPhase("form");}
+            if(recovered){setDraft(recovered);setStep(3);}
           }
         }catch{/* Offline users retain the empty local draft. */}
       }
@@ -1237,7 +1246,7 @@ export function App() {
           <p role="status">Настоящая регистрация пока не подключена. Демонстрационные анкеты выключены.</p>}
         {(!realFeedPilot.enabled&&(!realOnly||remoteDraftPilot.enabled)||publicationCheck==="ready")&&
           <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
-            {step>1?"Продолжить регистрацию":"Начать знакомство"} <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
+            {registrationStarted?"Продолжить регистрацию":"Начать знакомство"} <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
           </button>}
       </div>}
     </section>:<section className={"onboarding-screen"+(step===8?" registration-static-screen":"")}>
