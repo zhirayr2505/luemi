@@ -133,10 +133,14 @@ test("two authenticated actors create one durable conversation and revoke it on 
   // Incoming-message deletion for myself and both participants, without altering original payload.
   result=await inject(C,"POST",messagePath+"/"+sent.json.message.id+"/visibility",{scope:"everyone"});
   assert.equal(result.status,404,"stranger cannot erase another conversation");
+  const preHide=await inject(B,"GET",messagePath);
+  assert.equal(preHide.status,200);
+  const beforeRevision=preHide.json.visibilityRevision??null;
   result=await inject(B,"POST",messagePath+"/"+sent.json.message.id+"/visibility",{scope:"me"});
   assert.equal(result.status,200,JSON.stringify(result));
   result=await inject(B,"GET",messagePath);
   assert.equal(result.status,200);
+  assert.notEqual(result.json.visibilityRevision??null,beforeRevision,"local hide revision must invalidate open pages");
   assert.ok(!result.json.messages.some((m:{id:string})=>m.id===sent.json.message.id),"locally hidden for B");
   result=await inject(A,"GET",messagePath);
   assert.equal(result.status,200);
