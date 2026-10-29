@@ -243,3 +243,37 @@
 .v2-runtime .v2-profile-v3-preview .v3-int-root{position:relative;}
 .v2-runtime .v2-profile-v3-preview img{max-width:none;}
 @media(max-width:720px){.v2-runtime .v2-profile-v3-preview{height:min(64dvh,540px);min-height:385px;}}
+
+/* A compact, static preview — not an interactive/animated profile sheet. */
+.v2-runtime .registration-static-profile{display:flex;flex-direction:column;gap:14px}
+.v2-runtime .registration-static-hero{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center}
+.v2-runtime .registration-static-avatar{width:114px;height:114px;border-radius:50%;
+ border:4px solid rgba(255,255,255,.92);box-shadow:0 6px 22px rgba(137,86,169,.17);
+ overflow:hidden;background:#eee1f5}
+.v2-runtime .registration-static-avatar img{width:100%;height:100%;object-fit:cover}
+.v2-runtime .registration-static-hero h2{margin:4px 0 0;font-size:23px}
+.v2-runtime .registration-static-hero p{margin:0;color:#856b95;font-size:14px}
+.v2-runtime .registration-static-sections{display:flex;flex-direction:column;gap:11px}
+.v2-runtime .registration-static-section{background:rgba(255,255,255,.78);
+ border:1px solid rgba(173,129,201,.23);border-radius:19px;padding:13px 15px}
+.v2-runtime .registration-static-section h3{margin:0 0 7px;font-size:13px;color:#74528b}
+.v2-runtime .registration-static-section p{margin:0;font-size:14px;line-height:1.5}
+.v2-runtime .registration-static-interests{display:flex;flex-wrap:wrap;gap:6px}
+.v2-runtime .registration-static-interests span{padding:5px 9px;border-radius:99px;
+ background:#f1e7f7;color:#76508e;font-size:12px}
+.v2-runtime .registration-static-gallery-hint{margin-bottom:10px!important;
+ color:#866d93;font-size:12px!important}
+.v2-runtime .registration-static-gallery{display:flex;gap:10px;overflow-x:auto;
+ overflow-y:hidden;scroll-snap-type:x mandatory;scroll-padding:0 14px;
+ overscroll-behavior-x:contain;touch-action:pan-x pan-y;
+ padding:1px 3px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.v2-runtime .registration-static-gallery::-webkit-scrollbar{display:none}
+.v2-runtime .registration-static-gallery-item{position:relative;flex:0 0 clamp(155px,62vw,225px);
+ height:clamp(195px,52vw,275px);margin:0;overflow:hidden;
+ border-radius:16px;scroll-snap-align:start;background:#eadcf3}
+.v2-runtime .registration-static-gallery-item img{width:100%;height:100%;object-fit:cover}
+.v2-runtime .registration-static-gallery-item figcaption{position:absolute;bottom:9px;left:9px;
+ padding:7px 11px;background:rgba(255,255,255,.92);border-radius:99px;
+ font-size:11px;font-weight:700;color:#734b8d}
+.v2-runtime .registration-static-note{margin:4px 2px;color:#947da0;
+ font-size:12px;text-align:center}
