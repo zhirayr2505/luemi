@@ -68,6 +68,32 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
  if(!res.ok)throw new Error("private_media_http_"+res.status);
  return res;
 }
+/** Upload a single selected photo immediately after informed consent.
+ * ClientKey is stable across retries, including a failed network PUT.
+ */
+export async function uploadPrivatePhoto(photo:PhotoItem):Promise<string>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ if(photo.status!=="ready"||!photo.id)throw new Error("photo_not_ready");
+ const png=await normalizedPng(photo);
+ const response=await request("/api/v2/media/intents","POST",
+  JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
+  "application/json");
+ const result:unknown=await response.json();
+ if(!result||typeof result!=="object"||Array.isArray(result))throw new Error("invalid_private_intent");
+ const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
+ if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
+  intent.upload!=="private_proxy"||
+  (intent.state!=="reserved"&&intent.state!=="received"))throw new Error("invalid_private_intent");
+ if(intent.state==="reserved"){
+  const saved=await request("/api/v2/media/"+intent.assetId+"/bytes","PUT",png,"image/png");
+  const receipt:unknown=await saved.json();
+  if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
+    !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
+    (receipt as {published?:unknown}).published!==false)
+   throw new Error("invalid_private_media_receipt");
+ }
+ return intent.assetId;
+}
 export async function uploadPrivatePhotos(
  photos:PhotoItem[],progress:(completed:number,total:number)=>void
 ):Promise<string[]>{
@@ -77,32 +103,58 @@ export async function uploadPrivatePhotos(
  let done=0;
  const assetIds:string[]=[];
  for(const photo of photos){
-  const png=await normalizedPng(photo);
-  const response=await request("/api/v2/media/intents","POST",
-   JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
-   "application/json");
-  const result:unknown=await response.json();
-  if(!result||typeof result!=="object"||Array.isArray(result))throw new Error("invalid_private_intent");
-  const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
-  if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
-    intent.upload!=="private_proxy"||
-    (intent.state!=="reserved"&&intent.state!=="received"))
-    throw new Error("invalid_private_intent");
-  if(intent.state==="reserved"){
-   const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
-    "PUT",png,"image/png");
-   const receipt:unknown=await saved.json();
-   if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
-     !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
-     (receipt as {published?:unknown}).published!==false)
-    throw new Error("invalid_private_media_receipt");
-  }
-  assetIds.push(intent.assetId);
-  done++;
-  progress(done,photos.length);
+  assetIds.push(await uploadPrivatePhoto(photo));
+  progress(++done,photos.length);
  }
  if(new Set(assetIds).size!==assetIds.length)throw new Error("duplicate_upload_receipt");
  return assetIds;
+}
+export interface PrivateMediaRow{ id:string;state:string;clientDigest:string|null }
+export async function privateClientDigest(id:string):Promise<string>{
+ const data=new TextEncoder().encode("reg01c-photo-"+id);
+ const digest=await crypto.subtle.digest("SHA-256",data);
+ return Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,"0")).join("");
+}
+export async function readPrivateMediaManifest():Promise<PrivateMediaRow[]>{
+ const response=await fetch("/api/v2/profile/preview",{
+  method:"GET",credentials:"same-origin",cache:"no-store"
+ });
+ if(!response.ok)throw new Error("private_manifest_unavailable");
+ const value:unknown=await response.json();
+ if(!value||typeof value!=="object"||Array.isArray(value))throw new Error("private_manifest_unavailable");
+ const x=value as {status?:unknown;photos?:unknown};
+ if(x.status!=="unpublished"||!Array.isArray(x.photos))throw new Error("private_manifest_unavailable");
+ return x.photos.map((row:unknown)=>{
+  if(!row||typeof row!=="object"||Array.isArray(row))throw new Error("invalid_media_manifest_row");
+  const item=row as Partial<PrivateMediaRow>;
+  if(typeof item.id!=="string"||!UUID.test(item.id)||
+    typeof item.state!=="string"||
+    (typeof item.clientDigest!=="string"&&item.clientDigest!==null))
+    throw new Error("invalid_media_manifest_row");
+  return{id:item.id,state:item.state,clientDigest:item.clientDigest};
+ });
+}
+export async function deletePrivateMedia(id:string):Promise<void>{
+ if(!UUID.test(id))throw new Error("invalid_private_media_id");
+ const token=geoCsrf();
+ if(!token)throw new Error("missing_session_csrf");
+ const response=await fetch("/api/v2/media/"+id,{
+  method:"DELETE",credentials:"same-origin",cache:"no-store",
+  headers:{"X-Luemi-CSRF":token}
+ });
+ if(!response.ok&&response.status!==404)throw new Error("private_media_delete_"+response.status);
+}
+export async function updatePrivatePhotoOrder(ids:readonly string[]):Promise<void>{
+ if(!ids.length||ids.length>6||ids.some(id=>!UUID.test(id))||
+    new Set(ids).size!==ids.length)throw new Error("invalid_private_photo_order");
+ const token=geoCsrf();
+ if(!token)throw new Error("missing_session_csrf");
+ const response=await fetch("/api/v2/profile/photos/order",{
+  method:"PATCH",credentials:"same-origin",cache:"no-store",
+  headers:{"X-Luemi-CSRF":token,"Content-Type":"application/json"},
+  body:JSON.stringify({ids})
+ });
+ if(!response.ok)throw new Error("private_order_http_"+response.status);
 }
 
 /** Verify server-side media state instead of trusting an upload progress bar. */
