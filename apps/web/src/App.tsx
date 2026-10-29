@@ -521,7 +521,7 @@ export function App() {
           await orderPrivatePhotos(ids);
         }
         return ids;
-      }catch{
+      }catch(e){
         setPhotos(current=>current.map(photo=>photo.status==="ready"&&!privateAssetIds.current.has(photo.id)
           ?{...photo,serverStatus:"error"}:photo));
         throw e;

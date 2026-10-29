@@ -20,6 +20,7 @@ test("public /privacy route accurately describes owner approval and pending effe
  const server=readFileSync("apps/api/src/server.ts","utf8");
  const ui=readFileSync("apps/web/src/App.tsx","utf8");
  const v2=readFileSync("apps/web/src/registration/v2/RealRegistration.tsx","utf8");
+ const steps=readFileSync("apps/web/src/registration/Steps.tsx","utf8");
  const privateHome=readFileSync("apps/web/src/registration/PrivateAccountView.tsx","utf8");
  for(const field of [
   "Гулгулджян Жирайр Григорьевич","@zhiiirro","Республика Армения",
@@ -36,7 +37,13 @@ test("public /privacy route accurately describes owner approval and pending effe
  assert.match(server,/app\.get\("\/privacy"/);
  assert.match(server,/reply\.header\("Cache-Control","no-store"\)/);
  assert.match(server,/sendFile\("privacy.html"\)/);
- for(const file of [ui,v2,privateHome])
+ for(const file of [steps,privateHome])
   assert(file.includes('href="/privacy"'),"missing public policy link");
+ assert.match(ui,/<RealRegistrationV2 draft=\{draft\}/,
+  "Main app must render the real registration flow");
+ assert.match(v2,/stage.id==="identity"&&<div className="v2-real-groups">\{step\(1\)\}\{step\(2\)\}/,
+  "The first identity screen must display the policy consent step");
+ assert.doesNotMatch(v2,/setServerConsent|photoServerCount/,
+  "The final registration screens must not ask for consent again");
  assert.doesNotMatch(app,/privacy\.html|privacy-review\.html/);
 });

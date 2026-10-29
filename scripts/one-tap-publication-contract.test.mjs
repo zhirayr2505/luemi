@@ -11,7 +11,8 @@ const media=load("apps/api/src/rem05d-private.ts");
 test("user performs one action from simple swipeable gallery review",()=>{
  assert.match(v2,/<SimpleProfileReview draft=\{draft\} photos=\{photos\}/);
  assert.doesNotMatch(v2,/mode="local-self-preview" active/);
- assert.match(v2,/photoServerCount/);
+ assert.doesNotMatch(v2,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setServerConsent/);
+ assert.match(v2,/stage.id==="photos"/);
  assert.match(v2,/Создать анкету 💜/);
  assert.doesNotMatch(v2,/Проверить модерацию и публикацию/);
  assert.match(app,/onSave=\{\(\)=>\{void \(realFeedPilot.enabled\?confirmRealRegistration\(\)/);

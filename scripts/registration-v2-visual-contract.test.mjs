@@ -8,6 +8,7 @@ import {readFileSync} from "node:fs";
 import {strict as assert} from "node:assert";
 const runtime=readFileSync("apps/web/src/registration/v2/runtime.css","utf8");
 const form=readFileSync("apps/web/src/registration/v2/RealRegistration.tsx","utf8");
+const steps=readFileSync("apps/web/src/registration/Steps.tsx","utf8");
 const draftClient=readFileSync("apps/web/src/registration/server-draft.ts","utf8");
 const app=readFileSync("apps/web/src/App.tsx","utf8");
 const geo=readFileSync("apps/web/src/registration/GeoPicker.tsx","utf8");
@@ -26,7 +27,7 @@ for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
 assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"\}/,
  "Only actual Telegram surface should reserve native controls clearance");
-assert.match(form,/const noticeLabel=friendsTest\?/,"Registration notice distinguishes closed beta from public privacy policy");
+assert.match(steps,/Я принимаю <a href="\/privacy"/,"Public policy acceptance must appear on the first identity step");
 assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
 assert.match(form,/p\.publicationEnabled\?/,"Registration must disclose publication separately from private saving");
@@ -36,8 +37,11 @@ assert.match(form,/<SimpleProfileReview draft=\{draft\} photos=\{photos\}/,
 assert.doesNotMatch(form,/mode="local-self-preview" active/,
  "Interactive morph must never interrupt a registration review");
 assert.match(form,/stage.id==="photos"&&<div className="v2-real-groups">/,
- "Photo-storage consent and upload progress must appear on the photo step");
-assert.match(form,/photoServerCount/,"Photo sync count must be visible");
+ "Photo selection and reordering stay on their dedicated step");
+assert.doesNotMatch(form,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setServerConsent/,
+ "No duplicate photo consent or network upload progress before final confirmation");
+assert.match(app,/setJourney\("publishing"\)/,
+ "Publication curtain must begin before saving photos on server");
 assert.match(form,/registrationV2Stages\.filter\(stage=>stage\.id!=="face-consent"&&stage\.id!=="liveness"\)/,
  "Private signup must skip unavailable biometric verification screens");
 assert.match(form,/aria-valuemax=\{stages\.length\}/,
