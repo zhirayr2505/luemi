@@ -9,8 +9,7 @@ import {LanguagePicker} from "./LanguagePicker";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
 import {categories,InterestChip,tint} from "../ui/InterestCatalog";
 import {GeoPicker} from "./GeoPicker";
-import {PhotoSorter,type PhotoItem} from "./PhotoSorter";
-import type {PhotoServerState} from "./background-photo-sync";
+import {PhotoSorter,type PhotoItem,type PhotoServerState} from "./PhotoSorter";
 import {RegistrationPreview} from "./Preview";
 import {cleanName,type RegistrationDraft} from "./model";
 
