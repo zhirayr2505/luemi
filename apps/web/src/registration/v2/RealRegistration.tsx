@@ -1,8 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
 import {RegistrationStep,type PhotoItem} from "../Steps";
-import {fromLocalDraft,readyRegistrationPhotos} from "../../discovery/ProfileModel";
-import {ProfileMaster} from "../../discovery/ProfileV3Gateway";
+import {SimpleProfilePreview} from "../SimpleProfilePreview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {remoteDraftPilot} from "../server-draft";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
@@ -28,6 +27,9 @@ interface Props{
  publicationEnabled:boolean;
  serverSaving:boolean;
  serverStatus:string;
+ photoUploadStatus?:string;
+ uploadingPhotos?:boolean;
+ uploadedPhotoCount?:number;
  storageError:string|null;
  restored:boolean;
  resumeReview:boolean;
@@ -53,6 +55,7 @@ export function RealRegistrationV2(p:Props){
  const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
+ const [publishConsent,setPublishConsent]=useState(false);
  useEffect(()=>{
   const controller=new AbortController();
   void fetch("/api/v2/facetrust/status",{method:"GET",credentials:"same-origin",
@@ -126,8 +129,8 @@ export function RealRegistrationV2(p:Props){
   movePhoto:p.movePhoto,resetDraft:p.resetDraft,step:1
  }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft]);
  const step=(n:number)=><RegistrationStep {...stepProps} step={n}/>;
- const savedDraftAllowed=p.serverConsent&&identityReady&&gate.hasLocation&&
-  gate.hasIntent&&photoReady(photos)&&!p.serverSaving;
+ const savedDraftAllowed=p.serverConsent&&publishConsent&&identityReady&&gate.hasLocation&&
+  gate.hasIntent&&photoReady(photos)&&!p.serverSaving&&!p.uploadingPhotos;
  const pubNotice=remoteDraftPilot.policy;
  const friendsTest=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1";
  const noticeLabel=friendsTest?"условия закрытого теста":"политику обработки персональных данных";
@@ -155,7 +158,18 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="intent"&&step(4)}
        {stage.id==="personality"&&<div className="v2-real-groups">{step(5)}{step(6)}</div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
+        <label className="v2-consent">
+         <input type="checkbox" checked={p.serverConsent}
+          onChange={e=>p.setServerConsent(e.target.checked)}/>
+         <span>Разрешаю LUEMI приватно загружать выбранные фотографии на сервер сразу после выбора.
+          Ознакомился(-ась) с <a href="/privacy" target="_blank" rel="noopener noreferrer">политикой конфиденциальности</a>.
+          Пока анкету не опубликую, фотографии никому не видны.</span>
+        </label>
         {step(7)}
+        <p role="status" className="v2-footnote">{p.uploadingPhotos?"Фотографии сохраняются в фоне…":
+         p.photoUploadStatus||(p.serverConsent?"Выбранные фото автоматически отправляются на сервер.":"Разреши приватную загрузку, чтобы фотографии сохранялись заранее.")}</p>
+        {typeof p.uploadedPhotoCount==="number"&&p.uploadedPhotoCount>0&&
+         <p className="v2-footnote">На сервере: {p.uploadedPhotoCount} из {photos.length}</p>}
         <div className="v2-note"><ShieldCheck size={18}/>
          Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
          Сейчас фото остаются приватными. Автоматическая AI-проверка ещё не включена.
@@ -187,18 +201,15 @@ export function RealRegistrationV2(p:Props){
         </button>
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
-        <div className="v2-profile-v3-preview" aria-label="Предпросмотр анкеты в Profile Morph V3">
-         <ProfileMaster data={fromLocalDraft(draft,readyRegistrationPhotos(photos))}
-          mode="local-self-preview" active/>
-        </div>
+        <SimpleProfilePreview draft={draft} photos={photos}/>
         <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
-          <strong>{p.mediaEnabled?"Твоя анкета готова":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
+          <strong>{p.mediaEnabled?"Проверь анкету":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
           <p>{p.mediaEnabled
-           ?(instantPublication?"После подтверждения фотографии сохранятся на сервере, а анкета сразу станет видна другим совершеннолетним пользователям. Ручной проверки до публикации нет.":"После подтверждения данные и фотографии отправятся в защищённое хранилище. Другие люди увидят их только после проверки и публикации.")
+           ?"Фотографии сохраняются заранее. Нажми «Создать анкету», чтобы опубликовать их и открыть LUEMI."
            :"Сейчас сервер сохраняет поля анкеты, фотографии остаются на этом устройстве."}</p>
         </div></div>
         <label className="v2-consent"><input type="checkbox"
-          checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
+          checked={publishConsent} onChange={e=>setPublishConsent(e.target.checked)}/>
           <span>Я прочитал(а) <a href={pubNotice} target="_blank" rel="noopener noreferrer">
            {noticeLabel}</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI{p.publicationEnabled?(instantPublication?", а также сразу опубликовать анкету и фотографии для других пользователей":", а после проверки опубликовать её для других подходящих пользователей"):""}.</span>
         </label>
