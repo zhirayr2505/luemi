@@ -68,16 +68,13 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
  if(!res.ok)throw new Error("private_media_http_"+res.status);
  return res;
 }
-export async function uploadPrivatePhotos(
- photos:PhotoItem[],progress:(completed:number,total:number)=>void
-):Promise<string[]>{
+/** One photo is sent in the background as soon as the owner consents.
+ * No minimum-count restriction: that applies only to final publication.
+ */
+export async function uploadOnePrivatePhoto(photo:PhotoItem):Promise<string>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
- if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready"||!p.id))
-  throw new Error("three_to_six_ready_photos_required");
- let done=0;
- const assetIds:string[]=[];
- for(const photo of photos){
-  const png=await normalizedPng(photo);
+ if(photo.status!=="ready"||!photo.id)throw new Error("photo_not_ready");
+ const png=await normalizedPng(photo);
   const response=await request("/api/v2/media/intents","POST",
    JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
    "application/json");
@@ -97,9 +94,28 @@ export async function uploadPrivatePhotos(
      (receipt as {published?:unknown}).published!==false)
     throw new Error("invalid_private_media_receipt");
   }
-  assetIds.push(intent.assetId);
-  done++;
-  progress(done,photos.length);
+  return intent.assetId;
+}
+/** The only authorized removal surface; never expose Storage object paths. */
+export async function deleteOnePrivatePhoto(assetId:string):Promise<void>{
+ if(!remoteMediaPilot.enabled||!UUID.test(assetId))throw new Error("invalid_private_asset");
+ const csrf=geoCsrf();
+ if(!csrf)throw new Error("missing_session_csrf");
+ const response=await fetch("/api/v2/media/"+assetId,{
+  method:"DELETE",credentials:"same-origin",cache:"no-store",
+  headers:{"X-Luemi-CSRF":csrf}
+ });
+ if(!response.ok)throw new Error("private_photo_delete_"+response.status);
+}
+export async function uploadPrivatePhotos(
+ photos:PhotoItem[],progress:(completed:number,total:number)=>void
+):Promise<string[]>{
+ if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready"||!p.id))
+  throw new Error("three_to_six_ready_photos_required");
+ const assetIds:string[]=[];
+ for(const photo of photos){
+  assetIds.push(await uploadOnePrivatePhoto(photo));
+  progress(assetIds.length,photos.length);
  }
  if(new Set(assetIds).size!==assetIds.length)throw new Error("duplicate_upload_receipt");
  return assetIds;
