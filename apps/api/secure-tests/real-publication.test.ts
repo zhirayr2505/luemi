@@ -199,6 +199,14 @@ test("01D: public no-invite admission and instantly published sanitized photos w
   const published=await mutate(app,owner,"/api/v3/profile/publish",{revision:1});
   assert.equal(published.statusCode,200,published.body);
   assert.equal(published.json().photoCount,3);
+  // The owner can export their sanitized published photo through the private
+  // same-origin route; a different Telegram account never can.
+  const ownPixel=await app.inject({method:"GET",url:"/api/v2/media/"+photos[0],
+   headers:{cookie:owner.cookie}});
+  assert.equal(ownPixel.statusCode,200,ownPixel.body);
+  assert.equal(ownPixel.headers["cache-control"],"private, no-store");
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/media/"+photos[0],
+   headers:{cookie:viewer.cookie}})).statusCode,404);
   const discovered=await feed(app,viewer);
   assert.equal(discovered.statusCode,200,discovered.body);
   assert.ok(discovered.json().profiles.some((x:{id:string})=>x.id===owner.id));
