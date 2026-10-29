@@ -68,15 +68,9 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
  if(!res.ok)throw new Error("private_media_http_"+res.status);
  return res;
 }
-export async function uploadPrivatePhotos(
- photos:PhotoItem[],progress:(completed:number,total:number)=>void
-):Promise<string[]>{
+export async function uploadPrivatePhoto(photo:PhotoItem):Promise<string>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
- if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready"||!p.id))
-  throw new Error("three_to_six_ready_photos_required");
- let done=0;
- const assetIds:string[]=[];
- for(const photo of photos){
+ if(photo.status!=="ready"||!photo.id)throw new Error("photo_not_ready");
   const png=await normalizedPng(photo);
   const response=await request("/api/v2/media/intents","POST",
    JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
@@ -97,13 +91,48 @@ export async function uploadPrivatePhotos(
      (receipt as {published?:unknown}).published!==false)
     throw new Error("invalid_private_media_receipt");
   }
-  assetIds.push(intent.assetId);
-  done++;
-  progress(done,photos.length);
+ return intent.assetId;
+}
+export async function uploadPrivatePhotos(
+ photos:PhotoItem[],progress:(completed:number,total:number)=>void
+):Promise<string[]>{
+ if(photos.length<3||photos.length>6||photos.some(p=>p.status!=="ready"||!p.id))
+  throw new Error("three_to_six_ready_photos_required");
+ const assetIds:string[]=[];
+ for(const photo of photos){
+  assetIds.push(await uploadPrivatePhoto(photo));
+  progress(assetIds.length,photos.length);
  }
  if(new Set(assetIds).size!==assetIds.length)throw new Error("duplicate_upload_receipt");
  return assetIds;
 }
+
+/** Safe no-credentials owner-scoped delete by the original local photo key. */
+export async function deletePrivatePhoto(photoId:string):Promise<void>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ if(!UUID.test(photoId))throw new Error("invalid_photo");
+ const token=geoCsrf();if(!token)throw new Error("missing_session_csrf");
+ const res=await fetch("/api/v2/media/registration/"+encodeURIComponent(photoId),{
+  method:"DELETE",credentials:"same-origin",cache:"no-store",
+  headers:{"X-Luemi-CSRF":token}
+ });
+ if(!res.ok)throw new Error("private_delete_http_"+res.status);
+}
+
+/** The first photo becomes the main photo on the server, not just in preview. */
+export async function orderPrivatePhotos(photoIds:readonly string[]):Promise<void>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ if(photoIds.length<3||photoIds.length>6||photoIds.some(id=>!UUID.test(id))||
+   new Set(photoIds).size!==photoIds.length)throw new Error("invalid_photo_order");
+ const token=geoCsrf();if(!token)throw new Error("missing_session_csrf");
+ const res=await fetch("/api/v2/media/registration/order",{
+  method:"PUT",credentials:"same-origin",cache:"no-store",
+  headers:{"Content-Type":"application/json","X-Luemi-CSRF":token},
+  body:JSON.stringify({photoIds})
+ });
+ if(!res.ok)throw new Error("private_order_http_"+res.status);
+}
+
 
 /** Verify server-side media state instead of trusting an upload progress bar. */
 export async function readConfirmedPrivateMediaCount(expected:number,uploadedIds:readonly string[]=[]):Promise<number>{
