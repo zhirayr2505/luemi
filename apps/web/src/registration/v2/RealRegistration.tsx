@@ -1,8 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
 import {RegistrationStep,type PhotoItem} from "../Steps";
-import {fromLocalDraft,readyRegistrationPhotos} from "../../discovery/ProfileModel";
-import {ProfileMaster} from "../../discovery/ProfileV3Gateway";
+import {SimpleProfilePreview} from "../SimpleProfilePreview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {remoteDraftPilot} from "../server-draft";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
@@ -28,6 +27,7 @@ interface Props{
  publicationEnabled:boolean;
  serverSaving:boolean;
  serverStatus:string;
+ backgroundStatus?:string;
  storageError:string|null;
  restored:boolean;
  resumeReview:boolean;
@@ -155,7 +155,18 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="intent"&&step(4)}
        {stage.id==="personality"&&<div className="v2-real-groups">{step(5)}{step(6)}</div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
+        {p.mediaEnabled&&<label className="v2-consent v2-photo-consent">
+         <input type="checkbox" checked={p.serverConsent}
+          onChange={e=>p.setServerConsent(e.target.checked)}/>
+         <span>Я согласен(-на) с <a href="/privacy" target="_blank" rel="noopener noreferrer">политикой LUEMI</a>,
+          приватным сохранением выбранных фотографий и их публикацией после «Создать анкету».
+          Фотографии будут загружаться в фоне уже на этом шаге.</span>
+        </label>}
         {step(7)}
+        {p.mediaEnabled&&<p className="v2-photo-server-progress" role="status">
+         {!p.serverConsent?"Для фоновой загрузки сначала подтверди согласие.":
+          p.backgroundStatus||"Выбранные фотографии сохраняются приватно на сервере."}
+        </p>}
         <div className="v2-note"><ShieldCheck size={18}/>
          Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
          Сейчас фото остаются приватными. Автоматическая AI-проверка ещё не включена.
@@ -187,10 +198,7 @@ export function RealRegistrationV2(p:Props){
         </button>
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
-        <div className="v2-profile-v3-preview" aria-label="Предпросмотр анкеты в Profile Morph V3">
-         <ProfileMaster data={fromLocalDraft(draft,readyRegistrationPhotos(photos))}
-          mode="local-self-preview" active/>
-        </div>
+        <SimpleProfilePreview draft={draft} photos={photos}/>
         <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
           <strong>{p.mediaEnabled?"Твоя анкета готова":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
           <p>{p.mediaEnabled
