@@ -34,9 +34,9 @@ try{
   const expected=kind==="none"?0:kind==="one"?1:kind==="mixed"?4:6;
   assert.equal(await page.locator(".pm-shell").count(),0,"step 8 is static");
   assert.equal(await page.locator(".lh-header").count(),0);
-  assert.ok((await preview.innerText()).includes("локальный черновик"));
-  assert.equal(await preview.locator("img").count(),expected,theme+"/"+kind);
-  assert.equal(await preview.locator(".registration-static-gallery img").count(),Math.max(0,expected-1));
+  assert.ok((await preview.innerText()).includes("предпросмотр"));
+  assert.equal(await preview.locator("img").count(),expected+(expected>0?1:0),theme+"/"+kind);
+  assert.equal(await preview.locator(".registration-static-gallery img").count(),expected);
   if(kind==="none")assert.ok((await preview.innerText()).includes("Добавь фото"));
   if(kind==="undecided")assert.ok((await preview.innerText()).includes("Пока не определился"));
   assert.ok((await preview.innerText()).includes("Лея"));
@@ -63,7 +63,7 @@ try{
  pass("server published/hidden/pending/rejected fixture remains restricted");
 
  await goto("step8","mixed");
- assert.equal(await page.locator(".registration-static-gallery img").count(),3);
+ assert.equal(await page.locator(".registration-static-gallery img").count(),4);
  assert.equal(await page.locator(".registration-static-profile button").count(),0);
  await page.getByRole("button",{name:"Редактировать"}).click();
  assert.equal(await page.locator("#events").innerText(),"edit-7");
