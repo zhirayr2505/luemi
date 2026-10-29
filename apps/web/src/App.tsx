@@ -11,6 +11,7 @@ import {preparePhotoPreview} from "./registration/photo-preview";
 import {installViewportController} from "./viewport/viewport-controller";
 // Load the heavy Discovery/profile route only after the entry shell can paint.
 const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({default:m.DiscoveryApp})));
+const RealDiscoveryHome = lazy(() => import("./discovery/RealDiscoveryHome").then(m=>({default:m.RealDiscoveryHome})));
 const RealLiveFeed = lazy(() => import("./registration/RealLiveFeed").then(m=>({default:m.RealLiveFeed})));
 const RealChats = lazy(() => import("./chats/RealChats").then(m=>({default:m.RealChats})));
 const RealRegistrationV2 = lazy(() => import("./registration/v2/RealRegistration").then(m=>({default:m.RealRegistrationV2})));
@@ -905,6 +906,50 @@ export function App() {
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
   </button>;
+  // All signed-in accounts retain the approved LUEMI four-tab Discovery,
+  // cinematic photo cards and Profile Morph V3. REAL_ONLY changes data, not UI.
+  if(realHome&&auth==="authorized"&&realFeedPilot.enabled)
+   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
+    <Suspense fallback={<div className="discovery-empty" role="status">Открываем LUEMI…</div>}>
+     <RealDiscoveryHome draft={draft} theme={theme} onTheme={changeTheme}
+      publishedProfile={publishStatus?.profile}
+      onEdit={()=>{setRealHome(false);setPhase("form");setStep(8);}}
+      accountPanel={<section className="luemi-real-account" aria-label="Настройки аккаунта">
+       <h1>Мой аккаунт</h1>
+       {publishStatus?.state!=="published"&&<>
+        <p role="status">Анкета ещё не опубликована. Проверь фотографии и заверши публикацию.</p>
+        <p>Готовых фото: {publishStatus?.approved??0}</p>
+        <button type="button" disabled={publishBusy} onClick={()=>{void resumePublication();}}>
+         {publishBusy?"Публикуем…":"Завершить публикацию"}</button>
+       </>}
+       <p role="status">{publishStatus?.state==="published"?
+        "Анкета опубликована и видна подходящим пользователям.":"Статус анкеты можно проверить здесь."}</p>
+       {publishStatus?.state==="published"&&<div className="registration-static-actions">
+        <button type="button" className="registration-static-edit" disabled={publishBusy}
+         onClick={()=>{void openPublishedEditor();}}>Изменить информацию</button>
+        <button type="button" className="registration-static-edit" disabled={publishBusy}
+         onClick={()=>{void hideProfile();}}>Скрыть анкету</button>
+       </div>}
+       {publishedEditor&&<section className="registration-preview-review" aria-label="Изменение анкеты">
+        <label>Имя<input className="glass-control" value={publishedEditor.name} maxLength={48}
+         onChange={e=>setPublishedEditor(p=>p?{...p,name:cleanName(e.target.value)}:p)}/></label>
+        <label>Цель знакомства<select className="glass-control" value={publishedEditor.goal}
+         onChange={e=>setPublishedEditor(p=>p?{...p,goal:e.target.value}:p)}>
+         {goals.map(g=><option key={g.id} value={g.id}>{g.label}</option>)}
+        </select></label>
+        <label>О себе<textarea className="glass-control" value={publishedEditor.about} maxLength={750}
+         onChange={e=>setPublishedEditor(p=>p?{...p,about:e.target.value}:p)}/></label>
+        <button type="button" disabled={publishBusy} onClick={()=>{void savePublishedEditor();}}>Сохранить изменения</button>
+        <button type="button" disabled={publishBusy} onClick={()=>setPublishedEditor(null)}>Отмена</button>
+       </section>}
+       {publishStatus?.state==="published"&&<button type="button"
+        disabled={publishBusy} onClick={()=>{void withdrawPersonalConsent();}}>
+        Отозвать согласие и скрыть анкету</button>}
+       {deletionSettingsPanel}
+       {publishFeedback&&<p role="status">{publishFeedback}</p>}
+      </section>}/>
+    </Suspense>
+   </main>;
   if(realHome&&auth==="authorized")return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
     <section className="luemi-real-home" data-account-mode={!realFeedPilot.enabled&&remoteDraftPilot.enabled?"private":"standard"}
       data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="LUEMI — настоящие анкеты">

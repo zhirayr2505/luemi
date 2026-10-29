@@ -1,6 +1,6 @@
 import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,X,Undo2} from "lucide-react";
+import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,X,Undo2,MoreHorizontal} from "lucide-react";
 import {goals} from "../registration/model";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
@@ -26,9 +26,11 @@ const position=(run:CardRun,now:number)=>{
 };
 
 /** The keyed complete card remains mounted as it moves through the deck. */
-export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests}:{
+export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests,real=false,onMore}:{
  person:DemoPerson;saved:boolean;canUndo:boolean;active:boolean;busy:boolean;
  onAction:(kind:DemoKind|"undo")=>void;onOpenProfile:()=>void;onInterests:()=>void;
+ /** The same approved card can render verified server users with no demo badges. */
+ real?:boolean;onMore?:()=>void;
 }){
  const goal=person.goal==="undecided"?null:goals.find(g=>g.id===person.goal);
  const [expanded,setExpanded]=useState(false);
@@ -250,12 +252,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      <div className="discovery-photo feed-v2-photo">
        <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age}
          externalGesture dots/>
-       <span className="discovery-demo-label">Демо</span>
-       <button type="button" disabled={!available} className={"discovery-save-control"+(saved?" is-saved":"")}
+       {!real&&<span className="discovery-demo-label">Демо</span>}
+       {real?<button type="button" disabled={!available} className="discovery-save-control"
+         aria-label="Действия с анкетой" onClick={onMore}>
+         <MoreHorizontal size={21} strokeWidth={1.9}/>
+       </button>:<button type="button" disabled={!available} className={"discovery-save-control"+(saved?" is-saved":"")}
          aria-label={saved?"Убрать из сохранённых":"Сохранить анкету"}
          aria-pressed={saved} title="Сохранить · демо" onClick={()=>onAction("save")}>
          <Bookmark size={19} fill={saved?"currentColor":"none"} strokeWidth={1.9}/>
-       </button>
+       </button>}
      </div>
      <div className="feed-v2-dim" ref={dim} aria-hidden="true"/>
      <div className="feed-v2-information">
@@ -273,7 +278,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
                aria-label={"Посмотреть профиль "+person.name+", "+person.age}>
                <span>{person.name}, {person.age}</span>
              </button>
-             {person.premium&&<span className="discovery-premium" title="Демо Premium" aria-label="Premium">
+             {!real&&person.premium&&<span className="discovery-premium" title="Демо Premium" aria-label="Premium">
                <Crown size={19} strokeWidth={2} fill="#ffd878" color="#e8af35"/>
              </span>}
            </div>
@@ -296,8 +301,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
           </div>
          </div>
        </div>
-       <div className="discovery-actions" aria-label="Демо-действия с анкетой">
-         {buttons.map(([kind,label,Icon])=><button type="button" key={kind}
+       <div className="discovery-actions" aria-label={real?"Действия с анкетой":"Демо-действия с анкетой"}>
+         {buttons.filter(([kind])=>!real||kind!=="undo").map(([kind,label,Icon])=><button type="button" key={kind}
            className={"discovery-action discovery-"+kind} aria-label={label} title={label}
            onClick={()=>onAction(kind)} disabled={!available||(kind==="undo"&&!canUndo)}>
            <Icon size={kind==="like"?28:kind==="special"?24:20} strokeWidth={1.85}/>
