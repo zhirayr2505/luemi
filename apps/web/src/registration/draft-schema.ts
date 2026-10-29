@@ -63,10 +63,19 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
   if(!integer(value,numbers[key][0],numbers[key][1]))return fail("number-"+key);
   d[key]=value;
  }
- if(d.ageMin>d.ageMax)return fail("age-range");
- for(const key of ["interests","languages"] as const){
+ const height=raw.height===undefined?defaults.height:raw.height;
+ if(height!==null&&!integer(height,100,250))return fail("height");
+ d.height=height;
+ for(const key of ["occupation","education"] as const){
   const value=raw[key]===undefined?defaults[key]:raw[key];
-  if(!plainStrings(value,key==="interests"?15:30,80))return fail("array-"+key);
+  if(!text(value,120))return fail("field-"+key);
+  d[key]=value;
+ }
+ if(d.ageMin>d.ageMax)return fail("age-range");
+ for(const key of ["interests","languages","lifestyle","pets","facts"] as const){
+  const value=raw[key]===undefined?defaults[key]:raw[key];
+  const maxItems=key==="interests"?15:key==="languages"?30:key==="facts"?3:12;
+  if(!plainStrings(value,maxItems,80))return fail("array-"+key);
   d[key]=value;
  }
  if(d.countryCode){
