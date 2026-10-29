@@ -2,6 +2,7 @@ import {useEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
 import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
 import {SimpleProfileReview} from "../SimpleProfileReview";
+import {OptionalProfileDetails} from "../OptionalProfileDetails";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
 import {FaceTrustCamera} from "./FaceTrustCamera";
@@ -36,7 +37,7 @@ interface Props{
 const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
  photos.every(p=>p.status==="ready");
 const messageFor=(raw:string)=>raw||"Заполни обязательные поля.";
-type IdentityError={field:"name"|"date";message:string};
+type IdentityError={field:"name"|"date"|"city";message:string};
 function dateIssue(draft:RegistrationDraft,today=new Date()):string|null{
  if(!draft.day||!draft.month||!draft.year)return "Введи дату рождения";
  const y=Number(draft.year),m=Number(draft.month),d=Number(draft.day);
@@ -63,7 +64,7 @@ export function RealRegistrationV2(p:Props){
  const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
- const [focusedField,setFocusedField]=useState<"name"|"date"|null>(null);
+ const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|null>(null);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
  useEffect(()=>{
   const controller=new AbortController();
@@ -114,7 +115,11 @@ export function RealRegistrationV2(p:Props){
     if(!draft.gender){issue="Выбери вариант пола.";break;}
     if(!draft.trialConsent){issue="Подтверди условия регистрации.";break;}
     break;
-   case "location":issue=validateStep(draft,3,photos.length,new Date(),"live");break;
+   case "location":{
+    issue=validateStep(draft,3,photos.length,new Date(),"live");
+    if(issue){setIdentityError({field:"city",message:selectedCityValid(draft)?issue:"Выбери город из списка"});setHint("");return;}
+    break;
+   }
    case "intent":issue=validateStep(draft,4,photos.length,new Date(),"live");break;
    case "personality":issue=validateStep(draft,5,photos.length,new Date(),"live")||
      validateStep(draft,6,photos.length,new Date(),"live");break;
@@ -144,16 +149,20 @@ export function RealRegistrationV2(p:Props){
  const stepProps=useMemo(()=>({
   data:draft,patch:p.patch,photos,addPhotos:p.addPhotos,removePhoto:p.removePhoto,
   movePhoto:p.movePhoto,resetDraft:p.resetDraft,deferConsent:true,step:1,
-  fieldError:identityError,clearFieldError:(field:"name"|"date")=>{
+  fieldError:identityError,clearFieldError:(field:"name"|"date"|"city")=>{
     setIdentityError(previous=>previous?.field===field?null:previous);
-  },onFieldFocus:(field:"name"|"date"|null)=>{
+  },onFieldFocus:(field:"name"|"date"|"city"|null)=>{
     setFocusedField(field);
   }
  }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft,identityError]);
  const step=(n:number)=><RegistrationStep {...stepProps} step={n}/>;
  const savedDraftAllowed=identityReady&&gate.hasLocation&&gate.hasIntent&&
   photoReady(photos)&&!p.serverSaving;
- const fieldConfirmActive=stage.id==="identity"&&focusedField!==null;
+ const continueReady=stage.id==="identity"?identityReady:
+   stage.id==="location"?gate.hasLocation:
+   stage.id==="intent"?gate.hasIntent:
+   stage.id==="photos"?photoReady(photos):true;
+ const fieldConfirmActive=(stage.id==="identity"||stage.id==="location")&&focusedField!==null;
 
  return <main className="v2-canvas v2-runtime" data-theme={p.theme}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
@@ -170,7 +179,7 @@ export function RealRegistrationV2(p:Props){
        aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={stages.length}>
        {stages.map((s,i)=><span key={s.id} className={i<=index?"v2-filled":""}/>)}
      </div>
-     <section key={stage.id} ref={body} className="v2-body" aria-labelledby="v2-title">
+     <section key={stage.id} ref={body} className="v2-body v2-stage-transition" aria-labelledby="v2-title">
        <div className="v2-eyebrow"><Sparkles size={15}/>{stage.eyebrow}</div>
        <h1 id="v2-title">{stage.title}</h1>
        <p className="v2-subtitle">{stage.subtitle}</p>
@@ -211,6 +220,7 @@ export function RealRegistrationV2(p:Props){
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
         <SimpleProfileReview draft={draft} photos={photos}/>
+        <OptionalProfileDetails data={draft} patch={p.patch}/>
         
         {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
        </div>}
@@ -231,8 +241,9 @@ export function RealRegistrationV2(p:Props){
        </div>:<div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>
         <button type="button" className="v2-back" onClick={back}
           aria-label={index===0?"Вернуться на приветствие":"Назад"}><ArrowLeft size={22}/></button>
-        <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")} disabled={photoChecking}
+       <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")+(!continueReady?" is-incomplete":"")} disabled={photoChecking}
           aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
+         aria-disabled={!continueReady||undefined}
           onPointerDown={e=>{if(fieldConfirmActive)e.preventDefault();}}
           onClick={advance}>
           {fieldConfirmActive?<Check size={25} strokeWidth={2.3}/>:<>{photoChecking?"Проверяем фото…":stage.id==="liveness"?"К черновику":stage.id==="face-consent"?
