@@ -510,7 +510,7 @@ export function App() {
       const assetId=bgUploaded.current.get(id);
       if(!assetId)return;
       try{
-        await deleteOnePrivatePhoto(assetId);
+        await deleteOnePrivatePhoto(id);
         bgUploaded.current.delete(id);
         setServerPhotoCount(bgUploaded.current.size);
         setMediaStatus("Фотография удалена с сервера.");
@@ -563,7 +563,7 @@ export function App() {
           const assetId=await uploadOnePrivatePhoto(photo);
           bgUploaded.current.set(photo.id,assetId);
           if(bgRemoved.current.has(photo.id)){
-            await deleteOnePrivatePhoto(assetId);bgUploaded.current.delete(photo.id);
+            await deleteOnePrivatePhoto(photo.id);bgUploaded.current.delete(photo.id);
           }else{
             setServerPhotoCount(bgUploaded.current.size);
             setMediaStatus("На сервере "+bgUploaded.current.size+" из "+photos.length+" фотографий.");
