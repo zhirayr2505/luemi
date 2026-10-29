@@ -549,7 +549,7 @@ export function App() {
         backgroundUploaded.current.has(photo.id)||
         backgroundInFlight.current.has(photo.id))continue;
       const valid=[1,2,3,4,5,6].every(n=>
-        validateStep(draft,n,photos.length,new Date(),"live")===null);
+        !validateStep(draft,n,photos.length,new Date(),"live"));
       if(!valid)continue;
       backgroundInFlight.current.add(photo.id);
       setBackgroundBusy(n=>n+1);
@@ -767,13 +767,28 @@ export function App() {
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
-      // Always reconcile the selected photo IDs against the server manifest,
-      // even when the server already has >=3 other approved photos. Count-only
-      // checks can publish stale images instead of the user's current choice.
-      // Per-photo idempotency keys make this safe on normal repeated submits.
-      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      // Most uploads were already completed during photo selection.
+      // Wait for any pending transfer; only retry genuinely missing items.
+      await backgroundQueue.current.catch(()=>{});
+      const uploadedIds:string[]=[];
+      for(const photo of photos){
+        if(!photoIds.current.has(photo.id))throw new Error("photo_selection_changed");
+        let asset=backgroundAssetIds.current.get(photo.id);
+        if(!asset||!backgroundUploaded.current.has(photo.id)){
+          asset=await uploadPrivatePhoto(photo,id=>backgroundAssetIds.current.set(photo.id,id));
+          backgroundUploaded.current.add(photo.id);
+        }
+        uploadedIds.push(asset);
+      }
+      // Previous attempts (including the user's '1 ready photo' case) may
+      // have left old authorized assets no longer in the selected gallery.
+      // Remove only obsolete PRIVATE assets, never published user photos.
+      const manifest=await listPrivatePhotoAssets();
+      for(const previous of manifest)
+        if(!uploadedIds.includes(previous.id))await removePrivatePhoto(previous.id);
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
+      await updatePrivatePhotoOrder(uploadedIds);
+      setServerPhotoCount(uploadedIds.length);
       const media=await ownerPublicationStatus();setPublishStatus(media);
       if(media.approved<photos.length||media.pending!==0||media.other!==0)
         throw new Error("incomplete_media");
