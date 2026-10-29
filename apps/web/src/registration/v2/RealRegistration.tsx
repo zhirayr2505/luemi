@@ -1,8 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
 import {RegistrationStep,type PhotoItem} from "../Steps";
-import {fromLocalDraft,readyRegistrationPhotos} from "../../discovery/ProfileModel";
-import {ProfileMaster} from "../../discovery/ProfileV3Gateway";
+import {RegistrationPreview} from "../Preview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {remoteDraftPilot} from "../server-draft";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
@@ -155,11 +154,21 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="intent"&&step(4)}
        {stage.id==="personality"&&<div className="v2-real-groups">{step(5)}{step(6)}</div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
-        {step(7)}
+        {p.mediaEnabled&&<label className="v2-consent v2-photo-consent">
+         <input type="checkbox" checked={p.serverConsent}
+          onChange={e=>p.setServerConsent(e.target.checked)}/>
+         <span>Я прочитал(а) <a href={pubNotice} target="_blank" rel="noopener noreferrer">
+          {noticeLabel}</a> и согласен(-на) на приватное сохранение выбранных фото на сервере
+          сразу после выбора. Анкета будет опубликована только после моего нажатия
+          «Создать анкету».</span>
+        </label>}
+        {!p.mediaEnabled||p.serverConsent?step(7):
+         <p className="v2-note" role="status">Подтверди согласие выше, чтобы добавить фотографии.</p>}
         <div className="v2-note"><ShieldCheck size={18}/>
-         Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
-         Сейчас фото остаются приватными. Автоматическая AI-проверка ещё не включена.
+         Фотографии загружаются приватно в фоне. Первое фото — главное.
+         Удалённые здесь фотографии удаляются и из серверного хранилища.
         </div>
+        {p.serverConsent&&p.serverStatus&&<p className="v2-footnote" role="status">{p.serverStatus}</p>}
        </div>}
        {stage.id==="face-consent"&&<div className="v2-fields">
         <div className="v2-trust-symbol"><ShieldCheck size={54} strokeWidth={1.6}/></div>
@@ -187,21 +196,16 @@ export function RealRegistrationV2(p:Props){
         </button>
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
-        <div className="v2-profile-v3-preview" aria-label="Предпросмотр анкеты в Profile Morph V3">
-         <ProfileMaster data={fromLocalDraft(draft,readyRegistrationPhotos(photos))}
-          mode="local-self-preview" active/>
+        <div className="v2-simple-preview" aria-label="Предпросмотр анкеты">
+         <RegistrationPreview data={draft} photos={photos}/>
         </div>
         <div className="v2-verification-pending"><LockKeyhole size={20}/><div>
           <strong>{p.mediaEnabled?"Твоя анкета готова":friendsTest?"Закрытый тест LUEMI":"Твоя приватная анкета"}</strong>
-          <p>{p.mediaEnabled
-           ?(instantPublication?"После подтверждения фотографии сохранятся на сервере, а анкета сразу станет видна другим совершеннолетним пользователям. Ручной проверки до публикации нет.":"После подтверждения данные и фотографии отправятся в защищённое хранилище. Другие люди увидят их только после проверки и публикации.")
-           :"Сейчас сервер сохраняет поля анкеты, фотографии остаются на этом устройстве."}</p>
+          <p>{p.mediaEnabled?"Фотографии сохраняются приватно во время регистрации.
+           После нажатия кнопки мы завершим публикацию.":"Сейчас фотографии остаются на устройстве."}</p>
         </div></div>
-        <label className="v2-consent"><input type="checkbox"
-          checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
-          <span>Я прочитал(а) <a href={pubNotice} target="_blank" rel="noopener noreferrer">
-           {noticeLabel}</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI{p.publicationEnabled?(instantPublication?", а также сразу опубликовать анкету и фотографии для других пользователей":", а после проверки опубликовать её для других подходящих пользователей"):""}.</span>
-        </label>
+        <p className="v2-footnote">Нажимая «Создать анкету», ты подтверждаешь публикацию
+         своих фотографий и данных для подходящих совершеннолетних пользователей LUEMI.</p>
         <p className="v2-footnote"><a href="/privacy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности LUEMI</a></p>
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
