@@ -418,6 +418,51 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    return{removed:true};
   }catch{return reply.code(503).send({error:"photo_cleanup_retry"});}
  });
+ // The selected gallery is authoritative. A previous interrupted signup
+ // may have left a stale, privately stored accepted photo (the user's "1
+ // ready" case). On explicit Create, keep ONLY verified selected IDs and
+ // revoke/delete all other UNPUBLISHED private uploads owned by this actor.
+ app.post<{Body:unknown}>("/api/v2/media/reconcile",{preHandler:guard.mutation},
+ async(req,reply)=>{
+  const body=req.body;
+  if(!object(body)||Object.keys(body).length!==1||!Array.isArray(body.assetIds)||
+    body.assetIds.length<3||body.assetIds.length>6||
+    body.assetIds.some(x=>!uuid(x))||new Set(body.assetIds).size!==body.assetIds.length)
+   return reply.code(422).send({error:"invalid_photo_selection"});
+  const selected=body.assetIds as string[];
+  const extras=await owner(req,reply,async(db,id)=>{
+   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [opts.namespace+":"+id+":profile_media_slots"]);
+   const rows=await db.query<{id:string;state:string;publication_status:string;derivative_key:string;original_key:string}>(
+    "SELECT id,state,publication_status,derivative_key,original_key "+
+    "FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 "+
+    "FOR UPDATE",[id,opts.namespace]);
+   const accepted=rows.rows.filter(r=>r.state==="approved"&&r.publication_status==="private");
+   if(selected.some(x=>!accepted.some(r=>r.id===x)))reject(409,"photo_selection_incomplete");
+   if(rows.rows.some(r=>r.publication_status==="published"))
+    reject(409,"profile_already_published");
+   const removed=rows.rows.filter(r=>!selected.includes(r.id));
+   for(const row of removed){
+    if(row.state!=="revoked"){
+     await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
+      "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+      [row.id,id,opts.namespace]);
+     await db.query("UPDATE luemi_private.media_uploads SET state='failed' "+
+      "WHERE asset_id=$1 AND owner_id=$2 AND environment=$3",
+      [row.id,id,opts.namespace]);
+    }
+   }
+   return removed.map(row=>({originalKey:row.original_key,derivativeKey:row.derivative_key}));
+  });
+  if(reply.sent||!Array.isArray(extras))return extras;
+  try{
+   for(const row of extras){
+    await opts.storage.delete(row.derivativeKey);
+    await opts.storage.delete(row.originalKey);
+   }
+  }catch{return reply.code(503).send({error:"private_media_cleanup_retry"});}
+  return{ok:true,selected:selected.length};
+ });
  // Reordering is authoritative on the server: the first selected picture
  // remains the main avatar after publication, irrespective of upload timing.
  app.put<{Body:unknown}>("/api/v2/media/order",{preHandler:guard.mutation},
