@@ -1,0 +1,35 @@
+.luemi-simple-preview{width:100%;display:flex;flex-direction:column;gap:19px;
+ padding:20px 17px;border:1px solid rgba(152,100,185,.21);border-radius:24px;
+ background:linear-gradient(150deg,rgba(255,252,255,.96),rgba(244,233,250,.93));
+ box-shadow:0 8px 25px rgba(87,50,119,.085);color:#614171;}
+.luemi-simple-preview h2,.luemi-simple-preview h3,.luemi-simple-preview p{margin:0}
+.luemi-simple-preview-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:7px}
+.luemi-simple-preview-avatar{width:92px;height:92px;border-radius:50%;overflow:hidden;
+ display:grid;place-items:center;background:#dbc3e9;color:#80549e;font-size:38px;
+ border:3px solid #fff;box-shadow:0 5px 15px rgba(112,65,143,.20)}
+.luemi-simple-preview-avatar img{width:100%;height:100%;object-fit:cover}
+.luemi-simple-preview-head h2{font-size:23px;font-weight:750}
+.luemi-simple-preview-head p{font-size:13px;color:#80658c}
+.luemi-simple-preview-goal{padding:7px 13px;border-radius:99px;background:#e7d3f3;font-size:12px;color:#744996}
+.luemi-simple-preview h3{font-size:14px;font-weight:730;margin-bottom:8px}
+.luemi-simple-preview-about p{font-size:14px;line-height:1.55;white-space:pre-wrap}
+.luemi-simple-preview-interests>div{display:flex;gap:7px;flex-wrap:wrap}
+.luemi-simple-preview-interests span{padding:7px 10px;border-radius:99px;background:#eadcf4;font-size:12px}
+.luemi-simple-preview-photos header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.luemi-simple-preview-photos small{font-size:12px;color:#957aa1}
+.luemi-simple-preview-rail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
+ scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:5px;touch-action:pan-x pan-y}
+.luemi-simple-preview-rail::-webkit-scrollbar{display:none}
+.luemi-simple-preview-slide{position:relative;flex:0 0 77%;height:205px;margin:0;scroll-snap-align:start;
+ border-radius:17px;overflow:hidden;background:#d9c0e6}
+.luemi-simple-preview-slide img{width:100%;height:100%;object-fit:cover}
+.luemi-simple-preview-slide figcaption{position:absolute;left:10px;bottom:9px;color:white;
+ font-size:12px;font-weight:700;padding:5px 11px;background:rgba(79,48,100,.72);border-radius:99px}
+.luemi-simple-preview-pending{height:100%;display:grid;place-items:center;font-size:13px}
+.luemi-simple-preview-dots{display:flex;gap:5px;justify-content:center;margin-top:8px}
+.luemi-simple-preview-dots span{width:6px;height:6px;border-radius:50%;background:#c5a6d7}
+.luemi-simple-preview-dots span.is-active{width:15px;border-radius:99px;background:#8553a9}
+.luemi-simple-preview-sync{text-align:center;font-size:12px;color:#84649a}
+.v2-runtime[data-theme="dark"] .luemi-simple-preview{background:linear-gradient(145deg,#382742,#30203b);color:#f4ebfa}
+.v2-runtime[data-theme="dark"] .luemi-simple-preview-head p,
+.v2-runtime[data-theme="dark"] .luemi-simple-preview-photos small{color:#cab7d7}
