@@ -26,7 +26,14 @@ function asPlace(value:unknown):Place|null {
  return {id:v.id,city:v.city,country:v.country,countryCode,
   ...(typeof v.region==="string"?{region:v.region}:{})};
 }
-export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Partial<RegistrationDraft>)=>void}){
+type GeoPickerProps={
+ data:RegistrationDraft;
+ patch:(values:Partial<RegistrationDraft>)=>void;
+ fieldError?:string;
+ clearFieldError?:()=>void;
+ onFieldFocus?:(field:"city"|null)=>void;
+};
+export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:GeoPickerProps){
  const [manual,setManual]=useState(!!data.placeId);
  const [query,setQuery]=useState(data.placeId?data.city+", "+data.country:"");
  const [editing,setEditing]=useState(false);
@@ -35,6 +42,9 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
  const [error,setError]=useState("");
  const [demo,setDemo]=useState(false);
  const [scopeOpen,setScopeOpen]=useState(false);
+ const [cityFocused,setCityFocused]=useState(false);
+ const [focusShift,setFocusShift]=useState(0);
+ const inputRef=useRef<HTMLInputElement>(null);
  const gate=useRef(createGeoOperationGate());
  const gpsDeadline=useRef<number|null>(null);
  const clearGpsDeadline=()=>{
@@ -48,6 +58,16 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
  // callback cannot update this component OR its still-mounted parent draft.
  useEffect(()=>{const current=gate.current;current.resume();return ()=>{current.dispose();clearGpsDeadline();};},[]);
  const selectedLabel=data.placeId?data.city+", "+data.country:"";
+ useEffect(()=>{
+  if(!cityFocused)return;
+  const viewport=window.visualViewport;
+  const update=()=>{
+   const keyboard=Math.max(0,window.innerHeight-(viewport?.height??window.innerHeight));
+   setFocusShift(Math.min(170,Math.round(keyboard*.22)));
+  };
+  update();viewport?.addEventListener("resize",update);viewport?.addEventListener("scroll",update);
+  return()=>{viewport?.removeEventListener("resize",update);viewport?.removeEventListener("scroll",update);setFocusShift(0);};
+ },[cityFocused]);
  useEffect(()=>{
   if(!manual)return; // GPS remains owned by the detect operation.
   if(!editing||query.trim().length<2){
@@ -169,23 +189,31 @@ export function GeoPicker({data,patch}:{data:RegistrationDraft;patch:(values:Par
    {!manual?<button className="geo-location-primary" type="button" onClick={detect} disabled={loading}>
      {loading?<LoaderCircle className="spin" size={22}/>:<LocateFixed size={22}/>}
      <span><strong>{data.placeId?"Определить местоположение снова":"Моё местоположение"}</strong><small>По разрешению Telegram или устройства</small></span>
-   </button>:<GlassField label="Страна и город">
-     <div className="geo-input-wrap">
-       <Search size={20} aria-hidden="true"/>
-       <input className="glass-control geo-input" role="combobox" autoComplete="off"
-         aria-expanded={results.length>0} aria-controls="luemi-geo-results" aria-autocomplete="list"
-         maxLength={80} placeholder="Введи город или страну" value={query}
-         onChange={e=>{cancelPending();setQuery(e.target.value);setEditing(true);setError("");setResults([]);setActivity("idle");}}/>
-       {loading&&<LoaderCircle className="spin" size={18}/>}
+   </button>:<>
+     {cityFocused&&<div className="geo-focus-overlay" aria-hidden="true" onPointerDown={()=>inputRef.current?.focus()}/>}
+     <div className={"city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")} style={{"--city-focus-shift":`${focusShift}px`} as CSSProperties}>
+       <GlassField label="Страна и город">
+         <div className="geo-input-wrap">
+           <Search size={20} aria-hidden="true"/>
+           <input ref={inputRef} className="glass-control geo-input" role="combobox" autoComplete="off"
+             aria-expanded={results.length>0} aria-controls="luemi-geo-results" aria-autocomplete="list"
+             maxLength={80} placeholder="Введи город или страну" value={query}
+             onFocus={()=>{setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();window.setTimeout(()=>inputRef.current?.scrollIntoView({block:"center",behavior:"smooth"}),0);}}
+             onBlur={()=>window.setTimeout(()=>{setCityFocused(false);onFieldFocus?.(null);},120)}
+             onChange={e=>{cancelPending();setQuery(e.target.value);setEditing(true);setError("");clearFieldError?.();setResults([]);setActivity("idle");}}/>
+           {loading&&<LoaderCircle className="spin" size={18}/>}
+         </div>
+       </GlassField>
+       {editing&&results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
+         {results.map(place=><button key={place.id} type="button" role="option" aria-selected={false} onPointerDown={event=>{event.preventDefault();choose(place);}}>
+           <Flag code={place.countryCode} title={"Флаг "+place.country}/><span><strong>{place.city}</strong><small>{place.country}{place.region?", "+place.region:""}</small></span><MapPin size={17}/>
+         </button>)}
+       </div>}
+       {fieldError&&<p className="field-warning city-field-warning" role="alert">{fieldError}</p>}
      </div>
-   </GlassField>}
+   </>}
    {!manual?<button type="button" className="geo-mode-toggle" onClick={switchMode}>Выбрать город вручную</button>:
      <button type="button" className="geo-mode-toggle" onClick={switchMode}><LocateFixed size={15}/> Определить моё местоположение</button>}
-   {manual&&editing&&results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
-     {results.map(place=><button key={place.id} type="button" role="option" aria-selected={false} onClick={()=>choose(place)}>
-       <Flag code={place.countryCode} title={"Флаг "+place.country}/><span><strong>{place.city}</strong><small>{place.country}{place.region?", "+place.region:""}</small></span><MapPin size={17}/>
-     </button>)}
-   </div>}
    {data.placeId&&<div className="geo-selected"><Flag code={data.countryCode}/><MapPin size={15}/><strong>{data.city}</strong><span>{data.country}</span></div>}
    {manual&&editing&&query.trim().length>1&&!loading&&!results.length&&!error&&<p className="hint">Выбери реальный город из подсказок. Свободный текст не сохраняется.</p>}
    {error&&<p className="field-warning" role="alert">{error}</p>}
