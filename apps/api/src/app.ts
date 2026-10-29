@@ -18,6 +18,10 @@ import {registerMatches} from "./matches-api.js";
 import {registerSafetyAppeals} from "./safety-appeal-api.js";
 import {describeReleaseConfig} from "./release-readiness.js";
 import {registerFaceTrustCapabilities} from "./facetrust-status.js";
+import {registerBlikiApi} from "./bliki/bliki-api.js";
+import {registerBlikiPublicationApi} from "./bliki/bliki-publication-api.js";
+import {registerBlikiMediaApi} from "./bliki/bliki-media-api.js";
+import {registerBlikiInteractionApi} from "./bliki/bliki-interaction-api.js";
 
 function equalSecret(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -80,5 +84,9 @@ export function buildApp(config: ApiConfig) {
   registerSafetyAppeals(app,config.safetyAppeal);
   registerChats(app,guards,config.chats);
   registerMatches(app,guards,config.matches);
+  registerBlikiPublicationApi(app, guards, config.blikiPublication);
+  registerBlikiMediaApi(app, guards, config.blikiMedia);
+  registerBlikiInteractionApi(app, guards, config.blikiInteraction);
+  registerBlikiApi(app, guards, config.bliki);
   return app;
 }

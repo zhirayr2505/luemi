@@ -67,7 +67,8 @@ test("01H: report must be human triaged, suspend revokes all sessions and hides 
    headers:headers(owner),payload:{revision:0,fields:{
     displayName:"Synthetic Owner",birthDate:"1993-01-03",gender:"woman",
     city:"Yerevan",countryCode:"AM",placeId:"offline:am:yerevan",
-    goal:"friendship",interests:["art"],languages:["hy"],about:"Review test",consentVersion:cv
+    goal:"friendship",audience:"everyone",ageMin:18,ageMax:80,
+    interests:["art"],languages:["hy"],about:"Review test",consentVersion:cv
    }}});
   assert.equal(draft.statusCode,200,draft.body);
   const png=makeSyntheticPng(),ids:string[]=[];

@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
+import {Suspense,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {selectionHaptic} from "../ui/haptic";
 import type {CSSProperties} from "react";
 import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
@@ -545,6 +545,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
          <span className="discovery-tab-underline" ref={underline} aria-hidden="true"
            style={{"--luemi-tab-offset":tabIndex*100+"%"} as CSSProperties}/>
        </div>
+       {discoveryTab==="feed" && <Suspense fallback={null}>
+       </Suspense>}
        <div className="discovery-pages" ref={pages} onPointerDown={e=>{if(e.pointerType!=="touch")down(e);}}
          onPointerMove={e=>{if(e.pointerType!=="touch")move(e);}} onPointerUp={e=>{if(e.pointerType!=="touch")up(e);}} onPointerCancel={e=>{if(e.pointerType!=="touch")up(e,true);}}
          onLostPointerCapture={e=>{if(e.pointerType!=="touch")cancelSwipe();}}

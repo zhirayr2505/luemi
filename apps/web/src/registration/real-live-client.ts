@@ -163,3 +163,14 @@ export async function reportPublishedUser(
   {targetId:id,reason,clientRef:crypto.randomUUID()});
  if(!object(data)||data.state!=="open")throw new Error("report_failed");
 }
+
+/** Request human review after successful private draft + 3–6 photo uploads.
+ * The bot notification is server-side only; it never receives media bytes. */
+export async function requestRegistrationReview():Promise<{notified:boolean;alreadySent:boolean}>{
+ if(!realFeedPilot.enabled)throw new Error('registration_review_disabled');
+ const result=await api('/api/v3/registration/submit-for-review','POST',{});
+ if(!object(result)||result.state!=='review_requested'||
+    typeof result.notified!=='boolean'||typeof result.alreadySent!=='boolean')
+  throw new Error('invalid_review_request_receipt');
+ return {notified:result.notified,alreadySent:result.alreadySent};
+}

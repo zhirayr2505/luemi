@@ -76,6 +76,9 @@ const intentional={
  "apps/api/src/safety-runner.ts":"explicitly gated safety operator CLI, never available via HTTP",
  "apps/api/src/private-storage-probe.ts":"standalone synthetic Storage round-trip verifier, never live HTTP",
  "apps/api/src/private-storage-probe-runner.ts":"explicitly gated LUEMI-only Storage operator CLI",
+ "apps/api/src/bliki/bliki-retention-cli.ts":"explicitly gated Bliki retention CLI; never mounted in the HTTP server",
+ "apps/api/src/bliki/bliki-retention-worker.ts":"private object cleanup worker imported only by the retention CLI",
+ "apps/api/src/ffprobe-static.d.ts":"ambient package declaration consumed by TypeScript rather than an import edge",
  "apps/web/src/discovery/bliki-media-lifecycle.ts":"future Bliki readiness state machine, kept for accepted REM-05F work"
 };
 function reach(entries){
