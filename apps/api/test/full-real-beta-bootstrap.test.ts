@@ -54,6 +54,7 @@ test("all real beta modules register together without duplicate route or content
   const health=await app.inject({method:"GET",url:"/api/health/live"});
   assert.equal(health.statusCode,200,health.body);
   const invalid=await app.inject({method:"POST",url:"/api/v2/auth/telegram",
+   headers:{origin:env.APP_ORIGIN,"sec-fetch-site":"same-origin"},
    payload:{initData:"invalid"}});
   assert.equal(invalid.statusCode,401,"unverified Telegram identity rejected");
  }finally{await app.close();}
