@@ -323,7 +323,17 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
      [id,opts.namespace,keyDigest,assetId,bytes,bodyDigest]);
     return{assetId,state:"reserved",upload:"private_proxy"};
    }
-   if(existing.rows[0].request_digest!==bodyDigest)reject(409,"idempotency_conflict");
+   if(existing.rows[0].request_digest!==bodyDigest){
+    // Browser retry may produce different PNG bytes before any upload has
+    // been received. Renew only this owner's RESERVED intent, never media
+    // already received or published.
+    if(existing.rows[0].state!=="reserved"||existing.rows[0].asset_state!=="reserved")
+     reject(409,"idempotency_conflict");
+    await db.query("UPDATE luemi_private.media_uploads SET expected_bytes=$4,"+
+     "request_digest=$5,expires_at=clock_timestamp()+interval '1 hour' "+
+     "WHERE owner_id=$1 AND environment=$2 AND idempotency_digest=$3 AND state='reserved'",
+     [id,opts.namespace,keyDigest,bytes,bodyDigest]);
+   }
    if(existing.rows[0].state==="reserved"){
     // The caller may return hours after a network interruption. Renew ONLY
     // the same pending asset/clientKey under the requester's existing RLS

@@ -1,4 +1,5 @@
 import type {RegistrationDraft} from "./model";
+import {verifiedRegistrationScope} from "../auth/session-adapter";
 import type {PhotoItem} from "./PhotoSorter";
 import {parseRegistrationDraft,parsePhotos,parseEnvelope,isExpired,DRAFT_TTL_MS,
  type DraftEnvelope,type StoredPhoto} from "./draft-schema";
@@ -9,6 +10,7 @@ const PREFIX="luemi:registration-draft:v1:";
 const DB_NAME="luemi-local-photo-preview-v1",STORE="drafts";
 const key=(scope:string)=>"registration-v2:"+scope;
 export function localScope():string|null {
+ if(import.meta.env.VITE_LUEMI_AUTH_V2==="1")return verifiedRegistrationScope();
  const raw=window.Telegram?.WebApp?.initData;
  if(!raw)return null;
  try {

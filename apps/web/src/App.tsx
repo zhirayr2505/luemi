@@ -118,7 +118,8 @@ export function App() {
   const [realHomeTab,setRealHomeTab] = useState<"feed"|"chats"|"profile">("feed");
   const [publishedEditor,setPublishedEditor]=useState<{name:string;about:string;goal:string}|null>(null);
   const submitting=useRef(false);
-  const [scope] = useState(()=>localScope());
+  const [scope,setScope] = useState<string|null>(()=>localScope());
+   const actorScopeRef=useRef<string|null>(scope);
   // Prewarm the optional Discovery chunk after the welcome screen appears.
   // Never let large profile/viewer modules block Telegram entry and registration.
   useEffect(()=>{
@@ -272,7 +273,22 @@ export function App() {
         if(!initData){setAuth("outside-telegram");return;}
         const user=result.value;
         if(!user){setAuth("needs-bot");return;}
-        setDraft(current=>({...current,name:current.name||user.user.firstName}));
+        const authenticatedScope=localScope();
+        if(!authenticatedScope){setAuth("error");return;}
+        if(actorScopeRef.current!==authenticatedScope){
+          // A new verified Telegram actor cannot inherit any previous in-memory data.
+          actorScopeRef.current=authenticatedScope;
+          ++saveSequence.current;++photoGeneration.current;
+          persistEnabled.current=false;
+          for(const job of photoJobs.current.values())job.abort();
+          photoJobs.current.clear();
+          for(const url of ownedUrls.current)URL.revokeObjectURL(url);
+          ownedUrls.current=[];photoIds.current.clear();privateAssetIds.current.clear();
+          setPhotos([]);setPhotosRestored(false);
+          setStep(1);setDraft(newDraft(user.user.firstName));
+          setPrivateDraftSaved(false);setServerPhotoCount(0);setServerConsent(false);
+          setScope(authenticatedScope);
+        }else setDraft(current=>({...current,name:current.name||user.user.firstName}));
         setAuth("authorized");
       }
     });
@@ -318,7 +334,7 @@ export function App() {
   useEffect(()=>{
     let disposed=false;
     const controller=new AbortController(),generation=photoGeneration.current;
-    if(!scope){retryKind.current="load";setStorageState("error");setStorageCode("scope");return;}
+    if(auth!=="authorized"||!scope)return;
     setStorageState("loading");
     void loadDraftSnapshot(scope).then(async result=>{
       if(disposed)return;
@@ -450,16 +466,23 @@ export function App() {
       else setPhase("welcome");
     }
   },[phase,step]);
-  useEffect(()=>{
-    const button=window.Telegram?.WebApp?.BackButton;
-    if(!button)return;
-    if(auth==="authorized"&&(demoOpen||phase==="form")){
-      const handle=demoOpen?()=>discoveryBackRef.current():back;
-      button.show();button.onClick(handle);
-      return ()=>{button.offClick(handle);button.hide();};
-    }
-    button.hide();
-  },[phase,auth,back,demoOpen]);
+  const backActionRef=useRef(back);
+   backActionRef.current=back;
+   useEffect(()=>{
+     const button=window.Telegram?.WebApp?.BackButton;
+     if(!button)return;
+     if(auth==="authorized"&&(demoOpen||phase==="form")){
+       const handle=()=>{
+         if(journey==="error"){setJourney(null);setJourneyError("");return;}
+         if(journey!==null)return;
+         if(demoOpen)discoveryBackRef.current();
+         else backActionRef.current();
+       };
+       button.show();button.onClick(handle);
+       return ()=>{button.offClick(handle);button.hide();};
+     }
+     button.hide();
+   },[phase,auth,demoOpen,journey]);
   const changeStep=(target:number)=>{
     persistEnabled.current=true;
     setStorageState("dirty");
@@ -801,8 +824,12 @@ export function App() {
       const message=reason==="revision_conflict"
        ?"Анкета изменилась в другой сессии. Проверь данные и повтори создание.":
        reason==="incomplete_media"
-       ?"Не все фотографии подтверждены сервером. Повтори: уже сохранённые фото не пропадут.":
-       "Не удалось завершить публикацию. Анкета и уже загруженные фотографии сохранены. Повтори попытку.";
+        ?"Не все фотографии сохранились. Нажми «Повторить» — загрузка продолжится.":
+        reason.includes("invalid_image")||reason.includes("unsupported_source_photo")
+        ?"Не удалось обработать одну из фотографий. Попробуй снова или замени снимок.":
+        reason.includes("photo_order_conflict")||reason.includes("photo_limit")
+        ?"Не удалось согласовать фотографии. Попробуй ещё раз.":
+        "Соединение прервалось при создании анкеты. Повтори — сохранённые фото не пропадут.";
       setPublishFeedback(message);setJourneyError(message);setJourney("error");
     }finally{submitting.current=false;setPublishBusy(false);}
   };

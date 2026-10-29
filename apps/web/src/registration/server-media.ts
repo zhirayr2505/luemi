@@ -7,7 +7,8 @@ import {confirmedPrivateMediaCount} from "./private-media-confirmation";
 export const remoteMediaPilot={
  enabled:remoteDraftPilot.enabled&&import.meta.env.VITE_LUEMI_PRIVATE_MEDIA_UI==="1"
 };
-const MAX_BYTES=1_048_576;
+// Leave space for server-side PNG re-encoding.
+const MAX_BYTES=700_000;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const clientKey=(photo:Pick<PhotoItem,"id">)=>"reg01c-photo-"+photo.id;
 async function canvasPng(canvas:HTMLCanvasElement):Promise<Blob>{
@@ -15,7 +16,7 @@ async function canvasPng(canvas:HTMLCanvasElement):Promise<Blob>{
   canvas.toBlob(result=>result?resolve(result):reject(new Error("png_encode_failed")),"image/png");
  });
 }
-async function normalizedPng(photo:PhotoItem):Promise<Blob>{
+async function normalizedPng(photo:PhotoItem,maxEdge=800):Promise<Blob>{
  const file=photo.preview??photo.file;
  if(!["image/png","image/jpeg","image/webp"].includes(file.type)||
    file.size<1||file.size>12*1024*1024)throw new Error("unsupported_source_photo");
@@ -45,7 +46,7 @@ async function normalizedPng(photo:PhotoItem):Promise<Blob>{
   if(!ctx)throw new Error("canvas_unavailable");
   ctx.imageSmoothingEnabled=true;
   ctx.imageSmoothingQuality="high";
-  for(const limit of [800,680,560,480,384,300]){
+  for(const limit of [800,680,560,480,384,300].filter(edge=>edge<=maxEdge)){
    const ratio=Math.min(1,limit/Math.max(width,height));
    canvas.width=Math.max(1,Math.round(width*ratio));
    canvas.height=Math.max(1,Math.round(height*ratio));
@@ -66,7 +67,13 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
  if(!token)throw new Error("missing_session_csrf");
  const res=await fetch(url,{method,body,credentials:"same-origin",cache:"no-store",
   headers:{"Content-Type":mime,"X-Luemi-CSRF":token}});
- if(!res.ok)throw new Error("private_media_http_"+res.status);
+ if(!res.ok){
+  const body:unknown=await res.json().catch(()=>null);
+  const reason=body&&typeof body==="object"&&!Array.isArray(body)&&
+   typeof (body as {error?:unknown}).error==="string"?
+   String((body as {error:string}).error):"request_failed";
+  throw new Error("private_media_http_"+res.status+":"+reason);
+ }
  return res;
 }
 export interface PrivatePhotoPlan{
@@ -106,28 +113,38 @@ export async function planPrivatePhotos(photos:readonly PhotoItem[]):Promise<Pri
 export async function uploadPrivatePhoto(photo:PhotoItem):Promise<string>{
  if(!remoteMediaPilot.enabled||photo.status!=="ready"||!photo.id)
   throw new Error("ready_photo_required");
- const png=await normalizedPng(photo);
- const response=await request("/api/v2/media/intents","POST",
-  JSON.stringify({bytes:png.size,mime:"image/png",clientKey:clientKey(photo)}),
-  "application/json");
- const result:unknown=await response.json();
- if(!result||typeof result!=="object"||Array.isArray(result))
-  throw new Error("invalid_private_intent");
- const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
- if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
-   intent.upload!=="private_proxy"||
-   (intent.state!=="reserved"&&intent.state!=="received"))
-  throw new Error("invalid_private_intent");
- if(intent.state==="reserved"){
-  const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
-   "PUT",png,"image/png");
-  const receipt:unknown=await saved.json();
-  if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
-    !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
-    (receipt as {published?:unknown}).published!==false)
-   throw new Error("invalid_private_media_receipt");
- }
- return intent.assetId;
+ // A rejected PNG should not strand an otherwise valid private reservation.
+  // Retain the same idempotency key when retrying a smaller encoding.
+  for(const edge of [800,384]){
+   const png=await normalizedPng(photo,edge);
+   const response=await request("/api/v2/media/intents","POST",
+    JSON.stringify({bytes:png.size,mime:"image/png",clientKey:clientKey(photo)}),
+    "application/json");
+   const result:unknown=await response.json();
+   if(!result||typeof result!=="object"||Array.isArray(result))
+    throw new Error("invalid_private_intent");
+   const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
+   if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
+     intent.upload!=="private_proxy"||
+     (intent.state!=="reserved"&&intent.state!=="received"))
+    throw new Error("invalid_private_intent");
+   if(intent.state==="received")return intent.assetId;
+   try{
+    const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
+      "PUT",png,"image/png");
+    const receipt:unknown=await saved.json();
+    if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
+      !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
+      (receipt as {published?:unknown}).published!==false)
+     throw new Error("invalid_private_media_receipt");
+    return intent.assetId;
+   }catch(error){
+    if(edge===800&&error instanceof Error&&
+      error.message==="private_media_http_422:invalid_image")continue;
+    throw error;
+   }
+  }
+  throw new Error("invalid_image");
 }
 /** Removing a local photo also revokes it in private SQL and Storage. A failed
  * cleanup is surfaced to the user and can be retried with the same asset ID. */

@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
-import {RegistrationStep,type PhotoItem} from "../Steps";
+import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
 import {SimpleProfileReview} from "../SimpleProfileReview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {registrationV2Stages,type RegistrationV2Gate} from "./flow";
@@ -119,12 +119,12 @@ export function RealRegistrationV2(p:Props){
  };
  const stepProps=useMemo(()=>({
   data:draft,patch:p.patch,photos,addPhotos:p.addPhotos,removePhoto:p.removePhoto,
-  movePhoto:p.movePhoto,resetDraft:p.resetDraft,step:1
+  movePhoto:p.movePhoto,resetDraft:p.resetDraft,deferConsent:true,step:1
  }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft]);
  const step=(n:number)=><RegistrationStep {...stepProps} step={n}/>;
  const savedDraftAllowed=identityReady&&gate.hasLocation&&gate.hasIntent&&
   photoReady(photos)&&!p.serverSaving;
- const friendsTest=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1";
+
  return <main className="v2-canvas v2-runtime" data-theme={p.theme}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div className="v2-device" data-screen={stage.id}>
@@ -144,7 +144,7 @@ export function RealRegistrationV2(p:Props){
        <div className="v2-eyebrow"><Sparkles size={15}/>{stage.eyebrow}</div>
        <h1 id="v2-title">{stage.title}</h1>
        <p className="v2-subtitle">{stage.subtitle}</p>
-       {stage.id==="identity"&&<div className="v2-real-groups">{step(1)}{step(2)}</div>}
+       {stage.id==="identity"&&<div className="v2-real-groups">{step(1)}{step(2)}<RegistrationConsent data={draft} patch={p.patch}/></div>}
        {stage.id==="location"&&step(3)}
        {stage.id==="intent"&&step(4)}
        {stage.id==="personality"&&<div className="v2-real-groups">{step(5)}{step(6)}</div>}
@@ -181,14 +181,7 @@ export function RealRegistrationV2(p:Props){
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
         <SimpleProfileReview draft={draft} photos={photos}/>
-        <button type="button" className="v2-publish v2-draft-save"
-          disabled={!savedDraftAllowed} onClick={p.onSave}>
-          {p.mediaEnabled?<Check size={18}/>:<LockKeyhole size={18}/>}
-          {p.serverSaving?"Создаём анкету…":instantPublication?"Создать анкету 💜":"Сохранить анкету"}
-        </button>
-        <button type="button" className="v2-secondary" onClick={()=>nav(4)}
-          disabled={p.serverSaving}>Изменить анкету или фотографии</button>
-        <p className="v2-footnote">После нажатия LUEMI сохранит фотографии, создаст анкету и подготовит первую ленту.</p>
+        
         {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
        </div>}
        {p.storageError&&<p role="alert" className="v2-feedback">
@@ -197,22 +190,23 @@ export function RealRegistrationV2(p:Props){
        {hint&&<p role="alert" className="v2-feedback">{hint}</p>}
      </section>
      <footer className="v2-footer">
-       <div className="v2-footer-nav">
+       {stage.id==="review"?<div className="v2-footer-review">
+        <button type="button" className="v2-review-edit" disabled={p.serverSaving}
+          onClick={()=>nav(4)}><ArrowLeft size={17}/> Изменить</button>
+        <button type="button" className="v2-publish v2-draft-save"
+          disabled={!savedDraftAllowed} onClick={p.onSave}>
+          <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету 💜"}
+        </button>
+       </div>:<div className="v2-footer-nav">
         <button type="button" className="v2-back" onClick={back}
           aria-label={index===0?"Вернуться на приветствие":"Назад"}><ArrowLeft size={22}/></button>
-        <button type="button" className="v2-next" disabled={stage.id==="review"||photoChecking}
+        <button type="button" className="v2-next" disabled={photoChecking}
           onClick={advance}>
           {photoChecking?"Проверяем фото…":stage.id==="liveness"?"К черновику":stage.id==="face-consent"?
            (biometricNotice?"Посмотреть камеру":"К черновику"):"Продолжить"}<ArrowRight size={18}/>
         </button>
-       </div>
-       <p className="v2-prototype-caption"><ShieldCheck size={12}/>
-        {friendsTest?"Закрытый тест: только приватная анкета, без публикации.":
-         p.publicationEnabled?(instantPublication?"Ручной проверки фотографий до публикации нет.":"Фото проходят проверку перед публикацией. Автоматического одобрения нет."):
-         p.mediaEnabled?"Фотографии остаются приватными до проверки и отдельной публикации.":
-         "Приватное сохранение анкеты. Фотографии пока на устройстве."}
-       </p>
-     </footer>
+       </div>}
+       </footer>
    </div>
  </main>;
 }

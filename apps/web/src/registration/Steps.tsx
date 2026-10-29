@@ -1,9 +1,8 @@
 import {useEffect,useRef,useState} from "react";
 import {remoteDraftPilot} from "./server-draft";
-import {remoteMediaPilot} from "./server-media";
 import {realFeedPilot} from "./real-live-client";
 import type {CSSProperties,ReactNode} from "react";
-import {Check,Info,Trash2} from "lucide-react";
+import {Check,Info} from "lucide-react";
 import {goals,goalIcons} from "../ui/Goals";
 import {LanguagePicker} from "./LanguagePicker";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
@@ -15,6 +14,7 @@ import {cleanName,type RegistrationDraft} from "./model";
 
 export type {PhotoItem} from "./PhotoSorter";
 export interface StepProps {
+ deferConsent?:boolean;
  data:RegistrationDraft;patch:(values:Partial<RegistrationDraft>)=>void;
  photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;resetDraft:()=>void;step:number;
@@ -49,7 +49,7 @@ export function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChang
 }
 
 
-export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,resetDraft,step}:StepProps){
+export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,step,deferConsent}:StepProps){
  const month=useRef<HTMLInputElement>(null),year=useRef<HTMLInputElement>(null);
  const [category,setCategory]=useState("Популярное");
  const [nameHint,setNameHint]=useState(false);
@@ -77,19 +77,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    <GlassField label="Твоё имя"><GlassTextInput autoComplete="given-name" maxLength={48} value={data.name}
      placeholder="Как тебя зовут?" onChange={e=>updateName(e.target.value)}/></GlassField>
    {nameHint&&<div className="name-input-hint" role="status"><Info size={17} aria-hidden="true"/>Можно использовать только буквы, пробел, тире и апостроф.</div>}
-   <GlassCheckbox checked={data.trialConsent} onChange={trialConsent=>patch({trialConsent})}>
-     {realFeedPilot.enabled?<span>Я принимаю <a href="/privacy" target="_blank" rel="noopener noreferrer">политику конфиденциальности и условия использования LUEMI</a>, подтверждаю, что мне исполнилось 18 лет, и согласен(-на) на сохранение и публикацию анкеты и выбранных фотографий.</span>:remoteDraftPilot.enabled?
-      <span>Я принимаю <a href="/privacy" target="_blank" rel="noopener noreferrer">политику конфиденциальности и условия использования LUEMI</a> и согласен(-на) на сохранение анкеты.</span>:
-      "Я понимаю, что это тест интерфейса. Данные и фотографии не публикуются и не передаются на сервер."}
-   </GlassCheckbox>
-   <p className="hint">{realFeedPilot.enabled?
-    "Это согласие принимается один раз на первом шаге. Повторно подтверждать его при загрузке фотографий не потребуется.":
-    remoteDraftPilot.enabled?
-    remoteMediaPilot.enabled?
-    "До подтверждения черновик остаётся на телефоне. После согласия анкета и выбранные фото загрузятся в закрытое серверное хранилище LUEMI.":
-    "Незаполненный черновик остаётся на телефоне. После твоего отдельного согласия готовая анкета сохранится в закрытой базе LUEMI. Фото пока останутся на устройстве.":
-    "Тестовый черновик сохраняется только на этом устройстве. Очистка данных Telegram удалит его."}</p>
-   <button className="draft-clear-action" type="button" onClick={resetDraft}><Trash2 size={14}/> Очистить локальный черновик</button>
+   {!deferConsent&&<RegistrationConsent data={data} patch={patch}/>}
  </div>;
  if(step===2)return <div className="form-stack">
    <div className="field-label">Дата рождения</div>
@@ -103,7 +91,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      <GlassChoice chosen={data.gender==="woman"} onClick={()=>patch({gender:"woman"})} icon={<GenderIcon type="woman"/>}>Женщина</GlassChoice>
      <GlassChoice chosen={data.gender==="other"} onClick={()=>patch({gender:"other"})} icon={<GenderIcon type="everyone"/>}>Другой вариант</GlassChoice>
    </ChoiceRow>
-   <p className="hint">Только 18+. Правильность даты будет дополнительно проверяться на сервере перед публикацией.</p>
+   
  </div>;
  if(step===3)return <div className="form-stack compact-step"><GeoPicker data={data} patch={patch}/></div>;
  if(step===4)return <div className="form-stack compact-step preferences-step">
@@ -145,6 +133,16 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  if(step===7)return <div className="form-stack"><PhotoSorter photos={photos} addPhotos={addPhotos}
    removePhoto={removePhoto} movePhoto={movePhoto}/></div>;
  return <div className="form-stack"><RegistrationPreview data={data} photos={photos}/></div>;
+}
+
+/** A single mandatory consent below date of birth and gender. */
+export function RegistrationConsent({data,patch}:{data:RegistrationDraft;patch:(change:Partial<RegistrationDraft>)=>void}){
+ return <div className="registration-consent-compact"><GlassCheckbox checked={data.trialConsent}
+   onChange={trialConsent=>patch({trialConsent})}>
+   {realFeedPilot.enabled?<span>Я принимаю <a href="/privacy" target="_blank" rel="noopener noreferrer">политику конфиденциальности и условия использования LUEMI</a>, подтверждаю совершеннолетие и согласен(-на) на сохранение и публикацию анкеты и выбранных фотографий.</span>:
+    remoteDraftPilot.enabled?<span>Я принимаю <a href="/privacy" target="_blank" rel="noopener noreferrer">политику конфиденциальности и условия использования LUEMI</a> и согласен(-на) на сохранение анкеты.</span>:
+    "Я принимаю условия тестового режима."}
+ </GlassCheckbox></div>;
 }
 
 export function SelectedInterests({selected,onChange}:{selected:string[];onChange:(id:string)=>void}){

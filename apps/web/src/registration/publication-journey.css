@@ -79,3 +79,12 @@
 @keyframes luemi-publish-sky{to{transform:translate3d(3%,-2%,0) scale(1.04)}}@keyframes luemi-glow-breathe{from{opacity:.62;transform:scale(.96)}to{opacity:1;transform:scale(1.07)}}@keyframes luemi-orb-one{to{transform:translate3d(23px,-18px,0)}}@keyframes luemi-orb-two{to{transform:translate3d(-18px,27px,0)}}@keyframes luemi-star{0%,100%{opacity:.25;transform:scale(.65)}50%{opacity:1;transform:scale(1.35)}}@keyframes luemi-logo-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}@keyframes luemi-publish-spin-reverse{to{transform:rotate(-360deg)}}
 @media(max-height:650px){.luemi-publication-journey{padding-top:max(46px,env(safe-area-inset-top));padding-bottom:max(22px,env(safe-area-inset-bottom))}.luemi-publication-brand{width:205px;height:205px;margin-top:0}.luemi-publication-bottom{gap:8px}}
 @media(prefers-reduced-motion:reduce){.luemi-publication-journey::before,.luemi-publication-orbs i,.luemi-publication-stars i,.luemi-publication-logo,.luemi-publication-logo img,.luemi-publication-orbit{animation:none;opacity:1}.luemi-publication-progress span{transition:none}}
+
+/* Center the original W06 transparent logo optically; give the former white
+   center a dimensional lavender tint, keeping the approved brand and motion. */
+.luemi-publication-logo{
+ background:radial-gradient(circle at 30% 18%,rgba(249,224,252,.9) 0%,rgba(227,190,243,.82) 52%,rgba(190,147,217,.65) 100%);
+ border-color:rgba(255,240,253,.78);
+ box-shadow:inset 0 1px 2px rgba(255,255,255,.82),inset 0 -12px 35px rgba(144,92,180,.12),0 18px 65px rgba(96,49,130,.14);
+}
+.luemi-publication-logo img{margin:-6px 0 0 -2px;width:76%}

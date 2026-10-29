@@ -30,7 +30,7 @@ assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"
 assert.match(steps,/Я принимаю <a href="\/privacy"/,"Public policy acceptance must appear on the first identity step");
 assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
-assert.match(form,/p\.publicationEnabled\?/,"Registration must disclose publication separately from private saving");
+assert.match(form,/p\.publicationEnabled&&!instantPublication\?/,"Registration must disclose publication separately from private saving");
 assert.match(form,/Создать анкету 💜/,"Single real signup confirmation creates published profile");
 assert.match(form,/<SimpleProfileReview draft=\{draft\} photos=\{photos\}/,
  "Signup preview must be a simple gallery, not interactive Profile Morph");
@@ -79,3 +79,21 @@ assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
 assert.doesNotMatch(runtime,/(?:^|\n)\s*(?:input|\.glass-control|\.scope-options)\s*\{/,
  "Do not override unrelated app global input styles");
 console.log("Registration V2 Telegram-safe visual contracts: PASS ("+required.length+" selectors)");
+
+const session=readFileSync("apps/web/src/auth/session-adapter.ts","utf8");
+const localDraft=readFileSync("apps/web/src/registration/local-draft.ts","utf8");
+const mediaClient=readFileSync("apps/web/src/registration/server-media.ts","utf8");
+const mediaBackend=readFileSync("apps/api/src/rem05d-private.ts","utf8");
+assert.match(session,/verifiedActorId=user.id/,"Registration scope must use verified server identity");
+assert.match(localDraft,/return verifiedRegistrationScope\(\)/,
+ "Live local photos must be isolated by the server-confirmed Telegram account");
+assert.doesNotMatch(steps,/Очистить локальный черновик|Это согласие принимается один раз/,
+ "Registration may not show debugging or redundant consent text");
+assert.match(form,/RegistrationConsent data=\{draft\} patch=\{p.patch\}/,
+ "Consent must appear once after identity, birthday and gender");
+assert.match(form,/className="v2-footer-review"/,
+ "Review confirmation actions replace disabled footer navigation");
+assert.match(mediaClient,/for\(const edge of \[800,384\]\)/,
+ "A failed image upload retries with a compact PNG");
+assert.match(mediaBackend,/existing.rows\[0\].asset_state!=="reserved"/,
+ "Retry cannot change any already accepted or published upload");
