@@ -5,7 +5,7 @@
 export const realRegistrationFields = [
   "displayName","birthDate","consentVersion","gender","city","countryCode",
   "placeId","radius","searchScope","audience","ageMin","ageMax","goal",
-  "interests","about","languages"
+  "interests","about","languages","height","occupation","education","lifestyle","pets","facts"
 ] as const;
 export type RealRegistrationFields = Partial<Record<(typeof realRegistrationFields)[number],unknown>>;
 export type ValidationResult =
@@ -46,7 +46,12 @@ function valid(key:string,v:unknown,now:Date):boolean{
     case "goal":return enumOk(v,["serious","relationship","dates","friendship","communication","undecided"]);
     case "interests":return list(v,15);
     case "languages":return list(v,10);
+    case "lifestyle":return list(v,12);
+    case "pets":return list(v,12);
+    case "facts":return list(v,3);
     case "about":return string(v,0,750);
+    case "height":return v===null||(Number.isInteger(v)&&Number(v)>=100&&Number(v)<=250);
+    case "occupation":case "education":return string(v,0,120);
     default:return false;
   }
 }
