@@ -148,7 +148,12 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
  const requestPool=new Pool({connectionString:opts.requestDatabaseUrl,max:5,connectionTimeoutMillis:3000});
  const workerPool=new Pool({connectionString:opts.workerDatabaseUrl,max:3,connectionTimeoutMillis:3000});
  app.addHook("onClose",async()=>{await Promise.all([requestPool.end(),workerPool.end()]);});
- app.addContentTypeParser("image/png",{parseAs:"buffer",bodyLimit:MAX_BYTES},(_req,body,done)=>done(null,body));
+ // Chat photos and profile photos share Fastify's per-scope PNG parser.
+ // The route below still enforces its stricter MAX_BYTES (1 MiB) bodyLimit.
+ // Registration must be idempotent whichever feature attaches first.
+ if(!app.hasContentTypeParser("image/png"))
+  app.addContentTypeParser("image/png",{parseAs:"buffer",bodyLimit:10*1024*1024},
+   (_req,body,done)=>done(null,body));
  async function owner<T>(req:FastifyRequest,reply:FastifyReply,
   fn:(db:PoolClient,id:string)=>Promise<T>):Promise<T|FastifyReply>{
   const db=await requestPool.connect().catch(()=>null);
