@@ -563,6 +563,7 @@ export function App() {
     draftId.current=crypto.randomUUID();revision.current=0;
     setPhotos([]);setDraft(newDraft());setStep(1);setError("");setServerStatus("");setServerConsent(false);setPrivateDraftSaved(false);setServerPhotoCount(0);setMediaStatus("");setPublishStatus(null);
     setPhotoServerStates({});setBackgroundPhotoError("");
+    void photoSync.current?.idle().then(()=>photoSync.current?.resetDraft());
     setStorageState("saving");setStorageCode(null);
     if(!scope){retryKind.current="clear";setStorageCode("scope");setStorageState("error");return;}
     void clearDraftSnapshot(scope).then(result=>{
@@ -739,6 +740,9 @@ export function App() {
       // A failed second upload must not strand an already accepted first photo.
       // Stable per-photo clientKey reuses successful uploads and retries the
       // missing photos; one approved image never redirects to account settings.
+      // A background upload may be creating the first remote draft. Wait for
+      // that exact transaction before updating the final profile fields.
+      await photoSync.current?.idle();
       const previous=await readRemoteRevision();
       await saveRemoteDraft(draft,previous.revision);
       setPrivateDraftSaved(true);
