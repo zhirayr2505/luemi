@@ -274,8 +274,10 @@ export function App() {
         const user=result.value;
         if(!user){setAuth("needs-bot");return;}
         const authenticatedScope=localScope();
-        if(!authenticatedScope){setAuth("error");return;}
-        if(actorScopeRef.current!==authenticatedScope){
+        if(!authenticatedScope&&import.meta.env.VITE_LUEMI_AUTH_V2==="1"){
+          setAuth("error");return;
+        }
+        if(authenticatedScope&&actorScopeRef.current!==authenticatedScope){
           // A new verified Telegram actor cannot inherit any previous in-memory data.
           actorScopeRef.current=authenticatedScope;
           ++saveSequence.current;++photoGeneration.current;
