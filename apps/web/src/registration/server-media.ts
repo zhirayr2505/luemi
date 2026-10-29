@@ -97,11 +97,11 @@ export async function uploadOnePrivatePhoto(photo:PhotoItem):Promise<string>{
   return intent.assetId;
 }
 /** The only authorized removal surface; never expose Storage object paths. */
-export async function deleteOnePrivatePhoto(assetId:string):Promise<void>{
- if(!remoteMediaPilot.enabled||!UUID.test(assetId))throw new Error("invalid_private_asset");
+export async function deleteOnePrivatePhoto(clientId:string):Promise<void>{
+ if(!remoteMediaPilot.enabled||!UUID.test(clientId))throw new Error("invalid_private_asset");
  const csrf=geoCsrf();
  if(!csrf)throw new Error("missing_session_csrf");
- const response=await fetch("/api/v2/media/"+assetId,{
+ const response=await fetch("/api/v2/media/draft-photo/"+clientId,{
   method:"DELETE",credentials:"same-origin",cache:"no-store",
   headers:{"X-Luemi-CSRF":csrf}
  });
