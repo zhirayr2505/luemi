@@ -106,6 +106,20 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    [conversationId,actor,options.namespace]);
   if(r.rowCount!==1)deny(404,"not_found");
  }
+ // SQL predicate is built only with hard-coded aliases, never user input.
+ function visibleMessage(alias:"msg"|"m", actorParameter:"$1"|"$4"="$1"):string{
+  return `NOT EXISTS (
+    SELECT 1 FROM luemi_chats.message_visibility hidden
+    WHERE hidden.message_id=${alias}.id AND hidden.environment=${alias}.environment
+      AND (hidden.scope='everyone' OR hidden.actor_id=${actorParameter})
+   ) AND ${alias}.created_at>COALESCE((
+    SELECT max(cleared.created_at)
+    FROM luemi_chats.conversation_clear_events cleared
+    WHERE cleared.conversation_id=${alias}.conversation_id
+      AND cleared.environment=${alias}.environment
+      AND (cleared.scope='everyone' OR cleared.actor_id=${actorParameter})
+   ),'-infinity'::timestamptz)`;
+ }
  type MessageRow=Omit<ChatMessageContract,"media">;
  async function hydrate(db:PoolClient,rows:MessageRow[]):Promise<ChatMessageContract[]>{
   if(!rows.length)return [];
@@ -130,17 +144,17 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    peer_id:string;peer_name:string;peer_photo_id:string|null}>(`
    SELECT m.conversation_id AS id,pair.id AS match_id,
    CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END AS peer_id,
-   peer.display_name AS peer_name,
+   coalesce(peer.display_name,'Удалённый аккаунт') AS peer_name,
    (SELECT photo.id FROM luemi_private.media_assets photo
      WHERE photo.owner_id=peer.owner_id AND photo.environment=$2
        AND photo.state='approved' AND photo.publication_status='published'
      ORDER BY photo.position,photo.id LIMIT 1) AS peer_photo_id,
    (SELECT count(*)::text FROM luemi_chats.messages msg
     WHERE msg.conversation_id=m.conversation_id AND msg.sender_id<>$1
-    AND msg.deleted_at IS NULL AND msg.created_at>coalesce(m.last_read_at,'epoch'::timestamptz)) AS unread_count,
+    AND msg.deleted_at IS NULL AND ${visibleMessage("msg")} AND msg.created_at>coalesce(m.last_read_at,'epoch'::timestamptz)) AS unread_count,
    (SELECT CASE WHEN msg.deleted_at IS NULL THEN nullif(msg.body,'') ELSE 'Сообщение удалено' END FROM luemi_chats.messages msg
-    WHERE msg.conversation_id=m.conversation_id ORDER BY msg.created_at DESC,msg.id DESC LIMIT 1) AS last_message,
-   coalesce((SELECT max(msg.created_at) FROM luemi_chats.messages msg WHERE msg.conversation_id=m.conversation_id),c.created_at) AS last_activity_at
+    WHERE msg.conversation_id=m.conversation_id AND ${visibleMessage("msg")} ORDER BY msg.created_at DESC,msg.id DESC LIMIT 1) AS last_message,
+   coalesce((SELECT max(msg.created_at) FROM luemi_chats.messages msg WHERE msg.conversation_id=m.conversation_id AND ${visibleMessage("msg")}),c.created_at) AS last_activity_at
    FROM luemi_chats.members m
    JOIN luemi_chats.conversations c ON c.id=m.conversation_id AND c.environment=m.environment
    JOIN luemi_chats.matches pair ON pair.id=c.private_match_id AND pair.environment=c.environment AND pair.status='active'
@@ -168,10 +182,11 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     CASE WHEN deleted_at IS NULL THEN body ELSE '' END AS body,
     created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt",created_at AS "deliveredAt",NULL::timestamptz AS "readAt"
     FROM luemi_chats.messages WHERE conversation_id=$1 AND environment=$2
-    AND ($3::uuid IS NULL OR (created_at,id)<(
+    AND ${visibleMessage("m","$4")}
+     AND ($3::uuid IS NULL OR (created_at,id)<(
       SELECT created_at,id FROM luemi_chats.messages WHERE id=$3 AND conversation_id=$1))
     ORDER BY created_at DESC,id DESC LIMIT 51`,
-   [req.params.id,options.namespace,req.query.before??null]);
+   [req.params.id,options.namespace,req.query.before??null,actor]);
   const more=q.rows.length>50;const page=q.rows.slice(0,50);
   const nextCursor=more&&page.length?page[page.length-1].id:null;
   return {messages:await hydrate(db,page.reverse()),nextCursor};
@@ -228,15 +243,56 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   if(q.rowCount!==1)deny(404,"not_found");
   return {message:(await hydrate(db,q.rows))[0]};
  }));
+
+ // Display-level erasure never destroys original payloads. A separate lifecycle
+ // policy governs irreversible deletion, legal holds and data subject requests.
+ app.post<{Params:{id:string;messageId:string};Body:{scope?:unknown}}>(
+ "/api/v4/chats/:id/messages/:messageId/visibility",{preHandler:auth.mutation},
+ (req,reply)=>scoped(req,reply,async(db,actor)=>{
+  if(!validId(req.params.id)||!validId(req.params.messageId))deny(404,"not_found");
+  if(req.body?.scope!=="me"&&req.body?.scope!=="everyone")deny(422,"invalid_scope");
+  await member(db,req.params.id,actor);
+  const q=await db.query(
+   "SELECT 1 FROM luemi_chats.messages WHERE id=$1 AND conversation_id=$2 AND environment=$3",
+   [req.params.messageId,req.params.id,options.namespace]);
+  if(q.rowCount!==1)deny(404,"not_found");
+  await db.query(`INSERT INTO luemi_chats.message_visibility
+    (message_id,conversation_id,environment,actor_id,scope)
+    VALUES($1,$2,$3,$4,$5) ON CONFLICT(message_id,actor_id,scope) DO NOTHING`,
+   [req.params.messageId,req.params.id,options.namespace,actor,req.body.scope]);
+  return {removed:true as const,scope:req.body.scope,messageId:req.params.messageId};
+ }));
+ app.post<{Params:{id:string};Body:{scope?:unknown}}>(
+ "/api/v4/chats/:id/clear",{preHandler:auth.mutation},
+ (req,reply)=>scoped(req,reply,async(db,actor)=>{
+  if(!validId(req.params.id))deny(404,"not_found");
+  if(req.body?.scope!=="me"&&req.body?.scope!=="everyone")deny(422,"invalid_scope");
+  await member(db,req.params.id,actor);
+  await db.query(`INSERT INTO luemi_chats.conversation_clear_events
+   (conversation_id,environment,actor_id,scope) VALUES($1,$2,$3,$4)`,
+   [req.params.id,options.namespace,actor,req.body.scope]);
+  return {removed:true as const,scope:req.body.scope,conversationId:req.params.id};
+ }));
+ // Legacy DELETE: author-only and now uses a global visibility event, never
+ // wipes the original body. Old clients receive the previous response shape.
  app.delete<{Params:{id:string;messageId:string}}>(
- "/api/v4/chats/:id/messages/:messageId",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
+ "/api/v4/chats/:id/messages/:messageId",{preHandler:auth.mutation},
+ (req,reply)=>scoped(req,reply,async(db,actor)=>{
   if(!validId(req.params.id)||!validId(req.params.messageId))deny(404,"not_found");
   await member(db,req.params.id,actor);
-  const q=await db.query<MessageRow>(`UPDATE luemi_chats.messages SET body='',deleted_at=now()
-   WHERE conversation_id=$1 AND id=$2 AND sender_id=$3 AND deleted_at IS NULL RETURNING id,conversation_id AS "conversationId",sender_id AS "senderId",client_id AS "clientId",body,created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt",created_at AS "deliveredAt",NULL::timestamptz AS "readAt"`,
-   [req.params.id,req.params.messageId,actor]);
+  const q=await db.query<MessageRow>(`SELECT id,conversation_id AS "conversationId",
+   sender_id AS "senderId",client_id AS "clientId",body,created_at AS "createdAt",
+   edited_at AS "editedAt",deleted_at AS "deletedAt",
+   created_at AS "deliveredAt",NULL::timestamptz AS "readAt"
+   FROM luemi_chats.messages
+   WHERE id=$1 AND conversation_id=$2 AND environment=$3 AND sender_id=$4`,
+   [req.params.messageId,req.params.id,options.namespace,actor]);
   if(q.rowCount!==1)deny(404,"not_found");
-  return {message:(await hydrate(db,q.rows))[0]};
+  await db.query(`INSERT INTO luemi_chats.message_visibility
+   (message_id,conversation_id,environment,actor_id,scope)
+   VALUES($1,$2,$3,$4,'everyone') ON CONFLICT(message_id,actor_id,scope) DO NOTHING`,
+   [req.params.messageId,req.params.id,options.namespace,actor]);
+  return {message:{...q.rows[0],body:"",deletedAt:new Date().toISOString(),media:[]}};
  }));
 
  app.post<{Params:{id:string};Body:Buffer}>("/api/v4/chats/:id/media",{preHandler:auth.mutation,config:{bodyLimit:10*1024*1024}},(req,reply)=>scoped(req,reply,async(db,actor,onRollback)=>{
@@ -252,6 +308,6 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
  }));
  app.get<{Params:{id:string;mediaId:string} }>("/api/v4/chats/:id/media/:mediaId/url",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
   if(!validId(req.params.id)||!validId(req.params.mediaId))deny(404,"not_found");await member(db,req.params.id,actor);if(!options.mediaStore)deny(503,"media_unavailable");
-  const found=await db.query<{object_path:string}>("SELECT media.object_path FROM luemi_chats.media media JOIN luemi_chats.messages msg ON msg.id=media.message_id AND msg.conversation_id=media.conversation_id AND msg.environment=media.environment WHERE media.id=$1 AND media.conversation_id=$2 AND media.state='ready' AND msg.deleted_at IS NULL",[req.params.mediaId,req.params.id]);if(found.rowCount!==1)deny(404,"not_found");return options.mediaStore.signedRead(found.rows[0].object_path,60);
+  const found=await db.query<{object_path:string}>("SELECT media.object_path FROM luemi_chats.media media JOIN luemi_chats.messages msg ON msg.id=media.message_id AND msg.conversation_id=media.conversation_id AND msg.environment=media.environment WHERE media.id=$1 AND media.conversation_id=$2 AND media.state='ready' AND msg.deleted_at IS NULL AND ${visibleMessage("msg","$3")}`,[req.params.mediaId,req.params.id,actor]);if(found.rowCount!==1)deny(404,"not_found");return options.mediaStore.signedRead(found.rows[0].object_path,60);
  }));
 }
