@@ -423,6 +423,17 @@ export function App() {
     return ()=>window.clearTimeout(timer);
   },[scope,photosRestored,draft,step,photos,saveRetry]);
   useEffect(()=>()=>{
+    // A reset is also a deletion of every draft photo on the real server;
+    // do not leave stale private assets occupying the six-photo quota.
+    if(realFeedPilot.enabled&&remoteMediaPilot.enabled&&auth==="authorized"){
+      const ids=photos.map(p=>p.id);
+      const clean=serverPhotoQueue.current.then(async()=>{
+        for(const id of ids)await deletePrivatePhoto(id);
+        for(const id of ids)serverPhotoUploaded.current.delete(id);
+        setServerPhotoCount(0);
+      }).catch(()=>setMediaStatus("Сброс выполнен локально, но удаление фото с сервера не подтверждено."));
+      serverPhotoQueue.current=clean;
+    }
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();
@@ -543,7 +554,7 @@ export function App() {
     const item=photos.find(p=>p.id===id);
     if(item?.src){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
     setPhotos(prev=>prev.filter(p=>p.id!==id));
-    if(realFeedPilot.enabled&&remoteMediaPilot.enabled&&serverConsent){
+    if(realFeedPilot.enabled&&remoteMediaPilot.enabled&&auth==="authorized"){
       // Same per-owner serial queue as uploads; an in-flight PUT completes
       // before its matching revocation. We never delete another user's media.
       const revocation=serverPhotoQueue.current.then(()=>deletePrivatePhoto(id))
