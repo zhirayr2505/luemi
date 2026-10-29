@@ -36,13 +36,17 @@ export function RegistrationPreview({data,photos}:Props){
        </div>:<p>Интересы пока не выбраны</p>}
      </section>
      <section className="registration-static-section">
-       <h3>Ещё фотографии</h3>
-       {prepared.length>1?<div className="registration-static-gallery">
-         {prepared.slice(1).map((photo,index)=><img key={photo.id} src={photo.src}
-           alt={`Дополнительное фото ${index+1}`} loading="lazy" decoding="async"/>)}
-       </div>:<p>Других фотографий пока нет</p>}
+       <h3>Все фотографии · {prepared.length}</h3>
+       {prepared.length?<div className="registration-static-gallery" role="region"
+         aria-label="Листай свои фотографии горизонтально">
+         {prepared.map((photo,index)=><figure key={photo.id} className="registration-static-photo">
+          <img src={photo.src} alt={index===0?"Главное фото":`Фотография ${index+1}`}
+           loading={index>2?"lazy":"eager"} decoding="async"/>
+          {index===0&&<figcaption>Главное фото</figcaption>}
+         </figure>)}
+       </div>:<p>Фотографии ещё не выбраны</p>}
      </section>
    </div>
-   <p className="registration-static-note">Это локальный черновик. Анкета не опубликована.</p>
+   <p className="registration-static-note">Это предпросмотр. Анкета будет видна другим после создания.</p>
  </article>;
 }
