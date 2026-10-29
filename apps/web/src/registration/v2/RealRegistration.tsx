@@ -64,7 +64,7 @@ export function RealRegistrationV2(p:Props){
  const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
- const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|null>(null);
+ const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|"language"|null>(null);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
  useEffect(()=>{
   // Android WebView can restore the last focused input when a Mini App is
@@ -129,7 +129,10 @@ export function RealRegistrationV2(p:Props){
     break;
    }
    case "intent":issue=validateStep(draft,4,photos.length,new Date(),"live");break;
-   case "personality":issue=validateStep(draft,6,photos.length,new Date(),"live");break;
+   case "personality":
+    issue=validateStep(draft,6,photos.length,new Date(),"live");
+    if(issue){setIdentityError({field:"about",message:issue});setHint("");return;}
+    break;
    case "photos":
     if(!photoReady(photos)){issue="Выбери от 3 до 6 готовых фотографий.";break;}
     if(photoChecking)return;
@@ -158,7 +161,7 @@ export function RealRegistrationV2(p:Props){
   movePhoto:p.movePhoto,resetDraft:p.resetDraft,deferConsent:true,step:1,
   fieldError:identityError,clearFieldError:(field:"name"|"date"|"city"|"about")=>{
     setIdentityError(previous=>previous?.field===field?null:previous);
-  },onFieldFocus:(field:"name"|"date"|"city"|null)=>{
+  },onFieldFocus:(field:"name"|"date"|"city"|"about"|"language"|null)=>{
     setFocusedField(field);
   }
  }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft,identityError]);
@@ -170,7 +173,7 @@ export function RealRegistrationV2(p:Props){
    stage.id==="intent"?gate.hasIntent:
    stage.id==="personality"?validateStep(draft,6,photos.length,new Date(),"live")===null:
    stage.id==="photos"?photoReady(photos):true;
- const fieldConfirmActive=(stage.id==="identity"||stage.id==="location")&&focusedField!==null;
+ const fieldConfirmActive=(stage.id==="identity"||stage.id==="location"||stage.id==="personality")&&focusedField!==null;
 
  return <main className="v2-canvas v2-runtime" data-theme={p.theme}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
