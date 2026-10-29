@@ -4,7 +4,7 @@ on:
   push:
     branches: [remediation/rem-05d-private-media-rls-moderation-20261023, remediation/rem-05e-webhook-secret-rotation-20261024, remediation/rem-05f-bliki-readiness-20261024]
   pull_request:
-    branches: [remediation/rem-05c-geo-rate-cache-telegramweb-20261023, remediation/rem-05e-webhook-secret-rotation-20261024]
+    branches: [main, remediation/rem-05c-geo-rate-cache-telegramweb-20261023, remediation/rem-05e-webhook-secret-rotation-20261024]
 permissions:
   contents: read
 jobs:
@@ -52,7 +52,10 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build -w @luemi/contracts
           npm run typecheck -w @luemi/api
-          node scripts/rem-05b-public-diff-scan.mjs
+          # Scan changes in THIS PR, not the historical REM-05B baseline.
+          # merge-base cannot be chosen by the PR head to hide added secrets.
+          LUEMI_DIFF_BASE_SHA="$(git merge-base origin/main HEAD)" \
+            node scripts/rem-05b-public-diff-scan.mjs
       - name: Disposable PostgreSQL 16 real-role migration and privacy suite
         run: |
           set -euo pipefail
@@ -63,6 +66,9 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0002_rem05b_identity_sessions.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0003_rem05c_geo_budget.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0004_rem05d_private_media_moderation.sql
+          # The live beta request role already has this column-scoped grant;
+          # mirror it in the disposable media fixture, never broaden UPDATE.
+          psql -v ON_ERROR_STOP=1 -c "GRANT UPDATE(expires_at) ON luemi_private.media_uploads TO luemi_request"
           psql -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE rem05d_ci_issuer LOGIN PASSWORD 'synthetic_rem05d_issuer' IN ROLE luemi_auth_issuer;
           CREATE ROLE rem05d_ci_request LOGIN PASSWORD 'synthetic_rem05d_request' IN ROLE luemi_request;

@@ -204,6 +204,66 @@ test("M: actual RLS media, intent concurrency, sanitized PNG, moderator-only app
   console.log("REM05D_MEDIA_PRIVATE_DERIVATIVE_MODERATION_REVOKE_PASS");
  }finally{await server.close();}
 });
+test("owner background photos: real RLS deletion, storage removal, replay and main-photo ordering",async()=>{
+ const store=memoryPrivateStore(),server=app({storage:store});
+ try{
+  const a=await identity(server,9901101),b=await identity(server,9901102);
+  const png=makeSyntheticPng();
+  const assets:string[]=[],localIds:string[]=[];
+  for(let i=0;i<3;i++){
+   const local="88888888-8888-4888-8888-"+String(100000000000+i);
+   localIds.push(local);
+   const intent=await post(server,"/api/v2/media/intents",a,
+    {bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+local});
+   assert.equal(intent.statusCode,200,intent.body);
+   const id=intent.json().assetId as string;
+   assets.push(id);
+   const bytes=await server.inject({method:"PUT",url:"/api/v2/media/"+id+"/bytes",
+    headers:{...headers(a.cookie,a.csrf),"content-type":"image/png"},payload:png});
+   assert.equal(bytes.statusCode,200,bytes.body);
+   await syntheticModerate(moderatorUrl!,id,"approved");
+  }
+  // A previous, incomplete upload cannot occupy a fourth slot forever
+  // after the owner keeps only the three photos above.
+  const staleLocal="88888888-8888-4888-8888-100000000009";
+  const stale=await post(server,"/api/v2/media/intents",a,
+   {bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+staleLocal});
+  assert.equal(stale.statusCode,200,stale.body);
+  const pruned=await put(server,"/api/v2/media/sync-selection",a,{photoIds:localIds});
+  assert.equal(pruned.statusCode,200,pruned.body);
+  assert.equal(pruned.json().removed,1);
+  assert.equal((await admin.query("SELECT state FROM luemi_private.media_assets WHERE id=$1",
+   [stale.json().assetId])).rows[0].state,"revoked");
+  assert.equal((await put(server,"/api/v2/media/sync-selection",b,{photoIds:localIds})).statusCode,200,
+   "foreign actor's selected IDs cannot affect this owner's assets");
+  const order=[assets[2],assets[0],assets[1]];
+  const sorted=await put(server,"/api/v2/media/order",a,{assetIds:order});
+  assert.equal(sorted.statusCode,200,sorted.body);
+  const positions=await admin.query<{id:string;position:number}>(
+   "SELECT id,position FROM luemi_private.media_assets WHERE id=ANY($1::uuid[]) ORDER BY position",[assets]);
+  assert.deepEqual(positions.rows.map(x=>x.id),order,"first selected image must be main");
+  assert.equal((await put(server,"/api/v2/media/order",b,{assetIds:order})).statusCode,409);
+  const firstLocal="88888888-8888-4888-8888-100000000000";
+  const url="/api/v2/media/by-photo/"+firstLocal;
+  const unauthorized=await server.inject({method:"DELETE",url,
+   headers:headers(b.cookie,b.csrf)});
+  assert.equal(unauthorized.statusCode,200,"idempotent deletion must not reveal ownership");
+  assert.equal((await get(server,"/api/v2/media/"+assets[0],a)).statusCode,200);
+  const derivative=await admin.query<{derivative_key:string}>(
+   "SELECT derivative_key FROM luemi_private.media_assets WHERE id=$1",[assets[0]]);
+  const removed=await server.inject({method:"DELETE",url,headers:headers(a.cookie,a.csrf)});
+  assert.equal(removed.statusCode,200,removed.body);
+  assert.equal((await get(server,"/api/v2/media/"+assets[0],a)).statusCode,404);
+  assert.equal((await store.get(derivative.rows[0].derivative_key)),null,
+   "unpublished media bytes must be physically deleted");
+  assert.equal((await server.inject({method:"DELETE",url,headers:headers(a.cookie,a.csrf)})).statusCode,200);
+  const count=await admin.query<{n:string}>(
+   "SELECT count(*)::text AS n FROM luemi_private.media_assets "+
+   "WHERE owner_id=$1 AND environment=$2 AND state<>'revoked'",[a.id,namespace]);
+  assert.equal(Number(count.rows[0].n),2);
+  console.log("LUEMI_BACKGROUND_PHOTO_DELETE_ORDER_RLS_PASS");
+ }finally{await server.close();}
+});
 test("D09: session revoked while draft UPDATE waits on a real PostgreSQL row lock must ROLLBACK",async()=>{
  const server=app();
  const hold=await admin.connect();

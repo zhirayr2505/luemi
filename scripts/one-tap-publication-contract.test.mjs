@@ -8,9 +8,9 @@ const v2=load("apps/web/src/registration/v2/RealRegistration.tsx");
 const warm=load("apps/web/src/registration/recommendation-warmup.ts");
 const reg=load("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const media=load("apps/api/src/rem05d-private.ts");
-test("user performs one action from accepted V3 review",()=>{
- assert.match(v2,/<ProfileMaster data=\{fromLocalDraft\(draft,readyRegistrationPhotos\(photos\)\)\}/);
- assert.match(v2,/mode="local-self-preview" active/);
+test("user performs one action from static circular-photo preview",()=>{
+ assert.match(v2,/<RegistrationPreview data=\{draft\} photos=\{photos\}\/>/);
+ assert.doesNotMatch(v2,/mode="local-self-preview" active/);
  assert.match(v2,/Создать анкету 💜/);
  assert.doesNotMatch(v2,/Проверить модерацию и публикацию/);
  assert.match(app,/onSave=\{\(\)=>\{void \(realFeedPilot.enabled\?confirmRealRegistration\(\)/);
@@ -20,10 +20,14 @@ test("incomplete upload never opens a fake registration dashboard",()=>{
  const end=app.indexOf('const resumePublication=async()=>',start);
  assert(start>0&&end>start);
  const submit=app.slice(start,end);
- assert.match(submit,/const uploadedIds=await uploadPrivatePhotos/);
+ assert.match(submit,/await uploadChain\.current/);
+ assert.match(submit,/await syncPrivateSelectedPhotos\(photos\.map\(p=>p\.id\)\)/);
+ assert.match(submit,/assetId=await uploadPrivatePhoto\(photo\)/);
+ assert.match(submit,/await orderPrivatePhotos\(uploadedIds\)/);
  assert.doesNotMatch(submit,/existing.approved<photos.length\|\|existing.pending>0\|\|existing.other>0/);
  assert.match(submit,/readConfirmedPrivateMediaCount\(photos.length,uploadedIds\)/);
- assert.match(submit,/await uploadPrivatePhotos/);
+ assert.doesNotMatch(submit,/await uploadPrivatePhotos\(/,
+  "No full re-upload from preview when selection upload already succeeded");
  assert.match(submit,/await readConfirmedPrivateMediaCount\(photos.length,uploadedIds\)/);
  assert.match(submit,/media.approved<photos.length\|\|media.pending!==0\|\|media.other!==0/);
  assert.match(submit,/confirmed.state!=="published"/);
@@ -49,6 +53,19 @@ test("first pictures cached only in RAM with bounded signed endpoint fetch",()=>
  assert.match(reg,/initialFeed=\{initialFeed\}/);
  assert.match(reg,/Пока нет анкет/);
  assert.match(reg,/className="discovery-bottom-nav"/);
+});
+test("selected photos upload from step seven and deleted private bytes are revoked",()=>{
+ const mediaClient=load("apps/web/src/registration/server-media.ts");
+ assert.match(app,/serverConsent\|\|/,"Consent gates background upload");
+ assert.match(app,/const work=uploadChain\.current/,"Uploads remain serialized");
+ assert.match(app,/await uploadPrivatePhoto\(photo\)/);
+ assert.match(app,/await deletePrivatePhoto\(id\)/);
+ assert.match(app,/await syncPrivateSelectedPhotos\(localIds\)/);
+ assert.match(mediaClient,/export async function uploadPrivatePhoto/);
+ assert.match(mediaClient,/export async function deletePrivatePhoto/);
+ assert.match(mediaClient,/export async function syncPrivateSelectedPhotos/);
+ assert.match(media,/\/api\/v2\/media\/by-photo\/:id/);
+ assert.match(media,/\/api\/v2\/media\/sync-selection/);
 });
 test("server resumes same expired media intent without new asset",()=>{
  assert.match(media,/existing.rows\[0\].state==="reserved"/);

@@ -262,7 +262,12 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    "WHERE owner_id=$1 AND environment=$2 AND idempotency_digest=$3",
    [id,opts.namespace,keyDigest]);
   if(existing.rowCount){
-   if(existing.rows[0].request_digest!==bodyDigest)reject(409,"idempotency_conflict");
+   // An already received image is immutable. A restart may re-encode the
+   // same photo with different PNG bytes: reuse the existing accepted asset,
+   // never overwrite it or allocate another slot for the same local UUID.
+   if(existing.rows[0].state!=="received"&&
+      existing.rows[0].request_digest!==bodyDigest)
+    reject(409,"idempotency_conflict");
    if(existing.rows[0].state==="reserved"){
     // The caller may return hours after a network interruption. Renew ONLY
     // the same pending asset/clientKey under the requester's existing RLS
@@ -377,6 +382,107 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    if(reply.sent)return reply;
    return statusError(reply,e);
   }
+ });
+ // Synchronize only the signed owner's explicitly selected, unpublished
+ // draft photos. Orphaned/reserved uploads from interrupted attempts otherwise
+ // consume slots forever and make the next registration fail at photo 2/3.
+ // The original approved live profile, if any, is NEVER touched here.
+ app.put<{Body:unknown}>("/api/v2/media/sync-selection",
+ {preHandler:guard.mutation},async(req,reply)=>{
+  if(!object(req.body)||Object.keys(req.body).length!==1||
+     !Array.isArray(req.body.photoIds)||req.body.photoIds.length>6||
+     !req.body.photoIds.every(uuid)||
+     new Set(req.body.photoIds).size!==req.body.photoIds.length)
+   return reply.code(422).send({error:"invalid_photo_selection"});
+  const selection=req.body.photoIds as string[];
+  const allowed=new Set(selection.map(id=>digest("reg01c-photo-"+id)));
+  const authorized=await owner(req,reply,async(_db,id)=>({id}));
+  if(reply.sent||!("id" in authorized))return authorized;
+  try{
+   return await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+authorized.id+":profile_media_slots"]);
+    const q=await db.query<{id:string;derivative_key:string;idempotency_digest:string}>(
+     "SELECT a.id,a.derivative_key,u.idempotency_digest "+
+     "FROM luemi_private.media_assets a JOIN luemi_private.media_uploads u ON u.asset_id=a.id "+
+     "WHERE a.owner_id=$1 AND a.environment=$2 AND a.state<>'revoked' "+
+     "AND a.publication_status='private' FOR UPDATE OF a,u",
+     [authorized.id,opts.namespace]);
+    const removed=q.rows.filter(row=>!allowed.has(row.idempotency_digest));
+    // A failed Storage deletion fails the call. The row is never falsely
+    // marked successfully deleted; all operations remain owner-scoped.
+    for(const row of removed){
+     await opts.storage.delete(row.derivative_key);
+     await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
+      "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+      [row.id,authorized.id,opts.namespace]);
+    }
+    return{removed:removed.length};
+   });
+  }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
+ });
+ // Delete a selected unpublished photo. The per-owner advisory lock serializes
+ // removal with any in-flight upload or new photo intent.
+ app.delete<{Params:{id:string}}>("/api/v2/media/by-photo/:id",
+ {preHandler:guard.mutation},async(req,reply)=>{
+  if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});
+  const authorized=await owner(req,reply,async(_db,id)=>({id}));
+  if(reply.sent||!("id" in authorized))return authorized;
+  const initial=req.authActor;
+  try{
+   return await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+authorized.id+":profile_media_slots"]);
+    const record=await db.query<{id:string;derivative_key:string;state:string;publication_status:string}>(
+     "SELECT a.id,a.derivative_key,a.state,a.publication_status FROM luemi_private.media_assets a "+
+     "JOIN luemi_private.media_uploads u ON u.asset_id=a.id "+
+     "WHERE a.owner_id=$1 AND a.environment=$2 AND u.idempotency_digest=$3 FOR UPDATE OF a,u",
+     [authorized.id,opts.namespace,digest("reg01c-photo-"+req.params.id)]);
+    if(!record.rowCount||record.rows[0].state==="revoked")return{deleted:true};
+    if(record.rows[0].publication_status!=="private")
+     reject(409,"cannot_remove_published_draft_photo");
+    await auth.read(req,reply);
+    if(reply.sent||!initial||!req.authActor||initial.actorId!==req.authActor.actorId||
+       initial.sessionId!==req.authActor.sessionId||
+       !timingSafeEqual(initial.hash,req.authActor.hash))
+     reject(401,"unauthorized");
+    await opts.storage.delete(record.rows[0].derivative_key);
+    await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
+     "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+     [record.rows[0].id,authorized.id,opts.namespace]);
+    return{deleted:true};
+   });
+  }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
+ });
+ // Persist the selected first/main photo and the remaining swipe order.
+ // All submitted IDs must be the owner's exact approved and private media set.
+ app.put<{Body:unknown}>("/api/v2/media/order",
+ {preHandler:guard.mutation},async(req,reply)=>{
+  if(!object(req.body)||Object.keys(req.body).length!==1||
+     !Array.isArray(req.body.assetIds)||req.body.assetIds.length<3||
+     req.body.assetIds.length>6||!req.body.assetIds.every(uuid)||
+     new Set(req.body.assetIds).size!==req.body.assetIds.length)
+   return reply.code(422).send({error:"invalid_photo_order"});
+  const assetIds=req.body.assetIds as string[];
+  const authorized=await owner(req,reply,async(_db,id)=>({id}));
+  if(reply.sent||!("id" in authorized))return authorized;
+  try{
+   return await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+authorized.id+":profile_media_slots"]);
+    const q=await db.query<{id:string}>(
+     "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 "+
+     "AND state='approved' AND publication_status='private' FOR UPDATE",
+     [authorized.id,opts.namespace]);
+    if(q.rows.length!==assetIds.length||q.rows.some(x=>!assetIds.includes(x.id)))
+     reject(409,"photo_order_out_of_sync");
+    await db.query("UPDATE luemi_private.media_assets a SET position=ordered.ordinal::int-1 "+
+     "FROM unnest($1::uuid[]) WITH ORDINALITY AS ordered(id,ordinal) "+
+     "WHERE a.id=ordered.id AND a.owner_id=$2 AND a.environment=$3 AND a.state='approved' "+
+     "AND a.publication_status='private'",[assetIds,authorized.id,opts.namespace]);
+    return{ordered:assetIds.length};
+   });
+  }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
  });
  app.get<{Params:{id:string}}>("/api/v2/media/:id",{preHandler:guard.read},async(req,reply)=>{
   if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});

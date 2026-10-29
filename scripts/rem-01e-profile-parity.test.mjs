@@ -70,7 +70,7 @@ console.log("REM01E_MODEL_PASS server published/hidden/rejected policy unaffecte
 const preview=read("apps/web/src/registration/Preview.tsx");
 assert.ok(preview.includes("readyRegistrationPhotos(photos)"));
 assert.ok(preview.includes("draftAge(data)"));
-assert.ok(preview.includes("prepared.slice(1)"));
+assert.ok(preview.includes("prepared.map("));
 assert.ok(!preview.includes("ProfileMaster")&&!preview.includes("PhotoCarousel"));
 const app=read("apps/web/src/App.tsx");
 assert.ok(app.includes("readyRegistrationPhotos(photos)"));
