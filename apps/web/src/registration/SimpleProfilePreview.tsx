@@ -10,7 +10,21 @@ export function SimpleProfilePreview({draft,photos}:{draft:RegistrationDraft;pho
  const strip=useRef<HTMLDivElement>(null);
  const [selected,setSelected]=useState(0);
  const main=photos[0];
- const age=Number(draft.year)?new Date().getFullYear()-Number(draft.year):null;
+ const now=new Date();
+ const born=new Date(Number(draft.year),Number(draft.month)-1,Number(draft.day));
+ const age=Number(draft.year)&&!Number.isNaN(born.getTime())?
+  now.getFullYear()-born.getFullYear()-
+  (now.getMonth()<born.getMonth()||(now.getMonth()===born.getMonth()&&now.getDate()<born.getDate())?1:0):null;
+ const onGalleryScroll=()=>{
+  const viewport=strip.current;if(!viewport)return;
+  const center=viewport.getBoundingClientRect().left+viewport.clientWidth/2;
+  let closest=0,distance=Infinity;
+  Array.from(viewport.children).forEach((child,i)=>{
+   const box=child.getBoundingClientRect(),diff=Math.abs(box.left+box.width/2-center);
+   if(diff<distance){distance=diff;closest=i;}
+  });
+  setSelected(closest);
+ };
  const shift=(direction:number)=>{
   const next=Math.min(Math.max(0,selected+direction),Math.max(0,photos.length-1));
   setSelected(next);
@@ -27,7 +41,8 @@ export function SimpleProfilePreview({draft,photos}:{draft:RegistrationDraft;pho
   <section className="luemi-summary-gallery" aria-label="Твои фотографии">
    <div className="luemi-summary-title"><Images size={18}/><h3>Мои фотографии</h3>
     <span>{photos.length} из 6</span></div>
-   <div className="luemi-summary-photos" ref={strip} role="group" aria-label="Галерея фото">
+   <div className="luemi-summary-photos" ref={strip} role="group" aria-label="Галерея фото"
+    onScroll={onGalleryScroll}>
     {photos.map((photo,i)=><button type="button" className={"luemi-summary-photo"+(i===selected?" is-active":"")}
       key={photo.id} onClick={()=>setSelected(i)} aria-label={i===0?"Главное фото":"Фото "+(i+1)}>
       <img src={photo.src} alt={i===0?"Главное фото":"Фотография "+(i+1)}/>
