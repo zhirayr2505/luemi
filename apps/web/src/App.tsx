@@ -431,17 +431,9 @@ export function App() {
     return ()=>window.clearTimeout(timer);
   },[scope,photosRestored,draft,step,photos,saveRetry]);
   useEffect(()=>()=>{
+    // Unmount must NEVER delete server media. A user navigating from
+    // registration to Discovery must keep every published photo intact.
     photoGeneration.current++;
-    const oldIds=[...earlyPhotoStarted.current];
-    for(const id of oldIds)earlyPhotoDeleted.current.add(id);
-    if(serverConsent&&remoteMediaPilot.enabled){
-      const task=earlyPhotoQueue.current.then(async()=>{
-        for(const id of oldIds)await forgetPrivatePhoto(id);
-      }).catch(()=>setEarlyPhotoStatus("Не все старые фото удалились. Проверь интернет."));
-      earlyPhotoQueue.current=task;
-    }
-    earlyPhotoStarted.current.clear();earlyPhotoAssets.current.clear();
-    setEarlyPhotoCount(0);
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();
     for(const timer of photoTimers.current.values())window.clearTimeout(timer);
@@ -562,7 +554,7 @@ export function App() {
     const attempted=earlyPhotoStarted.current.has(id)||earlyPhotoAssets.current.has(id);
     earlyPhotoDeleted.current.add(id);earlyPhotoStarted.current.delete(id);
     earlyPhotoAssets.current.delete(id);
-    if(attempted&&remoteMediaPilot.enabled&&serverConsent){
+    if(attempted&&remoteMediaPilot.enabled){
       // Never abort the in-flight server request and then forget early: wait
       // for it to finish, THEN physically revoke/delete its Storage objects.
       const task=earlyPhotoQueue.current.then(()=>forgetPrivatePhoto(id))
@@ -584,8 +576,18 @@ export function App() {
     });
   };
   const resetDraft=()=>{
-    if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
+    if(!window.confirm("Удалить черновик и выбранные фотографии (в том числе с сервера)?"))return;
     photoGeneration.current++;
+    const oldIds=[...earlyPhotoStarted.current];
+    for(const id of oldIds)earlyPhotoDeleted.current.add(id);
+    if(remoteMediaPilot.enabled&&oldIds.length){
+      const task=earlyPhotoQueue.current.then(async()=>{
+        for(const id of oldIds)await forgetPrivatePhoto(id);
+      }).catch(()=>setEarlyPhotoStatus("Проверь соединение: часть фото могла остаться на сервере."));
+      earlyPhotoQueue.current=task;
+    }
+    earlyPhotoStarted.current.clear();earlyPhotoAssets.current.clear();
+    setEarlyPhotoCount(0);
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();photoIds.current.clear();
     for(const timer of photoTimers.current.values())window.clearTimeout(timer);
