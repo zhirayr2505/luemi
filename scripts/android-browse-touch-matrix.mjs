@@ -61,6 +61,21 @@ try {
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.locator(".discovery-app").waitFor();
+  await page.evaluate(()=>{
+   window.__luemiTouchTrace=[];
+   const surface=document.querySelector(".discovery-pages");
+   for(const type of ["touchstart","touchmove","touchend","touchcancel","pointercancel"]){
+    surface?.addEventListener(type,event=>{
+     const touch=event.touches?.[0]??event.changedTouches?.[0];
+     const log=window.__luemiTouchTrace;
+     if(Array.isArray(log)&&log.length<90)log.push({
+      type,cancelable:event.cancelable,tag:event.target?.tagName,
+      className:typeof event.target?.className==="string"?event.target.className.slice(0,110):"",
+      x:Math.round(touch?.clientX??-1),y:Math.round(touch?.clientY??-1)
+     });
+    },{capture:true,passive:true});
+   }
+  });
   const tabs=page.locator(".discovery-top-tabs [role=tab]");
   for(let repeat=0;repeat<2;repeat++){
    // The ForYou scroller is NOT at rest at top; this used to cause all
@@ -75,7 +90,17 @@ try {
    assert.ok(start,"no gesture-safe visible point inside scrolled ForYou");
    const t1=performance.now();
    await swipe(cdp,start.x,start.y,-width*.46,0);
-   await active(page,2);
+   try{await active(page,2);}catch(error){
+    const diagnosis=await page.evaluate(()=>({
+     events:window.__luemiTouchTrace,
+     selected:[...document.querySelectorAll(".discovery-top-tabs [role=tab]")].map(x=>x.getAttribute("aria-selected")),
+     current:document.querySelector(".discovery-app")?.dataset,
+     scrollTop:document.querySelector(".fy-scroll")?.scrollTop
+    }));
+    console.error("LUEMI_BROWSE_TOUCH_DIAGNOSTIC "+JSON.stringify({start,diagnosis}));
+    throw error;
+   }
+   await page.evaluate(()=>{window.__luemiTouchTrace=[];});
    samples.push({screen:width,repeat,scenario:"for-you-scrolled-left",elapsedMs:Math.round(performance.now()-t1)});
    // Vertical touch scroll on Nearby must remain native (tab stays Nearby).
    const nb=await scrollerPoint(page,".nb-scroll");
