@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {createHmac} from "node:crypto";
+import {createHmac,randomUUID} from "node:crypto";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
 import {memoryPrivateStore,syntheticModerate} from "../src/rem05d-private.js";
@@ -110,7 +110,7 @@ test("01D: early private upload, delete selected photo and reorder without leaki
    assert.equal(upload.statusCode,200,upload.body);
    return id;
   }
-  const key1="reg01c-photo-"+crypto.randomUUID();
+  const key1="reg01c-photo-"+randomUUID();
   const old=await add(key1);
   const peek=await app.inject({method:"GET",url:"/api/v2/media/"+old,
    headers:{cookie:owner.cookie}});
@@ -132,8 +132,11 @@ test("01D: early private upload, delete selected photo and reorder without leaki
   assert.deepEqual(preview.json().photos,[],"revoked photo must disappear from server preview");
   assert.equal((await app.inject({method:"GET",url:"/api/v2/media/"+old,
    headers:{cookie:owner.cookie}})).statusCode,404);
-  const chosen=[];
-  for(let n=0;n<3;n++)chosen.push(await add("reg01c-photo-"+crypto.randomUUID()));
+  const chosen:string[]=[],keys:string[]=[];
+  for(let n=0;n<3;n++){
+   const key="reg01c-photo-"+randomUUID();
+   keys.push(key);chosen.push(await add(key));
+  }
   const reversed=[...chosen].reverse();
   const denied=await app.inject({method:"PUT",url:"/api/v2/media/order",
    headers:headers(stranger),payload:{assetIds:reversed}});
@@ -147,9 +150,12 @@ test("01D: early private upload, delete selected photo and reorder without leaki
   const published=await mutate(app,owner,"/api/v3/profile/publish",{revision:1});
   assert.equal(published.statusCode,200,published.body);
   const tooLate=await app.inject({method:"DELETE",url:"/api/v2/media/by-client-key/"+
-   "reg01c-photo-"+chosen[0],headers:headers(owner)});
+   keys[0],headers:headers(owner)});
   // Published assets cannot be revoked by the pre-publication picker route.
   assert.equal(tooLate.statusCode,200);
+  const publishedPhoto=await app.inject({method:"GET",url:"/api/v2/media/"+chosen[0],
+   headers:{cookie:owner.cookie}});
+  assert.equal(publishedPhoto.statusCode,200,"published image must be preserved");
  }finally{await app.close();}
 });
 test("01D: default-deny unauthenticated and unapproved, publish only moderated 3/3, block and hide",async()=>{
