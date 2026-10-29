@@ -232,11 +232,11 @@
 .v2-runtime .geo-results button:active{background:#f1e5f8;}
 
 /* City search follows the same keyboard choreography as name and birthday. */
-.v2-runtime .geo-focus-overlay{position:fixed;inset:0;z-index:40;background:rgba(64,39,79,.12);
- backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:dob-focus-in .28s ease both;}
+.v2-runtime .geo-focus-overlay{position:fixed;inset:0;z-index:40;background:rgba(64,39,79,.10);
+ backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);animation:dob-focus-in .28s ease both;}
 .v2-runtime .city-focus-shell{position:relative;z-index:1;transform:translateY(0);transform-origin:center top;
  transition:transform .48s cubic-bezier(.22,.8,.25,1),filter .28s ease;}
-.v2-runtime .city-focus-shell.is-focused{z-index:42;transform:translateY(calc(var(--city-focus-shift,0px) * -1)) scale(1.035);}
+.v2-runtime .city-focus-shell.is-focused{z-index:42;transform:translateY(var(--city-focus-shift,0px)) scale(1.045);}
 .v2-runtime .city-focus-shell.is-focused .glass-control{border-color:#a875c7;box-shadow:0 0 0 5px rgba(184,140,230,.15),0 15px 34px rgba(113,74,136,.18),inset 0 1px 0 #fff;}
 .v2-runtime .city-focus-shell.has-error .glass-control{border-color:#c56c91;box-shadow:0 0 0 4px rgba(197,108,145,.13),0 7px 20px rgba(159,76,112,.12);}
 .v2-runtime .city-focus-shell .geo-results{position:relative;z-index:43;margin-top:7px;animation:field-hint-in .24s ease both;}
@@ -258,6 +258,16 @@
 .v2-runtime .optional-choice-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
 .v2-runtime .optional-choice-grid .glass-choice{min-height:36px;padding:8px 10px;font-size:12px;}
 .v2-runtime .optional-facts{width:100%;min-height:68px;padding:11px 13px;resize:none;font:inherit;}
+.v2-runtime .about-step.has-error .glass-control{border-color:#c56c91;box-shadow:0 0 0 4px rgba(197,108,145,.13),0 7px 20px rgba(159,76,112,.12);}
+.v2-runtime .optional-profile-screen{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:#fffafd;color:var(--ink);animation:field-hint-in .28s ease both;}
+.v2-runtime .optional-profile-screen-head{display:flex;align-items:center;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--line);}
+.v2-runtime .optional-profile-screen-head button{width:40px;height:40px;border:1px solid var(--glass-edge);border-radius:50%;background:#fffaff;color:#76558a;display:grid;place-items:center;}
+.v2-runtime .optional-profile-screen-head h2{font-size:20px;margin:0;}
+.v2-runtime .optional-profile-screen-body{flex:1;overflow:auto;padding:18px 18px 28px;display:grid;align-content:start;gap:14px;}
+.v2-runtime .optional-profile-screen-body .optional-field-row{grid-template-columns:1fr 1.2fr;}
+.v2-runtime .optional-profile-screen-foot{display:flex;gap:10px;padding:12px 18px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--line);background:rgba(255,250,253,.96);}
+.v2-runtime .optional-profile-screen-foot button{flex:1;min-height:50px;border-radius:16px;border:1px solid var(--glass-edge);background:#fffaff;color:#76558a;font:inherit;font-weight:700;}
+.v2-runtime .optional-profile-screen-foot button:last-child{border:0;color:#fff;background:linear-gradient(110deg,#a87adc,#dda4d3);}
 .v2-runtime .luemi-simple-review-meta em{font-style:normal;}
 .v2-runtime .luemi-simple-review-meta .round-flag{width:18px;height:18px;}
 .v2-runtime .luemi-simple-review-details{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;}
