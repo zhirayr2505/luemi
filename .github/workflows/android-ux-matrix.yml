@@ -11,7 +11,7 @@ jobs:
   android-ux:
     # Avoid an always-on extra runner once LUEMI becomes a private repository.
     # This focused QA is automatic only for its hardening branch; manual afterwards.
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/android-webview-interaction-stability-matrix-20261024' || github.head_ref == 'fix/gesture-scroll-tab-ownership-20261025' || github.head_ref == 'fix/profile-scroll-handoff-theme-preview-20261025' || github.head_ref == 'refactor/architecture-dead-code-motion-20261025'
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/android-webview-interaction-stability-matrix-20261024' || github.head_ref == 'fix/gesture-scroll-tab-ownership-20261025' || github.head_ref == 'fix/profile-scroll-handoff-theme-preview-20261025' || github.head_ref == 'refactor/architecture-dead-code-motion-20261025' || github.head_ref == 'feature/open-launch-preflight-20261029'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
