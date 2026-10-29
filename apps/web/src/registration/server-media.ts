@@ -68,6 +68,49 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
  if(!res.ok)throw new Error("private_media_http_"+res.status);
  return res;
 }
+export async function uploadPrivatePhoto(photo:PhotoItem):Promise<string>{
+ if(!remoteMediaPilot.enabled||photo.status!=="ready"||!photo.id)
+  throw new Error("ready_photo_required");
+ const png=await normalizedPng(photo);
+ const response=await request("/api/v2/media/intents","POST",
+  JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
+  "application/json");
+ const result:unknown=await response.json();
+ if(!result||typeof result!=="object"||Array.isArray(result))
+  throw new Error("invalid_private_intent");
+ const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
+ if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
+   intent.upload!=="private_proxy"||
+   (intent.state!=="reserved"&&intent.state!=="received"))
+  throw new Error("invalid_private_intent");
+ if(intent.state==="reserved"){
+  const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
+   "PUT",png,"image/png");
+  const receipt:unknown=await saved.json();
+  if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
+    !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
+    (receipt as {published?:unknown}).published!==false)
+   throw new Error("invalid_private_media_receipt");
+ }
+ return intent.assetId;
+}
+/** Removing a local photo also revokes it in private SQL and Storage. A failed
+ * cleanup is surfaced to the user and can be retried with the same asset ID. */
+export async function deletePrivatePhoto(assetId:string):Promise<void>{
+ if(!UUID.test(assetId))throw new Error("invalid_asset_id");
+ const token=geoCsrf();
+ if(!token)throw new Error("missing_session_csrf");
+ const res=await fetch("/api/v2/media/"+assetId,{
+  method:"DELETE",credentials:"same-origin",cache:"no-store",
+  headers:{"X-Luemi-CSRF":token}
+ });
+ if(!res.ok)throw new Error("photo_delete_http_"+res.status);
+}
+export async function orderPrivatePhotos(assetIds:readonly string[]):Promise<void>{
+ if(assetIds.length<1||assetIds.length>6||assetIds.some(id=>!UUID.test(id))||
+  new Set(assetIds).size!==assetIds.length)throw new Error("invalid_photo_order");
+ await request("/api/v2/media/order","PUT",JSON.stringify({ids:assetIds}),"application/json");
+}
 export async function uploadPrivatePhotos(
  photos:PhotoItem[],progress:(completed:number,total:number)=>void
 ):Promise<string[]>{
@@ -77,27 +120,8 @@ export async function uploadPrivatePhotos(
  let done=0;
  const assetIds:string[]=[];
  for(const photo of photos){
-  const png=await normalizedPng(photo);
-  const response=await request("/api/v2/media/intents","POST",
-   JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
-   "application/json");
-  const result:unknown=await response.json();
-  if(!result||typeof result!=="object"||Array.isArray(result))throw new Error("invalid_private_intent");
-  const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
-  if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
-    intent.upload!=="private_proxy"||
-    (intent.state!=="reserved"&&intent.state!=="received"))
-    throw new Error("invalid_private_intent");
-  if(intent.state==="reserved"){
-   const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
-    "PUT",png,"image/png");
-   const receipt:unknown=await saved.json();
-   if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
-     !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
-     (receipt as {published?:unknown}).published!==false)
-    throw new Error("invalid_private_media_receipt");
-  }
-  assetIds.push(intent.assetId);
+  const assetId=await uploadPrivatePhoto(photo);
+  assetIds.push(assetId);
   done++;
   progress(done,photos.length);
  }
