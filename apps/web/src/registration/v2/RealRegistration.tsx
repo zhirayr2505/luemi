@@ -104,6 +104,9 @@ export function RealRegistrationV2(p:Props){
      validateStep(draft,6,photos.length,new Date(),"live");break;
    case "photos":
     if(!photoReady(photos)){issue="Выбери от 3 до 6 готовых фотографий.";break;}
+    if(p.mediaEnabled&&!p.serverConsent){
+     issue="Разреши приватную загрузку фото на сервер, чтобы продолжить.";break;
+    }
     if(photoChecking)return;
     setPhotoChecking(true);
     void findExactDuplicatePhotoIds(photos).then(ids=>{
