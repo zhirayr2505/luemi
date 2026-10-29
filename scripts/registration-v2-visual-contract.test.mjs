@@ -17,7 +17,7 @@ const required=[
  ["V2 runtime tokens",/\.v2-runtime\s*\{[^}]*--ink:/s],
  ["Telegram native clearance",/\.v2-runtime\[data-telegram-ui="true"\]\s+\.v2-device\s*\{[^}]*padding-top:max\(64px,[^}]*--tg-content-safe-area-inset-top[^}]*--tg-safe-area-inset-top[^}]*safe-area-inset-top/s],
  ["opaque form inputs",/\.v2-runtime\s+\.glass-control\s*\{[^}]*background:#fffaff/s],
- ["visible names and focused DOB field",/\.v2-runtime\s+\.dob-focus-shell\s*\{/],
+ ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--field-focus-top/s],
  ["geolocation and language search icon",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
  ["opaque search scope list",/\.v2-runtime\s+\.scope-options\s*\{[^}]*background:#fffaff/s],
@@ -46,8 +46,8 @@ assert.match(form,/registrationV2Stages\.filter\(stage=>stage\.id!=="face-consen
  "Private signup must skip unavailable biometric verification screens");
 assert.match(form,/aria-valuemax=\{stages\.length\}/,
  "Progress count must reflect actual signup steps");
-assert.match(app,/realOnly\|\|import\.meta\.env\.VITE_LUEMI_REGISTRATION_V2/,
- "Real-only private registration must use V2, even without the legacy V2 opt-in");
+assert.match(app,/const registrationV2Pilot=remoteDraftPilot\.enabled/,
+ "Every server-backed registration must use V2 without a legacy feature-flag fallback");
 assert.match(app,/publicMediaUiMissing=import\.meta\.env\.VITE_LUEMI_OPEN_SIGNUPS_UI/,
  "Open public signup UI must fail closed without private server media");
 assert.match(app,/readConfirmedPrivateMediaCount\(photos\.length,uploadedIds\)/,
