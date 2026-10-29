@@ -129,6 +129,28 @@ export async function uploadPrivatePhotos(
  return assetIds;
 }
 
+/** Final user-selected photos are authoritative. Before publication, revoke
+ * old private assets from a previous interrupted session, not selected now.
+ * Only the owner-private manifest is exposed. Never touch published assets.
+ */
+export async function reconcilePrivatePhotos(selectedIds:readonly string[]):Promise<void>{
+ if(selectedIds.length<3||selectedIds.length>6||selectedIds.some(id=>!UUID.test(id)))
+  throw new Error("invalid_selected_photos");
+ const response=await fetch("/api/v2/profile/preview",{
+  credentials:"same-origin",cache:"no-store"
+ });
+ if(!response.ok)throw new Error("private_manifest_unavailable");
+ const json:unknown=await response.json();
+ if(!json||typeof json!=="object"||Array.isArray(json)||
+  !Array.isArray((json as {photos?:unknown}).photos))throw new Error("invalid_private_media_manifest");
+ const photos=(json as {photos:Array<{id?:unknown;state?:unknown}>}).photos;
+ for(const asset of photos){
+  if(typeof asset.id!=="string"||!UUID.test(asset.id))
+   throw new Error("invalid_private_media_manifest");
+  if(!selectedIds.includes(asset.id))await deletePrivatePhoto(asset.id);
+ }
+ await orderPrivatePhotos(selectedIds);
+}
 /** Verify server-side media state instead of trusting an upload progress bar. */
 export async function readConfirmedPrivateMediaCount(expected:number,uploadedIds:readonly string[]=[]):Promise<number>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
