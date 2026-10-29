@@ -264,6 +264,64 @@ test("01D: incomplete 1/3 photo upload retries expired intent without duplicate 
   assert.equal(Number(count.rows[0].total),3,"retry created a duplicate asset");
  }finally{await app.close();}
 });
+test("01D: background draft photo can be reordered, revoked, deleted from Storage and replaced",async()=>{
+ const store=memoryPrivateStore(),app=makeApp({storage:store,instant:true});
+ try{
+  const owner=await identity(app,8011491),stranger=await identity(app,8011492);
+  await consent(app,stranger);
+  const ids=await prepare(app,owner);
+  const original=await admin.query<{derivative_key:string}>(
+   "SELECT derivative_key FROM luemi_private.media_assets WHERE id=$1",[ids[1]]);
+  assert.equal(original.rowCount,1);
+  assert.ok(await store.get(original.rows[0].derivative_key));
+  const reversed=[ids[2],ids[1],ids[0]];
+  const order=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(owner),payload:{assetIds:reversed}});
+  assert.equal(order.statusCode,200,order.body);
+  const rows=await admin.query<{id:string;position:number}>(
+   "SELECT id,position FROM luemi_private.media_assets WHERE owner_id=$1 ORDER BY position",
+   [owner.id]);
+  assert.deepEqual(rows.rows.map(x=>x.id),reversed,"main photo must match first chosen photo");
+  const blocked=await app.inject({method:"DELETE",url:"/api/v2/media/"+ids[1],
+   headers:headers(stranger)});
+  assert.equal(blocked.statusCode,404,"no access to a stranger's media");
+  const removed=await app.inject({method:"DELETE",url:"/api/v2/media/"+ids[1],
+   headers:headers(owner)});
+  assert.equal(removed.statusCode,200,removed.body);
+  assert.equal((await app.inject({method:"DELETE",url:"/api/v2/media/"+ids[1],
+   headers:headers(owner)})).statusCode,200,"idempotent cleanup retry");
+  const state=await admin.query<{state:string}>(
+   "SELECT state FROM luemi_private.media_assets WHERE id=$1",[ids[1]]);
+  assert.equal(state.rows[0].state,"revoked");
+  const manifest=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:owner.cookie}});
+  assert.equal(manifest.statusCode,200,manifest.body);
+  assert.ok(!manifest.json().photos.some((p:{id:string})=>p.id===ids[1]),
+   "revoked photo must not poison the 3-6 active-photo confirmation manifest");
+  assert.equal(await store.get(original.rows[0].derivative_key),null,"sanitized blob not erased");
+  const after=await app.inject({method:"GET",url:"/api/v2/media/"+ids[1],
+   headers:{cookie:owner.cookie}});
+  assert.equal(after.statusCode,404,"revoked photo still accessible");
+  const wrongOrder=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(owner),payload:{assetIds:[...reversed]}});
+  assert.equal(wrongOrder.statusCode,409,"deleted photo still selectable");
+  const png=makeSyntheticPng();
+  const next=await mutate(app,owner,"/api/v2/media/intents",
+   {bytes:png.length,mime:"image/png",clientKey:"replace-reg01d-"+owner.id});
+  assert.equal(next.statusCode,200,next.body);
+  const newId=next.json().assetId;
+  const put=await app.inject({method:"PUT",url:"/api/v2/media/"+newId+"/bytes",
+   headers:{...headers(owner),"content-type":"image/png"},payload:png});
+  assert.equal(put.statusCode,200,put.body);
+  const chosen=[ids[2],newId,ids[0]];
+  const reordered=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(owner),payload:{assetIds:chosen}});
+  assert.equal(reordered.statusCode,200,reordered.body);
+  assert.deepEqual((await admin.query<{id:string}>(
+   "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 "+
+   "AND state='approved' ORDER BY position",[owner.id])).rows.map(x=>x.id),chosen);
+ }finally{await app.close();}
+});
 test("01D: reusing the requester login for publishing is rejected at bootstrap",()=>{
  assert.throws(()=>makeApp({publisher:requestUrl!}),
   /separate publisher\/discovery roles/);

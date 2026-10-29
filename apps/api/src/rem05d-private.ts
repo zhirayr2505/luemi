@@ -237,7 +237,8 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    "SELECT revision::text,payload FROM luemi_private.private_profile_drafts WHERE owner_id=$1 AND environment=$2",
    [id,opts.namespace]);
   const m=await db.query<{id:string;state:string;generation:number}>(
-   "SELECT id,state,generation FROM luemi_private.media_assets WHERE owner_id=$1 AND environment=$2 ORDER BY position,id",
+   "SELECT id,state,generation FROM luemi_private.media_assets "+
+    "WHERE owner_id=$1 AND environment=$2 AND state<>'revoked' ORDER BY position,id",
    [id,opts.namespace]);
   return{status:"unpublished",revision:q.rowCount?Number(q.rows[0].revision):0,
    preview:q.rowCount?{...q.rows[0].payload}:null,
@@ -247,6 +248,22 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   reply.code(404).send({error:"not_found"}));
  app.post("/api/v2/profile/submit",{preHandler:guard.mutation},async(_req,reply)=>
   reply.code(403).send({error:"publication_disabled"}));
+ // Non-creating lookup to reconcile existing on-server private photos after
+ // an interrupted registration. The stable random clientKey is scoped to
+ // the verified owner; it never exposes Storage object keys to the browser.
+ app.get<{Params:{clientKey:string}}>("/api/v2/media/client/:clientKey",
+  {preHandler:guard.read},async(req,reply)=>owner(req,reply,async(db,id)=>{
+   if(!str(req.params.clientKey,8,80))reject(422,"invalid_client_key");
+   const q=await db.query<{asset_id:string;state:string}>(
+    "SELECT u.asset_id,a.state FROM luemi_private.media_uploads u "+
+    "JOIN luemi_private.media_assets a ON a.id=u.asset_id "+
+    "WHERE u.owner_id=$1 AND u.environment=$2 AND "+
+    "u.idempotency_digest=$3 AND a.owner_id=$1 "+
+    "AND a.environment=$2 AND a.state<>'revoked'",
+    [id,opts.namespace,digest(req.params.clientKey)]);
+   return q.rowCount===1?{assetId:q.rows[0].asset_id,state:q.rows[0].state}:
+     {assetId:null,state:"missing"};
+  }));
  app.post<{Body:unknown}>("/api/v2/media/intents",{preHandler:guard.mutation},async(req,reply)=>owner(req,reply,async(db,id)=>{
   if(!object(req.body)||Object.keys(req.body).some(k=>!["bytes","mime","clientKey"].includes(k))||
     req.body.mime!=="image/png"||!Number.isSafeInteger(req.body.bytes)||
@@ -377,6 +394,95 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    if(reply.sent)return reply;
    return statusError(reply,e);
   }
+ });
+ // Registration draft: deletion is owner-only and never affects a published
+ // profile. Revocation commits BEFORE Storage cleanup, so access is closed
+ // immediately even when the object store is temporarily unavailable.
+ // Save exact owner-selected order (index zero is the main picture) before
+ // publication. Only the COMPLETE private asset set is accepted.
+ app.put<{Body:unknown}>("/api/v2/media/order",{preHandler:guard.mutation},async(req,reply)=>{
+  if(!object(req.body)||Object.keys(req.body).length!==1||
+    !Array.isArray(req.body.assetIds)||req.body.assetIds.length<3||
+    req.body.assetIds.length>6||!req.body.assetIds.every(uuid)||
+    new Set(req.body.assetIds).size!==req.body.assetIds.length)
+    return reply.code(422).send({error:"invalid_photo_order"});
+  const assetIds=req.body.assetIds as string[];
+  const checked=await owner(req,reply,async(db,id)=>{
+   const q=await db.query<{id:string}>(
+    "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 "+
+    "AND environment=$2 AND state='approved' AND publication_status='private'",
+    [id,opts.namespace]);
+   if(q.rows.length!==assetIds.length||q.rows.some(x=>!assetIds.includes(x.id)))
+    reject(409,"photo_set_changed");
+   return{id};
+  });
+  if(reply.sent||!("id" in checked))return checked;
+  const actor=req.authActor;
+  try{
+   await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+checked.id+":profile_media_slots"]);
+    const result=await db.query(
+     "UPDATE luemi_private.media_assets a SET position=x.ordinality-1 "+
+     "FROM unnest($1::uuid[]) WITH ORDINALITY AS x(id,ordinality) "+
+     "WHERE a.id=x.id AND a.owner_id=$2 AND a.environment=$3 "+
+     "AND a.state='approved' AND a.publication_status='private' RETURNING a.id",
+     [assetIds,checked.id,opts.namespace]);
+    if(result.rowCount!==assetIds.length)reject(409,"photo_set_changed");
+    await auth.read(req,reply);
+    if(reply.sent||!actor||!req.authActor||req.authActor.actorId!==actor.actorId||
+      req.authActor.sessionId!==actor.sessionId||
+      !timingSafeEqual(req.authActor.hash,actor.hash))reject(401,"unauthorized");
+   });
+   return{ok:true,count:assetIds.length};
+  }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
+ });
+ app.delete<{Params:{id:string}}>("/api/v2/media/:id",{preHandler:guard.mutation},async(req,reply)=>{
+  if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});
+  const verified=await owner(req,reply,async(db,id)=>{
+   const q=await db.query<{id:string}>(
+    "SELECT id FROM luemi_private.media_assets WHERE id=$1 AND owner_id=$2 "+
+    "AND environment=$3 AND publication_status='private'",
+    [req.params.id,id,opts.namespace]);
+   if(!q.rowCount)reject(404,"not_found");
+   return{id};
+  });
+  if(reply.sent||!("id" in verified))return verified;
+  const actor=req.authActor;
+  try{
+   const record=await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+verified.id+":profile_media_slots"]);
+    const row=await db.query<{derivative_key:string;original_key:string;state:string}>(
+     "SELECT derivative_key,original_key,state FROM luemi_private.media_assets "+
+     "WHERE id=$1 AND owner_id=$2 AND environment=$3 "+
+     "AND publication_status='private' FOR UPDATE",
+     [req.params.id,verified.id,opts.namespace]);
+    if(!row.rowCount)reject(404,"not_found");
+    await auth.read(req,reply);
+    if(reply.sent||!actor||!req.authActor||req.authActor.actorId!==actor.actorId||
+      req.authActor.sessionId!==actor.sessionId||
+      !timingSafeEqual(req.authActor.hash,actor.hash))reject(401,"unauthorized");
+    if(row.rows[0].state!=="revoked"){
+     await db.query("UPDATE luemi_private.media_assets SET state='revoked',"+
+      "publication_status='private',generation=generation+1 WHERE id=$1 "+
+      "AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+      [req.params.id,verified.id,opts.namespace]);
+    }
+    return row.rows[0];
+   });
+   try{
+    await opts.storage.delete(record.derivative_key);
+    // The original key is reserved but no original is uploaded by this
+    // sanitized-only API. Removing it is harmless and protects migrations.
+    await opts.storage.delete(record.original_key);
+   }catch{
+    // The record is already revoked / unreadable. The next DELETE retries
+    // object cleanup. Never claim a completed storage deletion on failure.
+    return reply.code(503).send({error:"private_media_cleanup_pending"});
+   }
+   return{ok:true,removed:true};
+  }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
  });
  app.get<{Params:{id:string}}>("/api/v2/media/:id",{preHandler:guard.read},async(req,reply)=>{
   if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});

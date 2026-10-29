@@ -68,6 +68,64 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
  if(!res.ok)throw new Error("private_media_http_"+res.status);
  return res;
 }
+/** Resolve the durable asset from a stable private client key, without
+ * uploading its bytes. Used to clean up previously uploaded photos after
+ * a reload or an in-flight selection removal. */
+export async function resolvePrivatePhotoAssetId(photo:PhotoItem):Promise<string>{
+ const png=await normalizedPng(photo);
+ const result:unknown=await (await request("/api/v2/media/intents","POST",
+  JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
+  "application/json")).json();
+ if(!result||typeof result!=="object"||Array.isArray(result)||
+   typeof (result as {assetId?:unknown}).assetId!=="string"||
+   !UUID.test((result as {assetId:string}).assetId))
+   throw new Error("invalid_private_intent");
+ return (result as {assetId:string}).assetId;
+}
+export async function savePrivatePhotoOrder(assetIds:readonly string[]):Promise<void>{
+ if(assetIds.length<3||assetIds.length>6||assetIds.some(id=>!UUID.test(id))||
+    new Set(assetIds).size!==assetIds.length)
+  throw new Error("invalid_photo_order");
+ await request("/api/v2/media/order","PUT",
+  JSON.stringify({assetIds}),"application/json");
+}
+export async function uploadOnePrivatePhoto(photo:PhotoItem):Promise<string>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ if(photo.status!=="ready"||!photo.id)throw new Error("photo_not_ready");
+ const png=await normalizedPng(photo);
+ const response=await request("/api/v2/media/intents","POST",
+  JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
+  "application/json");
+ const result:unknown=await response.json();
+ if(!result||typeof result!=="object"||Array.isArray(result))
+  throw new Error("invalid_private_intent");
+ const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
+ if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
+    intent.upload!=="private_proxy"||
+    (intent.state!=="reserved"&&intent.state!=="received"))
+  throw new Error("invalid_private_intent");
+ if(intent.state==="reserved"){
+  const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
+   "PUT",png,"image/png");
+  const receipt:unknown=await saved.json();
+  if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
+     !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
+     (receipt as {published?:unknown}).published!==false)
+    throw new Error("invalid_private_media_receipt");
+ }
+ return intent.assetId;
+}
+export async function deletePrivatePhotoAsset(assetId:string):Promise<void>{
+ if(!remoteMediaPilot.enabled||!UUID.test(assetId))throw new Error("invalid_asset");
+ const token=geoCsrf();
+ if(!token)throw new Error("missing_session_csrf");
+ const response=await fetch("/api/v2/media/"+assetId,{
+  method:"DELETE",credentials:"same-origin",cache:"no-store",
+  headers:{"X-Luemi-CSRF":token}
+ });
+ if(response.status===404)return; // Already removed / never visible.
+ if(!response.ok)throw new Error("private_photo_delete_http_"+response.status);
+}
 export async function uploadPrivatePhotos(
  photos:PhotoItem[],progress:(completed:number,total:number)=>void
 ):Promise<string[]>{
@@ -77,29 +135,8 @@ export async function uploadPrivatePhotos(
  let done=0;
  const assetIds:string[]=[];
  for(const photo of photos){
-  const png=await normalizedPng(photo);
-  const response=await request("/api/v2/media/intents","POST",
-   JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
-   "application/json");
-  const result:unknown=await response.json();
-  if(!result||typeof result!=="object"||Array.isArray(result))throw new Error("invalid_private_intent");
-  const intent=result as {assetId?:unknown;state?:unknown;upload?:unknown};
-  if(typeof intent.assetId!=="string"||!UUID.test(intent.assetId)||
-    intent.upload!=="private_proxy"||
-    (intent.state!=="reserved"&&intent.state!=="received"))
-    throw new Error("invalid_private_intent");
-  if(intent.state==="reserved"){
-   const saved=await request("/api/v2/media/"+intent.assetId+"/bytes",
-    "PUT",png,"image/png");
-   const receipt:unknown=await saved.json();
-   if(!receipt||typeof receipt!=="object"||Array.isArray(receipt)||
-     !["pending_review","approved"].includes(String((receipt as {status?:unknown}).status))||
-     (receipt as {published?:unknown}).published!==false)
-    throw new Error("invalid_private_media_receipt");
-  }
-  assetIds.push(intent.assetId);
-  done++;
-  progress(done,photos.length);
+  assetIds.push(await uploadOnePrivatePhoto(photo));
+  progress(++done,photos.length);
  }
  if(new Set(assetIds).size!==assetIds.length)throw new Error("duplicate_upload_receipt");
  return assetIds;

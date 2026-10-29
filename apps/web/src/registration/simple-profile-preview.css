@@ -1,0 +1,22 @@
+.luemi-simple-preview{width:100%;box-sizing:border-box;padding:20px 15px 16px;border-radius:26px;background:linear-gradient(165deg,rgba(255,255,255,.92),rgba(248,237,254,.85));border:1px solid rgba(188,145,218,.32);box-shadow:0 10px 32px rgba(86,58,112,.09);color:#493359;display:flex;flex-direction:column;gap:13px}
+.luemi-simple-preview-header{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.luemi-simple-preview-avatar{width:84px;height:84px;border-radius:50%;overflow:hidden;display:grid;place-items:center;border:3px solid #fff;box-shadow:0 5px 18px rgba(102,65,136,.19);background:#e9d9f5}
+.luemi-simple-preview-avatar img{width:100%;height:100%;object-fit:cover}
+.luemi-simple-preview-header h2{margin:0;font-size:24px;line-height:1.2;letter-spacing:-.03em}
+.luemi-simple-preview-header p{margin:0;color:#7c6a89;display:flex;gap:5px;align-items:center;font-size:13px}
+.luemi-simple-preview-header>span{display:flex;align-items:center;gap:6px;background:rgba(195,157,223,.20);border:1px solid rgba(195,157,223,.2);padding:7px 13px;border-radius:40px;font-weight:600;font-size:13px}
+.luemi-simple-preview-about{margin:4px 2px 0;text-align:center;font-size:14px;line-height:1.5}
+.luemi-simple-preview-tags{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.luemi-simple-preview-tags>span{padding:6px 10px;border-radius:22px;background:rgba(202,170,231,.18);font-size:12px}
+.luemi-simple-preview-gallery-head{display:flex;justify-content:space-between;align-items:center}
+.luemi-simple-preview-gallery-head h3{font-size:16px;margin:0}
+.luemi-simple-preview-gallery-head span{font-size:12px;color:#7c6a89}
+.luemi-simple-preview-scroller{display:flex;gap:9px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;padding:3px}
+.luemi-simple-preview-scroller::-webkit-scrollbar{display:none}
+.luemi-simple-preview-thumb{position:relative;flex:0 0 76px;width:76px;height:100px;border-radius:13px;border:2px solid transparent;overflow:hidden;scroll-snap-align:center;background:#e7d6ef;padding:0}
+.luemi-simple-preview-thumb.is-active{border-color:#a978d2}
+.luemi-simple-preview-thumb img{width:100%;height:100%;object-fit:cover}
+.luemi-simple-preview-thumb span{position:absolute;bottom:4px;left:3px;right:3px;border-radius:12px;color:#4d3260;background:rgba(255,255,255,.9);font-size:10px;font-weight:650}
+.luemi-simple-preview-selected{height:clamp(175px,35vh,290px);border-radius:17px;overflow:hidden;background:#e7d6ef}
+.luemi-simple-preview-selected img{width:100%;height:100%;object-fit:contain}
+.luemi-simple-preview-hint{font-size:12px;color:#7c6a89;text-align:center;line-height:1.5;margin:0}
