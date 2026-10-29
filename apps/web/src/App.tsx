@@ -1110,7 +1110,9 @@ export function App() {
         mediaEnabled={remoteMediaPilot.enabled}
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
-        serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
+        serverStatus={realFeedPilot.enabled?
+          (backgroundBusy>0?"Сохраняем выбранные фото на сервере…":mediaStatus||publishFeedback):
+          serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
