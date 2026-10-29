@@ -134,6 +134,19 @@ export async function deletePrivatePhoto(photoId:string):Promise<void>{
   headers:{"X-Luemi-CSRF":csrf}});
  if(!response.ok)throw new Error("delete_private_photo_http_"+response.status);
 }
+/** First reconcile the current picker selection, even if the user selected
+ * only one photo. Old interrupted reserved/approved assets must not consume
+ * the six-photo quota or turn into invisible extra profile photos.
+ */
+export async function syncPrivatePhotoSelection(photoIds:string[]):Promise<void>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ if(photoIds.length<1||photoIds.length>6||
+    new Set(photoIds).size!==photoIds.length||photoIds.some(id=>!UUID.test(id)))
+  throw new Error("invalid_photo_selection");
+ await request("/api/v2/media/sync-selection","POST",
+  JSON.stringify({clientKeys:photoIds.map(id=>"reg01c-photo-"+id)}),"application/json");
+}
+
 /** Remove old server-side photos not present in this explicit, confirmed
  * 3–6-photo selection. This is needed after interrupted prior signups. */
 export async function reconcilePrivatePhotos(ids:string[]):Promise<void>{
