@@ -176,7 +176,7 @@ test("01D: early private upload, delete selected photo and reorder without leaki
   const tooLate=await app.inject({method:"DELETE",url:"/api/v2/media/by-client-key/"+
    keys[0],headers:headers(owner)});
   // Published assets cannot be revoked by the pre-publication picker route.
-  assert.equal(tooLate.statusCode,200);
+  assert.equal(tooLate.statusCode,409);
   const publishedPhoto=await app.inject({method:"GET",url:"/api/v2/media/"+chosen[0],
    headers:{cookie:owner.cookie}});
   assert.equal(publishedPhoto.statusCode,200,"published image must be preserved");
