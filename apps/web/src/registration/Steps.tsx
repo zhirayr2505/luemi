@@ -11,6 +11,7 @@ import {GeoPicker} from "./GeoPicker";
 import {PhotoSorter,type PhotoItem} from "./PhotoSorter";
 import {RegistrationPreview} from "./Preview";
 import {cleanName,type RegistrationDraft} from "./model";
+import {useFieldFocusDock} from "./use-field-focus";
 
 export type {PhotoItem} from "./PhotoSorter";
 export interface StepProps {
@@ -20,7 +21,7 @@ export interface StepProps {
  movePhoto:(from:number,to:number)=>void;resetDraft:()=>void;step:number;
  fieldError?:{field:"name"|"date"|"city"|"about";message:string}|null;
  clearFieldError?:(field:"name"|"date"|"city"|"about")=>void;
- onFieldFocus?:(field:"name"|"date"|"city"|null)=>void;
+ onFieldFocus?:(field:"name"|"date"|"city"|"about"|"language"|null)=>void;
 }
 function GenderIcon({type}:{type:"man"|"woman"|"everyone"}){
  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -59,66 +60,34 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const [category,setCategory]=useState("Популярное");
  const [nameFocused,setNameFocused]=useState(false);
  const [dobFocused,setDobFocused]=useState(false);
- const [focusShift,setFocusShift]=useState(0);
+ const [aboutFocused,setAboutFocused]=useState(false);
  const [nameHint,setNameHint]=useState(false);
  const hintTimer=useRef<number|null>(null);
  const dobTimer=useRef<number|null>(null);
  const focusTimer=useRef<number|null>(null);
- const focusInput=useRef<HTMLInputElement|null>(null);
+ const focusInput=useRef<HTMLInputElement|HTMLTextAreaElement|null>(null);
+ const nameDock=useFieldFocusDock(nameFocused);
+ const dobDock=useFieldFocusDock(dobFocused);
+ const aboutDock=useFieldFocusDock(aboutFocused);
  useEffect(()=>()=>{
    if(hintTimer.current!==null)window.clearTimeout(hintTimer.current);
    if(dobTimer.current!==null)window.clearTimeout(dobTimer.current);
    if(focusTimer.current!==null)window.clearTimeout(focusTimer.current);
  },[]);
- const refreshFocusPosition=()=>{
-   const input=focusInput.current;
-   if(!input)return;
-   const viewport=window.visualViewport;
-   const footer=input.closest<HTMLElement>(".v2-device")?.querySelector<HTMLElement>(".v2-footer");
-   const footerTop=footer?.getBoundingClientRect().top;
-   const keyboardTop=footerTop!==undefined&&footerTop>0?footerTop:
-     viewport?viewport.offsetTop+viewport.height:window.innerHeight;
-   const rect=input.getBoundingClientRect();
-   const idealCenter=keyboardTop-Math.min(132,Math.max(84,(viewport?.height??window.innerHeight)*.18));
-   const raw=idealCenter-(rect.top+rect.height/2);
-   const minShift=18-rect.top;
-   const maxShift=keyboardTop-18-rect.bottom;
-   setFocusShift(Math.round(Math.max(minShift,Math.min(maxShift,raw))));
- };
- const beginFieldFocus=(field:"name"|"date",input:HTMLInputElement)=>{
+ const beginFieldFocus=(field:"name"|"date"|"about",input:HTMLInputElement|HTMLTextAreaElement)=>{
    if(focusTimer.current!==null)window.clearTimeout(focusTimer.current);
    focusInput.current=input;
-   setFocusShift(0);
    clearFieldError?.(field);
    onFieldFocus?.(field);
-   window.requestAnimationFrame(()=>{
-     input.scrollIntoView({behavior:"smooth",block:"nearest"});
-     window.requestAnimationFrame(refreshFocusPosition);
-   });
  };
  const endFieldFocus=()=>{
    if(focusTimer.current!==null)window.clearTimeout(focusTimer.current);
    focusTimer.current=window.setTimeout(()=>{
      if(document.activeElement===focusInput.current)return;
      focusInput.current=null;
-     setFocusShift(0);
      onFieldFocus?.(null);
    },180);
  };
- useEffect(()=>{
-   if(!nameFocused&&!dobFocused)return;
-   const viewport=window.visualViewport;
-   const refresh=()=>window.requestAnimationFrame(refreshFocusPosition);
-   viewport?.addEventListener("resize",refresh);
-   viewport?.addEventListener("scroll",refresh);
-   window.addEventListener("resize",refresh);
-   refresh();
-   return()=>{
-     viewport?.removeEventListener("resize",refresh);
-     viewport?.removeEventListener("scroll",refresh);
-     window.removeEventListener("resize",refresh);
-   };
- },[nameFocused,dobFocused]);
  const updateName=(raw:string)=>{
    const clean=cleanName(raw);
    patch({name:clean});
@@ -142,7 +111,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      dobTimer.current=window.setTimeout(()=>{
        dobInput.current?.blur();
        setDobFocused(false);
-       setFocusShift(0);
        onFieldFocus?.(null);
      },120);
    }
@@ -151,8 +119,9 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    ?data.interests.filter(x=>x!==value):data.interests.length>=15?data.interests:[...data.interests,value]});
  if(step===1)return <div className="form-stack step-name">
    {nameFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>nameInput.current?.blur()}/>}
-   <div className={"name-focus-shell"+(nameFocused?" is-focused":"")+(fieldError?.field==="name"?" has-error":"")}
-     style={{"--focus-shift":`${focusShift}px`} as CSSProperties}>
+   <div className="focus-field-slot"><div ref={node=>{nameDock.shellRef.current=node;}}
+     className={"focus-field-shell name-focus-shell"+(nameFocused?" is-focused":"")+(fieldError?.field==="name"?" has-error":"")}
+     style={nameDock.style}>
      <GlassField label="Твоё имя"><GlassTextInput ref={nameInput} autoComplete="given-name" enterKeyHint="next" maxLength={48} value={data.name}
        aria-invalid={fieldError?.field==="name"}
        placeholder="Как тебя зовут?" onFocus={e=>{
@@ -165,13 +134,14 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      {(nameHint||fieldError?.field==="name")&&<div className="field-inline-hint name-input-hint" role="status">
        <Info size={16} aria-hidden="true"/>{fieldError?.field==="name"?fieldError.message:"Можно использовать только буквы, пробел, тире и апостроф."}
      </div>}
-   </div>
+   </div></div>
    {!deferConsent&&<RegistrationConsent data={data} patch={patch}/>}
  </div>;
  if(step===2)return <div className="form-stack dob-step">
    {dobFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>dobInput.current?.blur()}/>}
-   <div className={"dob-focus-shell"+(dobFocused?" is-focused":"")+(fieldError?.field==="date"?" has-error":"")}
-     style={{"--focus-shift":`${focusShift}px`} as CSSProperties}>
+   <div className="focus-field-slot"><div ref={node=>{dobDock.shellRef.current=node;}}
+     className={"focus-field-shell dob-focus-shell"+(dobFocused?" is-focused":"")+(fieldError?.field==="date"?" has-error":"")}
+     style={dobDock.style}>
      <GlassField label="Дата рождения" hint="Например, 12.05.1998">
        <GlassTextInput ref={dobInput} inputMode="numeric" autoComplete="bday" placeholder="ДД.ММ.ГГГГ"
          aria-label="Дата рождения, день месяц год" aria-invalid={fieldError?.field==="date"} value={dateValue}
@@ -188,7 +158,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
          onChange={e=>{clearFieldError?.("date");updateDate(e.target.value);}}/>
      </GlassField>
      {fieldError?.field==="date"&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError.message}</div>}
-   </div>
+   </div></div>
    <ChoiceRow label="Пол">
      <GlassChoice chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<GenderIcon type="man"/>}>Мужчина</GlassChoice>
      <GlassChoice chosen={data.gender==="woman"} onClick={()=>patch({gender:"woman"})} icon={<GenderIcon type="woman"/>}>Женщина</GlassChoice>
@@ -228,13 +198,22 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    </div>
  </div>;
  if(step===6)return <div className={"form-stack about-step"+(fieldError?.field==="about"?" has-error":"")}>
+   {aboutFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>focusInput.current?.blur()}/>}
+   <div className="focus-field-slot focus-field-slot-textarea"><div ref={node=>{aboutDock.shellRef.current=node;}}
+    className={"focus-field-shell about-focus-shell"+(aboutFocused?" is-focused":"")+(fieldError?.field==="about"?" has-error":"")}
+    style={aboutDock.style}>
    <GlassField label="Немного о себе"><textarea className="glass-control glass-textarea" rows={4}
       aria-invalid={fieldError?.field==="about"}
       placeholder="Что тебя радует? Чем любишь заниматься?"
-      value={data.about} maxLength={750} onChange={e=>{clearFieldError?.("about");patch({about:[...e.target.value].slice(0,750).join("")});}}/></GlassField>
+      value={data.about} maxLength={750}
+      onFocus={e=>{setAboutFocused(true);beginFieldFocus("about",e.currentTarget);}}
+      onBlur={()=>{setAboutFocused(false);endFieldFocus();}}
+      onChange={e=>{clearFieldError?.("about");patch({about:[...e.target.value].slice(0,750).join("")});}}/></GlassField>
    {fieldError?.field==="about"&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError.message}</div>}
    <p className="char-count">{[...data.about].length} / 750</p>
-   <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}/>
+   </div></div>
+   <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}
+     onFocusChange={focused=>onFieldFocus?.(focused?"language":null)}/>
    <p className="hint">Интересы и языки можно добавить позже в профиле.</p>
  </div>;
  if(step===7)return <div className="form-stack"><PhotoSorter photos={photos} addPhotos={addPhotos}
