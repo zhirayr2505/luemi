@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from "react";
 import {remoteDraftPilot} from "./server-draft";
 import {realFeedPilot} from "./real-live-client";
 import type {CSSProperties,ReactNode} from "react";
-import {Check,Info} from "lucide-react";
+import {Info} from "lucide-react";
 import {goals,goalIcons} from "../ui/Goals";
 import {LanguagePicker} from "./LanguagePicker";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
@@ -18,8 +18,8 @@ export interface StepProps {
  data:RegistrationDraft;patch:(values:Partial<RegistrationDraft>)=>void;
  photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;resetDraft:()=>void;step:number;
- fieldError?:{field:"name"|"date"|"city";message:string}|null;
- clearFieldError?:(field:"name"|"date"|"city")=>void;
+ fieldError?:{field:"name"|"date"|"city"|"about";message:string}|null;
+ clearFieldError?:(field:"name"|"date"|"city"|"about")=>void;
  onFieldFocus?:(field:"name"|"date"|"city"|null)=>void;
 }
 function GenderIcon({type}:{type:"man"|"woman"|"everyone"}){
@@ -224,13 +224,15 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
        <InterestChip key={item.id} id={item.id} selected={data.interests.includes(item.id)} onClick={()=>toggleInterest(item.id)}/>)}
    </div>
  </div>;
- if(step===6)return <div className="form-stack">
+ if(step===6)return <div className={"form-stack about-step"+(fieldError?.field==="about"?" has-error":"")}>
    <GlassField label="Немного о себе"><textarea className="glass-control glass-textarea" rows={4}
+      aria-invalid={fieldError?.field==="about"}
       placeholder="Что тебя радует? Чем любишь заниматься?"
-      value={data.about} maxLength={1500} onChange={e=>patch({about:[...e.target.value].slice(0,750).join("")})}/></GlassField>
+      value={data.about} maxLength={750} onChange={e=>{clearFieldError?.("about");patch({about:[...e.target.value].slice(0,750).join("")});}}/></GlassField>
+   {fieldError?.field==="about"&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError.message}</div>}
    <p className="char-count">{[...data.about].length} / 750</p>
    <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}/>
-   <p className="hint"><Check size={14} aria-hidden="true"/> Этот шаг можно пропустить.</p>
+   <p className="hint">Интересы и языки можно добавить позже в профиле.</p>
  </div>;
  if(step===7)return <div className="form-stack"><PhotoSorter photos={photos} addPhotos={addPhotos}
    removePhoto={removePhoto} movePhoto={movePhoto}/></div>;
