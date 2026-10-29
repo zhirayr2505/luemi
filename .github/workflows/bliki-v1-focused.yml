@@ -125,6 +125,7 @@ jobs:
             20261027_bliki_approved_avatars.sql \
             20261027_bliki_interactions.sql \
             20261029_bliki_profile_preferences.sql \
+            20261029_bliki_profile_preferences_publisher_read.sql \
             20261027_bliki_mutual_preferences.sql \
             20261027_bliki_retention.sql \
             20261029_bliki_v1_complete.sql \
