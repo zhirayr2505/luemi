@@ -12,7 +12,7 @@ export async function exportMyAvailableData():Promise<void>{
   return response.json() as Promise<unknown>;
  }
  const [identity,draft,profile,preview,list]=await Promise.all([
-  read("/api/v4/chats/me"),read("/api/v3/registration/draft"),
+  read("/api/v2/me"),read("/api/v3/registration/draft"),
   read("/api/v3/profile/status"),read("/api/v2/profile/preview"),read("/api/v4/chats")
  ]);
  const rows=(list as {conversations?:unknown}).conversations;
