@@ -36,7 +36,7 @@ test("empty server feed never hides navigation or reveals fictional demo people"
  assert.match(shell,/getPublishedFeed\(controller\.signal\)/);
  assert.match(shell,/Пока нет анкет/);
  assert.match(shell,/Анкеты не загрузились/);
- assert.match(shell,/В твоём городе пока нет подходящих анкет/);
+ assert.match(nearby,/Сейчас нет других опубликованных анкет/);
  assert.match(shell,/Пока нет взаимных симпатий/);
  assert.match(shell,/refresh/);
  assert.doesNotMatch(shell,/fromDemoPerson|demoPeople|forYouDemoPeople|freshDemoState|Демо-анкеты/);

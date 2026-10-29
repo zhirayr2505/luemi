@@ -179,8 +179,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     </div>:
     <div className="discovery-deck-layer deck-active"><div className="discovery-empty real-discovery-empty">
      <Heart size={38}/><h2>Пока нет анкет</h2>
-     <p>{tab==="nearby"?"В твоём городе пока нет подходящих анкет.":
-      tab==="for-you"?"Пока нет анкет с общими интересами.":"Когда появятся новые люди, ты увидишь их здесь."}</p>
+     <p>Когда появятся новые люди, ты увидишь их здесь.</p>
      {cursor&&<button type="button" className="discovery-glass-button" disabled={moreBusy} onClick={()=>{void more();}}>
       {moreBusy?"Загружаем…":"Посмотреть дальше"}</button>}
      <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>
