@@ -34,7 +34,13 @@ DO $$ BEGIN
  THEN RAISE EXCEPTION 'other participant local visibility leaked'; END IF;
 END $$;
 COMMIT;
--- Third party C cannot hide A/B's message, even with their UUIDs.
+-- Fixture exports guessed IDs to session-local test GUCs so C can TRY to forge
+-- a concrete existing message rather than accidentally inserting zero rows.
+SELECT set_config('luemi.qa.message_id',id::text,false)
+ FROM luemi_chats.messages WHERE client_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+SELECT set_config('luemi.qa.conversation_id',conversation_id::text,false)
+ FROM luemi_chats.messages WHERE client_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+-- Third party C cannot hide A/B's message, even with both UUIDs.
 BEGIN;
 SET LOCAL ROLE luemi_chats_writer;
 SET LOCAL luemi.actor_id='33333333-3333-4333-8333-333333333333';
@@ -42,10 +48,10 @@ SET LOCAL luemi.environment='luemi';
 DO $$ BEGIN
  BEGIN
   INSERT INTO luemi_chats.message_visibility(message_id,conversation_id,environment,actor_id,scope)
-  SELECT id,conversation_id,environment,
-   '33333333-3333-4333-8333-333333333333','everyone'
-  FROM luemi_chats.messages WHERE client_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-  IF FOUND THEN RAISE EXCEPTION 'unmatched third party visibility changed'; END IF;
+  VALUES (current_setting('luemi.qa.message_id')::uuid,
+    current_setting('luemi.qa.conversation_id')::uuid,'luemi',
+    '33333333-3333-4333-8333-333333333333','everyone');
+  RAISE EXCEPTION 'unmatched third party visibility changed';
  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
  END;
 END $$;
