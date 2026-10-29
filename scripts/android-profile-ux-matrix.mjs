@@ -66,9 +66,12 @@ try{
    assert.ok(chrome.routeWillChange.includes("transform"),key+": route compositor hint missing");
    assert.equal(chrome.logoFilter,"none",key+": animated logo filter still creates raster churn");
    assert.equal(chrome.mistAnimation,"none",key+": background GPU animation active on mobile");
-   const box=await page.locator(".discovery-visitor-route .pm-identity").first().boundingBox();
-   assert.ok(box&&box.width>80&&box.height>10,key+": missing identity sheet");
-   const x=Math.max(26,box.x+Math.min(30,box.width*.09)),y=box.y+box.height*.5;
+   // Profile Morph V3 replaced the obsolete .pm-identity node. A route-back
+   // swipe starts at the SHEET edge, never on the photo rail: the first photo
+   // must retain its own gesture ownership.
+   const box=await page.locator(".discovery-visitor-route .v3-int-sheet").first().boundingBox();
+   assert.ok(box&&box.width>80&&box.height>43,key+": missing V3 white sheet");
+   const x=Math.max(12,box.x+18),y=box.y+21;
    const closeBySwipe=round===1;
    // Half the matrix now uses actual Chromium Input.dispatchTouchEvent,
    // not mouse pointer events masquerading as Android touch.
