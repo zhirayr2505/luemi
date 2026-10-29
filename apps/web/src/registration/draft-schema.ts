@@ -50,7 +50,7 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
  const enums={
   gender:["","man","woman","other"],searchScope:["radius","country","world"],
   audience:["","women","men","everyone"],
-  goal:["","serious","relationship","dates","friendship","communication","undecided"]
+  goal:["","serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided"]
  } as const;
  for(const key of Object.keys(enums) as Array<keyof typeof enums>){
   const value=raw[key]===undefined?defaults[key]:raw[key];
@@ -72,7 +72,7 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
   d[key]=value;
  }
  if(d.ageMin>d.ageMax)return fail("age-range");
- for(const key of ["interests","languages","lifestyle","pets","facts"] as const){
+ for(const key of ["interests","languages","lifestyle","pets","facts","family"] as const){
   const value=raw[key]===undefined?defaults[key]:raw[key];
   const maxItems=key==="interests"?15:key==="languages"?30:key==="facts"?3:12;
   if(!plainStrings(value,maxItems,80))return fail("array-"+key);
