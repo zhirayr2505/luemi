@@ -100,3 +100,16 @@ test("real pages reuse approved 1:1 gesture and inertial settle without duplicat
  assert.match(forYou,/onScroll=\{e=>\{if\(!expanded\)onScrollTop/);
  assert.match(nearby,/onScroll=\{e=>onScrollTop/);
 });
+
+test("real feed restores animated deck, undoable skip and session bookmarks across tabs",()=>{
+ assert.match(shell,/className=\{"discovery-deck-layer"\+\(leaving\?/);
+ assert.match(shell,/className=\{"discovery-deck-layer"\+\(leaving===current.id\?/);
+ assert.match(shell,/onAnimationEnd=/);
+ assert.match(shell,/pendingCommit/);
+ assert.match(shell,/setUndoPage\(from\)/);
+ assert.match(shell,/onSave\(current.id\)/);
+ assert.match(shell,/saved=\{saved.has\(current.id\)\}/);
+ assert.match(shell,/hiddenIds=\{hiddenIds\} onHide=\{onHide\}/);
+ assert.match(shell,/onHide\(menu.id\)/);
+ assert.match(shell,/people=\{matchedRows\}/);
+});

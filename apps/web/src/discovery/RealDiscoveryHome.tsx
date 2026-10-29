@@ -94,11 +94,12 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
  </section>;
 }
 
-function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop}:{
+function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,hiddenIds,onHide}:{
  active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
  onPerson:(p:RealPublishedProfile)=>void;onMatched:()=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
- onScrollTop:(top:number)=>void
+ onScrollTop:(top:number)=>void;
+ hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void
 }){
  const [rows,setRows]=useState<RealPublishedProfile[]>([]);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
@@ -109,7 +110,29 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const [menu,setMenu]=useState<RealPublishedProfile|null>(null);
  const [reporting,setReporting]=useState(false),[reason,setReason]=useState<PublishedReportReason>("spam");
  const [page,setPage]=useState(0);
+ const [undoPage,setUndoPage]=useState<number|null>(null);
+ const [leaving,setLeaving]=useState<string|null>(null);
+ const [leavingKind,setLeavingKind]=useState<DemoKind|null>(null);
+ const locked=useRef(false),pendingCommit=useRef<(()=>void)|null>(null);
+ const transitionTimer=useRef<number|null>(null);
  const abort=useRef<AbortController|null>(null);
+ const finishDeck=()=>{
+  const commit=pendingCommit.current;if(!commit)return;
+  pendingCommit.current=null;
+  if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
+  transitionTimer.current=null;
+  commit();setLeaving(null);setLeavingKind(null);locked.current=false;
+ };
+ const leaveCard=(kind:DemoKind,commit:()=>void,currentId:string)=>{
+  if(locked.current)return;
+  locked.current=true;pendingCommit.current=commit;
+  setLeaving(currentId);setLeavingKind(kind);
+  selectionHaptic();
+  if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
+  else transitionTimer.current=window.setTimeout(finishDeck,440);
+ };
+ useEffect(()=>()=>{if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
+  transitionTimer.current=null;pendingCommit.current=null;locked.current=false;},[]);
  useEffect(()=>{
   if(!active||lastRefresh.current===refresh)return;
   lastRefresh.current=refresh;
@@ -130,7 +153,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  },[active,refresh,initialFeed]);
  // Each tab now owns its approved presentation. Only Feed renders a full-screen deck;
  // For You and Nearby sort/filter the complete real server page themselves.
- const matchedRows=rows;
+ const matchedRows=useMemo(()=>rows.filter(p=>!hiddenIds.has(p.id)),[rows,hiddenIds]);
  const current=matchedRows[page];
  const more=async()=>{
   if(!cursor||moreBusy||busy)return;
@@ -146,23 +169,36 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   finally{if(abort.current===controller)setMoreBusy(false);}
  };
  const act=async(kind:DemoKind|"undo")=>{
-  if(!current||busy)return;
-  if(kind==="undo"||kind==="save")return;
-  if(kind==="pass"){setPage(n=>n+1);return;}
+  if(locked.current||busy)return;
+  if(kind==="save"){
+   if(current){onSave(current.id);setMessage(saved.has(current.id)?"Убрано из закладок":"Добавлено в закладки этой сессии");selectionHaptic();}
+   return;
+  }
+  if(kind==="undo"){
+   if(undoPage!==null){setPage(undoPage);setUndoPage(null);setMessage("Пропуск отменён");selectionHaptic();}
+   return;
+  }
+  if(!current)return;
+  if(kind==="pass"){
+   const from=page;
+   leaveCard(kind,()=>{setPage(from+1);setUndoPage(from);setMessage("Анкета пропущена");},current.id);
+   return;
+  }
   setBusy(true);setMessage("");
   try{
    const result=await likePublishedUser(current.id);
-   setRows(prev=>prev.filter(p=>p.id!==current.id));
-   setPage(n=>Math.max(0,n-1));
-   setMessage(result.matched?"Взаимная симпатия! 💜":"Симпатия отправлена 💜");
-   if(result.matched)onMatched();
-  }catch{setMessage("Не удалось поставить симпатию. Повтори попытку.");}
-  finally{setBusy(false);}
+   const targetId=current.id;
+   leaveCard(kind,()=>{
+    onHide(targetId);setUndoPage(null);setBusy(false);
+    setMessage(result.matched?"Взаимная симпатия! 💜":"Симпатия отправлена 💜");
+    if(result.matched)onMatched();
+   },targetId);
+  }catch{setBusy(false);setMessage("Не удалось поставить симпатию. Повтори попытку.");}
  };
  const block=async()=>{
   if(!menu||busy)return;
   setBusy(true);
-  try{await blockPublishedUser(menu.id);setRows(prev=>prev.filter(p=>p.id!==menu.id));setMessage("Анкета заблокирована.");setMenu(null);}
+  try{await blockPublishedUser(menu.id);onHide(menu.id);setUndoPage(null);setMessage("Анкета заблокирована.");setMenu(null);}
   catch{setMessage("Не удалось заблокировать анкету.");}
   finally{setBusy(false);}
  };
@@ -179,9 +215,9 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    error?<div className="discovery-empty" role="alert"><h2>Анкеты не загрузились</h2><p>{error}</p>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></div>:
    tab==="for-you"?
-    <RealForYou draft={draft} people={rows} onPerson={onPerson} saved={saved} onSave={onSave}
+    <RealForYou draft={draft} people={matchedRows} onPerson={onPerson} saved={saved} onSave={onSave}
      onScrollTop={onScrollTop} onMore={()=>{void more();}} hasMore={!!cursor} moreBusy={moreBusy}/>:
-    <RealNearby draft={draft} people={rows} onPerson={onPerson} saved={saved} onSave={onSave}
+    <RealNearby draft={draft} people={matchedRows} onPerson={onPerson} saved={saved} onSave={onSave}
      onScrollTop={onScrollTop} onMore={()=>{void more();}} hasMore={!!cursor} moreBusy={moreBusy} onEditLocation={onEditLocation}/>}
  </div>;
  return <div className="real-discovery-deck">
@@ -190,19 +226,28 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    error?<div className="discovery-empty" role="alert"><h2>Анкеты не загрузились</h2><p>{error}</p>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></div>:
    <div className="discovery-deck-stage">{current?
-    <div className="discovery-deck-layer deck-active" key={current.id}>
-     <FeedCard person={toCard(current)} real saved={false} canUndo={false}
-      active={active} busy={busy} onAction={kind=>{void act(kind);}}
+    <div className={"discovery-deck-layer"+(leaving===current.id?" deck-leaving deck-leaving-"+leavingKind:" deck-active")} key={current.id}
+     onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
+      ["luemi-deck-leave","feed-v2-like","feed-v2-special"].includes(event.animationName))finishDeck();}}>
+     <FeedCard person={toCard(current)} real saved={saved.has(current.id)} canUndo={undoPage!==null}
+      active={active} busy={busy||!!leaving} onAction={kind=>{void act(kind);}}
       onOpenProfile={()=>onPerson(current)} onInterests={()=>onPerson(current)}
       onMore={()=>{setMenu(current);setReporting(false);}}/>
     </div>:
     <div className="discovery-deck-layer deck-active"><div className="discovery-empty real-discovery-empty">
      <Heart size={38}/><h2>Пока нет анкет</h2>
      <p>Когда появятся новые люди, ты увидишь их здесь.</p>
+     {undoPage!==null&&<button type="button" className="discovery-glass-button" onClick={()=>{void act("undo");}}>
+      Отменить пропуск</button>}
      {cursor&&<button type="button" className="discovery-glass-button" disabled={moreBusy} onClick={()=>{void more();}}>
       {moreBusy?"Загружаем…":"Посмотреть дальше"}</button>}
      <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>
       <RefreshCw size={16}/> Обновить</button></div></div>}
+    {current&&matchedRows[page+1]&&<div className={"discovery-deck-layer"+(leaving?" deck-entering":" deck-queued")} key={matchedRows[page+1].id}>
+      <FeedCard person={toCard(matchedRows[page+1])} real saved={saved.has(matchedRows[page+1].id)}
+       canUndo={undoPage!==null} active={false} busy onAction={()=>{}}
+       onOpenProfile={()=>{}} onInterests={()=>{}}/>
+     </div>}
    </div>}
   {!!current&&cursor&&page>=matchedRows.length-1&&<button type="button"
    className="real-discovery-more" disabled={moreBusy} onClick={()=>{void more();}}>
@@ -240,6 +285,8 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  const [accountOpen,setAccountOpen]=useState(false);
  // Session-only bookmarks: the API has no durable saved-profiles endpoint yet.
  const [savedIds,setSavedIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
+ const [hiddenIds,setHiddenIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
+ const onHide=useCallback((id:string)=>setHiddenIds(existing=>new Set([...existing,id])),[]);
  const onSave=(id:string)=>setSavedIds(previous=>{
   const next=new Set(previous);if(next.has(id))next.delete(id);else next.add(id);return next;
  });
@@ -596,6 +643,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
        aria-hidden={browse!==id} inert={browse!==id}>
        <LiveDeck active={mainTab==="discover"&&browse===id} tab={id} draft={draft}
         initialFeed={initialFeed} saved={savedIds} onSave={onSave}
+        hiddenIds={hiddenIds} onHide={onHide}
         onScrollTop={top=>onScrollTop(id,top)}
         onEditLocation={()=>setMainTab("profile")}
         onPerson={setPerson} onMatched={()=>setMainTab("chats")}/>
