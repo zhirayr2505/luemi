@@ -47,6 +47,7 @@ test("real FeedCard retains canonical photo/sheet gestures and removes demo badg
  assert.match(shell,/<FeedCard person=\{toCard\(current\)\} real/);
  assert.match(card,/\{!real&&<span className="discovery-demo-label">Демо<\/span>\}/);
  assert.match(card,/real\?<button type="button"/);
+ assert.match(card,/\{buttons.map\(\(\[kind,label,Icon\]\)=>/);
  assert.match(card,/!real\|\|kind!=="undo"/);
  assert.match(card,/PhotoCarousel/);
  assert.match(card,/data-expanded=\{expanded\}/);
