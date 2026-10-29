@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {createHmac} from "node:crypto";
+import {createHmac,randomUUID} from "node:crypto";
 import {Pool} from "pg";
 import {buildApp} from "../src/app.js";
 import {memoryPrivateStore,syntheticModerate} from "../src/rem05d-private.js";
@@ -88,6 +88,65 @@ async function prepare(app:ReturnType<typeof makeApp>,user:User){
  }
  return ids;
 }
+test("01D: background uploads, authenticated remote photo deletion and main order",async()=>{
+ const storage=memoryPrivateStore(),app=makeApp({storage,instant:true});
+ try{
+  const owner=await identity(app,8011899),stranger=await identity(app,8011900);
+  await consent(app,owner);await consent(app,stranger);
+  const png=makeSyntheticPng(),photos:Array<{clientId:string;assetId:string}>=[];
+  for(let index=0;index<3;index++){
+   const clientId=randomUUID();
+   const intent=await mutate(app,owner,"/api/v2/media/intents",{
+    bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+clientId});
+   assert.equal(intent.statusCode,200,intent.body);
+   const assetId=intent.json().assetId as string;
+   const sent=await app.inject({method:"PUT",url:"/api/v2/media/"+assetId+"/bytes",
+    headers:{...headers(owner),"content-type":"image/png"},payload:png});
+   assert.equal(sent.statusCode,200,sent.body);
+   photos.push({clientId,assetId});
+  }
+  const strangerDelete=await app.inject({method:"DELETE",
+   url:"/api/v2/media/by-client/"+photos[0].clientId,
+   headers:headers(stranger)});
+  assert.equal(strangerDelete.statusCode,200,"no existence oracle for foreign media");
+  const before=await admin.query<{state:string;derivative_key:string}>(
+   "SELECT state,derivative_key FROM luemi_private.media_assets WHERE id=$1",[photos[0].assetId]);
+  assert.equal(before.rows[0].state,"approved");
+  const remove=await app.inject({method:"DELETE",
+   url:"/api/v2/media/by-client/"+photos[0].clientId,headers:headers(owner)});
+  assert.equal(remove.statusCode,200,remove.body);
+  const after=await admin.query<{state:string}>(
+   "SELECT state FROM luemi_private.media_assets WHERE id=$1",[photos[0].assetId]);
+  assert.equal(after.rows[0].state,"revoked");
+  assert.equal(await storage.get(before.rows[0].derivative_key),null,
+   "revoked sanitized pixels must be removed from Storage");
+  assert.equal((await app.inject({method:"GET",url:"/api/v2/media/"+photos[0].assetId,
+   headers:{cookie:owner.cookie}})).statusCode,404);
+  assert.equal((await app.inject({method:"DELETE",
+   url:"/api/v2/media/by-client/"+photos[0].clientId,
+   headers:headers(owner)})).statusCode,200,"repeated owner deletion idempotent");
+  const replacement=randomUUID();
+  const intent=await mutate(app,owner,"/api/v2/media/intents",{
+   bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+replacement});
+  assert.equal(intent.statusCode,200,intent.body);
+  const newId=intent.json().assetId as string;
+  const upload=await app.inject({method:"PUT",url:"/api/v2/media/"+newId+"/bytes",
+   headers:{...headers(owner),"content-type":"image/png"},payload:png});
+  assert.equal(upload.statusCode,200,upload.body);
+  const wrongOrder=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(stranger),payload:{clientIds:[
+    photos[1].clientId,photos[2].clientId,replacement]}});
+  assert.equal(wrongOrder.statusCode,409);
+  const ordered=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(owner),payload:{clientIds:[
+    replacement,photos[2].clientId,photos[1].clientId]}});
+  assert.equal(ordered.statusCode,200,ordered.body);
+  const rows=await admin.query<{id:string;position:number}>(
+   "SELECT id,position FROM luemi_private.media_assets WHERE owner_id=$1 "+
+   "AND state='approved' ORDER BY position",[owner.id]);
+  assert.deepEqual(rows.rows.map(r=>r.id),[newId,photos[2].assetId,photos[1].assetId]);
+ }finally{await app.close();}
+});
 test("01D: default-deny unauthenticated and unapproved, publish only moderated 3/3, block and hide",async()=>{
  const app=makeApp();
  try{
