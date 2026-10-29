@@ -243,3 +243,36 @@
 .v2-runtime .v2-profile-v3-preview .v3-int-root{position:relative;}
 .v2-runtime .v2-profile-v3-preview img{max-width:none;}
 @media(max-width:720px){.v2-runtime .v2-profile-v3-preview{height:min(64dvh,540px);min-height:385px;}}
+
+/* Simplified onboarding preview. Approved LUEMI Profile Morph V3 remains
+   unchanged INSIDE the app; no profile gestures run during registration. */
+.v2-runtime .v2-simple-preview{width:100%;max-width:100%;min-width:0;overflow:hidden;
+ border-radius:24px;background:rgba(255,255,255,.52);
+ border:1px solid rgba(164,115,198,.22);box-shadow:0 12px 30px rgba(115,73,145,.08);
+ padding:18px 14px;}
+.v2-runtime .v2-simple-preview .registration-static-profile{width:100%;padding:0;gap:18px;}
+.v2-runtime .v2-simple-preview .registration-static-hero{display:flex;align-items:center;
+ flex-direction:column;gap:9px;text-align:center;}
+.v2-runtime .v2-simple-preview .registration-static-avatar{width:120px;height:120px;
+ border-radius:50%;overflow:hidden;border:4px solid rgba(255,255,255,.98);
+ box-shadow:0 6px 23px rgba(140,86,161,.2);flex:none;}
+.v2-runtime .v2-simple-preview .registration-static-avatar img{width:100%;height:100%;
+ object-fit:cover;}
+.v2-runtime .v2-simple-preview .registration-static-hero h2{font-size:22px;line-height:1.2;margin:0;}
+.v2-runtime .v2-simple-preview .registration-static-hero p{margin:0;font-size:14px;}
+.v2-runtime .v2-simple-preview .registration-static-sections{width:100%;min-width:0;gap:15px;}
+.v2-runtime .v2-simple-preview .registration-static-section{min-width:0;}
+.v2-runtime .v2-simple-preview .registration-static-gallery{display:flex;gap:10px;overflow-x:auto;
+ overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;touch-action:pan-x;
+ -webkit-overflow-scrolling:touch;padding:5px 1px 9px;width:100%;max-width:100%;}
+.v2-runtime .v2-simple-preview .registration-static-gallery-item{position:relative;
+ flex:0 0 clamp(158px,58vw,225px);aspect-ratio:4/5;border-radius:17px;overflow:hidden;
+ scroll-snap-align:start;background:#e8d6ee;}
+.v2-runtime .v2-simple-preview .registration-static-gallery-item img{width:100%;
+ height:100%;object-fit:cover;display:block;}
+.v2-runtime .v2-simple-preview .registration-static-gallery-item span{position:absolute;
+ bottom:10px;left:10px;color:#57346c;background:rgba(255,255,255,.93);
+ padding:5px 10px;border-radius:99px;font-size:12px;font-weight:650;}
+.v2-runtime .v2-simple-preview .registration-static-note{font-size:12px;line-height:1.45;}
+.v2-runtime .v2-photo-consent{border:1px solid rgba(166,121,192,.24);
+ background:rgba(255,255,255,.57);border-radius:18px;padding:14px 12px;}
