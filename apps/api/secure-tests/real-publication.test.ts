@@ -92,6 +92,7 @@ test("01D: owner can remove a private photo and reorder remaining assets, strang
  const app=makeApp({instant:true});
  try{
   const a=await identity(app,8011997),b=await identity(app,8011998);
+  await consent(app,b);
   const ids=await prepare(app,a);
   const target="/api/v2/media/"+ids[0];
   const stranger=await app.inject({method:"DELETE",url:target,headers:headers(b)});
