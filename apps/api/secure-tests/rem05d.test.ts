@@ -209,9 +209,10 @@ test("owner background photos: real RLS deletion, storage removal, replay and ma
  try{
   const a=await identity(server,9901101),b=await identity(server,9901102);
   const png=makeSyntheticPng();
-  const assets:string[]=[];
+  const assets:string[]=[],localIds:string[]=[];
   for(let i=0;i<3;i++){
    const local="88888888-8888-4888-8888-"+String(100000000000+i);
+   localIds.push(local);
    const intent=await post(server,"/api/v2/media/intents",a,
     {bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+local});
    assert.equal(intent.statusCode,200,intent.body);
@@ -222,6 +223,19 @@ test("owner background photos: real RLS deletion, storage removal, replay and ma
    assert.equal(bytes.statusCode,200,bytes.body);
    await syntheticModerate(moderatorUrl!,id,"approved");
   }
+  // A previous, incomplete upload cannot occupy a fourth slot forever
+  // after the owner keeps only the three photos above.
+  const staleLocal="88888888-8888-4888-8888-100000000009";
+  const stale=await post(server,"/api/v2/media/intents",a,
+   {bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+staleLocal});
+  assert.equal(stale.statusCode,200,stale.body);
+  const pruned=await put(server,"/api/v2/media/sync-selection",a,{photoIds:localIds});
+  assert.equal(pruned.statusCode,200,pruned.body);
+  assert.equal(pruned.json().removed,1);
+  assert.equal((await admin.query("SELECT state FROM luemi_private.media_assets WHERE id=$1",
+   [stale.json().assetId])).rows[0].state,"revoked");
+  assert.equal((await put(server,"/api/v2/media/sync-selection",b,{photoIds:localIds})).statusCode,200,
+   "foreign actor's selected IDs cannot affect this owner's assets");
   const order=[assets[2],assets[0],assets[1]];
   const sorted=await put(server,"/api/v2/media/order",a,{assetIds:order});
   assert.equal(sorted.statusCode,200,sorted.body);
