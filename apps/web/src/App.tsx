@@ -645,6 +645,20 @@ export function App() {
   const retryBackgroundPhotos=()=>{
     backgroundFailed.current.clear();setBackgroundRetry(n=>n+1);
   };
+  const updateServerConsent=(next:boolean)=>{
+    setServerConsent(next);
+    if(!next&&realFeedPilot.enabled&&remoteMediaPilot.enabled&&auth==="authorized"){
+      // Removing upload consent during registration revokes photos already
+      // sent in the background, not merely hiding their local preview.
+      const ids=photos.map(photo=>photo.id);
+      const cleanup=backgroundQueue.current.then(async()=>{
+        for(const id of ids)await deletePrivatePhoto(id);
+        backgroundUploaded.current.clear();backgroundDraftReady.current=false;
+        setServerPhotoCount(0);setBackgroundStatus("Фотографии удалены с сервера.");
+      }).catch(()=>setBackgroundStatus("Не удалось удалить все фотографии. Повтори при соединении."));
+      backgroundQueue.current=cleanup;
+    }
+  };
   const persistServerDraft=async()=>{
     if(!remoteDraftPilot.enabled||!serverConsent||serverSaving||auth!=="authorized")return;
     for(let n=1;n<=6;n++){
@@ -1102,7 +1116,7 @@ export function App() {
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} serverConsent={serverConsent}
        theme={theme} onTheme={changeTheme}
-       setServerConsent={setServerConsent}
+       setServerConsent={updateServerConsent}
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
           remoteMediaPilot.enabled?confirmPrivateRegistration():persistServerDraft());}}
         mediaEnabled={remoteMediaPilot.enabled}
