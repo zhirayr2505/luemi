@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,orderPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -153,6 +153,11 @@ export function App() {
   const [serverPhotoCount,setServerPhotoCount]=useState(0);
   const [mediaSaving,setMediaSaving]=useState(false);
   const [mediaStatus,setMediaStatus]=useState("");
+  const [photoUploadRetry,setPhotoUploadRetry]=useState(0);
+  const pendingPhotoIds=useRef(new Set<string>());
+  const uploadedAssets=useRef(new Map<string,string>());
+  const uploadChain=useRef<Promise<void>>(Promise.resolve());
+  const serverCleanupErrors=useRef(new Set<string>());
   const [publishStatus,setPublishStatus]=useState<OwnerPublicationStatus|null>(null);
   const [publicationCheck,setPublicationCheck]=useState<"idle"|"checking"|"ready"|"error">("idle");
   const [publicationRetry,setPublicationRetry]=useState(0);
@@ -498,6 +503,41 @@ export function App() {
     }
     setError(problem);
   };
+  // Real early beta: bytes leave the device only after explicit consent.
+  // Serialize private draft writes and idempotent photo uploads so rapid
+  // add/remove/reorder never allocates duplicate media slots.
+  useEffect(()=>{
+    if(!realFeedPilot.enabled||!remoteMediaPilot.enabled||!serverConsent||
+       auth!=="authorized"||!photosRestored||realHome||publishBusy||
+       publishStatus?.state==="published")return;
+    if(Array.from({length:6},(_,i)=>i+1).some(n=>
+       validateStep(draft,n,photos.length,new Date(),"live")!==null))return;
+    for(const photo of photos){
+      if(photo.status!=="ready"||uploadedAssets.current.has(photo.id)||
+         pendingPhotoIds.current.has(photo.id)||!photoIds.current.has(photo.id))continue;
+      pendingPhotoIds.current.add(photo.id);
+      setMediaStatus("Сохраняем фотографии на сервере…");
+      const work=uploadChain.current.catch(()=>{}).then(async()=>{
+        if(!photoIds.current.has(photo.id))return;
+        const previous=await readRemoteRevision();
+        await saveRemoteDraft(draft,previous.revision);
+        setPrivateDraftSaved(true);
+        if(!photoIds.current.has(photo.id))return;
+        const assetId=await uploadPrivatePhoto(photo);
+        if(!photoIds.current.has(photo.id)){
+          await deletePrivatePhoto(photo.id);
+          return;
+        }
+        uploadedAssets.current.set(photo.id,assetId);
+        setServerPhotoCount(uploadedAssets.current.size);
+        setMediaStatus("Сохранено на сервере: "+uploadedAssets.current.size+" из "+photos.length+".");
+      }).catch(()=>{
+        setMediaStatus("Не все фотографии загрузились. Повтори отправку.");
+      }).finally(()=>pendingPhotoIds.current.delete(photo.id));
+      uploadChain.current=work;
+    }
+  },[auth,draft,photos,photosRestored,serverConsent,realHome,publishBusy,photoUploadRetry,
+     publishStatus?.state]);
   const removePhoto=(id:string)=>{
     setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
@@ -508,6 +548,21 @@ export function App() {
     const item=photos.find(p=>p.id===id);
     if(item?.src){URL.revokeObjectURL(item.src);ownedUrls.current=ownedUrls.current.filter(url=>url!==item.src);}
     setPhotos(prev=>prev.filter(p=>p.id!==id));
+    uploadedAssets.current.delete(id);
+    if(remoteMediaPilot.enabled&&serverConsent&&auth==="authorized"){
+      // A removed photo always wins over an upload already in flight.
+      const work=uploadChain.current.catch(()=>{}).then(async()=>{
+        try{
+          await deletePrivatePhoto(id);
+          serverCleanupErrors.current.delete(id);
+          setMediaStatus("Фотография удалена с сервера.");
+        }catch{
+          serverCleanupErrors.current.add(id);
+          setMediaStatus("Удаление фото не подтвердилось на сервере. Нажми «Повторить».");
+        }
+      });
+      uploadChain.current=work;
+    }
   };
   const movePhoto=(from:number,to:number)=>{
     setPrivateDraftSaved(false);setMediaStatus("");
@@ -713,8 +768,18 @@ export function App() {
       // even when the server already has >=3 other approved photos. Count-only
       // checks can publish stale images instead of the user's current choice.
       // Per-photo idempotency keys make this safe on normal repeated submits.
-      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      await uploadChain.current;
+      if(serverCleanupErrors.current.size)throw new Error("photo_cleanup_pending");
+      const uploadedIds:string[]=[];
+      for(const photo of photos){
+        let assetId=uploadedAssets.current.get(photo.id);
+        if(!assetId){
+          assetId=await uploadPrivatePhoto(photo);
+          uploadedAssets.current.set(photo.id,assetId);
+        }
+        uploadedIds.push(assetId);
+      }
+      await orderPrivatePhotos(uploadedIds);
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       const media=await ownerPublicationStatus();setPublishStatus(media);
       if(media.approved<photos.length||media.pending!==0||media.other!==0)
@@ -732,6 +797,8 @@ export function App() {
        ?"Анкета изменилась в другой сессии. Проверь данные и повтори создание.":
        reason==="incomplete_media"
        ?"Не все фотографии подтверждены сервером. Повтори: уже сохранённые фото не пропадут.":
+       reason==="photo_cleanup_pending"
+       ?"Не все удалённые фото убраны с сервера. Повтори удаление.":
        "Не удалось завершить публикацию. Анкета и уже загруженные фотографии сохранены. Повтори попытку.";
       setPublishFeedback(message);setJourneyError(message);setJourney("error");
     }finally{submitting.current=false;setPublishBusy(false);}
@@ -1038,6 +1105,20 @@ export function App() {
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
+        photoUploadStatus={realFeedPilot.enabled?mediaStatus:""}
+        onRetryPhotoUpload={()=>{
+          setPhotoUploadRetry(v=>v+1);
+          if(serverCleanupErrors.current.size){
+            const failed=[...serverCleanupErrors.current];
+            const cleanup=uploadChain.current.catch(()=>{}).then(async()=>{
+              for(const id of failed){
+                try{await deletePrivatePhoto(id);serverCleanupErrors.current.delete(id);}
+                catch{/* retry remains available */}
+              }
+            });
+            uploadChain.current=cleanup;
+          }
+        }}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
