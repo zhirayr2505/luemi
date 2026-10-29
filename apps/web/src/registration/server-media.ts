@@ -106,6 +106,21 @@ export async function deletePrivatePhoto(localId:string):Promise<void>{
  });
  if(!result.ok)throw new Error("delete_private_media_http_"+result.status);
 }
+/** Owner-approved selection reconciliation; unpublished, unselected and
+ * abandoned private assets are revoked before new upload intents take slots.
+ */
+export async function syncPrivateSelectedPhotos(localIds:readonly string[]):Promise<void>{
+ if(!remoteMediaPilot.enabled||localIds.length>6||
+    localIds.some(id=>!UUID.test(id))||new Set(localIds).size!==localIds.length)
+  throw new Error("invalid_photo_selection");
+ const csrf=geoCsrf();if(!csrf)throw new Error("missing_session_csrf");
+ const response=await fetch("/api/v2/media/sync-selection",{
+  method:"PUT",credentials:"same-origin",cache:"no-store",
+  headers:{"Content-Type":"application/json","X-Luemi-CSRF":csrf},
+  body:JSON.stringify({photoIds:localIds})
+ });
+ if(!response.ok)throw new Error("photo_selection_sync_failed_"+response.status);
+}
 export async function orderPrivatePhotos(ids:readonly string[]):Promise<void>{
  if(!remoteMediaPilot.enabled||ids.length<3||ids.length>6||
     ids.some(x=>!UUID.test(x))||new Set(ids).size!==ids.length)
