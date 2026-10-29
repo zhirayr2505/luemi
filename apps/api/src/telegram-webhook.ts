@@ -23,11 +23,13 @@ interface TelegramUpdate {
  * changing the bot's permanent menu URL, the trust origin, or stored drafts.
  * Invalid/missing revision fails closed to the canonical root URL.
  */
-export function versionedWebAppUrl(origin: string, gitCommit: string | undefined): string {
-  if (!["https://luemi-stage01.onrender.com","https://luemi.onrender.com"].includes(origin) ||
-      !gitCommit || !/^[0-9a-f]{40}$/i.test(gitCommit)) return origin;
+export function versionedWebAppUrl(origin: string, gitCommit: string | undefined, route?: "likes"): string {
+  if (!["https://luemi-stage01.onrender.com","https://luemi.onrender.com"].includes(origin)) return origin;
+  if(!route&&(!gitCommit||!/^[0-9a-f]{40}$/i.test(gitCommit))) return origin;
   const url = new URL(origin);
-  url.searchParams.set("luemiRelease", gitCommit.slice(0, 12));
+  if(gitCommit && /^[0-9a-f]{40}$/i.test(gitCommit))
+    url.searchParams.set("luemiRelease", gitCommit.slice(0, 12));
+  if(route) url.searchParams.set("luemiRoute", route);
   return url.toString();
 }
 
