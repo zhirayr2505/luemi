@@ -15,7 +15,7 @@ test("review-only notice cannot silently replace the approved public consent URL
  assert.doesNotMatch(app,/privacy-review\.html/);
 });
 
-test("public /privacy route serves a transparent review-only notice without authentication",()=>{
+test("public /privacy route accurately describes owner approval and pending effective date",()=>{
  const notice=readFileSync("apps/web/public/privacy.html","utf8");
  const server=readFileSync("apps/api/src/server.ts","utf8");
  const ui=readFileSync("apps/web/src/App.tsx","utf8");
@@ -24,14 +24,15 @@ test("public /privacy route serves a transparent review-only notice without auth
  for(const field of [
   "Гулгулджян Жирайр Григорьевич","@zhiiirro","Республика Армения",
   "Telegram","Render","Supabase","ручную предварительную проверку",
-  "после публикации","72 часа","review-only"
+  "после публикации","72 часа","согласована владельцем"
  ]){
   assert(notice.includes(field),field+" missing");
  }
  assert.match(notice,/name="robots" content="noindex,nofollow/);
  assert.match(notice,/script-src 'none'/);
  assert.match(notice,/международная передача|международной передачи/);
- assert.doesNotMatch(notice,/утверждена и действует|вступила в силу|удалены ровно через 72/);
+ assert.match(notice,/не введена в действие/);
+ assert.doesNotMatch(notice,/юридическая проверка завершена|удалены ровно через 72/);
  assert.match(server,/app\.get\("\/privacy"/);
  assert.match(server,/reply\.header\("Cache-Control","no-store"\)/);
  assert.match(server,/sendFile\("privacy.html"\)/);
