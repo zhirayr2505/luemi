@@ -297,6 +297,31 @@ test("01D: incomplete 1/3 photo upload retries expired intent without duplicate 
   assert.equal(Number(count.rows[0].total),3,"retry created a duplicate asset");
  }finally{await app.close();}
 });
+test("01D: media plan restores accepted photos and identifies an abandoned owner slot",async()=>{
+ const app=makeApp({instant:true});
+ try{
+  const owner=await identity(app,8011485),intruder=await identity(app,8011486);
+  await consent(app,owner);await consent(app,intruder);
+  const png=makeSyntheticPng(),abandonedKey="reg01c-abandoned-"+owner.id;
+  const abandoned=await mutate(app,owner,"/api/v2/media/intents",
+   {bytes:png.length,mime:"image/png",clientKey:abandonedKey});
+  assert.equal(abandoned.statusCode,200,abandoned.body);
+  const accepted=await prepare(app,owner);
+  const selectedKeys=accepted.map((_id,index)=>"reg01d-photo-"+index+"-"+owner.id);
+  const plan=await mutate(app,owner,"/api/v2/media/plan",{clientKeys:selectedKeys});
+  assert.equal(plan.statusCode,200,plan.body);
+  assert.deepEqual(plan.json().assets.map((x:{assetId:string})=>x.assetId).sort(),accepted.sort());
+  assert.deepEqual(plan.json().staleAssetIds,[abandoned.json().assetId]);
+  const stranger=await mutate(app,intruder,"/api/v2/media/plan",{clientKeys:selectedKeys});
+  assert.equal(stranger.statusCode,200,stranger.body);
+  assert.deepEqual(stranger.json(),{assets:[],staleAssetIds:[]});
+  const removed=await app.inject({method:"DELETE",url:"/api/v2/media/"+abandoned.json().assetId,
+   headers:headers(owner)});
+  assert.equal(removed.statusCode,200,removed.body);
+  const preview=await app.inject({method:"GET",url:"/api/v2/profile/preview",headers:{cookie:owner.cookie}});
+  assert.deepEqual(preview.json().photos.map((x:{id:string})=>x.id).sort(),accepted.sort());
+ }finally{await app.close();}
+});
 test("01D: reusing the requester login for publishing is rejected at bootstrap",()=>{
  assert.throws(()=>makeApp({publisher:requestUrl!}),
   /separate publisher\/discovery roles/);

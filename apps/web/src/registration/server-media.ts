@@ -9,6 +9,7 @@ export const remoteMediaPilot={
 };
 const MAX_BYTES=1_048_576;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const clientKey=(photo:Pick<PhotoItem,"id">)=>"reg01c-photo-"+photo.id;
 async function canvasPng(canvas:HTMLCanvasElement):Promise<Blob>{
  return new Promise((resolve,reject)=>{
   canvas.toBlob(result=>result?resolve(result):reject(new Error("png_encode_failed")),"image/png");
@@ -68,12 +69,46 @@ async function request(url:string,method:"POST"|"PUT",body:BodyInit,mime:string)
  if(!res.ok)throw new Error("private_media_http_"+res.status);
  return res;
 }
+export interface PrivatePhotoPlan{
+ matched:Map<string,{assetId:string;state:"reserved"|"pending_review"|"approved"}>;
+ staleAssetIds:string[];
+}
+/** Recover the per-photo idempotency mapping after a WebView reload and find
+ * owner-private assets that no longer belong to the selected local gallery. */
+export async function planPrivatePhotos(photos:readonly PhotoItem[]):Promise<PrivatePhotoPlan>{
+ if(!remoteMediaPilot.enabled||photos.length<1||photos.length>6||
+   photos.some(photo=>photo.status!=="ready"||!photo.id)||
+   new Set(photos.map(photo=>photo.id)).size!==photos.length)
+  throw new Error("invalid_private_media_plan");
+ const keys=photos.map(clientKey),localByKey=new Map(keys.map((key,index)=>[key,photos[index].id]));
+ const response=await request("/api/v2/media/plan","POST",JSON.stringify({clientKeys:keys}),"application/json");
+ const raw:unknown=await response.json();
+ if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+   !Array.isArray((raw as {assets?:unknown}).assets)||
+   !Array.isArray((raw as {staleAssetIds?:unknown}).staleAssetIds))
+  throw new Error("invalid_private_media_plan");
+ const data=raw as {assets:Array<{clientKey?:unknown;assetId?:unknown;state?:unknown}>;staleAssetIds:unknown[]};
+ const matched=new Map<string,{assetId:string;state:"reserved"|"pending_review"|"approved"}>();
+ const assetIds=new Set<string>();
+ for(const asset of data.assets){
+  const localId=typeof asset.clientKey==="string"?localByKey.get(asset.clientKey):undefined;
+  if(!localId||typeof asset.assetId!=="string"||!UUID.test(asset.assetId)||
+    !["reserved","pending_review","approved"].includes(String(asset.state))||
+    matched.has(localId)||assetIds.has(asset.assetId))throw new Error("invalid_private_media_plan");
+  matched.set(localId,{assetId:asset.assetId,state:asset.state as "reserved"|"pending_review"|"approved"});
+  assetIds.add(asset.assetId);
+ }
+ const staleAssetIds=data.staleAssetIds.map(id=>String(id));
+ if(staleAssetIds.some(id=>!UUID.test(id)||assetIds.has(id))||
+   new Set(staleAssetIds).size!==staleAssetIds.length)throw new Error("invalid_private_media_plan");
+ return{matched,staleAssetIds};
+}
 export async function uploadPrivatePhoto(photo:PhotoItem):Promise<string>{
  if(!remoteMediaPilot.enabled||photo.status!=="ready"||!photo.id)
   throw new Error("ready_photo_required");
  const png=await normalizedPng(photo);
  const response=await request("/api/v2/media/intents","POST",
-  JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
+  JSON.stringify({bytes:png.size,mime:"image/png",clientKey:clientKey(photo)}),
   "application/json");
  const result:unknown=await response.json();
  if(!result||typeof result!=="object"||Array.isArray(result))

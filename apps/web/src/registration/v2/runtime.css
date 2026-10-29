@@ -232,6 +232,26 @@
 .v2-runtime[data-theme="dark"] .scope-control>svg,
 .v2-runtime[data-theme="dark"] .geo-selected>svg{color:#ddc0f3;}
 
+/* Photo step is the visual centerpiece of registration. It keeps the proven
+ * pointer sorter while giving every slot a clear hierarchy and server state. */
+.v2-runtime .photo-sorter{gap:12px;padding:11px;border:1px solid var(--glass-edge);
+ border-radius:27px;background:var(--panel);box-shadow:0 12px 30px rgba(103,65,135,.09);}
+.v2-runtime .mosaic{gap:9px;grid-template-rows:repeat(3,104px);}
+.v2-runtime .mosaic-slot{border-style:solid;border-color:rgba(177,137,202,.42);
+ background:linear-gradient(145deg,rgba(240,228,248,.9),rgba(251,245,252,.95));
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.85);}
+.v2-runtime .mosaic-slot.mosaic-main{border-color:rgba(166,112,203,.62);
+ box-shadow:0 8px 22px rgba(111,68,141,.14),inset 0 0 0 2px rgba(255,255,255,.48);}
+.v2-runtime .add-photo{background:radial-gradient(circle,rgba(207,174,230,.28),transparent 70%);}
+.v2-runtime .sort-tip{padding:10px 11px;border-radius:15px;background:rgba(224,204,239,.28);}
+.v2-runtime .photo-count{font-weight:720;color:var(--ink);}
+.v2-runtime .v2-photo-retry{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+ min-height:43px;border:1px solid rgba(179,128,196,.42);border-radius:15px;background:var(--panel);
+ color:#80549d;font-weight:720;font-size:12px;}
+.v2-runtime[data-theme="dark"] .mosaic-slot{background:linear-gradient(145deg,#3c2b49,#2f2239);}
+.v2-runtime[data-theme="dark"] .sort-tip{background:#392945;}
+@media(max-width:370px){.v2-runtime .mosaic{grid-template-rows:repeat(3,94px)}}
+
 /* Local self-preview uses the very same approved Profile Morph V3. It stays
    a contained preview inside registration, never an alternate fake card. */
 .v2-runtime .v2-profile-v3-preview{position:relative;isolation:isolate;

@@ -33,11 +33,14 @@ test("incomplete upload never opens a fake registration dashboard",()=>{
  assert.match(app,/setRealHome\(false\);setPhase\("form"\)/);
 });
 test("all progress labels reflect actual work; failures allow retry",()=>{
- for(const text of ["Публикуем твою анкету","Ищем людей по интересам",
-   "Подбираем людей рядом","Готовим твою ленту"])assert(journey.includes(text));
+ for(const text of ["Подготавливаем вашу анкету","Учитываем ваши интересы",
+   "Ищем подходящие анкеты рядом","Загружаем первую ленту","Всё готово 💜"])
+  assert(journey.includes(text));
  assert.match(journey,/onRetry/);assert.match(journey,/onBack/);
+ assert.match(journey,/is-leaving/);assert.match(journey,/onComplete/);
  assert.match(app,/await warmPublishedRecommendations/);
- assert.match(app,/setJourney\(null\);setRealHomeTab\("feed"\);setRealHome\(true\)/);
+ assert.match(app,/setRealHomeTab\("feed"\);setRealHome\(true\);setJourney\("complete"\)/);
+ assert.match(app,/\{journeyOverlay\}<\/>/);
 });
 test("first pictures cached only in RAM with bounded signed endpoint fetch",()=>{
  assert.match(warm,/const MAX_IMAGES=6/);
@@ -56,6 +59,15 @@ test("server resumes same expired media intent without new asset",()=>{
  assert.match(media,/expires_at=clock_timestamp\(\)\+interval '1 hour'/);
  assert.match(media,/idempotency_digest=\$3/);
  assert.match(media,/return\{assetId:existing.rows\[0\].asset_id,state:existing.rows\[0\].state/);
+});
+
+test("registration reconciles durable photo identities before allocating slots",()=>{
+ assert.match(media,/"\/api\/v2\/media\/plan"/);
+ assert.match(media,/idempotency_digest=ANY\(\$3::text\[\]\)/);
+ assert.match(media,/staleAssetIds/);
+ assert.match(app,/await planPrivatePhotos\(ready\)/);
+ assert.match(app,/for\(const assetId of plan\.staleAssetIds\)/);
+ assert.match(app,/await deletePrivatePhoto\(assetId\)/);
 });
 
 test("recommendation warmup prioritizes overlapping interests and city without exact location",()=>{

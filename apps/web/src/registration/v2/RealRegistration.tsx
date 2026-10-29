@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
+import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun,RefreshCw} from "lucide-react";
 import {RegistrationStep,type PhotoItem} from "../Steps";
 import {SimpleProfileReview} from "../SimpleProfileReview";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
@@ -30,6 +30,7 @@ interface Props{
  photoServerCount:number;
  photoSyncBusy:boolean;
  photoSyncError:string;
+ onRetryPhotoSync:()=>void;
  storageError:string|null;
  restored:boolean;
  resumeReview:boolean;
@@ -129,7 +130,8 @@ export function RealRegistrationV2(p:Props){
  }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft]);
  const step=(n:number)=><RegistrationStep {...stepProps} step={n}/>;
  const savedDraftAllowed=p.serverConsent&&identityReady&&gate.hasLocation&&
-  gate.hasIntent&&photoReady(photos)&&!p.serverSaving;
+  gate.hasIntent&&photoReady(photos)&&!p.serverSaving&&
+  (!p.mediaEnabled||p.photoServerCount===photos.length&&!p.photoSyncBusy&&!p.photoSyncError);
  const pubNotice=remoteDraftPilot.policy;
  const friendsTest=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1";
  const noticeLabel=friendsTest?"условия закрытого теста":"политику обработки персональных данных";
@@ -167,6 +169,8 @@ export function RealRegistrationV2(p:Props){
           p.photoSyncError?p.photoSyncError:p.photoSyncBusy?"Сохраняем фото на сервере…":
           "На сервере: "+p.photoServerCount+" из "+photos.length}
         </p>}
+        {p.mediaEnabled&&p.photoSyncError&&<button type="button" className="v2-photo-retry"
+         disabled={p.photoSyncBusy} onClick={p.onRetryPhotoSync}><RefreshCw size={16}/> Повторить загрузку</button>}
         <div className="v2-note"><ShieldCheck size={18}/>
          Только твои фотографии: один человек, лицо видно, без детей, сексуального контента и чужих снимков.
          Сейчас фото остаются приватными. Автоматическая AI-проверка ещё не включена.

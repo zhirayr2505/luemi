@@ -1,45 +1,65 @@
 import {useEffect,useState} from "react";
-import {RefreshCw,ArrowLeft} from "lucide-react";
+import {RefreshCw,ArrowLeft,Check} from "lucide-react";
 import "./publication-journey.css";
 
-export type PublishJourneyPhase="publishing"|"recommendations"|"nearby"|"photos"|"error";
-export const publishingCopy:Record<Exclude<PublishJourneyPhase,"error">,string>={
- publishing:"Публикуем твою анкету",
- recommendations:"Ищем людей по интересам",
- nearby:"Подбираем людей рядом",
- photos:"Готовим твою ленту"
+export type PublishJourneyPhase="publishing"|"recommendations"|"nearby"|"photos"|"complete"|"error";
+type WorkingPhase=Exclude<PublishJourneyPhase,"error"|"complete">;
+export const publishingCopy:Record<WorkingPhase,string>={
+ publishing:"Подготавливаем вашу анкету",
+ recommendations:"Учитываем ваши интересы",
+ nearby:"Ищем подходящие анкеты рядом",
+ photos:"Загружаем первую ленту"
 };
-export function PublicationJourney({phase,error,onRetry,onBack}:{
- phase:PublishJourneyPhase;error:string;onRetry:()=>void;onBack:()=>void
+const journeySequence:Exclude<PublishJourneyPhase,"error">[]=["publishing","recommendations","nearby","photos","complete"];
+export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
+ phase:PublishJourneyPhase;error:string;onRetry:()=>void;onBack:()=>void;onComplete:()=>void
 }){
+ const [displayPhase,setDisplayPhase]=useState<PublishJourneyPhase>(phase);
  const [elapsed,setElapsed]=useState(0);
+ const [leaving,setLeaving]=useState(false);
  useEffect(()=>{
-  if(phase==="error")return;
+  if(phase==="error"){setDisplayPhase("error");return;}
+  if(phase==="publishing"){setDisplayPhase("publishing");return;}
+  const current=displayPhase==="error"?-1:journeySequence.indexOf(displayPhase);
+  const target=journeySequence.indexOf(phase);
+  if(current>=target)return;
+  const timer=window.setTimeout(()=>setDisplayPhase(journeySequence[current+1]),360);
+  return()=>window.clearTimeout(timer);
+ },[phase,displayPhase]);
+ useEffect(()=>{
+  if(displayPhase==="error"||displayPhase==="complete")return;
   setElapsed(0);
   const start=Date.now(),interval=window.setInterval(()=>setElapsed(Date.now()-start),500);
   return()=>window.clearInterval(interval);
- },[phase]);
- const failed=phase==="error";
- const stages=Object.keys(publishingCopy) as Array<Exclude<PublishJourneyPhase,"error">>;
- const current=stages.indexOf(failed?"publishing":phase);
- return <main className="luemi-publication-journey" role="status" aria-live="polite"
+ },[displayPhase]);
+ useEffect(()=>{
+  if(displayPhase!=="complete"){setLeaving(false);return;}
+  const exit=window.setTimeout(()=>setLeaving(true),520);
+  const done=window.setTimeout(onComplete,1080);
+  return()=>{window.clearTimeout(exit);window.clearTimeout(done);};
+ },[displayPhase,onComplete]);
+ const failed=displayPhase==="error",complete=displayPhase==="complete";
+ const stages=Object.keys(publishingCopy) as WorkingPhase[];
+ const current=complete?stages.length:stages.indexOf(failed?"publishing":displayPhase);
+ return <main className={"luemi-publication-journey"+(complete?" is-complete":"")+(leaving?" is-leaving":"")} role="status" aria-live="polite"
   aria-label="Создание анкеты LUEMI">
   <div className="luemi-publication-glow" aria-hidden="true"/>
   <div className="luemi-publication-brand">
+   <span className="luemi-publication-orbit" aria-hidden="true"/>
    <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi"/>
   </div>
   <div className="luemi-publication-bottom">
-   {!failed?<span className="luemi-publication-ring" aria-hidden="true"/>:
-    <span className="luemi-publication-failed-icon" aria-hidden="true">♡</span>}
-   <h1>{failed?"Не удалось закончить создание анкеты":publishingCopy[phase]}</h1>
-   <p>{failed?error:"LUEMI подготавливает твоё знакомство 💜"}</p>
+   {complete?<span className="luemi-publication-complete" aria-hidden="true"><Check size={24}/></span>:
+    failed?<span className="luemi-publication-failed-icon" aria-hidden="true">♡</span>:null}
+   <h1>{failed?"Не удалось закончить создание анкеты":complete?"Всё готово 💜":publishingCopy[displayPhase]}</h1>
+   <p>{failed?error:complete?"Открываем LUEMI":"LUEMI подготавливает твоё знакомство 💜"}</p>
    {!failed?<div className="luemi-publication-dots" aria-hidden="true">
-    {stages.map((stage,i)=><span key={stage} className={i===current?"is-current":i<current?"is-done":""}/>)}
+    {stages.map((stage,i)=><span key={stage} className={i===current?"is-current":i<current||complete?"is-done":""}/>)}
    </div>:<div className="luemi-publication-recovery">
     <button type="button" onClick={onRetry}><RefreshCw size={17}/> Повторить</button>
     <button type="button" onClick={onBack}><ArrowLeft size={17}/> Вернуться к анкете</button>
    </div>}
-   {!failed&&elapsed>=30000&&<p className="luemi-publication-slow">
+   {!failed&&!complete&&elapsed>=30000&&<p className="luemi-publication-slow">
     Соединение медленное. Твои уже загруженные фото остаются сохранёнными.
    </p>}
   </div>

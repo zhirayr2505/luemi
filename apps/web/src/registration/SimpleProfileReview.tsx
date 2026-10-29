@@ -1,6 +1,6 @@
 import {goals,type RegistrationDraft} from "./model";
 import type {PhotoItem} from "./PhotoSorter";
-import {CheckCircle2,Image as ImageIcon} from "lucide-react";
+import {CheckCircle2,Image as ImageIcon,LoaderCircle,MapPin,Sparkles,Target} from "lucide-react";
 import "./simple-profile-review.css";
 export function SimpleProfileReview({draft,photos,uploaded,uploading,error}:{
  draft:RegistrationDraft;photos:PhotoItem[];uploaded:number;uploading:boolean;error:string;
@@ -12,10 +12,16 @@ export function SimpleProfileReview({draft,photos,uploaded,uploading,error}:{
  const goalLabel=goals.find(g=>g.id===draft.goal)?.label??"";
  return <section className="luemi-simple-review" aria-label="Предпросмотр анкеты">
   <header className="luemi-simple-review-head">
-   {main?<img className="luemi-simple-review-avatar" src={main.src} alt="Главное фото"/>:
-    <span className="luemi-simple-review-avatar luemi-simple-review-fallback"><ImageIcon size={26}/></span>}
+   <span className="luemi-simple-review-kicker"><Sparkles size={14}/> Так тебя увидят в LUEMI</span>
+   <div className="luemi-simple-review-avatar-ring">
+    {main?<img className="luemi-simple-review-avatar" src={main.src} alt="Главное фото"/>:
+     <span className="luemi-simple-review-avatar luemi-simple-review-fallback"><ImageIcon size={26}/></span>}
+   </div>
    <h2>{draft.name}{age!==null?", "+age:""}</h2>
-   <p>{[draft.city,goalLabel].filter(Boolean).join(" · ")}</p>
+   <div className="luemi-simple-review-meta">
+    {draft.city&&<span><MapPin size={13}/>{draft.city}</span>}
+    {goalLabel&&<span><Target size={13}/>{goalLabel}</span>}
+   </div>
    {draft.about&&<p className="luemi-simple-review-about">{draft.about}</p>}
    {!!draft.interests.length&&<div className="luemi-simple-review-interests">
     {draft.interests.slice(0,6).map(item=><span key={item}>{item}</span>)}
@@ -26,11 +32,12 @@ export function SimpleProfileReview({draft,photos,uploaded,uploading,error}:{
    {valid.map((photo,i)=><div className="luemi-simple-review-tile" key={photo.id}>
     <img src={photo.src} alt={"Фото "+(i+1)} loading={i===0?"eager":"lazy"}/>
     {i===0&&<span className="luemi-simple-review-main">Главное фото</span>}
+    <span className="luemi-simple-review-number">{i+1} / {valid.length}</span>
    </div>)}
   </div>
   <div className="luemi-simple-review-sync" role="status" aria-live="polite">
    {error?<span className="luemi-simple-review-sync-error">{error}</span>:
-    <><CheckCircle2 size={17}/><span>{uploading?"Сохраняем фотографии на сервере…":
+    <>{uploading?<LoaderCircle className="luemi-simple-review-spinner" size={17}/>:<CheckCircle2 size={17}/>}<span>{uploading?"Сохраняем фотографии на сервере…":
       "Сохранено на сервере: "+uploaded+" из "+photos.length}</span></>}
   </div>
  </section>;
