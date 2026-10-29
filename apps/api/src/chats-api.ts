@@ -19,7 +19,11 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
  const auth=guard;
  const options=cfg;
  for(const mime of ["image/jpeg","image/png","image/webp"]){
-  app.addContentTypeParser(mime,{parseAs:"buffer",bodyLimit:10*1024*1024},(_req,body,done)=>done(null,body));
+  // Rem05d may already have attached PNG for private profile photos.
+  // Do not crash the whole server when both real-media modules are enabled.
+  if(!app.hasContentTypeParser(mime))
+   app.addContentTypeParser(mime,{parseAs:"buffer",bodyLimit:10*1024*1024},
+    (_req,body,done)=>done(null,body));
  }
  const pool=new Pool({connectionString:options.databaseUrl,max:5,connectionTimeoutMillis:3000,
   statement_timeout:3000,query_timeout:4000});
