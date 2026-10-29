@@ -86,8 +86,22 @@ try {
     return {top:el.scrollTop,max:el.scrollHeight-el.clientHeight};
    });
    assert.ok(initial.top>1,"ForYou fixture must actually be scrolled for this regression");
-   const start=await nonRailPoint(page);
-   assert.ok(start,"no gesture-safe visible point inside scrolled ForYou");
+   // The scroller has one pending layout tick after programmatic scroll.
+   // Without letting it settle, hit-testing can report a DIV while the
+   // actual touchstart lands on a moving button (not a valid pager gesture).
+   await delay(200);
+   let start=await nonRailPoint(page);
+   for(let attempt=0;attempt<4&&start;attempt++){
+    await delay(70);
+    const safe=await page.evaluate(point=>{
+     const sc=document.querySelector(".fy-scroll"),el=document.elementFromPoint(point.x,point.y);
+     return !!(sc&&el&&sc.contains(el)&&!el.closest(
+      ".fy-rail,.fy-expanded,.fy-manage,.discovery-action,[role=dialog],button,a,input,textarea,select,[contenteditable],[role=button]"));
+    },start);
+    if(safe)break;
+    start=await nonRailPoint(page);
+   }
+   assert.ok(start,"no stable gesture-safe point inside scrolled ForYou");
    const t1=performance.now();
    await swipe(cdp,start.x,start.y,-width*.46,0);
    try{await active(page,2);}catch(error){
