@@ -293,6 +293,11 @@ test("01D: background draft photo can be reordered, revoked, deleted from Storag
   const state=await admin.query<{state:string}>(
    "SELECT state FROM luemi_private.media_assets WHERE id=$1",[ids[1]]);
   assert.equal(state.rows[0].state,"revoked");
+  const manifest=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:owner.cookie}});
+  assert.equal(manifest.statusCode,200,manifest.body);
+  assert.ok(!manifest.json().photos.some((p:{id:string})=>p.id===ids[1]),
+   "revoked photo must not poison the 3-6 active-photo confirmation manifest");
   assert.equal(await store.get(original.rows[0].derivative_key),null,"sanitized blob not erased");
   const after=await app.inject({method:"GET",url:"/api/v2/media/"+ids[1],
    headers:{cookie:owner.cookie}});
