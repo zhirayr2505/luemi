@@ -61,6 +61,16 @@ CREATE POLICY erasure_interaction_reports ON luemi_bliki_private.reports FOR SEL
 CREATE POLICY erasure_interaction_reports_delete ON luemi_bliki_private.reports FOR DELETE TO luemi_erasure_worker
  USING(EXISTS(SELECT 1 FROM luemi_private.erasure_requests q
   WHERE q.actor_id=reports.reporter_id AND q.state='pending' AND q.eligible_at<=clock_timestamp()));
+-- Reviewed/suspended enforcement data is held until a documented human/legal
+-- decision; a pending deletion can never silently erase appeal evidence.
+GRANT SELECT(actor_id,environment) ON luemi_private.account_enforcements TO luemi_erasure_worker;
+CREATE POLICY erasure_safety_hold_read ON luemi_private.account_enforcements
+ FOR SELECT TO luemi_erasure_worker USING (
+  EXISTS (SELECT 1 FROM luemi_private.erasure_requests q
+   WHERE q.actor_id=account_enforcements.actor_id
+     AND q.environment=account_enforcements.environment
+     AND q.state='pending' AND q.eligible_at<=clock_timestamp())
+ );
 CREATE POLICY worker_anonymize_tombstone ON luemi_private.actors FOR UPDATE
  TO luemi_erasure_worker
  USING(status='deleted' AND anonymized_at IS NULL AND EXISTS(
