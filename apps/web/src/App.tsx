@@ -507,7 +507,8 @@ export function App() {
     setError(problem);
   };
   const queuePrivateRemoval=(photo:PhotoItem)=>{
-    if(!remoteMediaPilot.enabled||!realFeedPilot.enabled||!serverConsent)return;
+    if(!remoteMediaPilot.enabled||!realFeedPilot.enabled||
+       (!serverConsent&&privatePhotoAssets.current.size===0&&serverPhotoCount===0))return;
     privatePhotoRemoved.current.add(photo.id);
     privatePhotoQueue.current=privatePhotoQueue.current.catch(()=>{}).then(async()=>{
       try{
@@ -1097,7 +1098,11 @@ export function App() {
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} serverConsent={serverConsent}
        theme={theme} onTheme={changeTheme}
-       setServerConsent={setServerConsent}
+       setServerConsent={accepted=>{
+         if(!accepted&&serverConsent)
+          for(const photo of photos)queuePrivateRemoval(photo);
+         setServerConsent(accepted);
+        }}
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
           remoteMediaPilot.enabled?confirmPrivateRegistration():persistServerDraft());}}
         mediaEnabled={remoteMediaPilot.enabled}
