@@ -12,7 +12,7 @@ import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {RealChats} from "../chats/RealChats";
 import {createChatTransport,type ChatWireConversation} from "../chats/chat-transport";
 import {geoCsrf} from "../auth/session-adapter";
-import {getPublishedFeed,likePublishedUser,blockPublishedUser,reportPublishedUser} from "../registration/real-live-client";
+import {getPublishedFeed,likePublishedUser,blockPublishedUser,reportPublishedUser,type PublishedFeedPage} from "../registration/real-live-client";
 import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
 import "./discovery.css";
 import "./feed-v2.css";
@@ -61,7 +61,7 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
    if(!controller.signal.aborted){setItems(data.conversations);setLoading(false);}
   }).catch(()=>{if(!controller.signal.aborted){setError("Не удалось загрузить симпатии.");setLoading(false);}});
   return ()=>controller.abort();
- },[active,refresh]);
+ },[active,refresh,initialFeed]);
  return <section className="real-discovery-matches" aria-label="Взаимные симпатии">
   <div className="real-discovery-matches-head"><h2>Симпатии</h2>
    <button type="button" aria-label="Обновить симпатии" onClick={()=>setRefresh(x=>x+1)}><RefreshCw size={19}/></button></div>
@@ -76,8 +76,8 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
  </section>;
 }
 
-function LiveDeck({active,tab,draft,onPerson,onMatched}:{
- active:boolean;tab:BrowseTab;draft:RegistrationDraft;
+function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched}:{
+ active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
  onPerson:(p:RealPublishedProfile)=>void;onMatched:()=>void
 }){
  const [rows,setRows]=useState<RealPublishedProfile[]>([]);
@@ -93,6 +93,12 @@ function LiveDeck({active,tab,draft,onPerson,onMatched}:{
   if(!active)return;
   const controller=new AbortController();abort.current?.abort();abort.current=controller;
   setLoading(true);setError("");setMessage("");
+  if(initialFeed&&refresh===0){
+   // First paint already has the actual signed server recommendations and
+   // the first decoded image blobs from the publication handoff.
+   setRows(initialFeed.profiles);setCursor(initialFeed.nextCursor);
+   setPage(0);setLoading(false);return()=>controller.abort();
+  }
   void getPublishedFeed(controller.signal).then(result=>{
    if(controller.signal.aborted)return;
    setRows(result.profiles);setCursor(result.nextCursor);setPage(0);setLoading(false);
@@ -191,9 +197,9 @@ function LiveDeck({active,tab,draft,onPerson,onMatched}:{
  </div>;
 }
 
-export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,accountPanel,onEdit}:{
+export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,initialFeed,accountPanel,onEdit}:{
  draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;
- publishedProfile:OwnerPublicationStatus["profile"]|undefined;
+ publishedProfile:OwnerPublicationStatus["profile"]|undefined;initialFeed?:PublishedFeedPage|null;
  accountPanel:ReactNode;onEdit:()=>void;
 }){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
@@ -238,6 +244,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,accountP
       {tabs.map(([id,label])=><section key={id} className="discovery-page" role="tabpanel" aria-label={label}
        aria-hidden={browse!==id} inert={browse!==id}>
        <LiveDeck active={mainTab==="discover"&&browse===id} tab={id} draft={draft}
+        initialFeed={initialFeed}
         onPerson={setPerson} onMatched={()=>setMainTab("chats")}/>
       </section>)}
      </div>
