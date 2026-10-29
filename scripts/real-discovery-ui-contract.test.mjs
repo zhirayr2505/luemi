@@ -65,8 +65,8 @@ test("real matches, reports and account actions stay available even when feed is
 
 test("real For You and Nearby restore their approved distinct layouts, never three decks",()=>{
  assert.match(shell,/tab!=="feed"/);
- assert.match(shell,/<RealForYou draft=\{draft\} people=\{rows\}/);
- assert.match(shell,/<RealNearby draft=\{draft\} people=\{rows\}/);
+ assert.match(shell,/<RealForYou draft=\{draft\} people=\{matchedRows\}/);
+ assert.match(shell,/<RealNearby draft=\{draft\} people=\{matchedRows\}/);
  assert.match(forYou,/className="fy-hero"/);
  assert.match(forYou,/className="fy-rail"/);
  assert.match(forYou,/className="fy-section"/);
