@@ -35,6 +35,8 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .entry-state.visually-ready .intro-logo{animation:logo-enter .5s cubic-bezier(.17,.82,.31,1) both}
 .entry-state h1{font-size:clamp(27px,7.3vw,38px);font-weight:760;line-height:1.17;letter-spacing:-.045em;
  max-width:470px;margin:0;min-height:2.4em;opacity:0;transform:translateY(10px)}
+.intro-type-cursor{display:inline-block;margin-left:2px;color:var(--lavender);font-weight:400;animation:intro-cursor-blink .8s steps(2,end) infinite}
+@keyframes intro-cursor-blink{50%{opacity:0}}
 .entry-state.visually-ready h1{animation:text-enter .55s .60s cubic-bezier(.18,.75,.32,1) both}
 .entry-state p{font-size:15px;color:var(--subtle);max-width:350px;line-height:1.55}
 .entry-state a{color:var(--lavender)}
@@ -51,6 +53,18 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 @keyframes text-enter{to{opacity:1;transform:translateY(0)}}
 @keyframes cta-enter{from{opacity:0;transform:translateY(17px)}to{opacity:1;transform:translateY(0)}}
 @keyframes screen-exit{to{opacity:0;transform:translateY(-10px)}}
+.luemi-launch-splash{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;overflow:hidden;background:linear-gradient(145deg,#fffafd 0%,#f7ebfb 48%,#ffeef6 100%);color:#3e2e4f;isolation:isolate;animation:launch-screen-in .42s ease both}
+.luemi-launch-glow{position:absolute;z-index:-1;width:130vw;height:80vh;border-radius:50%;background:radial-gradient(ellipse,rgba(197,148,233,.28),rgba(239,164,205,.11) 43%,transparent 72%);filter:blur(20px);animation:launch-glow 2.2s ease-in-out infinite alternate}
+.luemi-launch-logo{width:min(48vw,190px);height:auto;animation:launch-logo-in .7s cubic-bezier(.17,.82,.31,1) both}
+.luemi-launch-splash p{max-width:300px;margin:0;text-align:center;font-size:18px;line-height:1.35;font-weight:650;letter-spacing:-.02em;color:#6c4c7c;animation:launch-copy-in .65s .18s ease both}
+.luemi-launch-loader{display:flex;gap:6px;margin-top:3px;animation:launch-copy-in .65s .3s ease both}
+.luemi-launch-loader i{width:6px;height:6px;border-radius:50%;background:#b37dd5;animation:launch-dot 1s ease-in-out infinite}
+.luemi-launch-loader i:nth-child(2){animation-delay:.12s}.luemi-launch-loader i:nth-child(3){animation-delay:.24s}
+@keyframes launch-screen-in{from{opacity:0}to{opacity:1}}
+@keyframes launch-logo-in{from{opacity:0;transform:scale(.88) translateY(12px)}to{opacity:1;transform:none}}
+@keyframes launch-copy-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes launch-glow{from{transform:translate(-8%,-5%) scale(.92)}to{transform:translate(8%,5%) scale(1.1)}}
+@keyframes launch-dot{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
 /* Keep header and footer structurally outside the one scroll container. */
 .onboarding-screen{width:100%;height:100%;max-width:680px;margin:0 auto;display:flex;flex-direction:column;
  padding:calc(var(--top-safe) + 60px) 22px 0;min-height:0;animation:screen-enter .32s ease both}
@@ -277,7 +291,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 @media(min-width:640px){.onboarding-screen{padding-left:45px;padding-right:45px}.mosaic{grid-template-rows:repeat(3,120px)}}
 @supports not (backdrop-filter:blur(1px)){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{background:var(--bg)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}
- .intro-logo,.entry-state h1{opacity:1;transform:none}}
+ .intro-logo,.entry-state h1{opacity:1;transform:none}.intro-type-cursor{animation:none}}
 @media(prefers-reduced-transparency:reduce){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{
  backdrop-filter:none!important;background:var(--bg)}}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #a577da;outline-offset:3px}
