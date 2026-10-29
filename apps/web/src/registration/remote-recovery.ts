@@ -29,7 +29,7 @@ export function recoverServerFields(fields:Record<string,unknown>):RegistrationD
   ageMin:fields.ageMin,ageMax:fields.ageMax,goal:fields.goal,
   interests:fields.interests,about:fields.about,languages:fields.languages,
   height:fields.height,occupation:fields.occupation,education:fields.education,
-  lifestyle:fields.lifestyle,pets:fields.pets,facts:fields.facts};
+  lifestyle:fields.lifestyle,pets:fields.pets,facts:fields.facts,family:fields.family};
  const parsed=parseRegistrationDraft(raw);
  return parsed.ok?parsed.value:null;
 }
