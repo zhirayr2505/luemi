@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadOnePrivatePhoto,deleteOnePrivatePhoto,setPrivatePhotoOrder,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -133,6 +133,12 @@ export function App() {
   const photoJobs=useRef(new Map<string,AbortController>());
   const photoTimers=useRef(new Map<string,number>());
   const photoQueue=useRef<Promise<void>>(Promise.resolve());
+  // All private uploads and removals execute serially; no racing PUT/DELETE.
+  const bgQueue=useRef<Promise<void>>(Promise.resolve());
+  const bgQueued=useRef(new Set<string>());
+  const bgUploaded=useRef(new Map<string,string>());
+  const bgRemoved=useRef(new Set<string>());
+  const bgDraftInit=useRef<Promise<void>|null>(null);
   const photoIds=useRef(new Set<string>());
   const photoGeneration=useRef(0);
   const [photosRestored,setPhotosRestored] = useState(false);
@@ -499,6 +505,17 @@ export function App() {
     setError(problem);
   };
   const removePhoto=(id:string)=>{
+    bgRemoved.current.add(id);
+    bgQueue.current=bgQueue.current.catch(()=>{}).then(async()=>{
+      try{
+        await deleteOnePrivatePhoto(id);
+        bgUploaded.current.delete(id);
+        setServerPhotoCount(bgUploaded.current.size);
+        setMediaStatus("Фотография удалена с сервера.");
+      }catch{
+        setMediaStatus("Не удалось удалить фото с сервера. Проверь соединение.");
+      }
+    });
     setPrivateDraftSaved(false);setMediaStatus("");
     persistEnabled.current=true;setStorageState("dirty");
     photoJobs.current.get(id)?.abort();photoJobs.current.delete(id);
@@ -517,8 +534,49 @@ export function App() {
       const next=[...prev];const [item]=next.splice(from,1);next.splice(to,0,item);return next;
     });
   };
+  // Background synchronization is explicit-consent gated. One photo is
+  // uploaded when its local derivative is ready, before final preview.
+  useEffect(()=>{
+    if(auth!=="authorized"||!remoteMediaPilot.enabled||!realFeedPilot.enabled||
+      !photosRestored||!serverConsent||submitting.current)return;
+    if(![1,2,3,4,5,6].every(n=>
+      validateStep(draft,n,photos.length,new Date(),"live")===null))return;
+    for(const photo of photos){
+      if(photo.status!=="ready"||!photo.src||bgRemoved.current.has(photo.id)||
+        bgQueued.current.has(photo.id)||bgUploaded.current.has(photo.id))continue;
+      bgQueued.current.add(photo.id);
+      bgQueue.current=bgQueue.current.catch(()=>{}).then(async()=>{
+        if(bgRemoved.current.has(photo.id))return;
+        setMediaSaving(true);
+        try{
+          if(!bgDraftInit.current){
+            bgDraftInit.current=(async()=>{
+              const existing=await readRemoteRevision();
+              await saveRemoteDraft(draft,existing.revision);
+              setPrivateDraftSaved(true);
+            })().catch(error=>{bgDraftInit.current=null;throw error;});
+          }
+          await bgDraftInit.current;
+          if(bgRemoved.current.has(photo.id))return;
+          const assetId=await uploadOnePrivatePhoto(photo);
+          bgUploaded.current.set(photo.id,assetId);
+          if(bgRemoved.current.has(photo.id)){
+            await deleteOnePrivatePhoto(photo.id);bgUploaded.current.delete(photo.id);
+          }else{
+            setServerPhotoCount(bgUploaded.current.size);
+            setMediaStatus("На сервере "+bgUploaded.current.size+" из "+photos.length+" фотографий.");
+          }
+        }catch{
+          setMediaStatus("Не все фотографии загружены. Уже сохранённые не потеряны.");
+        }finally{bgQueued.current.delete(photo.id);setMediaSaving(false);}
+      });
+    }
+  },[auth,serverConsent,photosRestored,photos,draft]);
   const resetDraft=()=>{
     if(!window.confirm("Удалить сохранённый на этом устройстве черновик, включая фотографии?"))return;
+    // A canceled reset NEVER triggers a remote erase. After confirmation,
+    // even prior-session photo IDs are revoked using their permanent keys.
+    for(const item of photos)removePhoto(item.id);
     photoGeneration.current++;
     for(const job of photoJobs.current.values())job.abort();
     photoJobs.current.clear();photoIds.current.clear();
@@ -698,6 +756,9 @@ export function App() {
     submitting.current=true;setPublishBusy(true);setPublishFeedback("");
     setJourneyError("");setJourney("publishing");
     try{
+      // Honor all photo uploads/deletions started on the selection screen
+      // before counting or publishing server media.
+      await bgQueue.current.catch(()=>{});
       const existing=await ownerPublicationStatus();setPublishStatus(existing);
       if(registrationSubmissionDecision(existing)==="already-published"){
         await finishSuccessfulPublication(existing);return;
@@ -713,9 +774,20 @@ export function App() {
       // even when the server already has >=3 other approved photos. Count-only
       // checks can publish stale images instead of the user's current choice.
       // Per-photo idempotency keys make this safe on normal repeated submits.
-      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      const uploadedIds:string[]=[];
+      for(const photo of photos){
+        let asset=bgUploaded.current.get(photo.id);
+        if(!asset){
+          asset=await uploadOnePrivatePhoto(photo);
+          bgUploaded.current.set(photo.id,asset);
+        }
+        uploadedIds.push(asset);
+        setPublishFeedback("Сохранено "+uploadedIds.length+" из "+photos.length+" фотографий.");
+      }
+      setServerPhotoCount(uploadedIds.length);
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
+      // The backend must receive the sorted order, not only photo count.
+      await setPrivatePhotoOrder(uploadedIds);
       const media=await ownerPublicationStatus();setPublishStatus(media);
       if(media.approved<photos.length||media.pending!==0||media.other!==0)
         throw new Error("incomplete_media");
@@ -1037,6 +1109,7 @@ export function App() {
         mediaEnabled={remoteMediaPilot.enabled}
         publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
+       serverPhotoCount={serverPhotoCount} mediaStatus={mediaStatus}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}

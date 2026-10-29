@@ -378,6 +378,54 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    return statusError(reply,e);
   }
  });
+ // Delete from the SAME private bucket when a draft photo is removed.
+ // Never remove published media here; owner must unpublish or use the account
+ // deletion flow. Request role only proves ownership; isolated worker
+ // serializes with upload PUT, marks revoked first, then deletes object bytes.
+ // Photos are addressed by the durable locally saved UUID, not by an
+ // ephemeral in-memory asset map. A user can remove them after app restart.
+ // Only her OWN private asset's object keys may ever be touched.
+ app.delete<{Params:{clientId:string}}>("/api/v2/media/draft-photo/:clientId",
+ {preHandler:guard.mutation},async(req,reply)=>{
+  if(!uuid(req.params.clientId))return reply.code(422).send({error:"invalid_photo"});
+  const keyHash=digest("reg01c-photo-"+req.params.clientId);
+  const verified=await owner(req,reply,async(db,id)=>{
+   const q=await db.query<{asset_id:string}>(
+    "SELECT u.asset_id FROM luemi_private.media_uploads u "+
+    "JOIN luemi_private.media_assets a ON a.id=u.asset_id "+
+    "WHERE u.owner_id=$1 AND u.environment=$2 AND u.idempotency_digest=$3 "+
+    "AND a.owner_id=$1 AND a.environment=$2 AND a.publication_status='private'",
+    [id,opts.namespace,keyHash]);
+   return{actorId:id,assetId:q.rows[0]?.asset_id??null};
+  });
+  if(reply.sent||!("actorId" in verified))return verified;
+  if(!verified.assetId)return reply.send({removed:true});
+  const actor=req.authActor;
+  if(!actor||actor.actorId!==verified.actorId)
+   return reply.code(401).send({error:"unauthorized"});
+  try{
+   const keys=await worker(async db=>{
+    // Same lock as the upload PUT; late uploads cannot recreate deleted data.
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+actor.actorId+":profile_media_slots"]);
+    const q=await db.query<{original_key:string;derivative_key:string;state:string}>(
+     "SELECT original_key,derivative_key,state FROM luemi_private.media_assets "+
+     "WHERE id=$1 AND owner_id=$2 AND environment=$3 "+
+     "AND publication_status='private' FOR UPDATE",
+     [verified.assetId,actor.actorId,opts.namespace]);
+    if(!q.rowCount)reject(409,"photo_no_longer_private");
+    if(q.rows[0].state!=="revoked")
+     await db.query("UPDATE luemi_private.media_assets SET state='revoked' "+
+      "WHERE id=$1 AND owner_id=$2 AND environment=$3 AND publication_status='private'",
+      [verified.assetId,actor.actorId,opts.namespace]);
+    return q.rows[0];
+   });
+   // SQL is revoked first. Retried DELETE performs idempotent object cleanup.
+   await Promise.all([opts.storage.delete(keys.derivative_key),
+    opts.storage.delete(keys.original_key)]);
+   return reply.header("Cache-Control","no-store").send({removed:true});
+  }catch(e){return statusError(reply,e);}
+ });
  app.get<{Params:{id:string}}>("/api/v2/media/:id",{preHandler:guard.read},async(req,reply)=>{
   if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});
   const record=await owner(req,reply,async(db,id)=>{

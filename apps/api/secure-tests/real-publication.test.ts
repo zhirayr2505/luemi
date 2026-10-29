@@ -180,6 +180,71 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
   }finally{anon.release();}
  }finally{await app.close();}
 });
+test("01D: consented draft photos delete safely by stable local UUID across client restarts",async()=>{
+ const store=memoryPrivateStore(),app=makeApp({instant:true,storage:store});
+ try{
+  const owner=await identity(app,8011691),stranger=await identity(app,8011692);
+  await consent(app,owner);await consent(app,stranger);
+  const clientId="a1234567-1234-4123-8123-a123456789ab";
+  const png=makeSyntheticPng();
+  const intent=await mutate(app,owner,"/api/v2/media/intents",{
+   bytes:png.length,mime:"image/png",clientKey:"reg01c-photo-"+clientId
+  });
+  assert.equal(intent.statusCode,200,intent.body);
+  const assetId=intent.json().assetId as string;
+  const bytes=await app.inject({method:"PUT",url:"/api/v2/media/"+assetId+"/bytes",
+   headers:{...headers(owner),"content-type":"image/png"},payload:png});
+  assert.equal(bytes.statusCode,200,bytes.body);
+  const keys=await admin.query<{derivative_key:string;original_key:string}>(
+   "SELECT derivative_key,original_key FROM luemi_private.media_assets WHERE id=$1",[assetId]);
+  assert.equal(keys.rowCount,1);
+  assert.ok(await store.get(keys.rows[0].derivative_key));
+  assert.equal((await app.inject({method:"DELETE",
+   url:"/api/v2/media/draft-photo/"+clientId,headers:headers(stranger)})).statusCode,200,
+   "stranger cannot locate or delete another actor's file");
+  assert.ok(await store.get(keys.rows[0].derivative_key),"stranger did not erase owner's pixels");
+  const removed=await app.inject({method:"DELETE",
+   url:"/api/v2/media/draft-photo/"+clientId,headers:headers(owner)});
+  assert.equal(removed.statusCode,200,removed.body);
+  assert.equal(removed.json().removed,true);
+  assert.equal(await store.get(keys.rows[0].derivative_key),null);
+  assert.equal(await store.get(keys.rows[0].original_key),null);
+  const state=await admin.query<{state:string}>(
+   "SELECT state FROM luemi_private.media_assets WHERE id=$1",[assetId]);
+  assert.equal(state.rows[0].state,"revoked");
+  const retry=await app.inject({method:"DELETE",url:"/api/v2/media/draft-photo/"+clientId,
+   headers:headers(owner)});
+  assert.equal(retry.statusCode,200,"delete request idempotent after restart");
+  const remaining=await app.inject({method:"GET",url:"/api/v3/profile/status",
+   headers:{cookie:owner.cookie}});
+  assert.equal(remaining.json().approved,0,"revoked photo is not publishable");
+  assert.equal((await app.inject({method:"DELETE",url:"/api/v2/media/draft-photo/"+clientId})).statusCode,401);
+ }finally{await app.close();}
+});
+test("01D: reordered real photos publish main avatar in specified server order",async()=>{
+ const app=makeApp({instant:true});
+ try{
+  const user=await identity(app,8011693);
+  const ids=await prepare(app,user);
+  const newOrder=[ids[2],ids[0],ids[1]];
+  const ordered=await app.inject({method:"PUT",url:"/api/v3/profile/photos/order",
+   headers:headers(user),payload:{assetIds:newOrder}});
+  assert.equal(ordered.statusCode,200,ordered.body);
+  const rows=await admin.query<{id:string}>(
+   "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 AND state='approved' "+
+   "ORDER BY position,id",[user.id]);
+  assert.deepEqual(rows.rows.map(x=>x.id),newOrder);
+  const published=await mutate(app,user,"/api/v3/profile/publish",{revision:1});
+  assert.equal(published.statusCode,200,published.body);
+  const status=await app.inject({method:"GET",url:"/api/v3/profile/status",
+   headers:{cookie:user.cookie}});
+  assert.equal(status.json().state,"published");
+  assert.ok((status.json().profile.photos[0] as string).endsWith(newOrder[0]));
+  const invalid=await app.inject({method:"PUT",url:"/api/v3/profile/photos/order",
+   headers:headers(user),payload:{assetIds:newOrder}});
+  assert.equal(invalid.statusCode,409,"published media cannot be silently reordered");
+ }finally{await app.close();}
+});
 test("01D: public no-invite admission and instantly published sanitized photos without pre-review",async()=>{
  const app=makeApp({instant:true});
  try{

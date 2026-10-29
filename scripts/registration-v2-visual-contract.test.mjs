@@ -31,7 +31,11 @@ assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
 assert.match(form,/p\.publicationEnabled\?/,"Registration must disclose publication separately from private saving");
 assert.match(form,/Создать анкету 💜/,"Single real signup confirmation creates published profile");
-assert.match(form,/mode="local-self-preview" active/,"Signup preview must show approved Profile Morph V3");
+assert.match(form,/<SimpleRegistrationPreview draft=\{draft\} photos=\{photos\}/,
+ "Registration uses the owner-approved simple avatar and horizontal gallery instead of Profile Morph V3");
+const simple=readFileSync("apps/web/src/registration/SimpleRegistrationPreview.tsx","utf8");
+assert.match(simple,/className="luemi-simple-preview-rail"/,"Photos must support horizontal swipe");
+assert.match(simple,/Главное фото/,"First picture remains marked as the main photo");
 assert.match(form,/registrationV2Stages\.filter\(stage=>stage\.id!=="face-consent"&&stage\.id!=="liveness"\)/,
  "Private signup must skip unavailable biometric verification screens");
 assert.match(form,/aria-valuemax=\{stages\.length\}/,
