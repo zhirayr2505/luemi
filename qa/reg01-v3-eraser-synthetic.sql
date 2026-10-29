@@ -34,3 +34,36 @@ CREATE POLICY ci_worker_actor_tombstone ON luemi_private.actors FOR UPDATE
  USING(status='deleted' AND EXISTS(SELECT 1 FROM luemi_private.erasure_requests q
    WHERE q.actor_id=actors.id AND q.state='pending' AND q.eligible_at<=clock_timestamp()))
  WITH CHECK(status='deleted' AND anonymized_at IS NOT NULL);
+
+-- Isolated social cleanup coverage: models precisely the three actor-owned
+-- SQL deletes used by the worker. Real grants live in the separate operator
+-- migration, which remains unapproved for production.
+CREATE SCHEMA IF NOT EXISTS luemi_chats;
+CREATE TABLE IF NOT EXISTS luemi_chats.likes(
+ environment text NOT NULL, sender_id uuid NOT NULL,receiver_id uuid NOT NULL,
+ PRIMARY KEY(environment,sender_id,receiver_id));
+CREATE TABLE IF NOT EXISTS luemi_bliki_private.reactions(
+ story_id uuid NOT NULL, actor_id uuid NOT NULL);
+CREATE TABLE IF NOT EXISTS luemi_bliki_private.views(
+ story_id uuid NOT NULL, viewer_id uuid NOT NULL);
+ALTER TABLE luemi_chats.likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE luemi_chats.likes FORCE ROW LEVEL SECURITY;
+ALTER TABLE luemi_bliki_private.reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE luemi_bliki_private.reactions FORCE ROW LEVEL SECURITY;
+ALTER TABLE luemi_bliki_private.views ENABLE ROW LEVEL SECURITY;
+ALTER TABLE luemi_bliki_private.views FORCE ROW LEVEL SECURITY;
+GRANT USAGE ON SCHEMA luemi_chats TO luemi_erasure_worker;
+GRANT SELECT,DELETE ON luemi_chats.likes TO luemi_erasure_worker;
+GRANT SELECT,DELETE ON luemi_bliki_private.reactions,luemi_bliki_private.views TO luemi_erasure_worker;
+CREATE POLICY ci_delete_likes ON luemi_chats.likes FOR ALL TO luemi_erasure_worker
+ USING(EXISTS(SELECT 1 FROM luemi_private.erasure_requests q WHERE
+  q.actor_id IN (sender_id,receiver_id) AND q.state='pending' AND
+  q.eligible_at<=clock_timestamp()));
+CREATE POLICY ci_delete_reactions ON luemi_bliki_private.reactions FOR ALL TO luemi_erasure_worker
+ USING(EXISTS(SELECT 1 FROM luemi_private.erasure_requests q WHERE
+  q.actor_id=reactions.actor_id AND q.state='pending' AND
+  q.eligible_at<=clock_timestamp()));
+CREATE POLICY ci_delete_views ON luemi_bliki_private.views FOR ALL TO luemi_erasure_worker
+ USING(EXISTS(SELECT 1 FROM luemi_private.erasure_requests q WHERE
+  q.actor_id=views.viewer_id AND q.state='pending' AND
+  q.eligible_at<=clock_timestamp()));
