@@ -27,7 +27,10 @@ export class ProfileMotionEngine {
  private drag:{y:number;anchorPx:number;lastY:number}|null=null;
  constructor(private layout:MorphLayout,private readonly paint:(p:number,elastic:number)=>void,
   private readonly commit?:(target:0|1)=>void,private readonly reduced=()=>false,
-  private readonly clock:Clock=browserClock){paint(0,0);}
+  private readonly clock:Clock=browserClock,initialProgress:0|1=0){
+  this.p=initialProgress;this.phase=initialProgress===1?"EXPANDED":"COMPACT";
+  paint(initialProgress,0);
+ }
  private stop(){this.generation++;if(this.frameId!==null)this.clock.cancel(this.frameId);
   if(this.dragFrame!==null)this.clock.cancel(this.dragFrame);
   this.frameId=null;this.dragFrame=null;this.pendingDrag=null;this.run=null;}
