@@ -381,6 +381,45 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
  // Registration draft: deletion is owner-only and never affects a published
  // profile. Revocation commits BEFORE Storage cleanup, so access is closed
  // immediately even when the object store is temporarily unavailable.
+ // Save exact owner-selected order (index zero is the main picture) before
+ // publication. Only the COMPLETE private asset set is accepted.
+ app.put<{Body:unknown}>("/api/v2/media/order",{preHandler:guard.mutation},async(req,reply)=>{
+  if(!object(req.body)||Object.keys(req.body).length!==1||
+    !Array.isArray(req.body.assetIds)||req.body.assetIds.length<3||
+    req.body.assetIds.length>6||!req.body.assetIds.every(uuid)||
+    new Set(req.body.assetIds).size!==req.body.assetIds.length)
+    return reply.code(422).send({error:"invalid_photo_order"});
+  const assetIds=req.body.assetIds as string[];
+  const checked=await owner(req,reply,async(db,id)=>{
+   const q=await db.query<{id:string}>(
+    "SELECT id FROM luemi_private.media_assets WHERE owner_id=$1 "+
+    "AND environment=$2 AND state='approved' AND publication_status='private'",
+    [id,opts.namespace]);
+   if(q.rows.length!==assetIds.length||q.rows.some(x=>!assetIds.includes(x.id)))
+    reject(409,"photo_set_changed");
+   return{id};
+  });
+  if(reply.sent||!("id" in checked))return checked;
+  const actor=req.authActor;
+  try{
+   await worker(async db=>{
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+     [opts.namespace+":"+checked.id+":profile_media_slots"]);
+    const result=await db.query(
+     "UPDATE luemi_private.media_assets a SET position=x.ordinality-1 "+
+     "FROM unnest($1::uuid[]) WITH ORDINALITY AS x(id,ordinality) "+
+     "WHERE a.id=x.id AND a.owner_id=$2 AND a.environment=$3 "+
+     "AND a.state='approved' AND a.publication_status='private' RETURNING a.id",
+     [assetIds,checked.id,opts.namespace]);
+    if(result.rowCount!==assetIds.length)reject(409,"photo_set_changed");
+    await auth.read(req,reply);
+    if(reply.sent||!actor||!req.authActor||req.authActor.actorId!==actor.actorId||
+      req.authActor.sessionId!==actor.sessionId||
+      !timingSafeEqual(req.authActor.hash,actor.hash))reject(401,"unauthorized");
+   });
+   return{ok:true,count:assetIds.length};
+  }catch(e){if(reply.sent)return reply;return statusError(reply,e);}
+ });
  app.delete<{Params:{id:string}}>("/api/v2/media/:id",{preHandler:guard.mutation},async(req,reply)=>{
   if(!uuid(req.params.id))return reply.code(404).send({error:"not_found"});
   const verified=await owner(req,reply,async(db,id)=>{
