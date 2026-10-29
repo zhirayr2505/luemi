@@ -88,10 +88,18 @@ export async function uploadPrivatePhotos(
 /** Upload one processed photo as soon as the user selects it and has
  * granted consent. No hard minimum until final publication; idempotent key.
  */
+// Stable bytes across retries preserve the per-photo server idempotency digest.
+// Bounded to a maximum of six local pictures; never written to browser storage.
+const pendingPng=new Map<string,Promise<Blob>>();
+async function stablePng(photo:PhotoItem){
+ let job=pendingPng.get(photo.id);
+ if(!job){job=normalizedPng(photo);pendingPng.set(photo.id,job);}
+ try{return await job;}catch(e){pendingPng.delete(photo.id);throw e;}
+}
 export async function uploadPrivatePhoto(photo:PhotoItem):Promise<string>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
  if(photo.status!=="ready"||!photo.id)throw new Error("photo_not_ready");
- const png=await normalizedPng(photo);
+ const png=await stablePng(photo);
  const response=await request("/api/v2/media/intents","POST",
   JSON.stringify({bytes:png.size,mime:"image/png",clientKey:"reg01c-photo-"+photo.id}),
   "application/json");
@@ -119,6 +127,7 @@ export async function uploadPrivatePhoto(photo:PhotoItem):Promise<string>{
 export async function deletePrivatePhoto(photoId:string):Promise<void>{
  if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
  if(!UUID.test(photoId))throw new Error("invalid_photo_id");
+ pendingPng.delete(photoId);
  const csrf=geoCsrf();if(!csrf)throw new Error("missing_session_csrf");
  const response=await fetch("/api/v2/media/by-client-key/reg01c-photo-"+photoId,{
   method:"DELETE",credentials:"same-origin",cache:"no-store",
