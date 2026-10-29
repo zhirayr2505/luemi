@@ -297,15 +297,17 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
  app.post<{Body:unknown}>("/api/v2/media/forget",
   {preHandler:guard.mutation},async(req,reply)=>{
    if(!object(req.body)||Object.keys(req.body).length!==1||
-     !str(req.body.clientKey,8,80))
+      !(str(req.body.clientKey,8,80)||uuid(req.body.assetId)))
     return reply.code(422).send({error:"invalid_client_key"});
-   const idempotency=digest(String(req.body.clientKey));
+   const assetId=uuid(req.body.assetId)?req.body.assetId:null;
+   const idempotency=assetId?null:digest(String(req.body.clientKey));
    const target=await owner(req,reply,async(db,id)=>{
     const q=await db.query<{asset_id:string;publication_status:string}>(
      "SELECT u.asset_id,a.publication_status FROM luemi_private.media_uploads u "+
      "JOIN luemi_private.media_assets a ON a.id=u.asset_id "+
-     "WHERE u.owner_id=$1 AND u.environment=$2 AND u.idempotency_digest=$3",
-     [id,opts.namespace,idempotency]);
+     "WHERE u.owner_id=$1 AND u.environment=$2 AND "+
+     "(($3::text IS NOT NULL AND u.idempotency_digest=$3) OR ($4::uuid IS NOT NULL AND u.asset_id=$4))",
+     [id,opts.namespace,idempotency,assetId]);
     if(!q.rowCount)return{assetId:null,actorId:id};
     if(q.rows[0].publication_status!=="private")reject(409,"already_published");
     return{assetId:q.rows[0].asset_id,actorId:id};
