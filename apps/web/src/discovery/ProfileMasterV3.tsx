@@ -26,6 +26,7 @@ type Props={
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
  gestureArbiter?:GestureArbiter;
+ initialExpanded?:boolean;
 };
 
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
@@ -57,7 +58,10 @@ function About({view}:{view:ProfileView}){
 }
 function Bliki(){return <div className="pm-empty pm-bliki"><div className="pm-bliki-mark"><Sparkles size={47} strokeWidth={1.2}/></div>
  <h3>Пока нет бликов</h3><p>Здесь появятся короткие моменты из жизни.</p><span>Функция готовится</span></div>;}
-function Gifts({view}:{view:ProfileView}){return <div className="pm-card-stack">
+function Gifts({view}:{view:ProfileView}){if(view.profile.source==="server")return <div className="pm-card-stack">
+ <div className="pm-empty"><Sparkles size={38}/><h3>Подарков пока нет</h3><p>Здесь появятся подарки от взаимных симпатий.</p></div>
+ </div>;
+ return <div className="pm-card-stack">
  <p className="pm-demo-disclaimer"><Info size={15}/> Витрина подарков — только демонстрация, без покупок или полученных подарков.</p>
  <div className="pm-gift-pinned"><span>Пример закреплённого подарка · Демо</span><div aria-hidden="true">🧸</div><strong>Мишка любви</strong></div>
  <h3 className="pm-section-heading">Примеры подарков</h3>
@@ -80,12 +84,12 @@ function Meta({view}:{view:ProfileView}){
 
 
 export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,
- active=true,onMotionProgress,registerRouteMotion,gestureArbiter}:Props){
+ active=true,onMotionProgress,registerRouteMotion,gestureArbiter,initialExpanded=false}:Props){
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]),photos=view.photos;
  const [photoId,setPhotoId]=useState<string|null>(photos[0]?.id??null);
  const [viewer,setViewer]=useState<{photoId:string;source:ViewerSource|null}|null>(null);
  const [preview,setPreview]=useState(false);
- const [expanded,setExpanded]=useState(false);
+ const [expanded,setExpanded]=useState(initialExpanded);
  const root=useRef<HTMLElement>(null);
  const selectedViewerBack=useRef<(()=>boolean)|null>(null),selectedPreviewBack=useRef<(()=>boolean)|null>(null);
  const innerBack=useRef<()=>void>(()=>{});
@@ -141,6 +145,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    aria-label={mode==="owner"?"Мой профиль":mode==="visitor"?"Профиль":"Предпросмотр профиля"}>
    <IntegratedProfileV3 view={view} photoId={photoId} onPhotoId={choosePhoto}
     onPhotoOpen={openPhoto} onState={setExpanded} onMotionProgress={onMotionProgress}
+    initialExpanded={initialExpanded}
     registerRouteMotion={registerRouteMotion} gestureArbiter={gestureArbiter}
     onEdit={onEdit} onShowPreview={()=>setPreview(true)} renderPage={renderPage}/>
    {nested&&<div className="pm-preview-toolbar"><button type="button" data-modal-initial onClick={onClose}>Закрыть предпросмотр</button></div>}
