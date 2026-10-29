@@ -53,6 +53,8 @@ export function RealRegistrationV2(p:Props){
  const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
+ // Upload consent precedes selection, public publication needs a NEW tick.
+ const [publicConsent,setPublicConsent]=useState(false);
  useEffect(()=>{
   const controller=new AbortController();
   void fetch("/api/v2/facetrust/status",{method:"GET",credentials:"same-origin",
@@ -126,7 +128,7 @@ export function RealRegistrationV2(p:Props){
   movePhoto:p.movePhoto,resetDraft:p.resetDraft,step:1
  }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft]);
  const step=(n:number)=><RegistrationStep {...stepProps} step={n}/>;
- const savedDraftAllowed=p.serverConsent&&identityReady&&gate.hasLocation&&
+ const savedDraftAllowed=p.serverConsent&&(!instantPublication||publicConsent)&&identityReady&&gate.hasLocation&&
   gate.hasIntent&&photoReady(photos)&&!p.serverSaving;
  const pubNotice=remoteDraftPilot.policy;
  const friendsTest=import.meta.env.VITE_LUEMI_FRIENDS_TEST_MODE==="1";
@@ -205,7 +207,7 @@ export function RealRegistrationV2(p:Props){
            :"Сейчас сервер сохраняет поля анкеты, фотографии остаются на этом устройстве."}</p>
         </div></div>
         <label className="v2-consent"><input type="checkbox"
-          checked={p.serverConsent} onChange={e=>p.setServerConsent(e.target.checked)}/>
+          checked={publicConsent} onChange={e=>setPublicConsent(e.target.checked)}/>
           <span>Я прочитал(а) <a href={pubNotice} target="_blank" rel="noopener noreferrer">
            {noticeLabel}</a> и согласен(-на) сохранить анкету{p.mediaEnabled?" и фотографии":""} в LUEMI{p.publicationEnabled?(instantPublication?", а также сразу опубликовать анкету и фотографии для других пользователей":", а после проверки опубликовать её для других подходящих пользователей"):""}.</span>
         </label>
