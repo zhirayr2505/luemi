@@ -11,11 +11,24 @@ export async function exportMyAvailableData():Promise<void>{
   if(!response.ok)throw new Error("export_endpoint_unavailable");
   return response.json() as Promise<unknown>;
  }
- const [identity,draft,profile,preview,list]=await Promise.all([
-  read("/api/v2/me"),read("/api/v3/registration/draft"),
-  read("/api/v3/profile/status"),read("/api/v2/profile/preview"),read("/api/v4/chats")
+ // A new account can exist before publication, private-media or chats are
+ // enabled. Distinguish a disabled 404 route from denied authentication and
+ // explicitly report omitted sections rather than offering a fake full export.
+ const identity=await read("/api/v2/me");
+ const omittedSections:string[]=[];
+ async function optional(path:string,section:string):Promise<unknown|null>{
+  const response=await fetch(path,{credentials:"same-origin",headers,cache:"no-store"});
+  if(response.status===404){omittedSections.push(section);return null;}
+  if(!response.ok)throw new Error("export_endpoint_unavailable");
+  return response.json() as Promise<unknown>;
+ }
+ const [draft,profile,preview,list]=await Promise.all([
+  optional("/api/v3/registration/draft","registrationDraft"),
+  optional("/api/v3/profile/status","publishedProfile"),
+  optional("/api/v2/profile/preview","privateMediaPreview"),
+  optional("/api/v4/chats","chats")
  ]);
- const rows=(list as {conversations?:unknown}).conversations;
+ const rows=list===null?[]:(list as {conversations?:unknown}).conversations;
  if(!Array.isArray(rows)||rows.length>100)throw new Error("export_list_unavailable");
  const conversations:Array<{id:string;messages:unknown[]}>= [];
  for(const item of rows){
@@ -64,7 +77,7 @@ export async function exportMyAvailableData():Promise<void>{
  }
  const document={format:"luemi-my-data-v1",generatedAt:new Date().toISOString(),
   notice:"Личный экспорт доступных данных и доступных обработанных фото. Не включает скрытые для обоих сообщения, чужие закрытые сведения, исходные фото устройства, материалы закрытых жалоб или данные отдельной юридической процедуры.",
-  identity,draft,profile,preview,conversations,sanitizedPhotos:media};
+  identity,draft,profile,preview,conversations,sanitizedPhotos:media,omittedSections};
  const json=JSON.stringify(document,null,2);
  if(json.length>16*1024*1024)throw new Error("export_too_large");
  const url=URL.createObjectURL(new Blob([json],{type:"application/json;charset=utf-8"}));
