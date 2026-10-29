@@ -11,6 +11,10 @@ export function describeRealBetaPrerequisites(env:NodeJS.ProcessEnv){
   "REM06_INSTANT_PUBLICATION_ENABLED",
   "REM06_INSTANT_PUBLICATION_OWNER_ACCEPTED",
   "REM06_PRIVACY_APPROVED",
+  "REM06_ERASURE_REQUEST_ENABLED",
+  "REM06_ERASURE_POLICY_APPROVED",
+  "REG01H_SAFETY_OPERATOR_ENABLED",
+  "REG01H_SAFETY_POLICY_APPROVED",
   "LUEMI_CHATS_V1_ENABLED",
   "LUEMI_CHATS_POLICY_APPROVED",
   "LUEMI_MATCHES_V1_ENABLED",
@@ -21,7 +25,11 @@ export function describeRealBetaPrerequisites(env:NodeJS.ProcessEnv){
   "VITE_LUEMI_PRIVATE_DRAFT_UI",
   "VITE_LUEMI_PRIVATE_MEDIA_UI",
   "VITE_LUEMI_OPEN_SIGNUPS_UI",
-  "VITE_LUEMI_INSTANT_PUBLICATION_UI"
+  "VITE_LUEMI_INSTANT_PUBLICATION_UI",
+  "VITE_LUEMI_REGISTRATION_V2",
+  "VITE_LUEMI_REAL_DISCOVERY_UI",
+  "VITE_LUEMI_REAL_CHATS",
+  "VITE_LUEMI_REAL_MATCHES"
  ] as const;
  // Pending switches are advisory in the dry run, since no features will be
  // activated until the underlying secrets are confirmed present.
@@ -31,6 +39,9 @@ export function describeRealBetaPrerequisites(env:NodeJS.ProcessEnv){
   "REM05B_REQUEST_DATABASE_URL",
   "REM05B_SESSION_PEPPER",
   "REM06_MEDIA_WORKER_DATABASE_URL",
+  "REM06_ERASURE_REQUEST_DATABASE_URL",
+  "REG01H_SAFETY_OPERATOR_DATABASE_URL",
+  "REG01H_OPERATOR_LABEL",
   "REM06_PUBLISHER_DATABASE_URL",
   "REM06_DISCOVERY_DATABASE_URL",
   "LUEMI_CHATS_DATABASE_URL",
@@ -39,6 +50,7 @@ export function describeRealBetaPrerequisites(env:NodeJS.ProcessEnv){
   "REM06_SUPABASE_STORAGE_SECRET",
   "REM06_CONSENT_VERSION",
   "VITE_LUEMI_CONSENT_VERSION",
+  "VITE_LUEMI_PRIVACY_POLICY_PATH",
   "TELEGRAM_BOT_TOKEN"
  ] as const;
  const missingCredentials=credentials.filter(key=>!env[key]);
@@ -59,7 +71,7 @@ export function describeRealBetaPrerequisites(env:NodeJS.ProcessEnv){
     env.REM06_CONSENT_VERSION===env.VITE_LUEMI_CONSENT_VERSION,
   profileBucketCorrect:env.REM06_MEDIA_BUCKET==="luemi-profile-private",
   chatBucketCorrect:env.LUEMI_CHATS_MEDIA_BUCKET==="luemi-chat-private",
-  blikiEnabled:false,
+  blikiEnabled:env.LUEMI_BLIKI_ENABLED==="1",
   // This is config presence only, NOT a database/storage/Telegram E2E result.
   verification:"configuration_presence_only"} as const;
 }
