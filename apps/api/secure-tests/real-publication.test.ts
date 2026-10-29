@@ -301,7 +301,7 @@ test("01D: media plan restores accepted photos and identifies an abandoned owner
  const app=makeApp({instant:true});
  try{
   const owner=await identity(app,8011485),intruder=await identity(app,8011486);
-  await consent(app,owner);await consent(app,intruder);
+  await consent(app,intruder);
   const png=makeSyntheticPng(),abandonedKey="reg01c-abandoned-"+owner.id;
   const abandoned=await mutate(app,owner,"/api/v2/media/intents",
    {bytes:png.length,mime:"image/png",clientKey:abandonedKey});
