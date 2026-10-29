@@ -88,6 +88,38 @@ async function prepare(app:ReturnType<typeof makeApp>,user:User){
  }
  return ids;
 }
+test("01D: owner can remove a private photo and reorder remaining assets, strangers cannot",async()=>{
+ const app=makeApp({instant:true});
+ try{
+  const a=await identity(app,8011997),b=await identity(app,8011998);
+  const ids=await prepare(app,a);
+  const target="/api/v2/media/"+ids[0];
+  const stranger=await app.inject({method:"DELETE",url:target,headers:headers(b)});
+  assert.equal(stranger.statusCode,404,"a stranger cannot remove owner images");
+  const removed=await app.inject({method:"DELETE",url:target,headers:headers(a)});
+  assert.equal(removed.statusCode,200,removed.body);
+  assert.equal(removed.json().storageCleaned,true);
+  const repeat=await app.inject({method:"DELETE",url:target,headers:headers(a)});
+  assert.equal(repeat.statusCode,200,"deleting twice is idempotent");
+  const after=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:a.cookie}});
+  assert.equal(after.statusCode,200,after.body);
+  assert.deepEqual(after.json().photos.map((p:{id:string})=>p.id).sort(),
+   ids.slice(1).sort(),"revoked assets disappear from private preview");
+  const reversed=ids.slice(1).reverse();
+  const order=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(a),payload:{ids:reversed}});
+  assert.equal(order.statusCode,200,order.body);
+  const preview=await app.inject({method:"GET",url:"/api/v2/profile/preview",
+   headers:{cookie:a.cookie}});
+  assert.deepEqual(preview.json().photos.map((p:{id:string})=>p.id),reversed);
+  const invalid=await app.inject({method:"PUT",url:"/api/v2/media/order",
+   headers:headers(b),payload:{ids:reversed}});
+  assert.equal(invalid.statusCode,409,"other account cannot alter owner photo order");
+  assert.equal((await admin.query(
+   "SELECT state FROM luemi_private.media_assets WHERE id=$1",[ids[0]])).rows[0].state,"revoked");
+ }finally{await app.close();}
+});
 test("01D: default-deny unauthenticated and unapproved, publish only moderated 3/3, block and hide",async()=>{
  const app=makeApp();
  try{
