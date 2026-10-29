@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,uploadOnePrivatePhoto,deleteOnePrivatePhoto,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadOnePrivatePhoto,deleteOnePrivatePhoto,setPrivatePhotoOrder,readConfirmedPrivateMediaCount} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -757,6 +757,9 @@ export function App() {
     submitting.current=true;setPublishBusy(true);setPublishFeedback("");
     setJourneyError("");setJourney("publishing");
     try{
+      // Honor all photo uploads/deletions started on the selection screen
+      // before counting or publishing server media.
+      await bgQueue.current.catch(()=>{});
       const existing=await ownerPublicationStatus();setPublishStatus(existing);
       if(registrationSubmissionDecision(existing)==="already-published"){
         await finishSuccessfulPublication(existing);return;
@@ -772,9 +775,20 @@ export function App() {
       // even when the server already has >=3 other approved photos. Count-only
       // checks can publish stale images instead of the user's current choice.
       // Per-photo idempotency keys make this safe on normal repeated submits.
-      const uploadedIds=await uploadPrivatePhotos([...photos],(done,total)=>
-        setPublishFeedback("Сохранено "+done+" из "+total+" фотографий."));
+      const uploadedIds:string[]=[];
+      for(const photo of photos){
+        let asset=bgUploaded.current.get(photo.id);
+        if(!asset){
+          asset=await uploadOnePrivatePhoto(photo);
+          bgUploaded.current.set(photo.id,asset);
+        }
+        uploadedIds.push(asset);
+        setPublishFeedback("Сохранено "+uploadedIds.length+" из "+photos.length+" фотографий.");
+      }
+      setServerPhotoCount(uploadedIds.length);
       await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
+      // The backend must receive the sorted order, not only photo count.
+      await setPrivatePhotoOrder(uploadedIds);
       const media=await ownerPublicationStatus();setPublishStatus(media);
       if(media.approved<photos.length||media.pending!==0||media.other!==0)
         throw new Error("incomplete_media");
