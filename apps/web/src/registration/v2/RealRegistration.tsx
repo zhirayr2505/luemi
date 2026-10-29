@@ -36,6 +36,19 @@ interface Props{
 const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
  photos.every(p=>p.status==="ready");
 const messageFor=(raw:string)=>raw||"Заполни обязательные поля.";
+type IdentityError={field:"name"|"date";message:string};
+function dateIssue(draft:RegistrationDraft,today=new Date()):string|null{
+ if(!draft.day||!draft.month||!draft.year)return "Введи дату рождения";
+ const y=Number(draft.year),m=Number(draft.month),d=Number(draft.day);
+ const date=new Date(Date.UTC(y,m-1,d));
+ if(!Number.isInteger(y)||!Number.isInteger(m)||!Number.isInteger(d)||
+   y<1900||date.getUTCFullYear()!==y||date.getUTCMonth()!==m-1||date.getUTCDate()!==d)
+   return "Проверь дату рождения";
+ const todayDate=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate()));
+ if(date>todayDate)return "Проверь дату рождения";
+ const cutoff=new Date(Date.UTC(today.getUTCFullYear()-18,today.getUTCMonth(),today.getUTCDate()));
+ return date>cutoff?"LUEMI доступен с 18 лет":null;
+}
 export function RealRegistrationV2(p:Props){
  const {draft,photos}=p;
  const instantPublication=p.publicationEnabled&&import.meta.env.VITE_LUEMI_INSTANT_PUBLICATION_UI==="1";
@@ -50,6 +63,8 @@ export function RealRegistrationV2(p:Props){
  const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
+ const [focusedField,setFocusedField]=useState<"name"|"date"|null>(null);
+ const [identityError,setIdentityError]=useState<IdentityError|null>(null);
  useEffect(()=>{
   const controller=new AbortController();
   void fetch("/api/v2/facetrust/status",{method:"GET",credentials:"same-origin",
@@ -83,14 +98,22 @@ export function RealRegistrationV2(p:Props){
   setIndex(!identityReady?0:!gate.hasLocation?1:!gate.hasIntent?2:
     !photoReady(photos)?4:p.publicationEnabled&&!instantPublication?5:stages.length-1);
  },[p.restored,p.resumeReview,p.publicationEnabled,instantPublication,identityReady,gate.hasLocation,gate.hasIntent,photos,stages.length]);
- const nav=(target:number)=>{setHint("");setIndex(Math.min(stages.length-1,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
+ const nav=(target:number)=>{setHint("");setIdentityError(null);setFocusedField(null);setIndex(Math.min(stages.length-1,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
  const back=()=>{if(index===0)p.onExit();else nav(index-1);};
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
  const advance=()=>{
   let issue:string|null=null;
   switch(stage.id){
-   case "identity":issue=validateStep(draft,1,photos.length,new Date(),"live")||
-     validateStep(draft,2,photos.length,new Date(),"live");break;
+   case "identity":
+    if(!nameValid(draft.name)){
+      setIdentityError({field:"name",message:draft.name.trim()?"Имя: 2–48 букв, разрешены пробелы, дефис и апостроф.":"Введи имя"});
+      setHint("");return;
+    }
+    {const birthdayIssue=dateIssue(draft);
+     if(birthdayIssue){setIdentityError({field:"date",message:birthdayIssue});setHint("");return;}}
+    if(!draft.gender){issue="Выбери вариант пола.";break;}
+    if(!draft.trialConsent){issue="Подтверди условия регистрации.";break;}
+    break;
    case "location":issue=validateStep(draft,3,photos.length,new Date(),"live");break;
    case "intent":issue=validateStep(draft,4,photos.length,new Date(),"live");break;
    case "personality":issue=validateStep(draft,5,photos.length,new Date(),"live")||
@@ -120,11 +143,17 @@ export function RealRegistrationV2(p:Props){
  };
  const stepProps=useMemo(()=>({
   data:draft,patch:p.patch,photos,addPhotos:p.addPhotos,removePhoto:p.removePhoto,
-  movePhoto:p.movePhoto,resetDraft:p.resetDraft,deferConsent:true,step:1
- }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft]);
+  movePhoto:p.movePhoto,resetDraft:p.resetDraft,deferConsent:true,step:1,
+  fieldError:identityError,clearFieldError:(field:"name"|"date")=>{
+    setIdentityError(previous=>previous?.field===field?null:previous);
+  },onFieldFocus:(field:"name"|"date"|null)=>{
+    setFocusedField(field);
+  }
+ }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft,identityError]);
  const step=(n:number)=><RegistrationStep {...stepProps} step={n}/>;
  const savedDraftAllowed=identityReady&&gate.hasLocation&&gate.hasIntent&&
   photoReady(photos)&&!p.serverSaving;
+ const fieldConfirmActive=stage.id==="identity"&&focusedField!==null;
 
  return <main className="v2-canvas v2-runtime" data-theme={p.theme}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
@@ -191,7 +220,7 @@ export function RealRegistrationV2(p:Props){
        {p.mediaStatus&&<p role="status" className="v2-feedback">{p.mediaStatus}</p>}
        {hint&&<p role="alert" className="v2-feedback">{hint}</p>}
      </section>
-     <footer className="v2-footer">
+     <footer className={"v2-footer"+(fieldConfirmActive?" is-focus-confirm":"")}>
        {stage.id==="review"?<div className="v2-footer-review">
         <button type="button" className="v2-review-edit" disabled={p.serverSaving}
           onClick={()=>nav(4)}><ArrowLeft size={17}/> Изменить</button>
@@ -199,13 +228,15 @@ export function RealRegistrationV2(p:Props){
           disabled={!savedDraftAllowed} onClick={p.onSave}>
           <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету 💜"}
         </button>
-       </div>:<div className="v2-footer-nav">
+       </div>:<div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>
         <button type="button" className="v2-back" onClick={back}
           aria-label={index===0?"Вернуться на приветствие":"Назад"}><ArrowLeft size={22}/></button>
-        <button type="button" className="v2-next" disabled={photoChecking}
+        <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")} disabled={photoChecking}
+          aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
+          onPointerDown={e=>{if(fieldConfirmActive)e.preventDefault();}}
           onClick={advance}>
-          {photoChecking?"Проверяем фото…":stage.id==="liveness"?"К черновику":stage.id==="face-consent"?
-           (biometricNotice?"Посмотреть камеру":"К черновику"):"Продолжить"}<ArrowRight size={18}/>
+          {fieldConfirmActive?<Check size={25} strokeWidth={2.3}/>:<>{photoChecking?"Проверяем фото…":stage.id==="liveness"?"К черновику":stage.id==="face-consent"?
+           (biometricNotice?"Посмотреть камеру":"К черновику"):"Продолжить"}<ArrowRight size={18}/></>}
         </button>
        </div>}
        </footer>
