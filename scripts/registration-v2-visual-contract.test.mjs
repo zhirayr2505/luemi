@@ -31,7 +31,10 @@ assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
 assert.match(form,/p\.publicationEnabled\?/,"Registration must disclose publication separately from private saving");
 assert.match(form,/Создать анкету 💜/,"Single real signup confirmation creates published profile");
-assert.match(form,/mode="local-self-preview" active/,"Signup preview must show approved Profile Morph V3");
+assert.match(form,/<RegistrationPreview data=\{draft\} photos=\{photos\}\/>/,
+ "Signup preview uses the deliberately simple static photo summary, not Profile Morph V3");
+assert.match(form,/p\.photoUploadStatus/,"Photo step must report background private uploads");
+assert.match(form,/p\.serverConsent/,"Photo bytes require explicit consent before background upload");
 assert.match(form,/registrationV2Stages\.filter\(stage=>stage\.id!=="face-consent"&&stage\.id!=="liveness"\)/,
  "Private signup must skip unavailable biometric verification screens");
 assert.match(form,/aria-valuemax=\{stages\.length\}/,
