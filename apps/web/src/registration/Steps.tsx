@@ -9,7 +9,7 @@ import {LanguagePicker} from "./LanguagePicker";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
 import {categories,InterestChip,tint} from "../ui/InterestCatalog";
 import {GeoPicker} from "./GeoPicker";
-import {PhotoSorter,type PhotoItem} from "./PhotoSorter";
+import {PhotoSorter,type PhotoItem,type PhotoServerState} from "./PhotoSorter";
 import {RegistrationPreview} from "./Preview";
 import {cleanName,type RegistrationDraft} from "./model";
 
@@ -18,6 +18,7 @@ export interface StepProps {
  data:RegistrationDraft;patch:(values:Partial<RegistrationDraft>)=>void;
  photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;resetDraft:()=>void;step:number;
+ photoServerStates?:Record<string,PhotoServerState>;
 }
 function GenderIcon({type}:{type:"man"|"woman"|"everyone"}){
  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -49,7 +50,7 @@ export function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChang
 }
 
 
-export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,resetDraft,step}:StepProps){
+export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,resetDraft,step,photoServerStates}:StepProps){
  const month=useRef<HTMLInputElement>(null),year=useRef<HTMLInputElement>(null);
  const [category,setCategory]=useState("Популярное");
  const [nameHint,setNameHint]=useState(false);
@@ -144,7 +145,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    <p className="hint"><Check size={14} aria-hidden="true"/> Этот шаг можно пропустить.</p>
  </div>;
  if(step===7)return <div className="form-stack"><PhotoSorter photos={photos} addPhotos={addPhotos}
-   removePhoto={removePhoto} movePhoto={movePhoto}/></div>;
+   removePhoto={removePhoto} movePhoto={movePhoto} serverStates={photoServerStates}/></div>;
  return <div className="form-stack"><RegistrationPreview data={data} photos={photos}/></div>;
 }
 

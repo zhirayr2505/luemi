@@ -3,8 +3,9 @@ import type {PointerEvent as ReactPointerEvent,ChangeEvent} from "react";
 import {createPortal} from "react-dom";
 import {selectionHaptic} from "../ui/haptic";
 import {Plus,X,GripVertical,CheckCircle2} from "lucide-react";
+export type PhotoServerState="uploading"|"uploaded"|"failed"|"deleting";
 export interface PhotoItem {id:string;src:string;file:File;preview?:Blob;status?:"reading"|"success"|"ready"|"error";progress?:number}
-interface Props {photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void}
+interface Props {photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void;serverStates?:Record<string,PhotoServerState>}
 interface Drag {id:string;source:number;target:number;x:number;y:number;width:number;height:number}
 type SortPhase="idle"|"press-pending"|"dragging"|"cancelled";
 interface Pending {id:string;pointer:number;x:number;y:number;lastX:number;lastY:number;timer:number;started:boolean}
@@ -12,7 +13,7 @@ export const reorder=<T,>(items:T[],from:number,to:number)=>{
  if(from<0||to<0||from>=items.length||to>=items.length)return items;
  const next=[...items];const [value]=next.splice(from,1);next.splice(to,0,value);return next;
 };
-export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
+export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto,serverStates}:Props){
  const input=useRef<HTMLInputElement>(null),mosaic=useRef<HTMLDivElement>(null);
  const pending=useRef<Pending|null>(null),dragRef=useRef<Drag|null>(null);
  const [phase,setPhase]=useState<SortPhase>("idle");
@@ -238,6 +239,10 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
              <small>Подготовка {photo.progress??0}%</small>
            </div>}
            {photo.status==="success"&&<div className="photo-processed" aria-label="Фотография готова"><CheckCircle2 size={25}/></div>}
+          {photo.status==="ready"&&serverStates?.[photo.id]&&<span className={"photo-server-state is-"+serverStates[photo.id]}>
+            {serverStates[photo.id]==="uploaded"?"На сервере":serverStates[photo.id]==="uploading"?"Загружаем…":
+              serverStates[photo.id]==="deleting"?"Удаляем…":"Повторить"}
+          </span>}
            {photo.status==="error"&&<span className="photo-processing-error">Ошибка фото</span>}
          </>:i===photos.length?<button type="button" className="add-photo" onClick={()=>input.current?.click()} aria-label="Добавить фотографии"><Plus size={30}/></button>:
            <span className="empty-number">{i+1}</span>}
@@ -248,7 +253,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      style={{left:0,top:0,width:drag.width,height:drag.height}}>
      <img src={photos[drag.source]?.src} alt=""/><GripVertical size={16}/>
    </div>,document.body)}
-   <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Также доступно Alt + стрелки на клавиатуре. Индикатор показывает только локальную подготовку фото, не загрузку на сервер.</span></div>
+   <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Также доступно Alt + стрелки на клавиатуре. После подтверждения согласия готовые фото отправляются на сервер в фоне.</span></div>
    <p className="photo-count" role="status">Выбрано: {photos.length} / 6 · Первое фото главное</p>
    <p className="hint">Порядок фотографий сохранится в анкете. Главное фото — первое.</p>
  </div>;

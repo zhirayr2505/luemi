@@ -28,3 +28,20 @@
 .luemi-publication-recovery button{background:rgba(255,255,255,.85);border:1px solid rgba(132,84,167,.22);
  border-radius:16px;padding:12px 18px;display:flex;align-items:center;gap:7px;color:#54326e;font:inherit;font-weight:650;}
 @media(prefers-reduced-motion:reduce){.luemi-publication-ring{animation-duration:2.2s}.luemi-publication-dots span{transition:none}}
+
+/* The entire journey gently fades/zooms in after the user presses Create.
+   The logo stays the approved LUEMI artwork, never a text reconstruction. */
+.luemi-publication-journey{animation:luemi-journey-enter .42s cubic-bezier(.22,.8,.26,1) both}
+@keyframes luemi-journey-enter{from{opacity:0;transform:scale(1.018)}
+ to{opacity:1;transform:scale(1)}}
+.luemi-publication-brand img{
+ filter:drop-shadow(0 1px 0 rgba(255,255,255,.92))
+  drop-shadow(0 -1px 1px rgba(255,255,255,.76))
+  drop-shadow(0 11px 17px rgba(112,65,157,.19))
+  drop-shadow(0 3px 4px rgba(103,45,131,.15));
+ animation:luemi-logo-soft-entry .55s cubic-bezier(.22,.8,.26,1) both}
+@keyframes luemi-logo-soft-entry{from{transform:translateY(9px) scale(.965);opacity:.55}
+ to{transform:translateY(0) scale(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){
+ .luemi-publication-journey,.luemi-publication-brand img{animation:none;transform:none}
+}
