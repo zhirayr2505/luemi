@@ -1,0 +1,26 @@
+/* Registration-only visual: the approved LUEMI live Profile Morph V3 is untouched. */
+.luemi-simple-preview{width:100%;display:flex;flex-direction:column;gap:18px;min-width:0;
+ padding:12px 0 4px;color:var(--ink,#483452)}
+.luemi-simple-preview-header{display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px}
+.luemi-simple-main-avatar{width:104px;height:104px;border-radius:50%;object-fit:cover;
+ box-shadow:0 8px 26px rgba(115,63,145,.22);border:3px solid rgba(255,255,255,.96);
+ background:#e7d1ef;display:grid;place-items:center;font-size:38px}
+.luemi-simple-preview-header h2{margin:2px 0 0;font-size:23px;font-weight:750;letter-spacing:-.025em}
+.luemi-simple-info{display:flex;flex-direction:column;gap:4px;align-items:center}
+.luemi-simple-info p{margin:0;line-height:1.45;font-size:13px;color:var(--subtle,#826d8c);max-width:330px;overflow-wrap:anywhere}
+.luemi-simple-interests{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.luemi-simple-interests span{font-size:12px;padding:7px 10px;border-radius:99px;
+ color:#6d4c85;background:rgba(193,145,212,.16);border:1px solid rgba(171,120,197,.2)}
+.luemi-simple-gallery-head{display:flex;align-items:baseline;justify-content:space-between;padding:0 5px}
+.luemi-simple-gallery-head h3{font-size:16px;font-weight:720;margin:0}
+.luemi-simple-gallery-head span{font-size:12px;color:var(--subtle,#826d8c)}
+.luemi-simple-gallery{display:flex;gap:11px;overflow-x:auto;overscroll-behavior-x:contain;
+ scroll-snap-type:x mandatory;scrollbar-width:none;padding:3px 3px 12px;touch-action:pan-x}
+.luemi-simple-gallery::-webkit-scrollbar{display:none}
+.luemi-simple-gallery-item{position:relative;flex:0 0 min(68vw,245px);height:clamp(210px,36vh,288px);
+ margin:0;border-radius:20px;overflow:hidden;scroll-snap-align:center;
+ background:#e8d5ee;box-shadow:0 4px 16px rgba(105,68,132,.12)}
+.luemi-simple-gallery-item img{width:100%;height:100%;display:block;object-fit:cover}
+.luemi-simple-gallery-item figcaption{position:absolute;left:12px;bottom:12px;color:#493052;
+ background:rgba(255,255,255,.87);padding:7px 11px;border-radius:99px;font-size:12px;font-weight:700}
+.luemi-simple-gallery-hint{font-size:12px;color:var(--subtle,#826d8c);text-align:center;margin:0}
