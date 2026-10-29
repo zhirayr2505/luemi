@@ -302,11 +302,11 @@ test("01D: media plan restores accepted photos and identifies an abandoned owner
  try{
   const owner=await identity(app,8011485),intruder=await identity(app,8011486);
   await consent(app,intruder);
+  const accepted=await prepare(app,owner);
   const png=makeSyntheticPng(),abandonedKey="reg01c-abandoned-"+owner.id;
   const abandoned=await mutate(app,owner,"/api/v2/media/intents",
    {bytes:png.length,mime:"image/png",clientKey:abandonedKey});
   assert.equal(abandoned.statusCode,200,abandoned.body);
-  const accepted=await prepare(app,owner);
   const selectedKeys=accepted.map((_id,index)=>"reg01d-photo-"+index+"-"+owner.id);
   const plan=await mutate(app,owner,"/api/v2/media/plan",{clientKeys:selectedKeys});
   assert.equal(plan.statusCode,200,plan.body);
