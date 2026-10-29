@@ -248,6 +248,40 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
   reply.code(404).send({error:"not_found"}));
  app.post("/api/v2/profile/submit",{preHandler:guard.mutation},async(_req,reply)=>
   reply.code(403).send({error:"publication_disabled"}));
+ // Reconnect the current device draft to durable uploads before allocating a
+ // new slot. The database stores only a digest of clientKey, so the response
+ // identifies an upload only when its owner proves the original key again.
+ // Unmatched IDs are owner-private cleanup candidates; the browser revokes
+ // them through the normal idempotent DELETE endpoint before uploading.
+ app.post<{Body:unknown}>("/api/v2/media/plan",{preHandler:guard.mutation},async(req,reply)=>owner(req,reply,async(db,id)=>{
+  if(!object(req.body)||Object.keys(req.body).length!==1||
+    !Array.isArray(req.body.clientKeys)||req.body.clientKeys.length<1||req.body.clientKeys.length>6||
+    !req.body.clientKeys.every(key=>str(key,8,80))||
+    new Set(req.body.clientKeys).size!==req.body.clientKeys.length)
+   reject(422,"invalid_media_plan");
+  const clientKeys=req.body.clientKeys as string[];
+  const keyByDigest=new Map(clientKeys.map(key=>[digest(key),key]));
+  const digests=[...keyByDigest.keys()];
+  const matched=await db.query<{asset_id:string;idempotency_digest:string;state:string}>(
+   "SELECT u.asset_id,u.idempotency_digest,a.state FROM luemi_private.media_uploads u "+
+   "JOIN luemi_private.media_assets a ON a.id=u.asset_id "+
+   "WHERE u.owner_id=$1 AND u.environment=$2 AND a.owner_id=$1 AND a.environment=$2 "+
+   "AND a.publication_status='private' AND a.state<>'revoked' "+
+   "AND u.idempotency_digest=ANY($3::text[]) ORDER BY a.position,a.id",
+   [id,opts.namespace,digests]);
+  const stale=await db.query<{id:string}>(
+   "SELECT a.id FROM luemi_private.media_assets a "+
+   "LEFT JOIN luemi_private.media_uploads u ON u.asset_id=a.id AND u.owner_id=$1 AND u.environment=$2 "+
+   "WHERE a.owner_id=$1 AND a.environment=$2 AND a.publication_status='private' "+
+   "AND a.state<>'revoked' AND (u.idempotency_digest IS NULL OR NOT(u.idempotency_digest=ANY($3::text[]))) "+
+   "ORDER BY a.position,a.id",
+   [id,opts.namespace,digests]);
+  return{
+   assets:matched.rows.map(row=>({clientKey:keyByDigest.get(row.idempotency_digest),
+    assetId:row.asset_id,state:row.state})),
+   staleAssetIds:stale.rows.map(row=>row.id)
+  };
+ }));
  app.post<{Body:unknown}>("/api/v2/media/intents",{preHandler:guard.mutation},async(req,reply)=>owner(req,reply,async(db,id)=>{
   if(!object(req.body)||Object.keys(req.body).some(k=>!["bytes","mime","clientKey"].includes(k))||
     req.body.mime!=="image/png"||!Number.isSafeInteger(req.body.bytes)||

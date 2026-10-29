@@ -1,9 +1,14 @@
-.luemi-simple-review{display:flex;flex-direction:column;gap:14px;width:100%;color:var(--ink);border:1px solid var(--glass-edge);background:var(--panel);border-radius:26px;padding:22px 13px;box-shadow:0 9px 28px rgba(104,58,134,.09);overflow:hidden}
-.luemi-simple-review-head{display:flex;align-items:center;flex-direction:column;text-align:center;gap:8px;padding:3px 10px 7px}
-.luemi-simple-review-avatar{width:90px;height:90px;object-fit:cover;border-radius:50%;border:3px solid rgba(255,255,255,.94);box-shadow:0 7px 19px rgba(100,65,136,.19)}
+.luemi-simple-review{display:flex;flex-direction:column;gap:16px;width:100%;color:var(--ink);border:1px solid var(--glass-edge);background:var(--panel);border-radius:28px;padding:21px 13px 17px;box-shadow:0 14px 36px rgba(104,58,134,.11);overflow:hidden;position:relative;isolation:isolate}
+.luemi-simple-review::before{content:"";position:absolute;z-index:-1;inset:0 0 auto;height:170px;pointer-events:none;background:radial-gradient(ellipse at 50% 0,rgba(215,174,239,.3),transparent 72%)}
+.luemi-simple-review-head{display:flex;align-items:center;flex-direction:column;text-align:center;gap:9px;padding:1px 10px 8px}
+.luemi-simple-review-kicker{display:inline-flex;align-items:center;gap:6px;color:#9265ad;font-size:10px;line-height:1;letter-spacing:.1em;text-transform:uppercase;font-weight:800}
+.luemi-simple-review-avatar-ring{display:grid;place-items:center;width:104px;height:104px;border-radius:50%;padding:5px;background:linear-gradient(135deg,#b98be4,#e7a4cf);box-shadow:0 10px 26px rgba(115,68,146,.2)}
+.luemi-simple-review-avatar{width:94px;height:94px;object-fit:cover;border-radius:50%;border:3px solid rgba(255,255,255,.96)}
 .luemi-simple-review-fallback{display:grid;place-items:center;color:#9865c3;background:#eadcf3}
 .luemi-simple-review-head h2{font-size:22px;line-height:1.15;margin:2px 0 0;font-weight:750}
 .luemi-simple-review-head p{font-size:13px;line-height:1.45;color:var(--subtle);margin:0}
+.luemi-simple-review-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px}
+.luemi-simple-review-meta span{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--glass-edge);background:var(--panel);border-radius:999px;padding:6px 9px;color:var(--subtle);font-size:11px;font-weight:650}
 .luemi-simple-review-about{max-width:315px;font-size:14px;max-height:70px;overflow:hidden;color:var(--ink);white-space:pre-wrap}
 .luemi-simple-review-interests{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
 .luemi-simple-review-interests span{font-size:11px;padding:6px 10px;border:1px solid var(--glass-edge);border-radius:14px}
@@ -12,10 +17,14 @@
 .luemi-simple-review-gallery-head span{font-size:12px;color:var(--subtle)}
 .luemi-simple-review-gallery{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:0 3px 9px;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
 .luemi-simple-review-gallery::-webkit-scrollbar{display:none}
-.luemi-simple-review-tile{position:relative;flex:0 0 76%;height:220px;border-radius:18px;overflow:hidden;scroll-snap-align:center;background:#e7d8ec}
+.luemi-simple-review-tile{position:relative;flex:0 0 82%;height:238px;border-radius:21px;overflow:hidden;scroll-snap-align:center;background:#e7d8ec;box-shadow:0 8px 22px rgba(82,48,108,.13)}
 .luemi-simple-review-tile img{width:100%;height:100%;object-fit:cover;display:block}
 .luemi-simple-review-main{position:absolute;left:10px;bottom:10px;font-size:12px;font-weight:700;color:#58346c;padding:7px 11px;background:rgba(255,251,255,.92);border-radius:14px}
+.luemi-simple-review-number{position:absolute;right:10px;top:10px;padding:5px 8px;border-radius:999px;background:rgba(42,27,53,.68);color:#fff;font-size:10px;font-weight:750}
 .luemi-simple-review-sync{display:flex;align-items:center;gap:7px;justify-content:center;font-size:12px;color:var(--subtle);padding:4px 0}
 .luemi-simple-review-sync svg{color:#9d70bd}
+.luemi-simple-review-spinner{animation:luemi-review-spin .8s linear infinite}
+@keyframes luemi-review-spin{to{transform:rotate(360deg)}}
 .luemi-simple-review-sync-error{color:#ad3c71}
-@media(max-width:440px){.luemi-simple-review-tile{height:195px;flex-basis:78%}}
+@media(max-width:440px){.luemi-simple-review-tile{height:218px;flex-basis:84%}}
+@media(prefers-reduced-motion:reduce){.luemi-simple-review-spinner{animation-duration:2s}}

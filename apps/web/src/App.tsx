@@ -20,7 +20,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,orderPrivatePhotos,reconcilePrivatePhotos,readConfirmedPrivateMediaCount} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,orderPrivatePhotos,reconcilePrivatePhotos,readConfirmedPrivateMediaCount,planPrivatePhotos} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -170,6 +170,7 @@ export function App() {
   const [publishFeedback,setPublishFeedback]=useState("");
   const [journey,setJourney]=useState<PublishJourneyPhase|null>(null);
   const [journeyError,setJourneyError]=useState("");
+  const closePublicationJourney=useCallback(()=>setJourney(null),[]);
   const [warmFeed,setWarmFeed]=useState<PublishedFeedPage|null>(null);
   const warmRef=useRef<WarmRecommendationSet|null>(null);
   useEffect(()=>()=>{warmRef.current?.release();warmRef.current=null;},[]);
@@ -480,10 +481,32 @@ export function App() {
           // an 18+ private draft and current consent version.
           const previous=await readRemoteRevision();
           await saveRemoteDraft(draftLive.current,previous.revision);
-          for(const photo of photosLive.current.filter(p=>p.status==="ready")){
+          const ready=photosLive.current.filter(p=>p.status==="ready");
+          if(ready.length){
+            const plan=await planPrivatePhotos(ready);
+            for(const assetId of plan.staleAssetIds){
+              await deletePrivatePhoto(assetId);
+              for(const [localId,mappedId] of privateAssetIds.current)
+                if(mappedId===assetId)privateAssetIds.current.delete(localId);
+            }
+            for(const photo of ready){
+              const matched=plan.matched.get(photo.id);
+              if(matched&&matched.state!=="reserved")privateAssetIds.current.set(photo.id,matched.assetId);
+              else if(matched?.state==="reserved")privateAssetIds.current.delete(photo.id);
+            }
+            setPhotoServerReady(privateAssetIds.current.size);
+            setPhotos(current=>current.map(photo=>{
+              const matched=plan.matched.get(photo.id);
+              return matched&&matched.state!=="reserved"?{...photo,serverStatus:"saved"}:photo;
+            }));
+          }
+          for(const photo of ready){
             if(!photoIds.current.has(photo.id)||privateAssetIds.current.has(photo.id))continue;
+            setPhotos(current=>current.map(item=>item.id===photo.id?{...item,serverStatus:"uploading"}:item));
             const id=await uploadPrivatePhoto(photo);
             privateAssetIds.current.set(photo.id,id);
+            setPhotoServerReady(privateAssetIds.current.size);
+            setPhotos(current=>current.map(item=>item.id===photo.id?{...item,serverStatus:"saved"}:item));
           }
         }
         // Always clean owner-removed objects even if consent is later unchecked.
@@ -502,9 +525,12 @@ export function App() {
         setPhotoServerReady(ids.length);return ids;
       }catch(e){
         const code=e instanceof Error?e.message:"";
+        setPhotos(current=>current.map(photo=>photo.status==="ready"&&!privateAssetIds.current.has(photo.id)
+          ?{...photo,serverStatus:"error"}:photo));
+        setPhotoServerReady(privateAssetIds.current.size);
         setPhotoSyncError(code.includes("409")||code==="photo_order_conflict"
-          ?"Список фотографий изменился на сервере. Повтори загрузку.":
-          "Не удалось синхронизировать фотографии. Проверь соединение.");
+          ?"Список фотографий изменился на сервере. Нажми «Повторить» — сохранённые снимки не пропадут.":
+          "Не удалось синхронизировать фотографии. Проверь соединение и повтори.");
         throw e;
       }finally{setPhotoSyncBusy(false);}
     };
@@ -742,7 +768,9 @@ export function App() {
       // Published status is durable. Warmup failure does not lock the UI.
       setWarmFeed(null);
     }finally{window.clearTimeout(timeout);}
-    setJourney(null);setRealHomeTab("feed");setRealHome(true);
+    // Mount the real app behind the branded curtain first, then let the
+    // completion transition reveal an already-painted first feed.
+    setRealHomeTab("feed");setRealHome(true);setJourney("complete");
   };
   const confirmRealRegistration=async()=>{
     if(!realFeedPilot.enabled||submitting.current)return;
@@ -959,10 +987,14 @@ export function App() {
     aria-label={"Включить тему: "+themeName}>
     {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
   </button>;
+  const journeyOverlay=journey!==null?<PublicationJourney phase={journey} error={journeyError}
+    onRetry={()=>{setJourney(null);void confirmRealRegistration();}}
+    onBack={()=>{setJourney(null);setPhase("form");}}
+    onComplete={closePublicationJourney}/>:null;
   // All signed-in accounts retain the approved LUEMI four-tab Discovery,
   // cinematic photo cards and Profile Morph V3. REAL_ONLY changes data, not UI.
   if(realHome&&auth==="authorized"&&realFeedPilot.enabled)
-   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
+   return <><main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
     <Suspense fallback={<div className="discovery-empty" role="status">Открываем LUEMI…</div>}>
      <RealDiscoveryHome draft={draft} theme={theme} onTheme={changeTheme}
       initialFeed={warmFeed} publishedProfile={publishStatus?.profile}
@@ -1002,7 +1034,7 @@ export function App() {
        {publishFeedback&&<p role="status">{publishFeedback}</p>}
       </section>}/>
     </Suspense>
-   </main>;
+   </main>{journeyOverlay}</>;
   if(realHome&&auth==="authorized")return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
     <section className="luemi-real-home" data-account-mode={!realFeedPilot.enabled&&remoteDraftPilot.enabled?"private":"standard"}
       data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="LUEMI — настоящие анкеты">
@@ -1075,10 +1107,7 @@ export function App() {
       </nav>}
     </section>
   </main>;
-  if(auth==="authorized"&&journey!==null)
-    return <PublicationJourney phase={journey} error={journeyError}
-      onRetry={()=>{setJourney(null);void confirmRealRegistration();}}
-      onBack={()=>{setJourney(null);setPhase("form");}}/>;
+  if(auth==="authorized"&&journey!==null)return journeyOverlay;
   if(auth==="authorized"&&phase==="form"&&registrationV2Pilot&&!demoOpen)
     return <Suspense fallback={<main className="luemi-shell" data-theme={activeTheme}
       role="status" style={{padding:24}}>Открываем регистрацию…</main>}>
@@ -1095,6 +1124,7 @@ export function App() {
         photoServerCount={photoServerReady}
         photoSyncBusy={photoSyncBusy}
         photoSyncError={photoSyncError}
+        onRetryPhotoSync={()=>{void syncChosenPhotos(serverConsent).catch(()=>{});}}
         serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
