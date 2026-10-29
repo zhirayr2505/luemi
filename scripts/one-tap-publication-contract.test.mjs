@@ -20,7 +20,9 @@ test("incomplete upload never opens a fake registration dashboard",()=>{
  const end=app.indexOf('const resumePublication=async()=>',start);
  assert(start>0&&end>start);
  const submit=app.slice(start,end);
- assert.match(submit,/existing.approved<photos.length\|\|existing.pending>0\|\|existing.other>0/);
+ assert.match(submit,/const uploadedIds=await uploadPrivatePhotos/);
+ assert.doesNotMatch(submit,/existing.approved<photos.length\|\|existing.pending>0\|\|existing.other>0/);
+ assert.match(submit,/readConfirmedPrivateMediaCount\(photos.length,uploadedIds\)/);
  assert.match(submit,/await uploadPrivatePhotos/);
  assert.match(submit,/await readConfirmedPrivateMediaCount\(photos.length,uploadedIds\)/);
  assert.match(submit,/media.approved<photos.length\|\|media.pending!==0\|\|media.other!==0/);
