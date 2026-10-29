@@ -56,3 +56,14 @@ test("server resumes same expired media intent without new asset",()=>{
  assert.match(media,/idempotency_digest=\$3/);
  assert.match(media,/return\{assetId:existing.rows\[0\].asset_id,state:existing.rows\[0\].state/);
 });
+
+test("recommendation warmup prioritizes overlapping interests and city without exact location",()=>{
+ assert.match(warm,/export function rankPublishedRecommendations/);
+ assert.match(warm,/new Set\(p\.interests\)/);
+ assert.match(warm,/profile\.interests\.reduce/);
+ assert.match(warm,/profile\.city\.trim\(\)\.toLocaleLowerCase/);
+ assert.match(warm,/profile\.countryCode===p\.countryCode/);
+ assert.match(warm,/b\.score-a\.score\|\|a\.i-b\.i/);
+ assert.match(app,/warmPublishedRecommendations\(controller\.signal,phase=>setJourney\(phase\),draft\)/);
+ assert.doesNotMatch(warm,/navigator\.geolocation|latitude|longitude|localStorage/);
+});
