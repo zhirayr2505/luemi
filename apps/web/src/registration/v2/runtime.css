@@ -1,7 +1,7 @@
 /* Runtime-only additions for the single server-backed registration flow.
    No backdrop-filter, mask or 3D transforms on camera / scroll hot paths. */
-.v2-runtime{height:100dvh;overflow:hidden;min-height:0;background:transparent}
-.v2-runtime .v2-device{height:100dvh;max-height:950px;min-height:0;padding-bottom:0}
+.v2-runtime{height:var(--registration-visible-height,100dvh);min-height:0;overflow:hidden;background:transparent}
+.v2-runtime .v2-device{height:var(--registration-visible-height,100dvh);max-height:950px;min-height:0;padding-bottom:0}
 .v2-runtime .v2-logo img{width:96px;max-width:100%}
 .v2-runtime .v2-body{animation:none;scroll-padding:16px 0 118px;padding-bottom:118px}
 .v2-runtime .v2-stage-transition{animation:v2-stage-in .34s ease both}
@@ -31,7 +31,7 @@
 .v2-runtime .v2-consent{font-size:13px}
 .v2-runtime .v2-next:disabled{background:#e7dce8;color:#a491aa}
 @media(max-width:720px){
- .v2-runtime .v2-device{height:100dvh;max-height:none}
+ .v2-runtime .v2-device{height:var(--registration-visible-height,100dvh);max-height:none}
  .v2-runtime .v2-header{height:67px}
  .v2-runtime .v2-body{padding:20px 22px 20px}
  .v2-runtime .v2-footer{padding-bottom:max(14px,env(safe-area-inset-bottom))}
@@ -144,11 +144,11 @@
 .v2-runtime .language-focus-slot{min-height:310px}
 .v2-runtime .focus-field-shell{position:relative;z-index:1;width:100%}
 .v2-runtime .focus-field-shell.is-focused{
- position:fixed;z-index:92;top:var(--field-focus-top,120px);
+ position:fixed;z-index:92;top:auto;bottom:var(--field-focus-bottom,110px);
  left:max(22px,calc((100vw - 680px)/2 + 22px));right:max(22px,calc((100vw - 680px)/2 + 22px));width:auto;
- transition:top .24s cubic-bezier(.2,.78,.24,1),opacity .28s ease,transform .34s cubic-bezier(.2,.8,.24,1);
+ transition:opacity .22s ease,transform .28s cubic-bezier(.2,.8,.24,1);
 }
-.v2-runtime .focus-field-shell.is-focused:not([data-dock-ready="true"]){opacity:0;transform:translateY(16px) scale(.985)}
+.v2-runtime .focus-field-shell.is-focused:not([data-dock-ready="true"]){opacity:1;transform:translateY(8px)}
 .v2-runtime .focus-field-shell.is-focused[data-dock-ready="true"]{opacity:1;transform:none}
 .v2-runtime .name-focus-shell .glass-control{min-height:61px;width:100%;padding:13px 16px;font-size:19px;}
 .v2-runtime .dob-focus-shell .glass-control{min-height:61px;width:100%;text-align:center;padding:13px 16px;
@@ -169,8 +169,8 @@
 .v2-runtime .dob-focus-shell .glass-field-label{font-size:14px;}
 .v2-runtime .dob-focus-shell .glass-field small{display:block;margin:7px 2px 0;color:#9b84a5;font-size:11px;text-align:center;}
 .v2-runtime .field-focus-overlay{position:fixed;inset:0;z-index:90;
- background:linear-gradient(180deg,rgba(72,43,88,.09),rgba(68,40,82,.18));
- backdrop-filter:blur(17px) saturate(118%);-webkit-backdrop-filter:blur(17px) saturate(118%);
+ background:linear-gradient(180deg,rgba(72,43,88,.12),rgba(68,40,82,.21));
+ backdrop-filter:blur(22px) saturate(112%);-webkit-backdrop-filter:blur(22px) saturate(112%);
  animation:dob-focus-in .34s cubic-bezier(.2,.75,.3,1) both;}
 @keyframes dob-focus-in{from{opacity:0}to{opacity:1}}
 .v2-runtime .step-name .glass-control{min-height:55px;}
@@ -253,8 +253,9 @@
 .v2-runtime .city-focus-shell{position:relative;z-index:1;display:flex;flex-direction:column;}
 .v2-runtime .city-focus-shell.is-focused .glass-control{border-color:#a875c7;box-shadow:0 0 0 5px rgba(184,140,230,.15),0 15px 34px rgba(113,74,136,.18),inset 0 1px 0 #fff;}
 .v2-runtime .city-focus-shell.has-error .glass-control{border-color:#c56c91;box-shadow:0 0 0 4px rgba(197,108,145,.13),0 7px 20px rgba(159,76,112,.12);}
-.v2-runtime .city-focus-shell .geo-results{position:relative;z-index:43;order:-1;margin:0 0 9px;
- max-height:min(230px,34dvh);animation:field-hint-in .24s ease both;}
+.v2-runtime .city-focus-shell .geo-results{position:absolute;z-index:43;left:0;right:0;
+ bottom:calc(100% + 9px);margin:0;max-height:var(--field-suggestions-max-height,180px);
+ overflow-y:auto;overscroll-behavior:contain;animation:field-hint-in .24s ease both;}
 .v2-runtime .city-field-warning{margin:8px 2px 0;}
 .v2-runtime .v2-next.is-incomplete{background:#ded3e1;color:#95899b;border-color:#d1c3d5;box-shadow:none;}
 .v2-runtime .v2-next.is-incomplete.v2-next-confirm{background:linear-gradient(135deg,#aa7cdd,#e6a7d0);color:#fff;border-color:#ae80d2;box-shadow:0 8px 22px rgba(151,91,187,.3);}
@@ -345,10 +346,10 @@
    content can pass beneath a progressively blurred glass fade. */
 .v2-runtime .v2-footer{position:absolute;left:0;right:0;bottom:0;z-index:91;isolation:isolate;
  padding:30px 22px max(16px,env(safe-area-inset-bottom));background:transparent;border:0}
-.v2-runtime .v2-footer::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
- background:linear-gradient(180deg,rgba(255,250,255,0),rgba(255,250,255,.72) 42%,rgba(255,250,255,.96) 100%);
- backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%);
- -webkit-mask-image:linear-gradient(180deg,transparent,#000 34%,#000);mask-image:linear-gradient(180deg,transparent,#000 34%,#000)}
+.v2-runtime .v2-footer::before{content:"";position:absolute;inset:-28px 0 0;z-index:-1;pointer-events:none;
+ background:linear-gradient(180deg,rgba(255,250,255,0),rgba(255,250,255,.32) 42%,rgba(255,250,255,.72) 100%);
+ backdrop-filter:blur(24px) saturate(125%);-webkit-backdrop-filter:blur(24px) saturate(125%);
+ -webkit-mask-image:linear-gradient(180deg,transparent,#000 42%,#000);mask-image:linear-gradient(180deg,transparent,#000 42%,#000)}
 .v2-runtime .v2-body{padding-bottom:118px}
 .v2-runtime .optional-profile-screen-foot{border:0;background:linear-gradient(180deg,rgba(255,250,253,.72),rgba(255,250,253,.97));
  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}

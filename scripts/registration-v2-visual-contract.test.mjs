@@ -18,7 +18,7 @@ const required=[
  ["V2 runtime tokens",/\.v2-runtime\s*\{[^}]*--ink:/s],
  ["Telegram native clearance",/\.v2-runtime\[data-telegram-ui="true"\]\s+\.v2-device\s*\{[^}]*padding-top:max\(64px,[^}]*--tg-content-safe-area-inset-top[^}]*--tg-safe-area-inset-top[^}]*safe-area-inset-top/s],
  ["opaque form inputs",/\.v2-runtime\s+\.glass-control\s*\{[^}]*background:#fffaff/s],
- ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--field-focus-top/s],
+ ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--field-focus-bottom/s],
  ["single confirm action",/\.v2-footer-nav\.is-focus-confirm\s+\.v2-back\s*\{display:none\}/],
  ["blurred borderless action fade",/\.v2-runtime\s+\.v2-footer\s*\{[^}]*position:absolute[^}]*border:0/s],
  ["geolocation and language search icon",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
@@ -82,12 +82,18 @@ assert.match(geo,/<LocateFixed size=\{15\}/,"Manual city search needs detect ico
 assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
 assert.match(focusDock,/visualViewport[\s\S]*requestAnimationFrame\(update\)/,
  "Keyboard dock must coalesce Android viewport animation into one writer");
+assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.height/,
+ "Changing city suggestions must not feed the editor height back into keyboard placement");
+assert.match(runtime,/\.city-focus-shell \.geo-results\{position:absolute[^}]*bottom:calc\(100% \+ 9px\)/,
+ "City suggestions must open above the docked editor");
 assert.match(steps,/className="about-input-shell"[\s\S]*className="char-count"/,
  "Biography count must sit inside its text field");
 assert.match(geo,/className="scope-popover-anchor"/,
  "Search scope menu needs a stable upward popover anchor");
 assert.match(app,/className="intro-subtitle">Несколько шагов/,
  "Welcome screen needs the approved compact supporting line");
+assert.match(app,/webApp\?\.setBottomBarColor\?\.\(background\)/,
+ "Android system navigation area must match the active registration background");
 assert.doesNotMatch(runtime,/(?:^|\n)\s*(?:input|\.glass-control|\.scope-options)\s*\{/,
  "Do not override unrelated app global input styles");
 console.log("Registration V2 Telegram-safe visual contracts: PASS ("+required.length+" selectors)");

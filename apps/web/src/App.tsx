@@ -47,6 +47,7 @@ declare global {
         HapticFeedback?: {selectionChanged?:()=>void};
         setHeaderColor?: (color: string) => void;
         setBackgroundColor?: (color: string) => void;
+        setBottomBarColor?: (color: string) => void;
         colorScheme?: "dark" | "light";
         ready?: () => void;
         expand?: () => void;
@@ -265,6 +266,7 @@ export function App() {
       const background=activeTheme==="dark"?"#181320":"#fffbfd";
       webApp?.setHeaderColor?.(background);
       webApp?.setBackgroundColor?.(background);
+      webApp?.setBottomBarColor?.(background);
     } catch {
       // Older clients do not support every color-setting method.
     }
@@ -1230,7 +1232,7 @@ export function App() {
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
       {auth!=="connecting"&&!(auth==="authorized"&&realFeedPilot.enabled&&publicationCheck==="checking")&&
-       <h1 aria-label={introText}>{introText}<span className="intro-type-cursor" aria-hidden="true">|</span></h1>}
+       <h1 className={registrationStarted?"intro-returning-title":undefined} aria-label={introText}>{introText}<span className="intro-type-cursor" aria-hidden="true">|</span></h1>}
       {auth==="authorized"&&!(realFeedPilot.enabled&&publicationCheck==="checking")&&
        <p className="intro-subtitle">Несколько шагов — и можно начинать знакомиться</p>}
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}

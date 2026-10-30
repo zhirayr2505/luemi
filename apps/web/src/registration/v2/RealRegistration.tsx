@@ -66,9 +66,28 @@ export function RealRegistrationV2(p:Props){
  const [photoChecking,setPhotoChecking]=useState(false);
  const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|"language"|null>(null);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
- const bodyScrollBeforeFocus=useRef(0);
- const focusActive=useRef(false);
- const restoreScrollFrame=useRef(0);
+ const viewportRoot=useRef<HTMLElement|null>(null);
+ useEffect(()=>{
+  const root=viewportRoot.current;
+  const viewport=window.visualViewport;
+  if(!root||!viewport)return;
+  let frame=0;
+  const update=()=>{
+   frame=0;
+   // One viewport measurement drives the canvas and its footer. Android may
+   // keep 100dvh at the layout height while the keyboard covers the visual viewport.
+   root.style.setProperty("--registration-visible-height",`${Math.round(viewport.height)}px`);
+  };
+  const schedule=()=>{if(!frame)frame=window.requestAnimationFrame(update);};
+  update();
+  viewport.addEventListener("resize",schedule);
+  window.addEventListener("resize",schedule);
+  return()=>{
+   if(frame)window.cancelAnimationFrame(frame);
+   viewport.removeEventListener("resize",schedule);
+   window.removeEventListener("resize",schedule);
+  };
+ },[]);
  useEffect(()=>{
   // Android WebView can restore the last focused input when a Mini App is
   // reopened. Registration must start as a clean screen, without reopening
@@ -94,18 +113,8 @@ export function RealRegistrationV2(p:Props){
  const stage=stages[index];
  const body=useRef<HTMLElement|null>(null);
  const handleFieldFocus=useCallback((field:"name"|"date"|"city"|"about"|"language"|null)=>{
-  window.cancelAnimationFrame(restoreScrollFrame.current);
-  if(field!==null){
-   if(!focusActive.current)bodyScrollBeforeFocus.current=body.current?.scrollTop??0;
-   focusActive.current=true;setFocusedField(field);return;
-  }
-  focusActive.current=false;setFocusedField(null);
-  const top=bodyScrollBeforeFocus.current;
-  restoreScrollFrame.current=window.requestAnimationFrame(()=>{
-   restoreScrollFrame.current=window.requestAnimationFrame(()=>body.current?.scrollTo({top,behavior:"instant"}));
-  });
+  setFocusedField(field);
  },[]);
- useEffect(()=>()=>window.cancelAnimationFrame(restoreScrollFrame.current),[]);
  const dateValid=birthDateValid(draft.day,draft.month,draft.year);
  const identityReady=nameValid(draft.name)&&dateValid&&!!draft.gender&&draft.trialConsent;
  const gate:RegistrationV2Gate={
@@ -123,7 +132,7 @@ export function RealRegistrationV2(p:Props){
   setIndex(!identityReady?0:!gate.hasLocation?1:!gate.hasIntent?2:
     !photoReady(photos)?4:p.publicationEnabled&&!instantPublication?5:stages.length-1);
  },[p.restored,p.resumeReview,p.publicationEnabled,instantPublication,identityReady,gate.hasLocation,gate.hasIntent,photos,stages.length]);
- const nav=(target:number)=>{setHint("");setIdentityError(null);focusActive.current=false;setFocusedField(null);setIndex(Math.min(stages.length-1,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
+ const nav=(target:number)=>{setHint("");setIdentityError(null);setFocusedField(null);setIndex(Math.min(stages.length-1,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
  const back=()=>{if(index===0)p.onExit();else nav(index-1);};
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
  const advance=()=>{
@@ -189,7 +198,7 @@ export function RealRegistrationV2(p:Props){
    stage.id==="photos"?photoReady(photos):true;
  const fieldConfirmActive=(stage.id==="identity"||stage.id==="location"||stage.id==="personality")&&focusedField!==null;
 
- return <main className="v2-canvas v2-runtime" data-theme={p.theme}
+ return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme={p.theme}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
      <div className="v2-backdrop" aria-hidden="true"/>
@@ -264,8 +273,8 @@ export function RealRegistrationV2(p:Props){
           <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету 💜"}
         </button>
        </div>:<div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>
-        <button type="button" className="v2-back" onClick={back}
-          aria-label={index===0?"Вернуться на приветствие":"Назад"}><ArrowLeft size={22}/></button>
+        {!fieldConfirmActive&&<button type="button" className="v2-back" onClick={back}
+          aria-label={index===0?"Вернуться на приветствие":"Назад"}><ArrowLeft size={22}/></button>}
        <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")+(!continueReady?" is-incomplete":"")} disabled={photoChecking}
           aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
          aria-disabled={!continueReady||undefined}

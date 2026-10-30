@@ -63,7 +63,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const [aboutFocused,setAboutFocused]=useState(false);
  const [nameHint,setNameHint]=useState(false);
  const hintTimer=useRef<number|null>(null);
- const dobTimer=useRef<number|null>(null);
  const focusTimer=useRef<number|null>(null);
  const focusInput=useRef<HTMLInputElement|HTMLTextAreaElement|null>(null);
  const nameDock=useFieldFocusDock(nameFocused);
@@ -71,7 +70,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const aboutDock=useFieldFocusDock(aboutFocused);
  useEffect(()=>()=>{
    if(hintTimer.current!==null)window.clearTimeout(hintTimer.current);
-   if(dobTimer.current!==null)window.clearTimeout(dobTimer.current);
    if(focusTimer.current!==null)window.clearTimeout(focusTimer.current);
  },[]);
  const beginFieldFocus=(field:"name"|"date"|"about",input:HTMLInputElement|HTMLTextAreaElement)=>{
@@ -106,14 +104,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const updateDate=(raw:string)=>{
    const digits=raw.replace(/\D/g,"").slice(0,8);
    patch({day:digits.slice(0,2),month:digits.slice(2,4),year:digits.slice(4,8)});
-   if(digits.length===8){
-     if(dobTimer.current!==null)window.clearTimeout(dobTimer.current);
-     dobTimer.current=window.setTimeout(()=>{
-       dobInput.current?.blur();
-       setDobFocused(false);
-       onFieldFocus?.(null);
-     },120);
-   }
  };
  const toggleInterest=(value:string)=>patch({interests:data.interests.includes(value)
    ?data.interests.filter(x=>x!==value):data.interests.length>=15?data.interests:[...data.interests,value]});

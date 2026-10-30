@@ -38,6 +38,8 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .entry-state.visually-ready .intro-logo{animation:logo-enter .5s cubic-bezier(.17,.82,.31,1) both}
 .entry-state h1{font-size:clamp(25px,6.35vw,33px);font-weight:760;line-height:1.19;letter-spacing:-.042em;
  max-width:470px;margin:0;min-height:2.4em;opacity:0;transform:translateY(10px)}
+.entry-state h1.intro-returning-title{font-size:clamp(23px,5.7vw,29px);letter-spacing:-.035em;
+ max-width:340px;line-height:1.25;text-wrap:balance}
 .intro-type-cursor{display:inline-block;margin-left:2px;color:var(--lavender);font-weight:400;animation:intro-cursor-blink .8s steps(2,end) infinite}
 @keyframes intro-cursor-blink{50%{opacity:0}}
 .entry-state.visually-ready h1{animation:text-enter .55s .60s cubic-bezier(.18,.75,.32,1) both}

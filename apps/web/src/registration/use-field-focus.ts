@@ -1,9 +1,8 @@
 import {useLayoutEffect,useRef} from "react";
 
 /**
- * Dock an editor immediately above the visible keyboard/footer.
- * The position never depends on an already moved input, so repeated Android
- * WebView resize events cannot accumulate movement and push a field away.
+ * Anchor the editor to the visible viewport's bottom edge. Its own height
+ * (including async search results) must never feed back into its position.
  */
 export function useFieldFocusDock(active:boolean){
  const shellRef=useRef<HTMLElement|null>(null);
@@ -12,24 +11,25 @@ export function useFieldFocusDock(active:boolean){
   const shell=shellRef.current;
   if(!shell)return;
   const viewport=window.visualViewport;
-  let frame=0,readyFrame=0;
-  shell.dataset.dockReady="false";
+  let frame=0;
   const update=()=>{
    frame=0;
-   const viewportTop=viewport?.offsetTop??0;
    const viewportBottom=viewport?viewport.offsetTop+viewport.height:window.innerHeight;
-   const footer=shell.closest<HTMLElement>(".v2-device")?.querySelector<HTMLElement>(".v2-footer");
+   const device=shell.closest<HTMLElement>(".v2-device");
+   const footer=device?.querySelector<HTMLElement>(".v2-footer");
    const footerRect=footer?.getBoundingClientRect();
-   const footerInside=footerRect&&footerRect.top>viewportTop&&footerRect.top<=viewportBottom+8;
-   const usableBottom=footerInside?footerRect.top:
-    viewportBottom-Math.min(footerRect?.height??88,112);
-   const height=Math.max(64,shell.getBoundingClientRect().height);
-   const top=Math.round(Math.max(viewportTop+16,usableBottom-height-14));
-   shell.style.setProperty("--field-focus-top",`${top}px`);
-   if(shell.dataset.dockReady!=="true"){
-    window.cancelAnimationFrame(readyFrame);
-    readyFrame=window.requestAnimationFrame(()=>{shell.dataset.dockReady="true";});
+   const footerInside=footerRect&&footerRect.top>0&&footerRect.top<=viewportBottom+8;
+   const usableBottom=footerInside?footerRect.top:viewportBottom-Math.min(footerRect?.height??88,112);
+   shell.style.setProperty("--field-focus-bottom",`${Math.max(12,Math.round(window.innerHeight-usableBottom+14))}px`);
+   // Reserve the logo/progress and the input itself before sizing the upward
+   // city list. Search results never affect this measurement.
+   if(shell.classList.contains("city-focus-shell")){
+    const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??140;
+    const editorHeight=shell.querySelector<HTMLElement>(".glass-field")?.getBoundingClientRect().height??86;
+    const available=Math.max(48,Math.min(230,Math.floor(usableBottom-headerBottom-editorHeight-30)));
+    shell.style.setProperty("--field-suggestions-max-height",`${available}px`);
    }
+   shell.dataset.dockReady="true";
   };
   const refresh=()=>{
    if(frame)window.cancelAnimationFrame(frame);
@@ -42,17 +42,14 @@ export function useFieldFocusDock(active:boolean){
   viewport?.addEventListener("resize",refresh);
   viewport?.addEventListener("scroll",refresh);
   window.addEventListener("resize",refresh);
-  const observer=typeof ResizeObserver!=="undefined"?new ResizeObserver(refresh):null;
-  observer?.observe(shell);
   return()=>{
    if(frame)window.cancelAnimationFrame(frame);
-   window.cancelAnimationFrame(readyFrame);
-   observer?.disconnect();
    viewport?.removeEventListener("resize",refresh);
    viewport?.removeEventListener("scroll",refresh);
    window.removeEventListener("resize",refresh);
    delete shell.dataset.dockReady;
-   shell.style.removeProperty("--field-focus-top");
+   shell.style.removeProperty("--field-focus-bottom");
+   shell.style.removeProperty("--field-suggestions-max-height");
   };
  },[active]);
  return {shellRef};
