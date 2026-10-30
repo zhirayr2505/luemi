@@ -183,7 +183,12 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
    </button>:<>
      {cityFocused&&<div className="field-focus-overlay" aria-hidden="true" onPointerDown={()=>inputRef.current?.blur()}/>}
      <div className="focus-field-slot"><div ref={node=>{cityDock.shellRef.current=node;}}
-       className={"focus-field-shell city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")} style={cityDock.style}>
+       className={"focus-field-shell city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")}>
+       {editing&&results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
+         {results.map(place=><button key={place.id} type="button" role="option" aria-selected={false} onPointerDown={event=>{event.preventDefault();choose(place);}}>
+           <Flag code={place.countryCode} title={"Флаг "+place.country}/><span><strong>{place.city}</strong><small>{place.country}{place.region?", "+place.region:""}</small></span><MapPin size={17}/>
+         </button>)}
+       </div>}
        <GlassField label="Страна и город">
          <div className="geo-input-wrap">
            <Search size={20} aria-hidden="true"/>
@@ -196,11 +201,6 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
            {loading&&<LoaderCircle className="spin" size={18}/>}
          </div>
        </GlassField>
-       {editing&&results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
-         {results.map(place=><button key={place.id} type="button" role="option" aria-selected={false} onPointerDown={event=>{event.preventDefault();choose(place);}}>
-           <Flag code={place.countryCode} title={"Флаг "+place.country}/><span><strong>{place.city}</strong><small>{place.country}{place.region?", "+place.region:""}</small></span><MapPin size={17}/>
-         </button>)}
-       </div>}
        {fieldError&&<p className="field-warning city-field-warning" role="alert">{fieldError}</p>}
      </div></div>
    </>}
@@ -221,15 +221,17 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
     <p className="hint">Определение города доступно в некоторых регионах. Если город не найден, выбери его вручную.</p>}
    <div className="geo-scope">
      <span className="field-label">Где искать людей?</span>
-     <button className="glass-control scope-control" type="button" aria-expanded={scopeOpen} onClick={()=>setScopeOpen(x=>!x)}>
-       <span><strong>{selectedScope[1]}</strong><small>{selectedScope[2]}</small></span><ChevronDown size={19}/>
-     </button>
-     {scopeOpen&&<div className="scope-options">
-       {scopeOptions.map(([scope,label,detail])=><button type="button" key={scope} role="option" aria-selected={data.searchScope===scope}
-         onClick={()=>{patch({searchScope:scope});setScopeOpen(false);}}>
-         <strong>{label}</strong><small>{detail}</small>
-       </button>)}
-     </div>}
+     <div className="scope-popover-anchor">
+       <button className="glass-control scope-control" type="button" aria-expanded={scopeOpen} onClick={()=>setScopeOpen(x=>!x)}>
+         <span><strong>{selectedScope[1]}</strong><small>{selectedScope[2]}</small></span><ChevronDown size={19}/>
+       </button>
+       {scopeOpen&&<div className="scope-options">
+         {scopeOptions.map(([scope,label,detail])=><button type="button" key={scope} role="option" aria-selected={data.searchScope===scope}
+           onClick={()=>{patch({searchScope:scope});setScopeOpen(false);}}>
+           <strong>{label}</strong><small>{detail}</small>
+         </button>)}
+       </div>}
+     </div>
    </div>
    <div className={"radius-control"+(data.searchScope!=="radius"?" is-disabled":"")}>
      <div className="range-title"><span>Радиус поиска</span><strong>{data.radius.toLocaleString("ru")} км</strong></div>

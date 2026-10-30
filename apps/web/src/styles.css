@@ -29,16 +29,21 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
  background:var(--panel);color:var(--ink);box-shadow:inset 0 1px rgba(255,255,255,.67),0 6px 17px var(--shadow);
  backdrop-filter:blur(12px) saturate(130%);-webkit-backdrop-filter:blur(12px) saturate(130%);}
 .entry-state{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
- text-align:center;padding:100px 24px 140px;position:relative;gap:17px;}
-.intro-mark{width:min(54vw,205px);height:94px;display:flex;align-items:center;justify-content:center;position:relative}
+ text-align:center;padding:92px 24px 140px;position:relative;gap:13px;}
+.intro-mark{width:min(49vw,188px);height:86px;display:flex;align-items:center;justify-content:center;position:relative}
+.intro-mark::before{content:"";position:absolute;width:155%;height:155%;border-radius:50%;pointer-events:none;
+ background:radial-gradient(ellipse,rgba(200,147,235,.23),rgba(239,167,207,.10) 48%,transparent 72%);
+ filter:blur(16px);animation:intro-glow 4.8s ease-in-out infinite alternate}
 .intro-logo{width:100%;height:auto;object-fit:contain;opacity:0;transform:translateY(6px) scale(.985)}
 .entry-state.visually-ready .intro-logo{animation:logo-enter .5s cubic-bezier(.17,.82,.31,1) both}
-.entry-state h1{font-size:clamp(27px,7.3vw,38px);font-weight:760;line-height:1.17;letter-spacing:-.045em;
+.entry-state h1{font-size:clamp(25px,6.35vw,33px);font-weight:760;line-height:1.19;letter-spacing:-.042em;
  max-width:470px;margin:0;min-height:2.4em;opacity:0;transform:translateY(10px)}
 .intro-type-cursor{display:inline-block;margin-left:2px;color:var(--lavender);font-weight:400;animation:intro-cursor-blink .8s steps(2,end) infinite}
 @keyframes intro-cursor-blink{50%{opacity:0}}
 .entry-state.visually-ready h1{animation:text-enter .55s .60s cubic-bezier(.18,.75,.32,1) both}
 .entry-state p{font-size:15px;color:var(--subtle);max-width:350px;line-height:1.55}
+.entry-state .intro-subtitle{margin:-12px 0 0;max-width:310px;font-size:14px;line-height:1.45;opacity:0;transform:translateY(7px)}
+.entry-state.visually-ready .intro-subtitle{animation:text-enter .5s .88s cubic-bezier(.18,.75,.32,1) both}
 .entry-state a{color:var(--lavender)}
 .intro-cta{position:absolute;bottom:calc(35px + var(--bottom-safe));left:24px;right:24px;display:flex;justify-content:center;
  animation:cta-enter .55s cubic-bezier(.19,.76,.29,1) both}
@@ -50,6 +55,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .primary-action:active{transform:scale(.982)}
 .entry-state.exiting{pointer-events:none;animation:screen-exit .26s ease-in both}
 @keyframes logo-enter{to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes intro-glow{from{transform:scale(.91);opacity:.62}to{transform:scale(1.08);opacity:1}}
 @keyframes text-enter{to{opacity:1;transform:translateY(0)}}
 @keyframes cta-enter{from{opacity:0;transform:translateY(17px)}to{opacity:1;transform:translateY(0)}}
 @keyframes screen-exit{to{opacity:0;transform:translateY(-10px)}}
@@ -60,6 +66,10 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .luemi-launch-loader{display:flex;gap:6px;margin-top:3px;animation:launch-copy-in .65s .3s ease both}
 .luemi-launch-loader i{width:6px;height:6px;border-radius:50%;background:#b37dd5;animation:launch-dot 1s ease-in-out infinite}
 .luemi-launch-loader i:nth-child(2){animation-delay:.12s}.luemi-launch-loader i:nth-child(3){animation-delay:.24s}
+.registration-load-fallback{display:grid;place-items:center;padding:24px}
+.registration-load-card{display:flex;flex-direction:column;align-items:center;gap:16px;color:var(--subtle);font-size:14px;font-weight:650}
+.registration-load-card img{width:min(46vw,180px);height:auto;filter:drop-shadow(0 8px 24px rgba(157,91,187,.13))}
+.registration-load-card i{display:block;width:34px;height:34px;border-radius:50%;border:3px solid rgba(184,140,230,.2);border-top-color:#b88ce6;animation:spin .8s linear infinite}
 @keyframes launch-screen-in{from{opacity:0}to{opacity:1}}
 @keyframes launch-logo-in{from{opacity:0;transform:scale(.88) translateY(12px)}to{opacity:1;transform:none}}
 @keyframes launch-copy-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -291,7 +301,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 @media(min-width:640px){.onboarding-screen{padding-left:45px;padding-right:45px}.mosaic{grid-template-rows:repeat(3,120px)}}
 @supports not (backdrop-filter:blur(1px)){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{background:var(--bg)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}
- .intro-logo,.entry-state h1{opacity:1;transform:none}.intro-type-cursor{animation:none}}
+ .intro-logo,.entry-state h1,.entry-state .intro-subtitle{opacity:1;transform:none}.intro-type-cursor{animation:none}}
 @media(prefers-reduced-transparency:reduce){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{
  backdrop-filter:none!important;background:var(--bg)}}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #a577da;outline-offset:3px}

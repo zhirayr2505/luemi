@@ -1,9 +1,9 @@
 /* Runtime-only additions for the single server-backed registration flow.
    No backdrop-filter, mask or 3D transforms on camera / scroll hot paths. */
 .v2-runtime{height:100dvh;overflow:hidden;min-height:0;background:transparent}
-.v2-runtime .v2-device{height:100dvh;max-height:950px;min-height:0}
+.v2-runtime .v2-device{height:100dvh;max-height:950px;min-height:0;padding-bottom:0}
 .v2-runtime .v2-logo img{width:96px;max-width:100%}
-.v2-runtime .v2-body{animation:none;scroll-padding-top:16px}
+.v2-runtime .v2-body{animation:none;scroll-padding:16px 0 118px;padding-bottom:118px}
 .v2-runtime .v2-stage-transition{animation:v2-stage-in .34s ease both}
 @keyframes v2-stage-in{from{opacity:0}to{opacity:1}}
 .v2-runtime .v2-body .form-stack{gap:12px;padding:0 0 12px}
@@ -49,7 +49,8 @@
 .v2-runtime[data-theme="dark"] .v2-prototype-caption,
 .v2-runtime[data-theme="dark"] .v2-label{color:#d1b9dc}
 .v2-runtime[data-theme="dark"] .v2-eyebrow{color:#d5a6ed}
-.v2-runtime[data-theme="dark"] .v2-footer{background:#251a2e;border-color:#49354d}
+.v2-runtime[data-theme="dark"] .v2-footer{background:transparent;border:0}
+.v2-runtime[data-theme="dark"] .v2-footer::before{background:linear-gradient(180deg,rgba(25,19,34,0),rgba(37,26,46,.78) 40%,rgba(37,26,46,.97) 100%)}
 .v2-runtime[data-theme="dark"] .v2-theme,
 .v2-runtime[data-theme="dark"] .v2-count,
 .v2-runtime[data-theme="dark"] .v2-back{background:#3b2a48;color:#f2d5fc;border-color:#664879}
@@ -145,9 +146,10 @@
 .v2-runtime .focus-field-shell.is-focused{
  position:fixed;z-index:92;top:var(--field-focus-top,120px);
  left:max(22px,calc((100vw - 680px)/2 + 22px));right:max(22px,calc((100vw - 680px)/2 + 22px));width:auto;
- animation:field-dock-in .34s cubic-bezier(.22,.8,.25,1) both;
+ transition:top .24s cubic-bezier(.2,.78,.24,1),opacity .28s ease,transform .34s cubic-bezier(.2,.8,.24,1);
 }
-@keyframes field-dock-in{from{opacity:.65;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+.v2-runtime .focus-field-shell.is-focused:not([data-dock-ready="true"]){opacity:0;transform:translateY(16px) scale(.985)}
+.v2-runtime .focus-field-shell.is-focused[data-dock-ready="true"]{opacity:1;transform:none}
 .v2-runtime .name-focus-shell .glass-control{min-height:61px;width:100%;padding:13px 16px;font-size:19px;}
 .v2-runtime .dob-focus-shell .glass-control{min-height:61px;width:100%;text-align:center;padding:13px 16px;
  font-size:21px;letter-spacing:.055em;font-variant-numeric:tabular-nums;}
@@ -166,12 +168,16 @@
 @keyframes field-hint-in{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:none}}
 .v2-runtime .dob-focus-shell .glass-field-label{font-size:14px;}
 .v2-runtime .dob-focus-shell .glass-field small{display:block;margin:7px 2px 0;color:#9b84a5;font-size:11px;text-align:center;}
-.v2-runtime .field-focus-overlay{position:fixed;inset:0;z-index:90;background:rgba(64,39,79,.12);
- backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:dob-focus-in .28s ease both;}
+.v2-runtime .field-focus-overlay{position:fixed;inset:0;z-index:90;
+ background:linear-gradient(180deg,rgba(72,43,88,.09),rgba(68,40,82,.18));
+ backdrop-filter:blur(17px) saturate(118%);-webkit-backdrop-filter:blur(17px) saturate(118%);
+ animation:dob-focus-in .34s cubic-bezier(.2,.75,.3,1) both;}
 @keyframes dob-focus-in{from{opacity:0}to{opacity:1}}
 .v2-runtime .step-name .glass-control{min-height:55px;}
-.v2-runtime .v2-footer.is-focus-confirm{position:relative;z-index:93;}
-.v2-runtime .v2-footer-nav.is-focus-confirm{justify-content:space-between;}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden}
+.v2-runtime .v2-footer.is-focus-confirm{z-index:93;}
+.v2-runtime .v2-footer-nav.is-focus-confirm{justify-content:flex-end;}
+.v2-runtime .v2-footer-nav.is-focus-confirm .v2-back{display:none}
 .v2-runtime .v2-next.v2-next-confirm{flex:0 0 58px;width:58px;height:58px;min-height:58px;padding:0;
  border-radius:50%;display:grid;place-items:center;gap:0;color:#fff;border-color:#ae80d2;
  background:linear-gradient(135deg,#aa7cdd,#e6a7d0);box-shadow:0 8px 22px rgba(151,91,187,.3),inset 0 1px 0 rgba(255,255,255,.45);
@@ -214,10 +220,11 @@
  box-shadow:0 5px 15px rgba(102,71,142,.075);
 }
 .v2-runtime .scope-control>svg{color:#78578d;flex:none;}
+.v2-runtime .scope-popover-anchor{position:relative;isolation:isolate}
 .v2-runtime .scope-options{
- position:relative;top:auto;left:auto;right:auto;
+ position:absolute;top:auto;bottom:calc(100% + 8px);left:0;right:0;
  z-index:10;
- width:100%;margin-top:7px;
+ width:100%;margin:0;max-height:min(230px,40dvh);overflow:auto;
  padding:6px;background:#fffaff;opacity:1;
  border:1px solid #d9c2e5;
  border-radius:17px;
@@ -233,6 +240,8 @@
  color:#684887;
 }
 .v2-runtime .scope-options small{color:#7d6988;}
+.v2-runtime .scope-control>svg{transition:transform .2s ease}
+.v2-runtime .scope-control[aria-expanded="true"]>svg{transform:rotate(180deg)}
 .v2-runtime .geo-results{
  background:#fffaff;border:1px solid #dac6e7;
  box-shadow:0 10px 25px rgba(105,66,135,.13);
@@ -241,10 +250,11 @@
 .v2-runtime .geo-results button:active{background:#f1e5f8;}
 
 /* City search follows the same keyboard choreography as every text field. */
-.v2-runtime .city-focus-shell{position:relative;z-index:1;}
+.v2-runtime .city-focus-shell{position:relative;z-index:1;display:flex;flex-direction:column;}
 .v2-runtime .city-focus-shell.is-focused .glass-control{border-color:#a875c7;box-shadow:0 0 0 5px rgba(184,140,230,.15),0 15px 34px rgba(113,74,136,.18),inset 0 1px 0 #fff;}
 .v2-runtime .city-focus-shell.has-error .glass-control{border-color:#c56c91;box-shadow:0 0 0 4px rgba(197,108,145,.13),0 7px 20px rgba(159,76,112,.12);}
-.v2-runtime .city-focus-shell .geo-results{position:relative;z-index:43;margin-top:7px;animation:field-hint-in .24s ease both;}
+.v2-runtime .city-focus-shell .geo-results{position:relative;z-index:43;order:-1;margin:0 0 9px;
+ max-height:min(230px,34dvh);animation:field-hint-in .24s ease both;}
 .v2-runtime .city-field-warning{margin:8px 2px 0;}
 .v2-runtime .v2-next.is-incomplete{background:#ded3e1;color:#95899b;border-color:#d1c3d5;box-shadow:none;}
 .v2-runtime .v2-next.is-incomplete.v2-next-confirm{background:linear-gradient(135deg,#aa7cdd,#e6a7d0);color:#fff;border-color:#ae80d2;box-shadow:0 8px 22px rgba(151,91,187,.3);}
@@ -262,6 +272,11 @@
 .v2-runtime .optional-choice-grid .glass-choice{min-height:36px;padding:8px 10px;font-size:12px;}
 .v2-runtime .optional-facts{width:100%;min-height:68px;padding:11px 13px;resize:none;font:inherit;}
 .v2-runtime .about-step.has-error .glass-control{border-color:#c56c91;box-shadow:0 0 0 4px rgba(197,108,145,.13),0 7px 20px rgba(159,76,112,.12);}
+.v2-runtime .about-input-shell{position:relative}
+.v2-runtime .about-input-shell .glass-textarea{padding-bottom:38px;resize:none}
+.v2-runtime .about-input-shell .char-count{position:absolute;right:10px;bottom:10px;margin:0;padding:5px 9px;
+ border:1px solid rgba(185,145,205,.23);border-radius:999px;background:rgba(249,241,252,.9);
+ color:#846b91;font-size:11px;font-variant-numeric:tabular-nums;line-height:1;box-shadow:0 3px 9px rgba(102,71,142,.07)}
 .v2-runtime .optional-profile-screen{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:#fffafd;color:var(--ink);animation:field-hint-in .28s ease both;}
 .v2-runtime .optional-profile-screen-head{display:flex;align-items:center;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--line);}
 .v2-runtime .optional-profile-screen-head button{width:40px;height:40px;border:1px solid var(--glass-edge);border-radius:50%;background:#fffaff;color:#76558a;display:grid;place-items:center;}
@@ -324,6 +339,19 @@
 .v2-runtime[data-theme="dark"] .geo-input-wrap>svg:first-child,
 .v2-runtime[data-theme="dark"] .scope-control>svg,
 .v2-runtime[data-theme="dark"] .geo-selected>svg{color:#ddc0f3;}
+.v2-runtime[data-theme="dark"] .about-input-shell .char-count{background:rgba(49,35,60,.92);color:#ddc8e8;border-color:#624c6f}
+
+/* The action area floats over the scroll surface. There is no white separator:
+   content can pass beneath a progressively blurred glass fade. */
+.v2-runtime .v2-footer{position:absolute;left:0;right:0;bottom:0;z-index:91;isolation:isolate;
+ padding:30px 22px max(16px,env(safe-area-inset-bottom));background:transparent;border:0}
+.v2-runtime .v2-footer::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+ background:linear-gradient(180deg,rgba(255,250,255,0),rgba(255,250,255,.72) 42%,rgba(255,250,255,.96) 100%);
+ backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%);
+ -webkit-mask-image:linear-gradient(180deg,transparent,#000 34%,#000);mask-image:linear-gradient(180deg,transparent,#000 34%,#000)}
+.v2-runtime .v2-body{padding-bottom:118px}
+.v2-runtime .optional-profile-screen-foot{border:0;background:linear-gradient(180deg,rgba(255,250,253,.72),rgba(255,250,253,.97));
+ backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 
 /* Local self-preview uses the very same approved Profile Morph V3. It stays
    a contained preview inside registration, never an alternate fake card. */

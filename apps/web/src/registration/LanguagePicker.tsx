@@ -13,7 +13,7 @@ export function LanguagePicker({selected,onChange,onFocusChange}:{selected:strin
  return <div className="language-picker">
    {focused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>inputRef.current?.blur()}/>}
    <div className="focus-field-slot language-focus-slot"><div ref={node=>{dock.shellRef.current=node;}}
-    className={"focus-field-shell language-focus-shell"+(focused?" is-focused":"")} style={dock.style}>
+    className={"focus-field-shell language-focus-shell"+(focused?" is-focused":"")}>
    <div className="field-label">Языки общения</div>
    <label className="geo-input-wrap">
      <Search size={18} aria-hidden="true"/>

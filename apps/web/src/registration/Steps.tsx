@@ -120,8 +120,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  if(step===1)return <div className="form-stack step-name">
    {nameFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>nameInput.current?.blur()}/>}
    <div className="focus-field-slot"><div ref={node=>{nameDock.shellRef.current=node;}}
-     className={"focus-field-shell name-focus-shell"+(nameFocused?" is-focused":"")+(fieldError?.field==="name"?" has-error":"")}
-     style={nameDock.style}>
+     className={"focus-field-shell name-focus-shell"+(nameFocused?" is-focused":"")+(fieldError?.field==="name"?" has-error":"")}>
      <GlassField label="Твоё имя"><GlassTextInput ref={nameInput} autoComplete="given-name" enterKeyHint="next" maxLength={48} value={data.name}
        aria-invalid={fieldError?.field==="name"}
        placeholder="Как тебя зовут?" onFocus={e=>{
@@ -140,8 +139,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  if(step===2)return <div className="form-stack dob-step">
    {dobFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>dobInput.current?.blur()}/>}
    <div className="focus-field-slot"><div ref={node=>{dobDock.shellRef.current=node;}}
-     className={"focus-field-shell dob-focus-shell"+(dobFocused?" is-focused":"")+(fieldError?.field==="date"?" has-error":"")}
-     style={dobDock.style}>
+     className={"focus-field-shell dob-focus-shell"+(dobFocused?" is-focused":"")+(fieldError?.field==="date"?" has-error":"")}>
      <GlassField label="Дата рождения" hint="Например, 12.05.1998">
        <GlassTextInput ref={dobInput} inputMode="numeric" autoComplete="bday" placeholder="ДД.ММ.ГГГГ"
          aria-label="Дата рождения, день месяц год" aria-invalid={fieldError?.field==="date"} value={dateValue}
@@ -200,17 +198,16 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  if(step===6)return <div className={"form-stack about-step"+(fieldError?.field==="about"?" has-error":"")}>
    {aboutFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>focusInput.current?.blur()}/>}
    <div className="focus-field-slot focus-field-slot-textarea"><div ref={node=>{aboutDock.shellRef.current=node;}}
-    className={"focus-field-shell about-focus-shell"+(aboutFocused?" is-focused":"")+(fieldError?.field==="about"?" has-error":"")}
-    style={aboutDock.style}>
-   <GlassField label="Немного о себе"><textarea className="glass-control glass-textarea" rows={4}
+    className={"focus-field-shell about-focus-shell"+(aboutFocused?" is-focused":"")+(fieldError?.field==="about"?" has-error":"")}>
+   <GlassField label="Немного о себе"><div className="about-input-shell"><textarea className="glass-control glass-textarea" rows={4}
       aria-invalid={fieldError?.field==="about"}
       placeholder="Что тебя радует? Чем любишь заниматься?"
       value={data.about} maxLength={750}
       onFocus={e=>{setAboutFocused(true);beginFieldFocus("about",e.currentTarget);}}
       onBlur={()=>{setAboutFocused(false);endFieldFocus();}}
-      onChange={e=>{clearFieldError?.("about");patch({about:[...e.target.value].slice(0,750).join("")});}}/></GlassField>
+      onChange={e=>{clearFieldError?.("about");patch({about:[...e.target.value].slice(0,750).join("")});}}/>
+     <span className="char-count" aria-live="polite">{[...data.about].length} / 750</span></div></GlassField>
    {fieldError?.field==="about"&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError.message}</div>}
-   <p className="char-count">{[...data.about].length} / 750</p>
    </div></div>
    <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}
      onFocusChange={focused=>onFieldFocus?.(focused?"language":null)}/>

@@ -1198,8 +1198,10 @@ export function App() {
   </main>;
   if(auth==="authorized"&&journey!==null)return journeyOverlay;
   if(auth==="authorized"&&phase==="form"&&registrationV2Pilot&&!demoOpen)
-    return <Suspense fallback={<main className="luemi-shell" data-theme={activeTheme}
-      role="status" style={{padding:24}}>Открываем регистрацию…</main>}>
+    return <Suspense fallback={<main className="luemi-shell registration-load-fallback" data-theme={activeTheme} role="status">
+      <div className="registration-load-card"><img src={logoSrc} alt="luemi"/>
+       <span>Открываем регистрацию…</span><i aria-hidden="true"/></div>
+    </main>}>
       <RealRegistrationV2 draft={draft} key={scope??"registration"} patch={patch} photos={photos}
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} theme={theme} onTheme={changeTheme}
@@ -1229,6 +1231,8 @@ export function App() {
       </div>
       {auth!=="connecting"&&!(auth==="authorized"&&realFeedPilot.enabled&&publicationCheck==="checking")&&
        <h1 aria-label={introText}>{introText}<span className="intro-type-cursor" aria-hidden="true">|</span></h1>}
+      {auth==="authorized"&&!(realFeedPilot.enabled&&publicationCheck==="checking")&&
+       <p className="intro-subtitle">Несколько шагов — и можно начинать знакомиться</p>}
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<><p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>
         {realOnly&&<button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button>}</>}

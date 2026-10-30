@@ -13,14 +13,18 @@ const draftClient=readFileSync("apps/web/src/registration/server-draft.ts","utf8
 const app=readFileSync("apps/web/src/App.tsx","utf8");
 const geo=readFileSync("apps/web/src/registration/GeoPicker.tsx","utf8");
 const language=readFileSync("apps/web/src/registration/LanguagePicker.tsx","utf8");
+const focusDock=readFileSync("apps/web/src/registration/use-field-focus.ts","utf8");
 const required=[
  ["V2 runtime tokens",/\.v2-runtime\s*\{[^}]*--ink:/s],
  ["Telegram native clearance",/\.v2-runtime\[data-telegram-ui="true"\]\s+\.v2-device\s*\{[^}]*padding-top:max\(64px,[^}]*--tg-content-safe-area-inset-top[^}]*--tg-safe-area-inset-top[^}]*safe-area-inset-top/s],
  ["opaque form inputs",/\.v2-runtime\s+\.glass-control\s*\{[^}]*background:#fffaff/s],
  ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--field-focus-top/s],
+ ["single confirm action",/\.v2-footer-nav\.is-focus-confirm\s+\.v2-back\s*\{display:none\}/],
+ ["blurred borderless action fade",/\.v2-runtime\s+\.v2-footer\s*\{[^}]*position:absolute[^}]*border:0/s],
  ["geolocation and language search icon",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
  ["opaque search scope list",/\.v2-runtime\s+\.scope-options\s*\{[^}]*background:#fffaff/s],
+ ["scope list opens upward",/\.v2-runtime\s+\.scope-options\s*\{[^}]*bottom:calc\(100% \+ 8px\)/s],
  ["dark theme opaque inputs",/\.v2-runtime\[data-theme="dark"\]\s+\.glass-control,/]
 ];
 for(const [description,pattern] of required)
@@ -76,6 +80,14 @@ assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого тест�
 assert.match(geo,/<Search size=\{20\}/,"City field needs search icon");
 assert.match(geo,/<LocateFixed size=\{15\}/,"Manual city search needs detect icon");
 assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
+assert.match(focusDock,/visualViewport[\s\S]*requestAnimationFrame\(update\)/,
+ "Keyboard dock must coalesce Android viewport animation into one writer");
+assert.match(steps,/className="about-input-shell"[\s\S]*className="char-count"/,
+ "Biography count must sit inside its text field");
+assert.match(geo,/className="scope-popover-anchor"/,
+ "Search scope menu needs a stable upward popover anchor");
+assert.match(app,/className="intro-subtitle">Несколько шагов/,
+ "Welcome screen needs the approved compact supporting line");
 assert.doesNotMatch(runtime,/(?:^|\n)\s*(?:input|\.glass-control|\.scope-options)\s*\{/,
  "Do not override unrelated app global input styles");
 console.log("Registration V2 Telegram-safe visual contracts: PASS ("+required.length+" selectors)");
