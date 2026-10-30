@@ -11,7 +11,7 @@ const assertCheck=(s,test)=>{assert.ok(test,s);console.log("✓",s)};
 assertCheck("approved single intro keeps the auth/publication gate without duplicated white raster shimmer",/auth==="authorized"&&introElapsed&&visualReady&&\s*!\(realFeedPilot\.enabled&&publicationCheck==="checking"\)&&<div className="intro-cta">/.test(app)&&style.includes("text-enter")&&!style.includes("brand-liquid")&&!style.includes(".intro-mark::after"));
 assertCheck("no old loader overlay",!style.includes("loading-track")&&!app.includes("welcome-screen"));
 assertCheck("Telegram native BackButton; NO custom top back button",app.includes("BackButton")&&app.includes("onboard-brand-row")&&!app.includes("top-back"));
-assertCheck("theme switch stays beside original raster logo",app.includes("onboard-brand-row")&&app.includes("themeButton")&&style.includes(".onboard-brand-row .theme-switch"));
+assertCheck("dark theme is the only application theme",app.includes('const theme:ThemeChoice="dark"')&&!app.includes("themeButton"));
 assertCheck("keyboard preserves footer and uses one viewport model instead of double-compensating",app.includes("installViewportController")&&style.includes("height:var(--app-height")&&style.includes(".onboard-body{flex:1")&&!style.includes("[data-keyboard=open] .onboard-footer{display:none}")&&!style.includes("margin-bottom:var(--keyboard-overlay")&&style.includes("data-viewport-compact"));
 assertCheck("input focus glass uses subtle inset ring without clipping",style.includes("inset 0 0 0 1px")&&style.includes(".glass-control:focus"));
 assertCheck("three exclusive search modes",model.includes('SearchScope = "radius" | "country" | "world"')&&geo.includes("scopeOptions"));

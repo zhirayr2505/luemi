@@ -46,7 +46,7 @@ assert.doesNotMatch(form,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setSer
  "No duplicate photo consent or network upload progress before final confirmation");
 assert.match(app,/setJourney\("publishing"\)/,
  "Publication curtain must begin before saving photos on server");
-assert.match(form,/registrationV2Stages\.filter\(stage=>stage\.id!=="face-consent"&&stage\.id!=="liveness"\)/,
+assert.match(form,/p\.publicationEnabled&&!instantPublication\?/,
  "Private signup must skip unavailable biometric verification screens");
 assert.match(form,/aria-valuemax=\{stages\.length\}/,
  "Progress count must reflect actual signup steps");
@@ -118,7 +118,7 @@ assert.match(localDraft,/return verifiedRegistrationScope\(\)/,
 assert.doesNotMatch(steps,/Очистить локальный черновик|Это согласие принимается один раз/,
  "Registration may not show debugging or redundant consent text");
 assert.match(form,/RegistrationConsent data=\{draft\} patch=\{p.patch\}/,
- "Consent must appear once after identity, birthday and gender");
+ "Consent must appear once after birthday and gender");
 assert.match(form,/className="v2-footer-review"/,
  "Review confirmation actions replace disabled footer navigation");
 assert.match(mediaClient,/for\(const edge of \[800,384\]\)/,

@@ -1,5 +1,4 @@
 import {forwardRef,useCallback,useLayoutEffect,useImperativeHandle,useRef} from "react";
-import {Moon,Sun} from "lucide-react";
 import "./global-header.css";
 
 const logo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
@@ -17,7 +16,7 @@ const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 const smooth=(p:number)=>p*p*(3-2*p);
 
 export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
- {mode,theme,onTheme},ref
+ {mode},ref
 ){
  // Avoid a second filtered logo raster on Android Telegram WebView.
  const androidClient=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
@@ -88,10 +87,6 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
     <img src={logo} alt="luemi" decoding="async" fetchPriority="high"/>
     {!androidClient&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="async"/>}
    </button>
-   {mode==="profile"&&<button type="button" className="lh-profile-theme" onClick={onTheme}
-      aria-label={theme==="light"?"Тёмная тема":"Светлая тема"}>
-       {theme==="light"?<Moon size={15}/>:<Sun size={15}/>}
-     </button>}
   </div>
  </header>;
 });

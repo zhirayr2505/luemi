@@ -16,6 +16,7 @@ import {useFieldFocusDock} from "./use-field-focus";
 export type {PhotoItem} from "./PhotoSorter";
 export interface StepProps {
  deferConsent?:boolean;
+ personalityPart?:"about"|"languages";
  data:RegistrationDraft;patch:(values:Partial<RegistrationDraft>)=>void;
  photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;resetDraft:()=>void;step:number;
@@ -54,7 +55,7 @@ export function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChang
 
 
 export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,step,deferConsent,
- fieldError,clearFieldError,onFieldFocus}:StepProps){
+ fieldError,clearFieldError,onFieldFocus,personalityPart}:StepProps){
  const nameInput=useRef<HTMLInputElement>(null);
  const dobInput=useRef<HTMLInputElement>(null);
  const [category,setCategory]=useState("Популярное");
@@ -185,6 +186,10 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
        <InterestChip key={item.id} id={item.id} selected={data.interests.includes(item.id)} onClick={()=>toggleInterest(item.id)}/>)}
    </div>
  </div>;
+ if(step===6&&personalityPart==="languages")return <div className="form-stack languages-step">
+   <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}
+     onFocusChange={focused=>onFieldFocus?.(focused?"language":null)}/>
+ </div>;
  if(step===6)return <div className={"form-stack about-step"+(fieldError?.field==="about"?" has-error":"")}>
    {aboutFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>focusInput.current?.blur()}/>}
    <div className="focus-field-slot focus-field-slot-textarea"><div ref={node=>{aboutDock.shellRef.current=node;}}
@@ -199,9 +204,9 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      <span className="char-count" aria-live="polite">{[...data.about].length} / 750</span></div></GlassField>
    {fieldError?.field==="about"&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError.message}</div>}
    </div></div>
-   <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}
-     onFocusChange={focused=>onFieldFocus?.(focused?"language":null)}/>
-   <p className="hint">Интересы и языки можно добавить позже в профиле.</p>
+   {personalityPart!=="about"&&<LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}
+     onFocusChange={focused=>onFieldFocus?.(focused?"language":null)}/>}
+   {personalityPart!=="about"&&<p className="hint">Интересы и языки можно добавить позже в профиле.</p>}
  </div>;
  if(step===7)return <div className="form-stack"><PhotoSorter photos={photos} addPhotos={addPhotos}
    removePhoto={removePhoto} movePhoto={movePhoto}/></div>;

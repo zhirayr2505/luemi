@@ -46,6 +46,7 @@ export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
   <div className="luemi-publication-glow" aria-hidden="true"/>
   <div className="luemi-publication-orbs" aria-hidden="true"><i/><i/><i/></div>
   <div className="luemi-publication-stars" aria-hidden="true"><i/><i/><i/><i/><i/></div>
+  <div className="luemi-publication-petals" aria-hidden="true"><i/><i/><i/><i/><i/><i/><i/></div>
   <div className="luemi-publication-brand">
    <span className="luemi-publication-orbit is-outer" aria-hidden="true"/>
    <span className="luemi-publication-orbit is-inner" aria-hidden="true"/>

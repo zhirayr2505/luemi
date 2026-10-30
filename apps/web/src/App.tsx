@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import {ArrowRight,Moon,Sun,Pencil} from "lucide-react";
+import {ArrowRight,Pencil} from "lucide-react";
 import {SafetyAppealPanel} from "./SafetyAppealPanel";
 import {GlassArrow} from "./ui/Glass";
 import type { HealthResponse } from "@luemi/contracts";
@@ -25,7 +25,6 @@ import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
 import {PublicationJourney,type PublishJourneyPhase} from "./registration/PublicationJourney";
-import {LuemiLaunchSplash} from "./startup/LuemiLaunchSplash";
 
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 import {PrivateAccountView} from "./registration/PrivateAccountView";
@@ -120,7 +119,6 @@ export function App() {
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [demoOpen,setDemoOpen] = useState(false);
   const [realHome,setRealHome] = useState(false);
-  const [registeredSplash,setRegisteredSplash] = useState(false);
   const [realHomeTab,setRealHomeTab] = useState<"feed"|"chats"|"profile">("feed");
   const [publishedEditor,setPublishedEditor]=useState<{name:string;about:string;goal:string}|null>(null);
   const submitting=useRef(false);
@@ -198,7 +196,7 @@ export function App() {
    return()=>window.clearInterval(timer);
   },[accountDeletionRequested,auth]);
   const [localDeletionFailed,setLocalDeletionFailed]=useState(false);
-  const [theme,setTheme] = useState<ThemeChoice>(()=>window.Telegram?.WebApp?.colorScheme==="dark"?"dark":"light");
+  const theme:ThemeChoice="dark";
   const rootRef=useRef<HTMLElement>(null);
   const contentRef=useRef<HTMLDivElement>(null);
   const discoveryBackRef=useRef<()=>void>(()=>{});
@@ -316,7 +314,7 @@ export function App() {
           setStep(1);setDraft(newDraft(user.user.firstName));
           draftId.current=crypto.randomUUID();revision.current=0;
           setPrivateDraftSaved(false);setServerPhotoCount(0);setServerConsent(false);
-          setRealHome(false);setRegisteredSplash(false);setRealHomeTab("feed");setPhase("welcome");
+          setRealHome(false);setRealHomeTab("feed");setPhase("welcome");
           setPublishStatus(null);setPublicationCheck("idle");setServerStatus("");
           setMediaStatus("");setJourney(null);setJourneyError("");
           setScope(authenticatedScope);
@@ -339,7 +337,7 @@ export function App() {
       setPublishStatus(status);
       setPublicationCheck("ready");
       if(status.state==="published"){
-        setRegisteredSplash(true);setRealHome(true);
+        setRealHome(true);
       }else{
         // A new account must see the branded welcome screen. A private draft
         // is restored by the draft loader below, which is the only place that
@@ -402,14 +400,14 @@ export function App() {
             const received=await readConfirmedPrivateMediaCount(3);
             if(!isLive())return;
             setServerPhotoCount(received);
-            setRealHomeTab("profile");setRegisteredSplash(true);setRealHome(true);
+            setRealHomeTab("profile");setRealHome(true);
           }catch{
             if(!isLive())return;
             setServerStatus("Поля восстановлены с сервера. Для завершения нужны сохранённые фотографии.");
             setRealHome(false);
           }
         }else{
-          setRealHomeTab("profile");setRegisteredSplash(true);setRealHome(true);
+          setRealHomeTab("profile");setRealHome(true);
         }
       }else if(snapshot){
         const restoredDraft=snapshot.draft.name.trim()?snapshot.draft:
@@ -734,8 +732,7 @@ export function App() {
       transitionTimer.current=null;
     },280);
   };
-  const changeTheme=useCallback(()=>setTheme(value=>value==="light"?"dark":"light"),[]);
-  const themeName=theme==="light"?"Тёмная":"Светлая";
+  const changeTheme=useCallback(()=>{},[]);
   const beginDemo=()=>{if(realOnly){setError("Настоящая регистрация пока не подключена. Демонстрационные анкеты недоступны.");return;}setDemoOpen(true);setError("");};
   const exitDemo=useCallback(()=>{setDemoOpen(false);setPhase("form");setStep(8);},[]);
   const readyPhotos=useMemo(()=>readyRegistrationPhotos(photos),[photos]);
@@ -775,7 +772,7 @@ export function App() {
       setServerStatus("Поля анкеты сохранены на сервере. Публикация закрыта, фотографии остались на этом устройстве.");
       // A private test account exists already. Show its server-backed
       // profile instead of leaving the user on the last registration step.
-      if(!realFeedPilot.enabled){setRealHomeTab("profile");setRegisteredSplash(true);setRealHome(true);}
+      if(!realFeedPilot.enabled){setRealHomeTab("profile");setRealHome(true);}
     }catch(e){
       setPrivateDraftSaved(false);
       setServerStatus(e instanceof Error&&e.message==="revision_conflict"?
@@ -825,7 +822,7 @@ export function App() {
       const received=await readConfirmedPrivateMediaCount(photos.length,uploadedIds);
       setServerPhotoCount(received);
       setServerStatus("Сервер подтвердил анкету и "+received+" фотографий.");
-      setRealHomeTab("profile");setRegisteredSplash(true);setRealHome(true);
+      setRealHomeTab("profile");setRealHome(true);
     }catch(e){
       setServerStatus(e instanceof Error&&e.message==="revision_conflict"
        ?"Анкета изменена на другом устройстве. Локальные данные сохранены; проверь их и повтори."
@@ -845,7 +842,6 @@ export function App() {
     }finally{window.clearTimeout(timeout);}
     // Mount the real app behind the branded curtain first, then let the
     // completion transition reveal an already-painted first feed.
-    setRegisteredSplash(true);
     setRealHomeTab("feed");setRealHome(true);setJourney("complete");
   };
   const confirmRealRegistration=async()=>{
@@ -905,7 +901,7 @@ export function App() {
     submitting.current=true;setPublishBusy(true);setPublishFeedback("");
     try{
       const status=await ownerPublicationStatus();setPublishStatus(status);
-      if(status.state==="published"){setRegisteredSplash(true);setRealHome(true);return;}
+      if(status.state==="published"){setRealHome(true);return;}
       if(status.approved<3||status.approved>6||status.pending||status.other){
         setPublishFeedback(instantPublicationUi?"Не все фотографии успешно загружены. Анкета пока скрыта.":"Фотографии ещё проходят проверку или требуют исправления. Анкета пока скрыта.");return;
       }
@@ -914,7 +910,7 @@ export function App() {
       await publishMyProfile(draftOnServer.revision);
       const confirmed=await ownerPublicationStatus();
       if(confirmed.state!=="published")throw new Error("publication_unconfirmed");
-      setPublishStatus(confirmed);setRegisteredSplash(true);setRealHome(true);
+      setPublishStatus(confirmed);setRealHome(true);
     }catch{setPublishFeedback("Проверка не завершилась. Повтори при стабильном соединении.");}
     finally{submitting.current=false;setPublishBusy(false);}
   };
@@ -1064,16 +1060,11 @@ export function App() {
     <p>После срока сервер начнёт безвозвратное удаление файлов и записей.</p>
     <p><a href="/privacy" target="_blank" rel="noopener noreferrer">Как LUEMI обрабатывает данные</a></p>
   </main>;
-  const themeButton=<button className="theme-switch" type="button" onClick={changeTheme}
-    aria-label={"Включить тему: "+themeName}>
-    {theme==="light"?<Moon size={17} strokeWidth={1.8}/>:<Sun size={17} strokeWidth={1.8}/>}
-  </button>;
   const journeyOverlay=journey!==null?<PublicationJourney phase={journey} error={journeyError}
     onRetry={()=>{setJourney(null);void confirmRealRegistration();}}
     onBack={()=>{setJourney(null);setPhase("form");}}
     onComplete={closePublicationJourney}/>:null;
-  if(realHome&&auth==="authorized"&&registeredSplash)
-    return <LuemiLaunchSplash logoSrc={logoSrc} onComplete={()=>setRegisteredSplash(false)}/>;
+  // Returning members enter their account directly after authentication.
   // All signed-in accounts retain the approved LUEMI four-tab Discovery,
   // cinematic photo cards and Profile Morph V3. REAL_ONLY changes data, not UI.
   if(realHome&&auth==="authorized"&&realFeedPilot.enabled)
@@ -1123,7 +1114,6 @@ export function App() {
       data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="LUEMI — настоящие анкеты">
       <header className="luemi-real-home-top">
         <img src={logoSrc} alt="LUEMI" className="onboard-logo"/>
-        {themeButton}
       </header>
       <div className="luemi-real-home-main">
         {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos} serverPhotoCount={serverPhotoCount}/>:publishStatus?.state!=="published"&&realHomeTab==="profile"?<section className="luemi-real-account" aria-label="Статус регистрации">
@@ -1215,7 +1205,6 @@ export function App() {
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
-    {auth!=="authorized"&&auth!=="connecting"&&<div className="theme-dock">{themeButton}</div>}
     {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(auth==="authorized"?" cinematic-entry":"")+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
@@ -1252,7 +1241,6 @@ export function App() {
       <div className="onboard-brand" aria-label="LUEMI и прогресс регистрации">
         <div className="onboard-brand-row">
           <div className="onboard-wordmark"><img src={logoSrc} alt="luemi" className="onboard-logo"/></div>
-          {themeButton}
         </div>
         <div className="progress-track" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={8} aria-label="Прогресс регистрации"><span style={{width:step/8*100+"%"}}/></div>
       </div>
