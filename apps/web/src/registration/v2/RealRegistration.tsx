@@ -77,6 +77,8 @@ export function RealRegistrationV2(p:Props){
    // One viewport measurement drives the canvas and its footer. Android may
    // keep 100dvh at the layout height while the keyboard covers the visual viewport.
    root.style.setProperty("--registration-visible-height",`${Math.round(viewport.height)}px`);
+   root.style.setProperty("--registration-keyboard-inset",
+    `${Math.max(0,Math.round(window.innerHeight-viewport.offsetTop-viewport.height))}px`);
   };
   const schedule=()=>{if(!frame)frame=window.requestAnimationFrame(update);};
   update();
@@ -202,10 +204,6 @@ export function RealRegistrationV2(p:Props){
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
      <div className="v2-backdrop" aria-hidden="true"/>
-     <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
-       if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
-       handleFieldFocus(null);
-     }}/>
      <header className="v2-header">
        <div className="v2-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI"/></div>
        <div className="v2-head-actions"><span className="v2-count">{index+1} из {stages.length}</span>
@@ -218,6 +216,10 @@ export function RealRegistrationV2(p:Props){
        {stages.map((s,i)=><span key={s.id} className={i<=index?"v2-filled":""}/>)}
      </div>
      <section key={stage.id} ref={body} className="v2-body v2-stage-transition" aria-labelledby="v2-title">
+       <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
+         if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+         handleFieldFocus(null);
+       }}/>
        <div className="v2-eyebrow"><Sparkles size={15}/>{stage.eyebrow}</div>
        <h1 id="v2-title">{stage.title}</h1>
        <p className="v2-subtitle">{stage.subtitle}</p>

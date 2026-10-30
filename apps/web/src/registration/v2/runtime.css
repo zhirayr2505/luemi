@@ -1,6 +1,7 @@
 /* Runtime-only additions for the single server-backed registration flow.
    No backdrop-filter, mask or 3D transforms on camera / scroll hot paths. */
-.v2-runtime{height:var(--registration-visible-height,100dvh);min-height:0;overflow:hidden;background:transparent}
+.v2-runtime{--registration-footer-height:calc(88px + max(16px,env(safe-area-inset-bottom)));
+ height:var(--registration-visible-height,100dvh);min-height:0;overflow:hidden;background:transparent}
 .v2-runtime .v2-device{height:var(--registration-visible-height,100dvh);max-height:950px;min-height:0;padding-bottom:0}
 .v2-runtime .v2-logo img{width:96px;max-width:100%}
 .v2-runtime .v2-body{animation:none;scroll-padding:16px 0 118px;padding-bottom:118px}
@@ -144,7 +145,8 @@
 .v2-runtime .language-focus-slot{min-height:310px}
 .v2-runtime .focus-field-shell{position:relative;z-index:1;width:100%}
 .v2-runtime .focus-field-shell.is-focused{
- position:fixed;z-index:92;top:auto;bottom:var(--field-focus-bottom,110px);
+ position:fixed;z-index:92;top:auto;
+ bottom:calc(var(--registration-keyboard-inset,0px) + var(--registration-footer-height) + 14px);
  left:max(22px,calc((100vw - 680px)/2 + 22px));right:max(22px,calc((100vw - 680px)/2 + 22px));width:auto;
  transition:opacity .22s ease;
 }
@@ -168,18 +170,26 @@
 .v2-runtime .dob-focus-shell .glass-field-label{font-size:14px;}
 .v2-runtime .dob-focus-shell .glass-field small{display:block;margin:7px 2px 0;color:#9b84a5;font-size:11px;text-align:center;}
 .v2-runtime .field-focus-overlay{display:none}
-.v2-runtime .v2-focus-scrim{position:absolute;inset:0;z-index:90;pointer-events:none;
+.v2-runtime .v2-focus-scrim{position:fixed;inset:0;z-index:90;pointer-events:none;
  visibility:hidden;opacity:0;will-change:opacity;
- background:linear-gradient(180deg,rgba(246,237,252,.38),rgba(239,226,247,.46));
- backdrop-filter:blur(34px) saturate(88%);-webkit-backdrop-filter:blur(34px) saturate(88%);
+ background:linear-gradient(180deg,rgba(246,237,252,.18),rgba(239,226,247,.25));
+ backdrop-filter:blur(30px) saturate(95%);-webkit-backdrop-filter:blur(30px) saturate(95%);
  transition:opacity .38s cubic-bezier(.22,.72,.26,1),visibility 0s linear .38s}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-focus-scrim{
  visibility:visible;opacity:1;pointer-events:auto;
  transition:opacity .42s cubic-bezier(.22,.72,.26,1),visibility 0s}
 .v2-runtime[data-theme="dark"] .v2-focus-scrim{
- background:linear-gradient(180deg,rgba(28,21,39,.36),rgba(28,21,39,.49))}
+ background:linear-gradient(180deg,rgba(28,21,39,.18),rgba(28,21,39,.26))}
+.v2-runtime .v2-device::after{content:"";position:absolute;top:0;left:0;right:0;height:210px;
+ z-index:1;pointer-events:none;visibility:hidden;opacity:0;will-change:opacity;
+ background:rgba(246,237,252,.14);
+ backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+ transition:opacity .38s ease,visibility 0s linear .38s}
+.v2-runtime .v2-device[data-field-focus="true"]::after{
+ visibility:visible;opacity:1;transition:opacity .42s ease,visibility 0s}
+.v2-runtime[data-theme="dark"] .v2-device::after{background:rgba(28,21,39,.17)}
 .v2-runtime .step-name .glass-control{min-height:55px;}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:auto;opacity:1;transition:none}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:2;opacity:1;transition:none}
 .v2-runtime .v2-footer.is-focus-confirm{z-index:93;}
 .v2-runtime .v2-footer-nav.is-focus-confirm{justify-content:flex-end;}
 .v2-runtime .v2-footer-nav.is-focus-confirm .v2-back{display:none}

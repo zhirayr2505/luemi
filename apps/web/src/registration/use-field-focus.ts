@@ -28,17 +28,13 @@ export function useFieldFocusDock(active:boolean){
   let frame=0;
   const update=()=>{
    frame=0;
-   const viewportBottom=viewport?viewport.offsetTop+viewport.height:window.innerHeight;
-   const device=shell.closest<HTMLElement>(".v2-device");
-   const footer=device?.querySelector<HTMLElement>(".v2-footer");
-   const footerRect=footer?.getBoundingClientRect();
-   const footerInside=footerRect&&footerRect.top>0&&footerRect.top<=viewportBottom+8;
-   const usableBottom=footerInside?footerRect.top:viewportBottom-Math.min(footerRect?.height??88,112);
-   shell.style.setProperty("--field-focus-bottom",`${Math.max(12,Math.round(window.innerHeight-usableBottom+14))}px`);
    lastScreenTop.current=shell.getBoundingClientRect().top;
    // Reserve the logo/progress and the input itself before sizing the upward
    // city list. Search results never affect this measurement.
    if(shell.classList.contains("city-focus-shell")){
+    const device=shell.closest<HTMLElement>(".v2-device");
+    const usableBottom=device?.querySelector<HTMLElement>(".v2-footer")?.getBoundingClientRect().top??
+     (viewport?viewport.offsetTop+viewport.height-104:window.innerHeight-104);
     const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??140;
     const editorHeight=shell.querySelector<HTMLElement>(".glass-field")?.getBoundingClientRect().height??86;
     const available=Math.max(48,Math.min(230,Math.floor(usableBottom-headerBottom-editorHeight-30)));
@@ -59,9 +55,8 @@ export function useFieldFocusDock(active:boolean){
    ],{duration:390,easing:"cubic-bezier(.18,.82,.24,1)"});
    motion.current.onfinish=()=>{lastScreenTop.current=shell.getBoundingClientRect().top;};
   }
-  // Android delivers several viewport sizes while the IME animates. Follow
-  // those sizes through one coalesced writer instead of rendering React state
-  // for every intermediate value (the old source of the visible double jump).
+  // The CSS dock follows the same viewport variable as the footer. This
+  // listener only tracks the exit animation and city result height.
   viewport?.addEventListener("resize",refresh);
   viewport?.addEventListener("scroll",refresh);
   window.addEventListener("resize",refresh);
@@ -71,7 +66,6 @@ export function useFieldFocusDock(active:boolean){
    viewport?.removeEventListener("resize",refresh);
    viewport?.removeEventListener("scroll",refresh);
    window.removeEventListener("resize",refresh);
-   shell.style.removeProperty("--field-focus-bottom");
    shell.style.removeProperty("--field-suggestions-max-height");
   };
  },[active]);
