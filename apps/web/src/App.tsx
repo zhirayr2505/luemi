@@ -30,6 +30,7 @@ import {LuemiLaunchSplash} from "./startup/LuemiLaunchSplash";
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 import {PrivateAccountView} from "./registration/PrivateAccountView";
 import "./registration/real-home.css";
+import "./registration/cinematic-welcome.css";
 
 declare global {
   interface Window {
@@ -248,29 +249,20 @@ export function App() {
   },[]);
   useEffect(()=>{
     if(!visualReady||auth==="connecting")return;
-    const phrase=auth==="authorized"&&registrationStarted?"Твоя история уже началась":"Твоя история начинается здесь";
-    setIntroText("");
-    let index=0;
-    let timer:number|null=null;
-    const start=window.setTimeout(()=>{
-      timer=window.setInterval(()=>{
-        index+=1;setIntroText(phrase.slice(0,index));
-        if(index>=phrase.length&&timer!==null)window.clearInterval(timer);
-      },34);
-    },420);
-    return()=>{window.clearTimeout(start);if(timer!==null)window.clearInterval(timer);};
-  },[auth,registrationStarted,visualReady]);
+    setIntroText("Твоя история начинается здесь");
+  },[auth,visualReady]);
   useEffect(()=>{
     const webApp=window.Telegram?.WebApp;
     try{
-      const background=activeTheme==="dark"?"#181320":"#fffbfd";
+      const background=auth==="authorized"&&!realHome?"#14111e":
+        activeTheme==="dark"?"#181320":"#fffbfd";
       webApp?.setHeaderColor?.(background);
       webApp?.setBackgroundColor?.(background);
       webApp?.setBottomBarColor?.(background);
     } catch {
       // Older clients do not support every color-setting method.
     }
-  },[activeTheme]);
+  },[activeTheme,auth,realHome]);
   useEffect(()=>{
     const initData=window.Telegram?.WebApp?.initData;
     // Every retry and StrictMode setup has a distinct generation.
@@ -1223,18 +1215,21 @@ export function App() {
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
-    {(auth!=="authorized"||phase==="welcome")&&auth!=="connecting"&&
+    {auth!=="authorized"&&auth!=="connecting"&&
      !(auth==="authorized"&&realFeedPilot.enabled&&publicationCheck==="checking")&&
      <div className="theme-dock">{themeButton}</div>}
     {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
-    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
+    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(auth==="authorized"?" cinematic-entry":"")+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
       {auth!=="connecting"&&!(auth==="authorized"&&realFeedPilot.enabled&&publicationCheck==="checking")&&
-       <h1 className={registrationStarted?"intro-returning-title":undefined} aria-label={introText}>{introText}<span className="intro-type-cursor" aria-hidden="true">|</span></h1>}
+       <h1 className={registrationStarted?"intro-returning-title":undefined} aria-label={auth==="authorized"?"Больше, чем знакомства":introText}>
+         {auth==="authorized"?"Больше, чем знакомства":introText}
+         {auth!=="authorized"&&<span className="intro-type-cursor" aria-hidden="true">|</span>}
+       </h1>}
       {auth==="authorized"&&!(realFeedPilot.enabled&&publicationCheck==="checking")&&
-       <p className="intro-subtitle">Несколько шагов — и можно начинать знакомиться</p>}
+       <p className="intro-subtitle">Реальные люди. Настоящие эмоции.<br/>Ближе, чем кажется.</p>}
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<><p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>
         {realOnly&&<button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button>}</>}

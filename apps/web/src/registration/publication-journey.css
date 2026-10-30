@@ -1,90 +1,84 @@
-/* Scoped transition only. Preserves original W06 LUEMI logo, no visual
-   effects or backdrop-filter on interactive hot paths. */
-.luemi-publication-journey{position:fixed;inset:0;z-index:200;overflow:hidden;
- display:grid;grid-template-rows:1fr auto;justify-items:center;align-items:center;
- background:linear-gradient(170deg,#e4c8f0 0%,#d8b7eb 49%,#e9d1f2 100%);
- font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
- color:#513269;box-sizing:border-box;padding:max(76px,env(safe-area-inset-top)) 22px max(28px,env(safe-area-inset-bottom));
-}
-.luemi-publication-glow{position:absolute;inset:0;pointer-events:none;
- background:radial-gradient(ellipse 75% 35% at 50% 31%,rgba(255,255,255,.36),transparent 85%);
- will-change:transform,opacity;animation:luemi-glow-drift 3.2s ease-in-out infinite alternate;}
-@keyframes luemi-glow-drift{from{transform:translate3d(-4%,0,0) scale(1);opacity:.72}to{transform:translate3d(4%,2%,0) scale(1.08);opacity:1}}
-.luemi-publication-brand{position:relative;align-self:center;display:grid;place-items:center;width:clamp(230px,68vw,310px);height:clamp(230px,68vw,310px);}
-.luemi-publication-brand img{display:block;width:clamp(175px,57vw,256px);height:auto;object-fit:contain;}
-.luemi-publication-orbit{position:absolute;inset:8%;border-radius:50%;border:2px solid rgba(255,255,255,.38);border-top-color:#8753a8;border-right-color:#d38dbd;box-shadow:0 0 0 8px rgba(255,255,255,.1),0 20px 55px rgba(92,48,124,.16);animation:luemi-publish-spin 1.25s linear infinite;}
-.luemi-publication-orbit::after{content:"";position:absolute;width:10px;height:10px;right:19%;top:4%;border-radius:50%;background:#fff;box-shadow:0 0 16px rgba(255,255,255,.9);}
-.luemi-publication-bottom{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:390px;}
-@keyframes luemi-publish-spin{to{transform:rotate(360deg);}}
-.luemi-publication-bottom h1{font-weight:750;letter-spacing:-.025em;
- font-size:clamp(19px,5.2vw,24px);line-height:1.3;margin:0;}
-.luemi-publication-bottom p{font-size:14px;line-height:1.5;margin:0;color:#765487;}
-.luemi-publication-dots{display:flex;justify-content:center;align-items:center;gap:7px;margin:4px 0 15px;}
-.luemi-publication-dots span{width:7px;height:7px;border-radius:99px;background:#bd96d1;
- transition:width 240ms ease,background-color 240ms ease;}
-.luemi-publication-dots span.is-current{width:25px;background:#8054a6;}
-.luemi-publication-dots span.is-done{background:#9d71ba;}
-.luemi-publication-bottom .luemi-publication-slow{font-size:12px;max-width:295px;}
-.luemi-publication-failed-icon{font-size:40px;color:#8557a4;line-height:1;}
-.luemi-publication-complete{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;color:#fff;background:linear-gradient(135deg,#8d61af,#d18fbd);box-shadow:0 9px 24px rgba(101,55,132,.22);animation:luemi-complete-pop .38s cubic-bezier(.2,.9,.3,1.2) both;}
-@keyframes luemi-complete-pop{from{opacity:0;transform:scale(.65)}to{opacity:1;transform:scale(1)}}
-.luemi-publication-journey.is-complete .luemi-publication-orbit{animation:none;border-color:rgba(255,255,255,.72);transform:scale(1.025);transition:transform .42s ease,border-color .42s ease;}
-.luemi-publication-journey.is-leaving{pointer-events:none;animation:luemi-publish-exit 560ms cubic-bezier(.4,0,.2,1) both;}
-@keyframes luemi-publish-exit{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.025)}}
-.luemi-publication-recovery{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:8px 0 18px;}
-.luemi-publication-recovery button{background:rgba(255,255,255,.85);border:1px solid rgba(132,84,167,.22);
- border-radius:16px;padding:12px 18px;display:flex;align-items:center;gap:7px;color:#54326e;font:inherit;font-weight:650;}
-@media(prefers-reduced-motion:reduce){.luemi-publication-dots span{transition:none}}
-
-/* The original W06 mark remains untouched; subtle white silhouette and
-   layered light shadow add dimension without altering its colors or shape. */
-.luemi-publication-journey{
- opacity:0;animation:luemi-publish-enter 480ms cubic-bezier(.17,.8,.22,1) both;
-}
-@keyframes luemi-publish-enter{
- from{opacity:0;transform:translate3d(0,10px,0);}
- to{opacity:1;transform:translate3d(0,0,0);}
-}
-.luemi-publication-brand img{
- filter:drop-shadow(0 2px 1px rgba(255,255,255,.88))
-  drop-shadow(0 -1px 1px rgba(255,255,255,.63))
-  drop-shadow(0 11px 17px rgba(101,50,138,.22))
-  drop-shadow(0 3px 4px rgba(132,66,159,.18));
- animation:luemi-brand-entrance 650ms cubic-bezier(.18,.82,.24,1) both;
-}
-@keyframes luemi-brand-entrance{
- from{transform:scale(.96) translateY(10px);opacity:.4;}
- to{transform:scale(1) translateY(0);opacity:1;}
-}
-@media(prefers-reduced-motion:reduce){
- .luemi-publication-journey,.luemi-publication-brand img,.luemi-publication-glow,.luemi-publication-orbit,.luemi-publication-complete{animation:none;opacity:1;}
-}
-
-/* Final registration curtain: layered LUEMI gradient, lightweight transform-
-   only motion and a soft logo halo. No backdrop-filter or hot-path masks. */
-.luemi-publication-journey{isolation:isolate;grid-template-rows:minmax(0,1fr) auto;
- padding:max(70px,env(safe-area-inset-top)) 24px max(34px,env(safe-area-inset-bottom));
- background:linear-gradient(145deg,#f8ecfb 0%,#dfc2ee 34%,#d7b3e8 61%,#f2dcea 100%)}
-.luemi-publication-journey::before{content:"";position:absolute;z-index:-3;inset:-15%;
- background:radial-gradient(circle at 18% 18%,rgba(255,255,255,.86),transparent 29%),radial-gradient(circle at 82% 76%,rgba(244,180,218,.55),transparent 35%),radial-gradient(circle at 70% 15%,rgba(188,142,226,.42),transparent 31%);
- animation:luemi-publish-sky 7s ease-in-out infinite alternate;will-change:transform}
-.luemi-publication-glow{z-index:-2;background:radial-gradient(ellipse 60% 34% at 50% 38%,rgba(255,255,255,.62),transparent 76%);animation:luemi-glow-breathe 3.4s ease-in-out infinite alternate}
-.luemi-publication-orbs{position:absolute;z-index:-1;inset:0;pointer-events:none}.luemi-publication-orbs i{position:absolute;border-radius:50%;background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.32);will-change:transform}
-.luemi-publication-orbs i:nth-child(1){width:160px;height:160px;left:-56px;top:18%;animation:luemi-orb-one 8s ease-in-out infinite alternate}.luemi-publication-orbs i:nth-child(2){width:110px;height:110px;right:-31px;top:8%;animation:luemi-orb-two 7s ease-in-out infinite alternate}.luemi-publication-orbs i:nth-child(3){width:210px;height:210px;right:-87px;bottom:8%;animation:luemi-orb-one 9s ease-in-out infinite alternate-reverse}
-.luemi-publication-stars{position:absolute;inset:0;pointer-events:none}.luemi-publication-stars i{position:absolute;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 13px rgba(255,255,255,.95);animation:luemi-star 2.4s ease-in-out infinite}.luemi-publication-stars i:nth-child(1){left:18%;top:24%;animation-delay:-.4s}.luemi-publication-stars i:nth-child(2){left:76%;top:29%;animation-delay:-1.4s}.luemi-publication-stars i:nth-child(3){left:28%;top:57%;animation-delay:-2s}.luemi-publication-stars i:nth-child(4){left:84%;top:56%;animation-delay:-.9s}.luemi-publication-stars i:nth-child(5){left:52%;top:13%;animation-delay:-1.8s}
-.luemi-publication-brand{width:clamp(238px,69vw,318px);height:clamp(238px,69vw,318px);margin-top:2vh}.luemi-publication-logo{display:grid;place-items:center;width:66%;height:66%;border-radius:50%;background:linear-gradient(145deg,rgba(255,255,255,.66),rgba(255,255,255,.2));border:1px solid rgba(255,255,255,.62);box-shadow:inset 0 1px 1px rgba(255,255,255,.86),0 24px 70px rgba(91,46,122,.18);animation:luemi-logo-float 2.8s ease-in-out infinite;will-change:transform}.luemi-publication-logo img{display:block;width:79%;height:auto;object-fit:contain;filter:drop-shadow(0 8px 13px rgba(102,52,136,.18));animation:luemi-brand-entrance 680ms cubic-bezier(.18,.82,.24,1) both}
-.luemi-publication-orbit{position:absolute;border-radius:50%;pointer-events:none;will-change:transform}.luemi-publication-orbit.is-outer{inset:3%;border:2px solid rgba(255,255,255,.31);border-top-color:#8c59ae;border-right-color:#e39bc6;box-shadow:0 0 0 8px rgba(255,255,255,.08),0 19px 56px rgba(88,45,121,.13);animation:luemi-publish-spin 1.65s linear infinite}.luemi-publication-orbit.is-outer::after{content:"";position:absolute;width:11px;height:11px;right:17%;top:5%;border-radius:50%;background:#fff;box-shadow:0 0 18px #fff}.luemi-publication-orbit.is-inner{inset:13%;border:1px dashed rgba(111,66,143,.31);animation:luemi-publish-spin-reverse 5.5s linear infinite}
-.luemi-publication-bottom{gap:11px;width:min(100%,390px)}.luemi-publication-kicker{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.13em;color:#8a5aa4}.luemi-publication-bottom h1{font-size:clamp(21px,5.5vw,26px);font-weight:790;letter-spacing:-.035em}.luemi-publication-progress{width:min(78vw,300px);height:6px;margin-top:7px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.38);box-shadow:inset 0 1px 3px rgba(89,46,117,.1)}.luemi-publication-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8557a8,#c67fb8,#f0a7cf);box-shadow:0 0 15px rgba(173,102,168,.5);transition:width 430ms cubic-bezier(.2,.75,.25,1)}
-.luemi-publication-journey.is-complete .luemi-publication-orbit{animation-duration:4s;opacity:.66}.luemi-publication-journey.is-complete .luemi-publication-logo{animation:none;transform:scale(1.035)}
-@keyframes luemi-publish-sky{to{transform:translate3d(3%,-2%,0) scale(1.04)}}@keyframes luemi-glow-breathe{from{opacity:.62;transform:scale(.96)}to{opacity:1;transform:scale(1.07)}}@keyframes luemi-orb-one{to{transform:translate3d(23px,-18px,0)}}@keyframes luemi-orb-two{to{transform:translate3d(-18px,27px,0)}}@keyframes luemi-star{0%,100%{opacity:.25;transform:scale(.65)}50%{opacity:1;transform:scale(1.35)}}@keyframes luemi-logo-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}@keyframes luemi-publish-spin-reverse{to{transform:rotate(-360deg)}}
-@media(max-height:650px){.luemi-publication-journey{padding-top:max(46px,env(safe-area-inset-top));padding-bottom:max(22px,env(safe-area-inset-bottom))}.luemi-publication-brand{width:205px;height:205px;margin-top:0}.luemi-publication-bottom{gap:8px}}
-@media(prefers-reduced-motion:reduce){.luemi-publication-journey::before,.luemi-publication-orbs i,.luemi-publication-stars i,.luemi-publication-logo,.luemi-publication-logo img,.luemi-publication-orbit{animation:none;opacity:1}.luemi-publication-progress span{transition:none}}
-
-/* Center the original W06 transparent logo optically; give the former white
-   center a dimensional lavender tint, keeping the approved brand and motion. */
-.luemi-publication-logo{
- background:radial-gradient(circle at 30% 18%,rgba(249,224,252,.9) 0%,rgba(227,190,243,.82) 52%,rgba(190,147,217,.65) 100%);
- border-color:rgba(255,240,253,.78);
- box-shadow:inset 0 1px 2px rgba(255,255,255,.82),inset 0 -12px 35px rgba(144,92,180,.12),0 18px 65px rgba(96,49,130,.14);
-}
-.luemi-publication-logo img{margin:-6px 0 0 -2px;width:76%}
+/* Publication follows the cinematic registration without changing its server flow. */
+.luemi-publication-journey{position:fixed;inset:0;z-index:200;isolation:isolate;overflow:hidden;
+ display:grid;grid-template-rows:minmax(0,1fr) auto;justify-items:center;align-items:center;
+ padding:max(76px,env(safe-area-inset-top)) 24px max(45px,env(safe-area-inset-bottom));
+ color:#fff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+ background:linear-gradient(160deg,#392747 0%,#775495 45%,#583569 100%);
+ animation:luemi-publish-enter .52s cubic-bezier(.2,.8,.27,1) both}
+.luemi-publication-journey::before{content:"";position:absolute;inset:0;z-index:-3;pointer-events:none;
+ background:radial-gradient(ellipse 68% 35% at 20% 20%,rgba(237,177,242,.38),transparent),
+ radial-gradient(ellipse 60% 42% at 85% 75%,rgba(244,153,198,.32),transparent),
+ radial-gradient(ellipse 42% 25% at 48% 53%,rgba(247,203,252,.18),transparent)}
+.luemi-publication-glow{position:absolute;inset:0;z-index:-2;pointer-events:none;
+ background:radial-gradient(ellipse 50% 30% at 50% 39%,rgba(255,224,255,.24),transparent 80%);
+ animation:luemi-publish-breathe 3.8s ease-in-out infinite alternate}
+.luemi-publication-orbs,.luemi-publication-stars{position:absolute;inset:0;pointer-events:none;z-index:-1}
+.luemi-publication-orbs i{position:absolute;border-radius:50%;border:1px solid rgba(255,221,255,.27);
+ background:radial-gradient(circle at 33% 25%,rgba(255,228,251,.26),rgba(237,167,240,.035) 67%);
+ box-shadow:inset 0 1px rgba(255,255,255,.22)}
+.luemi-publication-orbs i:nth-child(1){width:145px;height:145px;left:-56px;top:19%}
+.luemi-publication-orbs i:nth-child(2){width:92px;height:92px;right:-24px;top:9%}
+.luemi-publication-orbs i:nth-child(3){width:182px;height:182px;right:-80px;bottom:7%}
+.luemi-publication-stars i{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;
+ box-shadow:0 0 13px 3px rgba(255,225,251,.63);animation:luemi-publish-twinkle 3.1s ease-in-out infinite alternate}
+.luemi-publication-stars i:nth-child(1){left:18%;top:24%}
+.luemi-publication-stars i:nth-child(2){left:76%;top:29%;animation-delay:-1.2s}
+.luemi-publication-stars i:nth-child(3){left:28%;top:57%;animation-delay:-2s}
+.luemi-publication-stars i:nth-child(4){left:84%;top:56%;animation-delay:-.7s}
+.luemi-publication-stars i:nth-child(5){left:52%;top:13%;animation-delay:-1.8s}
+.luemi-publication-brand{width:clamp(235px,70vw,320px);height:clamp(235px,70vw,320px);
+ position:relative;align-self:center;display:grid;place-items:center}
+.luemi-publication-orbit{position:absolute;border-radius:50%;pointer-events:none}
+.luemi-publication-orbit.is-outer{inset:4%;border:1px solid rgba(255,221,255,.38);
+ border-top-color:#f6c4ff;border-right-color:#e99ad6;
+ box-shadow:0 0 29px rgba(244,170,245,.24),inset 0 0 26px rgba(255,214,249,.15);
+ animation:luemi-publish-spin 3.3s linear infinite}
+.luemi-publication-orbit.is-outer::after{content:"";position:absolute;right:16%;top:6%;
+ width:9px;height:9px;border-radius:50%;background:#fff;box-shadow:0 0 17px 5px rgba(255,220,255,.65)}
+.luemi-publication-orbit.is-inner{inset:14%;border:1px solid rgba(255,213,255,.24)}
+.luemi-publication-logo{display:grid;place-items:center;width:66%;height:66%;border-radius:50%;
+ background:radial-gradient(circle at 30% 20%,rgba(255,231,255,.37),rgba(168,103,189,.31) 60%,rgba(78,42,104,.35));
+ border:1px solid rgba(255,218,255,.46);
+ box-shadow:inset 0 2px 12px rgba(255,255,255,.23),0 22px 58px rgba(28,12,50,.35),0 0 45px rgba(251,181,248,.2)}
+.luemi-publication-logo img{width:80%;height:auto;object-fit:contain;filter:drop-shadow(0 8px 17px rgba(67,24,86,.3))}
+.luemi-publication-bottom{position:relative;display:flex;flex-direction:column;align-items:center;
+ width:min(100%,390px);gap:13px;text-align:center}
+.luemi-publication-kicker{display:inline-flex;align-items:center;gap:6px;
+ color:#f9d8ff;font-size:10px;font-weight:780;letter-spacing:.16em}
+.luemi-publication-bottom h1{font-size:clamp(24px,6.3vw,31px);line-height:1.15;
+ font-weight:760;letter-spacing:-.04em;margin:0;color:#fff}
+.luemi-publication-bottom p{font-size:13px;line-height:1.5;margin:0;color:#e8d7ee}
+.luemi-publication-progress{width:min(78vw,300px);height:5px;margin-top:10px;overflow:hidden;
+ border-radius:999px;background:rgba(255,236,255,.24)}
+.luemi-publication-progress span{display:block;height:100%;border-radius:inherit;
+ background:linear-gradient(90deg,#dba3f4,#ffd0e7);box-shadow:0 0 18px rgba(255,207,246,.55);
+ transition:width .48s cubic-bezier(.2,.75,.25,1)}
+.luemi-publication-dots{display:flex;justify-content:center;gap:6px;margin:0 0 12px}
+.luemi-publication-dots span{width:6px;height:6px;border-radius:999px;background:rgba(255,233,255,.35);
+ transition:width .3s ease,background-color .3s ease}
+.luemi-publication-dots span.is-current{width:23px;background:#ffe0f6}
+.luemi-publication-dots span.is-done{background:#e9b4fa}
+.luemi-publication-bottom .luemi-publication-slow{font-size:12px;max-width:290px}
+.luemi-publication-failed-icon{font-size:40px;line-height:1;color:#ffd2ef}
+.luemi-publication-recovery{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;margin:8px 0 15px}
+.luemi-publication-recovery button{display:flex;align-items:center;gap:7px;padding:11px 15px;
+ border:1px solid rgba(255,221,255,.35);border-radius:15px;color:#fff;
+ background:rgba(60,40,75,.64);font:inherit;font-weight:650}
+.luemi-publication-journey.is-complete{background:radial-gradient(ellipse at 50% 31%,#31213e 0%,#120e1b 60%,#0d0b14 100%)}
+.luemi-publication-journey.is-complete .luemi-publication-logo{color:#f9a9dd;
+ background:radial-gradient(circle at 38% 25%,rgba(251,199,244,.48),rgba(140,54,139,.32) 49%,rgba(39,19,59,.7));
+ box-shadow:inset 0 3px 17px rgba(255,255,255,.24),0 0 50px rgba(234,100,197,.44),0 25px 66px rgba(0,0,0,.34)}
+.luemi-publication-journey.is-complete .luemi-publication-orbit{animation:none;border-color:rgba(248,178,229,.28)}
+.luemi-publication-journey.is-complete .luemi-publication-progress,
+.luemi-publication-journey.is-complete .luemi-publication-dots{display:none}
+.luemi-publication-journey.is-leaving{pointer-events:none;animation:luemi-publish-exit .56s ease-in both}
+@keyframes luemi-publish-spin{to{transform:rotate(360deg)}}
+@keyframes luemi-publish-twinkle{from{opacity:.28;transform:scale(.75)}to{opacity:1;transform:scale(1.2)}}
+@keyframes luemi-publish-breathe{from{opacity:.55}to{opacity:1}}
+@keyframes luemi-publish-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes luemi-publish-exit{to{opacity:0;transform:scale(1.015)}}
+@media(max-height:650px){.luemi-publication-journey{padding-top:max(40px,env(safe-area-inset-top));padding-bottom:max(22px,env(safe-area-inset-bottom))}
+ .luemi-publication-brand{width:205px;height:205px}.luemi-publication-bottom{gap:8px}}
+@media(prefers-reduced-motion:reduce){.luemi-publication-journey,.luemi-publication-glow,
+ .luemi-publication-stars i,.luemi-publication-orbit,.luemi-publication-journey.is-leaving{animation:none}
+ .luemi-publication-progress span,.luemi-publication-dots span{transition:none}}

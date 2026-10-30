@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck,Sparkles,Moon,Sun} from "lucide-react";
+import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck} from "lucide-react";
 import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
 import {SimpleProfileReview} from "../SimpleProfileReview";
 import {OptionalProfileDetails} from "../OptionalProfileDetails";
@@ -205,22 +205,19 @@ export function RealRegistrationV2(p:Props){
    <div className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
      <div className="v2-backdrop" aria-hidden="true"/>
      <header className="v2-header">
-       <div className="v2-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI"/></div>
-       <div className="v2-head-actions"><span className="v2-count">{index+1} из {stages.length}</span>
-        <button type="button" className="v2-theme" onClick={p.onTheme}
-          aria-label={p.theme==="light"?"Включить тёмную тему":"Включить светлую тему"}>
-          {p.theme==="light"?<Moon size={17}/>:<Sun size={17}/>}</button></div>
+       <button type="button" className="v2-header-back" onClick={back}
+         aria-label={index===0?"Вернуться на приветствие":"Назад"}><ArrowLeft size={22}/></button>
+       <div className="v2-progress" role="progressbar" aria-label="Прогресс регистрации"
+         aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={stages.length}>
+         {stages.map((s,i)=><span key={s.id} className={i<=index?"v2-filled":""}/>)}
+       </div>
+       <span className="v2-count" aria-label={`Шаг ${index+1} из ${stages.length}`}>{index+1}/{stages.length}</span>
      </header>
-     <div className="v2-progress" role="progressbar" aria-label="Прогресс регистрации"
-       aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={stages.length}>
-       {stages.map((s,i)=><span key={s.id} className={i<=index?"v2-filled":""}/>)}
-     </div>
      <section key={stage.id} ref={body} className="v2-body v2-stage-transition" aria-labelledby="v2-title">
        <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
          if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
          handleFieldFocus(null);
        }}/>
-       <div className="v2-eyebrow"><Sparkles size={15}/>{stage.eyebrow}</div>
        <h1 id="v2-title">{stage.title}</h1>
        <p className="v2-subtitle">{stage.subtitle}</p>
        {stage.id==="identity"&&<div className="v2-real-groups">{step(1)}{step(2)}<RegistrationConsent data={draft} patch={p.patch}/></div>}
@@ -272,15 +269,11 @@ export function RealRegistrationV2(p:Props){
      </section>
      <footer className={"v2-footer"+(fieldConfirmActive?" is-focus-confirm":"")}>
        {stage.id==="review"?<div className="v2-footer-review">
-        <button type="button" className="v2-review-edit" disabled={p.serverSaving}
-          onClick={()=>nav(4)}><ArrowLeft size={17}/> Изменить</button>
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
           <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету 💜"}
         </button>
        </div>:<div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>
-        {!fieldConfirmActive&&<button type="button" className="v2-back" onClick={back}
-          aria-label={index===0?"Вернуться на приветствие":"Назад"}><ArrowLeft size={22}/></button>}
        <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")+(!continueReady?" is-incomplete":"")} disabled={photoChecking}
           aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
          aria-disabled={!continueReady||undefined}

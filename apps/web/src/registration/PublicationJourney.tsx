@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import {RefreshCw,ArrowLeft,Check,Sparkles} from "lucide-react";
+import {RefreshCw,ArrowLeft,Heart,Sparkles} from "lucide-react";
 import "./publication-journey.css";
 
 export type PublishJourneyPhase="publishing"|"recommendations"|"nearby"|"photos"|"complete"|"error";
@@ -49,11 +49,11 @@ export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
   <div className="luemi-publication-brand">
    <span className="luemi-publication-orbit is-outer" aria-hidden="true"/>
    <span className="luemi-publication-orbit is-inner" aria-hidden="true"/>
-   <div className="luemi-publication-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi"/></div>
+   <div className="luemi-publication-logo">{complete?<Heart size={82} strokeWidth={1.3} fill="currentColor" aria-hidden="true"/>:
+    <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi"/>}</div>
   </div>
   <div className="luemi-publication-bottom">
-   {complete?<span className="luemi-publication-complete" aria-hidden="true"><Check size={24}/></span>:
-    failed?<span className="luemi-publication-failed-icon" aria-hidden="true">♡</span>:null}
+   {failed?<span className="luemi-publication-failed-icon" aria-hidden="true">♡</span>:null}
    {!failed&&<span className="luemi-publication-kicker"><Sparkles size={13}/> LUEMI · ТВОЯ ИСТОРИЯ</span>}
    <h1>{failed?"Не удалось закончить создание анкеты":complete?"Всё готово 💜":publishingCopy[displayPhase]}</h1>
    <p>{failed?error:complete?"Открываем LUEMI":displayPhase==="publishing"?
