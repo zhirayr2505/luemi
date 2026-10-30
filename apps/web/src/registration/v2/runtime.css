@@ -21,22 +21,39 @@
  border:0;background:transparent;color:#f7f0fb}
 .v2-runtime .v2-progress{display:flex;gap:5px;align-items:center;padding:0;max-width:116px;justify-self:center;width:100%}
 .v2-runtime .v2-progress span{flex:1;height:4px;min-width:0;border-radius:999px;
- background:rgba(209,195,230,.2);transition:background-color .33s ease,flex-grow .33s cubic-bezier(.2,.8,.2,1)}
+ background:rgba(209,195,230,.2);transition:background-color .32s ease,box-shadow .32s ease}
 .v2-runtime .v2-progress .v2-filled{background:#fff;box-shadow:0 0 11px rgba(219,173,245,.5)}
-.v2-runtime .v2-progress .v2-filled:last-child{flex-grow:1.7}
 .v2-runtime .v2-count{justify-self:end;border:0;background:transparent;padding:0;
  font-size:11px;font-variant-numeric:tabular-nums;color:#9b8eab;font-weight:650}
 .v2-runtime .v2-body{flex:1;min-height:0;z-index:1;position:relative;overflow-y:auto;
- padding:14px 24px 136px;overscroll-behavior:contain;scrollbar-width:none;
+ padding:20px 24px calc(var(--registration-footer-height) + 46px);overscroll-behavior:contain;scrollbar-width:none;
  -webkit-overflow-scrolling:touch;scroll-padding:20px 0 124px}
 .v2-runtime .v2-body::-webkit-scrollbar{display:none}
-.v2-runtime .v2-stage-transition{opacity:1;animation:luemi-stage-reveal .44s cubic-bezier(.22,.8,.26,1) both}
-@keyframes luemi-stage-reveal{from{opacity:0}to{opacity:1}}
+.v2-runtime .v2-stage-transition>h1,
+.v2-runtime .v2-stage-transition>.v2-subtitle,
+.v2-runtime .v2-stage-transition>.form-stack,
+.v2-runtime .v2-stage-transition>.v2-real-groups,
+.v2-runtime .v2-stage-transition>.v2-fields,
+.v2-runtime .v2-stage-transition>.v2-main-photo-picker{
+ animation:luemi-stage-fade .38s cubic-bezier(.2,.76,.25,1) backwards}
+.v2-runtime .v2-stage-transition>h1,
+.v2-runtime .v2-stage-transition>.v2-subtitle{
+ animation-name:luemi-stage-reveal}
+.v2-runtime .v2-stage-transition>.v2-subtitle{animation-delay:35ms}
+.v2-runtime .v2-stage-transition>.form-stack,
+.v2-runtime .v2-stage-transition>.v2-real-groups,
+.v2-runtime .v2-stage-transition>.v2-fields,
+.v2-runtime .v2-stage-transition>.v2-main-photo-picker{animation-delay:65ms}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-transition>.form-stack,
+.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-transition>.v2-real-groups,
+.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-transition>.v2-fields{animation:none}
+@keyframes luemi-stage-reveal{from{opacity:0;translate:0 7px}to{opacity:1;translate:0 0}}
+@keyframes luemi-stage-fade{from{opacity:0}to{opacity:1}}
 .v2-runtime .v2-eyebrow{display:none}
 .v2-runtime .v2-body h1{font-size:clamp(28px,7.3vw,36px);line-height:1.09;
  font-weight:740;letter-spacing:-.048em;margin:0 0 8px;color:#fff;text-wrap:balance}
-.v2-runtime .v2-subtitle{max-width:355px;font-size:13px;line-height:1.48;
- color:#b9b0c6;margin:0 0 28px}
+.v2-runtime .v2-subtitle{max-width:355px;min-height:38px;font-size:13px;line-height:1.48;
+ color:#b9b0c6;margin:0 0 29px}
 .v2-runtime .v2-real-groups{display:flex;flex-direction:column;gap:28px}
 .v2-runtime .v2-body .form-stack{display:flex;flex-direction:column;gap:16px;padding:0}
 .v2-runtime .v2-body .form-stack>*{animation:none}
@@ -107,7 +124,7 @@
 .v2-runtime .language-focus-slot{min-height:300px}
 .v2-runtime .focus-field-shell{position:relative;z-index:1;width:100%}
 .v2-runtime .focus-field-shell.is-focused{position:fixed;z-index:92;top:auto;
- bottom:calc(var(--registration-keyboard-inset,0px) + var(--registration-footer-height) + 12px);
+ bottom:calc(var(--registration-layout-height,100vh) - var(--registration-visible-bottom,100vh) + var(--registration-footer-height) + 12px);
  left:max(24px,calc((100vw - 520px)/2 + 24px));right:max(24px,calc((100vw - 520px)/2 + 24px));width:auto}
 .v2-runtime .focus-field-shell.is-focused .glass-control{border-color:#eda9f3;
  box-shadow:0 0 0 4px rgba(210,130,233,.18),0 18px 45px rgba(3,2,12,.42),0 0 42px rgba(184,91,210,.25)}
@@ -115,19 +132,13 @@
 .v2-runtime .dob-focus-shell .glass-control{text-align:center;letter-spacing:.05em;font-variant-numeric:tabular-nums}
 .v2-runtime .field-focus-overlay{display:none}
 .v2-runtime .v2-focus-scrim{position:fixed;inset:0;z-index:90;pointer-events:none;
- visibility:hidden;opacity:0;background:rgba(17,14,27,.25);
- backdrop-filter:blur(33px) saturate(85%);-webkit-backdrop-filter:blur(33px) saturate(85%);
- transition:opacity .42s cubic-bezier(.2,.72,.23,1),visibility 0s linear .42s}
+ visibility:hidden;opacity:0;background:rgba(16,12,26,.31);
+ backdrop-filter:blur(44px) saturate(.78);-webkit-backdrop-filter:blur(44px) saturate(.78);
+ transition:opacity .38s cubic-bezier(.2,.76,.25,1),visibility 0s linear .38s}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-focus-scrim{
  visibility:visible;opacity:1;pointer-events:auto;
- transition:opacity .42s cubic-bezier(.2,.72,.23,1),visibility 0s}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:2;animation:none}
-.v2-runtime .v2-device::after{content:"";position:absolute;inset:0 0 auto;height:125px;
- z-index:1;pointer-events:none;visibility:hidden;opacity:0;background:rgba(17,14,27,.18);
- backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
- transition:opacity .42s ease,visibility 0s linear .42s}
-.v2-runtime .v2-device[data-field-focus="true"]::after{visibility:visible;opacity:1;
- transition:opacity .42s ease,visibility 0s}
+ transition:opacity .38s cubic-bezier(.2,.76,.25,1),visibility 0s}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:2}
 .v2-runtime .field-inline-hint,.v2-runtime .field-warning{
  color:#ffd3e6;background:#412b41;border:1px solid rgba(244,145,190,.34);
  border-radius:13px;padding:10px 12px;font-size:12px;line-height:1.35}
@@ -183,7 +194,7 @@
  padding:30px 24px max(16px,env(safe-area-inset-bottom));border:0;background:transparent}
 .v2-runtime .v2-footer::before{content:"";position:absolute;inset:-34px 0 0;z-index:-1;pointer-events:none;
  background:linear-gradient(180deg,transparent,rgba(19,15,28,.55) 38%,rgba(19,15,28,.93) 100%);
- backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+ backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
  mask-image:linear-gradient(180deg,transparent,#000 44%,#000);
  -webkit-mask-image:linear-gradient(180deg,transparent,#000 44%,#000)}
 .v2-runtime .v2-footer-nav,.v2-runtime .v2-footer-review{display:flex;justify-content:center;width:100%}
@@ -191,7 +202,10 @@
  display:flex;align-items:center;justify-content:center;gap:10px;border-radius:999px;
  border:1px solid rgba(255,213,252,.82);color:#24152e;font-size:15px;font-weight:740;
  background:linear-gradient(105deg,#d6a7fa,#f4aedc 88%);
- box-shadow:inset 0 1px rgba(255,255,255,.58),0 10px 29px rgba(183,95,208,.25)}
+ box-shadow:inset 0 1px rgba(255,255,255,.58),0 10px 29px rgba(183,95,208,.25);
+ transition:transform .18s cubic-bezier(.2,.76,.25,1),box-shadow .24s ease,filter .24s ease}
+.v2-runtime .v2-next:active,.v2-runtime .v2-publish:active{transform:scale(.985);filter:brightness(1.04);
+ box-shadow:inset 0 1px rgba(255,255,255,.62),0 5px 19px rgba(183,95,208,.2)}
 .v2-runtime .v2-next svg{margin-left:auto}
 .v2-runtime .v2-next.is-incomplete{color:#c7b8ce;background:#3a3347;border-color:#766384;box-shadow:none}
 .v2-runtime .v2-next.v2-next-confirm,.v2-runtime .v2-next.is-incomplete.v2-next-confirm{
@@ -272,9 +286,15 @@
   var(--tg-content-safe-area-inset-top,0px),calc(var(--tg-safe-area-inset-top,0px) + 12px),
   calc(env(safe-area-inset-top,0px) + 12px))}
  .v2-runtime .v2-header{height:65px;min-height:65px;padding-inline:22px}
- .v2-runtime .v2-body{padding:16px 24px 135px}
+ .v2-runtime .v2-body{padding:20px 24px calc(var(--registration-footer-height) + 46px)}
 }
-@media(max-height:660px){.v2-runtime .v2-body{padding-top:8px}.v2-runtime .v2-subtitle{margin-bottom:18px}
+@media(max-height:660px){.v2-runtime .v2-body{padding-top:12px}.v2-runtime .v2-subtitle{margin-bottom:20px}
  .v2-runtime .v2-real-groups{gap:20px}.v2-runtime .v2-footer{padding-top:18px}}
-@media(prefers-reduced-motion:reduce){.v2-runtime .v2-stage-transition,
- .v2-runtime .v2-next.v2-next-confirm{animation:none}}
+@media(prefers-reduced-motion:reduce){.v2-runtime .v2-stage-transition>h1,
+ .v2-runtime .v2-stage-transition>.v2-subtitle,
+ .v2-runtime .v2-stage-transition>.form-stack,
+ .v2-runtime .v2-stage-transition>.v2-real-groups,
+ .v2-runtime .v2-stage-transition>.v2-fields,
+ .v2-runtime .v2-stage-transition>.v2-main-photo-picker,
+ .v2-runtime .v2-next.v2-next-confirm{animation:none}
+ .v2-runtime .v2-next,.v2-runtime .v2-publish,.v2-runtime .v2-focus-scrim{transition:none}}

@@ -88,19 +88,22 @@ export function RealRegistrationV2(p:Props){
   let frame=0;
   const update=()=>{
    frame=0;
-   // One viewport measurement drives the canvas and its footer. Android may
-   // keep 100dvh at the layout height while the keyboard covers the visual viewport.
-   root.style.setProperty("--registration-visible-height",`${Math.round(viewport.height)}px`);
-   root.style.setProperty("--registration-keyboard-inset",
-    `${Math.max(0,Math.round(window.innerHeight-viewport.offsetTop-viewport.height))}px`);
+   // Use the visual viewport as the single source of truth. Android WebView
+   // can keep the layout viewport at its pre-keyboard height while the visible
+   // area changes; neither the footer nor an editor's height feeds this value.
+   root.style.setProperty("--registration-visible-height",`${viewport.height}px`);
+   root.style.setProperty("--registration-visible-bottom",`${viewport.offsetTop+viewport.height}px`);
+   root.style.setProperty("--registration-layout-height",`${window.innerHeight}px`);
   };
   const schedule=()=>{if(!frame)frame=window.requestAnimationFrame(update);};
   update();
   viewport.addEventListener("resize",schedule);
+  viewport.addEventListener("scroll",schedule);
   window.addEventListener("resize",schedule);
   return()=>{
    if(frame)window.cancelAnimationFrame(frame);
    viewport.removeEventListener("resize",schedule);
+   viewport.removeEventListener("scroll",schedule);
    window.removeEventListener("resize",schedule);
   };
  },[]);
