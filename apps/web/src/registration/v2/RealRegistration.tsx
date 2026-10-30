@@ -202,6 +202,10 @@ export function RealRegistrationV2(p:Props){
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
      <div className="v2-backdrop" aria-hidden="true"/>
+     <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
+       if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+       handleFieldFocus(null);
+     }}/>
      <header className="v2-header">
        <div className="v2-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI"/></div>
        <div className="v2-head-actions"><span className="v2-count">{index+1} из {stages.length}</span>

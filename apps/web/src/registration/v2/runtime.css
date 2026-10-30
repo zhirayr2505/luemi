@@ -4,8 +4,8 @@
 .v2-runtime .v2-device{height:var(--registration-visible-height,100dvh);max-height:950px;min-height:0;padding-bottom:0}
 .v2-runtime .v2-logo img{width:96px;max-width:100%}
 .v2-runtime .v2-body{animation:none;scroll-padding:16px 0 118px;padding-bottom:118px}
-.v2-runtime .v2-stage-transition{animation:v2-stage-in .34s ease both}
-@keyframes v2-stage-in{from{opacity:0}to{opacity:1}}
+.v2-runtime .v2-stage-transition{opacity:1;transition:opacity .28s ease}
+@starting-style{.v2-runtime .v2-stage-transition{opacity:0}}
 .v2-runtime .v2-body .form-stack{gap:12px;padding:0 0 12px}
 .v2-runtime .v2-body .form-stack>*{animation:none}
 .v2-runtime .v2-real-groups{display:flex;flex-direction:column;gap:18px}
@@ -146,10 +146,9 @@
 .v2-runtime .focus-field-shell.is-focused{
  position:fixed;z-index:92;top:auto;bottom:var(--field-focus-bottom,110px);
  left:max(22px,calc((100vw - 680px)/2 + 22px));right:max(22px,calc((100vw - 680px)/2 + 22px));width:auto;
- transition:opacity .22s ease,transform .28s cubic-bezier(.2,.8,.24,1);
+ transition:opacity .22s ease;
 }
-.v2-runtime .focus-field-shell.is-focused:not([data-dock-ready="true"]){opacity:1;transform:translateY(8px)}
-.v2-runtime .focus-field-shell.is-focused[data-dock-ready="true"]{opacity:1;transform:none}
+.v2-runtime .focus-field-shell.is-focused{opacity:1}
 .v2-runtime .name-focus-shell .glass-control{min-height:61px;width:100%;padding:13px 16px;font-size:19px;}
 .v2-runtime .dob-focus-shell .glass-control{min-height:61px;width:100%;text-align:center;padding:13px 16px;
  font-size:21px;letter-spacing:.055em;font-variant-numeric:tabular-nums;}
@@ -168,13 +167,19 @@
 @keyframes field-hint-in{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:none}}
 .v2-runtime .dob-focus-shell .glass-field-label{font-size:14px;}
 .v2-runtime .dob-focus-shell .glass-field small{display:block;margin:7px 2px 0;color:#9b84a5;font-size:11px;text-align:center;}
-.v2-runtime .field-focus-overlay{position:fixed;inset:0;z-index:90;
- background:linear-gradient(180deg,rgba(72,43,88,.12),rgba(68,40,82,.21));
- backdrop-filter:blur(22px) saturate(112%);-webkit-backdrop-filter:blur(22px) saturate(112%);
- animation:dob-focus-in .34s cubic-bezier(.2,.75,.3,1) both;}
-@keyframes dob-focus-in{from{opacity:0}to{opacity:1}}
+.v2-runtime .field-focus-overlay{display:none}
+.v2-runtime .v2-focus-scrim{position:absolute;inset:0;z-index:90;pointer-events:none;
+ visibility:hidden;opacity:0;will-change:opacity;
+ background:linear-gradient(180deg,rgba(246,237,252,.38),rgba(239,226,247,.46));
+ backdrop-filter:blur(34px) saturate(88%);-webkit-backdrop-filter:blur(34px) saturate(88%);
+ transition:opacity .38s cubic-bezier(.22,.72,.26,1),visibility 0s linear .38s}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-focus-scrim{
+ visibility:visible;opacity:1;pointer-events:auto;
+ transition:opacity .42s cubic-bezier(.22,.72,.26,1),visibility 0s}
+.v2-runtime[data-theme="dark"] .v2-focus-scrim{
+ background:linear-gradient(180deg,rgba(28,21,39,.36),rgba(28,21,39,.49))}
 .v2-runtime .step-name .glass-control{min-height:55px;}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:auto;opacity:1;transition:none}
 .v2-runtime .v2-footer.is-focus-confirm{z-index:93;}
 .v2-runtime .v2-footer-nav.is-focus-confirm{justify-content:flex-end;}
 .v2-runtime .v2-footer-nav.is-focus-confirm .v2-back{display:none}

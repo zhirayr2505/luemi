@@ -82,8 +82,14 @@ assert.match(geo,/<LocateFixed size=\{15\}/,"Manual city search needs detect ico
 assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
 assert.match(focusDock,/visualViewport[\s\S]*requestAnimationFrame\(update\)/,
  "Keyboard dock must coalesce Android viewport animation into one writer");
+assert.match(focusDock,/slotTop-dockTop[\s\S]*shell\.animate\(/,
+ "Focused field must travel from its original slot instead of teleporting");
 assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.height/,
  "Changing city suggestions must not feed the editor height back into keyboard placement");
+assert.match(form,/className="v2-focus-scrim"/,
+ "One persistent blur layer must cover the entire registration screen");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(34px\)[^}]*transition:opacity/s,
+ "Full-screen blur strength stays fixed while its appearance fades smoothly");
 assert.match(runtime,/\.city-focus-shell \.geo-results\{position:absolute[^}]*bottom:calc\(100% \+ 9px\)/,
  "City suggestions must open above the docked editor");
 assert.match(steps,/className="about-input-shell"[\s\S]*className="char-count"/,
