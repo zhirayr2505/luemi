@@ -33,11 +33,10 @@ export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
   return()=>window.clearInterval(interval);
  },[displayPhase]);
  useEffect(()=>{
-  if(displayPhase!=="complete"){setLeaving(false);return;}
-  const exit=window.setTimeout(()=>setLeaving(true),520);
-  const done=window.setTimeout(onComplete,1080);
-  return()=>{window.clearTimeout(exit);window.clearTimeout(done);};
- },[displayPhase,onComplete]);
+  if(!leaving)return;
+  const done=window.setTimeout(onComplete,560);
+  return()=>window.clearTimeout(done);
+ },[leaving,onComplete]);
  const failed=displayPhase==="error",complete=displayPhase==="complete";
  const stages=Object.keys(publishingCopy) as WorkingPhase[];
  const current=complete?stages.length:stages.indexOf(failed?"publishing":displayPhase);
@@ -68,6 +67,8 @@ export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
     <button type="button" onClick={onRetry}><RefreshCw size={17}/> Повторить</button>
     <button type="button" onClick={onBack}><ArrowLeft size={17}/> Вернуться к анкете</button>
    </div>}
+   {complete&&<button type="button" className="luemi-publication-enter" disabled={leaving}
+     onClick={()=>setLeaving(true)}>Перейти в приложение</button>}
    {!failed&&!complete&&elapsed>=30000&&<p className="luemi-publication-slow">
     Соединение медленное. Твои уже загруженные фото остаются сохранёнными.
    </p>}
