@@ -61,22 +61,10 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 @keyframes text-enter{to{opacity:1;transform:translateY(0)}}
 @keyframes cta-enter{from{opacity:0;transform:translateY(17px)}to{opacity:1;transform:translateY(0)}}
 @keyframes screen-exit{to{opacity:0;transform:translateY(-10px)}}
-.luemi-launch-splash{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;overflow:hidden;background:linear-gradient(145deg,#fffafd 0%,#f7ebfb 48%,#ffeef6 100%);color:#3e2e4f;isolation:isolate;animation:launch-screen-in .42s ease both}
-.luemi-launch-glow{position:absolute;z-index:-1;width:130vw;height:80vh;border-radius:50%;background:radial-gradient(ellipse,rgba(197,148,233,.28),rgba(239,164,205,.11) 43%,transparent 72%);filter:blur(20px);animation:launch-glow 2.2s ease-in-out infinite alternate}
-.luemi-launch-logo{width:min(48vw,190px);height:auto;animation:launch-logo-in .7s cubic-bezier(.17,.82,.31,1) both}
-.luemi-launch-splash p{max-width:300px;margin:0;text-align:center;font-size:18px;line-height:1.35;font-weight:650;letter-spacing:-.02em;color:#6c4c7c;animation:launch-copy-in .65s .18s ease both}
-.luemi-launch-loader{display:flex;gap:6px;margin-top:3px;animation:launch-copy-in .65s .3s ease both}
-.luemi-launch-loader i{width:6px;height:6px;border-radius:50%;background:#b37dd5;animation:launch-dot 1s ease-in-out infinite}
-.luemi-launch-loader i:nth-child(2){animation-delay:.12s}.luemi-launch-loader i:nth-child(3){animation-delay:.24s}
 .registration-load-fallback{display:grid;place-items:center;padding:24px}
 .registration-load-card{display:flex;flex-direction:column;align-items:center;gap:16px;color:var(--subtle);font-size:14px;font-weight:650}
 .registration-load-card img{width:min(46vw,180px);height:auto;filter:drop-shadow(0 8px 24px rgba(157,91,187,.13))}
 .registration-load-card i{display:block;width:34px;height:34px;border-radius:50%;border:3px solid rgba(184,140,230,.2);border-top-color:#b88ce6;animation:spin .8s linear infinite}
-@keyframes launch-screen-in{from{opacity:0}to{opacity:1}}
-@keyframes launch-logo-in{from{opacity:0;transform:scale(.88) translateY(12px)}to{opacity:1;transform:none}}
-@keyframes launch-copy-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@keyframes launch-glow{from{transform:translate(-8%,-5%) scale(.92)}to{transform:translate(8%,5%) scale(1.1)}}
-@keyframes launch-dot{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
 /* Keep header and footer structurally outside the one scroll container. */
 .onboarding-screen{width:100%;height:100%;max-width:680px;margin:0 auto;display:flex;flex-direction:column;
  padding:calc(var(--top-safe) + 60px) 22px 0;min-height:0;animation:screen-enter .32s ease both}
