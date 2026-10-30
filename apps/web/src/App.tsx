@@ -1215,9 +1215,7 @@ export function App() {
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
-    {auth!=="authorized"&&auth!=="connecting"&&
-     !(auth==="authorized"&&realFeedPilot.enabled&&publicationCheck==="checking")&&
-     <div className="theme-dock">{themeButton}</div>}
+    {auth!=="authorized"&&auth!=="connecting"&&<div className="theme-dock">{themeButton}</div>}
     {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(auth==="authorized"?" cinematic-entry":"")+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
