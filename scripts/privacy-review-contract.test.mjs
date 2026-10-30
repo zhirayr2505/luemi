@@ -41,8 +41,8 @@ test("public /privacy route accurately describes owner approval and pending effe
   assert(file.includes('href="/privacy"'),"missing public policy link");
  assert.match(ui,/<RealRegistrationV2 draft=\{draft\}/,
   "Main app must render the real registration flow");
- assert.match(v2,/stage.id==="identity"&&<div className="v2-real-groups">\{step\(1\)\}\{step\(2\)\}/,
-  "The first identity screen must display the policy consent step");
+ assert.match(v2,/stage.id==="birthday"&&<div className="v2-real-groups">\{step\(2\)\}<RegistrationConsent/,
+  "The birthday and adult-confirmation screen must display the policy consent step");
  assert.doesNotMatch(v2,/setServerConsent|photoServerCount/,
   "The final registration screens must not ask for consent again");
  assert.doesNotMatch(app,/privacy\.html|privacy-review\.html/);

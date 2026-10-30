@@ -18,7 +18,7 @@ const required=[
  ["V2 runtime tokens",/\.v2-runtime\s*\{[^}]*--ink:/s],
  ["Telegram native clearance",/\.v2-runtime\[data-telegram-ui="true"\]\s+\.v2-device\s*\{[^}]*padding-top:max\(62px,[^}]*--tg-content-safe-area-inset-top[^}]*--tg-safe-area-inset-top[^}]*safe-area-inset-top/s],
  ["dark readable form inputs",/\.v2-runtime\s+\.glass-control,\.v2-runtime\s+\.v2-input\s*\{[^}]*background:linear-gradient/s],
- ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--registration-keyboard-inset/s],
+ ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--registration-layout-height[^}]*--registration-visible-bottom/s],
  ["single confirm action",/\.v2-runtime\s+\.v2-next\.v2-next-confirm[^}]*display:grid/s],
  ["blurred borderless action fade",/\.v2-runtime\s+\.v2-footer\s*\{[^}]*position:absolute[^}]*border:0/s],
  ["geolocation and language search icon",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
@@ -82,18 +82,20 @@ assert.match(geo,/<LocateFixed size=\{15\}/,"Manual city search needs detect ico
 assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
 assert.match(focusDock,/visualViewport[\s\S]*requestAnimationFrame\(update\)/,
  "Keyboard dock must coalesce Android viewport animation into one writer");
+assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
+ "The focused editor must use one visual viewport bottom coordinate without double keyboard compensation");
 assert.match(focusDock,/slotTop-dockTop[\s\S]*shell\.animate\(/,
  "Focused field must travel from its original slot instead of teleporting");
 assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.height/,
  "Changing city suggestions must not feed the editor height back into keyboard placement");
 assert.match(form,/<section key=\{stage\.id\}[^>]*>[\s\S]*?<div className="v2-focus-scrim"/,
  "Body blur stays in the same stacking layer as the focused field");
-assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(33px\)[^}]*transition:opacity/s,
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(44px\)[^}]*transition:opacity/s,
  "Blur strength stays fixed while its appearance fades smoothly");
 assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-body\{[^}]*z-index:2/s,
  "Focused field paints above the body scrim instead of disappearing below it");
-assert.match(form,/--registration-keyboard-inset/,
- "Viewport height and keyboard inset must come from one visual viewport measurement");
+assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
+ "Viewport height and editor dock must come from one visual viewport measurement");
 assert.match(runtime,/\.city-focus-shell \.geo-results\{position:absolute[^}]*bottom:calc\(100% \+ 9px\)/,
  "City suggestions must open above the docked editor");
 assert.match(steps,/className="about-input-shell"[\s\S]*className="char-count"/,
