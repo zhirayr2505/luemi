@@ -37,6 +37,8 @@ for(const file of paths){
  const imports=new Set();
  const add=str=>{const target=resolve(file,str);if(target)imports.add(target)};
  const visit=node=>{
+  if(ts.isImportDeclaration(node)&&node.importClause?.isTypeOnly)return;
+  if(ts.isExportDeclaration(node)&&node.isTypeOnly)return;
   if((ts.isImportDeclaration(node)||ts.isExportDeclaration(node))&&
     node.moduleSpecifier&&ts.isStringLiteral(node.moduleSpecifier))add(node.moduleSpecifier.text);
   if(ts.isCallExpression(node)&&node.expression.kind===ts.SyntaxKind.ImportKeyword&&

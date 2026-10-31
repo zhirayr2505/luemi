@@ -6,7 +6,14 @@ const browser=await chromium.launch({headless:true});
 try{
  const page=await browser.newPage({viewport:{width:393,height:852},deviceScaleFactor:1,isMobile:true,hasTouch:true});
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- await page.goto(base);await page.getByRole('heading',{name:'Всё готово'}).waitFor();
+ await page.goto(base);
+ try{await page.getByRole('heading',{name:'Всё готово'}).waitFor({timeout:10000});}
+ catch(error){
+  mkdirSync('docs/registration-v4/screenshots',{recursive:true});
+  await page.screenshot({path:'docs/registration-v4/screenshots/debug.png'});
+  console.error('QA page text:',(await page.locator('body').textContent())?.slice(0,1000),'page errors:',errors);
+  throw error;
+ }
  for(let i=0;i<7;i++){await page.getByRole('button',{name:'Назад',exact:true}).click();await page.waitForTimeout(300);}
  const names=['Как тебя зовут?','Расскажи о себе','Где ты сейчас?','Кого ты хочешь встретить?','Что ты ищешь?','Добавь характер','Покажи себя','Всё готово'];
  const dir='docs/registration-v4/screenshots';mkdirSync(dir,{recursive:true});
