@@ -30,12 +30,13 @@ function asPlace(value:unknown):Place|null {
 type GeoPickerProps={
  data:RegistrationDraft;
  patch:(values:Partial<RegistrationDraft>)=>void;
+ variant?:"v4";
  fieldError?:string;
  clearFieldError?:()=>void;
  onFieldFocus?:(field:"city"|null)=>void;
 };
-export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:GeoPickerProps){
- const [manual,setManual]=useState(!!data.placeId);
+export function GeoPicker({data,patch,variant,fieldError,clearFieldError,onFieldFocus}:GeoPickerProps){
+ const [manual,setManual]=useState(variant==="v4"||!!data.placeId);
  const [query,setQuery]=useState(data.placeId?data.city+", "+data.country:"");
  const [editing,setEditing]=useState(false);
  const [results,setResults]=useState<Place[]>([]);
@@ -205,7 +206,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
      </div></div>
    </>}
    {!manual?<button type="button" className="geo-mode-toggle" onClick={switchMode}>Выбрать город вручную</button>:
-     <button type="button" className="geo-mode-toggle" onClick={switchMode}><LocateFixed size={15}/> Определить моё местоположение</button>}
+     <button type="button" className="geo-mode-toggle" onClick={variant==="v4"?detect:switchMode}><LocateFixed size={15}/> Определить моё местоположение</button>}
    {data.placeId&&<div className="geo-selected"><Flag code={data.countryCode}/><MapPin size={15}/><strong>{data.city}</strong><span>{data.country}</span></div>}
    {manual&&editing&&query.trim().length>1&&!loading&&!results.length&&!error&&<p className="hint">Выбери реальный город из подсказок. Свободный текст не сохраняется.</p>}
    {error&&<p className="field-warning" role="alert">{error}</p>}
@@ -221,7 +222,11 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
     <p className="hint">Определение города доступно в некоторых регионах. Если город не найден, выбери его вручную.</p>}
    <div className="geo-scope">
      <span className="field-label">Где искать людей?</span>
-     <div className="scope-popover-anchor">
+     {variant==="v4"?<div className="v4-scope-chips" role="group" aria-label="Где искать людей?">
+       {scopeOptions.map(([scope,label])=><button type="button" key={scope}
+         className={data.searchScope===scope?"selected":""} aria-pressed={data.searchScope===scope}
+         onClick={()=>patch({searchScope:scope})}>{label}</button>)}
+     </div>:<div className="scope-popover-anchor">
        <button className="glass-control scope-control" type="button" aria-expanded={scopeOpen} onClick={()=>setScopeOpen(x=>!x)}>
          <span><strong>{selectedScope[1]}</strong><small>{selectedScope[2]}</small></span><ChevronDown size={19}/>
        </button>
@@ -231,9 +236,9 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
            <strong>{label}</strong><small>{detail}</small>
          </button>)}
        </div>}
-     </div>
+     </div>}
    </div>
-   <div className={"radius-control"+(data.searchScope!=="radius"?" is-disabled":"")}>
+   {data.searchScope==="radius"&&<div className="radius-control">
      <div className="range-title"><span>Радиус поиска</span><strong>{data.radius.toLocaleString("ru")} км</strong></div>
      <div className="branded-slider" onPointerDownCapture={()=>{
        const field=document.activeElement;
@@ -244,7 +249,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
          onChange={e=>patch({radius:radiusAt(Number(e.target.value))})}/>
      </div>
      <div className="range-limits"><span>1 км</span><span>5 000 км</span></div>
-   </div>
-   <p className="hint">При нажатии «Моё местоположение» координаты однократно передаются серверу для определения города через геокодер. В анкету сохраняется только выбранный город. В режиме «Весь мир» радиус сохраняется.</p>
+   </div>}
+   {variant!=="v4"&&<p className="hint">При нажатии «Моё местоположение» координаты однократно передаются серверу для определения города через геокодер. В анкету сохраняется только выбранный город. В режиме «Весь мир» радиус сохраняется.</p>}
  </div>;
 }

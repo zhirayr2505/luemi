@@ -62,6 +62,8 @@ if(all.has(chatsDemoEntry))qaRoots.push(chatsDemoEntry);
 // production real-only Vite bundles or mounted in authenticated App.
 const registrationV2PreviewEntry="apps/web/src/registration/v2/preview-entry.tsx";
 if(all.has(registrationV2PreviewEntry))qaRoots.push(registrationV2PreviewEntry);
+const registrationV4QaEntry="apps/web/src/registration/v2/qa-entry.tsx";
+if(all.has(registrationV4QaEntry))qaRoots.push(registrationV4QaEntry);
 const intentional={
  // This contract is intentionally offline until an audited AI provider and
  // biometric safeguards are ready. Its tests import it directly.

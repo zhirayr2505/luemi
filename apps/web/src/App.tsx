@@ -21,7 +21,7 @@ import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
-import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,orderPrivatePhotos,reconcilePrivatePhotos,readConfirmedPrivateMediaCount,planPrivatePhotos} from "./registration/server-media";
+import {remoteMediaPilot,uploadPrivatePhotos,uploadPrivatePhoto,deletePrivatePhoto,orderPrivatePhotos,reconcilePrivatePhotos,readConfirmedPrivateMediaCount,planPrivatePhotos,restorePrivatePhotos} from "./registration/server-media";
 import {registrationSubmissionDecision} from "./registration/real-submit-gate";
 import {realFeedPilot,ownerPublicationStatus,publishMyProfile,unpublishMyProfile,withdrawRealConsent,requestMyAccountDeletion,deletionReasons,type DeletionReason,type PublishedFeedPage} from "./registration/real-live-client";
 import {warmPublishedRecommendations,type WarmRecommendationSet} from "./registration/recommendation-warmup";
@@ -439,6 +439,20 @@ export function App() {
         const src=URL.createObjectURL(preview!);ownedUrls.current.push(src);
         restoredPhotos.push({...item,preview,src,status:"ready"});
       }
+      if(realFeedPilot.enabled&&restoredPhotos.length===0&&isLive()){
+        try{
+          const remotePhotos=await restorePrivatePhotos();
+          if(!isLive())return;
+          for(const {assetId,blob} of remotePhotos){
+            const id=crypto.randomUUID(),src=URL.createObjectURL(blob);
+            ownedUrls.current.push(src);privateAssetIds.current.set(id,assetId);
+            restoredPhotos.push({id,src,file:new File([blob],id+".png",{type:"image/png"}),
+              preview:blob,status:"ready",serverStatus:"saved"});
+          }
+        }catch{
+          if(isLive())setMediaStatus("Не удалось восстановить серверные фотографии. Повтори открытие при стабильном соединении.");
+        }
+      }
       if(!isLive()||photoIds.current.size){
         for(const photo of restoredPhotos)if(photo.src){
           URL.revokeObjectURL(photo.src);
@@ -541,7 +555,7 @@ export function App() {
           await saveRemoteDraft(draftLive.current,previous.revision);
           const ready=photosLive.current.filter(p=>p.status==="ready");
           if(ready.length){
-            const plan=await planPrivatePhotos(ready);
+            const plan=await planPrivatePhotos(ready,[...privateAssetIds.current.values()]);
             for(const assetId of plan.staleAssetIds){
               await deletePrivatePhoto(assetId);
               for(const [localId,mappedId] of privateAssetIds.current)
@@ -599,8 +613,9 @@ export function App() {
     selectedCityValid(draft)&&!!draft.audience&&!!draft.goal;
   useEffect(()=>{
     if(!remoteMediaPilot.enabled||auth!=="authorized"||!serverConsent||!scope||
-      !draftReadyForPrivateMedia||photos.length<3||
-      !photos.some(photo=>photo.status==="ready"&&!privateAssetIds.current.has(photo.id)))return;
+      !draftReadyForPrivateMedia||photos.length<1||
+      !photos.some(photo=>photo.status==="ready"&&photo.serverStatus!=="uploading"&&
+        photo.serverStatus!=="error"&&!privateAssetIds.current.has(photo.id)))return;
     const epoch=accountEpoch.current;
     void syncChosenPhotos(true).catch(()=>{
       if(epoch===accountEpoch.current)setMediaStatus("Не все фотографии загрузились. Повторим при следующем изменении.");
@@ -1201,6 +1216,7 @@ export function App() {
        resetDraft={resetDraft} theme={theme} onTheme={changeTheme}
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
           remoteMediaPilot.enabled?confirmPrivateRegistration():persistServerDraft());}}
+       onRetryMedia={()=>{void syncChosenPhotos(true).then(()=>setMediaStatus("")).catch(()=>setMediaStatus("Не удалось загрузить фото. Повтори при стабильном соединении."));}}
         mediaEnabled={remoteMediaPilot.enabled}
        serverSaving={serverSaving||publishBusy}
        serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
