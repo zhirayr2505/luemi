@@ -254,12 +254,16 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
  // Unmatched IDs are owner-private cleanup candidates; the browser revokes
  // them through the normal idempotent DELETE endpoint before uploading.
  app.post<{Body:unknown}>("/api/v2/media/plan",{preHandler:guard.mutation},async(req,reply)=>owner(req,reply,async(db,id)=>{
-  if(!object(req.body)||Object.keys(req.body).length!==1||
+  if(!object(req.body)||Object.keys(req.body).some(k=>k!=="clientKeys"&&k!=="keepAssetIds")||
     !Array.isArray(req.body.clientKeys)||req.body.clientKeys.length<1||req.body.clientKeys.length>6||
     !req.body.clientKeys.every(key=>str(key,8,80))||
-    new Set(req.body.clientKeys).size!==req.body.clientKeys.length)
+    new Set(req.body.clientKeys).size!==req.body.clientKeys.length||
+    (req.body.keepAssetIds!==undefined&&
+     (!Array.isArray(req.body.keepAssetIds)||req.body.keepAssetIds.length>6||
+      !req.body.keepAssetIds.every(uuid)||new Set(req.body.keepAssetIds).size!==req.body.keepAssetIds.length)))
    reject(422,"invalid_media_plan");
   const clientKeys=req.body.clientKeys as string[];
+  const keepAssetIds=(req.body.keepAssetIds??[]) as string[];
   const keyByDigest=new Map(clientKeys.map(key=>[digest(key),key]));
   const digests=[...keyByDigest.keys()];
   const matched=await db.query<{asset_id:string;idempotency_digest:string;state:string;derivative_key:string}>(
@@ -273,9 +277,10 @@ export function registerRem05d(app:FastifyInstance,guard:Guard|undefined,opts:Re
    "SELECT a.id FROM luemi_private.media_assets a "+
    "LEFT JOIN luemi_private.media_uploads u ON u.asset_id=a.id AND u.owner_id=$1 AND u.environment=$2 "+
    "WHERE a.owner_id=$1 AND a.environment=$2 AND a.publication_status='private' "+
-   "AND a.state<>'revoked' AND (u.idempotency_digest IS NULL OR NOT(u.idempotency_digest=ANY($3::text[]))) "+
+   "AND a.state<>'revoked' AND NOT(a.id=ANY($4::uuid[])) "+
+   "AND (u.idempotency_digest IS NULL OR NOT(u.idempotency_digest=ANY($3::text[]))) "+
    "ORDER BY a.position,a.id",
-   [id,opts.namespace,digests]);
+   [id,opts.namespace,digests,keepAssetIds]);
   // SQL state alone is not enough: a previously interrupted external Storage
   // write can leave an approved row whose object is unavailable. Verify the
   // private derivative before reusing it so a new profile never publishes a

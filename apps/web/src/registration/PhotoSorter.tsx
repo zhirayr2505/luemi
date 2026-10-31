@@ -245,6 +245,13 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
            </div>}
            {photo.status==="success"&&<div className="photo-processed" aria-label="Фотография готова"><CheckCircle2 size={25}/></div>}
            {photo.status==="error"&&<span className="photo-processing-error">Ошибка фото</span>}
+           {photo.status==="ready"&&photo.serverStatus&&
+             <span className={"photo-server-status is-"+photo.serverStatus} aria-label={
+               photo.serverStatus==="saved"?"Фото загружено на сервер":
+               photo.serverStatus==="uploading"?"Фото загружается на сервер":
+               photo.serverStatus==="error"?"Ошибка загрузки фото":"Фото ожидает загрузки"}>
+               {photo.serverStatus==="saved"?"✓":photo.serverStatus==="uploading"?"…":"!"}
+             </span>}
          </>:i===photos.length?<button type="button" className="add-photo" onClick={()=>input.current?.click()} aria-label="Добавить фотографии"><Plus size={30}/></button>:
            <span className="empty-number">{i+1}</span>}
        </div>;

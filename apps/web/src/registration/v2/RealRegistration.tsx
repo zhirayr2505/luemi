@@ -1,314 +1,143 @@
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
-import {flushSync} from "react-dom";
-import {ArrowRight,Check,ShieldCheck} from "lucide-react";
-import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
-import {SimpleProfileReview} from "../SimpleProfileReview";
-import {OptionalProfileDetails} from "../OptionalProfileDetails";
-import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
+import {useCallback,useEffect,useRef,useState} from "react";
+import type {CSSProperties} from "react";
+import {ArrowLeft,ArrowRight,CalendarDays,Check,ChevronDown,GripVertical,MapPin,UserRound,X} from "lucide-react";
+import {GeoPicker} from "../GeoPicker";
+import {PhotoSorter,type PhotoItem} from "../PhotoSorter";
+import {categories,itemOf} from "../../ui/InterestCatalog";
+import {goals,birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {findExactDuplicatePhotoIds} from "./duplicate-photos";
-import "./preview.css";
-import "./runtime.css";
+import {remoteDraftPilot} from "../server-draft";
+import "./registration-v4.css";
 
 interface Props{
- fallbackEntry:boolean;
- draft:RegistrationDraft;
- patch:(change:Partial<RegistrationDraft>)=>void;
- photos:PhotoItem[];
- addPhotos:(files:File[])=>void;
- removePhoto:(id:string)=>void;
- movePhoto:(from:number,to:number)=>void;
- resetDraft:()=>void;
- theme:"light"|"dark";
- onTheme:()=>void;
- onSave:()=>void;
- mediaEnabled:boolean;
- serverSaving:boolean;
- serverStatus:string;
- mediaStatus?:string;
- storageError:string|null;
- restored:boolean;
- resumeReview:boolean;
- onRetryStorage:()=>void;
- onExit:()=>void;
- registerBack:(fn:()=>void)=>void;
- /** Real profile and media publication use the independently authenticated server. */
+ fallbackEntry:boolean;draft:RegistrationDraft;patch:(change:Partial<RegistrationDraft>)=>void;
+ photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void;
+ resetDraft:()=>void;theme:"light"|"dark";onTheme:()=>void;onSave:()=>void;onRetryMedia:()=>void;
+ mediaEnabled:boolean;serverSaving:boolean;serverStatus:string;mediaStatus?:string;storageError:string|null;
+ restored:boolean;resumeReview:boolean;onRetryStorage:()=>void;onExit:()=>void;registerBack:(fn:()=>void)=>void;
 }
-const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
- photos.every(p=>p.status==="ready");
-const messageFor=(raw:string)=>raw||"Заполни обязательные поля.";
-const visualStages=[
- {id:"identity",title:"Как тебя зовут?",subtitle:"Это будет видно другим пользователям"},
- {id:"birthday",title:"Дата рождения",subtitle:"Твой возраст будет виден другим пользователям"},
- {id:"location",title:"Где ты сейчас?",subtitle:"Твоё местоположение помогает находить людей рядом"},
- {id:"intent",title:"Кого ты хочешь встретить?",subtitle:"Настрой знакомства так, как тебе нравится"},
- {id:"languages",title:"Какие языки ты знаешь?",subtitle:"Это поможет находить людей со схожими интересами"},
- {id:"personality",title:"Расскажи о себе",subtitle:"Несколько слов о себе и о том, что тебе интересно"},
- {id:"photos",title:"Добавь свои фото",subtitle:"Загрузи от 3 до 6 фотографий"},
- {id:"review",title:"Проверь свою анкету",subtitle:"Убедись, что всё правильно"}
+const titles=[
+ ["Как тебя зовут?","Это имя увидят другие пользователи"],
+ ["Расскажи о себе","Укажи дату рождения и пол"],
+ ["Где ты сейчас?","Твоё местоположение помогает находить людей рядом"],
+ ["Кого ты хочешь встретить?","Настрой знакомства так, как тебе нравится"],
+ ["Что ты ищешь?","Выбери, что тебе сейчас ближе"],
+ ["Добавь характер","Пара слов о тебе и любимые интересы оживят анкету"],
+ ["Покажи себя","Добавь от 3 до 6 фото"],
+ ["Всё готово","Проверь анкету и открой себя людям, которые тебе подходят"]
 ] as const;
-type VisualStage={id:string;title:string;subtitle:string};
-type RegistrationViewTransition={finished:Promise<void>};
-type ViewTransitionDocument=Document&{startViewTransition?:(update:()=>void)=>RegistrationViewTransition};
-type IdentityError={field:"name"|"date"|"city"|"about";message:string};
-function restoredStage(draft:RegistrationDraft,photos:PhotoItem[]):number{
- // Telegram's first-name prefill alone is not a completed registration step.
- if(!draft.day&&!draft.month&&!draft.year&&!draft.gender&&!draft.city&&
-    !draft.about.trim()&&!photos.length)return 0;
- const target=!nameValid(draft.name)?"identity":
-  !birthDateValid(draft.day,draft.month,draft.year)||
-    !(draft.gender==="man"||draft.gender==="woman")||!draft.trialConsent?"birthday":
-  !selectedCityValid(draft)?"location":
-  validateStep(draft,4,photos.length,new Date(),"live")!==null?"intent":
-  !draft.about.trim()?"personality":!photoReady(photos)?"photos":"review";
- return visualStages.findIndex(item=>item.id===target);
+const featured=["серьёзные отношения","свидания","дружба","общение","новые знакомства"];
+const interestList=[...new Map(categories.flatMap(category=>category.items).map(item=>[item.id,item])).values()];
+function restoredIndex(d:RegistrationDraft,photos:PhotoItem[]){
+ if(!nameValid(d.name)||!d.trialConsent)return 0;
+ if(!birthDateValid(d.day,d.month,d.year)||!d.gender)return 1;
+ if(!selectedCityValid(d))return 2;
+ if(!d.audience)return 3;
+ if(!d.goal)return 4;
+ if(!d.about.trim())return 5;
+ if(photos.length<3||photos.some(p=>p.status!=="ready"))return 6;
+ return 7;
 }
-function dateIssue(draft:RegistrationDraft,today=new Date()):string|null{
- if(!draft.day||!draft.month||!draft.year)return "Введи дату рождения";
- const y=Number(draft.year),m=Number(draft.month),d=Number(draft.day);
- const date=new Date(Date.UTC(y,m-1,d));
- if(!Number.isInteger(y)||!Number.isInteger(m)||!Number.isInteger(d)||
-   y<1900||date.getUTCFullYear()!==y||date.getUTCMonth()!==m-1||date.getUTCDate()!==d)
-   return "Проверь дату рождения";
- const todayDate=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate()));
- if(date>todayDate)return "Проверь дату рождения";
- const cutoff=new Date(Date.UTC(today.getUTCFullYear()-18,today.getUTCMonth(),today.getUTCDate()));
- return date>cutoff?"LUEMI доступен с 18 лет":null;
+function ageOf(d:RegistrationDraft){
+ const now=new Date(),year=Number(d.year),month=Number(d.month),day=Number(d.day);
+ return year?now.getUTCFullYear()-year-(now.getUTCMonth()+1<month||now.getUTCMonth()+1===month&&now.getUTCDate()<day?1:0):0;
+}
+function Choice({selected,children,onClick}: {selected:boolean;children:React.ReactNode;onClick:()=>void}){
+ return <button type="button" className={"v4-choice"+(selected?" selected":"")} aria-pressed={selected} onClick={onClick}>{selected&&<Check size={13}/>} {children}</button>;
+}
+function OptionalDetails({d,patch}:{d:RegistrationDraft;patch:Props["patch"]}){
+ const [open,setOpen]=useState(false);
+ const toggle=(key:"lifestyle"|"pets"|"family",value:string)=>patch({[key]:d[key].includes(value)?d[key].filter(x=>x!==value):[...d[key],value]});
+ return <section className="v4-optional">
+  <button type="button" className="v4-field v4-details-toggle" aria-expanded={open} onClick={()=>setOpen(!open)}>Больше о себе (необязательно)<ChevronDown size={19}/></button>
+  {open&&<div className="v4-optional-content">
+   <label>Рост, см<input type="number" min="100" max="250" value={d.height??""} onChange={e=>patch({height:e.target.value?Number(e.target.value):null})}/></label>
+   <label>Род занятий<input maxLength={120} value={d.occupation} onChange={e=>patch({occupation:e.target.value})}/></label>
+   <label>Образование<input maxLength={120} value={d.education} onChange={e=>patch({education:e.target.value})}/></label>
+   {([["Привычки","lifestyle",["Не курю","Люблю спорт","Люблю путешествия","Ранний подъём"]],
+     ["Животные","pets",["Кошки","Собаки","Другие животные"]],
+     ["Семья и планы","family",["Хочу семью","Уже есть дети","Не планирую детей","Пока не решил(а)"]]] as const).map(([label,key,values])=><div key={key}><strong>{label}</strong><div className="v4-chips">{values.map(value=><Choice key={value} selected={d[key].includes(value)} onClick={()=>toggle(key,value)}>{value}</Choice>)}</div></div>)}
+   <label>Факты о себе<textarea maxLength={240} value={d.facts.join("\n")} onChange={e=>patch({facts:e.target.value.split("\n").slice(0,3)})}/></label>
+  </div>}
+ </section>;
 }
 export function RealRegistrationV2(p:Props){
- const {draft,photos}=p;
- const stages:readonly VisualStage[]=visualStages;
- const [index,setIndex]=useState(()=>p.resumeReview?stages.length-1:p.restored?restoredStage(draft,photos):0);
- const recoveryApplied=useRef(p.restored);
- const [hint,setHint]=useState("");
- const [photoChecking,setPhotoChecking]=useState(false);
- const [detailsOpen,setDetailsOpen]=useState(false);
- const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|"language"|null>(null);
- const [fallbackMotion,setFallbackMotion]=useState<"forward"|"back"|null>(null);
- const [identityError,setIdentityError]=useState<IdentityError|null>(null);
- const viewportRoot=useRef<HTMLElement|null>(null);
- const device=useRef<HTMLDivElement|null>(null);
- const transitioning=useRef(false);
+ const {draft:d,photos}=p;
+ const {restored:hasRestored,resumeReview,registerBack,onExit}=p;
+ const [index,setIndex]=useState(()=>resumeReview?7:hasRestored?restoredIndex(d,photos):0);
+ const [error,setError]=useState("");
+ const [moving,setMoving]=useState(false);
+ const [direction,setDirection]=useState<"next"|"back">("next");
+ const [moreInterests,setMoreInterests]=useState(false);
+ const [moreGoals,setMoreGoals]=useState(false);
+ const [selectedPhoto,setSelectedPhoto]=useState(0);
+ const [checking,setChecking]=useState(false);
+ const body=useRef<HTMLElement>(null),root=useRef<HTMLElement>(null),busy=useRef(false),restored=useRef(hasRestored);
  useEffect(()=>{
-  const root=viewportRoot.current;
-  const viewport=window.visualViewport;
-  if(!root||!viewport)return;
+  if(hasRestored&&!restored.current){restored.current=true;setIndex(resumeReview?7:restoredIndex(d,photos));}
+ },[hasRestored,resumeReview,d,photos]);
+ useEffect(()=>{
+  const viewport=window.visualViewport,node=root.current;if(!viewport||!node)return;
   let frame=0;
-  const update=()=>{
-   frame=0;
-   // Use the visual viewport as the single source of truth. Android WebView
-   // can keep the layout viewport at its pre-keyboard height while the visible
-   // area changes; neither the footer nor an editor's height feeds this value.
-   root.style.setProperty("--registration-visible-height",`${viewport.height}px`);
-   root.style.setProperty("--registration-visible-bottom",`${viewport.offsetTop+viewport.height}px`);
-   root.style.setProperty("--registration-layout-height",`${window.innerHeight}px`);
-  };
-  const schedule=()=>{if(!frame)frame=window.requestAnimationFrame(update);};
-  update();
-  viewport.addEventListener("resize",schedule);
-  viewport.addEventListener("scroll",schedule);
-  window.addEventListener("resize",schedule);
-  return()=>{
-   if(frame)window.cancelAnimationFrame(frame);
-   viewport.removeEventListener("resize",schedule);
-   viewport.removeEventListener("scroll",schedule);
-   window.removeEventListener("resize",schedule);
-  };
+  const update=()=>{frame=0;node.style.setProperty("--v4-visible-height",viewport.height+"px");node.style.setProperty("--v4-top",viewport.offsetTop+"px");};
+  const schedule=()=>{if(!frame)frame=requestAnimationFrame(update);};
+  update();viewport.addEventListener("resize",schedule);viewport.addEventListener("scroll",schedule);
+  return()=>{if(frame)cancelAnimationFrame(frame);viewport.removeEventListener("resize",schedule);viewport.removeEventListener("scroll",schedule);};
  },[]);
- useEffect(()=>{
-  // Android WebView can restore the last focused input when a Mini App is
-  // reopened. Registration must start as a clean screen, without reopening
-  // the keyboard and hiding the first fields behind the footer.
-  const active=document.activeElement;
-  if(active instanceof HTMLElement)active.blur();
-  setFocusedField(null);
- },[]);
- const stage=stages[index];
- const body=useRef<HTMLElement|null>(null);
- const handleFieldFocus=useCallback((field:"name"|"date"|"city"|"about"|"language"|null)=>{
-  setFocusedField(field);
- },[]);
- const dateValid=birthDateValid(draft.day,draft.month,draft.year);
- const genderReady=draft.gender==="man"||draft.gender==="woman";
- const identityReady=nameValid(draft.name)&&dateValid&&genderReady&&draft.trialConsent;
- const locationReady=selectedCityValid(draft);
- const intentReady=validateStep(draft,4,photos.length,new Date(),"live")===null;
- // Restore the next incomplete real-data stage once local persistence has
- // finished loading; never blindly restart from the first question.
- useEffect(()=>{
-  if(!p.restored||recoveryApplied.current)return;
-  recoveryApplied.current=true;
-  if(p.resumeReview)return;
-  setIndex(restoredStage(draft,photos));
- },[p.restored,p.resumeReview,draft,photos]);
- const nav=(target:number)=>{
-  const next=Math.min(stages.length-1,Math.max(0,target));
-  if(next===index||transitioning.current)return;
-  const viewDocument=document as ViewTransitionDocument;
-  const reducedMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const canTransition=!focusedField&&document.visibilityState==="visible"&&!reducedMotion;
-  const nativeTransition=canTransition&&viewDocument.startViewTransition;
-  const update=()=>flushSync(()=>{
-   setHint("");setIdentityError(null);setFocusedField(null);setDetailsOpen(false);
-   setFallbackMotion(canTransition&&!nativeTransition?(next>index?"forward":"back"):null);
-   setIndex(next);
-  });
-  if(!nativeTransition){
-   update();return;
+ const nav=useCallback((next:number)=>{
+  if(busy.current||next<0||next>7||next===index)return;
+  busy.current=true;setDirection(next>index?"next":"back");setMoving(true);
+  setIndex(next);setError("");
+  body.current?.scrollTo({top:0,behavior:"instant"});
+  window.setTimeout(()=>{busy.current=false;setMoving(false);},260);
+ },[index]);
+ const back=useCallback(()=>{if(index===0)onExit();else nav(index-1);},[index,nav,onExit]);
+ useEffect(()=>{registerBack(back);return()=>registerBack(()=>{});},[back,registerBack]);
+ const advance=async()=>{
+  if(busy.current||checking)return;
+  let issue="";
+  switch(index){
+   case 0: issue=!nameValid(d.name)?"Имя: от 2 до 48 букв, пробел, дефис или апостроф.":!d.trialConsent?"Прими условия использования и политику конфиденциальности.":"";break;
+   case 1: issue=!birthDateValid(d.day,d.month,d.year)?"Проверь дату. LUEMI доступен с 18 лет.":!d.gender?"Выбери пол.":"";break;
+   case 2: issue=validateStep(d,3,photos.length,new Date(),"live")??"";break;
+   case 3: issue=!d.audience?"Выбери, кого хочешь встретить.":d.ageMin>d.ageMax?"Проверь диапазон возраста.":"";break;
+   case 4: issue=!d.goal?"Выбери хотя бы одну цель.":"";break;
+   case 5: issue=validateStep(d,6,photos.length,new Date(),"live")??"";break;
+   case 6:
+    if(photos.length<3||photos.length>6||photos.some(photo=>photo.status!=="ready"||photo.serverStatus!=="saved"))issue="Дождись загрузки от 3 до 6 фотографий на сервер.";
+    else {setChecking(true);try{if((await findExactDuplicatePhotoIds(photos)).length)issue="Замени повторяющиеся фотографии.";}catch{issue="Не удалось проверить фото. Попробуй снова.";}finally{setChecking(false);}}
+    break;
   }
-  const root=document.documentElement;
-  root.style.setProperty("--luemi-step-enter",next>index?"28px":"-28px");
-  root.style.setProperty("--luemi-step-exit",next>index?"-28px":"28px");
-  root.dataset.luemiTransition="true";
-  transitioning.current=true;
-  const settle=()=>{
-   transitioning.current=false;
-   root.style.removeProperty("--luemi-step-enter");
-   root.style.removeProperty("--luemi-step-exit");
-   delete root.dataset.luemiTransition;
-  };
-  try{
-   const transition=nativeTransition.call(viewDocument,update);
-   void transition.finished.then(settle,settle);
-  }catch{settle();update();}
- };
- const back=()=>{
-  if(detailsOpen){setDetailsOpen(false);return;}
-  if(index===0)p.onExit();else nav(index-1);
- };
- useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
- const advance=()=>{
-  let issue:string|null=null;
-  switch(stage.id){
-   case "identity":
-    if(!nameValid(draft.name)){
-      setIdentityError({field:"name",message:draft.name.trim()?"Имя: 2–48 букв, разрешены пробелы, дефис и апостроф.":"Введи имя"});
-      setHint("");return;
-    }
-    break;
-   case "birthday":
-    {const birthdayIssue=dateIssue(draft);
-     if(birthdayIssue){setIdentityError({field:"date",message:birthdayIssue});setHint("");return;}}
-    if(!genderReady){issue="Выбери пол.";break;}
-    if(!draft.trialConsent){issue="Подтверди условия регистрации.";break;}
-    break;
-   case "location":{
-    issue=validateStep(draft,3,photos.length,new Date(),"live");
-    if(issue){setIdentityError({field:"city",message:selectedCityValid(draft)?issue:"Выбери город из списка"});setHint("");return;}
-    break;
-   }
-   case "intent":issue=validateStep(draft,4,photos.length,new Date(),"live");break;
-   case "languages":break;
-   case "personality":
-    issue=validateStep(draft,6,photos.length,new Date(),"live");
-    if(issue){setIdentityError({field:"about",message:issue});setHint("");return;}
-    break;
-   case "photos":
-    if(!photoReady(photos)){issue="Выбери от 3 до 6 готовых фотографий.";break;}
-    if(photoChecking)return;
-    setPhotoChecking(true);
-    void findExactDuplicatePhotoIds(photos).then(ids=>{
-      if(ids.length)setHint("Обнаружены одинаковые фотографии. Замени повторяющиеся снимки.");
-      else nav(index+1);
-    }).catch(()=>setHint("Не удалось проверить повтор фотографий. Попробуй снова."))
-      .finally(()=>setPhotoChecking(false));
-    return;
-   case "review":return;
-  }
-  if(issue){setHint(messageFor(issue));return;}
+  if(issue){setError(issue);return;}
+  if(index===7){p.onSave();return;}
   nav(index+1);
  };
- const stepProps=useMemo(()=>({
-  data:draft,patch:p.patch,photos,addPhotos:p.addPhotos,removePhoto:p.removePhoto,
-  movePhoto:p.movePhoto,resetDraft:p.resetDraft,deferConsent:true,step:1,
-  fieldError:identityError,clearFieldError:(field:"name"|"date"|"city"|"about")=>{
-    setIdentityError(previous=>previous?.field===field?null:previous);
-  },onFieldFocus:handleFieldFocus
-  }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft,identityError,handleFieldFocus]);
- const step=(n:number,personalityPart?:"about"|"languages")=><RegistrationStep {...stepProps} step={n} personalityPart={personalityPart}/>;
- const savedDraftAllowed=identityReady&&locationReady&&intentReady&&
-  photoReady(photos)&&!p.serverSaving;
- const continueReady=stage.id==="identity"?nameValid(draft.name):
-   stage.id==="birthday"?dateValid&&genderReady&&draft.trialConsent:
-   stage.id==="location"?locationReady:
-   stage.id==="intent"?intentReady:
-   stage.id==="personality"?validateStep(draft,6,photos.length,new Date(),"live")===null:
-   stage.id==="photos"?photoReady(photos):true;
- const fieldConfirmActive=["identity","birthday","location","languages","personality"].includes(stage.id)&&focusedField!==null;
-
- return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme={p.theme}
-   data-fallback-entry={p.fallbackEntry?"true":undefined}
-   data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
-   <div ref={device} className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
-     <div className="v2-backdrop" aria-hidden="true"/>
-     <header className="v2-header">
-       <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp"
-         className="v2-header-logo" alt="LUEMI" draggable={false}/>
-       <div className="v2-progress" role="progressbar" aria-label="Прогресс регистрации"
-         aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={stages.length}
-         aria-valuetext={`Шаг ${index+1} из ${stages.length}`}>
-         <span className="v2-progress-fill" style={{transform:`scaleX(${(index+1)/stages.length})`}}/>
-       </div>
-     </header>
-     <section key={stage.id} ref={body}
-       className={"v2-body"+(fallbackMotion?` v2-fallback-${fallbackMotion}`:"")} aria-labelledby="v2-title">
-       <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
-         if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
-         handleFieldFocus(null);
-       }}/>
-       <div className="v2-stage-heading">
-         <h1 id="v2-title">{stage.title}</h1>
-         <p className="v2-subtitle">{stage.subtitle}</p>
-       </div>
-       {stage.id==="identity"&&step(1)}
-       {stage.id==="birthday"&&<div className="v2-real-groups">{step(2)}<RegistrationConsent data={draft} patch={p.patch}/></div>}
-       {stage.id==="location"&&step(3)}
-       {stage.id==="intent"&&step(4)}
-       {stage.id==="languages"&&step(6,"languages")}
-       {stage.id==="personality"&&<div className="v2-real-groups">
-        {step(6,"about")}{step(5)}
-        <OptionalProfileDetails data={draft} patch={p.patch} open={detailsOpen}
-          onOpenChange={setDetailsOpen} overlayHost={device.current}/>
-       </div>}
-       {stage.id==="photos"&&<div className="v2-real-groups">
-        {step(7)}
-        <div className="v2-note"><ShieldCheck size={18}/>
-         Добавь свои чёткие фотографии. Потяни за значок на снимке или нажми корону, чтобы выбрать главное фото.
-        </div>
-       </div>}
-       {stage.id==="review"&&<div className="v2-fields">
-        <SimpleProfileReview draft={draft} photos={photos}/>
-        {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
-       </div>}
-       {p.storageError&&<p role="alert" className="v2-feedback">
-        Не удалось сохранить черновик на устройстве.<button type="button" onClick={p.onRetryStorage}>Повторить</button>
-       </p>}
-       {(["photos","review"].includes(stage.id))&&p.mediaStatus&&<p role="status" className="v2-feedback">{p.mediaStatus}</p>}
-       {hint&&<p role="alert" className="v2-feedback">{hint}</p>}
-     </section>
-     <footer className={"v2-footer"+(fieldConfirmActive?" is-focus-confirm":"")}>
-       {stage.id==="review"?<div className="v2-footer-review">
-        <button type="button" className="v2-publish v2-draft-save"
-          disabled={!savedDraftAllowed} onClick={p.onSave}>
-          <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету 💜"}
-        </button>
-       </div>:<>
-       <div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>
-       <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")+(!continueReady?" is-incomplete":"")} disabled={photoChecking}
-          aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
-         aria-disabled={!continueReady||undefined}
-          onPointerDown={e=>{if(fieldConfirmActive)e.preventDefault();}}
-          onClick={()=>{
-            if(fieldConfirmActive){
-              if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
-              handleFieldFocus(null);
-              return;
-            }
-            advance();
-          }}>
-          {fieldConfirmActive?<Check size={25} strokeWidth={2.3}/>:<>{photoChecking?"Проверяем фото…":"Продолжить"}<ArrowRight size={18}/></>}
-        </button>
-       </div></>}
-       </footer>
+ const dob=d.year&&d.month&&d.day?`${d.year}-${d.month.padStart(2,"0")}-${d.day.padStart(2,"0")}`:"";
+ const onDob=(value:string)=>{const [year="",month="",day=""]=value.split("-");p.patch({year,month,day});setError("");};
+ const toggleInterest=(id:string)=>p.patch({interests:d.interests.includes(id)?d.interests.filter(x=>x!==id):d.interests.length<15?[...d.interests,id]:d.interests});
+ const rank=(label:string)=>{const i=featured.indexOf(label.toLowerCase());return i<0?featured.length:i;};
+ const sortedGoals=[...goals].sort((a,b)=>rank(a.label)-rank(b.label));
+ const currentPhoto=photos[Math.min(selectedPhoto,photos.length-1)];
+ const ready=photos.length>=3&&photos.length<=6&&photos.every(photo=>photo.status==="ready"&&photo.serverStatus==="saved");
+ return <main ref={root} className="v4-registration" aria-label="Регистрация LUEMI" data-step={index+1}>
+  <header className="v4-header"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" draggable={false}/><div className="v4-progress" role="progressbar" aria-label="Прогресс регистрации" aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={8}>{titles.map((_,i)=><span key={i} className={i===index?"current":""}/>)}</div></header>
+  <section ref={body} className="v4-scroll" aria-labelledby="v4-title">
+   <div key={index} className={"v4-stage"+(moving?" v4-enter-"+direction:"")}>
+    <h1 id="v4-title">{titles[index][0]}</h1><p className="v4-subtitle">{titles[index][1]}</p>
+    {index===0&&<div className="v4-name"><label className="v4-field v4-name-field"><UserRound size={19}/><input aria-label="Имя" autoComplete="given-name" maxLength={48} placeholder="Твоё имя" value={d.name} onChange={e=>{p.patch({name:e.target.value});setError("");}}/>{d.name&&<button type="button" aria-label="Очистить имя" onClick={()=>p.patch({name:""})}><X size={18}/></button>}</label><label className="v4-consent"><input type="checkbox" checked={d.trialConsent} onChange={e=>p.patch({trialConsent:e.target.checked})}/><span>Я принимаю <a href="/terms.html" target="_blank" rel="noopener noreferrer">Условия использования</a> и <a href={remoteDraftPilot.policy||"/privacy.html"} target="_blank" rel="noopener noreferrer">Политику конфиденциальности</a></span></label></div>}
+    {index===1&&<div className="v4-stack"><label className="v4-field v4-date"><CalendarDays size={18}/><input type="date" aria-label="Дата рождения" min="1900-01-01" max={new Date(Date.UTC(new Date().getUTCFullYear()-18,new Date().getUTCMonth(),new Date().getUTCDate())).toISOString().slice(0,10)} value={dob} onChange={e=>onDob(e.target.value)}/></label><div className="v4-chips v4-gender">{([["man","Мужчина"],["woman","Женщина"],["other","Другое"]] as const).map(([value,label])=><Choice key={value} selected={d.gender===value} onClick={()=>p.patch({gender:value})}>{label}</Choice>)}</div><p className="v4-hint">Возраст увидят в профиле, а дату рождения — только ты.</p></div>}
+    {index===2&&<div className="v4-geo"><GeoPicker variant="v4" data={d} patch={p.patch} clearFieldError={()=>setError("")}/></div>}
+    {index===3&&<div className="v4-stack"><strong className="v4-label">Кого хочешь встретить?</strong><div className="v4-chips">{([["women","Женщин"],["men","Мужчин"],["everyone","Всех"]] as const).map(([value,label])=><Choice key={value} selected={d.audience===value} onClick={()=>p.patch({audience:value})}>{label}</Choice>)}</div><div className="v4-age"><span>Возраст</span><strong>{d.ageMin}–{d.ageMax}</strong><div className="v4-range" style={{"--v4-min":(d.ageMin-18)/62*100+"%","--v4-max":(d.ageMax-18)/62*100+"%"} as CSSProperties}><div className="v4-range-track"><span/></div><input type="range" min={18} max={80} value={d.ageMin} aria-label="Минимальный возраст" onChange={e=>p.patch({ageMin:Math.min(+e.target.value,d.ageMax)})}/><input type="range" min={18} max={80} value={d.ageMax} aria-label="Максимальный возраст" onChange={e=>p.patch({ageMax:Math.max(+e.target.value,d.ageMin)})}/></div><small>18 <span>80</span></small></div></div>}
+    {index===4&&<div className="v4-goals">{sortedGoals.filter((goal,i)=>i<5||moreGoals||goal.id===d.goal).map(goal=><button key={goal.id} type="button" className={"v4-goal"+(d.goal===goal.id?" selected":"")} aria-pressed={d.goal===goal.id} onClick={()=>p.patch({goal:goal.id})}><span>{goal.label}</span><span className="v4-goal-check">{d.goal===goal.id&&<Check size={15}/>}</span></button>)}<button type="button" className="v4-more" onClick={()=>setMoreGoals(!moreGoals)}>{moreGoals?"Свернуть":"Другие цели"}</button><p className="v4-hint">Выбери один вариант</p></div>}
+    {index===5&&<div className="v4-stack v4-personality"><label className="v4-about">О себе<textarea rows={3} value={d.about} maxLength={750} placeholder="Напиши пару слов о себе" onChange={e=>p.patch({about:[...e.target.value].slice(0,750).join("")})}/><small>{[...d.about].length}/750</small></label><strong className="v4-label">Интересы</strong><div className="v4-chips v4-interests">{interestList.filter((item,i)=>moreInterests||i<12||d.interests.includes(item.id)).map(item=><Choice key={item.id} selected={d.interests.includes(item.id)} onClick={()=>toggleInterest(item.id)}>{item.name}</Choice>)}</div><button type="button" className="v4-more" onClick={()=>setMoreInterests(!moreInterests)}>{moreInterests?"Свернуть интересы":"Показать все интересы"}</button><OptionalDetails d={d} patch={p.patch}/></div>}
+    {index===6&&<div className="v4-photos">{currentPhoto?.src?<div className="v4-photo-large"><img src={currentPhoto.src} alt="Выбранное фото"/><span>{selectedPhoto===0?"Главное фото":selectedPhoto===1?"Второе главное фото":"Фото анкеты"}</span></div>:<div className="v4-photo-empty">Выбери фотографии из галереи</div>}<PhotoSorter photos={photos} addPhotos={p.addPhotos} removePhoto={p.removePhoto} movePhoto={(from,to)=>{p.movePhoto(from,to);setSelectedPhoto(to);}}/><div className="v4-photo-select">{photos.map((photo,i)=><button type="button" key={photo.id} className={selectedPhoto===i?"selected":""} onClick={()=>setSelectedPhoto(i)} aria-label={`Просмотреть фото ${i+1}`}>{i+1}</button>)}</div><p className="v4-hint"><GripVertical size={14}/> Перетащи фото, чтобы поменять порядок. Первые два — главные.</p><p className="v4-hint">{photos.length} из 6 · {photos.filter(photo=>photo.serverStatus==="saved").length} загружено на сервер</p>{photos.some(photo=>photo.serverStatus==="error")&&<button type="button" className="v4-more" onClick={p.onRetryMedia}>Повторить загрузку</button>}</div>}
+    {index===7&&<article className="v4-preview">{photos[0]?.src&&<img className="v4-avatar" src={photos[0].src} alt="Главное фото"/>}<div><h2>{d.name}{ageOf(d)?`, ${ageOf(d)}`:""}</h2><p><MapPin size={14}/>{d.city}{d.country?`, ${d.country}`:""}</p><p>♡ {goals.find(g=>g.id===d.goal)?.label}</p></div>{d.about&&<p className="v4-preview-about">{d.about}</p>}<div className="v4-chips">{d.interests.map(id=>{const item=itemOf(id);return item?<span className="v4-choice selected" key={id}>{item.name}</span>:null;})}</div><div className="v4-gallery">{photos.map((photo,i)=><img src={photo.src} alt={`Фото ${i+1}`} key={photo.id}/>)}</div></article>}
+    {error&&<p className="v4-error" role="alert">{error}</p>}
+    {p.storageError&&<p className="v4-error" role="alert">Не удалось сохранить черновик. <button type="button" onClick={p.onRetryStorage}>Повторить</button></p>}
+    {index>=6&&p.mediaStatus&&<p className="v4-error" role="status">{p.mediaStatus}</p>}
+    {index===7&&p.serverStatus&&<p className="v4-error" role="status">{p.serverStatus}</p>}
    </div>
+  </section>
+  <footer className="v4-footer">{index>0&&<button type="button" className="v4-back" aria-label="Назад" onClick={back}><ArrowLeft size={20}/></button>}<button type="button" className="v4-next" disabled={checking||p.serverSaving||index===0&&!d.trialConsent||index===6&&!ready} onClick={()=>{void advance();}}>{index===7?p.serverSaving?"Создаём…":"Создать анкету":checking?"Проверяем…":"Продолжить"}{index===7?<Check size={19}/>:<ArrowRight size={19}/>}</button></footer>
  </main>;
 }
