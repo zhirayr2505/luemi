@@ -17,15 +17,15 @@ const focusDock=readFileSync("apps/web/src/registration/use-field-focus.ts","utf
 const required=[
  ["V2 runtime tokens",/\.v2-runtime\s*\{[^}]*--ink:/s],
  ["Telegram native clearance",/\.v2-runtime\[data-telegram-ui="true"\]\s+\.v2-device\s*\{[^}]*padding-top:max\(62px,[^}]*--tg-content-safe-area-inset-top[^}]*--tg-safe-area-inset-top[^}]*safe-area-inset-top/s],
- ["dark readable form inputs",/\.v2-runtime\s+\.glass-control,\.v2-runtime\s+\.v2-input\s*\{[^}]*background:linear-gradient/s],
- ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--registration-layout-height[^}]*--registration-visible-bottom/s],
+ ["dark readable form inputs",/\.v2-runtime\s+\.glass-control,\.v2-runtime\s+\.v2-input\s*\{[^}]*background:rgba\(43,42,57,\.9\)/s],
+ ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--focused-dock-top/s],
  ["single confirm action",/\.v2-runtime\s+\.v2-next\.v2-next-confirm[^}]*display:grid/s],
  ["blurred borderless action fade",/\.v2-runtime\s+\.v2-footer\s*\{[^}]*position:absolute[^}]*border:0/s],
  ["geolocation and language search icon",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
  ["opaque search scope list",/\.v2-runtime\s+\.scope-options\s*\{[^}]*background:#292336/s],
- ["scope list opens upward",/\.v2-runtime\s+\.scope-options\s*\{[^}]*bottom:calc\(100% \+ 8px\)/s],
- ["cinematic dark canvas",/\.v2-runtime\s*\{[^}]*background:#100e1a/s]
+ ["scope list opens upward without covering the city field",/\.v2-runtime\s+\.scope-options\s*\{[^}]*position:relative;order:-1/s],
+ ["quiet dark canvas",/\.v2-runtime\s*\{[^}]*background:#15131c/s]
 ];
 for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
@@ -34,7 +34,7 @@ assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"
 assert.match(steps,/Я принимаю <a href="\/privacy"/,"Public policy acceptance must appear on the first identity step");
 assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
-assert.match(form,/p\.publicationEnabled&&!instantPublication\?/,"Registration must disclose publication separately from private saving");
+assert.match(form,/const stages:readonly VisualStage\[\]=visualStages/,"Every account follows the same eight visual steps");
 assert.match(form,/Создать анкету 💜/,"Single real signup confirmation creates published profile");
 assert.match(form,/<SimpleProfileReview draft=\{draft\} photos=\{photos\}/,
  "Signup preview must be a simple gallery, not interactive Profile Morph");
@@ -42,12 +42,28 @@ assert.doesNotMatch(form,/mode="local-self-preview" active/,
  "Interactive morph must never interrupt a registration review");
 assert.match(form,/stage.id==="photos"&&<div className="v2-real-groups">/,
  "Photo selection and reordering stay on their dedicated step");
+assert.doesNotMatch(form,/id:"main-photo"|stage.id==="main-photo"/,
+ "The first uploaded photo is already the main photo; do not add a duplicate step");
+assert.match(form,/className="v2-stage-heading"/,
+ "Scrollable steps keep their heading in a dedicated sticky layer");
+assert.match(runtime,/\.v2-stage-heading\{position:sticky;/,
+ "Step headings must stay visible while the form scrolls");
 assert.doesNotMatch(form,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setServerConsent/,
  "No duplicate photo consent or network upload progress before final confirmation");
 assert.match(app,/setJourney\("publishing"\)/,
  "Publication curtain must begin before saving photos on server");
-assert.match(form,/p\.publicationEnabled&&!instantPublication\?/,
- "Private signup must skip unavailable biometric verification screens");
+assert.doesNotMatch(form,/id:"face-consent"|id:"liveness"|stage\.id==="main-photo"/,
+ "No intermediate biometric or duplicate main-photo screens interrupt signup");
+assert.match(form,/wordmark_original_raster_alpha_W06\.webp/,
+ "The header uses the actual LUEMI mark, not a text approximation");
+assert.match(runtime,/\.v2-header-logo\{[^}]*filter:brightness\(0\) invert\(1\)/s,
+ "The original LUEMI mark appears white on the dark registration surface");
+assert.match(form,/stage\.id==="personality"&&<div className="v2-footer-optional">/,
+ "Optional about details are reached from the interests and biography step");
+assert.match(form,/className="v2-progress-fill" style=\{\{transform:`scaleX/,
+ "The single progress line fills smoothly");
+assert.doesNotMatch(app,/registration-load-card|Открываем регистрацию/,
+ "Entering registration must not flash a branded loader");
 assert.match(form,/aria-valuemax=\{stages\.length\}/,
  "Progress count must reflect actual signup steps");
 assert.match(app,/const registrationV2Pilot=remoteDraftPilot\.enabled/,
@@ -84,8 +100,8 @@ assert.match(focusDock,/visualViewport[\s\S]*requestAnimationFrame\(update\)/,
  "Keyboard dock must coalesce Android viewport animation into one writer");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
  "The focused editor must use one visual viewport bottom coordinate without double keyboard compensation");
-assert.match(focusDock,/slotTop-dockTop[\s\S]*shell\.animate\(/,
- "Focused field must travel from its original slot instead of teleporting");
+assert.match(focusDock,/pinnedTop=Math\.max\(headerBottom\+12,Math\.min\(pinnedTop,[\s\S]*slotTop-dockTop[\s\S]*shell\.animate\(/,
+ "Focused field must rise smoothly and stay pinned when the keyboard closes");
 assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.height/,
  "Changing city suggestions must not feed the editor height back into keyboard placement");
 assert.match(form,/<section key=\{stage\.id\}[^>]*>[\s\S]*?<div className="v2-focus-scrim"/,
@@ -101,7 +117,7 @@ assert.match(runtime,/\.city-focus-shell \.geo-results\{position:absolute[^}]*bo
 assert.match(steps,/className="about-input-shell"[\s\S]*className="char-count"/,
  "Biography count must sit inside its text field");
 assert.match(geo,/className="scope-popover-anchor"/,
- "Search scope menu needs a stable upward popover anchor");
+ "Search scope menu needs an upward in-flow anchor");
 assert.match(app,/className="intro-subtitle">Реальные люди\. Настоящие эмоции/,
  "Welcome screen needs the cinematic supporting line");
 assert.match(app,/webApp\?\.setBottomBarColor\?\.\(background\)/,

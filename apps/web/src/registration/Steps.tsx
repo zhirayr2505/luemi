@@ -151,7 +151,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    <ChoiceRow label="Пол">
      <GlassChoice chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<GenderIcon type="man"/>}>Мужчина</GlassChoice>
      <GlassChoice chosen={data.gender==="woman"} onClick={()=>patch({gender:"woman"})} icon={<GenderIcon type="woman"/>}>Женщина</GlassChoice>
-     <GlassChoice chosen={data.gender==="other"} onClick={()=>patch({gender:"other"})} icon={<GenderIcon type="everyone"/>}>Другой вариант</GlassChoice>
    </ChoiceRow>
    
  </div>;
@@ -168,8 +167,8 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    <div className="goals-section"><ChoiceRow label="Цель знакомства">
      {goals.map(goal=>{
        const Icon=goalIcons[goal.id];
-       return <GlassChoice key={goal.id} chosen={data.goal===goal.id} icon={<Icon size={17}/>}
-         onClick={()=>patch({goal:goal.id})}>{goal.label}</GlassChoice>;
+       return <GlassChoice key={goal.id} chosen={data.goal===goal.id} icon={<Icon size={22}/>}
+         onClick={()=>patch({goal:goal.id})}><span className="goal-card-label">{goal.label}</span></GlassChoice>;
      })}
    </ChoiceRow></div>
  </div>;

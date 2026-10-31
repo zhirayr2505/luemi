@@ -28,12 +28,16 @@ export function SimpleProfileReview({draft,photos}:{draft:RegistrationDraft;phot
    {!!draft.interests.length&&<div className="luemi-simple-review-interests">
     {draft.interests.slice(0,6).map(item=><InterestChip key={item} id={item} selected/>)}
    </div>}
-   {!!(draft.height||draft.occupation||draft.education||draft.languages.length||draft.lifestyle.length||draft.pets.length||draft.facts.length)&&
+   {!!(draft.height||draft.occupation||draft.education||draft.languages.length||draft.lifestyle.length||draft.pets.length||draft.family.length)&&
     <div className="luemi-simple-review-details">
      {draft.height&&<span>Рост {draft.height} см</span>}{draft.occupation&&<span>{draft.occupation}</span>}
      {draft.education&&<span>{draft.education}</span>}{draft.languages.map(value=><span key={value}>{value}</span>)}
      {draft.lifestyle.map(value=><span key={value}>{value}</span>)}{draft.pets.map(value=><span key={value}>{value}</span>)}
+     {draft.family.map(value=><span key={value}>{value}</span>)}
     </div>}
+   {!!draft.facts.length&&<div className="luemi-simple-review-facts">
+     {draft.facts.map((value,i)=><p key={i}>{value}</p>)}
+   </div>}
   </header>
   <div className="luemi-simple-review-gallery-head"><h3>Мои фотографии</h3><span>{valid.length} из 6</span></div>
   <div className="luemi-simple-review-gallery" role="group" aria-label="Фотографии. Листай горизонтально">

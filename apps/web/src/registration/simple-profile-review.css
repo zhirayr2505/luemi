@@ -1,24 +1,52 @@
-.luemi-simple-review{display:flex;flex-direction:column;gap:11px;width:100%;color:var(--ink);border:1px solid var(--glass-edge);background:var(--panel);border-radius:28px;padding:14px 13px 12px;box-shadow:0 14px 36px rgba(104,58,134,.11);overflow:hidden;position:relative;isolation:isolate}
-.luemi-simple-review::before{content:"";position:absolute;z-index:-1;inset:0 0 auto;height:170px;pointer-events:none;background:radial-gradient(ellipse at 50% 0,rgba(215,174,239,.3),transparent 72%)}
-.luemi-simple-review-head{display:flex;align-items:center;flex-direction:column;text-align:center;gap:9px;padding:1px 10px 8px}
-.luemi-simple-review-kicker{display:inline-flex;align-items:center;gap:6px;color:#9265ad;font-size:10px;line-height:1;letter-spacing:.1em;text-transform:uppercase;font-weight:800}
-.luemi-simple-review-avatar-ring{display:grid;place-items:center;width:78px;height:78px;border-radius:50%;padding:4px;background:linear-gradient(135deg,#b98be4,#e7a4cf);box-shadow:0 10px 26px rgba(115,68,146,.2)}
-.luemi-simple-review-avatar{width:70px;height:70px;object-fit:cover;border-radius:50%;border:3px solid rgba(255,255,255,.96)}
-.luemi-simple-review-fallback{display:grid;place-items:center;color:#9865c3;background:#eadcf3}
-.luemi-simple-review-head h2{font-size:22px;line-height:1.15;margin:2px 0 0;font-weight:750}
-.luemi-simple-review-head p{font-size:13px;line-height:1.45;color:var(--subtle);margin:0}
-.luemi-simple-review-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px}
-.luemi-simple-review-meta span{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--glass-edge);background:var(--panel);border-radius:999px;padding:6px 9px;color:var(--subtle);font-size:11px;font-weight:650}
-.luemi-simple-review-about{max-width:315px;font-size:14px;max-height:70px;overflow:hidden;color:var(--ink);white-space:pre-wrap}
-.luemi-simple-review-interests{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
-.luemi-simple-review-interests>.interest-chip{font-size:11px;padding:6px 10px;border:1px solid var(--glass-edge);border-radius:14px}
-.luemi-simple-review-gallery-head{display:flex;justify-content:space-between;align-items:center;padding:3px 6px 0;gap:7px}
-.luemi-simple-review-gallery-head h3{margin:0;font-size:15px}
-.luemi-simple-review-gallery-head span{font-size:12px;color:var(--subtle)}
-.luemi-simple-review-gallery{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:0 3px 9px;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.luemi-simple-review{position:relative;isolation:isolate;width:100%;margin-top:42px;padding:75px 16px 18px;
+ border:1px solid rgba(223,183,242,.34);border-radius:28px;color:#fbf4ff;
+ background:linear-gradient(158deg,rgba(77,59,93,.82),rgba(39,35,55,.98) 40%,rgba(41,35,55,.98));
+ box-shadow:inset 0 1px rgba(255,255,255,.13),0 22px 54px rgba(8,5,19,.25);overflow:visible}
+.luemi-simple-review::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+ background:radial-gradient(circle at 50% 0,rgba(229,152,219,.28),transparent 44%),
+ radial-gradient(circle at 94% 70%,rgba(143,96,202,.13),transparent 46%)}
+.luemi-simple-review-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:13px}
+.luemi-simple-review-kicker{display:inline-flex;align-items:center;gap:7px;color:#e8bbf6;
+ font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+.luemi-simple-review-avatar-ring{position:absolute;top:-51px;left:50%;transform:translateX(-50%);
+ width:112px;height:112px;padding:5px;border-radius:50%;display:grid;place-items:center;
+ background:linear-gradient(135deg,#f4c7f2,#aa76dc,#f2a9cf);box-shadow:0 0 0 5px #211a2b,0 12px 36px rgba(198,112,224,.35)}
+.luemi-simple-review-avatar{display:block;width:102px;height:102px;object-fit:cover;border:3px solid #f9d9fa;border-radius:50%}
+.luemi-simple-review-fallback{display:grid;place-items:center;background:#55436b;color:#f6d9ff}
+.luemi-simple-review-head h2{font-size:clamp(24px,6.8vw,31px);line-height:1.1;margin:0;
+ font-weight:780;letter-spacing:-.045em;overflow-wrap:anywhere}
+.luemi-simple-review-meta{display:flex;justify-content:center;flex-wrap:wrap;gap:7px}
+.luemi-simple-review-meta span{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:7px 10px;
+ border:1px solid rgba(239,192,245,.35);border-radius:999px;background:rgba(111,75,119,.32);
+ color:#f5e8f8;font-size:11px;font-weight:640}
+.luemi-simple-review-meta em{font-style:normal}
+.luemi-simple-review-about{max-width:100%;font-size:13px;line-height:1.55;white-space:pre-wrap;
+ color:#ebdfee;margin:1px 0 0;overflow-wrap:anywhere}
+.luemi-simple-review-interests,.luemi-simple-review-details{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;width:100%}
+.luemi-simple-review-interests>.interest-chip,.luemi-simple-review-details>span{padding:7px 10px;
+ border:1px solid rgba(234,188,240,.38);border-radius:999px;background:rgba(127,82,139,.4);
+ color:#f7e8fb;font-size:11px;line-height:1.1}
+.luemi-simple-review-details{padding-top:11px;border-top:1px solid rgba(235,202,249,.15)}
+.luemi-simple-review-facts{display:grid;gap:5px;width:100%;text-align:left;padding:9px 12px;
+ border:1px solid rgba(233,194,245,.2);border-radius:16px;background:rgba(31,25,45,.34)}
+.luemi-simple-review-facts p{margin:0;color:#e9dced;font-size:12px;line-height:1.4}
+.luemi-simple-review-gallery-head{display:flex;justify-content:space-between;align-items:center;
+ gap:8px;margin:23px 1px 12px}
+.luemi-simple-review-gallery-head h3{margin:0;font-size:16px;letter-spacing:-.025em}
+.luemi-simple-review-gallery-head span{font-size:11px;color:#c6b4d3}
+.luemi-simple-review-gallery{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
+ scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+ margin:0 -7px;padding:0 7px 7px}
 .luemi-simple-review-gallery::-webkit-scrollbar{display:none}
-.luemi-simple-review-tile{position:relative;flex:0 0 82%;height:178px;border-radius:21px;overflow:hidden;scroll-snap-align:center;background:#e7d8ec;box-shadow:0 8px 22px rgba(82,48,108,.13)}
-.luemi-simple-review-tile img{width:100%;height:100%;object-fit:cover;display:block}
-.luemi-simple-review-main{position:absolute;left:10px;bottom:10px;font-size:12px;font-weight:700;color:#58346c;padding:7px 11px;background:rgba(255,251,255,.92);border-radius:14px}
-.luemi-simple-review-number{position:absolute;right:10px;top:10px;padding:5px 8px;border-radius:999px;background:rgba(42,27,53,.68);color:#fff;font-size:10px;font-weight:750}
-@media(max-width:440px){.luemi-simple-review-tile{height:162px;flex-basis:84%}}
+.luemi-simple-review-tile{position:relative;flex:0 0 83%;height:clamp(250px,72vw,410px);
+ border:1px solid rgba(245,215,254,.35);border-radius:20px;overflow:hidden;scroll-snap-align:start;
+ background:#392d46;box-shadow:0 10px 26px rgba(6,3,14,.2)}
+.luemi-simple-review-tile img{display:block;width:100%;height:100%;object-fit:cover}
+.luemi-simple-review-tile::after{content:"";position:absolute;inset:55% 0 0;pointer-events:none;
+ background:linear-gradient(transparent,rgba(15,10,23,.58))}
+.luemi-simple-review-main,.luemi-simple-review-number{position:absolute;z-index:1;border-radius:999px;
+ font-size:11px;font-weight:720}
+.luemi-simple-review-main{left:12px;bottom:12px;padding:8px 12px;
+ background:linear-gradient(110deg,#dfb5f7,#f2b7df);color:#25172d}
+.luemi-simple-review-number{right:12px;top:12px;padding:6px 9px;background:rgba(28,19,39,.78);color:#fff}
+@media(max-width:380px){.luemi-simple-review{padding-inline:12px}.luemi-simple-review-tile{flex-basis:88%}}

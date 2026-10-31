@@ -1,10 +1,10 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,Check,ChevronRight,LockKeyhole,ShieldCheck} from "lucide-react";
+import {flushSync} from "react-dom";
+import {ArrowRight,Check,ShieldCheck} from "lucide-react";
 import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
 import {SimpleProfileReview} from "../SimpleProfileReview";
 import {OptionalProfileDetails} from "../OptionalProfileDetails";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
-import {FaceTrustCamera} from "./FaceTrustCamera";
 import {findExactDuplicatePhotoIds} from "./duplicate-photos";
 import "./preview.css";
 import "./runtime.css";
@@ -21,7 +21,6 @@ interface Props{
  onTheme:()=>void;
  onSave:()=>void;
  mediaEnabled:boolean;
- publicationEnabled:boolean;
  serverSaving:boolean;
  serverStatus:string;
  mediaStatus?:string;
@@ -44,11 +43,24 @@ const visualStages=[
  {id:"languages",title:"Какие языки ты знаешь?",subtitle:"Это поможет находить людей со схожими интересами"},
  {id:"personality",title:"Расскажи о себе",subtitle:"Несколько слов о себе и о том, что тебе интересно"},
  {id:"photos",title:"Добавь свои фото",subtitle:"Загрузи от 3 до 6 фотографий"},
- {id:"main-photo",title:"Выбери главное фото",subtitle:"Оно будет показываться в твоей анкете первым"},
  {id:"review",title:"Проверь свою анкету",subtitle:"Убедись, что всё правильно"}
 ] as const;
 type VisualStage={id:string;title:string;subtitle:string};
+type RegistrationViewTransition={finished:Promise<void>};
+type ViewTransitionDocument=Document&{startViewTransition?:(update:()=>void)=>RegistrationViewTransition};
 type IdentityError={field:"name"|"date"|"city"|"about";message:string};
+function restoredStage(draft:RegistrationDraft,photos:PhotoItem[]):number{
+ // Telegram's first-name prefill alone is not a completed registration step.
+ if(!draft.day&&!draft.month&&!draft.year&&!draft.gender&&!draft.city&&
+    !draft.about.trim()&&!photos.length)return 0;
+ const target=!nameValid(draft.name)?"identity":
+  !birthDateValid(draft.day,draft.month,draft.year)||
+    !(draft.gender==="man"||draft.gender==="woman")||!draft.trialConsent?"birthday":
+  !selectedCityValid(draft)?"location":
+  validateStep(draft,4,photos.length,new Date(),"live")!==null?"intent":
+  !draft.about.trim()?"personality":!photoReady(photos)?"photos":"review";
+ return visualStages.findIndex(item=>item.id===target);
+}
 function dateIssue(draft:RegistrationDraft,today=new Date()):string|null{
  if(!draft.day||!draft.month||!draft.year)return "Введи дату рождения";
  const y=Number(draft.year),m=Number(draft.month),d=Number(draft.day);
@@ -63,24 +75,17 @@ function dateIssue(draft:RegistrationDraft,today=new Date()):string|null{
 }
 export function RealRegistrationV2(p:Props){
  const {draft,photos}=p;
- const instantPublication=p.publicationEnabled&&import.meta.env.VITE_LUEMI_INSTANT_PUBLICATION_UI==="1";
- // Private registration never requests a non-operational biometric selfie.
- // Keep the full FaceTrust workflow available only to separately approved publication.
- const stages=useMemo<VisualStage[]>(()=>p.publicationEnabled&&!instantPublication?
-  [...visualStages.slice(0,-1),
-   {id:"face-consent",title:"Знакомства с доверием",subtitle:"Расскажем, как проходит проверка лица"},
-   {id:"liveness",title:"Это действительно ты?",subtitle:"Короткая проверка через камеру"},
-   visualStages[visualStages.length-1]]:[...visualStages],
-  [p.publicationEnabled,instantPublication]);
- const [index,setIndex]=useState(()=>p.resumeReview?stages.length-1:0);
- const recoveryApplied=useRef(false);
- const [biometricNotice,setBiometricNotice]=useState(false);
- const [engine,setEngine]=useState<"checking"|"unavailable"|"error">("checking");
+ const stages:readonly VisualStage[]=visualStages;
+ const [index,setIndex]=useState(()=>p.resumeReview?stages.length-1:p.restored?restoredStage(draft,photos):0);
+ const recoveryApplied=useRef(p.restored);
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
+ const [detailsOpen,setDetailsOpen]=useState(false);
  const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|"language"|null>(null);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
  const viewportRoot=useRef<HTMLElement|null>(null);
+ const device=useRef<HTMLDivElement|null>(null);
+ const transitioning=useRef(false);
  useEffect(()=>{
   const root=viewportRoot.current;
   const viewport=window.visualViewport;
@@ -115,27 +120,14 @@ export function RealRegistrationV2(p:Props){
   if(active instanceof HTMLElement)active.blur();
   setFocusedField(null);
  },[]);
- useEffect(()=>{
-  const controller=new AbortController();
-  void fetch("/api/v2/facetrust/status",{method:"GET",credentials:"same-origin",
-   cache:"no-store",signal:controller.signal}).then(async res=>{
-    if(!res.ok)throw new Error("facetrust_status_unavailable");
-    const data:unknown=await res.json();
-    if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("invalid_status");
-    const state=data as Record<string,unknown>;
-    // Client never interprets the network response as a trusted liveness verdict.
-    setEngine(state.state==="provider_not_connected"&&state.verified===false?
-      "unavailable":"error");
-  }).catch(()=>{if(!controller.signal.aborted)setEngine("error");});
-  return()=>controller.abort();
- },[]);
  const stage=stages[index];
  const body=useRef<HTMLElement|null>(null);
  const handleFieldFocus=useCallback((field:"name"|"date"|"city"|"about"|"language"|null)=>{
   setFocusedField(field);
  },[]);
  const dateValid=birthDateValid(draft.day,draft.month,draft.year);
- const identityReady=nameValid(draft.name)&&dateValid&&!!draft.gender&&draft.trialConsent;
+ const genderReady=draft.gender==="man"||draft.gender==="woman";
+ const identityReady=nameValid(draft.name)&&dateValid&&genderReady&&draft.trialConsent;
  const locationReady=selectedCityValid(draft);
  const intentReady=validateStep(draft,4,photos.length,new Date(),"live")===null;
  // Restore the next incomplete real-data stage once local persistence has
@@ -144,14 +136,39 @@ export function RealRegistrationV2(p:Props){
   if(!p.restored||recoveryApplied.current)return;
   recoveryApplied.current=true;
   if(p.resumeReview)return;
-  const firstIncomplete=!nameValid(draft.name)?"identity":
-   !dateValid||!draft.gender||!draft.trialConsent?"birthday":
-   !locationReady?"location":!intentReady?"intent":
-   !draft.about.trim()?"personality":!photoReady(photos)?"photos":"review";
-  setIndex(Math.max(0,stages.findIndex(item=>item.id===firstIncomplete)));
- },[p.restored,p.resumeReview,draft,photos,dateValid,locationReady,intentReady,stages]);
- const nav=(target:number)=>{setHint("");setIdentityError(null);setFocusedField(null);setIndex(Math.min(stages.length-1,Math.max(0,target)));body.current?.scrollTo({top:0,behavior:"instant"});};
- const back=()=>{if(index===0)p.onExit();else nav(index-1);};
+  setIndex(restoredStage(draft,photos));
+ },[p.restored,p.resumeReview,draft,photos]);
+ const nav=(target:number)=>{
+  const next=Math.min(stages.length-1,Math.max(0,target));
+  if(next===index||transitioning.current)return;
+  const update=()=>flushSync(()=>{
+   setHint("");setIdentityError(null);setFocusedField(null);setDetailsOpen(false);setIndex(next);
+  });
+  const viewDocument=document as ViewTransitionDocument;
+  if(focusedField||document.visibilityState!=="visible"||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches||!viewDocument.startViewTransition){
+   update();return;
+  }
+  const root=document.documentElement;
+  root.style.setProperty("--luemi-step-enter",next>index?"28px":"-28px");
+  root.style.setProperty("--luemi-step-exit",next>index?"-28px":"28px");
+  root.dataset.luemiTransition="true";
+  transitioning.current=true;
+  const settle=()=>{
+   transitioning.current=false;
+   root.style.removeProperty("--luemi-step-enter");
+   root.style.removeProperty("--luemi-step-exit");
+   delete root.dataset.luemiTransition;
+  };
+  try{
+   const transition=viewDocument.startViewTransition(update);
+   void transition.finished.then(settle,settle);
+  }catch{settle();update();}
+ };
+ const back=()=>{
+  if(detailsOpen){setDetailsOpen(false);return;}
+  if(index===0)p.onExit();else nav(index-1);
+ };
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
  const advance=()=>{
   let issue:string|null=null;
@@ -165,7 +182,7 @@ export function RealRegistrationV2(p:Props){
    case "birthday":
     {const birthdayIssue=dateIssue(draft);
      if(birthdayIssue){setIdentityError({field:"date",message:birthdayIssue});setHint("");return;}}
-    if(!draft.gender){issue="Выбери вариант пола.";break;}
+    if(!genderReady){issue="Выбери пол.";break;}
     if(!draft.trialConsent){issue="Подтверди условия регистрации.";break;}
     break;
    case "location":{
@@ -189,15 +206,6 @@ export function RealRegistrationV2(p:Props){
     }).catch(()=>setHint("Не удалось проверить повтор фотографий. Попробуй снова."))
       .finally(()=>setPhotoChecking(false));
     return;
-   case "main-photo":break;
-   case "face-consent":
-    // Consent is only necessary for biometric processing. A user may
-    // still save a private draft without granting biometric consent.
-    if(!biometricNotice){nav(stages.length-1);return;}
-    break;
-   case "liveness":
-    // No server/provider result exists. Never claim verification or publish.
-    nav(stages.length-1);return;
    case "review":return;
   }
   if(issue){setHint(messageFor(issue));return;}
@@ -214,33 +222,35 @@ export function RealRegistrationV2(p:Props){
  const savedDraftAllowed=identityReady&&locationReady&&intentReady&&
   photoReady(photos)&&!p.serverSaving;
  const continueReady=stage.id==="identity"?nameValid(draft.name):
-   stage.id==="birthday"?dateValid&&!!draft.gender&&draft.trialConsent:
+   stage.id==="birthday"?dateValid&&genderReady&&draft.trialConsent:
    stage.id==="location"?locationReady:
    stage.id==="intent"?intentReady:
    stage.id==="personality"?validateStep(draft,6,photos.length,new Date(),"live")===null:
-   stage.id==="photos"||stage.id==="main-photo"?photoReady(photos):true;
+   stage.id==="photos"?photoReady(photos):true;
  const fieldConfirmActive=["identity","birthday","location","languages","personality"].includes(stage.id)&&focusedField!==null;
 
  return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme={p.theme}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
-   <div className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
+   <div ref={device} className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
      <div className="v2-backdrop" aria-hidden="true"/>
      <header className="v2-header">
-       <button type="button" className="v2-header-back" onClick={back}
-         aria-label={index===0?"Вернуться на приветствие":"Назад"}><ArrowLeft size={22}/></button>
+       <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp"
+         className="v2-header-logo" alt="LUEMI" draggable={false}/>
+       <span className="v2-count" aria-label={`Шаг ${index+1} из ${stages.length}`}>{index+1} из {stages.length}</span>
        <div className="v2-progress" role="progressbar" aria-label="Прогресс регистрации"
          aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={stages.length}>
-         {stages.map((s,i)=><span key={s.id} className={i<=index?"v2-filled":""}/>)}
+         <span className="v2-progress-fill" style={{transform:`scaleX(${(index+1)/stages.length})`}}/>
        </div>
-       <span className="v2-count" aria-label={`Шаг ${index+1} из ${stages.length}`}>{index+1}/{stages.length}</span>
      </header>
      <section key={stage.id} ref={body} className="v2-body v2-stage-transition" aria-labelledby="v2-title">
        <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
          if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
          handleFieldFocus(null);
        }}/>
-       <h1 id="v2-title">{stage.title}</h1>
-       <p className="v2-subtitle">{stage.subtitle}</p>
+       <div className="v2-stage-heading">
+         <h1 id="v2-title">{stage.title}</h1>
+         <p className="v2-subtitle">{stage.subtitle}</p>
+       </div>
        {stage.id==="identity"&&step(1)}
        {stage.id==="birthday"&&<div className="v2-real-groups">{step(2)}<RegistrationConsent data={draft} patch={p.patch}/></div>}
        {stage.id==="location"&&step(3)}
@@ -250,52 +260,17 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="photos"&&<div className="v2-real-groups">
         {step(7)}
         <div className="v2-note"><ShieldCheck size={18}/>
-         Добавь свои чёткие фотографии. Удерживай снимок пальцем, чтобы поменять порядок — первый станет главным.
+         Добавь свои чёткие фотографии. Потяни за значок на снимке или нажми корону, чтобы выбрать главное фото.
         </div>
-       </div>}
-       {stage.id==="main-photo"&&<div className="v2-main-photo-picker">
-         {photos.filter(photo=>photo.status==="ready").map((photo,i)=><button type="button" key={photo.id}
-           className={"v2-main-photo-option"+(i===0?" is-main":"")}
-           onClick={()=>p.movePhoto(i,0)} aria-label={`Выбрать фото ${i+1} главным`}>
-           <img src={photo.src} alt={`Фотография ${i+1}`}/>
-           {i===0&&<span>Главное фото <Check size={14}/></span>}
-         </button>)}
-       </div>}
-       {stage.id==="face-consent"&&<div className="v2-fields">
-        <div className="v2-trust-symbol"><ShieldCheck size={54} strokeWidth={1.6}/></div>
-        <h2 className="v2-center-title">Твои фотографии. Твоё лицо.</h2>
-        <div className="v2-trust-steps">
-          <span><Check size={17}/> Отдельно проверим безопасность фото</span>
-          <span><Check size={17}/> Сравним лица на всех снимках</span>
-          <span><Check size={17}/> Попросим живое селфи</span>
-        </div>
-        <p className="v2-footnote" role="status">{engine==="checking"?"Проверяем доступность FaceTrust…":engine==="unavailable"?"Сервер подтвердил: AI FaceTrust ещё не включён. Можно сохранить анкету приватно.":"Состояние проверки неизвестно. Лицо не подтверждено; доступно только приватное сохранение."}</p>
-        <label className="v2-consent">
-          <input type="checkbox" checked={biometricNotice}
-           onChange={e=>setBiometricNotice(e.target.checked)}/>
-          <span>Я хочу посмотреть экран селфи-камеры. Понимаю, что сейчас это только предпросмотр без распознавания, записи и передачи биометрии.</span>
-        </label>
-        <p className="v2-footnote">Это НЕ согласие на будущую обработку лица. Перед настоящей проверкой мы отдельно покажем назначение, получателей данных, сроки хранения и возможность отзыва.</p>
-        <button type="button" className="v2-secondary" onClick={()=>nav(stages.length-1)}>
-          <LockKeyhole size={17}/> Сохранить анкету без FaceTrust
-        </button>
-       </div>}
-       {stage.id==="liveness"&&<div className="v2-fields">
-        <FaceTrustCamera/>
-        <button type="button" className="v2-secondary" onClick={()=>nav(stages.length-1)}>
-         Продолжить с приватным черновиком <ChevronRight size={17}/>
-        </button>
        </div>}
        {stage.id==="review"&&<div className="v2-fields">
         <SimpleProfileReview draft={draft} photos={photos}/>
-        <OptionalProfileDetails data={draft} patch={p.patch}/>
-        
         {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
        </div>}
        {p.storageError&&<p role="alert" className="v2-feedback">
         Не удалось сохранить черновик на устройстве.<button type="button" onClick={p.onRetryStorage}>Повторить</button>
        </p>}
-       {(["photos","main-photo","review"].includes(stage.id))&&p.mediaStatus&&<p role="status" className="v2-feedback">{p.mediaStatus}</p>}
+       {(["photos","review"].includes(stage.id))&&p.mediaStatus&&<p role="status" className="v2-feedback">{p.mediaStatus}</p>}
        {hint&&<p role="alert" className="v2-feedback">{hint}</p>}
      </section>
      <footer className={"v2-footer"+(fieldConfirmActive?" is-focus-confirm":"")}>
@@ -304,7 +279,12 @@ export function RealRegistrationV2(p:Props){
           disabled={!savedDraftAllowed} onClick={p.onSave}>
           <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету 💜"}
         </button>
-       </div>:<div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>
+       </div>:<>
+       {stage.id==="personality"&&<div className="v2-footer-optional">
+        <OptionalProfileDetails data={draft} patch={p.patch} open={detailsOpen}
+          onOpenChange={setDetailsOpen} overlayHost={device.current}/>
+       </div>}
+       <div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>
        <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")+(!continueReady?" is-incomplete":"")} disabled={photoChecking}
           aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
          aria-disabled={!continueReady||undefined}
@@ -317,10 +297,9 @@ export function RealRegistrationV2(p:Props){
             }
             advance();
           }}>
-          {fieldConfirmActive?<Check size={25} strokeWidth={2.3}/>:<>{photoChecking?"Проверяем фото…":stage.id==="liveness"?"К черновику":stage.id==="face-consent"?
-           (biometricNotice?"Посмотреть камеру":"К черновику"):"Продолжить"}<ArrowRight size={18}/></>}
+          {fieldConfirmActive?<Check size={25} strokeWidth={2.3}/>:<>{photoChecking?"Проверяем фото…":"Продолжить"}<ArrowRight size={18}/></>}
         </button>
-       </div>}
+       </div></>}
        </footer>
    </div>
  </main>;

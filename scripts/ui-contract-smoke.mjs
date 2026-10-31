@@ -68,7 +68,7 @@ assertCheck("language catalog contains exactly sixty distinct BCP47 codes",Boole
 })());
 const flags=readdirSync(new URL("../apps/web/public/assets/flags/",import.meta.url)).filter(x=>/^[a-z]{2}\.svg$/.test(x));
 assertCheck("66 genuine circular SVG flags shipped locally",flags.length===66);
-assertCheck("no stale duplicated theme/header or obsolete two-tab preview",!style.includes(".preview-tabs{")&&!style.includes(".review-actions{")&&!style.includes(".theme-pulsing")&&!app.includes("startViewTransition"));
+assertCheck("one theme and preview; registration route uses scoped transition",!style.includes(".preview-tabs{")&&!style.includes(".review-actions{")&&!style.includes(".theme-pulsing")&&app.includes("viewDocument.startViewTransition")&&app.includes('dataset.luemiRoute="true"'));
 
 const draftStore=read("apps/web/src/registration/local-draft.ts");
 const lang=read("apps/web/src/registration/LanguagePicker.tsx");

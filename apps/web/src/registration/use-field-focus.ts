@@ -1,8 +1,9 @@
 import {useLayoutEffect,useRef} from "react";
 
 /**
- * Anchor the editor to the visible viewport's bottom edge. Its own height
- * (including async search results) must never feed back into its position.
+ * Pin the focused editor above the keyboard. Its anchor may travel upward as
+ * the viewport shrinks, but never drops when Android dismisses the keyboard.
+ * Suggestion rows never participate in the editor's position measurement.
  */
 export function useFieldFocusDock(active:boolean){
  const shellRef=useRef<HTMLElement|null>(null);
@@ -16,6 +17,7 @@ export function useFieldFocusDock(active:boolean){
   if(!active){
    const from=lastScreenTop.current;
    lastScreenTop.current=null;
+   shell.style.removeProperty("--focused-dock-top");
    if(from!==null&&!reduced){
     const distance=from-shell.getBoundingClientRect().top;
     if(Math.abs(distance)>4)motion.current=shell.animate([
@@ -26,18 +28,23 @@ export function useFieldFocusDock(active:boolean){
   }
   const viewport=window.visualViewport;
   let frame=0;
+  const slotTop=shell.parentElement?.getBoundingClientRect().top??shell.getBoundingClientRect().top;
+  let pinnedTop=slotTop;
   const update=()=>{
    frame=0;
+   const device=shell.closest<HTMLElement>(".v2-device");
+   const footerTop=device?.querySelector<HTMLElement>(".v2-footer")?.getBoundingClientRect().top??
+    (viewport?viewport.offsetTop+viewport.height-86:window.innerHeight-86);
+   const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??140;
+   const reserved=shell.classList.contains("about-focus-shell")?174:
+    shell.classList.contains("language-focus-shell")?205:88;
+   pinnedTop=Math.max(headerBottom+12,Math.min(pinnedTop,footerTop-reserved-10));
+   shell.style.setProperty("--focused-dock-top",`${Math.round(pinnedTop)}px`);
    lastScreenTop.current=shell.getBoundingClientRect().top;
    // Reserve the logo/progress and the input itself before sizing the upward
    // city list. Search results never affect this measurement.
    if(shell.classList.contains("city-focus-shell")){
-    const device=shell.closest<HTMLElement>(".v2-device");
-    const usableBottom=device?.querySelector<HTMLElement>(".v2-footer")?.getBoundingClientRect().top??
-     (viewport?viewport.offsetTop+viewport.height-104:window.innerHeight-104);
-    const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??140;
-    const editorHeight=shell.querySelector<HTMLElement>(".glass-field")?.getBoundingClientRect().height??86;
-    const available=Math.max(48,Math.min(230,Math.floor(usableBottom-headerBottom-editorHeight-30)));
+    const available=Math.max(48,Math.min(230,Math.floor(pinnedTop-headerBottom-20)));
     shell.style.setProperty("--field-suggestions-max-height",`${available}px`);
    }
   };
@@ -46,9 +53,8 @@ export function useFieldFocusDock(active:boolean){
    frame=window.requestAnimationFrame(update);
   };
   update();
-  const slotTop=shell.parentElement?.getBoundingClientRect().top;
   const dockTop=shell.getBoundingClientRect().top;
-  if(slotTop!==undefined&&!reduced&&Math.abs(slotTop-dockTop)>4){
+  if(!reduced&&Math.abs(slotTop-dockTop)>4){
    motion.current=shell.animate([
     {transform:`translate3d(0,${slotTop-dockTop}px,0)`},
     {transform:"translate3d(0,0,0)"}

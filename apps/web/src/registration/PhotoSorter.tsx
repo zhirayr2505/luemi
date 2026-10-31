@@ -2,7 +2,7 @@ import {useLayoutEffect,useRef,useState,useEffect,useCallback} from "react";
 import type {PointerEvent as ReactPointerEvent,ChangeEvent} from "react";
 import {createPortal} from "react-dom";
 import {selectionHaptic} from "../ui/haptic";
-import {Plus,X,GripVertical,CheckCircle2} from "lucide-react";
+import {Plus,X,GripVertical,CheckCircle2,Crown} from "lucide-react";
 export interface PhotoItem {id:string;src:string;file:File;preview?:Blob;status?:"reading"|"success"|"ready"|"error";progress?:number;
  serverStatus?:"waiting"|"uploading"|"saved"|"error"}
 interface Props {photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void}
@@ -138,7 +138,8 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
  const down=(event:ReactPointerEvent<HTMLDivElement>,id:string)=>{
   if(event.pointerType==="mouse"&&event.button!==0)return;
   if(event.isPrimary===false||contacts.current.size!==1)return;
-  if((event.target as HTMLElement).closest("button"))return;
+  const handle=!!(event.target as HTMLElement).closest(".photo-drag-handle");
+  if((event.target as HTMLElement).closest("button")&&!handle)return;
   if(pending.current)cancel();
   const element=itemRefs.current.get(id);if(!element)return;
   const pendingItem:Pending={
@@ -147,7 +148,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
   };
   setPhase("press-pending");
   pending.current=pendingItem;
-  pendingItem.timer=window.setTimeout(()=>{
+  const start=()=>{
    if(pending.current!==pendingItem||contacts.current.size!==1)return;
    const source=photosRef.current.findIndex(item=>item.id===id);
    if(source<0){cancel();return;}
@@ -162,14 +163,15 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
    catch{/* native WebView may refuse capture, pointercancel still cleans up */}
    selectionHaptic();
    scheduleScroll();
-  },275);
+  };
+  if(handle)start();else pendingItem.timer=window.setTimeout(start,275);
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const p=pending.current;
   if(!p||p.pointer!==event.pointerId)return;
   p.lastX=event.clientX;p.lastY=event.clientY;
   if(!p.started){
-   if(Math.hypot(event.clientX-p.x,event.clientY-p.y)>11)cancel();
+   if(Math.hypot(event.clientX-p.x,event.clientY-p.y)>18)cancel();
    return;
   }
   if(event.cancelable)event.preventDefault();
@@ -233,6 +235,9 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
            <span className="slot-index">{i+1}</span>
            {i===0&&<span className="primary-photo">Главное</span>}
            <button className="remove-photo" type="button" onClick={()=>removePhoto(photo.id)} aria-label={"Удалить фото "+(i+1)}><X size={14}/></button>
+           <button className="photo-drag-handle" type="button" aria-label={"Перетащить фото "+(i+1)}><GripVertical size={18}/></button>
+           {i>0&&<button className="photo-make-main" type="button" onClick={()=>movePhoto(i,0)}
+             aria-label={"Сделать фото "+(i+1)+" главным"} title="Сделать главным"><Crown size={17}/></button>}
            {photo.status==="reading"&&<div className="photo-processing" aria-label="Подготовка фотографии">
              <div className="photo-processing-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100}
                aria-valuenow={photo.progress??0}><span style={{width:(photo.progress??0)+"%"}}/></div>
@@ -249,7 +254,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      style={{left:0,top:0,width:drag.width,height:drag.height}}>
      <img src={photos[drag.source]?.src} alt=""/><GripVertical size={16}/>
    </div>,document.body)}
-   <div className="sort-tip"><GripVertical size={16}/><span>Удерживай фотографию 0,3 секунды и перенеси. Первое фото станет главным.</span></div>
+   <div className="sort-tip"><GripVertical size={16}/><span>Потяни за значок или удерживай фото. Корона сразу сделает снимок главным.</span></div>
    <p className="photo-count" role="status">Выбрано: {photos.length} / 6 · Первое фото главное</p>
    <p className="hint">Порядок фотографий сохранится в анкете. Главное фото — первое.</p>
  </div>;

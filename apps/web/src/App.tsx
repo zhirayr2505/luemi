@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {flushSync} from "react-dom";
 
 import {ArrowRight,Pencil} from "lucide-react";
 import {SafetyAppealPanel} from "./SafetyAppealPanel";
@@ -14,7 +15,7 @@ const DiscoveryApp = lazy(() => import("./discovery/DiscoveryApp").then(m => ({d
 const RealDiscoveryHome = lazy(() => import("./discovery/RealDiscoveryHome").then(m=>({default:m.RealDiscoveryHome})));
 const RealLiveFeed = lazy(() => import("./registration/RealLiveFeed").then(m=>({default:m.RealLiveFeed})));
 const RealChats = lazy(() => import("./chats/RealChats").then(m=>({default:m.RealChats})));
-const RealRegistrationV2 = lazy(() => import("./registration/v2/RealRegistration").then(m=>({default:m.RealRegistrationV2})));
+import {RealRegistrationV2} from "./registration/v2/RealRegistration";
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
@@ -109,10 +110,10 @@ function prepareBrandImage(signal: AbortSignal): Promise<void> {
 
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
-  const [introElapsed,setIntroElapsed] = useState(false);
   const [connectAttempt,setConnectAttempt]=useState(0);
   const startupGeneration=useRef(0);
   const [visualReady,setVisualReady] = useState(false);
+  const introElapsed=visualReady;
   const [introText,setIntroText] = useState("");
   const [welcomeExiting,setWelcomeExiting] = useState(false);
   const transitionTimer = useRef<number | null>(null);
@@ -235,11 +236,6 @@ export function App() {
     };
   },[]);
   useEffect(()=>{
-    if(!visualReady)return;
-    const timer=window.setTimeout(()=>setIntroElapsed(true),1950);
-    return ()=>window.clearTimeout(timer);
-  },[visualReady]);
-  useEffect(()=>{
     // Telegram may delay a font/image decode callback. The welcome screen and
     // its CTA must still become usable while those assets finish in background.
     const fallback=window.setTimeout(()=>setVisualReady(true),650);
@@ -252,7 +248,7 @@ export function App() {
   useEffect(()=>{
     const webApp=window.Telegram?.WebApp;
     try{
-      const background=auth==="authorized"&&!realHome?"#14111e":
+      const background=auth==="authorized"&&!realHome?(phase==="form"?"#15131c":"#14101d"):
         activeTheme==="dark"?"#181320":"#fffbfd";
       webApp?.setHeaderColor?.(background);
       webApp?.setBackgroundColor?.(background);
@@ -260,7 +256,7 @@ export function App() {
     } catch {
       // Older clients do not support every color-setting method.
     }
-  },[activeTheme,auth,realHome]);
+  },[activeTheme,auth,realHome,phase]);
   useEffect(()=>{
     const initData=window.Telegram?.WebApp?.initData;
     // Every retry and StrictMode setup has a distinct generation.
@@ -725,12 +721,25 @@ export function App() {
       setPhase("form");
       return;
     }
+    const viewDocument=document as Document&{startViewTransition?:(update:()=>void)=>{finished:Promise<void>}};
+    if(viewDocument.startViewTransition){
+      document.documentElement.dataset.luemiRoute="true";
+      try{
+        const transition=viewDocument.startViewTransition(()=>flushSync(()=>setPhase("form")));
+        const clear=()=>{delete document.documentElement.dataset.luemiRoute;};
+        void transition.finished.then(clear,clear);
+      }catch{
+        delete document.documentElement.dataset.luemiRoute;
+        setPhase("form");
+      }
+      return;
+    }
     setWelcomeExiting(true);
     transitionTimer.current=window.setTimeout(()=>{
       setPhase("form");
       setWelcomeExiting(false);
       transitionTimer.current=null;
-    },280);
+    },360);
   };
   const changeTheme=useCallback(()=>{},[]);
   const beginDemo=()=>{if(realOnly){setError("Настоящая регистрация пока не подключена. Демонстрационные анкеты недоступны.");return;}setDemoOpen(true);setError("");};
@@ -1182,31 +1191,25 @@ export function App() {
   </main>;
   if(auth==="authorized"&&journey!==null)return journeyOverlay;
   if(auth==="authorized"&&phase==="form"&&registrationV2Pilot&&!demoOpen)
-    return <Suspense fallback={<main className="luemi-shell registration-load-fallback" data-theme={activeTheme} role="status">
-      <div className="registration-load-card"><img src={logoSrc} alt="luemi"/>
-       <span>Открываем регистрацию…</span><i aria-hidden="true"/></div>
-    </main>}>
-      <RealRegistrationV2 draft={draft} key={scope??"registration"} patch={patch} photos={photos}
+    return <RealRegistrationV2 draft={draft} key={scope??"registration"} patch={patch} photos={photos}
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} theme={theme} onTheme={changeTheme}
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
           remoteMediaPilot.enabled?confirmPrivateRegistration():persistServerDraft());}}
         mediaEnabled={remoteMediaPilot.enabled}
-        publicationEnabled={realFeedPilot.enabled}
        serverSaving={serverSaving||publishBusy}
        serverStatus={realFeedPilot.enabled?publishFeedback:serverStatus}
        mediaStatus={mediaStatus}
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
-       onExit={()=>setPhase("welcome")} registerBack={registerV2Back}/>
-    </Suspense>;
+       onExit={()=>setPhase("welcome")} registerBack={registerV2Back}/>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
-    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state"+(auth==="authorized"?" cinematic-entry":"")+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
+    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state cinematic-entry"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>

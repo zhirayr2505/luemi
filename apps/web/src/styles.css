@@ -61,10 +61,6 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 @keyframes text-enter{to{opacity:1;transform:translateY(0)}}
 @keyframes cta-enter{from{opacity:0;transform:translateY(17px)}to{opacity:1;transform:translateY(0)}}
 @keyframes screen-exit{to{opacity:0;transform:translateY(-10px)}}
-.registration-load-fallback{display:grid;place-items:center;padding:24px}
-.registration-load-card{display:flex;flex-direction:column;align-items:center;gap:16px;color:var(--subtle);font-size:14px;font-weight:650}
-.registration-load-card img{width:min(46vw,180px);height:auto;filter:drop-shadow(0 8px 24px rgba(157,91,187,.13))}
-.registration-load-card i{display:block;width:34px;height:34px;border-radius:50%;border:3px solid rgba(184,140,230,.2);border-top-color:#b88ce6;animation:spin .8s linear infinite}
 /* Keep header and footer structurally outside the one scroll container. */
 .onboarding-screen{width:100%;height:100%;max-width:680px;margin:0 auto;display:flex;flex-direction:column;
  padding:calc(var(--top-safe) + 60px) 22px 0;min-height:0;animation:screen-enter .32s ease both}
@@ -214,6 +210,12 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .empty-number{opacity:.3;font-weight:700}
 .remove-photo{position:absolute;top:6px;right:6px;width:27px;height:27px;border:0;border-radius:50%;
  display:grid;place-items:center;background:rgba(255,255,255,.88);color:#3c2e49}
+.photo-drag-handle{position:absolute;right:6px;bottom:6px;width:35px;height:35px;z-index:2;
+ border:1px solid var(--glass-edge);border-radius:11px;background:rgba(39,28,51,.85);color:#fff;
+ display:grid;place-items:center;touch-action:none;cursor:grab}
+.photo-make-main{position:absolute;left:6px;bottom:6px;z-index:2;width:35px;height:35px;
+ display:grid;place-items:center;border:1px solid var(--glass-edge);border-radius:11px;
+ background:rgba(39,28,51,.85);color:#fff}
 .photo-drag-ghost{position:fixed;z-index:9999;transform:translate(-50%,-50%) rotate(-2deg) scale(1.04);
  border:3px solid #fff;border-radius:17px;overflow:hidden;box-shadow:0 16px 38px rgba(74,39,103,.36);
  pointer-events:none;contain:paint;animation:drag-rise .16s ease both}

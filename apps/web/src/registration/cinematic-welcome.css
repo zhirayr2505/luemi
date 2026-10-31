@@ -5,7 +5,7 @@
 .luemi-shell:has(.cinematic-entry) .theme-switch{width:36px;height:36px;color:#fff;
  background:rgba(37,29,49,.32);border-color:rgba(255,255,255,.28);box-shadow:none}
 .entry-state.cinematic-entry{isolation:isolate;display:block;height:100%;padding:0;text-align:left;
- background:#1b1526;overflow:hidden}
+ background:#1b1526;overflow:hidden;view-transition-name:luemi-route}
 .entry-state.cinematic-entry::before{content:"";position:absolute;inset:0;z-index:-2;
  background:url('/assets/registration/welcome-cinematic.webp') center 38%/cover no-repeat;
  animation:luemi-entry-image 1.1s cubic-bezier(.2,.75,.3,1) both}
@@ -32,10 +32,16 @@
  color:#21162e;font-weight:730;font-size:15px;
  box-shadow:inset 0 1px rgba(255,255,255,.65),0 12px 34px rgba(211,128,226,.27)}
 .cinematic-entry .primary-action svg{position:absolute;right:21px}
-.cinematic-entry.exiting{animation:luemi-entry-out .42s cubic-bezier(.36,.02,.22,1) both}
+.cinematic-entry.exiting{animation:luemi-entry-out .36s cubic-bezier(.2,.76,.25,1) both}
 @keyframes luemi-entry-image{from{opacity:.45;transform:scale(1.035)}to{opacity:1;transform:scale(1)}}
-@keyframes luemi-entry-out{to{opacity:0;transform:scale(1.018)}}
+@keyframes luemi-entry-out{to{opacity:0;transform:translate3d(-36px,0,0)}}
+::view-transition-old(luemi-route){animation:luemi-entry-out .42s cubic-bezier(.2,.76,.25,1) both}
+::view-transition-new(luemi-route){animation:luemi-route-in .42s cubic-bezier(.2,.76,.25,1) both}
+@keyframes luemi-route-in{from{opacity:.4;transform:translate3d(36px,0,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+html[data-luemi-route="true"]::view-transition-old(root),
+html[data-luemi-route="true"]::view-transition-new(root){animation-duration:.01ms}
 @media(max-height:660px){.entry-state.cinematic-entry h1,.entry-state.cinematic-entry h1.intro-returning-title{bottom:calc(172px + var(--bottom-safe));font-size:30px}
  .entry-state.cinematic-entry .intro-subtitle{bottom:calc(118px + var(--bottom-safe))}
  .cinematic-entry .intro-cta{bottom:calc(20px + var(--bottom-safe))}}
-@media(prefers-reduced-motion:reduce){.entry-state.cinematic-entry::before,.cinematic-entry.exiting{animation:none}}
+@media(prefers-reduced-motion:reduce){.entry-state.cinematic-entry::before,.cinematic-entry.exiting{animation:none}
+ ::view-transition-old(luemi-route),::view-transition-new(luemi-route){animation-duration:.01ms}}
