@@ -58,8 +58,16 @@ assert.match(form,/wordmark_original_raster_alpha_W06\.webp/,
  "The header uses the actual LUEMI mark, not a text approximation");
 assert.match(runtime,/\.v2-header-logo\{[^}]*filter:brightness\(0\) invert\(1\)/s,
  "The original LUEMI mark appears white on the dark registration surface");
-assert.match(form,/stage\.id==="personality"&&<div className="v2-footer-optional">/,
- "Optional about details are reached from the interests and biography step");
+assert.match(form,/stage\.id==="personality"&&<div className="v2-real-groups">[\s\S]*?<OptionalProfileDetails/,
+ "Optional about details live inside the scrollable interests and biography step");
+assert.doesNotMatch(form,/v2-footer-optional|v2-stage-transition/,
+ "The footer must not cover optional details, and step content must not animate twice");
+assert.match(runtime,/html\[data-luemi-transition="true"\]::view-transition-old\(root\)/,
+ "A step transition suppresses the browser's duplicate full-screen crossfade");
+assert.match(runtime,/\.v2-body\{[^}]*touch-action:pan-y/s,
+ "Long signup steps remain vertically scrollable on touch screens");
+assert.doesNotMatch(form,/className="v2-count"/,
+ "The decorative step counter must not compete with the progress line");
 assert.match(form,/className="v2-progress-fill" style=\{\{transform:`scaleX/,
  "The single progress line fills smoothly");
 assert.doesNotMatch(app,/registration-load-card|Открываем регистрацию/,

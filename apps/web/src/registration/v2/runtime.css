@@ -17,46 +17,35 @@ html[data-luemi-route="true"] .v2-runtime{animation:none}
  color:var(--ink);background:#15131c}
 html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-route}
 .v2-runtime .v2-backdrop{display:none}
-.v2-runtime .v2-header{flex:none;z-index:3;height:80px;min-height:80px;padding:9px 24px 10px;
- display:grid;grid-template-columns:1fr auto;grid-template-rows:40px 4px;align-items:center;
+.v2-runtime .v2-header{flex:none;z-index:3;height:78px;min-height:78px;padding:9px 24px 13px;
+ display:grid;grid-template-columns:1fr;grid-template-rows:40px 3px;align-items:center;
  column-gap:12px;row-gap:13px;background:#15131c}
 .v2-runtime .v2-header-logo{display:block;width:108px;max-height:37px;object-fit:contain;
  object-position:left center;filter:brightness(0) invert(1);user-select:none;pointer-events:none}
-.v2-runtime .v2-progress{grid-column:1/-1;grid-row:2;position:relative;display:block;
- width:100%;height:4px;min-height:4px;padding:0;border-radius:999px;
- background:rgba(208,199,220,.19);overflow:hidden}
+.v2-runtime .v2-progress{grid-column:1;grid-row:2;position:relative;display:block;
+ width:100%;height:3px;min-height:3px;padding:0;border-radius:999px;
+ background:rgba(208,199,220,.16);overflow:hidden}
 .v2-runtime .v2-progress-fill{display:block;width:100%;height:100%;border-radius:inherit;
  background:linear-gradient(90deg,#c49ce9,#e5b3e5);transform-origin:left center;
- transition:transform .48s cubic-bezier(.2,.76,.25,1)}
-.v2-runtime .v2-count{grid-column:2;grid-row:1;justify-self:end;padding:0;
- font-size:12px;font-variant-numeric:tabular-nums;color:#bbb0c8;font-weight:600}
+ transition:transform .42s cubic-bezier(.2,.76,.25,1)}
 .v2-runtime .v2-body{flex:1;min-height:0;z-index:1;position:relative;overflow-y:auto;
  padding:20px 24px calc(var(--registration-footer-height) + 46px);overscroll-behavior:contain;scrollbar-width:none;
- -webkit-overflow-scrolling:touch;scroll-padding:20px 0 124px;view-transition-name:luemi-step}
+ -webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding:20px 0 124px;view-transition-name:luemi-step}
 html[data-luemi-route="true"] .v2-runtime .v2-body{view-transition-name:none}
 .v2-runtime .v2-body::-webkit-scrollbar{display:none}
-.v2-runtime .v2-stage-transition>.v2-stage-heading,
-.v2-runtime .v2-stage-transition>.form-stack,
-.v2-runtime .v2-stage-transition>.v2-real-groups,
-.v2-runtime .v2-stage-transition>.v2-fields{
- animation:luemi-stage-fade .38s cubic-bezier(.2,.76,.25,1) backwards}
-.v2-runtime .v2-stage-transition>.v2-stage-heading{animation-name:luemi-stage-reveal}
-.v2-runtime .v2-stage-transition>.form-stack,
-.v2-runtime .v2-stage-transition>.v2-real-groups,
-.v2-runtime .v2-stage-transition>.v2-fields{animation-delay:65ms}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-transition>.form-stack,
-.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-transition>.v2-real-groups,
-.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-transition>.v2-fields{animation:none}
-html[data-luemi-transition="true"] .v2-runtime .v2-stage-transition>.v2-stage-heading,
-html[data-luemi-transition="true"] .v2-runtime .v2-stage-transition>.form-stack,
-html[data-luemi-transition="true"] .v2-runtime .v2-stage-transition>.v2-real-groups,
-html[data-luemi-transition="true"] .v2-runtime .v2-stage-transition>.v2-fields{animation:none}
-::view-transition-old(luemi-step){animation:luemi-step-out .36s cubic-bezier(.22,.72,.22,1) both}
-::view-transition-new(luemi-step){animation:luemi-step-in .36s cubic-bezier(.22,.72,.22,1) both}
-@keyframes luemi-step-out{to{opacity:.2;transform:translate3d(var(--luemi-step-exit,-28px),0,0)}}
-@keyframes luemi-step-in{from{opacity:.2;transform:translate3d(var(--luemi-step-enter,28px),0,0)}}
+/* Only the step moves. Suppress the browser's simultaneous full-page crossfade. */
+html[data-luemi-transition="true"]::view-transition-old(root),
+html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
+::view-transition-old(luemi-step){animation:luemi-step-out .32s cubic-bezier(.22,.72,.22,1) both}
+::view-transition-new(luemi-step){animation:luemi-step-in .32s cubic-bezier(.22,.72,.22,1) both}
+@keyframes luemi-step-out{to{opacity:0;transform:translate3d(var(--luemi-step-exit,-28px),0,0)}}
+@keyframes luemi-step-in{from{opacity:0;transform:translate3d(var(--luemi-step-enter,28px),0,0)}}
+/* Older WebViews use the same single entrance without a second content reveal. */
+.v2-runtime .v2-body.v2-fallback-forward{animation:luemi-fallback-forward .3s cubic-bezier(.22,.72,.22,1) both}
+.v2-runtime .v2-body.v2-fallback-back{animation:luemi-fallback-back .3s cubic-bezier(.22,.72,.22,1) both}
+@keyframes luemi-fallback-forward{from{opacity:0;transform:translate3d(28px,0,0)}to{opacity:1;transform:none}}
+@keyframes luemi-fallback-back{from{opacity:0;transform:translate3d(-28px,0,0)}to{opacity:1;transform:none}}
 @keyframes luemi-stage-reveal{from{opacity:0;translate:12px 0}to{opacity:1;translate:0 0}}
-@keyframes luemi-stage-fade{from{opacity:0}to{opacity:1}}
 .v2-runtime .v2-eyebrow{display:none}
 .v2-runtime .v2-stage-heading{position:sticky;top:-20px;z-index:6;margin:-20px -24px 0;
  padding:20px 24px 23px;background:linear-gradient(180deg,#15131c 0%,#15131c 72%,rgba(21,19,28,.96) 88%,rgba(21,19,28,0) 100%)}
@@ -155,8 +144,6 @@ html[data-luemi-transition="true"] .v2-runtime .v2-stage-transition>.v2-fields{a
 .v2-runtime .v2-header{transition:filter .38s cubic-bezier(.2,.76,.25,1),opacity .38s ease}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-header{filter:blur(9px);opacity:.72;pointer-events:none}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:2}
-.v2-runtime .v2-device[data-screen="personality"][data-field-focus="true"]{
- --registration-footer-height:calc(91px + max(14px,env(safe-area-inset-bottom)))}
 .v2-runtime .field-inline-hint,.v2-runtime .field-warning{
  color:#ffd3e6;background:#412b41;border:1px solid rgba(244,145,190,.34);
  border-radius:13px;padding:10px 12px;font-size:12px;line-height:1.35}
@@ -213,16 +200,14 @@ html[data-luemi-transition="true"] .v2-runtime .v2-stage-transition>.v2-fields{a
  border:1px solid rgba(218,180,240,.32);box-shadow:0 17px 40px rgba(0,0,0,.4)}
 /* Quiet glass at the bottom lets content pass under the action button. */
 .v2-runtime .v2-footer{position:absolute;left:0;right:0;bottom:0;z-index:93;isolation:isolate;
- padding:30px 24px max(16px,env(safe-area-inset-bottom));border:0;background:transparent}
+ padding:30px 24px max(16px,env(safe-area-inset-bottom));border:0;background:transparent;pointer-events:none}
+.v2-runtime .v2-footer button{pointer-events:auto}
 .v2-runtime .v2-footer::before{content:"";position:absolute;inset:-34px 0 0;z-index:-1;pointer-events:none;
  background:linear-gradient(180deg,transparent,rgba(21,19,28,.48) 38%,rgba(21,19,28,.96) 100%);
  backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
  mask-image:linear-gradient(180deg,transparent,#000 44%,#000);
  -webkit-mask-image:linear-gradient(180deg,transparent,#000 44%,#000)}
 .v2-runtime .v2-footer-nav,.v2-runtime .v2-footer-review{display:flex;justify-content:center;width:100%}
-.v2-runtime .v2-device[data-screen="personality"]{--registration-footer-height:calc(157px + max(14px,env(safe-area-inset-bottom)))}
-.v2-runtime .v2-footer-optional{width:100%;margin:0 0 10px}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-footer-optional{display:none}
 .v2-runtime .v2-next,.v2-runtime .v2-publish{width:100%;min-height:56px;padding:11px 20px;
  display:flex;align-items:center;justify-content:center;gap:10px;border-radius:999px;
  border:1px solid rgba(255,213,252,.82);color:#24152e;font-size:15px;font-weight:740;
@@ -260,16 +245,16 @@ html[data-luemi-transition="true"] .v2-runtime .v2-stage-transition>.v2-fields{a
 .v2-runtime .luemi-simple-review-main{color:#f6e7fb;background:#443851;border-color:#8a7098}
 .v2-runtime .luemi-simple-review-about{color:#f9f2fc}
 .v2-runtime .luemi-simple-review-interests>.interest-chip{color:#f8e8fa;background:#594766}
-.v2-runtime .optional-profile-details{border:0;border-radius:18px;background:transparent}
-.v2-runtime .optional-profile-toggle{width:100%;min-height:49px;display:flex;align-items:center;justify-content:space-between;
- gap:12px;padding:9px 13px;border:1px solid rgba(208,187,228,.28);border-radius:17px;
- background:rgba(48,45,61,.76);box-shadow:inset 0 1px rgba(255,255,255,.14);
- backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#f6edfa;text-align:left;
+.v2-runtime .optional-profile-details{border:0;border-radius:18px;background:transparent;margin:4px 0 0}
+.v2-runtime .optional-profile-toggle{width:100%;min-height:65px;display:flex;align-items:center;justify-content:space-between;
+ gap:12px;padding:12px 15px;border:1px solid rgba(208,187,228,.29);border-radius:18px;
+ background:linear-gradient(115deg,rgba(63,53,77,.95),rgba(45,42,62,.95));
+ box-shadow:inset 0 1px rgba(255,255,255,.12);color:#f6edfa;text-align:left;
  transition:border-color .24s ease,background-color .24s ease,transform .2s ease}
 .v2-runtime .optional-profile-toggle:active{transform:scale(.99);background:rgba(66,55,78,.9)}
 .v2-runtime .optional-profile-toggle>span{display:grid;grid-template-columns:20px 1fr;gap:2px 8px;align-items:center}
 .v2-runtime .optional-profile-toggle svg:first-child{grid-row:1 / span 2;color:#d6a7f1}
-.v2-runtime .optional-profile-toggle strong{font-size:14px}
+.v2-runtime .optional-profile-toggle strong{font-size:14px;letter-spacing:-.01em}
 .v2-runtime .optional-profile-toggle small{grid-column:2;color:#bbaeca;font-size:11px}
 .v2-runtime .optional-profile-screen{position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;
  min-height:0;color:#f7edf9;background:#15131c;animation:luemi-details-in .32s cubic-bezier(.2,.76,.25,1) both}
@@ -284,7 +269,8 @@ html[data-luemi-transition="true"] .v2-runtime .v2-stage-transition>.v2-fields{a
 .v2-runtime .optional-profile-screen-head button{width:40px;height:40px;border:1px solid var(--glass-edge);
  border-radius:50%;background:#342b40;color:#fff;display:grid;place-items:center}
 .v2-runtime .optional-profile-screen-head h2{font-size:20px;margin:0}
-.v2-runtime .optional-profile-screen-body{flex:1;min-height:0;overflow:auto;padding:18px 18px 28px;
+.v2-runtime .optional-profile-screen-body{flex:1;min-height:0;overflow-y:auto;touch-action:pan-y;
+ overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:18px 18px 28px;
  display:grid;align-content:start;gap:14px}
 .v2-runtime .optional-field-row{display:grid;grid-template-columns:1fr 1.25fr;gap:9px}
 .v2-runtime .optional-input-wrap{position:relative}
@@ -308,11 +294,8 @@ html[data-luemi-transition="true"] .v2-runtime .v2-stage-transition>.v2-fields{a
 }
 @media(max-height:660px){.v2-runtime .v2-body{padding-top:12px}.v2-runtime .v2-stage-heading{top:-12px;margin-top:-12px;padding-top:12px}
  .v2-runtime .v2-real-groups{gap:20px}.v2-runtime .v2-footer{padding-top:18px}}
-@media(prefers-reduced-motion:reduce){.v2-runtime .v2-stage-transition>.v2-stage-heading,
- .v2-runtime .v2-stage-transition>.form-stack,
- .v2-runtime .v2-stage-transition>.v2-real-groups,
- .v2-runtime .v2-stage-transition>.v2-fields,
- .v2-runtime .v2-next.v2-next-confirm,.v2-runtime{animation:none}
+@media(prefers-reduced-motion:reduce){.v2-runtime .v2-next.v2-next-confirm,.v2-runtime,
+ .v2-runtime .v2-body.v2-fallback-forward,.v2-runtime .v2-body.v2-fallback-back{animation:none}
  .v2-runtime .optional-profile-screen,.v2-runtime .optional-profile-screen.is-leaving{animation:none}
  ::view-transition-old(luemi-step),::view-transition-new(luemi-step){animation-duration:.01ms}
  .v2-runtime .v2-next,.v2-runtime .v2-publish,.v2-runtime .v2-focus-scrim{transition:none}}

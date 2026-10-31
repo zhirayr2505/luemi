@@ -82,6 +82,7 @@ export function RealRegistrationV2(p:Props){
  const [photoChecking,setPhotoChecking]=useState(false);
  const [detailsOpen,setDetailsOpen]=useState(false);
  const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|"language"|null>(null);
+ const [fallbackMotion,setFallbackMotion]=useState<"forward"|"back"|null>(null);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
  const viewportRoot=useRef<HTMLElement|null>(null);
  const device=useRef<HTMLDivElement|null>(null);
@@ -141,12 +142,16 @@ export function RealRegistrationV2(p:Props){
  const nav=(target:number)=>{
   const next=Math.min(stages.length-1,Math.max(0,target));
   if(next===index||transitioning.current)return;
-  const update=()=>flushSync(()=>{
-   setHint("");setIdentityError(null);setFocusedField(null);setDetailsOpen(false);setIndex(next);
-  });
   const viewDocument=document as ViewTransitionDocument;
-  if(focusedField||document.visibilityState!=="visible"||
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches||!viewDocument.startViewTransition){
+  const reducedMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const canTransition=!focusedField&&document.visibilityState==="visible"&&!reducedMotion;
+  const nativeTransition=canTransition&&viewDocument.startViewTransition;
+  const update=()=>flushSync(()=>{
+   setHint("");setIdentityError(null);setFocusedField(null);setDetailsOpen(false);
+   setFallbackMotion(canTransition&&!nativeTransition?(next>index?"forward":"back"):null);
+   setIndex(next);
+  });
+  if(!nativeTransition){
    update();return;
   }
   const root=document.documentElement;
@@ -161,7 +166,7 @@ export function RealRegistrationV2(p:Props){
    delete root.dataset.luemiTransition;
   };
   try{
-   const transition=viewDocument.startViewTransition(update);
+   const transition=nativeTransition(update);
    void transition.finished.then(settle,settle);
   }catch{settle();update();}
  };
@@ -236,13 +241,14 @@ export function RealRegistrationV2(p:Props){
      <header className="v2-header">
        <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp"
          className="v2-header-logo" alt="LUEMI" draggable={false}/>
-       <span className="v2-count" aria-label={`Шаг ${index+1} из ${stages.length}`}>{index+1} из {stages.length}</span>
        <div className="v2-progress" role="progressbar" aria-label="Прогресс регистрации"
-         aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={stages.length}>
+         aria-valuenow={index+1} aria-valuemin={1} aria-valuemax={stages.length}
+         aria-valuetext={`Шаг ${index+1} из ${stages.length}`}>
          <span className="v2-progress-fill" style={{transform:`scaleX(${(index+1)/stages.length})`}}/>
        </div>
      </header>
-     <section key={stage.id} ref={body} className="v2-body v2-stage-transition" aria-labelledby="v2-title">
+     <section key={stage.id} ref={body}
+       className={"v2-body"+(fallbackMotion?` v2-fallback-${fallbackMotion}`:"")} aria-labelledby="v2-title">
        <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
          if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
          handleFieldFocus(null);
@@ -256,7 +262,11 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="location"&&step(3)}
        {stage.id==="intent"&&step(4)}
        {stage.id==="languages"&&step(6,"languages")}
-       {stage.id==="personality"&&<div className="v2-real-groups">{step(6,"about")}{step(5)}</div>}
+       {stage.id==="personality"&&<div className="v2-real-groups">
+        {step(6,"about")}{step(5)}
+        <OptionalProfileDetails data={draft} patch={p.patch} open={detailsOpen}
+          onOpenChange={setDetailsOpen} overlayHost={device.current}/>
+       </div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
         {step(7)}
         <div className="v2-note"><ShieldCheck size={18}/>
@@ -280,10 +290,6 @@ export function RealRegistrationV2(p:Props){
           <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету 💜"}
         </button>
        </div>:<>
-       {stage.id==="personality"&&<div className="v2-footer-optional">
-        <OptionalProfileDetails data={draft} patch={p.patch} open={detailsOpen}
-          onOpenChange={setDetailsOpen} overlayHost={device.current}/>
-       </div>}
        <div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>
        <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")+(!continueReady?" is-incomplete":"")} disabled={photoChecking}
           aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
