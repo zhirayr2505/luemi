@@ -183,7 +183,7 @@ export function GeoPicker({data,patch,variant,fieldError,clearFieldError,onField
      <span><strong>{data.placeId?"Определить местоположение снова":"Моё местоположение"}</strong><small>По разрешению Telegram или устройства</small></span>
    </button>:<>
      {cityFocused&&<div className="field-focus-overlay" aria-hidden="true" onPointerDown={()=>inputRef.current?.blur()}/>}
-     <div className="focus-field-slot"><div ref={node=>{cityDock.shellRef.current=node;}}
+     <div className="focus-field-slot"><div ref={node=>{cityDock.shellRef.current=variant==="v4"?null:node;}}
        className={"focus-field-shell city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")}>
        {editing&&results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
          {results.map(place=><button key={place.id} type="button" role="option" aria-selected={false} onPointerDown={event=>{event.preventDefault();choose(place);}}>
