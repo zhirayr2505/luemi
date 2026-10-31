@@ -10,6 +10,7 @@ import "./preview.css";
 import "./runtime.css";
 
 interface Props{
+ fallbackEntry:boolean;
  draft:RegistrationDraft;
  patch:(change:Partial<RegistrationDraft>)=>void;
  photos:PhotoItem[];
@@ -166,7 +167,7 @@ export function RealRegistrationV2(p:Props){
    delete root.dataset.luemiTransition;
   };
   try{
-   const transition=nativeTransition(update);
+   const transition=nativeTransition.call(viewDocument,update);
    void transition.finished.then(settle,settle);
   }catch{settle();update();}
  };
@@ -235,6 +236,7 @@ export function RealRegistrationV2(p:Props){
  const fieldConfirmActive=["identity","birthday","location","languages","personality"].includes(stage.id)&&focusedField!==null;
 
  return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme={p.theme}
+   data-fallback-entry={p.fallbackEntry?"true":undefined}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div ref={device} className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
      <div className="v2-backdrop" aria-hidden="true"/>

@@ -7,9 +7,9 @@
  --registration-footer-height:calc(91px + max(14px,env(safe-area-inset-bottom)));
  width:100%;height:var(--registration-visible-height,100dvh);min-height:0;padding:0;
  overflow:hidden;background:#15131c;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
- animation:luemi-registration-enter .38s cubic-bezier(.2,.76,.25,1) both;
 }
 @keyframes luemi-registration-enter{from{opacity:.55;transform:translate3d(28px,0,0)}to{opacity:1;transform:none}}
+.v2-runtime[data-fallback-entry="true"]{animation:luemi-registration-enter .38s cubic-bezier(.2,.76,.25,1) both}
 html[data-luemi-route="true"] .v2-runtime{animation:none}
 .v2-runtime .v2-device{width:min(100%,520px);height:var(--registration-visible-height,100dvh);
  max-height:none;min-height:0;position:relative;isolation:isolate;overflow:hidden;

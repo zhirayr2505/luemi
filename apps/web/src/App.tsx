@@ -116,6 +116,7 @@ export function App() {
   const introElapsed=visualReady;
   const [introText,setIntroText] = useState("");
   const routeTransitioning = useRef(false);
+  const [registrationFallback,setRegistrationFallback] = useState(false);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [demoOpen,setDemoOpen] = useState(false);
   const [realHome,setRealHome] = useState(false);
@@ -717,6 +718,7 @@ export function App() {
       realFeedPilot.enabled&&publicationCheck!=="ready")return;
     if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||
       document.visibilityState!=="visible"){
+      setRegistrationFallback(false);
       setPhase("form");
       return;
     }
@@ -725,18 +727,22 @@ export function App() {
       routeTransitioning.current=true;
       document.documentElement.dataset.luemiRoute="true";
       try{
-        const transition=viewDocument.startViewTransition(()=>flushSync(()=>setPhase("form")));
+        const transition=viewDocument.startViewTransition(()=>flushSync(()=>{
+          setRegistrationFallback(false);setPhase("form");
+        }));
         const clear=()=>{delete document.documentElement.dataset.luemiRoute;routeTransitioning.current=false;};
         void transition.finished.then(clear,clear);
       }catch{
         delete document.documentElement.dataset.luemiRoute;
         routeTransitioning.current=false;
+        setRegistrationFallback(true);
         setPhase("form");
       }
       return;
     }
     // Older Android WebViews get one entrance on the new screen. A timed
     // exit followed by another entrance left an empty frame between them.
+    setRegistrationFallback(true);
     setPhase("form");
   };
   const changeTheme=useCallback(()=>{},[]);
@@ -1190,6 +1196,7 @@ export function App() {
   if(auth==="authorized"&&journey!==null)return journeyOverlay;
   if(auth==="authorized"&&phase==="form"&&registrationV2Pilot&&!demoOpen)
     return <RealRegistrationV2 draft={draft} key={scope??"registration"} patch={patch} photos={photos}
+       fallbackEntry={registrationFallback}
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft} theme={theme} onTheme={changeTheme}
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
@@ -1201,7 +1208,7 @@ export function App() {
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
-       onExit={()=>setPhase("welcome")} registerBack={registerV2Back}/>;
+       onExit={()=>{setRegistrationFallback(false);setPhase("welcome");}} registerBack={registerV2Back}/>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>

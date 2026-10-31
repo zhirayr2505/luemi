@@ -64,6 +64,12 @@ assert.doesNotMatch(form,/v2-footer-optional|v2-stage-transition/,
  "The footer must not cover optional details, and step content must not animate twice");
 assert.match(runtime,/html\[data-luemi-transition="true"\]::view-transition-old\(root\)/,
  "A step transition suppresses the browser's duplicate full-screen crossfade");
+assert.match(form,/nativeTransition\.call\(viewDocument,update\)/,
+ "WebView document transitions retain their receiver and do not throw Illegal invocation");
+assert.match(runtime,/\.v2-runtime\[data-fallback-entry="true"\]\{animation:luemi-registration-enter/,
+ "The registration entrance animates only when native route transitions are unavailable");
+assert.doesNotMatch(runtime,/^\.v2-runtime\s*\{[^}]*animation:luemi-registration-enter/ms,
+ "The native route must not restart its CSS entrance after the transition settles");
 assert.match(runtime,/\.v2-body\{[^}]*touch-action:pan-y/s,
  "Long signup steps remain vertically scrollable on touch screens");
 assert.match(runtime,/\.v2-runtime \.interest-choices\{overflow:visible;flex:none/,
