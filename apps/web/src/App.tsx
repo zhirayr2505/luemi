@@ -115,8 +115,7 @@ export function App() {
   const [visualReady,setVisualReady] = useState(false);
   const introElapsed=visualReady;
   const [introText,setIntroText] = useState("");
-  const [welcomeExiting,setWelcomeExiting] = useState(false);
-  const transitionTimer = useRef<number | null>(null);
+  const routeTransitioning = useRef(false);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [demoOpen,setDemoOpen] = useState(false);
   const [realHome,setRealHome] = useState(false);
@@ -232,7 +231,6 @@ export function App() {
     });
     return ()=>{
       window.cancelAnimationFrame(frame);
-      if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
     };
   },[]);
   useEffect(()=>{
@@ -715,31 +713,31 @@ export function App() {
     setSaveRetry(value=>value+1);
   };
   const beginRegistration=()=>{
-    if(welcomeExiting||realOnly&&!remoteDraftPilot.enabled||
+    if(routeTransitioning.current||realOnly&&!remoteDraftPilot.enabled||
       realFeedPilot.enabled&&publicationCheck!=="ready")return;
-    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
+    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||
+      document.visibilityState!=="visible"){
       setPhase("form");
       return;
     }
     const viewDocument=document as Document&{startViewTransition?:(update:()=>void)=>{finished:Promise<void>}};
     if(viewDocument.startViewTransition){
+      routeTransitioning.current=true;
       document.documentElement.dataset.luemiRoute="true";
       try{
         const transition=viewDocument.startViewTransition(()=>flushSync(()=>setPhase("form")));
-        const clear=()=>{delete document.documentElement.dataset.luemiRoute;};
+        const clear=()=>{delete document.documentElement.dataset.luemiRoute;routeTransitioning.current=false;};
         void transition.finished.then(clear,clear);
       }catch{
         delete document.documentElement.dataset.luemiRoute;
+        routeTransitioning.current=false;
         setPhase("form");
       }
       return;
     }
-    setWelcomeExiting(true);
-    transitionTimer.current=window.setTimeout(()=>{
-      setPhase("form");
-      setWelcomeExiting(false);
-      transitionTimer.current=null;
-    },360);
+    // Older Android WebViews get one entrance on the new screen. A timed
+    // exit followed by another entrance left an empty frame between them.
+    setPhase("form");
   };
   const changeTheme=useCallback(()=>{},[]);
   const beginDemo=()=>{if(realOnly){setError("Настоящая регистрация пока не подключена. Демонстрационные анкеты недоступны.");return;}setDemoOpen(true);setError("");};
@@ -1209,7 +1207,7 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
-    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state cinematic-entry"+(welcomeExiting?" exiting":"")+(visualReady?" visually-ready":"")} aria-live="polite">
+    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state cinematic-entry"+(visualReady?" visually-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
@@ -1236,7 +1234,7 @@ export function App() {
         {realOnly&&!remoteDraftPilot.enabled&&
           <p role="status">Настоящая регистрация пока не подключена. Демонстрационные анкеты выключены.</p>}
         {(!realFeedPilot.enabled&&(!realOnly||remoteDraftPilot.enabled)||publicationCheck==="ready")&&
-          <button className="primary-action" type="button" onClick={beginRegistration} disabled={welcomeExiting}>
+          <button className="primary-action" type="button" onClick={beginRegistration}>
             {registrationStarted?"Продолжить регистрацию":"Начать знакомство"} <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
           </button>}
       </div>}

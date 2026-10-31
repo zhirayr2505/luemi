@@ -118,6 +118,7 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .interest-chip.selected{color:#2a1735;background:linear-gradient(110deg,#d8a9f2,#edb2db);
  border-color:#e9bff4;box-shadow:0 4px 19px rgba(212,133,232,.27)}
 .v2-runtime .interest-chip.selected::after{background:#fff;color:#7d4594}
+.v2-runtime .interest-choices{overflow:visible;flex:none;padding:6px 0 10px}
 .v2-runtime .v2-note{display:flex;align-items:flex-start;gap:10px;padding:14px;
  color:#b9adc5;font-size:12px;line-height:1.48}
 .v2-runtime .v2-note svg{flex:none;color:#d8a4f1}
@@ -229,6 +230,7 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .v2-feedback{color:#ffd2e7;background:#38253a;border:1px solid #714565}
 /* Upload, review, optional details and consent remain part of this skin. */
 .v2-runtime .mosaic{grid-template-rows:repeat(3,clamp(82px,24vw,115px));gap:8px}
+.v2-runtime .mosaic,.v2-runtime .mosaic-slot{touch-action:pan-y}
 .v2-runtime .mosaic-slot{border:1px solid rgba(197,164,229,.28);background:#28243a;border-radius:16px}
 .v2-runtime .mosaic-slot.mosaic-main{border-color:#d8a1ef;box-shadow:0 0 20px rgba(188,107,218,.15)}
 .v2-runtime .photo-drag-handle{position:absolute;right:7px;bottom:7px;z-index:2;width:36px;height:36px;

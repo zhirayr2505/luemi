@@ -66,6 +66,12 @@ assert.match(runtime,/html\[data-luemi-transition="true"\]::view-transition-old\
  "A step transition suppresses the browser's duplicate full-screen crossfade");
 assert.match(runtime,/\.v2-body\{[^}]*touch-action:pan-y/s,
  "Long signup steps remain vertically scrollable on touch screens");
+assert.match(runtime,/\.v2-runtime \.interest-choices\{overflow:visible;flex:none/,
+ "The interests panel must not trap vertical swipes inside the page");
+assert.match(runtime,/\.v2-runtime \.mosaic,\.v2-runtime \.mosaic-slot\{touch-action:pan-y\}/,
+ "Photos permit vertical page scrolling while the drag handle keeps its own gesture");
+assert.doesNotMatch(app,/setWelcomeExiting\(true\)|transitionTimer\.current=window\.setTimeout\(\(\)=>\{\s*setPhase\("form"\)/,
+ "Older WebViews enter the form without a timed blank frame between two animations");
 assert.doesNotMatch(form,/className="v2-count"/,
  "The decorative step counter must not compete with the progress line");
 assert.match(form,/className="v2-progress-fill" style=\{\{transform:`scaleX/,
