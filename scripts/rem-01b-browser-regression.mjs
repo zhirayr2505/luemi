@@ -284,13 +284,14 @@ try{
     throw new Error("REM01B App auth did not finish "+JSON.stringify({diagnostic,runtimeErrors}),{cause});
    });
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).click();
-   await app.getByPlaceholder("Твоё имя").waitFor({state:"visible"});
+   const nameInput=app.locator('input[autocomplete="given-name"]');
+   await nameInput.waitFor({state:"visible"});
    await app.evaluate(()=>{
     const original=IDBObjectStore.prototype.put;
     window.__QA_REAL_PUT__=original;
     IDBObjectStore.prototype.put=function(){throw new DOMException("Synthetic QuotaExceededError","QuotaExceededError");};
    });
-   await app.getByPlaceholder("Твоё имя").fill("Анна QA");
+   await nameInput.fill("Анна QA");
    await app.getByRole("alert").filter({hasText:"Не удалось сохранить"}).waitFor({state:"visible",timeout:9000});
    assert.equal(await app.getByText("Черновик сохранён на устройстве").count(),0,
      "failed storage never reports saved");
@@ -300,7 +301,7 @@ try{
    await app.reload();
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).waitFor({state:"visible",timeout:12000});
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).click();
-   assert.equal(await app.getByPlaceholder("Твоё имя").inputValue(),"Анна QA");
+   assert.equal(await nameInput.inputValue(),"Анна QA");
    assert.deepEqual(runtimeErrors,[],"real app has no unhandled render/async errors");
   }finally{await ui.close();}
  });
