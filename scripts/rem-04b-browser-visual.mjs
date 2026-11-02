@@ -88,10 +88,9 @@ try{
  await page.locator(".fy-tile-photo").first().evaluate(el=>el.click());
  await page.locator(".discovery-visitor-route").waitFor();
  await delay(310);const visitor=await snap("for-you-covered");
- assert.equal(visitor.route,true);assert.equal(visitor.mode,"compact");
+ assert.equal(visitor.route,true);assert.equal(visitor.mode,"expanded");
  assert.equal(visitor.underlay,"visible","do not unmount Discovery while route is active");
  assert.equal(visitor.overlay,"true");
- await page.locator(".discovery-visitor-route .v3-int-mask").evaluate(el=>el.click());
  await delay(300);await snap("for-you-expanded");
  await page.locator(".discovery-visitor-route .v3-int-mask").evaluate(el=>el.click());
  await page.locator(".pm-viewer").waitFor({state:"attached"});
