@@ -22,7 +22,7 @@ const open=async()=>{
  await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
  await visitor().waitFor({state:"visible"});
  await sleep(310);
- assert.equal((await physical()).mode,"compact");
+ assert.equal((await physical()).mode,"expanded");
 };
 const setBackground=async hidden=>page.evaluate(hidden=>{
  if(!("__v3Hidden" in window)){
@@ -43,7 +43,9 @@ try{
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
  await open();
  near(await translation(),0,3);
- let initial=await physical();near(initial.y,initial.a);
+ let initial=await physical();near(initial.y,initial.b);
+ await handle().press("Enter");await sleep(560);
+ initial=await physical();assert.equal(initial.mode,"compact");near(initial.y,initial.a);
  await handle().press("Enter");
  await sleep(60);
  let mid=await physical();assert.ok(mid.y>initial.y+2&&mid.y<mid.b,"sheet really settling");

@@ -68,7 +68,7 @@ export function validateStep(d:RegistrationDraft,step:number,count:number,today=
       return null;
     case 2:
       if(!birthDateValid(d.day,d.month,d.year,today))return "Укажи настоящую дату рождения. LUEMI доступен с 18 лет.";
-      return d.gender==="man"||d.gender==="woman"?null:"Выбери пол.";
+      return d.gender==="man"||d.gender==="woman"||d.gender==="other"?null:"Выбери пол.";
     case 3:
       if(!selectedCityValid(d))return "Выбери город из предложенного списка.";
       return ["radius","country","world"].includes(d.searchScope)&&Number.isInteger(d.radius)&&d.radius>=1&&d.radius<=5000?null:"Радиус: от 1 до 5000 км.";

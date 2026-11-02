@@ -25,26 +25,25 @@ assertCheck("single static registration preview with explicit edit and confirm a
 assertCheck("local images remain local only",sorter.includes("snapshot")&&!app.includes("uploadPhoto"));
 
 const realRegistration=read("apps/web/src/registration/v2/RealRegistration.tsx");
-const simpleReview=read("apps/web/src/registration/SimpleProfileReview.tsx");
+const v4Style=read("apps/web/src/registration/v2/registration-v4.css");
 const journey=read("apps/web/src/registration/PublicationJourney.tsx");
 assertCheck("single registration consent appears on identity step",
- steps.includes('Я принимаю <a href="/privacy"')&&
- realRegistration.includes('stage.id==="identity"')&&
- realRegistration.includes("step(1)")&&
+ realRegistration.includes('checked={d.trialConsent}')&&
+ realRegistration.includes('Условия использования')&&
+ realRegistration.includes('Политику конфиденциальности')&&
  !realRegistration.includes("setServerConsent")&&
  !realRegistration.includes("photoServerCount")&&
  !realRegistration.includes("onRetryPhotoSync"));
-assertCheck("photo selection and sorting finish before network publication",
- realRegistration.includes('stage.id==="photos"')&&
+assertCheck("photo selection starts private background upload and publication still reconciles it",
+ realRegistration.includes('index===6&&<div className="v4-photos">')&&
  realRegistration.includes("findExactDuplicatePhotoIds(photos)")&&
- !app.includes("void syncChosenPhotos(serverConsent)")&&
- !realRegistration.includes("syncChosenPhotos"));
-assertCheck("new review is simple and has a single create-profile action",
- realRegistration.includes('<SimpleProfileReview draft={draft} photos={photos}/>')&&
- realRegistration.includes('onClick={p.onSave}')&&
+ app.includes("draftReadyForPrivateMedia")&&app.includes("photos.length<1")&&
+ app.includes("syncChosenPhotos(true)")&&!realRegistration.includes("syncChosenPhotos"));
+assertCheck("new review is static and has a single create-profile action",
+ realRegistration.includes('index===7&&<article className="v4-preview">')&&
+ realRegistration.includes('if(index===7){p.onSave();return;}')&&
  realRegistration.includes("Создать анкету")&&
- simpleReview.includes("luemi-simple-review")&&
- !simpleReview.includes("Сохраняем фотографии на сервере"));
+ !realRegistration.includes("Сохраняем фотографии на сервере"));
 assertCheck("branded publication curtain starts before private photo upload",
  app.includes('setJourney("publishing")')&&
  app.includes("const uploadedIds=await syncChosenPhotos(true)")&&
@@ -68,7 +67,7 @@ assertCheck("language catalog contains exactly sixty distinct BCP47 codes",Boole
 })());
 const flags=readdirSync(new URL("../apps/web/public/assets/flags/",import.meta.url)).filter(x=>/^[a-z]{2}\.svg$/.test(x));
 assertCheck("66 genuine circular SVG flags shipped locally",flags.length===66);
-assertCheck("one theme and preview; registration route uses scoped transition",!style.includes(".preview-tabs{")&&!style.includes(".review-actions{")&&!style.includes(".theme-pulsing")&&app.includes("viewDocument.startViewTransition")&&app.includes('dataset.luemiRoute="true"'));
+assertCheck("one V4 transition owns each registration step",!v4Style.includes("startViewTransition")&&v4Style.includes(".v4-stage.v4-enter-next")&&v4Style.includes(".v4-stage.v4-enter-back"));
 
 const draftStore=read("apps/web/src/registration/local-draft.ts");
 const lang=read("apps/web/src/registration/LanguagePicker.tsx");

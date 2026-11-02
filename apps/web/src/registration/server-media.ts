@@ -82,13 +82,14 @@ export interface PrivatePhotoPlan{
 }
 /** Recover the per-photo idempotency mapping after a WebView reload and find
  * owner-private assets that no longer belong to the selected local gallery. */
-export async function planPrivatePhotos(photos:readonly PhotoItem[]):Promise<PrivatePhotoPlan>{
+export async function planPrivatePhotos(photos:readonly PhotoItem[],keepAssetIds:readonly string[]=[]):Promise<PrivatePhotoPlan>{
  if(!remoteMediaPilot.enabled||photos.length<1||photos.length>6||
    photos.some(photo=>photo.status!=="ready"||!photo.id)||
    new Set(photos.map(photo=>photo.id)).size!==photos.length)
   throw new Error("invalid_private_media_plan");
  const keys=photos.map(clientKey),localByKey=new Map(keys.map((key,index)=>[key,photos[index].id]));
- const response=await request("/api/v2/media/plan","POST",JSON.stringify({clientKeys:keys}),"application/json");
+ if(keepAssetIds.length>6||keepAssetIds.some(id=>!UUID.test(id)))throw new Error("invalid_keep_asset_ids");
+ const response=await request("/api/v2/media/plan","POST",JSON.stringify({clientKeys:keys,keepAssetIds}),"application/json");
  const raw:unknown=await response.json();
  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
    !Array.isArray((raw as {assets?:unknown}).assets)||
@@ -211,4 +212,30 @@ export async function readConfirmedPrivateMediaCount(expected:number,uploadedIds
  });
  if(!response.ok)throw new Error("private_manifest_unavailable");
  return confirmedPrivateMediaCount(await response.json(),expected,uploadedIds);
+}
+/** Download only owner-approved private derivatives when a Telegram account
+ * resumes on a second device. No public Storage URL or client-supplied actor ID. */
+export async function restorePrivatePhotos():Promise<Array<{assetId:string;blob:Blob}>>{
+ if(!remoteMediaPilot.enabled)throw new Error("private_media_disabled");
+ const manifest=await fetch("/api/v2/profile/preview",{credentials:"same-origin",cache:"no-store"});
+ if(!manifest.ok)throw new Error("private_manifest_unavailable");
+ const json:unknown=await manifest.json();
+ if(!json||typeof json!=="object"||!Array.isArray((json as {photos?:unknown}).photos))
+  throw new Error("invalid_private_media_manifest");
+ const entries=(json as {photos:unknown[]}).photos;
+ if(entries.length>6)throw new Error("invalid_private_media_manifest");
+ const result:Array<{assetId:string;blob:Blob}>=[];
+ for(const entry of entries){
+  if(!entry||typeof entry!=="object")throw new Error("invalid_private_media_manifest");
+  const {id,state}=entry as {id?:unknown;state?:unknown};
+  if(typeof id!=="string"||!UUID.test(id))throw new Error("invalid_private_media_manifest");
+  if(state!=="approved")continue;
+  const response=await fetch("/api/v2/media/"+id,{credentials:"same-origin",cache:"no-store"});
+  if(!response.ok)throw new Error("private_media_restore_failed");
+  const blob=await response.blob();
+  if(blob.type!=="image/png"||blob.size<1||blob.size>6*1024*1024)
+   throw new Error("invalid_private_media_restore");
+  result.push({assetId:id,blob});
+ }
+ return result;
 }
