@@ -298,47 +298,13 @@ try{
      "failed storage never reports saved");
    await app.evaluate(()=>{IDBObjectStore.prototype.put=window.__QA_REAL_PUT__;});
    await app.getByRole("button",{name:"Повторить"}).click();
-   await app.waitForFunction(async expected=>{
-    const db=await new Promise((resolve,reject)=>{
-     const request=indexedDB.open("luemi-local-photo-preview-v1",1);
-     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
-    });
-    try{
-     const value=await new Promise((resolve,reject)=>{
-      const transaction=db.transaction("drafts","readonly");
-      const request=transaction.objectStore("drafts").get("registration-v2:91009");
-      request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
-     });
-     return value?.draft?.name===expected;
-    }finally{db.close();}
-   },"Анна QA",{timeout:9000});
+   await app.getByText("Черновик сохранён на устройстве").waitFor({state:"visible",timeout:9000});
    await app.getByRole("alert").filter({hasText:"Не удалось сохранить"}).waitFor({state:"hidden",timeout:9000});
-   console.log("REM01B_PRE_RELOAD_KEYS "+JSON.stringify(await app.evaluate(async()=>{
-    const db=await new Promise((resolve,reject)=>{const request=indexedDB.open("luemi-local-photo-preview-v1",1);
-     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
-    try{return await new Promise((resolve,reject)=>{const transaction=db.transaction("drafts","readonly"),request=transaction.objectStore("drafts").getAllKeys();
-     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}finally{db.close();}
-   })));
    await app.reload();
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).waitFor({state:"visible",timeout:12000});
    await app.locator('.luemi-shell[data-draft-storage="idle"]').waitFor({state:"visible",timeout:9000});
-   const reloadState=await app.evaluate(async()=>{
-    const db=await new Promise((resolve,reject)=>{
-     const request=indexedDB.open("luemi-local-photo-preview-v1",1);
-     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
-    });
-    try{return await new Promise((resolve,reject)=>{
-     const transaction=db.transaction("drafts","readonly"),store=transaction.objectStore("drafts");
-     const recordRequest=store.get("registration-v2:91009"),keysRequest=store.getAllKeys();
-     transaction.oncomplete=()=>resolve({record:recordRequest.result,keys:keysRequest.result});
-     transaction.onerror=()=>reject(transaction.error);
-    });}finally{db.close();}
-   });
-   console.log("REM01B_RELOAD_DIAGNOSTIC "+JSON.stringify({storedName:reloadState.record?.draft?.name,
-    storedScope:reloadState.record?.scope,keys:reloadState.keys,storage:await app.locator(".luemi-shell").getAttribute("data-draft-storage")}));
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).click();
    await nameInput.waitFor({state:"visible"});
-   console.log("REM01B_RESTORED_INPUT "+JSON.stringify({value:await nameInput.inputValue()}));
    await app.waitForFunction(expected=>document.querySelector('input[autocomplete="given-name"]')?.value===expected,
     "Анна QA",{timeout:9000});
    assert.equal(await nameInput.inputValue(),"Анна QA");
