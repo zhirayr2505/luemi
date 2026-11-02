@@ -316,7 +316,22 @@ try{
    await app.reload();
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).waitFor({state:"visible",timeout:12000});
    await app.locator('.luemi-shell[data-draft-storage="idle"]').waitFor({state:"visible",timeout:9000});
+   const reloadRecord=await app.evaluate(async()=>{
+    const db=await new Promise((resolve,reject)=>{
+     const request=indexedDB.open("luemi-local-photo-preview-v1",1);
+     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+    });
+    try{return await new Promise((resolve,reject)=>{
+     const transaction=db.transaction("drafts","readonly");
+     const request=transaction.objectStore("drafts").get("registration-v2:91009");
+     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+    });}finally{db.close();}
+   });
+   console.log("REM01B_RELOAD_DIAGNOSTIC "+JSON.stringify({storedName:reloadRecord?.draft?.name,
+    storedScope:reloadRecord?.scope,storage:await app.locator(".luemi-shell").getAttribute("data-draft-storage")}));
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).click();
+   await nameInput.waitFor({state:"visible"});
+   console.log("REM01B_RESTORED_INPUT "+JSON.stringify({value:await nameInput.inputValue()}));
    await app.waitForFunction(expected=>document.querySelector('input[autocomplete="given-name"]')?.value===expected,
     "Анна QA",{timeout:9000});
    assert.equal(await nameInput.inputValue(),"Анна QA");
