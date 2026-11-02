@@ -297,6 +297,20 @@ try{
      "failed storage never reports saved");
    await app.evaluate(()=>{IDBObjectStore.prototype.put=window.__QA_REAL_PUT__;});
    await app.getByRole("button",{name:"Повторить"}).click();
+   await app.waitForFunction(async expected=>{
+    const db=await new Promise((resolve,reject)=>{
+     const request=indexedDB.open("luemi-local-photo-preview-v1",1);
+     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+    });
+    try{
+     const value=await new Promise((resolve,reject)=>{
+      const transaction=db.transaction("drafts","readonly");
+      const request=transaction.objectStore("drafts").get("registration-v2:91009");
+      request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+     });
+     return value?.draft?.name===expected;
+    }finally{db.close();}
+   },"Анна QA",{timeout:9000});
    await app.getByRole("alert").filter({hasText:"Не удалось сохранить"}).waitFor({state:"hidden",timeout:9000});
    await app.reload();
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).waitFor({state:"visible",timeout:12000});
