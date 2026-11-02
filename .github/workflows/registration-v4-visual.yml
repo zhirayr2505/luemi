@@ -3,7 +3,10 @@ on:
   pull_request:
     paths:
       - 'apps/web/src/registration/**'
+      - 'apps/web/src/viewport/**'
       - 'apps/web/src/App.tsx'
+      - 'package.json'
+      - 'scripts/registration-v4-contract.test.mjs'
       - 'scripts/registration-v4-browser.mjs'
       - '.github/workflows/registration-v4-visual.yml'
 jobs:

@@ -30,7 +30,7 @@ function focusEditable(doc:Document):HTMLElement|null {
  * The footer stays in the normal flex layout, above the actual visual viewport. */
 function revealFocusedInBody(root:HTMLElement,focused:HTMLElement|null):void {
  if(!focused||!root.contains(focused))return;
- const body=focused.closest<HTMLElement>(".onboard-body");
+ const body=focused.closest<HTMLElement>(".onboard-body,.v4-scroll");
  if(!body)return;
  const field=focused.getBoundingClientRect(),view=body.getBoundingClientRect();
  if(view.height<36)return;

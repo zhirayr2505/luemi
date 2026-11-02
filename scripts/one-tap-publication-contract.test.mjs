@@ -8,12 +8,13 @@ const v2=load("apps/web/src/registration/v2/RealRegistration.tsx");
 const warm=load("apps/web/src/registration/recommendation-warmup.ts");
 const reg=load("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const media=load("apps/api/src/rem05d-private.ts");
-test("user performs one action from simple swipeable gallery review",()=>{
- assert.match(v2,/<SimpleProfileReview draft=\{draft\} photos=\{photos\}/);
+test("user performs one action from the static V4 gallery review",()=>{
+ assert.match(v2,/index===7&&<article className="v4-preview">/);
  assert.doesNotMatch(v2,/mode="local-self-preview" active/);
  assert.doesNotMatch(v2,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setServerConsent/);
- assert.match(v2,/stage.id==="photos"/);
- assert.match(v2,/Создать анкету 💜/);
+ assert.match(v2,/index===6&&<div className="v4-photos">/);
+ assert.match(v2,/index===7\?p.serverSaving\?"Создаём…":"Создать анкету"/);
+ assert.match(v2,/if\(index===7\)\{p.onSave\(\);return;\}/);
  assert.doesNotMatch(v2,/Проверить модерацию и публикацию/);
  assert.match(app,/onSave=\{\(\)=>\{void \(realFeedPilot.enabled\?confirmRealRegistration\(\)/);
 });
@@ -66,9 +67,10 @@ test("registration reconciles durable photo identities before allocating slots",
  assert.match(media,/"\/api\/v2\/media\/plan"/);
  assert.match(media,/idempotency_digest=ANY\(\$3::text\[\]\)/);
  assert.match(media,/staleAssetIds/);
- assert.match(app,/await planPrivatePhotos\(ready\)/);
+ assert.match(app,/await planPrivatePhotos\(ready,\[\.\.\.privateAssetIds\.current\.values\(\)\]\)/);
  assert.match(app,/for\(const assetId of plan\.staleAssetIds\)/);
  assert.match(app,/await deletePrivatePhoto\(assetId\)/);
+ assert.match(media,/NOT\(a\.id=ANY\(\$4::uuid\[\]\)\)/);
 });
 
 test("recommendation warmup prioritizes overlapping interests and city without exact location",()=>{

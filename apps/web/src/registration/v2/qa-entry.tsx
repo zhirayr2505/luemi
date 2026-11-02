@@ -5,6 +5,7 @@ import {RealRegistrationV2} from "./RealRegistration";
 import {newDraft,type RegistrationDraft} from "../model";
 import type {PhotoItem} from "../PhotoSorter";
 import "../../styles.css";
+declare global {interface Window {__LUEMI_V4_BACK__?:()=>void}}
 const initial:RegistrationDraft={...newDraft("Тестовый профиль"),trialConsent:true,day:"12",month:"05",year:"1998",gender:"man",city:"Краснодар",country:"Россия",countryCode:"RU",placeId:"qa:krasnodar",audience:"women",goal:"serious",about:"Люблю вечерние прогулки, хороший юмор и честные разговоры.",interests:["путешествия","музыка","кофе"]};
 function fixturePhoto(i:number):PhotoItem{
  const canvas=document.createElement("canvas");canvas.width=500;canvas.height=600;
@@ -20,6 +21,6 @@ function QA(){
   movePhoto={(from,to)=>setPhotos(p=>{const next=[...p];next.splice(to,0,next.splice(from,1)[0]);return next;})}
   resetDraft={()=>{}} theme="dark" onTheme={()=>{}} onSave={()=>{}} onRetryMedia={()=>{}}
   mediaEnabled serverSaving={false} serverStatus="" storageError={null} restored resumeReview={false}
-  onRetryStorage={()=>{}} onExit={()=>{}} registerBack={()=>{}}/>;
+  onRetryStorage={()=>{}} onExit={()=>{}} registerBack={fn=>{window.__LUEMI_V4_BACK__=fn;}}/>;
 }
 createRoot(document.getElementById("root")!).render(<QA/>);

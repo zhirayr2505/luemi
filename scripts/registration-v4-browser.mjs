@@ -22,9 +22,25 @@ try{
   assert.equal(await page.locator('.v4-progress span').count(),8);
   assert.equal(await page.locator('.v4-back').count(),i===0?0:1);
   const footer=await page.locator('.v4-footer').boundingBox();assert.ok(footer&&footer.y+footer.height<=852);
+  if(i===0){
+   await page.getByRole('textbox',{name:'Имя'}).focus();
+   await page.setViewportSize({width:393,height:520});await page.waitForTimeout(120);
+   assert.equal(await page.locator('.v4-registration').getAttribute('data-keyboard'),'open');
+   const compactFooter=await page.locator('.v4-footer').boundingBox();
+   assert.ok(compactFooter&&compactFooter.y+compactFooter.height<=520,'keyboard must not cover the footer');
+   await page.setViewportSize({width:393,height:852});
+   await page.getByRole('textbox',{name:'Имя'}).blur();await page.waitForTimeout(120);
+  }
   await page.screenshot({path:`${dir}/${String(i+1).padStart(2,'0')}.png`});
-  if(i<7){await page.getByRole('button',{name:'Продолжить'}).click();await page.waitForTimeout(300);}
+  if(i<7){
+   await page.getByRole('button',{name:'Продолжить'}).click();await page.waitForTimeout(300);
+   if(i===0){
+    await page.evaluate(()=>window.__LUEMI_V4_BACK__?.());
+    await page.getByRole('heading',{name:names[0]}).waitFor();
+    await page.getByRole('button',{name:'Продолжить'}).click();await page.waitForTimeout(300);
+   }
+  }
  }
  assert.deepEqual(errors,[]);
- console.log('Registration V4: 8 rendered screens, navigation and footer geometry PASS');
+ console.log('Registration V4: 8 screens, keyboard viewport, native Back and footer geometry PASS');
 }finally{await browser.close();}

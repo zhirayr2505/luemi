@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useLayoutEffect,useRef,useState} from "react";
 import type {CSSProperties} from "react";
 import {ArrowLeft,ArrowRight,CalendarDays,Check,ChevronDown,GripVertical,MapPin,UserRound,X} from "lucide-react";
 import {GeoPicker} from "../GeoPicker";
@@ -7,6 +7,7 @@ import {categories,itemOf} from "../../ui/InterestCatalog";
 import {goals,birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {findExactDuplicatePhotoIds} from "./duplicate-photos";
 import {remoteDraftPilot} from "../server-draft";
+import {installViewportController} from "../../viewport/viewport-controller";
 import "./registration-v4.css";
 
 interface Props{
@@ -76,13 +77,10 @@ export function RealRegistrationV2(p:Props){
  useEffect(()=>{
   if(hasRestored&&!restored.current){restored.current=true;setIndex(resumeReview?7:restoredIndex(d,photos));}
  },[hasRestored,resumeReview,d,photos]);
- useEffect(()=>{
-  const viewport=window.visualViewport,node=root.current;if(!viewport||!node)return;
-  let frame=0;
-  const update=()=>{frame=0;node.style.setProperty("--v4-visible-height",viewport.height+"px");node.style.setProperty("--v4-top",viewport.offsetTop+"px");};
-  const schedule=()=>{if(!frame)frame=requestAnimationFrame(update);};
-  update();viewport.addEventListener("resize",schedule);viewport.addEventListener("scroll",schedule);
-  return()=>{if(frame)cancelAnimationFrame(frame);viewport.removeEventListener("resize",schedule);viewport.removeEventListener("scroll",schedule);};
+ useLayoutEffect(()=>{
+  const node=root.current;if(!node)return;
+  const controller=installViewportController(node,()=>window.Telegram?.WebApp);
+  return()=>controller.dispose();
  },[]);
  const nav=useCallback((next:number)=>{
   if(busy.current||next<0||next>7||next===index)return;

@@ -354,7 +354,7 @@ export function App() {
     if(!rootRef.current)return;
     const controller=installViewportController(rootRef.current,()=>window.Telegram?.WebApp);
     return ()=>controller.dispose();
-  },[realHome,accountDeletionRequested]);
+  },[realHome,accountDeletionRequested,phase]);
   // Restore text and photo manifest from the same validated revision.
   // Legacy import is read-only until a complete v2 write has committed.
   useEffect(()=>{
