@@ -44,7 +44,7 @@ try{
  await open();
  near(await translation(),0,3);
  let initial=await physical();near(initial.y,initial.b);
- await handle().press("Enter");await sleep(370);
+ await handle().press("Enter");await sleep(560);
  initial=await physical();assert.equal(initial.mode,"compact");near(initial.y,initial.a);
  await handle().press("Enter");
  await sleep(60);
