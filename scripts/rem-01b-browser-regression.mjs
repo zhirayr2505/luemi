@@ -315,6 +315,8 @@ try{
    await app.reload();
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).waitFor({state:"visible",timeout:12000});
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).click();
+   await app.waitForFunction(expected=>document.querySelector('input[autocomplete="given-name"]')?.value===expected,
+    "Анна QA",{timeout:9000});
    assert.equal(await nameInput.inputValue(),"Анна QA");
    assert.deepEqual(runtimeErrors,[],"real app has no unhandled render/async errors");
   }finally{await ui.close();}
