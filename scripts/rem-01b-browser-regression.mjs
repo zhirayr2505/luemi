@@ -283,6 +283,7 @@ try{
      hasInitData:!!window.Telegram?.WebApp?.initData}));
     throw new Error("REM01B App auth did not finish "+JSON.stringify({diagnostic,runtimeErrors}),{cause});
    });
+   await app.locator('.luemi-shell[data-draft-storage="idle"]').waitFor({state:"visible",timeout:9000});
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).click();
    const nameInput=app.locator('input[autocomplete="given-name"]');
    await nameInput.waitFor({state:"visible"});
@@ -314,6 +315,7 @@ try{
    await app.getByRole("alert").filter({hasText:"Не удалось сохранить"}).waitFor({state:"hidden",timeout:9000});
    await app.reload();
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).waitFor({state:"visible",timeout:12000});
+   await app.locator('.luemi-shell[data-draft-storage="idle"]').waitFor({state:"visible",timeout:9000});
    await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).click();
    await app.waitForFunction(expected=>document.querySelector('input[autocomplete="given-name"]')?.value===expected,
     "Анна QA",{timeout:9000});

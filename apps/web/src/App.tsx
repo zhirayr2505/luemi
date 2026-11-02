@@ -1226,6 +1226,7 @@ export function App() {
        onRetryStorage={retryStorage}
        onExit={()=>{setRegistrationFallback(false);setPhase("welcome");}} registerBack={registerV2Back}/>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
+    data-draft-storage={storageState}
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
