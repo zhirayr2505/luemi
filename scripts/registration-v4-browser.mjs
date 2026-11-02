@@ -37,6 +37,7 @@ try{
    if(i===0){
     await page.evaluate(()=>window.__LUEMI_V4_BACK__?.());
     await page.getByRole('heading',{name:names[0]}).waitFor();
+    await page.waitForTimeout(300);
     await page.getByRole('button',{name:'Продолжить'}).click();await page.waitForTimeout(300);
    }
   }
