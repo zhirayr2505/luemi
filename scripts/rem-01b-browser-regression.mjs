@@ -277,30 +277,30 @@ try{
   }));
   try{
    await app.goto(base+"/",{waitUntil:"domcontentloaded"});
-   await app.getByRole("button",{name:"Начать",exact:true}).waitFor({state:"visible",timeout:12000}).catch(async cause=>{
+   await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).waitFor({state:"visible",timeout:12000}).catch(async cause=>{
     const diagnostic=await app.evaluate(()=>({scene:document.querySelector(".luemi-shell")?.getAttribute("data-scene"),
      entry:document.querySelector(".entry-state")?.textContent?.slice(0,300),hasBridge:!!window.Telegram?.WebApp,
      hasInitData:!!window.Telegram?.WebApp?.initData}));
     throw new Error("REM01B App auth did not finish "+JSON.stringify({diagnostic,runtimeErrors}),{cause});
    });
-   await app.getByRole("button",{name:"Начать",exact:true}).click();
-   await app.getByPlaceholder("Как тебя зовут?").waitFor({state:"visible"});
+   await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).click();
+   await app.getByPlaceholder("Твоё имя").waitFor({state:"visible"});
    await app.evaluate(()=>{
     const original=IDBObjectStore.prototype.put;
     window.__QA_REAL_PUT__=original;
     IDBObjectStore.prototype.put=function(){throw new DOMException("Synthetic QuotaExceededError","QuotaExceededError");};
    });
-   await app.getByPlaceholder("Как тебя зовут?").fill("Анна QA");
+   await app.getByPlaceholder("Твоё имя").fill("Анна QA");
    await app.getByRole("alert").filter({hasText:"Не удалось сохранить"}).waitFor({state:"visible",timeout:9000});
    assert.equal(await app.getByText("Черновик сохранён на устройстве").count(),0,
      "failed storage never reports saved");
    await app.evaluate(()=>{IDBObjectStore.prototype.put=window.__QA_REAL_PUT__;});
    await app.getByRole("button",{name:"Повторить"}).click();
-   await app.getByText("Черновик сохранён на устройстве").waitFor({state:"visible",timeout:9000});
+   await app.getByRole("alert").filter({hasText:"Не удалось сохранить"}).waitFor({state:"hidden",timeout:9000});
    await app.reload();
-   await app.getByRole("button",{name:"Начать",exact:true}).waitFor({state:"visible",timeout:12000});
-   await app.getByRole("button",{name:"Начать",exact:true}).click();
-   assert.equal(await app.getByPlaceholder("Как тебя зовут?").inputValue(),"Анна QA");
+   await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).waitFor({state:"visible",timeout:12000});
+   await app.getByRole("button",{name:/Начать знакомство|Продолжить регистрацию/}).click();
+   assert.equal(await app.getByPlaceholder("Твоё имя").inputValue(),"Анна QA");
    assert.deepEqual(runtimeErrors,[],"real app has no unhandled render/async errors");
   }finally{await ui.close();}
  });
