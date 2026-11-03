@@ -1,7 +1,10 @@
 import {forwardRef,memo,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 interface Slide {id:string;src:string;fallback?:string}
-interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean}
+interface Props {
+ photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;
+ onIndexChange?:(index:number)=>void;
+}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
 export interface PhotoCarouselHandle {
  canAdvance:(direction:-1|1)=>boolean;
@@ -10,7 +13,7 @@ export interface PhotoCarouselHandle {
  finish:(id:number,x:number,cancelled:boolean)=>void;
  cancel:()=>void;
 }
-const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false},ref) {
+const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,onIndexChange},ref) {
  const [index,setIndex]=useState(0);
  const tracking=useRef<Tracking|null>(null);
  const frame=useRef<HTMLDivElement>(null);
@@ -20,6 +23,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const indicatorStart=Math.max(0,Math.min(active-3,photos.length-7));
  const indicators=photos.length>7?photos.slice(indicatorStart,indicatorStart+7):photos;
  const activeRef=useRef(active);activeRef.current=active;
+ useEffect(()=>{onIndexChange?.(active);},[active,onIndexChange]);
  const flush=()=>{
    if(frameId.current!==null){window.cancelAnimationFrame(frameId.current);frameId.current=null;}
  };

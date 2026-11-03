@@ -21,24 +21,31 @@
  color:var(--ink);border:1px solid rgba(255,255,255,.85);border-radius:50%;
  background:rgba(255,251,255,.9);box-shadow:0 4px 14px rgba(68,35,87,.15)}
 .real-discovery-home .real-discovery-matches{display:flex;flex-direction:column;min-height:0;flex:1;
- padding:10px 16px 14px;overflow:hidden}
+ padding:10px 16px 14px;overflow:hidden;background:
+ radial-gradient(circle at 88% 8%,rgba(238,167,218,.20),transparent 28%),
+ radial-gradient(circle at 4% 32%,rgba(179,139,226,.14),transparent 32%)}
 .real-discovery-matches-head{display:flex;align-items:center;justify-content:space-between;
- border-bottom:1px solid var(--line);padding:8px 5px 13px}
-.real-discovery-matches-head h2{font-size:20px;color:var(--ink);margin:0}
-.real-discovery-matches-head button{border:0;background:transparent;color:var(--ink);padding:8px}
-.real-discovery-match-list{overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px;padding-top:12px}
+ padding:13px 5px 18px}
+.real-discovery-matches-head small{display:block;color:#9a70b4;font-size:9px;font-weight:800;letter-spacing:.18em;margin-bottom:4px}
+.real-discovery-matches-head h2{font-size:27px;letter-spacing:-.035em;color:var(--ink);margin:0}
+.real-discovery-matches-head button{display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--glass-edge);
+ border-radius:50%;background:rgba(255,255,255,.6);color:var(--ink);box-shadow:0 8px 24px rgba(73,35,92,.09)}
+.real-discovery-match-list{overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:16px;padding:2px 1px 20px}
 .real-discovery-match{width:100%;display:flex;align-items:center;gap:14px;text-align:left;
- padding:12px;background:var(--panel);border:1px solid var(--glass-edge);border-radius:20px;
- color:var(--ink);font:inherit}
+ padding:12px;background:linear-gradient(135deg,rgba(255,255,255,.88),rgba(249,238,253,.70));
+ border:1px solid rgba(255,255,255,.88);border-radius:22px;color:var(--ink);font:inherit;
+ box-shadow:0 10px 30px rgba(70,34,91,.08)}
 .real-discovery-match>span:nth-child(2){display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
 .real-discovery-match small{font-size:12px;color:var(--subtle)}
 .real-discovery-like-section{display:flex;flex-direction:column;gap:8px}
-.real-discovery-like-section h3{margin:8px 5px 0;font-size:13px;color:var(--subtle);font-weight:600}
+.real-discovery-like-section h3{margin:8px 7px 1px;font-size:12px;color:var(--subtle);font-weight:750;letter-spacing:.02em}
 .real-discovery-incoming-like{cursor:default}
 .real-discovery-match>svg{color:#b78ad7}
 .real-discovery-avatar{width:52px;height:52px;flex:none;overflow:hidden;display:grid;place-items:center;
  border-radius:50%;font-size:22px;background:#e8d5f1;color:#7e5b99}
 .real-discovery-avatar img{width:100%;height:100%;object-fit:cover}
+.real-discovery-reacted-photo{width:44px;height:54px;object-fit:cover;border-radius:14px;border:2px solid rgba(255,255,255,.9);
+ box-shadow:0 5px 14px rgba(61,30,78,.16)}
 .real-discovery-home .real-discovery-chat-panel{overflow:hidden}
 .real-discovery-chat-panel>.luemi-chats{min-height:0;height:100%;width:100%;max-width:none;box-shadow:none}
 .real-discovery-chat-panel>.luemi-chats{background:var(--bg);color:var(--ink)}
@@ -66,6 +73,28 @@
 .real-discovery-account-sheet>.discovery-glass-button{margin:8px 14px 20px}
 .real-discovery-account-sheet .luemi-real-account{padding:12px 7px 22px}
 .real-discovery-account-sheet .luemi-real-account h1{font-size:22px}
+
+/* Mutual-like celebration stays fully in the real-account shell. */
+.real-match-moment{position:absolute;inset:0;z-index:180;display:grid;place-items:center;padding:28px 22px;
+ overflow:hidden;color:white;background:linear-gradient(155deg,rgba(31,18,44,.96),rgba(105,59,129,.96) 52%,rgba(130,61,104,.96))}
+.real-match-moment-glow{position:absolute;inset:-20%;pointer-events:none;background:
+ radial-gradient(circle at 50% 34%,rgba(255,194,235,.40),transparent 28%),
+ radial-gradient(circle at 20% 85%,rgba(176,131,241,.28),transparent 24%)}
+.real-match-moment section{position:relative;width:min(100%,390px);display:flex;flex-direction:column;align-items:center;text-align:center}
+.real-match-kicker{font-size:10px;font-weight:850;letter-spacing:.21em;color:#f0cfff;margin-bottom:23px}
+.real-match-portrait{position:relative;display:grid;place-items:center;width:154px;height:154px;border-radius:50%;padding:6px;
+ background:linear-gradient(145deg,#f4b0e2,#b99af1);box-shadow:0 0 0 12px rgba(255,255,255,.07),0 28px 70px rgba(10,4,17,.34)}
+.real-match-portrait>img,.real-match-portrait>span{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;object-fit:cover;
+ background:#b88bc9;color:white;font-size:48px}
+.real-match-portrait i{position:absolute;right:-5px;bottom:13px;display:grid;place-items:center;width:52px;height:52px;
+ border-radius:50%;background:linear-gradient(145deg,#f5afd9,#b083e2);color:#fff;border:4px solid #624173;
+ box-shadow:0 10px 24px rgba(25,10,34,.28);font-style:normal}
+.real-match-moment h2{margin:28px 0 8px;font-size:34px;line-height:1.05;letter-spacing:-.045em}
+.real-match-moment p{max-width:310px;margin:0 0 27px;color:#ecdff1;font-size:14px;line-height:1.5}
+.real-match-moment button{width:100%;min-height:54px;border-radius:999px;font:inherit;font-weight:750}
+.real-match-primary{border:1px solid rgba(255,255,255,.72);color:#321d3c;background:linear-gradient(110deg,#d5a6f4,#f3afd7);
+ box-shadow:0 14px 34px rgba(25,9,33,.25)}
+.real-match-secondary{margin-top:10px;border:0;color:#f4e8f7;background:transparent}
 
 /* Bring back the approved For You shelves and Nearby photo grid for real accounts.
    Existing FeedCard / Profile Morph styles are intentionally unchanged. */

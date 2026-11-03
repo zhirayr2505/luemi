@@ -9,18 +9,32 @@ export const realMatchPilot={
  enabled:realFeedPilot.enabled&&import.meta.env.VITE_LUEMI_REAL_CHATS==="1"&&
   import.meta.env.VITE_LUEMI_REAL_MATCHES==="1"
 };
-/** Server verifies both adult published profiles, blocks and mutual likes. */
-export async function likePublishedUser(id:string):Promise<{liked:true;matched:boolean;conversationId?:string}>{
+export type ProfileReactionKind="like"|"super_like"|"photo_fire";
+export interface ProfileReactionReceipt{
+ liked:true;matched:boolean;kind:ProfileReactionKind;conversationId?:string;
+}
+/** Server verifies both adult published profiles, blocks, photo ownership and quotas. */
+export async function reactToPublishedUser(
+ id:string,kind:ProfileReactionKind="like",photoId?:string
+):Promise<ProfileReactionReceipt>{
  if(!realMatchPilot.enabled)throw new Error("matches_disabled");
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
   throw new Error("invalid_target");
- const data=await api("/api/v4/matches/like","POST",{targetId:id});
+ if(!["like","super_like","photo_fire"].includes(kind)||
+   (kind==="photo_fire"&&(!photoId||!uuid.test(photoId)))||
+   (kind!=="photo_fire"&&photoId!==undefined))throw new Error("invalid_reaction");
+ const data=await api("/api/v4/matches/react","POST",{targetId:id,kind,...(photoId?{photoId}:{})});
  if(!object(data)||data.liked!==true||typeof data.matched!=="boolean"||
+    data.kind!==kind||
     (data.matched&&(typeof data.conversationId!=="string"||!uuid.test(data.conversationId))))
   throw new Error("invalid_like_receipt");
- return data as {liked:true;matched:boolean;conversationId?:string};
+ return data as unknown as ProfileReactionReceipt;
 }
-export interface IncomingLike{ id:string; name:string; createdAt:string; }
+export const likePublishedUser=(id:string)=>reactToPublishedUser(id,"like");
+export interface IncomingLike{
+ id:string;name:string;createdAt:string;kind:ProfileReactionKind;
+ senderPhotoUrl:string|null;photoId:string|null;photoUrl:string|null;
+}
 export async function getIncomingLikes(signal?:AbortSignal):Promise<IncomingLike[]>{
  if(!realMatchPilot.enabled)throw new Error("matches_disabled");
  const res=await fetch("/api/v4/matches/incoming",{credentials:"same-origin",cache:"no-store",signal});
@@ -30,8 +44,14 @@ export async function getIncomingLikes(signal?:AbortSignal):Promise<IncomingLike
  const likes=data.likes.flatMap((item:unknown)=>{
   if(!object(item)||typeof item.id!=="string"||!uuid.test(item.id)||
      typeof item.name!=="string"||item.name.length<1||item.name.length>80||
-     typeof item.createdAt!=="string"||!Number.isFinite(Date.parse(item.createdAt)))return [];
-  return [{id:item.id,name:item.name,createdAt:item.createdAt}];
+     typeof item.createdAt!=="string"||!Number.isFinite(Date.parse(item.createdAt))||
+     !["like","super_like","photo_fire"].includes(String(item.kind))||
+     !(item.senderPhotoUrl===null||typeof item.senderPhotoUrl==="string"&&photoPath.test(item.senderPhotoUrl))||
+     !(item.photoId===null||typeof item.photoId==="string"&&uuid.test(item.photoId))||
+     !(item.photoUrl===null||typeof item.photoUrl==="string"&&photoPath.test(item.photoUrl)))return [];
+  return [{id:item.id,name:item.name,createdAt:item.createdAt,
+   kind:item.kind as ProfileReactionKind,senderPhotoUrl:item.senderPhotoUrl as string|null,
+   photoId:item.photoId as string|null,photoUrl:item.photoUrl as string|null}];
  });
  return likes as IncomingLike[];
 }
