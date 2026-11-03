@@ -1,0 +1,65 @@
+/* LUEMI Design System V5 — one semantic source for the final Soft Plum UI. */
+:root{
+ --luemi-bg:#211725;--luemi-bg-deep:#1c1424;--luemi-bg-top:#302236;
+ --luemi-surface:#35283d;--luemi-surface-raised:#413249;
+ --luemi-glass:#574359;--luemi-glass-accent:#745777;
+ --luemi-lavender:#ac87b3;--luemi-rose:#d5a2c8;
+ --luemi-text:#faf4fb;--luemi-text-secondary:#c7bacd;--luemi-text-muted:#9e8fa7;
+ --luemi-border:rgba(238,214,246,.16);--luemi-border-active:rgba(236,209,247,.30);
+ --luemi-focus:#d8b6df;--luemi-danger:#d58e9d;--luemi-success:#9fbea8;
+ --luemi-shadow:0 10px 28px rgba(8,5,12,.24);
+ --luemi-shadow-contact:0 4px 14px rgba(8,5,12,.19);
+ --luemi-radius-sm:14px;--luemi-radius-md:19px;--luemi-radius-lg:26px;--luemi-radius-xl:30px;
+ --luemi-motion-fast:130ms;--luemi-motion-route:290ms;
+}
+html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
+
+.luemi-shell[data-theme=dark]{
+ --bg:var(--luemi-bg);--ink:var(--luemi-text);--subtle:var(--luemi-text-secondary);
+ --panel:rgba(65,50,73,.74);--glass-edge:var(--luemi-border);--line:var(--luemi-border);
+ --lavender:var(--luemi-lavender);--pink:var(--luemi-rose);--shadow:rgba(7,4,11,.28);
+ background:var(--luemi-bg);color:var(--luemi-text);
+}
+.luemi-shell[data-theme=dark] .milky-mist{
+ background:radial-gradient(ellipse at 12% 4%,rgba(111,77,116,.20),transparent 47%),
+  radial-gradient(ellipse at 86% 89%,rgba(118,72,103,.13),transparent 50%);
+}
+.luemi-shell[data-theme=dark] .milky-mist::before,.luemi-shell[data-theme=dark] .milky-mist::after{animation:none}
+.luemi-shell[data-theme=dark] .intro-mark::before,.luemi-shell[data-theme=dark] .intro-type-cursor{animation:none}
+.luemi-v5-glass{
+ border:1px solid var(--luemi-border);border-radius:var(--luemi-radius-md);
+ background:linear-gradient(145deg,rgba(87,67,89,.66),rgba(53,40,61,.78));
+ box-shadow:inset 0 1px rgba(255,255,255,.10),inset 0 -1px rgba(12,7,16,.14),var(--luemi-shadow-contact);
+}
+.luemi-v5-icon-button{
+ display:grid;place-items:center;width:42px;height:42px;padding:0;border-radius:15px;
+ border:1px solid var(--luemi-border);color:var(--luemi-text);
+ background:linear-gradient(145deg,rgba(88,68,91,.62),rgba(48,36,55,.78));
+ box-shadow:inset 0 1px rgba(255,255,255,.09);transition:transform var(--luemi-motion-fast) ease,background-color var(--luemi-motion-fast) ease;
+}
+.luemi-v5-icon-button:active{transform:scale(.96)}
+.luemi-v5-icon-button:focus-visible,.luemi-v5-segments button:focus-visible,
+.luemi-v5-bottom-nav button:focus-visible{outline:2px solid var(--luemi-focus);outline-offset:2px}
+.luemi-v5-avatar{position:relative;display:grid;place-items:center;flex:none;overflow:hidden;border-radius:50%;
+ background:linear-gradient(145deg,#765c7b,#4b3954);color:var(--luemi-text);font-weight:720;
+ border:1px solid var(--luemi-border);box-shadow:inset 0 1px rgba(255,255,255,.12)}
+.luemi-v5-avatar.is-small{width:42px;height:42px;font-size:17px}.luemi-v5-avatar.is-medium{width:54px;height:54px;font-size:21px}.luemi-v5-avatar.is-large{width:66px;height:66px;font-size:24px}
+.luemi-v5-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.luemi-v5-avatar.has-blik{overflow:visible;border:2px solid #b991bf;box-shadow:0 0 0 2px var(--luemi-bg)}
+.luemi-v5-avatar.has-blik img{overflow:hidden}
+.luemi-v5-empty{display:grid;place-content:center;justify-items:center;gap:10px;min-height:220px;padding:30px 24px;text-align:center;color:var(--luemi-text-secondary)}
+.luemi-v5-empty-mark{display:grid;place-items:center;width:66px;height:66px;border-radius:23px;color:var(--luemi-rose);
+ border:1px solid var(--luemi-border);background:linear-gradient(145deg,rgba(103,78,106,.45),rgba(52,39,60,.72));box-shadow:inset 0 1px rgba(255,255,255,.09)}
+.luemi-v5-empty h3,.luemi-v5-empty p{margin:0}.luemi-v5-empty h3{color:var(--luemi-text);font-size:19px}.luemi-v5-empty p{max-width:290px;font-size:13px;line-height:1.5}
+.luemi-v5-segments{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}.luemi-v5-segments::-webkit-scrollbar{display:none}
+.luemi-v5-segments button{min-height:34px;padding:6px 13px;border:1px solid var(--luemi-border);border-radius:999px;
+ color:var(--luemi-text-secondary);background:rgba(67,50,75,.58);font-size:12px;white-space:nowrap;transition:transform var(--luemi-motion-fast) ease,background-color .2s ease}
+.luemi-v5-segments button.active{color:var(--luemi-text);border-color:var(--luemi-border-active);background:rgba(151,113,157,.48)}
+.luemi-v5-segments button:disabled{opacity:.42;cursor:not-allowed}
+.luemi-v5-segments button:not(:disabled):active{transform:scale(.96)}
+
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+ .luemi-v5-glass[data-static-glass=true]{backdrop-filter:blur(12px) saturate(112%);-webkit-backdrop-filter:blur(12px) saturate(112%)}
+}
+@media(prefers-reduced-motion:reduce){.luemi-v5-icon-button,.luemi-v5-segments button{transition:none}}
+@media(prefers-reduced-transparency:reduce){.luemi-v5-glass{background:var(--luemi-surface-raised)}}

@@ -21,6 +21,7 @@ import {ProfileMaster} from "./ProfileV3Gateway";
 import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {RealChats} from "../chats/RealChats";
 import {createChatTransport,type ChatWireConversation} from "../chats/chat-transport";
+import {LuemiBottomNavigation} from "../ui/LuemiV5";
 import {geoCsrf} from "../auth/session-adapter";
 import {getPublishedFeed,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,realMatchPilot,type PublishedFeedPage,type IncomingLike} from "../registration/real-live-client";
 import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
@@ -31,6 +32,7 @@ import "./real-discovery.css";
 // EXACT approved LUEMI navigation / header / profile components. No demo profiles
 // are imported or projected into a real session.
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
+const navigationItems=navigation.map(([id,label,icon])=>({id,label,icon}));
 const tabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 type MainTab=typeof navigation[number][0];
 type BrowseTab=typeof tabs[number][0];
@@ -304,6 +306,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  const [filterOpen,setFilterOpen]=useState(false);
  const [person,setPerson]=useState<RealPublishedProfile|null>(null);
  const [accountOpen,setAccountOpen]=useState(false);
+ const [chatThreadOpen,setChatThreadOpen]=useState(false);
  // Session-only bookmarks: the API has no durable saved-profiles endpoint yet.
  const [savedIds,setSavedIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
  const [hiddenIds,setHiddenIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
@@ -335,6 +338,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  const header=useRef<HeaderMotion>(null);
  const scrollPositions=useRef({"for-you":0,nearby:0});
  const visitorBackRef=useRef<(()=>boolean)|null>(null),profileBackRef=useRef<(()=>boolean)|null>(null);
+ const chatBackRef=useRef<(()=>void)|null>(null);
  const registerVisitorBack=useCallback((fn:(()=>boolean)|null)=>{visitorBackRef.current=fn;},[]);
  const registerProfileBack=useCallback((fn:(()=>boolean)|null)=>{profileBackRef.current=fn;},[]);
  const onScrollTop=useCallback((tab:BrowseTab,top:number)=>{
@@ -620,6 +624,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  useEffect(()=>{if(mainTab!=="discover"||person||accountOpen)suspendBrowse.current();},[mainTab,person,accountOpen]);
  const backRef=useRef<()=>void>(()=>{});
  backRef.current=()=>{
+  if(chatThreadOpen){chatBackRef.current?.();return;}
   if(filterOpen){setFilterOpen(false);return;}
   if(person){if(visitorBackRef.current?.())return;setPerson(null);return;}
   if(accountOpen){setAccountOpen(false);return;}
@@ -630,10 +635,11 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==="Escape")backRef.current();};
   window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key);},[]);
  return <section className="discovery-app real-discovery-home"
-  data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person?"true":"false"}>
+  data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person?"true":"false"}
+  data-chat-thread={chatThreadOpen?"true":"false"}>
   <div className="discovery-ambient" aria-hidden="true"/>
-  <GlobalHeader ref={header} mode={mainTab==="profile"?"profile":"browse"} theme={theme} onTheme={onTheme}
-   onFilters={()=>setFilterOpen(true)} onSaved={()=>{setPerson(null);setMainTab("likes");}}/>
+  {!chatThreadOpen&&<GlobalHeader ref={header} mode={mainTab==="profile"?"profile":mainTab==="chats"?"chats":"browse"} theme={theme} onTheme={onTheme}
+   onFilters={()=>setFilterOpen(true)} onSaved={()=>{setPerson(null);setMainTab("likes");}}/>}
   <div className="discovery-main-panels">
    <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
     <div className="discovery-top-tabs" ref={topTabsSurface} role="tablist" aria-label="Разделы знакомств"
@@ -678,7 +684,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
     <RealMatches active={mainTab==="likes"} onChat={()=>setMainTab("chats")}/>
    </section>
    <section className="discovery-panel real-discovery-chat-panel" hidden={mainTab!=="chats"}>
-    {mainTab==="chats"&&<RealChats/>}
+    {mainTab==="chats"&&<RealChats onThreadChange={setChatThreadOpen} registerThreadBack={handler=>{chatBackRef.current=handler;}}/>}
    </section>
    <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
     {owner?<ProfileMaster data={owner} mode="owner" onEdit={()=>setAccountOpen(true)}
@@ -695,12 +701,8 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
   </div>
   {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)} theme={theme} onTheme={onTheme}
    onExit={()=>setPerson(null)} registerBack={registerVisitorBack}/>}
-  <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
-   {navigation.map(([id,label,Icon])=><button type="button" key={id}
-    className={"discovery-nav-item"+(mainTab===id?" active":"")}
-    aria-current={mainTab===id?"page":undefined} onClick={()=>{setPerson(null);setMainTab(id);}}>
-     <Icon size={22} strokeWidth={1.75}/><span>{label}</span></button>)}
-  </nav>
+  {!chatThreadOpen&&<LuemiBottomNavigation className="discovery-bottom-nav" items={navigationItems} value={mainTab}
+   onChange={id=>{setPerson(null);setChatThreadOpen(false);setMainTab(id);}}/>}
   {accountOpen&&<div className="discovery-modal-backdrop real-discovery-account-modal"
    onClick={()=>setAccountOpen(false)}>
    <section className="real-discovery-account-sheet" role="dialog" aria-modal="true" aria-label="Настройки профиля"

@@ -1,12 +1,12 @@
 /* LUEMI cinematic registration. One scoped visual system for every real step.
    The input dock and the server-backed registration state live in React. */
 .v2-runtime{
- --ink:#f6eff9;--subtle:#b9adc7;--panel:rgba(47,43,65,.87);
- --glass-edge:rgba(203,179,235,.21);--line:rgba(211,180,241,.14);
- --lavender:#d6a9fa;--pink:#f0b2da;--shadow:rgba(0,0,0,.28);
+ --ink:var(--luemi-text,#faf4fb);--subtle:var(--luemi-text-secondary,#c7bacd);--panel:rgba(65,50,73,.78);
+ --glass-edge:var(--luemi-border,rgba(238,214,246,.16));--line:var(--luemi-border,rgba(238,214,246,.16));
+ --lavender:var(--luemi-lavender,#ac87b3);--pink:var(--luemi-rose,#d5a2c8);--shadow:rgba(0,0,0,.28);
  --registration-footer-height:calc(91px + max(14px,env(safe-area-inset-bottom)));
  width:100%;height:var(--registration-visible-height,100dvh);min-height:0;padding:0;
- overflow:hidden;background:#15131c;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+ overflow:hidden;background:var(--luemi-bg-deep,#1c1424);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @keyframes luemi-registration-enter{from{opacity:.55;transform:translate3d(28px,0,0)}to{opacity:1;transform:none}}
 .v2-runtime[data-fallback-entry="true"]{animation:luemi-registration-enter .38s cubic-bezier(.2,.76,.25,1) both}
@@ -14,14 +14,14 @@ html[data-luemi-route="true"] .v2-runtime{animation:none}
 .v2-runtime .v2-device{width:min(100%,520px);height:var(--registration-visible-height,100dvh);
  max-height:none;min-height:0;position:relative;isolation:isolate;overflow:hidden;
  padding:0;border:0;border-radius:0;box-shadow:0 30px 90px rgba(0,0,0,.35);
- color:var(--ink);background:#15131c}
+ color:var(--ink);background:var(--luemi-bg-deep,#1c1424)}
 html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-route}
 .v2-runtime .v2-backdrop{display:none}
 .v2-runtime .v2-header{flex:none;z-index:3;height:78px;min-height:78px;padding:9px 24px 13px;
  display:grid;grid-template-columns:1fr;grid-template-rows:40px 3px;align-items:center;
- column-gap:12px;row-gap:13px;background:#15131c}
+ column-gap:12px;row-gap:13px;background:var(--luemi-bg-deep,#1c1424)}
 .v2-runtime .v2-header-logo{display:block;width:108px;max-height:37px;object-fit:contain;
- object-position:left center;filter:brightness(0) invert(1);user-select:none;pointer-events:none}
+ object-position:left center;filter:none;user-select:none;pointer-events:none}
 .v2-runtime .v2-progress{grid-column:1;grid-row:2;position:relative;display:block;
  width:100%;height:3px;min-height:3px;padding:0;border-radius:999px;
  background:rgba(208,199,220,.16);overflow:hidden}
@@ -48,7 +48,7 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 @keyframes luemi-stage-reveal{from{opacity:0;translate:12px 0}to{opacity:1;translate:0 0}}
 .v2-runtime .v2-eyebrow{display:none}
 .v2-runtime .v2-stage-heading{position:sticky;top:-20px;z-index:6;margin:-20px -24px 0;
- padding:20px 24px 23px;background:linear-gradient(180deg,#15131c 0%,#15131c 72%,rgba(21,19,28,.96) 88%,rgba(21,19,28,0) 100%)}
+ padding:20px 24px 23px;background:linear-gradient(180deg,var(--luemi-bg-deep,#1c1424) 0%,var(--luemi-bg-deep,#1c1424) 72%,rgba(28,20,36,.96) 88%,rgba(28,20,36,0) 100%)}
 .v2-runtime .v2-body h1{font-size:clamp(28px,7.3vw,36px);line-height:1.09;
  font-weight:740;letter-spacing:-.048em;margin:0 0 8px;color:#fff;text-wrap:balance}
 .v2-runtime .v2-subtitle{max-width:355px;min-height:38px;font-size:13px;line-height:1.48;
@@ -81,8 +81,8 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
  transition:transform .18s ease,border-color .24s ease,box-shadow .24s ease,background .24s ease}
 .v2-runtime .glass-choice.selected,.v2-runtime .v2-choice.is-selected,
 .v2-runtime .category-chip.selected,.v2-runtime .language-option.selected{
- color:#fff;border-color:rgba(244,164,241,.84);
- background:rgba(93,66,107,.82);
+ color:#fff;border-color:var(--luemi-border-active,rgba(236,209,247,.30));
+ background:rgba(116,87,119,.74);
  box-shadow:inset 0 1px rgba(255,255,255,.17),0 0 0 1px rgba(213,133,224,.13)}
 .v2-runtime .glass-choice:active,.v2-runtime .category-chip:active,
 .v2-runtime .language-option:active{transform:scale(.985)}
@@ -212,8 +212,8 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .v2-next,.v2-runtime .v2-publish{width:100%;min-height:56px;padding:11px 20px;
  display:flex;align-items:center;justify-content:center;gap:10px;border-radius:999px;
  border:1px solid rgba(255,213,252,.82);color:#24152e;font-size:15px;font-weight:740;
- background:linear-gradient(105deg,#d6a7fa,#f4aedc 88%);
- box-shadow:inset 0 1px rgba(255,255,255,.58),0 10px 29px rgba(183,95,208,.25);
+ background:linear-gradient(105deg,#b58dbb,#d5a2c8 88%);
+ box-shadow:inset 0 1px rgba(255,255,255,.38),0 10px 29px rgba(57,34,62,.28);
  transition:transform .18s cubic-bezier(.2,.76,.25,1),box-shadow .24s ease,filter .24s ease}
 .v2-runtime .v2-next:active,.v2-runtime .v2-publish:active{transform:scale(.985);filter:brightness(1.04);
  box-shadow:inset 0 1px rgba(255,255,255,.62),0 5px 19px rgba(183,95,208,.2)}
@@ -222,8 +222,8 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .v2-next.v2-next-confirm,.v2-runtime .v2-next.is-incomplete.v2-next-confirm{
  margin-left:auto;flex:0 0 58px;width:58px;min-height:58px;height:58px;padding:0;
  display:grid;place-items:center;border-radius:50%;color:#25152e;
- border:1px solid #f4c8fa;background:linear-gradient(130deg,#c28bea,#f2b1dd);
- box-shadow:0 8px 30px rgba(181,94,217,.35);animation:luemi-confirm-in .28s ease-out both}
+ border:1px solid var(--luemi-border-active);background:linear-gradient(130deg,#ac87b3,#d5a2c8);
+ box-shadow:0 8px 24px rgba(35,21,39,.30);animation:luemi-confirm-in .28s ease-out both}
 .v2-runtime .v2-next.v2-next-confirm svg{margin:0}
 @keyframes luemi-confirm-in{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
 .v2-runtime .v2-draft-save:disabled{background:#3a3347;border-color:#766384;color:#bcaac9;box-shadow:none}

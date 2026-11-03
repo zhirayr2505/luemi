@@ -4,7 +4,7 @@ import "./global-header.css";
 import "./feed-glass-v1.css";
 
 const logo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
-export type HeaderMode="browse"|"profile";
+export type HeaderMode="browse"|"profile"|"chats";
 export type HeaderMotion={
   setScrollTop:(top:number)=>void;
   setProfileProgress:(progress:number,_dragging:boolean)=>void;
@@ -35,7 +35,7 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   cancelAnimationFrame(toolsFrame.current);toolsFrame.current=null;
  }},[mode]);
  const paintTools=useCallback((top:number)=>{
-  if(mode==="profile")return;
+ if(mode==="profile")return;
   const p=smooth(clamp(top/105));
   const v=manual.current?0:p,el=host.current;
   if(Math.abs(v-lastControlsValue.current)<.001)return;
@@ -90,15 +90,15 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
     {!androidClient&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="async"/>}
    </button>
   </div>
-  {mode==="browse"&&<div className="lh-browse-controls">
+  {mode!=="profile"&&<div className="lh-browse-controls">
    <button type="button" className="lh-browse-control" onClick={onSaved}
     aria-label="Симпатии и уведомления" title="Симпатии и уведомления">
     <Bell size={20} strokeWidth={1.8}/>
    </button>
-   <button type="button" className="lh-browse-control" onClick={onFilters}
+   {mode==="browse"&&<button type="button" className="lh-browse-control" onClick={onFilters}
     aria-label="Открыть фильтры" title="Фильтры">
     <SlidersHorizontal size={20} strokeWidth={1.8}/>
-   </button>
+   </button>}
   </div>}
  </header>;
 });

@@ -25,7 +25,7 @@ const required=[
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
  ["opaque search scope list",/\.v2-runtime\s+\.scope-options\s*\{[^}]*background:#292336/s],
  ["scope list opens upward without covering the city field",/\.v2-runtime\s+\.scope-options\s*\{[^}]*position:relative;order:-1/s],
- ["quiet dark canvas",/\.v2-runtime\s*\{[^}]*background:#15131c/s]
+ ["shared Soft Plum canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#1c1424\)/s]
 ];
 for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
@@ -56,8 +56,8 @@ assert.doesNotMatch(form,/id:"face-consent"|id:"liveness"|stage\.id==="main-phot
  "No intermediate biometric or duplicate main-photo screens interrupt signup");
 assert.match(form,/wordmark_original_raster_alpha_W06\.webp/,
  "The header uses the actual LUEMI mark, not a text approximation");
-assert.match(runtime,/\.v2-header-logo\{[^}]*filter:brightness\(0\) invert\(1\)/s,
- "The original LUEMI mark appears white on the dark registration surface");
+assert.match(runtime,/\.v2-header-logo\{[^}]*filter:none/s,
+ "The original LUEMI mark retains its approved raster colors on the dark registration surface");
 assert.match(form,/stage\.id==="personality"&&<div className="v2-real-groups">[\s\S]*?<OptionalProfileDetails/,
  "Optional about details live inside the scrollable interests and biography step");
 assert.doesNotMatch(form,/v2-footer-optional|v2-stage-transition/,

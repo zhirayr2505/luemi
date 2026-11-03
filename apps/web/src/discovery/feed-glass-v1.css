@@ -1,19 +1,19 @@
 /* LUEMI approved feed glass V1. Static translucent surfaces are deliberate:
    no backdrop-filter on the moving cards or tab pager in Telegram WebView. */
 .lh-browse .lh-center{
- top:calc(var(--top-safe) + 4px);left:14px;width:132px;height:46px;transform:none
+ top:calc(var(--top-safe) + 10px);left:14px;width:120px;height:42px;transform:none
 }
-.lh-browse .lh-island{left:0;top:0;transform:none;width:132px;height:44px;pointer-events:none}
-.lh-browse .lh-island img{width:132px;height:44px;filter:none}
+.lh-browse .lh-island{left:0;top:0;transform:none;width:120px;height:40px;pointer-events:none}
+.lh-browse .lh-island img{width:120px;height:40px;filter:none}
 .lh-browse .lh-logo-contrast{display:none}
 .lh-browse-controls{
- position:absolute;right:14px;top:calc(var(--top-safe) + 4px);z-index:6;
+ position:absolute;right:14px;top:calc(var(--top-safe) + 10px);z-index:6;
  display:flex;gap:9px;align-items:center;pointer-events:auto
 }
 .lh-browse-control{
  display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;
- color:#f2e8f6;border-radius:16px;border:1px solid rgba(234,208,244,.12);
- background:linear-gradient(145deg,rgba(90,75,104,.45),rgba(49,39,60,.74));
+ color:var(--luemi-text);border-radius:16px;border:1px solid var(--luemi-border);
+ background:linear-gradient(145deg,rgba(87,67,89,.58),rgba(48,36,55,.78));
  box-shadow:inset 0 1px rgba(255,255,255,.085),0 4px 14px rgba(9,6,16,.12);
  -webkit-tap-highlight-color:transparent
 }
@@ -21,13 +21,13 @@
 .lh-browse-control:focus-visible{outline:2px solid #d0a2ed;outline-offset:2px}
 /* Keep profile/visitor logo and Profile Morph V3 coordinates unchanged. */
 .discovery-app .discovery-main-panels>.discovery-panel.discovery-browse-panel{
- top:calc(var(--top-safe) + 59px)
+ top:calc(var(--top-safe) + 66px)
 }
 .discovery-app .discovery-top-tabs{
  height:48px;min-height:48px;flex:none;box-sizing:border-box;
  margin:0 13px 7px;padding:4px;overflow:hidden;
- border:1px solid rgba(206,179,224,.15);border-radius:22px;
- background:linear-gradient(130deg,rgba(70,56,80,.66),rgba(40,33,49,.77));
+ border:1px solid var(--luemi-border);border-radius:22px;
+ background:linear-gradient(130deg,rgba(72,54,78,.70),rgba(40,29,47,.84));
  box-shadow:inset 0 1px rgba(255,255,255,.075);
  color:#f6effa
 }
@@ -47,8 +47,8 @@
 .discovery-app .discovery-bottom-nav{
  width:calc(100% - 26px);max-width:620px;min-height:55px;
  margin:6px auto max(8px,var(--bottom-safe));padding:5px 8px;
- border:1px solid rgba(223,196,240,.15);border-radius:25px;
- background:linear-gradient(135deg,rgba(56,44,70,.93),rgba(35,28,46,.96));
+ border:1px solid var(--luemi-border);border-radius:25px;
+ background:linear-gradient(135deg,rgba(56,42,65,.94),rgba(31,23,38,.97));
  box-shadow:inset 0 1px rgba(255,255,255,.08);
  backdrop-filter:none;-webkit-backdrop-filter:none
 }
@@ -95,8 +95,8 @@
  position:absolute;z-index:0;left:10px;right:10px;bottom:10px;
  height:calc(var(--feed-closed-height) + var(--feed-actions-height) + 10px);
  border-radius:27px;border:1px solid rgba(255,239,255,.39);
- background:linear-gradient(145deg,rgba(79,66,85,.70),rgba(48,39,56,.76) 56%,rgba(76,57,82,.73));
- box-shadow:inset 0 1px rgba(255,255,255,.20),0 5px 21px rgba(7,4,12,.22);
+ background:linear-gradient(155deg,rgba(103,79,105,.67) 0%,rgba(67,50,74,.78) 48%,rgba(45,33,53,.87) 100%);
+ box-shadow:inset 0 1px rgba(255,255,255,.17),inset 0 -2px rgba(13,8,17,.16),0 5px 21px rgba(7,4,12,.24);
  pointer-events:none;overflow:hidden
 }
 .discovery-app .feed-v2-glass::after{
@@ -138,12 +138,16 @@
 }
 .discovery-app .feed-v2-interests{max-height:none;min-height:0;overflow:visible}
 .discovery-app .feed-v2-interests .discovery-interests{gap:5px;padding:0}
-.discovery-app .feed-v2 .discovery-interests>.chip{
+.discovery-app .feed-v2 .discovery-interests .interest-chip{
  border:1px solid rgba(247,223,252,.23);border-radius:20px;
- background:rgba(159,120,177,.24);color:#f4eaf7;
+ background:linear-gradient(135deg,color-mix(in srgb,var(--chip-from) 24%,#574359),color-mix(in srgb,var(--chip-to) 20%,#35283d));color:#f4eaf7;
  padding:5px 9px;font-size:11px;box-shadow:inset 0 1px rgba(255,255,255,.09)
 }
-.discovery-app .feed-v2 .discovery-interests>.chip svg{color:#ebc9ff}
+.discovery-app .feed-v2 .discovery-interests .interest-chip svg{color:currentColor}
+.discovery-app .feed-v2 .feed-v2-interest-primary,
+.discovery-app .feed-v2 .feed-v2-interest-extra{display:inline-flex;min-width:0}
+.discovery-app .feed-v2-card:not([data-expanded=true]) .feed-v2-interest-extra{visibility:hidden}
+.discovery-app .feed-v2-card[data-expanded=true] .feed-v2-interest-count{display:none}
 .discovery-app .feed-v2 .discovery-more{
  padding:5px 8px;border:1px solid rgba(247,223,252,.23);
  background:rgba(159,120,177,.24);color:#f4eaf7
@@ -184,8 +188,8 @@
 .discovery-app .feed-v2-card[data-size=tiny] .feed-v2-section-label{display:none}
 .discovery-app .feed-v2-card[data-size=tiny] .feed-v2 .discovery-name-button span{font-size:23px}
 @media(max-width:360px){
- .lh-browse .lh-center{left:10px;width:119px}
- .lh-browse .lh-island,.lh-browse .lh-island img{width:119px}
+ .lh-browse .lh-center{left:10px;width:112px}
+ .lh-browse .lh-island,.lh-browse .lh-island img{width:112px}
  .lh-browse-controls{right:10px;gap:5px}
  .lh-browse-control{width:42px;height:42px}
  .discovery-app .feed-v2-details{left:17px;right:17px}

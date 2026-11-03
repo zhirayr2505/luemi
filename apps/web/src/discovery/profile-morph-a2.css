@@ -151,6 +151,10 @@
  border-radius:30px;color:#604477;padding:9px 12px}
 .luemi-shell[data-theme=dark] .pm-a2-sheet,.luemi-shell[data-theme=dark] .pm-a2-tabs{
  background:var(--bg,#22182e)}
+.luemi-shell[data-theme=dark] .pm-a2-owner-actions button{border-color:var(--luemi-border);background:var(--luemi-surface);color:var(--luemi-text)}
+.luemi-shell[data-theme=dark] .pm-a2-owner-actions button.pm-owner-edit{background:var(--luemi-glass-accent);color:var(--luemi-text)}
+.luemi-shell[data-theme=dark] .pm-a2-tab.active{color:var(--luemi-rose)}
+.luemi-shell[data-theme=dark] .pm-a2-ink{background:var(--luemi-lavender)}
 @media(max-width:370px){
  .pm-a2-compact-identity{gap:7px}
  .pm-a2-compact-identity h2{font-size:21px}

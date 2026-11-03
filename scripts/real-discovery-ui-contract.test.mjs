@@ -28,7 +28,7 @@ test("real published discovery has original four tabs and three browse tabs",()=
  assert.match(shell,/className="discovery-top-tabs"/);
  assert.match(shell,/<ProfileMaster data=\{owner\} mode="owner"/);
  assert.match(shell,/<VisitorProfileRoute/);
- assert.match(shell,/<RealChats\/>/);
+ assert.match(shell,/<RealChats\b/);
  assert.match(shell,/<RealMatches active=/);
 });
 

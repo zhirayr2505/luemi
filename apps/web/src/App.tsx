@@ -247,8 +247,8 @@ export function App() {
   useEffect(()=>{
     const webApp=window.Telegram?.WebApp;
     try{
-      const background=auth==="authorized"&&!realHome?(phase==="form"?"#15131c":"#14101d"):
-        activeTheme==="dark"?"#181320":"#fffbfd";
+      const background=auth==="authorized"&&!realHome?(phase==="form"?"#1c1424":"#211725"):
+        activeTheme==="dark"?"#211725":"#fffbfd";
       webApp?.setHeaderColor?.(background);
       webApp?.setBackgroundColor?.(background);
       webApp?.setBottomBarColor?.(background);

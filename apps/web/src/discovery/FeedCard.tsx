@@ -1,10 +1,9 @@
 import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,X,Undo2,MoreHorizontal} from "lucide-react";
+import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,X,Undo2,MoreHorizontal,MapPin} from "lucide-react";
 import {goals} from "../registration/model";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
-import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import type {DemoKind,DemoPerson} from "./model";
 import {cardGestureZone} from "./card-gesture-zone";
@@ -120,8 +119,12 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // enormous empty opaque panel over the person's face on Android Telegram.
   const full=content.current?.scrollHeight??0;
   const maxClosed=Math.max(110,Math.min(height*.43,height-actions-42));
-  const minClosed=Math.min(maxClosed,height<420?130:152);
-  const closed=Math.max(minClosed,Math.min(maxClosed,full+14,height*.35));
+  const minClosed=Math.min(maxClosed,height<420?132:152);
+  // Compact geometry is content-aware by breakpoint but never grows with the
+  // complete interest list. The hidden rows still contribute to `full`, so the
+  // expanded state can reveal them without a second layout jump.
+  const desiredClosed=height<420?136:height<560?158:176;
+  const closed=Math.max(minClosed,Math.min(maxClosed,desiredClosed));
   const open=Math.max(closed,Math.min(full+20,height*.63,height-actions-34));
   element.style.setProperty("--feed-closed-height",closed+"px");
   details.current?.style.setProperty("height",open+"px");
@@ -299,25 +302,25 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
                <Crown size={19} strokeWidth={2} fill="#ffd878" color="#e8af35"/>
               </span>}
              </div>
-             <div className="discovery-place"><Flag code={person.countryCode} size={19}/>
+             <div className="discovery-place"><MapPin size={14} strokeWidth={1.8}/>
               <span>{person.city}{person.country?", "+person.country:""}</span>
              </div>
             </div>
             {goal&&<div className="feed-v2-goal"><Heart size={14}/>{goal.label}</div>}
            </div>
-           {person.interests.length>0&&<div className="feed-v2-interests" ref={interests}>
-             <p className="feed-v2-section-label">Интересы</p>
-             <div className="discovery-interests">
-               {person.interests.slice(0,5).map(id=><InterestChip key={id} id={id}/>)}
-               {person.interests.length>5&&<button type="button" className="discovery-more"
-                 onClick={onInterests} disabled={!available} aria-label={"Показать все интересы "+person.name}>
-                 +{person.interests.length-5}
-               </button>}
-             </div>
-           </div>}
            {person.about&&<div className="feed-v2-about" ref={about}>
              <p className="feed-v2-section-label">О себе</p>
              <p className="discovery-short-about">{person.about}</p>
+           </div>}
+           {person.interests.length>0&&<div className="feed-v2-interests" ref={interests}>
+             <p className="feed-v2-section-label">Интересы</p>
+             <div className="discovery-interests">
+               {person.interests.map((id,index)=><span className={index<2?"feed-v2-interest-primary":"feed-v2-interest-extra"} key={`${id}-${index}`}><InterestChip id={id}/></span>)}
+               {person.interests.length>2&&<button type="button" className="discovery-more feed-v2-interest-count"
+                 onClick={onInterests} disabled={!available} aria-label={"Показать все интересы "+person.name}>
+                 +{person.interests.length-2}
+               </button>}
+             </div>
            </div>}
           </div>
          </div>

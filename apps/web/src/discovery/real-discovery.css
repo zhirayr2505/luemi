@@ -41,12 +41,8 @@
 .real-discovery-avatar img{width:100%;height:100%;object-fit:cover}
 .real-discovery-home .real-discovery-chat-panel{overflow:hidden}
 .real-discovery-chat-panel>.luemi-chats{min-height:0;height:100%;width:100%;max-width:none;box-shadow:none}
-.real-discovery-chat-panel>.luemi-chats{background:var(--bg);color:var(--ink)}
-.real-discovery-chat-panel .lc-heading,
-.real-discovery-chat-panel .lc-chat-header,
-.real-discovery-chat-panel .lc-composer{background:var(--panel);border-color:var(--glass-edge)}
-.real-discovery-chat-panel .lc-search,
-.real-discovery-chat-panel .lc-input-row textarea{background:var(--bg);border:1px solid var(--glass-edge)}
+.real-discovery-home[data-chat-thread=false] .real-discovery-chat-panel{top:calc(var(--top-safe) + 66px)}
+.real-discovery-home[data-chat-thread=true] .real-discovery-chat-panel{top:0}
 .real-discovery-home .real-discovery-modal{z-index:120}
 .real-discovery-modal-sheet{margin:auto 0 0;width:100%;max-height:75%;display:flex;flex-direction:column;
  padding:20px 18px max(18px,var(--bottom-safe));border-radius:25px 25px 0 0;
@@ -84,3 +80,17 @@
  background:linear-gradient(120deg,#b18de0,#dfa4ce);color:white
 }
 .real-discovery-home .real-nearby-scope small{width:100%;color:var(--subtle);font-size:11px}
+
+/* V5 dark routes: no white surfaces survive inside the signed-in product. */
+.luemi-shell[data-theme=dark] .real-discovery-home .real-discovery-notice,
+.luemi-shell[data-theme=dark] .real-discovery-home .real-discovery-more{
+ background:rgba(65,50,73,.96);border-color:var(--luemi-border);color:var(--luemi-text);
+ box-shadow:var(--luemi-shadow-contact)
+}
+.luemi-shell[data-theme=dark] .real-discovery-home .real-discovery-settings{
+ background:rgba(65,50,73,.92);border-color:var(--luemi-border);color:var(--luemi-text);
+ box-shadow:var(--luemi-shadow-contact)
+}
+.luemi-shell[data-theme=dark] .real-discovery-avatar{background:linear-gradient(145deg,#765c7b,#4b3954);color:var(--luemi-text)}
+.luemi-shell[data-theme=dark] .real-discovery-match{background:linear-gradient(145deg,rgba(69,52,77,.78),rgba(46,34,53,.86));border-color:var(--luemi-border)}
+.luemi-shell[data-theme=dark] .real-discovery-home .real-nearby-scope button[aria-pressed=true]{background:var(--luemi-glass-accent);color:var(--luemi-text)}
