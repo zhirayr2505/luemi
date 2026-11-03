@@ -251,6 +251,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     <div className="discovery-deck-layer deck-active"><div className="discovery-empty real-discovery-empty">
      <Heart size={38}/><h2>Пока нет анкет</h2>
      <p>Когда появятся новые люди, ты увидишь их здесь.</p>
+      <button type="button" className="discovery-glass-button" onClick={onEditFilters}>Изменить фильтры</button>
      {undoPage!==null&&<button type="button" className="discovery-glass-button" onClick={()=>{void act("undo");}}>
       Отменить пропуск</button>}
      {cursor&&<button type="button" className="discovery-glass-button" disabled={moreBusy} onClick={()=>{void more();}}>
