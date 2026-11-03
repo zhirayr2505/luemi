@@ -10,7 +10,7 @@ import type {DemoKind,DemoPerson} from "./model";
 import {cardGestureZone} from "./card-gesture-zone";
 
 const buttons=[
- ["undo","Отменить",Undo2],["pass","Пропустить",X],
+ ["pass","Пропустить",X],
  ["special","Особенная симпатия",Sparkles],["like","Нравится",Heart]
 ] as const;
 type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info"|"scroll";
@@ -36,6 +36,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const [expanded,setExpanded]=useState(false);
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
+ const glass=useRef<HTMLDivElement>(null);
  const dim=useRef<HTMLDivElement>(null);
  const scroll=useRef<HTMLDivElement>(null);
  const content=useRef<HTMLDivElement>(null);
@@ -46,7 +47,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const blockClickUntil=useRef(0);
  const multiTouch=useRef(false);
  const progress=useRef(0),target=useRef<0|1>(0);
- const metrics=useRef({closed:174,open:430,reveal:0});
+ const metrics=useRef({closed:225,open:430,reveal:0,actions:83});
  const run=useRef<CardRun|null>(null);
  const fingerFrame=useRef<number|null>(null);
  const fingerValue=useRef(0);
@@ -59,6 +60,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(content.current)content.current.style.transform=
    `translate3d(0,${m.reveal*(1-p)}px,0)`;
   if(dim.current)dim.current.style.opacity=String(p);
+  if(glass.current)glass.current.style.height=
+   (m.closed+m.actions+12+(m.open-m.closed)*p)+"px";
  };
  const flushFinger=()=>{
   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
@@ -111,15 +114,19 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const size=height<320?"tiny":height<420?"compact":"regular";
   if(element.dataset.size!==size)element.dataset.size=size;
   const style=getComputedStyle(element);
-  const closed=Number.parseFloat(style.getPropertyValue("--feed-closed-height"))||174;
-  const actions=Number.parseFloat(style.getPropertyValue("--feed-actions-height"))||79;
-  const aboutClosed=Number.parseFloat(style.getPropertyValue("--feed-about-closed-height"))||40;
-  const open=Math.max(closed,Math.min(height*.72,430,height-actions));
+  const actions=Number.parseFloat(style.getPropertyValue("--feed-actions-height"))||83;
+  // Keep the closed glass inset proportional to the actual Telegram viewport.
+  // The browser's stable viewport/safe-area controller owns the outer shell.
+  const closed=height<320?115:height<420?Math.max(145,Math.round(height*.40)):
+   Math.min(270,Math.max(195,Math.round(height*.40)));
+  element.style.setProperty("--feed-closed-height",closed+"px");
+  const aboutClosed=Number.parseFloat(style.getPropertyValue("--feed-about-closed-height"))||42;
+  const open=Math.max(closed,Math.min(height*.75,490,height-actions-24));
   details.current?.style.setProperty("height",open+"px");
   const full=content.current?.scrollHeight??0;
-  const collapsed=full-Math.max(0,(about.current?.clientHeight??0)-aboutClosed)-
-   (interests.current?.clientHeight??0);
-  metrics.current={closed,open,reveal:Math.max(0,Math.min(full,scroll.current?.clientHeight??0)-collapsed)};
+  const collapsed=full-Math.max(0,(about.current?.clientHeight??0)-aboutClosed);
+  metrics.current={closed,open,
+   reveal:Math.max(0,Math.min(full,scroll.current?.clientHeight??0)-collapsed),actions};
   paint(progress.current);
  };
  measureLive.current=measure;
@@ -253,6 +260,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
        <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age}
          externalGesture dots/>
        {!real&&<span className="discovery-demo-label">Демо</span>}
+       {canUndo&&<button type="button" className="feed-v2-undo" disabled={!available}
+         aria-label="Отменить пропуск" title="Отменить пропуск"
+         onClick={()=>onAction("undo")}><Undo2 size={18} strokeWidth={1.8}/></button>}
        {real?<button type="button" disabled={!available} className="discovery-save-control"
          aria-label="Действия с анкетой" onClick={onMore}>
          <MoreHorizontal size={21} strokeWidth={1.9}/>
@@ -264,6 +274,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      </div>
      <div className="feed-v2-dim" ref={dim} aria-hidden="true"/>
      <div className="feed-v2-information">
+       <div className="feed-v2-glass" ref={glass} aria-hidden="true"/>
        <div className="feed-v2-details" ref={details}>
          <div className="feed-v2-scroll" ref={scroll}>
           <div className="feed-v2-content" ref={content}>
@@ -273,30 +284,36 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
              <ChevronDown size={15} className="feed-v2-collapse-icon"/>
              <ChevronUp size={15} className="feed-v2-expand-icon"/>
            </button>
-           <div className="discovery-name-row">
-             <button className="discovery-name-button" type="button" onClick={onOpenProfile} disabled={!available}
+           <div className="feed-v2-headrow">
+            <div className="feed-v2-identity">
+             <div className="discovery-name-row">
+              <button className="discovery-name-button" type="button" onClick={onOpenProfile} disabled={!available}
                aria-label={"Посмотреть профиль "+person.name+", "+person.age}>
                <span>{person.name}, {person.age}</span>
-             </button>
-             {!real&&person.premium&&<span className="discovery-premium" title="Демо Premium" aria-label="Premium">
+              </button>
+              {!real&&person.premium&&<span className="discovery-premium" title="Демо Premium" aria-label="Premium">
                <Crown size={19} strokeWidth={2} fill="#ffd878" color="#e8af35"/>
-             </span>}
+              </span>}
+             </div>
+             <div className="discovery-place"><Flag code={person.countryCode} size={19}/>
+              <span>{person.city}{person.country?", "+person.country:""}</span>
+             </div>
+            </div>
+            {goal&&<div className="feed-v2-goal"><Heart size={14}/>{goal.label}</div>}
            </div>
-           <div className="discovery-place"><Flag code={person.countryCode} size={19}/>
-             <span>{person.city}{person.country?", "+person.country:""}</span>
-           </div>
-           {goal&&<div className="feed-v2-goal"><Heart size={13}/>{goal.label}</div>}
-           {person.about&&<div className="feed-v2-about" ref={about}>
-             <p className="discovery-short-about">{person.about}</p>
-           </div>}
-           {person.interests.length>0&&<div className="feed-v2-interests" ref={interests} aria-hidden={!expanded} inert={!expanded}>
+           {person.interests.length>0&&<div className="feed-v2-interests" ref={interests}>
+             <p className="feed-v2-section-label">Интересы</p>
              <div className="discovery-interests">
-               {person.interests.slice(0,6).map(id=><InterestChip key={id} id={id}/>)}
-               {person.interests.length>6&&<button type="button" className="discovery-more"
+               {person.interests.slice(0,5).map(id=><InterestChip key={id} id={id}/>)}
+               {person.interests.length>5&&<button type="button" className="discovery-more"
                  onClick={onInterests} disabled={!available} aria-label={"Показать все интересы "+person.name}>
-                 +{person.interests.length-6}
+                 +{person.interests.length-5}
                </button>}
              </div>
+           </div>}
+           {person.about&&<div className="feed-v2-about" ref={about}>
+             <p className="feed-v2-section-label">О себе</p>
+             <p className="discovery-short-about">{person.about}</p>
            </div>}
           </div>
          </div>
@@ -304,7 +321,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
        <div className="discovery-actions" aria-label={real?"Действия с анкетой":"Демо-действия с анкетой"}>
          {buttons.map(([kind,label,Icon])=><button type="button" key={kind}
            className={"discovery-action discovery-"+kind} aria-label={label} title={label}
-           onClick={()=>onAction(kind)} disabled={!available||(kind==="undo"&&!canUndo)}>
+           onClick={()=>onAction(kind)} disabled={!available}>
            <Icon size={kind==="like"?28:kind==="special"?24:20} strokeWidth={1.85}/>
          </button>)}
        </div>
