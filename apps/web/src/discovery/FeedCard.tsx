@@ -321,7 +321,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
        <div className="discovery-actions" aria-label={real?"Действия с анкетой":"Демо-действия с анкетой"}>
          {buttons.map(([kind,label,Icon])=><button type="button" key={kind}
            className={"discovery-action discovery-"+kind} aria-label={label} title={label}
-           onClick={()=>onAction(kind)} disabled={!available||(kind==="undo"&&!canUndo)}>
+           onClick={()=>onAction(kind)} disabled={!available}>
            <Icon size={kind==="like"?28:kind==="special"?24:20} strokeWidth={1.85}/>
          </button>)}
        </div>
