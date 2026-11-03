@@ -203,3 +203,41 @@
  .discovery-app .discovery-tab-underline{transition:none}
  .lh-browse-control:active{transform:none}
 }
+
+/* Filters are real local client-side predicates over signed feed entries. */
+.real-discovery-home .real-feed-filter-backdrop{z-index:125;align-items:flex-end;background:rgba(15,10,23,.72);backdrop-filter:none}
+.real-feed-filter-sheet{
+ width:100%;max-height:calc(100% - var(--top-safe) - 26px);
+ padding:10px 18px max(18px,var(--bottom-safe));
+ border:1px solid rgba(226,196,242,.23);border-bottom:0;border-radius:28px 28px 0 0;
+ background:#292132;color:#f4eaf8;box-shadow:0 -12px 38px rgba(5,3,9,.34);
+ display:flex;flex-direction:column;gap:12px;min-height:0
+}
+.real-feed-filter-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.real-feed-filter-head h2{display:flex;align-items:center;gap:10px;margin:0;font-size:21px}
+.real-feed-filter-head button{display:grid;place-items:center;width:42px;height:42px;border-radius:15px;
+ border:1px solid rgba(235,202,255,.16);background:rgba(255,255,255,.075);color:#f5ebf9}
+.real-feed-filter-fields{overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:21px;padding:8px 0}
+.real-feed-filter-fields fieldset{padding:0;margin:0;border:0;min-width:0}
+.real-feed-filter-fields legend,.real-feed-filter-goal{font-size:14px;font-weight:660;color:#f2e3f7}
+.real-feed-filter-fields legend{margin-bottom:12px}
+.real-feed-filter-options{display:flex;gap:8px;flex-wrap:wrap}
+.real-feed-filter-options button{
+ flex:1;min-width:80px;min-height:44px;padding:9px 13px;border-radius:16px;
+ border:1px solid rgba(240,213,253,.16);background:rgba(255,255,255,.065);color:#dacee1
+}
+.real-feed-filter-options button[aria-pressed=true]{background:rgba(176,137,198,.4);border-color:rgba(238,204,252,.39);color:white}
+.real-feed-filter-ages{display:flex;gap:16px}
+.real-feed-filter-ages label{display:flex;flex:1;min-width:0;flex-direction:column;gap:8px;font-size:13px}
+.real-feed-filter-ages output{font-size:19px;color:#efcdfa}
+.real-feed-filter-ages input{width:100%;accent-color:#b78ed1}
+.real-feed-filter-goal{display:flex;flex-direction:column;gap:10px}
+.real-feed-filter-goal select{height:48px;width:100%;border-radius:15px;padding:0 12px;
+ background:#3a2e45;color:#fff;border:1px solid rgba(240,213,253,.2);font:inherit}
+.real-feed-filter-check{display:flex;align-items:center;gap:10px;font-size:13px;color:#ede2f3;min-height:40px}
+.real-feed-filter-check input{width:19px;height:19px;accent-color:#b78ed1}
+.real-feed-filter-hint{margin:-12px 0 0;color:#c0b0c9;font-size:12px}
+.real-feed-filter-footer{display:flex;flex:none;gap:9px;padding-top:9px;border-top:1px solid rgba(236,212,250,.12)}
+.real-feed-filter-footer button{min-height:48px;border-radius:17px;padding:11px 15px;font:inherit;font-weight:680;border:1px solid rgba(235,209,251,.19)}
+.real-feed-filter-reset{display:flex;align-items:center;gap:7px;color:#f2e7f9;background:#40314b}
+.real-feed-filter-apply{flex:1;color:#fff;background:linear-gradient(130deg,#a477bb,#82579f)}
