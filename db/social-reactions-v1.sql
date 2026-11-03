@@ -22,8 +22,6 @@ CREATE INDEX chat_likes_photo_idx
 
 GRANT SELECT(id,owner_id,environment,state,publication_status,position)
  ON luemi_private.media_assets TO luemi_match_writer;
-GRANT UPDATE(kind,media_asset_id,created_at)
- ON luemi_chats.likes TO luemi_match_writer;
 
 -- The matching principal may inspect only published, approved media that could
 -- already be shown in discovery. Private, pending and rejected media stay hidden.
@@ -38,24 +36,6 @@ CREATE POLICY match_reaction_media_read
 
 DROP POLICY match_likes_insert ON luemi_chats.likes;
 CREATE POLICY match_likes_insert ON luemi_chats.likes FOR INSERT TO luemi_match_writer
- WITH CHECK(environment=current_setting('luemi.environment',true)
- AND sender_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
- AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=sender_id
-  AND p.environment=luemi_chats.likes.environment AND p.publication_status='published')
- AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=receiver_id
-  AND p.environment=luemi_chats.likes.environment AND p.publication_status='published')
- AND NOT EXISTS(SELECT 1 FROM luemi_private.blocks b WHERE b.environment=luemi_chats.likes.environment
-  AND ((b.blocker_id=sender_id AND b.blocked_id=receiver_id)
-   OR (b.blocker_id=receiver_id AND b.blocked_id=sender_id)))
- AND ((kind IN ('like','super_like') AND media_asset_id IS NULL)
-  OR (kind='photo_fire' AND EXISTS(SELECT 1 FROM luemi_private.media_assets m
-   WHERE m.id=media_asset_id AND m.owner_id=receiver_id
-    AND m.environment=luemi_chats.likes.environment
-    AND m.state='approved' AND m.publication_status='published'))));
-
-CREATE POLICY match_likes_update ON luemi_chats.likes FOR UPDATE TO luemi_match_writer
- USING(environment=current_setting('luemi.environment',true)
-  AND sender_id=nullif(current_setting('luemi.actor_id',true),'')::uuid)
  WITH CHECK(environment=current_setting('luemi.environment',true)
  AND sender_id=nullif(current_setting('luemi.actor_id',true),'')::uuid
  AND EXISTS(SELECT 1 FROM luemi_private.public_profiles p WHERE p.owner_id=sender_id

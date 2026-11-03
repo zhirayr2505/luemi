@@ -77,16 +77,18 @@ test("two authenticated actors create one durable conversation and revoke it on 
    assert.deepEqual(await visiblePhotoIds(A),[],"no relation means no photo metadata");
   }finally{await chatReader.end();}
   let result=await inject(A,"POST","/api/v4/matches/react",{
-   targetId:B,kind:"photo_fire",photoId:peerPhotoId});
+   targetId:C,kind:"photo_fire",photoId:strangerPhotoId});
   assert.equal(result.status,200,JSON.stringify(result));
   assert.deepEqual(result.json,{liked:true,matched:false,kind:"photo_fire"});
-  result=await inject(B,"GET","/api/v4/matches/incoming");
+  result=await inject(C,"GET","/api/v4/matches/incoming");
   assert.equal(result.status,200,JSON.stringify(result));
   assert.deepEqual(result.json.likes[0],{
    id:A,name:"HTTP A",kind:"photo_fire",createdAt:result.json.likes[0].createdAt,
-   senderPhotoUrl:null,photoId:peerPhotoId,
-   photoUrl:"/api/v3/discovery/photo/"+peerPhotoId
+   senderPhotoUrl:null,photoId:strangerPhotoId,
+   photoUrl:"/api/v3/discovery/photo/"+strangerPhotoId
   });
+  result=await inject(A,"POST","/api/v4/matches/react",{targetId:C,kind:"super_like"});
+  assert.equal(result.status,409,"a sent reaction cannot be switched to spam notifications");
   result=await inject(A,"POST","/api/v4/matches/like",{targetId:B});
   assert.equal(result.status,200,JSON.stringify(result));assert.deepEqual(result.json,{liked:true,matched:false});
   result=await inject(B,"POST","/api/v4/matches/react",{targetId:A,kind:"super_like"});

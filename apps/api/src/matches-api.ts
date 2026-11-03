@@ -78,9 +78,6 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
     AND NOT has_schema_privilege(current_user,'luemi_chats','CREATE')
     AND NOT has_schema_privilege(current_user,'luemi_private','CREATE')
     AND has_table_privilege(current_user,'luemi_chats.likes','INSERT')
-    AND has_column_privilege(current_user,'luemi_chats.likes','kind','UPDATE')
-    AND has_column_privilege(current_user,'luemi_chats.likes','media_asset_id','UPDATE')
-    AND has_column_privilege(current_user,'luemi_chats.likes','created_at','UPDATE')
     AND has_column_privilege(current_user,'luemi_private.media_assets','id','SELECT')
     AND has_table_privilege(current_user,'luemi_chats.matches','INSERT')
     AND has_table_privilege(current_user,'luemi_chats.conversations','SELECT')
@@ -143,6 +140,9 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
   const existing=await db.query<{kind:ReactionKind;media_asset_id:string|null}>(
    "SELECT kind,media_asset_id FROM luemi_chats.likes WHERE environment=$3 AND sender_id=$1 AND receiver_id=$2",
    [actor,target,cfg.namespace]);
+  const requestedPhoto=kind==="photo_fire"?photoId:null;
+  if(existing.rowCount&&(existing.rows[0].kind!==kind||existing.rows[0].media_asset_id!==requestedPhoto))
+   reject(409,"reaction_already_sent");
 	  let changed=false;
   if(!existing.rowCount){
    const quota=await db.query<{total:string}>(`SELECT count(*)::text AS total FROM luemi_chats.likes
@@ -155,22 +155,11 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
 	     AND created_at>=date_trunc('day',now())`,[actor,cfg.namespace]);
 	    if(Number(special.rows[0]?.total??0)>=3)reject(429,"daily_super_like_limit");
 	   }
-	   const created=await db.query(`INSERT INTO luemi_chats.likes
-	    (environment,sender_id,receiver_id,kind,media_asset_id) VALUES($3,$1,$2,$4,$5)
-	    ON CONFLICT DO NOTHING RETURNING sender_id`,
-	    [actor,target,cfg.namespace,kind,kind==="photo_fire"?photoId:null]);
-	   changed=created.rowCount===1;
-	  }else if(existing.rows[0].kind!==kind||existing.rows[0].media_asset_id!==(kind==="photo_fire"?photoId:null)){
-	   if(kind==="super_like"){
-	    const special=await db.query<{total:string}>(`SELECT count(*)::text AS total FROM luemi_chats.likes
-	     WHERE sender_id=$1 AND environment=$2 AND kind='super_like' AND receiver_id<>$3
-	     AND created_at>=date_trunc('day',now())`,[actor,cfg.namespace,target]);
-	    if(Number(special.rows[0]?.total??0)>=3)reject(429,"daily_super_like_limit");
-	   }
-	   const updated=await db.query(`UPDATE luemi_chats.likes SET kind=$4,media_asset_id=$5,
-	    created_at=clock_timestamp() WHERE environment=$3 AND sender_id=$1 AND receiver_id=$2`,
-	    [actor,target,cfg.namespace,kind,kind==="photo_fire"?photoId:null]);
-	   changed=updated.rowCount===1;
+   const created=await db.query(`INSERT INTO luemi_chats.likes
+    (environment,sender_id,receiver_id,kind,media_asset_id) VALUES($3,$1,$2,$4,$5)
+    ON CONFLICT DO NOTHING RETURNING sender_id`,
+    [actor,target,cfg.namespace,kind,requestedPhoto]);
+   changed=created.rowCount===1;
   }
   const reciprocal=await db.query("SELECT 1 FROM luemi_chats.likes WHERE environment=$3 AND sender_id=$2 AND receiver_id=$1",
    [actor,target,cfg.namespace]);
