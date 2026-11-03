@@ -5,6 +5,9 @@
  color:#fff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
  background:linear-gradient(160deg,#392747 0%,#775495 45%,#583569 100%);
  animation:luemi-publish-enter .52s cubic-bezier(.2,.8,.27,1) both}
+.luemi-publication-wordmark{position:absolute;z-index:3;top:calc(env(safe-area-inset-top) + 4px);
+ left:max(18px,env(safe-area-inset-left));width:108px;height:40px;object-fit:contain;
+ filter:brightness(0) invert(1) drop-shadow(0 2px 3px rgba(28,12,39,.66))}
 .luemi-publication-journey::before{content:"";position:absolute;inset:0;z-index:-3;pointer-events:none;
  background:radial-gradient(ellipse 68% 35% at 20% 20%,rgba(237,177,242,.38),transparent),
  radial-gradient(ellipse 60% 42% at 85% 75%,rgba(244,153,198,.32),transparent),
@@ -53,7 +56,7 @@
  background:radial-gradient(circle at 30% 20%,rgba(255,231,255,.37),rgba(168,103,189,.31) 60%,rgba(78,42,104,.35));
  border:1px solid rgba(255,218,255,.46);
  box-shadow:inset 0 2px 12px rgba(255,255,255,.23),0 22px 58px rgba(28,12,50,.35),0 0 45px rgba(251,181,248,.2)}
-.luemi-publication-logo img{width:80%;height:auto;object-fit:contain;filter:drop-shadow(0 8px 17px rgba(67,24,86,.3))}
+.luemi-publication-logo>svg{color:#ffe2fb;filter:drop-shadow(0 8px 17px rgba(67,24,86,.3))}
 .luemi-publication-bottom{position:relative;display:flex;flex-direction:column;align-items:center;
  width:min(100%,390px);gap:13px;text-align:center}
 .luemi-publication-kicker{display:inline-flex;align-items:center;gap:6px;

@@ -7,31 +7,24 @@
 }
 .lh-header button{font:inherit;cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent}
 .lh-center{
- position:absolute;top:max(6px,calc(var(--top-safe) - 12px));left:50%;
- transform:translateX(-50%);height:83px;width:130px;pointer-events:none;
+ position:absolute;top:calc(var(--top-safe) + 4px);left:max(18px,env(safe-area-inset-left));
+ transform:none;height:52px;width:122px;pointer-events:none;
 }
 .lh-island{
- position:absolute;left:50%;top:0;z-index:4;transform:translateX(-50%) scale(calc(1 + var(--lh-impact)));
- display:grid;place-items:center;width:124px;height:44px;padding:0;border:0;
+ position:absolute;left:0;top:0;z-index:4;transform:scale(calc(1 + var(--lh-impact)));
+ display:grid;place-items:center start;width:118px;height:42px;padding:0;border:0;
  border-radius:0;background:transparent;box-shadow:none;
  backdrop-filter:none;-webkit-backdrop-filter:none;transform-origin:center;
 }
 .lh-island img{
- display:block;grid-area:1/1;width:113px;height:42px;max-width:100%;object-fit:contain;
- pointer-events:none;filter:drop-shadow(0 1px 2px rgba(29,12,40,.20));
-}
-.lh-island .lh-logo-contrast{
- opacity:var(--lh-contrast,0);
- filter:drop-shadow(0 1px 1px rgba(41,18,60,.46))
-        drop-shadow(0 2px 4px rgba(75,34,99,.55));
+ display:block;grid-area:1/1;width:108px;height:40px;max-width:100%;object-fit:contain;
+ pointer-events:none;filter:brightness(0) invert(1) drop-shadow(0 2px 3px rgba(28,12,39,.72));
 }
 /* The profile logo stays centered at the same coordinates with one fewer
    transformed ancestor. Isolate only its small static image from the moving
    visitor hero and sheet, without promoting the whole header. */
-.lh-profile-android .lh-center{left:0;width:100%;transform:none}
-.lh-profile-android .lh-island img{filter:none;transform:translate3d(0,0,0)}
-.lh-profile-android .lh-island{transform:translateX(-50%)}
-.lh-browse .lh-logo-contrast{opacity:0}
+.lh-profile-android .lh-center{transform:none}
+.lh-profile-android .lh-island img{transform:translate3d(0,0,0)}
 .lh-tools{
  position:absolute;top:48px;left:50%;transform:translateX(-50%);
  display:flex;align-items:center;gap:8px;z-index:1;pointer-events:auto;

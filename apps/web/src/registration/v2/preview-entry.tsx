@@ -112,7 +112,7 @@ function RegistrationV2Preview(){
          <label className="v2-label">Когда ты родился?<input className="v2-input"
           type="date" autoComplete="bday" value={birthday} onChange={e=>setBirthday(e.target.value)}/></label>
          <div className="v2-label">Как ты себя определяешь?
-          <div className="v2-choices">{["Мужчина","Женщина","Другое"].map(x=>button(x,gender===x,()=>setGender(x)))}</div>
+          <div className="v2-choices">{["Мужчина","Женщина"].map(x=>button(x,gender===x,()=>setGender(x)))}</div>
          </div>
          <label className="v2-consent"><input type="checkbox" checked={profileConsent}
           onChange={e=>setProfileConsent(e.target.checked)}/>

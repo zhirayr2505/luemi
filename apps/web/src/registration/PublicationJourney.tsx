@@ -42,6 +42,7 @@ export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
  const current=complete?stages.length:stages.indexOf(failed?"publishing":displayPhase);
  return <main className={"luemi-publication-journey"+(complete?" is-complete":"")+(leaving?" is-leaving":"")} role="status" aria-live="polite"
   aria-label="Создание анкеты LUEMI">
+  <img className="luemi-publication-wordmark" src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI"/>
   <div className="luemi-publication-glow" aria-hidden="true"/>
   <div className="luemi-publication-orbs" aria-hidden="true"><i/><i/><i/></div>
   <div className="luemi-publication-stars" aria-hidden="true"><i/><i/><i/><i/><i/></div>
@@ -50,7 +51,7 @@ export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
    <span className="luemi-publication-orbit is-outer" aria-hidden="true"/>
    <span className="luemi-publication-orbit is-inner" aria-hidden="true"/>
    <div className="luemi-publication-logo">{complete?<Heart size={82} strokeWidth={1.3} fill="currentColor" aria-hidden="true"/>:
-    <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi"/>}</div>
+    <Sparkles size={82} strokeWidth={1.2} aria-hidden="true"/>}</div>
   </div>
   <div className="luemi-publication-bottom">
    {failed?<span className="luemi-publication-failed-icon" aria-hidden="true">♡</span>:null}

@@ -18,7 +18,7 @@ const smooth=(p:number)=>p*p*(3-2*p);
 export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
  {mode},ref
 ){
- // Avoid a second filtered logo raster on Android Telegram WebView.
+ // Keep one lightweight white wordmark pinned below Telegram's system back row.
  const androidClient=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
  const androidProfileChrome=mode==="profile"&&androidClient;
  const host=useRef<HTMLElement>(null);
@@ -85,7 +85,6 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
    <button className="lh-island" type="button" ref={island} onClick={toggleIsland}
      aria-label="LUEMI" title="LUEMI">
     <img src={logo} alt="luemi" decoding="async" fetchPriority="high"/>
-    {!androidClient&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="async"/>}
    </button>
   </div>
  </header>;

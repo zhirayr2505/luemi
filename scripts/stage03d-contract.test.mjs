@@ -58,7 +58,7 @@ const feedCard=readFileSync(new URL("../apps/web/src/discovery/FeedCard.tsx",imp
 assert.ok(!forYouCss.includes("touch-action:pan-x;")&&forYouCss.includes("touch-action:pan-x pan-y"),"portraits allow native vertical panning");
 assert.ok(forYou.includes("list.slice(0,6)")&&forYou.includes("memo(function ForYou"),"bounded collections and memoized page");
 assert.ok(globalHeader.includes("lh-island")&&globalHeader.includes("wordmark_original_raster_alpha_W06.webp"),"original LUEMI logo in full profile");
-assert.ok(headerCss.includes(".lh-center")&&headerCss.includes("left:50%")&&demoProfile.includes('data-morph-state={state}')&&!globalHeader.includes("setProfileMorph"),"profile logo independently centered");
+assert.ok(headerCss.includes(".lh-center")&&headerCss.includes("left:max(18px")&&headerCss.includes("brightness(0) invert(1)")&&demoProfile.includes('data-morph-state={state}')&&!globalHeader.includes("setProfileMorph"),"white profile logo independently pinned under Telegram back chrome");
 assert.ok(discoveryStyles.includes(".discovery-page-track.is-finger-tracking")&&discoveryStyles.includes("font-weight:700"),"steady active-tab typography");
 assert.ok(active.includes('el.addEventListener("touchcancel",cancel')&&
  active.includes('el.addEventListener("touchmove",track,{passive:false})')&&

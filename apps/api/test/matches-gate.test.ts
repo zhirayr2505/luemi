@@ -9,6 +9,7 @@ test("mutual matching endpoints do not exist unless explicitly enabled",async()=
   registerMatches(app,undefined,undefined);
   await app.ready();
   assert.equal((await app.inject({method:"POST",url:"/api/v4/matches/like",payload:{targetId:"fake"}})).statusCode,404);
+  assert.equal((await app.inject({method:"POST",url:"/api/v4/matches/react",payload:{targetId:"fake",kind:"super_like"}})).statusCode,404);
   assert.equal((await app.inject({method:"POST",url:"/api/v4/matches/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close"})).statusCode,404);
  }finally{await app.close();}
 });

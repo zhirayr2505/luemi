@@ -1,6 +1,6 @@
 import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,X,Undo2,MoreHorizontal} from "lucide-react";
+import {Bookmark,ChevronDown,ChevronUp,Crown,Flame,Heart,Sparkles,X,Undo2,MoreHorizontal} from "lucide-react";
 import {goals} from "../registration/model";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
@@ -11,7 +11,7 @@ import {cardGestureZone} from "./card-gesture-zone";
 
 const buttons=[
  ["undo","Отменить",Undo2],["pass","Пропустить",X],
- ["special","Особенная симпатия",Sparkles],["like","Нравится",Heart]
+ ["special","Суперлайк",Sparkles],["like","Нравится",Heart]
 ] as const;
 type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info"|"scroll";
  info:boolean;zone:"photo"|"browse";nativeScroll:boolean;startProgress:number;resumeTarget:0|1;
@@ -26,14 +26,15 @@ const position=(run:CardRun,now:number)=>{
 };
 
 /** The keyed complete card remains mounted as it moves through the deck. */
-export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests,real=false,onMore}:{
+export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests,real=false,onMore,onPhotoReact}:{
  person:DemoPerson;saved:boolean;canUndo:boolean;active:boolean;busy:boolean;
  onAction:(kind:DemoKind|"undo")=>void;onOpenProfile:()=>void;onInterests:()=>void;
  /** The same approved card can render verified server users with no demo badges. */
- real?:boolean;onMore?:()=>void;
+ real?:boolean;onMore?:()=>void;onPhotoReact?:(photoId:string)=>void;
 }){
  const goal=person.goal==="undecided"?null:goals.find(g=>g.id===person.goal);
  const [expanded,setExpanded]=useState(false);
+ const [activePhoto,setActivePhoto]=useState(0);
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
  const dim=useRef<HTMLDivElement>(null);
@@ -251,8 +252,13 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      onClickCapture={event=>{if(performance.now()<blockClickUntil.current){event.preventDefault();event.stopPropagation();}}}>
      <div className="discovery-photo feed-v2-photo">
        <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age}
-         externalGesture dots/>
+         externalGesture dots onIndexChange={setActivePhoto}/>
        {!real&&<span className="discovery-demo-label">Демо</span>}
+       {real&&onPhotoReact&&person.photos[activePhoto]&&<button type="button" disabled={!available}
+         className="discovery-photo-fire" aria-label="Отправить огонёк на это фото"
+         title="Огонёк на фото" onClick={()=>onPhotoReact(person.photos[activePhoto].id)}>
+         <Flame size={20} fill="currentColor"/>
+       </button>}
        {real?<button type="button" disabled={!available} className="discovery-save-control"
          aria-label="Действия с анкетой" onClick={onMore}>
          <MoreHorizontal size={21} strokeWidth={1.9}/>

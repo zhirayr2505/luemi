@@ -13,7 +13,10 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 class MatchError extends Error{constructor(readonly status:number,readonly code:string){super(code);}}
 function reject(status:number,code:string):never{throw new MatchError(status,code);}
 const validId=(value:unknown):value is string=>typeof value==="string"&&uuid.test(value);
-type LikeReceipt={liked:true;matched:boolean;conversationId?:string;notifyReceiverId?:string};
+type ReactionKind="like"|"super_like"|"photo_fire";
+const validReaction=(value:unknown):value is ReactionKind=>
+ value==="like"||value==="super_like"||value==="photo_fire";
+type LikeReceipt={liked:true;matched:boolean;kind:ReactionKind;conversationId?:string;notifyReceiverId?:string};
 
 /** New V2 actors and published private profiles are the only source of identity.
  * Never mint matches from client-provided membership or legacy public user UUIDs. */
@@ -29,7 +32,7 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
   new Pool({connectionString:cfg.notificationDatabaseUrl,max:2,connectionTimeoutMillis:3000,
    statement_timeout:2500,query_timeout:3500}):null;
  app.addHook("onClose",async()=>notificationPool?.end());
- const sendLikeNotification=async(receiverId:string)=>{
+ const sendLikeNotification=async(receiverId:string,kind:ReactionKind)=>{
   if(!notificationPool||!cfg.botToken||!cfg.origin)return;
   try{
    const target=await notificationPool.query<{telegram_id:string}>(
@@ -41,7 +44,9 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
      chat_id:chatId,
-     text:"Тебе поставили симпатию в LUEMI 💜\nОткрой приложение, чтобы посмотреть кто.",
+     text:kind==="super_like"?"Тебе отправили суперлайк в LUEMI ✨\nОткрой приложение, чтобы посмотреть кто.":
+      kind==="photo_fire"?"На твоё фото отправили огонёк в LUEMI 🔥\nОткрой приложение, чтобы посмотреть кто.":
+      "Тебе поставили симпатию в LUEMI 💜\nОткрой приложение, чтобы посмотреть кто.",
      reply_markup:{inline_keyboard:[[{text:"Открыть LUEMI 💜",
       web_app:{url:versionedWebAppUrl(cfg.origin,process.env.RENDER_GIT_COMMIT,"likes")}}]]}
     })
@@ -73,6 +78,7 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
     AND NOT has_schema_privilege(current_user,'luemi_chats','CREATE')
     AND NOT has_schema_privilege(current_user,'luemi_private','CREATE')
     AND has_table_privilege(current_user,'luemi_chats.likes','INSERT')
+    AND has_column_privilege(current_user,'luemi_private.media_assets','id','SELECT')
     AND has_table_privilege(current_user,'luemi_chats.matches','INSERT')
     AND has_table_privilege(current_user,'luemi_chats.conversations','SELECT')
     AND has_column_privilege(current_user,'luemi_chats.conversations','private_match_id','INSERT')
@@ -87,7 +93,8 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
       AND c.relowner<>r.oid AND row_security_active(c.oid))
      FROM pg_class c WHERE c.oid IN
       ('luemi_chats.likes'::regclass,'luemi_chats.matches'::regclass,
-       'luemi_chats.members'::regclass,'luemi_chats.conversations'::regclass))
+       'luemi_chats.members'::regclass,'luemi_chats.conversations'::regclass,
+       'luemi_private.media_assets'::regclass))
     ) AS safe FROM pg_roles r WHERE r.rolname=current_user`);
    if(role.rowCount!==1||role.rows[0].safe!==true)reject(503,"service_unavailable");
    const result=await action(db,actor.actorId);
@@ -106,11 +113,10 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
    return reply.code(503).send({error:"service_unavailable"});
   }finally{db.release();}
  }
- app.post<{Body:{targetId?:unknown}}>("/api/v4/matches/like",
- {preHandler:auth.mutation},async(req,reply)=>{
-  const result=await transaction(req,reply,async(db,actor):Promise<LikeReceipt>=>{
-  const target=req.body?.targetId;
+ const createReaction=async(db:PoolClient,actor:string,target:unknown,kind:unknown,photoId:unknown):Promise<LikeReceipt>=>{
   if(!validId(target)||target===actor)reject(422,"invalid_target");
+  if(!validReaction(kind)||kind==="photo_fire"&&!validId(photoId)||kind!=="photo_fire"&&photoId!==undefined)
+   reject(422,"invalid_reaction");
   // Lock the sender's daily quota across concurrent devices. Pair order is
   // canonical UUID order, so opposite likes serialize without deadlocking.
   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,62015))",[actor]);
@@ -125,27 +131,45 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
    WHERE environment=$3 AND ((blocker_id=$1 AND blocked_id=$2)
    OR (blocker_id=$2 AND blocked_id=$1)) LIMIT 1`,[actor,target,cfg.namespace]);
   if(blocked.rowCount)reject(404,"not_found");
-  const existing=await db.query("SELECT 1 FROM luemi_chats.likes WHERE environment=$3 AND sender_id=$1 AND receiver_id=$2",
+  if(kind==="photo_fire"){
+   const photo=await db.query(`SELECT id FROM luemi_private.media_assets
+    WHERE id=$1 AND owner_id=$2 AND environment=$3 AND state='approved'
+    AND publication_status='published'`,[photoId,target,cfg.namespace]);
+   if(photo.rowCount!==1)reject(404,"photo_not_found");
+  }
+  const existing=await db.query<{kind:ReactionKind;media_asset_id:string|null}>(
+   "SELECT kind,media_asset_id FROM luemi_chats.likes WHERE environment=$3 AND sender_id=$1 AND receiver_id=$2",
    [actor,target,cfg.namespace]);
-  let inserted=false;
+  const requestedPhoto=kind==="photo_fire"?photoId:null;
+  if(existing.rowCount&&(existing.rows[0].kind!==kind||existing.rows[0].media_asset_id!==requestedPhoto))
+   reject(409,"reaction_already_sent");
+	  let changed=false;
   if(!existing.rowCount){
    const quota=await db.query<{total:string}>(`SELECT count(*)::text AS total FROM luemi_chats.likes
     WHERE sender_id=$1 AND environment=$2 AND created_at>=date_trunc('day',now())`,
     [actor,cfg.namespace]);
    if(Number(quota.rows[0]?.total??0)>=15)reject(429,"daily_like_limit");
-   const created=await db.query("INSERT INTO luemi_chats.likes(environment,sender_id,receiver_id) VALUES($3,$1,$2) ON CONFLICT DO NOTHING RETURNING sender_id",
-    [actor,target,cfg.namespace]);
-   inserted=created.rowCount===1;
+	   if(kind==="super_like"){
+	    const special=await db.query<{total:string}>(`SELECT count(*)::text AS total FROM luemi_chats.likes
+	     WHERE sender_id=$1 AND environment=$2 AND kind='super_like'
+	     AND created_at>=date_trunc('day',now())`,[actor,cfg.namespace]);
+	    if(Number(special.rows[0]?.total??0)>=3)reject(429,"daily_super_like_limit");
+	   }
+   const created=await db.query(`INSERT INTO luemi_chats.likes
+    (environment,sender_id,receiver_id,kind,media_asset_id) VALUES($3,$1,$2,$4,$5)
+    ON CONFLICT DO NOTHING RETURNING sender_id`,
+    [actor,target,cfg.namespace,kind,requestedPhoto]);
+   changed=created.rowCount===1;
   }
   const reciprocal=await db.query("SELECT 1 FROM luemi_chats.likes WHERE environment=$3 AND sender_id=$2 AND receiver_id=$1",
    [actor,target,cfg.namespace]);
-  if(!reciprocal.rowCount)return {liked:true,matched:false,notifyReceiverId:inserted?target:undefined};
+	  if(!reciprocal.rowCount)return {liked:true,matched:false,kind,notifyReceiverId:changed?target:undefined};
   await db.query(`INSERT INTO luemi_chats.matches(environment,actor_low,actor_high)
     VALUES($3,$1,$2) ON CONFLICT DO NOTHING`,[left,right,cfg.namespace]);
   const match=await db.query<{id:string}>(`SELECT id FROM luemi_chats.matches
    WHERE environment=$3 AND actor_low=$1 AND actor_high=$2 AND status='active'`,
    [left,right,cfg.namespace]);
-  if(match.rowCount!==1)return {liked:true,matched:false,notifyReceiverId:inserted?target:undefined};
+	  if(match.rowCount!==1)return {liked:true,matched:false,kind,notifyReceiverId:changed?target:undefined};
   await db.query(`INSERT INTO luemi_chats.conversations(environment,private_match_id)
    VALUES($2,$1) ON CONFLICT DO NOTHING`,[match.rows[0].id,cfg.namespace]);
   const conversation=await db.query<{id:string}>(`SELECT id FROM luemi_chats.conversations
@@ -154,25 +178,41 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
   await db.query(`INSERT INTO luemi_chats.members(conversation_id,actor_id,environment)
    VALUES($1,$2,$4),($1,$3,$4) ON CONFLICT DO NOTHING`,
    [conversation.rows[0].id,left,right,cfg.namespace]);
-  return {liked:true,matched:true,conversationId:conversation.rows[0].id,
-   notifyReceiverId:inserted?target:undefined};
-  });
+	  return {liked:true,matched:true,kind,conversationId:conversation.rows[0].id,
+	   notifyReceiverId:changed?target:undefined};
+	 };
+ const finishReaction=(result:LikeReceipt|FastifyReply,reply:FastifyReply,legacy=false)=>{
   if(reply.sent||!result||typeof result!=="object"||!("liked" in result))return result;
   const receipt=result as LikeReceipt;
-  if(receipt.notifyReceiverId)void sendLikeNotification(receipt.notifyReceiverId);
+  if(receipt.notifyReceiverId)void sendLikeNotification(receipt.notifyReceiverId,receipt.kind);
   const safe={...receipt};
   delete safe.notifyReceiverId;
+  if(legacy)return {liked:safe.liked,matched:safe.matched,
+   ...(safe.conversationId?{conversationId:safe.conversationId}:{})};
   return safe;
- });
+ };
+ app.post<{Body:{targetId?:unknown}}>("/api/v4/matches/like",
+ {preHandler:auth.mutation},async(req,reply)=>finishReaction(
+  await transaction(req,reply,(db,actor)=>createReaction(db,actor,req.body?.targetId,"like",undefined)),reply,true));
+ app.post<{Body:{targetId?:unknown;kind?:unknown;photoId?:unknown}}>("/api/v4/matches/react",
+ {preHandler:auth.mutation},async(req,reply)=>finishReaction(
+  await transaction(req,reply,(db,actor)=>createReaction(db,actor,req.body?.targetId,req.body?.kind,req.body?.photoId)),reply));
  app.get("/api/v4/matches/incoming",{preHandler:auth.read},(req,reply)=>transaction(req,reply,async(db,actor)=>{
-  const rows=await db.query<{id:string;name:string;created_at:string}>(
-   "SELECT l.sender_id AS id,coalesce(p.display_name,'Кто-то') AS name,l.created_at::text "+
+	  const rows=await db.query<{id:string;name:string;created_at:string;kind:ReactionKind;
+	   media_asset_id:string|null;sender_photo_id:string|null}>(
+	   "SELECT l.sender_id AS id,coalesce(p.display_name,'Кто-то') AS name,l.created_at::text,l.kind,l.media_asset_id,sp.id AS sender_photo_id "+
    "FROM luemi_chats.likes l JOIN luemi_private.public_profiles p "+
    "ON p.owner_id=l.sender_id AND p.environment=l.environment AND p.publication_status='published' "+
    "JOIN luemi_private.actors a ON a.id=l.sender_id AND a.environment=l.environment AND a.status='active' "+
+	   "LEFT JOIN LATERAL (SELECT m.id FROM luemi_private.media_assets m WHERE m.owner_id=l.sender_id "+
+	   "AND m.environment=l.environment AND m.state='approved' AND m.publication_status='published' "+
+	   "ORDER BY m.position,m.id LIMIT 1) sp ON true "+
    "WHERE l.environment=$2 AND l.receiver_id=$1 "+
    "ORDER BY l.created_at DESC,l.sender_id DESC LIMIT 100",[actor,cfg.namespace]);
-  return {likes:rows.rows.map(row=>({id:row.id,name:row.name,createdAt:row.created_at}))};
+	  return {likes:rows.rows.map(row=>({id:row.id,name:row.name,createdAt:row.created_at,kind:row.kind,
+	   senderPhotoUrl:row.sender_photo_id?"/api/v3/discovery/photo/"+row.sender_photo_id:null,
+	   photoId:row.media_asset_id,
+	   photoUrl:row.media_asset_id?"/api/v3/discovery/photo/"+row.media_asset_id:null}))};
  }));
  app.post<{Params:{id:string}}>("/api/v4/matches/:id/close",
  {preHandler:auth.mutation},(req,reply)=>transaction(req,reply,async(db,actor)=>{

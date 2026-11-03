@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,Check,CheckCheck,Copy,ImagePlus,MoreVertical,Pencil,RefreshCw,Send,Trash2,X} from "lucide-react";
+import {ArrowLeft,Check,CheckCheck,Copy,ImagePlus,MoreVertical,Pencil,RefreshCw,Search,Send,Trash2,X} from "lucide-react";
 import {createChatTransport,ChatTransportError,type ChatTransport,type ChatWireConversation} from "./chat-transport.js";
 import {errorText,isNearBottom,prependPage,reconcileMessages,type LocalMessage,validateChatImage} from "./chat-domain.js";
 import {ChatPhotoViewer} from "./ChatPhotoViewer.js";
@@ -12,12 +12,16 @@ const dayKey=(iso:string)=>new Date(iso).toLocaleDateString("ru-RU",{day:"numeri
 const time=(iso:string)=>new Date(iso).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
 const status=(m:LocalMessage,own:boolean)=>!own?null:m.localState==="failed"?"Ошибка":m.localState==="sending"?"Отправка…":m.readAt?"Прочитано":m.deliveredAt?"Доставлено":"Отправлено";
 
-export function RealChats({transport:provided,onOpenProfile}:{transport?:ChatTransport;onOpenProfile?:(profileId:string)=>void}={}){
+export function RealChats({transport:provided,onOpenProfile,initialConversationId,onInitialConversationOpened}:{
+ transport?:ChatTransport;onOpenProfile?:(profileId:string)=>void;
+ initialConversationId?:string|null;onInitialConversationOpened?:()=>void
+}={}){
  const csrf=geoCsrf();const api=useMemo(()=>provided??(csrf?createChatTransport(csrf):null),[provided,csrf]);
  const [actorId,setActorId]=useState("");const [conversations,setConversations]=useState<ChatWireConversation[]>([]);const [active,setActive]=useState<ChatWireConversation|null>(null);
  const [messages,setMessages]=useState<LocalMessage[]>([]);const [cursor,setCursor]=useState<string|null>(null);const [draft,setDraft]=useState("");const [attachment,setAttachment]=useState<Attachment|null>(null);
  const [deleteScope,setDeleteScope]=useState<"me"|"everyone">("me");const [chatMenu,setChatMenu]=useState(false);const [exportBusy,setExportBusy]=useState(false);const [clearDialog,setClearDialog]=useState(false);
  const [loading,setLoading]=useState(true);const [loadingOlder,setLoadingOlder]=useState(false);const [error,setError]=useState("");const [action,setAction]=useState<Action>(null);const [editValue,setEditValue]=useState("");const [viewer,setViewer]=useState<string|null>(null);const [newBelow,setNewBelow]=useState(0);
+ const [query,setQuery]=useState("");
  const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);const hold=useRef<number|null>(null);const pointer=useRef<{x:number;y:number;id:string}|null>(null);
  const listPositions=useRef(new Map<string,number>());const autoScroll=useRef(false);
  const releaseAttachment=useCallback(()=>setAttachment(old=>{if(old){URL.revokeObjectURL(old.url);objectUrls.current.delete(old.url);}return null;}),[]);
@@ -58,6 +62,13 @@ export function RealChats({transport:provided,onOpenProfile}:{transport?:ChatTra
     const newest=[...page.messages].reverse().find(m=>m.senderId!==actorId&&!m.deletedAt);if(newest)void api.markRead(active.id,newest.id,controller.signal).catch(()=>{});setError("");}catch(e){if(!controller.signal.aborted)showError(e,"Связь прервана.");}finally{busy=false;}};
   void load();const timer=window.setInterval(()=>void load(),3500);return()=>{controller.abort();window.clearInterval(timer);};},[active,api,actorId,applyIncoming]);
  const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setChatMenu(false);setClearDialog(false);setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
+ useEffect(()=>{
+  if(!initialConversationId||active)return;
+  const chat=conversations.find(item=>item.id===initialConversationId);
+  if(!chat)return;
+  releaseAttachment();setDraft("");setAction(null);setChatMenu(false);setClearDialog(false);
+  setActive(chat);activeId.current=chat.id;onInitialConversationOpened?.();
+ },[initialConversationId,conversations,active,releaseAttachment,onInitialConversationOpened]);
  const close=()=>{pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setMessages([]);setAction(null);setChatMenu(false);setClearDialog(false);releaseAttachment();void refreshList().catch(()=>{});};
  const loadOlder=async()=>{if(!api||!active||!cursor||loadingOlder)return;const el=history.current;const oldHeight=el?.scrollHeight??0;setLoadingOlder(true);try{const page=await api.messages(active.id,cursor);if(activeId.current!==active.id)return;setMessages(old=>prependPage(old,page.messages));setCursor(page.nextCursor);requestAnimationFrame(()=>{if(el)el.scrollTop+=el.scrollHeight-oldHeight;});}catch(e){showError(e);}finally{setLoadingOlder(false);}};
  const chooseFile=(file:File|undefined)=>{if(!file)return;const problem=validateChatImage(file);if(problem){setError(problem);return;}releaseAttachment();const url=URL.createObjectURL(file);objectUrls.current.add(url);setAttachment({file,url,progress:0,error:null});setError("");};
@@ -88,8 +99,11 @@ export function RealChats({transport:provided,onOpenProfile}:{transport?:ChatTra
  const pointerMove=(e:React.PointerEvent)=>{if(pointer.current&&Math.hypot(e.clientX-pointer.current.x,e.clientY-pointer.current.y)>12&&hold.current!==null){window.clearTimeout(hold.current);hold.current=null;}};
  const pointerEnd=()=>{if(hold.current!==null)window.clearTimeout(hold.current);hold.current=null;pointer.current=null;};
  const grouped=messages.reduce<Array<{day:string;items:LocalMessage[]}>>((days,message)=>{const day=dayKey(message.createdAt);const last=days[days.length-1];if(last?.day===day)last.items.push(message);else days.push({day,items:[message]});return days;},[]);
+ const visibleConversations=query.trim()?conversations.filter(chat=>
+  (chat.peerName+" "+(chat.lastMessage??"")).toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru"))):conversations;
  if(!active)return <section className="luemi-chats lc-route lc-list-route" data-real-chats="true"><header className="lc-heading"><div><small>LUEMI</small><h2>Чаты</h2></div><button type="button" aria-label="Обновить" onClick={()=>void refreshList().catch(showError)}><RefreshCw size={19}/></button></header>
-  {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:error&&conversations.length===0?<div className="lc-state lc-error"><p>{error}</p><button onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button></div>:conversations.length===0?<div className="lc-state"><div className="lc-empty-mark">💜</div><h3>Пока тихо</h3><p>Переписка появится после взаимной симпатии.</p></div>:<div className="lc-conversations">{conversations.map(chat=><button className="lc-chat-row" key={chat.id} onClick={()=>open(chat)}><span className="lc-avatar">{chat.peerPhotoUrl?<img src={chat.peerPhotoUrl} alt="" loading="lazy" decoding="async"/>:<span>{chat.peerName.slice(0,1)}</span>}</span><span className="lc-chat-summary"><strong>{chat.peerName}</strong><span>{chat.lastMessage??"Начните разговор"}</span></span><span className="lc-meta"><time>{time(chat.lastActivityAt)}</time>{chat.unreadCount>0&&<b>{Math.min(chat.unreadCount,99)}{chat.unreadCount>99?"+":""}</b>}</span></button>)}</div>}
+  {conversations.length>0&&<label className="lc-search"><Search size={17}/><span className="lc-sr-only">Поиск по чатам</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск по чатам"/></label>}
+  {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:error&&conversations.length===0?<div className="lc-state lc-error"><p>{error}</p><button onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button></div>:conversations.length===0?<div className="lc-state"><div className="lc-empty-mark">💜</div><h3>Пока тихо</h3><p>Переписка появится после взаимной симпатии.</p></div>:visibleConversations.length===0?<div className="lc-state"><div className="lc-empty-mark">⌕</div><h3>Ничего не найдено</h3><p>Попробуй другое имя или сообщение.</p></div>:<div className="lc-conversations">{visibleConversations.map(chat=><button className="lc-chat-row" key={chat.id} onClick={()=>open(chat)}><span className="lc-avatar">{chat.peerPhotoUrl?<img src={chat.peerPhotoUrl} alt="" loading="lazy" decoding="async"/>:<span>{chat.peerName.slice(0,1)}</span>}</span><span className="lc-chat-summary"><strong>{chat.peerName}</strong><span>{chat.lastMessage??"Начните разговор"}</span></span><span className="lc-meta"><time>{time(chat.lastActivityAt)}</time>{chat.unreadCount>0&&<b>{Math.min(chat.unreadCount,99)}{chat.unreadCount>99?"+":""}</b>}</span></button>)}</div>}
  </section>;
  return <section className="luemi-chats lc-route lc-thread-route" data-real-chats="true"><header className="lc-chat-header"><button type="button" aria-label="Назад" onClick={close}><ArrowLeft/></button><button type="button" className="lc-person" disabled={active.peerName==="Удалённый аккаунт"} onClick={()=>{if(active.peerName!=="Удалённый аккаунт")onOpenProfile?.(active.peerProfileId);}}><span className="lc-avatar lc-avatar-small">{active.peerPhotoUrl?<img src={active.peerPhotoUrl} alt=""/>:active.peerName.slice(0,1)}</span><span><strong>{active.peerName}</strong><small>{active.peerName==="Удалённый аккаунт"?"Профиль недоступен":"Открыть профиль"}</small></span></button><button type="button" aria-label="Меню" onClick={()=>setChatMenu(true)}><MoreVertical/></button></header>
   <div ref={history} className="lc-history" role="log" aria-live="polite" onScroll={e=>{nearBottom.current=isNearBottom(e.currentTarget);if(nearBottom.current)setNewBelow(0);}} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
