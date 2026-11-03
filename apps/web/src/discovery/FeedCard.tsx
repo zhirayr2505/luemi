@@ -115,18 +115,21 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(element.dataset.size!==size)element.dataset.size=size;
   const style=getComputedStyle(element);
   const actions=Number.parseFloat(style.getPropertyValue("--feed-actions-height"))||83;
-  // Keep the closed glass inset proportional to the actual Telegram viewport.
-  // The browser's stable viewport/safe-area controller owns the outer shell.
-  const closed=height<320?115:height<420?Math.max(145,Math.round(height*.40)):
-   Math.min(270,Math.max(195,Math.round(height*.40)));
-  element.style.setProperty("--feed-closed-height",closed+"px");
-  const aboutClosed=Number.parseFloat(style.getPropertyValue("--feed-about-closed-height"))||42;
-  const open=Math.max(closed,Math.min(height*.75,490,height-actions-24));
-  details.current?.style.setProperty("height",open+"px");
+  // The sheet must grow only as much as the actual biography/interests need.
+  // Previously 'open' was hard-coded to 75% of the photo, which produced an
+  // enormous empty opaque panel over the person's face on Android Telegram.
   const full=content.current?.scrollHeight??0;
-  const collapsed=full-Math.max(0,(about.current?.clientHeight??0)-aboutClosed);
-  metrics.current={closed,open,
-   reveal:Math.max(0,Math.min(full,scroll.current?.clientHeight??0)-collapsed),actions};
+  const maxClosed=Math.max(110,Math.min(height*.43,height-actions-42));
+  const minClosed=Math.min(maxClosed,height<420?130:152);
+  const closed=Math.max(minClosed,Math.min(maxClosed,full+14,height*.35));
+  const open=Math.max(closed,Math.min(full+20,height*.63,height-actions-34));
+  element.style.setProperty("--feed-closed-height",closed+"px");
+  details.current?.style.setProperty("height",open+"px");
+  // Match the content's upper edge to the inset glass surface while dragging.
+  // This keeps the label/title visible rather than leaving a blank upper half.
+  const spare=Math.max(0,open-full);
+  const reveal=Math.max(0,open-closed-spare+5);
+  metrics.current={closed,open,reveal,actions};
   paint(progress.current);
  };
  measureLive.current=measure;
