@@ -138,6 +138,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(!element)return;
   const resize=new ResizeObserver(()=>measureLive.current());
   resize.observe(element);
+  if(content.current)resize.observe(content.current);
   measureLive.current();
   const carousel=photo.current;
   return ()=>{resize.disconnect();carousel?.cancel();
