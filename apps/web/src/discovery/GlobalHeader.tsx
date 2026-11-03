@@ -1,5 +1,7 @@
 import {forwardRef,useCallback,useLayoutEffect,useImperativeHandle,useRef} from "react";
+import {Bell,SlidersHorizontal} from "lucide-react";
 import "./global-header.css";
+import "./feed-glass-v1.css";
 
 const logo="/assets/brand/wordmark_original_raster_alpha_W06.webp";
 export type HeaderMode="browse"|"profile";
@@ -16,7 +18,7 @@ const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 const smooth=(p:number)=>p*p*(3-2*p);
 
 export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
- {mode},ref
+ {mode,onFilters,onSaved},ref
 ){
  // Avoid a second filtered logo raster on Android Telegram WebView.
  const androidClient=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
@@ -88,5 +90,15 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
     {!androidClient&&<img src={logo} alt="" aria-hidden="true" className="lh-logo-contrast" decoding="async"/>}
    </button>
   </div>
+  {mode==="browse"&&<div className="lh-browse-controls">
+   <button type="button" className="lh-browse-control" onClick={onSaved}
+    aria-label="Симпатии и уведомления" title="Симпатии и уведомления">
+    <Bell size={20} strokeWidth={1.8}/>
+   </button>
+   <button type="button" className="lh-browse-control" onClick={onFilters}
+    aria-label="Открыть фильтры" title="Фильтры">
+    <SlidersHorizontal size={20} strokeWidth={1.8}/>
+   </button>
+  </div>}
  </header>;
 });
