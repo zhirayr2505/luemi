@@ -1,13 +1,14 @@
 # LUEMI Design System V5 — implementation and verification
 
-Date: 2026-11-03  
+Date: 2026-11-04
 Branch: `feat/luemi-design-system-v5`  
 Base: `main` at `c93d61d3`
+Current remote head: `395ca5728bd8cdbb326d8334fae08c00db7cc389`
 
 ## Implemented
 
 - Added a single semantic Soft Plum token layer for application backgrounds, surfaces, glass, text, borders, state colors, focus, radii, shadows and motion.
-- Added shared V5 primitives for glass panels, icon buttons, avatars, segmented tabs, empty states and the four-item bottom navigation.
+- Added shared V5 primitives for glass panels, icon buttons, avatars, segmented tabs, empty states, reduced-motion loading skeletons and the four-item bottom navigation.
 - Kept the approved original raster wordmark `wordmark_original_raster_alpha_W06.webp`; no generated or text replacement logo is used.
 - Reworked the discovery card information order to name/location/goal, About, Interests and actions. Compact mode exposes two interests plus `+N`; expanded mode exposes all interests.
 - Reworked the discovery glass, tabs, buttons, header clearance and bottom navigation to the approved muted plum/rose language without neon.
@@ -15,6 +16,7 @@ Base: `main` at `c93d61d3`
 - Reworked the open thread with dark incoming and muted rose outgoing bubbles, media blocks, delivery/read state, stable history anchoring, composer safe-area behavior and hidden global navigation.
 - Connected the thread to Telegram BackButton and the application's existing back routing without creating a second viewport controller.
 - Applied V5 surfaces to registration, account/settings, Profile Morph V3 accents, post-publication feed/report dialogs and the publication journey.
+- Unified loading, error and empty states across discovery, collections, likes and the unpublished-profile route; removed legacy placeholders and decorative emoji from production controls/statuses.
 - Removed decorative infinite motion and bright glow from the active V5 shell/publication path. Loading spinners remain state-driven.
 - Preserved existing authentication, profile, photo, match, chat, message, deletion, report, RLS and private-media contracts. No database migration or production data mutation was made.
 
@@ -25,6 +27,7 @@ Base: `main` at `c93d61d3`
 - `LuemiAvatar`
 - `LuemiSegmentedTabs`
 - `LuemiEmptyState`
+- `LuemiSkeleton`
 - `LuemiBottomNavigation`
 - Existing `FeedCard`, `PhotoCarousel`, Profile Morph and chat transport/domain components were retained and restyled instead of duplicated.
 
@@ -56,7 +59,7 @@ Passed:
 - Deterministic gesture/motion chaos test: 100,000 gesture operations and 50,000 motion operations.
 - Chat domain/media/gate and identity/RLS contracts.
 - API suite: 186/186 passed in the first complete run.
-- Production builds for contracts, API and web; Vite transformed 1,700 modules successfully.
+- Production web build and the dedicated `VITE_LUEMI_REAL_ONLY=1` build; the normal Vite build transformed 1,700 modules and the real-only build transformed 1,694 modules successfully.
 - `git diff --check`.
 
 Observed infrastructure constraints:
