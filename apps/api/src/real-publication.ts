@@ -41,22 +41,25 @@ function validatedProjection(payload:unknown,birthDate:string|null){
  if(!object(payload))fail(422,"incomplete_profile");
  const data=payload as Record<string,unknown>;
  const name=data.displayName,city=data.city,country=data.countryCode;
+ const audience=data.audience??"everyone";
+ const ageMin=data.ageMin??18,ageMax=data.ageMax??80;
+ const radius=data.radius??100,searchScope=data.searchScope??"world";
  if(typeof name!=="string"||name.trim()!==name||name.length<2||name.length>48||
   typeof city!=="string"||city.trim()!==city||city.length<2||city.length>120||
   typeof country!=="string"||!/^[A-Z]{2}$/.test(country)||
-  !genderOk(data.gender)||!goalOk(data.goal)||!audienceOk(data.audience)||
-  !Number.isInteger(data.ageMin)||Number(data.ageMin)<18||Number(data.ageMin)>80||
-  !Number.isInteger(data.ageMax)||Number(data.ageMax)<Number(data.ageMin)||Number(data.ageMax)>80||
-  !Number.isInteger(data.radius)||Number(data.radius)<1||Number(data.radius)>5000||
-  !["radius","country","world"].includes(String(data.searchScope))||
+  !genderOk(data.gender)||!goalOk(data.goal)||!audienceOk(audience)||
+  !Number.isInteger(ageMin)||Number(ageMin)<18||Number(ageMin)>80||
+  !Number.isInteger(ageMax)||Number(ageMax)<Number(ageMin)||Number(ageMax)>80||
+  !Number.isInteger(radius)||Number(radius)<1||Number(radius)>5000||
+  !["radius","country","world"].includes(String(searchScope))||
   typeof data.placeId!=="string"||!/^[a-z0-9:_-]{3,180}$/i.test(data.placeId)||
   !validList(data.interests,15)||!validList(data.languages,10)||
   typeof data.about!=="string"||[...data.about].length>750||
   !birthDate||dateAge(birthDate)<18||dateAge(birthDate)>=130)
    fail(422,"incomplete_profile");
  return {name,city,country,gender:data.gender,goal:data.goal,
-  audience:data.audience,ageMin:Number(data.ageMin),ageMax:Number(data.ageMax),
-  radius:Number(data.radius),searchScope:String(data.searchScope),placeId:String(data.placeId),
+  audience,ageMin:Number(ageMin),ageMax:Number(ageMax),
+  radius:Number(radius),searchScope:String(searchScope),placeId:String(data.placeId),
   about:data.about,interests:data.interests,languages:data.languages,birthDate};
 }
 type Kind="luemi_profile_publisher"|"luemi_discovery_reader";

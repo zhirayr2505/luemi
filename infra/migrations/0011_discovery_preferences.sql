@@ -28,6 +28,18 @@ CREATE TABLE luemi_private.discovery_preferences (
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  UNIQUE(environment,owner_id)
 );
+
+-- Existing published accounts predate explicit discovery preferences. Give
+-- them a broad, non-fabricated compatibility projection so migration does not
+-- remove their feed access; their next profile save replaces these defaults.
+INSERT INTO luemi_private.discovery_preferences
+ (owner_id,environment,owner_gender,owner_birth_date,audience,age_min,age_max,
+  city_label,country_code,place_id,radius_km,search_scope,goal,interests)
+SELECT owner_id,environment,gender,birth_date,'everyone',18,80,city_label,country_code,
+ concat('legacy:',owner_id::text),100,'world',goal,interests
+FROM luemi_private.public_profiles
+WHERE publication_status='published';
+
 ALTER TABLE luemi_private.discovery_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE luemi_private.discovery_preferences FORCE ROW LEVEL SECURITY;
 REVOKE ALL ON luemi_private.discovery_preferences FROM PUBLIC,anon,authenticated;

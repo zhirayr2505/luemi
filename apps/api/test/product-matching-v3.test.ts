@@ -3,7 +3,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const sql=readFileSync(new URL("../../../db/chats-v4-product-matching.sql",import.meta.url),"utf8");
+const preferences=readFileSync(new URL("../../../infra/migrations/0011_discovery_preferences.sql",import.meta.url),"utf8");
 const api=readFileSync(new URL("../src/matches-api.ts",import.meta.url),"utf8");
+const publication=readFileSync(new URL("../src/real-publication.ts",import.meta.url),"utf8");
+
+test("legacy published profiles keep discovery access after preference migration",()=>{
+ assert.match(preferences,/INSERT INTO luemi_private\.discovery_preferences/);
+ assert.match(preferences,/FROM luemi_private\.public_profiles/);
+ assert.match(preferences,/WHERE publication_status='published'/);
+ assert.match(publication,/data\.audience\?\?"everyone"/);
+ assert.match(publication,/data\.ageMin\?\?18/);
+ assert.match(publication,/data\.ageMax\?\?80/);
+});
 
 test("weekly and purchased superlikes are physically separate and weekly-first",()=>{
  assert.match(sql,/weekly_remaining smallint/);
