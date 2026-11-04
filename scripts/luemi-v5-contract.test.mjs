@@ -59,6 +59,7 @@ test("likes route uses the shared V5 states and avatar system",()=>{
 
 test("production controls use the shared icon system instead of decorative emoji",()=>{
  const productionSources=[discovery,registration,publication,app,legacyRealFeed].join("\n");
- assert.doesNotMatch(productionSources,/[💜✨🔥❤️😊🎉☕🌍🎵🏃📚🎬]/u);
- assert.match(legacyRealFeed,/<Heart size=\{17\}\/\>/);
+ for(const symbol of ["💜","✨","🔥","❤️","😊","🎉","☕","🌍","🎵","🏃","📚","🎬"])
+  assert.equal(productionSources.includes(symbol),false,`unexpected decorative symbol: ${symbol}`);
+ assert.match(legacyRealFeed,/<Heart size=\{17\}\/>/);
 });
