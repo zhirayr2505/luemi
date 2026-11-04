@@ -1,7 +1,7 @@
 import {Pool} from "pg";
 import type {PoolClient} from "pg";
 import type {FastifyInstance,FastifyReply,FastifyRequest} from "fastify";
-import {versionedWebAppUrl} from "./telegram-webhook.js";
+import {versionedWebAppUrl} from "./telegram-web-app-url.js";
 
 export interface MatchOptions {enabled:true;databaseUrl:string;namespace:string;
  notificationDatabaseUrl?:string;botToken?:string;origin?:string;}

@@ -277,13 +277,13 @@ try{
   }));
   try{
    await app.goto(base+"/",{waitUntil:"domcontentloaded"});
-   await app.getByRole("button",{name:"Начать",exact:true}).waitFor({state:"visible",timeout:12000}).catch(async cause=>{
+   await app.getByRole("button",{name:/^Начать(?: знакомство)?$/}).waitFor({state:"visible",timeout:12000}).catch(async cause=>{
     const diagnostic=await app.evaluate(()=>({scene:document.querySelector(".luemi-shell")?.getAttribute("data-scene"),
      entry:document.querySelector(".entry-state")?.textContent?.slice(0,300),hasBridge:!!window.Telegram?.WebApp,
      hasInitData:!!window.Telegram?.WebApp?.initData}));
     throw new Error("REM01B App auth did not finish "+JSON.stringify({diagnostic,runtimeErrors}),{cause});
    });
-   await app.getByRole("button",{name:"Начать",exact:true}).click();
+   await app.getByRole("button",{name:/^Начать(?: знакомство)?$/}).click();
    await app.getByPlaceholder("Как тебя зовут?").waitFor({state:"visible"});
    await app.evaluate(()=>{
     const original=IDBObjectStore.prototype.put;
@@ -298,8 +298,8 @@ try{
    await app.getByRole("button",{name:"Повторить"}).click();
    await app.getByText("Черновик сохранён на устройстве").waitFor({state:"visible",timeout:9000});
    await app.reload();
-   await app.getByRole("button",{name:"Начать",exact:true}).waitFor({state:"visible",timeout:12000});
-   await app.getByRole("button",{name:"Начать",exact:true}).click();
+   await app.getByRole("button",{name:/^Начать(?: знакомство)?$/}).waitFor({state:"visible",timeout:12000});
+   await app.getByRole("button",{name:/^Начать(?: знакомство)?$/}).click();
    assert.equal(await app.getByPlaceholder("Как тебя зовут?").inputValue(),"Анна QA");
    assert.deepEqual(runtimeErrors,[],"real app has no unhandled render/async errors");
   }finally{await ui.close();}
