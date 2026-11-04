@@ -10,6 +10,10 @@ const chats=read("apps/web/src/chats/chats.css");
 const chatView=read("apps/web/src/chats/RealChats.tsx");
 const legacyFeed=read("apps/web/src/registration/real-live-feed.css");
 const publication=read("apps/web/src/registration/publication-journey.css");
+const discovery=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
+const registration=read("apps/web/src/registration/v2/RealRegistration.tsx");
+const app=read("apps/web/src/App.tsx");
+const legacyRealFeed=read("apps/web/src/registration/RealLiveFeed.tsx");
 
 test("V5 exposes one semantic Soft Plum token set",()=>{
  for(const token of ["--luemi-bg","--luemi-surface","--luemi-glass","--luemi-lavender","--luemi-rose","--luemi-border","--luemi-text"])
@@ -43,4 +47,18 @@ test("real chat list and thread share V5 without white route surfaces",()=>{
  assert.doesNotMatch(chats,/background\s*:\s*(?:#fff(?:fff)?|white)(?:[;}])/i);
  assert.match(chats,/var\(--luemi-bg/);
  assert.match(chats,/data-keyboard=open/);
+});
+
+test("likes route uses the shared V5 states and avatar system",()=>{
+ for(const component of ["LuemiAvatar","LuemiEmptyState","LuemiGlassPanel","LuemiIconButton","LuemiSkeleton"])
+  assert.match(discovery,new RegExp(component));
+ assert.doesNotMatch(discovery,/className="discovery-placeholder"/);
+ assert.doesNotMatch(discovery,/Поставил\(а\) тебе симпатию\s*💜/);
+ assert.match(tokens,/prefers-reduced-motion:reduce[^\n]*\.luemi-v5-skeleton-avatar/);
+});
+
+test("production controls use the shared icon system instead of decorative emoji",()=>{
+ const productionSources=[discovery,registration,publication,app,legacyRealFeed].join("\n");
+ assert.doesNotMatch(productionSources,/[💜✨🔥❤️😊🎉☕🌍🎵🏃📚🎬]/u);
+ assert.match(legacyRealFeed,/<Heart size=\{17\}\/\>/);
 });

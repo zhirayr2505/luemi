@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {ReactNode} from "react";
 import type {CSSProperties} from "react";
-import {Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2} from "lucide-react";
+import {CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import type {DemoKind,DemoPerson} from "./model";
 import type {ProfileMasterData} from "./ProfileModel";
@@ -21,7 +21,7 @@ import {ProfileMaster} from "./ProfileV3Gateway";
 import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {RealChats} from "../chats/RealChats";
 import {createChatTransport,type ChatWireConversation} from "../chats/chat-transport";
-import {LuemiBottomNavigation} from "../ui/LuemiV5";
+import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiGlassPanel,LuemiIconButton,LuemiSkeleton} from "../ui/LuemiV5";
 import {geoCsrf} from "../auth/session-adapter";
 import {getPublishedFeed,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,realMatchPilot,type PublishedFeedPage,type IncomingLike} from "../registration/real-live-client";
 import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
@@ -88,19 +88,22 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
  },[active,refresh]);
  return <section className="real-discovery-matches" aria-label="Взаимные симпатии">
   <div className="real-discovery-matches-head"><h2>Симпатии</h2>
-   <button type="button" aria-label="Обновить симпатии" onClick={()=>setRefresh(x=>x+1)}><RefreshCw size={19}/></button></div>
-  {loading?<p role="status">Загружаем симпатии…</p>:error?<p role="alert">{error}</p>:
-  !items.length&&!incoming.length?<div className="discovery-placeholder"><Heart size={36}/><h2>Пока нет взаимных симпатий</h2>
-    <p>Здесь появятся люди, которым ты понравился, и ваши взаимные симпатии.</p></div>:
+   <LuemiIconButton label="Обновить симпатии" onClick={()=>setRefresh(x=>x+1)}><RefreshCw size={18}/></LuemiIconButton></div>
+  {loading?<div className="real-discovery-match-loading"><LuemiSkeleton/><LuemiSkeleton/></div>:
+  error?<LuemiEmptyState icon={CircleAlert} title="Не удалось загрузить симпатии" description={error}>
+   <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(x=>x+1)}>Попробовать снова</button>
+  </LuemiEmptyState>:
+  !items.length&&!incoming.length?<LuemiEmptyState icon={Heart} title="Пока нет взаимных симпатий"
+    description="Здесь появятся люди, которым ты понравился, и ваши взаимные симпатии."/>:
    <div className="real-discovery-match-list">
     {incoming.length>0&&<div className="real-discovery-like-section"><h3>Тебе поставили симпатию</h3>
-     {incoming.map(item=><div key={item.id} className="real-discovery-match real-discovery-incoming-like">
-      <span className="real-discovery-avatar">{item.name.slice(0,1).toUpperCase()}</span>
-      <span><b>{item.name}</b><small>Поставил(а) тебе симпатию 💜</small></span><Heart size={20}/>
-     </div>)}</div>}
+     {incoming.map(item=><LuemiGlassPanel key={item.id} className="real-discovery-match real-discovery-incoming-like">
+      <LuemiAvatar name={item.name}/>
+      <span><b>{item.name}</b><small>Поставил(а) тебе симпатию</small></span><Heart size={20}/>
+     </LuemiGlassPanel>)}</div>}
     {items.length>0&&<div className="real-discovery-like-section"><h3>Взаимные симпатии</h3>{items.map(item=>
     <button type="button" key={item.id} className="real-discovery-match" onClick={onChat}>
-     <span className="real-discovery-avatar">{item.peerPhotoUrl?<img src={item.peerPhotoUrl} alt="" loading="lazy"/>:item.peerName.slice(0,1)}</span>
+     <LuemiAvatar name={item.peerName} src={item.peerPhotoUrl}/>
      <span><b>{item.peerName}</b><small>Взаимная симпатия · Открыть чаты</small></span>
      <Heart size={20}/></button>)}</div>}
    </div>}
@@ -206,7 +209,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    const targetId=current.id;
    leaveCard(kind,()=>{
     onHide(targetId);setUndoPage(null);setBusy(false);
-    setMessage(result.matched?"Взаимная симпатия! 💜":"Симпатия отправлена 💜");
+    setMessage(result.matched?"Взаимная симпатия!":"Симпатия отправлена");
     if(result.matched)onMatched();
    },targetId);
   }catch{setBusy(false);setMessage("Не удалось поставить симпатию. Повтори попытку.");}
@@ -227,9 +230,9 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  };
  if(tab!=="feed")return <div className="real-discovery-deck real-discovery-collections">
   {message&&<div className="real-discovery-notice" role="status">{message}</div>}
-  {loading?<div className="discovery-empty" role="status"><Heart size={36}/><h2>Загружаем анкеты…</h2></div>:
-   error?<div className="discovery-empty" role="alert"><h2>Анкеты не загрузились</h2><p>{error}</p>
-    <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></div>:
+  {loading?<div className="real-discovery-collection-loading"><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/></div>:
+   error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
+    <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
    tab==="for-you"?
     <RealForYou draft={draft} people={matchedRows} onPerson={onPerson} saved={saved} onSave={onSave}
      onScrollTop={onScrollTop} onMore={()=>{void more();}} hasMore={!!cursor} moreBusy={moreBusy}/>:
@@ -238,9 +241,9 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  </div>;
  return <div className="real-discovery-deck">
   {message&&<div className="real-discovery-notice" role="status">{message}</div>}
-  {loading?<div className="discovery-empty" role="status"><Heart size={36}/><h2>Загружаем анкеты…</h2></div>:
-   error?<div className="discovery-empty" role="alert"><h2>Анкеты не загрузились</h2><p>{error}</p>
-    <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></div>:
+  {loading?<div className="real-discovery-feed-loading"><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/></div>:
+   error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
+    <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
    <div className="discovery-deck-stage">{current?
     <div className={"discovery-deck-layer"+(leaving===current.id?" deck-leaving deck-leaving-"+leavingKind:" deck-active")} key={current.id}
      onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
@@ -250,16 +253,15 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
       onOpenProfile={()=>onPerson(current)} onInterests={()=>onPerson(current)}
       onMore={()=>{setMenu(current);setReporting(false);}}/>
     </div>:
-    <div className="discovery-deck-layer deck-active"><div className="discovery-empty real-discovery-empty">
-     <Heart size={38}/><h2>Пока нет анкет</h2>
-     <p>Когда появятся новые люди, ты увидишь их здесь.</p>
+    <div className="discovery-deck-layer deck-active"><LuemiEmptyState className="real-discovery-empty" icon={Heart}
+     title="Пока нет анкет" description="Когда появятся новые люди, ты увидишь их здесь.">
       <button type="button" className="discovery-glass-button" onClick={onEditFilters}>Изменить фильтры</button>
      {undoPage!==null&&<button type="button" className="discovery-glass-button" onClick={()=>{void act("undo");}}>
       Отменить пропуск</button>}
      {cursor&&<button type="button" className="discovery-glass-button" disabled={moreBusy} onClick={()=>{void more();}}>
       {moreBusy?"Загружаем…":"Посмотреть дальше"}</button>}
      <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>
-      <RefreshCw size={16}/> Обновить</button></div></div>}
+      <RefreshCw size={16}/> Обновить</button></LuemiEmptyState></div>}
     {current&&visibleRows[page+1]&&<div className={"discovery-deck-layer"+(leaving?" deck-entering":" deck-queued")} key={visibleRows[page+1].id}>
       <FeedCard person={toCard(visibleRows[page+1])} real saved={saved.has(visibleRows[page+1].id)}
        canUndo={undoPage!==null} active={false} busy onAction={()=>{}}
@@ -690,11 +692,10 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
     {owner?<ProfileMaster data={owner} mode="owner" onEdit={()=>setAccountOpen(true)}
       registerBack={registerProfileBack}
       onMotionProgress={(progress,dragging)=>header.current?.setProfileProgress(progress,dragging)}
-      active={mainTab==="profile"&&!person}/>:<div className="discovery-empty">
-      <UserRound size={37}/><h2>Анкета готовится</h2>
-      <p>Заверши публикацию, чтобы увидеть свой профиль.</p>
+      active={mainTab==="profile"&&!person}/>:<LuemiEmptyState icon={UserRound} title="Анкета готовится"
+      description="Заверши публикацию, чтобы увидеть свой профиль.">
       <button type="button" className="discovery-glass-button" onClick={()=>setAccountOpen(true)}>Открыть настройки</button>
-     </div>}
+     </LuemiEmptyState>}
     <button type="button" className="real-discovery-settings" aria-label="Настройки аккаунта" title="Настройки аккаунта"
      onClick={()=>setAccountOpen(true)}><Settings2 size={20}/></button>
    </section>

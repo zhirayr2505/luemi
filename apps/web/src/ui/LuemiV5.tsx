@@ -28,6 +28,15 @@ export function LuemiEmptyState({icon:Icon,title,description,children,className=
  </div>;
 }
 
+export function LuemiSkeleton({lines=2,className=""}:{lines?:number;className?:string}){
+ return <div className={`luemi-v5-skeleton ${className}`.trim()} role="status" aria-label="Загрузка">
+  <span className="luemi-v5-skeleton-avatar" aria-hidden="true"/>
+  <span className="luemi-v5-skeleton-copy" aria-hidden="true">
+   {Array.from({length:Math.max(1,lines)},(_,index)=><span key={index}/>) }
+  </span>
+ </div>;
+}
+
 export function LuemiSegmentedTabs<T extends string>({items,value,onChange,label,className=""}:{
  items:ReadonlyArray<{id:T;label:string;disabled?:boolean;hint?:string}>;value:T;
  onChange:(id:T)=>void;label:string;className?:string;

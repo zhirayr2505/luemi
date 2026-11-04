@@ -55,9 +55,9 @@ export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
   <div className="luemi-publication-bottom">
    {failed?<span className="luemi-publication-failed-icon" aria-hidden="true">♡</span>:null}
    {!failed&&<span className="luemi-publication-kicker"><Sparkles size={13}/> LUEMI · ТВОЯ ИСТОРИЯ</span>}
-   <h1>{failed?"Не удалось закончить создание анкеты":complete?"Всё готово 💜":publishingCopy[displayPhase]}</h1>
+   <h1>{failed?"Не удалось закончить создание анкеты":complete?"Всё готово":publishingCopy[displayPhase]}</h1>
    <p>{failed?error:complete?"Открываем LUEMI":displayPhase==="publishing"?
-    "Сохраняем фотографии и создаём анкету":"LUEMI подготавливает твоё знакомство 💜"}</p>
+    "Сохраняем фотографии и создаём анкету":"LUEMI подготавливает твоё знакомство"}</p>
    {!failed&&<div className="luemi-publication-progress" aria-hidden="true">
     <span style={{width:complete?"100%":Math.max(12,(current+1)/stages.length*100)+"%"}}/>
    </div>}
