@@ -10,18 +10,33 @@ export const realMatchPilot={
   import.meta.env.VITE_LUEMI_REAL_MATCHES==="1"
 };
 /** Server verifies both adult published profiles, blocks and mutual likes. */
-export async function likePublishedUser(id:string):Promise<{liked:true;matched:boolean;conversationId?:string}>{
+export type RealLikeKind="ordinary"|"super";
+export interface SuperlikeBalance{weekly:number;purchased:number;total:number;renewsAt:string}
+export interface LikeReceipt{liked:true;kind:RealLikeKind;matched:boolean;matchId?:string;superlikes:SuperlikeBalance}
+export async function likePublishedUser(id:string,kind:RealLikeKind="ordinary"):Promise<LikeReceipt>{
  if(!realMatchPilot.enabled)throw new Error("matches_disabled");
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
   throw new Error("invalid_target");
- const data=await api("/api/v4/matches/like","POST",{targetId:id});
- if(!object(data)||data.liked!==true||typeof data.matched!=="boolean"||
-    (data.matched&&(typeof data.conversationId!=="string"||!uuid.test(data.conversationId))))
+ const data=await api("/api/v4/matches/like","POST",{targetId:id,kind});
+ if(!object(data)||data.liked!==true||data.kind!==kind||typeof data.matched!=="boolean"||
+    (data.matched&&(typeof data.matchId!=="string"||!uuid.test(data.matchId)))||
+    !validBalance(data.superlikes))
   throw new Error("invalid_like_receipt");
- return data as {liked:true;matched:boolean;conversationId?:string};
+ return data as unknown as LikeReceipt;
 }
-export interface IncomingLike{ id:string; name:string; createdAt:string; }
-export async function getIncomingLikes(signal?:AbortSignal):Promise<IncomingLike[]>{
+const validBalance=(value:unknown):value is SuperlikeBalance=>object(value)&&
+ Number.isInteger(value.weekly)&&Number(value.weekly)>=0&&Number.isInteger(value.purchased)&&
+ Number(value.purchased)>=0&&Number.isInteger(value.total)&&
+ Number(value.total)===Number(value.weekly)+Number(value.purchased)&&
+ typeof value.renewsAt==="string"&&Number.isFinite(Date.parse(value.renewsAt));
+export async function getSuperlikeBalance(signal?:AbortSignal):Promise<SuperlikeBalance>{
+ const res=await fetch("/api/v4/matches/superlikes",{credentials:"same-origin",cache:"no-store",signal});
+ if(!res.ok)throw new Error("superlikes_"+res.status);
+ const data:unknown=await res.json();if(!validBalance(data))throw new Error("invalid_superlikes");return data;
+}
+export interface IncomingLike{ id:string;name:string;createdAt:string;kind:RealLikeKind;photoUrl:string|null; }
+export interface IncomingLikesPage{likes:IncomingLike[];premium:boolean;hiddenCount:number}
+export async function getIncomingLikes(signal?:AbortSignal):Promise<IncomingLikesPage>{
  if(!realMatchPilot.enabled)throw new Error("matches_disabled");
  const res=await fetch("/api/v4/matches/incoming",{credentials:"same-origin",cache:"no-store",signal});
  if(!res.ok)throw new Error("incoming_likes_"+res.status);
@@ -30,10 +45,42 @@ export async function getIncomingLikes(signal?:AbortSignal):Promise<IncomingLike
  const likes=data.likes.flatMap((item:unknown)=>{
   if(!object(item)||typeof item.id!=="string"||!uuid.test(item.id)||
      typeof item.name!=="string"||item.name.length<1||item.name.length>80||
-     typeof item.createdAt!=="string"||!Number.isFinite(Date.parse(item.createdAt)))return [];
-  return [{id:item.id,name:item.name,createdAt:item.createdAt}];
+     typeof item.createdAt!=="string"||!Number.isFinite(Date.parse(item.createdAt))||
+     (item.kind!=="ordinary"&&item.kind!=="super")||
+     (item.photoUrl!==null&&(typeof item.photoUrl!=="string"||!photoPath.test(item.photoUrl))))return [];
+  return [{id:item.id,name:item.name,createdAt:item.createdAt,kind:item.kind,photoUrl:item.photoUrl}];
  });
- return likes as IncomingLike[];
+ if(typeof data.premium!=="boolean"||!Number.isInteger(data.hiddenCount)||Number(data.hiddenCount)<0)
+  throw new Error("invalid_incoming_likes");
+ return {likes:likes as IncomingLike[],premium:data.premium,hiddenCount:Number(data.hiddenCount)};
+}
+export async function rejectIncomingLike(id:string):Promise<void>{
+ if(!uuid.test(id))throw new Error("invalid_target");
+ const data=await api("/api/v4/matches/incoming/"+id+"/reject","POST",{});
+ if(!object(data)||data.rejected!==true)throw new Error("invalid_reject_receipt");
+}
+export interface NewMatch{id:string;peerId:string;peerProfileId:string;peerName:string;
+ peerPhotoUrl:string|null;createdAt:string;interests:string[];seen:boolean;conversationId:string|null}
+export interface NewMatchesPage{matches:NewMatch[];viewerGender:"man"|"woman"|"other"}
+export async function getNewMatches(signal?:AbortSignal):Promise<NewMatchesPage>{
+ const res=await fetch("/api/v4/matches/new",{credentials:"same-origin",cache:"no-store",signal});
+ if(!res.ok)throw new Error("new_matches_"+res.status);const data:unknown=await res.json();
+ if(!object(data)||!Array.isArray(data.matches)||!["man","woman","other"].includes(String(data.viewerGender)))
+  throw new Error("invalid_new_matches");
+ const matches=data.matches.filter((item:unknown):item is NewMatch=>object(item)&&typeof item.id==="string"&&uuid.test(item.id)&&
+  typeof item.peerId==="string"&&uuid.test(item.peerId)&&item.peerProfileId===item.peerId&&
+  typeof item.peerName==="string"&&(item.peerPhotoUrl===null||typeof item.peerPhotoUrl==="string"&&photoPath.test(item.peerPhotoUrl))&&
+  typeof item.createdAt==="string"&&Number.isFinite(Date.parse(item.createdAt))&&Array.isArray(item.interests)&&
+  item.interests.every((x:unknown)=>typeof x==="string")&&typeof item.seen==="boolean"&&
+  (item.conversationId===null||typeof item.conversationId==="string"&&uuid.test(item.conversationId)));
+ return {matches,viewerGender:data.viewerGender as NewMatchesPage["viewerGender"]};
+}
+export async function openNewMatch(id:string):Promise<string>{
+ if(!uuid.test(id))throw new Error("invalid_match");
+ const data=await api("/api/v4/matches/"+id+"/open","POST",{});
+ if(!object(data)||typeof data.conversationId!=="string"||!uuid.test(data.conversationId))
+  throw new Error("invalid_match_open");
+ return data.conversationId;
 }
 /** Remove both participants' access immediately without erasing conversation history. */
 export async function closeRealMatch(id:string):Promise<void>{
@@ -48,6 +95,7 @@ export interface RealPublishedProfile{
  about:string;gender:"man"|"woman"|"other";goal:string;
  interests:string[];languages:string[];
  photos:Array<{id:string;url:string}>;
+ likedYouKind:RealLikeKind|null;
 }
 export interface OwnerPublicationStatus{
  state:"draft"|"published"|"hidden";publishedRevision:number;
@@ -131,6 +179,28 @@ export async function requestMyAccountDeletion(reason:DeletionReason,details:str
  return result.restoreUntil;
 }
 export interface PublishedFeedPage{profiles:RealPublishedProfile[];nextCursor:string|null}
+function parsePublishedProfile(item:unknown):RealPublishedProfile|null{
+ if(!object(item)||typeof item.id!=="string"||!uuid.test(item.id)||typeof item.name!=="string"||
+  !Number.isInteger(item.age)||Number(item.age)<18||typeof item.city!=="string"||
+  typeof item.countryCode!=="string"||typeof item.about!=="string"||typeof item.goal!=="string"||
+  !["woman","man","other"].includes(String(item.gender))||!Array.isArray(item.interests)||
+  !Array.isArray(item.languages)||!Array.isArray(item.photos)||item.photos.length<3||item.photos.length>6)return null;
+ const photos=item.photos.filter((p:unknown):p is {id:string;url:string}=>object(p)&&
+  typeof p.id==="string"&&uuid.test(p.id)&&typeof p.url==="string"&&photoPath.test(p.url)&&p.url.endsWith(p.id));
+ if(photos.length!==item.photos.length||!item.interests.every((x:unknown)=>typeof x==="string")||
+  !item.languages.every((x:unknown)=>typeof x==="string"))return null;
+ return {id:item.id,name:item.name,age:Number(item.age),city:item.city,countryCode:item.countryCode,
+  gender:item.gender as "man"|"woman"|"other",goal:item.goal,about:item.about,
+  interests:item.interests as string[],languages:item.languages as string[],photos,
+  likedYouKind:item.likedYouKind==="ordinary"||item.likedYouKind==="super"?item.likedYouKind:null};
+}
+export async function getPublishedProfile(id:string,signal?:AbortSignal):Promise<RealPublishedProfile>{
+ if(!uuid.test(id))throw new Error("invalid_target");
+ const res=await fetch("/api/v3/discovery/profile/"+id,{credentials:"same-origin",cache:"no-store",signal});
+ if(!res.ok)throw new Error("profile_"+res.status);const data:unknown=await res.json();
+ const profile=object(data)?parsePublishedProfile(data.profile):null;
+ if(!profile)throw new Error("invalid_profile");return profile;
+}
 export async function getPublishedFeed(signal:AbortSignal,cursor:string|null=null):Promise<PublishedFeedPage>{
  requirePilot();
  if(cursor!==null&&!/^[A-Za-z0-9_-]{12,256}$/.test(cursor))throw new Error("invalid_feed_cursor");
@@ -143,24 +213,7 @@ export async function getPublishedFeed(signal:AbortSignal,cursor:string|null=nul
      !/^[A-Za-z0-9_-]{12,256}$/.test(data.nextCursor))))
   throw new Error("invalid_feed");
  const profiles:RealPublishedProfile[]=data.profiles.flatMap((item:unknown)=>{
-  if(!object(item)||typeof item.id!=="string"||!uuid.test(item.id)||
-   typeof item.name!=="string"||!Number.isInteger(item.age)||Number(item.age)<18||
-   typeof item.city!=="string"||typeof item.countryCode!=="string"||
-   typeof item.about!=="string"||typeof item.goal!=="string"||
-   !["woman","man","other"].includes(String(item.gender))||
-   !Array.isArray(item.interests)||!Array.isArray(item.languages)||
-   !Array.isArray(item.photos)||item.photos.length<3||item.photos.length>6)
-    return [];
-  const photos=item.photos.filter((p:unknown):p is {id:string;url:string}=>
-   object(p)&&typeof p.id==="string"&&uuid.test(p.id)&&
-   typeof p.url==="string"&&photoPath.test(p.url)&&p.url.endsWith(p.id));
-  if(photos.length<3||photos.length>6||
-   !item.interests.every((x:unknown)=>typeof x==="string")||
-   !item.languages.every((x:unknown)=>typeof x==="string"))return [];
-  return [{id:item.id,name:item.name,age:Number(item.age),city:item.city,
-   countryCode:item.countryCode,gender:item.gender as "man"|"woman"|"other",
-   goal:item.goal,about:item.about,interests:item.interests as string[],
-   languages:item.languages as string[],photos}];
+  const parsed=parsePublishedProfile(item);return parsed?[parsed]:[];
  });
  return{profiles,nextCursor:data.nextCursor as string|null};
 }

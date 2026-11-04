@@ -228,6 +228,10 @@
  filter:none;
 }
 .discovery-visitor-route>.pm-shell{position:absolute;inset:0}
+.visitor-like-actions{position:absolute;z-index:18;left:50%;bottom:calc(var(--bottom-safe, 0px) + 18px);transform:translateX(-50%);display:flex;gap:14px;padding:8px 12px;border:1px solid var(--luemi-border);border-radius:999px;background:linear-gradient(180deg,rgba(87,67,89,.82),rgba(40,29,47,.9));box-shadow:inset 0 1px rgba(255,255,255,.12),0 8px 24px rgba(12,7,17,.26);backdrop-filter:blur(12px)}
+.visitor-like-actions button{width:48px;height:48px;border:1px solid var(--luemi-border);border-radius:50%;display:grid;place-items:center;color:var(--luemi-text);background:rgba(172,135,179,.16)}
+.visitor-like-actions .visitor-like-main{width:58px;height:58px;color:#fff;background:linear-gradient(145deg,rgba(213,162,200,.9),rgba(151,103,157,.88))}
+.visitor-like-actions button:disabled{opacity:.55}
 /* Expanded portraits are reserved for photo swipes. Collapsed profiles
    and the expanded white sheet own horizontal back gestures via the route. */
 @media(prefers-reduced-motion:reduce){

@@ -308,6 +308,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
             </div>
             {goal&&<div className="feed-v2-goal"><Heart size={14}/>{goal.label}</div>}
            </div>
+           {person.likedYouKind&&<div className={"feed-v2-liked-you "+(person.likedYouKind==="super"?"is-super":"")}>
+            {person.likedYouKind==="super"?<Sparkles size={14}/>:<Heart size={14}/>} Уже выбрал(а) тебя · лайк создаст мэтч
+           </div>}
            {person.about&&<div className="feed-v2-about" ref={about}>
              <p className="feed-v2-section-label">О себе</p>
              <p className="discovery-short-about">{person.about}</p>

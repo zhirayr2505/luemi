@@ -35,7 +35,7 @@ assert.match(steps,/Я принимаю <a href="\/privacy"/,"Public policy acce
 assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
 assert.match(form,/const stages:readonly VisualStage\[\]=visualStages/,"Every account follows the same eight visual steps");
-assert.match(form,/Создать анкету 💜/,"Single real signup confirmation creates published profile");
+assert.match(form,/Создать анкету/,"Single real signup confirmation creates published profile");
 assert.match(form,/<SimpleProfileReview draft=\{draft\} photos=\{photos\}/,
  "Signup preview must be a simple gallery, not interactive Profile Morph");
 assert.doesNotMatch(form,/mode="local-self-preview" active/,

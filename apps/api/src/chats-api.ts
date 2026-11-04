@@ -167,6 +167,8 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
      ON peer.owner_id=(CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END)
     AND peer.environment=$2 AND peer.publication_status='published'
    WHERE m.actor_id=$1 AND m.environment=$2
+     AND EXISTS(SELECT 1 FROM luemi_chats.messages present
+       WHERE present.conversation_id=m.conversation_id AND present.environment=m.environment)
      AND (peer.owner_id IS NOT NULL OR EXISTS(
        SELECT 1 FROM luemi_private.actors erased
        WHERE erased.id=CASE WHEN pair.actor_low=$1 THEN pair.actor_high ELSE pair.actor_low END
@@ -239,6 +241,10 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    return {message:(await hydrate(db,existing.rows))[0]};
   }
   if(mediaIds.length){const attached=await db.query(`UPDATE luemi_chats.media SET message_id=$1 WHERE id=ANY($2::uuid[]) AND conversation_id=$3 AND owner_id=$4 AND message_id IS NULL RETURNING id`,[q.rows[0].id,mediaIds,req.params.id,actor]);if(attached.rowCount!==mediaIds.length)deny(409,"media_conflict");}
+  await db.query(`UPDATE luemi_chats.matches pair SET started_at=coalesce(pair.started_at,$2)
+   FROM luemi_chats.conversations conversation
+   WHERE conversation.id=$1 AND conversation.private_match_id=pair.id
+    AND pair.environment=$3 AND pair.status='active'`,[req.params.id,q.rows[0].createdAt,options.namespace]);
   return {message:(await hydrate(db,q.rows as MessageRow[]))[0]};
  }));
  app.post<{Params:{id:string};Body:{messageId?:unknown}}>(

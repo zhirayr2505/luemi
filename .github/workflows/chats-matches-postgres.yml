@@ -52,9 +52,11 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0003_rem05c_geo_budget.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0004_rem05d_private_media_moderation.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0005_reg01d_private_publication_feed.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0011_discovery_preferences.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v1-isolated.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v1-message-integrity.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v2-mutual-matches.sql
+          psql -v ON_ERROR_STOP=1 -f db/chats-v4-product-matching.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v1/001_complete_messages_media.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v2-peer-media-guard.sql
       - name: Apply Chats V3 actor-scoped presentation visibility in disposable PostgreSQL

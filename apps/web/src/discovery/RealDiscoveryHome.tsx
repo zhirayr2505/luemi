@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {ReactNode} from "react";
 import type {CSSProperties} from "react";
-import {CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2} from "lucide-react";
+import {CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2,Sparkles,LockKeyhole} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import type {DemoKind,DemoPerson} from "./model";
 import type {ProfileMasterData} from "./ProfileModel";
@@ -23,7 +23,7 @@ import {RealChats} from "../chats/RealChats";
 import {createChatTransport,type ChatWireConversation} from "../chats/chat-transport";
 import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiGlassPanel,LuemiIconButton,LuemiSkeleton} from "../ui/LuemiV5";
 import {geoCsrf} from "../auth/session-adapter";
-import {getPublishedFeed,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,realMatchPilot,type PublishedFeedPage,type IncomingLike} from "../registration/real-live-client";
+import {getPublishedFeed,getPublishedProfile,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,realMatchPilot,type PublishedFeedPage,type IncomingLike} from "../registration/real-live-client";
 import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
 import "./discovery.css";
 import "./feed-v2.css";
@@ -66,12 +66,13 @@ const toCard=(p:RealPublishedProfile):DemoPerson=>({
  id:p.id,name:p.name,age:p.age,city:p.city,country:"",countryCode:p.countryCode,
  gender:p.gender,goal:p.goal as DemoPerson["goal"],about:p.about,
  interests:[...p.interests],languages:[...p.languages],
- photos:p.photos.map(photo=>({id:photo.id,src:photo.url}))
+ photos:p.photos.map(photo=>({id:photo.id,src:photo.url})),likedYouKind:p.likedYouKind
 });
 
-function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
+function RealMatches({active,onChat,onPerson}:{active:boolean;onChat:()=>void;onPerson:(id:string)=>void}){
  const [items,setItems]=useState<ChatWireConversation[]>([]);
  const [incoming,setIncoming]=useState<IncomingLike[]>([]);
+ const [hiddenCount,setHiddenCount]=useState(0),[premium,setPremium]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [refresh,setRefresh]=useState(0);
  useEffect(()=>{
@@ -80,9 +81,9 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
   if(!csrf){setError("Войди через Telegram, чтобы увидеть симпатии.");setLoading(false);return;}
   setLoading(true);setError("");
   const chats=realMatchPilot.enabled?createChatTransport(csrf).list(controller.signal):Promise.resolve({conversations:[]});
-  const likes=realMatchPilot.enabled?getIncomingLikes(controller.signal):Promise.resolve([]);
+  const likes=realMatchPilot.enabled?getIncomingLikes(controller.signal):Promise.resolve({likes:[],premium:false,hiddenCount:0});
   void Promise.all([chats,likes]).then(([data,liked])=>{
-   if(!controller.signal.aborted){setItems(data.conversations);setIncoming(liked);setLoading(false);}
+   if(!controller.signal.aborted){setItems(data.conversations);setIncoming(liked.likes);setHiddenCount(liked.hiddenCount);setPremium(liked.premium);setLoading(false);}
   }).catch(()=>{if(!controller.signal.aborted){setError("Не удалось загрузить симпатии.");setLoading(false);}});
   return ()=>controller.abort();
  },[active,refresh]);
@@ -97,10 +98,16 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
     description="Здесь появятся люди, которым ты понравился, и ваши взаимные симпатии."/>:
    <div className="real-discovery-match-list">
     {incoming.length>0&&<div className="real-discovery-like-section"><h3>Тебе поставили симпатию</h3>
-     {incoming.map(item=><LuemiGlassPanel key={item.id} className="real-discovery-match real-discovery-incoming-like">
-      <LuemiAvatar name={item.name}/>
-      <span><b>{item.name}</b><small>Поставил(а) тебе симпатию</small></span><Heart size={20}/>
-     </LuemiGlassPanel>)}</div>}
+     {incoming.map(item=><button type="button" key={item.id}
+      className={"real-discovery-match real-discovery-incoming-like "+(item.kind==="super"?"is-super":"")}
+      onClick={()=>onPerson(item.id)}>
+      <LuemiAvatar name={item.name} src={item.photoUrl}/>
+      <span><b>{item.name}</b><small>{item.kind==="super"?"Особенная симпатия · открыть профиль":"Поставил(а) тебе симпатию · открыть профиль"}</small></span>
+      {item.kind==="super"?<Sparkles size={20}/>:<Heart size={20}/>}
+     </button>)}
+     {hiddenCount>0&&<LuemiGlassPanel className="real-discovery-likes-locked"><LockKeyhole size={20}/><span>
+      <b>Ещё {hiddenCount} {hiddenCount===1?"симпатия":"симпатий"}</b>
+      <small>{premium?"Обнови список":"Все симпатии доступны с Premium"}</small></span></LuemiGlassPanel>}</div>}
     {items.length>0&&<div className="real-discovery-like-section"><h3>Взаимные симпатии</h3>{items.map(item=>
     <button type="button" key={item.id} className="real-discovery-match" onClick={onChat}>
      <LuemiAvatar name={item.peerName} src={item.peerPhotoUrl}/>
@@ -112,7 +119,7 @@ function RealMatches({active,onChat}:{active:boolean;onChat:()=>void}){
 
 function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,hiddenIds,onHide}:{
  active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
- onPerson:(p:RealPublishedProfile)=>void;onMatched:()=>void;
+ onPerson:(p:RealPublishedProfile)=>void;onMatched:(person:RealPublishedProfile,matchId:string)=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
  onScrollTop:(top:number)=>void;filters:RealFeedFilter;onEditFilters:()=>void;
  hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void
@@ -205,12 +212,12 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   }
   setBusy(true);setMessage("");
   try{
-   const result=await likePublishedUser(current.id);
+   const result=await likePublishedUser(current.id,kind==="special"?"super":"ordinary");
    const targetId=current.id;
    leaveCard(kind,()=>{
     onHide(targetId);setUndoPage(null);setBusy(false);
-    setMessage(result.matched?"Взаимная симпатия!":"Симпатия отправлена");
-    if(result.matched)onMatched();
+    setMessage(result.matched?"Взаимная симпатия!":kind==="special"?`Особенная симпатия отправлена · осталось ${result.superlikes.total}`:"Симпатия отправлена");
+    if(result.matched&&result.matchId)onMatched(current,result.matchId);
    },targetId);
   }catch{setBusy(false);setMessage("Не удалось поставить симпатию. Повтори попытку.");}
  };
@@ -300,13 +307,20 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  ownerPhotoPreview?:ReadonlyArray<{src:string}>;
  accountPanel:ReactNode;onEdit:()=>void;
 }){
- const [mainTab,setMainTab]=useState<MainTab>(()=>(
-  new URLSearchParams(typeof window==="undefined"?"":window.location.search).get("luemiRoute")==="likes"||
-  window.Telegram?.WebApp?.initDataUnsafe?.start_param==="likes"?"likes":"discover"));
+ const [mainTab,setMainTab]=useState<MainTab>(()=>{
+  const route=new URLSearchParams(typeof window==="undefined"?"":window.location.search).get("luemiRoute")??
+   window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+  return route==="likes"||route==="chats"?route:"discover";
+ });
  const [browse,setBrowse]=useState<BrowseTab>("feed");
  const [filters,setFilters]=useState<RealFeedFilter>(defaultRealFeedFilter);
  const [filterOpen,setFilterOpen]=useState(false);
  const [person,setPerson]=useState<RealPublishedProfile|null>(null);
+ const [matched,setMatched]=useState<{person:RealPublishedProfile;matchId:string}|null>(null);
+ const openPersonById=useCallback((id:string)=>{
+  const controller=new AbortController();
+  void getPublishedProfile(id,controller.signal).then(setPerson).catch(()=>{/* Likes screen keeps its retry state. */});
+ },[]);
  const [accountOpen,setAccountOpen]=useState(false);
  const [chatThreadOpen,setChatThreadOpen]=useState(false);
  // Session-only bookmarks: the API has no durable saved-profiles endpoint yet.
@@ -677,13 +691,13 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
         hiddenIds={hiddenIds} onHide={onHide}
         onScrollTop={top=>onScrollTop(id,top)}
         onEditLocation={()=>setMainTab("profile")}
-        onPerson={setPerson} onMatched={()=>setMainTab("chats")}/>
+        onPerson={setPerson} onMatched={(matchedPerson,matchId)=>setMatched({person:matchedPerson,matchId})}/>
       </section>)}
      </div>
     </div>
    </section>
    <section className="discovery-panel" hidden={mainTab!=="likes"}>
-    <RealMatches active={mainTab==="likes"} onChat={()=>setMainTab("chats")}/>
+    <RealMatches active={mainTab==="likes"} onChat={()=>setMainTab("chats")} onPerson={openPersonById}/>
    </section>
    <section className="discovery-panel real-discovery-chat-panel" hidden={mainTab!=="chats"}>
     {mainTab==="chats"&&<RealChats onThreadChange={setChatThreadOpen} registerThreadBack={handler=>{chatBackRef.current=handler;}}/>}
@@ -701,7 +715,19 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
    </section>
   </div>
   {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)} theme={theme} onTheme={onTheme}
-   onExit={()=>setPerson(null)} registerBack={registerVisitorBack}/>}
+   onExit={()=>setPerson(null)} registerBack={registerVisitorBack} onLike={async kind=>{
+    const result=await likePublishedUser(person.id,kind);
+    const matchedPerson=person;
+    onHide(person.id);setPerson(null);
+    if(result.matched&&result.matchId)setMatched({person:matchedPerson,matchId:result.matchId});
+   }}/>} {matched&&<div className="luemi-match-overlay" role="dialog" aria-modal="true" aria-label="Взаимная симпатия">
+   <div className="luemi-match-card"><div className="luemi-match-avatars"><LuemiAvatar name={matched.person.name} src={matched.person.photos[0]?.url}/><Heart size={24}/></div>
+    <p className="luemi-match-kicker">Это взаимно</p><h2>Вы понравились друг другу</h2>
+    <p>{matched.person.name} появится в новых совпадениях. Переписка начнётся только после первого сообщения.</p>
+    <button type="button" className="luemi-match-primary" onClick={()=>{setMatched(null);setMainTab("chats");}}>Написать</button>
+    <button type="button" disabled title="Подарки будут подключены после запуска Stars ledger">Подарок · скоро</button>
+    <button type="button" onClick={()=>setMatched(null)}>Продолжить знакомства</button>
+   </div></div>}
   {!chatThreadOpen&&<LuemiBottomNavigation className="discovery-bottom-nav" items={navigationItems} value={mainTab}
    onChange={id=>{setPerson(null);setChatThreadOpen(false);setMainTab(id);}}/>}
   {accountOpen&&<div className="discovery-modal-backdrop real-discovery-account-modal"
