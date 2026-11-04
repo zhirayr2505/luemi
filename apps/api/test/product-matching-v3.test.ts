@@ -14,6 +14,8 @@ test("legacy published profiles keep discovery access after preference migration
  assert.match(publication,/data\.audience\?\?"everyone"/);
  assert.match(publication,/data\.ageMin\?\?18/);
  assert.match(publication,/data\.ageMax\?\?80/);
+ assert.match(publication,/WHERE NOT EXISTS\(SELECT 1 FROM luemi_private\.discovery_preferences/);
+ assert.match(publication,/pref\.owner_gender IS NULL OR p\.audience='everyone'/);
 });
 
 test("weekly and purchased superlikes are physically separate and weekly-first",()=>{

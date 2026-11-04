@@ -322,7 +322,9 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     country_code:string;about:string;interests:string[];gender:string;goal:string;
     languages:string[];birth_date:string;published_at:string;liked_you_kind:"ordinary"|"super"|null}>(
     "WITH preference AS (SELECT owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,goal,interests "+
-    "FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1) "+
+    "FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1 UNION ALL "+
+    "SELECT NULL::text,NULL::date,'everyone'::text,18::smallint,80::smallint,''::text,''::text,''::text,ARRAY[]::text[] "+
+    "WHERE NOT EXISTS(SELECT 1 FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1)) "+
     "SELECT p.owner_id,p.display_name,p.city_label,p.country_code,p.about,p.interests,"+
     "p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text,"+
     "incoming.kind AS liked_you_kind "+
@@ -334,9 +336,10 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "AND (pref.audience='everyone' OR (pref.audience='women' AND p.gender='woman') "+
     "OR (pref.audience='men' AND p.gender='man')) "+
     "AND date_part('year',age(current_date,p.birth_date))::int BETWEEN pref.age_min AND pref.age_max "+
-    "AND (p.audience='everyone' OR (p.audience='women' AND pref.owner_gender='woman') "+
+    "AND (pref.owner_gender IS NULL OR p.audience='everyone' OR (p.audience='women' AND pref.owner_gender='woman') "+
     "OR (p.audience='men' AND pref.owner_gender='man')) "+
-    "AND date_part('year',age(current_date,pref.owner_birth_date))::int BETWEEN p.preferred_age_min AND p.preferred_age_max "+
+    "AND (pref.owner_birth_date IS NULL OR date_part('year',age(current_date,pref.owner_birth_date))::int "+
+    "BETWEEN p.preferred_age_min AND p.preferred_age_max) "+
     "AND NOT EXISTS(SELECT 1 FROM luemi_chats.likes sent WHERE sent.environment=p.environment "+
     "AND sent.sender_id=$2 AND sent.receiver_id=p.owner_id) "+
     "AND (SELECT count(*) FROM luemi_private.media_assets a WHERE a.owner_id=p.owner_id "+
