@@ -2,13 +2,48 @@
 -- Apply after 0005. This is additive and preserves every published profile.
 BEGIN;
 
+-- Production already has nullable legacy `audience`, `age_min` and `age_max`
+-- columns used by the Bliki profile projection. Keep those columns and copy
+-- their values into the canonical matching fields instead of attempting to
+-- recreate `audience` or discarding an existing preference.
 ALTER TABLE luemi_private.public_profiles
- ADD COLUMN audience text NOT NULL DEFAULT 'everyone'
-   CHECK(audience IN ('women','men','everyone')),
- ADD COLUMN preferred_age_min smallint NOT NULL DEFAULT 18
-   CHECK(preferred_age_min BETWEEN 18 AND 80),
- ADD COLUMN preferred_age_max smallint NOT NULL DEFAULT 80
-   CHECK(preferred_age_max BETWEEN 18 AND 80 AND preferred_age_max>=preferred_age_min);
+ ADD COLUMN IF NOT EXISTS audience text,
+ ADD COLUMN IF NOT EXISTS preferred_age_min smallint NOT NULL DEFAULT 18,
+ ADD COLUMN IF NOT EXISTS preferred_age_max smallint NOT NULL DEFAULT 80;
+
+UPDATE luemi_private.public_profiles
+ SET audience=coalesce(audience,'everyone');
+
+DO $migration$
+BEGIN
+ IF EXISTS(SELECT 1 FROM information_schema.columns
+  WHERE table_schema='luemi_private' AND table_name='public_profiles'
+   AND column_name='age_min') THEN
+  EXECUTE 'UPDATE luemi_private.public_profiles
+   SET preferred_age_min=coalesce(age_min,preferred_age_min),
+       preferred_age_max=coalesce(age_max,preferred_age_max)';
+ END IF;
+END
+$migration$;
+
+ALTER TABLE luemi_private.public_profiles
+ ALTER COLUMN audience SET DEFAULT 'everyone',
+ ALTER COLUMN audience SET NOT NULL;
+
+DO $migration$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_constraint
+  WHERE conrelid='luemi_private.public_profiles'::regclass
+   AND conname='public_profiles_discovery_preference_values') THEN
+  ALTER TABLE luemi_private.public_profiles
+   ADD CONSTRAINT public_profiles_discovery_preference_values CHECK(
+    audience IN ('women','men','everyone')
+    AND preferred_age_min BETWEEN 18 AND 80
+    AND preferred_age_max BETWEEN 18 AND 80
+    AND preferred_age_max>=preferred_age_min);
+ END IF;
+END
+$migration$;
 
 CREATE TABLE luemi_private.discovery_preferences (
  owner_id uuid PRIMARY KEY REFERENCES luemi_private.actors(id),
