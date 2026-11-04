@@ -48,6 +48,8 @@ CREATE POLICY ci_worker_actor_tombstone ON luemi_private.actors FOR UPDATE
 CREATE SCHEMA IF NOT EXISTS luemi_chats;
 CREATE TABLE IF NOT EXISTS luemi_chats.likes(
  environment text NOT NULL, sender_id uuid NOT NULL,receiver_id uuid NOT NULL,
+ kind text NOT NULL DEFAULT 'ordinary' CHECK(kind IN ('ordinary','super')),
+ status text NOT NULL DEFAULT 'active' CHECK(status IN ('active','rejected')),
  PRIMARY KEY(environment,sender_id,receiver_id));
 CREATE TABLE IF NOT EXISTS luemi_bliki_private.reactions(
  story_id uuid NOT NULL, actor_id uuid NOT NULL);
