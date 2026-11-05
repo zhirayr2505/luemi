@@ -2,6 +2,8 @@ import { timingSafeEqual } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { ApiConfig } from "./config.js";
 import { versionedWebAppUrl } from "./telegram-web-app-url.js";
+import { createWelcomeStatusLookup } from "./telegram-welcome-status.js";
+import type { WelcomeStatusLookup } from "./telegram-welcome-status.js";
 export { versionedWebAppUrl } from "./telegram-web-app-url.js";
 
 function constantTimeMatch(received: unknown, expected: string): boolean {
@@ -19,7 +21,10 @@ interface TelegramUpdate {
   message?: TelegramMessage;
 }
 
-export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig): void {
+export function registerTelegramWebhook(
+  app: FastifyInstance, config: ApiConfig,
+  lookup: WelcomeStatusLookup = createWelcomeStatusLookup(app, config)
+): void {
   app.post<{ Body: TelegramUpdate }>("/api/telegram/webhook", async (request, reply) => {
     const header = request.headers["x-telegram-bot-api-secret-token"];
     if (!config.botToken || !constantTimeMatch(header, config.webhookSecret))
@@ -38,17 +43,33 @@ export function registerTelegramWebhook(app: FastifyInstance, config: ApiConfig)
          "\nЭто закрытый тест. Для приглашения отправь свой ID владельцу: @zhiiirro. После подтверждения снова открой /start.":
          "\nДля регистрации открой LUEMI через /start.")};
     }
-    if (!/^\/start(?:\s|$)/.test(text))return {ok:true};
-    // Telegram accepts an API method in the webhook response; no bot token is sent to clients.
+    if (!/^\/start(?:\s|$)/i.test(text))return {ok:true};
+
+    // The only trusted identity for the greeting is the Telegram webhook
+    // sender in the same private chat. Without it, show a neutral welcome.
+    const state = Number.isSafeInteger(senderId) && senderId === chat.id
+      ? await lookup(senderId as number).catch(() => "unknown" as const)
+      : "unknown";
+    const inviteOnly = config.rem05b?.inviteOnly === true;
+    const button = inviteOnly ? "Открыть LUEMI 💜" :
+      state === "registered" ? "Продолжить знакомство 💜" :
+      state === "new" ? "Зарегистрироваться 💜" : "Начать знакомство 💜";
+    const greeting = inviteOnly
+      ? "<b>luemi 💜</b>\n\nИдёт закрытый тест для приглашённых друзей. Нажми кнопку ниже, чтобы открыть приложение. Для получения Telegram ID отправь /myid."
+      : state === "registered"
+        ? "<b>luemi 💜</b>\n\n<b>Снова вместе!</b>\nТвоя анкета уже здесь. Продолжай знакомиться и находить близких по духу людей."
+        : "<b>luemi 💜</b>\n\n<b>Люди ближе, чем кажется.</b>\nЗнакомься, общайся и находи тех, с кем хочется быть собой.\n\nТвоя история начинается здесь.";
+    // Telegram's public Bot API does not yet support sending HTML/JS
+    // message widgets. This standard Web App CTA works on stable clients.
+    // The app authenticates the viewer and chooses registration vs home.
     return {
       method: "sendMessage",
       chat_id: chat.id,
-      text: config.rem05b?.inviteOnly===true?
-        "LUEMI 💜\nИдёт закрытый тест для приглашённых друзей. Нажми кнопку ниже, чтобы открыть приложение. Для получения Telegram ID отправь /myid.":
-        "LUEMI 💜\nТвоя история начинается здесь. Открой приложение прямо в Telegram.",
+      parse_mode: "HTML",
+      text: greeting,
       reply_markup: {
         inline_keyboard: [[{
-          text: "Открыть LUEMI 💜",
+          text: button,
           web_app: { url: versionedWebAppUrl(config.origin, process.env.RENDER_GIT_COMMIT) }
         }]]
       }
