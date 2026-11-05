@@ -158,7 +158,7 @@ async function appBootstrap(browser){
    initData:"qa_mock_signed_placeholder_NOT_REAL",colorScheme:"light",viewportStableHeight:852,
    version:"8.0",isVersionAtLeast:()=>true,
    ready:()=>mark("ready"),expand:()=>mark("expand"),
-   requestFullscreen:()=>mark("requestFullscreen"),
+   isFullscreen:true,exitFullscreen:()=>mark("exitFullscreen"),
    disableVerticalSwipes:()=>mark("disableVerticalSwipes"),
    setHeaderColor:c=>mark("setHeaderColor",c),
    setBackgroundColor:c=>mark("setBackgroundColor",c),
@@ -197,7 +197,7 @@ async function appBootstrap(browser){
    throw new Error("REM-00C mocked App did not become authorized: "+JSON.stringify({calls,diagnostics,errors}),{cause:error});
   });
   const bridge=await page.evaluate(()=>window.__QA_TELEGRAM_MOCK__.calls.map(x=>x.name));
-  assert.ok(["ready","expand","requestFullscreen","disableVerticalSwipes"].every(x=>bridge.includes(x)),"real App must invoke mocked Telegram bridge lifecycle");
+  assert.ok(["ready","expand","exitFullscreen","disableVerticalSwipes"].every(x=>bridge.includes(x)),"real App must invoke mocked Telegram bridge lifecycle without covered fullscreen chrome");
   assert.ok(calls.includes("live")&&calls.includes("auth")&&calls.indexOf("live")<calls.indexOf("auth"),"mocked health precedes authorization, including React StrictMode effect reruns");
   await snapshot(page,"08-app-intro-mocked-telegram");
   await page.getByRole("button",{name:/^Начать(?: знакомство)?$/}).click();

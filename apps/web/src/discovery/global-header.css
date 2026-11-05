@@ -7,17 +7,17 @@
 }
 .lh-header button{font:inherit;cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent}
 .lh-center{
- position:absolute;top:max(6px,calc(var(--top-safe) - 12px));left:50%;
- transform:translateX(-50%);height:83px;width:130px;pointer-events:none;
+ position:absolute;top:calc(var(--top-safe) + 10px);left:14px;
+ transform:none;height:42px;width:120px;pointer-events:none;
 }
 .lh-island{
- position:absolute;left:50%;top:0;z-index:4;transform:translateX(-50%) scale(calc(1 + var(--lh-impact)));
- display:grid;place-items:center;width:124px;height:44px;padding:0;border:0;
+ position:absolute;left:0;top:0;z-index:4;transform:scale(calc(1 + var(--lh-impact)));
+ display:grid;place-items:center;width:120px;height:40px;padding:0;border:0;
  border-radius:0;background:transparent;box-shadow:none;
  backdrop-filter:none;-webkit-backdrop-filter:none;transform-origin:center;
 }
 .lh-island img{
- display:block;grid-area:1/1;width:113px;height:42px;max-width:100%;object-fit:contain;
+ display:block;grid-area:1/1;width:120px;height:40px;max-width:100%;object-fit:contain;
  pointer-events:none;filter:drop-shadow(0 1px 2px rgba(29,12,40,.20));
 }
 .lh-island .lh-logo-contrast{
@@ -25,16 +25,11 @@
  filter:drop-shadow(0 1px 1px rgba(41,18,60,.46))
         drop-shadow(0 2px 4px rgba(75,34,99,.55));
 }
-/* The profile logo stays centered at the same coordinates with one fewer
-   transformed ancestor. Isolate only its small static image from the moving
-   visitor hero and sheet, without promoting the whole header. */
-.lh-profile-android .lh-center{left:0;width:100%;transform:none}
+/* Android keeps one unfiltered static logo raster. Every route now uses the
+   same left-aligned chrome below Telegram's content-safe area. */
 .lh-profile-android .lh-island img{filter:none;transform:translate3d(0,0,0)}
-.lh-profile-android .lh-island{transform:translateX(-50%)}
 .lh-browse .lh-logo-contrast{opacity:0}
-.lh-chats .lh-center{top:calc(var(--top-safe) + 10px);left:14px;width:120px;height:42px;transform:none}
-.lh-chats .lh-island{left:0;top:0;transform:none;width:120px;height:40px;pointer-events:none}
-.lh-chats .lh-island img{width:120px;height:40px;filter:none}
+.lh-chats .lh-island img{filter:none}
 .lh-chats .lh-logo-contrast{display:none}
 .lh-tools{
  position:absolute;top:48px;left:50%;transform:translateX(-50%);
@@ -58,7 +53,7 @@
 .lh-header[data-tools-merged=true] .lh-tool{pointer-events:none}
 .lh-header button:focus-visible{outline:2px solid #bc80eb;outline-offset:3px}
 .lh-profile-theme{
- position:absolute;top:8px;left:calc(50% + 62px);
+ position:absolute;top:8px;left:132px;
  width:28px;height:28px;z-index:5;padding:0;
  border-color:rgba(255,255,255,.48);
  box-shadow:0 2px 7px rgba(44,19,72,.09),inset 0 1px rgba(255,255,255,.65);

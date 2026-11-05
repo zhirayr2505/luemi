@@ -4,6 +4,7 @@
  --ink:var(--luemi-text,#faf4fb);--subtle:var(--luemi-text-secondary,#c7bacd);--panel:rgba(65,50,73,.78);
  --glass-edge:var(--luemi-border,rgba(238,214,246,.16));--line:var(--luemi-border,rgba(238,214,246,.16));
  --lavender:var(--luemi-lavender,#ac87b3);--pink:var(--luemi-rose,#d5a2c8);--shadow:rgba(0,0,0,.28);
+ --registration-top-safe:max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px),var(--tg-content-safe-area-inset-top,0px));
  --registration-footer-height:calc(91px + max(14px,env(safe-area-inset-bottom)));
  width:100%;height:var(--registration-visible-height,100dvh);min-height:0;padding:0;
  overflow:hidden;background:var(--luemi-bg-deep,#1c1424);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -17,7 +18,7 @@ html[data-luemi-route="true"] .v2-runtime{animation:none}
  color:var(--ink);background:var(--luemi-bg-deep,#1c1424)}
 html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-route}
 .v2-runtime .v2-backdrop{display:none}
-.v2-runtime .v2-header{flex:none;z-index:3;height:78px;min-height:78px;padding:9px 24px 13px;
+.v2-runtime .v2-header{flex:none;z-index:3;height:calc(78px + var(--registration-top-safe));min-height:calc(78px + var(--registration-top-safe));padding:calc(9px + var(--registration-top-safe)) 24px 13px;
  display:grid;grid-template-columns:1fr;grid-template-rows:40px 3px;align-items:center;
  column-gap:12px;row-gap:13px;background:var(--luemi-bg-deep,#1c1424)}
 .v2-runtime .v2-header-logo{display:block;width:108px;max-height:37px;object-fit:contain;

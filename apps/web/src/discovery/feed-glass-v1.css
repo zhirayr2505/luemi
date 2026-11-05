@@ -1,10 +1,6 @@
 /* LUEMI approved feed glass V1. Static translucent surfaces are deliberate:
    no backdrop-filter on the moving cards or tab pager in Telegram WebView. */
-.lh-browse .lh-center{
- top:calc(var(--top-safe) + 10px);left:14px;width:120px;height:42px;transform:none
-}
-.lh-browse .lh-island{left:0;top:0;transform:none;width:120px;height:40px;pointer-events:none}
-.lh-browse .lh-island img{width:120px;height:40px;filter:none}
+.lh-browse .lh-island img{filter:none}
 .lh-browse .lh-logo-contrast{display:none}
 .lh-browse-controls{
  position:absolute;right:14px;top:calc(var(--top-safe) + 10px);z-index:6;
@@ -19,7 +15,7 @@
 }
 .lh-browse-control:active{transform:scale(.96);background:rgba(105,81,125,.7)}
 .lh-browse-control:focus-visible{outline:2px solid #d0a2ed;outline-offset:2px}
-/* Keep profile/visitor logo and Profile Morph V3 coordinates unchanged. */
+/* Profile/visitor and browse chrome share one stable left-aligned brand row. */
 .discovery-app .discovery-main-panels>.discovery-panel.discovery-browse-panel{
  top:calc(var(--top-safe) + 66px)
 }

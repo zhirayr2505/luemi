@@ -1,18 +1,12 @@
 import {memo} from "react";
 import type {ComponentProps} from "react";
-import {ProfileMaster as ProfileA2} from "./ProfileMorphA2";
 import {ProfileMaster as ProfileV3} from "./ProfileMasterV3";
 
-/** The accepted V3 is the normal profile on every origin. The old A2 remains
- * available only through an explicit diagnostic ?profileV3=0 URL. One profile
- * renderer mounts per route, so their motion writers never compete. */
-const v3Enabled=()=>{
- if(typeof window==="undefined")return true;
- const value=new URLSearchParams(window.location.search).get("profileV3");
- return value!=="0";
-};
-type ProfileProps=ComponentProps<typeof ProfileA2>&{initialExpanded?:boolean};
+/** The approved V3 is the only production profile renderer. Keeping the old
+ * URL-selectable renderer in this gateway allowed stale Telegram links to
+ * reactivate retired chrome and motion code. */
+type ProfileProps=ComponentProps<typeof ProfileV3>;
 export const ProfileMaster=memo(function ProfileMaster(props:ProfileProps){
- return v3Enabled()?<ProfileV3 {...props}/>:<ProfileA2 {...props}/>;
+ return <ProfileV3 {...props}/>;
 });
 export type {ProfileRouteMotionHandle} from "./ProfileMasterV3";
