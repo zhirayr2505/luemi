@@ -1,4 +1,5 @@
-import {memo,useLayoutEffect,useRef} from "react";
+import {memo,useLayoutEffect,useRef,useState} from "react";
+import {Heart,Sparkles} from "lucide-react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {ProfileMaster} from "./ProfileV3Gateway";
 import {GlobalHeader} from "./GlobalHeader";
@@ -15,6 +16,7 @@ import {QaProfiler} from "./qa-profiler";
 type Props={
  data:ProfileMasterData;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;
  registerBack:(handler:(()=>boolean)|null)=>void;
+ onLike?:(kind:"ordinary"|"super")=>Promise<void>;
 };
 type RouteDrag={
  id:number;startX:number;startY:number;started:number;origin:number;span:number;claimed:boolean;serial:number;
@@ -25,7 +27,7 @@ const CLOSE_DURATION=230;
 const EASING="cubic-bezier(.2,.82,.24,1)";
 
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
-export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack}:Props){
+export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack,onLike}:Props){
  const route=useRef<HTMLDivElement>(null);
  const escapeClose=useRef<()=>void>(()=>{});
  useModalLayer(true,route,()=>escapeClose.current());
@@ -43,6 +45,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
  }));
  const liveToken=useRef<MotionToken|null>(null),liveTarget=useRef(0);
  const closing=useRef(false);
+ const [likeBusy,setLikeBusy]=useState(false);
  const timer=useRef<number|null>(null);
  const entranceFrame=useRef<number|null>(null);
  const finishMotion=useRef<(()=>void)|null>(null);
@@ -294,11 +297,17 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
     onPointerDownCapture={down} onPointerMoveCapture={move}
     onPointerUpCapture={e=>end(e)} onPointerCancelCapture={e=>end(e,true)}
     onLostPointerCapture={e=>{if(e.target===e.currentTarget)end(e,true);}}>
-   <QaProfiler id="ProfileMaster"><ProfileMaster data={data} mode="visitor" initialExpanded onClose={close}
+   <QaProfiler id="ProfileMaster"><ProfileMaster data={data} mode="visitor" onClose={close}
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
      onMotionProgress={reportMotion}/></QaProfiler>
    <GlobalHeader ref={header} mode="profile" theme={theme} onTheme={onTheme}
      onFilters={()=>{}} onSaved={()=>{}}/>
+   {onLike&&<div className="visitor-like-actions" aria-label="Действия с анкетой">
+    <button type="button" disabled={likeBusy} aria-label="Особенная симпатия" onClick={()=>{
+     setLikeBusy(true);void onLike("super").finally(()=>setLikeBusy(false));}}><Sparkles size={22}/></button>
+    <button type="button" disabled={likeBusy} className="visitor-like-main" aria-label="Поставить симпатию" onClick={()=>{
+     setLikeBusy(true);void onLike("ordinary").finally(()=>setLikeBusy(false));}}><Heart size={26}/></button>
+   </div>}
   </div>;
 });

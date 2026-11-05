@@ -31,6 +31,7 @@ function dateAge(iso:string):number{
 const goalOk=(v:unknown):v is string=>typeof v==="string"&&
  ["serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided"].includes(v);
 const genderOk=(v:unknown):v is string=>typeof v==="string"&&["man","woman","other"].includes(v);
+const audienceOk=(v:unknown):v is string=>typeof v==="string"&&["women","men","everyone"].includes(v);
 function validList(v:unknown,n:number):v is string[]{
  return Array.isArray(v)&&v.length<=n&&
   v.every(x=>typeof x==="string"&&x.length>0&&x.length<=40)&&
@@ -40,16 +41,25 @@ function validatedProjection(payload:unknown,birthDate:string|null){
  if(!object(payload))fail(422,"incomplete_profile");
  const data=payload as Record<string,unknown>;
  const name=data.displayName,city=data.city,country=data.countryCode;
+ const audience=data.audience??"everyone";
+ const ageMin=data.ageMin??18,ageMax=data.ageMax??80;
+ const radius=data.radius??100,searchScope=data.searchScope??"world";
  if(typeof name!=="string"||name.trim()!==name||name.length<2||name.length>48||
   typeof city!=="string"||city.trim()!==city||city.length<2||city.length>120||
   typeof country!=="string"||!/^[A-Z]{2}$/.test(country)||
-  !genderOk(data.gender)||!goalOk(data.goal)||
+  !genderOk(data.gender)||!goalOk(data.goal)||!audienceOk(audience)||
+  !Number.isInteger(ageMin)||Number(ageMin)<18||Number(ageMin)>80||
+  !Number.isInteger(ageMax)||Number(ageMax)<Number(ageMin)||Number(ageMax)>80||
+  !Number.isInteger(radius)||Number(radius)<1||Number(radius)>5000||
+  !["radius","country","world"].includes(String(searchScope))||
   typeof data.placeId!=="string"||!/^[a-z0-9:_-]{3,180}$/i.test(data.placeId)||
   !validList(data.interests,15)||!validList(data.languages,10)||
   typeof data.about!=="string"||[...data.about].length>750||
   !birthDate||dateAge(birthDate)<18||dateAge(birthDate)>=130)
    fail(422,"incomplete_profile");
  return {name,city,country,gender:data.gender,goal:data.goal,
+  audience,ageMin:Number(ageMin),ageMax:Number(ageMax),
+  radius:Number(radius),searchScope:String(searchScope),placeId:String(data.placeId),
   about:data.about,interests:data.interests,languages:data.languages,birthDate};
 }
 type Kind="luemi_profile_publisher"|"luemi_discovery_reader";
@@ -235,18 +245,33 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   const result=await db.query(
    "INSERT INTO luemi_private.public_profiles "+
    "(owner_id,environment,publication_status,published_revision,display_name,city_label,country_code,"+
-   "about,interests,gender,goal,languages,birth_date,published_at,updated_at) "+
-   "VALUES($1,$2,'published',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,clock_timestamp(),clock_timestamp()) "+
+   "about,interests,gender,goal,languages,birth_date,audience,preferred_age_min,preferred_age_max,published_at,updated_at) "+
+   "VALUES($1,$2,'published',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,clock_timestamp(),clock_timestamp()) "+
    "ON CONFLICT (owner_id) DO UPDATE SET publication_status='published',"+
    "published_revision=EXCLUDED.published_revision,display_name=EXCLUDED.display_name,"+
    "city_label=EXCLUDED.city_label,country_code=EXCLUDED.country_code,"+
    "about=EXCLUDED.about,interests=EXCLUDED.interests,gender=EXCLUDED.gender,"+
    "goal=EXCLUDED.goal,languages=EXCLUDED.languages,birth_date=EXCLUDED.birth_date,"+
+   "audience=EXCLUDED.audience,preferred_age_min=EXCLUDED.preferred_age_min,preferred_age_max=EXCLUDED.preferred_age_max,"+
    "published_at=clock_timestamp(),updated_at=clock_timestamp() "+
    "WHERE luemi_private.public_profiles.environment=EXCLUDED.environment RETURNING owner_id",
    [id,cfg.namespace,expected,profile.name,profile.city,profile.country,profile.about,
-    profile.interests,profile.gender,profile.goal,profile.languages,profile.birthDate]);
+    profile.interests,profile.gender,profile.goal,profile.languages,profile.birthDate,
+    profile.audience,profile.ageMin,profile.ageMax]);
   if(result.rowCount!==1)fail(409,"publication_conflict");
+  const preferences=await db.query(
+   "INSERT INTO luemi_private.discovery_preferences "+
+   "(owner_id,environment,owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,place_id,radius_km,search_scope,goal,interests,updated_at) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,clock_timestamp()) "+
+   "ON CONFLICT(owner_id) DO UPDATE SET owner_gender=EXCLUDED.owner_gender,owner_birth_date=EXCLUDED.owner_birth_date,"+
+   "audience=EXCLUDED.audience,age_min=EXCLUDED.age_min,"+
+   "age_max=EXCLUDED.age_max,city_label=EXCLUDED.city_label,country_code=EXCLUDED.country_code,"+
+   "place_id=EXCLUDED.place_id,radius_km=EXCLUDED.radius_km,search_scope=EXCLUDED.search_scope,"+
+   "goal=EXCLUDED.goal,interests=EXCLUDED.interests,updated_at=clock_timestamp() "+
+   "WHERE luemi_private.discovery_preferences.environment=EXCLUDED.environment RETURNING owner_id",
+   [id,cfg.namespace,profile.gender,profile.birthDate,profile.audience,profile.ageMin,profile.ageMax,profile.city,
+    profile.country,profile.placeId,profile.radius,profile.searchScope,profile.goal,profile.interests]);
+  if(preferences.rowCount!==1)fail(409,"publication_conflict");
   const updated=await db.query(
    "UPDATE luemi_private.media_assets SET publication_status='published' "+
    "WHERE owner_id=$1 AND environment=$2 AND state='approved' AND publication_status='private'",
@@ -295,21 +320,38 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   return transaction(req,reply,"luemi_discovery_reader",async(db,viewer)=>{
    const results=await db.query<{owner_id:string;display_name:string;city_label:string;
     country_code:string;about:string;interests:string[];gender:string;goal:string;
-    languages:string[];birth_date:string;published_at:string}>(
+    languages:string[];birth_date:string;published_at:string;liked_you_kind:"ordinary"|"super"|null}>(
+    "WITH preference AS (SELECT owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,goal,interests "+
+    "FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1 UNION ALL "+
+    "SELECT NULL::text,NULL::date,'everyone'::text,18::smallint,80::smallint,''::text,''::text,''::text,ARRAY[]::text[] "+
+    "WHERE NOT EXISTS(SELECT 1 FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1)) "+
     "SELECT p.owner_id,p.display_name,p.city_label,p.country_code,p.about,p.interests,"+
-    "p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text "+
-    "FROM luemi_private.public_profiles p WHERE p.environment=$1 "+
+    "p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text,"+
+    "incoming.kind AS liked_you_kind "+
+    "FROM luemi_private.public_profiles p CROSS JOIN preference pref "+
+    "LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment "+
+    "AND incoming.sender_id=p.owner_id AND incoming.receiver_id=$2 AND incoming.status='active' "+
+    "WHERE p.environment=$1 "+
     "AND p.owner_id<>$2 AND p.publication_status='published' AND p.published_at IS NOT NULL "+
+    "AND (pref.audience='everyone' OR (pref.audience='women' AND p.gender='woman') "+
+    "OR (pref.audience='men' AND p.gender='man')) "+
+    "AND date_part('year',age(current_date,p.birth_date))::int BETWEEN pref.age_min AND pref.age_max "+
+    "AND (pref.owner_gender IS NULL OR p.audience='everyone' OR (p.audience='women' AND pref.owner_gender='woman') "+
+    "OR (p.audience='men' AND pref.owner_gender='man')) "+
+    "AND (pref.owner_birth_date IS NULL OR date_part('year',age(current_date,pref.owner_birth_date))::int "+
+    "BETWEEN p.preferred_age_min AND p.preferred_age_max) "+
+    "AND NOT EXISTS(SELECT 1 FROM luemi_chats.likes sent WHERE sent.environment=p.environment "+
+    "AND sent.sender_id=$2 AND sent.receiver_id=p.owner_id) "+
     "AND (SELECT count(*) FROM luemi_private.media_assets a WHERE a.owner_id=p.owner_id "+
     "AND a.environment=p.environment AND a.state='approved' "+
     "AND a.publication_status='published') BETWEEN 3 AND 6 "+
-    "AND ($3::timestamptz IS NULL OR (p.published_at,p.owner_id)<($3::timestamptz,$4::uuid)) "+
-    "ORDER BY p.published_at DESC,p.owner_id DESC LIMIT 21",
-    [cfg.namespace,viewer,cursor?.at??null,cursor?.id??null]);
+    "ORDER BY (lower(p.city_label)=lower(pref.city_label) AND p.country_code=pref.country_code) DESC,"+
+    "(p.goal=pref.goal) DESC,cardinality(ARRAY(SELECT unnest(p.interests) INTERSECT SELECT unnest(pref.interests))) DESC,"+
+    "(p.country_code=pref.country_code) DESC,p.published_at DESC,p.owner_id DESC OFFSET $3 LIMIT 21",
+    [cfg.namespace,viewer,cursor?.offset??0]);
    const page=results.rows.slice(0,20);
-   const last=page[page.length-1];
-   const nextCursor=results.rows.length>20&&last?
-    encodePublishedFeedCursor({at:new Date(last.published_at).toISOString(),id:last.owner_id}):null;
+   const nextCursor=results.rows.length>20?
+    encodePublishedFeedCursor({offset:(cursor?.offset??0)+20}):null;
    const ids=page.map(r=>r.owner_id);
    const photoRows=ids.length?await db.query<{owner_id:string;id:string;position:number}>(
     "SELECT owner_id,id,position FROM luemi_private.media_assets "+
@@ -324,6 +366,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     id:p.owner_id,name:p.display_name,age:dateAge(p.birth_date),
     city:p.city_label,countryCode:p.country_code,about:p.about??"",
     interests:p.interests,gender:p.gender,goal:p.goal,languages:p.languages,
+    likedYouKind:p.liked_you_kind,
     photos:(photos.get(p.owner_id)??[]).map(id=>({id,url:"/api/v3/discovery/photo/"+id}))
    })).filter(p=>p.age>=18&&p.age<130&&p.photos.length>=3)};
   });
@@ -351,5 +394,31 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
    return reply.code(404).send({error:"not_found"});
   return reply.header("Content-Type","image/png")
    .header("Content-Disposition",'inline; filename="luemi-photo.png"').send(bytes);
+ });
+
+ app.get<{Params:{id:string}}>("/api/v3/discovery/profile/:id",
+ {preHandler:guards.read},async(req,reply)=>{
+  reply.header("Cache-Control","private, no-store").header("Vary","Cookie");
+  if(!idOk(req.params.id))return reply.code(404).send({error:"not_found"});
+  return transaction(req,reply,"luemi_discovery_reader",async(db,viewer)=>{
+   const found=await db.query<{owner_id:string;display_name:string;city_label:string;country_code:string;
+    about:string;interests:string[];gender:string;goal:string;languages:string[];birth_date:string;
+    liked_you_kind:"ordinary"|"super"|null}>(`SELECT p.owner_id,p.display_name,p.city_label,p.country_code,
+    p.about,p.interests,p.gender,p.goal,p.languages,p.birth_date::text,incoming.kind AS liked_you_kind
+    FROM luemi_private.public_profiles p
+    LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment
+     AND incoming.sender_id=p.owner_id AND incoming.receiver_id=$2 AND incoming.status='active'
+    WHERE p.owner_id=$3 AND p.environment=$1 AND p.publication_status='published'`,
+    [cfg.namespace,viewer,req.params.id]);
+   if(found.rowCount!==1)fail(404,"not_found");
+   const p=found.rows[0],media=await db.query<{id:string}>(`SELECT id FROM luemi_private.media_assets
+    WHERE owner_id=$1 AND environment=$2 AND state='approved' AND publication_status='published'
+    ORDER BY position,id LIMIT 7`,[p.owner_id,cfg.namespace]);
+   if(media.rows.length<3||media.rows.length>6)fail(404,"not_found");
+   return {profile:{id:p.owner_id,name:p.display_name,age:dateAge(p.birth_date),city:p.city_label,
+    countryCode:p.country_code,about:p.about??"",interests:p.interests,gender:p.gender,goal:p.goal,
+    languages:p.languages,likedYouKind:p.liked_you_kind,
+    photos:media.rows.map(photo=>({id:photo.id,url:"/api/v3/discovery/photo/"+photo.id}))}};
+  });
  });
 }

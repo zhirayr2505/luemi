@@ -227,3 +227,21 @@
 .luemi-legal-link a,.luemi-private-privacy a{color:#845aa2;text-underline-offset:3px}
 .luemi-private-privacy{text-align:center}
 [data-theme="dark"] .luemi-legal-link a,[data-theme="dark"] .luemi-private-privacy a{color:#dcb9f3}
+
+/* V5 standard account/settings route. The legacy light fallback remains only
+   for non-themed standalone diagnostics; the real application is dark-only. */
+.luemi-shell[data-theme="dark"] .luemi-real-home:not([data-account-mode="private"]){
+ color:var(--luemi-text);background:linear-gradient(165deg,var(--luemi-bg),var(--luemi-bg-deep))
+}
+.luemi-shell[data-theme="dark"] .luemi-real-home:not([data-account-mode="private"]) .luemi-real-home-top,
+.luemi-shell[data-theme="dark"] .luemi-real-home:not([data-account-mode="private"]) .luemi-real-home-nav{
+ background:rgba(42,31,49,.96);border-color:var(--luemi-border)
+}
+.luemi-shell[data-theme="dark"] .luemi-real-home-nav button{color:var(--luemi-text-secondary)}
+.luemi-shell[data-theme="dark"] .luemi-real-home-nav button[aria-current="page"]{color:var(--luemi-text);background:rgba(172,135,179,.22)}
+.luemi-shell[data-theme="dark"] .luemi-real-account p{color:var(--luemi-text-secondary)}
+.luemi-shell[data-theme="dark"] .luemi-real-account>button,
+.luemi-shell[data-theme="dark"] .registration-static-edit{background:var(--luemi-surface);border:1px solid var(--luemi-border);color:var(--luemi-text)}
+.luemi-shell[data-theme="dark"] .luemi-real-account-card{background:linear-gradient(145deg,rgba(69,52,77,.78),rgba(46,34,53,.88));border-color:var(--luemi-border)}
+.luemi-shell[data-theme="dark"] .luemi-real-account-interests span{background:rgba(116,87,119,.46);color:var(--luemi-text)}
+.luemi-shell[data-theme="dark"] .luemi-real-account .glass-control{background:var(--luemi-surface);border-color:var(--luemi-border);color:var(--luemi-text)}

@@ -32,6 +32,10 @@
 .lh-profile-android .lh-island img{filter:none;transform:translate3d(0,0,0)}
 .lh-profile-android .lh-island{transform:translateX(-50%)}
 .lh-browse .lh-logo-contrast{opacity:0}
+.lh-chats .lh-center{top:calc(var(--top-safe) + 10px);left:14px;width:120px;height:42px;transform:none}
+.lh-chats .lh-island{left:0;top:0;transform:none;width:120px;height:40px;pointer-events:none}
+.lh-chats .lh-island img{width:120px;height:40px;filter:none}
+.lh-chats .lh-logo-contrast{display:none}
 .lh-tools{
  position:absolute;top:48px;left:50%;transform:translateX(-50%);
  display:flex;align-items:center;gap:8px;z-index:1;pointer-events:auto;

@@ -289,7 +289,7 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="review"?<div className="v2-footer-review">
         <button type="button" className="v2-publish v2-draft-save"
           disabled={!savedDraftAllowed} onClick={p.onSave}>
-          <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету 💜"}
+          <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету"}
         </button>
        </div>:<>
        <div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>

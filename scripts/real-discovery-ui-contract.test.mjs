@@ -28,7 +28,7 @@ test("real published discovery has original four tabs and three browse tabs",()=
  assert.match(shell,/className="discovery-top-tabs"/);
  assert.match(shell,/<ProfileMaster data=\{owner\} mode="owner"/);
  assert.match(shell,/<VisitorProfileRoute/);
- assert.match(shell,/<RealChats\/>/);
+ assert.match(shell,/<RealChats\b/);
  assert.match(shell,/<RealMatches active=/);
 });
 
@@ -40,7 +40,8 @@ test("empty server feed never hides navigation or reveals fictional demo people"
  assert.match(shell,/Пока нет взаимных симпатий/);
  assert.match(shell,/refresh/);
  assert.doesNotMatch(shell,/fromDemoPerson|demoPeople|forYouDemoPeople|freshDemoState|Демо-анкеты/);
- assert.match(shell,/onMatched=\{\(\)=>setMainTab\("chats"\)\}/);
+ assert.match(shell,/onMatched=\{\(matchedPerson,matchId\)=>setMatched\(\{person:matchedPerson,matchId\}\)\}/);
+ assert.match(shell,/className="luemi-match-overlay"/);
 });
 
 test("real FeedCard retains canonical photo/sheet gestures and removes demo badges",()=>{
@@ -55,7 +56,8 @@ test("real FeedCard retains canonical photo/sheet gestures and removes demo badg
 
 test("real matches, reports and account actions stay available even when feed is empty",()=>{
  assert.match(shell,/createChatTransport\(csrf\)\.list/);
- assert.match(shell,/likePublishedUser\(current\.id\)/);
+ assert.match(shell,/likePublishedUser\(current\.id,kind==="special"\?"super":"ordinary"\)/);
+ assert.match(shell,/getIncomingLikes\(controller\.signal\)/);
  assert.match(shell,/blockPublishedUser\(menu\.id\)/);
  assert.match(shell,/reportPublishedUser\(menu\.id,reason\)/);
  assert.match(shell,/className="real-discovery-settings"/);

@@ -140,3 +140,4 @@
  .discovery-page[aria-label="Лента"] .deck-leaving,
  .discovery-page[aria-label="Лента"] .deck-entering{animation:none}
 }
+.feed-v2-liked-you{display:flex;align-items:center;gap:6px;width:max-content;max-width:100%;margin-top:7px;padding:5px 9px;border:1px solid rgba(213,162,200,.20);border-radius:999px;background:rgba(172,135,179,.16);color:#f3deef;font-size:10px;line-height:1.2}.feed-v2-liked-you.is-super{background:linear-gradient(90deg,rgba(213,162,200,.24),rgba(116,87,119,.22));border-color:rgba(213,162,200,.32)}

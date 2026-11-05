@@ -77,21 +77,25 @@ test("two authenticated actors create one durable conversation and revoke it on 
    assert.deepEqual(await visiblePhotoIds(A),[],"no relation means no photo metadata");
   }finally{await chatReader.end();}
   let result=await inject(A,"POST","/api/v4/matches/like",{targetId:B});
-  assert.equal(result.status,200,JSON.stringify(result));assert.deepEqual(result.json,{liked:true,matched:false});
+ assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.liked,true);
+ assert.equal(result.json.kind,"ordinary");assert.equal(result.json.matched,false);
+ assert.equal(result.json.superlikes.total,3);
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});
   assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.matched,true);
-  const conversationId=result.json.conversationId as string;
-  assert.match(conversationId,/^[0-9a-f-]{36}$/i);
+ const matchId=result.json.matchId as string;
+ assert.match(matchId,/^[0-9a-f-]{36}$/i);
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});
-  assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.conversationId,conversationId);
+ assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.matchId,matchId);
   const listed=await inject(A,"GET","/api/v4/chats");
   assert.equal(listed.status,200,JSON.stringify(listed));
-  assert.equal(listed.json.conversations.length,1);
-  assert.equal(listed.json.conversations[0].peerName,"HTTP B");
-  assert.equal(listed.json.conversations[0].peerId,B);
-  assert.equal(listed.json.conversations[0].peerPhotoUrl,
-   "/api/v3/discovery/photo/"+peerPhotoId);
-  const matchId=listed.json.conversations[0].matchId as string;
+ assert.equal(listed.json.conversations.length,0,"a match is not a chat before the first message");
+ const newMatches=await inject(A,"GET","/api/v4/matches/new");
+ assert.equal(newMatches.status,200,JSON.stringify(newMatches));
+ assert.equal(newMatches.json.matches.length,1);assert.equal(newMatches.json.matches[0].peerName,"HTTP B");
+ const opened=await inject(A,"POST","/api/v4/matches/"+matchId+"/open",{});
+ assert.equal(opened.status,200,JSON.stringify(opened));
+ const conversationId=opened.json.conversationId as string;
+ assert.match(conversationId,/^[0-9a-f-]{36}$/i);
   const sessionPhotoReader=new Pool({connectionString:url("MATCHES_HTTP_CHAT_URL")});
   const scopedPhotos=async(actorId:string)=>{
    const db=await sessionPhotoReader.connect();
@@ -115,6 +119,16 @@ test("two authenticated actors create one durable conversation and revoke it on 
   const sent=await inject(A,"POST",messagePath,{
    clientId:"dddddddd-dddd-4ddd-8ddd-dddddddddddd",body:"hello real chat"});
   assert.equal(sent.status,200,JSON.stringify(sent));
+  const started=await inject(A,"GET","/api/v4/chats");
+  assert.equal(started.status,200,JSON.stringify(started));
+  assert.equal(started.json.conversations.length,1,"the first message starts the chat");
+  assert.equal(started.json.conversations[0].peerId,B);
+  assert.equal(started.json.conversations[0].peerPhotoUrl,
+   "/api/v3/discovery/photo/"+peerPhotoId);
+  assert.equal(started.json.conversations[0].matchId,matchId);
+  const noLongerNew=await inject(A,"GET","/api/v4/matches/new");
+  assert.equal(noLongerNew.status,200,JSON.stringify(noLongerNew));
+  assert.equal(noLongerNew.json.matches.length,0,"a started chat leaves the new-match rail");
   result=await inject(A,"POST",messagePath,{
    clientId:"dddddddd-dddd-4ddd-8ddd-dddddddddddd",body:"hello real chat"});
   assert.equal(result.status,200);assert.equal(result.json.message.id,sent.json.message.id);

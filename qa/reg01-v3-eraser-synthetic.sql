@@ -48,6 +48,8 @@ CREATE POLICY ci_worker_actor_tombstone ON luemi_private.actors FOR UPDATE
 CREATE SCHEMA IF NOT EXISTS luemi_chats;
 CREATE TABLE IF NOT EXISTS luemi_chats.likes(
  environment text NOT NULL, sender_id uuid NOT NULL,receiver_id uuid NOT NULL,
+ kind text NOT NULL DEFAULT 'ordinary' CHECK(kind IN ('ordinary','super')),
+ status text NOT NULL DEFAULT 'active' CHECK(status IN ('active','rejected')),
  PRIMARY KEY(environment,sender_id,receiver_id));
 CREATE TABLE IF NOT EXISTS luemi_bliki_private.reactions(
  story_id uuid NOT NULL, actor_id uuid NOT NULL);
@@ -55,6 +57,17 @@ CREATE TABLE IF NOT EXISTS luemi_bliki_private.views(
  story_id uuid NOT NULL, viewer_id uuid NOT NULL);
 ALTER TABLE luemi_chats.likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE luemi_chats.likes FORCE ROW LEVEL SECURITY;
+-- The production grant/policy is installed by chats-v4-product-matching.sql.
+-- REG01 intentionally uses this narrow synthetic chat table, so mirror only
+-- the discovery read contract required by the real publication feed.
+GRANT USAGE ON SCHEMA luemi_chats TO luemi_discovery_reader;
+GRANT SELECT ON luemi_chats.likes TO luemi_discovery_reader;
+CREATE POLICY ci_discovery_like_read ON luemi_chats.likes FOR SELECT
+ TO luemi_discovery_reader USING (
+  environment=current_setting('luemi.environment',true)
+  AND (sender_id=nullif(current_setting('luemi.viewer_id',true),'')::uuid
+    OR receiver_id=nullif(current_setting('luemi.viewer_id',true),'')::uuid)
+ );
 ALTER TABLE luemi_bliki_private.reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE luemi_bliki_private.reactions FORCE ROW LEVEL SECURITY;
 ALTER TABLE luemi_bliki_private.views ENABLE ROW LEVEL SECURITY;

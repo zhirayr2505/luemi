@@ -13,7 +13,7 @@ test("user performs one action from simple swipeable gallery review",()=>{
  assert.doesNotMatch(v2,/mode="local-self-preview" active/);
  assert.doesNotMatch(v2,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setServerConsent/);
  assert.match(v2,/stage.id==="photos"/);
- assert.match(v2,/Создать анкету 💜/);
+ assert.match(v2,/Создать анкету/);
  assert.doesNotMatch(v2,/Проверить модерацию и публикацию/);
  assert.match(app,/onSave=\{\(\)=>\{void \(realFeedPilot.enabled\?confirmRealRegistration\(\)/);
 });

@@ -247,8 +247,8 @@ export function App() {
   useEffect(()=>{
     const webApp=window.Telegram?.WebApp;
     try{
-      const background=auth==="authorized"&&!realHome?(phase==="form"?"#15131c":"#14101d"):
-        activeTheme==="dark"?"#181320":"#fffbfd";
+      const background=auth==="authorized"&&!realHome?(phase==="form"?"#1c1424":"#211725"):
+        activeTheme==="dark"?"#211725":"#fffbfd";
       webApp?.setHeaderColor?.(background);
       webApp?.setBackgroundColor?.(background);
       webApp?.setBottomBarColor?.(background);
@@ -1130,7 +1130,7 @@ export function App() {
       </header>
       <div className="luemi-real-home-main">
         {!realFeedPilot.enabled&&remoteDraftPilot.enabled?<PrivateAccountView draft={draft} photos={readyPhotos} serverPhotoCount={serverPhotoCount}/>:publishStatus?.state!=="published"&&realHomeTab==="profile"?<section className="luemi-real-account" aria-label="Статус регистрации">
-          <h1>Анкета сохранена 💜</h1>
+          <h1>Анкета сохранена</h1>
           <p role="status">{instantPublicationUi?"Твоя анкета ещё не опубликована. Проверь сохранение всех фотографий на сервере.":"Твой Telegram-аккаунт зарегистрирован. Пока фотографии проходят модерацию, твоя анкета скрыта от других."}</p>
           <p>Опубликованные анкеты других людей можно смотреть во вкладке «Знакомства».</p>
           <p>{instantPublicationUi?"Загружено фото: ":"Принято фото: "}{publishStatus?.approved??0}{!instantPublicationUi&&<> · на проверке: {publishStatus?.pending??0}</>} · требуют внимания: {publishStatus?.other??0}</p>

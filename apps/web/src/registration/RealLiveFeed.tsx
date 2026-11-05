@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from "react";
+import {Heart,X} from "lucide-react";
 import {getPublishedFeed,blockPublishedUser,reportPublishedUser,likePublishedUser,realMatchPilot} from "./real-live-client";
 import type {RealPublishedProfile,PublishedReportReason} from "./real-live-client";
 import {Flag} from "../ui/Flag";
@@ -68,7 +69,7 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
    if(receipt.matched){
     setStatus("Взаимная симпатия! Теперь можно переписываться.");
     onMatched?.();
-   }else setStatus("Симпатия отправлена 💜");
+   }else setStatus("Симпатия отправлена");
   }catch{setStatus("Не удалось отправить симпатию. Попробуйте снова.");}
   finally{setBusy(null);}
  };
@@ -130,7 +131,7 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
        <p>{p.about}</p>
        <div className="luemi-real-feed-chips">{p.interests.slice(0,4).map(x=><span key={x}>{x}</span>)}</div>
        <div className="luemi-real-feed-actions">
-        {realMatchPilot.enabled&&<button type="button" disabled={busy!==null} onClick={()=>{void like(p);}}>💜 Нравится</button>}
+        {realMatchPilot.enabled&&<button type="button" disabled={busy!==null} onClick={()=>{void like(p);}}><Heart size={17}/> Нравится</button>}
         <button type="button" disabled={busy!==null} onClick={()=>{void block(p);}}>Заблокировать</button>
         <button type="button" disabled={busy!==null} onClick={()=>openReport(p)}>Пожаловаться</button>
        </div>
@@ -145,7 +146,7 @@ export function RealLiveFeed({onClose,onMatched}:{onClose?:()=>void;onMatched?:(
      <div className="luemi-report-sheet-head">
       <h2>Пожаловаться</h2>
       <button type="button" aria-label="Закрыть жалобу" disabled={busy!==null}
-       onClick={()=>setReportTarget(null)}>✕</button>
+       onClick={()=>setReportTarget(null)}><X size={18}/></button>
      </div>
      <p>Анкета: <strong>{reportTarget.name}</strong>. Выбери причину — мы проверим жалобу после публикации.</p>
      <label htmlFor="luemi-report-reason">Причина жалобы</label>
