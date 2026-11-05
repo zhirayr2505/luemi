@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>luemi · welcome</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+html,body{padding:0;margin:0;background:transparent}
+.panel{position:relative;isolation:isolate;overflow:hidden;min-height:374px;padding:24px 23px 20px;border-radius:27px;
+ color:#fff;background:radial-gradient(ellipse at 86% 0%,#614376 0%,transparent 53%),linear-gradient(155deg,#241b31 0%,#16111f 72%);
+ border:1px solid #534360;box-shadow:inset 0 1px 0 #ffffff29}
+.panel:before{content:"";position:absolute;z-index:-1;right:-98px;top:40px;width:265px;height:265px;border:1px solid #bb98d63b;border-radius:50%;box-shadow:0 0 0 31px #bb98d609,0 0 0 64px #bb98d607}
+.brand{display:inline-flex;align-items:center;gap:10px}
+.brand-mark{display:inline-flex;width:31px;height:31px;border-radius:11px;background:linear-gradient(135deg,#ca9cf1,#efbad9);align-items:center;justify-content:center;color:#2d1e3c;font-size:19px;font-weight:850}
+.wordmark{font-size:29px;font-weight:820;letter-spacing:-1.5px;line-height:1;color:#fff}
+.pill{display:inline-block;margin-top:48px;padding:7px 12px;border-radius:999px;background:#d8b8ef1a;color:#e6c8f7;border:1px solid #d8b8ef3a;font-size:11px;font-weight:700;letter-spacing:.035em}
+h1{margin:14px 0 10px;max-width:270px;font-size:31px;line-height:1.08;letter-spacing:-.065em;font-weight:780}
+h1 span{color:#dab5ee}
+p{max-width:272px;margin:0;font-size:13px;line-height:1.6;color:#d2c4dc}
+button{display:flex;width:100%;justify-content:center;align-items:center;gap:10px;border:0;
+ margin-top:28px;padding:16px 14px;border-radius:17px;
+ background:linear-gradient(105deg,#d2a8ff,#efb2ee 58%,#f8bedc);
+ color:#281a36;font:750 15px/1.2 system-ui,-apple-system,sans-serif;cursor:pointer}
+button:active{transform:scale(.985)}
+.arrow{font-size:21px;line-height:.7}
+.footer{text-align:center;margin-top:12px;color:#a899b4;font-size:11px}
+@media(prefers-reduced-motion:no-preference){.panel{animation:appear .4s ease-out both}@keyframes appear{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:none}}}
+</style>
+</head>
+<body>
+<main class="panel">
+  <div class="brand"><div class="brand-mark" aria-hidden="true">♡</div><div class="wordmark">luemi</div></div>
+  <div class="pill">ТВОЯ ИСТОРИЯ НАЧИНАЕТСЯ ЗДЕСЬ</div>
+  <h1>Люди ближе,<br><span>чем кажется.</span></h1>
+  <p>Знакомься, общайся и находи тех, с кем хочется быть собой.</p>
+  <button id="open" type="button"><span id="cta">Начать знакомство</span><span class="arrow" aria-hidden="true">→</span></button>
+  <div class="footer">Знакомства внутри Telegram · 18+</div>
+</main>
+<script>
+(function(){
+  var w=window.TelegramWidget;
+  var state="unknown";
+  try{var data=w&&w.chatData?JSON.parse(w.chatData):null;if(data&&["new","registered"].includes(data.state))state=data.state}catch(e){}
+  document.getElementById("cta").textContent=state==="new"?"Зарегистрироваться":state==="registered"?"Продолжить знакомство":"Начать знакомство";
+  document.getElementById("open").addEventListener("click",function(){
+    var url="https://t.me/LuemiAppBot?startapp=welcome";
+    if(w&&typeof w.openTelegramLink==="function")w.openTelegramLink(url);
+    else window.location.href=url;
+  });
+  if(w&&typeof w.ready==="function")w.ready();
+})();
+</script>
+</body>
+</html>
