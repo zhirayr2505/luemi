@@ -18,12 +18,12 @@ async function roleSafe(db: PoolClient, role: "luemi_auth_issuer" | "luemi_profi
       "AND NOT pg_has_role(current_user,'pg_read_all_data','member') " +
       "AND NOT pg_has_role(current_user,'pg_write_all_data','member') " +
       "AND NOT has_schema_privilege(current_user,'luemi_private','CREATE') " +
-      "AND row_security_active('luemi_private.actors'::regclass) " +
-      "AND row_security_active('luemi_private.public_profiles'::regclass) " +
       "AND CASE WHEN $1='luemi_auth_issuer' " +
-      "THEN NOT pg_has_role(current_user,'luemi_profile_publisher','member') " +
+      "THEN row_security_active('luemi_private.actors'::regclass) " +
+      "AND NOT pg_has_role(current_user,'luemi_profile_publisher','member') " +
       "AND has_table_privilege(current_user,'luemi_private.actors','SELECT') " +
-      "ELSE NOT pg_has_role(current_user,'luemi_auth_issuer','member') " +
+      "ELSE row_security_active('luemi_private.public_profiles'::regclass) " +
+      "AND NOT pg_has_role(current_user,'luemi_auth_issuer','member') " +
       "AND has_column_privilege(current_user,'luemi_private.public_profiles','publication_status','SELECT') END" +
       ") AS safe FROM pg_roles r WHERE r.rolname=current_user", [role]
     );
