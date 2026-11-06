@@ -50,21 +50,21 @@ export function publishedToMaster(status:OwnerPublicationStatus["profile"],local
  if(!status)return null;
  const localReady=localPhotos.length===status.photos.length&&localPhotos.every(photo=>photo.src);
  return {id:null,source:"server",name:status.name,age:status.age,city:status.city,
-  country:"",countryCode:status.countryCode,goal:status.goal,about:status.about,
+  country:"",countryCode:status.countryCode,goal:status.goal,goals:status.goals,about:status.about,
   interests:status.interests,languages:[],premium:false,verified:false,
   registeredAt:null,updatedAt:null,
   photos:status.photos.map((src,i)=>({id:photoId(src,i),src:localReady?localPhotos[i].src:src,status:"published" as const}))};
 }
 const visitorToMaster=(p:RealPublishedProfile):ProfileMasterData=>({
  id:p.id,source:"server",name:p.name,age:p.age,city:p.city,country:"",
- countryCode:p.countryCode,goal:p.goal,about:p.about,
+ countryCode:p.countryCode,goal:p.goal,goals:p.goals,about:p.about,
  interests:[...p.interests],languages:[...p.languages],verified:false,premium:false,
  registeredAt:null,updatedAt:null,
  photos:p.photos.map(photo=>({id:photo.id,src:photo.url,status:"published" as const}))
 });
 const toCard=(p:RealPublishedProfile):DemoPerson=>({
  id:p.id,name:p.name,age:p.age,city:p.city,country:"",countryCode:p.countryCode,
- gender:p.gender,goal:p.goal as DemoPerson["goal"],about:p.about,
+ gender:p.gender,goal:p.goal as DemoPerson["goal"],goals:p.goals,about:p.about,
  interests:[...p.interests],languages:[...p.languages],
  photos:p.photos.map(photo=>({id:photo.id,src:photo.url})),likedYouKind:p.likedYouKind
 });

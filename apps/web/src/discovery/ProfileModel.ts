@@ -13,7 +13,7 @@ export interface ActiveBlik {id:string;src:string;kind:"image"|"video";expiresAt
 export interface ProfileMasterData {
  id:string|null; source:"fixture"|"local-draft"|"server";
  name:string;age:number|null;city:string;country:string;countryCode:string;
- goal:string|null;about:string;interests:string[];languages:string[];
+ goal:string|null;goals?:string[];about:string;interests:string[];languages:string[];
  photos:ProfilePhoto[];verified:boolean;premium:boolean;activeBlik?:ActiveBlik|null;
  registeredAt:string|null;updatedAt:string|null;
 }
@@ -42,7 +42,7 @@ export function projectProfile(profile:ProfileMasterData,mode:ProfileMode):Profi
   city:present(profile.city),
   country:present(profile.country),
   countryCode:normalizeCountryCode(profile.countryCode)??"",
-  goal:profile.goal,
+  goal:profile.goal,goals:profile.goals?[...profile.goals]:profile.goal?[profile.goal]:[],
   about:present(profile.about),
   interests:[...profile.interests],
   languages:[...profile.languages],
@@ -93,7 +93,7 @@ export function readyRegistrationPhotos(photos:ReadonlyArray<{
 export function fromLocalDraft(draft:RegistrationDraft,photos:ReadonlyArray<{id:string;src:string}>):ProfileMasterData {
  return {id:null,source:"local-draft",name:draft.name,age:draftAge(draft),
   city:draft.city,country:draft.country,countryCode:normalizeCountryCode(draft.countryCode)??"",
-  goal:draft.goal||null,about:draft.about,interests:[...draft.interests],languages:[...draft.languages],
+  goal:draft.goal||null,goals:[...draft.goals],about:draft.about,interests:[...draft.interests],languages:[...draft.languages],
   photos:photos.map(p=>({id:p.id,src:p.src,status:"draft"})),
   premium:false,verified:false,registeredAt:null,updatedAt:null};
 }

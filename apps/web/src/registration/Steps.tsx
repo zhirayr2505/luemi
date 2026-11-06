@@ -10,7 +10,7 @@ import {categories,InterestChip,tint} from "../ui/InterestCatalog";
 import {GeoPicker} from "./GeoPicker";
 import {PhotoSorter,type PhotoItem} from "./PhotoSorter";
 import {RegistrationPreview} from "./Preview";
-import {cleanName,type RegistrationDraft} from "./model";
+import {cleanName,chosenGoals,toggleDatingGoal,MAX_DATING_GOALS,type RegistrationDraft} from "./model";
 import {FOCUS_RELEASE_DELAY_MS,useFieldFocusDock} from "./use-field-focus";
 
 export type {PhotoItem} from "./PhotoSorter";
@@ -165,13 +165,22 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      <GlassChoice chosen={data.audience==="everyone"} onClick={()=>patch({audience:"everyone"})} icon={<GenderIcon type="everyone"/>}>Всех</GlassChoice>
    </ChoiceRow>
    <DoubleAgeRange min={data.ageMin} max={data.ageMax} onChange={(ageMin,ageMax)=>patch({ageMin,ageMax})}/>
-   <div className="goals-section"><ChoiceRow label="Цель знакомства">
-     {goals.map(goal=>{
-       const Icon=goalIcons[goal.id];
-       return <GlassChoice key={goal.id} chosen={data.goal===goal.id} icon={<Icon size={22}/>}
-         onClick={()=>patch({goal:goal.id})}><span className="goal-card-label">{goal.label}</span></GlassChoice>;
-     })}
-   </ChoiceRow></div>
+   <div className="goals-section" role="group" aria-label="Цели знакомства: до трёх">
+     <div className="goal-multi-header"><span className="field-label">Цель знакомства</span>
+       <span className="goal-multi-count" aria-live="polite">{chosenGoals(data).length} из {MAX_DATING_GOALS}</span></div>
+     <p className="goal-multi-help">Можно выбрать две или три цели. Первая — основная.</p>
+     <div className="choice-grid">{goals.map(goal=>{
+       const Icon=goalIcons[goal.id],selected=chosenGoals(data).includes(goal.id);
+       const limit=chosenGoals(data).length>=MAX_DATING_GOALS&&!selected&&goal.id!=="undecided";
+       return <GlassChoice key={goal.id} chosen={selected} disabled={limit} icon={<Icon size={22}/>}
+         onClick={()=>{
+           const next=toggleDatingGoal(data,goal.id);
+           patch({goal:next[0]??"",goals:next});
+         }}><span className="goal-card-label">{goal.label}</span>
+         {selected&&<span className="goal-selection-order" aria-label={"Порядок "+(chosenGoals(data).indexOf(goal.id)+1)}>{chosenGoals(data).indexOf(goal.id)+1}</span>}
+         {limit&&<span className="goal-limit-indicator" aria-label="Сними другой выбор">3/3</span>}
+       </GlassChoice>;
+     })}</div></div>
  </div>;
  if(step===5)return <div className="form-stack interests-step">
    <div className="category-row" role="group" aria-label="Категории интересов">

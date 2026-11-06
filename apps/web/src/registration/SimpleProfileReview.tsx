@@ -1,4 +1,4 @@
-import {goals,type RegistrationDraft} from "./model";
+import {goals,chosenGoals,type RegistrationDraft} from "./model";
 import type {PhotoItem} from "./PhotoSorter";
 import {Image as ImageIcon,MapPin,Sparkles} from "lucide-react";
 import {goalIcons} from "../ui/Goals";
@@ -10,8 +10,7 @@ export function SimpleProfileReview({draft,photos}:{draft:RegistrationDraft;phot
  const today=new Date(),year=Number(draft.year),month=Number(draft.month),day=Number(draft.day);
  const age=year&&month&&day?today.getFullYear()-year-
   (today.getMonth()+1<month||today.getMonth()+1===month&&today.getDate()<day?1:0):null;
- const goalLabel=goals.find(g=>g.id===draft.goal)?.label??"";
- const GoalIcon=draft.goal?goalIcons[draft.goal]:null;
+ const selectedGoals=chosenGoals(draft);
  return <section className="luemi-simple-review" aria-label="Предпросмотр анкеты">
   <header className="luemi-simple-review-head">
    <span className="luemi-simple-review-kicker"><Sparkles size={14}/> Так тебя увидят в LUEMI</span>
@@ -22,7 +21,10 @@ export function SimpleProfileReview({draft,photos}:{draft:RegistrationDraft;phot
    <h2>{draft.name}{age!==null?", "+age:""}</h2>
    <div className="luemi-simple-review-meta">
     {draft.city&&<span><MapPin size={13}/>{draft.city}{draft.country&&<><Flag code={draft.countryCode} title={draft.country}/><em>{draft.country}</em></>}</span>}
-    {goalLabel&&<span className="goal-badge">{GoalIcon&&<GoalIcon size={13}/>}<em>{goalLabel}</em></span>}
+    {selectedGoals.map(id=>{
+      const item=goals.find(g=>g.id===id),Icon=goalIcons[id];
+      return item?<span className="goal-badge" key={id}><Icon size={13}/><em>{item.label}</em></span>:null;
+    })}
    </div>
    {draft.about&&<p className="luemi-simple-review-about">{draft.about}</p>}
    {!!draft.interests.length&&<div className="luemi-simple-review-interests">
