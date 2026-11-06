@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { birthDateValid, cleanName, nameValid, newDraft, validateStep } from "../../web/src/registration/model.js";
+import { birthDateValid, cleanName, nameValid, newDraft, validateStep, chosenGoals, toggleDatingGoal } from "../../web/src/registration/model.js";
 
 test("accepts real adult dates and rejects underage, future and invalid calendar dates",()=>{
   const now=new Date("2026-10-19T12:00:00Z");
@@ -49,4 +49,22 @@ test("city requires selected verified identity",()=>{
   assert.equal(validateStep(d,6,0),null);
   d.about+="А";
   assert.notEqual(validateStep(d,6,0),null);
+});
+
+test("dating goals select 1–3 values, keep primary in order and let undecided stand alone",()=>{
+ const draft=newDraft();
+ draft.audience="everyone";
+ let selected=toggleDatingGoal(draft,"friendship");
+ draft.goals=selected;draft.goal=selected[0];
+ assert.deepEqual(chosenGoals(draft),["friendship"]);
+ selected=toggleDatingGoal(draft,"dates");draft.goals=selected;draft.goal=selected[0];
+ selected=toggleDatingGoal(draft,"communication");draft.goals=selected;draft.goal=selected[0];
+ assert.deepEqual(chosenGoals(draft),["friendship","dates","communication"]);
+ assert.deepEqual(toggleDatingGoal(draft,"flirt"),selected,"maximum 3 selections");
+ assert.equal(validateStep(draft,4,0),null);
+ selected=toggleDatingGoal(draft,"friendship");draft.goals=selected;draft.goal=selected[0];
+ assert.deepEqual(selected,["dates","communication"],"removing first promotes next");
+ assert.equal(validateStep(draft,4,0),null);
+ selected=toggleDatingGoal(draft,"undecided");
+ assert.deepEqual(selected,["undecided"],"undecided cannot coexist with a specific intent");
 });

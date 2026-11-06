@@ -172,11 +172,12 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      <div className="choice-grid">{goals.map(goal=>{
        const Icon=goalIcons[goal.id],selected=chosenGoals(data).includes(goal.id);
        const limit=chosenGoals(data).length>=MAX_DATING_GOALS&&!selected&&goal.id!=="undecided";
-       return <GlassChoice key={goal.id} chosen={selected} icon={<Icon size={22}/>}
+       return <GlassChoice key={goal.id} chosen={selected} disabled={limit} icon={<Icon size={22}/>}
          onClick={()=>{
            const next=toggleDatingGoal(data,goal.id);
            patch({goal:next[0]??"",goals:next});
          }}><span className="goal-card-label">{goal.label}</span>
+         {selected&&<span className="goal-selection-order" aria-label={"Порядок "+(chosenGoals(data).indexOf(goal.id)+1)}>{chosenGoals(data).indexOf(goal.id)+1}</span>}
          {limit&&<span className="goal-limit-indicator" aria-label="Сними другой выбор">3/3</span>}
        </GlassChoice>;
      })}</div></div>
