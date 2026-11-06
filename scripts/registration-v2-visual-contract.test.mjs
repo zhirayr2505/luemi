@@ -289,3 +289,22 @@ assert.match(focusDock,/translate3d\(0,-5px,0\) scale\(1\.012\)/,
  "The gentle 5px lift-and-settle is identical in all focused fields");
 assert.match(focusDock,/translate3d\(0,-2px,0\) scale\(1\.006\)/,
  "The field returns smoothly without any abrupt settle");
+
+
+// Android Telegram native kinetic scrolling: preserve the rubbery sticky title
+// and remove costly live backdrop filters under moving intent/preferences cards.
+assert.match(runtime,/\.v2-body\{[^}]*overflow-x:hidden;overflow-y:auto;[^}]*overscroll-behavior-y:contain;[^}]*scroll-behavior:auto;[^}]*-webkit-overflow-scrolling:touch;touch-action:pan-y/s,
+ "Registration should use the browser's kinetic touch scroller, never a JavaScript scrolling substitute");
+assert.match(runtime,/\.v2-stage-heading\{position:sticky;top:-20px;/,
+ "Approved rubbery/sticky header must stay unchanged when scrolling improves");
+assert.match(runtime,/\.glass-choice,\.v2-runtime \.v2-choice,\.v2-runtime \.category-chip,[\s\S]*?\.language-option\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/s,
+ "The moving grid and choices must not cause dynamic backdrop repaint each frame");
+assert.match(runtime,/\.glass-panel,\.v2-runtime \.age-range,\.v2-runtime \.radius-control,[\s\S]*?\.v2-note\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/s,
+ "Range and registration cards must use static glass gradients while scrolling");
+assert.match(runtime,/\.v2-footer::before\{[^}]*background:linear-gradient\([^}]*\}/s,
+ "Stationary footer has a static feathered tint instead of a live blur of the scrolling content");
+const footerCss=runtime.match(/\.v2-footer::before\{([^}]+)\}/)?.[1]??"";
+assert.doesNotMatch(footerCss,/backdrop-filter|mask-image/,
+ "Footer mask and backdrop repaint path must be deleted, not overridden");
+assert.doesNotMatch(form,/onTouchMove=|onTouchEnd=|onWheel=|scrollTop\s*\+\=|scrollBy\(/,
+ "Registration must preserve native fling inertia, not compete with a custom RAF scroller");
