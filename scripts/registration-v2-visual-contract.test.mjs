@@ -263,7 +263,7 @@ assert.match(runtime,/@media\(prefers-reduced-motion:reduce\)[\s\S]*?\.v2-focus-
 // Preserve a layered translucent background, never a dark blank state.
 assert.doesNotMatch(runtime,/blur\(84px\)|rgba\(11,8,20,\.97\)|\.v2-focus-scrim::(?:before|after)\{/,
  "The blackout and all masked partial glass areas are removed");
-assert.match(runtime,/\.focus-field-shell\.is-focused\{position:fixed;z-index:92;/,
+assert.match(runtime,/\.focus-field-shell\.is-focused\{\s*position:fixed;z-index:92;/,
  "Active field and its title stay sharp above every frosted-glass region");
 
 
