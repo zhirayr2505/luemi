@@ -60,24 +60,6 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .v2-eyebrow{display:none}
 .v2-runtime .v2-stage-heading{position:sticky;top:-20px;z-index:6;margin:-20px -24px 0;
  padding:20px 24px 23px;background:linear-gradient(180deg,var(--luemi-bg-deep,#1c1424) 0%,var(--luemi-bg-deep,#1c1424) 72%,rgba(28,20,36,.96) 88%,rgba(28,20,36,0) 100%)}
-/* A compact refractive glass lens over the title when the editor opens.
-   It is isolated to the heading rather than adding a second screenwide blur. */
-.v2-runtime .v2-stage-heading::after{
- content:"";position:absolute;z-index:2;inset:3px 12px 9px;
- pointer-events:none;opacity:0;border-radius:24px;
- background:
-  radial-gradient(ellipse 78% 95% at 25% 8%,rgba(238,204,251,.17),transparent 75%),
-  linear-gradient(125deg,rgba(161,115,182,.19),rgba(55,36,71,.20) 60%,rgba(35,25,55,.28));
- border:1px solid rgba(241,219,251,.21);
- box-shadow:inset 0 1px rgba(255,255,255,.18),0 12px 28px rgba(14,7,25,.10);
- -webkit-backdrop-filter:blur(16px) saturate(125%);
- backdrop-filter:blur(16px) saturate(125%);
- transform:translate3d(0,-4px,0) scale(.985);
- transition:opacity .46s cubic-bezier(.18,.8,.22,1),transform .46s cubic-bezier(.18,.8,.22,1);
-}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-heading::after{
- opacity:.78;transform:translate3d(0,0,0) scale(1);
-}
 .v2-runtime .v2-body h1{font-size:clamp(28px,7.3vw,36px);line-height:1.09;
  font-weight:740;letter-spacing:-.048em;margin:0 0 8px;color:#fff;text-wrap:balance}
 .v2-runtime .v2-subtitle{max-width:355px;min-height:38px;font-size:13px;line-height:1.48;
@@ -165,24 +147,24 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .name-focus-shell .glass-control,.v2-runtime .dob-focus-shell .glass-control{min-height:60px;font-size:18px}
 .v2-runtime .dob-focus-shell .glass-control{text-align:center;letter-spacing:.05em;font-variant-numeric:tabular-nums}
 .v2-runtime .field-focus-overlay{display:none}
-/* Optical focus: static blur radius, animated transparency and radial depth.
-   One composited scrim avoids extra backdrop-filter layers in Android WebView. */
+/* Focus isolation: one deep, fixed-radius glass blur and almost opaque
+   plum veil. Only opacity animates, never the heavy blur radius on Android. */
 .v2-runtime .v2-focus-scrim{position:fixed;inset:0;z-index:90;pointer-events:none;
  visibility:hidden;opacity:0;
- background:radial-gradient(ellipse 94% 73% at 50% 41%,rgba(110,81,135,.12) 0%,rgba(22,14,35,.37) 54%,rgba(7,5,17,.58) 100%);
- backdrop-filter:blur(56px) saturate(.70) brightness(.83);
- -webkit-backdrop-filter:blur(56px) saturate(.70) brightness(.83);
- transition:opacity .52s cubic-bezier(.16,.76,.24,1),visibility 0s linear .52s}
-.v2-runtime .v2-focus-scrim::after{content:"";position:absolute;inset:-8%;pointer-events:none;
- background:radial-gradient(ellipse 68% 55% at 50% 44%,rgba(203,167,225,.09) 0%,transparent 54%,rgba(9,5,19,.30) 100%);
- opacity:0;transform:scale(1.055);transform-origin:50% 44%;
- transition:opacity .55s cubic-bezier(.16,.76,.24,1),transform .62s cubic-bezier(.16,.82,.22,1)}
+ background:radial-gradient(ellipse 100% 82% at 50% 43%,
+  rgba(25,17,36,.86) 0%,rgba(17,11,27,.92) 62%,rgba(11,8,20,.97) 100%);
+ -webkit-backdrop-filter:blur(84px) saturate(.62) brightness(.48);
+ backdrop-filter:blur(84px) saturate(.62) brightness(.48);
+ transition:opacity .42s cubic-bezier(.16,.76,.24,1),visibility 0s linear .42s}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-focus-scrim{
  visibility:visible;opacity:1;pointer-events:auto;
- transition:opacity .52s cubic-bezier(.16,.76,.24,1),visibility 0s}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-focus-scrim::after{opacity:1;transform:scale(1)}
-.v2-runtime .v2-header{transition:filter .5s cubic-bezier(.18,.78,.2,1),opacity .5s ease}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-header{filter:blur(15px);opacity:.58;pointer-events:none}
+ transition:opacity .42s cubic-bezier(.16,.76,.24,1),visibility 0s}
+.v2-runtime .v2-header,.v2-runtime .v2-stage-heading{
+ transition:opacity .34s cubic-bezier(.18,.78,.22,1)}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-header{
+ filter:blur(32px);opacity:0;pointer-events:none}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-heading{
+ filter:blur(32px);opacity:0;pointer-events:none}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:2}
 
 /* One true Liquid Glass surface for registration guidance and validation.
@@ -398,9 +380,7 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
  .v2-runtime .name-input-hint,
  .v2-runtime .field-inline-hint:not(.name-input-hint),
  .v2-runtime .field-warning,.v2-runtime .v2-feedback{animation:none;transition:none}
- .v2-runtime .v2-focus-scrim::after{transition:none;transform:none}
  .v2-runtime .v2-header{transition:none}
- .v2-runtime .v2-stage-heading::after{transition:none;transform:none}
  .v2-runtime .v2-next.v2-next-confirm,.v2-runtime,
  .v2-runtime .v2-body.v2-fallback-forward,.v2-runtime .v2-body.v2-fallback-back{animation:none}
  .v2-runtime .optional-profile-screen,.v2-runtime .optional-profile-screen.is-leaving{animation:none}
