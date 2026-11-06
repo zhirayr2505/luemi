@@ -361,8 +361,7 @@ assert.match(form,/photoChecking\|\|changingStep\?<LoaderCircle/,
 assert.match(form,/if\(animateStep&&leaving\?\.animate\)/,
  "Real motion is only applied to an existing outgoing scroll body");
 assert.match(form,/setIndex\(next\)/,
- "The next required step commits atomically");setIndex\(next\)/,
- "Closing optional-profile dialogs and moving to the next step is atomic");
+ "The next required step commits atomically");
 assert.match(form,/if\(entering\)entering\.scrollTop=0/,
  "Every new step starts at the top instead of inheriting language scroll");
 assert.match(form,/className="v2-body" aria-labelledby="v2-title"/,
