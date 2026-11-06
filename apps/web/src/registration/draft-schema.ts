@@ -66,6 +66,14 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
  const height=raw.height===undefined?defaults.height:raw.height;
  if(height!==null&&!integer(height,100,250))return fail("height");
  d.height=height;
+ const weight=raw.weight===undefined?defaults.weight:raw.weight;
+ if(weight!==null&&!integer(weight,35,300))return fail("weight");
+ d.weight=weight;
+ for(const key of ["smoking","alcohol"] as const){
+  const value=raw[key]===undefined?defaults[key]:raw[key];
+  if(!text(value,40))return fail("field-"+key);
+  d[key]=value;
+ }
  for(const key of ["occupation","education"] as const){
   const value=raw[key]===undefined?defaults[key]:raw[key];
   if(!text(value,120))return fail("field-"+key);

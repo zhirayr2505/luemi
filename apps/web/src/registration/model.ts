@@ -29,7 +29,8 @@ export interface RegistrationDraft {
   audience: Audience; ageMin: number; ageMax: number; goal: Goal;
   interests: string[]; about: string; languages: string[];
   // Optional profile details. They never block publication and can be added later.
-  height: number | null; occupation: string; education: string;
+  height: number | null; weight: number | null; occupation: string; education: string;
+  smoking: string; alcohol: string;
   lifestyle: string[]; pets: string[]; facts: string[];
   family: string[];
 }
@@ -37,7 +38,7 @@ export const newDraft=(name=""):RegistrationDraft=>({
   name,trialConsent:false,day:"",month:"",year:"",gender:"",
   country:"",city:"",placeId:"",countryCode:"",radius:100,searchScope:"radius",
   audience:"",ageMin:18,ageMax:35,goal:"",
-  interests:[],about:"",languages:[],height:null,occupation:"",education:"",
+  interests:[],about:"",languages:[],height:null,weight:null,occupation:"",education:"",smoking:"",alcohol:"",
   lifestyle:[],pets:[],facts:[],family:[]
 });
 export const cleanName=(name:string):string=>
@@ -76,8 +77,7 @@ export function validateStep(d:RegistrationDraft,step:number,count:number,today=
       if(!d.audience||!goals.some(g=>g.id===d.goal))return "Выбери предпочтения и цель знакомства.";
       return d.ageMin>=18&&d.ageMax<=80&&d.ageMin<=d.ageMax?null:"Проверь диапазон возраста.";
     case 5:return d.interests.length<=15?null:"Максимум 15 интересов.";
-    case 6:if(d.about.trim().length<2)return "Расскажи о себе хотя бы в двух словах.";
-      return [...d.about].length<=750?null:"Максимум 750 символов.";
+    case 6:return [...d.about].length<=750?null:"Максимум 750 символов.";
     case 7:return count<=6?null:"В регистрации доступно до шести фотографий.";
     default:return null;
   }
