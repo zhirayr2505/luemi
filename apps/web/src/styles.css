@@ -350,10 +350,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .scope-options{position:absolute;top:100%;left:0;right:0;z-index:9;}
 .preferences-step .goals-section .choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .preferences-step .goals-section .glass-choice{font-size:12px;padding:9px 8px;min-height:44px;}
-.name-input-hint{display:flex;align-items:center;gap:8px;border:1px solid rgba(186,151,226,.46);border-radius:15px;
- background:var(--panel);padding:12px 14px;font-size:12px;color:var(--ink);box-shadow:0 8px 20px var(--shadow);
- animation:block-enter .2s both;}
-.name-input-hint svg{color:var(--lavender);flex:none;}
 .photo-processing{position:absolute;bottom:3px;left:5px;right:5px;display:flex;flex-direction:column;gap:4px;
  border-radius:12px;background:rgba(49,30,65,.76);color:#fff;padding:8px 7px 6px;pointer-events:none;z-index:3;}
 .photo-processing small{font-size:10px;text-align:center;font-weight:700;}

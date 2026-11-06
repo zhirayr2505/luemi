@@ -186,3 +186,23 @@ const headerEndAt=form.indexOf('</header>',progressAt);
 const headingAt=form.indexOf('className="v2-stage-heading"',headerEndAt);
 assert.ok(logoAt>0&&progressAt>logoAt&&headerEndAt>progressAt&&headingAt>headerEndAt,
  "Every step shares the white logo, gradient progress, then the step title");
+
+
+// LUEMI Liquid Glass validation bubbles: no more flat, opaque red rectangles.
+const baseStyles=readFileSync("apps/web/src/styles.css","utf8");
+assert.match(runtime,/\.field-inline-hint,\.v2-runtime \.field-warning,\.v2-runtime \.v2-feedback\{/,
+ "All real registration hints and errors share one Liquid Glass treatment");
+assert.match(runtime,/border-radius:21px 23px 21px 24px;/,
+ "Hints use a rounded, softly asymmetric glass capsule");
+assert.match(runtime,/background:[\s\S]*?radial-gradient\([\s\S]*?\) padding-box,[\s\S]*?linear-gradient\([\s\S]*?\) border-box;/,
+ "Hints use tinted glass with a separate reflective edge");
+assert.match(runtime,/-webkit-backdrop-filter:blur\(18px\) saturate\(145%\);[\s\S]*?backdrop-filter:blur\(18px\) saturate\(145%\)/,
+ "Small hint surfaces apply actual background refraction in Android WebView");
+assert.match(runtime,/\.field-inline-hint::before,[\s\S]*?\.v2-feedback::before\{/,
+ "The glass capsule has a subtle specular reflection");
+assert.match(runtime,/prefers-reduced-transparency:reduce/,
+ "Reduced-transparency preferences keep hint text readable");
+assert.doesNotMatch(baseStyles,/\.name-input-hint\s*\{/,
+ "Retired global hint appearance cannot override the registration Liquid Glass");
+assert.doesNotMatch(runtime,/background:#412b41|background:#38253a/,
+ "No original solid red registration hint blocks remain");
