@@ -289,7 +289,8 @@ export function RealRegistrationV2(p:Props){
  return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme={p.theme}
    data-fallback-entry={p.fallbackEntry?"true":undefined}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
-   <div ref={device} className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
+   <div ref={device} className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}
+      data-step-moving={changingStep?"true":undefined}>
      <div className="v2-backdrop" aria-hidden="true"/>
      <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
        if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
