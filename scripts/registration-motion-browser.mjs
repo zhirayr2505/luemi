@@ -46,7 +46,10 @@ try{
  await page.getByRole("button",{name:"Подтвердить поле"}).click();
  await next("birthday");
  await page.getByPlaceholder("ДД.ММ.ГГГГ").fill("12.05.1998");
- await page.getByRole("button",{name:"Подтвердить поле"}).click();
+ // A valid eight-digit birthday automatically dismisses the active editor,
+ // but deliberately does not navigate to the next stage.
+ await page.locator(".dob-focus-shell.is-focused").waitFor({state:"hidden",timeout:2500});
+ assert.equal(await page.locator(".v2-device").getAttribute("data-screen"),"birthday");
  await page.getByRole("button",{name:"Мужчина"}).click();
  await page.getByRole("checkbox").check();
  await next("location");

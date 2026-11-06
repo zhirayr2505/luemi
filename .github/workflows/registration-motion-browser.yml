@@ -6,13 +6,14 @@ on:
       - 'apps/web/src/registration/**'
       - 'apps/web/registration-motion-qa.html'
       - 'scripts/registration-motion-browser.mjs'
+      - 'scripts/registration-focus-browser.mjs'
       - '.github/workflows/registration-motion-browser.yml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   registration-motion-browser:
-    name: Eight stages, Android-like Chromium and no ghost optional CTA
+    name: Eight stages and responsive IME QA across six device sizes
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -46,6 +47,7 @@ jobs:
             sleep 1
           done
           node scripts/registration-motion-browser.mjs
+          node scripts/registration-focus-browser.mjs
       - name: Preserve synthetic eight-stage screenshots
         if: always()
         uses: actions/upload-artifact@v4
