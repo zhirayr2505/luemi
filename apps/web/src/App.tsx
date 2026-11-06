@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {flushSync} from "react-dom";
 
-import {ArrowRight,Pencil} from "lucide-react";
+import {ArrowRight,Pencil,Sparkles} from "lucide-react";
 import {SafetyAppealPanel} from "./SafetyAppealPanel";
 import {GlassArrow} from "./ui/Glass";
 import type { HealthResponse } from "@luemi/contracts";
@@ -29,6 +29,7 @@ import {PublicationJourney,type PublishJourneyPhase} from "./registration/Public
 
 import type {OwnerPublicationStatus} from "./registration/real-live-client";
 import {PrivateAccountView} from "./registration/PrivateAccountView";
+import {ProfileRevealEditor} from "./registration/ProfileRevealEditor";
 import "./registration/real-home.css";
 import "./registration/cinematic-welcome.css";
 
@@ -188,6 +189,8 @@ export function App() {
   const [deletionReason,setDeletionReason]=useState<DeletionReason>("prefer_not_to_say");
   const [deletionDetails,setDeletionDetails]=useState("");
   const [accountSettingsOpen,setAccountSettingsOpen]=useState(false);
+  const [revealDraft,setRevealDraft]=useState<RegistrationDraft|null>(null);
+  const [revealError,setRevealError]=useState("");
   const [exportBusy,setExportBusy]=useState(false);
   const [recoveryBusy,setRecoveryBusy]=useState(false);
   const [recoveryError,setRecoveryError]=useState("");
@@ -969,6 +972,52 @@ export function App() {
     }catch{setPublishFeedback("Не удалось опубликовать изменения. Проверь соединение и повтори.");}
     finally{setPublishBusy(false);}
   };
+  const openReveal=async()=>{
+    if(publishBusy)return;
+    setPublishBusy(true);setRevealError("");
+    try{
+      const remote=await readRemoteRevision();
+      if(remote.state!=="private")throw new Error("draft_missing");
+      const recovered=recoverServerFields(remote.fields);
+      if(!recovered)throw new Error("invalid_remote_profile");
+      setRevealDraft(recovered);
+    }catch{setRevealError("Не удалось загрузить детали. Проверь соединение и повтори.");}
+    finally{setPublishBusy(false);}
+  };
+  const saveReveal=async()=>{
+    if(!revealDraft||publishBusy)return;
+    const update=revealDraft;
+    if(update.height!==null&&(!Number.isInteger(update.height)||update.height<100||update.height>250)||
+       update.weight!==null&&(!Number.isInteger(update.weight)||update.weight<35||update.weight>300)||
+       update.languages.length>10||update.interests.length>15||
+       [...update.about].length>750){
+      setRevealError("Проверь рост, вес и длину текста.");return;
+    }
+    setPublishBusy(true);setRevealError("");
+    try{
+      const remote=await readRemoteRevision();
+      if(remote.state!=="private")throw new Error("draft_missing");
+      const facts=update.facts.map(f=>f.trim()).filter(Boolean).slice(0,3);
+      const fields={...remote.fields,
+        about:update.about.trim(),languages:update.languages,
+        interests:update.interests,height:update.height,weight:update.weight,
+        occupation:update.occupation.trim(),education:update.education.trim(),
+        smoking:update.smoking,alcohol:update.alcohol,lifestyle:update.lifestyle,
+        pets:update.pets,family:update.family,facts};
+      await saveRemoteFields(fields,remote.revision);
+      await publishMyProfile(remote.revision+1);
+      const current=await ownerPublicationStatus();
+      if(current.state!=="published")throw new Error("publication_unconfirmed");
+      setPublishStatus(current);
+      setDraft(prev=>({...prev,...update,facts}));
+      setRevealDraft(null);
+      setPublishFeedback("Дополнительные сведения сохранены.");
+    }catch(e){
+      setRevealError(e instanceof Error&&e.message==="revision_conflict"
+        ?"Анкета изменилась в другой сессии. Закрой редактор и открой снова."
+        :"Не удалось сохранить детали. Проверь соединение и повтори.");
+    }finally{setPublishBusy(false);}
+  };
   const hideProfile=async()=>{
     if(!realFeedPilot.enabled||publishBusy||
        !window.confirm("Снять анкету с публикации и скрыть фотографии от других пользователей?"))return;
@@ -1099,6 +1148,15 @@ export function App() {
       onEdit={()=>{setRealHome(false);setPhase("form");setStep(8);}}
       accountPanel={<section className="luemi-real-account" aria-label="Настройки аккаунта">
        <h1>Мой аккаунт</h1>
+       {publishStatus?.state==="published"&&<>
+         {!revealDraft&&<button type="button" className="luemi-reveal-entry" disabled={publishBusy} onClick={()=>{void openReveal();}}>
+          <span><Sparkles size={21}/><strong>Раскрой себя</strong><small>Языки, рост, образ жизни и многое другое</small></span>
+          <ArrowRight size={20} aria-hidden="true"/>
+         </button>}
+         {revealDraft&&<ProfileRevealEditor data={revealDraft} change={change=>setRevealDraft(prev=>prev?{...prev,...change}:prev)}
+           busy={publishBusy} error={revealError} onSave={()=>{void saveReveal();}} onCancel={()=>setRevealDraft(null)}/>}
+         {!revealDraft&&revealError&&<p role="alert">{revealError}</p>}
+       </>}
        {publishStatus?.state!=="published"&&<>
         <p role="status">Анкета ещё не опубликована. Проверь фотографии и заверши публикацию.</p>
         <p>Готовых фото: {publishStatus?.approved??0}</p>
