@@ -1,0 +1,57 @@
+name: LUEMI registration eight-stage browser motion QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/src/registration/**'
+      - 'apps/web/registration-motion-qa.html'
+      - 'scripts/registration-motion-browser.mjs'
+      - '.github/workflows/registration-motion-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  registration-motion-browser:
+    name: Eight stages, Android-like Chromium and no ghost optional CTA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm install --global npm@10.9.2 --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build -w @luemi/contracts && npm run typecheck -w @luemi/web
+      - name: Install pinned Chromium
+        run: |
+          if ! timeout --signal=TERM --kill-after=10s 120s npx --no-install playwright install chromium --with-deps; then
+            npx --no-install playwright install chromium
+          fi
+      - name: Walk all eight stages and screenshot each
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 > /tmp/registration-motion-qa.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/registration-motion-qa.html >/dev/null; then break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then cat /tmp/registration-motion-qa.log; exit 1; fi
+            sleep 1
+          done
+          node scripts/registration-motion-browser.mjs
+      - name: Preserve synthetic eight-stage screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: registration-motion-${{ github.run_id }}
+          path: |
+            qa-artifacts/registration-motion/**
+            /tmp/registration-motion-qa.log
+          if-no-files-found: ignore

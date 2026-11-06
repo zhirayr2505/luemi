@@ -63,10 +63,16 @@ assert.match(form,/stage\.id==="personality"&&<div className="v2-real-groups">[\
  "Optional about details live inside the scrollable interests and biography step");
 assert.doesNotMatch(form,/v2-footer-optional|v2-stage-transition/,
  "The footer must not cover optional details, and step content must not animate twice");
-assert.match(runtime,/html\[data-luemi-transition="true"\]::view-transition-old\(root\)/,
- "A step transition suppresses the browser's duplicate full-screen crossfade");
-assert.match(form,/nativeTransition\.call\(viewDocument,update\)/,
- "WebView document transitions retain their receiver and do not throw Illegal invocation");
+assert.doesNotMatch(form,/nativeTransition|ViewTransitionDocument|fallbackMotion|startViewTransition/,
+ "No native snapshot crossfade or fallback animation can compete with the shared stage motion");
+assert.doesNotMatch(runtime,/luemi-fallback-forward|luemi-fallback-back|::view-transition-old\(luemi-step\)|::view-transition-new\(luemi-step\)|data-luemi-transition/,
+ "Delete legacy step animations rather than hiding them behind new CSS");
+assert.match(form,/leaving\.animate\(\[/,
+ "All outgoing steps use one controlled animation, never document snapshots");
+assert.match(form,/await exit\.finished;[\s\S]*?flushSync\(\(\)=>\{[\s\S]*?setIndex\(next\)/,
+ "The next step is committed strictly after the previous one finishes exiting");
+assert.match(form,/entering\.animate\(\[/,
+ "Every next step enters through the same smooth composited animation");
 assert.match(runtime,/\.v2-runtime\[data-fallback-entry="true"\]\{animation:luemi-registration-enter/,
  "The registration entrance animates only when native route transitions are unavailable");
 assert.doesNotMatch(runtime,/^\.v2-runtime\s*\{[^}]*animation:luemi-registration-enter/ms,
@@ -331,3 +337,32 @@ assert.match(language,/className="language-results-status" role="status" aria-li
  "Live results announce matching language count");
 assert.match(focusDock,/flagsResize\?\.observe\(watchedFlags\)/,
  "Selecting languages keeps suggestions safely clear of the keyboard");
+
+
+// 2026-11-06 Android user video: the next step's optional "Добавить о себе"
+// control was seen at the bottom before the outgoing language step vanished.
+// One animation owner must lock both navigation and taps, with a stable footer.
+assert.match(form,/const \[changingStep,setChangingStep\]=useState\(false\)/,
+ "All eight steps use a single pending-navigation state");
+assert.match(form,/if\(next===index\|\|transitioning\.current\)return/,
+ "A repeated tap cannot queue a second transition");
+assert.match(form,/if\(transitioning\.current\|\|photoChecking\|\|changingStep\)return/,
+ "A double-tap cannot resubmit Continue while the previous step is moving");
+assert.match(form,/disabled=\{photoChecking\|\|changingStep\}/,
+ "Continue is disabled while any stage is leaving or entering");
+assert.match(form,/photoChecking\|\|changingStep\?<LoaderCircle/,
+ "Continue displays a spinner rather than a stale arrow while switching");
+assert.match(form,/if\(animateStep&&leaving\?\.animate\)/,
+ "Real motion is only applied to an existing outgoing scroll body");
+assert.match(form,/setDetailsOpen\(false\);setIndex\(next\)/,
+ "Closing optional-profile dialogs and moving to the next step is atomic");
+assert.match(form,/if\(entering\)entering\.scrollTop=0/,
+ "Every new step starts at the top instead of inheriting language scroll");
+assert.match(form,/className="v2-body" aria-labelledby="v2-title"/,
+ "Step content has no stale fallback classes with a second animation");
+assert.match(runtime,/data-step-moving="true"\] \.v2-body\{pointer-events:none\}/,
+ "Leaving/entering content cannot receive taps");
+assert.match(runtime,/\.v2-next-spinner\{[^}]*animation:luemi-step-spinner/s,
+ "The loading spinner occupies the old arrow slot without shifting the footer");
+assert.match(form,/aria-busy=\{p\.serverSaving\}/,
+ "Final publication reuses the same loading affordance");

@@ -45,21 +45,10 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-body{flex:1;min-height:0;z-index:1;position:relative;overflow-x:hidden;overflow-y:auto;
  padding:20px 24px calc(var(--registration-footer-height) + 46px);
  overscroll-behavior-x:none;overscroll-behavior-y:contain;scrollbar-width:none;scroll-behavior:auto;
- -webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding:20px 0 124px;view-transition-name:luemi-step}
-html[data-luemi-route="true"] .v2-runtime .v2-body{view-transition-name:none}
-.v2-runtime .v2-body::-webkit-scrollbar{display:none}
-/* Only the step moves. Suppress the browser's simultaneous full-page crossfade. */
-html[data-luemi-transition="true"]::view-transition-old(root),
-html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
-::view-transition-old(luemi-step){animation:luemi-step-out .32s cubic-bezier(.22,.72,.22,1) both}
-::view-transition-new(luemi-step){animation:luemi-step-in .32s cubic-bezier(.22,.72,.22,1) both}
-@keyframes luemi-step-out{to{opacity:0;transform:translate3d(var(--luemi-step-exit,-28px),0,0)}}
-@keyframes luemi-step-in{from{opacity:0;transform:translate3d(var(--luemi-step-enter,28px),0,0)}}
-/* Older WebViews use the same single entrance without a second content reveal. */
-.v2-runtime .v2-body.v2-fallback-forward{animation:luemi-fallback-forward .3s cubic-bezier(.22,.72,.22,1) both}
-.v2-runtime .v2-body.v2-fallback-back{animation:luemi-fallback-back .3s cubic-bezier(.22,.72,.22,1) both}
-@keyframes luemi-fallback-forward{from{opacity:0;transform:translate3d(28px,0,0)}to{opacity:1;transform:none}}
-@keyframes luemi-fallback-back{from{opacity:0;transform:translate3d(-28px,0,0)}to{opacity:1;transform:none}}
+ -webkit-overflow-scrolling:touch;touch-action:pan-y;scroll-padding:20px 0 124px}
+/* The registration body is animated only by the one sequential step motion.
+   No CSS fallback on the same element and no document View Transition capture. */
+.v2-runtime .v2-device[data-step-moving="true"] .v2-body{pointer-events:none}
 @keyframes luemi-stage-reveal{from{opacity:0;translate:12px 0}to{opacity:1;translate:0 0}}
 .v2-runtime .v2-eyebrow{display:none}
 .v2-runtime .v2-stage-heading{position:sticky;top:-20px;z-index:6;margin:-20px -24px 0;
@@ -324,6 +313,13 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .v2-next:active,.v2-runtime .v2-publish:active{transform:scale(.985);filter:brightness(1.04);
  box-shadow:inset 0 1px rgba(255,255,255,.62),0 5px 19px rgba(183,95,208,.2)}
 .v2-runtime .v2-next svg{margin-left:auto}
+/* Shared 8-step progress indicator; never changes the button's geometry.
+   Only this tiny icon rotates, not a backdrop filter or full-screen layer. */
+.v2-runtime .v2-next[aria-busy="true"],.v2-runtime .v2-publish[aria-busy="true"]{
+ opacity:1;cursor:progress;filter:none}
+.v2-runtime .v2-next-spinner{display:block;flex:none;
+ animation:luemi-step-spinner .75s linear infinite;transform-origin:center}
+@keyframes luemi-step-spinner{to{transform:rotate(360deg)}}
 .v2-runtime .v2-next.is-incomplete{color:#c7b8ce;background:#3a3347;border-color:#766384;box-shadow:none}
 .v2-runtime .v2-next.v2-next-confirm,.v2-runtime .v2-next.is-incomplete.v2-next-confirm{
  margin-left:auto;flex:0 0 58px;width:58px;min-height:58px;height:58px;padding:0;
@@ -402,7 +398,6 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
  .v2-runtime .field-inline-hint:not(.name-input-hint),
  .v2-runtime .field-warning,.v2-runtime .v2-feedback{animation:none;transition:none}
  .v2-runtime .v2-next.v2-next-confirm,.v2-runtime,
- .v2-runtime .v2-body.v2-fallback-forward,.v2-runtime .v2-body.v2-fallback-back{animation:none}
  .v2-runtime .optional-profile-screen,.v2-runtime .optional-profile-screen.is-leaving{animation:none}
- ::view-transition-old(luemi-step),::view-transition-new(luemi-step){animation-duration:.01ms}
+ .v2-runtime .v2-next-spinner{animation:none}
  .v2-runtime .v2-next,.v2-runtime .v2-publish,.v2-runtime .v2-focus-scrim{transition:none}}
