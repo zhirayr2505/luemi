@@ -35,10 +35,10 @@ assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"
 assert.match(steps,/Я принимаю <a href="\/privacy"/,"Public policy acceptance must appear on the first identity step");
 assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
-assert.match(form,/const stages:readonly VisualStage\[\]=visualStages/,"Every account follows the same eight visual steps");
+assert.match(form,/const stages:readonly VisualStage\[\]=visualStages/,"Every account follows five required steps");
 assert.match(form,/Создать анкету/,"Single real signup confirmation creates published profile");
-assert.match(form,/<SimpleProfileReview draft=\{draft\} photos=\{photos\}/,
- "Signup preview must be a simple gallery, not interactive Profile Morph");
+assert.doesNotMatch(form,/<SimpleProfileReview|id:"languages"|id:"personality"|id:"review"/,
+ "Signup excludes optional biography, languages and review screens");
 assert.doesNotMatch(form,/mode="local-self-preview" active/,
  "Interactive morph must never interrupt a registration review");
 assert.match(form,/stage.id==="photos"&&<div className="v2-real-groups">/,
@@ -58,9 +58,9 @@ assert.doesNotMatch(form,/id:"face-consent"|id:"liveness"|stage\.id==="main-phot
 assert.match(form,/wordmark_original_raster_alpha_W06\.webp/,
  "The header uses the actual LUEMI mark, not a text approximation");
 assert.match(runtime,/\.v2-header-logo\{[^}]*filter:brightness\(0\) invert\(1\)/s,
- "The same genuine LUEMI logo must be white on all eight registration screens");
-assert.match(form,/stage\.id==="personality"&&<div className="v2-real-groups">[\s\S]*?<OptionalProfileDetails/,
- "Optional about details live inside the scrollable interests and biography step");
+ "The same genuine LUEMI logo must be white on all five registration screens");
+assert.doesNotMatch(form,/<OptionalProfileDetails|stage\.id==="personality"/,
+ "Optional data are edited after registration");
 assert.doesNotMatch(form,/v2-footer-optional|v2-stage-transition/,
  "The footer must not cover optional details, and step content must not animate twice");
 assert.doesNotMatch(form,/nativeTransition|ViewTransitionDocument|fallbackMotion|startViewTransition/,
@@ -349,7 +349,7 @@ assert.match(focusDock,/flagsResize\?\.observe\(watchedFlags\)/,
 // control was seen at the bottom before the outgoing language step vanished.
 // One animation owner must lock both navigation and taps, with a stable footer.
 assert.match(form,/const \[changingStep,setChangingStep\]=useState\(false\)/,
- "All eight steps use a single pending-navigation state");
+ "All five steps use a single pending-navigation state");
 assert.match(form,/if\(next===index\|\|transitioning\.current\)return/,
  "A repeated tap cannot queue a second transition");
 assert.match(form,/if\(transitioning\.current\|\|photoChecking\|\|changingStep\)return/,
@@ -360,7 +360,8 @@ assert.match(form,/photoChecking\|\|changingStep\?<LoaderCircle/,
  "Continue displays a spinner rather than a stale arrow while switching");
 assert.match(form,/if\(animateStep&&leaving\?\.animate\)/,
  "Real motion is only applied to an existing outgoing scroll body");
-assert.match(form,/setDetailsOpen\(false\);setIndex\(next\)/,
+assert.match(form,/setIndex\(next\)/,
+ "The next required step commits atomically");setIndex\(next\)/,
  "Closing optional-profile dialogs and moving to the next step is atomic");
 assert.match(form,/if\(entering\)entering\.scrollTop=0/,
  "Every new step starts at the top instead of inheriting language scroll");
@@ -370,8 +371,8 @@ assert.match(runtime,/data-step-moving="true"\] \.v2-body\{pointer-events:none\}
  "Leaving/entering content cannot receive taps");
 assert.match(runtime,/\.v2-next-spinner\{[^}]*animation:luemi-step-spinner/s,
  "The loading spinner occupies the old arrow slot without shifting the footer");
-assert.match(form,/aria-busy=\{p\.serverSaving\}/,
- "Final publication reuses the same loading affordance");
+assert.match(form,/aria-busy=\{p\.serverSaving\|\|photoChecking\}/,
+ "Final publication combines duplicate-photo and server loading");
 
 
 // Responsive IME contract: one anchor per focus, changed only for real width /
