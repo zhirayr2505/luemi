@@ -1,11 +1,55 @@
 import {useLayoutEffect,useRef} from "react";
 
 /**
- * Pin the focused editor above the keyboard. Its anchor may travel upward as
- * the viewport shrinks, but never drops when Android dismisses the keyboard.
- * Suggestion rows never participate in the editor's position measurement.
+ * One registration-wide focus policy across mobile Telegram, WKWebView,
+ * Android WebView and desktop.
+ *
+ * The docking point is chosen ONCE using the stable registration canvas and
+ * safe header. A keyboard opening or closing changes only the footer and the
+ * height of search results, never the editor's top position.
  */
 export const FOCUS_RELEASE_DELAY_MS=160;
+
+/** Return the dock to the page only when a closing virtual keyboard has
+ * settled. No fixed Android timing or fixed phone dimensions. Cancel whenever
+ * another input gains focus or the screen unmounts. */
+export function releaseAfterKeyboardSettles(onReleased:()=>void,
+ delay=FOCUS_RELEASE_DELAY_MS):()=>void {
+ const device=document.querySelector<HTMLElement>(".v2-runtime .v2-device");
+ const stableHeight=device?.clientHeight??window.innerHeight;
+ const viewport=window.visualViewport;
+ const visibleBottom=()=>viewport?viewport.offsetTop+viewport.height:window.innerHeight;
+ const keyboardGap=()=>Math.max(0,stableHeight-visibleBottom());
+ const keyboardInitiallyOpen=keyboardGap()>Math.max(90,stableHeight*.16);
+ const started=performance.now();
+ let lastBottom=visibleBottom(),lastChange=started,frame=0,done=false;
+ let timeout=0;
+ const complete=()=>{
+  if(done)return;
+  done=true;
+  if(frame)window.cancelAnimationFrame(frame);
+  window.clearTimeout(timeout);
+  onReleased();
+ };
+ const tick=(now:number)=>{
+  if(done)return;
+  const bottom=visibleBottom();
+  if(Math.abs(bottom-lastBottom)>1.5){lastBottom=bottom;lastChange=now;}
+  const recovered=keyboardGap()<Math.max(85,stableHeight*.13);
+  if(now-started>=1100 ||
+     (!keyboardInitiallyOpen&&now-started>=delay) ||
+     (keyboardInitiallyOpen&&recovered&&now-lastChange>=110&&now-started>=delay)){
+   complete();return;
+  }
+  frame=window.requestAnimationFrame(tick);
+ };
+ frame=window.requestAnimationFrame(tick);
+ // When WebKit throttles RAF during native keyboard dismissal, still release.
+ timeout=window.setTimeout(complete,1250);
+ return()=>{done=true;if(frame)window.cancelAnimationFrame(frame);window.clearTimeout(timeout);};
+}
+
+/** Stable responsive position: no visualViewport resize/scroll feedback to top. */
 export function useFieldFocusDock(active:boolean){
  const shellRef=useRef<HTMLElement|null>(null);
  const lastScreenTop=useRef<number|null>(null);
@@ -29,86 +73,100 @@ export function useFieldFocusDock(active:boolean){
    }
    return()=>motion.current?.cancel();
   }
+  const device=shell.closest<HTMLElement>(".v2-device");
   const viewport=window.visualViewport;
-  let frame=0;
   const slotTop=shell.parentElement?.getBoundingClientRect().top??shell.getBoundingClientRect().top;
+  const isLanguage=shell.classList.contains("language-focus-shell");
+  const isCity=shell.classList.contains("city-focus-shell");
+  const isAbout=shell.classList.contains("about-focus-shell");
+  let frame=0;
+  let measuredWidth=window.innerWidth;
   let pinnedTop=slotTop;
-  const update=()=>{
+
+  const calculateAnchor=()=>{
+   const box=device?.getBoundingClientRect();
+   const origin=box?.top??0;
+   const stableHeight=device?.clientHeight??window.innerHeight;
+   const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??origin+120;
+   const minimum=headerBottom+12;
+   const reserved=isAbout?Math.min(180,stableHeight*.22):
+    isLanguage?Math.min(125,stableHeight*.17):86;
+   // Aim for ~23% down the stable full-screen canvas, not keyboard height.
+   // Anticipate the IME covering the lower ~48% of a compact device.
+   const ideal=origin+stableHeight*.23;
+   const safeUpper=origin+stableHeight*.53-reserved;
+   pinnedTop=Math.round(Math.max(minimum,Math.min(ideal,safeUpper)));
+   shell.style.setProperty("--focused-dock-top",`${pinnedTop}px`);
+   lastScreenTop.current=pinnedTop;
+  };
+  calculateAnchor();
+
+  // Only suggestions follow the visual viewport. The focused editor never does.
+  const updateResults=()=>{
    frame=0;
-   const device=shell.closest<HTMLElement>(".v2-device");
+   if(!shell.isConnected)return;
    const footerTop=device?.querySelector<HTMLElement>(".v2-footer")?.getBoundingClientRect().top??
     (viewport?viewport.offsetTop+viewport.height-86:window.innerHeight-86);
-   const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??140;
-   const reserved=shell.classList.contains("about-focus-shell")?174:
-    shell.classList.contains("language-focus-shell")?242:88;
-   pinnedTop=Math.max(headerBottom+12,Math.min(pinnedTop,footerTop-reserved-10));
-   shell.style.setProperty("--focused-dock-top",`${Math.round(pinnedTop)}px`);
-   lastScreenTop.current=shell.getBoundingClientRect().top;
-   // Reserve the logo/progress and the input itself before sizing the upward
-   // city list. Search results never affect this measurement.
-   if(shell.classList.contains("city-focus-shell")){
-     const available=Math.max(48,Math.min(230,Math.floor(pinnedTop-headerBottom-20)));
-     shell.style.setProperty("--field-suggestions-max-height",`${available}px`);
+   const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??120;
+   if(isCity){
+    const available=Math.max(48,Math.min(230,Math.floor(pinnedTop-headerBottom-20)));
+    shell.style.setProperty("--field-suggestions-max-height",`${available}px`);
+   }
+   if(isLanguage){
+    const list=shell.querySelector<HTMLElement>(".language-results");
+    if(list){
+     const remaining=Math.max(0,Math.floor(footerTop-list.getBoundingClientRect().top-12));
+     const rows=Math.max(0,Math.min(8,Math.floor((remaining+8)/52)));
+     shell.style.setProperty("--language-results-max-height",`${rows?rows*52-8:0}px`);
     }
-    if(shell.classList.contains("language-focus-shell")){
-     const list=shell.querySelector<HTMLElement>(".language-results");
-     if(list){
-      // Align the visible list to complete 44px rows plus 8px gaps, so
-      // no half row is painted below the native IME or confirm button.
-      const remaining=Math.floor(footerTop-list.getBoundingClientRect().top-12);
-      const rows=Math.max(1,Math.min(8,Math.floor((remaining+8)/52)));
-      shell.style.setProperty("--language-results-max-height",`${rows*52-8}px`);
-     }
-    }
+   }
   };
-  const refresh=()=>{
-   if(frame)window.cancelAnimationFrame(frame);
-   frame=window.requestAnimationFrame(update);
-  };
-  update();
+  const refresh=()=>{if(!frame)frame=window.requestAnimationFrame(updateResults);};
+  updateResults();
   const dockTop=shell.getBoundingClientRect().top;
   if(!reduced){
-   // One subtle lift-and-settle shared by all editor types.
    motion.current=shell.animate([
     {transform:`translate3d(0,${slotTop-dockTop}px,0) scale(.985)`,offset:0},
     {transform:"translate3d(0,-5px,0) scale(1.012)",offset:.76},
     {transform:"translate3d(0,0,0) scale(1)",offset:1}
    ],{duration:480,easing:"cubic-bezier(.16,.84,.2,1)"});
-   motion.current.onfinish=()=>{lastScreenTop.current=shell.getBoundingClientRect().top;};
   }
-  // The CSS dock follows the same viewport variable as the footer. This
-  // listener only tracks the exit animation and city result height.
   viewport?.addEventListener("resize",refresh);
-   viewport?.addEventListener("scroll",refresh);
-   window.addEventListener("resize",refresh);
-   // Adding or wrapping selected flags changes the list's top edge.
-   // Observe only flags, never the suggestions list, to avoid resize loops.
-   const isLanguages=shell.classList.contains("language-focus-shell");
-   const flagsResize=isLanguages&&typeof ResizeObserver!=="undefined"?new ResizeObserver(refresh):null;
-   let watchedFlags:HTMLElement|null=null;
-   const observeFlags=()=>{
-    const next=shell.querySelector<HTMLElement>(".language-selected");
-    if(watchedFlags===next)return;
-    if(watchedFlags)flagsResize?.unobserve(watchedFlags);
-    watchedFlags=next;
-    if(watchedFlags)flagsResize?.observe(watchedFlags);
-   };
-   const flagsMutation=isLanguages&&typeof MutationObserver!=="undefined"?
-     new MutationObserver(()=>{observeFlags();refresh();}):null;
-   flagsMutation?.observe(shell,{childList:true});
-   observeFlags();
-   return()=>{
+  viewport?.addEventListener("scroll",refresh);
+  const onResize=()=>{
+   // A genuine orientation/width change gets a new responsive anchor once.
+   // Height-only changes during IME movement must NEVER reposition the field.
+   if(Math.abs(window.innerWidth-measuredWidth)>2){
+    measuredWidth=window.innerWidth;
+    calculateAnchor();
+   }
+   refresh();
+  };
+  window.addEventListener("resize",onResize);
+  const flagsResize=isLanguage&&typeof ResizeObserver!=="undefined"?new ResizeObserver(refresh):null;
+  let watchedFlags:HTMLElement|null=null;
+  const observeFlags=()=>{
+   const next=shell.querySelector<HTMLElement>(".language-selected");
+   if(watchedFlags===next)return;
+   if(watchedFlags)flagsResize?.unobserve(watchedFlags);
+   watchedFlags=next;
+   if(watchedFlags)flagsResize?.observe(watchedFlags);
+  };
+  const flagsMutation=isLanguage&&typeof MutationObserver!=="undefined"?
+   new MutationObserver(()=>{observeFlags();refresh();}):null;
+  flagsMutation?.observe(shell,{childList:true});
+  observeFlags();
+  return()=>{
    if(frame)window.cancelAnimationFrame(frame);
-   lastScreenTop.current=shell.getBoundingClientRect().top;
    motion.current?.cancel();
    viewport?.removeEventListener("resize",refresh);
    viewport?.removeEventListener("scroll",refresh);
-   window.removeEventListener("resize",refresh);
+   window.removeEventListener("resize",onResize);
    flagsMutation?.disconnect();
-    flagsResize?.disconnect();
-    shell.style.removeProperty("--field-suggestions-max-height");
-    shell.style.removeProperty("--language-results-max-height");
-   };
+   flagsResize?.disconnect();
+   shell.style.removeProperty("--field-suggestions-max-height");
+   shell.style.removeProperty("--language-results-max-height");
+  };
  },[active]);
  return {shellRef};
 }
