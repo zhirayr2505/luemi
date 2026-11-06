@@ -7,6 +7,7 @@
 import {readFileSync} from "node:fs";
 import {strict as assert} from "node:assert";
 const runtime=readFileSync("apps/web/src/registration/v2/runtime.css","utf8");
+const preview=readFileSync("apps/web/src/registration/v2/preview.css","utf8");
 const form=readFileSync("apps/web/src/registration/v2/RealRegistration.tsx","utf8");
 const steps=readFileSync("apps/web/src/registration/Steps.tsx","utf8");
 const draftClient=readFileSync("apps/web/src/registration/server-draft.ts","utf8");
@@ -16,7 +17,7 @@ const language=readFileSync("apps/web/src/registration/LanguagePicker.tsx","utf8
 const focusDock=readFileSync("apps/web/src/registration/use-field-focus.ts","utf8");
 const required=[
  ["V2 runtime tokens",/\.v2-runtime\s*\{[^}]*--ink:/s],
- ["Telegram native clearance",/\.v2-runtime\[data-telegram-ui="true"\]\s+\.v2-device\s*\{[^}]*padding-top:max\(62px,[^}]*--tg-content-safe-area-inset-top[^}]*--tg-safe-area-inset-top[^}]*safe-area-inset-top/s],
+  ["Telegram clearance only on the shared header",/\.v2-runtime\[data-telegram-ui="true"\]\s*\{[^}]*--registration-header-top:max\(82px,[^}]*--tg-content-safe-area-inset-top[^}]*--tg-safe-area-inset-top[^}]*safe-area-inset-top/s],
  ["dark readable form inputs",/\.v2-runtime\s+\.glass-control,\.v2-runtime\s+\.v2-input\s*\{[^}]*background:rgba\(43,42,57,\.9\)/s],
  ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--focused-dock-top/s],
  ["single confirm action",/\.v2-runtime\s+\.v2-next\.v2-next-confirm[^}]*display:grid/s],
@@ -56,8 +57,8 @@ assert.doesNotMatch(form,/id:"face-consent"|id:"liveness"|stage\.id==="main-phot
  "No intermediate biometric or duplicate main-photo screens interrupt signup");
 assert.match(form,/wordmark_original_raster_alpha_W06\.webp/,
  "The header uses the actual LUEMI mark, not a text approximation");
-assert.match(runtime,/\.v2-header-logo\{[^}]*filter:none/s,
- "The original LUEMI mark retains its approved raster colors on the dark registration surface");
+assert.match(runtime,/\.v2-header-logo\{[^}]*filter:brightness\(0\) invert\(1\)/s,
+ "The same genuine LUEMI logo must be white on all eight registration screens");
 assert.match(form,/stage\.id==="personality"&&<div className="v2-real-groups">[\s\S]*?<OptionalProfileDetails/,
  "Optional about details live inside the scrollable interests and biography step");
 assert.doesNotMatch(form,/v2-footer-optional|v2-stage-transition/,
@@ -163,3 +164,25 @@ assert.match(mediaClient,/for\(const edge of \[800,384\]\)/,
  "A failed image upload retries with a compact PNG");
 assert.match(mediaBackend,/existing.rows\[0\].asset_state!=="reserved"/,
  "Retry cannot change any already accepted or published upload");
+
+
+// Header layout regression: a fixed 80px mobile header with duplicated top
+// Telegram insets allowed the progress line to cover the title.
+assert.match(runtime,/\.v2-header\{flex:none;z-index:3;height:auto;min-height:0;/,
+ "The shared registration header must grow with the white logo and progress");
+assert.match(runtime,/\.v2-header\{[^}]*flex-direction:column;align-items:stretch;gap:11px/s,
+ "The white logo is followed by the progress line, never a side-by-side row");
+assert.match(runtime,/\.v2-progress\{position:relative;display:block;flex:none;/,
+ "The progress line stays in the natural flow of the common header");
+assert.doesNotMatch(runtime,/\.v2-header\{height:80px|\.v2-device\{padding-top:max\(62px/,
+ "Remove old fixed height and double Telegram device clearance");
+assert.match(preview,/\.v2-canvas:not\(\.v2-runtime\) \.v2-header\{/,
+ "Old preview-only header styles are excluded from the real registration");
+assert.match(preview,/\.v2-canvas:not\(\.v2-runtime\) \.v2-progress\{/,
+ "Old preview-only progress styles are excluded from the real registration");
+const logoAt=form.indexOf('className="v2-header-logo"');
+const progressAt=form.indexOf('className="v2-progress"');
+const headerEndAt=form.indexOf('</header>',progressAt);
+const headingAt=form.indexOf('className="v2-stage-heading"',headerEndAt);
+assert.ok(logoAt>0&&progressAt>logoAt&&headerEndAt>progressAt&&headingAt>headerEndAt,
+ "Every step shares the white logo, gradient progress, then the step title");

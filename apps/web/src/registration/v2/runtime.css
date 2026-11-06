@@ -4,10 +4,18 @@
  --ink:var(--luemi-text,#faf4fb);--subtle:var(--luemi-text-secondary,#c7bacd);--panel:rgba(65,50,73,.78);
  --glass-edge:var(--luemi-border,rgba(238,214,246,.16));--line:var(--luemi-border,rgba(238,214,246,.16));
  --lavender:var(--luemi-lavender,#ac87b3);--pink:var(--luemi-rose,#d5a2c8);--shadow:rgba(0,0,0,.28);
- --registration-top-safe:max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px),var(--tg-content-safe-area-inset-top,0px));
+ --registration-header-top:12px;
  --registration-footer-height:calc(91px + max(14px,env(safe-area-inset-bottom)));
  width:100%;height:var(--registration-visible-height,100dvh);min-height:0;padding:0;
  overflow:hidden;background:var(--luemi-bg-deep,#1c1424);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+/* Telegram owns the top controls; reserve clearance exactly once on the
+   shared step header, not again as device padding. */
+.v2-runtime[data-telegram-ui="true"]{
+ --registration-header-top:max(82px,
+   calc(var(--tg-content-safe-area-inset-top,0px) + 8px),
+   calc(var(--tg-safe-area-inset-top,0px) + 26px),
+   calc(env(safe-area-inset-top,0px) + 26px));
 }
 @keyframes luemi-registration-enter{from{opacity:.55;transform:translate3d(28px,0,0)}to{opacity:1;transform:none}}
 .v2-runtime[data-fallback-entry="true"]{animation:luemi-registration-enter .38s cubic-bezier(.2,.76,.25,1) both}
@@ -18,12 +26,14 @@ html[data-luemi-route="true"] .v2-runtime{animation:none}
  color:var(--ink);background:var(--luemi-bg-deep,#1c1424)}
 html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-route}
 .v2-runtime .v2-backdrop{display:none}
-.v2-runtime .v2-header{flex:none;z-index:3;height:calc(78px + var(--registration-top-safe));min-height:calc(78px + var(--registration-top-safe));padding:calc(9px + var(--registration-top-safe)) 24px 13px;
- display:grid;grid-template-columns:1fr;grid-template-rows:40px 3px;align-items:center;
- column-gap:12px;row-gap:13px;background:var(--luemi-bg-deep,#1c1424)}
-.v2-runtime .v2-header-logo{display:block;width:108px;max-height:37px;object-fit:contain;
- object-position:left center;filter:none;user-select:none;pointer-events:none}
-.v2-runtime .v2-progress{grid-column:1;grid-row:2;position:relative;display:block;
+.v2-runtime .v2-header{flex:none;z-index:3;height:auto;min-height:0;
+ padding:var(--registration-header-top) 24px 0;
+ display:flex;flex-direction:column;align-items:stretch;gap:11px;
+ background:var(--luemi-bg-deep,#1c1424)}
+.v2-runtime .v2-header-logo{display:block;align-self:flex-start;width:108px;height:36px;
+ object-fit:contain;object-position:left center;
+ filter:brightness(0) invert(1);user-select:none;pointer-events:none}
+.v2-runtime .v2-progress{position:relative;display:block;flex:none;
  width:100%;height:3px;min-height:3px;padding:0;border-radius:999px;
  background:rgba(208,199,220,.16);overflow:hidden}
 .v2-runtime .v2-progress-fill{display:block;width:100%;height:100%;border-radius:inherit;
@@ -289,10 +299,6 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .optional-profile-screen-foot button:last-child{background:linear-gradient(105deg,#d6a7fa,#f4aedc);color:#24152e}
 @media(max-width:720px){
  .v2-runtime .v2-device{width:100%;box-shadow:none}
- .v2-runtime[data-telegram-ui="true"] .v2-device{padding-top:max(62px,
-  var(--tg-content-safe-area-inset-top,0px),calc(var(--tg-safe-area-inset-top,0px) + 12px),
-  calc(env(safe-area-inset-top,0px) + 12px))}
- .v2-runtime .v2-header{height:80px;min-height:80px;padding-inline:24px}
  .v2-runtime .v2-body{padding:20px 24px calc(var(--registration-footer-height) + 46px)}
 }
 @media(max-height:660px){.v2-runtime .v2-body{padding-top:12px}.v2-runtime .v2-stage-heading{top:-12px;margin-top:-12px;padding-top:12px}

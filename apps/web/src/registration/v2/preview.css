@@ -13,13 +13,13 @@
  background:radial-gradient(ellipse at top right,rgba(235,203,245,.34),transparent 55%);
  z-index:0}
 .v2-header,.v2-body,.v2-footer,.v2-progress{position:relative;z-index:1}
-.v2-header{height:76px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px 25px}
+.v2-canvas:not(.v2-runtime) .v2-header{height:76px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px 25px}
 .v2-logo img{width:96px;height:auto;display:block}
 .v2-count{background:#f3eafa;border:1px solid rgba(174,137,197,.22);
  color:#8e6a9f;border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700}
-.v2-progress{display:flex;gap:5px;padding:0 25px 10px;flex:none}
-.v2-progress span{height:4px;border-radius:999px;flex:1;background:#ebdfef;transition:background-color .15s}
-.v2-progress .v2-filled{background:linear-gradient(90deg,#ad8ce0,#dea2d3)}
+.v2-canvas:not(.v2-runtime) .v2-progress{display:flex;gap:5px;padding:0 25px 10px;flex:none}
+.v2-canvas:not(.v2-runtime) .v2-progress span{height:4px;border-radius:999px;flex:1;background:#ebdfef;transition:background-color .15s}
+.v2-canvas:not(.v2-runtime) .v2-progress .v2-filled{background:linear-gradient(90deg,#ad8ce0,#dea2d3)}
 .v2-body{flex:1;min-height:0;overflow-y:auto;padding:24px 26px 36px;overscroll-behavior:contain;
  -webkit-overflow-scrolling:touch;scrollbar-width:none}
 .v2-body::-webkit-scrollbar{display:none}
