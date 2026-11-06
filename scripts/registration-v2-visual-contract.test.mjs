@@ -229,3 +229,28 @@ assert.match(focusDock,/\{duration:440,easing:"cubic-bezier\(\.17,\.79,\.22,1\)"
  "One smoother field undocking transition");
 assert.match(runtime,/\.name-input-hint,[\s\S]*?\.v2-focus-scrim::after\{transition:none;transform:none\}/,
  "Reduce-motion preference disables glass hint and lens choreography");
+
+
+// Regression from Samsung Galaxy A55 keyboard-dismissal video (2026-11-06).
+// Changing the whole canvas with the live IME height exposed a white surface
+// and made the heading/footer jump as the native keyboard collapsed.
+assert.doesNotMatch(runtime,/height:var\(--registration-visible-height/,
+ "Keyboard viewport must not resize the registration shell or device");
+assert.match(runtime,/\.v2-runtime \.v2-device\{[^}]*height:var\(--registration-layout-height,100dvh\)/,
+ "Registration device keeps a stable full-height dark canvas");
+assert.match(runtime,/\.v2-footer\{[^}]*bottom:clamp\(0px,calc\(var\(--registration-layout-height,100dvh\) - var\(--registration-visible-bottom,100dvh\)\),100vh\)/s,
+ "Only footer position follows visual keyboard inset");
+assert.match(baseStyles,/\.luemi-shell\[data-registration-shell="true"\]\{[^}]*height:var\(--registration-layout-height,100dvh\)/,
+ "Shared root shell stays painted while keyboard enters and exits");
+assert.match(baseStyles,/:root\{[^}]*background:#1c1424\}/,
+ "Retired white root underlay cannot reappear after IME dismissal");
+assert.match(form,/useLayoutEffect\(\(\)=>\{[\s\S]*?data-registration-shell[\s\S]*?viewport\?\.addEventListener\("resize",schedule\)/,
+ "Stable layout starts before paint and follows coalesced viewport events");
+assert.match(form,/measuredBottom>=fullHeight-18[\s\S]*?Math\.max\(fullHeight,window\.innerHeight,measuredBottom\)/,
+ "Transient keyboard viewport decreases cannot shrink the full canvas");
+assert.match(runtime,/\.v2-stage-heading::after\{[\s\S]*?backdrop-filter:blur\(16px\) saturate\(125%\)/,
+ "Title is refracted through a compact glass surface when input is focused");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading::after\{[^}]*opacity:\.78/,
+ "Frosted title lens activates only for focused fields");
+assert.match(runtime,/\.v2-stage-heading::after\{transition:none;transform:none\}/,
+ "Reduced-motion preference keeps heading glass static");
