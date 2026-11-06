@@ -222,23 +222,28 @@ export function App() {
     // Telegram's native white loading screen must disappear as soon as the
     // app shell can paint. The separate branded intro remains visible.
     const webApp=window.Telegram?.WebApp;
+    // App is the persistent shell for registration, feed, profile and chats.
+    // Request Telegram fullscreen once on entry and again on activation after
+    // returning to an already-mounted Mini App. Never exit fullscreen on routes.
+    const enterFullscreen=()=>{
+      if(!webApp?.requestFullscreen||webApp.isFullscreen||
+        (webApp.isVersionAtLeast&&!webApp.isVersionAtLeast("8.0")))return;
+      try {webApp.requestFullscreen();}catch {
+        // Unsupported clients keep the expanded sheet; do not break navigation.
+      }
+    };
+    webApp?.onEvent?.("activated",enterFullscreen);
     const frame=window.requestAnimationFrame(()=>{
       webApp?.ready?.();
       webApp?.expand?.();
-      try {
-        // Use Telegram's native fullscreen mode, not just the expanded
-        // bottom sheet. The viewport controller applies the Telegram/device
-        // safe-area insets so the logo, fields and CTA remain reachable.
-        // Unsupported clients remain in normal expanded mode.
-        if(webApp?.isVersionAtLeast?.("8.0")&&!webApp.isFullscreen)
-          webApp.requestFullscreen?.();
-        webApp?.disableVerticalSwipes?.();
-      } catch {
-        // Telegram may reject fullscreen (unsupported platform); expand stays active.
+      enterFullscreen();
+      try {webApp?.disableVerticalSwipes?.();}catch {
+        // Older clients might not support the swipe API.
       }
     });
     return ()=>{
       window.cancelAnimationFrame(frame);
+      webApp?.offEvent?.("activated",enterFullscreen);
     };
   },[]);
   useEffect(()=>{
