@@ -95,7 +95,7 @@ try{
  await next("personality");
  await next("photos");
  const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9u/JqYQAAAAASUVORK5CYII=","base64");
- await page.getByLabel("Добавить фотографии").setInputFiles([0,1,2].map((i)=>({
+ await page.locator('input.native-photo-input[type="file"]').setInputFiles([0,1,2].map((i)=>({
   name:"synthetic-"+i+".png",mimeType:"image/png",
   buffer:Buffer.concat([png,Buffer.from([i])])
  })));
