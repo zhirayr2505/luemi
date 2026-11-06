@@ -138,7 +138,8 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .focus-field-slot{position:relative;min-height:88px}
 .v2-runtime .focus-field-slot-textarea{min-height:190px}
 .v2-runtime .language-focus-slot{min-height:300px}
-.v2-runtime .focus-field-shell{position:relative;z-index:1;width:100%}
+.v2-runtime .focus-field-shell{position:relative;z-index:1;width:100%;transform-origin:center top}
+.v2-runtime .focus-field-shell.is-focused{will-change:transform}
 .v2-runtime .focus-field-shell.is-focused{position:fixed;z-index:92;top:var(--focused-dock-top,164px);bottom:auto;
  left:max(24px,calc((100vw - 520px)/2 + 24px));right:max(24px,calc((100vw - 520px)/2 + 24px));width:auto}
 .v2-runtime .focus-field-shell.is-focused .glass-control{border-color:#eda9f3;
@@ -146,16 +147,26 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .name-focus-shell .glass-control,.v2-runtime .dob-focus-shell .glass-control{min-height:60px;font-size:18px}
 .v2-runtime .dob-focus-shell .glass-control{text-align:center;letter-spacing:.05em;font-variant-numeric:tabular-nums}
 .v2-runtime .field-focus-overlay{display:none}
+/* Optical focus: static blur radius, animated transparency and radial depth.
+   One composited scrim avoids extra backdrop-filter layers in Android WebView. */
 .v2-runtime .v2-focus-scrim{position:fixed;inset:0;z-index:90;pointer-events:none;
- visibility:hidden;opacity:0;background:rgba(16,12,26,.31);
- backdrop-filter:blur(44px) saturate(.78);-webkit-backdrop-filter:blur(44px) saturate(.78);
- transition:opacity .38s cubic-bezier(.2,.76,.25,1),visibility 0s linear .38s}
+ visibility:hidden;opacity:0;
+ background:radial-gradient(ellipse 94% 73% at 50% 41%,rgba(110,81,135,.12) 0%,rgba(22,14,35,.37) 54%,rgba(7,5,17,.58) 100%);
+ backdrop-filter:blur(56px) saturate(.70) brightness(.83);
+ -webkit-backdrop-filter:blur(56px) saturate(.70) brightness(.83);
+ transition:opacity .52s cubic-bezier(.16,.76,.24,1),visibility 0s linear .52s}
+.v2-runtime .v2-focus-scrim::after{content:"";position:absolute;inset:-8%;pointer-events:none;
+ background:radial-gradient(ellipse 68% 55% at 50% 44%,rgba(203,167,225,.09) 0%,transparent 54%,rgba(9,5,19,.30) 100%);
+ opacity:0;transform:scale(1.055);transform-origin:50% 44%;
+ transition:opacity .55s cubic-bezier(.16,.76,.24,1),transform .62s cubic-bezier(.16,.82,.22,1)}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-focus-scrim{
  visibility:visible;opacity:1;pointer-events:auto;
- transition:opacity .38s cubic-bezier(.2,.76,.25,1),visibility 0s}
-.v2-runtime .v2-header{transition:filter .38s cubic-bezier(.2,.76,.25,1),opacity .38s ease}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-header{filter:blur(9px);opacity:.72;pointer-events:none}
+ transition:opacity .52s cubic-bezier(.16,.76,.24,1),visibility 0s}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-focus-scrim::after{opacity:1;transform:scale(1)}
+.v2-runtime .v2-header{transition:filter .5s cubic-bezier(.18,.78,.2,1),opacity .5s ease}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-header{filter:blur(15px);opacity:.58;pointer-events:none}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:2}
+
 /* One true Liquid Glass surface for registration guidance and validation.
    Small static blur only: never blur the entire scroll or gesture surface. */
 .v2-runtime .field-inline-hint,.v2-runtime .field-warning,.v2-runtime .v2-feedback{
@@ -179,6 +190,31 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
  background:linear-gradient(90deg,transparent,rgba(255,255,255,.38) 34%,rgba(255,255,255,.09) 82%,transparent);
 }
 .v2-runtime .field-inline-hint{display:flex;gap:10px;align-items:center;margin:9px 0 0}
+/* Keep this one name hint mounted, so both entry and exit can animate. */
+.v2-runtime .name-input-hint{
+ max-height:0;min-height:0;margin-top:0;padding-block:0;border-block-width:0;
+ opacity:0;visibility:hidden;transform:translate3d(0,-9px,0) scale(.975);
+ transform-origin:50% 0;
+ transition:opacity .30s cubic-bezier(.18,.78,.24,1),
+  transform .40s cubic-bezier(.16,.82,.22,1),
+  max-height .38s cubic-bezier(.18,.8,.26,1),
+  padding .38s ease,margin .38s ease,border-width .38s ease,
+  visibility 0s linear .40s;
+}
+.v2-runtime .name-input-hint.is-visible{
+ max-height:120px;margin-top:9px;padding-block:12px;border-block-width:1px;
+ opacity:1;visibility:visible;transform:translate3d(0,0,0) scale(1);
+ transition-delay:0s;
+}
+@keyframes luemi-glass-tip-enter{
+ from{opacity:0;transform:translate3d(0,-9px,0) scale(.975)}
+ to{opacity:1;transform:translate3d(0,0,0) scale(1)}
+}
+.v2-runtime .field-inline-hint:not(.name-input-hint),.v2-runtime .field-warning,
+.v2-runtime .v2-feedback{
+ animation:luemi-glass-tip-enter .40s cubic-bezier(.16,.82,.22,1) both;
+ transform-origin:50% 0;
+}
 .v2-runtime .field-inline-hint svg{
  flex:none;width:24px;height:24px;padding:4px;border-radius:50%;
  color:#f4cfe9;background:rgba(247,217,251,.11);
@@ -338,7 +374,13 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 }
 @media(max-height:660px){.v2-runtime .v2-body{padding-top:12px}.v2-runtime .v2-stage-heading{top:-12px;margin-top:-12px;padding-top:12px}
  .v2-runtime .v2-real-groups{gap:20px}.v2-runtime .v2-footer{padding-top:18px}}
-@media(prefers-reduced-motion:reduce){.v2-runtime .v2-next.v2-next-confirm,.v2-runtime,
+@media(prefers-reduced-motion:reduce){
+ .v2-runtime .name-input-hint,
+ .v2-runtime .field-inline-hint:not(.name-input-hint),
+ .v2-runtime .field-warning,.v2-runtime .v2-feedback{animation:none;transition:none}
+ .v2-runtime .v2-focus-scrim::after{transition:none;transform:none}
+ .v2-runtime .v2-header{transition:none}
+ .v2-runtime .v2-next.v2-next-confirm,.v2-runtime,
  .v2-runtime .v2-body.v2-fallback-forward,.v2-runtime .v2-body.v2-fallback-back{animation:none}
  .v2-runtime .optional-profile-screen,.v2-runtime .optional-profile-screen.is-leaving{animation:none}
  ::view-transition-old(luemi-step),::view-transition-new(luemi-step){animation-duration:.01ms}
