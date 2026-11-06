@@ -1,9 +1,6 @@
 /* The entry composition is isolated from the approved in-app surfaces. */
 .luemi-shell:has(.cinematic-entry){background:#14101d;color:#fff}
 .luemi-shell:has(.cinematic-entry)>.milky-mist{display:none}
-.luemi-shell:has(.cinematic-entry) .theme-dock{top:calc(var(--top-safe) + 20px);right:20px}
-.luemi-shell:has(.cinematic-entry) .theme-switch{width:36px;height:36px;color:#fff;
- background:rgba(37,29,49,.32);border-color:rgba(255,255,255,.28);box-shadow:none}
 .entry-state.cinematic-entry{isolation:isolate;display:block;height:100%;padding:0;text-align:left;
  background:#1b1526;overflow:hidden;view-transition-name:luemi-route}
 .entry-state.cinematic-entry::before{content:"";position:absolute;inset:0;z-index:-2;

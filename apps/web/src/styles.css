@@ -25,10 +25,6 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .milky-mist::after{background:radial-gradient(ellipse 58% 48% at 80% 70%,var(--mist-rose),transparent 72%);animation:mist-two 27s ease-in-out infinite alternate}
 @keyframes mist-one{to{transform:translate3d(4%,2%,0);opacity:.34}}
 @keyframes mist-two{to{transform:translate3d(-4%,-2%,0);opacity:.68}}
-.theme-dock{position:absolute;z-index:15;top:calc(var(--top-safe) + 42px);right:18px}
-.theme-switch{display:grid;place-items:center;width:45px;height:45px;border-radius:50%;border:1px solid var(--glass-edge);
- background:var(--panel);color:var(--ink);box-shadow:inset 0 1px rgba(255,255,255,.67),0 6px 17px var(--shadow);
- backdrop-filter:blur(12px) saturate(130%);-webkit-backdrop-filter:blur(12px) saturate(130%);}
 .entry-state{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
  text-align:center;padding:92px 24px 140px;position:relative;gap:13px;}
 .intro-mark{width:min(49vw,188px);height:86px;display:flex;align-items:center;justify-content:center;position:relative}
@@ -130,8 +126,6 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .glass-choice.selected{border-color:rgba(162,115,208,.66);background:linear-gradient(130deg,rgba(206,177,239,.72),rgba(241,191,222,.68))}
 .glass-choice:disabled{opacity:.55}
-.dob-grid{display:grid;grid-template-columns:1fr 1fr 1.45fr;gap:9px}
-.dob-grid input{text-align:center;padding:10px 5px}
 .hint{font-size:12px;line-height:1.55;color:var(--subtle);margin:0;display:flex;align-items:center;gap:5px}
 .char-count{text-align:right;font-size:12px;color:var(--subtle);margin:-12px 0 0}
 .field-error,.field-warning{font-size:12px;color:#a83d69;background:rgba(254,233,243,.96);
@@ -292,19 +286,15 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .luemi-shell[data-viewport-compact="true"] .onboard-footer{padding-top:6px;padding-bottom:max(8px,var(--bottom-safe))}
 .luemi-shell[data-keyboard=open] .selected-interests-floating{display:none}
 @media(min-width:640px){.onboarding-screen{padding-left:45px;padding-right:45px}.mosaic{grid-template-rows:repeat(3,120px)}}
-@supports not (backdrop-filter:blur(1px)){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{background:var(--bg)}}
+@supports not (backdrop-filter:blur(1px)){.glass-control,.glass-check,.glass-choice,.glass-panel{background:var(--bg)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}
  .intro-logo,.entry-state h1,.entry-state .intro-subtitle{opacity:1;transform:none}.intro-type-cursor{animation:none}}
-@media(prefers-reduced-transparency:reduce){.glass-control,.glass-check,.glass-choice,.glass-panel,.theme-switch{
+@media(prefers-reduced-transparency:reduce){.glass-control,.glass-check,.glass-choice,.glass-panel{
  backdrop-filter:none!important;background:var(--bg)}}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #a577da;outline-offset:3px}
 
 /* Stage 02F: new components only; retired class selectors removed above. */
 .onboard-brand-row{display:flex;align-items:center;gap:3px;min-height:39px}
-.onboard-brand-row .theme-switch{width:30px;height:32px;min-width:30px;margin-left:-5px;
- border:0;background:transparent;box-shadow:none;border-radius:10px;color:var(--subtle);
- backdrop-filter:none;-webkit-backdrop-filter:none;padding:0}
-.onboard-brand-row .theme-switch svg{width:17px;height:17px}
 .selected-interests-floating{flex:none;position:relative;z-index:6;min-height:64px;max-height:114px;
  overflow:hidden;border-radius:20px;padding:10px 12px;margin:3px -1px 0;
  border:1px solid var(--glass-edge);background:var(--panel);
@@ -344,7 +334,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .language-flag-selected{border:1px solid var(--glass-edge);background:var(--panel);width:35px;height:35px;
  border-radius:50%;padding:3px;display:grid;place-items:center}
 .language-flag-selected:active{transform:scale(.93)}
-.edit-profile-action{width:100%;min-height:54px;background:linear-gradient(120deg,rgba(205,169,238,.79),rgba(241,190,222,.65))}
 
 @media(max-height:680px){.onboarding-screen{padding-top:calc(var(--top-safe) + 65px)}}
 
@@ -365,8 +354,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
  background:var(--panel);padding:12px 14px;font-size:12px;color:var(--ink);box-shadow:0 8px 20px var(--shadow);
  animation:block-enter .2s both;}
 .name-input-hint svg{color:var(--lavender);flex:none;}
-.draft-clear-action{display:inline-flex;align-items:center;gap:7px;align-self:flex-start;border:0;background:transparent;
- color:var(--subtle);padding:7px 0;font-size:12px;}
 .photo-processing{position:absolute;bottom:3px;left:5px;right:5px;display:flex;flex-direction:column;gap:4px;
  border-radius:12px;background:rgba(49,30,65,.76);color:#fff;padding:8px 7px 6px;pointer-events:none;z-index:3;}
 .photo-processing small{font-size:10px;text-align:center;font-weight:700;}
@@ -388,6 +375,3 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
  .milky-mist::before,.milky-mist::after{animation:none!important}
 }
 
-/* Informational privacy route must stay discoverable without changing entry motion. */
-.luemi-privacy-footer{margin-top:22px;font-size:12px;max-width:300px;text-align:center;line-height:1.45}
-.luemi-privacy-footer a{color:var(--lavender,#9664b2);text-decoration:underline;text-underline-offset:3px}
