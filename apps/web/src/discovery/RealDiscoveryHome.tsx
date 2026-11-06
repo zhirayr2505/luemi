@@ -703,7 +703,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
     {mainTab==="chats"&&<RealChats onThreadChange={setChatThreadOpen} registerThreadBack={handler=>{chatBackRef.current=handler;}}/>}
    </section>
    <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
-    {owner?<ProfileMaster data={owner} mode="owner" onEdit={()=>setAccountOpen(true)} onReveal={()=>{setAccountOpen(true);onReveal?.();}}
+    {owner?<ProfileMaster data={owner} mode="owner" ownerDetails={draft} onEdit={()=>setAccountOpen(true)} onReveal={()=>{setAccountOpen(true);onReveal?.();}}
       registerBack={registerProfileBack}
       onMotionProgress={(progress,dragging)=>header.current?.setProfileProgress(progress,dragging)}
       active={mainTab==="profile"&&!person}/>:<LuemiEmptyState icon={UserRound} title="Анкета готовится"
