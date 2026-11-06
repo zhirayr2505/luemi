@@ -40,16 +40,26 @@ export function useFieldFocusDock(active:boolean){
     (viewport?viewport.offsetTop+viewport.height-86:window.innerHeight-86);
    const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??140;
    const reserved=shell.classList.contains("about-focus-shell")?174:
-    shell.classList.contains("language-focus-shell")?205:88;
+    shell.classList.contains("language-focus-shell")?242:88;
    pinnedTop=Math.max(headerBottom+12,Math.min(pinnedTop,footerTop-reserved-10));
    shell.style.setProperty("--focused-dock-top",`${Math.round(pinnedTop)}px`);
    lastScreenTop.current=shell.getBoundingClientRect().top;
    // Reserve the logo/progress and the input itself before sizing the upward
    // city list. Search results never affect this measurement.
    if(shell.classList.contains("city-focus-shell")){
-    const available=Math.max(48,Math.min(230,Math.floor(pinnedTop-headerBottom-20)));
-    shell.style.setProperty("--field-suggestions-max-height",`${available}px`);
-   }
+     const available=Math.max(48,Math.min(230,Math.floor(pinnedTop-headerBottom-20)));
+     shell.style.setProperty("--field-suggestions-max-height",`${available}px`);
+    }
+    if(shell.classList.contains("language-focus-shell")){
+     const list=shell.querySelector<HTMLElement>(".language-results");
+     if(list){
+      // Align the visible list to complete 44px rows plus 8px gaps, so
+      // no half row is painted below the native IME or confirm button.
+      const remaining=Math.floor(footerTop-list.getBoundingClientRect().top-12);
+      const rows=Math.max(1,Math.min(8,Math.floor((remaining+8)/52)));
+      shell.style.setProperty("--language-results-max-height",`${rows*52-8}px`);
+     }
+    }
   };
   const refresh=()=>{
    if(frame)window.cancelAnimationFrame(frame);
@@ -69,17 +79,36 @@ export function useFieldFocusDock(active:boolean){
   // The CSS dock follows the same viewport variable as the footer. This
   // listener only tracks the exit animation and city result height.
   viewport?.addEventListener("resize",refresh);
-  viewport?.addEventListener("scroll",refresh);
-  window.addEventListener("resize",refresh);
-  return()=>{
+   viewport?.addEventListener("scroll",refresh);
+   window.addEventListener("resize",refresh);
+   // Adding or wrapping selected flags changes the list's top edge.
+   // Observe only flags, never the suggestions list, to avoid resize loops.
+   const isLanguages=shell.classList.contains("language-focus-shell");
+   const flagsResize=isLanguages&&typeof ResizeObserver!=="undefined"?new ResizeObserver(refresh):null;
+   let watchedFlags:HTMLElement|null=null;
+   const observeFlags=()=>{
+    const next=shell.querySelector<HTMLElement>(".language-selected");
+    if(watchedFlags===next)return;
+    if(watchedFlags)flagsResize?.unobserve(watchedFlags);
+    watchedFlags=next;
+    if(watchedFlags)flagsResize?.observe(watchedFlags);
+   };
+   const flagsMutation=isLanguages&&typeof MutationObserver!=="undefined"?
+     new MutationObserver(()=>{observeFlags();refresh();}):null;
+   flagsMutation?.observe(shell,{childList:true});
+   observeFlags();
+   return()=>{
    if(frame)window.cancelAnimationFrame(frame);
    lastScreenTop.current=shell.getBoundingClientRect().top;
    motion.current?.cancel();
    viewport?.removeEventListener("resize",refresh);
    viewport?.removeEventListener("scroll",refresh);
    window.removeEventListener("resize",refresh);
-   shell.style.removeProperty("--field-suggestions-max-height");
-  };
+   flagsMutation?.disconnect();
+    flagsResize?.disconnect();
+    shell.style.removeProperty("--field-suggestions-max-height");
+    shell.style.removeProperty("--language-results-max-height");
+   };
  },[active]);
  return {shellRef};
 }

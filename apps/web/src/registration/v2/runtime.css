@@ -147,7 +147,8 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
    No masks, pseudo-lenses or clipped regional backdrop-filter layers. */
 .v2-runtime .focus-field-slot{position:relative;min-height:88px}
 .v2-runtime .focus-field-slot-textarea{min-height:190px}
-.v2-runtime .language-focus-slot{min-height:300px}
+/* The language list expands naturally inside the scrollable registration step. */
+.v2-runtime .language-focus-slot{min-height:0}
 .v2-runtime .focus-field-shell{position:relative;z-index:1;width:100%;transform-origin:center bottom}
 .v2-runtime .focus-field-shell.is-focused{
  position:fixed;z-index:92;top:var(--focused-dock-top,164px);bottom:auto;
@@ -248,11 +249,22 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .about-input-shell .char-count{position:absolute;bottom:11px;right:11px;
  margin:0;padding:5px 9px;color:#ead8f0;background:#40334f;border:1px solid rgba(230,188,241,.22);
  border-radius:999px;font-size:11px;font-variant-numeric:tabular-nums;line-height:1}
-.v2-runtime .language-focus-shell{display:flex;flex-direction:column;gap:10px}
-.v2-runtime .language-focus-shell.is-focused .language-results{max-height:min(155px,25dvh)}
+/* All options participate in native page scrolling before search focus.
+   When the keyboard is visible, a separate kinetic results scroller shows
+   ONLY complete rows above the moving confirm button. */
+.v2-runtime .language-focus-shell{display:flex;flex-direction:column;gap:10px;min-width:0}
 .v2-runtime .language-focus-shell.is-focused .hint{display:none}
-.v2-runtime .language-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:260px}
-.v2-runtime .language-option{min-height:40px;border-radius:13px;font-size:12px;padding:7px}
+.v2-runtime .language-results-status{font-size:11px;line-height:16px;color:#c5aecf;min-height:16px}
+.v2-runtime .language-results{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:44px;
+ gap:8px;max-height:none;overflow:visible;align-content:start;min-height:0}
+.v2-runtime .language-focus-shell.is-focused .language-results{
+ max-height:var(--language-results-max-height,96px);overflow-x:hidden;overflow-y:auto;
+ overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;
+ scrollbar-width:thin;scrollbar-color:rgba(214,176,229,.5) transparent}
+.v2-runtime .language-focus-shell.is-focused .language-results::-webkit-scrollbar{width:3px}
+.v2-runtime .language-focus-shell.is-focused .language-results::-webkit-scrollbar-thumb{background:rgba(214,176,229,.5);border-radius:999px}
+.v2-runtime .language-option{height:44px;min-height:44px;border-radius:13px;font-size:12px;padding:7px}
 .v2-runtime .language-selected{display:flex;flex-wrap:wrap;gap:7px}
 .v2-runtime .language-flag-selected{background:#352a46;border:1px solid #775b8a;color:#f1dff8}
 /* City suggestions and the search scope always open upward. */
