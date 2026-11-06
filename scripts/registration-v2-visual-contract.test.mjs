@@ -306,5 +306,5 @@ assert.match(runtime,/\.v2-footer::before\{[^}]*background:linear-gradient\([^}]
 const footerCss=runtime.match(/\.v2-footer::before\{([^}]+)\}/)?.[1]??"";
 assert.doesNotMatch(footerCss,/backdrop-filter|mask-image/,
  "Footer mask and backdrop repaint path must be deleted, not overridden");
-assert.doesNotMatch(form,/onTouchMove=|onTouchEnd=|onWheel=|scrollTop\s*\+\=|scrollBy\(/,
+assert.doesNotMatch(form,/onTouchMove=|onTouchEnd=|onWheel=|scrollTop\s*\+=|scrollBy\(/,
  "Registration must preserve native fling inertia, not compete with a custom RAF scroller");
