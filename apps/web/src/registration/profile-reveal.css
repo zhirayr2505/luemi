@@ -62,3 +62,12 @@
 .pm-reveal-action small{font-size:11px;line-height:1.35;color:#dec9e8}
 .pm-reveal-action>span:last-child{font-size:22px;font-weight:400;color:#e7c0f6}
 @media(prefers-reduced-motion:reduce){.pm-reveal-action{transition:none}}
+
+.pm-owner-details{border:1px solid rgba(209,170,236,.22)}
+.pm-owner-details .pm-card-subtitle{display:flex;align-items:center;gap:7px;color:#d2afe8}
+.pm-owner-details p{font-size:12px;line-height:1.45;color:#c0b0cf}
+.pm-owner-detail-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.pm-owner-detail-chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:7px 10px;
+ border-radius:100px;background:rgba(121,85,149,.27);color:#e9d6f3;
+ border:1px solid rgba(198,156,223,.2);font-size:12px}
+.pm-owner-detail-chip svg{flex:none;color:#cfa9e5}
