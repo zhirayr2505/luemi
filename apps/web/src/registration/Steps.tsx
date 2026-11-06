@@ -10,8 +10,8 @@ import {categories,InterestChip,tint} from "../ui/InterestCatalog";
 import {GeoPicker} from "./GeoPicker";
 import {PhotoSorter,type PhotoItem} from "./PhotoSorter";
 import {RegistrationPreview} from "./Preview";
-import {cleanName,type RegistrationDraft} from "./model";
-import {FOCUS_RELEASE_DELAY_MS,useFieldFocusDock} from "./use-field-focus";
+import {birthDateValid,cleanName,type RegistrationDraft} from "./model";
+import {FOCUS_RELEASE_DELAY_MS,releaseAfterKeyboardSettles,useFieldFocusDock} from "./use-field-focus";
 
 export type {PhotoItem} from "./PhotoSorter";
 export interface StepProps {
@@ -63,29 +63,35 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const [dobFocused,setDobFocused]=useState(false);
  const [aboutFocused,setAboutFocused]=useState(false);
  const [nameHint,setNameHint]=useState(false);
+ const [dateInputError,setDateInputError]=useState("");
  const showNameGuidance=nameHint||fieldError?.field==="name";
  const hintTimer=useRef<number|null>(null);
- const focusTimer=useRef<number|null>(null);
+ const focusTimer=useRef<(()=>void)|null>(null);
  const focusInput=useRef<HTMLInputElement|HTMLTextAreaElement|null>(null);
  const nameDock=useFieldFocusDock(nameFocused);
  const dobDock=useFieldFocusDock(dobFocused);
  const aboutDock=useFieldFocusDock(aboutFocused);
  useEffect(()=>()=>{
    if(hintTimer.current!==null)window.clearTimeout(hintTimer.current);
-   if(focusTimer.current!==null)window.clearTimeout(focusTimer.current);
+   focusTimer.current?.();
  },[]);
  const beginFieldFocus=(field:"name"|"date"|"about",input:HTMLInputElement|HTMLTextAreaElement)=>{
-   if(focusTimer.current!==null)window.clearTimeout(focusTimer.current);
+   focusTimer.current?.();
+   focusTimer.current=null;
    focusInput.current=input;
    clearFieldError?.(field);
    onFieldFocus?.(field);
  };
- const endFieldFocus=()=>{
-   if(focusTimer.current!==null)window.clearTimeout(focusTimer.current);
-   focusTimer.current=window.setTimeout(()=>{
+ const endFieldFocus=(field:"name"|"date"|"about")=>{
+   focusTimer.current?.();
+   focusTimer.current=releaseAfterKeyboardSettles(()=>{
      if(document.activeElement===focusInput.current)return;
+     if(field==="name")setNameFocused(false);
+     if(field==="date")setDobFocused(false);
+     if(field==="about")setAboutFocused(false);
      focusInput.current=null;
      onFieldFocus?.(null);
+     focusTimer.current=null;
    },FOCUS_RELEASE_DELAY_MS);
  };
  const updateName=(raw:string)=>{
@@ -105,7 +111,18 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    `${dateDigits.slice(0,2)}.${dateDigits.slice(2,4)}.${dateDigits.slice(4)}`;
  const updateDate=(raw:string)=>{
    const digits=raw.replace(/\D/g,"").slice(0,8);
-   patch({day:digits.slice(0,2),month:digits.slice(2,4),year:digits.slice(4,8)});
+   const day=digits.slice(0,2),month=digits.slice(2,4),year=digits.slice(4,8);
+   patch({day,month,year});
+   if(digits.length===8){
+     if(birthDateValid(day,month,year)){
+       setDateInputError("");
+       // Close the native keyboard as soon as a complete, valid date is entered.
+       // Do not advance to the next registration screen automatically.
+       window.requestAnimationFrame(()=>{
+         if(document.activeElement===dobInput.current)dobInput.current?.blur();
+       });
+     }else setDateInputError("Проверь дату рождения. Регистрация доступна с 18 лет.");
+   }else setDateInputError("");
  };
  const toggleInterest=(value:string)=>patch({interests:data.interests.includes(value)
    ?data.interests.filter(x=>x!==value):data.interests.length>=15?data.interests:[...data.interests,value]});
@@ -117,7 +134,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
        placeholder="Как тебя зовут?" onFocus={e=>{
          setNameFocused(true);beginFieldFocus("name",e.currentTarget);
        }} onBlur={()=>{
-         setNameFocused(false);endFieldFocus();
+         endFieldFocus("name");
        }} onChange={e=>{
          clearFieldError?.("name");updateName(e.target.value);
        }}/></GlassField>
@@ -139,7 +156,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
          onFocus={e=>{
            setDobFocused(true);beginFieldFocus("date",e.currentTarget);
          }}
-         onBlur={()=>{setDobFocused(false);endFieldFocus();}}
+         onBlur={()=>{endFieldFocus("date");}}
          onKeyDown={e=>{
            if(e.key==="Backspace"&&e.currentTarget.selectionStart===dateValue.length&&dateValue.endsWith(".")){
              e.preventDefault();updateDate(dateDigits.slice(0,-1));
@@ -147,7 +164,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
          }}
          onChange={e=>{clearFieldError?.("date");updateDate(e.target.value);}}/>
      </GlassField>
-     {fieldError?.field==="date"&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError.message}</div>}
+     {(fieldError?.field==="date"||dateInputError)&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError?.field==="date"?fieldError.message:dateInputError}</div>}
    </div></div>
    <ChoiceRow label="Пол">
      <GlassChoice chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<GenderIcon type="man"/>}>Мужчина</GlassChoice>
@@ -198,7 +215,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
       placeholder="Что тебя радует? Чем любишь заниматься?"
       value={data.about} maxLength={750}
       onFocus={e=>{setAboutFocused(true);beginFieldFocus("about",e.currentTarget);}}
-      onBlur={()=>{setAboutFocused(false);endFieldFocus();}}
+      onBlur={()=>{endFieldFocus("about");}}
       onChange={e=>{clearFieldError?.("about");patch({about:[...e.target.value].slice(0,750).join("")});}}/>
      <span className="char-count" aria-live="polite">{[...data.about].length} / 750</span></div></GlassField>
    {fieldError?.field==="about"&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError.message}</div>}
