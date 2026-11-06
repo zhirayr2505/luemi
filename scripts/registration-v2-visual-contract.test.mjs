@@ -127,8 +127,8 @@ assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.
  "Changing city suggestions must not feed the editor height back into keyboard placement");
 assert.match(form,/<section key=\{stage\.id\}[^>]*>[\s\S]*?<div className="v2-focus-scrim"/,
  "Body blur stays in the same stacking layer as the focused field");
-assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(84px\)[^}]*transition:opacity/s,
- "Deep blur radius stays fixed while the full-screen veil fades smoothly");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(38px\)[^}]*transition:opacity/s,
+ "The base frosted pane uses a moderate static blur with a smooth single fade");
 assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-body\{[^}]*z-index:2/s,
  "Focused field paints above the body scrim instead of disappearing below it");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
@@ -209,14 +209,16 @@ assert.doesNotMatch(runtime,/background:#412b41|background:#38253a/,
 
 
 // Stronger optical focus and gentle glass bubbles remain a single motion path.
-assert.match(runtime,/\.v2-focus-scrim\{[^}]*rgba\(11,8,20,\.97\)[^}]*backdrop-filter:blur\(84px\)/s,
- "Dense dark plum glass makes background text genuinely unreadable");
-assert.doesNotMatch(runtime,/\.v2-focus-scrim::after\{/,
- "Retired secondary decorative lens has been removed");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-header\{\s*filter:blur\(32px\);opacity:0;/,
- "On focus, the header and logo become completely invisible");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{\s*filter:blur\(32px\);opacity:0;/,
- "On focus, the stage heading becomes completely invisible");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*rgba\(41,28,56,\.28\)[^}]*backdrop-filter:blur\(38px\)/s,
+ "Transparent tinted glass preserves diffused background shapes instead of a blank pane");
+assert.match(runtime,/\.v2-focus-scrim::before\{[^}]*backdrop-filter:blur\(26px\)[^}]*mask-image:radial-gradient/s,
+ "Upper feathered organic glass lens applies a deeper regional blur");
+assert.match(runtime,/\.v2-focus-scrim::after\{[^}]*backdrop-filter:blur\(14px\)[^}]*mask-image:radial-gradient/s,
+ "Lower feathered glass lens applies a distinct, lighter regional blur");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-header\{\s*filter:blur\(18px\);opacity:\.62;/,
+ "The logo is visible only as a blurred lavender silhouette behind the glass");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{\s*filter:blur\(24px\);opacity:\.62;/,
+ "The heading leaves a soft unfocusable silhouette, not an empty rectangle");
 assert.match(runtime,/\.name-input-hint\.is-visible\{[^}]*opacity:1;visibility:visible;transform:translate3d\(0,0,0\) scale\(1\)/s,
  "The name hint glides smoothly into view");
 assert.match(runtime,/@keyframes luemi-glass-tip-enter[\s\S]*?\.field-inline-hint:not\(\.name-input-hint\)/,
@@ -252,7 +254,14 @@ assert.match(form,/measuredBottom>=fullHeight-18[\s\S]*?Math\.max\(fullHeight,wi
  "Transient keyboard viewport decreases cannot shrink the full canvas");
 assert.doesNotMatch(runtime,/\.v2-stage-heading::after\{/,
  "Old translucent rectangle over the heading is fully deleted");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{\s*filter:blur\(32px\);opacity:0;/,
- "Only active field name and input remain readable");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{\s*filter:blur\(24px\);opacity:\.62;/,
+ "Underlying heading is unreadable but contributes to the frosted depth");
 assert.match(runtime,/\.v2-header,\.v2-runtime \.v2-stage-heading\{transition:none\}/,
  "Reduced-motion mode keeps the full background disappearance immediate");
+
+
+// Preserve a layered translucent background, never a dark blank state.
+assert.doesNotMatch(runtime,/blur\(84px\)|rgba\(11,8,20,\.97\)|\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{[^}]*opacity:0/,
+ "The prior blacked-out full-screen state must not be restored");
+assert.match(runtime,/\.focus-field-shell\.is-focused\{position:fixed;z-index:92;/,
+ "Active field and its title stay sharp above every frosted-glass region");

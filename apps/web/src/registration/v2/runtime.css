@@ -147,24 +147,52 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .name-focus-shell .glass-control,.v2-runtime .dob-focus-shell .glass-control{min-height:60px;font-size:18px}
 .v2-runtime .dob-focus-shell .glass-control{text-align:center;letter-spacing:.05em;font-variant-numeric:tabular-nums}
 .v2-runtime .field-focus-overlay{display:none}
-/* Focus isolation: one deep, fixed-radius glass blur and almost opaque
-   plum veil. Only opacity animates, never the heavy blur radius on Android. */
+/* Multi-depth Liquid Glass focus. Preserve silhouettes of the actual
+   registration beneath the glass; blur its words until unreadable instead
+   of replacing the screen with an opaque blank plum rectangle. All three
+   blur radii are fixed: only the shared layer opacity animates on Android. */
 .v2-runtime .v2-focus-scrim{position:fixed;inset:0;z-index:90;pointer-events:none;
- visibility:hidden;opacity:0;
- background:radial-gradient(ellipse 100% 82% at 50% 43%,
-  rgba(25,17,36,.86) 0%,rgba(17,11,27,.92) 62%,rgba(11,8,20,.97) 100%);
- -webkit-backdrop-filter:blur(84px) saturate(.62) brightness(.48);
- backdrop-filter:blur(84px) saturate(.62) brightness(.48);
- transition:opacity .42s cubic-bezier(.16,.76,.24,1),visibility 0s linear .42s}
+ visibility:hidden;opacity:0;isolation:isolate;
+ background:
+  radial-gradient(ellipse 72% 39% at 15% 17%,rgba(203,157,231,.21),transparent 90%),
+  radial-gradient(ellipse 82% 48% at 91% 65%,rgba(218,152,205,.15),transparent 88%),
+  linear-gradient(155deg,rgba(41,28,56,.28),rgba(24,16,38,.42));
+ -webkit-backdrop-filter:blur(38px) saturate(122%) brightness(.92);
+ backdrop-filter:blur(38px) saturate(122%) brightness(.92);
+ transition:opacity .46s cubic-bezier(.17,.78,.24,1),visibility 0s linear .46s}
+/* Upper lens: broad feathered lavender glass, not a rectangular card. */
+.v2-runtime .v2-focus-scrim::before{content:"";position:absolute;
+ left:-13%;top:-8%;width:124%;height:52%;pointer-events:none;
+ border-radius:46% 54% 58% 42% / 58% 39% 61% 42%;
+ background:
+  radial-gradient(ellipse 72% 72% at 22% 35%,rgba(225,182,244,.19),transparent 76%),
+  linear-gradient(145deg,rgba(235,198,246,.08),rgba(80,53,107,.025) 66%,transparent);
+ -webkit-backdrop-filter:blur(26px) saturate(130%);
+ backdrop-filter:blur(26px) saturate(130%);
+ -webkit-mask-image:radial-gradient(ellipse at 48% 40%,#000 29%,transparent 78%);
+ mask-image:radial-gradient(ellipse at 48% 40%,#000 29%,transparent 78%);}
+/* Lower lens: a gentler rose refraction, creating depth in the empty space. */
+.v2-runtime .v2-focus-scrim::after{content:"";position:absolute;
+ left:10%;top:33%;width:108%;height:48%;pointer-events:none;
+ border-radius:59% 41% 52% 48% / 44% 65% 35% 56%;
+ background:
+  radial-gradient(ellipse 68% 70% at 73% 45%,rgba(233,176,210,.15),transparent 77%),
+  linear-gradient(112deg,transparent 12%,rgba(192,157,228,.075) 54%,transparent 85%);
+ -webkit-backdrop-filter:blur(14px) saturate(118%);
+ backdrop-filter:blur(14px) saturate(118%);
+ -webkit-mask-image:radial-gradient(ellipse at 60% 49%,#000 23%,transparent 75%);
+ mask-image:radial-gradient(ellipse at 60% 49%,#000 23%,transparent 75%);}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-focus-scrim{
  visibility:visible;opacity:1;pointer-events:auto;
- transition:opacity .42s cubic-bezier(.16,.76,.24,1),visibility 0s}
+ transition:opacity .46s cubic-bezier(.17,.78,.24,1),visibility 0s}
+/* Neither the logo nor the step title is legible, but both still diffuse
+   recognizable light and shape through the different glass depths. */
 .v2-runtime .v2-header,.v2-runtime .v2-stage-heading{
- transition:opacity .34s cubic-bezier(.18,.78,.22,1)}
+ transition:opacity .46s cubic-bezier(.17,.78,.24,1)}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-header{
- filter:blur(32px);opacity:0;pointer-events:none}
+ filter:blur(18px);opacity:.62;pointer-events:none}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-stage-heading{
- filter:blur(32px);opacity:0;pointer-events:none}
+ filter:blur(24px);opacity:.62;pointer-events:none}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:2}
 
 /* One true Liquid Glass surface for registration guidance and validation.
