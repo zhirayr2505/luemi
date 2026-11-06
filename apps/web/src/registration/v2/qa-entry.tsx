@@ -1,5 +1,5 @@
 /* Development-only isolated UI harness. No Telegram credentials or production
-   publication: the browser test exercises all eight real registration stages. */
+   publication: the browser test exercises all five required registration stages. */
 import {useCallback,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {RealRegistrationV2} from "./RealRegistration";
@@ -41,7 +41,7 @@ function IsolatedRegistrationQA(){
  return <div className="luemi-shell" data-theme="dark" data-testid="registration-qa-shell">
   {published?<main role="status" data-testid="qa-synthetic-complete">
     <h1>Синтетическая проверка завершена</h1>
-    <p>Все восемь экранов пройдены. Серверная публикация не выполнялась.</p>
+    <p>Все пять обязательных экранов пройдены. Серверная публикация не выполнялась.</p>
    </main>:<RealRegistrationV2
     draft={draft} patch={patch} photos={photos}
     fallbackEntry={false} restored={true} resumeReview={false}
