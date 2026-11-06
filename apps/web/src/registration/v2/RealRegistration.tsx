@@ -349,7 +349,7 @@ export function RealRegistrationV2(p:Props){
        <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")+(!continueReady?" is-incomplete":"")} disabled={photoChecking||changingStep}
           aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
          aria-busy={photoChecking||changingStep}
-         aria-disabled={!continueReady||undefined}
+         aria-disabled={photoChecking||changingStep||undefined}
           onPointerDown={e=>{if(fieldConfirmActive)e.preventDefault();}}
           onClick={()=>{
             if(fieldConfirmActive){
