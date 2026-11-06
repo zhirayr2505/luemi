@@ -27,7 +27,7 @@ function IsolatedRegistrationQA(){
  const movePhoto=useCallback((from:number,to:number)=>setPhotos(prev=>{
   const next=[...prev];
   if(from<0||from>=next.length||to<0||to>=next.length)return prev;
-  const [item]=next.splice(from,1);next.splice(to,0);return next;
+  const [item]=next.splice(from,1);next.splice(to,0,item);return next;
  }),[]);
  const submit=()=>{
   if(publishing)return;

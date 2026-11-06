@@ -23,7 +23,6 @@ try{
  });
  await page.goto(root,{waitUntil:"domcontentloaded"});
  const device=page.locator(".v2-device");
- const current=()=>device.getAttribute("data-screen");
  const screenshot=async(label)=>page.screenshot({path:out+"/"+label+".png"});
  const stage=async(id)=>{
   await page.waitForFunction(expected=>{
