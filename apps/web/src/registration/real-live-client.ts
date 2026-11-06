@@ -92,7 +92,7 @@ export async function closeRealMatch(id:string):Promise<void>{
 }
 export interface RealPublishedProfile{
  id:string;name:string;age:number;city:string;countryCode:string;
- about:string;gender:"man"|"woman"|"other";goal:string;
+ about:string;gender:"man"|"woman"|"other";goal:string;goals:string[];
  interests:string[];languages:string[];
  photos:Array<{id:string;url:string}>;
  likedYouKind:RealLikeKind|null;
@@ -102,7 +102,7 @@ export interface OwnerPublicationStatus{
  approved:number;pending:number;other:number;
  profile?:{
   name:string;age:number;city:string;countryCode:string;about:string;
-  goal:string;interests:string[];photos:string[];
+  goal:string;goals:string[];interests:string[];photos:string[];
  };
 }
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -131,7 +131,9 @@ export async function ownerPublicationStatus():Promise<OwnerPublicationStatus>{
   if(data.state!=="published"||!object(p)||typeof p.name!=="string"||
    !Number.isInteger(p.age)||Number(p.age)<18||typeof p.city!=="string"||
    typeof p.countryCode!=="string"||typeof p.about!=="string"||
-   typeof p.goal!=="string"||!Array.isArray(p.interests)||
+   typeof p.goal!=="string"||!Array.isArray(p.goals)||p.goals.length<1||p.goals.length>3||
+   p.goals[0]!==p.goal||!p.goals.every((g:unknown)=>typeof g==="string")||
+   !Array.isArray(p.interests)||
    !p.interests.every((v:unknown)=>typeof v==="string")||
    !Array.isArray(p.photos)||p.photos.length<3||p.photos.length>6||
    !p.photos.every((url:unknown)=>typeof url==="string"&&photoPath.test(url)))
@@ -183,6 +185,8 @@ function parsePublishedProfile(item:unknown):RealPublishedProfile|null{
  if(!object(item)||typeof item.id!=="string"||!uuid.test(item.id)||typeof item.name!=="string"||
   !Number.isInteger(item.age)||Number(item.age)<18||typeof item.city!=="string"||
   typeof item.countryCode!=="string"||typeof item.about!=="string"||typeof item.goal!=="string"||
+  !Array.isArray(item.goals)||item.goals.length<1||item.goals.length>3||
+  item.goals[0]!==item.goal||!item.goals.every((g:unknown)=>typeof g==="string")||
   !["woman","man","other"].includes(String(item.gender))||!Array.isArray(item.interests)||
   !Array.isArray(item.languages)||!Array.isArray(item.photos)||item.photos.length<3||item.photos.length>6)return null;
  const photos=item.photos.filter((p:unknown):p is {id:string;url:string}=>object(p)&&
@@ -190,7 +194,7 @@ function parsePublishedProfile(item:unknown):RealPublishedProfile|null{
  if(photos.length!==item.photos.length||!item.interests.every((x:unknown)=>typeof x==="string")||
   !item.languages.every((x:unknown)=>typeof x==="string"))return null;
  return {id:item.id,name:item.name,age:Number(item.age),city:item.city,countryCode:item.countryCode,
-  gender:item.gender as "man"|"woman"|"other",goal:item.goal,about:item.about,
+  gender:item.gender as "man"|"woman"|"other",goal:item.goal,goals:item.goals as string[],about:item.about,
   interests:item.interests as string[],languages:item.languages as string[],photos,
   likedYouKind:item.likedYouKind==="ordinary"||item.likedYouKind==="super"?item.likedYouKind:null};
 }
