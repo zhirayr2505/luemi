@@ -34,7 +34,10 @@ try{
   await screenshot(id);
  };
  const next=async(id)=>{
-  const button=page.locator(".v2-next");
+  // Confirming an editor keeps it above the closing IME. Only tap Continue
+  // once the same button has switched back from the circular checkmark.
+  const button=page.getByRole("button",{name:"Продолжить"});
+  await button.waitFor({timeout:2500});
   await button.click();
   // A real visible loading indicator replaces the arrow while the stage moves.
   assert.equal(await button.getAttribute("aria-busy"),"true","pending transition must expose spinner");
