@@ -29,7 +29,7 @@ export async function saveRemoteDraft(d:RegistrationDraft,revision:number):Promi
  const birthDate=[d.year,d.month.padStart(2,"0"),d.day.padStart(2,"0")].join("-");
  const fields={displayName:d.name.trim(),birthDate,gender:d.gender,city:d.city.trim(),
   countryCode:d.countryCode,placeId:d.placeId,radius:d.radius,searchScope:d.searchScope,
-  audience:d.audience,ageMin:d.ageMin,ageMax:d.ageMax,goal:d.goal,
+  audience:d.audience,ageMin:d.ageMin,ageMax:d.ageMax,goal:d.goal,goals:[...d.goals],
   interests:[...d.interests],about:d.about.trim(),languages:[...d.languages],
   height:d.height,occupation:d.occupation.trim(),education:d.education.trim(),
   lifestyle:[...d.lifestyle],pets:[...d.pets],facts:[...d.facts],family:[...d.family],consentVersion:version};

@@ -4,7 +4,7 @@
  */
 export const realRegistrationFields = [
   "displayName","birthDate","consentVersion","gender","city","countryCode",
-  "placeId","radius","searchScope","audience","ageMin","ageMax","goal",
+  "placeId","radius","searchScope","audience","ageMin","ageMax","goal","goals",
   "interests","about","languages","height","occupation","education","lifestyle","pets","facts","family"
 ] as const;
 export type RealRegistrationFields = Partial<Record<(typeof realRegistrationFields)[number],unknown>>;
@@ -44,6 +44,9 @@ function valid(key:string,v:unknown,now:Date):boolean{
     case "audience":return enumOk(v,["women","men","everyone"]);
     case "ageMin":case "ageMax":return Number.isInteger(v)&&Number(v)>=18&&Number(v)<=80;
     case "goal":return enumOk(v,["serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided"]);
+    case "goals":return Array.isArray(v)&&v.length>=1&&v.length<=3&&
+      v.every(x=>enumOk(x,["serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided"]))&&
+      new Set(v).size===v.length&&!(v.includes("undecided")&&v.length>1);
     case "interests":return list(v,15);
     case "languages":return list(v,10);
     case "lifestyle":return list(v,12);
@@ -70,6 +73,8 @@ export function validateRealRegistrationDraft(
     fields[k]=v;
   }
   if(fields.ageMin!==undefined&&fields.ageMax!==undefined&&Number(fields.ageMin)>Number(fields.ageMax))
+    return {ok:false,error:"invalid_draft"};
+  if(Array.isArray(fields.goals)&&fields.goal!==fields.goals[0])
     return {ok:false,error:"invalid_draft"};
   const birthDate=typeof fields.birthDate==="string"?fields.birthDate:null;
   delete fields.birthDate;

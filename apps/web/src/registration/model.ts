@@ -2,6 +2,8 @@ import {normalizeCountryCode} from "@luemi/contracts";
 export type Gender = "" | "man" | "woman" | "other";
 export type Audience = "" | "women" | "men" | "everyone";
 export type Goal = "" | "serious" | "relationship" | "dates" | "friendship" | "communication" | "new_people" | "flirt" | "activities" | "undecided";
+export type SelectedGoal=Exclude<Goal,"">;
+export const MAX_DATING_GOALS=3;
 export type SearchScope = "radius" | "country" | "world";
 export const goals = [
  {id:"serious",label:"Серьёзные отношения"},
@@ -14,6 +16,19 @@ export const goals = [
  {id:"activities",label:"Совместные активности"},
  {id:"undecided",label:"Пока не определился"}
 ] as const;
+/** Preserve the primary goal for existing profile consumers; the ordered list
+ * adds two more without changing established profile layouts. */
+export function chosenGoals(d:Pick<RegistrationDraft,"goal"|"goals">):SelectedGoal[]{
+ const values=d.goals.length?d.goals:(d.goal?[d.goal]:[]);
+ return values.filter(v=>goals.some(g=>g.id===v)).slice(0,MAX_DATING_GOALS);
+}
+export function toggleDatingGoal(d:Pick<RegistrationDraft,"goal"|"goals">,value:SelectedGoal):SelectedGoal[]{
+ const current=chosenGoals(d);
+ if(current.includes(value))return current.filter(x=>x!==value);
+ if(value==="undecided")return ["undecided"];
+ const filtered=current.filter(x=>x!=="undecided");
+ return filtered.length<MAX_DATING_GOALS?[...filtered,value]:filtered;
+}
 export interface CitySelection {
   id: string;
   city: string;
@@ -26,7 +41,7 @@ export interface RegistrationDraft {
   day: string; month: string; year: string; gender: Gender;
   country: string; city: string; placeId: string; countryCode: string;
   radius: number; searchScope: SearchScope;
-  audience: Audience; ageMin: number; ageMax: number; goal: Goal;
+  audience: Audience; ageMin: number; ageMax: number; goal: Goal; goals: SelectedGoal[];
   interests: string[]; about: string; languages: string[];
   // Optional profile details. They never block publication and can be added later.
   height: number | null; occupation: string; education: string;
@@ -36,7 +51,7 @@ export interface RegistrationDraft {
 export const newDraft=(name=""):RegistrationDraft=>({
   name,trialConsent:false,day:"",month:"",year:"",gender:"",
   country:"",city:"",placeId:"",countryCode:"",radius:100,searchScope:"radius",
-  audience:"",ageMin:18,ageMax:35,goal:"",
+  audience:"",ageMin:18,ageMax:35,goal:"",goals:[],
   interests:[],about:"",languages:[],height:null,occupation:"",education:"",
   lifestyle:[],pets:[],facts:[],family:[]
 });
@@ -73,7 +88,11 @@ export function validateStep(d:RegistrationDraft,step:number,count:number,today=
       if(!selectedCityValid(d))return "Выбери город из предложенного списка.";
       return ["radius","country","world"].includes(d.searchScope)&&Number.isInteger(d.radius)&&d.radius>=1&&d.radius<=5000?null:"Радиус: от 1 до 5000 км.";
     case 4:
-      if(!d.audience||!goals.some(g=>g.id===d.goal))return "Выбери предпочтения и цель знакомства.";
+      if(!d.audience)return "Выбери, кого хочешь встретить.";
+      {const values=chosenGoals(d);
+       if(!values.length||values.length>MAX_DATING_GOALS||
+          values[0]!==d.goal||values.includes("undecided")&&values.length>1)
+        return "Выбери от 1 до 3 целей знакомства.";}
       return d.ageMin>=18&&d.ageMax<=80&&d.ageMin<=d.ageMax?null:"Проверь диапазон возраста.";
     case 5:return d.interests.length<=15?null:"Максимум 15 интересов.";
     case 6:if(d.about.trim().length<2)return "Расскажи о себе хотя бы в двух словах.";
