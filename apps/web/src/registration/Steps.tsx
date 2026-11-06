@@ -63,6 +63,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const [dobFocused,setDobFocused]=useState(false);
  const [aboutFocused,setAboutFocused]=useState(false);
  const [nameHint,setNameHint]=useState(false);
+ const showNameGuidance=nameHint||fieldError?.field==="name";
  const hintTimer=useRef<number|null>(null);
  const focusTimer=useRef<number|null>(null);
  const focusInput=useRef<HTMLInputElement|HTMLTextAreaElement|null>(null);
@@ -121,9 +122,11 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
        }} onChange={e=>{
          clearFieldError?.("name");updateName(e.target.value);
        }}/></GlassField>
-     {(nameHint||fieldError?.field==="name")&&<div className="field-inline-hint name-input-hint" role="status">
+     <div className={"field-inline-hint name-input-hint"+(showNameGuidance?" is-visible":"")}
+       role={showNameGuidance?(fieldError?.field==="name"?"alert":"status"):undefined}
+       aria-hidden={!showNameGuidance}>
        <Info size={16} aria-hidden="true"/>{fieldError?.field==="name"?fieldError.message:"Можно использовать только буквы, пробел, тире и апостроф."}
-     </div>}
+     </div>
    </div></div>
    {!deferConsent&&<RegistrationConsent data={data} patch={patch}/>}
  </div>;
