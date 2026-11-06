@@ -125,8 +125,10 @@ assert.match(focusDock,/pinnedTop=Math\.max\(headerBottom\+12,Math\.min\(pinnedT
  "The editor stays anchored while the Android viewport animates");
 assert.match(focusDock,/shell\.animate\(\[[\s\S]*?slotTop-dockTop[\s\S]*?translate3d\(0,-5px,0\)/,
  "One FLIP animation moves each focused field and adds a soft 5px rise");
-assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.height/,
- "Changing city suggestions must not feed the editor height back into keyboard placement");
+assert.doesNotMatch(focusDock,/shell\.getBoundingClientRect\(\)\.height/,
+ "Editor placement never depends on the live suggestion pane height");
+assert.match(focusDock,/flagsResize\?\.observe\(watchedFlags\)/,
+ "Only selected-language flags are observed, so city suggestion animation stays isolated");
 assert.match(form,/<div className="v2-backdrop"[^>]*\/>[\s\S]*?<div className="v2-focus-scrim"[\s\S]*?<header className="v2-header">/,
  "Focus blur is a direct child of the full device, never clipped by the body scroller");
 assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(40px\)[^}]*transition:opacity/s,
