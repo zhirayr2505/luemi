@@ -105,6 +105,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/account-deletion-72h-recovery.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0010_post_publication_report_reasons.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0011_discovery_preferences.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0012_multi_goals.sql
           # CI-only isolated dependency fixture: never applied to live Supabase.
           psql -v ON_ERROR_STOP=1 -f qa/reg01-v3-eraser-synthetic.sql
           # Verify the ACTUAL operator-only grants migration against disposable
