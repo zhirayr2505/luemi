@@ -21,7 +21,7 @@ export type ProfileRouteMotionHandle={
  suspendForBackground:()=>void;resumeFromBackground:()=>void;
 };
 type Props={
- data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
+ data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;onReveal?:()=>void;
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
@@ -39,9 +39,14 @@ function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;lo
   }}
   onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
 }
-function About({view}:{view:ProfileView}){
+function About({view,onReveal}:{view:ProfileView;onReveal?:()=>void}){
  const p=view.profile,goal=p.goal&&p.goal!=="undecided"?goals.find(g=>g.id===p.goal):null;
  return <div className="pm-card-stack">
+  {view.mode==="owner"&&onReveal&&<button type="button" className="pm-reveal-action" onClick={onReveal}>
+    <Sparkles size={20} aria-hidden="true"/>
+    <span><strong>Раскрой себя</strong><small>Дополнить языки, рост и свою историю</small></span>
+    <span aria-hidden="true">＋</span>
+  </button>}
   {goal&&<article className="pm-card"><div className="pm-card-subtitle"><Heart size={17}/> Цель знакомства</div><strong>{goal.label}</strong></article>}
   {p.about&&<article className="pm-card"><h3>Обо мне</h3><p>{p.about}</p></article>}
   {!!p.interests.length&&<article className="pm-card"><h3>Интересы</h3><div className="pm-interests">{p.interests.map(id=><InterestChip key={id} id={id}/>)}</div></article>}
@@ -83,7 +88,7 @@ function Meta({view}:{view:ProfileView}){
 }
 
 
-export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,onReveal,registerBack,
  active=true,onMotionProgress,registerRouteMotion,gestureArbiter,initialExpanded=false}:Props){
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]),photos=view.photos;
  const [photoId,setPhotoId]=useState<string|null>(photos[0]?.id??null);
@@ -126,7 +131,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  innerBack.current=()=>{closeTop();};
  useEffect(()=>{if(!active)return;registerBack?.(closeTop);return ()=>registerBack?.(null);},[active,closeTop,registerBack]);
  const renderPage=useCallback((id:V3TabId)=>{
-  if(id==="about")return <About view={view}/>;
+  if(id==="about")return <About view={view} onReveal={onReveal}/>;
   if(id==="bliki")return <Bliki/>;
   if(id==="meta")return <Meta view={view}/>;
   if(id==="gifts")return <Gifts view={view}/>;
@@ -137,7 +142,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     <PhotoImage photo={photo} alt="" loading="lazy"/>
     {photo.status!=="published"&&<span>{photo.status==="draft"?"Черновик":"Проверка"}</span>}
    </button>)}</div>:<div className="pm-empty"><Images size={37}/><h3>Пока нет доступных фото</h3></div>;
- },[view,photos,openPhoto]);
+ },[view,photos,openPhoto,onReveal]);
  return <section ref={root} className={"pm-shell v3-profile-host "+(inline?"pm-inline":"pm-dialog")}
    data-sheet-state={expanded?"expanded":"collapsed"} data-morph-state={expanded?"expanded":"compact"}
    role={inline?undefined:"dialog"} aria-modal={inline?undefined:true}
