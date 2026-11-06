@@ -31,10 +31,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  /** The same approved card can render verified server users with no demo badges. */
  real?:boolean;onMore?:()=>void;
 }){
- const goalLabels=(person.goals?.length?person.goals:[person.goal])
-  .filter(id=>id!=="undecided").flatMap(id=>{
-    const g=goals.find(g=>g.id===id);return g?[g.label]:[];
-  });
+ const goal=person.goal==="undecided"?null:goals.find(g=>g.id===person.goal);
  const [expanded,setExpanded]=useState(false);
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
@@ -309,7 +306,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
               <span>{person.city}{person.country?", "+person.country:""}</span>
              </div>
             </div>
-            {goalLabels.length>0&&<div className="feed-v2-goal"><Heart size={14}/>{goalLabels.join(" · ")}</div>}
+            {goal&&<div className="feed-v2-goal"><Heart size={14}/>{goal.label}</div>}
            </div>
            {person.likedYouKind&&<div className={"feed-v2-liked-you "+(person.likedYouKind==="super"?"is-super":"")}>
             {person.likedYouKind==="super"?<Sparkles size={14}/>:<Heart size={14}/>} Уже выбрал(а) тебя · лайк создаст мэтч

@@ -115,20 +115,6 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .preferences-step .goals-section .glass-choice svg{color:#eeafd6;flex:none}
 .v2-runtime .preferences-step .goals-section .goal-card-label{overflow-wrap:anywhere}
 .v2-runtime .preferences-step .goals-section .glass-choice.selected{background:rgba(98,69,112,.86)}
-.v2-runtime .goal-multi-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 5px}
-.v2-runtime .goal-multi-count{flex:none;display:inline-flex;align-items:center;justify-content:center;
- min-width:55px;height:28px;border-radius:999px;padding:0 10px;
- color:#f5dcff;background:rgba(158,111,189,.23);border:1px solid rgba(222,178,246,.27);
- font-size:12px;font-weight:740;font-variant-numeric:tabular-nums}
-.v2-runtime .goal-multi-help{margin:0 0 13px;color:#bdb0cd;font-size:12px;line-height:1.4}
-.v2-runtime .goal-selection-order{position:absolute;top:8px;right:9px;display:grid;place-items:center;
- width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:800;
- color:#26132f;background:#e6c0fa;border:1px solid rgba(255,255,255,.42)}
-.v2-runtime .goals-section .glass-choice{position:relative;padding-right:28px}
-.v2-runtime .goals-section .glass-choice:disabled{opacity:.45;cursor:not-allowed}
-.v2-runtime .goal-limit-indicator{position:absolute;top:8px;right:8px;font-size:10px;
- color:#cbb7d3;line-height:1}
-
 .v2-runtime .glass-panel,.v2-runtime .age-range,.v2-runtime .radius-control,
 .v2-runtime .glass-check,.v2-runtime .v2-note{
  background:linear-gradient(145deg,rgba(68,53,84,.89),rgba(40,35,56,.92));

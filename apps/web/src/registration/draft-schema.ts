@@ -57,13 +57,6 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
   if(!oneOf(value,enums[key]))return fail("enum-"+key);
   (d as unknown as Record<string,unknown>)[key]=value;
  }
- const selected=raw.goals===undefined||Array.isArray(raw.goals)&&raw.goals.length===0&&d.goal
-   ?(d.goal?[d.goal]:[]):raw.goals;
- if(!Array.isArray(selected)||selected.length>3||new Set(selected).size!==selected.length||
-    selected.some(v=>!oneOf(v,enums.goal.slice(1)))||
-    selected.includes("undecided")&&selected.length>1||
-    d.goal!==((selected[0] as string|undefined)??""))return fail("array-goals");
- d.goals=selected as RegistrationDraft["goals"];
  const numbers={radius:[1,5000],ageMin:[18,80],ageMax:[18,80]} as const;
  for(const key of Object.keys(numbers) as Array<keyof typeof numbers>){
   const value=raw[key]===undefined?defaults[key]:raw[key];

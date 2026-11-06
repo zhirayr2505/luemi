@@ -47,15 +47,3 @@ test("prototype pollution and custom object prototypes rejected",()=>{
  assert.equal(validateRealRegistrationDraft(x,consent,now).ok,false);
  assert.equal(validateRealRegistrationDraft([],consent,now).ok,false);
 });
-
-test("up to three different goals are accepted, but forged or conflicting choices are rejected",()=>{
- assert.equal(ok({goal:"friendship",goals:["friendship","dates","communication"]}).ok,true);
- assert.equal(ok({goal:"friendship",goals:["friendship"]}).ok,true);
- for(const goals of [
-  [],["friendship","friendship"],["friendship","dates","communication","flirt"],
-  ["invalid"],["undecided","friendship"]
- ]){
-  assert.equal(ok({goal:"friendship",goals}).ok,false,JSON.stringify(goals));
- }
- assert.equal(ok({goal:"dates",goals:["friendship","dates"]}).ok,false);
-});
