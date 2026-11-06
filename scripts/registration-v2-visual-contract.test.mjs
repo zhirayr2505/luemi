@@ -127,8 +127,8 @@ assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.
  "Changing city suggestions must not feed the editor height back into keyboard placement");
 assert.match(form,/<section key=\{stage\.id\}[^>]*>[\s\S]*?<div className="v2-focus-scrim"/,
  "Body blur stays in the same stacking layer as the focused field");
-assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(56px\)[^}]*transition:opacity/s,
- "Optical focus blur stays fixed while the background fades smoothly");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(84px\)[^}]*transition:opacity/s,
+ "Deep blur radius stays fixed while the full-screen veil fades smoothly");
 assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-body\{[^}]*z-index:2/s,
  "Focused field paints above the body scrim instead of disappearing below it");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
@@ -209,12 +209,14 @@ assert.doesNotMatch(runtime,/background:#412b41|background:#38253a/,
 
 
 // Stronger optical focus and gentle glass bubbles remain a single motion path.
-assert.match(runtime,/\.v2-focus-scrim::after\{[^}]*radial-gradient\([^}]*transform:scale\(1\.055\)[^}]*transition:opacity/s,
- "Eye-like vignette enters with opacity and transform, not an animated blur radius");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-focus-scrim::after\{opacity:1;transform:scale\(1\)\}/,
- "Eye-like lens completes its focus transition");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-header\{filter:blur\(15px\);opacity:\.58;/,
- "Background header recedes while the text input stays sharp");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*rgba\(11,8,20,\.97\)[^}]*backdrop-filter:blur\(84px\)/s,
+ "Dense dark plum glass makes background text genuinely unreadable");
+assert.doesNotMatch(runtime,/\.v2-focus-scrim::after\{/,
+ "Retired secondary decorative lens has been removed");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-header\{\s*filter:blur\(32px\);opacity:0;/,
+ "On focus, the header and logo become completely invisible");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{\s*filter:blur\(32px\);opacity:0;/,
+ "On focus, the stage heading becomes completely invisible");
 assert.match(runtime,/\.name-input-hint\.is-visible\{[^}]*opacity:1;visibility:visible;transform:translate3d\(0,0,0\) scale\(1\)/s,
  "The name hint glides smoothly into view");
 assert.match(runtime,/@keyframes luemi-glass-tip-enter[\s\S]*?\.field-inline-hint:not\(\.name-input-hint\)/,
@@ -227,8 +229,8 @@ assert.match(focusDock,/\{duration:480,easing:"cubic-bezier\(\.16,\.84,\.2,1\)"\
  "One smoother field docking transition");
 assert.match(focusDock,/\{duration:440,easing:"cubic-bezier\(\.17,\.79,\.22,1\)"\}/,
  "One smoother field undocking transition");
-assert.match(runtime,/\.name-input-hint,[\s\S]*?\.v2-focus-scrim::after\{transition:none;transform:none\}/,
- "Reduce-motion preference disables glass hint and lens choreography");
+assert.match(runtime,/\.v2-header,\.v2-runtime \.v2-stage-heading\{transition:none\}/,
+ "Reduced-motion preference disables the old title-focus transition");
 
 
 // Regression from Samsung Galaxy A55 keyboard-dismissal video (2026-11-06).
@@ -248,9 +250,9 @@ assert.match(form,/useLayoutEffect\(\(\)=>\{[\s\S]*?data-registration-shell[\s\S
  "Stable layout starts before paint and follows coalesced viewport events");
 assert.match(form,/measuredBottom>=fullHeight-18[\s\S]*?Math\.max\(fullHeight,window\.innerHeight,measuredBottom\)/,
  "Transient keyboard viewport decreases cannot shrink the full canvas");
-assert.match(runtime,/\.v2-stage-heading::after\{[\s\S]*?backdrop-filter:blur\(16px\) saturate\(125%\)/,
- "Title is refracted through a compact glass surface when input is focused");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading::after\{[^}]*opacity:\.78/,
- "Frosted title lens activates only for focused fields");
-assert.match(runtime,/\.v2-stage-heading::after\{transition:none;transform:none\}/,
- "Reduced-motion preference keeps heading glass static");
+assert.doesNotMatch(runtime,/\.v2-stage-heading::after\{/,
+ "Old translucent rectangle over the heading is fully deleted");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{\s*filter:blur\(32px\);opacity:0;/,
+ "Only active field name and input remain readable");
+assert.match(runtime,/\.v2-header,\.v2-runtime \.v2-stage-heading\{transition:none\}/,
+ "Reduced-motion mode keeps the full background disappearance immediate");
