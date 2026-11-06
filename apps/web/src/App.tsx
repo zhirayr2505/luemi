@@ -44,6 +44,7 @@ declare global {
         version?: string;
         isVersionAtLeast?: (version: string) => boolean;
         isFullscreen?: boolean;
+        requestFullscreen?: () => void;
         exitFullscreen?: () => void;
         disableVerticalSwipes?: () => void;
         HapticFeedback?: {selectionChanged?:()=>void};
@@ -225,15 +226,15 @@ export function App() {
       webApp?.ready?.();
       webApp?.expand?.();
       try {
-        // LUEMI is a form/feed app, not an immersive game. Telegram's
-        // fullscreen controls can cover the brand chrome on Android even
-        // while the safe-area values are still settling. Always return a
-        // reused WebView to the normal expanded mode before painting LUEMI.
-        if(webApp?.isVersionAtLeast?.("8.0")&&webApp.isFullscreen)
-          webApp.exitFullscreen?.();
+        // Use Telegram's native fullscreen mode, not just the expanded
+        // bottom sheet. The viewport controller applies the Telegram/device
+        // safe-area insets so the logo, fields and CTA remain reachable.
+        // Unsupported clients remain in normal expanded mode.
+        if(webApp?.isVersionAtLeast?.("8.0")&&!webApp.isFullscreen)
+          webApp.requestFullscreen?.();
         webApp?.disableVerticalSwipes?.();
       } catch {
-        // Unsupported clients retain Telegram's expanded, non-fullscreen UI.
+        // Telegram may reject fullscreen (unsupported platform); expand stays active.
       }
     });
     return ()=>{
