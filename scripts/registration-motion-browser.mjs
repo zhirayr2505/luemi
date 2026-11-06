@@ -22,7 +22,6 @@ try{
   return route.fulfill({status:404,contentType:"application/json",body:"{}"});
  });
  await page.goto(root,{waitUntil:"domcontentloaded"});
- const device=page.locator(".v2-device");
  const screenshot=async(label)=>page.screenshot({path:out+"/"+label+".png"});
  const stage=async(id)=>{
   await page.waitForFunction(expected=>{
