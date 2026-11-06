@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import Fastify from "fastify";
 import type { ApiConfig } from "../src/config.js";
-import { registerTelegramWebhook } from "../src/telegram-webhook.js";
+import { registerTelegramWebhook, versionedWebAppUrl } from "../src/telegram-webhook.js";
 import type { WelcomeState } from "../src/telegram-welcome-status.js";
 
 const config: ApiConfig = {
@@ -39,7 +39,8 @@ test("new users see registration CTA, never an untrusted prefilled account", asy
   assert.equal(response.parse_mode,"HTML");
   assert.match(response.text,/Люди ближе/);
   assert.match(response.reply_markup.inline_keyboard[0][0].text,/Зарегистрироваться/);
-  assert.equal(response.reply_markup.inline_keyboard[0][0].web_app.url,config.origin);
+  assert.equal(response.reply_markup.inline_keyboard[0][0].web_app.url,
+    versionedWebAppUrl(config.origin, process.env.RENDER_GIT_COMMIT));
 });
 test("registered users see resume CTA", async () => {
   const {response}=await greeting("registered");
