@@ -8,6 +8,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
  --lavender:#b88ce6;--pink:#eca8cf;--shadow:rgba(102,71,142,.11);
  --mist-lavender:rgba(213,184,247,.43);--mist-rose:rgba(246,186,217,.29);
  --top-safe:max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px),var(--tg-content-safe-area-inset-top,0px),var(--viewport-safe-top,0px));
+ --brand-top:max(calc(var(--top-safe) + 18px),84px);
  --bottom-safe:max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px),var(--tg-content-safe-area-inset-bottom,0px),var(--viewport-safe-bottom,0px));
  position:relative;top:var(--viewport-offset-top,0px);isolation:isolate;width:100%;height:var(--app-height,100dvh);
  background:var(--bg);color:var(--ink);overflow:hidden;transition:background-color .22s,color .22s;

@@ -11,7 +11,7 @@
  animation:luemi-entry-image 1.1s cubic-bezier(.2,.75,.3,1) both}
 .entry-state.cinematic-entry::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
  background:linear-gradient(180deg,rgba(17,12,26,.45),transparent 26%,transparent 46%,rgba(15,11,23,.33) 64%,rgba(12,9,19,.96) 100%)}
-.cinematic-entry .intro-mark{position:absolute;top:calc(var(--top-safe) + 32px);left:20px;
+.cinematic-entry .intro-mark{position:absolute;top:var(--brand-top);left:20px;
  width:135px;height:43px;z-index:2;justify-content:flex-start}
 .cinematic-entry .intro-mark::before{display:none}
 .cinematic-entry .intro-logo{width:130px;filter:grayscale(1) brightness(0) invert(1)

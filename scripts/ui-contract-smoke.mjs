@@ -11,12 +11,18 @@ const assertCheck=(s,test)=>{assert.ok(test,s);console.log("✓",s)};
 assertCheck("approved single intro keeps the auth/publication gate without duplicated white raster shimmer",/auth==="authorized"&&introElapsed&&visualReady&&\s*!\(realFeedPilot\.enabled&&publicationCheck==="checking"\)&&<div className="intro-cta">/.test(app)&&style.includes("text-enter")&&!style.includes("brand-liquid")&&!style.includes(".intro-mark::after"));
 assertCheck("no old loader overlay",!style.includes("loading-track")&&!app.includes("welcome-screen"));
 assertCheck("Telegram native BackButton; NO custom top back button",app.includes("BackButton")&&app.includes("onboard-brand-row")&&!app.includes("top-back"));
-assertCheck("all routes use Telegram fullscreen and keep left brand below native safe area",
+const welcomeChrome=read("apps/web/src/registration/cinematic-welcome.css");
+const sharedHeader=read("apps/web/src/discovery/global-header.css");
+assertCheck("all routes use Telegram fullscreen with one brand safe-area offset",
  app.includes('webApp.requestFullscreen()')&&
  app.includes('webApp?.onEvent?.("activated",enterFullscreen)')&&
  !app.includes('webApp.exitFullscreen?.()')&&
  style.includes("--top-safe:max(")&&
- read("apps/web/src/discovery/global-header.css").includes("top:calc(var(--top-safe) + 10px);left:14px"));
+ /--brand-top:max\(calc\(var\(--top-safe\) \+ 18px\),84px\)/.test(style)&&
+ welcomeChrome.includes("top:var(--brand-top);left:20px")&&
+ sharedHeader.includes("top:var(--brand-top);left:14px")&&
+ !welcomeChrome.includes("top:calc(var(--top-safe) + 32px)")&&
+ !sharedHeader.includes("top:calc(var(--top-safe) + 28px)"));
 assertCheck("dark theme is the only application theme",app.includes('const theme:ThemeChoice="dark"')&&!app.includes("themeButton"));
 assertCheck("keyboard preserves footer and uses one viewport model instead of double-compensating",app.includes("installViewportController")&&style.includes("height:var(--app-height")&&style.includes(".onboard-body{flex:1")&&!style.includes("[data-keyboard=open] .onboard-footer{display:none}")&&!style.includes("margin-bottom:var(--keyboard-overlay")&&style.includes("data-viewport-compact"));
 assertCheck("input focus glass uses subtle inset ring without clipping",style.includes("inset 0 0 0 1px")&&style.includes(".glass-control:focus"));
