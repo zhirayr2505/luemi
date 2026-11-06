@@ -77,10 +77,10 @@ assert.ok(discovery.includes('from "./ProfileV3Gateway"')&&
  previewSource.includes("registration-static-profile")&&
  !previewSource.includes("ProfileV3Gateway"),
  "owner and visitor use controlled profile gateway; registration uses approved independent static preview");
-assert.ok(gateway.includes('return value!=="0"')&&
- !gateway.includes('window.location.hostname==="luemi-stage01.onrender.com"')&&
- gateway.includes('<ProfileV3 {...props}/>')&&gateway.includes('<ProfileA2 {...props}/>'),
- "V3 defaults on every origin with explicit A2 diagnostic fallback; profile renders remain mutually exclusive");
+assert.ok(gateway.includes('return <ProfileV3 {...props}/>')&&
+ !gateway.includes("ProfileA2")&&
+ !gateway.includes("window.location.hostname"),
+ "Approved V3 alone must render on every origin; retired A2 cannot be reactivated by stale Telegram URLs");
 assert.ok(v3.includes("projectProfile(data,mode)")&&
  v3.includes("PhotoViewer")&&v3.includes("initialPhotoId={viewer.photoId}")&&
  v3.includes("mode={data.source===")&&v3.includes("reconcilePhotoId")&&
