@@ -258,6 +258,10 @@ export function RealRegistrationV2(p:Props){
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div ref={device} className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}>
      <div className="v2-backdrop" aria-hidden="true"/>
+     <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
+       if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+       handleFieldFocus(null);
+     }}/>
      <header className="v2-header">
        <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp"
          className="v2-header-logo" alt="LUEMI" draggable={false}/>
@@ -269,10 +273,6 @@ export function RealRegistrationV2(p:Props){
      </header>
      <section key={stage.id} ref={body}
        className={"v2-body"+(fallbackMotion?` v2-fallback-${fallbackMotion}`:"")} aria-labelledby="v2-title">
-       <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
-         if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
-         handleFieldFocus(null);
-       }}/>
        <div className="v2-stage-heading">
          <h1 id="v2-title">{stage.title}</h1>
          <p className="v2-subtitle">{stage.subtitle}</p>

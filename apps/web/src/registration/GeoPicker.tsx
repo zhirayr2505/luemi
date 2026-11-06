@@ -8,7 +8,7 @@ import {createGeoOperationGate,type GeoOperation} from "./geo-operation";
 import {geoCsrf} from "../auth/session-adapter";
 import {requestDeviceCoordinates,type TelegramLocationManager} from "./geo-device";
 import type {RegistrationDraft,SearchScope} from "./model";
-import {useFieldFocusDock} from "./use-field-focus";
+import {FOCUS_RELEASE_DELAY_MS,useFieldFocusDock} from "./use-field-focus";
 export interface Place {id:string;city:string;country:string;countryCode:string;region?:string}
 interface SearchResult {results?:unknown;coverage?:"demo"|"limited"|"world"}
 const scopeOptions:[SearchScope,string,string][]=[
@@ -181,7 +181,6 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
      {loading?<LoaderCircle className="spin" size={22}/>:<LocateFixed size={22}/>}
      <span><strong>{data.placeId?"Определить местоположение снова":"Моё местоположение"}</strong><small>По разрешению Telegram или устройства</small></span>
    </button>:<>
-     {cityFocused&&<div className="field-focus-overlay" aria-hidden="true" onPointerDown={()=>inputRef.current?.blur()}/>}
      <div className="focus-field-slot"><div ref={node=>{cityDock.shellRef.current=node;}}
        className={"focus-field-shell city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")}>
        {editing&&results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
@@ -196,7 +195,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
              aria-expanded={results.length>0} aria-controls="luemi-geo-results" aria-autocomplete="list"
              maxLength={80} placeholder="Введи город или страну" value={query}
              onFocus={()=>{setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();}}
-             onBlur={()=>window.setTimeout(()=>{setCityFocused(false);onFieldFocus?.(null);},120)}
+             onBlur={()=>window.setTimeout(()=>{setCityFocused(false);onFieldFocus?.(null);},FOCUS_RELEASE_DELAY_MS)}
              onChange={e=>{cancelPending();setQuery(e.target.value);setEditing(true);setError("");clearFieldError?.();setResults([]);setActivity("idle");}}/>
            {loading&&<LoaderCircle className="spin" size={18}/>}
          </div>
