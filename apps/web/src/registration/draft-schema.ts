@@ -57,7 +57,8 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
   if(!oneOf(value,enums[key]))return fail("enum-"+key);
   (d as unknown as Record<string,unknown>)[key]=value;
  }
- const selected=raw.goals===undefined?(d.goal?[d.goal]:[]):raw.goals;
+ const selected=raw.goals===undefined||Array.isArray(raw.goals)&&raw.goals.length===0&&d.goal
+   ?(d.goal?[d.goal]:[]):raw.goals;
  if(!Array.isArray(selected)||selected.length>3||new Set(selected).size!==selected.length||
     selected.some(v=>!oneOf(v,enums.goal.slice(1)))||
     selected.includes("undecided")&&selected.length>1||
