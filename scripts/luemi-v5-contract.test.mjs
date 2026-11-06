@@ -63,3 +63,25 @@ test("production controls use the shared icon system instead of decorative emoji
   assert.equal(productionSources.includes(symbol),false,`unexpected decorative symbol: ${symbol}`);
  assert.match(legacyRealFeed,/<Heart size=\{17\}\/>/);
 });
+
+test("V5 match avatars use the current component class instead of retired selectors",()=>{
+ const matchOverlay=read("apps/web/src/discovery/real-discovery.css");
+ const avatarComponent=read("apps/web/src/ui/LuemiV5.tsx");
+ assert.match(avatarComponent,/luemi-v5-avatar/);
+ assert.match(chats,/\.lc-match-rail button:not\(\.is-seen\) \.luemi-v5-avatar/);
+ assert.match(chats,/\.lc-match-rail button\.is-seen \.luemi-v5-avatar/);
+ assert.match(matchOverlay,/\.luemi-match-avatars \.luemi-v5-avatar/);
+ assert.doesNotMatch(chats,/\.luemi-avatar\b/);
+ assert.doesNotMatch(matchOverlay,/\.luemi-avatar\b/);
+});
+
+test("retired CSS does not override the current one-theme registration UI",()=>{
+ const shell=read("apps/web/src/styles.css");
+ const welcome=read("apps/web/src/registration/cinematic-welcome.css");
+ for(const retired of ["theme-switch","theme-dock","dob-grid","draft-clear-action",
+  "edit-profile-action","luemi-privacy-footer"]){
+  assert.equal(shell.includes("."+retired),false,"stale shell selector: "+retired);
+ }
+ for(const retired of ["theme-switch","theme-dock"])
+  assert.equal(welcome.includes("."+retired),false,"stale welcome selector: "+retired);
+});

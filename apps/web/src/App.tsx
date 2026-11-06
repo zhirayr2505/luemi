@@ -45,7 +45,6 @@ declare global {
         isVersionAtLeast?: (version: string) => boolean;
         isFullscreen?: boolean;
         requestFullscreen?: () => void;
-        exitFullscreen?: () => void;
         disableVerticalSwipes?: () => void;
         HapticFeedback?: {selectionChanged?:()=>void};
         setHeaderColor?: (color: string) => void;
