@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {flushSync} from "react-dom";
-import {ArrowRight,Check,ShieldCheck} from "lucide-react";
+import {ArrowRight,Check,LoaderCircle,ShieldCheck} from "lucide-react";
 import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
 import {SimpleProfileReview} from "../SimpleProfileReview";
 import {OptionalProfileDetails} from "../OptionalProfileDetails";
@@ -47,8 +47,6 @@ const visualStages=[
  {id:"review",title:"Проверь свою анкету",subtitle:"Убедись, что всё правильно"}
 ] as const;
 type VisualStage={id:string;title:string;subtitle:string};
-type RegistrationViewTransition={finished:Promise<void>};
-type ViewTransitionDocument=Document&{startViewTransition?:(update:()=>void)=>RegistrationViewTransition};
 type IdentityError={field:"name"|"date"|"city"|"about";message:string};
 function restoredStage(draft:RegistrationDraft,photos:PhotoItem[]):number{
  // Telegram's first-name prefill alone is not a completed registration step.
@@ -83,11 +81,17 @@ export function RealRegistrationV2(p:Props){
  const [photoChecking,setPhotoChecking]=useState(false);
  const [detailsOpen,setDetailsOpen]=useState(false);
  const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|"language"|null>(null);
- const [fallbackMotion,setFallbackMotion]=useState<"forward"|"back"|null>(null);
+ const [changingStep,setChangingStep]=useState(false);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
  const viewportRoot=useRef<HTMLElement|null>(null);
  const device=useRef<HTMLDivElement|null>(null);
  const transitioning=useRef(false);
+ const stepAnimation=useRef<Animation|null>(null);
+ const isMounted=useRef(true);
+ useEffect(()=>{
+  isMounted.current=true;
+  return()=>{isMounted.current=false;stepAnimation.current?.cancel();};
+ },[]);
  useLayoutEffect(()=>{
   const root=viewportRoot.current;
   if(!root)return;
@@ -158,43 +162,72 @@ export function RealRegistrationV2(p:Props){
   if(p.resumeReview)return;
   setIndex(restoredStage(draft,photos));
  },[p.restored,p.resumeReview,draft,photos]);
+ /* One sequential motion across all eight registration steps. Android
+    WebView must not capture incoming content over an outgoing body. */
  const nav=(target:number)=>{
   const next=Math.min(stages.length-1,Math.max(0,target));
   if(next===index||transitioning.current)return;
-  const viewDocument=document as ViewTransitionDocument;
-  const reducedMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const canTransition=!focusedField&&document.visibilityState==="visible"&&!reducedMotion;
-  const nativeTransition=canTransition&&viewDocument.startViewTransition;
-  const update=()=>flushSync(()=>{
-   setHint("");setIdentityError(null);setFocusedField(null);setDetailsOpen(false);
-   setFallbackMotion(canTransition&&!nativeTransition?(next>index?"forward":"back"):null);
-   setIndex(next);
-  });
-  if(!nativeTransition){
-   update();return;
-  }
-  const root=document.documentElement;
-  root.style.setProperty("--luemi-step-enter",next>index?"28px":"-28px");
-  root.style.setProperty("--luemi-step-exit",next>index?"-28px":"28px");
-  root.dataset.luemiTransition="true";
   transitioning.current=true;
-  const settle=()=>{
-   transitioning.current=false;
-   root.style.removeProperty("--luemi-step-enter");
-   root.style.removeProperty("--luemi-step-exit");
-   delete root.dataset.luemiTransition;
+  const forward=next>index;
+  const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const animateStep=!reduced&&document.visibilityState==="visible";
+  if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+  flushSync(()=>{setChangingStep(true);setFocusedField(null);});
+  const leaving=body.current;
+  const run=async()=>{
+   let exit:Animation|null=null;
+   try{
+    if(animateStep&&leaving?.animate){
+     await new Promise<void>(resolve=>window.setTimeout(resolve,85));
+     if(!isMounted.current)return;
+     exit=leaving.animate([
+      {opacity:1,transform:"translate3d(0,0,0)"},
+      {opacity:0,transform:`translate3d(${forward?"-22px":"22px"},0,0)`}
+     ],{duration:175,easing:"cubic-bezier(.38,0,.72,.45)",fill:"forwards"});
+     stepAnimation.current=exit;
+     try{await exit.finished;}catch{return;}
+    }
+    if(!isMounted.current)return;
+    flushSync(()=>{
+     setHint("");setIdentityError(null);setFocusedField(null);
+     setDetailsOpen(false);setIndex(next);
+    });
+    exit?.cancel();
+    if(stepAnimation.current===exit)stepAnimation.current=null;
+    const entering=body.current;
+    if(entering)entering.scrollTop=0;
+    if(animateStep&&entering?.animate){
+     const entrance=entering.animate([
+      {opacity:0,transform:`translate3d(${forward?"22px":"-22px"},0,0)`},
+      {opacity:1,transform:"translate3d(0,0,0)"}
+     ],{duration:285,easing:"cubic-bezier(.16,.82,.22,1)",fill:"both"});
+     stepAnimation.current=entrance;
+     try{await entrance.finished;}catch{return;}
+     entrance.cancel();
+     if(stepAnimation.current===entrance)stepAnimation.current=null;
+    }
+   }finally{
+    exit?.cancel();
+    if(isMounted.current){
+     transitioning.current=false;
+     setChangingStep(false);
+    }
+   }
   };
-  try{
-   const transition=nativeTransition.call(viewDocument,update);
-   void transition.finished.then(settle,settle);
-  }catch{settle();update();}
+  void run();
  };
  const back=()=>{
+  if(transitioning.current||photoChecking)return;
+  if(focusedField){
+   if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+   handleFieldFocus(null);return;
+  }
   if(detailsOpen){setDetailsOpen(false);return;}
   if(index===0)p.onExit();else nav(index-1);
  };
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
  const advance=()=>{
+  if(transitioning.current||photoChecking||changingStep)return;
   let issue:string|null=null;
   switch(stage.id){
    case "identity":
@@ -272,7 +305,7 @@ export function RealRegistrationV2(p:Props){
        </div>
      </header>
      <section key={stage.id} ref={body}
-       className={"v2-body"+(fallbackMotion?` v2-fallback-${fallbackMotion}`:"")} aria-labelledby="v2-title">
+       className="v2-body" aria-labelledby="v2-title">
        <div className="v2-stage-heading">
          <h1 id="v2-title">{stage.title}</h1>
          <p className="v2-subtitle">{stage.subtitle}</p>
