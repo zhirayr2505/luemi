@@ -8,7 +8,7 @@ import {createGeoOperationGate,type GeoOperation} from "./geo-operation";
 import {geoCsrf} from "../auth/session-adapter";
 import {requestDeviceCoordinates,type TelegramLocationManager} from "./geo-device";
 import type {RegistrationDraft,SearchScope} from "./model";
-import {FOCUS_RELEASE_DELAY_MS,useFieldFocusDock} from "./use-field-focus";
+import {FOCUS_RELEASE_DELAY_MS,releaseAfterKeyboardSettles,useFieldFocusDock} from "./use-field-focus";
 export interface Place {id:string;city:string;country:string;countryCode:string;region?:string}
 interface SearchResult {results?:unknown;coverage?:"demo"|"limited"|"world"}
 const scopeOptions:[SearchScope,string,string][]=[
@@ -45,6 +45,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
  const [scopeOpen,setScopeOpen]=useState(false);
  const [cityFocused,setCityFocused]=useState(false);
  const inputRef=useRef<HTMLInputElement>(null);
+ const pendingBlur=useRef<(()=>void)|null>(null);
  const cityDock=useFieldFocusDock(cityFocused);
  const gate=useRef(createGeoOperationGate());
  const gpsDeadline=useRef<number|null>(null);
@@ -57,7 +58,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
  };
  // StrictMode runs setup→cleanup→setup in development. An unmounted browser GPS
  // callback cannot update this component OR its still-mounted parent draft.
- useEffect(()=>{const current=gate.current;current.resume();return ()=>{current.dispose();clearGpsDeadline();};},[]);
+ useEffect(()=>{const current=gate.current;current.resume();return ()=>{pendingBlur.current?.();current.dispose();clearGpsDeadline();};},[]);
  const selectedLabel=data.placeId?data.city+", "+data.country:"";
  useEffect(()=>{
   if(!manual)return; // GPS remains owned by the detect operation.
@@ -194,8 +195,11 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
            <input ref={inputRef} className="glass-control geo-input" role="combobox" autoComplete="off"
              aria-expanded={results.length>0} aria-controls="luemi-geo-results" aria-autocomplete="list"
              maxLength={80} placeholder="Введи город или страну" value={query}
-             onFocus={()=>{setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();}}
-             onBlur={()=>window.setTimeout(()=>{setCityFocused(false);onFieldFocus?.(null);},FOCUS_RELEASE_DELAY_MS)}
+             onFocus={()=>{pendingBlur.current?.();pendingBlur.current=null;setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();}}
+             onBlur={()=>{pendingBlur.current?.();pendingBlur.current=releaseAfterKeyboardSettles(()=>{
+               if(document.activeElement===inputRef.current)return;
+               setCityFocused(false);onFieldFocus?.(null);pendingBlur.current=null;
+             },FOCUS_RELEASE_DELAY_MS);}}
              onChange={e=>{cancelPending();setQuery(e.target.value);setEditing(true);setError("");clearFieldError?.();setResults([]);setActivity("idle");}}/>
            {loading&&<LoaderCircle className="spin" size={18}/>}
          </div>

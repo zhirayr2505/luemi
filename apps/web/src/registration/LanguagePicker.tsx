@@ -1,12 +1,14 @@
-import {useMemo,useRef,useState} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
 import {Search,Check} from "lucide-react";
 import {Flag} from "../ui/Flag";
 import {languages,findLanguages} from "../ui/Languages";
-import {FOCUS_RELEASE_DELAY_MS,useFieldFocusDock} from "./use-field-focus";
+import {FOCUS_RELEASE_DELAY_MS,releaseAfterKeyboardSettles,useFieldFocusDock} from "./use-field-focus";
 export function LanguagePicker({selected,onChange,onFocusChange}:{selected:string[];onChange:(value:string[])=>void;onFocusChange?:(focused:boolean)=>void}){
  const [query,setQuery]=useState("");
  const [focused,setFocused]=useState(false);
  const inputRef=useRef<HTMLInputElement>(null);
+ const pendingBlur=useRef<(()=>void)|null>(null);
+ useEffect(()=>()=>pendingBlur.current?.(),[]);
  const resultsRef=useRef<HTMLDivElement>(null);
  const dock=useFieldFocusDock(focused);
  const filtered=useMemo(()=>findLanguages(query),[query]);
@@ -18,8 +20,11 @@ export function LanguagePicker({selected,onChange,onFocusChange}:{selected:strin
    <label className="geo-input-wrap">
      <Search size={18} aria-hidden="true"/>
      <input ref={inputRef} className="glass-control geo-input" type="search" placeholder="Найди язык из 60" value={query}
-       onFocus={()=>{setFocused(true);onFocusChange?.(true);}}
-       onBlur={()=>window.setTimeout(()=>{setFocused(false);onFocusChange?.(false);},FOCUS_RELEASE_DELAY_MS)}
+       onFocus={()=>{pendingBlur.current?.();pendingBlur.current=null;setFocused(true);onFocusChange?.(true);}}
+       onBlur={()=>{pendingBlur.current?.();pendingBlur.current=releaseAfterKeyboardSettles(()=>{
+         if(document.activeElement===inputRef.current)return;
+         setFocused(false);onFocusChange?.(false);pendingBlur.current=null;
+       },FOCUS_RELEASE_DELAY_MS);}}
        onChange={e=>{
          setQuery(e.target.value);
          // A new query starts from the first matching suggestion, not an old scroll offset.
