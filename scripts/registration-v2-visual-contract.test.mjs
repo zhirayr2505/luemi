@@ -125,12 +125,12 @@ assert.match(focusDock,/pinnedTop=Math\.max\(headerBottom\+12,Math\.min\(pinnedT
  "Focused field must rise smoothly and stay pinned when the keyboard closes");
 assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.height/,
  "Changing city suggestions must not feed the editor height back into keyboard placement");
-assert.match(form,/<section key=\{stage\.id\}[^>]*>[\s\S]*?<div className="v2-focus-scrim"/,
- "Body blur stays in the same stacking layer as the focused field");
-assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(38px\)[^}]*transition:opacity/s,
- "The base frosted pane uses a moderate static blur with a smooth single fade");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-body\{[^}]*z-index:2/s,
- "Focused field paints above the body scrim instead of disappearing below it");
+assert.match(form,/<div className="v2-backdrop"[^>]*\/>[\s\S]*?<div className="v2-focus-scrim"[\s\S]*?<header className="v2-header">/,
+ "Focus blur is a direct child of the full device, never clipped by the body scroller");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(40px\)[^}]*transition:opacity/s,
+ "A single uniform fullscreen glass pane fades smoothly with static blur radius");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-body\{\s*overflow:visible;z-index:auto;view-transition-name:none\}/,
+ "The focused input escapes body stacking and paints over the full-device glass");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
  "Viewport height and editor dock must come from one visual viewport measurement");
 assert.match(runtime,/\.city-focus-shell \.geo-results\{position:absolute[^}]*bottom:calc\(100% \+ 9px\)/,
@@ -209,16 +209,16 @@ assert.doesNotMatch(runtime,/background:#412b41|background:#38253a/,
 
 
 // Stronger optical focus and gentle glass bubbles remain a single motion path.
-assert.match(runtime,/\.v2-focus-scrim\{[^}]*rgba\(41,28,56,\.28\)[^}]*backdrop-filter:blur\(38px\)/s,
- "Transparent tinted glass preserves diffused background shapes instead of a blank pane");
-assert.match(runtime,/\.v2-focus-scrim::before\{[^}]*backdrop-filter:blur\(26px\)[^}]*mask-image:radial-gradient/s,
- "Upper feathered organic glass lens applies a deeper regional blur");
-assert.match(runtime,/\.v2-focus-scrim::after\{[^}]*backdrop-filter:blur\(14px\)[^}]*mask-image:radial-gradient/s,
- "Lower feathered glass lens applies a distinct, lighter regional blur");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-header\{\s*filter:blur\(18px\);opacity:\.62;/,
- "The logo is visible only as a blurred lavender silhouette behind the glass");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{\s*filter:blur\(24px\);opacity:\.62;/,
- "The heading leaves a soft unfocusable silhouette, not an empty rectangle");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*background:rgba\(29,20,41,\.43\)[^}]*backdrop-filter:blur\(40px\)/s,
+ "Smooth plum frost preserves faint background silhouettes without opaque blackout");
+assert.doesNotMatch(runtime,/\.v2-focus-scrim::before\{/,
+ "Delete the old top partial-area glass mask entirely");
+assert.doesNotMatch(runtime,/\.v2-focus-scrim::after\{/,
+ "Delete the old bottom partial-area glass mask entirely");
+assert.doesNotMatch(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-header\{\s*filter:/,
+ "No independent header blur or box separate from the uniform screen frost");
+assert.doesNotMatch(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{\s*filter:/,
+ "No independent heading blur or boxed mask remains");
 assert.match(runtime,/\.name-input-hint\.is-visible\{[^}]*opacity:1;visibility:visible;transform:translate3d\(0,0,0\) scale\(1\)/s,
  "The name hint glides smoothly into view");
 assert.match(runtime,/@keyframes luemi-glass-tip-enter[\s\S]*?\.field-inline-hint:not\(\.name-input-hint\)/,
@@ -231,8 +231,8 @@ assert.match(focusDock,/\{duration:480,easing:"cubic-bezier\(\.16,\.84,\.2,1\)"\
  "One smoother field docking transition");
 assert.match(focusDock,/\{duration:440,easing:"cubic-bezier\(\.17,\.79,\.22,1\)"\}/,
  "One smoother field undocking transition");
-assert.match(runtime,/\.v2-header,\.v2-runtime \.v2-stage-heading\{transition:none\}/,
- "Reduced-motion preference disables the old title-focus transition");
+assert.match(runtime,/@media\(prefers-reduced-motion:reduce\)[\s\S]*?\.v2-focus-scrim\{transition:none\}/,
+ "Reduced-motion setting disables full-screen blur fading");
 
 
 // Regression from Samsung Galaxy A55 keyboard-dismissal video (2026-11-06).
@@ -254,14 +254,36 @@ assert.match(form,/measuredBottom>=fullHeight-18[\s\S]*?Math\.max\(fullHeight,wi
  "Transient keyboard viewport decreases cannot shrink the full canvas");
 assert.doesNotMatch(runtime,/\.v2-stage-heading::after\{/,
  "Old translucent rectangle over the heading is fully deleted");
-assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{\s*filter:blur\(24px\);opacity:\.62;/,
- "Underlying heading is unreadable but contributes to the frosted depth");
-assert.match(runtime,/\.v2-header,\.v2-runtime \.v2-stage-heading\{transition:none\}/,
- "Reduced-motion mode keeps the full background disappearance immediate");
+assert.match(runtime,/\.v2-focus-scrim\{\s*position:absolute;inset:0;z-index:90;[^}]*blur\(40px\)/s,
+ "One unfenced blur covers the logo, progress, heading and all background controls");
+assert.match(runtime,/@media\(prefers-reduced-motion:reduce\)[\s\S]*?\.v2-focus-scrim\{transition:none\}/,
+ "Reduced motion handles focus layer consistently");
 
 
 // Preserve a layered translucent background, never a dark blank state.
-assert.doesNotMatch(runtime,/blur\(84px\)|rgba\(11,8,20,\.97\)|\.v2-device\[data-field-focus="true"\] \.v2-stage-heading\{[^}]*opacity:0/,
- "The prior blacked-out full-screen state must not be restored");
+assert.doesNotMatch(runtime,/blur\(84px\)|rgba\(11,8,20,\.97\)|\.v2-focus-scrim::(?:before|after)\{/,
+ "The blackout and all masked partial glass areas are removed");
 assert.match(runtime,/\.focus-field-shell\.is-focused\{position:fixed;z-index:92;/,
  "Active field and its title stay sharp above every frosted-glass region");
+
+
+// One source of blur and keyboard animation for every real input.
+assert.doesNotMatch(runtime,/\.field-focus-overlay\{/,
+ "Remove old empty local click blockers, not override them");
+assert.doesNotMatch(runtime,/\.v2-focus-scrim::(?:before|after)\{|mask-image:radial-gradient\(ellipse at/,
+ "No clipped, rectangular or masked subregions anywhere in the focus layer");
+assert.match(runtime,/\.v2-focus-scrim\{\s*position:absolute;inset:0;z-index:90;/,
+ "Device-wide focus glass covers the full stable-height screen");
+assert.match(runtime,/\.focus-field-shell\.is-focused\{\s*position:fixed;z-index:92;/,
+ "Focused field label and text remain on top of glass without blur");
+assert.match(focusDock,/export const FOCUS_RELEASE_DELAY_MS=160;/,
+ "One keyboard release delay across all text inputs");
+for(const [label,code] of [["name, birthday and bio",steps],["city",geo],["language",language]]){
+ assert.match(code,/useFieldFocusDock/,label+" shares a single input animation hook");
+ assert.match(code,/FOCUS_RELEASE_DELAY_MS/,label+" shares a single keyboard release timing");
+ assert.doesNotMatch(code,/field-focus-overlay/,label+" does not mount legacy click-blocker layers");
+}
+assert.match(focusDock,/translate3d\(0,-5px,0\) scale\(1\.012\)/,
+ "The gentle 5px lift-and-settle is identical in all focused fields");
+assert.match(focusDock,/translate3d\(0,-2px,0\) scale\(1\.006\)/,
+ "The field returns smoothly without any abrupt settle");
