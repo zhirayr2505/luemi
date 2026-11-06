@@ -123,8 +123,10 @@ assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого тест�
 assert.match(geo,/<Search size=\{20\}/,"City field needs search icon");
 assert.match(geo,/<LocateFixed size=\{15\}/,"Manual city search needs detect icon");
 assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
-assert.match(focusDock,/visualViewport[\s\S]*requestAnimationFrame\(update\)/,
- "Keyboard dock must coalesce Android viewport animation into one writer");
+assert.match(focusDock,/viewport\?\.addEventListener\("resize",refresh\)/,
+ "Android viewport animation now changes only suggestions, not the fixed editor anchor");
+assert.match(focusDock,/const refresh=\(\)=>\{if\(!frame\)frame=window\.requestAnimationFrame\(updateResults\);\}/,
+ "Search suggestions coalesce viewport changes into one animation-frame writer");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
  "The focused editor must use one visual viewport bottom coordinate without double keyboard compensation");
 assert.match(focusDock,/const ideal=origin\+stableHeight\*\.23;/,
