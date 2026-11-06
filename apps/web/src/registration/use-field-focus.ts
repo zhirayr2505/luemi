@@ -21,8 +21,9 @@ export function useFieldFocusDock(active:boolean){
    if(from!==null&&!reduced){
     const distance=from-shell.getBoundingClientRect().top;
     if(Math.abs(distance)>4)motion.current=shell.animate([
-     {transform:`translate3d(0,${distance}px,0)`},{transform:"translate3d(0,0,0)"}
-    ],{duration:320,easing:"cubic-bezier(.22,.8,.25,1)"});
+     {transform:`translate3d(0,${distance}px,0) scale(.99)`},
+     {transform:"translate3d(0,0,0) scale(1)"}
+    ],{duration:440,easing:"cubic-bezier(.17,.79,.22,1)"});
    }
    return()=>motion.current?.cancel();
   }
@@ -56,9 +57,9 @@ export function useFieldFocusDock(active:boolean){
   const dockTop=shell.getBoundingClientRect().top;
   if(!reduced&&Math.abs(slotTop-dockTop)>4){
    motion.current=shell.animate([
-    {transform:`translate3d(0,${slotTop-dockTop}px,0)`},
-    {transform:"translate3d(0,0,0)"}
-   ],{duration:390,easing:"cubic-bezier(.18,.82,.24,1)"});
+    {transform:`translate3d(0,${slotTop-dockTop}px,0) scale(.985)`,opacity:.93},
+    {transform:"translate3d(0,0,0) scale(1)",opacity:1}
+   ],{duration:480,easing:"cubic-bezier(.16,.84,.2,1)"});
    motion.current.onfinish=()=>{lastScreenTop.current=shell.getBoundingClientRect().top;};
   }
   // The CSS dock follows the same viewport variable as the footer. This
