@@ -339,13 +339,15 @@ export function RealRegistrationV2(p:Props){
      <footer className={"v2-footer"+(fieldConfirmActive?" is-focus-confirm":"")}>
        {stage.id==="review"?<div className="v2-footer-review">
         <button type="button" className="v2-publish v2-draft-save"
-          disabled={!savedDraftAllowed} onClick={p.onSave}>
-          <Check size={18}/>{p.serverSaving?"Создаём…":"Создать анкету"}
+          disabled={!savedDraftAllowed} aria-busy={p.serverSaving} onClick={p.onSave}>
+          {p.serverSaving?<LoaderCircle size={19} className="v2-next-spinner"/>:<Check size={18}/>}
+          {p.serverSaving?"Создаём…":"Создать анкету"}
         </button>
        </div>:<>
        <div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>
-       <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")+(!continueReady?" is-incomplete":"")} disabled={photoChecking}
+       <button type="button" className={"v2-next"+(fieldConfirmActive?" v2-next-confirm":"")+(!continueReady?" is-incomplete":"")} disabled={photoChecking||changingStep}
           aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
+         aria-busy={photoChecking||changingStep}
          aria-disabled={!continueReady||undefined}
           onPointerDown={e=>{if(fieldConfirmActive)e.preventDefault();}}
           onClick={()=>{
@@ -356,7 +358,10 @@ export function RealRegistrationV2(p:Props){
             }
             advance();
           }}>
-          {fieldConfirmActive?<Check size={25} strokeWidth={2.3}/>:<>{photoChecking?"Проверяем фото…":"Продолжить"}<ArrowRight size={18}/></>}
+          {fieldConfirmActive?<Check size={25} strokeWidth={2.3}/>:<>
+            {photoChecking?"Проверяем фото…":"Продолжить"}
+            {photoChecking||changingStep?<LoaderCircle size={18} className="v2-next-spinner"/>:<ArrowRight size={18}/>}
+          </>}
         </button>
        </div></>}
        </footer>
