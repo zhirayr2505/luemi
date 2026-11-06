@@ -34,7 +34,10 @@ try{
   await screenshot(id);
  };
  const next=async(id)=>{
-  const button=page.locator(".v2-next");
+  // Confirming an editor keeps it above the closing IME. Only tap Continue
+  // once the same button has switched back from the circular checkmark.
+  const button=page.getByRole("button",{name:"Продолжить"});
+  await button.waitFor({timeout:2500});
   await button.click();
   // A real visible loading indicator replaces the arrow while the stage moves.
   assert.equal(await button.getAttribute("aria-busy"),"true","pending transition must expose spinner");
@@ -46,7 +49,10 @@ try{
  await page.getByRole("button",{name:"Подтвердить поле"}).click();
  await next("birthday");
  await page.getByPlaceholder("ДД.ММ.ГГГГ").fill("12.05.1998");
- await page.getByRole("button",{name:"Подтвердить поле"}).click();
+ // A valid eight-digit birthday automatically dismisses the active editor,
+ // but deliberately does not navigate to the next stage.
+ await page.locator(".dob-focus-shell.is-focused").waitFor({state:"hidden",timeout:2500});
+ assert.equal(await page.locator(".v2-device").getAttribute("data-screen"),"birthday");
  await page.getByRole("button",{name:"Мужчина"}).click();
  await page.getByRole("checkbox").check();
  await next("location");

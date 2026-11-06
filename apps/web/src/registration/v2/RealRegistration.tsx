@@ -220,7 +220,7 @@ export function RealRegistrationV2(p:Props){
   if(transitioning.current||photoChecking)return;
   if(focusedField){
    if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
-   handleFieldFocus(null);return;
+   return;
   }
   if(detailsOpen){setDetailsOpen(false);return;}
   if(index===0)p.onExit();else nav(index-1);
@@ -294,7 +294,6 @@ export function RealRegistrationV2(p:Props){
      <div className="v2-backdrop" aria-hidden="true"/>
      <div className="v2-focus-scrim" aria-hidden="true" onPointerDown={()=>{
        if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
-       handleFieldFocus(null);
      }}/>
      <header className="v2-header">
        <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp"
@@ -354,7 +353,6 @@ export function RealRegistrationV2(p:Props){
           onClick={()=>{
             if(fieldConfirmActive){
               if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
-              handleFieldFocus(null);
               return;
             }
             advance();

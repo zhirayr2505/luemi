@@ -123,12 +123,18 @@ assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого тест�
 assert.match(geo,/<Search size=\{20\}/,"City field needs search icon");
 assert.match(geo,/<LocateFixed size=\{15\}/,"Manual city search needs detect icon");
 assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
-assert.match(focusDock,/visualViewport[\s\S]*requestAnimationFrame\(update\)/,
- "Keyboard dock must coalesce Android viewport animation into one writer");
+assert.match(focusDock,/viewport\?\.addEventListener\("resize",refresh\)/,
+ "Android viewport animation now changes only suggestions, not the fixed editor anchor");
+assert.match(focusDock,/const refresh=\(\)=>\{if\(!frame\)frame=window\.requestAnimationFrame\(updateResults\);\}/,
+ "Search suggestions coalesce viewport changes into one animation-frame writer");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
  "The focused editor must use one visual viewport bottom coordinate without double keyboard compensation");
-assert.match(focusDock,/pinnedTop=Math\.max\(headerBottom\+12,Math\.min\(pinnedTop,/,
- "The editor stays anchored while the Android viewport animates");
+assert.match(focusDock,/const ideal=origin\+stableHeight\*\.23;/,
+ "The initial dock is computed from the stable device canvas, not the software keyboard");
+assert.match(focusDock,/pinnedTop=Math\.round\(Math\.max\(minimum,Math\.min\(ideal,safeUpper\)\)\)/,
+ "The dock stays below safe Telegram chrome and anticipates IME room");
+assert.doesNotMatch(focusDock,/pinnedTop=Math\.max\(headerBottom\+12,Math\.min\(pinnedTop,footerTop/,
+ "The focused editor may not chase the moving keyboard or footer");
 assert.match(focusDock,/shell\.animate\(\[[\s\S]*?slotTop-dockTop[\s\S]*?translate3d\(0,-5px,0\)/,
  "One FLIP animation moves each focused field and adds a soft 5px rise");
 assert.doesNotMatch(focusDock,/shell\.getBoundingClientRect\(\)\.height/,
@@ -328,7 +334,7 @@ assert.match(runtime,/\.language-results\{\s*display:grid;[^}]*grid-auto-rows:44
 assert.match(runtime,/\.language-focus-shell\.is-focused \.language-results\{\s*max-height:var\(--language-results-max-height,96px\);overflow-x:hidden;overflow-y:auto;[^}]*-webkit-overflow-scrolling:touch;touch-action:pan-y;/s,
  "Focused search results use keyboard-safe independent touch scrolling");
 assert.match(focusDock,/footerTop-list\.getBoundingClientRect\(\)\.top-12/,
- "Language suggestions stop above the actual moving confirmation footer");
+ "Language suggestions alone resize to avoid overlapping the moving keyboard");
 assert.match(focusDock,/Math\.floor\(\(remaining\+8\)\/52\)/,
  "Scroll viewport fits full 44px language rows plus 8px gaps");
 assert.match(language,/resultsRef\.current\.scrollTop=0/,
@@ -366,3 +372,27 @@ assert.match(runtime,/\.v2-next-spinner\{[^}]*animation:luemi-step-spinner/s,
  "The loading spinner occupies the old arrow slot without shifting the footer");
 assert.match(form,/aria-busy=\{p\.serverSaving\}/,
  "Final publication reuses the same loading affordance");
+
+
+// Responsive IME contract: one anchor per focus, changed only for real width /
+// orientation changes. Releasing focus waits for keyboard recovery and quiet.
+assert.match(focusDock,/const keyboardInitiallyOpen=keyboardGap\(\)>Math\.max\(90,stableHeight\*\.16\)/,
+ "OS keyboard detection uses relative stable device metrics, not a phone-specific number");
+assert.match(focusDock,/keyboardInitiallyOpen&&recovered&&now-lastChange>=110/,
+ "The editor does not start its return while the keyboard is still collapsing");
+assert.match(focusDock,/Math\.abs\(window\.innerWidth-measuredWidth\)>2/,
+ "Only real width or orientation changes can recompute a focus dock");
+assert.doesNotMatch(focusDock,/viewport\?\.addEventListener\("resize",calculateAnchor\)/,
+ "Opening or closing the IME must never reposition the dock");
+assert.match(steps,/releaseAfterKeyboardSettles\(\(\)=>\{/,
+ "Name, birthday and bio hold the focused editor until IME closing finishes");
+assert.match(geo,/releaseAfterKeyboardSettles\(\(\)=>\{/,
+ "City search uses the same IME-release policy");
+assert.match(language,/releaseAfterKeyboardSettles\(\(\)=>\{/,
+ "Language search uses the same IME-release policy");
+assert.match(steps,/if\(birthDateValid\(day,month,year\)\)\{[\s\S]*?dobInput\.current\?\.blur\(\)/,
+ "A complete valid DOB automatically hides the keyboard without advancing the form");
+assert.match(steps,/else setDateInputError\("Проверь дату рождения\. Регистрация доступна с 18 лет\."\)/,
+ "Invalid or underage dates keep their keyboard open and show a useful hint");
+assert.doesNotMatch(form,/handleFieldFocus\(null\);[\s\S]{0,35}return;[\s\S]{0,50}advance\(\)/,
+ "The confirmation button must not prematurely tear down glass before IME release");
