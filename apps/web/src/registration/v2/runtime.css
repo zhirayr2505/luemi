@@ -60,6 +60,24 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .v2-eyebrow{display:none}
 .v2-runtime .v2-stage-heading{position:sticky;top:-20px;z-index:6;margin:-20px -24px 0;
  padding:20px 24px 23px;background:linear-gradient(180deg,var(--luemi-bg-deep,#1c1424) 0%,var(--luemi-bg-deep,#1c1424) 72%,rgba(28,20,36,.96) 88%,rgba(28,20,36,0) 100%)}
+/* A compact refractive glass lens over the title when the editor opens.
+   It is isolated to the heading rather than adding a second screenwide blur. */
+.v2-runtime .v2-stage-heading::after{
+ content:"";position:absolute;z-index:2;inset:3px 12px 9px;
+ pointer-events:none;opacity:0;border-radius:24px;
+ background:
+  radial-gradient(ellipse 78% 95% at 25% 8%,rgba(238,204,251,.17),transparent 75%),
+  linear-gradient(125deg,rgba(161,115,182,.19),rgba(55,36,71,.20) 60%,rgba(35,25,55,.28));
+ border:1px solid rgba(241,219,251,.21);
+ box-shadow:inset 0 1px rgba(255,255,255,.18),0 12px 28px rgba(14,7,25,.10);
+ -webkit-backdrop-filter:blur(16px) saturate(125%);
+ backdrop-filter:blur(16px) saturate(125%);
+ transform:translate3d(0,-4px,0) scale(.985);
+ transition:opacity .46s cubic-bezier(.18,.8,.22,1),transform .46s cubic-bezier(.18,.8,.22,1);
+}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-heading::after{
+ opacity:.78;transform:translate3d(0,0,0) scale(1);
+}
 .v2-runtime .v2-body h1{font-size:clamp(28px,7.3vw,36px);line-height:1.09;
  font-weight:740;letter-spacing:-.048em;margin:0 0 8px;color:#fff;text-wrap:balance}
 .v2-runtime .v2-subtitle{max-width:355px;min-height:38px;font-size:13px;line-height:1.48;
@@ -382,6 +400,7 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
  .v2-runtime .field-warning,.v2-runtime .v2-feedback{animation:none;transition:none}
  .v2-runtime .v2-focus-scrim::after{transition:none;transform:none}
  .v2-runtime .v2-header{transition:none}
+ .v2-runtime .v2-stage-heading::after{transition:none;transform:none}
  .v2-runtime .v2-next.v2-next-confirm,.v2-runtime,
  .v2-runtime .v2-body.v2-fallback-forward,.v2-runtime .v2-body.v2-fallback-back{animation:none}
  .v2-runtime .optional-profile-screen,.v2-runtime .optional-profile-screen.is-leaving{animation:none}
