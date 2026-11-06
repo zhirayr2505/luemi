@@ -380,7 +380,7 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
  .v2-runtime .name-input-hint,
  .v2-runtime .field-inline-hint:not(.name-input-hint),
  .v2-runtime .field-warning,.v2-runtime .v2-feedback{animation:none;transition:none}
- .v2-runtime .v2-header{transition:none}
+ .v2-runtime .v2-header,.v2-runtime .v2-stage-heading{transition:none}
  .v2-runtime .v2-next.v2-next-confirm,.v2-runtime,
  .v2-runtime .v2-body.v2-fallback-forward,.v2-runtime .v2-body.v2-fallback-back{animation:none}
  .v2-runtime .optional-profile-screen,.v2-runtime .optional-profile-screen.is-leaving{animation:none}
