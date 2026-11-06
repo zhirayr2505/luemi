@@ -1146,6 +1146,7 @@ export function App() {
      <RealDiscoveryHome draft={draft} theme={theme} onTheme={changeTheme}
        initialFeed={warmFeed} publishedProfile={publishStatus?.profile} ownerPhotoPreview={readyPhotos}
       onEdit={()=>{setRealHome(false);setPhase("form");setStep(8);}}
+      onReveal={()=>{void openReveal();}}
       accountPanel={<section className="luemi-real-account" aria-label="Настройки аккаунта">
        <h1>Мой аккаунт</h1>
        {publishStatus?.state==="published"&&<>
