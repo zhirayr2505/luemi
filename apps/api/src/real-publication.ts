@@ -44,16 +44,10 @@ function validatedProjection(payload:unknown,birthDate:string|null){
  const audience=data.audience??"everyone";
  const ageMin=data.ageMin??18,ageMax=data.ageMax??80;
  const radius=data.radius??100,searchScope=data.searchScope??"world";
- const selectedGoals=data.goals===undefined?[data.goal]:data.goals;
  if(typeof name!=="string"||name.trim()!==name||name.length<2||name.length>48||
   typeof city!=="string"||city.trim()!==city||city.length<2||city.length>120||
   typeof country!=="string"||!/^[A-Z]{2}$/.test(country)||
-  !genderOk(data.gender)||!goalOk(data.goal)||
-  !Array.isArray(selectedGoals)||selectedGoals.length<1||selectedGoals.length>3||
-  !selectedGoals.every(goalOk)||new Set(selectedGoals).size!==selectedGoals.length||
-  selectedGoals[0]!==data.goal||
-  selectedGoals.includes("undecided")&&selectedGoals.length!==1||
-  !audienceOk(audience)||
+  !genderOk(data.gender)||!goalOk(data.goal)||!audienceOk(audience)||
   !Number.isInteger(ageMin)||Number(ageMin)<18||Number(ageMin)>80||
   !Number.isInteger(ageMax)||Number(ageMax)<Number(ageMin)||Number(ageMax)>80||
   !Number.isInteger(radius)||Number(radius)<1||Number(radius)>5000||
@@ -63,7 +57,7 @@ function validatedProjection(payload:unknown,birthDate:string|null){
   typeof data.about!=="string"||[...data.about].length>750||
   !birthDate||dateAge(birthDate)<18||dateAge(birthDate)>=130)
    fail(422,"incomplete_profile");
- return {name,city,country,gender:data.gender,goal:data.goal,goals:selectedGoals as string[],
+ return {name,city,country,gender:data.gender,goal:data.goal,
   audience,ageMin:Number(ageMin),ageMax:Number(ageMax),
   radius:Number(radius),searchScope:String(searchScope),placeId:String(data.placeId),
   about:data.about,interests:data.interests,languages:data.languages,birthDate};
@@ -185,10 +179,10 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   reply.header("Cache-Control","private, no-store").header("Vary","Cookie");
   return transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
    const p=await db.query<{publication_status:string;published_revision:string;
-    display_name:string;city_label:string;country_code:string;about:string;goal:string;goals:string[];
+    display_name:string;city_label:string;country_code:string;about:string;goal:string;
     birth_date:string;interests:string[]}>(
     "SELECT publication_status,published_revision::text,display_name,city_label,country_code,"+
-    "about,goal,goals,birth_date::text,interests FROM luemi_private.public_profiles "+
+    "about,goal,birth_date::text,interests FROM luemi_private.public_profiles "+
     "WHERE owner_id=$1 AND environment=$2",[id,cfg.namespace]);
    const media=await db.query<{state:string;n:string}>(
     "SELECT state,count(*)::text AS n FROM luemi_private.media_assets "+
@@ -207,7 +201,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
      city:published.city_label,
      countryCode:published.country_code,
      about:published.about??"",
-     goal:published.goal,goals:published.goals,
+     goal:published.goal,
      interests:published.interests,
      photos:visible.map(photo=>"/api/v3/discovery/photo/"+photo.id)
    }:null;
@@ -251,32 +245,32 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   const result=await db.query(
    "INSERT INTO luemi_private.public_profiles "+
    "(owner_id,environment,publication_status,published_revision,display_name,city_label,country_code,"+
-   "about,interests,gender,goal,goals,languages,birth_date,audience,preferred_age_min,preferred_age_max,published_at,updated_at) "+
-   "VALUES($1,$2,'published',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,clock_timestamp(),clock_timestamp()) "+
+   "about,interests,gender,goal,languages,birth_date,audience,preferred_age_min,preferred_age_max,published_at,updated_at) "+
+   "VALUES($1,$2,'published',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,clock_timestamp(),clock_timestamp()) "+
    "ON CONFLICT (owner_id) DO UPDATE SET publication_status='published',"+
    "published_revision=EXCLUDED.published_revision,display_name=EXCLUDED.display_name,"+
    "city_label=EXCLUDED.city_label,country_code=EXCLUDED.country_code,"+
    "about=EXCLUDED.about,interests=EXCLUDED.interests,gender=EXCLUDED.gender,"+
-   "goal=EXCLUDED.goal,goals=EXCLUDED.goals,languages=EXCLUDED.languages,birth_date=EXCLUDED.birth_date,"+
+   "goal=EXCLUDED.goal,languages=EXCLUDED.languages,birth_date=EXCLUDED.birth_date,"+
    "audience=EXCLUDED.audience,preferred_age_min=EXCLUDED.preferred_age_min,preferred_age_max=EXCLUDED.preferred_age_max,"+
    "published_at=clock_timestamp(),updated_at=clock_timestamp() "+
    "WHERE luemi_private.public_profiles.environment=EXCLUDED.environment RETURNING owner_id",
    [id,cfg.namespace,expected,profile.name,profile.city,profile.country,profile.about,
-    profile.interests,profile.gender,profile.goal,profile.goals,profile.languages,profile.birthDate,
+    profile.interests,profile.gender,profile.goal,profile.languages,profile.birthDate,
     profile.audience,profile.ageMin,profile.ageMax]);
   if(result.rowCount!==1)fail(409,"publication_conflict");
   const preferences=await db.query(
    "INSERT INTO luemi_private.discovery_preferences "+
-   "(owner_id,environment,owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,place_id,radius_km,search_scope,goal,goals,interests,updated_at) "+
-   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,clock_timestamp()) "+
+   "(owner_id,environment,owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,place_id,radius_km,search_scope,goal,interests,updated_at) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,clock_timestamp()) "+
    "ON CONFLICT(owner_id) DO UPDATE SET owner_gender=EXCLUDED.owner_gender,owner_birth_date=EXCLUDED.owner_birth_date,"+
    "audience=EXCLUDED.audience,age_min=EXCLUDED.age_min,"+
    "age_max=EXCLUDED.age_max,city_label=EXCLUDED.city_label,country_code=EXCLUDED.country_code,"+
    "place_id=EXCLUDED.place_id,radius_km=EXCLUDED.radius_km,search_scope=EXCLUDED.search_scope,"+
-   "goal=EXCLUDED.goal,goals=EXCLUDED.goals,interests=EXCLUDED.interests,updated_at=clock_timestamp() "+
+   "goal=EXCLUDED.goal,interests=EXCLUDED.interests,updated_at=clock_timestamp() "+
    "WHERE luemi_private.discovery_preferences.environment=EXCLUDED.environment RETURNING owner_id",
    [id,cfg.namespace,profile.gender,profile.birthDate,profile.audience,profile.ageMin,profile.ageMax,profile.city,
-    profile.country,profile.placeId,profile.radius,profile.searchScope,profile.goal,profile.goals,profile.interests]);
+    profile.country,profile.placeId,profile.radius,profile.searchScope,profile.goal,profile.interests]);
   if(preferences.rowCount!==1)fail(409,"publication_conflict");
   const updated=await db.query(
    "UPDATE luemi_private.media_assets SET publication_status='published' "+
@@ -325,14 +319,14 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   catch{return reply.code(422).send({error:"invalid_feed_cursor"});}
   return transaction(req,reply,"luemi_discovery_reader",async(db,viewer)=>{
    const results=await db.query<{owner_id:string;display_name:string;city_label:string;
-    country_code:string;about:string;interests:string[];gender:string;goal:string;goals:string[];
+    country_code:string;about:string;interests:string[];gender:string;goal:string;
     languages:string[];birth_date:string;published_at:string;liked_you_kind:"ordinary"|"super"|null}>(
-    "WITH preference AS (SELECT owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,goal,goals,interests "+
+    "WITH preference AS (SELECT owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,goal,interests "+
     "FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1 UNION ALL "+
-    "SELECT NULL::text,NULL::date,'everyone'::text,18::smallint,80::smallint,''::text,''::text,''::text,ARRAY[]::text[],ARRAY[]::text[] "+
+    "SELECT NULL::text,NULL::date,'everyone'::text,18::smallint,80::smallint,''::text,''::text,''::text,ARRAY[]::text[] "+
     "WHERE NOT EXISTS(SELECT 1 FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1)) "+
     "SELECT p.owner_id,p.display_name,p.city_label,p.country_code,p.about,p.interests,"+
-    "p.gender,p.goal,p.goals,p.languages,p.birth_date::text,p.published_at::text,"+
+    "p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text,"+
     "incoming.kind AS liked_you_kind "+
     "FROM luemi_private.public_profiles p CROSS JOIN preference pref "+
     "LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment "+
@@ -352,7 +346,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "AND a.environment=p.environment AND a.state='approved' "+
     "AND a.publication_status='published') BETWEEN 3 AND 6 "+
     "ORDER BY (lower(p.city_label)=lower(pref.city_label) AND p.country_code=pref.country_code) DESC,"+
-    "(p.goals && pref.goals OR p.goal=pref.goal) DESC,cardinality(ARRAY(SELECT unnest(p.interests) INTERSECT SELECT unnest(pref.interests))) DESC,"+
+    "(p.goal=pref.goal) DESC,cardinality(ARRAY(SELECT unnest(p.interests) INTERSECT SELECT unnest(pref.interests))) DESC,"+
     "(p.country_code=pref.country_code) DESC,p.published_at DESC,p.owner_id DESC OFFSET $3 LIMIT 21",
     [cfg.namespace,viewer,cursor?.offset??0]);
    const page=results.rows.slice(0,20);
@@ -371,7 +365,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
    return{status:"published_only",nextCursor,profiles:page.map(p=>({
     id:p.owner_id,name:p.display_name,age:dateAge(p.birth_date),
     city:p.city_label,countryCode:p.country_code,about:p.about??"",
-    interests:p.interests,gender:p.gender,goal:p.goal,goals:p.goals,languages:p.languages,
+    interests:p.interests,gender:p.gender,goal:p.goal,languages:p.languages,
     likedYouKind:p.liked_you_kind,
     photos:(photos.get(p.owner_id)??[]).map(id=>({id,url:"/api/v3/discovery/photo/"+id}))
    })).filter(p=>p.age>=18&&p.age<130&&p.photos.length>=3)};
@@ -408,9 +402,9 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   if(!idOk(req.params.id))return reply.code(404).send({error:"not_found"});
   return transaction(req,reply,"luemi_discovery_reader",async(db,viewer)=>{
    const found=await db.query<{owner_id:string;display_name:string;city_label:string;country_code:string;
-    about:string;interests:string[];gender:string;goal:string;goals:string[];languages:string[];birth_date:string;
+    about:string;interests:string[];gender:string;goal:string;languages:string[];birth_date:string;
     liked_you_kind:"ordinary"|"super"|null}>(`SELECT p.owner_id,p.display_name,p.city_label,p.country_code,
-    p.about,p.interests,p.gender,p.goal,p.goals,p.languages,p.birth_date::text,incoming.kind AS liked_you_kind
+    p.about,p.interests,p.gender,p.goal,p.languages,p.birth_date::text,incoming.kind AS liked_you_kind
     FROM luemi_private.public_profiles p
     LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment
      AND incoming.sender_id=p.owner_id AND incoming.receiver_id=$2 AND incoming.status='active'
@@ -422,7 +416,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     ORDER BY position,id LIMIT 7`,[p.owner_id,cfg.namespace]);
    if(media.rows.length<3||media.rows.length>6)fail(404,"not_found");
    return {profile:{id:p.owner_id,name:p.display_name,age:dateAge(p.birth_date),city:p.city_label,
-    countryCode:p.country_code,about:p.about??"",interests:p.interests,gender:p.gender,goal:p.goal,goals:p.goals,
+    countryCode:p.country_code,about:p.about??"",interests:p.interests,gender:p.gender,goal:p.goal,
     languages:p.languages,likedYouKind:p.liked_you_kind,
     photos:media.rows.map(photo=>({id:photo.id,url:"/api/v3/discovery/photo/"+photo.id}))}};
   });

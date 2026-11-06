@@ -27,7 +27,6 @@ export function recoverServerFields(fields:Record<string,unknown>):RegistrationD
   country:countryName(fields.countryCode),
   radius:fields.radius,searchScope:fields.searchScope,audience:fields.audience,
   ageMin:fields.ageMin,ageMax:fields.ageMax,goal:fields.goal,
-  goals:fields.goals??(fields.goal?[fields.goal]:[]),
   interests:fields.interests,about:fields.about,languages:fields.languages,
   height:fields.height,occupation:fields.occupation,education:fields.education,
   lifestyle:fields.lifestyle,pets:fields.pets,facts:fields.facts,family:fields.family};

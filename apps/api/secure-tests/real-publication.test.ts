@@ -71,7 +71,7 @@ async function prepare(app:ReturnType<typeof makeApp>,user:User){
  const d=await app.inject({method:"PUT",url:"/api/v3/registration/draft",
   headers:headers(user),payload:{revision:0,fields:{
    displayName:"Ани",birthDate:"1997-05-12",gender:"woman",city:"Ереван",
-   countryCode:"AM",placeId:"offline:am:yerevan",goal:"friendship",goals:["friendship","dates","communication"],
+   countryCode:"AM",placeId:"offline:am:yerevan",goal:"friendship",
    interests:["music"],languages:["hy"],about:"Тестовый взрослый пользователь",consentVersion
   }}});
  assert.equal(d.statusCode,200,d.body);
@@ -148,7 +148,6 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
    headers:{cookie:a.cookie}});
   assert.equal(ownerPublished.json().state,"published");
   assert.equal(ownerPublished.json().approved,3);
-  assert.deepEqual(ownerPublished.json().profile.goals,["friendship","dates","communication"]);
   const response=await feed(app,b);
   assert.equal(response.statusCode,200,response.body);
   assert.match(String(response.headers["cache-control"]),/no-store/);
@@ -156,7 +155,6 @@ test("01D: default-deny unauthenticated and unapproved, publish only moderated 3
   assert.equal(profiles.length,1);
   assert.equal(profiles[0].id,a.id);
   assert.equal(profiles[0].name,"Ани");
-  assert.deepEqual(profiles[0].goals,["friendship","dates","communication"]);
   assert.equal(profiles[0].age,29);
   assert.equal(profiles[0].birthDate,undefined);
   assert.equal(profiles[0].consentVersion,undefined);

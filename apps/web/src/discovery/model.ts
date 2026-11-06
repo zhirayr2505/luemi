@@ -6,7 +6,7 @@ export type DemoKind="save"|"pass"|"like"|"special";
 export interface DemoPhoto {id:string;src:string;fallback?:string}
 export interface DemoPerson {
  id:string;name:string;age:number;gender:"woman"|"man"|"other";city:string;country:string;countryCode:string;
- goal:Exclude<RegistrationDraft["goal"],"">;goals?:string[];interests:string[];languages:string[];
+ goal:Exclude<RegistrationDraft["goal"],"">;interests:string[];languages:string[];
  about:string;photos:DemoPhoto[];premium?:boolean;likedYouKind?:"ordinary"|"super"|null;
 }
 export interface DiscoveryFilter {
@@ -29,7 +29,7 @@ export function filterDemoPeople(people:DemoPerson[],filter:DiscoveryFilter,draf
   if(p.age<filter.minAge||p.age>filter.maxAge)return false;
   if(filter.audience==="women"&&p.gender!=="woman")return false;
   if(filter.audience==="men"&&p.gender!=="man")return false;
-  if(filter.goal!=="all"&&p.goal!==filter.goal&&!p.goals?.includes(filter.goal))return false;
+  if(filter.goal!=="all"&&p.goal!==filter.goal)return false;
   if(filter.language!=="all"&&!p.languages.includes(filter.language))return false;
   if(filter.commonOnly&&!commonInterests(p,draft).length)return false;
   if(filter.scope==="country"&&normalizeCountryCode(draft.countryCode)!==null&&normalizeCountryCode(draft.countryCode)!==normalizeCountryCode(p.countryCode))return false;
