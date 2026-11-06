@@ -251,32 +251,32 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   const result=await db.query(
    "INSERT INTO luemi_private.public_profiles "+
    "(owner_id,environment,publication_status,published_revision,display_name,city_label,country_code,"+
-   "about,interests,gender,goal,languages,birth_date,audience,preferred_age_min,preferred_age_max,published_at,updated_at) "+
-   "VALUES($1,$2,'published',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,clock_timestamp(),clock_timestamp()) "+
+   "about,interests,gender,goal,goals,languages,birth_date,audience,preferred_age_min,preferred_age_max,published_at,updated_at) "+
+   "VALUES($1,$2,'published',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,clock_timestamp(),clock_timestamp()) "+
    "ON CONFLICT (owner_id) DO UPDATE SET publication_status='published',"+
    "published_revision=EXCLUDED.published_revision,display_name=EXCLUDED.display_name,"+
    "city_label=EXCLUDED.city_label,country_code=EXCLUDED.country_code,"+
    "about=EXCLUDED.about,interests=EXCLUDED.interests,gender=EXCLUDED.gender,"+
-   "goal=EXCLUDED.goal,languages=EXCLUDED.languages,birth_date=EXCLUDED.birth_date,"+
+   "goal=EXCLUDED.goal,goals=EXCLUDED.goals,languages=EXCLUDED.languages,birth_date=EXCLUDED.birth_date,"+
    "audience=EXCLUDED.audience,preferred_age_min=EXCLUDED.preferred_age_min,preferred_age_max=EXCLUDED.preferred_age_max,"+
    "published_at=clock_timestamp(),updated_at=clock_timestamp() "+
    "WHERE luemi_private.public_profiles.environment=EXCLUDED.environment RETURNING owner_id",
    [id,cfg.namespace,expected,profile.name,profile.city,profile.country,profile.about,
-    profile.interests,profile.gender,profile.goal,profile.languages,profile.birthDate,
+    profile.interests,profile.gender,profile.goal,profile.goals,profile.languages,profile.birthDate,
     profile.audience,profile.ageMin,profile.ageMax]);
   if(result.rowCount!==1)fail(409,"publication_conflict");
   const preferences=await db.query(
    "INSERT INTO luemi_private.discovery_preferences "+
-   "(owner_id,environment,owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,place_id,radius_km,search_scope,goal,interests,updated_at) "+
-   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,clock_timestamp()) "+
+   "(owner_id,environment,owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,place_id,radius_km,search_scope,goal,goals,interests,updated_at) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,clock_timestamp()) "+
    "ON CONFLICT(owner_id) DO UPDATE SET owner_gender=EXCLUDED.owner_gender,owner_birth_date=EXCLUDED.owner_birth_date,"+
    "audience=EXCLUDED.audience,age_min=EXCLUDED.age_min,"+
    "age_max=EXCLUDED.age_max,city_label=EXCLUDED.city_label,country_code=EXCLUDED.country_code,"+
    "place_id=EXCLUDED.place_id,radius_km=EXCLUDED.radius_km,search_scope=EXCLUDED.search_scope,"+
-   "goal=EXCLUDED.goal,interests=EXCLUDED.interests,updated_at=clock_timestamp() "+
+   "goal=EXCLUDED.goal,goals=EXCLUDED.goals,interests=EXCLUDED.interests,updated_at=clock_timestamp() "+
    "WHERE luemi_private.discovery_preferences.environment=EXCLUDED.environment RETURNING owner_id",
    [id,cfg.namespace,profile.gender,profile.birthDate,profile.audience,profile.ageMin,profile.ageMax,profile.city,
-    profile.country,profile.placeId,profile.radius,profile.searchScope,profile.goal,profile.interests]);
+    profile.country,profile.placeId,profile.radius,profile.searchScope,profile.goal,profile.goals,profile.interests]);
   if(preferences.rowCount!==1)fail(409,"publication_conflict");
   const updated=await db.query(
    "UPDATE luemi_private.media_assets SET publication_status='published' "+
