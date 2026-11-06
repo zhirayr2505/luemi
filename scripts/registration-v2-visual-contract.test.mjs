@@ -125,8 +125,10 @@ assert.match(focusDock,/pinnedTop=Math\.max\(headerBottom\+12,Math\.min\(pinnedT
  "The editor stays anchored while the Android viewport animates");
 assert.match(focusDock,/shell\.animate\(\[[\s\S]*?slotTop-dockTop[\s\S]*?translate3d\(0,-5px,0\)/,
  "One FLIP animation moves each focused field and adds a soft 5px rise");
-assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.height/,
- "Changing city suggestions must not feed the editor height back into keyboard placement");
+assert.doesNotMatch(focusDock,/shell\.getBoundingClientRect\(\)\.height/,
+ "Editor placement never depends on the live suggestion pane height");
+assert.match(focusDock,/flagsResize\?\.observe\(watchedFlags\)/,
+ "Only selected-language flags are observed, so city suggestion animation stays isolated");
 assert.match(form,/<div className="v2-backdrop"[^>]*\/>[\s\S]*?<div className="v2-focus-scrim"[\s\S]*?<header className="v2-header">/,
  "Focus blur is a direct child of the full device, never clipped by the body scroller");
 assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(40px\)[^}]*transition:opacity/s,
@@ -308,3 +310,24 @@ assert.doesNotMatch(footerCss,/backdrop-filter|mask-image/,
  "Footer mask and backdrop repaint path must be deleted, not overridden");
 assert.doesNotMatch(form,/onTouchMove=|onTouchEnd=|onWheel=|scrollTop\s*\+=|scrollBy\(/,
  "Registration must preserve native fling inertia, not compete with a custom RAF scroller");
+
+
+// Samsung A55: entire language rows, native browsing and live keyboard suggestions.
+assert.doesNotMatch(runtime,/\.language-focus-shell\.is-focused \.language-results\{max-height:min\(155px,25dvh\)/,
+ "155px keyboard clipping must be removed");
+assert.doesNotMatch(runtime,/\.language-results\{[^}]*max-height:260px/,
+ "Old 260px hard clip in the main list must be removed");
+assert.match(runtime,/\.language-results\{\s*display:grid;[^}]*grid-auto-rows:44px;[^}]*max-height:none;overflow:visible;/s,
+ "Unfocused 60 languages participate in native page scrolling");
+assert.match(runtime,/\.language-focus-shell\.is-focused \.language-results\{\s*max-height:var\(--language-results-max-height,96px\);overflow-x:hidden;overflow-y:auto;[^}]*-webkit-overflow-scrolling:touch;touch-action:pan-y;/s,
+ "Focused search results use keyboard-safe independent touch scrolling");
+assert.match(focusDock,/footerTop-list\.getBoundingClientRect\(\)\.top-12/,
+ "Language suggestions stop above the actual moving confirmation footer");
+assert.match(focusDock,/Math\.floor\(\(remaining\+8\)\/52\)/,
+ "Scroll viewport fits full 44px language rows plus 8px gaps");
+assert.match(language,/resultsRef\.current\.scrollTop=0/,
+ "Typing a new query resets search suggestions to the first match");
+assert.match(language,/className="language-results-status" role="status" aria-live="polite"/,
+ "Live results announce matching language count");
+assert.match(focusDock,/flagsResize\?\.observe\(watchedFlags\)/,
+ "Selecting languages keeps suggestions safely clear of the keyboard");
