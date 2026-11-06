@@ -6,7 +6,7 @@
  --lavender:var(--luemi-lavender,#ac87b3);--pink:var(--luemi-rose,#d5a2c8);--shadow:rgba(0,0,0,.28);
  --registration-header-top:12px;
  --registration-footer-height:calc(91px + max(14px,env(safe-area-inset-bottom)));
- width:100%;height:var(--registration-visible-height,100dvh);min-height:0;padding:0;
+ width:100%;height:var(--registration-layout-height,100dvh);min-height:0;padding:0;
  overflow:hidden;background:var(--luemi-bg-deep,#1c1424);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 /* Telegram owns the top controls; reserve clearance exactly once on the
@@ -20,7 +20,7 @@
 @keyframes luemi-registration-enter{from{opacity:.55;transform:translate3d(28px,0,0)}to{opacity:1;transform:none}}
 .v2-runtime[data-fallback-entry="true"]{animation:luemi-registration-enter .38s cubic-bezier(.2,.76,.25,1) both}
 html[data-luemi-route="true"] .v2-runtime{animation:none}
-.v2-runtime .v2-device{width:min(100%,520px);height:var(--registration-visible-height,100dvh);
+.v2-runtime .v2-device{width:min(100%,520px);height:var(--registration-layout-height,100dvh);
  max-height:none;min-height:0;position:relative;isolation:isolate;overflow:hidden;
  padding:0;border:0;border-radius:0;box-shadow:0 30px 90px rgba(0,0,0,.35);
  color:var(--ink);background:var(--luemi-bg-deep,#1c1424)}
@@ -283,7 +283,9 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
  overflow-y:auto;overscroll-behavior:contain;background:#2c263b;
  border:1px solid rgba(218,180,240,.32);box-shadow:0 17px 40px rgba(0,0,0,.4)}
 /* Quiet glass at the bottom lets content pass under the action button. */
-.v2-runtime .v2-footer{position:absolute;left:0;right:0;bottom:0;z-index:93;isolation:isolate;
+.v2-runtime .v2-footer{position:absolute;left:0;right:0;
+ bottom:clamp(0px,calc(var(--registration-layout-height,100dvh) - var(--registration-visible-bottom,100dvh)),100vh);
+ z-index:93;isolation:isolate;
  padding:30px 24px max(16px,env(safe-area-inset-bottom));border:0;background:transparent;pointer-events:none}
 .v2-runtime .v2-footer button{pointer-events:auto}
 .v2-runtime .v2-footer::before{content:"";position:absolute;inset:-34px 0 0;z-index:-1;pointer-events:none;

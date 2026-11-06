@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {flushSync} from "react-dom";
 import {ArrowRight,Check,ShieldCheck} from "lucide-react";
 import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
@@ -88,30 +88,48 @@ export function RealRegistrationV2(p:Props){
  const viewportRoot=useRef<HTMLElement|null>(null);
  const device=useRef<HTMLDivElement|null>(null);
  const transitioning=useRef(false);
- useEffect(()=>{
+ useLayoutEffect(()=>{
   const root=viewportRoot.current;
+  if(!root)return;
   const viewport=window.visualViewport;
-  if(!root||!viewport)return;
+  const shell=root.closest<HTMLElement>(".luemi-shell");
   let frame=0;
+  let width=window.innerWidth;
+  // A full-height dark shell must not shrink during the IME animation.
+  // Only the footer follows the visual viewport; avoids a white gap on exit.
+  let fullHeight=Math.max(window.innerHeight,viewport?.height??0,
+   window.Telegram?.WebApp?.viewportStableHeight??0);
+  shell?.setAttribute("data-registration-shell","true");
   const update=()=>{
    frame=0;
-   // Use the visual viewport as the single source of truth. Android WebView
-   // can keep the layout viewport at its pre-keyboard height while the visible
-   // area changes; neither the footer nor an editor's height feeds this value.
-   root.style.setProperty("--registration-visible-height",`${viewport.height}px`);
-   root.style.setProperty("--registration-visible-bottom",`${viewport.offsetTop+viewport.height}px`);
-   root.style.setProperty("--registration-layout-height",`${window.innerHeight}px`);
+   const measuredBottom=(viewport?.offsetTop??0)+(viewport?.height??window.innerHeight);
+   if(Math.abs(window.innerWidth-width)>2){
+    width=window.innerWidth;
+    fullHeight=Math.max(window.innerHeight,measuredBottom);
+   }else if(measuredBottom>=fullHeight-18){
+    fullHeight=Math.max(fullHeight,window.innerHeight,measuredBottom);
+   }
+   const visibleBottom=Math.max(1,Math.min(fullHeight,measuredBottom));
+   shell?.style.setProperty("--registration-layout-height",`${Math.round(fullHeight)}px`);
+   root.style.setProperty("--registration-visible-bottom",`${Math.round(visibleBottom)}px`);
+   root.style.setProperty("--registration-layout-height",`${Math.round(fullHeight)}px`);
   };
   const schedule=()=>{if(!frame)frame=window.requestAnimationFrame(update);};
   update();
-  viewport.addEventListener("resize",schedule);
-  viewport.addEventListener("scroll",schedule);
+  viewport?.addEventListener("resize",schedule);
+  viewport?.addEventListener("scroll",schedule);
   window.addEventListener("resize",schedule);
   return()=>{
    if(frame)window.cancelAnimationFrame(frame);
-   viewport.removeEventListener("resize",schedule);
-   viewport.removeEventListener("scroll",schedule);
+   viewport?.removeEventListener("resize",schedule);
+   viewport?.removeEventListener("scroll",schedule);
    window.removeEventListener("resize",schedule);
+   if(shell){
+    shell.removeAttribute("data-registration-shell");
+    shell.style.removeProperty("--registration-layout-height");
+   }
+   root.style.removeProperty("--registration-visible-bottom");
+   root.style.removeProperty("--registration-layout-height");
   };
  },[]);
  useEffect(()=>{
