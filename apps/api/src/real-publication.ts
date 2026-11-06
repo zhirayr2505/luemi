@@ -44,10 +44,16 @@ function validatedProjection(payload:unknown,birthDate:string|null){
  const audience=data.audience??"everyone";
  const ageMin=data.ageMin??18,ageMax=data.ageMax??80;
  const radius=data.radius??100,searchScope=data.searchScope??"world";
+ const selectedGoals=data.goals===undefined?[data.goal]:data.goals;
  if(typeof name!=="string"||name.trim()!==name||name.length<2||name.length>48||
   typeof city!=="string"||city.trim()!==city||city.length<2||city.length>120||
   typeof country!=="string"||!/^[A-Z]{2}$/.test(country)||
-  !genderOk(data.gender)||!goalOk(data.goal)||!audienceOk(audience)||
+  !genderOk(data.gender)||!goalOk(data.goal)||
+  !Array.isArray(selectedGoals)||selectedGoals.length<1||selectedGoals.length>3||
+  !selectedGoals.every(goalOk)||new Set(selectedGoals).size!==selectedGoals.length||
+  selectedGoals[0]!==data.goal||
+  selectedGoals.includes("undecided")&&selectedGoals.length!==1||
+  !audienceOk(audience)||
   !Number.isInteger(ageMin)||Number(ageMin)<18||Number(ageMin)>80||
   !Number.isInteger(ageMax)||Number(ageMax)<Number(ageMin)||Number(ageMax)>80||
   !Number.isInteger(radius)||Number(radius)<1||Number(radius)>5000||
@@ -57,7 +63,7 @@ function validatedProjection(payload:unknown,birthDate:string|null){
   typeof data.about!=="string"||[...data.about].length>750||
   !birthDate||dateAge(birthDate)<18||dateAge(birthDate)>=130)
    fail(422,"incomplete_profile");
- return {name,city,country,gender:data.gender,goal:data.goal,
+ return {name,city,country,gender:data.gender,goal:data.goal,goals:selectedGoals as string[],
   audience,ageMin:Number(ageMin),ageMax:Number(ageMax),
   radius:Number(radius),searchScope:String(searchScope),placeId:String(data.placeId),
   about:data.about,interests:data.interests,languages:data.languages,birthDate};
@@ -179,10 +185,10 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   reply.header("Cache-Control","private, no-store").header("Vary","Cookie");
   return transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
    const p=await db.query<{publication_status:string;published_revision:string;
-    display_name:string;city_label:string;country_code:string;about:string;goal:string;
+    display_name:string;city_label:string;country_code:string;about:string;goal:string;goals:string[];
     birth_date:string;interests:string[]}>(
     "SELECT publication_status,published_revision::text,display_name,city_label,country_code,"+
-    "about,goal,birth_date::text,interests FROM luemi_private.public_profiles "+
+    "about,goal,goals,birth_date::text,interests FROM luemi_private.public_profiles "+
     "WHERE owner_id=$1 AND environment=$2",[id,cfg.namespace]);
    const media=await db.query<{state:string;n:string}>(
     "SELECT state,count(*)::text AS n FROM luemi_private.media_assets "+
@@ -201,7 +207,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
      city:published.city_label,
      countryCode:published.country_code,
      about:published.about??"",
-     goal:published.goal,
+     goal:published.goal,goals:published.goals,
      interests:published.interests,
      photos:visible.map(photo=>"/api/v3/discovery/photo/"+photo.id)
    }:null;
