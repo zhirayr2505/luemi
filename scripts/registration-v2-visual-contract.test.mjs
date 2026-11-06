@@ -127,8 +127,8 @@ assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.
  "Changing city suggestions must not feed the editor height back into keyboard placement");
 assert.match(form,/<section key=\{stage\.id\}[^>]*>[\s\S]*?<div className="v2-focus-scrim"/,
  "Body blur stays in the same stacking layer as the focused field");
-assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(44px\)[^}]*transition:opacity/s,
- "Blur strength stays fixed while its appearance fades smoothly");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(56px\)[^}]*transition:opacity/s,
+ "Optical focus blur stays fixed while the background fades smoothly");
 assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-body\{[^}]*z-index:2/s,
  "Focused field paints above the body scrim instead of disappearing below it");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
@@ -206,3 +206,26 @@ assert.doesNotMatch(baseStyles,/\.name-input-hint\s*\{/,
  "Retired global hint appearance cannot override the registration Liquid Glass");
 assert.doesNotMatch(runtime,/background:#412b41|background:#38253a/,
  "No original solid red registration hint blocks remain");
+
+
+// Stronger optical focus and gentle glass bubbles remain a single motion path.
+assert.match(runtime,/\.v2-focus-scrim::after\{[^}]*radial-gradient\([^}]*transform:scale\(1\.055\)[^}]*transition:opacity/s,
+ "Eye-like vignette enters with opacity and transform, not an animated blur radius");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-focus-scrim::after\{opacity:1;transform:scale\(1\)\}/,
+ "Eye-like lens completes its focus transition");
+assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-header\{filter:blur\(15px\);opacity:\.58;/,
+ "Background header recedes while the text input stays sharp");
+assert.match(runtime,/\.name-input-hint\.is-visible\{[^}]*opacity:1;visibility:visible;transform:translate3d\(0,0,0\) scale\(1\)/s,
+ "The name hint glides smoothly into view");
+assert.match(runtime,/@keyframes luemi-glass-tip-enter[\s\S]*?\.field-inline-hint:not\(\.name-input-hint\)/,
+ "Other field errors use one subtle glass entrance");
+assert.match(steps,/const showNameGuidance=nameHint\|\|fieldError\?\.field==="name"/,
+ "One stable state owns the name hint");
+assert.match(steps,/className=\{"field-inline-hint name-input-hint"\+\(showNameGuidance\?" is-visible":""\)\}/,
+ "The hint stays mounted to animate back out instead of disappearing");
+assert.match(focusDock,/\{duration:480,easing:"cubic-bezier\(\.16,\.84,\.2,1\)"\}/,
+ "One smoother field docking transition");
+assert.match(focusDock,/\{duration:440,easing:"cubic-bezier\(\.17,\.79,\.22,1\)"\}/,
+ "One smoother field undocking transition");
+assert.match(runtime,/\.name-input-hint,[\s\S]*?\.v2-focus-scrim::after\{transition:none;transform:none\}/,
+ "Reduce-motion preference disables glass hint and lens choreography");
