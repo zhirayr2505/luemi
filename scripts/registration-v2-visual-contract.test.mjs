@@ -121,8 +121,10 @@ assert.match(focusDock,/visualViewport[\s\S]*requestAnimationFrame\(update\)/,
  "Keyboard dock must coalesce Android viewport animation into one writer");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
  "The focused editor must use one visual viewport bottom coordinate without double keyboard compensation");
-assert.match(focusDock,/pinnedTop=Math\.max\(headerBottom\+12,Math\.min\(pinnedTop,[\s\S]*slotTop-dockTop[\s\S]*shell\.animate\(/,
- "Focused field must rise smoothly and stay pinned when the keyboard closes");
+assert.match(focusDock,/pinnedTop=Math\.max\(headerBottom\+12,Math\.min\(pinnedTop,/,
+ "The editor stays anchored while the Android viewport animates");
+assert.match(focusDock,/shell\.animate\(\[[\s\S]*?slotTop-dockTop[\s\S]*?translate3d\(0,-5px,0\)/,
+ "One FLIP animation moves each focused field and adds a soft 5px rise");
 assert.doesNotMatch(focusDock,/ResizeObserver|shell\.getBoundingClientRect\(\)\.height/,
  "Changing city suggestions must not feed the editor height back into keyboard placement");
 assert.match(form,/<div className="v2-backdrop"[^>]*\/>[\s\S]*?<div className="v2-focus-scrim"[\s\S]*?<header className="v2-header">/,
