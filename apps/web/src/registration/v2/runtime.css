@@ -133,67 +133,39 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
 .v2-runtime .v2-note{display:flex;align-items:flex-start;gap:10px;padding:14px;
  color:#b9adc5;font-size:12px;line-height:1.48}
 .v2-runtime .v2-note svg{flex:none;color:#d8a4f1}
-/* Fields dock above the Android keyboard. The overlay is a persistent sibling
-   inside the body stacking layer, so the editor always paints above it. */
+/* One unified fullscreen frost for every registration editor.
+   The scrim is an immediate child of the device, not the scrolling body.
+   No masks, pseudo-lenses or clipped regional backdrop-filter layers. */
 .v2-runtime .focus-field-slot{position:relative;min-height:88px}
 .v2-runtime .focus-field-slot-textarea{min-height:190px}
 .v2-runtime .language-focus-slot{min-height:300px}
-.v2-runtime .focus-field-shell{position:relative;z-index:1;width:100%;transform-origin:center top}
-.v2-runtime .focus-field-shell.is-focused{will-change:transform}
-.v2-runtime .focus-field-shell.is-focused{position:fixed;z-index:92;top:var(--focused-dock-top,164px);bottom:auto;
- left:max(24px,calc((100vw - 520px)/2 + 24px));right:max(24px,calc((100vw - 520px)/2 + 24px));width:auto}
+.v2-runtime .focus-field-shell{position:relative;z-index:1;width:100%;transform-origin:center bottom}
+.v2-runtime .focus-field-shell.is-focused{
+ position:fixed;z-index:92;top:var(--focused-dock-top,164px);bottom:auto;
+ left:max(24px,calc((100vw - 520px)/2 + 24px));
+ right:max(24px,calc((100vw - 520px)/2 + 24px));width:auto;
+ will-change:transform}
 .v2-runtime .focus-field-shell.is-focused .glass-control{border-color:#eda9f3;
  box-shadow:0 0 0 2px rgba(210,130,233,.16),0 18px 40px rgba(3,2,12,.38)}
 .v2-runtime .name-focus-shell .glass-control,.v2-runtime .dob-focus-shell .glass-control{min-height:60px;font-size:18px}
 .v2-runtime .dob-focus-shell .glass-control{text-align:center;letter-spacing:.05em;font-variant-numeric:tabular-nums}
-.v2-runtime .field-focus-overlay{display:none}
-/* Multi-depth Liquid Glass focus. Preserve silhouettes of the actual
-   registration beneath the glass; blur its words until unreadable instead
-   of replacing the screen with an opaque blank plum rectangle. All three
-   blur radii are fixed: only the shared layer opacity animates on Android. */
-.v2-runtime .v2-focus-scrim{position:fixed;inset:0;z-index:90;pointer-events:none;
- visibility:hidden;opacity:0;isolation:isolate;
- background:
-  radial-gradient(ellipse 72% 39% at 15% 17%,rgba(203,157,231,.21),transparent 90%),
-  radial-gradient(ellipse 82% 48% at 91% 65%,rgba(218,152,205,.15),transparent 88%),
-  linear-gradient(155deg,rgba(41,28,56,.28),rgba(24,16,38,.42));
- -webkit-backdrop-filter:blur(38px) saturate(122%) brightness(.92);
- backdrop-filter:blur(38px) saturate(122%) brightness(.92);
- transition:opacity .46s cubic-bezier(.17,.78,.24,1),visibility 0s linear .46s}
-/* Upper lens: broad feathered lavender glass, not a rectangular card. */
-.v2-runtime .v2-focus-scrim::before{content:"";position:absolute;
- left:-13%;top:-8%;width:124%;height:52%;pointer-events:none;
- border-radius:46% 54% 58% 42% / 58% 39% 61% 42%;
- background:
-  radial-gradient(ellipse 72% 72% at 22% 35%,rgba(225,182,244,.19),transparent 76%),
-  linear-gradient(145deg,rgba(235,198,246,.08),rgba(80,53,107,.025) 66%,transparent);
- -webkit-backdrop-filter:blur(26px) saturate(130%);
- backdrop-filter:blur(26px) saturate(130%);
- -webkit-mask-image:radial-gradient(ellipse at 48% 40%,#000 29%,transparent 78%);
- mask-image:radial-gradient(ellipse at 48% 40%,#000 29%,transparent 78%);}
-/* Lower lens: a gentler rose refraction, creating depth in the empty space. */
-.v2-runtime .v2-focus-scrim::after{content:"";position:absolute;
- left:10%;top:33%;width:108%;height:48%;pointer-events:none;
- border-radius:59% 41% 52% 48% / 44% 65% 35% 56%;
- background:
-  radial-gradient(ellipse 68% 70% at 73% 45%,rgba(233,176,210,.15),transparent 77%),
-  linear-gradient(112deg,transparent 12%,rgba(192,157,228,.075) 54%,transparent 85%);
- -webkit-backdrop-filter:blur(14px) saturate(118%);
- backdrop-filter:blur(14px) saturate(118%);
- -webkit-mask-image:radial-gradient(ellipse at 60% 49%,#000 23%,transparent 75%);
- mask-image:radial-gradient(ellipse at 60% 49%,#000 23%,transparent 75%);}
+/* Only a single fixed-radius filter is rendered while the keyboard moves:
+   opacity animates on one full-device glass plane, with a soft plum tint. */
+.v2-runtime .v2-focus-scrim{
+ position:absolute;inset:0;z-index:90;visibility:hidden;opacity:0;
+ pointer-events:none;background:rgba(29,20,41,.43);
+ -webkit-backdrop-filter:blur(40px) saturate(82%) brightness(.82);
+ backdrop-filter:blur(40px) saturate(82%) brightness(.82);
+ transition:opacity .46s cubic-bezier(.18,.8,.24,1),visibility 0s linear .46s}
 .v2-runtime .v2-device[data-field-focus="true"] .v2-focus-scrim{
  visibility:visible;opacity:1;pointer-events:auto;
- transition:opacity .46s cubic-bezier(.17,.78,.24,1),visibility 0s}
-/* Neither the logo nor the step title is legible, but both still diffuse
-   recognizable light and shape through the different glass depths. */
-.v2-runtime .v2-header,.v2-runtime .v2-stage-heading{
- transition:opacity .46s cubic-bezier(.17,.78,.24,1)}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-header{
- filter:blur(18px);opacity:.62;pointer-events:none}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-heading{
- filter:blur(24px);opacity:.62;pointer-events:none}
-.v2-runtime .v2-device[data-field-focus="true"] .v2-body{overflow:hidden;z-index:2}
+ transition:opacity .46s cubic-bezier(.18,.8,.24,1),visibility 0s}
+/* Unstack the scroll surface for focus: field z=92 escapes above glass z=90
+   while the rest of the full screen, including the heading, is frosted. */
+.v2-runtime .v2-device[data-field-focus="true"] .v2-body{
+ overflow:visible;z-index:auto;view-transition-name:none}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-header{pointer-events:none}
+.v2-runtime .v2-device[data-field-focus="true"] .v2-stage-heading{pointer-events:none}
 
 /* One true Liquid Glass surface for registration guidance and validation.
    Small static blur only: never blur the entire scroll or gesture surface. */
@@ -408,7 +380,6 @@ html[data-luemi-transition="true"]::view-transition-new(root){animation:none}
  .v2-runtime .name-input-hint,
  .v2-runtime .field-inline-hint:not(.name-input-hint),
  .v2-runtime .field-warning,.v2-runtime .v2-feedback{animation:none;transition:none}
- .v2-runtime .v2-header,.v2-runtime .v2-stage-heading{transition:none}
  .v2-runtime .v2-next.v2-next-confirm,.v2-runtime,
  .v2-runtime .v2-body.v2-fallback-forward,.v2-runtime .v2-body.v2-fallback-back{animation:none}
  .v2-runtime .optional-profile-screen,.v2-runtime .optional-profile-screen.is-leaving{animation:none}
