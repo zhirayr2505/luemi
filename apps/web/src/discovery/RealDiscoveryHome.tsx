@@ -301,11 +301,11 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  </div>;
 }
 
-export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit}:{
+export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal}:{
  draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;
  publishedProfile:OwnerPublicationStatus["profile"]|undefined;initialFeed?:PublishedFeedPage|null;
  ownerPhotoPreview?:ReadonlyArray<{src:string}>;
- accountPanel:ReactNode;onEdit:()=>void;
+ accountPanel:ReactNode;onEdit:()=>void;onReveal?:()=>void;
 }){
  const [mainTab,setMainTab]=useState<MainTab>(()=>{
   const route=new URLSearchParams(typeof window==="undefined"?"":window.location.search).get("luemiRoute")??
@@ -703,7 +703,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
     {mainTab==="chats"&&<RealChats onThreadChange={setChatThreadOpen} registerThreadBack={handler=>{chatBackRef.current=handler;}}/>}
    </section>
    <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
-    {owner?<ProfileMaster data={owner} mode="owner" onEdit={()=>setAccountOpen(true)}
+    {owner?<ProfileMaster data={owner} mode="owner" onEdit={()=>setAccountOpen(true)} onReveal={()=>{setAccountOpen(true);onReveal?.();}}
       registerBack={registerProfileBack}
       onMotionProgress={(progress,dragging)=>header.current?.setProfileProgress(progress,dragging)}
       active={mainTab==="profile"&&!person}/>:<LuemiEmptyState icon={UserRound} title="Анкета готовится"
