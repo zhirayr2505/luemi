@@ -5,6 +5,7 @@ import {useLayoutEffect,useRef} from "react";
  * the viewport shrinks, but never drops when Android dismisses the keyboard.
  * Suggestion rows never participate in the editor's position measurement.
  */
+export const FOCUS_RELEASE_DELAY_MS=160;
 export function useFieldFocusDock(active:boolean){
  const shellRef=useRef<HTMLElement|null>(null);
  const lastScreenTop=useRef<number|null>(null);
@@ -21,8 +22,9 @@ export function useFieldFocusDock(active:boolean){
    if(from!==null&&!reduced){
     const distance=from-shell.getBoundingClientRect().top;
     if(Math.abs(distance)>4)motion.current=shell.animate([
-     {transform:`translate3d(0,${distance}px,0) scale(.99)`},
-     {transform:"translate3d(0,0,0) scale(1)"}
+     {transform:`translate3d(0,${distance}px,0) scale(.995)`,offset:0},
+     {transform:"translate3d(0,-2px,0) scale(1.006)",offset:.8},
+     {transform:"translate3d(0,0,0) scale(1)",offset:1}
     ],{duration:440,easing:"cubic-bezier(.17,.79,.22,1)"});
    }
    return()=>motion.current?.cancel();
@@ -55,10 +57,12 @@ export function useFieldFocusDock(active:boolean){
   };
   update();
   const dockTop=shell.getBoundingClientRect().top;
-  if(!reduced&&Math.abs(slotTop-dockTop)>4){
+  if(!reduced){
+   // One subtle lift-and-settle shared by all editor types.
    motion.current=shell.animate([
-    {transform:`translate3d(0,${slotTop-dockTop}px,0) scale(.985)`,opacity:.93},
-    {transform:"translate3d(0,0,0) scale(1)",opacity:1}
+    {transform:`translate3d(0,${slotTop-dockTop}px,0) scale(.985)`,offset:0},
+    {transform:"translate3d(0,-5px,0) scale(1.012)",offset:.76},
+    {transform:"translate3d(0,0,0) scale(1)",offset:1}
    ],{duration:480,easing:"cubic-bezier(.16,.84,.2,1)"});
    motion.current.onfinish=()=>{lastScreenTop.current=shell.getBoundingClientRect().top;};
   }
@@ -69,6 +73,7 @@ export function useFieldFocusDock(active:boolean){
   window.addEventListener("resize",refresh);
   return()=>{
    if(frame)window.cancelAnimationFrame(frame);
+   lastScreenTop.current=shell.getBoundingClientRect().top;
    motion.current?.cancel();
    viewport?.removeEventListener("resize",refresh);
    viewport?.removeEventListener("scroll",refresh);

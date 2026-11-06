@@ -11,7 +11,7 @@ import {GeoPicker} from "./GeoPicker";
 import {PhotoSorter,type PhotoItem} from "./PhotoSorter";
 import {RegistrationPreview} from "./Preview";
 import {cleanName,type RegistrationDraft} from "./model";
-import {useFieldFocusDock} from "./use-field-focus";
+import {FOCUS_RELEASE_DELAY_MS,useFieldFocusDock} from "./use-field-focus";
 
 export type {PhotoItem} from "./PhotoSorter";
 export interface StepProps {
@@ -86,7 +86,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      if(document.activeElement===focusInput.current)return;
      focusInput.current=null;
      onFieldFocus?.(null);
-   },180);
+   },FOCUS_RELEASE_DELAY_MS);
  };
  const updateName=(raw:string)=>{
    const clean=cleanName(raw);
@@ -110,7 +110,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const toggleInterest=(value:string)=>patch({interests:data.interests.includes(value)
    ?data.interests.filter(x=>x!==value):data.interests.length>=15?data.interests:[...data.interests,value]});
  if(step===1)return <div className="form-stack step-name">
-   {nameFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>nameInput.current?.blur()}/>}
    <div className="focus-field-slot"><div ref={node=>{nameDock.shellRef.current=node;}}
      className={"focus-field-shell name-focus-shell"+(nameFocused?" is-focused":"")+(fieldError?.field==="name"?" has-error":"")}>
      <GlassField label="Твоё имя"><GlassTextInput ref={nameInput} autoComplete="given-name" enterKeyHint="next" maxLength={48} value={data.name}
@@ -131,7 +130,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    {!deferConsent&&<RegistrationConsent data={data} patch={patch}/>}
  </div>;
  if(step===2)return <div className="form-stack dob-step">
-   {dobFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>dobInput.current?.blur()}/>}
    <div className="focus-field-slot"><div ref={node=>{dobDock.shellRef.current=node;}}
      className={"focus-field-shell dob-focus-shell"+(dobFocused?" is-focused":"")+(fieldError?.field==="date"?" has-error":"")}>
      <GlassField label="Дата рождения" hint="Например, 12.05.1998">
@@ -193,7 +191,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      onFocusChange={focused=>onFieldFocus?.(focused?"language":null)}/>
  </div>;
  if(step===6)return <div className={"form-stack about-step"+(fieldError?.field==="about"?" has-error":"")}>
-   {aboutFocused&&<div className="field-focus-overlay" aria-hidden="true" onMouseDown={()=>focusInput.current?.blur()}/>}
    <div className="focus-field-slot focus-field-slot-textarea"><div ref={node=>{aboutDock.shellRef.current=node;}}
     className={"focus-field-shell about-focus-shell"+(aboutFocused?" is-focused":"")+(fieldError?.field==="about"?" has-error":"")}>
    <GlassField label="Немного о себе"><div className="about-input-shell"><textarea className="glass-control glass-textarea" rows={4}
