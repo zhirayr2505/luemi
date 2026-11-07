@@ -1,4 +1,4 @@
-import {mkdir,writeFile} from "node:fs/promises";
+import {mkdir} from "node:fs/promises";
 import {chromium} from "playwright";
 
 const base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
