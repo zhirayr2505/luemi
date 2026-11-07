@@ -63,6 +63,11 @@ assert.match(runtime,/\.v2-stage-heading\{position:sticky;/,
  "Step headings must stay visible while the form scrolls");
 assert.match(form,/v2-stage-heading--about/,"About attaches its selected interests to the existing sticky heading");
 assert.match(form,/v2-sticky-interest-strip/,"Selected interests live in a single horizontally swipeable ribbon");
+assert.match(form,/draft.interests.length>0\?" is-visible":""/,"Empty interest ribbon stays hidden until the first selection");
+assert.match(form,/v2-selected-interest-close/,"Selected interests use explicit X remove affordances");
+assert.doesNotMatch(form,/v2-sticky-interest-empty/,"No empty selected-interest card placeholder");
+assert.match(runtime,/\.v2-sticky-interests\{[\s\S]*?grid-template-rows:0fr/,"Empty sticky ribbon collapses to zero height");
+assert.match(runtime,/\.v2-sticky-interests\.is-visible\{[\s\S]*?grid-template-rows:1fr/,"Interest ribbon expands with a continuous height transition");
 assert.doesNotMatch(steps,/interest-selected-group/,"Retired in-flow selected-interest grid must be removed");
 assert.match(runtime,/\.v2-sticky-interest-strip\{[\s\S]*?overflow-x:auto;overflow-y:hidden/,"The selected-interest ribbon scrolls horizontally without creating a second vertical scroller");
 assert.match(runtime,/\.v2-sticky-interest-strip\{[\s\S]*?touch-action:pan-x/,"Horizontal gestures must be explicitly owned by the ribbon");
