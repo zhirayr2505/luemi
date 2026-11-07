@@ -36,7 +36,7 @@ assertCheck("expanded goals, undecided first and gendered selection",
  model.includes('{id:"travel_partner"')&&steps.includes("goalLabel(goal.id,data.gender)"));
 assertCheck("202 stable interests, curated colors and search in onboarding",
  catalog.includes("expandedSource")&&catalog.includes("export const categories")&&
- steps.includes("interest-search")&&steps.includes("interest-selected-group")&&
+ steps.includes("interest-search")&&realRegistration.includes("v2-sticky-interests")&&
  steps.includes("data.interests.length>=20")&&app.includes("SelectedInterests")&&
  style.includes(".selected-interests-floating"));
 assertCheck("60 searchable languages with true vector flags",languages.includes("export const languages")&&read("apps/web/src/registration/LanguagePicker.tsx").includes("<Flag"));
