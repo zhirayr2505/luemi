@@ -38,9 +38,9 @@ function ChoiceRow({label,children}:{label:string;children:ReactNode}){
 }
 export function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChange:(min:number,max:number)=>void}){
  const start=(min-18)/62*100,end=(max-18)/62*100;
- return <div className="age-range glass-panel">
+ return <div className="age-range glass-panel" role="group"
+   aria-label="Возраст людей, с которыми хочешь знакомиться">
    <div className="range-title"><span>Возраст</span><strong>{min}–{max}</strong></div>
-   <p className="age-caption">Возраст людей, которых хочешь встретить</p>
    <div className="double-age-range" onPointerDownCapture={()=>{
      const f=document.activeElement;if(f instanceof HTMLInputElement&&f.type!=="range")f.blur();
    }}>
@@ -275,9 +275,9 @@ export function RegistrationConsent({data,patch}:{data:RegistrationDraft;patch:(
 
 export function SelectedInterests({selected,onChange}:{selected:string[];onChange:(id:string)=>void}){
  return <section className="selected-interests-floating" aria-label="Выбранные интересы">
-   <div className="selected-interest-head"><strong>Выбрано</strong><span>{selected.length} / 15</span></div>
+   <div className="selected-interest-head"><strong>Выбрано</strong><span>{selected.length} / 20</span></div>
    <div className="selected-interest-strip">{selected.length?selected.map(id=>
      <InterestChip key={id} id={id} selected onClick={()=>onChange(id)}/>):
-     <span className="hint">Выбирай интересы выше · до 15</span>}</div>
+     <span className="hint">Выбирай интересы выше · до 20</span>}</div>
  </section>;
 }

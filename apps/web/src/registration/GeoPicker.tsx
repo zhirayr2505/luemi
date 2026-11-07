@@ -284,7 +284,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
        </div>}
      </div>
    </div>
-   <p className="geo-liquid-privacy">При выборе геолокации координаты передаются только для определения города.
-     В анкете сохраняется выбранный город, не твоя точная геопозиция.</p>
+   <p className="geo-liquid-privacy">Геолокация нужна только для определения города.
+     Точные координаты в анкете не сохраняем.</p>
  </div>;
 }
