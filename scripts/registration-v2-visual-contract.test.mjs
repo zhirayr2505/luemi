@@ -57,7 +57,7 @@ assert.match(form,/stage.id==="photos"&&<div className="v2-real-groups">/,
  "Photo selection and reordering stay on their dedicated step");
 assert.doesNotMatch(form,/id:"main-photo"|stage.id==="main-photo"/,
  "The first uploaded photo is already the main photo; do not add a duplicate step");
-assert.match(form,/className="v2-stage-heading"/,
+assert.match(form,/className=\{"v2-stage-heading"\+\(stage\.id==="about"\?" v2-stage-heading--about":""\)\}/,
  "Scrollable steps keep their heading in a dedicated sticky layer");
 assert.match(runtime,/\.v2-stage-heading\{position:sticky;/,
  "Step headings must stay visible while the form scrolls");
