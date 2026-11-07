@@ -1,5 +1,4 @@
 import type {RegistrationDraft} from "./model";
-import {goals} from "./model";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import type {PhotoItem} from "./PhotoSorter";
 import {draftAge,readyRegistrationPhotos} from "../discovery/ProfileModel";
