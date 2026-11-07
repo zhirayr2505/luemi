@@ -501,7 +501,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .interest-search:focus-within{border-color:#cfa5ea;box-shadow:0 0 0 2px rgba(205,162,233,.13)}
 .v2-runtime .interest-search>svg{flex:none}
 .v2-runtime .interest-search input{display:block;min-width:0;flex:1;min-height:43px;
- border:0;background:transparent;color:#f7ecfc;font-size:14px;outline:0;appearance:none}
+ border:0;background:transparent;color:#f7ecfc;font-size:16px;outline:0;appearance:none}
 .v2-runtime .interest-search input::placeholder{color:#aa9cb8}
 .v2-runtime .interest-search-count{font-size:11px;color:#c8b0db;font-variant-numeric:tabular-nums}
 .v2-runtime .interest-selected-group{display:flex;flex-direction:column;gap:10px;
@@ -625,3 +625,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-about-groups .interests-step{height:auto;min-height:0;flex:none;overflow:visible;padding:0 0 12px;gap:12px}
 .v2-runtime .v2-about-groups .interests-step .category-row{position:relative;top:auto;max-width:100%}
 .v2-runtime .v2-about-groups .interest-choices{min-height:0;overflow:visible;flex:none;padding-bottom:7px}
+
+.v2-runtime .interest-focus-slot{min-height:51px}
+.v2-runtime .interest-focus-shell{min-width:0}
+.v2-runtime .interest-focus-shell.is-focused .interest-search{border-color:#e7b4ee;box-shadow:0 0 0 1px rgba(218,156,233,.25),0 16px 34px rgba(6,2,17,.26)}
