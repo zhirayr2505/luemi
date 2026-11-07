@@ -4,6 +4,7 @@ import {X,RotateCcw,SlidersHorizontal} from "lucide-react";
 import type {DiscoveryFilter} from "./model";
 import {defaultFilters} from "./model";
 import {goals} from "../registration/model";
+import {goalLabel} from "../ui/PersonalizedCopy";
 import {languages} from "../ui/Languages";
 import {positionAt,radiusAt} from "../registration/GeoPicker";
 import {DoubleAgeRange} from "../registration/Steps";
@@ -50,7 +51,7 @@ export function DiscoveryFilters({open,filter,draft,onClose,onApply}:Props){
        <fieldset className="discovery-filter-group"><legend>Цель знакомства</legend>
          <select className="glass-control" value={working.goal} onChange={e=>set("goal",e.target.value as DiscoveryFilter["goal"])}>
            <option value="all">Любая цель</option>
-           {goals.map(g=><option key={g.id} value={g.id}>{g.label}</option>)}
+           {goals.map(g=><option key={g.id} value={g.id}>{goalLabel(g.id)}</option>)}
          </select>
        </fieldset>
        <fieldset className="discovery-filter-group"><legend>Язык общения</legend>
