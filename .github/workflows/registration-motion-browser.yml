@@ -4,6 +4,10 @@ on:
     branches: [main]
     paths:
       - 'apps/web/src/registration/**'
+      - 'apps/web/src/App.tsx'
+      - 'apps/web/index.html'
+      - 'apps/web/public/telegram-early-fullscreen.js'
+      - 'scripts/intro-fullscreen-browser.mjs'
       - 'apps/web/registration-motion-qa.html'
       - 'scripts/registration-motion-browser.mjs'
       - 'scripts/registration-focus-browser.mjs'
@@ -48,6 +52,7 @@ jobs:
           done
           node scripts/registration-motion-browser.mjs
           node scripts/registration-focus-browser.mjs
+          node scripts/intro-fullscreen-browser.mjs
       - name: Preserve synthetic seven-stage screenshots
         if: always()
         uses: actions/upload-artifact@v4
