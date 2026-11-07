@@ -41,7 +41,7 @@ function valid(key:string,v:unknown,now:Date):boolean{
     case "countryCode":return typeof v==="string"&&/^[A-Z]{2}$/.test(v);
     case "placeId":return typeof v==="string"&&/^[a-z0-9:_-]{3,180}$/i.test(v);
     case "radius":return Number.isInteger(v)&&Number(v)>=1&&Number(v)<=5000;
-    case "searchScope":return enumOk(v,["radius","country","world"]);
+    case "searchScope":return enumOk(v,["radius","city","country","world"]);
     case "audience":return enumOk(v,["women","men","everyone"]);
     case "ageMin":case "ageMax":return Number.isInteger(v)&&Number(v)>=18&&Number(v)<=80;
     case "goal":return enumOk(v,["serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided","love","family_goal","travel_partner","casual"]);
