@@ -313,7 +313,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-next:active,.v2-runtime .v2-publish:active{transform:scale(.985);filter:brightness(1.04);
  box-shadow:inset 0 1px rgba(255,255,255,.62),0 5px 19px rgba(183,95,208,.2)}
 .v2-runtime .v2-next svg{margin-left:auto}
-/* Shared 8-step progress indicator; never changes the button's geometry.
+/* Shared sequential progress indicator; never changes the button's geometry.
    Only this tiny icon rotates, not a backdrop filter or full-screen layer. */
 .v2-runtime .v2-next[aria-busy="true"],.v2-runtime .v2-publish[aria-busy="true"]{
  opacity:1;cursor:progress;filter:none}
@@ -401,3 +401,92 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  .v2-runtime .optional-profile-screen,.v2-runtime .optional-profile-screen.is-leaving{animation:none}
  .v2-runtime .v2-next-spinner{animation:none}
  .v2-runtime .v2-next,.v2-runtime .v2-publish,.v2-runtime .v2-focus-scrim{transition:none}}
+
+/* V2 — biography, interests and secure read-only review. Everything stays in the
+   existing dark LUEMI canvas and the native vertical scroll container. */
+.v2-runtime .v2-about-groups{gap:18px;padding-bottom:18px}
+.v2-runtime .v2-about-groups .about-step{gap:0}
+.v2-runtime .v2-about-groups .glass-textarea{min-height:142px;resize:none}
+.v2-runtime .v2-about-interest-heading{display:flex;justify-content:space-between;align-items:center;
+ gap:10px;margin-top:9px;color:#f6eaf9}
+.v2-runtime .v2-about-interest-heading strong{font-size:16px;letter-spacing:-.025em}
+.v2-runtime .v2-about-interest-heading span{color:#cbb3d6;font-size:12px;font-variant-numeric:tabular-nums}
+.v2-runtime .v2-about-footnote{font-size:12px;line-height:1.5;color:#afa1bf;margin:0}
+.v2-runtime .v2-showcase{display:flex;flex-direction:column;gap:12px;padding:0 0 24px;color:#f8effa}
+.v2-runtime .v2-showcase-photo{position:relative;isolation:isolate;width:100%;
+ aspect-ratio:4/5;max-height:460px;overflow:hidden;border-radius:23px;
+ background:#2b2235;border:1px solid rgba(215,174,232,.34);
+ box-shadow:0 14px 36px rgba(3,2,10,.22)}
+.v2-runtime .v2-showcase-track{position:relative;display:flex;width:100%;height:100%;
+ overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
+ scroll-behavior:smooth;touch-action:pan-x;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.v2-runtime .v2-showcase-track::-webkit-scrollbar{display:none}
+.v2-runtime .v2-showcase-track img{flex:0 0 100%;display:block;width:100%;height:100%;
+ object-fit:cover;scroll-snap-align:start;user-select:none}
+.v2-runtime .v2-showcase-overlay{position:absolute;inset:28% 0 0;pointer-events:none;
+ background:linear-gradient(180deg,transparent 0%,rgba(14,9,22,.12) 22%,
+ rgba(13,9,22,.83) 100%)}
+.v2-runtime .v2-showcase-preview-pill,.v2-runtime .v2-showcase-photo-count{
+ position:absolute;top:13px;z-index:2;pointer-events:none;padding:8px 10px;
+ border-radius:999px;background:rgba(34,24,44,.81);border:1px solid rgba(238,210,245,.25);
+ color:#f9f0ff;font-size:10px;font-weight:750;letter-spacing:.035em}
+.v2-runtime .v2-showcase-preview-pill{left:12px;display:flex;align-items:center;gap:6px}
+.v2-runtime .v2-showcase-preview-pill svg{color:#d5addf}
+.v2-runtime .v2-showcase-photo-count{right:12px;letter-spacing:0;font-variant-numeric:tabular-nums}
+.v2-runtime .v2-showcase-person{position:absolute;z-index:2;bottom:19px;left:17px;right:17px;pointer-events:none}
+.v2-runtime .v2-showcase-person h2{font-size:clamp(25px,7vw,35px);line-height:1.05;
+ font-weight:760;letter-spacing:-.046em;margin:0;color:#fff}
+.v2-runtime .v2-showcase-person p{display:flex;gap:5px;align-items:center;
+ font-size:13px;margin:7px 0;color:#f2e6fa}
+.v2-runtime .v2-showcase-goal{display:inline-flex;align-items:center;gap:6px;
+ margin-top:6px;padding:8px 12px;border-radius:999px;color:#fff;
+ border:1px solid rgba(234,196,244,.4);background:rgba(123,74,135,.65);font-size:11px}
+.v2-runtime .v2-showcase-dots{display:flex;gap:8px;justify-content:center;padding:1px 0 3px}
+.v2-runtime .v2-showcase-dots button{width:7px;height:7px;min-height:7px;border:0;
+ padding:0;border-radius:999px;background:rgba(205,185,218,.35);
+ transition:width .2s,background-color .2s}
+.v2-runtime .v2-showcase-dots button.selected{width:23px;background:#d6a5e2}
+.v2-runtime .v2-showcase-content{display:flex;flex-direction:column;gap:12px}
+.v2-runtime .v2-showcase-panel{border:1px solid rgba(204,177,224,.21);border-radius:18px;
+ padding:16px;background:linear-gradient(135deg,rgba(74,56,85,.58),rgba(41,35,55,.67));
+ box-shadow:inset 0 1px rgba(255,255,255,.08)}
+.v2-runtime .v2-showcase-panel h3{font-size:15px;margin:0 0 10px;color:#f7ebfc}
+.v2-runtime .v2-showcase-panel p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;
+ font-size:13px;line-height:1.6;color:#e4d5eb}
+.v2-runtime .v2-showcase-interests{display:flex;gap:7px;flex-wrap:wrap}
+.v2-runtime .v2-showcase-interests span{padding:8px 11px;border-radius:100px;
+ color:#f7ebff;background:rgba(115,78,134,.44);
+ border:1px solid rgba(206,165,227,.32);font-size:12px}
+.v2-runtime .v2-showcase-private{display:flex;align-items:flex-start;gap:8px;
+ color:#aa9bb8;line-height:1.5;font-size:11px;margin:5px 0 0}
+.v2-runtime .v2-showcase-private svg{flex:none;color:#cda9de}
+.v2-runtime .v2-review-actions{gap:9px}
+.v2-runtime .v2-review-actions .v2-review-edit{flex:0 0 41%;min-width:0;min-height:56px;
+ display:flex;align-items:center;justify-content:center;gap:8px;
+ border:1px solid rgba(216,178,230,.4);border-radius:999px;
+ background:rgba(76,59,90,.92);color:#f7eafb;font-weight:690;font-size:13px}
+.v2-runtime .v2-review-actions .v2-review-create{width:auto;min-width:0;flex:1;font-size:13px;padding:10px}
+.v2-runtime .v2-review-actions button:disabled{opacity:.55}
+@media(max-width:360px){
+ .v2-runtime .v2-review-actions .v2-review-edit{flex-basis:39%;font-size:12px}
+ .v2-runtime .v2-review-actions .v2-review-create{font-size:12px}
+}
+/* The coach-mark is portalled outside clipping photo slots. Its speech tail
+   points to the first actual handle; no hit-testing or paint filters involved. */
+.photo-handle-tooltip{position:fixed;z-index:10020;pointer-events:none;box-sizing:border-box;
+ width:210px;max-width:calc(100vw - 20px);min-height:59px;
+ display:flex;align-items:center;padding:12px 15px;
+ border-radius:16px;background:#e9c6f1;color:#392341;
+ border:1px solid rgba(255,255,255,.8);box-shadow:0 14px 33px rgba(10,4,19,.38);
+ font:700 13px/1.35 Inter,system-ui,sans-serif;
+ animation:luemi-handle-tooltip-in .24s cubic-bezier(.17,.8,.25,1) both}
+.photo-handle-tooltip-tail{position:absolute;bottom:-7px;right:16px;width:13px;height:13px;
+ transform:rotate(45deg);background:#e9c6f1;border-right:1px solid #f7defa;
+ border-bottom:1px solid #f7defa}
+@keyframes luemi-handle-tooltip-in{from{opacity:0;transform:translate3d(0,8px,0) scale(.96)}
+ to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+@media(prefers-reduced-motion:reduce){
+ .v2-runtime .v2-showcase-track{scroll-behavior:auto}
+ .v2-runtime .v2-showcase-dots button{transition:none}
+ .photo-handle-tooltip{animation:none}
+}
