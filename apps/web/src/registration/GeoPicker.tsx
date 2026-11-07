@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from "react";
 import type {CSSProperties} from "react";
-import {MapPin,Search,LocateFixed,LoaderCircle,ChevronDown} from "lucide-react";
+import {MapPin,Search,LocateFixed,LoaderCircle,Globe2,Compass,Check} from "lucide-react";
 import {normalizeCountryCode} from "@luemi/contracts";
 import {GlassField} from "../ui/Glass";
 import {Flag} from "../ui/Flag";
@@ -11,10 +11,8 @@ import type {RegistrationDraft,SearchScope} from "./model";
 import {FOCUS_RELEASE_DELAY_MS,releaseAfterKeyboardSettles,useFieldFocusDock} from "./use-field-focus";
 export interface Place {id:string;city:string;country:string;countryCode:string;region?:string}
 interface SearchResult {results?:unknown;coverage?:"demo"|"limited"|"world"}
-const scopeOptions:[SearchScope,string,string][]=[
- ["radius","По радиусу","В пределах выбранного расстояния"],
- ["country","В своей стране","Без ограничения по километрам"],
- ["world","Весь мир","Без ограничений по стране и радиусу"]
+const scopeOptions:[SearchScope,string,typeof Compass][]=[
+ ["radius","Рядом",Compass],["city","Мой город",MapPin],["world","Весь мир",Globe2]
 ];
 export const radiusAt=(p:number)=>Math.round(1+4999*Math.pow(Math.max(0,Math.min(p,100))/100,2));
 export const positionAt=(km:number)=>Math.round(100*Math.sqrt((Math.max(1,Math.min(km,5000))-1)/4999));
@@ -35,14 +33,13 @@ type GeoPickerProps={
  onFieldFocus?:(field:"city"|null)=>void;
 };
 export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:GeoPickerProps){
- const [manual,setManual]=useState(!!data.placeId);
+ const [manual,setManual]=useState(true);
  const [query,setQuery]=useState(data.placeId?data.city+", "+data.country:"");
  const [editing,setEditing]=useState(false);
  const [results,setResults]=useState<Place[]>([]);
  const [activity,setActivity]=useState<GeoOperation>("idle");
  const [error,setError]=useState("");
  const [demo,setDemo]=useState(false);
- const [scopeOpen,setScopeOpen]=useState(false);
  const [cityFocused,setCityFocused]=useState(false);
  const inputRef=useRef<HTMLInputElement>(null);
  const pendingBlur=useRef<(()=>void)|null>(null);
@@ -106,7 +103,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
   if(!normalized){setError("Не удалось определить город. Выбери его вручную.");setActivity("error");return;}
   cancelPending();
   patch({city:normalized.city,country:normalized.country,placeId:normalized.id,countryCode:normalized.countryCode});
-  setQuery(normalized.city+", "+normalized.country);setEditing(false);
+  setManual(true);setQuery(normalized.city+", "+normalized.country);setEditing(false);
   setResults([]);setError("");setActivity("success");inputRef.current?.blur();setCityFocused(false);onFieldFocus?.(null);
  };
  const syntheticQa=import.meta.env.DEV&&window.location.pathname==="/geo-qa.html";
@@ -168,86 +165,116 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
     "Не удалось получить координаты. Проверь разрешение геолокации или выбери город вручную.");
   });
  };
- const switchMode=()=>{
-  cancelPending();setActivity("cancelled");setError("");setResults([]);setDemo(false);setEditing(false);
-  setManual(value=>!value);
-  setQuery(selectedLabel);
+ const openCitySearch=()=>{
+  cancelPending();setManual(true);setEditing(true);setActivity("idle");
+  setResults([]);setError("");setDemo(false);setQuery("");
+  window.requestAnimationFrame(()=>inputRef.current?.focus());
+ };
+ const closeCitySearch=()=>{
+  cancelPending();setEditing(false);setQuery(selectedLabel);setResults([]);
+  setError("");setActivity("idle");inputRef.current?.blur();
+  setCityFocused(false);onFieldFocus?.(null);
  };
  const nativeSettings=(window.Telegram?.WebApp as {LocationManager?:TelegramLocationManager}|undefined)?.LocationManager;
  const canOpenGeoSettings=typeof nativeSettings?.openSettings==="function";
  const loading=activity==="searching"||activity==="locating"||activity==="resolving";
- const selectedScope=scopeOptions.find(x=>x[0]===data.searchScope)??scopeOptions[0];
- return <div className="geo-stack">
-   {!manual?<button className="geo-location-primary" type="button" onClick={detect} disabled={loading}>
-     {loading?<LoaderCircle className="spin" size={22}/>:<LocateFixed size={22}/>}
-     <span><strong>{data.placeId?"Определить местоположение снова":"Моё местоположение"}</strong><small>По разрешению Telegram или устройства</small></span>
-   </button>:<>
-     <div className="focus-field-slot"><div ref={node=>{cityDock.shellRef.current=node;}}
-       className={"focus-field-shell city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")}>
-       {editing&&results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
-         {results.map(place=><button key={place.id} type="button" role="option" aria-selected={false} onPointerDown={event=>{event.preventDefault();choose(place);}}>
-           <Flag code={place.countryCode} title={"Флаг "+place.country}/><span><strong>{place.city}</strong><small>{place.country}{place.region?", "+place.region:""}</small></span><MapPin size={17}/>
-         </button>)}
-       </div>}
-       <GlassField label="Страна и город">
-         <div className="geo-input-wrap">
-           <Search size={20} aria-hidden="true"/>
-           <input ref={inputRef} className="glass-control geo-input" role="combobox" autoComplete="off"
-             aria-expanded={results.length>0} aria-controls="luemi-geo-results" aria-autocomplete="list"
-             maxLength={80} placeholder="Введи город или страну" value={query}
-             onFocus={()=>{pendingBlur.current?.();pendingBlur.current=null;setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();}}
-             onBlur={()=>{pendingBlur.current?.();pendingBlur.current=releaseAfterKeyboardSettles(()=>{
-               if(document.activeElement===inputRef.current)return;
-               setCityFocused(false);onFieldFocus?.(null);pendingBlur.current=null;
-             },FOCUS_RELEASE_DELAY_MS);}}
-             onChange={e=>{cancelPending();setQuery(e.target.value);setEditing(true);setError("");clearFieldError?.();setResults([]);setActivity("idle");}}/>
-           {loading&&<LoaderCircle className="spin" size={18}/>}
-         </div>
-       </GlassField>
-       {fieldError&&<p className="field-warning city-field-warning" role="alert">{fieldError}</p>}
-     </div></div>
-   </>}
-   {!manual?<button type="button" className="geo-mode-toggle" onClick={switchMode}>Выбрать город вручную</button>:
-     <button type="button" className="geo-mode-toggle" onClick={switchMode}><LocateFixed size={15}/> Определить моё местоположение</button>}
-   {data.placeId&&<div className="geo-selected"><Flag code={data.countryCode}/><MapPin size={15}/><strong>{data.city}</strong><span>{data.country}</span></div>}
-   {manual&&editing&&query.trim().length>1&&!loading&&!results.length&&!error&&<p className="hint">Выбери реальный город из подсказок. Свободный текст не сохраняется.</p>}
-   {error&&<p className="field-warning" role="alert">{error}</p>}
-   {error.startsWith("Доступ к геолокации")&&canOpenGeoSettings&&
-    <button type="button" className="geo-mode-toggle" onClick={()=>{
-      try{nativeSettings?.openSettings?.();}
-      catch{setError("Открой настройки местоположения Telegram вручную.");}
-    }}>Открыть настройки геолокации Telegram</button>}
-   {demo&&import.meta.env.VITE_LUEMI_REAL_ONLY!=="1"&&
-     <p className="hint">Тестовый справочник ограничен. Полный мировой поиск требует настройки провайдера.</p>}
-   {import.meta.env.VITE_LUEMI_GEO_LOCAL_ENABLED==="1"&&
-    import.meta.env.VITE_LUEMI_GEO_PROVIDER_ENABLED!=="1"&&
-    <p className="hint">Определение города доступно в некоторых регионах. Если город не найден, выбери его вручную.</p>}
-   <div className="geo-scope">
-     <span className="field-label">Где искать людей?</span>
-     <div className="scope-popover-anchor">
-       <button className="glass-control scope-control" type="button" aria-expanded={scopeOpen} onClick={()=>setScopeOpen(x=>!x)}>
-         <span><strong>{selectedScope[1]}</strong><small>{selectedScope[2]}</small></span><ChevronDown size={19}/>
-       </button>
-       {scopeOpen&&<div className="scope-options">
-         {scopeOptions.map(([scope,label,detail])=><button type="button" key={scope} role="option" aria-selected={data.searchScope===scope}
-           onClick={()=>{patch({searchScope:scope});setScopeOpen(false);}}>
-           <strong>{label}</strong><small>{detail}</small>
-         </button>)}
-       </div>}
-     </div>
+ return <div className="geo-stack geo-liquid-location">
+   <div className="geo-city-area">
+     <span className="field-label">Твой город</span>
+     {!editing&&<button type="button" className="geo-liquid-city" onClick={openCitySearch}
+       aria-label={data.placeId?"Изменить город":"Выбрать город"}>
+       <span className="geo-liquid-city-icon"><MapPin size={24} strokeWidth={1.7}/></span>
+       <span className="geo-liquid-city-copy">
+         <strong>{data.placeId?data.city:"Выбрать город"}</strong>
+         <small>{data.placeId?data.country:"Найди свой город, чтобы знакомиться рядом"}</small>
+       </span>
+       <span className="geo-liquid-edit">{data.placeId?"Изменить":"Выбрать"}</span>
+     </button>}
+     {editing&&<div className="geo-liquid-city-editor">
+       <div className="focus-field-slot"><div ref={node=>{cityDock.shellRef.current=node;}}
+         className={"focus-field-shell city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")}>
+         {results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
+           {results.map(place=><button key={place.id} type="button" role="option" aria-selected={false}
+             onPointerDown={event=>{event.preventDefault();choose(place);}}
+             onClick={()=>choose(place)}>
+             <Flag code={place.countryCode} title={"Флаг "+place.country}/>
+             <span><strong>{place.city}</strong><small>{place.country}{place.region?", "+place.region:""}</small></span><Check size={16}/>
+           </button>)}
+         </div>}
+         <GlassField label="Найди город">
+           <div className="geo-input-wrap">
+             <Search size={19} aria-hidden="true"/>
+             <input ref={inputRef} className="glass-control geo-input" role="combobox"
+               autoComplete="off" aria-expanded={results.length>0} aria-controls="luemi-geo-results"
+               aria-autocomplete="list" maxLength={80} placeholder="Название города"
+               value={query}
+               onFocus={()=>{pendingBlur.current?.();pendingBlur.current=null;setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();}}
+               onBlur={()=>{pendingBlur.current?.();pendingBlur.current=releaseAfterKeyboardSettles(()=>{
+                 if(document.activeElement===inputRef.current)return;
+                 setCityFocused(false);onFieldFocus?.(null);pendingBlur.current=null;
+               },FOCUS_RELEASE_DELAY_MS);}}
+               onChange={e=>{cancelPending();setQuery(e.target.value);setError("");clearFieldError?.();
+                 setResults([]);setActivity("idle");}}/>
+             {loading&&<LoaderCircle className="spin" size={18}/>}
+           </div>
+         </GlassField>
+       </div></div>
+       <button type="button" className="geo-liquid-cancel" onClick={closeCitySearch}>Отмена</button>
+     </div>}
+     {!editing&&<button className="geo-liquid-locate" type="button" onClick={detect} disabled={loading}>
+       {loading?<LoaderCircle className="spin" size={17}/>:<LocateFixed size={17}/>}
+       <span>{loading?"Определяем город…":"Определить моё местоположение"}</span>
+     </button>}
+     {data.placeId&&editing&&<p className="geo-liquid-current">Сейчас выбран: {data.city}, {data.country}</p>}
+     {fieldError&&<p role="alert" className="field-warning city-field-warning">{fieldError}</p>}
+     {manual&&editing&&query.trim().length>=2&&!loading&&!results.length&&!error&&
+       <p className="geo-liquid-caption">Выбери город из подсказок — свободный текст не сохраняется.</p>}
+     {error&&<p className="field-warning" role="alert">{error}</p>}
+     {error.startsWith("Доступ к геолокации")&&canOpenGeoSettings&&
+       <button type="button" className="geo-liquid-locate" onClick={()=>{
+         try{nativeSettings?.openSettings?.();}
+         catch{setError("Открой настройки местоположения Telegram вручную.");}
+       }}>Настройки геолокации Telegram</button>}
+     {demo&&import.meta.env.VITE_LUEMI_REAL_ONLY!=="1"&&
+       <p className="geo-liquid-caption">Поиск ограничен тестовым справочником.</p>}
    </div>
-   <div className={"radius-control"+(data.searchScope!=="radius"?" is-disabled":"")}>
-     <div className="range-title"><span>Радиус поиска</span><strong>{data.radius.toLocaleString("ru")} км</strong></div>
-     <div className="branded-slider" onPointerDownCapture={()=>{
-       const field=document.activeElement;
-       if(field instanceof HTMLInputElement&&field.type!=="range")field.blur();
-     }} style={{"--range-pct":positionAt(data.radius)+"%"} as CSSProperties}>
-       <input type="range" min="0" max="100" step="1" disabled={data.searchScope!=="radius"}
-         value={positionAt(data.radius)} aria-label="Радиус поиска, километры"
-         onChange={e=>patch({radius:radiusAt(Number(e.target.value))})}/>
+   <div className="geo-liquid-search-section">
+     <div className="geo-liquid-section-head">
+       <strong>Где искать людей?</strong>
+       <small>Выбери подходящий формат</small>
      </div>
-     <div className="range-limits"><span>1 км</span><span>5 000 км</span></div>
+     <div className="geo-liquid-scopes" role="group" aria-label="Где искать людей">
+       {scopeOptions.map(([value,label,Icon])=><button key={value} type="button"
+         className={data.searchScope===value?"active":""} aria-pressed={data.searchScope===value}
+         onClick={()=>patch({searchScope:value})}>
+         <Icon size={18} strokeWidth={1.7} aria-hidden="true"/>
+         <span>{label}</span>
+       </button>)}
+       {data.searchScope==="country"&&<button type="button" className="active" aria-pressed="true"
+         onClick={()=>patch({searchScope:"country"})}>
+         <Globe2 size={18}/><span>Моя страна</span>
+       </button>}
+     </div>
+     {data.searchScope==="radius"&&<div className="geo-liquid-radius">
+       <div className="range-title"><span>Расстояние</span><strong>{data.radius.toLocaleString("ru")} км</strong></div>
+       <div className="branded-slider" onPointerDownCapture={()=>{
+         const focused=document.activeElement;
+         if(focused instanceof HTMLInputElement&&focused.type!=="range")focused.blur();
+       }} style={{"--range-pct":positionAt(data.radius)+"%"} as CSSProperties}>
+         <input type="range" min="0" max="100" step="1" value={positionAt(data.radius)}
+           aria-label="Радиус поиска, километры"
+           onChange={e=>patch({radius:radiusAt(Number(e.target.value))})}/>
+       </div>
+       <div className="range-limits"><span>1 км</span><span>5 000 км</span></div>
+     </div>}
+     {data.searchScope==="city"&&<p className="geo-liquid-scope-description">
+       Показываем анкеты из выбранного города без передачи точных координат.</p>}
+     {data.searchScope==="country"&&<p className="geo-liquid-scope-description">
+       Показываем людей из выбранной страны. Это прежняя настройка твоей анкеты.</p>}
+     {data.searchScope==="world"&&<p className="geo-liquid-scope-description">
+       Знакомься с людьми независимо от города и страны.</p>}
    </div>
-   <p className="hint">При нажатии «Моё местоположение» координаты однократно передаются серверу для определения города через геокодер. В анкету сохраняется только выбранный город. В режиме «Весь мир» радиус сохраняется.</p>
+   <p className="geo-liquid-privacy">При выборе геолокации координаты передаются только для определения города.
+     В анкете сохраняется выбранный город, не твоя точная геопозиция.</p>
  </div>;
 }
