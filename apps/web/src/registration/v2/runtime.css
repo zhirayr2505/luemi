@@ -633,9 +633,9 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-liquid-radius{display:flex;flex-direction:column;justify-content:space-between;gap:2px}
 .v2-runtime .geo-liquid-radius .range-title{font-size:13px}
 .v2-runtime .geo-liquid-radius .range-title strong{color:#e8b8f0;font-size:14px}
-.v2-runtime .geo-liquid-radius .branded-slider{min-width:0;min-height:30px;margin:0 7px}
+.v2-runtime .geo-liquid-radius .branded-slider{min-width:0;min-height:34px;margin:0 7px}
 .v2-runtime .geo-liquid-radius .branded-slider input[type="range"]{
- min-width:0;flex:none;margin:0;height:30px;border:0;outline:0;appearance:none;-webkit-appearance:none;
+ min-width:0;flex:none;margin:0;height:34px;border:0;outline:0;appearance:none;-webkit-appearance:none;
  background:transparent;touch-action:pan-x}
 .v2-runtime .geo-liquid-radius .branded-slider input[type="range"]::-webkit-slider-runnable-track{
  height:4px;border:0;border-radius:999px;
