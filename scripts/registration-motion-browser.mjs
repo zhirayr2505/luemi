@@ -56,9 +56,11 @@ try{
  await page.getByRole("button",{name:"Мужчина"}).click();
  await page.getByRole("checkbox").check();
  await next("location");
- await page.getByRole("button",{name:"Выбрать город вручную"}).click();
- await page.getByPlaceholder("Введи город или страну").fill("Москва");
+ await page.getByRole("button",{name:"Выбрать город"}).click();
+ await page.getByPlaceholder("Название города").fill("Москва");
  await page.getByRole("option",{name:/Москва/}).first().click();
+ await page.getByRole("button",{name:"Мой город"}).click();
+ assert.equal(await page.getByRole("button",{name:"Мой город"}).getAttribute("aria-pressed"),"true","city search scope is selected");
  await next("intent");
  await page.getByRole("button",{name:"Женщин"}).click();
  await page.getByRole("button",{name:"Серьёзные отношения"}).click();
