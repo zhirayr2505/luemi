@@ -44,8 +44,8 @@ function valid(key:string,v:unknown,now:Date):boolean{
     case "searchScope":return enumOk(v,["radius","country","world"]);
     case "audience":return enumOk(v,["women","men","everyone"]);
     case "ageMin":case "ageMax":return Number.isInteger(v)&&Number(v)>=18&&Number(v)<=80;
-    case "goal":return enumOk(v,["serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided"]);
-    case "interests":return list(v,15);
+    case "goal":return enumOk(v,["serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided","love","family_goal","travel_partner","casual"]);
+    case "interests":return list(v,20);
     case "languages":return list(v,10);
     case "lifestyle":return list(v,12);
     case "pets":return list(v,12);

@@ -989,7 +989,7 @@ export function App() {
     const update=revealDraft;
     if(update.height!==null&&(!Number.isInteger(update.height)||update.height<100||update.height>250)||
        update.weight!==null&&(!Number.isInteger(update.weight)||update.weight<35||update.weight>300)||
-       update.languages.length>10||update.interests.length>15||
+       update.languages.length>10||update.interests.length>20||
        [...update.about].length>750){
       setRevealError("Проверь рост, вес и длину текста.");return;
     }

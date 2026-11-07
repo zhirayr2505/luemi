@@ -105,10 +105,10 @@ export function ProfileRevealEditor({data,change,busy,error,onSave,onCancel}:Pro
      placeholder="Найти интерес" value={interestQuery} onChange={e=>setInterestQuery(e.target.value)}/></div>
     <div className="luemi-reveal-chips">{interestItems.slice(0,interestQuery?50:36).map(item=>
       <button key={item.id} type="button" className={"luemi-reveal-chip"+(data.interests.includes(item.id)?" chosen":"")}
-       aria-pressed={data.interests.includes(item.id)} onClick={()=>toggle("interests",item.id,15)}>
+       aria-pressed={data.interests.includes(item.id)} onClick={()=>toggle("interests",item.id,20)}>
        {data.interests.includes(item.id)?"✓ ":"＋ "}{item.name}
       </button>)}</div>
-    <small>{data.interests.length} из 15 выбрано</small>
+    <small>{data.interests.length} из 20 выбрано</small>
    </div>
    <div className="luemi-reveal-group">
     <h3><Sparkles size={17}/> Три факта о тебе</h3>
