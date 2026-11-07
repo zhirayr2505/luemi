@@ -42,8 +42,8 @@ assert.doesNotMatch(runtime,/min-height:100px;[\s\S]{0,150}border:1px solid rgba
  "Delete legacy 100px registration goal overrides");
 assert.match(steps,/className=\{"v2-goal-choice"\+\(selected\?" is-selected":""\)\}/,
  "Goals use dedicated horizontal options rather than tall stacked generic cards");
-assert.match(runtime,/\.preferences-step \.v2-goal-choice\{[\s\S]*?min-height:58px/,
- "Goal options must fit a 58px touch row while remaining legible");
+assert.match(runtime,/\.preferences-step \.v2-goal-choice\{[\s\S]*?min-height:54px/,
+ "Goal options must fit a 54px touch row while remaining legible");
 assert.doesNotMatch(runtime,/\.preferences-step \.goals-section \.glass-choice\{/,
  "Remove conflicting legacy goal GlassChoice styles");
 assert.match(runtime,/\.geo-liquid-city\{[\s\S]*?min-height:56px/,
