@@ -32,7 +32,7 @@ for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
 assert.match(geo,/className="geo-liquid-mode-panel"/,
  "Location switches all search modes inside the same fixed-size panel");
-assert.match(runtime,/\.geo-liquid-mode-panel\{[\s\S]*?height:94px/,
+assert.match(runtime,/\.geo-liquid-mode-panel\{[\s\S]*?height:86px/,
  "Switching city, world or radius must stay inside a compact, fixed-height panel");
 assert.match(runtime,/\.geo-liquid-mode-content\{[\s\S]*?animation:luemi-geo-mode-in/,
  "Mode changes crossfade just their contents, not the whole page");
@@ -46,10 +46,16 @@ assert.match(runtime,/\.preferences-step \.v2-goal-choice\{[\s\S]*?min-height:58
  "Goal options must fit a 58px touch row while remaining legible");
 assert.doesNotMatch(runtime,/\.preferences-step \.goals-section \.glass-choice\{/,
  "Remove conflicting legacy goal GlassChoice styles");
-assert.match(runtime,/\.geo-liquid-city\{[\s\S]*?min-height:58px/,
+assert.match(runtime,/\.geo-liquid-city\{[\s\S]*?min-height:56px/,
  "The city card must match its content rather than empty padding");
-assert.match(runtime,/\.age-range \.double-age-range\{height:48px/,
+assert.match(runtime,/\.age-range \.double-age-range\{height:44px/,
  "Age slider panel is compact but keeps 36px touch inputs");
+assert.doesNotMatch(steps,/<p className="age-caption">/,
+ "Remove redundant age explanatory line that makes the panel unnecessarily tall");
+assert.match(steps,/className="age-range glass-panel" role="group"/,
+ "Age card stays accessible even after removing the redundant description");
+assert.match(runtime,/\.dob-step>\.choice-section \.glass-choice\{[\s\S]*?min-height:46px/,
+ "Birth-date step gender choices are compact and share one scoped rule");
 assert.match(runtime,/\.age-range \.double-range-track\{[\s\S]*?top:16px;left:10px;right:10px;height:4px/,
  "Age rail centre must align with its 36px native thumb hit box");
 assert.match(runtime,/\.age-range \.double-age-range input::-webkit-slider-thumb\{[\s\S]*?margin-top:-8px/,
