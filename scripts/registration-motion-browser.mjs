@@ -103,12 +103,21 @@ try{
  const handle=await page.locator(".photo-drag-handle").first().boundingBox();
  const target=await page.locator('[data-photo-slot="1"]').boundingBox();
  assert.ok(handle&&target,"the handle and target tile must have geometry");
- await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);
- await page.mouse.down();
- await page.mouse.move(target.x+target.width/2,target.y+target.height/2,{steps:12});
- await page.mouse.up();
+ // Android WebView touch, not just a desktop mouse pretending to be mobile.
+ const cdp=await page.context().newCDPSession(page);
+ const start={x:handle.x+handle.width/2,y:handle.y+handle.height/2};
+ const end={x:target.x+target.width/2,y:target.y+target.height/2};
+ try{
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{...start,id:1}]});
+  for(let i=1;i<=12;i++){
+   const x=start.x+(end.x-start.x)*i/12,y=start.y+(end.y-start.y)*i/12;
+   await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x,y,id:1}]});
+   await page.waitForTimeout(14);
+  }
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ }finally{await cdp.detach()}
  const after=await page.locator(".mosaic-slot>img").evaluateAll(items=>items.map(x=>x.src));
- assert.notDeepEqual(after,before,"handle drag reorders the tiles");
+ assert.notDeepEqual(after,before,"handle touch drag reorders the tiles");
  assert.equal(after[1],before[0],"former main photo moves to second slot");
  await page.getByRole("button",{name:"Посмотреть анкету"}).click();
  await stage("review");
