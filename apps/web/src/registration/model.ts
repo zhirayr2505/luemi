@@ -41,7 +41,7 @@ export interface RegistrationDraft {
 export const newDraft=(name=""):RegistrationDraft=>({
   name,trialConsent:false,day:"",month:"",year:"",gender:"",
   country:"",city:"",placeId:"",countryCode:"",radius:100,searchScope:"radius",
-  audience:"",ageMin:18,ageMax:35,goal:"",
+  audience:"",ageMin:18,ageMax:35,goal:"undecided",
   interests:[],about:"",languages:[],height:null,weight:null,occupation:"",education:"",smoking:"",alcohol:"",
   lifestyle:[],pets:[],facts:[],family:[]
 });
