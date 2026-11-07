@@ -1,5 +1,6 @@
 import type {RegistrationDraft} from "./model";
 import {goals} from "./model";
+import {goalLabel} from "../ui/PersonalizedCopy";
 import type {PhotoItem} from "./PhotoSorter";
 import {draftAge,readyRegistrationPhotos} from "../discovery/ProfileModel";
 import {itemOf} from "../ui/InterestCatalog";
@@ -10,7 +11,7 @@ interface Props {data:RegistrationDraft;photos:PhotoItem[]}
 export function RegistrationPreview({data,photos}:Props){
  const prepared=readyRegistrationPhotos(photos);
  const age=draftAge(data);
- const goal=goals.find(item=>item.id===data.goal)?.label;
+ const goal=goalLabel(data.goal,data.gender);
  const location=[data.city,data.country].filter(Boolean).join(", ");
  const name=[data.name.trim(),age].filter(value=>value!==null&&value!=="").join(", ");
  return <article className="registration-static-profile" aria-label="Предпросмотр анкеты">
