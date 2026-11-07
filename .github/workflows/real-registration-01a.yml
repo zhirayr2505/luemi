@@ -106,6 +106,19 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0010_post_publication_report_reasons.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0011_discovery_preferences.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0012_revert_multi_goals.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0013_city_scope_discovery_preferences.sql
+          # The city option must survive the physical database constraint. No
+          # production data, privileges or RLS policies are modified in CI.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $city_scope$ BEGIN
+            IF NOT EXISTS(
+              SELECT 1 FROM pg_constraint
+              WHERE conrelid='luemi_private.discovery_preferences'::regclass
+                AND conname='discovery_preferences_search_scope_check'
+                AND pg_get_constraintdef(oid) LIKE '%city%'
+            ) THEN RAISE EXCEPTION 'city search scope constraint missing'; END IF;
+          END $city_scope$;
+          SQL
           # CI-only isolated dependency fixture: never applied to live Supabase.
           psql -v ON_ERROR_STOP=1 -f qa/reg01-v3-eraser-synthetic.sql
           # Verify the ACTUAL operator-only grants migration against disposable
