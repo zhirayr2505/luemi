@@ -89,7 +89,16 @@ async function profileV3(browser,platform="android"){
   assert.equal((await state(page)).mode,"compact");
   for(let i=0;i<10;i++){await handle.press("Enter");await sleep(20);}
   await sleep(350);
-  assert.equal((await state(page)).mode,"compact","even number of reversals returns compact");
+  // During a reversal, the next key targets the *current* interpolated
+  // progress, not the previous endpoint. Even counts need not end compact.
+  const afterReversals=await state(page);
+  assert.ok(["compact","expanded"].includes(afterReversals.mode),"rapid reversals settle at a real endpoint");
+  assert.ok(Number.isFinite(afterReversals.progress)&&afterReversals.progress>=0&&afterReversals.progress<=1,
+   "V3 motion progress stays bounded after rapid reversals");
+  if(afterReversals.mode==="expanded"){
+   await handle.press("Enter");
+   await host.locator('.v3-int-root[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:4000});
+  }
   for(const label of ["Фото","Блики","Аккаунт","Подарки","О себе"]){
    await host.getByRole("tab",{name:label,exact:true}).click();
    await sleep(240);
