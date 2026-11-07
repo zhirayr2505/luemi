@@ -62,7 +62,12 @@ try{
  await next("intent");
  await page.getByRole("button",{name:"Женщин"}).click();
  await page.getByRole("button",{name:"Серьёзные отношения"}).click();
- // The optional languages and biography screens now live inside the published profile.
+ // Biography and interests return before photos; languages remain optional.
+ await next("about");
+ await page.getByPlaceholder("Что тебя радует? Чем любишь заниматься?").fill("Люблю музыку и прогулки по городу.");
+ await page.getByRole("button",{name:"Подтвердить поле"}).click();
+ await page.locator(".interest-choices button").first().click();
+ assert.equal(await page.locator(".v2-about-interest-heading").count(),1);
  await page.evaluate(()=>{
   const d=document.querySelector(".v2-device");
   const log=[];
@@ -81,10 +86,10 @@ try{
  assert(events.every(event=>event.bodies<=1&&event.headings<=1),
   "No overlapping old/new stage content trees are allowed");
  assert.equal(await page.locator(".optional-profile-toggle").count(),0,
-  "Profile detail editor must not interrupt fast registration");
- // Telegram back returns to the previous required step.
+  "Nonessential profile details must not interrupt signup");
+ // Telegram back returns to the biography stage.
  await page.evaluate(()=>window.__luemiQABack?.());
- await stage("intent");
+ await stage("about");
  await next("photos");
  const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9u/JqYQAAAAASUVORK5CYII=","base64");
  await page.locator('input.native-photo-input[type="file"]').setInputFiles([0,1,2].map((i)=>({
@@ -92,9 +97,33 @@ try{
   buffer:Buffer.concat([png,Buffer.from([i])])
  })));
  assert.equal(await page.locator(".mosaic img").count(),3,"three photos are ready");
+ assert.equal(await page.locator(".photo-make-main").count(),0,"crown action removed");
+ assert.equal(await page.locator(".primary-photo").count(),1,"first photo is always main");
+ const before=await page.locator(".mosaic-slot>img").evaluateAll(items=>items.map(x=>x.src));
+ const handle=await page.locator(".photo-drag-handle").first().boundingBox();
+ const target=await page.locator('[data-photo-slot="1"]').boundingBox();
+ assert.ok(handle&&target,"the handle and target tile must have geometry");
+ await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);
+ await page.mouse.down();
+ await page.mouse.move(target.x+target.width/2,target.y+target.height/2,{steps:12});
+ await page.mouse.up();
+ const after=await page.locator(".mosaic-slot>img").evaluateAll(items=>items.map(x=>x.src));
+ assert.notDeepEqual(after,before,"handle drag reorders the tiles");
+ assert.equal(after[1],before[0],"former main photo moves to second slot");
+ await page.getByRole("button",{name:"Посмотреть анкету"}).click();
+ await stage("review");
+ assert.equal(await page.locator(".v2-showcase-track img").count(),3,"review shows the selected photos");
+ assert.equal(await page.getByText("Люблю музыку и прогулки по городу.").count(),1);
+ await page.getByRole("button",{name:"Редактировать"}).click();
+ await stage("photos");
+ await page.evaluate(()=>window.__luemiQABack?.());
+ await stage("about");
+ await next("photos");
+ await page.getByRole("button",{name:"Посмотреть анкету"}).click();
+ await stage("review");
  await page.getByRole("button",{name:"Создать анкету"}).click();
  await page.getByTestId("qa-synthetic-complete").waitFor({timeout:6000});
  await screenshot("synthetic-published");
- assert.deepEqual(failures,[],"no browser errors through complete registration flow");
- console.log("LUEMI registration motion browser five-step photo-first synthetic flow PASS");
+ assert.deepEqual(failures,[],"no browser errors through full signup and review");
+ console.log("LUEMI registration browser About, handle drag and review PASS");
 }finally{await browser.close();}
