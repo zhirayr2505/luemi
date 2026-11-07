@@ -84,10 +84,14 @@ assertCheck("connecting and existing-profile checks display logo without extra w
  !app.includes('className="luemi-privacy-footer"'));
 
 
-const catalogSource=catalog.match(/const source=(\[.*?\]);\s*export const categories/s);
-assertCheck("catalog contains exactly ten 12–16 item categories",Boolean(catalogSource) && (() => {
- const all=JSON.parse(catalogSource[1]);return all.length===10 && all.every(c=>c.items.length>=12&&c.items.length<=16);
-})());
+const catalogSource=catalog.match(/const source=(\[[^\n]+?\]);/);
+const expandedCatalog=catalog.match(/const expandedSource=(\[[^\n]+?\]);/);
+assertCheck("catalog contains 202 unique interests across 17 stable categories",
+ Boolean(catalogSource)&&Boolean(expandedCatalog)&&(()=>{
+  const all=[...JSON.parse(catalogSource[1]),...JSON.parse(expandedCatalog[1])];
+  return all.length===17 && new Set(all.flatMap(c=>c.items.map(i=>i.id))).size===202 &&
+    all.every(c=>c.items.length>=12&&c.items.length<=16);
+ })());
 const listSource=languages.match(/export const languages:LanguageOption\[\]=(\[.*?\]);\s*export function/s);
 assertCheck("language catalog contains exactly sixty distinct BCP47 codes",Boolean(listSource)&&(()=>{
  const all=JSON.parse(listSource[1]);return all.length===60&&new Set(all.map(x=>x.id)).size===60;
