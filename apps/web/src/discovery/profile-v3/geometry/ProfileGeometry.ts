@@ -26,7 +26,14 @@ export function createProfileLayout(v:Viewport):MorphLayout {
  // On a small WebView do not promote a full-viewport portrait layer. The
  // expanded hero is capped to a portrait-sized area above the content sheet.
  const heroLimit=clamp(height*.435,short?215:280,short?290:395);
- const span=Math.max(0,Math.min(available*(short?.38:.59),available-96,heroLimit-compactTop));
+ // The old heroLimit could be barely 3px below the compact sheet at 650px
+ // WebView height, making "expanded" visually indistinguishable from compact.
+ // Preserve the accepted geometry on tall screens; on shorter screens ensure
+ // a useful reveal while leaving at least 96px of sheet space available.
+ const availableTravel=Math.max(0,Math.min(available*(short?.38:.59),available-96));
+ const approvedTravel=Math.max(0,Math.min(availableTravel,heroLimit-compactTop));
+ const shortScreenTravel=Math.min(availableTravel,clamp((840-height)*.7,0,132));
+ const span=Math.max(approvedTravel,shortScreenTravel);
  const expandedTop=compactTop+span;
  // Keep the actual image behind the 31px sheet corners even at the motion
  // engine's bounded pull (less than 24px), with a small raster margin.
