@@ -24,9 +24,9 @@ test("enforces steps 1 and 2, while unfinished photo draft still permits preview
 });
 test("interest limit and age boundaries validated",()=>{
   const d=newDraft("Тест");
-  d.interests=Array.from({length:16},(_,i)=>String(i));
+  d.interests=Array.from({length:21},(_,i)=>String(i));
   assert.notEqual(validateStep(d,5,0),null);
-  d.interests=d.interests.slice(0,15);
+  d.interests=d.interests.slice(0,20);
   assert.equal(validateStep(d,5,0),null);
   d.audience="everyone";d.goal="relationship";d.ageMin=50;d.ageMax=30;
   assert.notEqual(validateStep(d,4,0),null);
@@ -49,4 +49,21 @@ test("city requires selected verified identity",()=>{
   assert.equal(validateStep(d,6,0),null);
   d.about+="А";
   assert.notEqual(validateStep(d,6,0),null);
+});
+
+test("new goal choices and gendered text retain neutral fallback",async()=>{
+ const {goalLabel,gendered}=await import("../../web/src/ui/PersonalizedCopy.js");
+ const d=newDraft("Тест");
+ assert.equal(goalLabel("undecided","woman"),"Пока не определилась");
+ assert.equal(goalLabel("undecided","man"),"Пока не определился");
+ assert.equal(goalLabel("undecided",""),"Пока не определено");
+ assert.equal(gendered("woman","Готов","Готова"),"Готова");
+ assert.equal(gendered("man","Готов","Готова"),"Готов");
+ for(const goal of ["love","family_goal","travel_partner","casual"] as const){
+  d.audience="everyone";d.goal=goal;
+  assert.equal(validateStep(d,4,0),null);
+ }
+ d.searchScope="city";d.city="Краснодар";d.country="Россия";
+ d.placeId="offline:ru:krasnodar";d.countryCode="RU";
+ assert.equal(validateStep(d,3,0),null);
 });
