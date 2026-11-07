@@ -30,10 +30,12 @@ console.log("✓ Stage 03D evidence-only recommendation and eight-collection con
 const fixture=readFileSync(new URL("../apps/web/src/discovery/for-you-data.ts",import.meta.url),"utf8");
 const catalog=readFileSync(new URL("../apps/web/src/ui/InterestCatalog.tsx",import.meta.url),"utf8");
 const fixtureMatch=fixture.match(/const additional=(\[.*?\]) as const;/s);
-const catalogMatch=catalog.match(/const source=(\[.*?\]);\s*export const categories/s);
-assert.ok(fixtureMatch&&catalogMatch,"fixture/catalog contracts recognizable");
+const catalogMatch=catalog.match(/const source=(\[[^\n]+?\]);/);
+const catalogExtraMatch=catalog.match(/const expandedSource=(\[[^\n]+?\]);/);
+assert.ok(fixtureMatch&&catalogMatch&&catalogExtraMatch,"fixture/catalog contracts recognizable");
 const additions=JSON.parse(fixtureMatch[1]);
-const valid=new Set(JSON.parse(catalogMatch[1]).flatMap(c=>c.items.map(i=>i.id)));
+const valid=new Set([...JSON.parse(catalogMatch[1]),...JSON.parse(catalogExtraMatch[1])]
+ .flatMap(c=>c.items.map(i=>i.id)));
 assert.equal(additions.length,10,"ten extra synthetic demo people, six existing unchanged");
 assert.equal(new Set(additions.map(p=>p[0])).size,10,"unique IDs");
 assert.ok(additions.every(p=>p[2]>=18),"no minors");

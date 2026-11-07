@@ -2,7 +2,7 @@ import {useMemo,useState} from "react";
 import {BriefcaseBusiness,Check,Heart,Languages,PawPrint,Ruler,Scale,Search,ShieldCheck,Sparkles,X} from "lucide-react";
 import type {RegistrationDraft} from "./model";
 import {languages,findLanguages} from "../ui/Languages";
-import {categories} from "../ui/InterestCatalog";
+import {interests} from "../ui/InterestCatalog";
 import "./profile-reveal.css";
 
 type Props={data:RegistrationDraft;change:(change:Partial<RegistrationDraft>)=>void;
@@ -19,8 +19,8 @@ export function ProfileRevealEditor({data,change,busy,error,onSave,onCancel}:Pro
  const [interestQuery,setInterestQuery]=useState("");
  const [allLanguages,setAllLanguages]=useState(false);
  const availableLanguages=useMemo(()=>findLanguages(languageQuery),[languageQuery]);
- const interestItems=useMemo(()=>categories.flatMap(c=>c.items).filter((item,index,all)=>
-   all.findIndex(x=>x.id===item.id)===index&&item.name.toLowerCase().includes(interestQuery.trim().toLowerCase())
+ const interestItems=useMemo(()=>interests.filter(item=>
+   item.name.toLowerCase().includes(interestQuery.trim().toLowerCase())
   ),[interestQuery]);
  const toggle=(key:"lifestyle"|"pets"|"family"|"languages"|"interests",id:string,max=12)=>{
   const values=data[key];
@@ -103,12 +103,12 @@ export function ProfileRevealEditor({data,change,busy,error,onSave,onCancel}:Pro
     <h3><Sparkles size={17}/> Интересы</h3>
     <div className="luemi-reveal-search"><Search size={16}/><input className="luemi-reveal-control" type="search"
      placeholder="Найти интерес" value={interestQuery} onChange={e=>setInterestQuery(e.target.value)}/></div>
-    <div className="luemi-reveal-chips">{interestItems.slice(0,interestQuery?50:36).map(item=>
+    <div className="luemi-reveal-chips">{interestItems.slice(0,interestQuery?80:60).map(item=>
       <button key={item.id} type="button" className={"luemi-reveal-chip"+(data.interests.includes(item.id)?" chosen":"")}
-       aria-pressed={data.interests.includes(item.id)} onClick={()=>toggle("interests",item.id,15)}>
+       aria-pressed={data.interests.includes(item.id)} onClick={()=>toggle("interests",item.id,20)}>
        {data.interests.includes(item.id)?"✓ ":"＋ "}{item.name}
       </button>)}</div>
-    <small>{data.interests.length} из 15 выбрано</small>
+    <small>{data.interests.length} из 20 выбрано</small>
    </div>
    <div className="luemi-reveal-group">
     <h3><Sparkles size={17}/> Три факта о тебе</h3>

@@ -2,6 +2,7 @@ import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,X,Undo2,MoreHorizontal,MapPin} from "lucide-react";
 import {goals} from "../registration/model";
+import {goalLabel} from "../ui/PersonalizedCopy";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
 import {InterestChip} from "../ui/InterestCatalog";
@@ -31,7 +32,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  /** The same approved card can render verified server users with no demo badges. */
  real?:boolean;onMore?:()=>void;
 }){
- const goal=person.goal==="undecided"?null:goals.find(g=>g.id===person.goal);
+ const goal=goals.find(g=>g.id===person.goal);
  const [expanded,setExpanded]=useState(false);
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
@@ -306,7 +307,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
               <span>{person.city}{person.country?", "+person.country:""}</span>
              </div>
             </div>
-            {goal&&<div className="feed-v2-goal"><Heart size={14}/>{goal.label}</div>}
+            {goal&&<div className="feed-v2-goal"><Heart size={14}/>{goalLabel(goal.id,person.gender)}</div>}
            </div>
            {person.likedYouKind&&<div className={"feed-v2-liked-you "+(person.likedYouKind==="super"?"is-super":"")}>
             {person.likedYouKind==="super"?<Sparkles size={14}/>:<Heart size={14}/>} Уже выбрал(а) тебя · лайк создаст мэтч

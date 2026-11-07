@@ -56,9 +56,11 @@ try{
  await page.getByRole("button",{name:"Мужчина"}).click();
  await page.getByRole("checkbox").check();
  await next("location");
- await page.getByRole("button",{name:"Выбрать город вручную"}).click();
- await page.getByPlaceholder("Введи город или страну").fill("Москва");
+ await page.getByRole("button",{name:"Выбрать город"}).click();
+ await page.getByPlaceholder("Название города").fill("Москва");
  await page.getByRole("option",{name:/Москва/}).first().click();
+ await page.getByRole("button",{name:"Мой город"}).click();
+ assert.equal(await page.getByRole("button",{name:"Мой город"}).getAttribute("aria-pressed"),"true","city search scope is selected");
  await next("intent");
  await page.getByRole("button",{name:"Женщин"}).click();
  await page.getByRole("button",{name:"Серьёзные отношения"}).click();
@@ -68,6 +70,15 @@ try{
  await page.getByRole("button",{name:"Подтвердить поле"}).click();
  await page.locator(".interest-choices button").first().click();
  assert.equal(await page.locator(".v2-about-interest-heading").count(),1);
+ // The expanded catalog uses the same keyboard-stable focus dock. A new
+ // interest far outside the old twelve-tag list must be searchable and saved.
+ await page.getByPlaceholder("Найти интерес…").fill("Космология");
+ await page.locator(".interest-focus-shell.is-focused").waitFor({state:"visible"});
+ await page.getByRole("button",{name:"Подтвердить поле"}).click();
+ await page.locator(".interest-focus-shell.is-focused").waitFor({state:"hidden",timeout:3500});
+ await page.locator(".interest-choices button").filter({hasText:"Космология"}).click();
+ assert.ok(await page.locator(".interest-selected-items").getByText("Космология").count()>0,
+  "new color-tagged interests must remain selected");
  await page.evaluate(()=>{
   const d=document.querySelector(".v2-device");
   const log=[];

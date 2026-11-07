@@ -132,8 +132,10 @@ assert.match(app,/if\(!local\.ok\)\{/,
  "Private signup must refuse entry when photo persistence fails");
 assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого теста<\/a>/,
  "Public registration cannot hardcode closed-beta consent links");
-assert.match(geo,/<Search size=\{20\}/,"City field needs search icon");
-assert.match(geo,/<LocateFixed size=\{15\}/,"Manual city search needs detect icon");
+assert.match(geo,/<Search size=\{19\}/,"The new city search preserves its search icon");
+assert.match(geo,/<LocateFixed size=\{17\}/,"One-tap geolocation retains an explicit icon");
+assert.match(geo,/className="geo-liquid-city"/,"The selected city is a single tappable glass card");
+assert.match(geo,/className="geo-liquid-scopes"/,"City, radius and world are segmented, never nested dropdowns");
 assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
 assert.match(focusDock,/viewport\?\.addEventListener\("resize",refresh\)/,
  "Android viewport animation now changes only suggestions, not the fixed editor anchor");
@@ -165,8 +167,10 @@ assert.match(runtime,/\.city-focus-shell \.geo-results\{position:absolute[^}]*bo
  "City suggestions must open above the docked editor");
 assert.match(steps,/className="about-input-shell"[\s\S]*className="char-count"/,
  "Biography count must sit inside its text field");
-assert.match(geo,/className="scope-popover-anchor"/,
- "Search scope menu needs an upward in-flow anchor");
+assert.match(geo,/className="geo-liquid-scopes"/,
+ "Search scope is a keyboard-safe segmented control instead of a dropdown");
+assert.doesNotMatch(geo,/scopeOpen|setScopeOpen|scope-popover-anchor/,
+ "The retired scope dropdown and its state must not be mounted");
 assert.match(app,/className="intro-subtitle">Реальные люди\. Настоящие эмоции/,
  "Welcome screen needs the cinematic supporting line");
 assert.match(app,/webApp\?\.setBottomBarColor\?\.\(background\)/,

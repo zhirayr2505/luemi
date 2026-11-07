@@ -29,7 +29,7 @@ function dateAge(iso:string):number{
  return age;
 }
 const goalOk=(v:unknown):v is string=>typeof v==="string"&&
- ["serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided"].includes(v);
+ ["serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided","love","family_goal","travel_partner","casual"].includes(v);
 const genderOk=(v:unknown):v is string=>typeof v==="string"&&["man","woman","other"].includes(v);
 const audienceOk=(v:unknown):v is string=>typeof v==="string"&&["women","men","everyone"].includes(v);
 function validList(v:unknown,n:number):v is string[]{
@@ -51,9 +51,9 @@ function validatedProjection(payload:unknown,birthDate:string|null){
   !Number.isInteger(ageMin)||Number(ageMin)<18||Number(ageMin)>80||
   !Number.isInteger(ageMax)||Number(ageMax)<Number(ageMin)||Number(ageMax)>80||
   !Number.isInteger(radius)||Number(radius)<1||Number(radius)>5000||
-  !["radius","country","world"].includes(String(searchScope))||
+  !["radius","city","country","world"].includes(String(searchScope))||
   typeof data.placeId!=="string"||!/^[a-z0-9:_-]{3,180}$/i.test(data.placeId)||
-  !validList(data.interests,15)||!validList(data.languages,10)||
+  !validList(data.interests,20)||!validList(data.languages,10)||
   typeof data.about!=="string"||[...data.about].length>750||
   !birthDate||dateAge(birthDate)<18||dateAge(birthDate)>=130)
    fail(422,"incomplete_profile");
@@ -321,9 +321,9 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
    const results=await db.query<{owner_id:string;display_name:string;city_label:string;
     country_code:string;about:string;interests:string[];gender:string;goal:string;
     languages:string[];birth_date:string;published_at:string;liked_you_kind:"ordinary"|"super"|null}>(
-    "WITH preference AS (SELECT owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,goal,interests "+
+    "WITH preference AS (SELECT owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,goal,interests,search_scope "+
     "FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1 UNION ALL "+
-    "SELECT NULL::text,NULL::date,'everyone'::text,18::smallint,80::smallint,''::text,''::text,''::text,ARRAY[]::text[] "+
+    "SELECT NULL::text,NULL::date,'everyone'::text,18::smallint,80::smallint,''::text,''::text,''::text,ARRAY[]::text[],'world'::text "+
     "WHERE NOT EXISTS(SELECT 1 FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1)) "+
     "SELECT p.owner_id,p.display_name,p.city_label,p.country_code,p.about,p.interests,"+
     "p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text,"+
@@ -332,6 +332,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment "+
     "AND incoming.sender_id=p.owner_id AND incoming.receiver_id=$2 AND incoming.status='active' "+
     "WHERE p.environment=$1 "+
+    "AND (pref.search_scope<>'city' OR (lower(p.city_label)=lower(pref.city_label) AND p.country_code=pref.country_code)) "+
     "AND p.owner_id<>$2 AND p.publication_status='published' AND p.published_at IS NOT NULL "+
     "AND (pref.audience='everyone' OR (pref.audience='women' AND p.gender='woman') "+
     "OR (pref.audience='men' AND p.gender='man')) "+

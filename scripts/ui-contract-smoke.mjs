@@ -26,10 +26,19 @@ assertCheck("all routes use Telegram fullscreen with one brand safe-area offset"
 assertCheck("dark theme is the only application theme",app.includes('const theme:ThemeChoice="dark"')&&!app.includes("themeButton"));
 assertCheck("keyboard preserves footer and uses one viewport model instead of double-compensating",app.includes("installViewportController")&&style.includes("height:var(--app-height")&&style.includes(".onboard-body{flex:1")&&!style.includes("[data-keyboard=open] .onboard-footer{display:none}")&&!style.includes("margin-bottom:var(--keyboard-overlay")&&style.includes("data-viewport-compact"));
 assertCheck("input focus glass uses subtle inset ring without clipping",style.includes("inset 0 0 0 1px")&&style.includes(".glass-control:focus"));
-assertCheck("three exclusive search modes",model.includes('SearchScope = "radius" | "country" | "world"')&&geo.includes("scopeOptions"));
+assertCheck("city, radius, world and legacy country search scopes are backward-compatible",
+ model.includes('SearchScope = "radius" | "city" | "country" | "world"')&&
+ geo.includes('["city","Мой город"')&&geo.includes("geo-liquid-city")&&
+ geo.includes('data.searchScope==="country"'));
 assertCheck("range 5000km mapped nonlinearly",geo.includes("radiusAt")&&geo.includes("4999"));
-assertCheck("six goals including undecided",model.includes('"undecided"')&&model.includes("Серьёзные отношения")&&steps.includes("goalIcons"));
-assertCheck("ten interest categories and floating selection",catalog.includes("export const categories")&&app.includes("SelectedInterests")&&style.includes(".selected-interests-floating"));
+assertCheck("expanded goals, undecided first and gendered selection",
+ model.includes('{id:"undecided"')&&model.includes('{id:"family_goal"')&&
+ model.includes('{id:"travel_partner"')&&steps.includes("goalLabel(goal.id,data.gender)"));
+assertCheck("202 stable interests, curated colors and search in onboarding",
+ catalog.includes("expandedSource")&&catalog.includes("export const categories")&&
+ steps.includes("interest-search")&&steps.includes("interest-selected-group")&&
+ steps.includes("data.interests.length>=20")&&app.includes("SelectedInterests")&&
+ style.includes(".selected-interests-floating"));
 assertCheck("60 searchable languages with true vector flags",languages.includes("export const languages")&&read("apps/web/src/registration/LanguagePicker.tsx").includes("<Flag"));
 assertCheck("portal drag renders at actual viewport finger coordinates",sorter.includes("createPortal")&&sorter.includes("getBoundingClientRect")&&sorter.includes("setDrag"));
 assertCheck("photo reorder has FLIP animation and main label",sorter.includes("node.animate(")&&sorter.includes("Главное"));
@@ -75,10 +84,14 @@ assertCheck("connecting and existing-profile checks display logo without extra w
  !app.includes('className="luemi-privacy-footer"'));
 
 
-const catalogSource=catalog.match(/const source=(\[.*?\]);\s*export const categories/s);
-assertCheck("catalog contains exactly ten 12–16 item categories",Boolean(catalogSource) && (() => {
- const all=JSON.parse(catalogSource[1]);return all.length===10 && all.every(c=>c.items.length>=12&&c.items.length<=16);
-})());
+const catalogSource=catalog.match(/const source=(\[[^\n]+?\]);/);
+const expandedCatalog=catalog.match(/const expandedSource=(\[[^\n]+?\]);/);
+assertCheck("catalog contains 202 unique interests across 17 stable categories",
+ Boolean(catalogSource)&&Boolean(expandedCatalog)&&(()=>{
+  const all=[...JSON.parse(catalogSource[1]),...JSON.parse(expandedCatalog[1])];
+  return all.length===17 && new Set(all.flatMap(c=>c.items.map(i=>i.id))).size===202 &&
+    all.every(c=>c.items.length>=12&&c.items.length<=16);
+ })());
 const listSource=languages.match(/export const languages:LanguageOption\[\]=(\[.*?\]);\s*export function/s);
 assertCheck("language catalog contains exactly sixty distinct BCP47 codes",Boolean(listSource)&&(()=>{
  const all=JSON.parse(listSource[1]);return all.length===60&&new Set(all.map(x=>x.id)).size===60;

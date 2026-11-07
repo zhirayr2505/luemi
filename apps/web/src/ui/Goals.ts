@@ -1,4 +1,4 @@
-import {Heart,HeartHandshake,CalendarHeart,HandHeart,MessageCircle,Compass,UsersRound,Sparkles,Activity} from "lucide-react";
+import {Heart,HeartHandshake,CalendarHeart,HandHeart,MessageCircle,Compass,UsersRound,Sparkles,Activity,House,Plane,Coffee} from "lucide-react";
 import {goals} from "../registration/model";
-export const goalIcons={serious:HeartHandshake,relationship:Heart,dates:CalendarHeart,friendship:HandHeart,communication:MessageCircle,new_people:UsersRound,flirt:Sparkles,activities:Activity,undecided:Compass};
+export const goalIcons={serious:HeartHandshake,love:Heart,relationship:Heart,family_goal:House,dates:CalendarHeart,friendship:HandHeart,communication:MessageCircle,new_people:UsersRound,flirt:Sparkles,casual:Coffee,activities:Activity,travel_partner:Plane,undecided:Compass};
 export {goals};

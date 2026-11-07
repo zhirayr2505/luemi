@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from "react";
 import {RotateCcw,SlidersHorizontal,X} from "lucide-react";
 import {goals} from "../registration/model";
+import {goalLabel} from "../ui/PersonalizedCopy";
 import type {RealPublishedProfile} from "../registration/real-live-client";
 import {useModalLayer} from "../ui/modal-layer";
 
@@ -63,7 +64,7 @@ export function RealFeedFilters({open,filter,onClose,onApply,interestCount}:{
     <label className="real-feed-filter-goal">Цель знакомства
      <select value={working.goal} onChange={e=>setWorking(p=>({...p,goal:e.target.value}))}>
       <option value="all">Любая цель</option>
-      {goals.map(goal=><option key={goal.id} value={goal.id}>{goal.label}</option>)}
+      {goals.map(goal=><option key={goal.id} value={goal.id}>{goalLabel(goal.id)}</option>)}
      </select>
     </label>
     <label className="real-feed-filter-check">

@@ -2,7 +2,8 @@ import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "rea
 import type {ReactNode} from "react";
 import type {CSSProperties} from "react";
 import {CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2,Sparkles,LockKeyhole} from "lucide-react";
-import type {RegistrationDraft} from "../registration/model";
+import type {RegistrationDraft,Gender} from "../registration/model";
+import {gendered} from "../ui/PersonalizedCopy";
 import type {DemoKind,DemoPerson} from "./model";
 import type {ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
@@ -57,7 +58,7 @@ export function publishedToMaster(status:OwnerPublicationStatus["profile"],local
 }
 const visitorToMaster=(p:RealPublishedProfile):ProfileMasterData=>({
  id:p.id,source:"server",name:p.name,age:p.age,city:p.city,country:"",
- countryCode:p.countryCode,goal:p.goal,about:p.about,
+ countryCode:p.countryCode,gender:p.gender,goal:p.goal,about:p.about,
  interests:[...p.interests],languages:[...p.languages],verified:false,premium:false,
  registeredAt:null,updatedAt:null,
  photos:p.photos.map(photo=>({id:photo.id,src:photo.url,status:"published" as const}))
@@ -69,7 +70,7 @@ const toCard=(p:RealPublishedProfile):DemoPerson=>({
  photos:p.photos.map(photo=>({id:photo.id,src:photo.url})),likedYouKind:p.likedYouKind
 });
 
-function RealMatches({active,onChat,onPerson}:{active:boolean;onChat:()=>void;onPerson:(id:string)=>void}){
+function RealMatches({active,onChat,onPerson,gender}:{active:boolean;onChat:()=>void;onPerson:(id:string)=>void;gender:Gender}){
  const [items,setItems]=useState<ChatWireConversation[]>([]);
  const [incoming,setIncoming]=useState<IncomingLike[]>([]);
  const [hiddenCount,setHiddenCount]=useState(0),[premium,setPremium]=useState(false);
@@ -95,7 +96,7 @@ function RealMatches({active,onChat,onPerson}:{active:boolean;onChat:()=>void;on
    <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(x=>x+1)}>Попробовать снова</button>
   </LuemiEmptyState>:
   !items.length&&!incoming.length?<LuemiEmptyState icon={Heart} title="Пока нет взаимных симпатий"
-    description="Здесь появятся люди, которым ты понравился, и ваши взаимные симпатии."/>:
+    description={gendered(gender,"Здесь появятся люди, которым ты понравился, и ваши взаимные симпатии.","Здесь появятся люди, которым ты понравилась, и ваши взаимные симпатии.","Здесь появятся люди, которым понравился твой профиль, и ваши взаимные симпатии.")}/>:
    <div className="real-discovery-match-list">
     {incoming.length>0&&<div className="real-discovery-like-section"><h3>Тебе поставили симпатию</h3>
      {incoming.map(item=><button type="button" key={item.id}
@@ -697,7 +698,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
     </div>
    </section>
    <section className="discovery-panel" hidden={mainTab!=="likes"}>
-    <RealMatches active={mainTab==="likes"} onChat={()=>setMainTab("chats")} onPerson={openPersonById}/>
+    <RealMatches active={mainTab==="likes"} gender={draft.gender} onChat={()=>setMainTab("chats")} onPerson={openPersonById}/>
    </section>
    <section className="discovery-panel real-discovery-chat-panel" hidden={mainTab!=="chats"}>
     {mainTab==="chats"&&<RealChats onThreadChange={setChatThreadOpen} registerThreadBack={handler=>{chatBackRef.current=handler;}}/>}

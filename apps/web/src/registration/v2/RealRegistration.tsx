@@ -308,7 +308,7 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="intent"&&step(4)}
        {stage.id==="about"&&<div className="v2-real-groups v2-about-groups">
         {step(6,"about")}
-        <div className="v2-about-interest-heading"><strong>Что тебе нравится?</strong><span>{draft.interests.length} / 15</span></div>
+        <div className="v2-about-interest-heading"><strong>Что тебе нравится?</strong><span>{draft.interests.length} / 20</span></div>
         {step(5)}
         <p className="v2-about-footnote">Можно дополнить позже в разделе «Раскрой себя».</p>
        </div>}

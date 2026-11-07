@@ -2,7 +2,7 @@ import {useRef,useState} from "react";
 import {Heart,MapPin,ShieldCheck,Sparkles} from "lucide-react";
 import {fromLocalDraft,projectProfile,readyRegistrationPhotos} from "../../discovery/ProfileModel";
 import type {RegistrationDraft} from "../model";
-import {goals} from "../model";
+import {goalLabel} from "../../ui/PersonalizedCopy";
 import type {PhotoItem} from "../PhotoSorter";
 import {itemOf} from "../../ui/InterestCatalog";
 interface Props {data:RegistrationDraft;photos:PhotoItem[]}
@@ -15,7 +15,7 @@ export function RegistrationReview({data,photos}:Props){
  const person=view.profile;
  const age=person.age===null?"":", "+person.age;
  const place=[person.city,person.country].filter(Boolean).join(", ");
- const goal=goals.find(item=>item.id===person.goal)?.label;
+ const goal=goalLabel(person.goal??"",data.gender);
  const choose=(index:number)=>{
   setActive(index);
   const node=track.current;
