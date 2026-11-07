@@ -50,14 +50,18 @@ assertCheck("photo selection and sorting finish before network publication",
  realRegistration.includes("findExactDuplicatePhotoIds(photos)")&&
  !app.includes("void syncChosenPhotos(serverConsent)")&&
  !realRegistration.includes("syncChosenPhotos"));
-assertCheck("five-step photo-first registration creates profile without optional screens",
+assertCheck("About, photo reordering and local review lead to explicit publication",
+  realRegistration.includes('stage.id==="about"')&&
+  realRegistration.includes('step(6,"about")')&&
+  realRegistration.includes('step(5)')&&
   realRegistration.includes('stage.id==="photos"')&&
-  realRegistration.includes("else p.onSave()")&&
-  realRegistration.includes('onClick={advance}')&&
+  realRegistration.includes('stage.id==="review"')&&
+  realRegistration.includes("else nav(index+1)")&&
+  realRegistration.includes('case "review":p.onSave();return;')&&
+  realRegistration.includes("Посмотреть анкету")&&
+  realRegistration.includes("Редактировать")&&
   realRegistration.includes("Создать анкету")&&
-  !realRegistration.includes("SimpleProfileReview")&&
-  !realRegistration.includes('id:"languages"')&&
-  !realRegistration.includes('id:"personality"'));
+  !realRegistration.includes('id:"languages"'));
 assertCheck("branded publication curtain starts before private photo upload",
  app.includes('setJourney("publishing")')&&
  app.includes("const uploadedIds=await syncChosenPhotos(true)")&&
