@@ -32,7 +32,7 @@ for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
 assert.match(geo,/className="geo-liquid-mode-panel"/,
  "Location switches all search modes inside the same fixed-size panel");
-assert.match(runtime,/\.geo-liquid-mode-panel\{[\s\S]*?height:86px/,
+assert.match(runtime,/\.geo-liquid-mode-panel\{[\s\S]*?height:75px/,
  "Switching city, world or radius must stay inside a compact, fixed-height panel");
 assert.match(runtime,/\.geo-liquid-mode-content\{[\s\S]*?animation:luemi-geo-mode-in/,
  "Mode changes crossfade just their contents, not the whole page");
@@ -207,8 +207,16 @@ assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-body\{\s*overf
  "The focused input escapes body stacking and paints over the full-device glass");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
  "Viewport height and editor dock must come from one visual viewport measurement");
-assert.match(runtime,/\.city-focus-shell \.geo-results\{position:absolute[^}]*bottom:calc\(100% \+ 9px\)/,
- "City suggestions must open above the docked editor");
+assert.match(runtime,/\.city-focus-shell \.geo-results\{[\s\S]*?top:calc\(100% \+ 7px\);bottom:auto/,
+ "City suggestions must expand below the input and never be clipped by the Telegram header");
+assert.match(geo,/className="geo-results geo-city-suggestions"/,
+ "Search results must include full city, region and country inside a dedicated scrollable list");
+assert.doesNotMatch(runtime,/\.city-focus-shell \.geo-results\{[^}]*bottom:calc\(100%/,
+ "Remove the legacy upward-opening results dropdown");
+assert.doesNotMatch(runtime,/\.interest-chip\.selected::after\{/,
+ "Selected interests use pastel highlight only, without a generated checkmark");
+assert.match(runtime,/\.geo-liquid-mode-panel\{[\s\S]*?height:75px/,
+ "All location modes retain one smaller, stable-height glass panel");
 assert.match(steps,/className="about-input-shell"[\s\S]*className="char-count"/,
  "Biography count must sit inside its text field");
 assert.match(geo,/className="geo-liquid-scopes"/,
