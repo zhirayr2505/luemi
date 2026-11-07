@@ -40,7 +40,7 @@ export function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChang
  const start=(min-18)/62*100,end=(max-18)/62*100;
  return <div className="age-range glass-panel">
    <div className="range-title"><span>Возраст</span><strong>{min}–{max}</strong></div>
-   <p className="age-caption">Выбери возраст людей, с которыми хочешь знакомиться</p>
+   <p className="age-caption">Возраст людей, которых хочешь встретить</p>
    <div className="double-age-range" onPointerDownCapture={()=>{
      const f=document.activeElement;if(f instanceof HTMLInputElement&&f.type!=="range")f.blur();
    }}>
@@ -200,12 +200,13 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    <div className="goals-section"><ChoiceRow label="Цель знакомства">
      {goals.map(goal=>{
        const Icon=goalIcons[goal.id],selected=data.goal===goal.id;
-       return <GlassChoice key={goal.id} chosen={selected}
-        icon={<Icon size={23} strokeWidth={1.7}/>}
-        onClick={()=>patch({goal:goal.id})}>
-         {selected&&<CheckCircle2 size={18} className="goal-glass-check" aria-hidden="true"/>}
+       return <button type="button" key={goal.id}
+        className={"v2-goal-choice"+(selected?" is-selected":"")}
+        aria-pressed={selected} onClick={()=>patch({goal:goal.id})}>
+         <span className="v2-goal-icon" aria-hidden="true"><Icon size={19} strokeWidth={1.8}/></span>
          <span className="goal-card-label">{goalLabel(goal.id,data.gender)}</span>
-       </GlassChoice>;
+         {selected&&<CheckCircle2 size={13} className="v2-goal-check" aria-hidden="true"/>}
+       </button>;
      })}
    </ChoiceRow></div>
  </div>;
