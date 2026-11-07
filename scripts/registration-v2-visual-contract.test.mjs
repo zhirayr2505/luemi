@@ -132,8 +132,10 @@ assert.match(app,/if\(!local\.ok\)\{/,
  "Private signup must refuse entry when photo persistence fails");
 assert.doesNotMatch(form,/<a[^>]*>\s*условия закрытого теста<\/a>/,
  "Public registration cannot hardcode closed-beta consent links");
-assert.match(geo,/<Search size=\{20\}/,"City field needs search icon");
-assert.match(geo,/<LocateFixed size=\{15\}/,"Manual city search needs detect icon");
+assert.match(geo,/<Search size=\{19\}/,"The new city search preserves its search icon");
+assert.match(geo,/<LocateFixed size=\{17\}/,"One-tap geolocation retains an explicit icon");
+assert.match(geo,/className="geo-liquid-city"/,"The selected city is a single tappable glass card");
+assert.match(geo,/className="geo-liquid-scopes"/,"City, radius and world are segmented, never nested dropdowns");
 assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
 assert.match(focusDock,/viewport\?\.addEventListener\("resize",refresh\)/,
  "Android viewport animation now changes only suggestions, not the fixed editor anchor");
