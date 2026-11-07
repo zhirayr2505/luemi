@@ -43,7 +43,13 @@ try{
  assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
  assert.ok(Math.abs(await offset())<1,"Expanded text reaches the visible endpoint");
- assert.equal(await info.evaluate(node=>node.clientHeight),height,"Reveal does not resize the information surface");
+ const expandedHeight=await info.evaluate(node=>node.clientHeight);
+ const cardHeight=await page.locator(".deck-active .feed-v2-card").evaluate(node=>node.clientHeight);
+ assert.ok(expandedHeight>=height&&expandedHeight<cardHeight,
+  "Editorial bio may grow to measured content while staying inside the photo card");
+ const actions=page.locator(".deck-active .discovery-actions");
+ const buttons=await actions.locator("button").count();
+ assert.equal(buttons,3,"X / heart / star remain available during reveal");
  await swipe(".deck-active .feed-v2-details .discovery-place",0,190);
  await page.locator(".deck-active .feed-v2-card[data-expanded=false]").waitFor({timeout:1800});
  assert.ok(await image.evaluate(node=>node===window.__feedPhoto),"Close preserves the same photo");
@@ -72,5 +78,5 @@ try{
  assert.ok(scrollTop>10,"Vertical For You swipe remains native scrolling");
  assert.equal((await selected())?.trim(),"Для тебя","Vertical scroll never changes tabs");
  assert.deepEqual(errors,[],"No browser exceptions during gestures");
- console.log("DISCOVERY_GESTURE_BROWSER_PASS touch tabs, fixed-layout reveal, photo identity and native rails");
+ console.log("DISCOVERY_GESTURE_BROWSER_PASS touch tabs, content-aware reveal, photo identity and native rails");
 }finally{await browser.close();}
