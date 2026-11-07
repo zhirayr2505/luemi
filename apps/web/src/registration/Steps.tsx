@@ -222,12 +222,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
       <span className="interest-search-count">{interests.length}</span>
      </label>
    </div></div>
-   {data.interests.length>0&&<div className="interest-selected-group">
-    <div className="interest-selected-heading"><span>Мои интересы</span><small>{data.interests.length} / 20</small></div>
-    <div className="chips interest-selected-items">
-     {data.interests.map(id=><InterestChip key={id} id={id} selected onClick={()=>toggleInterest(id)}/>)}
-    </div>
-   </div>}
    {!interestQuery&&<div className="category-row" role="group" aria-label="Категории интересов">
      {categories.map(entry=><button type="button" key={entry.name}
        className={"category-chip"+(entry.name===category?" selected":"")} style={tint(entry.colors) as CSSProperties}

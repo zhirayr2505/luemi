@@ -70,6 +70,41 @@ try{
  await page.getByRole("button",{name:"Подтвердить поле"}).click();
  await page.locator(".interest-choices button").first().click();
  assert.equal(await page.locator(".v2-about-interest-heading").count(),1);
+ assert.equal(await page.locator(".v2-sticky-interests").count(),1,"the ribbon is attached to the single sticky heading");
+ assert.equal(await page.locator(".v2-stage-heading .v2-sticky-interests").count(),1);
+ assert.equal(await page.locator(".interest-selected-group").count(),0,"the retired multirow box must be gone");
+ // Fill enough chips to overflow the narrow screen; their count does not
+ // change the sticky region height and dragging remains a native touch scroll.
+ for(let i=1;i<=8;i++)await page.locator(".interest-choices button").nth(i).click();
+ const strip=page.locator(".v2-sticky-interest-strip");
+ const dimensions=await strip.evaluate(node=>({width:node.clientWidth,total:node.scrollWidth,height:node.clientHeight}));
+ assert.ok(dimensions.total>dimensions.width+60,"the selected chips overflow horizontally without wrapping");
+ const header=page.locator(".v2-stage-heading");
+ const beforeHeader=await header.boundingBox();
+ await page.locator(".v2-body").evaluate(node=>node.scrollTop=node.scrollHeight);
+ await page.waitForTimeout(70);
+ const afterHeader=await header.boundingBox();
+ assert.ok(beforeHeader&&afterHeader);
+ assert.ok(Math.abs(afterHeader.y-beforeHeader.y)<=24,"the title and interest ribbon remain sticky while the list scrolls");
+ const stripBox=await strip.boundingBox();
+ assert.ok(stripBox,"the sticky selected chips must remain visible at the scrolled position");
+ const client=await page.context().newCDPSession(page);
+ try{
+  const y=stripBox.y+stripBox.height/2;
+  const x0=stripBox.x+stripBox.width-24;
+  const x1=stripBox.x+24;
+  await client.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{id:1,x:x0,y}]});
+  for(let i=1;i<=12;i++){
+   await client.send("Input.dispatchTouchEvent",{type:"touchMove",
+    touchPoints:[{id:1,x:x0+(x1-x0)*i/12,y}]});
+   await page.waitForTimeout(14);
+  }
+  await client.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ }finally{await client.detach()}
+ const horizontalOffset=await strip.evaluate(node=>node.scrollLeft);
+ assert.ok(horizontalOffset>18,"one-finger horizontal swipe scrolls the ribbon in Android Chromium");
+ await strip.evaluate(node=>node.scrollLeft=0);
+ await page.locator(".v2-body").evaluate(node=>node.scrollTop=0);
  // The expanded catalog uses the same keyboard-stable focus dock. A new
  // interest far outside the old twelve-tag list must be searchable and saved.
  await page.getByPlaceholder("Найти интерес…").fill("Космология");
@@ -77,7 +112,7 @@ try{
  await page.getByRole("button",{name:"Подтвердить поле"}).click();
  await page.locator(".interest-focus-shell.is-focused").waitFor({state:"hidden",timeout:3500});
  await page.locator(".interest-choices button").filter({hasText:"Космология"}).click();
- assert.ok(await page.locator(".interest-selected-items").getByText("Космология").count()>0,
+ assert.ok(await page.locator(".v2-sticky-interest-strip").getByText("Космология").count()>0,
   "new color-tagged interests must remain selected");
  await page.evaluate(()=>{
   const d=document.querySelector(".v2-device");

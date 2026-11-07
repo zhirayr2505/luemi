@@ -57,10 +57,15 @@ assert.match(form,/stage.id==="photos"&&<div className="v2-real-groups">/,
  "Photo selection and reordering stay on their dedicated step");
 assert.doesNotMatch(form,/id:"main-photo"|stage.id==="main-photo"/,
  "The first uploaded photo is already the main photo; do not add a duplicate step");
-assert.match(form,/className="v2-stage-heading"/,
+assert.match(form,/className=\{"v2-stage-heading"\+\(stage\.id==="about"\?" v2-stage-heading--about":""\)\}/,
  "Scrollable steps keep their heading in a dedicated sticky layer");
 assert.match(runtime,/\.v2-stage-heading\{position:sticky;/,
  "Step headings must stay visible while the form scrolls");
+assert.match(form,/v2-stage-heading--about/,"About attaches its selected interests to the existing sticky heading");
+assert.match(form,/v2-sticky-interest-strip/,"Selected interests live in a single horizontally swipeable ribbon");
+assert.doesNotMatch(steps,/interest-selected-group/,"Retired in-flow selected-interest grid must be removed");
+assert.match(runtime,/\.v2-sticky-interest-strip\{[\s\S]*?overflow-x:auto;overflow-y:hidden/,"The selected-interest ribbon scrolls horizontally without creating a second vertical scroller");
+assert.match(runtime,/\.v2-sticky-interest-strip\{[\s\S]*?touch-action:pan-x/,"Horizontal gestures must be explicitly owned by the ribbon");
 assert.doesNotMatch(form,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setServerConsent/,
  "No duplicate photo consent or network upload progress before final confirmation");
 assert.match(app,/setJourney\("publishing"\)/,
@@ -215,7 +220,7 @@ assert.match(preview,/\.v2-canvas:not\(\.v2-runtime\) \.v2-progress\{/,
 const logoAt=form.indexOf('className="v2-header-logo"');
 const progressAt=form.indexOf('className="v2-progress"');
 const headerEndAt=form.indexOf('</header>',progressAt);
-const headingAt=form.indexOf('className="v2-stage-heading"',headerEndAt);
+const headingAt=form.indexOf('className={"v2-stage-heading"+',headerEndAt);
 assert.ok(logoAt>0&&progressAt>logoAt&&headerEndAt>progressAt&&headingAt>headerEndAt,
  "Every step shares the white logo, gradient progress, then the step title");
 

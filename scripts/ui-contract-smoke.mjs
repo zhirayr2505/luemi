@@ -6,6 +6,7 @@ const style=read("apps/web/src/styles.css"),sorter=read("apps/web/src/registrati
 const preview=read("apps/web/src/registration/Preview.tsx"),geo=read("apps/web/src/registration/GeoPicker.tsx");
 const model=read("apps/web/src/registration/model.ts");
 const catalog=read("apps/web/src/ui/InterestCatalog.tsx");
+const realRegistration=read("apps/web/src/registration/v2/RealRegistration.tsx");
 const languages=read("apps/web/src/ui/Languages.ts");
 const assertCheck=(s,test)=>{assert.ok(test,s);console.log("✓",s)};
 assertCheck("approved single intro keeps the auth/publication gate without duplicated white raster shimmer",/auth==="authorized"&&introElapsed&&visualReady&&\s*!\(realFeedPilot\.enabled&&publicationCheck==="checking"\)&&<div className="intro-cta">/.test(app)&&style.includes("text-enter")&&!style.includes("brand-liquid")&&!style.includes(".intro-mark::after"));
@@ -36,7 +37,7 @@ assertCheck("expanded goals, undecided first and gendered selection",
  model.includes('{id:"travel_partner"')&&steps.includes("goalLabel(goal.id,data.gender)"));
 assertCheck("202 stable interests, curated colors and search in onboarding",
  catalog.includes("expandedSource")&&catalog.includes("export const categories")&&
- steps.includes("interest-search")&&steps.includes("interest-selected-group")&&
+ steps.includes("interest-search")&&realRegistration.includes("v2-sticky-interests")&&
  steps.includes("data.interests.length>=20")&&app.includes("SelectedInterests")&&
  style.includes(".selected-interests-floating"));
 assertCheck("60 searchable languages with true vector flags",languages.includes("export const languages")&&read("apps/web/src/registration/LanguagePicker.tsx").includes("<Flag"));
@@ -45,7 +46,6 @@ assertCheck("photo reorder has FLIP animation and main label",sorter.includes("n
 assertCheck("single static registration preview with explicit edit and confirm actions",preview.includes("registration-static-profile")&&preview.includes("registration-static-avatar")&&app.includes("registration-static-actions")&&app.includes("Редактировать")&&app.includes("Всё верно")&&!preview.includes("ProfileMaster")&&!preview.includes("preview-tabs"));
 assertCheck("local images remain local only",sorter.includes("snapshot")&&!app.includes("uploadPhoto"));
 
-const realRegistration=read("apps/web/src/registration/v2/RealRegistration.tsx");
 const journey=read("apps/web/src/registration/PublicationJourney.tsx");
 assertCheck("single registration consent appears on identity step",
  steps.includes('Я принимаю <a href="/privacy"')&&
