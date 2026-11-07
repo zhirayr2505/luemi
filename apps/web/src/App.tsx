@@ -35,6 +35,7 @@ import "./registration/cinematic-welcome.css";
 
 declare global {
   interface Window {
+    __luemiEarlyFullscreenRequested?: boolean;
     Telegram?: {
       WebApp?: {
         initData?: string;
@@ -115,6 +116,16 @@ export function App() {
   const [connectAttempt,setConnectAttempt]=useState(0);
   const startupGeneration=useRef(0);
   const [visualReady,setVisualReady] = useState(false);
+  // Keep the cinematic poster hidden until the initial Telegram fullscreen
+  // request has settled. It must never be rescaled visibly on first open.
+  const [heroViewportReady,setHeroViewportReady] = useState(()=>{
+    const app=window.Telegram?.WebApp;
+    if(!app?.requestFullscreen||app.isFullscreen)return true;
+    try{
+      if(app.isVersionAtLeast&&!app.isVersionAtLeast("8.0"))return true;
+    }catch{return true;}
+    return false;
+  });
   const introElapsed=visualReady;
   const [introText,setIntroText] = useState("");
   const routeTransitioning = useRef(false);
@@ -220,6 +231,33 @@ export function App() {
   useEffect(()=>{
     if(draft.trialConsent)setServerConsent(true);
   },[draft.trialConsent]);
+  useLayoutEffect(()=>{
+    if(heroViewportReady)return;
+    const webApp=window.Telegram?.WebApp;
+    let disposed=false,settleTimer=0,deadline=0,frame=0;
+    const reveal=()=>{
+      window.clearTimeout(settleTimer);
+      // Telegram can notify fullscreenChanged before visualViewport resizes.
+      // Reveal only after its compositor has had a chance to settle.
+      settleTimer=window.setTimeout(()=>{
+        frame=window.requestAnimationFrame(()=>{
+          if(!disposed)setHeroViewportReady(true);
+        });
+      },125);
+    };
+    const onFullscreen=()=>{if(webApp?.isFullscreen)reveal();};
+    webApp?.onEvent?.("fullscreenChanged",onFullscreen);
+    webApp?.onEvent?.("viewportChanged",onFullscreen);
+    if(webApp?.isFullscreen)reveal();
+    // Older clients with no event must still receive the welcome screen.
+    deadline=window.setTimeout(reveal,1100);
+    return ()=>{
+      disposed=true;window.clearTimeout(settleTimer);window.clearTimeout(deadline);
+      window.cancelAnimationFrame(frame);
+      webApp?.offEvent?.("fullscreenChanged",onFullscreen);
+      webApp?.offEvent?.("viewportChanged",onFullscreen);
+    };
+  },[heroViewportReady]);
   useEffect(()=>{
     // Telegram's native white loading screen must disappear as soon as the
     // app shell can paint. The separate branded intro remains visible.
@@ -238,7 +276,7 @@ export function App() {
     const frame=window.requestAnimationFrame(()=>{
       webApp?.ready?.();
       webApp?.expand?.();
-      enterFullscreen();
+      if(!window.__luemiEarlyFullscreenRequested)enterFullscreen();
       try {webApp?.disableVerticalSwipes?.();}catch {
         // Older clients might not support the swipe API.
       }
@@ -1284,7 +1322,7 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
-    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state cinematic-entry"+(visualReady?" visually-ready":"")} aria-live="polite">
+    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state cinematic-entry"+(visualReady?" visually-ready":"")+(heroViewportReady?" hero-viewport-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
