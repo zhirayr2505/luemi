@@ -491,3 +491,131 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  .v2-runtime .v2-showcase-dots button{transition:none}
  .photo-handle-tooltip{animation:none}
 }
+
+
+/* LUEMI Liquid Glass V2: static, compositing-friendly layers. Never animate
+   backdrop-filter or the height of a scrolled/keyboard-focused container. */
+.v2-runtime .interest-search{display:flex;align-items:center;gap:10px;min-height:49px;
+ padding:0 13px;border:1px solid rgba(213,172,236,.29);border-radius:15px;
+ color:#d8b6e9;background:linear-gradient(125deg,rgba(66,50,83,.92),rgba(38,32,54,.95))}
+.v2-runtime .interest-search:focus-within{border-color:#cfa5ea;box-shadow:0 0 0 2px rgba(205,162,233,.13)}
+.v2-runtime .interest-search>svg{flex:none}
+.v2-runtime .interest-search input{display:block;min-width:0;flex:1;min-height:43px;
+ border:0;background:transparent;color:#f7ecfc;font-size:14px;outline:0;appearance:none}
+.v2-runtime .interest-search input::placeholder{color:#aa9cb8}
+.v2-runtime .interest-search-count{font-size:11px;color:#c8b0db;font-variant-numeric:tabular-nums}
+.v2-runtime .interest-selected-group{display:flex;flex-direction:column;gap:10px;
+ padding:12px;border-radius:16px;background:rgba(113,83,133,.19);
+ border:1px solid rgba(202,162,226,.22)}
+.v2-runtime .interest-selected-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.v2-runtime .interest-selected-heading span{font-size:12px;font-weight:700;color:#ebd6f6}
+.v2-runtime .interest-selected-heading small{font-size:11px;color:#d3b6df}
+.v2-runtime .interest-selected-items{gap:7px}
+.v2-runtime .interest-selected-items .interest-chip{font-size:11px;padding:7px 10px;min-height:33px}
+.v2-runtime .category-row{position:relative;scrollbar-width:none;overscroll-behavior-x:contain;
+ padding:5px 1px 10px;gap:8px;touch-action:pan-x}
+.v2-runtime .category-row::-webkit-scrollbar{display:none}
+.v2-runtime .category-chip{min-height:40px;border-radius:999px;
+ background:linear-gradient(115deg,color-mix(in srgb,var(--chip-from) 13%,#37283f),
+ color-mix(in srgb,var(--chip-to) 16%,#29243b));
+ color:#f0e2f4;border:1px solid color-mix(in srgb,var(--chip-from) 36%,#655272);
+ box-shadow:inset 0 1px rgba(255,255,255,.08);padding:9px 13px;
+ -webkit-backdrop-filter:none;backdrop-filter:none}
+.v2-runtime .category-chip.selected{color:#fff;
+ background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 31%,#5c416d),
+ color-mix(in srgb,var(--chip-to) 32%,#463554));
+ border-color:color-mix(in srgb,var(--chip-from) 65%,#9b65bc);
+ box-shadow:inset 0 1px rgba(255,255,255,.18),0 4px 12px rgba(8,5,18,.13)}
+.v2-runtime .interest-choices{gap:9px;min-height:0;padding:5px 0 14px}
+.v2-runtime .interest-chip,.v2-runtime .chip.toned{
+ color:#f9f0fc;min-height:38px;
+ background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 17%,#31263d),
+ color-mix(in srgb,var(--chip-to) 19%,#2a2538));
+ border:1px solid color-mix(in srgb,var(--chip-from) 28%,#594368);
+ box-shadow:inset 0 1px rgba(255,255,255,.07)}
+.v2-runtime .interest-chip.selected{color:#fff;transform:none;
+ background:linear-gradient(110deg,color-mix(in srgb,var(--chip-from) 46%,#795482),
+ color-mix(in srgb,var(--chip-to) 44%,#73537e));
+ border:1px solid color-mix(in srgb,var(--chip-from) 68%,#c49dd5);
+ box-shadow:inset 0 1px rgba(255,255,255,.21),0 4px 11px rgba(6,4,17,.12)}
+.v2-runtime .interest-chip.selected::after{background:rgba(253,236,255,.94);color:#6b4178}
+.v2-runtime .interest-max-hint,.v2-runtime .interest-no-results{
+ margin:5px 0 0;color:#c5a4d4;font-size:12px;line-height:1.4}
+.v2-runtime .v2-about-interest-heading{margin-top:0}
+.v2-runtime .preferences-step .goals-section .choice-grid{gap:11px}
+.v2-runtime .preferences-step .goals-section .glass-choice{
+ position:relative;isolation:isolate;overflow:hidden;min-height:100px;
+ border:1px solid rgba(216,182,238,.25);border-radius:21px;
+ padding:15px 14px 13px;gap:12px;color:#f8eefc;
+ background:linear-gradient(150deg,rgba(78,61,99,.76),rgba(47,38,63,.92) 65%,rgba(37,32,54,.96));
+ box-shadow:inset 0 1px rgba(255,255,255,.16),inset 0 -1px rgba(16,8,28,.15),0 6px 16px rgba(5,3,14,.09);
+ transition:transform .18s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease}
+.v2-runtime .preferences-step .goals-section .glass-choice:active{transform:scale(.985)}
+.v2-runtime .preferences-step .goals-section .glass-choice>svg:first-child{
+ color:#e6b6f4;filter:none;flex:none}
+.v2-runtime .preferences-step .goals-section .glass-choice.selected{
+ border-color:rgba(240,191,244,.67);
+ background:linear-gradient(125deg,rgba(132,94,144,.79),rgba(93,64,117,.85));
+ box-shadow:inset 0 1px rgba(255,255,255,.26),inset 0 0 0 1px rgba(217,169,237,.18),0 7px 18px rgba(6,4,17,.12)}
+.v2-runtime .preferences-step .goals-section .goal-glass-check{position:absolute;top:13px;right:13px;
+ color:#f4d9fb;pointer-events:none}
+.v2-runtime .preferences-step .goals-section .goal-card-label{max-width:100%;
+ font-size:13px;line-height:1.28;font-weight:580;letter-spacing:-.015em}
+.v2-runtime .geo-liquid-location{display:flex;flex-direction:column;gap:23px;padding-bottom:17px}
+.v2-runtime .geo-city-area{display:flex;flex-direction:column;gap:11px}
+.v2-runtime .geo-liquid-city{display:flex;align-items:center;gap:11px;min-width:0;width:100%;
+ min-height:83px;border:1px solid rgba(222,182,241,.35);border-radius:21px;padding:13px;
+ text-align:left;color:#f5eefa;
+ background:linear-gradient(125deg,rgba(91,66,112,.79),rgba(50,41,69,.95));
+ box-shadow:inset 0 1px rgba(255,255,255,.15),0 8px 22px rgba(6,4,17,.1)}
+.v2-runtime .geo-liquid-city-icon{flex:0 0 44px;height:44px;display:grid;place-items:center;
+ border-radius:14px;background:rgba(198,142,218,.13);color:#e9b6f1}
+.v2-runtime .geo-liquid-city-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
+.v2-runtime .geo-liquid-city-copy strong{font-size:16px;line-height:1.12;overflow:hidden;
+ text-overflow:ellipsis;white-space:nowrap}
+.v2-runtime .geo-liquid-city-copy small{font-size:11px;color:#d4bfdc;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v2-runtime .geo-liquid-edit{font-size:11px;color:#efc9f4;font-weight:700;flex:none}
+.v2-runtime .geo-liquid-locate{align-self:center;display:inline-flex;align-items:center;justify-content:center;
+ gap:8px;min-height:41px;padding:7px 12px;color:#dcb3ea;background:transparent;
+ border:0;font-weight:650;font-size:12px}
+.v2-runtime .geo-liquid-city-editor{display:flex;flex-direction:column;gap:8px;position:relative}
+.v2-runtime .geo-liquid-city-editor .focus-field-slot{min-height:65px}
+.v2-runtime .geo-liquid-city-editor .glass-field{margin:0}
+.v2-runtime .geo-liquid-cancel{align-self:flex-end;padding:7px 10px;border:0;background:transparent;
+ color:#dfb0f1;font-size:12px}
+.v2-runtime .geo-liquid-current,.v2-runtime .geo-liquid-caption{font-size:12px;color:#c9b2d4;line-height:1.45;margin:0}
+.v2-runtime .geo-liquid-search-section{display:flex;flex-direction:column;gap:14px}
+.v2-runtime .geo-liquid-section-head{display:flex;flex-direction:column;gap:3px}
+.v2-runtime .geo-liquid-section-head strong{font-size:16px;color:#f9effc}
+.v2-runtime .geo-liquid-section-head small{font-size:11px;color:#b4a2c0}
+.v2-runtime .geo-liquid-scopes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.v2-runtime .geo-liquid-scopes button{min-width:0;min-height:65px;padding:10px 4px;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+ border:1px solid rgba(205,173,228,.24);border-radius:17px;
+ background:linear-gradient(130deg,rgba(68,54,87,.76),rgba(44,38,63,.92));
+ box-shadow:inset 0 1px rgba(255,255,255,.09);color:#e3d5ed;font-size:11px;
+ transition:background .2s,border-color .2s,transform .18s}
+.v2-runtime .geo-liquid-scopes button svg{color:#ddb0eb}
+.v2-runtime .geo-liquid-scopes button.active{background:linear-gradient(132deg,rgba(150,103,166,.62),rgba(91,68,117,.8));
+ border-color:#d8addf;color:#fff;box-shadow:inset 0 1px rgba(255,255,255,.2)}
+.v2-runtime .geo-liquid-scopes button:active{transform:scale(.98)}
+.v2-runtime .geo-liquid-radius{display:flex;flex-direction:column;gap:12px;min-width:0;
+ padding:17px 16px 13px;border-radius:19px;
+ border:1px solid rgba(210,171,226,.23);
+ background:linear-gradient(150deg,rgba(74,53,93,.73),rgba(46,39,67,.92))}
+.v2-runtime .geo-liquid-radius .branded-slider{min-width:0;margin:0 8px}
+.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]{min-width:0;margin:0}
+.v2-runtime .geo-liquid-radius .range-title strong{color:#e8b8f0}
+.v2-runtime .geo-liquid-scope-description{margin:0;padding:13px 15px;border-radius:14px;
+ border:1px solid rgba(208,178,222,.18);background:rgba(73,52,84,.38);
+ font-size:12px;line-height:1.55;color:#ddc9e9}
+.v2-runtime .geo-liquid-privacy{font-size:11px;color:#afa1bd;line-height:1.5;margin:0}
+@media(max-width:359px){
+ .v2-runtime .geo-liquid-scopes button{font-size:10px}
+ .v2-runtime .preferences-step .goals-section .glass-choice{padding:12px}
+}
+@media(prefers-reduced-motion:reduce){
+ .v2-runtime .preferences-step .goals-section .glass-choice,
+ .v2-runtime .geo-liquid-scopes button{transition:none}
+}
