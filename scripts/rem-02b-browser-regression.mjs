@@ -47,7 +47,7 @@ try{
   await page.setViewportSize({width:393,height});await wait(280);
   open=await snapshot();
   assert.equal(open.state,"expanded","viewport resize preserves expanded state");
-  assert.ok(open.top>open.compactTop+20&&open.tabsHeight>30&&open.sheetHeight>100);
+  assert.ok(open.top>open.compactTop+20&&open.tabsHeight>30&&open.sheetHeight>100,"V3 resize geometry at "+height+": "+JSON.stringify(open));
   await handle.press("Enter");await wait(450);
   const closed=await snapshot();
   assert.equal(closed.state,"collapsed");
