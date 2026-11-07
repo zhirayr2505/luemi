@@ -107,7 +107,9 @@ assertCheck("device-local registration data and photos survive Telegram reopenin
 assertCheck("photo preparation completes after the bounded screen copy is ready",app.includes("preparePhotoPreview")&&app.includes('status:"success",progress:100')&&sorter.includes("photo-processing-bar"));
 assertCheck("no redundant arrow photo controls",!sorter.includes("photo-reorder-buttons")&&sorter.includes('event.altKey'));
 assertCheck("native tap highlight disabled globally",style.includes("-webkit-tap-highlight-color:transparent"));
-assertCheck("selected interest chips have visible increased feedback",style.includes("transform:scale(1.055)")&&style.includes(".interest-chip.selected::after"));
+assertCheck("selected interest chips use color feedback without duplicate checkmarks",
+ style.includes(".interest-chip.selected{")&&!style.includes(".interest-chip.selected::after")&&
+ read("apps/web/src/registration/v2/runtime.css").includes(".interest-chip.selected{color:#fff;transform:none;"));
 assertCheck("interest categories fixed while only interest list scrolls",style.includes(".onboard-body:has(.interests-step)")&&style.includes(".interests-step .interest-choices"));
 assertCheck("selected languages show only accessible flags",lang.includes('className="language-flag-selected"')&&!lang.includes('className="language-chip active"'));
 assertCheck("language search uses three columns",style.includes("grid-template-columns:repeat(3,minmax(0,1fr))"));

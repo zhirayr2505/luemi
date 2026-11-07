@@ -143,6 +143,12 @@ export function RealRegistrationV2(p:Props){
   setFocusedField(null);
  },[]);
  const stage=stages[index];
+ const patchDraft=p.patch;
+ // Older locally restored drafts can still contain an empty goal. Respect an
+ // explicit choice, but initialize legacy drafts when the intent page opens.
+ useEffect(()=>{
+   if(stage.id==="intent"&&!draft.goal)patchDraft({goal:"undecided"});
+ },[stage.id,draft.goal,patchDraft]);
  const body=useRef<HTMLElement|null>(null);
  const handleFieldFocus=useCallback((field:"name"|"date"|"city"|"about"|"language"|null)=>{
   setFocusedField(field);
@@ -319,7 +325,7 @@ export function RealRegistrationV2(p:Props){
                  return <button type="button" key={id} className="v2-selected-interest-chip"
                    style={tint(info.colors)} aria-label={"Удалить интерес "+info.name}
                    onClick={()=>p.patch({interests:draft.interests.filter(value=>value!==id)})}>
-                   <Icon size={15} strokeWidth={1.7} aria-hidden="true"/>
+                   <Icon size={13} strokeWidth={1.7} aria-hidden="true"/>
                    <span>{info.name}</span>
                    <span className="v2-selected-interest-close" aria-hidden="true"><X size={12} strokeWidth={2.2}/></span>
                  </button>;

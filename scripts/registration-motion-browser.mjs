@@ -16,8 +16,13 @@ try{
  await page.route("**/api/**",async route=>{
   const url=new URL(route.request().url());
   if(url.pathname.endsWith("/geo/search")){
+   const query=url.searchParams.get("q")?.toLocaleLowerCase("ru")??"";
+   const results=query.includes("армавир")?[
+    {id:"offline:ru:armavir",city:"Армавир",country:"Россия",countryCode:"RU",region:"Краснодарский край"},
+    {id:"offline:am:armavir",city:"Армавир",country:"Армения",countryCode:"AM"}]:
+    [{id:"qa:moscow",city:"Москва",country:"Россия",countryCode:"RU"}];
    return route.fulfill({status:200,contentType:"application/json",
-    body:JSON.stringify({results:[{id:"qa:moscow",city:"Москва",country:"Россия",countryCode:"RU"}],coverage:"world"})});
+    body:JSON.stringify({results,coverage:"world"})});
   }
   return route.fulfill({status:404,contentType:"application/json",body:"{}"});
  });
@@ -59,6 +64,20 @@ try{
  await page.getByRole("checkbox").check();
  await next("location");
  await page.getByRole("button",{name:"Выбрать город"}).click();
+ await page.getByPlaceholder("Название города").fill("Армавир");
+ const armavir=page.getByRole("option",{name:/Армавир/});
+ await armavir.first().waitFor({timeout:6000});
+ assert.equal(await armavir.count(),2,"search must show both Russia and Armenia Armavir");
+ assert.ok(await page.getByRole("option",{name:/Армавир, Россия, Краснодарский край/}).count()>0);
+ assert.ok(await page.getByRole("option",{name:/Армавир, Армения/}).count()>0);
+ const cityInput=await page.getByPlaceholder("Название города").boundingBox();
+ const cityResults=await page.locator(".geo-city-suggestions").boundingBox();
+ assert.ok(cityInput&&cityResults&&cityResults.y>=cityInput.y+cityInput.height-2,
+   "suggestions must expand below the input, never behind the top Telegram header");
+ assert.ok(cityResults.y<page.viewportSize().height-260,"search results remain visible over mobile keyboard");
+ await page.getByRole("option",{name:/Армавир, Россия, Краснодарский край/}).click();
+ assert.ok((await page.locator(".geo-liquid-city").innerText()).includes("Армавир"));
+ await page.getByRole("button",{name:"Изменить город"}).click();
  await page.getByPlaceholder("Название города").fill("Москва");
  await page.getByRole("option",{name:/Москва/}).first().click();
  // The three modes must keep one shared card without displacing the footer.
@@ -102,6 +121,9 @@ try{
   "both age thumb endpoints must match the visual 10px rail inset");
  assert.ok(ageGeometry.hit>=34,"compact rail must not shrink the native touch target");
  await page.getByRole("button",{name:"Женщин"}).click();
+ // Undecided is already selected on first entry until the user changes it.
+ assert.equal(await page.getByRole("button",{name:"Пока не определился"}).getAttribute("aria-pressed"),"true",
+   "registration must preselect the gender-aware undecided goal");
  await page.getByRole("button",{name:"Серьёзные отношения"}).click();
  const goalHeight=await page.getByRole("button",{name:"Серьёзные отношения"}).evaluate(el=>el.getBoundingClientRect().height);
  assert.ok(goalHeight<=60,"goal cards should be genuinely compact horizontal rows");

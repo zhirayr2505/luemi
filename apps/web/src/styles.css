@@ -188,8 +188,6 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .interest-chip{position:relative;transition:transform .18s cubic-bezier(.2,.8,.25,1),box-shadow .18s}
 .interest-chip.selected{border-color:rgba(148,73,205,.8);box-shadow:0 4px 15px rgba(158,100,196,.24),inset 0 0 0 1px rgba(128,82,198,.22);
  transform:scale(1.055);font-weight:770;z-index:1}
-.interest-chip.selected::after{content:"✓";display:grid;place-items:center;width:17px;height:17px;border-radius:50%;
- background:linear-gradient(130deg,#a37bd8,#e49bc9);color:white;font-size:11px;font-weight:800;margin-left:2px}
 .interest-choices{min-height:0;align-content:flex-start;overflow-y:auto;flex:1;padding:10px 6px 18px;overscroll-behavior:contain}
 .luemi-shell[data-theme=dark] .chip.toned,.luemi-shell[data-theme=dark] .category-chip{filter:brightness(.88)}
 /* Photo sorter: only modern pointer gesture, no native HTML draggable. */

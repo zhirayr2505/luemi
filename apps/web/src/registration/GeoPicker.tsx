@@ -193,14 +193,6 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
      {editing&&<div className="geo-liquid-city-editor">
        <div className="focus-field-slot"><div ref={node=>{cityDock.shellRef.current=node;}}
          className={"focus-field-shell city-focus-shell"+(cityFocused?" is-focused":"")+(fieldError?" has-error":"")}>
-         {results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results">
-           {results.map(place=><button key={place.id} type="button" role="option" aria-selected={false}
-             onPointerDown={event=>{event.preventDefault();choose(place);}}
-             onClick={()=>choose(place)}>
-             <Flag code={place.countryCode} title={"Флаг "+place.country}/>
-             <span><strong>{place.city}</strong><small>{place.country}{place.region?", "+place.region:""}</small></span><Check size={16}/>
-           </button>)}
-         </div>}
          <GlassField label="Найди город">
            <div className="geo-input-wrap">
              <Search size={19} aria-hidden="true"/>
@@ -218,6 +210,18 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
              {loading&&<LoaderCircle className="spin" size={18}/>}
            </div>
          </GlassField>
+         {results.length>0&&<div id="luemi-geo-results" role="listbox" className="geo-results geo-city-suggestions">
+           {results.map(place=><button key={place.id} type="button" role="option"
+             aria-label={[place.city,place.country,place.region].filter(Boolean).join(", ")}
+             aria-selected={false}
+             onPointerDown={event=>event.preventDefault()} onClick={()=>choose(place)}>
+             <span className="geo-suggestion-flag"><Flag code={place.countryCode} title={"Флаг "+place.country}/></span>
+             <span className="geo-suggestion-copy">
+               <strong>{place.city}</strong>
+               <small>{place.country}{place.region?" · "+place.region:""}</small>
+             </span><Check size={16} className="geo-suggestion-action" aria-hidden="true"/>
+           </button>)}
+         </div>}
        </div></div>
        <button type="button" className="geo-liquid-cancel" onClick={closeCitySearch}>Отмена</button>
      </div>}
