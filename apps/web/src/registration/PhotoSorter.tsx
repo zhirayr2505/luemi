@@ -55,7 +55,10 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
    document.removeEventListener("pointerdown",dismissTip,true);
   };
  },[hasAtLeastTwoPhotos,dismissTip]);
- const display=drag?reorder(photos,drag.source,drag.target):photos;
+ // Keep photo DOM nodes stationary during pointer capture. Moving keyed nodes
+ // mid-drag can dispatch lostpointercapture in Telegram Android WebView.
+ // Perform one atomic reorder on release; FLIP animates the settled slots.
+ const display=photos;
  const displaySignature=display.map(x=>x.id).join("|");
  const stopFrame=useCallback(()=>{
   if(scrollFrame.current!==null){cancelAnimationFrame(scrollFrame.current);scrollFrame.current=null;}
@@ -271,7 +274,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
            if(event.key==="ArrowLeft"||event.key==="ArrowUp"){event.preventDefault();movePhoto(i,Math.max(0,i-1));}
            if(event.key==="ArrowRight"||event.key==="ArrowDown"){event.preventDefault();movePhoto(i,Math.min(photos.length-1,i+1));}
          }:undefined}
-         className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.id===photo?.id?" drag-source":"")}>
+         className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.id===photo?.id?" drag-source":"")+(drag?.target===i&&drag.target!==drag.source?" drag-target":"")}>
          {photo?<>{photo.src&&<img src={photo.src} alt={"Фото "+(i+1)} draggable={false} decoding="async"/>}
            {i>0&&<span className="slot-index">{i+1}</span>}
            {i===0&&<span className="primary-photo">Главное</span>}
