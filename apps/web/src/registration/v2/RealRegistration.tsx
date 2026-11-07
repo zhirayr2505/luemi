@@ -2,8 +2,6 @@ import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "rea
 import {flushSync} from "react-dom";
 import {ArrowRight,Check,LoaderCircle,ShieldCheck} from "lucide-react";
 import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
-import {SimpleProfileReview} from "../SimpleProfileReview";
-import {OptionalProfileDetails} from "../OptionalProfileDetails";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {findExactDuplicatePhotoIds} from "./duplicate-photos";
 import "./preview.css";
@@ -41,23 +39,20 @@ const visualStages=[
  {id:"birthday",title:"Дата рождения",subtitle:"Твой возраст будет виден другим пользователям"},
  {id:"location",title:"Где ты сейчас?",subtitle:"Твоё местоположение помогает находить людей рядом"},
  {id:"intent",title:"Кого ты хочешь встретить?",subtitle:"Настрой знакомства так, как тебе нравится"},
- {id:"languages",title:"Какие языки ты знаешь?",subtitle:"Это поможет находить людей со схожими интересами"},
- {id:"personality",title:"Расскажи о себе",subtitle:"Несколько слов о себе и о том, что тебе интересно"},
- {id:"photos",title:"Добавь свои фото",subtitle:"Загрузи от 3 до 6 фотографий"},
- {id:"review",title:"Проверь свою анкету",subtitle:"Убедись, что всё правильно"}
+ {id:"photos",title:"Твои фотографии",subtitle:"От 3 до 6 фото — и можно знакомиться"}
 ] as const;
 type VisualStage={id:string;title:string;subtitle:string};
 type IdentityError={field:"name"|"date"|"city"|"about";message:string};
 function restoredStage(draft:RegistrationDraft,photos:PhotoItem[]):number{
  // Telegram's first-name prefill alone is not a completed registration step.
  if(!draft.day&&!draft.month&&!draft.year&&!draft.gender&&!draft.city&&
-    !draft.about.trim()&&!photos.length)return 0;
+    !photos.length)return 0;
  const target=!nameValid(draft.name)?"identity":
   !birthDateValid(draft.day,draft.month,draft.year)||
     !(draft.gender==="man"||draft.gender==="woman")||!draft.trialConsent?"birthday":
   !selectedCityValid(draft)?"location":
   validateStep(draft,4,photos.length,new Date(),"live")!==null?"intent":
-  !draft.about.trim()?"personality":!photoReady(photos)?"photos":"review";
+  "photos";
  return visualStages.findIndex(item=>item.id===target);
 }
 function dateIssue(draft:RegistrationDraft,today=new Date()):string|null{
@@ -79,7 +74,6 @@ export function RealRegistrationV2(p:Props){
  const recoveryApplied=useRef(p.restored);
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
- const [detailsOpen,setDetailsOpen]=useState(false);
  const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|"language"|null>(null);
  const [changingStep,setChangingStep]=useState(false);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
@@ -162,7 +156,7 @@ export function RealRegistrationV2(p:Props){
   if(p.resumeReview)return;
   setIndex(restoredStage(draft,photos));
  },[p.restored,p.resumeReview,draft,photos]);
- /* One sequential motion across all eight registration steps. Android
+ /* One sequential motion across all five registration steps. Android
     WebView must not capture incoming content over an outgoing body. */
  const nav=(target:number)=>{
   const next=Math.min(stages.length-1,Math.max(0,target));
@@ -190,7 +184,7 @@ export function RealRegistrationV2(p:Props){
     if(!isMounted.current)return;
     flushSync(()=>{
      setHint("");setIdentityError(null);setFocusedField(null);
-     setDetailsOpen(false);setIndex(next);
+     setIndex(next);
     });
     exit?.cancel();
     if(stepAnimation.current===exit)stepAnimation.current=null;
@@ -222,7 +216,6 @@ export function RealRegistrationV2(p:Props){
    if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
    return;
   }
-  if(detailsOpen){setDetailsOpen(false);return;}
   if(index===0)p.onExit();else nav(index-1);
  };
  useEffect(()=>{p.registerBack(back);return()=>p.registerBack(()=>{});});
@@ -248,22 +241,16 @@ export function RealRegistrationV2(p:Props){
     break;
    }
    case "intent":issue=validateStep(draft,4,photos.length,new Date(),"live");break;
-   case "languages":break;
-   case "personality":
-    issue=validateStep(draft,6,photos.length,new Date(),"live");
-    if(issue){setIdentityError({field:"about",message:issue});setHint("");return;}
-    break;
    case "photos":
     if(!photoReady(photos)){issue="Выбери от 3 до 6 готовых фотографий.";break;}
     if(photoChecking)return;
     setPhotoChecking(true);
     void findExactDuplicatePhotoIds(photos).then(ids=>{
       if(ids.length)setHint("Обнаружены одинаковые фотографии. Замени повторяющиеся снимки.");
-      else nav(index+1);
+      else p.onSave();
     }).catch(()=>setHint("Не удалось проверить повтор фотографий. Попробуй снова."))
       .finally(()=>setPhotoChecking(false));
     return;
-   case "review":return;
   }
   if(issue){setHint(messageFor(issue));return;}
   nav(index+1);
@@ -282,9 +269,8 @@ export function RealRegistrationV2(p:Props){
    stage.id==="birthday"?dateValid&&genderReady&&draft.trialConsent:
    stage.id==="location"?locationReady:
    stage.id==="intent"?intentReady:
-   stage.id==="personality"?validateStep(draft,6,photos.length,new Date(),"live")===null:
    stage.id==="photos"?photoReady(photos):true;
- const fieldConfirmActive=["identity","birthday","location","languages","personality"].includes(stage.id)&&focusedField!==null;
+ const fieldConfirmActive=["identity","birthday","location"].includes(stage.id)&&focusedField!==null;
 
  return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme={p.theme}
    data-fallback-entry={p.fallbackEntry?"true":undefined}
@@ -314,34 +300,24 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="birthday"&&<div className="v2-real-groups">{step(2)}<RegistrationConsent data={draft} patch={p.patch}/></div>}
        {stage.id==="location"&&step(3)}
        {stage.id==="intent"&&step(4)}
-       {stage.id==="languages"&&step(6,"languages")}
-       {stage.id==="personality"&&<div className="v2-real-groups">
-        {step(6,"about")}{step(5)}
-        <OptionalProfileDetails data={draft} patch={p.patch} open={detailsOpen}
-          onOpenChange={setDetailsOpen} overlayHost={device.current}/>
-       </div>}
        {stage.id==="photos"&&<div className="v2-real-groups">
         {step(7)}
         <div className="v2-note"><ShieldCheck size={18}/>
          Добавь свои чёткие фотографии. Потяни за значок на снимке или нажми корону, чтобы выбрать главное фото.
         </div>
        </div>}
-       {stage.id==="review"&&<div className="v2-fields">
-        <SimpleProfileReview draft={draft} photos={photos}/>
-        {p.serverStatus&&<p role="status" className="v2-feedback">{p.serverStatus}</p>}
-       </div>}
        {p.storageError&&<p role="alert" className="v2-feedback">
         Не удалось сохранить черновик на устройстве.<button type="button" onClick={p.onRetryStorage}>Повторить</button>
        </p>}
-       {(["photos","review"].includes(stage.id))&&p.mediaStatus&&<p role="status" className="v2-feedback">{p.mediaStatus}</p>}
+       {stage.id==="photos"&&p.mediaStatus&&<p role="status" className="v2-feedback">{p.mediaStatus}</p>}
        {hint&&<p role="alert" className="v2-feedback">{hint}</p>}
      </section>
      <footer className={"v2-footer"+(fieldConfirmActive?" is-focus-confirm":"")}>
-       {stage.id==="review"?<div className="v2-footer-review">
+       {stage.id==="photos"?<div className="v2-footer-review">
         <button type="button" className="v2-publish v2-draft-save"
-          disabled={!savedDraftAllowed} aria-busy={p.serverSaving} onClick={p.onSave}>
-          {p.serverSaving?<LoaderCircle size={19} className="v2-next-spinner"/>:<Check size={18}/>}
-          {p.serverSaving?"Создаём…":"Создать анкету"}
+          disabled={!savedDraftAllowed||photoChecking} aria-busy={p.serverSaving||photoChecking} onClick={advance}>
+          {p.serverSaving||photoChecking?<LoaderCircle size={19} className="v2-next-spinner"/>:<Check size={18}/>}
+          {p.serverSaving?"Создаём…":photoChecking?"Проверяем фото…":"Создать анкету"}
         </button>
        </div>:<>
        <div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>

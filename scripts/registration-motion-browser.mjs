@@ -49,7 +49,7 @@ try{
  await page.getByRole("button",{name:"Подтвердить поле"}).click();
  await next("birthday");
  await page.getByPlaceholder("ДД.ММ.ГГГГ").fill("12.05.1998");
- // A valid eight-digit birthday automatically dismisses the active editor,
+ // A complete eight-digit birthday automatically dismisses the active editor,
  // but deliberately does not navigate to the next stage.
  await page.locator(".dob-focus-shell.is-focused").waitFor({state:"hidden",timeout:2500});
  assert.equal(await page.locator(".v2-device").getAttribute("data-screen"),"birthday");
@@ -62,43 +62,29 @@ try{
  await next("intent");
  await page.getByRole("button",{name:"Женщин"}).click();
  await page.getByRole("button",{name:"Серьёзные отношения"}).click();
- await next("languages");
- const languages=page.locator(".language-option");
- assert.equal(await languages.count(),60,"all language options must remain available");
- const langInput=page.getByPlaceholder("Найди язык из 60");
- await langInput.fill("арм");
- assert.equal(await page.locator(".language-option").count(),1,"search narrows languages immediately");
- await page.getByRole("button",{name:/Армянский/}).click();
- await page.getByRole("button",{name:"Подтвердить поле"}).click();
+ // The optional languages and biography screens now live inside the published profile.
  await page.evaluate(()=>{
   const d=document.querySelector(".v2-device");
   const log=[];
-  const trace=()=>log.push({screen:d?.getAttribute("data-screen"),
-   optional:d?.querySelectorAll(".optional-profile-toggle").length,
+  const trace=()=>log.push({
+   screen:d?.getAttribute("data-screen"),
    bodies:d?.querySelectorAll(".v2-body").length,
-   headings:d?.querySelectorAll(".v2-stage-heading").length});
+   headings:d?.querySelectorAll(".v2-stage-heading").length
+  });
   const ob=new MutationObserver(trace);
   ob.observe(d,{subtree:true,childList:true,attributes:true});
   window.__stopStepTrace=()=>{ob.disconnect();return log};
  });
- await next("personality");
+ await next("photos");
  const events=await page.evaluate(()=>window.__stopStepTrace());
  assert(events.length>0,"transition should generate DOM mutations");
- assert(events.every(event=>!(event.screen==="languages"&&event.optional>0)),
-  "Next step's 'Добавить о себе' must not mount over the languages screen");
  assert(events.every(event=>event.bodies<=1&&event.headings<=1),
-  "No overlapping old/new step DOM trees are allowed");
- await page.locator("textarea[placeholder='Что тебя радует? Чем любишь заниматься?']").fill("Люблю музыку и прогулки");
- await page.getByRole("button",{name:"Подтвердить поле"}).click();
- const optional=page.locator(".optional-profile-toggle");
- await optional.click();
- await page.getByRole("dialog").waitFor();
- await page.getByRole("dialog").getByRole("button",{name:"Назад"}).click();
- await page.getByRole("dialog").waitFor({state:"hidden"});
- // Real app Telegram back is registered; check backwards and forwards too.
+  "No overlapping old/new stage content trees are allowed");
+ assert.equal(await page.locator(".optional-profile-toggle").count(),0,
+  "Profile detail editor must not interrupt fast registration");
+ // Telegram back returns to the previous required step.
  await page.evaluate(()=>window.__luemiQABack?.());
- await stage("languages");
- await next("personality");
+ await stage("intent");
  await next("photos");
  const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9u/JqYQAAAAASUVORK5CYII=","base64");
  await page.locator('input.native-photo-input[type="file"]').setInputFiles([0,1,2].map((i)=>({
@@ -106,11 +92,9 @@ try{
   buffer:Buffer.concat([png,Buffer.from([i])])
  })));
  assert.equal(await page.locator(".mosaic img").count(),3,"three photos are ready");
- await next("review");
- assert.equal(await page.getByRole("img",{name:"Главное фото"}).count(),1);
  await page.getByRole("button",{name:"Создать анкету"}).click();
  await page.getByTestId("qa-synthetic-complete").waitFor({timeout:6000});
  await screenshot("synthetic-published");
  assert.deepEqual(failures,[],"no browser errors through complete registration flow");
- console.log("LUEMI registration motion browser full 8-stage synthetic flow PASS");
+ console.log("LUEMI registration motion browser five-step photo-first synthetic flow PASS");
 }finally{await browser.close();}

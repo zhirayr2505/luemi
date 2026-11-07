@@ -31,7 +31,8 @@ export async function saveRemoteDraft(d:RegistrationDraft,revision:number):Promi
   countryCode:d.countryCode,placeId:d.placeId,radius:d.radius,searchScope:d.searchScope,
   audience:d.audience,ageMin:d.ageMin,ageMax:d.ageMax,goal:d.goal,
   interests:[...d.interests],about:d.about.trim(),languages:[...d.languages],
-  height:d.height,occupation:d.occupation.trim(),education:d.education.trim(),
+  height:d.height,weight:d.weight,occupation:d.occupation.trim(),education:d.education.trim(),
+   smoking:d.smoking,alcohol:d.alcohol,
   lifestyle:[...d.lifestyle],pets:[...d.pets],facts:[...d.facts],family:[...d.family],consentVersion:version};
  return saveRemoteFields(fields,revision);
 }

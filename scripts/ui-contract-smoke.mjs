@@ -37,7 +37,6 @@ assertCheck("single static registration preview with explicit edit and confirm a
 assertCheck("local images remain local only",sorter.includes("snapshot")&&!app.includes("uploadPhoto"));
 
 const realRegistration=read("apps/web/src/registration/v2/RealRegistration.tsx");
-const simpleReview=read("apps/web/src/registration/SimpleProfileReview.tsx");
 const journey=read("apps/web/src/registration/PublicationJourney.tsx");
 assertCheck("single registration consent appears on identity step",
  steps.includes('Я принимаю <a href="/privacy"')&&
@@ -51,12 +50,14 @@ assertCheck("photo selection and sorting finish before network publication",
  realRegistration.includes("findExactDuplicatePhotoIds(photos)")&&
  !app.includes("void syncChosenPhotos(serverConsent)")&&
  !realRegistration.includes("syncChosenPhotos"));
-assertCheck("new review is simple and has a single create-profile action",
- realRegistration.includes('<SimpleProfileReview draft={draft} photos={photos}/>')&&
- realRegistration.includes('onClick={p.onSave}')&&
- realRegistration.includes("Создать анкету")&&
- simpleReview.includes("luemi-simple-review")&&
- !simpleReview.includes("Сохраняем фотографии на сервере"));
+assertCheck("five-step photo-first registration creates profile without optional screens",
+  realRegistration.includes('stage.id==="photos"')&&
+  realRegistration.includes("else p.onSave()")&&
+  realRegistration.includes('onClick={advance}')&&
+  realRegistration.includes("Создать анкету")&&
+  !realRegistration.includes("SimpleProfileReview")&&
+  !realRegistration.includes('id:"languages"')&&
+  !realRegistration.includes('id:"personality"'));
 assertCheck("branded publication curtain starts before private photo upload",
  app.includes('setJourney("publishing")')&&
  app.includes("const uploadedIds=await syncChosenPhotos(true)")&&

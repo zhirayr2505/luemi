@@ -1,9 +1,9 @@
 import {memo,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {FileText,Sparkles,Images,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info} from "lucide-react";
+import {FileText,Sparkles,Images,UserRound,Heart,CalendarDays,ShieldCheck,Languages as LanguagesIcon,Info,Ruler,Scale,BriefcaseBusiness} from "lucide-react";
 import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import {languages} from "../ui/Languages";
-import {goals} from "../registration/model";
+import {goals,type RegistrationDraft} from "../registration/model";
 import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
@@ -21,7 +21,8 @@ export type ProfileRouteMotionHandle={
  suspendForBackground:()=>void;resumeFromBackground:()=>void;
 };
 type Props={
- data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;
+ data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;onReveal?:()=>void;
+ ownerDetails?:RegistrationDraft;
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
@@ -39,10 +40,36 @@ function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;lo
   }}
   onError={e=>{if(photo.fallback&&e.currentTarget.src!==photo.fallback)e.currentTarget.src=photo.fallback;}}/>;
 }
-function About({view}:{view:ProfileView}){
+function OwnerPrivateDetails({data}:{data:RegistrationDraft}){
+ const smoking:Record<string,string>={never:"Не курю",sometimes:"Иногда курю",regularly:"Курю",quitting:"Бросаю курить"};
+ const alcohol:Record<string,string>={never:"Не употребляю алкоголь",occasionally:"Алкоголь по праздникам",sometimes:"Иногда употребляю",regularly:"Употребляю алкоголь"};
+ const items=[
+  data.height?`${data.height} см`:"",
+  data.weight?`${data.weight} кг`:"",
+  data.occupation,data.education,
+  smoking[data.smoking]??"",alcohol[data.alcohol]??"",
+  ...data.lifestyle,...data.pets,...data.family,...data.facts
+ ].map(x=>x.trim()).filter(Boolean);
+ if(!items.length)return null;
+ return <article className="pm-card pm-owner-details">
+  <div className="pm-card-subtitle"><ShieldCheck size={17}/> Только для тебя</div>
+  <p>Дополнительные сведения сохранены в анкете, но пока скрыты от других.</p>
+  <div className="pm-owner-detail-chips">{items.map((item,i)=><span key={i} className="pm-owner-detail-chip">
+   {i===0&&data.height?<Ruler size={14}/>:i===1&&data.weight?<Scale size={14}/>:i===2&&data.occupation?<BriefcaseBusiness size={14}/>:<Sparkles size={14}/>}
+   {item}
+  </span>)}</div>
+ </article>;
+}
+function About({view,onReveal,ownerDetails}:{view:ProfileView;onReveal?:()=>void;ownerDetails?:RegistrationDraft}){
  const p=view.profile,goal=p.goal&&p.goal!=="undecided"?goals.find(g=>g.id===p.goal):null;
  return <div className="pm-card-stack">
+  {view.mode==="owner"&&onReveal&&<button type="button" className="pm-reveal-action" onClick={onReveal}>
+    <Sparkles size={20} aria-hidden="true"/>
+    <span><strong>Раскрой себя</strong><small>Дополнить языки, рост и свою историю</small></span>
+    <span aria-hidden="true">＋</span>
+  </button>}
   {goal&&<article className="pm-card"><div className="pm-card-subtitle"><Heart size={17}/> Цель знакомства</div><strong>{goal.label}</strong></article>}
+  {view.mode==="owner"&&ownerDetails&&<OwnerPrivateDetails data={ownerDetails}/>}
   {p.about&&<article className="pm-card"><h3>Обо мне</h3><p>{p.about}</p></article>}
   {!!p.interests.length&&<article className="pm-card"><h3>Интересы</h3><div className="pm-interests">{p.interests.map(id=><InterestChip key={id} id={id}/>)}</div></article>}
   {!!p.languages.length&&<article className="pm-card"><div className="pm-card-subtitle"><LanguagesIcon size={17}/> Языки общения</div>
@@ -83,7 +110,7 @@ function Meta({view}:{view:ProfileView}){
 }
 
 
-export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,registerBack,
+export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,onReveal,ownerDetails,registerBack,
  active=true,onMotionProgress,registerRouteMotion,gestureArbiter,initialExpanded=false}:Props){
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]),photos=view.photos;
  const [photoId,setPhotoId]=useState<string|null>(photos[0]?.id??null);
@@ -126,7 +153,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  innerBack.current=()=>{closeTop();};
  useEffect(()=>{if(!active)return;registerBack?.(closeTop);return ()=>registerBack?.(null);},[active,closeTop,registerBack]);
  const renderPage=useCallback((id:V3TabId)=>{
-  if(id==="about")return <About view={view}/>;
+  if(id==="about")return <About view={view} onReveal={onReveal} ownerDetails={ownerDetails}/>;
   if(id==="bliki")return <Bliki/>;
   if(id==="meta")return <Meta view={view}/>;
   if(id==="gifts")return <Gifts view={view}/>;
@@ -137,7 +164,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     <PhotoImage photo={photo} alt="" loading="lazy"/>
     {photo.status!=="published"&&<span>{photo.status==="draft"?"Черновик":"Проверка"}</span>}
    </button>)}</div>:<div className="pm-empty"><Images size={37}/><h3>Пока нет доступных фото</h3></div>;
- },[view,photos,openPhoto]);
+ },[view,photos,openPhoto,onReveal,ownerDetails]);
  return <section ref={root} className={"pm-shell v3-profile-host "+(inline?"pm-inline":"pm-dialog")}
    data-sheet-state={expanded?"expanded":"collapsed"} data-morph-state={expanded?"expanded":"compact"}
    role={inline?undefined:"dialog"} aria-modal={inline?undefined:true}

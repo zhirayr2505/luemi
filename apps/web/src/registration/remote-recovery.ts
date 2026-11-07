@@ -28,7 +28,8 @@ export function recoverServerFields(fields:Record<string,unknown>):RegistrationD
   radius:fields.radius,searchScope:fields.searchScope,audience:fields.audience,
   ageMin:fields.ageMin,ageMax:fields.ageMax,goal:fields.goal,
   interests:fields.interests,about:fields.about,languages:fields.languages,
-  height:fields.height,occupation:fields.occupation,education:fields.education,
+  height:fields.height,weight:fields.weight,occupation:fields.occupation,education:fields.education,
+  smoking:fields.smoking,alcohol:fields.alcohol,
   lifestyle:fields.lifestyle,pets:fields.pets,facts:fields.facts,family:fields.family};
  const parsed=parseRegistrationDraft(raw);
  return parsed.ok?parsed.value:null;

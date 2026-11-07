@@ -8,8 +8,9 @@ const v2=load("apps/web/src/registration/v2/RealRegistration.tsx");
 const warm=load("apps/web/src/registration/recommendation-warmup.ts");
 const reg=load("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const media=load("apps/api/src/rem05d-private.ts");
-test("user performs one action from simple swipeable gallery review",()=>{
- assert.match(v2,/<SimpleProfileReview draft=\{draft\} photos=\{photos\}/);
+test("user publishes from photo step without extra mandatory forms",()=>{
+ assert.doesNotMatch(v2,/<SimpleProfileReview|id:"languages"|id:"personality"|id:"review"/);
+ assert.match(v2,/else p\.onSave\(\)/);
  assert.doesNotMatch(v2,/mode="local-self-preview" active/);
  assert.doesNotMatch(v2,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setServerConsent/);
  assert.match(v2,/stage.id==="photos"/);

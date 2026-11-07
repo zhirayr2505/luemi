@@ -1,4 +1,4 @@
-name: LUEMI registration eight-stage browser motion QA
+name: LUEMI five-stage photo-first registration browser motion QA
 on:
   pull_request:
     branches: [main]
@@ -13,7 +13,7 @@ permissions:
   contents: read
 jobs:
   registration-motion-browser:
-    name: Eight stages and responsive IME QA across six device sizes
+    name: Five required stages and responsive IME QA across six device sizes
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -34,7 +34,7 @@ jobs:
           if ! timeout --signal=TERM --kill-after=10s 120s npx --no-install playwright install chromium --with-deps; then
             npx --no-install playwright install chromium
           fi
-      - name: Walk all eight stages and screenshot each
+      - name: Walk all five required stages and screenshot each
         shell: bash
         run: |
           set -euo pipefail
@@ -48,7 +48,7 @@ jobs:
           done
           node scripts/registration-motion-browser.mjs
           node scripts/registration-focus-browser.mjs
-      - name: Preserve synthetic eight-stage screenshots
+      - name: Preserve synthetic five-stage screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
