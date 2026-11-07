@@ -220,7 +220,7 @@ assert.match(preview,/\.v2-canvas:not\(\.v2-runtime\) \.v2-progress\{/,
 const logoAt=form.indexOf('className="v2-header-logo"');
 const progressAt=form.indexOf('className="v2-progress"');
 const headerEndAt=form.indexOf('</header>',progressAt);
-const headingAt=form.indexOf('className="v2-stage-heading"',headerEndAt);
+const headingAt=form.indexOf('className={"v2-stage-heading"+',headerEndAt);
 assert.ok(logoAt>0&&progressAt>logoAt&&headerEndAt>progressAt&&headingAt>headerEndAt,
  "Every step shares the white logo, gradient progress, then the step title");
 
