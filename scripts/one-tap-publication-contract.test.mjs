@@ -8,14 +8,16 @@ const v2=load("apps/web/src/registration/v2/RealRegistration.tsx");
 const warm=load("apps/web/src/registration/recommendation-warmup.ts");
 const reg=load("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const media=load("apps/api/src/rem05d-private.ts");
-test("user publishes from photo step without extra mandatory forms",()=>{
- assert.doesNotMatch(v2,/<SimpleProfileReview|id:"languages"|id:"personality"|id:"review"/);
- assert.match(v2,/else p\.onSave\(\)/);
- assert.doesNotMatch(v2,/mode="local-self-preview" active/);
- assert.doesNotMatch(v2,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setServerConsent/);
- assert.match(v2,/stage.id==="photos"/);
+test("photo preview is separate from final authenticated publication",()=>{
+ assert.match(v2,/id:"about"/);
+ assert.match(v2,/id:"review"/);
+ assert.doesNotMatch(v2,/id:"languages"|id:"personality"/);
+ assert.match(v2,/else nav\(index\+1\)/);
+ assert.match(v2,/case "review":p\.onSave\(\);return/);
+ assert.match(v2,/Посмотреть анкету/);
+ assert.match(v2,/Редактировать/);
  assert.match(v2,/Создать анкету/);
- assert.doesNotMatch(v2,/Проверить модерацию и публикацию/);
+ assert.doesNotMatch(v2,/photoServerCount|photoSyncBusy|onRetryPhotoSync|setServerConsent/);
  assert.match(app,/onSave=\{\(\)=>\{void \(realFeedPilot.enabled\?confirmRealRegistration\(\)/);
 });
 test("incomplete upload never opens a fake registration dashboard",()=>{

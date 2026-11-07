@@ -2,7 +2,7 @@ import {useLayoutEffect,useRef,useState,useEffect,useCallback} from "react";
 import type {PointerEvent as ReactPointerEvent,ChangeEvent} from "react";
 import {createPortal} from "react-dom";
 import {selectionHaptic} from "../ui/haptic";
-import {Plus,X,GripVertical,CheckCircle2,Crown} from "lucide-react";
+import {Plus,X,GripVertical,CheckCircle2} from "lucide-react";
 export interface PhotoItem {id:string;src:string;file:File;preview?:Blob;status?:"reading"|"success"|"ready"|"error";progress?:number;
  serverStatus?:"waiting"|"uploading"|"saved"|"error"}
 interface Props {photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;movePhoto:(from:number,to:number)=>void}
@@ -25,7 +25,40 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
  const lastFrameTime=useRef(0);
  const scrollBounds=useRef<{node:Element}|null>(null);
  const [drag,setDrag]=useState<Drag|null>(null);
- const display=drag?reorder(photos,drag.source,drag.target):photos;
+ const hasAtLeastTwoPhotos=photos.length>=2;
+ const [showTip,setShowTip]=useState(false);
+ const [tipPosition,setTipPosition]=useState({left:0,top:0});
+ const tipShown=useRef(false);
+ const dismissTip=useCallback(()=>setShowTip(false),[]);
+ useEffect(()=>{
+  if(!hasAtLeastTwoPhotos||tipShown.current)return;
+  tipShown.current=true;
+  try{
+   if(window.sessionStorage.getItem("luemi-photo-handle-tip-v1")==="shown")return;
+   window.sessionStorage.setItem("luemi-photo-handle-tip-v1","shown");
+  }catch{/* A private WebView can forbid session storage. */}
+  let timer=0,frame=0;
+  frame=requestAnimationFrame(()=>{
+   const handle=mosaic.current?.querySelector<HTMLElement>(".photo-drag-handle");
+   if(!handle)return;
+   const rect=handle.getBoundingClientRect();
+   setTipPosition({
+    left:Math.min(Math.max(10,window.innerWidth-226),Math.max(10,rect.right-208)),
+    top:Math.max(10,rect.top-83)
+   });
+   setShowTip(true);
+   timer=window.setTimeout(dismissTip,3400);
+  });
+  document.addEventListener("pointerdown",dismissTip,{capture:true});
+  return ()=>{
+   cancelAnimationFrame(frame);window.clearTimeout(timer);
+   document.removeEventListener("pointerdown",dismissTip,true);
+  };
+ },[hasAtLeastTwoPhotos,dismissTip]);
+ // Keep photo DOM nodes stationary during pointer capture. Moving keyed nodes
+ // mid-drag can dispatch lostpointercapture in Telegram Android WebView.
+ // Perform one atomic reorder on release; FLIP animates the settled slots.
+ const display=photos;
  const displaySignature=display.map(x=>x.id).join("|");
  const stopFrame=useCallback(()=>{
   if(scrollFrame.current!==null){cancelAnimationFrame(scrollFrame.current);scrollFrame.current=null;}
@@ -37,8 +70,9 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
   stopFrame();
   pending.current=null;dragRef.current=null;scrollBounds.current=null;
   setDrag(null);setPhase(reason);
-  if(active&&mosaic.current?.hasPointerCapture(active.pointer)){
-   try{mosaic.current.releasePointerCapture(active.pointer);}catch{/* detached element */}
+  const handle=active?itemRefs.current.get(active.id)?.querySelector<HTMLButtonElement>(".photo-drag-handle"):null;
+  if(active&&handle?.hasPointerCapture(active.pointer)){
+   try{handle.releasePointerCapture(active.pointer);}catch{/* detached element */}
   }
  },[stopFrame]);
  const idsSignature=photos.map(item=>item.id).join("|");
@@ -86,11 +120,20 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
  },[displaySignature,drag?.id]);
  // Hit-testing uses viewport client coordinates; no stale rect cache after scroll.
  const hitTarget=(x:number,y:number,current:Drag):number=>{
-  const hit=document.elementFromPoint(x,y)?.closest("[data-photo-slot]");
-  const index=hit?.getAttribute("data-photo-slot");
-  if(index===null||index===undefined)return current.target;
-  const target=Number(index);
-  return Number.isInteger(target)?Math.max(0,Math.min(photosRef.current.length-1,target)):current.target;
+  const region=mosaic.current?.getBoundingClientRect();
+  if(!region||x<region.left-22||x>region.right+22||y<region.top-22||y>region.bottom+22)return current.target;
+  // Pointer capture can retarget touch events, so use geometry, not elementFromPoint.
+  let candidate=current.target,shortest=Infinity;
+  mosaic.current?.querySelectorAll<HTMLElement>("[data-photo-slot]").forEach(node=>{
+   const index=Number(node.dataset.photoSlot);
+   if(!Number.isInteger(index)||index>=photosRef.current.length)return;
+   const rect=node.getBoundingClientRect();
+   const cx=Math.max(rect.left,Math.min(x,rect.right));
+   const cy=Math.max(rect.top,Math.min(y,rect.bottom));
+   const distance=(x-cx)**2+(y-cy)**2;
+   if(distance<shortest){shortest=distance;candidate=index;}
+  });
+  return candidate;
  };
  const repaintDrag=(x:number,y:number)=>{
   const current=dragRef.current;
@@ -139,7 +182,9 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
   if(event.pointerType==="mouse"&&event.button!==0)return;
   if(event.isPrimary===false||contacts.current.size!==1)return;
   const handle=!!(event.target as HTMLElement).closest(".photo-drag-handle");
-  if((event.target as HTMLElement).closest("button")&&!handle)return;
+  // A normal photograph swipe must remain native scrolling. Only the handle drags.
+  if(!handle)return;
+  dismissTip();
   if(pending.current)cancel();
   const element=itemRefs.current.get(id);if(!element)return;
   const pendingItem:Pending={
@@ -159,12 +204,16 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
    const region=mosaic.current?.closest(".onboard-body,.v2-body");
    scrollBounds.current=region?{node:region}:null;
    dragRef.current=value;setDrag(value);setPhase("dragging");
-   try{mosaic.current?.setPointerCapture(pendingItem.pointer);}
+   // Android touch already implicitly captures on the tapped handle.
+   // Capturing an ancestor would trigger lostpointercapture on the handle
+   // and could cancel the drag before a move has happened.
+   const button=element.querySelector<HTMLButtonElement>(".photo-drag-handle");
+   try{button?.setPointerCapture(pendingItem.pointer);}
    catch{/* native WebView may refuse capture, pointercancel still cleans up */}
    selectionHaptic();
    scheduleScroll();
   };
-  if(handle)start();else pendingItem.timer=window.setTimeout(start,275);
+  start();
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const p=pending.current;
@@ -230,14 +279,12 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
            if(event.key==="ArrowLeft"||event.key==="ArrowUp"){event.preventDefault();movePhoto(i,Math.max(0,i-1));}
            if(event.key==="ArrowRight"||event.key==="ArrowDown"){event.preventDefault();movePhoto(i,Math.min(photos.length-1,i+1));}
          }:undefined}
-         className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.id===photo?.id?" drag-source":"")}>
+         className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.id===photo?.id?" drag-source":"")+(drag?.target===i&&drag.target!==drag.source?" drag-target":"")}>
          {photo?<>{photo.src&&<img src={photo.src} alt={"Фото "+(i+1)} draggable={false} decoding="async"/>}
-           <span className="slot-index">{i+1}</span>
+           {i>0&&<span className="slot-index">{i+1}</span>}
            {i===0&&<span className="primary-photo">Главное</span>}
            <button className="remove-photo" type="button" onClick={()=>removePhoto(photo.id)} aria-label={"Удалить фото "+(i+1)}><X size={14}/></button>
            <button className="photo-drag-handle" type="button" aria-label={"Перетащить фото "+(i+1)}><GripVertical size={18}/></button>
-           {i>0&&<button className="photo-make-main" type="button" onClick={()=>movePhoto(i,0)}
-             aria-label={"Сделать фото "+(i+1)+" главным"} title="Сделать главным"><Crown size={17}/></button>}
            {photo.status==="reading"&&<div className="photo-processing" aria-label="Подготовка фотографии">
              <div className="photo-processing-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100}
                aria-valuenow={photo.progress??0}><span style={{width:(photo.progress??0)+"%"}}/></div>
@@ -254,8 +301,13 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
      style={{left:0,top:0,width:drag.width,height:drag.height}}>
      <img src={photos[drag.source]?.src} alt=""/><GripVertical size={16}/>
    </div>,document.body)}
-   <div className="sort-tip"><GripVertical size={16}/><span>Потяни за значок или удерживай фото. Корона сразу сделает снимок главным.</span></div>
+   <div className="sort-tip"><GripVertical size={16}/><span>Чтобы изменить порядок, потяни за квадратный значок на фото.</span></div>
    <p className="photo-count" role="status">Выбрано: {photos.length} / 6 · Первое фото главное</p>
-   <p className="hint">Порядок фотографий сохранится в анкете. Главное фото — первое.</p>
+   {showTip&&createPortal(<div className="photo-handle-tooltip" role="status"
+      style={{left:tipPosition.left,top:tipPosition.top}} aria-label="Подсказка по порядку фото">
+      Потяни отсюда, чтобы поменять порядок
+      <span className="photo-handle-tooltip-tail" aria-hidden="true"/>
+     </div>,document.body)}
+   <p className="hint">Первое фото будет главным. Ты можешь поменять порядок до публикации.</p>
  </div>;
 }

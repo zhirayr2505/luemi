@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {flushSync} from "react-dom";
-import {ArrowRight,Check,LoaderCircle,ShieldCheck} from "lucide-react";
+import {ArrowRight,Check,Eye,LoaderCircle,Pencil} from "lucide-react";
+import {RegistrationReview} from "./RegistrationReview";
 import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {findExactDuplicatePhotoIds} from "./duplicate-photos";
@@ -39,7 +40,9 @@ const visualStages=[
  {id:"birthday",title:"Дата рождения",subtitle:"Твой возраст будет виден другим пользователям"},
  {id:"location",title:"Где ты сейчас?",subtitle:"Твоё местоположение помогает находить людей рядом"},
  {id:"intent",title:"Кого ты хочешь встретить?",subtitle:"Настрой знакомства так, как тебе нравится"},
- {id:"photos",title:"Твои фотографии",subtitle:"От 3 до 6 фото — и можно знакомиться"}
+ {id:"about",title:"Расскажи о себе",subtitle:"Твоя история и интересы помогут найти близких по духу людей"},
+ {id:"photos",title:"Твои фотографии",subtitle:"От 3 до 6 фото — первое станет главным"},
+ {id:"review",title:"Так выглядит твоя анкета",subtitle:"Посмотри на себя глазами других — пока ничего не опубликовано"}
 ] as const;
 type VisualStage={id:string;title:string;subtitle:string};
 type IdentityError={field:"name"|"date"|"city"|"about";message:string};
@@ -52,7 +55,7 @@ function restoredStage(draft:RegistrationDraft,photos:PhotoItem[]):number{
     !(draft.gender==="man"||draft.gender==="woman")||!draft.trialConsent?"birthday":
   !selectedCityValid(draft)?"location":
   validateStep(draft,4,photos.length,new Date(),"live")!==null?"intent":
-  "photos";
+  photos.length>0?"photos":draft.about.trim()||draft.interests.length?"photos":"about";
  return visualStages.findIndex(item=>item.id===target);
 }
 function dateIssue(draft:RegistrationDraft,today=new Date()):string|null{
@@ -70,7 +73,7 @@ function dateIssue(draft:RegistrationDraft,today=new Date()):string|null{
 export function RealRegistrationV2(p:Props){
  const {draft,photos}=p;
  const stages:readonly VisualStage[]=visualStages;
- const [index,setIndex]=useState(()=>p.resumeReview?stages.length-1:p.restored?restoredStage(draft,photos):0);
+ const [index,setIndex]=useState(()=>p.resumeReview&&photoReady(photos)?stages.length-1:p.restored?restoredStage(draft,photos):0);
  const recoveryApplied=useRef(p.restored);
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
@@ -153,10 +156,10 @@ export function RealRegistrationV2(p:Props){
  useEffect(()=>{
   if(!p.restored||recoveryApplied.current)return;
   recoveryApplied.current=true;
-  if(p.resumeReview)return;
+  if(p.resumeReview&&photoReady(photos)){setIndex(stages.length-1);return;}
   setIndex(restoredStage(draft,photos));
- },[p.restored,p.resumeReview,draft,photos]);
- /* One sequential motion across all five registration steps. Android
+ },[p.restored,p.resumeReview,draft,photos,stages.length]);
+ /* One sequential motion across all seven registration steps. Android
     WebView must not capture incoming content over an outgoing body. */
  const nav=(target:number)=>{
   const next=Math.min(stages.length-1,Math.max(0,target));
@@ -241,16 +244,18 @@ export function RealRegistrationV2(p:Props){
     break;
    }
    case "intent":issue=validateStep(draft,4,photos.length,new Date(),"live");break;
+   case "about":issue=validateStep(draft,5,photos.length,new Date(),"live")??validateStep(draft,6,photos.length,new Date(),"live");break;
    case "photos":
     if(!photoReady(photos)){issue="Выбери от 3 до 6 готовых фотографий.";break;}
     if(photoChecking)return;
     setPhotoChecking(true);
     void findExactDuplicatePhotoIds(photos).then(ids=>{
       if(ids.length)setHint("Обнаружены одинаковые фотографии. Замени повторяющиеся снимки.");
-      else p.onSave();
+      else nav(index+1);
     }).catch(()=>setHint("Не удалось проверить повтор фотографий. Попробуй снова."))
       .finally(()=>setPhotoChecking(false));
     return;
+   case "review":p.onSave();return;
   }
   if(issue){setHint(messageFor(issue));return;}
   nav(index+1);
@@ -264,13 +269,14 @@ export function RealRegistrationV2(p:Props){
   }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft,identityError,handleFieldFocus]);
  const step=(n:number,personalityPart?:"about"|"languages")=><RegistrationStep {...stepProps} step={n} personalityPart={personalityPart}/>;
  const savedDraftAllowed=identityReady&&locationReady&&intentReady&&
-  photoReady(photos)&&!p.serverSaving;
+  photoReady(photos)&&!p.serverSaving&&!changingStep;
  const continueReady=stage.id==="identity"?nameValid(draft.name):
    stage.id==="birthday"?dateValid&&genderReady&&draft.trialConsent:
    stage.id==="location"?locationReady:
    stage.id==="intent"?intentReady:
+   stage.id==="about"?validateStep(draft,5,photos.length,new Date(),"live")===null&&validateStep(draft,6,photos.length,new Date(),"live")===null:
    stage.id==="photos"?photoReady(photos):true;
- const fieldConfirmActive=["identity","birthday","location"].includes(stage.id)&&focusedField!==null;
+ const fieldConfirmActive=["identity","birthday","location","about"].includes(stage.id)&&focusedField!==null;
 
  return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme={p.theme}
    data-fallback-entry={p.fallbackEntry?"true":undefined}
@@ -300,12 +306,14 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="birthday"&&<div className="v2-real-groups">{step(2)}<RegistrationConsent data={draft} patch={p.patch}/></div>}
        {stage.id==="location"&&step(3)}
        {stage.id==="intent"&&step(4)}
-       {stage.id==="photos"&&<div className="v2-real-groups">
-        {step(7)}
-        <div className="v2-note"><ShieldCheck size={18}/>
-         Добавь свои чёткие фотографии. Потяни за значок на снимке или нажми корону, чтобы выбрать главное фото.
-        </div>
+       {stage.id==="about"&&<div className="v2-real-groups v2-about-groups">
+        {step(6,"about")}
+        <div className="v2-about-interest-heading"><strong>Что тебе нравится?</strong><span>{draft.interests.length} / 15</span></div>
+        {step(5)}
+        <p className="v2-about-footnote">Можно дополнить позже в разделе «Раскрой себя».</p>
        </div>}
+       {stage.id==="photos"&&<div className="v2-real-groups">{step(7)}</div>}
+       {stage.id==="review"&&<RegistrationReview data={draft} photos={photos}/>}
        {p.storageError&&<p role="alert" className="v2-feedback">
         Не удалось сохранить черновик на устройстве.<button type="button" onClick={p.onRetryStorage}>Повторить</button>
        </p>}
@@ -315,9 +323,17 @@ export function RealRegistrationV2(p:Props){
      <footer className={"v2-footer"+(fieldConfirmActive?" is-focus-confirm":"")}>
        {stage.id==="photos"?<div className="v2-footer-review">
         <button type="button" className="v2-publish v2-draft-save"
-          disabled={!savedDraftAllowed||photoChecking} aria-busy={p.serverSaving||photoChecking} onClick={advance}>
-          {p.serverSaving||photoChecking?<LoaderCircle size={19} className="v2-next-spinner"/>:<Check size={18}/>}
-          {p.serverSaving?"Создаём…":photoChecking?"Проверяем фото…":"Создать анкету"}
+          disabled={!savedDraftAllowed||photoChecking} aria-busy={photoChecking} onClick={advance}>
+          {photoChecking?<LoaderCircle size={19} className="v2-next-spinner"/>:<Eye size={18}/>}
+          {photoChecking?"Проверяем фото…":"Посмотреть анкету"}
+        </button>
+       </div>:stage.id==="review"?<div className="v2-footer-review v2-review-actions">
+        <button type="button" className="v2-review-edit" disabled={p.serverSaving||changingStep}
+          onClick={()=>nav(index-1)}><Pencil size={17}/> Редактировать</button>
+        <button type="button" className="v2-publish v2-review-create" disabled={!savedDraftAllowed||p.serverSaving}
+          aria-busy={p.serverSaving} onClick={advance}>
+          {p.serverSaving?<LoaderCircle size={18} className="v2-next-spinner"/>:<Check size={18}/>}
+          {p.serverSaving?"Создаём…":"Создать анкету"}
         </button>
        </div>:<>
        <div className={"v2-footer-nav"+(fieldConfirmActive?" is-focus-confirm":"")}>

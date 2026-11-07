@@ -35,10 +35,22 @@ assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"
 assert.match(steps,/Я принимаю <a href="\/privacy"/,"Public policy acceptance must appear on the first identity step");
 assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
-assert.match(form,/const stages:readonly VisualStage\[\]=visualStages/,"Every account follows five required steps");
+assert.match(form,/const stages:readonly VisualStage\[\]=visualStages/,"Every account follows seven steps including review");
 assert.match(form,/Создать анкету/,"Single real signup confirmation creates published profile");
-assert.doesNotMatch(form,/<SimpleProfileReview|id:"languages"|id:"personality"|id:"review"/,
- "Signup excludes optional biography, languages and review screens");
+assert.doesNotMatch(form,/id:"languages"|id:"personality"/,
+ "Languages remain optional after signup");
+assert.match(form,/id:"about"/,
+ "About text and interests return before the photo step");
+assert.match(form,/id:"review"/,
+ "Photo step leads to the private profile preview");
+assert.match(form,/stage.id==="about"&&<div className="v2-real-groups v2-about-groups">/,
+ "About and interests share a single scrollable screen");
+assert.match(form,/stage.id==="review"&&<RegistrationReview data=\{draft\} photos=\{photos\}/,
+ "Review uses the local read-only profile projection");
+assert.match(form,/Редактировать/,
+ "Review can return to the photos without publishing");
+assert.match(form,/Посмотреть анкету/,
+ "Photos must never submit directly to the publication pipeline");
 assert.doesNotMatch(form,/mode="local-self-preview" active/,
  "Interactive morph must never interrupt a registration review");
 assert.match(form,/stage.id==="photos"&&<div className="v2-real-groups">/,
@@ -58,7 +70,7 @@ assert.doesNotMatch(form,/id:"face-consent"|id:"liveness"|stage\.id==="main-phot
 assert.match(form,/wordmark_original_raster_alpha_W06\.webp/,
  "The header uses the actual LUEMI mark, not a text approximation");
 assert.match(runtime,/\.v2-header-logo\{[^}]*filter:brightness\(0\) invert\(1\)/s,
- "The same genuine LUEMI logo must be white on all five registration screens");
+ "The same genuine LUEMI logo must be white on all seven registration screens");
 assert.doesNotMatch(form,/<OptionalProfileDetails|stage\.id==="personality"/,
  "Optional data are edited after registration");
 assert.doesNotMatch(form,/v2-footer-optional|v2-stage-transition/,
@@ -349,7 +361,7 @@ assert.match(focusDock,/flagsResize\?\.observe\(watchedFlags\)/,
 // control was seen at the bottom before the outgoing language step vanished.
 // One animation owner must lock both navigation and taps, with a stable footer.
 assert.match(form,/const \[changingStep,setChangingStep\]=useState\(false\)/,
- "All five steps use a single pending-navigation state");
+ "All seven steps use a single pending-navigation state");
 assert.match(form,/if\(next===index\|\|transitioning\.current\)return/,
  "A repeated tap cannot queue a second transition");
 assert.match(form,/if\(transitioning\.current\|\|photoChecking\|\|changingStep\)return/,
@@ -370,8 +382,10 @@ assert.match(runtime,/data-step-moving="true"\] \.v2-body\{pointer-events:none\}
  "Leaving/entering content cannot receive taps");
 assert.match(runtime,/\.v2-next-spinner\{[^}]*animation:luemi-step-spinner/s,
  "The loading spinner occupies the old arrow slot without shifting the footer");
-assert.match(form,/aria-busy=\{p\.serverSaving\|\|photoChecking\}/,
- "Final publication combines duplicate-photo and server loading");
+assert.match(form,/aria-busy=\{photoChecking\}/,
+ "Photo preview checks for duplicates without publication");
+assert.match(form,/aria-busy=\{p\.serverSaving\}/,
+ "Only final confirmation shows server publication loading");
 
 
 // Responsive IME contract: one anchor per focus, changed only for real width /
