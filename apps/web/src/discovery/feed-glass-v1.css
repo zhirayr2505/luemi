@@ -17,7 +17,9 @@
 .lh-browse-control:focus-visible{outline:2px solid #d0a2ed;outline-offset:2px}
 /* Profile/visitor and browse chrome share one stable left-aligned brand row. */
 .discovery-app .discovery-main-panels>.discovery-panel.discovery-browse-panel{
- top:calc(var(--top-safe) + 66px)
+ /* The wordmark is a real 40px pointer target at --brand-top.
+    Do not place "Лента" under it on devices with a small top safe-area. */
+ top:max(calc(var(--top-safe) + 66px),calc(var(--brand-top) + 45px))
 }
 .discovery-app .discovery-top-tabs{
  height:48px;min-height:48px;flex:none;box-sizing:border-box;
