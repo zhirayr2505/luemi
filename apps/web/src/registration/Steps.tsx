@@ -227,7 +227,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      {categories.map(entry=><button type="button" key={entry.name}
        className={"category-chip"+(entry.name===category?" selected":"")} style={tint(entry.colors) as CSSProperties}
        onClick={()=>setCategory(entry.name)} aria-pressed={entry.name===category}>
-       <entry.icon size={17} strokeWidth={1.8}/>{entry.name}
+       <entry.icon size={15} strokeWidth={1.8}/>{entry.name}
      </button>)}
    </div>}
    <div className="chips interest-choices">
