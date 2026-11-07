@@ -4,6 +4,7 @@ import {Flag} from "../ui/Flag";
 import {InterestChip} from "../ui/InterestCatalog";
 import {languages} from "../ui/Languages";
 import {goals,type RegistrationDraft} from "../registration/model";
+import {goalLabel} from "../ui/PersonalizedCopy";
 import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
@@ -61,14 +62,14 @@ function OwnerPrivateDetails({data}:{data:RegistrationDraft}){
  </article>;
 }
 function About({view,onReveal,ownerDetails}:{view:ProfileView;onReveal?:()=>void;ownerDetails?:RegistrationDraft}){
- const p=view.profile,goal=p.goal&&p.goal!=="undecided"?goals.find(g=>g.id===p.goal):null;
+ const p=view.profile,goal=p.goal&&goals.find(g=>g.id===p.goal);
  return <div className="pm-card-stack">
   {view.mode==="owner"&&onReveal&&<button type="button" className="pm-reveal-action" onClick={onReveal}>
     <Sparkles size={20} aria-hidden="true"/>
     <span><strong>Раскрой себя</strong><small>Дополнить языки, рост и свою историю</small></span>
     <span aria-hidden="true">＋</span>
   </button>}
-  {goal&&<article className="pm-card"><div className="pm-card-subtitle"><Heart size={17}/> Цель знакомства</div><strong>{goal.label}</strong></article>}
+  {goal&&<article className="pm-card"><div className="pm-card-subtitle"><Heart size={17}/> Цель знакомства</div><strong>{goalLabel(goal.id,ownerDetails?.gender??p.gender??"")}</strong></article>}
   {view.mode==="owner"&&ownerDetails&&<OwnerPrivateDetails data={ownerDetails}/>}
   {p.about&&<article className="pm-card"><h3>Обо мне</h3><p>{p.about}</p></article>}
   {!!p.interests.length&&<article className="pm-card"><h3>Интересы</h3><div className="pm-interests">{p.interests.map(id=><InterestChip key={id} id={id}/>)}</div></article>}
