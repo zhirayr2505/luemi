@@ -619,3 +619,9 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  .v2-runtime .preferences-step .goals-section .glass-choice,
  .v2-runtime .geo-liquid-scopes button{transition:none}
 }
+
+/* The combined About+Interests screen is a native vertical document. Never
+   inherit the old standalone full-height clip of .interests-step. */
+.v2-runtime .v2-about-groups .interests-step{height:auto;min-height:0;flex:none;overflow:visible;padding:0 0 12px;gap:12px}
+.v2-runtime .v2-about-groups .interests-step .category-row{position:relative;top:auto;max-width:100%}
+.v2-runtime .v2-about-groups .interest-choices{min-height:0;overflow:visible;flex:none;padding-bottom:7px}
