@@ -121,6 +121,7 @@ jobs:
           node scripts/rem-04a-browser-startup.mjs
           node scripts/rem-04b-browser-visual.mjs
           node scripts/rem-04b-browser-six.mjs
+          node scripts/feed-b-visual-capture.mjs
       - name: Preserve browser screenshots and server diagnostics
         if: always()
         continue-on-error: true
@@ -134,5 +135,6 @@ jobs:
             qa-artifacts/rem-01c/**/*.png
             qa-artifacts/rem-01e/**/*.png
             qa-artifacts/rem-04b/six/**
+            qa-artifacts/feed-b-screenshots/**
             /tmp/luemi-vite-qa.log
           if-no-files-found: error
