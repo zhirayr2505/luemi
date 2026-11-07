@@ -70,6 +70,15 @@ try{
  await page.getByRole("button",{name:"Подтвердить поле"}).click();
  await page.locator(".interest-choices button").first().click();
  assert.equal(await page.locator(".v2-about-interest-heading").count(),1);
+ // The expanded catalog uses the same keyboard-stable focus dock. A new
+ // interest far outside the old twelve-tag list must be searchable and saved.
+ await page.getByPlaceholder("Найти интерес…").fill("Космология");
+ await page.locator(".interest-focus-shell.is-focused").waitFor({state:"visible"});
+ await page.getByRole("button",{name:"Подтвердить поле"}).click();
+ await page.locator(".interest-focus-shell.is-focused").waitFor({state:"hidden",timeout:3500});
+ await page.locator(".interest-choices button").filter({hasText:"Космология"}).click();
+ assert.ok(await page.locator(".interest-selected-items").getByText("Космология").count()>0,
+  "new color-tagged interests must remain selected");
  await page.evaluate(()=>{
   const d=document.querySelector(".v2-device");
   const log=[];
