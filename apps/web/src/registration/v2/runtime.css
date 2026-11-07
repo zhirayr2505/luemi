@@ -504,14 +504,6 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  border:0;background:transparent;color:#f7ecfc;font-size:16px;outline:0;appearance:none}
 .v2-runtime .interest-search input::placeholder{color:#aa9cb8}
 .v2-runtime .interest-search-count{font-size:11px;color:#c8b0db;font-variant-numeric:tabular-nums}
-.v2-runtime .interest-selected-group{display:flex;flex-direction:column;gap:10px;
- padding:12px;border-radius:16px;background:rgba(113,83,133,.19);
- border:1px solid rgba(202,162,226,.22)}
-.v2-runtime .interest-selected-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.v2-runtime .interest-selected-heading span{font-size:12px;font-weight:700;color:#ebd6f6}
-.v2-runtime .interest-selected-heading small{font-size:11px;color:#d3b6df}
-.v2-runtime .interest-selected-items{gap:7px}
-.v2-runtime .interest-selected-items .interest-chip{font-size:11px;padding:7px 10px;min-height:33px}
 .v2-runtime .category-row{position:relative;scrollbar-width:none;overscroll-behavior-x:contain;
  padding:5px 1px 10px;gap:8px;touch-action:pan-x}
 .v2-runtime .category-row::-webkit-scrollbar{display:none}
@@ -629,3 +621,41 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .interest-focus-slot{min-height:51px}
 .v2-runtime .interest-focus-shell{min-width:0}
 .v2-runtime .interest-focus-shell.is-focused .interest-search{border-color:#e7b4ee;box-shadow:0 0 0 1px rgba(218,156,233,.25),0 16px 34px rgba(6,2,17,.26)}
+
+
+/* About interests belong to the same existing sticky header, not a second
+   scrollable panel. Keep one horizontal chip row with a fixed block height,
+   even when empty, to avoid scroll jumps on add/remove. */
+.v2-runtime .v2-stage-heading--about{
+ padding-bottom:13px;
+ background:linear-gradient(180deg,var(--luemi-bg-deep,#1c1424) 0%,
+  var(--luemi-bg-deep,#1c1424) 87%,rgba(28,20,36,.96) 95%,
+  rgba(28,20,36,.78) 100%)}
+.v2-runtime .v2-sticky-interests{
+ display:flex;flex-direction:column;gap:7px;min-width:0;
+ margin-top:13px;padding:10px 11px 8px;
+ border:1px solid rgba(204,160,225,.28);border-radius:17px;
+ background:linear-gradient(125deg,rgba(81,56,101,.67),rgba(48,37,66,.85));
+ box-shadow:inset 0 1px rgba(255,255,255,.12),0 5px 17px rgba(9,4,18,.12)}
+.v2-runtime .v2-sticky-interest-heading{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ color:#eeddf6;font-size:12px;line-height:1.2}
+.v2-runtime .v2-sticky-interest-heading strong{font-size:12px;font-weight:700}
+.v2-runtime .v2-sticky-interest-heading span{flex:none;color:#d6b6e4;
+ font-size:11px;font-variant-numeric:tabular-nums}
+.v2-runtime .v2-sticky-interest-strip{
+ display:flex;flex-wrap:nowrap;align-items:center;gap:7px;
+ min-width:0;width:100%;min-height:38px;max-height:38px;
+ padding:1px 2px 3px;overflow-x:auto;overflow-y:hidden;
+ scrollbar-width:none;overscroll-behavior-x:contain;
+ touch-action:pan-x;-webkit-overflow-scrolling:touch}
+.v2-runtime .v2-sticky-interest-strip::-webkit-scrollbar{display:none}
+.v2-runtime .v2-sticky-interest-strip .interest-chip{
+ display:inline-flex;flex:0 0 auto;white-space:nowrap;
+ min-height:33px;max-width:none;margin:0;padding:7px 10px;font-size:11px}
+.v2-runtime .v2-sticky-interest-empty{
+ white-space:nowrap;flex:none;align-self:center;
+ font-size:11px;color:#beacc9}
+@media(max-height:660px){
+ .v2-runtime .v2-stage-heading--about{padding-bottom:10px}
+ .v2-runtime .v2-sticky-interests{margin-top:9px;padding-top:8px;padding-bottom:6px}}
