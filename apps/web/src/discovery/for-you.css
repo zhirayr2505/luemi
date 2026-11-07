@@ -94,3 +94,164 @@
 @media(max-width:350px){.fy-hero-copy{max-width:94%}.fy-rail .fy-tile{flex-basis:144px}
  .fy-manage-row{flex-wrap:wrap}.fy-section-header>button{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.fy-hero-button{transition:none}.fy-scroll{scroll-behavior:auto}}
+
+
+/* 2026-11-07 · Real For You category hub.
+   Intentionally scoped to .fy-real: the demo component remains untouched.
+   Glass is static on scrolling surfaces to avoid costly Android WebView blur. */
+.fy-real{
+ --fy-glass:linear-gradient(140deg,rgba(87,67,89,.72),rgba(46,34,55,.85));
+ --fy-line:rgba(232,195,241,.19);
+ --fy-text:#faf4fb;--fy-muted:#c7bacd;--fy-accent:#d5a2c8;
+ color:var(--fy-text);
+}
+.fy-real .fy-scroll{
+ padding:7px 1px 38px;scrollbar-width:none;
+ overscroll-behavior-y:contain;touch-action:pan-y;overflow-anchor:none;
+}
+.fy-real .fy-scroll::-webkit-scrollbar{display:none}
+.fy-real .fy-scroll>*{max-width:620px}
+.fy-real .fy-topic-chips{display:grid;gap:7px;padding:2px 1px 0}
+.fy-real .fy-chip-row{display:flex;justify-content:center;gap:7px;min-width:0}
+.fy-real .fy-chip{
+ display:flex;flex:1 1 0;min-width:0;min-height:37px;align-items:center;
+ justify-content:center;gap:6px;padding:6px 7px;border-radius:999px;
+ border:1px solid var(--fy-line);background:var(--fy-glass);
+ color:var(--fy-text);font:inherit;font-size:11px;font-weight:660;
+ white-space:nowrap;box-shadow:inset 0 1px rgba(255,255,255,.08);
+ touch-action:manipulation;transition:background-color .15s ease,transform .15s ease;
+}
+.fy-real .fy-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.fy-real .fy-chip svg{flex:none;color:#dfb7e6}
+.fy-real .fy-chip-active{
+ border-color:rgba(244,183,232,.38);
+ background:linear-gradient(130deg,rgba(150,99,155,.75),rgba(102,64,119,.8));
+ box-shadow:inset 0 1px rgba(255,238,253,.2),0 3px 12px rgba(39,19,47,.18);
+}
+.fy-real .fy-chip:active,.fy-real .fy-customize button:active{transform:scale(.97)}
+.fy-real .fy-chip:focus-visible,.fy-real .fy-customize button:focus-visible,
+.fy-real .fy-avatar:focus-visible,.fy-real .fy-save:focus-visible,
+.fy-real .fy-tile-photo:focus-visible,.fy-real .fy-section-header button:focus-visible{
+ outline:2px solid var(--luemi-focus,#d8b6df);outline-offset:2px;
+}
+.fy-real .fy-customize{
+ display:flex;justify-content:space-between;align-items:center;min-height:43px;
+ gap:8px;margin-top:11px;padding:0 11px;border-radius:16px;
+ border:1px solid var(--fy-line);
+ background:linear-gradient(106deg,rgba(97,65,103,.62),rgba(58,40,69,.82));
+ box-shadow:inset 0 1px rgba(255,255,255,.1);
+}
+.fy-real .fy-customize>span{display:flex;align-items:center;gap:9px;
+ font-size:12px;font-weight:710;min-width:0;white-space:nowrap}
+.fy-real .fy-customize>span svg{color:#e6b9ef;flex:none}
+.fy-real .fy-customize button{display:flex;align-items:center;gap:5px;
+ min-height:37px;padding:0 0 0 7px;color:#f0d5ed;font-size:11px;
+ font-weight:680;background:none;border:0;white-space:nowrap}
+.fy-real .fy-intro{margin-top:17px}
+.fy-real .fy-section{margin-top:16px}
+.fy-real .fy-section-header{display:flex;align-items:center;
+ justify-content:space-between;gap:8px;margin:0 1px 9px}
+.fy-real .fy-section-header h3{
+ display:flex;gap:7px;align-items:center;min-width:0;margin:0;
+ color:var(--fy-text);font-size:clamp(14px,3.9vw,18px);
+ line-height:1.3;font-weight:750;letter-spacing:-.025em;
+}
+.fy-real .fy-section-header h3 svg{width:17px;height:17px;
+ color:#d9a4df;flex:none}
+.fy-real .fy-section-header>button{display:flex;align-items:center;
+ flex:none;gap:3px;min-height:29px;padding:3px 2px 3px 6px;
+ border:0;background:none;color:#e4b7e8;font-size:11px;font-weight:730}
+.fy-real .fy-avatar-rail{
+ display:flex;gap:9px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+ -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+ touch-action:pan-x pan-y;padding:1px 2px 7px;
+}
+.fy-real .fy-avatar-rail::-webkit-scrollbar{display:none}
+.fy-real .fy-avatar{flex:none;display:flex;flex-direction:column;gap:4px;
+ align-items:center;padding:0;border:0;background:none;color:var(--fy-muted);
+ width:clamp(54px,15vw,65px);min-width:0;text-align:center}
+.fy-real .fy-avatar-photo{
+ width:clamp(53px,14.9vw,64px);height:clamp(53px,14.9vw,64px);
+ border-radius:50%;display:grid;place-items:center;position:relative;isolation:isolate;
+ overflow:hidden;border:2px solid rgba(203,153,211,.76);
+ background:linear-gradient(145deg,#6d4d7d,#3c2c47);
+ box-shadow:inset 0 0 0 2px rgba(28,19,36,.8);
+ color:#f7d5ec;font-weight:760;font-size:20px;
+}
+.fy-real .fy-avatar-photo img{position:absolute;inset:2px;width:calc(100% - 4px);
+ height:calc(100% - 4px);object-fit:cover;border-radius:50%;pointer-events:none}
+.fy-real .fy-avatar-name{max-width:100%;white-space:nowrap;overflow:hidden;
+ text-overflow:ellipsis;font-size:10px;line-height:1.3}
+.fy-real .fy-avatar-all .fy-avatar-photo{color:#f0d0ef;border-color:var(--fy-line)}
+.fy-real .fy-rail{gap:8px;padding:1px 2px 8px}
+.fy-real .fy-rail .fy-tile{flex:0 0 clamp(130px,35.5vw,166px)}
+.fy-real .fy-tile-photo{width:100%;aspect-ratio:4/5;
+ display:block;position:relative;isolation:isolate;overflow:hidden;
+ border:1px solid rgba(235,202,241,.24);border-radius:17px;
+ background:linear-gradient(145deg,#614663,#352638);
+ box-shadow:inset 0 1px rgba(255,255,255,.12),0 4px 12px rgba(8,4,12,.16);
+}
+.fy-real .fy-photo-fallback{position:absolute;inset:0;display:grid;
+ place-items:center;color:#f4d4f3;font-size:42px;font-weight:770}
+.fy-real .fy-tile-photo img{position:absolute;inset:0;width:100%;height:100%;
+ object-fit:cover;pointer-events:none}
+.fy-real .fy-tile-fade{inset:34% 0 0;background:
+ linear-gradient(to bottom,rgba(24,14,28,0),rgba(24,14,28,.46) 42%,rgba(22,13,29,.9))}
+.fy-real .fy-tile-info{bottom:9px;left:9px;right:9px;gap:3px}
+.fy-real .fy-tile-info strong{font-size:13px;line-height:1.2;
+ font-weight:780;letter-spacing:-.015em}
+.fy-real .fy-tile-info .fy-tile-location{font-size:10px;line-height:1.15;
+ display:flex;align-items:center;gap:4px;color:#f4e9f6}
+.fy-real .fy-tile-location img{position:static;width:auto;height:auto;object-fit:contain}
+.fy-real .fy-tile-info .fy-tile-detail{display:-webkit-box;
+ -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+ white-space:normal;margin-top:3px;font-size:9px;font-weight:500;
+ line-height:1.3;color:#f0ddf0;max-height:2.6em}
+.fy-real .fy-save{top:7px;right:7px;width:28px;height:28px;
+ border:1px solid rgba(255,255,255,.25);color:#fff;
+ background:rgba(47,32,53,.66);box-shadow:none;backdrop-filter:none;
+ -webkit-backdrop-filter:none}
+.fy-real .fy-save.selected{background:rgba(165,109,166,.94)}
+.fy-real .fy-rail-compact .fy-tile{flex-basis:clamp(86px,25vw,108px)}
+.fy-real .fy-rail-compact .fy-tile-photo{aspect-ratio:4/5;border-radius:15px}
+.fy-real .fy-rail-compact .fy-tile-info{left:6px;right:6px;bottom:7px}
+.fy-real .fy-rail-compact .fy-tile-info strong{font-size:11px}
+.fy-real .fy-rail-compact .fy-tile-location{font-size:9px}
+.fy-real .fy-rail-compact .fy-save{top:5px;right:5px;width:25px;height:25px}
+.fy-real .fy-section-unavailable .fy-section-header{margin-bottom:6px}
+.fy-real .fy-empty{min-height:51px;padding:11px 13px;border-radius:14px;
+ background:rgba(70,50,77,.53);border:1px solid var(--fy-line);
+ color:var(--fy-muted);font-size:11px;line-height:1.35}
+.fy-real .fy-empty svg{color:#d9a4df;flex:none}
+.fy-real .fy-load-more{padding:19px 8px 0}
+.fy-real .fy-load-more button{width:100%;display:flex;align-items:center;
+ justify-content:center;gap:8px;min-height:44px;border-radius:14px;
+ border:1px solid var(--fy-line);color:var(--fy-text);background:var(--fy-glass);
+ font-weight:690;font-size:12px}
+.fy-real .fy-load-more button:disabled{opacity:.55}
+.fy-real .fy-legal{padding:16px 14px 28px;font-size:10px;line-height:1.5}
+.fy-real .fy-expanded,.fy-real .fy-manage{background:#211725}
+.fy-real .fy-expanded>header,.fy-real .fy-manage>header{padding:10px 7px 12px}
+.fy-real .fy-expanded>header h2,.fy-real .fy-manage h2{font-size:18px;color:#faf4fb}
+.fy-real .fy-expanded>header p,.fy-real .fy-manage>header p{color:#c7bacd}
+.fy-real .fy-back{background:var(--fy-glass);color:#faf4fb;border:1px solid var(--fy-line)}
+.fy-real .fy-grid{gap:12px 9px;padding:5px 2px 24px}
+.fy-real .fy-grid .fy-tile-photo{aspect-ratio:4/5}
+.fy-real .fy-manage{padding:9px 2px}
+.fy-real .fy-manage-row{background:var(--fy-glass);border-color:var(--fy-line)}
+.fy-real .fy-manage-row>span{color:#f7edf8}
+.fy-real .fy-manage-row button{color:#f0e6f3}
+.fy-real .fy-manage-row button[aria-pressed=true]{color:#e7a4e6}
+.fy-real .fy-manage footer button{background:var(--fy-glass);color:#faf4fb;
+ border-color:var(--fy-line)}
+.fy-real .fy-manage footer button:last-child{background:linear-gradient(120deg,#98719d,#bc8eaa);color:white}
+@media(max-width:355px){
+ .fy-real .fy-chip{gap:4px;padding:5px 4px;font-size:10px}
+ .fy-real .fy-chip svg{width:13px;height:13px}
+ .fy-real .fy-avatar-rail{gap:7px}
+ .fy-real .fy-section-header h3{font-size:14px}
+}
+@media(prefers-reduced-motion:reduce){
+ .fy-real .fy-chip{transition:none}
+ .fy-real .fy-avatar-rail,.fy-real .fy-rail{scroll-behavior:auto}
+}
