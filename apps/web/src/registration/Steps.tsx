@@ -2,11 +2,12 @@ import {useEffect,useRef,useState} from "react";
 import {remoteDraftPilot} from "./server-draft";
 import {realFeedPilot} from "./real-live-client";
 import type {CSSProperties,ReactNode} from "react";
-import {Info} from "lucide-react";
+import {Info,Search,CheckCircle2} from "lucide-react";
+import {goalLabel} from "../ui/PersonalizedCopy";
 import {goals,goalIcons} from "../ui/Goals";
 import {LanguagePicker} from "./LanguagePicker";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
-import {categories,InterestChip,tint} from "../ui/InterestCatalog";
+import {categories,interests,InterestChip,tint} from "../ui/InterestCatalog";
 import {GeoPicker} from "./GeoPicker";
 import {PhotoSorter,type PhotoItem} from "./PhotoSorter";
 import {RegistrationPreview} from "./Preview";
@@ -59,6 +60,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const nameInput=useRef<HTMLInputElement>(null);
  const dobInput=useRef<HTMLInputElement>(null);
  const [category,setCategory]=useState("Популярное");
+ const [interestQuery,setInterestQuery]=useState("");
  const [nameFocused,setNameFocused]=useState(false);
  const [dobFocused,setDobFocused]=useState(false);
  const [aboutFocused,setAboutFocused]=useState(false);
@@ -125,7 +127,10 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    }else setDateInputError("");
  };
  const toggleInterest=(value:string)=>patch({interests:data.interests.includes(value)
-   ?data.interests.filter(x=>x!==value):data.interests.length>=15?data.interests:[...data.interests,value]});
+   ?data.interests.filter(x=>x!==value):data.interests.length>=20?data.interests:[...data.interests,value]});
+ const visibleInterests=interestQuery.trim().length>0
+  ?interests.filter(item=>item.name.toLocaleLowerCase("ru").includes(interestQuery.trim().toLocaleLowerCase("ru")))
+  :categories.find(x=>x.name===category)?.items??[];
  if(step===1)return <div className="form-stack step-name">
    <div className="focus-field-slot"><div ref={node=>{nameDock.shellRef.current=node;}}
      className={"focus-field-shell name-focus-shell"+(nameFocused?" is-focused":"")+(fieldError?.field==="name"?" has-error":"")}>
@@ -184,24 +189,42 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    <DoubleAgeRange min={data.ageMin} max={data.ageMax} onChange={(ageMin,ageMax)=>patch({ageMin,ageMax})}/>
    <div className="goals-section"><ChoiceRow label="Цель знакомства">
      {goals.map(goal=>{
-       const Icon=goalIcons[goal.id];
-       return <GlassChoice key={goal.id} chosen={data.goal===goal.id} icon={<Icon size={22}/>}
-         onClick={()=>patch({goal:goal.id})}><span className="goal-card-label">{goal.label}</span></GlassChoice>;
+       const Icon=goalIcons[goal.id],selected=data.goal===goal.id;
+       return <GlassChoice key={goal.id} chosen={selected}
+        icon={<Icon size={23} strokeWidth={1.7}/>}
+        onClick={()=>patch({goal:goal.id})}>
+         {selected&&<CheckCircle2 size={18} className="goal-glass-check" aria-hidden="true"/>}
+         <span className="goal-card-label">{goalLabel(goal.id,data.gender)}</span>
+       </GlassChoice>;
      })}
    </ChoiceRow></div>
  </div>;
  if(step===5)return <div className="form-stack interests-step">
-   <div className="category-row" role="group" aria-label="Категории интересов">
+   <label className="interest-search" aria-label="Найти интерес">
+    <Search size={18} aria-hidden="true"/>
+    <input type="search" autoComplete="off" maxLength={65} value={interestQuery}
+     onChange={e=>setInterestQuery(e.target.value)} placeholder="Найти интерес…" />
+    <span className="interest-search-count">{interests.length}</span>
+   </label>
+   {data.interests.length>0&&<div className="interest-selected-group">
+    <div className="interest-selected-heading"><span>Мои интересы</span><small>{data.interests.length} / 20</small></div>
+    <div className="chips interest-selected-items">
+     {data.interests.map(id=><InterestChip key={id} id={id} selected onClick={()=>toggleInterest(id)}/>)}
+    </div>
+   </div>}
+   {!interestQuery&&<div className="category-row" role="group" aria-label="Категории интересов">
      {categories.map(entry=><button type="button" key={entry.name}
        className={"category-chip"+(entry.name===category?" selected":"")} style={tint(entry.colors) as CSSProperties}
        onClick={()=>setCategory(entry.name)} aria-pressed={entry.name===category}>
        <entry.icon size={17} strokeWidth={1.8}/>{entry.name}
      </button>)}
-   </div>
+   </div>}
    <div className="chips interest-choices">
-     {categories.find(x=>x.name===category)?.items.map(item=>
+     {visibleInterests.map(item=>
        <InterestChip key={item.id} id={item.id} selected={data.interests.includes(item.id)} onClick={()=>toggleInterest(item.id)}/>)}
    </div>
+   {interestQuery&&visibleInterests.length===0&&<p className="interest-no-results">Такого интереса пока нет. Попробуй другое слово.</p>}
+   {data.interests.length>=20&&<p className="interest-max-hint">Выбрано 20 интересов. Убери один, чтобы выбрать другой.</p>}
  </div>;
  if(step===6&&personalityPart==="languages")return <div className="form-stack languages-step">
    <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}
