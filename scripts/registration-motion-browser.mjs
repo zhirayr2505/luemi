@@ -68,7 +68,23 @@ try{
  await next("about");
  await page.getByPlaceholder("Что тебя радует? Чем любишь заниматься?").fill("Люблю музыку и прогулки по городу.");
  await page.getByRole("button",{name:"Подтвердить поле"}).click();
+ assert.equal(await page.locator(".v2-sticky-interests.is-visible").count(),0,
+  "empty selected-interests section is not shown");
+ assert.ok(await page.locator(".v2-sticky-interests").evaluate(node=>node.getBoundingClientRect().height)<3,
+  "empty sticky area consumes no extra vertical space");
  await page.locator(".interest-choices button").first().click();
+ await page.locator(".v2-sticky-interests.is-visible").waitFor();
+ const remove=page.getByRole("button",{name:/Удалить интерес/}).first();
+ assert.equal(await remove.locator(".v2-selected-interest-close svg").count(),1,
+  "the selected-interest chip must show an X, not the old checkmark");
+ await remove.click();
+ await page.waitForFunction(()=>{
+  const box=document.querySelector(".v2-sticky-interests");
+  return box&&!box.classList.contains("is-visible")&&box.getBoundingClientRect().height<3;
+ },null,{timeout:1800});
+ assert.equal(await page.getByRole("button",{name:/Удалить интерес/}).count(),0);
+ await page.locator(".interest-choices button").first().click();
+ await page.locator(".v2-sticky-interests.is-visible").waitFor();
  assert.equal(await page.locator(".v2-about-interest-heading").count(),1);
  assert.equal(await page.locator(".v2-sticky-interests").count(),1,"the ribbon is attached to the single sticky heading");
  assert.equal(await page.locator(".v2-stage-heading .v2-sticky-interests").count(),1);
