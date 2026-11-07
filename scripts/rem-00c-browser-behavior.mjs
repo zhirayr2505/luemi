@@ -37,18 +37,6 @@ const state=async(page,selector=".v3-profile-host")=>page.evaluate(sel=>{
   scrollTop:activePage?.scrollTop??0,
   timestamp:performance.now()};
 },selector);
-const touch=async(page,{x,y,dx=0,dy=0,steps=12,onStep})=>{
- const cdp=await page.context().newCDPSession(page);
- try{
-  await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y,id:1}]});
-  for(let i=1;i<=steps;i++){
-   await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:x+dx*i/steps,y:y+dy*i/steps,id:1}]});
-   await sleep(19);
-   if(onStep)await onStep(i);
-  }
-  await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
- }finally{await cdp.detach()}
-};
 async function profileV3(browser,platform="android"){
  const android=platform==="android",context=await browser.newContext({viewport:{width:393,height:852},
   isMobile:true,hasTouch:true,reducedMotion:android?"no-preference":"reduce",
