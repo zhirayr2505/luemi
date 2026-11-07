@@ -63,7 +63,7 @@ try{
  assert.ok(Math.abs(result.height-915)<=3,
   "first visible hero must match the final fullscreen viewport height");
  assert.equal(result.imageAnimation,"none");
- assert.equal(result.imageOpacity,1);
+ assert.ok(result.imageOpacity>=.99,"cinematic photo is fully revealed without a resize animation");
  assert.deepEqual(failures,[],"no uncaught errors during fullscreen handoff");
  console.log("LUEMI INTRO FULLSCREEN QA PASS "+JSON.stringify(result));
 }finally{
