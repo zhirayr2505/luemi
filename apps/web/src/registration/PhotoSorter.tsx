@@ -70,8 +70,9 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
   stopFrame();
   pending.current=null;dragRef.current=null;scrollBounds.current=null;
   setDrag(null);setPhase(reason);
-  if(active&&mosaic.current?.hasPointerCapture(active.pointer)){
-   try{mosaic.current.releasePointerCapture(active.pointer);}catch{/* detached element */}
+  const handle=active?itemRefs.current.get(active.id)?.querySelector<HTMLButtonElement>(".photo-drag-handle"):null;
+  if(active&&handle?.hasPointerCapture(active.pointer)){
+   try{handle.releasePointerCapture(active.pointer);}catch{/* detached element */}
   }
  },[stopFrame]);
  const idsSignature=photos.map(item=>item.id).join("|");
@@ -203,7 +204,11 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
    const region=mosaic.current?.closest(".onboard-body,.v2-body");
    scrollBounds.current=region?{node:region}:null;
    dragRef.current=value;setDrag(value);setPhase("dragging");
-   try{mosaic.current?.setPointerCapture(pendingItem.pointer);}
+   // Android touch already implicitly captures on the tapped handle.
+   // Capturing an ancestor would trigger lostpointercapture on the handle
+   // and could cancel the drag before a move has happened.
+   const button=element.querySelector<HTMLButtonElement>(".photo-drag-handle");
+   try{button?.setPointerCapture(pendingItem.pointer);}
    catch{/* native WebView may refuse capture, pointercancel still cleans up */}
    selectionHaptic();
    scheduleScroll();
