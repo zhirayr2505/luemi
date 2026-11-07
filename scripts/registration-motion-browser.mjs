@@ -54,16 +54,39 @@ try{
  await page.locator(".dob-focus-shell.is-focused").waitFor({state:"hidden",timeout:2500});
  assert.equal(await page.locator(".v2-device").getAttribute("data-screen"),"birthday");
  await page.getByRole("button",{name:"Мужчина"}).click();
+ const genderCardHeight=await page.locator(".dob-step .glass-choice").first().evaluate(el=>el.getBoundingClientRect().height);
+ assert.ok(genderCardHeight<=74,"gender glass cards should remain compact and readable");
  await page.getByRole("checkbox").check();
  await next("location");
  await page.getByRole("button",{name:"Выбрать город"}).click();
  await page.getByPlaceholder("Название города").fill("Москва");
  await page.getByRole("option",{name:/Москва/}).first().click();
+ // The three modes must keep one shared card without displacing the footer.
+ const panel=page.locator(".geo-liquid-mode-panel");
+ const originalRect=await panel.boundingBox();
+ const cityHeight=await page.locator(".geo-liquid-city").evaluate(el=>el.getBoundingClientRect().height);
+ assert.ok(cityHeight<=76,"city card should be compact");
+ assert.ok(originalRect&&originalRect.height<=125,"shared scope card has a compact fixed height");
  await page.getByRole("button",{name:"Мой город"}).click();
  assert.equal(await page.getByRole("button",{name:"Мой город"}).getAttribute("aria-pressed"),"true","city search scope is selected");
+ for(const mode of ["Весь мир","Рядом","Мой город"]){
+  await page.getByRole("button",{name:mode,exact:true}).click();
+  const rect=await panel.boundingBox();
+  assert.ok(rect&&originalRect);
+  assert.ok(Math.abs(rect.height-originalRect.height)<1,"mode "+mode+" must preserve card height");
+  assert.ok(Math.abs(rect.y-originalRect.y)<1,"mode "+mode+" must not move the card vertically");
+ }
+ await page.getByRole("button",{name:"Рядом",exact:true}).click();
+ assert.equal(await page.locator(".geo-liquid-radius input[type=range]").count(),1,
+  "radius slider remains reachable inside the shared card");
+ await page.getByRole("button",{name:"Мой город"}).click();
  await next("intent");
+ const ageHeight=await page.locator(".age-range").evaluate(el=>el.getBoundingClientRect().height);
+ assert.ok(ageHeight<=148,"age selection panel should be slimmer without losing touch controls");
  await page.getByRole("button",{name:"Женщин"}).click();
  await page.getByRole("button",{name:"Серьёзные отношения"}).click();
+ const goalHeight=await page.getByRole("button",{name:"Серьёзные отношения"}).evaluate(el=>el.getBoundingClientRect().height);
+ assert.ok(goalHeight<=88,"liquid-glass goal cards should not retain old 100px size");
  // Biography and interests return before photos; languages remain optional.
  await next("about");
  await page.getByPlaceholder("Что тебя радует? Чем любишь заниматься?").fill("Люблю музыку и прогулки по городу.");
