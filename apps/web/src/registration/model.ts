@@ -2,7 +2,7 @@ import {normalizeCountryCode} from "@luemi/contracts";
 export type Gender = "" | "man" | "woman" | "other";
 export type Audience = "" | "women" | "men" | "everyone";
 export type Goal = "" | "serious" | "relationship" | "dates" | "friendship" | "communication" | "new_people" | "flirt" | "activities" | "undecided" | "love" | "family_goal" | "travel_partner" | "casual";
-export type SearchScope = "radius" | "country" | "world";
+export type SearchScope = "radius" | "city" | "country" | "world";
 export const goals = [
  {id:"undecided",label:"Пока не определился"},
  {id:"serious",label:"Серьёзные отношения"},
@@ -76,7 +76,7 @@ export function validateStep(d:RegistrationDraft,step:number,count:number,today=
       return d.gender==="man"||d.gender==="woman"?null:"Выбери пол.";
     case 3:
       if(!selectedCityValid(d))return "Выбери город из предложенного списка.";
-      return ["radius","country","world"].includes(d.searchScope)&&Number.isInteger(d.radius)&&d.radius>=1&&d.radius<=5000?null:"Радиус: от 1 до 5000 км.";
+      return ["radius","city","country","world"].includes(d.searchScope)&&Number.isInteger(d.radius)&&d.radius>=1&&d.radius<=5000?null:"Радиус: от 1 до 5000 км.";
     case 4:
       if(!d.audience||!goals.some(g=>g.id===d.goal))return "Выбери предпочтения и цель знакомства.";
       return d.ageMin>=18&&d.ageMax<=80&&d.ageMin<=d.ageMax?null:"Проверь диапазон возраста.";
