@@ -1,8 +1,8 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {flushSync} from "react-dom";
-import {ArrowRight,Check,Eye,LoaderCircle,Pencil} from "lucide-react";
+import {ArrowRight,Check,Eye,LoaderCircle,Pencil,X} from "lucide-react";
 import {RegistrationReview} from "./RegistrationReview";
-import {InterestChip} from "../../ui/InterestCatalog";
+import {itemOf,tint} from "../../ui/InterestCatalog";
 import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {findExactDuplicatePhotoIds} from "./duplicate-photos";
@@ -302,17 +302,29 @@ export function RealRegistrationV2(p:Props){
        <div className={"v2-stage-heading"+(stage.id==="about"?" v2-stage-heading--about":"")}>
          <h1 id="v2-title">{stage.title}</h1>
          <p className="v2-subtitle">{stage.subtitle}</p>
-         {stage.id==="about"&&<section className="v2-sticky-interests" aria-label="Мои интересы">
-           <div className="v2-sticky-interest-heading">
-             <strong>Мои интересы</strong>
-             <span aria-live="polite">{draft.interests.length} / 20</span>
-           </div>
-           <div className="v2-sticky-interest-strip" role="group"
-             aria-label="Выбранные интересы — листай влево и вправо">
-             {draft.interests.length>0?draft.interests.map(id=>
-               <InterestChip key={id} id={id} selected
-                 onClick={()=>p.patch({interests:draft.interests.filter(value=>value!==id)})}/>):
-               <span className="v2-sticky-interest-empty">Выбранные интересы появятся здесь</span>}
+         {stage.id==="about"&&<section
+           className={"v2-sticky-interests"+(draft.interests.length>0?" is-visible":"")}
+           aria-label="Мои интересы" aria-hidden={draft.interests.length===0}>
+           <div className="v2-sticky-interests-inner">
+             <div className="v2-sticky-interest-heading">
+               <strong>Мои интересы</strong>
+               <span aria-live="polite">{draft.interests.length} / 20</span>
+             </div>
+             <div className="v2-sticky-interest-strip" role="group"
+               aria-label="Выбранные интересы — листай влево и вправо">
+               {draft.interests.map(id=>{
+                 const info=itemOf(id);
+                 if(!info)return null;
+                 const Icon=info.icon;
+                 return <button type="button" key={id} className="v2-selected-interest-chip"
+                   style={tint(info.colors)} aria-label={"Удалить интерес "+info.name}
+                   onClick={()=>p.patch({interests:draft.interests.filter(value=>value!==id)})}>
+                   <Icon size={15} strokeWidth={1.7} aria-hidden="true"/>
+                   <span>{info.name}</span>
+                   <span className="v2-selected-interest-close" aria-hidden="true"><X size={12} strokeWidth={2.2}/></span>
+                 </button>;
+               })}
+             </div>
            </div>
          </section>}
        </div>
