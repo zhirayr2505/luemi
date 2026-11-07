@@ -114,7 +114,14 @@ export function registerGeography(app:FastifyInstance,runtime?:GeoRuntime,guards
         const typed=input as string;
         // Local spellings include both Russian and Armenian Armavir. Provider
         // coverage spans the world, with no silent IP-country bias.
-        const merged=[...localSearch(typed),...normalizeGeoapify(response.raw)];
+        const verified=localSearch(typed);
+        // Prefer verified local spellings for the same city/country. Providers
+        // may spell the region differently (Краснодарский край / Krasnodar Krai).
+        const identity=(p:{city:string;countryCode:string})=>
+          p.city.toLocaleLowerCase("ru")+"|"+p.countryCode;
+        const verifiedIdentity=new Set(verified.map(identity));
+        const merged=[...verified,...normalizeGeoapify(response.raw)
+          .filter(p=>!verifiedIdentity.has(identity(p)))];
         const seen=new Set<string>();
         return{results:merged.filter(place=>{
           const key=[place.city.toLocaleLowerCase("ru"),place.countryCode,
