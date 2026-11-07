@@ -61,6 +61,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const dobInput=useRef<HTMLInputElement>(null);
  const [category,setCategory]=useState("Популярное");
  const [interestQuery,setInterestQuery]=useState("");
+ const [interestFocused,setInterestFocused]=useState(false);
  const [nameFocused,setNameFocused]=useState(false);
  const [dobFocused,setDobFocused]=useState(false);
  const [aboutFocused,setAboutFocused]=useState(false);
@@ -73,6 +74,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
  const nameDock=useFieldFocusDock(nameFocused);
  const dobDock=useFieldFocusDock(dobFocused);
  const aboutDock=useFieldFocusDock(aboutFocused);
+ const interestDock=useFieldFocusDock(interestFocused);
  useEffect(()=>()=>{
    if(hintTimer.current!==null)window.clearTimeout(hintTimer.current);
    focusTimer.current?.();
@@ -83,6 +85,14 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    focusInput.current=input;
    clearFieldError?.(field);
    onFieldFocus?.(field);
+ };
+ const endInterestFocus=()=>{
+   focusTimer.current?.();
+   focusTimer.current=releaseAfterKeyboardSettles(()=>{
+     if(document.activeElement===focusInput.current)return;
+     setInterestFocused(false);focusInput.current=null;onFieldFocus?.(null);
+     focusTimer.current=null;
+   },FOCUS_RELEASE_DELAY_MS);
  };
  const endFieldFocus=(field:"name"|"date"|"about")=>{
    focusTimer.current?.();
@@ -200,12 +210,18 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    </ChoiceRow></div>
  </div>;
  if(step===5)return <div className="form-stack interests-step">
-   <label className="interest-search" aria-label="Найти интерес">
-    <Search size={18} aria-hidden="true"/>
-    <input type="search" autoComplete="off" maxLength={65} value={interestQuery}
-     onChange={e=>setInterestQuery(e.target.value)} placeholder="Найти интерес…" />
-    <span className="interest-search-count">{interests.length}</span>
-   </label>
+   <div className="focus-field-slot interest-focus-slot"><div
+     ref={node=>{interestDock.shellRef.current=node;}}
+     className={"focus-field-shell interest-focus-shell"+(interestFocused?" is-focused":"")}>
+     <label className="interest-search" aria-label="Найти интерес">
+      <Search size={18} aria-hidden="true"/>
+      <input type="search" autoComplete="off" maxLength={65} value={interestQuery}
+       onFocus={e=>{beginFieldFocus("about",e.currentTarget);setInterestFocused(true);}}
+       onBlur={endInterestFocus}
+       onChange={e=>setInterestQuery(e.target.value)} placeholder="Найти интерес…" />
+      <span className="interest-search-count">{interests.length}</span>
+     </label>
+   </div></div>
    {data.interests.length>0&&<div className="interest-selected-group">
     <div className="interest-selected-heading"><span>Мои интересы</span><small>{data.interests.length} / 20</small></div>
     <div className="chips interest-selected-items">
