@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {ArrowUpRight,Camera,Heart,Images,LockKeyhole,MapPin,ShieldAlert,Sparkles} from "lucide-react";
 import type {RegistrationDraft} from "./model";
-import {goals} from "./model";
+import {goalLabel} from "../ui/PersonalizedCopy";
 import {draftAge} from "../discovery/ProfileModel";
 import {itemOf} from "../ui/InterestCatalog";
 import {safeOwnerAbout} from "./private-account-copy";
@@ -18,7 +18,7 @@ export function PrivateAccountView({draft,photos,serverPhotoCount=0}:Props){
  const [selectedPhotoId,setSelectedPhotoId]=useState<string|null>(null);
  const selected=photos.find(p=>p.id===selectedPhotoId)??photos[0];
  const age=draftAge(draft);
- const goal=goals.find(g=>g.id===draft.goal)?.label??draft.goal;
+ const goal=goalLabel(draft.goal,draft.gender);
  const about=safeOwnerAbout(draft.about.trim());
  const location=[draft.city,draft.country||draft.countryCode].filter(Boolean).join(" · ");
  return <section className="luemi-private-profile" aria-label="Моя закрытая анкета">
