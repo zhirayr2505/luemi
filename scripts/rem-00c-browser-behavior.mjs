@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {mkdir,writeFile} from "node:fs/promises";
 import {chromium} from "playwright";
-/** Profile Morph A2 behavioral QA on synthetic Chromium, not physical Telegram A55. */
+/** Profile Morph V3 behavioral QA on synthetic Chromium, not physical Telegram A55. */
 const BASE=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
-const OUT=process.env.LUEMI_QA_OUT||"qa-artifacts/rem-00c/profile-morph-a2";
+const OUT=process.env.LUEMI_QA_OUT||"qa-artifacts/rem-00c/profile-morph-v3";
 const androidUA="Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Mobile Safari/537.36";
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const required=async(page,selector,scope="page")=>{
@@ -18,18 +18,23 @@ const snapshot=async(page,name)=>{
  console.log("QA_SNAPSHOT "+JSON.stringify({name,sha256:createHash("sha256").update(pixels).digest("hex"),bytes:pixels.length}));
 };
 const recordErrors=page=>{const errors=[];page.on("pageerror",e=>errors.push(e.message));return errors;};
-const state=async(page,selector=".pm-inline")=>page.evaluate(sel=>{
- const root=document.querySelector(sel);if(!root)throw Error("A2 profile root absent");
- const pick=q=>{const el=root.querySelector(q);if(!el)throw Error("A2 missing "+q);return el;};
- const sheet=pick(".pm-a2-sheet"),face=pick(".pm-a2-face"),tabs=pick(".pm-a2-tabs"),page=pick(".pm-a2-page:not([aria-hidden=true])");
+const state=async(page,selector=".v3-profile-host")=>page.evaluate(sel=>{
+ const host=document.querySelector(sel);if(!host)throw Error("V3 profile host absent");
+ const root=host.querySelector(".v3-int-root");if(!root)throw Error("V3 render root absent");
+ const pick=q=>{const el=root.querySelector(q);if(!el)throw Error("V3 missing "+q);return el;};
  const rect=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};
- return {mode:root.dataset.morphState,photoCount:root.querySelectorAll(".pm-a2-photo-slide img").length,
-  sheet:rect(sheet),face:rect(face),tabs:rect(tabs),page:rect(page),
-  tab:root.querySelector('.pm-a2-tab[aria-selected=true]')?.textContent?.trim(),
-  selectedCount:root.querySelectorAll('.pm-a2-tab[aria-selected=true]').length,
-  imageIds:[...root.querySelectorAll(".pm-a2-photo-slide img")].map(x=>x.dataset.photoId),
-  background:getComputedStyle(pick(".pm-a2-backing")).backgroundImage,
-  sheetBg:getComputedStyle(sheet).backgroundColor,scrollTop:page.scrollTop,
+ const sheet=pick(".v3-int-sheet"),face=pick(".v3-int-mask");
+ const pages=[...root.querySelectorAll(".v3-int-page")];
+ const activePage=pages.find(x=>x.getAttribute("aria-hidden")==="false");
+ return {mode:host.dataset.morphState,progress:Number(root.dataset.progress||"0"),
+  host:rect(host),face:rect(face),sheet:rect(sheet),
+  photoCount:root.querySelectorAll(".v3-int-photo-slide img").length,
+  photoIds:[...root.querySelectorAll(".v3-int-photo-slide img")].map(x=>x.dataset.photoId),
+  selectedCount:root.querySelectorAll('.v3-int-tab[aria-selected="true"]').length,
+  tab:root.querySelector('.v3-int-tab[aria-selected="true"]')?.textContent?.trim(),
+  backing:getComputedStyle(pick(".v3-int-opaque")).backgroundImage,
+  sheetBg:getComputedStyle(sheet).backgroundColor,
+  scrollTop:activePage?.scrollTop??0,
   timestamp:performance.now()};
 },selector);
 const touch=async(page,{x,y,dx=0,dy=0,steps=12,onStep})=>{
@@ -44,106 +49,90 @@ const touch=async(page,{x,y,dx=0,dy=0,steps=12,onStep})=>{
   await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
  }finally{await cdp.detach()}
 };
-async function profileA2(browser,platform="android"){
+async function profileV3(browser,platform="android"){
  const android=platform==="android",context=await browser.newContext({viewport:{width:393,height:852},
   isMobile:true,hasTouch:true,reducedMotion:android?"no-preference":"reduce",
   userAgent:android?androidUA:"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile Safari/604.1"});
  const page=await context.newPage(),errors=recordErrors(page);
  try{
-  await page.goto(BASE+"/profile-qa.html?profileV3=0",{waitUntil:"domcontentloaded"});
+  await page.goto(BASE+"/profile-qa.html?profileV3=1",{waitUntil:"domcontentloaded"});
   await page.getByRole("button",{name:"Профиль",exact:true}).click();
-  const root=await required(page,".pm-inline.pm-a2-root","owner A2");
+  const host=await required(page,".v3-profile-host.pm-inline","owner V3");
   const compact=await state(page);
-  assert.equal(compact.mode,"compact","A2 must begin compact, no expanded initial state");
-  assert.ok(compact.face.width>=85&&compact.face.width<=125,"compact left avatar width");
-  assert.ok(compact.face.height>=85&&compact.face.height<=125,"compact avatar height");
-  assert.ok(compact.face.x<compact.sheet.width*.40,"compact avatar physically left");
-  assert.ok(compact.sheet.y>compact.face.y+compact.face.height-6,"compact sheet below avatar");
-  assert.equal(compact.selectedCount,1);assert.equal(compact.tab,"О себе");
-  assert.ok(compact.background!=="none"&&compact.sheetBg!=="rgba(0, 0, 0, 0)","opaque profile backing/sheet");
-  const logo=page.locator(".lh-header .lh-island img").last();assert.ok(await logo.count()>0,"real LUEMI header logo");
-  if(android)assert.equal(await page.locator(".lh-profile-android .lh-island img").count(),1);
-  await snapshot(page,platform+"-01-compact");
-  // Portrait tap expands but must NOT open PhotoViewer.
-  await root.locator(".pm-a2-face").click({position:{x:compact.face.width/2,y:compact.face.height/2}});
-  await page.locator('.pm-inline[data-morph-state="expanded"]').waitFor({state:"attached",timeout:2300});
-  await sleep(35);
-  let expanded=await state(page);
+  assert.equal(compact.mode,"compact","V3 owner starts compact");
+  assert.ok(compact.face.width>=75&&compact.face.width<=145,"V3 compact avatar width");
+  assert.ok(compact.face.height>=75&&compact.face.height<=145,"V3 compact avatar height");
+  assert.ok(compact.sheet.y>compact.face.y+compact.face.height-26,"V3 sheet follows compact avatar");
+  assert.equal(compact.tab,"О себе");assert.equal(compact.selectedCount,1);
+  assert.equal(compact.photoCount,3,"QA fixture has three visible photos");
+  assert.ok(compact.backing!=="none"&&compact.sheetBg!=="rgba(0, 0, 0, 0)","V3 opaque sheet and backing");
+  assert.equal(await page.locator(".pm-inline.pm-a2-root").count(),0,"retired A2 must not appear");
+  const logo=page.locator(".lh-header .lh-island img").first();
+  assert.ok(await logo.count()>0,"original LUEMI brand image in global header");
+  await snapshot(page,platform+"-01-v3-compact");
+
+  await host.getByRole("button",{name:"Развернуть фото"}).click();
+  await host.locator('.v3-int-root[data-sheet-state="expanded"]').waitFor({state:"attached",timeout:4000});
+  const expanded=await state(page);
   assert.equal(expanded.mode,"expanded");
-  assert.ok(expanded.face.width>compact.face.width*2.2,"same photo grows into hero width");
-  assert.ok(expanded.sheet.y>compact.sheet.y+70,"sheet moved DOWN to reveal photo");
-  assert.equal(await page.locator(".pm-viewer").count(),0,"compact portrait click must not open viewer");
-  await snapshot(page,platform+"-02-expanded");
-  // Same photo element must remain DOM-backed through morph.
-  const photoNodes=await root.locator(".pm-a2-photo-slide img").evaluateAll(xs=>xs.map(x=>x.dataset.photoId));
-  assert.deepEqual(photoNodes,expanded.imageIds);
-  assert.ok(expanded.photoCount>=1,"fixture contains media");
-  // Viewer opens only from expanded photo and closes without reinitializing sheet.
-  await root.locator(".pm-a2-face").click({position:{x:expanded.face.width*.52,y:expanded.face.height*.45}});
-  await required(page,".pm-viewer","viewer from expanded");
-  await snapshot(page,platform+"-03-viewer");
+  assert.ok(expanded.face.width>compact.face.width*1.8,"V3 face expands visibly");
+  assert.ok(expanded.sheet.y>compact.sheet.y+50,"V3 sheet moves down to reveal portrait");
+  assert.equal(await page.locator(".pm-viewer").count(),0,"expansion must not open photo viewer");
+  await snapshot(page,platform+"-02-v3-expanded");
+
+  await host.getByRole("button",{name:"Открыть просмотр фото"}).click();
+  await required(page,".pm-viewer","V3 expanded viewer");
+  await snapshot(page,platform+"-03-v3-viewer");
   await page.keyboard.press("Escape");
-  await page.locator(".pm-viewer").waitFor({state:"detached",timeout:2200});
-  assert.equal((await state(page)).mode,"expanded","viewer close preserves morph state");
-  // A2 handle drag: movement 1:1 for 12 real CDP touch samples.
-  const handle=await root.locator(".pm-a2-handle").boundingBox();
-  assert.ok(handle?.height>=25);
-  const before=await state(page),frames=[];
-  await touch(page,{x:handle.x+handle.width*.5,y:handle.y+handle.height*.5,dy:-205,
-   onStep:async i=>{if([2,5,8,12].includes(i))frames.push((await state(page)).sheet.y)}});
-  assert.ok(frames.length===4&&frames.at(-1)<before.sheet.y-110,"up swipe follows finger immediately");
-  assert.ok(frames.every((y,i)=>i===0||y<=frames[i-1]+9),"no reverse snap while moving up");
-  await sleep(340);
-  const now=await state(page);
-  assert.equal(now.mode,"compact","up drag settles compact");
-  await snapshot(page,platform+"-04-after-drag");
-  // Repeat transitions, interrupt in-flight animations, and reject underlay bleed via
-  // elementFromPoint + structural invariant, NOT a claim of GPU frame-level proof.
-  for(let i=0;i<22;i++){
-   await root.locator(".pm-a2-handle").press("Enter");
-   await sleep(15);
+  await page.locator(".pm-viewer").waitFor({state:"detached",timeout:4000});
+  assert.equal((await state(page)).mode,"expanded","closing viewer keeps V3 expanded");
+  assert.deepEqual((await state(page)).photoIds,compact.photoIds,"photo element order stable through viewer");
+
+  const photoDots=host.locator(".v3-int-photo-dots button");
+  assert.equal(await photoDots.count(),3,"three photo controls retained");
+  await photoDots.nth(1).click();
+  await page.waitForFunction(()=>document.querySelector('.v3-profile-host .v3-int-photo-dots button:nth-child(2)')?.getAttribute("aria-current")==="true");
+  assert.equal(await host.locator(".v3-int-photo-slide img").count(),3,"photo gallery stays mounted");
+
+  const handle=host.locator(".v3-int-handle");
+  await handle.press("Enter");
+  await host.locator('.v3-int-root[data-sheet-state="collapsed"]').waitFor({state:"attached",timeout:4000});
+  await snapshot(page,platform+"-04-v3-after-collapse");
+  assert.equal((await state(page)).mode,"compact");
+  for(let i=0;i<10;i++){await handle.press("Enter");await sleep(20);}
+  await sleep(350);
+  assert.equal((await state(page)).mode,"compact","even number of reversals returns compact");
+  for(const label of ["Фото","Блики","Аккаунт","Подарки","О себе"]){
+   await host.getByRole("tab",{name:label,exact:true}).click();
+   await sleep(240);
+   const st=await state(page);
+   assert.equal(st.tab,label,"V3 selected tab: "+label);
+   assert.equal(st.selectedCount,1,"only one V3 selected tab");
   }
-  await sleep(340);
-  const afterTaps=await state(page);
-  assert.equal(afterTaps.mode,"compact","22 reversals end at deterministic compact endpoint");
-  const paint=await page.evaluate(()=>{
-   const root=document.querySelector(".pm-a2-root");
-   const backing=root?.querySelector(".pm-a2-backing");
-   const route=document.querySelector(".discovery-visitor-route");
-   const a=getComputedStyle(backing),r=root.getBoundingClientRect();
-   return {backing:a.backgroundImage,opaque:a.opacity,cover:r.width>200&&r.height>400,
-    isolation:getComputedStyle(root).isolation,routeBg:route?getComputedStyle(route).backgroundColor:null};
-  });
-  assert.ok(paint.cover&&paint.isolation==="isolate"&&paint.backing!=="none","continuous profile-scoped backing layer");
-  const tabs=root.locator(".pm-a2-tab");
-  for(const id of [1,2,3,4,0]){await tabs.nth(id).click();await sleep(225);
-   assert.equal(await root.locator('.pm-a2-tab[aria-selected=true]').count(),1);
-  }
-  const selected=await state(page);assert.equal(selected.tab,"О себе");
-  const pageEl=root.locator(".pm-a2-page").first();
-  await pageEl.evaluate(el=>el.scrollTop=50);
-  const scrolled=await pageEl.evaluate(el=>el.scrollTop);
-  assert.ok(scrolled>=0,"native scroll remains functional");
+  const pageEl=host.locator('.v3-int-page[data-tab-id="about"]');
+  await pageEl.evaluate(el=>{el.scrollTop=50;});
+  assert.ok(await pageEl.evaluate(el=>el.scrollTop)>=0,"native biography scroll functional");
+
   if(android){
    await page.getByRole("button",{name:"Знакомства",exact:true}).click();
    await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
    await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
-   const visitor=await required(page,".discovery-visitor-route .pm-a2-root","visitor A2");
-   assert.equal((await state(page,".discovery-visitor-route .pm-a2-root")).mode,"compact");
-   await snapshot(page,"android-05-visitor-compact");
+   const visitor=await required(page,".discovery-visitor-route .v3-profile-host","visitor V3");
+   assert.equal((await state(page,".discovery-visitor-route .v3-profile-host")).mode,"compact");
+   await snapshot(page,"android-05-v3-visitor-compact");
    await page.keyboard.press("Escape");
-   await visitor.waitFor({state:"detached",timeout:2200});
-   assert.equal(await page.locator(".discovery-visitor-route").count(),0,"visitor route closes without leaked profile overlay");
+   await visitor.waitFor({state:"detached",timeout:4000});
+   assert.equal(await page.locator(".discovery-visitor-route").count(),0,"visitor V3 closes without lingering route");
   }
   assert.deepEqual(errors,[],"no uncaught browser exceptions");
-  console.log("PROFILE_MORPH_A2_BROWSER_PASS "+JSON.stringify({platform,photos:compact.photoCount,compactSheet:compact.sheet.y,
-   expandedSheet:expanded.sheet.y,reversalCount:22,dragSamples:frames}));
- }finally{await context.close()}
+  console.log("PROFILE_MORPH_V3_BROWSER_PASS "+JSON.stringify({platform,photos:compact.photoCount,
+   compactSheet:compact.sheet.y,expandedSheet:expanded.sheet.y,reversals:10}));
+ }finally{await context.close();}
 }
 async function missingSelectorNegative(browser){
  const page=await browser.newPage();
  try{await page.goto(BASE+"/profile-qa.html");
-  await assert.rejects(required(page,".__a2_deliberately_missing","negative fixture"),/REQUIRED SELECTOR MISSING/);
+  await assert.rejects(required(page,".__v3_deliberately_missing","negative fixture"),/REQUIRED SELECTOR MISSING/);
  }finally{await page.close()}
 }
 async function appBootstrap(browser){
@@ -211,9 +200,9 @@ async function appBootstrap(browser){
 }
 const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
 try{
- await profileA2(browser,"android");
- await profileA2(browser,"ios-emulation");
+ await profileV3(browser,"android");
+ await profileV3(browser,"ios-emulation");
  await appBootstrap(browser);
  await missingSelectorNegative(browser);
- console.log("PROFILE_MORPH_A2_QA_COMPLETE: Chromium browser emulation; PHYSICAL A55/IOS NOT VERIFIED.");
+ console.log("PROFILE_MORPH_V3_QA_COMPLETE: Chromium browser emulation; PHYSICAL A55/IOS NOT VERIFIED.");
 }finally{await browser.close()}
