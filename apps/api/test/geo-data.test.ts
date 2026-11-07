@@ -5,6 +5,10 @@ test("verified demo search has no free text garbage result",()=>{
   assert.equal(localSearch("Краснодарчик").length,0);
   assert.equal(localSearch("Yerevan")[0]?.id,"offline:am:yerevan");
   assert.equal(localSearch("Ереван")[0]?.countryCode,"AM");
+  const armavir=localSearch("Армавир");
+  assert.equal(armavir.length,2,"show both cities rather than a single country match");
+  assert.deepEqual(new Set(armavir.map(p=>p.countryCode)),new Set(["RU","AM"]));
+  assert.ok(armavir.some(p=>p.countryCode==="RU"&&p.region==="Краснодарский край"));
 });
 test("Geoapify parser keeps only cities with real IDs and country codes",()=>{
   const actual=normalizeGeoapify({results:[
