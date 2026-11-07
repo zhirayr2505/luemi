@@ -255,24 +255,34 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
          <Globe2 size={18}/><span>Моя страна</span>
        </button>}
      </div>
-     {data.searchScope==="radius"&&<div className="geo-liquid-radius">
-       <div className="range-title"><span>Расстояние</span><strong>{data.radius.toLocaleString("ru")} км</strong></div>
-       <div className="branded-slider" onPointerDownCapture={()=>{
-         const focused=document.activeElement;
-         if(focused instanceof HTMLInputElement&&focused.type!=="range")focused.blur();
-       }} style={{"--range-pct":positionAt(data.radius)+"%"} as CSSProperties}>
-         <input type="range" min="0" max="100" step="1" value={positionAt(data.radius)}
-           aria-label="Радиус поиска, километры"
-           onChange={e=>patch({radius:radiusAt(Number(e.target.value))})}/>
-       </div>
-       <div className="range-limits"><span>1 км</span><span>5 000 км</span></div>
-     </div>}
-     {data.searchScope==="city"&&<p className="geo-liquid-scope-description">
-       Показываем анкеты из выбранного города без передачи точных координат.</p>}
-     {data.searchScope==="country"&&<p className="geo-liquid-scope-description">
-       Показываем людей из выбранной страны. Это прежняя настройка твоей анкеты.</p>}
-     {data.searchScope==="world"&&<p className="geo-liquid-scope-description">
-       Знакомься с людьми независимо от города и страны.</p>}
+     <div className="geo-liquid-mode-panel" aria-live="off">
+       {data.searchScope==="radius"?<div key="radius" className="geo-liquid-mode-content geo-liquid-radius">
+         <div className="range-title"><span>Расстояние</span><strong>{data.radius.toLocaleString("ru")} км</strong></div>
+         <div className="branded-slider" onPointerDownCapture={()=>{
+           const focused=document.activeElement;
+           if(focused instanceof HTMLInputElement&&focused.type!=="range")focused.blur();
+         }} style={{"--range-pct":positionAt(data.radius)+"%"} as CSSProperties}>
+           <input type="range" min="0" max="100" step="1" value={positionAt(data.radius)}
+             aria-label="Радиус поиска, километры"
+             onChange={e=>patch({radius:radiusAt(Number(e.target.value))})}/>
+         </div>
+         <div className="range-limits"><span>1 км</span><span>5 000 км</span></div>
+       </div>:<div key={data.searchScope} className="geo-liquid-mode-content geo-liquid-mode-info">
+         <span className="geo-liquid-mode-icon" aria-hidden="true">
+           {data.searchScope==="city"?<MapPin size={22} strokeWidth={1.7}/>:
+             <Globe2 size={22} strokeWidth={1.7}/>}
+         </span>
+         <span className="geo-liquid-mode-copy">
+           <strong>{data.searchScope==="city"?"Люди из твоего города":
+             data.searchScope==="country"?"Люди из твоей страны":"Весь мир открыт"}</strong>
+           <small>{data.searchScope==="city"?
+             "Знакомства в выбранном городе. Радиус не нужен.":
+             data.searchScope==="country"?
+             "Знакомства в пределах выбранной страны.":
+             "Знакомься независимо от города и расстояния."}</small>
+         </span>
+       </div>}
+     </div>
    </div>
    <p className="geo-liquid-privacy">При выборе геолокации координаты передаются только для определения города.
      В анкете сохраняется выбранный город, не твоя точная геопозиция.</p>

@@ -30,6 +30,22 @@ const required=[
 ];
 for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
+assert.match(geo,/className="geo-liquid-mode-panel"/,
+ "Location switches all search modes inside the same fixed-size panel");
+assert.match(runtime,/\.geo-liquid-mode-panel\{[\s\S]*?height:122px/,
+ "Switching city, world or radius must not alter the panel height");
+assert.match(runtime,/\.geo-liquid-mode-content\{[\s\S]*?animation:luemi-geo-mode-in/,
+ "Mode changes crossfade just their contents, not the whole page");
+assert.doesNotMatch(runtime,/\.geo-liquid-scope-description\{/,
+ "Delete obsolete standalone search-mode description cards");
+assert.doesNotMatch(runtime,/min-height:100px;[\s\S]{0,150}border:1px solid rgba\(216,182,238/,
+ "Delete legacy 100px registration goal overrides");
+assert.match(runtime,/\.preferences-step \.goals-section \.glass-choice\{[\s\S]*?min-height:80px/,
+ "Goal cards should remain in the compact approved range");
+assert.match(runtime,/\.geo-liquid-city\{[\s\S]*?min-height:70px/,
+ "The selected city glass card should be compact");
+assert.match(runtime,/\.age-range \.double-age-range\{height:50px/,
+ "Age slider panel is compact but preserves its touch targets");
 assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"\}/,
  "Only actual Telegram surface should reserve native controls clearance");
 assert.match(steps,/Я принимаю <a href="\/privacy"/,"Public policy acceptance must appear on the first identity step");
