@@ -2,6 +2,7 @@ import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "rea
 import {flushSync} from "react-dom";
 import {ArrowRight,Check,Eye,LoaderCircle,Pencil} from "lucide-react";
 import {RegistrationReview} from "./RegistrationReview";
+import {InterestChip} from "../../ui/InterestCatalog";
 import {RegistrationStep,RegistrationConsent,type PhotoItem} from "../Steps";
 import {birthDateValid,nameValid,selectedCityValid,validateStep,type RegistrationDraft} from "../model";
 import {findExactDuplicatePhotoIds} from "./duplicate-photos";
@@ -298,9 +299,22 @@ export function RealRegistrationV2(p:Props){
      </header>
      <section key={stage.id} ref={body}
        className="v2-body" aria-labelledby="v2-title">
-       <div className="v2-stage-heading">
+       <div className={"v2-stage-heading"+(stage.id==="about"?" v2-stage-heading--about":"")}>
          <h1 id="v2-title">{stage.title}</h1>
          <p className="v2-subtitle">{stage.subtitle}</p>
+         {stage.id==="about"&&<section className="v2-sticky-interests" aria-label="Мои интересы">
+           <div className="v2-sticky-interest-heading">
+             <strong>Мои интересы</strong>
+             <span aria-live="polite">{draft.interests.length} / 20</span>
+           </div>
+           <div className="v2-sticky-interest-strip" role="group"
+             aria-label="Выбранные интересы — листай влево и вправо">
+             {draft.interests.length>0?draft.interests.map(id=>
+               <InterestChip key={id} id={id} selected
+                 onClick={()=>p.patch({interests:draft.interests.filter(value=>value!==id)})}/>):
+               <span className="v2-sticky-interest-empty">Выбранные интересы появятся здесь</span>}
+           </div>
+         </section>}
        </div>
        {stage.id==="identity"&&step(1)}
        {stage.id==="birthday"&&<div className="v2-real-groups">{step(2)}<RegistrationConsent data={draft} patch={p.patch}/></div>}
@@ -308,7 +322,7 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="intent"&&step(4)}
        {stage.id==="about"&&<div className="v2-real-groups v2-about-groups">
         {step(6,"about")}
-        <div className="v2-about-interest-heading"><strong>Что тебе нравится?</strong><span>{draft.interests.length} / 20</span></div>
+        <div className="v2-about-interest-heading"><strong>Что тебе нравится?</strong></div>
         {step(5)}
         <p className="v2-about-footnote">Можно дополнить позже в разделе «Раскрой себя».</p>
        </div>}
