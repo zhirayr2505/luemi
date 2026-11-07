@@ -37,7 +37,8 @@ function coordinates(body:unknown):{lat:number;lon:number}|null{
 async function upstream(op:GeoOperation,key:string,input:string|{lat:number;lon:number},
   fetcher:typeof fetch){
   const params=op==="search"?
-    new URLSearchParams({text:input as string,type:"city",lang:"ru",limit:"8",format:"json",apiKey:key}):
+    new URLSearchParams({text:input as string,type:"city",lang:"ru",limit:"12",
+      bias:"countrycode:none",format:"json",apiKey:key}):
     new URLSearchParams({lat:String((input as {lat:number}).lat),lon:String((input as {lon:number}).lon),
       lang:"ru",format:"json",type:"city",apiKey:key});
   const endpoint=op==="search"?"autocomplete":"reverse";
@@ -110,13 +111,17 @@ export function registerGeography(app:FastifyInstance,runtime?:GeoRuntime,guards
           error:response.status===429?"provider_rate_limited":"geocoder_unavailable"});
       }
       if(op==="search"){
-        const merged=[...localSearch(input as string),...normalizeGeoapify(response.raw)];
+        const typed=input as string;
+        // Local spellings include both Russian and Armenian Armavir. Provider
+        // coverage spans the world, with no silent IP-country bias.
+        const merged=[...localSearch(typed),...normalizeGeoapify(response.raw)];
         const seen=new Set<string>();
         return{results:merged.filter(place=>{
-          const key=place.city.toLocaleLowerCase("ru")+"|"+place.countryCode;
+          const key=[place.city.toLocaleLowerCase("ru"),place.countryCode,
+            (place.region??"").toLocaleLowerCase("ru")].join("|");
           if(seen.has(key))return false;
           seen.add(key);return true;
-        }).slice(0,8),coverage:"world"};
+        }).slice(0,12),coverage:"world"};
       }
       const items=(response.raw as {results:Record<string,unknown>[]}).results;
       const first=items.find(x=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&
@@ -132,8 +137,8 @@ export function registerGeography(app:FastifyInstance,runtime?:GeoRuntime,guards
   app.get<{Querystring:SearchQuery}>("/api/v2/geo/search",{preHandler:v2Read},async(request,reply)=>{
     const q=query(request.query?.q);
     if(q===null)return reply.code(400).send({error:"invalid_query"});
-    if(!providerEnabled)return{results:localSearch(q),
-      coverage:runtime?.localReverseEnabled===true?"limited":"demo"};
+    if(!providerEnabled)return{results:localSearch(q),coverage:"limited"};
+    // The live world provider is always authenticated and budget-controlled.
     return execute("search",request.authActor!.actorId,q,reply);
   });
   app.post<{Body:ReverseBody}>("/api/v2/geo/reverse",{preHandler:v2Mutation,
