@@ -143,11 +143,12 @@ export function RealRegistrationV2(p:Props){
   setFocusedField(null);
  },[]);
  const stage=stages[index];
+ const patchDraft=p.patch;
  // Older locally restored drafts can still contain an empty goal. Respect an
  // explicit choice, but initialize legacy drafts when the intent page opens.
  useEffect(()=>{
-   if(stage.id==="intent"&&!draft.goal)p.patch({goal:"undecided"});
- },[stage.id,draft.goal,p.patch]);
+   if(stage.id==="intent"&&!draft.goal)patchDraft({goal:"undecided"});
+ },[stage.id,draft.goal,patchDraft]);
  const body=useRef<HTMLElement|null>(null);
  const handleFieldFocus=useCallback((field:"name"|"date"|"city"|"about"|"language"|null)=>{
   setFocusedField(field);
