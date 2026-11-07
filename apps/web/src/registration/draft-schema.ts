@@ -48,7 +48,7 @@ export function parseRegistrationDraft(raw:unknown):Parsed<RegistrationDraft>{
  if(raw.trialConsent!==undefined&&typeof raw.trialConsent!=="boolean")return fail("consent-type");
  d.trialConsent=raw.trialConsent===true;
  const enums={
-  gender:["","man","woman","other"],searchScope:["radius","country","world"],
+  gender:["","man","woman","other"],searchScope:["radius","city","country","world"],
   audience:["","women","men","everyone"],
   goal:["","serious","relationship","dates","friendship","communication","new_people","flirt","activities","undecided","love","family_goal","travel_partner","casual"]
  } as const;
