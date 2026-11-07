@@ -66,13 +66,15 @@ test("real matches, reports and account actions stay available even when feed is
 });
 
 
-test("real For You and Nearby restore their approved distinct layouts, never three decks",()=>{
+test("real For You category hub and Nearby keep separate layouts, never three decks",()=>{
  assert.match(shell,/tab!=="feed"/);
  assert.match(shell,/<RealForYou draft=\{draft\} people=\{matchedRows\}/);
  assert.match(shell,/<RealNearby draft=\{draft\} people=\{matchedRows\}/);
- assert.match(forYou,/className="fy-hero"/);
- assert.match(forYou,/className="fy-rail"/);
- assert.match(forYou,/className="fy-section"/);
+ assert.match(forYou,/className="fy-topic-chips"/);
+ assert.match(forYou,/className="fy-avatar-rail"/);
+ assert.match(forYou,/className="fy-customize"/);
+ assert.match(forYou,/className=\{"fy-rail"/);
+ assert.match(forYou,/className="fy-section fy-best"/);
  assert.match(forYou,/className="fy-expanded"/);
  assert.match(forYou,/className="fy-manage"/);
  assert.match(nearby,/className="nb-location"/);
@@ -81,7 +83,10 @@ test("real For You and Nearby restore their approved distinct layouts, never thr
  assert.match(nearby,/scope==="city"/);
  assert.match(nearby,/scope==="country"/);
  assert.match(nearby,/scope==="world"/);
- assert.doesNotMatch(forYou+nearby,/demoPeople|forYouDemoPeople|fetch\(|localStorage|Math\.random/);
+ assert.doesNotMatch(forYou+nearby,/demoPeople|forYouDemoPeople|fetch\(|Math\.random/);
+ assert.match(forYou,/localStorage\.setItem\(storageKey,JSON\.stringify\(prefs\)\)/);
+ assert.match(forYou,/case "online":case "new":return \[\]/);
+ assert.match(forYou,/aria-pressed=\{saved\}/);
  assert.match(shell,/onPerson=\{onPerson\}/);
  assert.match(shell,/const matchedRows=useMemo\(\(\)=>rows.filter\(p=>!hiddenIds.has\(p.id\)\)/);
  assert.match(forYou,/const score=/);
@@ -100,7 +105,7 @@ test("real pages reuse approved 1:1 gesture and inertial settle without duplicat
  assert.match(shell,/onMotionProgress=\{\(progress,dragging\)=>header\.current\?\.setProfileProgress/);
  assert.match(shell,/registerBack=\{registerVisitorBack\}/);
  assert.match(shell,/ownerPhotoPreview=EMPTY_OWNER_PREVIEW/);
- assert.match(forYou,/onScroll=\{e=>\{if\(!expanded\)onScrollTop/);
+ assert.match(forYou,/onScroll=\{event=>\{if\(!expanded&&!manage\)onScrollTop/);
  assert.match(nearby,/onScroll=\{e=>onScrollTop/);
 });
 
