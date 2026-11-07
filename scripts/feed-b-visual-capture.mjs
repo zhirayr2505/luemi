@@ -41,6 +41,20 @@ const capture=async(width,height,prefix)=>{
   await card.getByRole("button",{name:"Нравится",exact:true}).click();
   await page.waitForTimeout(550);
   await save("03-next-card");
+  // Approved For You tab: capture the current real component and collection
+  // screens. No synthetic UI injected; the only change is QA-only entry state.
+  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
+  await page.waitForTimeout(400);
+  const forYou=page.locator(".fy-scroll");
+  await forYou.waitFor({state:"visible",timeout:4000});
+  await forYou.evaluate(el=>{el.scrollTop=0;});
+  await page.waitForTimeout(500);
+  await page.screenshot({path:dest+"/"+prefix+"-04-for-you-current.png",animations:"disabled"});
+  console.log("LUEMI_FORYOU_CURRENT_SCREENSHOT "+prefix);
+  await forYou.evaluate(el=>{el.scrollTop=210;});
+  await page.waitForTimeout(500);
+  await page.screenshot({path:dest+"/"+prefix+"-05-for-you-scrolled.png",animations:"disabled"});
+
  }finally{await ctx.close();}
 };
 try{
