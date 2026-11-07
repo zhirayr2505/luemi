@@ -26,18 +26,18 @@ try{
      setHeaderColor(){},setBackgroundColor(){},setBottomBarColor(){}
     }};
    `}));
+ await page.route("**/api/**",route=>
+  route.fulfill({status:404,contentType:"application/json",body:"{}"}));
  await page.route("**/api/health/live",route=>
   route.fulfill({status:200,contentType:"application/json",body:'{"status":"ok"}'}));
  await page.route("**/api/auth/telegram",route=>
   route.fulfill({status:200,contentType:"application/json",body:'{"user":{"firstName":"LUEMI","id":"qa"}}'}));
- await page.route("**/api/**",route=>
-  route.fulfill({status:404,contentType:"application/json",body:"{}"}));
  await page.goto("http://127.0.0.1:5173/",{waitUntil:"domcontentloaded"});
  const intro=page.locator(".entry-state.cinematic-entry");
  await intro.waitFor();
  assert.deepEqual(await page.evaluate(()=>window.__earlyFullscreenProbe),{rootExists:false,called:true},
   "fullscreen is requested in the HTML head before the React app/root is mounted");
- assert.equal(await intro.getAttribute("class"),"entry-state cinematic-entry",
+ assert.equal(await intro.evaluate(el=>el.classList.contains("hero-viewport-ready")),false,
   "the poster remains hidden while fullscreen geometry is still provisional");
  assert.equal(await intro.evaluate(el=>getComputedStyle(el,"::before").opacity),"0",
   "no cinematic photo must show in the temporary Telegram viewport");
