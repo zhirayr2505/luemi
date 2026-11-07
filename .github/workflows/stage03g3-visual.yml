@@ -104,11 +104,11 @@ jobs:
             exit 1
           fi
           node "$script"
-          node scripts/rem-01a-browser-regression.mjs
-          node scripts/rem-01b-browser-regression.mjs
-          node scripts/rem-01c-browser-regression.mjs
-          node scripts/rem-01d-browser-regression.mjs
-          node scripts/rem-01e-browser-regression.mjs
+          # REM-01A–E were written for removed registration/photo-picker UI.
+          # Current registration V4 has its own mandatory visual/source and
+          # server-backed checks in npm run check and REAL-REG-01A CI.
+          # Retain genuine current GeoPicker V4 browser coverage here.
+          node scripts/geo-v4-browser-smoke.mjs
           node scripts/rem-02a-browser-adapter.mjs
           node scripts/rem-02b-browser-regression.mjs
           node scripts/rem-02c-browser-interruption.mjs

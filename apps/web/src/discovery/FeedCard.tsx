@@ -1,6 +1,6 @@
 import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,X,Undo2,MoreHorizontal,MapPin} from "lucide-react";
+import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,Star,X,Undo2,MoreHorizontal,MapPin} from "lucide-react";
 import {goals} from "../registration/model";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
@@ -11,7 +11,8 @@ import {cardGestureZone} from "./card-gesture-zone";
 
 const buttons=[
  ["pass","Пропустить",X],
- ["special","Особенная симпатия",Sparkles],["like","Нравится",Heart]
+ ["like","Нравится",Heart],
+ ["special","Особенная симпатия",Star]
 ] as const;
 type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info"|"scroll";
  info:boolean;zone:"photo"|"browse";nativeScroll:boolean;startProgress:number;resumeTarget:0|1;
@@ -60,8 +61,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(content.current)content.current.style.transform=
    `translate3d(0,${m.reveal*(1-p)}px,0)`;
   if(dim.current)dim.current.style.opacity=String(p);
-  if(glass.current)glass.current.style.height=
-   (m.closed+m.actions+12+(m.open-m.closed)*p)+"px";
+  // Transform/opacity only during finger tracking: never layout or animated blur.
+  if(glass.current)glass.current.style.transform=
+   `translate3d(0,${(m.open-m.closed)*(1-p)}px,0)`;
  };
  const flushFinger=()=>{
   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
@@ -119,16 +121,19 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // Previously 'open' was hard-coded to 75% of the photo, which produced an
   // enormous empty opaque panel over the person's face on Android Telegram.
   const full=content.current?.scrollHeight??0;
-  const maxClosed=Math.max(110,Math.min(height*.43,height-actions-42));
-  const minClosed=Math.min(maxClosed,height<420?132:152);
+  const maxClosed=Math.max(108,Math.min(height*.56,height-actions-25));
+  const minClosed=Math.min(maxClosed,height<420?132:180);
   // Compact geometry is content-aware by breakpoint but never grows with the
   // complete interest list. The hidden rows still contribute to `full`, so the
   // expanded state can reveal them without a second layout jump.
-  const desiredClosed=height<420?136:height<560?158:176;
-  const closed=Math.max(minClosed,Math.min(maxClosed,desiredClosed));
-  const open=Math.max(closed,Math.min(full+20,height*.63,height-actions-34));
+  const desiredClosed=height<420?166:height<560?210:236;
+  // Include short biographies + interest chips in the compact state.
+  const closed=Math.max(minClosed,Math.min(maxClosed,Math.max(desiredClosed,Math.min(full+12,maxClosed))));
+  const open=Math.max(closed,Math.min(full+34,height*.77,height-actions-22));
   element.style.setProperty("--feed-closed-height",closed+"px");
   details.current?.style.setProperty("height",open+"px");
+  // Resizing updates geometry once; all subsequent RAF paints stay composited.
+  glass.current?.style.setProperty("height",(open+actions+14)+"px");
   // Match the content's upper edge to the inset glass surface while dragging.
   // This keeps the label/title visible rather than leaving a blank upper half.
   const spare=Math.max(0,open-full);
@@ -303,17 +308,19 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
                <Crown size={19} strokeWidth={2} fill="#ffd878" color="#e8af35"/>
               </span>}
              </div>
-             <div className="discovery-place"><MapPin size={14} strokeWidth={1.8}/>
-              <span>{person.city}{person.country?", "+person.country:""}</span>
+             <div className="feed-v2-meta-row">
+              <div className="discovery-place"><MapPin size={14} strokeWidth={1.8}/>
+               <span>{person.city}{person.country?", "+person.country:""}</span>
+              </div>
+              {goal&&<div className="feed-v2-goal"><Heart size={12}/>{goalLabel(goal.id,person.gender)}</div>}
              </div>
             </div>
-            {goal&&<div className="feed-v2-goal"><Heart size={14}/>{goalLabel(goal.id,person.gender)}</div>}
            </div>
            {person.likedYouKind&&<div className={"feed-v2-liked-you "+(person.likedYouKind==="super"?"is-super":"")}>
             {person.likedYouKind==="super"?<Sparkles size={14}/>:<Heart size={14}/>} Уже выбрал(а) тебя · лайк создаст мэтч
            </div>}
            {person.about&&<div className="feed-v2-about" ref={about}>
-             <p className="feed-v2-section-label">О себе</p>
+             <p className="feed-v2-section-label">О СЕБЕ</p>
              <p className="discovery-short-about">{person.about}</p>
            </div>}
            {person.interests.length>0&&<div className="feed-v2-interests" ref={interests}>
@@ -333,7 +340,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
          {buttons.map(([kind,label,Icon])=><button type="button" key={kind}
            className={"discovery-action discovery-"+kind} aria-label={label} title={label}
            onClick={()=>onAction(kind)} disabled={!available}>
-           <Icon size={kind==="like"?28:kind==="special"?24:20} strokeWidth={1.85}/>
+           <Icon size={kind==="like"?30:kind==="special"?24:22} strokeWidth={kind==="like"?1.9:1.8}/>
          </button>)}
        </div>
      </div>
