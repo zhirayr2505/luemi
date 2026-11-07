@@ -45,7 +45,7 @@ function validatedDraft(raw:unknown,approvedConsent:string){
   else if(key==="countryCode"&&typeof value==="string"&&/^[A-Z]{2}$/.test(value))p[key]=value;
   else if(key==="goal"&&str(value,1,80))p[key]=value;
   else if((key==="interests"||key==="languages")&&Array.isArray(value)&&
-    value.length<=(key==="interests"?15:10)&&new Set(value).size===value.length&&
+    value.length<=(key==="interests"?20:10)&&new Set(value).size===value.length&&
     value.every(v=>str(v,1,40)))p[key]=value;
   else reject(422,"invalid_draft");
  }
