@@ -158,7 +158,7 @@ export function RealRegistrationV2(p:Props){
   recoveryApplied.current=true;
   if(p.resumeReview&&photoReady(photos)){setIndex(stages.length-1);return;}
   setIndex(restoredStage(draft,photos));
- },[p.restored,p.resumeReview,draft,photos]);
+ },[p.restored,p.resumeReview,draft,photos,stages.length]);
  /* One sequential motion across all seven registration steps. Android
     WebView must not capture incoming content over an outgoing body. */
  const nav=(target:number)=>{
