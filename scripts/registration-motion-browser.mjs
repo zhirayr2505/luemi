@@ -55,7 +55,7 @@ try{
  assert.equal(await page.locator(".v2-device").getAttribute("data-screen"),"birthday");
  await page.getByRole("button",{name:"Мужчина"}).click();
  const genderCardHeight=await page.locator(".dob-step .glass-choice").first().evaluate(el=>el.getBoundingClientRect().height);
- assert.ok(genderCardHeight<=74,"gender glass cards should remain compact and readable");
+ assert.ok(genderCardHeight<=55,"gender cards must place icon beside label without tall empty space");
  await page.getByRole("checkbox").check();
  await next("location");
  await page.getByRole("button",{name:"Выбрать город"}).click();
@@ -65,8 +65,8 @@ try{
  const panel=page.locator(".geo-liquid-mode-panel");
  const originalRect=await panel.boundingBox();
  const cityHeight=await page.locator(".geo-liquid-city").evaluate(el=>el.getBoundingClientRect().height);
- assert.ok(cityHeight<=76,"city card should be compact");
- assert.ok(originalRect&&originalRect.height<=125,"shared scope card has a compact fixed height");
+ assert.ok(cityHeight<=65,"city card should fit the city and country without wasted height");
+ assert.ok(originalRect&&originalRect.height<=97,"shared mode card should use only the space its content needs");
  await page.getByRole("button",{name:"Мой город"}).click();
  assert.equal(await page.getByRole("button",{name:"Мой город"}).getAttribute("aria-pressed"),"true","city search scope is selected");
  for(const mode of ["Весь мир","Рядом","Мой город"]){
@@ -77,16 +77,43 @@ try{
   assert.ok(Math.abs(rect.y-originalRect.y)<1,"mode "+mode+" must not move the card vertically");
  }
  await page.getByRole("button",{name:"Рядом",exact:true}).click();
- assert.equal(await page.locator(".geo-liquid-radius input[type=range]").count(),1,
-  "radius slider remains reachable inside the shared card");
+ const radiusInput=page.getByRole("slider",{name:"Радиус поиска, километры"});
+ assert.equal(await radiusInput.count(),1,"radius slider remains reachable inside the shared card");
+ const radiusBefore=await radiusInput.inputValue();
+ const radiusBox=await radiusInput.boundingBox();
+ assert.ok(radiusBox&&Math.abs(radiusBox.height-34)<1,"radius input keeps a generous 34px finger target");
+ await page.touchscreen.tap(radiusBox.x+radiusBox.width*.36,radiusBox.y+radiusBox.height/2);
+ assert.notEqual(await radiusInput.inputValue(),radiusBefore,
+  "the compact radius slider still accepts native Android touch");
  await page.getByRole("button",{name:"Мой город"}).click();
  await next("intent");
  const ageHeight=await page.locator(".age-range").evaluate(el=>el.getBoundingClientRect().height);
- assert.ok(ageHeight<=148,"age selection panel should be slimmer without losing touch controls");
+ assert.ok(ageHeight<=125,"age selection panel should not waste space above or below the rail");
+ const ageGeometry=await page.locator(".double-age-range").evaluate(el=>{
+  const track=el.querySelector(".double-range-track")?.getBoundingClientRect();
+  const input=el.querySelector(".range-min")?.getBoundingClientRect();
+  if(!track||!input)return null;
+  return {offset:Math.abs((track.y+track.height/2)-(input.y+input.height/2)),
+   left:track.left-input.left,right:input.right-track.right,hit:input.height};
+ });
+ assert.ok(ageGeometry,"age slider track and range input must exist");
+ assert.ok(ageGeometry.offset<=.6,"age slider grips must sit exactly on the visible track centre");
+ assert.ok(Math.abs(ageGeometry.left-10)<1&&Math.abs(ageGeometry.right-10)<1,
+  "both age thumb endpoints must match the visual 10px rail inset");
+ assert.ok(ageGeometry.hit>=34,"compact rail must not shrink the native touch target");
  await page.getByRole("button",{name:"Женщин"}).click();
  await page.getByRole("button",{name:"Серьёзные отношения"}).click();
  const goalHeight=await page.getByRole("button",{name:"Серьёзные отношения"}).evaluate(el=>el.getBoundingClientRect().height);
- assert.ok(goalHeight<=88,"liquid-glass goal cards should not retain old 100px size");
+ assert.ok(goalHeight<=66,"goal cards should be genuinely compact horizontal rows");
+ assert.equal(await page.locator(".v2-goal-choice").count(),13,"all 13 goals remain available");
+ const loveIcon=await page.getByRole("button",{name:"Найти любовь"}).locator(".v2-goal-icon svg").innerHTML();
+ const relationshipIcon=await page.getByRole("button",{name:"Отношения",exact:true}).locator(".v2-goal-icon svg").innerHTML();
+ assert.notEqual(loveIcon,relationshipIcon,"love and relationships must never share identical icons");
+ await page.setViewportSize({width:360,height:780});
+ const compactOverflow=await page.locator(".v2-goal-choice").evaluateAll(nodes=>
+  nodes.some(node=>node.scrollWidth>node.clientWidth+1));
+ assert.equal(compactOverflow,false,"goal labels must not clip or overflow on narrow phones");
+ await page.setViewportSize({width:412,height:915});
  // Biography and interests return before photos; languages remain optional.
  await next("about");
  await page.getByPlaceholder("Что тебя радует? Чем любишь заниматься?").fill("Люблю музыку и прогулки по городу.");

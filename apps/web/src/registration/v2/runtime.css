@@ -95,8 +95,11 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .language-option:active{transform:scale(.985)}
 .v2-runtime .choice-grid{gap:9px}
 .v2-runtime .dob-step>.choice-section .choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-.v2-runtime .dob-step>.choice-section .glass-choice{min-height:78px;flex-direction:column;font-size:13px;border-radius:17px}
-.v2-runtime .dob-step>.choice-section .glass-choice svg{width:24px;height:24px;color:#e9c9fa}
+.v2-runtime .dob-step>.choice-section .glass-choice{
+ display:inline-flex;flex-direction:row;min-height:48px;gap:9px;padding:7px 12px;
+ font-size:13px;border-radius:13px;justify-content:center}
+.v2-runtime .dob-step>.choice-section .glass-choice svg{
+ width:19px;height:19px;color:#e9c9fa;flex:none}
 .v2-runtime .glass-panel,.v2-runtime .age-range,.v2-runtime .radius-control,
 .v2-runtime .glass-check,.v2-runtime .v2-note{
  background:linear-gradient(145deg,rgba(68,53,84,.89),rgba(40,35,56,.92));
@@ -526,45 +529,55 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .interest-max-hint,.v2-runtime .interest-no-results{
  margin:5px 0 0;color:#c5a4d4;font-size:12px;line-height:1.4}
 .v2-runtime .v2-about-interest-heading{margin-top:0}
+/* Compact two-column selection: icon and label share a row, not a tall
+   top/bottom GlassChoice. No backdrop filters in the scrolling card grid. */
 .v2-runtime .preferences-step .goals-section .choice-grid{
  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.v2-runtime .preferences-step .goals-section .glass-choice{
- position:relative;isolation:isolate;overflow:hidden;width:100%;min-width:0;
- min-height:80px;flex-direction:column;align-items:flex-start;justify-content:space-between;
- padding:11px 12px 10px;gap:8px;text-align:left;font-size:12px;line-height:1.25;
- border:1px solid rgba(216,182,238,.25);border-radius:18px;color:#f8eefc;
- background:linear-gradient(150deg,rgba(78,61,99,.76),rgba(47,38,63,.92) 65%,rgba(37,32,54,.96));
- box-shadow:inset 0 1px rgba(255,255,255,.16),inset 0 -1px rgba(16,8,28,.15),0 5px 12px rgba(5,3,14,.08);
- transition:transform .18s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease}
-.v2-runtime .preferences-step .goals-section .glass-choice:active{transform:scale(.985)}
-.v2-runtime .preferences-step .goals-section .glass-choice>svg:first-child{
- width:21px;height:21px;color:#e6b6f4;filter:none;flex:none}
-.v2-runtime .preferences-step .goals-section .glass-choice.selected{
- border-color:rgba(240,191,244,.67);
- background:linear-gradient(125deg,rgba(132,94,144,.79),rgba(93,64,117,.85));
- box-shadow:inset 0 1px rgba(255,255,255,.26),inset 0 0 0 1px rgba(217,169,237,.18),0 7px 18px rgba(6,4,17,.12)}
-.v2-runtime .preferences-step .goals-section .goal-glass-check{
- position:absolute;top:10px;right:10px;width:16px;height:16px;color:#f4d9fb;pointer-events:none}
-.v2-runtime .preferences-step .goals-section .goal-card-label{
- max-width:100%;font-size:12px;line-height:1.25;font-weight:590;letter-spacing:-.015em;overflow-wrap:anywhere}
-.v2-runtime .geo-liquid-location{display:flex;flex-direction:column;gap:17px;padding-bottom:12px}
-.v2-runtime .geo-city-area{display:flex;flex-direction:column;gap:8px}
+.v2-runtime .preferences-step .v2-goal-choice{
+ appearance:none;position:relative;display:flex;align-items:center;gap:9px;
+ width:100%;min-width:0;min-height:58px;padding:9px 10px;
+ border:1px solid rgba(213,178,231,.27);border-radius:14px;color:#f6edfa;
+ text-align:left;font:inherit;cursor:pointer;
+ background:linear-gradient(140deg,rgba(78,59,95,.76),rgba(43,36,59,.91));
+ box-shadow:inset 0 1px rgba(255,255,255,.13),0 3px 12px rgba(5,3,14,.07);
+ -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+ transition:transform .18s ease,border-color .2s ease,background-color .2s ease,box-shadow .2s ease}
+.v2-runtime .preferences-step .v2-goal-choice:active{transform:scale(.98)}
+.v2-runtime .preferences-step .v2-goal-choice.is-selected{
+ border-color:rgba(236,187,244,.72);
+ background:linear-gradient(125deg,rgba(132,94,144,.76),rgba(91,66,114,.88));
+ box-shadow:inset 0 1px rgba(255,255,255,.22),0 0 0 1px rgba(210,156,224,.11)}
+.v2-runtime .preferences-step .v2-goal-choice:focus-visible{
+ outline:2px solid #e1b9f1;outline-offset:2px}
+.v2-runtime .preferences-step .v2-goal-icon{
+ display:grid;place-items:center;flex:0 0 29px;width:29px;height:29px;
+ color:#e6b6f4;border-radius:10px;background:rgba(217,172,234,.12)}
+.v2-runtime .preferences-step .v2-goal-choice.is-selected .v2-goal-icon{
+ background:rgba(236,194,246,.17);color:#f8d7ff}
+.v2-runtime .preferences-step .goal-card-label{
+ display:block;min-width:0;flex:1;font-size:12.5px;line-height:1.24;font-weight:630;
+ letter-spacing:-.015em;overflow-wrap:break-word}
+.v2-runtime .preferences-step .v2-goal-check{
+ position:absolute;top:6px;right:6px;width:13px;height:13px;
+ color:#f4d9fb;pointer-events:none}
+.v2-runtime .geo-liquid-location{display:flex;flex-direction:column;gap:12px;padding-bottom:8px}
+.v2-runtime .geo-city-area{display:flex;flex-direction:column;gap:7px}
 .v2-runtime .geo-liquid-city{display:flex;align-items:center;gap:11px;min-width:0;width:100%;
- min-height:70px;border:1px solid rgba(222,182,241,.35);border-radius:18px;padding:10px 12px;
+ min-height:58px;border:1px solid rgba(222,182,241,.35);border-radius:14px;padding:7px 10px;
  text-align:left;color:#f5eefa;
  background:linear-gradient(125deg,rgba(91,66,112,.79),rgba(50,41,69,.95));
  box-shadow:inset 0 1px rgba(255,255,255,.15),0 8px 22px rgba(6,4,17,.1)}
-.v2-runtime .geo-liquid-city-icon{flex:0 0 38px;height:38px;display:grid;place-items:center;
- border-radius:12px;background:rgba(198,142,218,.13);color:#e9b6f1}
-.v2-runtime .geo-liquid-city-icon svg{width:20px;height:20px}
+.v2-runtime .geo-liquid-city-icon{flex:0 0 32px;height:32px;display:grid;place-items:center;
+ border-radius:10px;background:rgba(198,142,218,.13);color:#e9b6f1}
+.v2-runtime .geo-liquid-city-icon svg{width:18px;height:18px}
 .v2-runtime .geo-liquid-city-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
-.v2-runtime .geo-liquid-city-copy strong{font-size:16px;line-height:1.12;overflow:hidden;
+.v2-runtime .geo-liquid-city-copy strong{font-size:14px;line-height:1.15;overflow:hidden;
  text-overflow:ellipsis;white-space:nowrap}
 .v2-runtime .geo-liquid-city-copy small{font-size:11px;color:#d4bfdc;
  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .v2-runtime .geo-liquid-edit{font-size:11px;color:#efc9f4;font-weight:700;flex:none}
 .v2-runtime .geo-liquid-locate{align-self:center;display:inline-flex;align-items:center;justify-content:center;
- gap:8px;min-height:41px;padding:7px 12px;color:#dcb3ea;background:transparent;
+ gap:7px;min-height:32px;padding:4px 10px;color:#dcb3ea;background:transparent;
  border:0;font-weight:650;font-size:12px}
 .v2-runtime .geo-liquid-city-editor{display:flex;flex-direction:column;gap:8px;position:relative}
 .v2-runtime .geo-liquid-city-editor .focus-field-slot{min-height:65px}
@@ -572,59 +585,65 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-liquid-cancel{align-self:flex-end;padding:7px 10px;border:0;background:transparent;
  color:#dfb0f1;font-size:12px}
 .v2-runtime .geo-liquid-current,.v2-runtime .geo-liquid-caption{font-size:12px;color:#c9b2d4;line-height:1.45;margin:0}
-.v2-runtime .geo-liquid-search-section{display:flex;flex-direction:column;gap:10px}
+.v2-runtime .geo-liquid-search-section{display:flex;flex-direction:column;gap:8px}
 .v2-runtime .geo-liquid-section-head{display:flex;flex-direction:column;gap:3px}
-.v2-runtime .geo-liquid-section-head strong{font-size:16px;color:#f9effc}
+.v2-runtime .geo-liquid-section-head strong{font-size:14px;color:#f9effc}
 .v2-runtime .geo-liquid-section-head small{font-size:11px;color:#b4a2c0}
 .v2-runtime .geo-liquid-scopes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
-.v2-runtime .geo-liquid-scopes button{min-width:0;min-height:56px;padding:8px 4px;
- display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
- border:1px solid rgba(205,173,228,.24);border-radius:17px;
+.v2-runtime .geo-liquid-scopes button{min-width:0;min-height:42px;padding:6px 4px;
+ display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;
+ border:1px solid rgba(205,173,228,.24);border-radius:13px;
  background:linear-gradient(130deg,rgba(68,54,87,.76),rgba(44,38,63,.92));
  box-shadow:inset 0 1px rgba(255,255,255,.09);color:#e3d5ed;font-size:11px;
  transition:background .2s,border-color .2s,transform .18s}
-.v2-runtime .geo-liquid-scopes button svg{width:17px;height:17px;color:#ddb0eb}
+.v2-runtime .geo-liquid-scopes button svg{width:15px;height:15px;flex:none;color:#ddb0eb}
 .v2-runtime .geo-liquid-scopes button.active{background:linear-gradient(132deg,rgba(150,103,166,.62),rgba(91,68,117,.8));
  border-color:#d8addf;color:#fff;box-shadow:inset 0 1px rgba(255,255,255,.2)}
 .v2-runtime .geo-liquid-scopes button:active{transform:scale(.98)}
 /* One shared, constant-height panel. Changing radius/city/world only crossfades
    the contents; neither the document nor the fixed Continue footer jumps. */
 .v2-runtime .geo-liquid-mode-panel{
- box-sizing:border-box;display:flex;align-items:stretch;min-height:122px;height:122px;
- border-radius:18px;border:1px solid rgba(210,171,226,.23);
+ box-sizing:border-box;display:flex;align-items:stretch;min-height:94px;height:94px;
+ border-radius:14px;border:1px solid rgba(210,171,226,.23);
  background:linear-gradient(150deg,rgba(74,53,93,.73),rgba(46,39,67,.92));
  box-shadow:inset 0 1px rgba(255,255,255,.1);overflow:hidden}
 .v2-runtime .geo-liquid-mode-content{
- box-sizing:border-box;width:100%;min-width:0;height:100%;padding:14px 16px 11px;
+ box-sizing:border-box;width:100%;min-width:0;height:100%;padding:10px 13px 9px;
  animation:luemi-geo-mode-in .21s ease-out both}
 @keyframes luemi-geo-mode-in{
  from{opacity:.2;transform:translate3d(0,4px,0)}
  to{opacity:1;transform:translate3d(0,0,0)}}
-.v2-runtime .geo-liquid-radius{display:flex;flex-direction:column;justify-content:space-between;gap:4px}
+.v2-runtime .geo-liquid-radius{display:flex;flex-direction:column;justify-content:space-between;gap:2px}
 .v2-runtime .geo-liquid-radius .range-title{font-size:13px}
 .v2-runtime .geo-liquid-radius .range-title strong{color:#e8b8f0;font-size:14px}
-.v2-runtime .geo-liquid-radius .branded-slider{min-width:0;min-height:32px;margin:0 8px}
-.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]{min-width:0;margin:0}
+.v2-runtime .geo-liquid-radius .branded-slider{min-width:0;min-height:34px;margin:0 7px}
+.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]{
+ min-width:0;flex:none;margin:0;height:34px;border:0;outline:0;appearance:none;-webkit-appearance:none;
+ background:transparent;touch-action:pan-x}
+.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]::-webkit-slider-runnable-track{
+ height:4px;border:0;border-radius:999px;
+ background:linear-gradient(to right,#b28be5 0%,#eba6ce var(--range-pct),rgba(218,193,235,.23) var(--range-pct),rgba(218,193,235,.23) 100%)}
+.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]::-moz-range-track{
+ height:4px;border:0;border-radius:999px;background:rgba(218,193,235,.23)}
+.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]::-moz-range-progress{
+ height:4px;background:#c993e8;border-radius:999px}
 .v2-runtime .geo-liquid-mode-info{display:flex;align-items:center;gap:12px}
-.v2-runtime .geo-liquid-mode-icon{flex:0 0 40px;width:40px;height:40px;display:grid;
- place-items:center;border-radius:12px;background:rgba(185,133,206,.17);color:#dba8ec}
+.v2-runtime .geo-liquid-mode-icon{flex:0 0 32px;width:32px;height:32px;display:grid;
+ place-items:center;border-radius:10px;background:rgba(185,133,206,.17);color:#dba8ec}
+.v2-runtime .geo-liquid-mode-icon svg{width:19px;height:19px}
 .v2-runtime .geo-liquid-mode-copy{display:flex;flex-direction:column;min-width:0;gap:5px}
-.v2-runtime .geo-liquid-mode-copy strong{font-size:13px;line-height:1.25;color:#f9ecfc}
-.v2-runtime .geo-liquid-mode-copy small{font-size:11px;line-height:1.5;color:#ccb9d8}
+.v2-runtime .geo-liquid-mode-copy strong{font-size:13px;line-height:1.2;color:#f9ecfc}
+.v2-runtime .geo-liquid-mode-copy small{font-size:11px;line-height:1.35;color:#ccb9d8}
 .v2-runtime .geo-liquid-radius .range-limits{font-size:10px}
 .v2-runtime .geo-liquid-radius input[type="range"]::-webkit-slider-thumb{
- width:21px;height:21px;border-width:3px}
+ appearance:none;-webkit-appearance:none;
+ width:20px;height:20px;margin-top:-8px;border:3px solid #fff;border-radius:50%;
+ background:linear-gradient(145deg,#b28be5,#e8a6d4);
+ box-shadow:0 2px 7px rgba(4,2,10,.24)}
 .v2-runtime .geo-liquid-radius input[type="range"]::-moz-range-thumb{
- width:15px;height:15px;border-width:3px}
-.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]{height:5px}
+ width:14px;height:14px;border:3px solid #fff;border-radius:50%;background:#c993e8}
 .v2-runtime .geo-liquid-privacy{font-size:11px;color:#afa1bd;line-height:1.5;margin:0}
-@media(max-width:359px){
- .v2-runtime .geo-liquid-scopes button{font-size:10px}
- .v2-runtime .preferences-step .goals-section .glass-choice{padding:10px}
- .v2-runtime .geo-liquid-mode-content{padding:12px}
-}
 @media(prefers-reduced-motion:reduce){
- .v2-runtime .preferences-step .goals-section .glass-choice,
  .v2-runtime .geo-liquid-scopes button{transition:none}
  .v2-runtime .geo-liquid-mode-content{animation:none}
 }
@@ -714,24 +733,54 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 }
 
 
-/* Compact registration rhythm: keep the keyboard dock and approved step
-   animations untouched. Slider hit tracks remain 34–36px high. */
+/* One compact form rhythm and a single slider coordinate system:
+   the track centre (top 16px + 2px) equals the thumb centre (36px / 2).
+   Keep the native input 36px high for touch and align its WebKit track to 4px. */
+.v2-runtime .v2-device[data-screen="intent"] .v2-stage-heading,
+.v2-runtime .v2-device[data-screen="birthday"] .v2-stage-heading,
+.v2-runtime .v2-device[data-screen="location"] .v2-stage-heading{padding-bottom:12px}
+.v2-runtime .v2-device[data-screen="intent"] .v2-subtitle,
+.v2-runtime .v2-device[data-screen="birthday"] .v2-subtitle,
+.v2-runtime .v2-device[data-screen="location"] .v2-subtitle{min-height:0}
 .v2-runtime .v2-device[data-screen="intent"] .v2-stage-heading+.form-stack,
-.v2-runtime .v2-device[data-screen="location"] .v2-stage-heading+.form-stack{margin-top:12px}
-.v2-runtime .preferences-step.form-stack{gap:13px}
-.v2-runtime .preferences-step .choice-section{gap:9px}
-.v2-runtime .age-range{padding:13px 14px 11px;border-radius:17px}
+.v2-runtime .v2-device[data-screen="location"] .v2-stage-heading+.form-stack,
+.v2-runtime .v2-device[data-screen="birthday"] .v2-stage-heading+.form-stack{margin-top:10px}
+.v2-runtime .preferences-step.form-stack{gap:11px}
+.v2-runtime .preferences-step .choice-section{gap:7px}
+.v2-runtime .preferences-step>.choice-section .choice-grid{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.v2-runtime .preferences-step>.choice-section .glass-choice{
+ width:100%;min-width:0;min-height:39px;padding:6px 4px;gap:5px;
+ border-radius:12px;font-size:12px;line-height:1.15}
+.v2-runtime .preferences-step>.choice-section .glass-choice svg{width:16px;height:16px;flex:none}
+.v2-runtime .age-range{padding:10px 12px 8px;border-radius:14px}
 .v2-runtime .age-range .range-title{font-size:13px}
 .v2-runtime .age-range .range-title strong{font-size:14px}
-.v2-runtime .age-range .age-caption{font-size:11px;line-height:1.45;margin:5px 0 0}
-.v2-runtime .age-range .double-age-range{height:50px;margin-top:8px}
-.v2-runtime .age-range .double-range-track{top:12px;left:10px;right:10px;height:5px}
-.v2-runtime .age-range .double-age-range input[type="range"]{height:36px}
+.v2-runtime .age-range .age-caption{font-size:11px;line-height:1.35;margin:4px 0 0}
+.v2-runtime .age-range .double-age-range{height:48px;margin-top:5px}
+.v2-runtime .age-range .double-range-track{
+ top:16px;left:10px;right:10px;height:4px;pointer-events:none}
+.v2-runtime .age-range .double-age-range input[type="range"]{
+ top:0;left:0;width:100%;height:36px;margin:0;border:0;
+ background:transparent;pointer-events:none;touch-action:pan-x}
+.v2-runtime .age-range .double-age-range input::-webkit-slider-runnable-track{
+ height:4px;border:0;background:transparent}
 .v2-runtime .age-range .double-age-range input::-webkit-slider-thumb{
- width:21px;height:21px;border-width:3px}
+ appearance:none;-webkit-appearance:none;margin-top:-8px;
+ width:20px;height:20px;border:3px solid #fff;border-radius:50%;
+ background:linear-gradient(145deg,#b18ce5,#eba7ce);pointer-events:auto}
+.v2-runtime .age-range .double-age-range input::-moz-range-track{
+ height:4px;border:0;background:transparent}
 .v2-runtime .age-range .double-age-range input::-moz-range-thumb{
- width:15px;height:15px;border-width:3px}
-.v2-runtime .age-range .range-ends{top:38px;font-size:10px}
-.v2-runtime .dob-step>.choice-section .glass-choice{
- min-height:65px;border-radius:16px;gap:5px;padding:8px 10px;font-size:12px}
-.v2-runtime .dob-step>.choice-section .glass-choice svg{width:21px;height:21px}
+ width:14px;height:14px;border:3px solid #fff;border-radius:50%;pointer-events:auto}
+.v2-runtime .age-range .range-ends{top:38px;left:1px;right:1px;font-size:10px}
+@media(max-width:359px){
+ .v2-runtime .preferences-step>.choice-section .glass-choice{gap:3px;font-size:11px;padding-inline:2px}
+ .v2-runtime .preferences-step .v2-goal-choice{padding:8px;gap:6px}
+ .v2-runtime .preferences-step .goal-card-label{font-size:12px}
+ .v2-runtime .geo-liquid-scopes button{font-size:10px;gap:3px;padding-inline:2px}
+ .v2-runtime .geo-liquid-mode-content{padding:9px 11px}
+}
+@media(prefers-reduced-motion:reduce){
+ .v2-runtime .preferences-step .v2-goal-choice{transition:none}
+}
