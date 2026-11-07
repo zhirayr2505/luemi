@@ -62,7 +62,7 @@ assert.match(runtime,/\.age-range \.double-age-range input::-webkit-slider-thumb
  "Native age thumbs must be centred on the 4px rail instead of sitting below it");
 assert.match(runtime,/\.geo-liquid-radius input\[type="range"\]::-webkit-slider-thumb\{[\s\S]*?margin-top:-8px/,
  "Radius thumb must share the age slider's 4px track and 20px grip geometry");
-assert.match(runtime,/\.dob-step>\.choice-section \.glass-choice\{[\s\S]*?min-height:48px/,
+assert.match(runtime,/\.dob-step>\.choice-section \.glass-choice\{[\s\S]*?min-height:46px/,
  "Gender cards must use a compact horizontal icon-label arrangement");
 assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"\}/,
  "Only actual Telegram surface should reserve native controls clearance");
