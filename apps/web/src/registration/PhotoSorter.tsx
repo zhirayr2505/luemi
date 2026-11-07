@@ -25,12 +25,13 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
  const lastFrameTime=useRef(0);
  const scrollBounds=useRef<{node:Element}|null>(null);
  const [drag,setDrag]=useState<Drag|null>(null);
+ const hasAtLeastTwoPhotos=photos.length>=2;
  const [showTip,setShowTip]=useState(false);
  const [tipPosition,setTipPosition]=useState({left:0,top:0});
  const tipShown=useRef(false);
  const dismissTip=useCallback(()=>setShowTip(false),[]);
  useEffect(()=>{
-  if(photos.length<2||tipShown.current)return;
+  if(!hasAtLeastTwoPhotos||tipShown.current)return;
   tipShown.current=true;
   try{
    if(window.sessionStorage.getItem("luemi-photo-handle-tip-v1")==="shown")return;
@@ -53,7 +54,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
    cancelAnimationFrame(frame);window.clearTimeout(timer);
    document.removeEventListener("pointerdown",dismissTip,true);
   };
- },[photos.length,dismissTip]);
+ },[hasAtLeastTwoPhotos,dismissTip]);
  const display=drag?reorder(photos,drag.source,drag.target):photos;
  const displaySignature=display.map(x=>x.id).join("|");
  const stopFrame=useCallback(()=>{
@@ -272,7 +273,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
          }:undefined}
          className={"mosaic-slot"+(i===0?" mosaic-main":"")+(drag?.id===photo?.id?" drag-source":"")}>
          {photo?<>{photo.src&&<img src={photo.src} alt={"Фото "+(i+1)} draggable={false} decoding="async"/>}
-           <span className="slot-index">{i+1}</span>
+           {i>0&&<span className="slot-index">{i+1}</span>}
            {i===0&&<span className="primary-photo">Главное</span>}
            <button className="remove-photo" type="button" onClick={()=>removePhoto(photo.id)} aria-label={"Удалить фото "+(i+1)}><X size={14}/></button>
            <button className="photo-drag-handle" type="button" aria-label={"Перетащить фото "+(i+1)}><GripVertical size={18}/></button>
