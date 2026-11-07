@@ -167,8 +167,10 @@ assert.match(runtime,/\.city-focus-shell \.geo-results\{position:absolute[^}]*bo
  "City suggestions must open above the docked editor");
 assert.match(steps,/className="about-input-shell"[\s\S]*className="char-count"/,
  "Biography count must sit inside its text field");
-assert.match(geo,/className="scope-popover-anchor"/,
- "Search scope menu needs an upward in-flow anchor");
+assert.match(geo,/className="geo-liquid-scopes"/,
+ "Search scope is a keyboard-safe segmented control instead of a dropdown");
+assert.doesNotMatch(geo,/scopeOpen|setScopeOpen|scope-popover-anchor/,
+ "The retired scope dropdown and its state must not be mounted");
 assert.match(app,/className="intro-subtitle">Реальные люди\. Настоящие эмоции/,
  "Welcome screen needs the cinematic supporting line");
 assert.match(app,/webApp\?\.setBottomBarColor\?\.\(background\)/,
