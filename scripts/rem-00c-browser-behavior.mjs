@@ -174,7 +174,8 @@ async function appBootstrap(browser){
    throw new Error("REM-00C mocked App did not become authorized: "+JSON.stringify({calls,diagnostics,errors}),{cause:error});
   });
   const bridge=await page.evaluate(()=>window.__QA_TELEGRAM_MOCK__.calls.map(x=>x.name));
-  assert.ok(["ready","expand","exitFullscreen","disableVerticalSwipes"].every(x=>bridge.includes(x)),"real App must invoke mocked Telegram bridge lifecycle without covered fullscreen chrome");
+  assert.ok(["ready","expand","disableVerticalSwipes"].every(x=>bridge.includes(x)),"App must initialize Telegram bridge and disable vertical swipes");
+  assert.equal(bridge.includes("exitFullscreen"),false,"V3 fullscreen app must never exit Telegram fullscreen");
   assert.ok(calls.includes("live")&&calls.includes("auth")&&calls.indexOf("live")<calls.indexOf("auth"),"mocked health precedes authorization, including React StrictMode effect reruns");
   await snapshot(page,"08-app-intro-mocked-telegram");
   await page.getByRole("button",{name:/^Начать(?: знакомство)?$/}).click();
