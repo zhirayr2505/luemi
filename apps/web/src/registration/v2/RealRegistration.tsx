@@ -324,7 +324,7 @@ export function RealRegistrationV2(p:Props){
                  return <button type="button" key={id} className="v2-selected-interest-chip"
                    style={tint(info.colors)} aria-label={"Удалить интерес "+info.name}
                    onClick={()=>p.patch({interests:draft.interests.filter(value=>value!==id)})}>
-                   <Icon size={15} strokeWidth={1.7} aria-hidden="true"/>
+                   <Icon size={13} strokeWidth={1.7} aria-hidden="true"/>
                    <span>{info.name}</span>
                    <span className="v2-selected-interest-close" aria-hidden="true"><X size={12} strokeWidth={2.2}/></span>
                  </button>;
