@@ -16,6 +16,34 @@
 .real-discovery-home .demo-qa-feed>.discovery-deck-stage{flex:1;min-height:0;width:100%;overflow:visible}
 .real-discovery-home .demo-qa-feed .discovery-deck-layer{inset:7px 0 4px}
 .real-discovery-home .demo-qa-feed .deck-queued{inset:0 5px 13px}
+/* Demo uses the SAME full-card gestures as production, with an explicit
+   leave/enter compositor pair. The previous QA route often fell back to a
+   near-instant generic fade because the feed page selector did not own it. */
+.real-discovery-home .demo-qa-feed .deck-leaving-pass{
+ z-index:5;will-change:transform,opacity;
+ animation:luemi-demo-pass .40s cubic-bezier(.22,.72,.23,1) both}
+.real-discovery-home .demo-qa-feed .deck-leaving-like{
+ z-index:5;will-change:transform,opacity;
+ animation:luemi-demo-like .40s cubic-bezier(.22,.72,.23,1) both}
+.real-discovery-home .demo-qa-feed .deck-leaving-special{
+ z-index:5;will-change:transform,opacity;
+ animation:luemi-demo-special .40s cubic-bezier(.22,.72,.23,1) both}
+.real-discovery-home .demo-qa-feed .deck-entering{
+ z-index:3;pointer-events:none;will-change:transform,opacity;
+ animation:luemi-demo-arrive .43s cubic-bezier(.17,.78,.22,1) both}
+@keyframes luemi-demo-pass{
+ from{transform:translate3d(0,0,0) rotate(0) scale(1);opacity:1}
+ to{transform:translate3d(-112%,4%,0) rotate(-4deg) scale(.955);opacity:.1}}
+@keyframes luemi-demo-like{
+ from{transform:translate3d(0,0,0) rotate(0) scale(1);opacity:1}
+ to{transform:translate3d(112%,4%,0) rotate(4deg) scale(.955);opacity:.1}}
+@keyframes luemi-demo-special{
+ from{transform:translate3d(0,0,0) scale(1);opacity:1}
+ to{transform:translate3d(0,-105%,0) scale(.96);opacity:.05}}
+@keyframes luemi-demo-arrive{
+ 0%{transform:translate3d(0,23px,0) scale(.969);opacity:.72}
+ 64%{transform:translate3d(0,-2px,0) scale(1.006);opacity:1}
+ 100%{transform:translate3d(0,0,0) scale(1);opacity:1}}
 .real-discovery-home .demo-qa-feed .feed-v2-photo>.discovery-demo-label{
  z-index:9;top:38px;left:12px;border:1px solid rgba(235,240,247,.34);
  background:rgba(33,41,49,.74);color:#F2F3F5;border-radius:9px;
@@ -53,4 +81,7 @@
  .demo-qa-ribbon{min-height:28px}
  .demo-qa-ribbon>button{padding:3px 5px}
 }
-@media(prefers-reduced-motion:reduce){.demo-qa-feed .deck-leaving,.demo-qa-feed .deck-entering{animation:none}}
+@media(prefers-reduced-motion:reduce){
+ .real-discovery-home .demo-qa-feed .deck-leaving,
+ .real-discovery-home .demo-qa-feed .deck-entering{animation:none}
+}
