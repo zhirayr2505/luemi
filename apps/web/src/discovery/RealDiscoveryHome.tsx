@@ -185,7 +185,10 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     onSearchScopeChange(result.searchScope);
    setRows(result.profiles);setCursor(result.nextCursor);setPage(0);setLoading(false);complete=true;
    if(tab==="feed"&&result.profiles.length===0)onEmptyFeed();
-  }).catch(()=>{if(!controller.signal.aborted){setLoading(false);setError("Не удалось загрузить анкеты.");complete=true;}});
+  }).catch(()=>{if(!controller.signal.aborted){
+   setLoading(false);setError("Не удалось загрузить анкеты.");complete=true;
+   if(tab==="feed")onEmptyFeed(); // Isolated QA fallback; never fabricated server rows.
+  }});
   return ()=>{if(!complete&&lastRefresh.current===refresh)lastRefresh.current=-1;controller.abort();};
  },[active,refresh,initialFeed,draft.searchScope,onSearchScopeChange,onEmptyFeed,tab]);
  // Each tab now owns its approved presentation. Only Feed renders a full-screen deck;
