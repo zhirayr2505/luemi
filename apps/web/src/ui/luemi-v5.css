@@ -151,6 +151,71 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
 .luemi-v5-segments button:disabled{opacity:.42;cursor:not-allowed}
 .luemi-v5-segments button:not(:disabled):active{transform:scale(.96)}
 
+/* Curved specular light traverses the two persistent navigation lenses.
+ * All child tab hit-targets stay above the optical layer. */
+.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav,
+.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs{
+ position:relative;isolation:isolate;overflow:hidden;
+}
+.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav::before,
+.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs::before{
+ content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+ background:var(--luemi-glass-shine);
+ opacity:.74;z-index:0;
+ transition:opacity .18s ease;
+}
+.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav:active::before,
+.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs:active::before{opacity:1}
+.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav>*,
+.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs>*{
+ position:relative;z-index:1;
+}
+/* The underline remains absolutely placed and is still moved only by the
+ * existing one-progress gesture controller; never change its transform. */
+.luemi-shell[data-theme=dark] .discovery-app .discovery-tab-underline{
+ position:absolute;z-index:1;
+}
+.luemi-shell[data-theme=dark] .lh-browse-control,
+.luemi-shell[data-theme=dark] .real-discovery-settings,
+.luemi-shell[data-theme=dark] .real-feed-filter-head button,
+.luemi-shell[data-theme=dark] .lc-heading-actions .luemi-v5-icon-button{
+ border-color:var(--luemi-glass-line);
+ background:var(--luemi-glass-fill);
+ box-shadow:inset 0 1px rgba(248,252,255,.29),
+  inset 0 -1px rgba(6,12,21,.27),var(--luemi-shadow-contact);
+}
+.luemi-shell[data-theme=dark] .lh-browse-control,
+.luemi-shell[data-theme=dark] .real-discovery-settings{
+ position:relative;isolation:isolate;overflow:hidden;
+}
+.luemi-shell[data-theme=dark] .lh-browse-control::before,
+.luemi-shell[data-theme=dark] .real-discovery-settings::before{
+ content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+ background:var(--luemi-glass-shine);
+ opacity:.72;transition:opacity .18s ease;
+}
+.luemi-shell[data-theme=dark] .lh-browse-control:active::before,
+.luemi-shell[data-theme=dark] .real-discovery-settings:active::before{opacity:1}
+.luemi-shell[data-theme=dark] .lh-browse-control>*,
+.luemi-shell[data-theme=dark] .real-discovery-settings>*{position:relative;z-index:1}
+/* Fixed header controls may sample the background, but not while they are
+ * morphed/dragged by Profile Morph V3. */
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+ .luemi-shell[data-theme=dark] .real-discovery-settings,
+ .luemi-shell[data-theme=dark] .lh-browse-control{
+  backdrop-filter:blur(12px) saturate(130%);
+  -webkit-backdrop-filter:blur(12px) saturate(130%);
+ }
+}
+/* Text-input focus never gets a full-screen optical filter: a pre-existing,
+ * single focus scrim owns that effect and protects Android keyboard geometry. */
+.v2-runtime .v2-next:not(:disabled),
+.v2-runtime .v2-draft-save:not(:disabled){
+ box-shadow:inset 0 1px 1px rgba(253,254,255,.43),
+  inset 1px 0 rgba(255,255,255,.12),
+  inset 0 -2px rgba(26,31,41,.20),0 9px 22px rgba(7,12,20,.19);
+}
+
 /* Dynamic Liquid Glass — stationary top/bottom chrome only.
  * No backdrop-filter on .feed-v2, .pm-a2-photo-track, draggable
  * registration fields, animated page tracks, or scrollable user tiles. */
