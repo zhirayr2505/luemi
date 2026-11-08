@@ -32,14 +32,19 @@ test("real published discovery has original four tabs and three browse tabs",()=
  assert.match(shell,/<RealMatches active=/);
 });
 
-test("empty server feed never hides navigation or reveals fictional demo people",()=>{
+test("empty real feed retains navigation; QA profiles stay in a separate fixture-only visitor route",()=>{
  assert.match(shell,/getPublishedFeed\(controller\.signal\)/);
  assert.match(shell,/Пока нет анкет/);
  assert.match(shell,/Анкеты не загрузились/);
  assert.match(nearby,/Сейчас нет других опубликованных анкет/);
  assert.match(shell,/Пока нет взаимных симпатий/);
  assert.match(shell,/refresh/);
- assert.doesNotMatch(shell,/fromDemoPerson|demoPeople|forYouDemoPeople|freshDemoState|Демо-анкеты/);
+ assert.doesNotMatch(shell,/demoPeople|forYouDemoPeople|freshDemoState/);
+ assert.match(shell,/onOpenProfile=\{setDemoVisitor\}/);
+ assert.match(shell,/data=\{fromDemoPerson\(demoVisitor\)\}/);
+ assert.match(shell,/key=\{"demo-"\+demoVisitor\.id\}/);
+ assert.match(shell,/onExit=\{\(\)=>setDemoVisitor\(null\)\}/);
+ assert.doesNotMatch(shell,/onLike=.*demoVisitor/,"Demo route may not call a real matching API");
  assert.match(shell,/onMatched=\{\(matchedPerson,matchId\)=>setMatched\(\{person:matchedPerson,matchId\}\)\}/);
  assert.match(shell,/className="luemi-match-overlay"/);
 });
