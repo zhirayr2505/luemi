@@ -11,7 +11,7 @@ import {FeedCard} from "./FeedCard";
 import "./demo-feed-sandbox.css";
 
 type Props={draft:RegistrationDraft;active:boolean;onExit:()=>void};
-const previewDistance=[3,28,340,920,1850,3100] as const;
+const previewDistance=[3,28,75,140,340,560,920,1250,1850,2300,3100,3550,4100,4800,5300] as const;
 
 /** A deliberately opt-in UI sandbox. Never calls the real feed, like, match or chat APIs.
  * Every profile is fictional and the distances are labelled illustrative.
