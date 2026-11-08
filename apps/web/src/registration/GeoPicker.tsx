@@ -250,7 +250,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
          onClick={()=>patch({searchScope:value})}>
          <Icon size={18} strokeWidth={1.7} aria-hidden="true"/>
          <span>{label}</span>
-         {data.searchScope===value&&<span className="geo-scope-check" aria-hidden="true"><Check size={11} strokeWidth={2.8}/></span>}
+         <span className="geo-scope-check" aria-hidden="true"><Check size={11} strokeWidth={2.8}/></span>
        </button>)}
        {data.searchScope==="country"&&<button type="button" className="active" aria-pressed="true"
          onClick={()=>patch({searchScope:"country"})}>
