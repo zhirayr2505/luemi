@@ -684,8 +684,10 @@ test("nearby: real city-centre distance orders profiles without a radius thresho
   const compatibleIds=(compatibleFirst.json().profiles as Array<{id:string}>)
    .map(p=>p.id).filter(id=>ids.has(id));
   assert.deepEqual(compatibleIds,[
-   users[1].id,users[3].id,users[0].id,users[2].id,users[4].id
-  ],"nearby must favor compatible goals/interests before a closer weak match");
+   users[1].id, // compatible Gyumri wins over mismatched Yerevan within local 100km
+   users[4].id, // local weak candidate before expanding farther away
+   users[3].id,users[0].id,users[2].id
+  ],"nearby prioritizes compatibility inside local area before expanding outward");
   // City is a strict boundary: no fallback profiles from another city until
   // the owner explicitly chooses World via a CSRF-protected mutation.
   const cityScope=await mutate(app,viewer,"/api/v3/discovery/scope",{scope:"city"});
