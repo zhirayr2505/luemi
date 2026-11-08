@@ -312,6 +312,23 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   return{state:"consent_withdrawn",dataDeleted:false};
  }));
 
+ // Scope is an account-owned search preference, not a publication edit.
+ // Secure actor/CSRF checks and the existing forced-RLS publisher policy
+ // prevent changing another user's preferences. No exact GPS is stored.
+ app.post<{Body:unknown}>("/api/v3/discovery/scope",{preHandler:guards.mutation},async(req,reply)=>{
+  const raw=object(req.body)?req.body.scope:null;
+  if(raw!=="radius"&&raw!=="city"&&raw!=="world")
+   return reply.code(422).send({error:"invalid_search_scope"});
+  return transaction(req,reply,"luemi_profile_publisher",async(db,viewer)=>{
+   const saved=await db.query<{search_scope:string}>(
+    "UPDATE luemi_private.discovery_preferences SET search_scope=$3,updated_at=clock_timestamp() "+
+    "WHERE owner_id=$1 AND environment=$2 RETURNING search_scope",
+    [viewer,cfg.namespace,raw]);
+   if(saved.rowCount!==1)fail(404,"search_preferences_missing");
+   return{scope:saved.rows[0].search_scope};
+  });
+ });
+
  app.get<{Querystring:{after?:string}}>("/api/v3/discovery/feed",{preHandler:guards.read},async(req,reply)=>{
   reply.header("Cache-Control","private, no-store").header("Vary","Cookie");
   let cursor:ReturnType<typeof decodePublishedFeedCursor>;
