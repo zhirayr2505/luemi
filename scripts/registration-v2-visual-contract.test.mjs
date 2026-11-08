@@ -275,8 +275,12 @@ assert.match(geo, /className="geo-scope-check"/,
  "Active nearby, city and world modes show a circular corner check");
 assert.match(steps, /<GlassChoice showCheck chosen=/,
  "Gender and audience cards share the same selected badge");
-assert.match(runtime, /\.v2-goal-check\{[^}]*top:5px;right:5px/s,
- "The goal check sits in the top-right corner of its selected card");
+assert.match(runtime, /\.glass-choice-corner-check,\s*\.v2-runtime \.geo-scope-check,\s*\.v2-runtime \.preferences-step \.v2-goal-check\{[^}]*top:-7px;right:-7px/s,
+  "Gender, audience, scope and goal badges overlap the rounded border, not card content");
+assert.match(runtime, /\.v2-goal-check\{[^}]*width:21px;height:21px/s,
+  "All choice corner badges share the compact 21px visual indicator");
+assert.doesNotMatch(runtime, /\.v2-goal-check\{[^}]*top:5px;right:5px/s,
+  "Retired inset badges must not reappear on selected cards");
 assert.match(runtime, /\.interest-chip\.selected\{[^}]*color:#242932/s,
  "Selected pastel interests use legible dark foreground");
 assert.match(runtime, /\.v2-stage-heading::after\{[^}]*backdrop-filter:blur\(8px\)/s,
