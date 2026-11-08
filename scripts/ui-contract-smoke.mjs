@@ -9,7 +9,13 @@ const catalog=read("apps/web/src/ui/InterestCatalog.tsx");
 const realRegistration=read("apps/web/src/registration/v2/RealRegistration.tsx");
 const languages=read("apps/web/src/ui/Languages.ts");
 const assertCheck=(s,test)=>{assert.ok(test,s);console.log("✓",s)};
-assertCheck("approved single intro keeps the auth/publication gate without duplicated white raster shimmer",/auth==="authorized"&&introElapsed&&visualReady&&\s*!\(realFeedPilot\.enabled&&publicationCheck==="checking"\)&&<div className="intro-cta">/.test(app)&&style.includes("text-enter")&&!style.includes("brand-liquid")&&!style.includes(".intro-mark::after"));
+assertCheck("cinematic welcome stages branding and CTA after auth, draft and publication readiness",
+ app.includes('heroSceneReady=visualReady&&heroViewportReady&&heroImageReady')&&
+ app.includes('registrationEntryReady=heroSceneReady&&introSequenceComplete&&auth==="authorized"')&&
+ app.includes('photosRestored&&storageState!=="loading"&&storageState!=="error"')&&
+ app.includes('publicationCheck==="ready"')&&
+ app.includes('"Зарегистрироваться"')&&app.includes('"Продолжить регистрацию"')&&
+ style.includes("text-enter")&&!style.includes("brand-liquid")&&!style.includes(".intro-mark::after"));
 assertCheck("no old loader overlay",!style.includes("loading-track")&&!app.includes("welcome-screen"));
 assertCheck("Telegram native BackButton; NO custom top back button",app.includes("BackButton")&&app.includes("onboard-brand-row")&&!app.includes("top-back"));
 const welcomeChrome=read("apps/web/src/registration/cinematic-welcome.css");
@@ -80,11 +86,16 @@ assertCheck("branded publication curtain starts before private photo upload",
  journey.includes("luemi-publication-orbit")&&
  journey.includes("luemi-publication-progress")&&
  journey.includes("onRetry")&&journey.includes("onBack"));
-assertCheck("connecting and existing-profile checks display logo without extra welcome copy",
- app.includes('auth!=="connecting"')&&
- app.includes('publicationCheck==="checking"')&&
+assertCheck("first-entry hero headline and subtitle can appear while auth is preparing",
+ app.includes('>Больше, чем знакомства</h1>')&&
+ app.includes('className="intro-subtitle">Реальные люди. Настоящие эмоции.')&&
+ app.includes('heroSceneReady&&introSequenceComplete')&&
  !app.includes('className="luemi-privacy-footer"'));
-
+assertCheck("cinematic hero, staged copy and touch feedback respect reduced motion",
+ welcomeChrome.includes("luemi-hero-drift")&&welcomeChrome.includes("luemi-hero-logo")&&
+ welcomeChrome.includes("luemi-hero-line")&&
+ welcomeChrome.includes(".primary-action:active:not(:disabled)")&&
+ welcomeChrome.includes("@media(prefers-reduced-motion:reduce)"));
 
 const catalogSource=catalog.match(/const source=(\[[^\n]+?\]);/);
 const expandedCatalog=catalog.match(/const expandedSource=(\[[^\n]+?\]);/);
