@@ -93,16 +93,18 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  box-shadow:0 0 0 2px rgba(191,182,209,.12),0 11px 28px rgba(12,14,18,.2),inset 0 1px rgba(255,255,255,.14)}
 /* Static refractive colour instead of dozens of live backdrop filters
    repainting on every finger-driven scroll frame (especially the intent grid). */
-.v2-runtime .glass-choice,.v2-runtime .v2-choice,.v2-runtime .category-chip{color:#F0EEF3;border:1px solid rgba(187,180,203,.23);
- background:linear-gradient(135deg,rgba(61,67,80,.92),rgba(45,50,59,.91));
- -webkit-backdrop-filter:none;backdrop-filter:none;
- box-shadow:inset 0 1px rgba(255,255,255,.1),0 6px 17px rgba(12,14,18,.09);
- transition:transform .18s ease,border-color .24s ease,box-shadow .24s ease,background .24s ease}
+.v2-runtime .glass-choice,.v2-runtime .v2-choice,.v2-runtime .category-chip{min-height:34px;border-radius:999px;
+ background:linear-gradient(115deg,color-mix(in srgb,var(--chip-from) 24%,#2E333D),
+ color-mix(in srgb,var(--chip-to) 26%,#2B3039));
+ color:#F3F0F6;border:1px solid color-mix(in srgb,var(--chip-from) 39%,#565E6F);
+ box-shadow:inset 0 1px rgba(255,255,255,.1);padding:6px 10px;font-size:11.5px;gap:6px;
+ -webkit-backdrop-filter:none;backdrop-filter:none}
 .v2-runtime .glass-choice.selected,.v2-runtime .v2-choice.is-selected,
-.v2-runtime .category-chip.selected{
- color:#fff;border-color:var(--luemi-border-active,rgba(226,222,234,.30));
- background:rgba(90,99,116,.74);
- box-shadow:inset 0 1px rgba(255,255,255,.17),0 0 0 1px rgba(173,163,194,.13)}
+.v2-runtime .category-chip.selected{color:#F8F6FB;
+ background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 36%,#4C5464),
+ color-mix(in srgb,var(--chip-to) 38%,#3D4350));
+ border-color:color-mix(in srgb,var(--chip-from) 70%,#7D89A1);
+ box-shadow:inset 0 1px rgba(255,255,255,.18),0 4px 12px rgba(13,14,18,.13)}
 .v2-runtime .glass-choice:active,.v2-runtime .category-chip:active{transform:scale(.985)}
 .v2-runtime .choice-grid{gap:9px}
 .v2-runtime .dob-step>.choice-section .choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -122,11 +124,17 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .category-chip{filter:none!important;color:#E4E1EA;border-radius:999px}
 .v2-runtime .category-chip.selected{filter:none!important}
 .v2-runtime .interest-choices{gap:8px}
-.v2-runtime .interest-chip,.v2-runtime .chip.toned{filter:none!important;color:#EFEDF2;
- background:linear-gradient(120deg,rgba(62,68,81,.94),rgba(45,50,59,.96));
- border:1px solid rgba(202,196,215,.26);box-shadow:none;border-radius:999px}
-.v2-runtime .interest-chip.selected{color:#22272F;background:linear-gradient(110deg,#CAC2D9,#CCC5DA);
- border-color:#D7D1E2;box-shadow:0 4px 19px rgba(177,167,198,.27)}
+.v2-runtime .interest-chip,.v2-runtime .chip.toned{
+ color:#F5F4F8;min-height:33px;padding:6px 9px;font-size:11.5px;gap:6px;
+ background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 32%,#2D313B),
+ color-mix(in srgb,var(--chip-to) 34%,#2A2F38));
+ border:1px solid color-mix(in srgb,var(--chip-from) 42%,#4B5362);
+ box-shadow:inset 0 1px rgba(255,255,255,.1)}
+.v2-runtime .interest-chip.selected{color:#242932;transform:none;
+ background:linear-gradient(110deg,color-mix(in srgb,var(--chip-from) 65%,#5D667A),
+ color-mix(in srgb,var(--chip-to) 63%,#5B6477));
+ border:1px solid color-mix(in srgb,var(--chip-from) 76%,#B5ACC6);
+ box-shadow:inset 0 1px rgba(255,255,255,.25),0 4px 11px rgba(12,13,17,.1)}
 .v2-runtime .interest-choices{overflow:visible;flex:none;padding:6px 0 10px}
 .v2-runtime .v2-note{display:flex;align-items:flex-start;gap:10px;padding:14px;
  color:#B6AFC3;font-size:12px;line-height:1.48}
@@ -503,8 +511,11 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  display:block;min-width:0;flex:1;font-size:12.5px;line-height:1.24;font-weight:630;
  letter-spacing:-.015em;overflow-wrap:break-word}
 .v2-runtime .preferences-step .v2-goal-check{
- position:absolute;top:6px;right:6px;width:13px;height:13px;
- color:#E8E5EF;pointer-events:none}
+ position:absolute;top:5px;right:5px;width:18px;height:18px;
+ display:grid;place-items:center;border-radius:50%;
+ background:linear-gradient(140deg,#D7C7E5,#B6A4C8);color:#232730;
+ box-shadow:inset 0 1px rgba(255,255,255,.55),0 2px 7px rgba(11,12,16,.2);
+ pointer-events:none}
 .v2-runtime .geo-liquid-location{display:flex;flex-direction:column;gap:8px;padding-bottom:0}
 .v2-runtime .geo-city-area{display:flex;flex-direction:column;gap:7px}
 .v2-runtime .geo-liquid-city{display:flex;align-items:center;gap:9px;min-width:0;width:100%;
@@ -542,8 +553,26 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  box-shadow:inset 0 1px rgba(255,255,255,.09);color:#DFDCE6;font-size:11px;
  transition:background .2s,border-color .2s,transform .18s}
 .v2-runtime .geo-liquid-scopes button svg{width:15px;height:15px;flex:none;color:#CAC3D8}
-.v2-runtime .geo-liquid-scopes button.active{background:linear-gradient(132deg,rgba(116,128,151,.62),rgba(80,89,106,.8));
- border-color:#C2BBD1;color:#fff;box-shadow:inset 0 1px rgba(255,255,255,.2)}
+.v2-runtime .geo-liquid-scopes button.active{
+ position:relative;padding-right:17px;
+ background:linear-gradient(132deg,rgba(164,146,188,.48),rgba(97,93,123,.85));
+ border-color:rgba(216,202,230,.82);color:#FAF7FE;
+ box-shadow:inset 0 1px rgba(255,255,255,.25),0 0 0 1px rgba(177,156,204,.11)}
+/* One consistent corner check across clickable registration choice cards. */
+.v2-runtime .dob-step .glass-choice.has-corner-check,
+.v2-runtime .preferences-step .glass-choice.has-corner-check{position:relative}
+.v2-runtime .dob-step .glass-choice.selected,
+.v2-runtime .preferences-step>.choice-section .glass-choice.selected{
+ background:linear-gradient(130deg,rgba(149,135,175,.45),rgba(78,82,105,.86));
+ border-color:rgba(212,198,228,.72);color:#F9F6FD}
+.v2-runtime .glass-choice-corner-check,
+.v2-runtime .geo-scope-check{
+ position:absolute;right:4px;top:4px;display:grid;place-items:center;
+ width:18px;height:18px;flex:none;border-radius:50%;
+ background:linear-gradient(140deg,#D7C7E5,#B6A4C8);color:#232730;
+ box-shadow:inset 0 1px rgba(255,255,255,.55),0 2px 7px rgba(11,12,16,.2);
+ pointer-events:none}
+.v2-runtime .geo-liquid-scopes button.active svg:not(.geo-scope-check svg){color:#F4E9FC}
 .v2-runtime .geo-liquid-scopes button:active{transform:scale(.98)}
 /* One genuinely compact, stable-height explanation card. Mode changes animate
    only its contents, keeping the layout and fixed Continue button steady. */
@@ -627,11 +656,11 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-selected-interest-chip{
  display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;
  min-height:29px;max-width:none;margin:0;padding:4px 7px 4px 9px;
- color:#fff;white-space:nowrap;font-size:10.5px;font-weight:650;
- border-radius:999px;border:1px solid color-mix(in srgb,var(--chip-from) 68%,#B5ACC6);
- background:linear-gradient(110deg,color-mix(in srgb,var(--chip-from) 46%,#5D667A),
- color-mix(in srgb,var(--chip-to) 44%,#5B6477));
- box-shadow:inset 0 1px rgba(255,255,255,.2);
+ color:#242932;white-space:nowrap;font-size:10.5px;font-weight:650;
+ border-radius:999px;border:1px solid color-mix(in srgb,var(--chip-from) 76%,#B5ACC6);
+ background:linear-gradient(110deg,color-mix(in srgb,var(--chip-from) 65%,#5D667A),
+ color-mix(in srgb,var(--chip-to) 63%,#5B6477));
+ box-shadow:inset 0 1px rgba(255,255,255,.25);
  animation:luemi-selected-interest-enter .26s cubic-bezier(.2,.8,.26,1) both}
 .v2-runtime .v2-selected-interest-chip>svg{flex:none}
 .v2-runtime .v2-selected-interest-chip>span:not(.v2-selected-interest-close){max-width:170px;overflow:hidden;text-overflow:ellipsis}
