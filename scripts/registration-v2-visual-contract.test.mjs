@@ -13,7 +13,6 @@ const steps=readFileSync("apps/web/src/registration/Steps.tsx","utf8");
 const draftClient=readFileSync("apps/web/src/registration/server-draft.ts","utf8");
 const app=readFileSync("apps/web/src/App.tsx","utf8");
 const geo=readFileSync("apps/web/src/registration/GeoPicker.tsx","utf8");
-const language=readFileSync("apps/web/src/registration/LanguagePicker.tsx","utf8");
 const focusDock=readFileSync("apps/web/src/registration/use-field-focus.ts","utf8");
 const required=[
  ["V2 runtime tokens",/\.v2-runtime\s*\{[^}]*--ink:/s],
@@ -79,8 +78,8 @@ assert.match(draftClient,/policy!=="\/friends-test\.html"/,
  "Public remote drafts may not use beta-only privacy notices");
 assert.match(form,/const stages:readonly VisualStage\[\]=visualStages/,"Every account follows seven steps including review");
 assert.match(form,/Создать анкету/,"Single real signup confirmation creates published profile");
-assert.doesNotMatch(form,/id:"languages"|id:"personality"/,
- "Languages remain optional after signup");
+assert.doesNotMatch(form,/id:"languages"|id:"personality"|personalityPart/,
+ "Removed language/personality subflow cannot return in live registration");
 assert.match(form,/id:"about"/,
  "About text and interests return before the photo step");
 assert.match(form,/id:"review"/,
@@ -188,7 +187,6 @@ assert.match(geo,/<Search size=\{19\}/,"The new city search preserves its search
 assert.match(geo,/<LocateFixed size=\{17\}/,"One-tap geolocation retains an explicit icon");
 assert.match(geo,/className="geo-liquid-city"/,"The selected city is a single tappable glass card");
 assert.match(geo,/className="geo-liquid-scopes"/,"City, radius and world are segmented, never nested dropdowns");
-assert.match(language,/<Search size=\{18\}/,"Language input needs search icon");
 assert.match(focusDock,/viewport\?\.addEventListener\("resize",refresh\)/,
  "Android viewport animation now changes only suggestions, not the fixed editor anchor");
 assert.match(focusDock,/const refresh=\(\)=>\{if\(!frame\)frame=window\.requestAnimationFrame\(updateResults\);\}/,
@@ -387,7 +385,7 @@ assert.match(runtime,/\.v2-body\{[^}]*overflow-x:hidden;overflow-y:auto;[^}]*ove
  "Registration should use the browser's kinetic touch scroller, never a JavaScript scrolling substitute");
 assert.match(runtime,/\.v2-stage-heading\{position:sticky;top:-20px;/,
  "Approved rubbery/sticky header must stay unchanged when scrolling improves");
-assert.match(runtime,/\.glass-choice,\.v2-runtime \.v2-choice,\.v2-runtime \.category-chip,[\s\S]*?\.language-option\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/s,
+assert.match(runtime,/\.glass-choice,\.v2-runtime \.v2-choice,\.v2-runtime \.category-chip\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/s,
  "The moving grid and choices must not cause dynamic backdrop repaint each frame");
 assert.match(runtime,/\.glass-panel,\.v2-runtime \.age-range,[\s\S]*?\.v2-note\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/s,
  "Range and registration cards must use static glass gradients while scrolling");
@@ -400,26 +398,13 @@ assert.doesNotMatch(form,/onTouchMove=|onTouchEnd=|onWheel=|scrollTop\s*\+=|scro
  "Registration must preserve native fling inertia, not compete with a custom RAF scroller");
 
 
-// Samsung A55: entire language rows, native browsing and live keyboard suggestions.
-assert.doesNotMatch(runtime,/\.language-focus-shell\.is-focused \.language-results\{max-height:min\(155px,25dvh\)/,
- "155px keyboard clipping must be removed");
-assert.doesNotMatch(runtime,/\.language-results\{[^}]*max-height:260px/,
- "Old 260px hard clip in the main list must be removed");
-assert.match(runtime,/\.language-results\{\s*display:grid;[^}]*grid-auto-rows:44px;[^}]*max-height:none;overflow:visible;/s,
- "Unfocused 60 languages participate in native page scrolling");
-assert.match(runtime,/\.language-focus-shell\.is-focused \.language-results\{\s*max-height:var\(--language-results-max-height,96px\);overflow-x:hidden;overflow-y:auto;[^}]*-webkit-overflow-scrolling:touch;touch-action:pan-y;/s,
- "Focused search results use keyboard-safe independent touch scrolling");
-assert.match(focusDock,/footerTop-list\.getBoundingClientRect\(\)\.top-12/,
- "Language suggestions alone resize to avoid overlapping the moving keyboard");
-assert.match(focusDock,/Math\.floor\(\(remaining\+8\)\/52\)/,
- "Scroll viewport fits full 44px language rows plus 8px gaps");
-assert.match(language,/resultsRef\.current\.scrollTop=0/,
- "Typing a new query resets search suggestions to the first match");
-assert.match(language,/className="language-results-status" role="status" aria-live="polite"/,
- "Live results announce matching language count");
-assert.match(focusDock,/flagsResize\?\.observe\(watchedFlags\)/,
- "Selecting languages keeps suggestions safely clear of the keyboard");
-
+// The old language-selection editor is physically removed from registration.
+assert.doesNotMatch(steps,/LanguagePicker|personalityPart|languages-step/,
+ "Legacy language UI must not return via dormant conditional branches");
+assert.doesNotMatch(runtime,/\\.language-(?:results|option|focus-shell|selected)/,
+ "The old 60-language browser must not ship as dead CSS");
+assert.doesNotMatch(focusDock,/language-focus-shell|language-results-max-height/,
+ "Focus geometry no longer carries obsolete language-specific observers");
 
 // 2026-11-06 Android user video: the next step's optional "Добавить о себе"
 // control was seen at the bottom before the outgoing language step vanished.
@@ -466,8 +451,6 @@ assert.match(steps,/releaseAfterKeyboardSettles\(\(\)=>\{/,
  "Name, birthday and bio hold the focused editor until IME closing finishes");
 assert.match(geo,/releaseAfterKeyboardSettles\(\(\)=>\{/,
  "City search uses the same IME-release policy");
-assert.match(language,/releaseAfterKeyboardSettles\(\(\)=>\{/,
- "Language search uses the same IME-release policy");
 assert.match(steps,/if\(birthDateValid\(day,month,year\)\)\{[\s\S]*?dobInput\.current\?\.blur\(\)/,
  "A complete valid DOB automatically hides the keyboard without advancing the form");
 assert.match(steps,/else setDateInputError\("Проверь дату рождения\. Регистрация доступна с 18 лет\."\)/,
