@@ -271,7 +271,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    <div className="discovery-deck-stage">{current?
     <div className={"discovery-deck-layer"+(leaving===current.id?" deck-leaving deck-leaving-"+leavingKind:" deck-active")} key={current.id}
      onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
-      ["luemi-deck-leave","feed-v2-like","feed-v2-special"].includes(event.animationName))finishDeck();}}>
+      ["luemi-deck-leave","feed-v2-pass","feed-v2-like","feed-v2-special"].includes(event.animationName))finishDeck();}}>
      <FeedCard person={toCard(current)} real saved={saved.has(current.id)} canUndo={undoPage!==null}
       active={active} busy={busy||!!leaving} onAction={kind=>{void act(kind);}}
       onOpenProfile={()=>onPerson(current)} onInterests={()=>onPerson(current)}
