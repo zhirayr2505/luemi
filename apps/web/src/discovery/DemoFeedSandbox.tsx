@@ -1,21 +1,18 @@
 import {useEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,RotateCcw,X,MapPin,ShieldCheck} from "lucide-react";
+import {ArrowLeft,RotateCcw,ShieldCheck} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
-import {goals} from "../registration/model";
-import {PhotoCarousel} from "../ui/PhotoCarousel";
-import {InterestChip} from "../ui/InterestCatalog";
 import {selectionHaptic} from "../ui/haptic";
 import type {DemoKind,DemoPerson} from "./model";
 import {demoPeople} from "./demo-people";
 import {FeedCard} from "./FeedCard";
 import "./demo-feed-sandbox.css";
 
-type Props={draft:RegistrationDraft;active:boolean;onExit:()=>void};
+type Props={draft:RegistrationDraft;active:boolean;onExit:()=>void;onOpenProfile:(person:DemoPerson)=>void};
  
 /** An isolated QA sandbox. Never calls the real feed, like, match or chat APIs.
  * Every profile is fictional; no invented geographical distance is displayed.
  * There is no database insertion, public discovery indexing or fake Telegram user. */
-export function DemoFeedSandbox({draft,active,onExit}:Props){
+export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
  const people=useMemo<DemoPerson[]>(()=>demoPeople.map((person,index)=>{
   if(index!==0||!draft.city.trim())return person;
   return {...person,city:draft.city.trim(),country:draft.country.trim()||person.country,
@@ -27,7 +24,6 @@ export function DemoFeedSandbox({draft,active,onExit}:Props){
  const [message,setMessage]=useState("");
  const [leaving,setLeaving]=useState(false);
  const [leavingKind,setLeavingKind]=useState<DemoKind|null>(null);
- const [preview,setPreview]=useState<DemoPerson|null>(null);
  const locked=useRef(false),pending=useRef<(()=>void)|null>(null),timer=useRef<number|null>(null);
  const current=people[page],next=people[page+1];
  const finish=()=>{
@@ -41,7 +37,7 @@ export function DemoFeedSandbox({draft,active,onExit}:Props){
   pending.current=null;locked.current=false;},[]);
  const reset=()=>{
   if(locked.current)return;
-  setPage(0);setHistory([]);setSaved(new Set());setMessage("");setPreview(null);
+  setPage(0);setHistory([]);setSaved(new Set());setMessage("");
   selectionHaptic();
  };
  const action=(kind:DemoKind|"undo")=>{
@@ -94,8 +90,8 @@ export function DemoFeedSandbox({draft,active,onExit}:Props){
         canUndo={foreground&&history.length>0}
         active={foreground&&active} busy={!foreground||leaving}
         onAction={foreground?action:()=>{}}
-        onOpenProfile={foreground?()=>setPreview(person):()=>{}}
-        onInterests={foreground?()=>setPreview(person):()=>{}}/>
+        onOpenProfile={foreground?()=>onOpenProfile(person):()=>{}}
+        onInterests={foreground?()=>onOpenProfile(person):()=>{}}/>
       </div>;
     })}
   </div>:<div className="demo-qa-finished">
@@ -104,21 +100,5 @@ export function DemoFeedSandbox({draft,active,onExit}:Props){
     <button type="button" onClick={reset}><RotateCcw size={18}/> Посмотреть заново</button>
    </div>}
   <span className="demo-qa-sr-only" role="status" aria-live="polite">{message||"Демонстрационные анкеты. Реальные лайки не отправляются."}</span>
-  {preview&&<div className="demo-qa-preview-backdrop" onClick={()=>setPreview(null)}>
-   <section className="demo-qa-preview" role="dialog" aria-modal="true" aria-label={"Демо-профиль "+preview.name}
-    onClick={e=>e.stopPropagation()}>
-    <header><span><ShieldCheck size={16}/> Тестовая анкета</span>
-     <button type="button" aria-label="Закрыть профиль" onClick={()=>setPreview(null)}><X size={21}/></button></header>
-    <div className="demo-qa-preview-photo">
-     <PhotoCarousel photos={preview.photos} name={preview.name} age={preview.age} dots/>
-    </div>
-    <h2>{preview.name}, {preview.age}</h2>
-    <p className="demo-qa-preview-place"><MapPin size={15}/>{preview.city}, {preview.country}</p>
-    <p>{goals.find(x=>x.id===preview.goal)?.label}</p>
-    <p>{preview.about}</p>
-    <div className="demo-qa-preview-interests">{preview.interests.map(id=><InterestChip id={id} key={id}/>)}</div>
-    <p className="demo-qa-preview-note">Персонаж вымышленный. Реальных лайков и переписок здесь нет.</p>
-   </section>
-  </div>}
  </div>;
 }
