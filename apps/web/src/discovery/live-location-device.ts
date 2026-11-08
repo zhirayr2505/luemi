@@ -28,7 +28,7 @@ export async function hasLiveLocationPermission(native?:TelegramLiveLocationMana
  }catch{/* Unsupported permission queries should never cause a silent prompt. */}
  return false;
 }
-export function readPreciseLocation(signal:AbortSignal,native?:TelegramLiveLocationManager):Promise<PreciseReading>{
+export function readPreciseLocation(signal:AbortSignal,native?:TelegramLiveLocationManager,explicit=false):Promise<PreciseReading>{
  return new Promise((resolve,reject)=>{
   if(signal.aborted){reject(new Error("location_cancelled"));return;}
   let finished=false;
@@ -69,7 +69,7 @@ export function readPreciseLocation(signal:AbortSignal,native?:TelegramLiveLocat
     // Telegram supports a native location permission even if a WebView denies
     // browser Geolocation. Only the direct user action or a previously granted
     // permission can reach this function.
-    if(native)fallback();
+    if(native&&(explicit||native.isAccessGranted===true))fallback();
     else finish(undefined,error.code===1?"location_denied":"location_unavailable");
    },{enableHighAccuracy:true,maximumAge:0,timeout:10000});
   }catch{fallback();}
