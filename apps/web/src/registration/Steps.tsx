@@ -21,7 +21,7 @@ export interface StepProps {
  movePhoto:(from:number,to:number)=>void;resetDraft:()=>void;step:number;
  fieldError?:{field:"name"|"date"|"city"|"about";message:string}|null;
  clearFieldError?:(field:"name"|"date"|"city"|"about")=>void;
- onFieldFocus?:(field:"name"|"date"|"city"|"about"|"language"|null)=>void;
+ onFieldFocus?:(field:"name"|"date"|"city"|"about"|null)=>void;
 }
 function GenderIcon({type}:{type:"man"|"woman"|"everyone"}){
  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
