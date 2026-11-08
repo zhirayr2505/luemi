@@ -281,7 +281,9 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
  .luemi-shell[data-theme=dark] .lc-categories-panel,
  .luemi-shell[data-theme=dark] .lc-search,
  .luemi-shell[data-theme=dark] .lc-composer,
- .luemi-shell[data-theme=dark] .lc-chat-header{
+ .luemi-shell[data-theme=dark] .lc-chat-header,
+ .luemi-shell[data-theme=dark] .lh-browse-control,
+ .luemi-shell[data-theme=dark] .real-discovery-settings{
   background:var(--luemi-glass-solid);backdrop-filter:none;-webkit-backdrop-filter:none;
  }
 }
@@ -289,4 +291,8 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
  .luemi-v5-icon-button,.luemi-v5-segments button,
  .luemi-v5-glass::before,.luemi-v5-icon-button::before{transition:none}
  .luemi-v5-skeleton-avatar::after,.luemi-v5-skeleton-copy>span::after{animation:none}
+ .luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav::before,
+ .luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs::before,
+ .luemi-shell[data-theme=dark] .lh-browse-control::before,
+ .luemi-shell[data-theme=dark] .real-discovery-settings::before{transition:none}
 }
