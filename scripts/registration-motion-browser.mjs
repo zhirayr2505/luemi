@@ -85,7 +85,7 @@ try{
  const originalRect=await panel.boundingBox();
  const cityHeight=await page.locator(".geo-liquid-city").evaluate(el=>el.getBoundingClientRect().height);
  assert.ok(cityHeight<=60,"city card should fit the city and country without wasted height");
- assert.ok(originalRect&&originalRect.height<=89,"shared mode card should use only the space its content needs");
+ assert.ok(originalRect&&originalRect.height<=62,"shared mode card should not have empty padding");
  await page.getByRole("button",{name:"Мой город"}).click();
  assert.equal(await page.getByRole("button",{name:"Мой город"}).getAttribute("aria-pressed"),"true","city search scope is selected");
  for(const mode of ["Весь мир","Рядом","Мой город"]){
@@ -100,7 +100,7 @@ try{
   "no more manual radius controls");
  assert.equal(await page.getByText("Ближайшие сначала").count(),1,
   "nearby recommends nearest cities automatically");
- assert.ok((await page.locator(".geo-liquid-mode-panel").innerText()).includes("от ближних к дальним"));
+ assert.ok((await page.locator(".geo-liquid-mode-panel").innerText()).includes("Сначала ближе к тебе, затем дальше"));
  await page.getByRole("button",{name:"Мой город"}).click();
  await next("intent");
  const ageHeight=await page.locator(".age-range").evaluate(el=>el.getBoundingClientRect().height);
