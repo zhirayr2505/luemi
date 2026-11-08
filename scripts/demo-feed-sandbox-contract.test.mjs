@@ -24,27 +24,28 @@ test("fictional profiles remain isolated; empty genuine feed automatically opens
 test("synthetic profiles are not inserted into server, likes, matches or conversations",()=>{
  assert.doesNotMatch(sandbox,/likePublishedUser|blockPublishedUser|createChatTransport|fetch\(|getPublishedFeed|localStorage|sessionStorage|indexedDB/);
  assert.match(sandbox,/ТЕСТОВЫЙ РЕЖИМ/);
- assert.match(sandbox,/реальные лайки не отправляются/);
+ assert.match(sandbox,/Реальные лайки не отправляются/);
  assert.match(sandbox,/onExit/);
  assert.match(sandbox,/setPage\(0\)/);
  assert.match(card,/\{!real&&<span className="discovery-demo-label">Демо<\/span>\}/);
  assert.match(sandbox,/busy=\{leaving\}/);
 });
 
-test("fifteen fictional profiles each have four images and distinct identities",()=>{
+test("fifteen photo-driven fictional profiles each keep one coherent identity",()=>{
  assert.match(photos,/const portraitSources=\[/);
  assert.match(photos,/const scenes:readonly/);
- const sceneEntries=[...photos.matchAll(/photo-[0-9]{13}-[0-9a-f]{12}/g)].map(x=>x[0]);
- assert.equal(sceneEntries.length,18);
- assert.equal(new Set(sceneEntries).size,18);
+ const urls=[...photos.matchAll(/https:\/\/cdn\.pixabay\.com\/photo\/[^"]+/g)].map(x=>x[0]);
+ assert.equal(urls.length,15,"15 different AI-generated portrait source URLs");
+ assert.equal(new Set(urls).size,15,"no borrowed identity between demo users");
  assert.equal([...photos.matchAll(/^\s*\["[a-z]+","[^"]+",\d+,/gm)].length,15);
  assert.match(photos,/\.\.\.scenes\[index%scenes\.length\]\.slice\(0,2\)\.map/);
- assert.match(photos,/src:index<portraitSources\.length\?portraitSources\[index\]:illustration\(index,0\)/);
- assert.match(photos,/fallback:illustration\(index,variation\+1\)/);
- assert.match(sandbox,/demoDistanceKm=\{previewDistance\[page\]\}/);
+ assert.match(photos,/src:portraitSources\[index\]/);
+ assert.match(photos,/fallback:portraitSources\[index\]/);
+ assert.doesNotMatch(photos,/illustration\(/,"never paint a cartoon or another person when photos are missing");
+ assert.doesNotMatch(sandbox,/demoDistanceKm=\{/,"do not present invented distances");
  assert.match(sandbox,/countryCode:draft\.countryCode\|\|person\.countryCode/);
- assert.match(card,/demoDistanceKm\.toLocaleString\("ru"\)/);
- assert.match(style,/\.feed-v2-demo-distance/);
+ assert.doesNotMatch(style,/\.feed-v2-demo-distance\{/);
+ assert.match(style,/\.demo-qa-sr-only/);
 });
 
 test("demo reactions use existing directional compositor animations with zero backend writes",()=>{
