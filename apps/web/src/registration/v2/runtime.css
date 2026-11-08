@@ -234,34 +234,38 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-results button{color:var(--luemi-text);background:transparent}
 .v2-runtime .geo-results button:active{background:var(--luemi-surface-raised);color:var(--luemi-text)}
 .v2-runtime .city-focus-shell{position:relative;z-index:1;display:flex;flex-direction:column}
-/* Suggestions open BELOW their input, not above it under the Telegram logo.
-   The focused input remains in the existing keyboard dock. */
+/* City suggestions open ABOVE the input with room for multiple compact rows;
+    the input's keyboard dock never chases visualViewport resize events. */
 .v2-runtime .city-focus-shell .geo-results{
- position:absolute;z-index:43;left:0;right:0;top:calc(100% + 7px);bottom:auto;
- margin:0;max-height:min(212px,var(--field-suggestions-max-height,190px));
+ position:absolute;z-index:43;left:0;right:0;top:auto;bottom:calc(100% + 8px);
+ margin:0;max-height:var(--field-suggestions-max-height,192px);
  overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
- -webkit-overflow-scrolling:touch;scrollbar-width:thin;
- border-radius:16px;padding:4px;background:#2C313A;
- border:1px solid rgba(207,200,220,.38);
- box-shadow:0 16px 38px rgba(13,15,19,.4)}
+ -webkit-overflow-scrolling:touch;scrollbar-width:none;
+ border-radius:15px;padding:4px;background:rgba(43,48,56,.98);
+ border:1px solid rgba(209,201,223,.36);
+ box-shadow:0 -10px 30px rgba(9,10,15,.28),inset 0 1px rgba(255,255,255,.12)}
 .v2-runtime .geo-city-suggestions button{
- width:100%;display:flex;align-items:center;gap:9px;min-width:0;min-height:57px;
- border:0;border-radius:11px;border-bottom:1px solid rgba(205,199,217,.12);
- padding:9px 10px;background:transparent;color:#F6F5F9;white-space:normal;
- text-align:left}
+ box-sizing:border-box;width:100%;display:flex;align-items:center;gap:7px;min-width:0;
+ min-height:38px;height:38px;border:0;border-radius:9px;
+ border-bottom:1px solid rgba(205,199,217,.1);
+ padding:5px 8px;background:transparent;color:var(--luemi-text);
+ white-space:nowrap;text-align:left;touch-action:manipulation}
 .v2-runtime .geo-city-suggestions button:last-child{border-bottom:0}
 .v2-runtime .geo-city-suggestions button:active,
 .v2-runtime .geo-city-suggestions button:focus-visible{
  background:rgba(123,134,157,.24);outline:none}
-.v2-runtime .geo-city-suggestions .geo-suggestion-flag{flex:0 0 27px;min-width:27px;display:flex;align-items:center}
+.v2-runtime .geo-city-suggestions .geo-suggestion-flag{flex:0 0 19px;min-width:19px;width:19px;height:19px;
+ display:grid;place-items:center}
 .v2-runtime .geo-city-suggestions .geo-suggestion-copy{
- display:flex;flex:1;flex-direction:column;gap:4px;min-width:0;white-space:normal}
+ display:flex;flex:1;flex-direction:row;align-items:baseline;gap:5px;
+ min-width:0;white-space:nowrap;overflow:hidden}
 .v2-runtime .geo-city-suggestions .geo-suggestion-copy strong{
- max-width:100%;font-size:13px;line-height:1.23;overflow-wrap:anywhere}
-.v2-runtime .geo-city-suggestions .geo-suggestion-copy small{
- max-width:100%;font-size:11px;line-height:1.35;overflow-wrap:anywhere;
- color:#C5BFD2}
-.v2-runtime .geo-city-suggestions .geo-suggestion-action{flex:0 0 16px;color:#BEB6CD;opacity:.65}
+ flex:0 1 auto;min-width:0;max-width:58%;font-size:12px;line-height:1.25;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+.v2-runtime .geo-city-suggestions .geo-suggestion-country{
+ flex:1 1 auto;min-width:0;font-size:11px;line-height:1.25;color:var(--luemi-text-secondary);
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* Quiet glass at the bottom lets content pass under the action button. */
 .v2-runtime .v2-footer{position:absolute;left:0;right:0;
  bottom:clamp(0px,calc(var(--registration-layout-height,100dvh) - var(--registration-visible-bottom,100dvh)),100vh);
@@ -344,10 +348,10 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  box-shadow:0 14px 36px rgba(8,9,12,.22)}
 .v2-runtime .v2-showcase-track{position:relative;display:flex;width:100%;height:100%;
  overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
- scroll-behavior:smooth;touch-action:pan-x;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+ scroll-behavior:smooth;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .v2-runtime .v2-showcase-track::-webkit-scrollbar{display:none}
 .v2-runtime .v2-showcase-track img{flex:0 0 100%;display:block;width:100%;height:100%;
- object-fit:cover;scroll-snap-align:start;user-select:none}
+ object-fit:cover;scroll-snap-align:start;user-select:none;touch-action:pan-x pan-y
 .v2-runtime .v2-showcase-overlay{position:absolute;inset:28% 0 0;pointer-events:none;
  background:linear-gradient(180deg,transparent 0%,rgba(16,18,22,.12) 22%,
  rgba(16,18,22,.83) 100%)}
