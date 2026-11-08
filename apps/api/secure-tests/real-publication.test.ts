@@ -694,7 +694,10 @@ test("nearby: real city-centre distance orders profiles without a radius thresho
   assert.equal(cityScope.statusCode,200,cityScope.body);
   assert.equal(cityScope.json().scope,"city");
   const cityPage=await feed(app,viewer);
-  assert.deepEqual((cityPage.json().profiles as Array<{id:string}>).map(p=>p.id),[users[4].id]);
+  const cityProfiles=cityPage.json().profiles as Array<{id:string;city:string;countryCode:string}>;
+  assert.ok(cityProfiles.every(p=>p.city==="Ереван"&&p.countryCode==="AM"),
+   "city mode must never leak profiles from outside the selected city");
+  assert.deepEqual(cityProfiles.map(p=>p.id).filter(id=>ids.has(id)),[users[4].id]);
   assert.equal(cityPage.json().nextCursor,null);
   const invalidScope=await mutate(app,viewer,"/api/v3/discovery/scope",{scope:"unlimited"});
   assert.equal(invalidScope.statusCode,422,"unknown scope must not be persisted");
