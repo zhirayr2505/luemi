@@ -96,14 +96,11 @@ try{
   assert.ok(Math.abs(rect.y-originalRect.y)<1,"mode "+mode+" must not move the card vertically");
  }
  await page.getByRole("button",{name:"Рядом",exact:true}).click();
- const radiusInput=page.getByRole("slider",{name:"Радиус поиска, километры"});
- assert.equal(await radiusInput.count(),1,"radius slider remains reachable inside the shared card");
- const radiusBefore=await radiusInput.inputValue();
- const radiusBox=await radiusInput.boundingBox();
- assert.ok(radiusBox&&Math.abs(radiusBox.height-34)<1,"radius input keeps a generous 34px finger target");
- await page.touchscreen.tap(radiusBox.x+radiusBox.width*.36,radiusBox.y+radiusBox.height/2);
- assert.notEqual(await radiusInput.inputValue(),radiusBefore,
-  "the compact radius slider still accepts native Android touch");
+ assert.equal(await page.getByRole("slider",{name:"Радиус поиска, километры"}).count(),0,
+  "no more manual radius controls");
+ assert.equal(await page.getByText("Ближайшие сначала").count(),1,
+  "nearby recommends nearest cities automatically");
+ assert.ok((await page.locator(".geo-liquid-mode-panel").innerText()).includes("от ближних к дальним"));
  await page.getByRole("button",{name:"Мой город"}).click();
  await next("intent");
  const ageHeight=await page.locator(".age-range").evaluate(el=>el.getBoundingClientRect().height);
