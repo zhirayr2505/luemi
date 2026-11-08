@@ -111,14 +111,14 @@
 @media(prefers-reduced-transparency:reduce){.discovery-app .feed-v2-glass{background:linear-gradient(180deg,transparent,rgba(26,29,35,.98))}}
 
 /* Centered, strictly parallel stacked profiles. The photograph is the hero. */
-.discovery-page[aria-label="Лента"] .discovery-deck-stage::before,
-.discovery-page[aria-label="Лента"] .discovery-deck-stage::after{
+.discovery-page[aria-label="Лента"] .discovery-deck-stage.has-profiles::before,
+.discovery-page[aria-label="Лента"] .discovery-deck-stage.has-profiles::after{
  content:"";position:absolute;pointer-events:none;border:1px solid rgba(226,234,244,.17);
  background:linear-gradient(155deg,rgba(75,83,95,.73),rgba(43,50,59,.9));
  box-shadow:inset 0 1px rgba(255,255,255,.12);border-radius:29px 29px 20px 20px;
 }
-.discovery-page[aria-label="Лента"] .discovery-deck-stage::before{z-index:0;top:0;left:14px;right:14px;bottom:30px;opacity:.64}
-.discovery-page[aria-label="Лента"] .discovery-deck-stage::after{z-index:0;top:8px;left:8px;right:8px;bottom:22px;opacity:.8}
+.discovery-page[aria-label="Лента"] .discovery-deck-stage.has-profiles::before{z-index:0;top:0;left:14px;right:14px;bottom:30px;opacity:.64}
+.discovery-page[aria-label="Лента"] .discovery-deck-stage.has-profiles::after{z-index:0;top:8px;left:8px;right:8px;bottom:22px;opacity:.8}
 .discovery-app .feed-v2-card{position:relative;z-index:1}
 .feed-v2-photo-ambient{
  position:absolute;z-index:0;left:-15px;right:-15px;top:46%;bottom:-15px;
