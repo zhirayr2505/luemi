@@ -636,6 +636,7 @@ test("01D admin connection cleanup",async()=>{await admin.end();await reader.end
 
 test("nearby: real city-centre distance orders profiles without a radius threshold or GPS",async()=>{
  const app=makeApp({instant:true});
+ const cityAdmin=new Pool({connectionString:adminUrl!});
  try{
   const viewer=await identity(app,8025401);
   const cities=[
@@ -654,11 +655,11 @@ test("nearby: real city-centre distance orders profiles without a radius thresho
    if(item.telegram!==8025401)users.push({id:actor.id,city:item.city,countryCode:item.countryCode});
   }
   for(const item of users){
-   await admin.query("UPDATE luemi_private.public_profiles SET city_label=$1,country_code=$2 "+
+   await cityAdmin.query("UPDATE luemi_private.public_profiles SET city_label=$1,country_code=$2 "+
     "WHERE owner_id=$3 AND environment=$4",
     [item.city,item.countryCode,item.id,namespace]);
   }
-  await admin.query("UPDATE luemi_private.discovery_preferences "+
+  await cityAdmin.query("UPDATE luemi_private.discovery_preferences "+
    "SET search_scope='radius',city_label='Ереван',country_code='AM' "+
    "WHERE owner_id=$1 AND environment=$2",[viewer.id,namespace]);
   const res=await feed(app,viewer);
@@ -672,9 +673,9 @@ test("nearby: real city-centre distance orders profiles without a radius thresho
    users[0].id, // Krasnodar ~600 km
    users[2].id  // unknown city still shown but never assigned fake kilometres
   ]);
-  const count=await admin.query<{count:string}>(
+  const count=await cityAdmin.query<{count:string}>(
    "SELECT count(*)::text AS count FROM luemi_private.city_centres WHERE "+
    "country_code IN ('AM','RU') AND city_norm='армавир'");
   assert.equal(Number(count.rows[0].count),2,"coarse world index distinguishes Armenian and Russian Armavir");
- }finally{await app.close();}
+ }finally{await app.close();await cityAdmin.end();}
 });
