@@ -114,12 +114,30 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(photoTrack.current)photoTrack.current.style.transition="transform .31s cubic-bezier(.22,.77,.23,1)";
    renderOffset(i,0);activeRef.current=i;setIndex(i);onIndexChange?.(i);
  };
+ // The last decoded cover remains visible behind the slider until a new
+ // image finishes decoding. Never expose a grey GPU tile mid-swipe in WebView.
+ const revealDecoded=(image:HTMLImageElement)=>{
+  const source=image.currentSrc||image.src;
+  const reveal=()=>{if(image.isConnected&&(image.currentSrc||image.src)===source)
+   image.style.opacity="1";};
+  if(typeof image.decode==="function")void image.decode().then(reveal,()=>{
+   if(image.naturalWidth>0)reveal();
+  });
+  else reveal();
+ };
  return <div className="carousel-frame" ref={frame} onPointerDown={start} onPointerMove={move} onPointerUp={end}
-     onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}>
+     onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}
+     style={photos[0]?.src?{backgroundImage:`url("${photos[0].src}")`,backgroundSize:"cover",backgroundPosition:"center 38%"}:undefined}>
    {photos.length>0?<div className="carousel-track" ref={photoTrack}>
      {photos.map((p,i)=><img key={p.id} src={p.src} alt={"Фото "+(i+1)} draggable={false}
-       loading={dots?(Math.abs(i-active)<=1?"eager":"lazy"):(i===0?"eager":"lazy")} decoding="async"
-       onError={event=>{const fallback=p.fallback;if(fallback&&event.currentTarget.src!==fallback)event.currentTarget.src=fallback;}}/>)}
+       loading={Math.abs(i-active)<=2?"eager":"lazy"} decoding="async"
+       style={{opacity:0,transition:"opacity .16s ease-out"}}
+       onLoad={event=>revealDecoded(event.currentTarget)}
+       onError={event=>{const fallback=p.fallback;
+        if(fallback&&event.currentTarget.src!==fallback){
+         event.currentTarget.style.opacity="0";event.currentTarget.src=fallback;
+        }
+       }}/>)}
    </div>:<div className="profile-placeholder">Здесь будет твоё главное фото</div>}
    <div className={"photo-progress"+(dots?" is-dots":"")} aria-label="Фотографии">{indicators.map((p,slot)=>{
      const i=photos.length>7?indicatorStart+slot:slot;
