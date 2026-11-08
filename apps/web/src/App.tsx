@@ -49,7 +49,7 @@ declare global {
         isFullscreen?: boolean;
         requestFullscreen?: () => void;
         disableVerticalSwipes?: () => void;
-        HapticFeedback?: {selectionChanged?:()=>void};
+        HapticFeedback?: {selectionChanged?:()=>void;impactOccurred?:(style:"light"|"medium"|"heavy"|"rigid"|"soft")=>void};
         setHeaderColor?: (color: string) => void;
         setBackgroundColor?: (color: string) => void;
         setBottomBarColor?: (color: string) => void;
@@ -127,7 +127,9 @@ export function App() {
     return false;
   });
   const introElapsed=visualReady;
-  const [introText,setIntroText] = useState("");
+  const [heroImageReady,setHeroImageReady]=useState(false);
+  const heroSceneReady=visualReady&&heroViewportReady&&heroImageReady;
+  const [introSequenceComplete,setIntroSequenceComplete]=useState(false);
   const routeTransitioning = useRef(false);
   const [registrationFallback,setRegistrationFallback] = useState(false);
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
@@ -287,15 +289,30 @@ export function App() {
     };
   },[]);
   useEffect(()=>{
-    // Telegram may delay a font/image decode callback. The welcome screen and
-    // its CTA must still become usable while those assets finish in background.
+    // Decode the original hero while Telegram authenticates and restores drafts.
+    // Entrance animation starts only once the image and fullscreen are stable.
+    let active=true;
+    const image=new Image();
+    image.decoding="async";
+    const ready=()=>{if(active)setHeroImageReady(true);};
+    image.onload=()=>{
+      if(typeof image.decode==="function")void image.decode().then(ready,ready);
+      else ready();
+    };
+    image.onerror=ready; // Missing media must not permanently lock registration.
+    image.src="/assets/registration/welcome-cinematic.webp";
+    return()=>{active=false;image.onload=null;image.onerror=null;};
+  },[]);
+  useEffect(()=>{
+    if(!heroSceneReady)return;
+    const timer=window.setTimeout(()=>setIntroSequenceComplete(true),1500);
+    return()=>window.clearTimeout(timer);
+  },[heroSceneReady]);
+  useEffect(()=>{
+    // Brand/font preparation is optional; auth and IndexedDB hydration run independently.
     const fallback=window.setTimeout(()=>setVisualReady(true),650);
     return()=>window.clearTimeout(fallback);
   },[]);
-  useEffect(()=>{
-    if(!visualReady||auth==="connecting")return;
-    setIntroText("Твоя история начинается здесь");
-  },[auth,visualReady]);
   useEffect(()=>{
     const webApp=window.Telegram?.WebApp;
     try{
@@ -770,9 +787,16 @@ export function App() {
     setStorageCode(null);setStorageState("dirty");
     setSaveRetry(value=>value+1);
   };
+  const registrationEntryReady=heroSceneReady&&introSequenceComplete&&auth==="authorized"&&
+    (!registrationV2Pilot||(photosRestored&&storageState!=="loading"&&storageState!=="error"))&&
+    (!realFeedPilot.enabled||publicationCheck==="ready");
+  const entryPressFeedback=()=>{
+    try{window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.("light");}
+    catch{/* Unsupported clients still get the button's visual press response. */}
+  };
   const beginRegistration=()=>{
-    if(routeTransitioning.current||realOnly&&!remoteDraftPilot.enabled||
-      realFeedPilot.enabled&&publicationCheck!=="ready")return;
+    if(routeTransitioning.current||!registrationEntryReady||
+      realOnly&&!remoteDraftPilot.enabled)return;
     if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||
       document.visibilityState!=="visible"){
       setRegistrationFallback(false);
@@ -1333,17 +1357,12 @@ export function App() {
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
     {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
-    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state cinematic-entry"+(visualReady?" visually-ready":"")+(heroViewportReady?" hero-viewport-ready":"")} aria-live="polite">
+    {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state cinematic-entry"+(heroSceneReady?" visually-ready":"")+(heroViewportReady?" hero-viewport-ready":"")+(heroImageReady?" hero-image-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
       </div>
-      {auth!=="connecting"&&!(auth==="authorized"&&realFeedPilot.enabled&&publicationCheck==="checking")&&
-       <h1 className={registrationStarted?"intro-returning-title":undefined} aria-label={auth==="authorized"?"Больше, чем знакомства":introText}>
-         {auth==="authorized"?"Больше, чем знакомства":introText}
-         {auth!=="authorized"&&<span className="intro-type-cursor" aria-hidden="true">|</span>}
-       </h1>}
-      {auth==="authorized"&&!(realFeedPilot.enabled&&publicationCheck==="checking")&&
-       <p className="intro-subtitle">Реальные люди. Настоящие эмоции.<br/>Ближе, чем кажется.</p>}
+      <h1 className={registrationStarted?"intro-returning-title":undefined}>Больше, чем знакомства</h1>
+      <p className="intro-subtitle">Реальные люди. Настоящие эмоции.<br/>Ближе, чем кажется.</p>
       {auth==="outside-telegram"&&<p>Открой LUEMI через <a href="https://t.me/LuemiAppBot">@LuemiAppBot</a> внутри Telegram.</p>}
       {auth==="needs-bot"&&<><p>{realOnly?"Сервер авторизации пока недоступен. Повтори вход позже.":"Тестовый сервер готов, но авторизация пока отключена."}</p>
         {realOnly&&<button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button>}</>}
@@ -1352,16 +1371,19 @@ export function App() {
       {auth==="needs-invite"&&<><p role="alert">Идёт закрытый тест LUEMI. Для приглашения отправь владельцу свой Telegram ID из команды /myid в @LuemiAppBot.</p>
         <button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить вход</button></>}
       {auth==="error"&&<><p>Не удалось подтвердить вход. Попробуй снова через Telegram.</p><button className="primary-action" type="button" onClick={()=>{setAuth("connecting");setConnectAttempt(v=>v+1);}}>Повторить</button><SafetyAppealPanel/></>}
-      {auth==="authorized"&&introElapsed&&visualReady&&
+      {auth==="authorized"&&heroSceneReady&&introSequenceComplete&&
        !(realFeedPilot.enabled&&publicationCheck==="checking")&&<div className="intro-cta">
         {realFeedPilot.enabled&&publicationCheck==="error"&&
           <><p role="alert">{publishFeedback}</p>
           <button type="button" className="primary-action" onClick={()=>setPublicationRetry(v=>v+1)}>Повторить проверку</button></>}
+        {registrationV2Pilot&&storageState==="error"&&
+          <button className="primary-action" type="button" onPointerDown={entryPressFeedback}
+            onClick={retryStorage}>Повторить загрузку анкеты</button>}
         {realOnly&&!remoteDraftPilot.enabled&&
           <p role="status">Настоящая регистрация пока не подключена. Демонстрационные анкеты выключены.</p>}
-        {(!realFeedPilot.enabled&&(!realOnly||remoteDraftPilot.enabled)||publicationCheck==="ready")&&
-          <button className="primary-action" type="button" onClick={beginRegistration}>
-            {registrationStarted?"Продолжить регистрацию":"Начать знакомство"} <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
+        {registrationEntryReady&&(!realOnly||remoteDraftPilot.enabled)&&
+          <button className="primary-action" type="button" onPointerDown={entryPressFeedback} onClick={beginRegistration}>
+            {registrationStarted?"Продолжить регистрацию":"Зарегистрироваться"} <ArrowRight size={21} strokeWidth={1.9} aria-hidden="true"/>
           </button>}
       </div>}
     </section>:<section className={"onboarding-screen"+(step===8?" registration-static-screen":"")}>
