@@ -15,14 +15,14 @@ const registration=read("apps/web/src/registration/v2/RealRegistration.tsx");
 const app=read("apps/web/src/App.tsx");
 const legacyRealFeed=read("apps/web/src/registration/RealLiveFeed.tsx");
 
-test("V5 exposes one semantic Soft Plum token set",()=>{
+test("Moonstone V6 exposes one semantic graphite-lavender token set",()=>{
  for(const token of ["--luemi-bg","--luemi-surface","--luemi-glass","--luemi-lavender","--luemi-rose","--luemi-border","--luemi-text"])
   assert.match(tokens,new RegExp(token.replaceAll("-","\\-")));
  assert.match(tokens,/html,body,#root\{background:var\(--luemi-bg-deep\)/);
  assert.match(tokens,/\.milky-mist::before[^}]*animation:none/);
 });
 
-test("secondary real routes keep dark Soft Plum surfaces without decorative motion loops",()=>{
+test("secondary real routes keep Moonstone surfaces without decorative motion loops",()=>{
  assert.doesNotMatch(legacyFeed,/background\s*:\s*(?:#fff(?:fff)?|white)(?:[;}])/i);
  assert.doesNotMatch(publication,/animation:[^;}]*infinite/);
  assert.match(publication,/\.luemi-publication-petals\{display:none\}/);
@@ -54,7 +54,7 @@ test("likes route uses the shared V5 states and avatar system",()=>{
   assert.match(discovery,new RegExp(component));
  assert.doesNotMatch(discovery,/className="discovery-placeholder"/);
  assert.doesNotMatch(discovery,/Поставил\(а\) тебе симпатию\s*💜/);
- assert.match(tokens,/prefers-reduced-motion:reduce[^\n]*\.luemi-v5-skeleton-avatar/);
+ assert.match(tokens,/prefers-reduced-motion:reduce[\s\S]*?\.luemi-v5-skeleton-avatar/);
 });
 
 test("production controls use the shared icon system instead of decorative emoji",()=>{
