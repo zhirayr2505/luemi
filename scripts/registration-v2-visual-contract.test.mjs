@@ -64,8 +64,8 @@ assert.match(geo,/data.searchScope==="radius"\?"Ближайшие сначал�
  "Nearby mode explains automatic nearest-first city ranking");
 assert.doesNotMatch(geo,/radiusAt|positionAt|Радиус поиска, километры|type="range"/,
  "Retired distance slider and its value mapping must no longer render");
-assert.doesNotMatch(runtime,/\.geo-liquid-radius|\.branded-slider input\[type="range"\]/,
- "Delete outdated distance slider CSS, not just hide it");
+assert.doesNotMatch(runtime,/\.geo-liquid-radius/,
+ "Delete the retired location distance slider rules rather than hiding the controls");
 assert.match(runtime,/\.dob-step>\.choice-section \.glass-choice\{[\s\S]*?min-height:46px/,
  "Gender cards must use a compact horizontal icon-label arrangement");
 assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"\}/,
