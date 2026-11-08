@@ -1,73 +1,227 @@
-/* LUEMI Design System V5 — one semantic source for the final Soft Plum UI. */
+/* LUEMI Moonstone V6 — single semantic palette / optical materials.
+ * Optically layered controls, not blur on moving photo decks or Profile Morph.
+ * Original raster logo and accepted geometry stay untouched.
+ */
 :root{
- --luemi-bg:#211725;--luemi-bg-deep:#1c1424;--luemi-bg-top:#302236;
- --luemi-surface:#35283d;--luemi-surface-raised:#413249;
- --luemi-glass:#574359;--luemi-glass-accent:#745777;
- --luemi-lavender:#ac87b3;--luemi-rose:#d5a2c8;
- --luemi-text:#faf4fb;--luemi-text-secondary:#c7bacd;--luemi-text-muted:#9e8fa7;
- --luemi-border:rgba(238,214,246,.16);--luemi-border-active:rgba(236,209,247,.30);
- --luemi-focus:#d8b6df;--luemi-danger:#d58e9d;--luemi-success:#9fbea8;
- --luemi-shadow:0 10px 28px rgba(8,5,12,.24);
- --luemi-shadow-contact:0 4px 14px rgba(8,5,12,.19);
- --luemi-radius-sm:14px;--luemi-radius-md:19px;--luemi-radius-lg:26px;--luemi-radius-xl:30px;
- --luemi-motion-fast:130ms;--luemi-motion-route:290ms;
+ color-scheme:dark;
+ --luemi-bg:#1B2025;
+ --luemi-bg-deep:#171B20;
+ --luemi-bg-top:#252B32;
+ --luemi-surface:#2B3037;
+ --luemi-surface-raised:#363D45;
+ --luemi-glass:#3A4149;
+ --luemi-glass-accent:#665F74;
+ --luemi-lavender:#B6A4C8;
+ --luemi-rose:#D5C8DD;
+ --luemi-text:#F2F3F5;
+ --luemi-text-secondary:#B3B8C2;
+ --luemi-text-muted:#9098A4;
+ --luemi-border:rgba(217,228,241,.17);
+ --luemi-border-active:rgba(207,192,223,.43);
+ --luemi-focus:#CBB8DC;
+ --luemi-danger:#D58E9D;
+ --luemi-success:#A6C5B1;
+ --luemi-ink-on-accent:#22252D;
+ --luemi-shadow:0 12px 28px rgba(6,10,16,.24);
+ --luemi-shadow-contact:0 5px 16px rgba(7,11,18,.19);
+ --luemi-glass-fill:linear-gradient(144deg,rgba(103,116,132,.33),rgba(47,55,67,.37) 53%,rgba(33,40,51,.62));
+ --luemi-glass-solid:linear-gradient(145deg,#3C4652,#2B333D);
+ --luemi-glass-line:rgba(226,238,255,.28);
+ --luemi-glass-light:rgba(248,251,255,.33);
+ --luemi-glass-shine:radial-gradient(ellipse 98% 75% at var(--moonstone-x,26%) var(--moonstone-y,2%),rgba(247,250,255,.27),transparent 62%),
+  linear-gradient(175deg,rgba(250,253,255,.10) 0%,rgba(233,239,250,.018) 34%,transparent 60%);
+ --luemi-radius-sm:14px;
+ --luemi-radius-md:19px;
+ --luemi-radius-lg:26px;
+ --luemi-radius-xl:30px;
+ --luemi-motion-fast:130ms;
+ --luemi-motion-route:290ms;
 }
 html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
-
 .luemi-shell[data-theme=dark]{
  --bg:var(--luemi-bg);--ink:var(--luemi-text);--subtle:var(--luemi-text-secondary);
- --panel:rgba(65,50,73,.74);--glass-edge:var(--luemi-border);--line:var(--luemi-border);
- --lavender:var(--luemi-lavender);--pink:var(--luemi-rose);--shadow:rgba(7,4,11,.28);
+ --panel:rgba(43,48,55,.82);
+ --glass-edge:var(--luemi-border);--line:var(--luemi-border);
+ --lavender:var(--luemi-lavender);--pink:var(--luemi-rose);
+ --shadow:rgba(7,11,18,.28);
+ --mist-lavender:rgba(128,134,155,.12);
+ --mist-rose:rgba(141,145,160,.06);
  background:var(--luemi-bg);color:var(--luemi-text);
 }
 .luemi-shell[data-theme=dark] .milky-mist{
- background:radial-gradient(ellipse at 12% 4%,rgba(111,77,116,.20),transparent 47%),
-  radial-gradient(ellipse at 86% 89%,rgba(118,72,103,.13),transparent 50%);
+ background:radial-gradient(ellipse at 12% 4%,rgba(117,129,153,.105),transparent 47%),
+ radial-gradient(ellipse at 86% 89%,rgba(139,131,157,.07),transparent 50%);
 }
-.luemi-shell[data-theme=dark] .milky-mist::before,.luemi-shell[data-theme=dark] .milky-mist::after{animation:none}
-.luemi-shell[data-theme=dark] .intro-mark::before,.luemi-shell[data-theme=dark] .intro-type-cursor{animation:none}
+.luemi-shell[data-theme=dark] .milky-mist::before,
+.luemi-shell[data-theme=dark] .milky-mist::after{animation:none}
+.luemi-shell[data-theme=dark] .intro-mark::before,
+.luemi-shell[data-theme=dark] .intro-type-cursor{animation:none}
+
+/* The visible optical depth is produced by a real translucent backdrop,
+ * curved meniscus-like inner edges and a moving-on-press specular highlight.
+ * Expensive backdrop sampling is only allowed on stable interface chrome. */
 .luemi-v5-glass{
- border:1px solid var(--luemi-border);border-radius:var(--luemi-radius-md);
- background:linear-gradient(145deg,rgba(87,67,89,.66),rgba(53,40,61,.78));
- box-shadow:inset 0 1px rgba(255,255,255,.10),inset 0 -1px rgba(12,7,16,.14),var(--luemi-shadow-contact);
+ position:relative;isolation:isolate;
+ border:1px solid var(--luemi-glass-line);border-radius:var(--luemi-radius-md);
+ background:var(--luemi-glass-fill);
+ box-shadow:inset 0 1.5px 1px rgba(252,254,255,.27),
+  inset 1px 0 1px rgba(240,246,255,.11),inset 0 -1.5px 1px rgba(8,14,23,.28),
+  var(--luemi-shadow-contact);
 }
+.luemi-v5-glass::before{
+ content:"";position:absolute;inset:0;z-index:0;border-radius:inherit;
+ pointer-events:none;background:var(--luemi-glass-shine);
+ opacity:.85;transition:opacity .22s ease;
+}
+.luemi-v5-glass>*{position:relative;z-index:1}
+.luemi-v5-glass:active::before{opacity:1}
 .luemi-v5-icon-button{
- display:grid;place-items:center;width:42px;height:42px;padding:0;border-radius:15px;
- border:1px solid var(--luemi-border);color:var(--luemi-text);
- background:linear-gradient(145deg,rgba(88,68,91,.62),rgba(48,36,55,.78));
- box-shadow:inset 0 1px rgba(255,255,255,.09);transition:transform var(--luemi-motion-fast) ease,background-color var(--luemi-motion-fast) ease;
+ position:relative;isolation:isolate;display:grid;place-items:center;
+ width:42px;height:42px;padding:0;border-radius:16px;overflow:hidden;
+ border:1px solid var(--luemi-glass-line);color:var(--luemi-text);
+ background:var(--luemi-glass-fill);
+ box-shadow:inset 0 1px rgba(248,252,255,.25),inset 0 -1px rgba(9,16,24,.22),
+  var(--luemi-shadow-contact);
+ transition:transform var(--luemi-motion-fast) ease,background-color var(--luemi-motion-fast) ease;
 }
+.luemi-v5-icon-button::before{
+ content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+ background:var(--luemi-glass-shine);border-radius:inherit;opacity:.78;
+ transition:opacity .2s ease;
+}
+.luemi-v5-icon-button>*{position:relative;z-index:1}
 .luemi-v5-icon-button:active{transform:scale(.96)}
+.luemi-v5-icon-button:active::before{opacity:1}
 .luemi-v5-icon-button:focus-visible,.luemi-v5-segments button:focus-visible,
 .luemi-v5-bottom-nav button:focus-visible{outline:2px solid var(--luemi-focus);outline-offset:2px}
-.luemi-v5-avatar{position:relative;display:grid;place-items:center;flex:none;overflow:hidden;border-radius:50%;
- background:linear-gradient(145deg,#765c7b,#4b3954);color:var(--luemi-text);font-weight:720;
- border:1px solid var(--luemi-border);box-shadow:inset 0 1px rgba(255,255,255,.12)}
-.luemi-v5-avatar.is-small{width:42px;height:42px;font-size:17px}.luemi-v5-avatar.is-medium{width:54px;height:54px;font-size:21px}.luemi-v5-avatar.is-large{width:66px;height:66px;font-size:24px}
+.luemi-v5-avatar{
+ position:relative;display:grid;place-items:center;flex:none;overflow:hidden;
+ border-radius:50%;background:linear-gradient(145deg,#596271,#343B46);
+ color:var(--luemi-text);font-weight:720;border:1px solid var(--luemi-border);
+ box-shadow:inset 0 1px rgba(255,255,255,.12);
+}
+.luemi-v5-avatar.is-small{width:42px;height:42px;font-size:17px}
+.luemi-v5-avatar.is-medium{width:54px;height:54px;font-size:21px}
+.luemi-v5-avatar.is-large{width:66px;height:66px;font-size:24px}
 .luemi-v5-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
-.luemi-v5-avatar.has-blik{overflow:visible;border:2px solid #b991bf;box-shadow:0 0 0 2px var(--luemi-bg)}
+.luemi-v5-avatar.has-blik{overflow:visible;border:2px solid var(--luemi-lavender);box-shadow:0 0 0 2px var(--luemi-bg)}
 .luemi-v5-avatar.has-blik img{overflow:hidden}
 .luemi-v5-empty{display:grid;place-content:center;justify-items:center;gap:10px;min-height:220px;padding:30px 24px;text-align:center;color:var(--luemi-text-secondary)}
-.luemi-v5-empty-mark{display:grid;place-items:center;width:66px;height:66px;border-radius:23px;color:var(--luemi-rose);
- border:1px solid var(--luemi-border);background:linear-gradient(145deg,rgba(103,78,106,.45),rgba(52,39,60,.72));box-shadow:inset 0 1px rgba(255,255,255,.09)}
-.luemi-v5-empty h3,.luemi-v5-empty p{margin:0}.luemi-v5-empty h3{color:var(--luemi-text);font-size:19px}.luemi-v5-empty p{max-width:290px;font-size:13px;line-height:1.5}
-.luemi-v5-skeleton{display:flex;align-items:center;gap:13px;min-height:78px;padding:12px;border:1px solid var(--luemi-border);
- border-radius:var(--luemi-radius-md);background:linear-gradient(145deg,rgba(69,52,77,.64),rgba(46,34,53,.76));overflow:hidden}
-.luemi-v5-skeleton-avatar,.luemi-v5-skeleton-copy>span{position:relative;display:block;overflow:hidden;background:rgba(199,186,205,.12)}
-.luemi-v5-skeleton-avatar{width:52px;height:52px;flex:none;border-radius:50%}.luemi-v5-skeleton-copy{display:grid;flex:1;gap:9px}
-.luemi-v5-skeleton-copy>span{height:10px;border-radius:999px}.luemi-v5-skeleton-copy>span:last-child{width:68%}
-.luemi-v5-skeleton-avatar::after,.luemi-v5-skeleton-copy>span::after{content:"";position:absolute;inset:0;
- background:linear-gradient(100deg,transparent 15%,rgba(250,244,251,.08) 48%,transparent 82%);transform:translateX(-100%);animation:luemi-v5-skeleton 1.35s ease-in-out infinite}
+.luemi-v5-empty-mark{
+ display:grid;place-items:center;width:66px;height:66px;border-radius:23px;
+ color:var(--luemi-rose);border:1px solid var(--luemi-border);
+ background:linear-gradient(145deg,rgba(87,102,119,.49),rgba(43,52,65,.71));
+ box-shadow:inset 0 1px rgba(255,255,255,.12);
+}
+.luemi-v5-empty h3,.luemi-v5-empty p{margin:0}
+.luemi-v5-empty h3{color:var(--luemi-text);font-size:19px}
+.luemi-v5-empty p{max-width:290px;font-size:13px;line-height:1.5}
+.luemi-v5-skeleton{
+ display:flex;align-items:center;gap:13px;min-height:78px;padding:12px;
+ border:1px solid var(--luemi-border);border-radius:var(--luemi-radius-md);
+ background:linear-gradient(145deg,rgba(65,75,88,.63),rgba(37,44,55,.77));
+ overflow:hidden;
+}
+.luemi-v5-skeleton-avatar,.luemi-v5-skeleton-copy>span{
+ position:relative;display:block;overflow:hidden;background:rgba(184,190,202,.12);
+}
+.luemi-v5-skeleton-avatar{width:52px;height:52px;flex:none;border-radius:50%}
+.luemi-v5-skeleton-copy{display:grid;flex:1;gap:9px}
+.luemi-v5-skeleton-copy>span{height:10px;border-radius:999px}
+.luemi-v5-skeleton-copy>span:last-child{width:68%}
+.luemi-v5-skeleton-avatar::after,.luemi-v5-skeleton-copy>span::after{
+ content:"";position:absolute;inset:0;
+ background:linear-gradient(100deg,transparent 15%,rgba(242,243,245,.12) 48%,transparent 82%);
+ transform:translateX(-100%);animation:luemi-v5-skeleton 1.35s ease-in-out infinite;
+}
 @keyframes luemi-v5-skeleton{to{transform:translateX(100%)}}
-.luemi-v5-segments{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}.luemi-v5-segments::-webkit-scrollbar{display:none}
-.luemi-v5-segments button{min-height:34px;padding:6px 13px;border:1px solid var(--luemi-border);border-radius:999px;
- color:var(--luemi-text-secondary);background:rgba(67,50,75,.58);font-size:12px;white-space:nowrap;transition:transform var(--luemi-motion-fast) ease,background-color .2s ease}
-.luemi-v5-segments button.active{color:var(--luemi-text);border-color:var(--luemi-border-active);background:rgba(151,113,157,.48)}
+.luemi-v5-segments{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}
+.luemi-v5-segments::-webkit-scrollbar{display:none}
+.luemi-v5-segments button{
+ min-height:34px;padding:6px 13px;border:1px solid var(--luemi-border);
+ border-radius:999px;color:var(--luemi-text-secondary);
+ background:rgba(55,64,76,.64);font-size:12px;white-space:nowrap;
+ transition:transform var(--luemi-motion-fast) ease,background-color .2s ease;
+}
+.luemi-v5-segments button.active{
+ color:var(--luemi-text);border-color:var(--luemi-border-active);
+ background:linear-gradient(145deg,rgba(176,159,196,.46),rgba(115,109,142,.40));
+ box-shadow:inset 0 1px rgba(255,255,255,.26),0 2px 9px rgba(6,9,16,.14);
+}
 .luemi-v5-segments button:disabled{opacity:.42;cursor:not-allowed}
 .luemi-v5-segments button:not(:disabled):active{transform:scale(.96)}
 
-@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
- .luemi-v5-glass[data-static-glass=true]{backdrop-filter:blur(12px) saturate(112%);-webkit-backdrop-filter:blur(12px) saturate(112%)}
+/* Dynamic Liquid Glass — stationary top/bottom chrome only.
+ * No backdrop-filter on .feed-v2, .pm-a2-photo-track, draggable
+ * registration fields, animated page tracks, or scrollable user tiles. */
+.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav,
+.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs,
+.luemi-shell[data-theme=dark] .real-feed-filter-sheet,
+.luemi-shell[data-theme=dark] .lc-categories-panel,
+.luemi-shell[data-theme=dark] .lc-search,
+.luemi-shell[data-theme=dark] .lc-composer,
+.luemi-shell[data-theme=dark] .lc-chat-header{
+ border-color:var(--luemi-glass-line);
+ background:var(--luemi-glass-fill);
+ box-shadow:inset 0 1px rgba(255,255,255,.21),
+  inset 0 -1px rgba(5,11,21,.21),0 9px 25px rgba(6,10,17,.19);
 }
-@media(prefers-reduced-motion:reduce){.luemi-v5-icon-button,.luemi-v5-segments button{transition:none}.luemi-v5-skeleton-avatar::after,.luemi-v5-skeleton-copy>span::after{animation:none}}
-@media(prefers-reduced-transparency:reduce){.luemi-v5-glass{background:var(--luemi-surface-raised)}}
+.luemi-shell[data-theme=dark] .real-feed-filter-sheet{
+ background:linear-gradient(147deg,rgba(46,54,65,.95),rgba(28,34,42,.97));
+}
+.luemi-shell[data-theme=dark] .lc-composer,
+.luemi-shell[data-theme=dark] .lc-chat-header{
+ background:linear-gradient(165deg,rgba(48,58,69,.92),rgba(27,34,43,.94));
+}
+.luemi-shell[data-theme=dark] .discovery-app .discovery-tab-underline{
+ border-color:rgba(234,228,246,.36);
+ background:linear-gradient(140deg,rgba(183,167,204,.62),rgba(110,113,138,.48));
+ box-shadow:inset 0 1px rgba(255,255,255,.26),0 2px 9px rgba(9,12,19,.24);
+}
+.luemi-shell[data-theme=dark] .discovery-app .discovery-nav-item.active{
+ color:var(--luemi-text);
+ background:rgba(175,161,199,.20);
+}
+.luemi-shell[data-theme=dark] .discovery-app .discovery-nav-item.active svg{
+ color:var(--luemi-rose);
+}
+.luemi-shell[data-theme=dark] .real-feed-filter-apply{
+ background:var(--luemi-lavender);color:var(--luemi-ink-on-accent);
+ border-color:rgba(240,234,250,.32);
+}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+ .luemi-v5-glass[data-static-glass=true],
+ .luemi-shell[data-theme=dark] .lc-categories-panel,
+ .luemi-shell[data-theme=dark] .lc-search,
+ .luemi-shell[data-theme=dark] .real-feed-filter-sheet{
+  backdrop-filter:blur(16px) saturate(138%) contrast(104%);
+  -webkit-backdrop-filter:blur(16px) saturate(138%) contrast(104%);
+ }
+ .luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav,
+ .luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs{
+  backdrop-filter:blur(15px) saturate(135%) contrast(104%);
+  -webkit-backdrop-filter:blur(15px) saturate(135%) contrast(104%);
+ }
+ .luemi-shell[data-theme=dark] .lc-composer,
+ .luemi-shell[data-theme=dark] .lc-chat-header{
+  backdrop-filter:blur(12px) saturate(120%);
+  -webkit-backdrop-filter:blur(12px) saturate(120%);
+ }
+}
+@media(prefers-reduced-transparency:reduce){
+ .luemi-v5-glass,.luemi-v5-icon-button,
+ .luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav,
+ .luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs,
+ .luemi-shell[data-theme=dark] .real-feed-filter-sheet,
+ .luemi-shell[data-theme=dark] .lc-categories-panel,
+ .luemi-shell[data-theme=dark] .lc-search,
+ .luemi-shell[data-theme=dark] .lc-composer,
+ .luemi-shell[data-theme=dark] .lc-chat-header{
+  background:var(--luemi-glass-solid);backdrop-filter:none;-webkit-backdrop-filter:none;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .luemi-v5-icon-button,.luemi-v5-segments button,
+ .luemi-v5-glass::before,.luemi-v5-icon-button::before{transition:none}
+ .luemi-v5-skeleton-avatar::after,.luemi-v5-skeleton-copy>span::after{animation:none}
+}
