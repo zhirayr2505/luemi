@@ -6,7 +6,6 @@ import {defaultFilters} from "./model";
 import {goals} from "../registration/model";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import {languages} from "../ui/Languages";
-import {positionAt,radiusAt} from "../registration/GeoPicker";
 import {DoubleAgeRange} from "../registration/Steps";
 import type {RegistrationDraft} from "../registration/model";
 interface Props {open:boolean;filter:DiscoveryFilter;draft:RegistrationDraft;onClose:()=>void;onApply:(next:DiscoveryFilter)=>void}
@@ -35,18 +34,12 @@ export function DiscoveryFilters({open,filter,draft,onClose,onApply}:Props){
        <DoubleAgeRange min={working.minAge} max={working.maxAge} onChange={(minAge,maxAge)=>setWorking(p=>({...p,minAge,maxAge}))}/>
        <fieldset className="discovery-filter-group"><legend>География</legend>
          <div className="discovery-filter-options">
-         {([["radius","По радиусу"],["country","Моя страна"],["world","Весь мир"]] as const).map(([value,label])=>
+         {([["radius","Рядом"],["country","Моя страна"],["world","Весь мир"]] as const).map(([value,label])=>
            <button type="button" key={value} className={"discovery-option"+(working.scope===value?" selected":"")}
              aria-pressed={working.scope===value} onClick={()=>set("scope",value)}>{label}</button>)}
          </div>
-         {working.scope==="radius"&&<div className="discovery-radius">
-           <label htmlFor="discovery-radius">Радиус: <strong>{working.radius.toLocaleString("ru")} км</strong></label>
-           <input id="discovery-radius" type="range" min={0} max={100} value={positionAt(working.radius)}
-             onChange={e=>set("radius",radiusAt(Number(e.target.value)))}/>
-           <span>1–5000 км</span>
-         </div>}
          {working.scope==="country"&&!draft.countryCode&&<p className="hint">Страна в черновике не выбрана: географическое ограничение пока не применится.</p>}
-         {working.scope==="radius"&&<p className="hint">Расстояния демонстрационные и не обозначают реальное положение людей.</p>}
+         {working.scope==="radius"&&<p className="hint">Ближайшие сначала: город из анкеты, затем другие по приблизительной удалённости. Точный GPS не используется.</p>}
        </fieldset>
        <fieldset className="discovery-filter-group"><legend>Цель знакомства</legend>
          <select className="glass-control" value={working.goal} onChange={e=>set("goal",e.target.value as DiscoveryFilter["goal"])}>

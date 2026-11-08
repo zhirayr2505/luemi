@@ -25,7 +25,7 @@ export function demoDistanceKm(person:DemoPerson,draft:RegistrationDraft):number
  return person.city===draft.city?8:20+hash%4800;
 }
 export function filterDemoPeople(people:DemoPerson[],filter:DiscoveryFilter,draft:RegistrationDraft):DemoPerson[]{
- return people.filter(p=>{
+ const eligible=people.filter(p=>{
   if(p.age<filter.minAge||p.age>filter.maxAge)return false;
   if(filter.audience==="women"&&p.gender!=="woman")return false;
   if(filter.audience==="men"&&p.gender!=="man")return false;
@@ -33,11 +33,14 @@ export function filterDemoPeople(people:DemoPerson[],filter:DiscoveryFilter,draf
   if(filter.language!=="all"&&!p.languages.includes(filter.language))return false;
   if(filter.commonOnly&&!commonInterests(p,draft).length)return false;
   if(filter.scope==="country"&&normalizeCountryCode(draft.countryCode)!==null&&normalizeCountryCode(draft.countryCode)!==normalizeCountryCode(p.countryCode))return false;
-  if(filter.scope==="radius"&&draft.city){
-   const distance=demoDistanceKm(p,draft);if(distance!==null&&distance>filter.radius)return false;
-  }
   return true;
  });
+ // Fixtures cannot supply geographical positions. Show the matching city
+ // first without inventing numeric distance or applying a fake radius cap.
+ if(filter.scope!=="radius")return eligible;
+ const local=(p:DemoPerson)=>!!draft.city&&p.city.toLocaleLowerCase("ru")===draft.city.toLocaleLowerCase("ru")
+  &&p.countryCode===draft.countryCode;
+ return eligible.slice().sort((a,b)=>Number(local(b))-Number(local(a)));
 }
 export interface DemoHistory {index:number;kind:DemoKind;profileId:string;wasSaved:boolean;wasLiked:boolean}
 export interface DemoFeedState {index:number;saved:string[];liked:string[];history:DemoHistory[];lastKind:DemoKind|null}

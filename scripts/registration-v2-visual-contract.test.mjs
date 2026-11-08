@@ -60,8 +60,12 @@ assert.match(runtime,/\.age-range \.double-range-track\{[\s\S]*?top:16px;left:10
  "Age rail centre must align with its 36px native thumb hit box");
 assert.match(runtime,/\.age-range \.double-age-range input::-webkit-slider-thumb\{[\s\S]*?margin-top:-8px/,
  "Native age thumbs must be centred on the 4px rail instead of sitting below it");
-assert.match(runtime,/\.geo-liquid-radius input\[type="range"\]::-webkit-slider-thumb\{[\s\S]*?margin-top:-8px/,
- "Radius thumb must share the age slider's 4px track and 20px grip geometry");
+assert.match(geo,/data.searchScope==="radius"\?"Ближайшие сначала"/,
+ "Nearby mode explains automatic nearest-first city ranking");
+assert.doesNotMatch(geo,/radiusAt|positionAt|Радиус поиска, километры|type="range"/,
+ "Retired distance slider and its value mapping must no longer render");
+assert.doesNotMatch(runtime,/\.geo-liquid-radius/,
+ "Delete the retired location distance slider rules rather than hiding the controls");
 assert.match(runtime,/\.dob-step>\.choice-section \.glass-choice\{[\s\S]*?min-height:46px/,
  "Gender cards must use a compact horizontal icon-label arrangement");
 assert.match(form,/data-telegram-ui=\{window\.Telegram\?\.WebApp\?"true":"false"\}/,
