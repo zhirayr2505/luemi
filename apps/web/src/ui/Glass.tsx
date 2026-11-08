@@ -10,8 +10,11 @@ export function GlassCheckbox({checked,onChange,children}:{checked:boolean;onCha
    <span className="glass-check-copy">{children}</span>
  </label>;
 }
-export function GlassChoice({chosen,onClick,children,icon}:{chosen:boolean;onClick:()=>void;children:ReactNode;icon?:ReactNode}){
- return <button type="button" className={"glass-choice"+(chosen?" selected":"")} aria-pressed={chosen} onClick={onClick}>{icon}{children}</button>;
+export function GlassChoice({chosen,onClick,children,icon,showCheck=false}:{chosen:boolean;onClick:()=>void;children:ReactNode;icon?:ReactNode;showCheck?:boolean}){
+ return <button type="button" className={"glass-choice"+(chosen?" selected":"")+(showCheck?" has-corner-check":"")} aria-pressed={chosen} onClick={onClick}>
+  {icon}{children}
+  {showCheck&&chosen&&<span className="glass-choice-corner-check" aria-hidden="true"><Check size={11} strokeWidth={3}/></span>}
+ </button>;
 }
 export function GlassArrow({forward=false,disabled=false,onClick}:{forward?:boolean;disabled?:boolean;onClick:()=>void}){
  return <button type="button" className={"nav-circle"+(forward?" forward":"")} aria-label={forward?"Далее":"Назад"} disabled={disabled} onClick={onClick}>
