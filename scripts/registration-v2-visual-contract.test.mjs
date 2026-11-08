@@ -203,8 +203,8 @@ assert.match(focusDock,/shell\.animate\(\[[\s\S]*?slotTop-dockTop[\s\S]*?transla
  "One FLIP animation moves each focused field and adds a soft 5px rise");
 assert.doesNotMatch(focusDock,/shell\.getBoundingClientRect\(\)\.height/,
  "Editor placement never depends on the live suggestion pane height");
-assert.match(focusDock,/flagsResize\?\.observe\(watchedFlags\)/,
- "Only selected-language flags are observed, so city suggestion animation stays isolated");
+assert.doesNotMatch(focusDock,/flagsResize|flagsMutation|MutationObserver/,
+ "Only active city and text inputs retain keyboard geometry observers");
 assert.match(form,/<div className="v2-backdrop"[^>]*\/>[\s\S]*?<div className="v2-focus-scrim"[\s\S]*?<header className="v2-header">/,
  "Focus blur is a direct child of the full device, never clipped by the body scroller");
 assert.match(runtime,/\.v2-focus-scrim\{[^}]*backdrop-filter:blur\(40px\)[^}]*transition:opacity/s,
@@ -368,7 +368,7 @@ assert.match(runtime,/\.focus-field-shell\.is-focused\{\s*position:fixed;z-index
  "Focused field label and text remain on top of glass without blur");
 assert.match(focusDock,/export const FOCUS_RELEASE_DELAY_MS=160;/,
  "One keyboard release delay across all text inputs");
-for(const [label,code] of [["name, birthday and bio",steps],["city",geo],["language",language]]){
+for(const [label,code] of [["name, birthday and bio",steps],["city",geo]]){
  assert.match(code,/useFieldFocusDock/,label+" shares a single input animation hook");
  assert.match(code,/FOCUS_RELEASE_DELAY_MS/,label+" shares a single keyboard release timing");
  assert.doesNotMatch(code,/field-focus-overlay/,label+" does not mount legacy click-blocker layers");
@@ -424,7 +424,7 @@ assert.match(form,/if\(animateStep&&leaving\?\.animate\)/,
 assert.match(form,/setIndex\(next\)/,
  "The next required step commits atomically");
 assert.match(form,/if\(entering\)entering\.scrollTop=0/,
- "Every new step starts at the top instead of inheriting language scroll");
+ "Every new step starts at the top without inheriting a retired editor scroll position");
 assert.match(form,/className="v2-body" aria-labelledby="v2-title"/,
  "Step content has no stale fallback classes with a second animation");
 assert.match(runtime,/data-step-moving="true"\] \.v2-body\{pointer-events:none\}/,
