@@ -51,8 +51,21 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-device[data-step-moving="true"] .v2-body{pointer-events:none}
 @keyframes luemi-stage-reveal{from{opacity:0;translate:12px 0}to{opacity:1;translate:0 0}}
 .v2-runtime .v2-eyebrow{display:none}
-.v2-runtime .v2-stage-heading{position:sticky;top:-20px;z-index:6;margin:-20px -24px 0;
- padding:20px 24px 23px;background:linear-gradient(180deg,var(--luemi-bg-deep,#171B20) 0%,var(--luemi-bg-deep,#171B20) 72%,rgba(27,30,36,.96) 88%,rgba(27,30,36,0) 100%)}
+.v2-runtime .v2-stage-heading{position:sticky;top:-20px;z-index:6;isolation:isolate;margin:-20px -24px 0;
+ padding:20px 24px 23px;
+ background:linear-gradient(180deg,var(--luemi-bg-deep,#171B20) 0%,var(--luemi-bg-deep,#171B20) 63%,rgba(23,27,32,.76) 86%,rgba(23,27,32,0) 100%)}
+/* Optical glass is limited to the narrow stationary heading edge,
+   never the scrolling photo/morph hot path. The top remains opaque. */
+.v2-runtime .v2-stage-heading::after{
+ content:"";position:absolute;z-index:0;pointer-events:none;left:0;right:0;bottom:0;height:30px;
+ background:linear-gradient(180deg,rgba(23,27,32,0),rgba(23,27,32,.22));
+ -webkit-backdrop-filter:blur(8px) saturate(118%);backdrop-filter:blur(8px) saturate(118%);
+ -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 70%);
+ mask-image:linear-gradient(180deg,transparent 0%,#000 70%)}
+.v2-runtime .v2-stage-heading>*{position:relative;z-index:1}
+@media(prefers-reduced-transparency:reduce){
+ .v2-runtime .v2-stage-heading::after{-webkit-backdrop-filter:none;backdrop-filter:none;
+  background:linear-gradient(180deg,transparent,rgba(23,27,32,.55))}}
 .v2-runtime .v2-body h1{font-size:clamp(28px,7.3vw,36px);line-height:1.09;
  font-weight:740;letter-spacing:-.048em;margin:0 0 8px;color:#fff;text-wrap:balance}
 .v2-runtime .v2-subtitle{max-width:355px;min-height:38px;font-size:13px;line-height:1.48;
@@ -573,11 +586,8 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 /* About interests belong to the same existing sticky header, not a second
    scrollable panel. Keep one horizontal chip row with a fixed block height,
    even when empty, to avoid scroll jumps on add/remove. */
-.v2-runtime .v2-stage-heading--about{
- padding-bottom:13px;
- background:linear-gradient(180deg,var(--luemi-bg-deep,#171B20) 0%,
-  var(--luemi-bg-deep,#171B20) 87%,rgba(27,30,36,.96) 95%,
-  rgba(27,30,36,.78) 100%)}
+.v2-runtime .v2-stage-heading--about{padding-bottom:13px;
+ background:linear-gradient(180deg,var(--luemi-bg-deep,#171B20) 0%,var(--luemi-bg-deep,#171B20) 71%,rgba(23,27,32,.72) 90%,rgba(23,27,32,0) 100%)}
 .v2-runtime .v2-sticky-interests{
  display:grid;grid-template-rows:0fr;min-width:0;
  margin-top:0;padding:0 11px;border:0 solid transparent;border-radius:17px;
