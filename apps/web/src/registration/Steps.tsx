@@ -5,7 +5,6 @@ import type {CSSProperties,ReactNode} from "react";
 import {Info,Search,CheckCircle2} from "lucide-react";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import {goals,goalIcons} from "../ui/Goals";
-import {LanguagePicker} from "./LanguagePicker";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
 import {categories,interests,InterestChip,tint} from "../ui/InterestCatalog";
 import {GeoPicker} from "./GeoPicker";
@@ -17,7 +16,6 @@ import {FOCUS_RELEASE_DELAY_MS,releaseAfterKeyboardSettles,useFieldFocusDock} fr
 export type {PhotoItem} from "./PhotoSorter";
 export interface StepProps {
  deferConsent?:boolean;
- personalityPart?:"about"|"languages";
  data:RegistrationDraft;patch:(values:Partial<RegistrationDraft>)=>void;
  photos:PhotoItem[];addPhotos:(files:File[])=>void;removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;resetDraft:()=>void;step:number;
@@ -56,7 +54,7 @@ export function DoubleAgeRange({min,max,onChange}:{min:number;max:number;onChang
 
 
 export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePhoto,step,deferConsent,
- fieldError,clearFieldError,onFieldFocus,personalityPart}:StepProps){
+ fieldError,clearFieldError,onFieldFocus}:StepProps){
  const nameInput=useRef<HTMLInputElement>(null);
  const dobInput=useRef<HTMLInputElement>(null);
  const [category,setCategory]=useState("Популярное");
@@ -237,10 +235,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    {interestQuery&&visibleInterests.length===0&&<p className="interest-no-results">Такого интереса пока нет. Попробуй другое слово.</p>}
    {data.interests.length>=20&&<p className="interest-max-hint">Выбрано 20 интересов. Убери один, чтобы выбрать другой.</p>}
  </div>;
- if(step===6&&personalityPart==="languages")return <div className="form-stack languages-step">
-   <LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}
-     onFocusChange={focused=>onFieldFocus?.(focused?"language":null)}/>
- </div>;
  if(step===6)return <div className={"form-stack about-step"+(fieldError?.field==="about"?" has-error":"")}>
    <div className="focus-field-slot focus-field-slot-textarea"><div ref={node=>{aboutDock.shellRef.current=node;}}
     className={"focus-field-shell about-focus-shell"+(aboutFocused?" is-focused":"")+(fieldError?.field==="about"?" has-error":"")}>
@@ -254,9 +248,6 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      <span className="char-count" aria-live="polite">{[...data.about].length} / 750</span></div></GlassField>
    {fieldError?.field==="about"&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError.message}</div>}
    </div></div>
-   {personalityPart!=="about"&&<LanguagePicker selected={data.languages} onChange={languages=>patch({languages})}
-     onFocusChange={focused=>onFieldFocus?.(focused?"language":null)}/>}
-   {personalityPart!=="about"&&<p className="hint">Интересы и языки можно добавить позже в профиле.</p>}
  </div>;
  if(step===7)return <div className="form-stack"><PhotoSorter photos={photos} addPhotos={addPhotos}
    removePhoto={removePhoto} movePhoto={movePhoto}/></div>;
