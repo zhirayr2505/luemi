@@ -1,6 +1,7 @@
 // REG01D opt-in only. The backend enforces Telegram identity, adult consent,
 // approved publication and two-way blocks. Never cache responses in local storage.
 import {geoCsrf} from "../auth/session-adapter";
+import type {SearchScope} from "./model";
 import {remoteMediaPilot} from "./server-media";
 export const realFeedPilot={
  enabled:remoteMediaPilot.enabled&&import.meta.env.VITE_LUEMI_REAL_DISCOVERY_UI==="1"
@@ -178,7 +179,7 @@ export async function requestMyAccountDeletion(reason:DeletionReason,details:str
   throw new Error("invalid_deletion_grace_receipt");
  return result.restoreUntil;
 }
-export interface PublishedFeedPage{profiles:RealPublishedProfile[];nextCursor:string|null}
+export interface PublishedFeedPage{profiles:RealPublishedProfile[];nextCursor:string|null;searchScope?:SearchScope}
 function parsePublishedProfile(item:unknown):RealPublishedProfile|null{
  if(!object(item)||typeof item.id!=="string"||!uuid.test(item.id)||typeof item.name!=="string"||
   !Number.isInteger(item.age)||Number(item.age)<18||typeof item.city!=="string"||
@@ -220,7 +221,11 @@ export async function getPublishedFeed(signal:AbortSignal,cursor:string|null=nul
  const profiles:RealPublishedProfile[]=data.profiles.flatMap((item:unknown)=>{
   const parsed=parsePublishedProfile(item);return parsed?[parsed]:[];
  });
- return{profiles,nextCursor:data.nextCursor as string|null};
+ const scope=data.searchScope;
+ if(scope!==undefined&&scope!=="radius"&&scope!=="city"&&scope!=="country"&&scope!=="world")
+  throw new Error("invalid_feed_scope");
+ return{profiles,nextCursor:data.nextCursor as string|null,
+  ...(scope===undefined?{}:{searchScope:scope as SearchScope})};
 }
 export async function blockPublishedUser(id:string){
  if(!uuid.test(id))throw new Error("invalid_target");
