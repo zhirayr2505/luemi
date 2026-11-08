@@ -972,6 +972,10 @@ export function App() {
     if(!draft.trialConsent){setPublishFeedback("Прими условия регистрации на первом шаге.");return;}
     submitting.current=true;setPublishBusy(true);setPublishFeedback("");
     setJourneyError("");setJourney("publishing");
+    // Begin downloading interface chunks as soon as publication begins, not
+    // after the final uploaded photo; media work and UI warmup overlap.
+    const shellWarmup=new AbortController();
+    void prewarmDiscoveryUi(shellWarmup.signal);
     try{
       const existing=await ownerPublicationStatus();setPublishStatus(existing);
       if(registrationSubmissionDecision(existing)==="already-published"){
@@ -1010,14 +1014,14 @@ export function App() {
         ?"Не удалось согласовать фотографии. Попробуй ещё раз.":
         "Соединение прервалось при создании анкеты. Повтори — сохранённые фото не пропадут.";
       setPublishFeedback(message);setJourneyError(message);setJourney("error");
-    }finally{submitting.current=false;setPublishBusy(false);}
+    }finally{shellWarmup.abort();submitting.current=false;setPublishBusy(false);}
   };
   const resumePublication=async()=>{
     if(!realFeedPilot.enabled||submitting.current)return;
     submitting.current=true;setPublishBusy(true);setPublishFeedback("");
     try{
       const status=await ownerPublicationStatus();setPublishStatus(status);
-      if(status.state==="published"){setRealHome(true);return;}
+      if(status.state==="published"){await finishSuccessfulPublication(status);return;}
       if(status.approved<3||status.approved>6||status.pending||status.other){
         setPublishFeedback(instantPublicationUi?"Не все фотографии успешно загружены. Анкета пока скрыта.":"Фотографии ещё проходят проверку или требуют исправления. Анкета пока скрыта.");return;
       }
@@ -1026,7 +1030,7 @@ export function App() {
       await publishMyProfile(draftOnServer.revision);
       const confirmed=await ownerPublicationStatus();
       if(confirmed.state!=="published")throw new Error("publication_unconfirmed");
-      setPublishStatus(confirmed);setRealHome(true);
+      await finishSuccessfulPublication(confirmed);
     }catch{setPublishFeedback("Проверка не завершилась. Повтори при стабильном соединении.");}
     finally{submitting.current=false;setPublishBusy(false);}
   };
