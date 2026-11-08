@@ -203,7 +203,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
         aria-pressed={selected} onClick={()=>patch({goal:goal.id})}>
          <span className="v2-goal-icon" aria-hidden="true"><Icon size={19} strokeWidth={1.8}/></span>
          <span className="goal-card-label">{goalLabel(goal.id,data.gender)}</span>
-         {selected&&<span className="v2-goal-check" aria-hidden="true"><Check size={11} strokeWidth={3}/></span>}
+         <span className="v2-goal-check" aria-hidden="true"><Check size={11} strokeWidth={3}/></span>
        </button>;
      })}
    </ChoiceRow></div>
