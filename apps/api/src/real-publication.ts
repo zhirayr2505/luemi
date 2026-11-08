@@ -335,6 +335,13 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   try{cursor=decodePublishedFeedCursor(req.query?.after);}
   catch{return reply.code(422).send({error:"invalid_feed_cursor"});}
   return transaction(req,reply,"luemi_discovery_reader",async(db,viewer)=>{
+   // Return the authoritative persisted scope, including for an empty page.
+   // Without this the app could show the old local registration choice after
+   // an owner expanded the search on a previous device/session.
+   const preferences=await db.query<{search_scope:string}>(
+    "SELECT search_scope FROM luemi_private.discovery_preferences "+
+    "WHERE owner_id=$1 AND environment=$2",[viewer,cfg.namespace]);
+   const appliedScope=preferences.rows[0]?.search_scope??"world";
    const results=await db.query<{owner_id:string;display_name:string;city_label:string;
     country_code:string;about:string;interests:string[];gender:string;goal:string;
     languages:string[];birth_date:string;published_at:string;liked_you_kind:"ordinary"|"super"|null}>(
@@ -430,7 +437,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     const list=photos.get(row.owner_id)??[];
     list.push(row.id);photos.set(row.owner_id,list);
    }
-   return{status:"published_only",nextCursor,profiles:page.map(p=>({
+   return{status:"published_only",searchScope:appliedScope,nextCursor,profiles:page.map(p=>({
     id:p.owner_id,name:p.display_name,age:dateAge(p.birth_date),
     city:p.city_label,countryCode:p.country_code,about:p.about??"",
     interests:p.interests,gender:p.gender,goal:p.goal,languages:p.languages,
