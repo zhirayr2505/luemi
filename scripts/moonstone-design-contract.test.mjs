@@ -142,19 +142,19 @@ test("retired registration controls leave no dormant CSS or old light background
  const base=read("apps/web/src/styles.css");
  const runtime=read("apps/web/src/registration/v2/runtime.css");
  for(const [file,css] of [["styles.css",base],["registration/v2/runtime.css",runtime]]){
-  assert.doesNotMatch(css,/\\.(?:optional-profile-(?:details|toggle|screen|screen-head|screen-body|screen-foot)|optional-field-row|optional-input-wrap|optional-choice-grid|optional-facts|scope-control|scope-options|geo-mode-toggle|geo-location-primary|geo-scope|photo-make-main|branded-slider|radius-control|age-caption)\\b/,
+  assert.doesNotMatch(css,/\.(?:optional-profile-(?:details|toggle|screen|screen-head|screen-body|screen-foot)|optional-field-row|optional-input-wrap|optional-choice-grid|optional-facts|scope-control|scope-options|geo-mode-toggle|geo-location-primary|geo-scope|photo-make-main|branded-slider|radius-control|age-caption)\b/,
    "dead legacy registration selector: "+file);
-  assert.doesNotMatch(css,/@keyframes luemi-details-(?:in|out)\\b/,
+  assert.doesNotMatch(css,/@keyframes luemi-details-(?:in|out)\b/,
    "unmounted optional-profile transitions must not occupy the production bundle");
-  assert.equal((css.match(/\\{/g)||[]).length,(css.match(/\\}/g)||[]).length,
+  assert.equal((css.match(/\{/g)||[]).length,(css.match(/\}/g)||[]).length,
    "balanced CSS blocks: "+file);
  }
- assert.match(base,/\\.double-age-range input\\[type=range\\]/,
+ assert.match(base,/\.double-age-range input\[type=range\]/,
   "active two-thumb age range must retain its styles");
- assert.match(base,/\\.photo-drag-handle\\{/,
+ assert.match(base,/\.photo-drag-handle\{/,
   "active photo reorder handles must retain touch geometry");
- assert.match(runtime,/\\.v2-runtime \\.city-focus-shell \\.geo-results/,
+ assert.match(runtime,/\.v2-runtime \.city-focus-shell \.geo-results/,
   "working city autocomplete must keep its scroll and focus styling");
- assert.match(runtime,/\\.v2-runtime \\.geo-results button:active\\{/,
+ assert.match(runtime,/\.v2-runtime \.geo-results button:active\{/,
   "city search selection feedback must remain after deleting old scope selector");
 });
