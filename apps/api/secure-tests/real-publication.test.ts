@@ -673,6 +673,43 @@ test("nearby: real city-centre distance orders profiles without a radius thresho
    users[0].id, // Krasnodar ~600 km
    users[2].id  // unknown city still shown but never assigned fake kilometres
   ]);
+
+  // A genuinely better match one city away must outrank a nearby low match.
+  // The city-centre distance is approximate; no exact GPS is ever requested.
+  await cityAdmin.query(
+   "UPDATE luemi_private.public_profiles SET goal='dates',interests=ARRAY[]::text[] "+
+   "WHERE owner_id=$1 AND environment=$2",[users[4].id,namespace]);
+  const compatibleFirst=await feed(app,viewer);
+  assert.equal(compatibleFirst.statusCode,200,compatibleFirst.body);
+  const compatibleIds=(compatibleFirst.json().profiles as Array<{id:string}>)
+   .map(p=>p.id).filter(id=>ids.has(id));
+  assert.deepEqual(compatibleIds,[
+   users[1].id,users[3].id,users[0].id,users[2].id,users[4].id
+  ],"nearby must favor compatible goals/interests before a closer weak match");
+  // City is a strict boundary: no fallback profiles from another city until
+  // the owner explicitly chooses World via a CSRF-protected mutation.
+  const cityScope=await mutate(app,viewer,"/api/v3/discovery/scope",{scope:"city"});
+  assert.equal(cityScope.statusCode,200,cityScope.body);
+  assert.equal(cityScope.json().scope,"city");
+  const cityPage=await feed(app,viewer);
+  assert.deepEqual((cityPage.json().profiles as Array<{id:string}>).map(p=>p.id),[users[4].id]);
+  assert.equal(cityPage.json().nextCursor,null);
+  const invalidScope=await mutate(app,viewer,"/api/v3/discovery/scope",{scope:"unlimited"});
+  assert.equal(invalidScope.statusCode,422,"unknown scope must not be persisted");
+  const noCsrf=await app.inject({method:"POST",url:"/api/v3/discovery/scope",
+   headers:{cookie:viewer.cookie,origin,"sec-fetch-site":"same-origin"},
+   payload:{scope:"world"}});
+  assert.notEqual(noCsrf.statusCode,200,"CSRF protection must reject unsigned scope edits");
+  const worldScope=await mutate(app,viewer,"/api/v3/discovery/scope",{scope:"world"});
+  assert.equal(worldScope.statusCode,200,worldScope.body);
+  const worldPage=await feed(app,viewer);
+  const worldIds=(worldPage.json().profiles as Array<{id:string}>)
+   .map(p=>p.id).filter(id=>ids.has(id));
+  assert.equal(worldIds[0],users[4].id,"World starts with local city-distance band");
+  assert.ok(worldIds.indexOf(users[1].id)<worldIds.indexOf(users[0].id),
+   "World expands through nearby towns before distant countries");
+  assert.equal(worldIds.at(-1),users[2].id,"unknown distance stays eligible but last");
+
   const count=await cityAdmin.query<{count:string}>(
    "SELECT count(*)::text AS count FROM luemi_private.city_centres WHERE "+
    "country_code IN ('AM','RU') AND city_norm='армавир'");
