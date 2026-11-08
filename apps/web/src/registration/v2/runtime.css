@@ -66,7 +66,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .glass-field-label,.v2-runtime .field-label,.v2-runtime .range-title,
 .v2-runtime .v2-label{color:#F2F0F5;font-size:15px;font-weight:690;letter-spacing:-.018em}
 .v2-runtime .glass-field{color:var(--subtle)}
-.v2-runtime .glass-field small,.v2-runtime .hint,.v2-runtime .age-caption,
+.v2-runtime .glass-field small,.v2-runtime .hint,
 .v2-runtime .v2-footnote{color:#A69EB7;font-size:12px;line-height:1.5}
 .v2-runtime .glass-control,.v2-runtime .v2-input{
  width:100%;min-height:57px;padding:13px 15px;border-radius:16px;border:1px solid rgba(193,186,208,.3);
@@ -104,7 +104,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .registration-consent-compact{margin:0 0 10px}
 .v2-runtime .registration-consent-compact a,.v2-runtime .v2-fields a{color:#D5CFE2;text-underline-offset:2px}
 .v2-runtime .range-title strong{color:#E0DBE9}
-.v2-runtime .double-range-track,.v2-runtime .branded-slider{accent-color:#BDB4CF}
+.v2-runtime .double-range-track{accent-color:#BDB4CF}
 .v2-runtime .category-row{display:flex;max-width:100%;overflow-x:auto;scrollbar-width:none;padding:3px 1px 8px}
 .v2-runtime .category-chip{filter:none!important;color:#E4E1EA;border-radius:999px}
 .v2-runtime .category-chip.selected{filter:none!important}
@@ -231,25 +231,8 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-input-wrap>.glass-control.geo-input,.v2-runtime .geo-input-wrap>input[type="search"]{
  min-height:57px;padding-left:46px;padding-right:18px;appearance:none;-webkit-appearance:none}
 .v2-runtime .geo-input-wrap>.spin{z-index:1;right:14px;left:auto}
-.v2-runtime .geo-location-primary{min-height:65px;padding:11px 14px;border-radius:16px;
- border:1px solid rgba(197,190,212,.28);color:#EFEDF4;
- background:linear-gradient(105deg,rgba(68,76,92,.95),rgba(53,59,71,.96));box-shadow:inset 0 1px rgba(255,255,255,.13)}
-.v2-runtime .geo-location-primary small,.v2-runtime .scope-control small,
-.v2-runtime .scope-options small{color:#BBB4C8}
-.v2-runtime .geo-mode-toggle{min-height:38px;color:#D0C9DE;font-size:12px}
-.v2-runtime .geo-selected{flex-wrap:wrap;gap:7px;color:#CDC8D8}
-.v2-runtime .geo-scope{position:relative;gap:8px}
-.v2-runtime .scope-control{min-height:64px;padding:12px 15px;color:#F2F0F6}
-.v2-runtime .scope-control>svg{color:#CDC6DB;flex:none;transition:transform .2s ease}
-.v2-runtime .scope-control[aria-expanded="true"]>svg{transform:rotate(180deg)}
-.v2-runtime .scope-popover-anchor{position:relative;display:flex;flex-direction:column;isolation:isolate}
-.v2-runtime .scope-options{position:relative;order:-1;top:auto;bottom:auto;left:auto;right:auto;z-index:1;
- width:100%;max-height:min(230px,34dvh);overflow-y:auto;margin:0 0 8px;padding:5px;
- border:1px solid rgba(206,199,219,.34);border-radius:17px;background:#292D35;
- box-shadow:0 15px 34px rgba(0,0,0,.26);animation:luemi-stage-reveal .22s ease-out}
-.v2-runtime .scope-options button,.v2-runtime .geo-results button{color:#F1EFF5;background:transparent}
-.v2-runtime .scope-options button[aria-selected="true"],.v2-runtime .geo-results button:active{
- background:#404755;color:#fff}
+.v2-runtime .geo-results button{color:var(--luemi-text);background:transparent}
+.v2-runtime .geo-results button:active{background:var(--luemi-surface-raised);color:var(--luemi-text)}
 .v2-runtime .city-focus-shell{position:relative;z-index:1;display:flex;flex-direction:column}
 /* Suggestions open BELOW their input, not above it under the Telegram logo.
    The focused input remains in the existing keyboard dock. */
@@ -316,7 +299,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-next.v2-next-confirm svg{margin:0}
 @keyframes luemi-confirm-in{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
 .v2-runtime .v2-draft-save:disabled{background:#373C47;border-color:#656E82;color:#B6AFC4;box-shadow:none}
-/* Upload, review, optional details and consent remain part of this skin. */
+/* Photo upload, review, and consent remain in the seven-stage registration skin. */
 .v2-runtime .mosaic{grid-template-rows:repeat(3,clamp(82px,24vw,115px));gap:8px}
 .v2-runtime .mosaic,.v2-runtime .mosaic-slot{touch-action:pan-y}
 .v2-runtime .mosaic-slot{border:1px solid rgba(193,185,208,.28);background:#2B2F38;border-radius:16px}
@@ -326,55 +309,10 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  display:grid;place-items:center;border:1px solid rgba(255,255,255,.55);border-radius:12px;
  background:rgba(32,36,43,.82);color:#fff;touch-action:none;cursor:grab}
 .v2-runtime .photo-drag-handle:active{cursor:grabbing;background:rgba(78,87,106,.96)}
-.v2-runtime .photo-make-main{border-color:rgba(237,235,242,.5);background:rgba(32,36,43,.82);color:#DDD8E7}
 .v2-runtime .slot-index{bottom:auto;top:6px;left:6px}
 .v2-runtime .add-photo,.v2-runtime .empty-number{color:#CDC7DA}
 .v2-runtime .primary-photo{background:rgba(30,34,41,.83);color:#EBE8F1}
 .v2-runtime .sort-tip,.v2-runtime .photo-count{color:#B9B2C7}
-.v2-runtime .luemi-simple-review-head p,.v2-runtime .luemi-simple-review-gallery-head span{color:#CAC4D5}
-.v2-runtime .luemi-simple-review-meta span,.v2-runtime .luemi-simple-review-details span,
-.v2-runtime .luemi-simple-review-main{color:#F0EEF4;background:#3D434F;border-color:#737E93}
-.v2-runtime .luemi-simple-review-about{color:#F6F5F9}
-.v2-runtime .luemi-simple-review-interests>.interest-chip{color:#F0EEF4;background:#4C5463}
-.v2-runtime .optional-profile-details{border:0;border-radius:18px;background:transparent;margin:4px 0 0}
-.v2-runtime .optional-profile-toggle{width:100%;min-height:65px;display:flex;align-items:center;justify-content:space-between;
- gap:12px;padding:12px 15px;border:1px solid rgba(205,199,216,.29);border-radius:18px;
- background:linear-gradient(115deg,rgba(58,64,75,.95),rgba(47,52,61,.95));
- box-shadow:inset 0 1px rgba(255,255,255,.12);color:#F3F1F6;text-align:left;
- transition:border-color .24s ease,background-color .24s ease,transform .2s ease}
-.v2-runtime .optional-profile-toggle:active{transform:scale(.99);background:rgba(59,65,77,.9)}
-.v2-runtime .optional-profile-toggle>span{display:grid;grid-template-columns:20px 1fr;gap:2px 8px;align-items:center}
-.v2-runtime .optional-profile-toggle svg:first-child{grid-row:1 / span 2;color:#C8C0D8}
-.v2-runtime .optional-profile-toggle strong{font-size:14px;letter-spacing:-.01em}
-.v2-runtime .optional-profile-toggle small{grid-column:2;color:#B9B2C6;font-size:11px}
-.v2-runtime .optional-profile-screen{position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;
- min-height:0;color:#F2F1F5;background:#171A1E;animation:luemi-details-in .32s cubic-bezier(.2,.76,.25,1) both}
-@keyframes luemi-details-in{from{opacity:.7;transform:translate3d(24px,0,0)}to{opacity:1;transform:translate3d(0,0,0)}}
-.v2-runtime .optional-profile-screen.is-leaving{pointer-events:none;animation:luemi-details-out .28s cubic-bezier(.2,.76,.25,1) both}
-@keyframes luemi-details-out{to{opacity:0;transform:translate3d(24px,0,0)}}
-.v2-runtime[data-telegram-ui="true"] .optional-profile-screen{top:max(62px,
- var(--tg-content-safe-area-inset-top,0px),calc(var(--tg-safe-area-inset-top,0px) + 12px),
- calc(env(safe-area-inset-top,0px) + 12px))}
-.v2-runtime .optional-profile-screen-head{display:flex;align-items:center;gap:12px;padding:22px 18px 12px;
- border-bottom:1px solid var(--line)}
-.v2-runtime .optional-profile-screen-head button{width:40px;height:40px;border:1px solid var(--glass-edge);
- border-radius:50%;background:#30353F;color:#fff;display:grid;place-items:center}
-.v2-runtime .optional-profile-screen-head h2{font-size:20px;margin:0}
-.v2-runtime .optional-profile-screen-body{flex:1;min-height:0;overflow-y:auto;touch-action:pan-y;
- overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:18px 18px 28px;
- display:grid;align-content:start;gap:14px}
-.v2-runtime .optional-field-row{display:grid;grid-template-columns:1fr 1.25fr;gap:9px}
-.v2-runtime .optional-input-wrap{position:relative}
-.v2-runtime .optional-input-wrap>svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#CBC4D8;z-index:1}
-.v2-runtime .optional-input-wrap .glass-control{padding-left:38px}
-.v2-runtime .optional-choice-grid{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
-.v2-runtime .optional-choice-grid .glass-choice{min-height:37px;padding:8px 10px;font-size:12px}
-.v2-runtime .optional-facts{min-height:73px;resize:none}
-.v2-runtime .optional-profile-screen-foot{display:flex;gap:9px;padding:12px 18px max(16px,env(safe-area-inset-bottom));
- background:#1D2026;border:0}
-.v2-runtime .optional-profile-screen-foot button{flex:1;min-height:50px;border:1px solid var(--glass-edge);
- border-radius:16px;background:#323842;color:#EFEDF3;font-weight:700}
-.v2-runtime .optional-profile-screen-foot button:last-child{background:linear-gradient(105deg,#CDC6DB,#CDC6DC);color:#1F232A}
 @media(max-width:720px){
  .v2-runtime .v2-device{width:100%;box-shadow:none}
  .v2-runtime .v2-body{padding:20px 24px calc(var(--registration-footer-height) + 46px)}
@@ -385,8 +323,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  .v2-runtime .name-input-hint,
  .v2-runtime .field-inline-hint:not(.name-input-hint),
  .v2-runtime .field-warning,.v2-runtime .v2-feedback{animation:none;transition:none}
- .v2-runtime .v2-next.v2-next-confirm,.v2-runtime,
- .v2-runtime .optional-profile-screen,.v2-runtime .optional-profile-screen.is-leaving{animation:none}
+ .v2-runtime .v2-next.v2-next-confirm,.v2-runtime{animation:none}
  .v2-runtime .v2-next-spinner{animation:none}
  .v2-runtime .v2-next,.v2-runtime .v2-publish,.v2-runtime .v2-focus-scrim{transition:none}}
 

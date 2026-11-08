@@ -21,10 +21,10 @@ const required=[
  ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--focused-dock-top/s],
  ["single confirm action",/\.v2-runtime\s+\.v2-next\.v2-next-confirm[^}]*display:grid/s],
  ["blurred borderless action fade",/\.v2-runtime\s+\.v2-footer\s*\{[^}]*position:absolute[^}]*border:0/s],
- ["geolocation and language search icon",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
+  ["city search icon retains its text gutter",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
- ["opaque Moonstone search scope list",/\.v2-runtime\s+\.scope-options\s*\{[^}]*background:#292D35/s],
- ["scope list opens upward without covering the city field",/\.v2-runtime\s+\.scope-options\s*\{[^}]*position:relative;order:-1/s],
+  ["live city suggestions remain docked below their input",/\.v2-runtime \.city-focus-shell \.geo-results\{[^}]*position:absolute;z-index:43;[^}]*top:calc\(100% \+ 7px\)/s],
+  ["city suggestion press feedback uses Moonstone",/\.v2-runtime \.geo-results button:active\{background:var\(--luemi-surface-raised\)/],
  ["shared Moonstone canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#171B20\)/s]
 ];
 for(const [description,pattern] of required)
