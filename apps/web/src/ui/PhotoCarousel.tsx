@@ -34,7 +34,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  useLayoutEffect(()=>{
    flush();tracking.current=null;
    renderOffset(Math.min(activeRef.current,Math.max(0,photos.length-1)),0);
- },[photoSignature]);
+ },[photoSignature,photos.length]);
  const startAt=(id:number,x:number,y:number,at:number,horizontal=false)=>{
    // Capture the displayed position once; interrupted settling follows the finger.
    const width=frame.current?.clientWidth??320;
