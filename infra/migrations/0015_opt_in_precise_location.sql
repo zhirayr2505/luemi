@@ -6,8 +6,8 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS luemi_private.precise_locations (
  owner_id uuid PRIMARY KEY REFERENCES luemi_private.actors(id) ON DELETE CASCADE,
  environment text NOT NULL,
- lat double precision NOT NULL CHECK (isfinite(lat) AND lat BETWEEN -90 AND 90),
- lon double precision NOT NULL CHECK (isfinite(lon) AND lon BETWEEN -180 AND 180),
+ lat double precision NOT NULL CHECK (lat BETWEEN -90 AND 90),
+ lon double precision NOT NULL CHECK (lon BETWEEN -180 AND 180),
  coarse_lat double precision GENERATED ALWAYS AS (round(lat::numeric,2)::double precision) STORED,
  coarse_lon double precision GENERATED ALWAYS AS (round(lon::numeric,2)::double precision) STORED,
  accuracy_m integer CHECK (accuracy_m IS NULL OR accuracy_m BETWEEN 0 AND 3000),
