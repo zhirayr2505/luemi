@@ -5,7 +5,7 @@ import {CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as Flag
 import type {RegistrationDraft,Gender,SearchScope} from "../registration/model";
 import {gendered} from "../ui/PersonalizedCopy";
 import type {DemoKind,DemoPerson} from "./model";
-import type {ProfileMasterData} from "./ProfileModel";
+import {fromDemoPerson,type ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
 import {DemoFeedSandbox} from "./DemoFeedSandbox";
 import {cardGestureZone} from "./card-gesture-zone";
@@ -378,6 +378,9 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  const [filters,setFilters]=useState<RealFeedFilter>(defaultRealFeedFilter);
  const [filterOpen,setFilterOpen]=useState(false);
  const [person,setPerson]=useState<RealPublishedProfile|null>(null);
+ // Fictional demo data is projected only to the same real visitor UI route.
+ // No server ID, matching or liking capabilities are granted to this state.
+ const [demoVisitor,setDemoVisitor]=useState<DemoPerson|null>(null);
  const [matched,setMatched]=useState<{person:RealPublishedProfile;matchId:string}|null>(null);
  const openPersonById=useCallback((id:string)=>{
   const controller=new AbortController();
@@ -422,13 +425,13 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  const onScrollTop=useCallback((tab:BrowseTab,top:number)=>{
   if(tab==="feed")return;
   scrollPositions.current[tab]=top;
-  if(mainTab==="discover"&&browse===tab&&!person)header.current?.setScrollTop(top);
- },[mainTab,browse,person]);
+  if(mainTab==="discover"&&browse===tab&&!person&&!demoVisitor)header.current?.setScrollTop(top);
+ },[mainTab,browse,person,demoVisitor]);
  useLayoutEffect(()=>{
-  if(mainTab==="profile"||person)return;
+  if(mainTab==="profile"||person||demoVisitor)return;
   header.current?.reset();
   if(mainTab==="discover"&&browse!=="feed")header.current?.setScrollTop(scrollPositions.current[browse]);
- },[mainTab,browse,person]);
+ },[mainTab,browse,person,demoVisitor]);
  const owner=useMemo(()=>publishedToMaster(confirmedCity&&publishedProfile?
   {...publishedProfile,city:confirmedCity.city,countryCode:confirmedCity.countryCode}:publishedProfile,
   ownerPhotoPreview),[confirmedCity,publishedProfile,ownerPhotoPreview]);
@@ -701,12 +704,12 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   return ()=>{window.removeEventListener("blur",stop);document.removeEventListener("visibilitychange",hidden);};
  },[]);
 
- useEffect(()=>{if(mainTab!=="discover"||person||accountOpen)suspendBrowse.current();},[mainTab,person,accountOpen]);
+ useEffect(()=>{if(mainTab!=="discover"||person||demoVisitor||accountOpen)suspendBrowse.current();},[mainTab,person,demoVisitor,accountOpen]);
  const backRef=useRef<()=>void>(()=>{});
  backRef.current=()=>{
   if(chatThreadOpen){chatBackRef.current?.();return;}
   if(filterOpen){setFilterOpen(false);return;}
-  if(person){if(visitorBackRef.current?.())return;setPerson(null);return;}
+  if(person||demoVisitor){if(visitorBackRef.current?.())return;setPerson(null);setDemoVisitor(null);return;}
   if(accountOpen){setAccountOpen(false);return;}
   if(mainTab==="profile"&&profileBackRef.current?.())return;
   if(mainTab!=="discover"){setMainTab("discover");return;}
@@ -715,7 +718,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==="Escape")backRef.current();};
   window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key);},[]);
  return <section className="discovery-app real-discovery-home"
-  data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person?"true":"false"}
+  data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person||!!demoVisitor?"true":"false"}
   data-chat-thread={chatThreadOpen?"true":"false"}>
   <div className="discovery-ambient" aria-hidden="true"/>
   {!chatThreadOpen&&<GlobalHeader ref={header} mode={mainTab==="profile"?"profile":mainTab==="chats"?"chats":"browse"}
@@ -750,7 +753,8 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
       {tabs.map(([id,label])=><section key={id} className="discovery-page" role="tabpanel" aria-label={label}
        aria-hidden={browse!==id} inert={browse!==id}>
        {id==="feed"&&demoMode?<DemoFeedSandbox key="demo-preview" draft={feedDraft}
-        active={mainTab==="discover"&&browse==="feed"} onExit={()=>{autoDemoShown.current=true;setDemoMode(false);}}/>:
+        active={mainTab==="discover"&&browse==="feed"} onOpenProfile={setDemoVisitor}
+         onExit={()=>{setDemoVisitor(null);autoDemoShown.current=true;setDemoMode(false);}}/>:
        <LiveDeck key={id+"-"+feedDraft.searchScope+"-"+cityEpoch} active={mainTab==="discover"&&browse===id} tab={id} draft={feedDraft}
         initialFeed={scopeOverride||cityEpoch?null:initialFeed} saved={savedIds} onSave={onSave} filters={filters}
         onEditFilters={()=>setFilterOpen(true)} onTryDemo={()=>setDemoMode(true)}
@@ -773,7 +777,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     {owner?<ProfileMaster data={owner} mode="owner" ownerDetails={draft} onEdit={()=>setAccountOpen(true)} onReveal={()=>{setAccountOpen(true);onReveal?.();}}
       registerBack={registerProfileBack}
       onMotionProgress={(progress,dragging)=>header.current?.setProfileProgress(progress,dragging)}
-      active={mainTab==="profile"&&!person}/>:<LuemiEmptyState icon={UserRound} title="Анкета готовится"
+      active={mainTab==="profile"&&!person&&!demoVisitor}/>:<LuemiEmptyState icon={UserRound} title="Анкета готовится"
       description="Заверши публикацию, чтобы увидеть свой профиль.">
       <button type="button" className="discovery-glass-button" onClick={()=>setAccountOpen(true)}>Открыть настройки</button>
      </LuemiEmptyState>}
@@ -781,6 +785,8 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
      onClick={()=>setAccountOpen(true)}><Settings2 size={20}/></button>
    </section>
   </div>
+  {demoVisitor&&<VisitorProfileRoute key={"demo-"+demoVisitor.id} data={fromDemoPerson(demoVisitor)}
+    onExit={()=>setDemoVisitor(null)} registerBack={registerVisitorBack}/>}
   {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)}
    onExit={()=>setPerson(null)} registerBack={registerVisitorBack} onLike={async kind=>{
     const result=await likePublishedUser(person.id,kind);
@@ -796,7 +802,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     <button type="button" onClick={()=>setMatched(null)}>Продолжить знакомства</button>
    </div></div>}
   {!chatThreadOpen&&<LuemiBottomNavigation className="discovery-bottom-nav" items={navigationItems} value={mainTab}
-   onChange={id=>{setPerson(null);setChatThreadOpen(false);setMainTab(id);}}/>}
+   onChange={id=>{setPerson(null);setDemoVisitor(null);setChatThreadOpen(false);setMainTab(id);}}/>}
   {accountOpen&&<div className="discovery-modal-backdrop real-discovery-account-modal"
    onClick={()=>setAccountOpen(false)}>
    <section className="real-discovery-account-sheet" role="dialog" aria-modal="true" aria-label="Настройки профиля"
