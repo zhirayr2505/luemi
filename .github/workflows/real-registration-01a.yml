@@ -108,6 +108,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0012_revert_multi_goals.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0013_city_scope_discovery_preferences.sql
           psql -v ON_ERROR_STOP=1 -f infra/migrations/0014_geo_city_centres.sql
+          psql -v ON_ERROR_STOP=1 -f infra/migrations/0015_opt_in_precise_location.sql
           # The city option must survive the physical database constraint. No
           # production data, privileges or RLS policies are modified in CI.
           psql -v ON_ERROR_STOP=1 <<'SQL'

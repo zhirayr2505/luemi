@@ -62,6 +62,33 @@ function validatedProjection(payload:unknown,birthDate:string|null){
   radius:Number(radius),searchScope:String(searchScope),placeId:String(data.placeId),
   about:data.about,interests:data.interests,languages:data.languages,birthDate};
 }
+/** Only explicitly opted-in coordinates enter this endpoint; the GPS
+ * readings themselves are never logged or returned to other viewers. */
+type PrivateLocation={lat:number;lon:number;accuracy_m:number|null};
+function acceptedCoordinates(body:unknown):PrivateLocation|null{
+ if(!object(body))return null;
+ const {lat,lon,accuracyM}=body;
+ if(typeof lat!=="number"||typeof lon!=="number"||
+  !Number.isFinite(lat)||!Number.isFinite(lon)||lat<-90||lat>90||lon<-180||lon>180||
+  (accuracyM!==null&&accuracyM!==undefined&&
+   (typeof accuracyM!=="number"||!Number.isFinite(accuracyM)||accuracyM<0||accuracyM>3000)))
+  return null;
+ return{lat,lon,accuracy_m:accuracyM===null||accuracyM===undefined?null:Math.round(accuracyM)};
+}
+type ConfirmedCity={city:string;country:string;countryCode:string;placeId:string};
+function acceptedCity(body:unknown):ConfirmedCity|null{
+ if(!object(body))return null;
+ const {city,country,countryCode,placeId}=body;
+ if(typeof city!=="string"||typeof country!=="string"||
+  typeof countryCode!=="string"||typeof placeId!=="string"||
+  city!==city.trim()||country!==country.trim()||
+  city.length<2||city.length>120||country.length<2||country.length>120||
+  !/^[A-Z]{2}$/.test(countryCode)||
+  !/^(geo:|offline:)[a-z0-9:_-]{3,180}$/i.test(placeId)||
+  /[<>]/.test(city+country+placeId)||
+  [...city,...country,...placeId].some(ch=>ch.charCodeAt(0)<32))return null;
+ return{city,country,countryCode,placeId};
+}
 type Kind="luemi_profile_publisher"|"luemi_discovery_reader";
 async function checkedRole(db:PoolClient,role:Kind):Promise<boolean>{
  try{
@@ -282,6 +309,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
 
  app.post("/api/v3/profile/unpublish",{preHandler:guards.mutation},async(req,reply)=>
  transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
+  await db.query("DELETE FROM luemi_private.precise_locations WHERE owner_id=$1 AND environment=$2",[id,cfg.namespace]);
   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
    [cfg.namespace+":"+id+":publication"]);
   // Explicitly hide photos before hiding the profile; atomic SQL commit.
@@ -298,6 +326,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
  // projection and removes the consent grant. Data erasure is NOT implied.
  app.post("/api/v3/profile/withdraw-consent",{preHandler:guards.mutation},async(req,reply)=>
  transaction(req,reply,"luemi_profile_publisher",async(db,id)=>{
+  await db.query("DELETE FROM luemi_private.precise_locations WHERE owner_id=$1 AND environment=$2",[id,cfg.namespace]);
   await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
    [cfg.namespace+":"+id+":publication"]);
   await db.query("UPDATE luemi_private.media_assets SET publication_status='private' "+
@@ -311,6 +340,82 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
    [id,cfg.namespace]);
   return{state:"consent_withdrawn",dataDeleted:false};
  }));
+
+ // Precise location is OFF by default and independent of Telegram's
+ // location permission. This user-controlled consent cannot be enabled by a
+ // background refresh or by the ordinary registration city lookup.
+ app.get("/api/v3/location/status",{preHandler:guards.read},async(req,reply)=>
+ transaction(req,reply,"luemi_profile_publisher",async(db,owner)=>{
+  const res=await db.query<{updated_at:string}>(
+   "SELECT updated_at::text FROM luemi_private.precise_locations "+
+   "WHERE owner_id=$1 AND environment=$2",[owner,cfg.namespace]);
+  return{enabled:res.rowCount===1,updatedAt:res.rows[0]?.updated_at??null};
+ }));
+ app.post<{Body:unknown}>("/api/v3/location/consent",{preHandler:guards.mutation,bodyLimit:1024},async(req,reply)=>{
+  const body=req.body,loc=acceptedCoordinates(body);
+  if(!loc||!object(body)||body.consent!==true||body.version!=="precise-location-v1")
+   return reply.code(422).send({error:"location_consent_required"});
+  return transaction(req,reply,"luemi_profile_publisher",async(db,owner)=>{
+   const eligible=await db.query(
+    "SELECT 1 FROM luemi_private.public_profiles "+
+    "WHERE owner_id=$1 AND environment=$2 AND publication_status='published'",
+    [owner,cfg.namespace]);
+   if(eligible.rowCount!==1)fail(403,"published_profile_required");
+   const saved=await db.query(
+    "INSERT INTO luemi_private.precise_locations(owner_id,environment,lat,lon,accuracy_m) "+
+    "VALUES($1,$2,$3,$4,$5) ON CONFLICT(owner_id) DO UPDATE "+
+    "SET lat=EXCLUDED.lat,lon=EXCLUDED.lon,accuracy_m=EXCLUDED.accuracy_m,"+
+    "updated_at=clock_timestamp() WHERE luemi_private.precise_locations.environment=EXCLUDED.environment "+
+    "RETURNING owner_id",[owner,cfg.namespace,loc.lat,loc.lon,loc.accuracy_m]);
+   if(saved.rowCount!==1)fail(409,"location_conflict");
+   return{enabled:true};
+  });
+ });
+ app.post<{Body:unknown}>("/api/v3/location/refresh",{preHandler:guards.mutation,bodyLimit:1024},async(req,reply)=>{
+  const loc=acceptedCoordinates(req.body);
+  if(!loc)return reply.code(422).send({error:"invalid_location"});
+  return transaction(req,reply,"luemi_profile_publisher",async(db,owner)=>{
+   const updated=await db.query(
+    "UPDATE luemi_private.precise_locations SET lat=$3,lon=$4,accuracy_m=$5,"+
+    "updated_at=clock_timestamp() WHERE owner_id=$1 AND environment=$2 RETURNING owner_id",
+    [owner,cfg.namespace,loc.lat,loc.lon,loc.accuracy_m]);
+   if(updated.rowCount!==1)fail(409,"location_consent_missing");
+   return{enabled:true};
+  });
+ });
+ app.post("/api/v3/location/revoke",{preHandler:guards.mutation},async(req,reply)=>
+ transaction(req,reply,"luemi_profile_publisher",async(db,owner)=>{
+  await db.query("DELETE FROM luemi_private.precise_locations WHERE owner_id=$1 AND environment=$2",
+   [owner,cfg.namespace]);
+  return{enabled:false,deleted:true};
+ }));
+ app.post<{Body:unknown}>("/api/v3/location/confirm-city",{preHandler:guards.mutation,bodyLimit:1024},async(req,reply)=>{
+  const city=acceptedCity(req.body);
+  if(!city)return reply.code(422).send({error:"invalid_confirmed_city"});
+  return transaction(req,reply,"luemi_profile_publisher",async(db,owner)=>{
+   const loc=await db.query("SELECT owner_id FROM luemi_private.precise_locations "+
+    "WHERE owner_id=$1 AND environment=$2 AND updated_at>clock_timestamp()-interval '24 hours'",
+    [owner,cfg.namespace]);
+   if(loc.rowCount!==1)fail(409,"location_consent_missing");
+   const updated=await db.query(
+    "UPDATE luemi_private.public_profiles SET city_label=$3,country_code=$4,updated_at=clock_timestamp() "+
+    "WHERE owner_id=$1 AND environment=$2 AND publication_status='published' RETURNING owner_id",
+    [owner,cfg.namespace,city.city,city.countryCode]);
+   if(updated.rowCount!==1)fail(409,"published_profile_required");
+   const pref=await db.query(
+    "UPDATE luemi_private.discovery_preferences SET city_label=$3,country_code=$4,"+
+    "place_id=$5,updated_at=clock_timestamp() WHERE owner_id=$1 AND environment=$2 RETURNING owner_id",
+    [owner,cfg.namespace,city.city,city.countryCode,city.placeId]);
+   if(pref.rowCount!==1)fail(409,"search_preferences_missing");
+   // Maintain the same city across the private draft and next edit session.
+   await db.query("UPDATE luemi_private.private_profile_drafts SET "+
+    "payload=payload||jsonb_build_object('city',$3::text,'country',$4::text,"+
+    "'countryCode',$5::text,'placeId',$6::text),updated_at=clock_timestamp() "+
+    "WHERE owner_id=$1 AND environment=$2",
+    [owner,cfg.namespace,city.city,city.country,city.countryCode,city.placeId]);
+   return{city:city.city,country:city.country,countryCode:city.countryCode,placeId:city.placeId};
+  });
+ });
 
  // Scope is an account-owned search preference, not a publication edit.
  // Secure actor/CSRF checks and the existing forced-RLS publisher policy
@@ -356,19 +461,32 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "LEFT JOIN luemi_private.city_centres origin_city ON origin_city.country_code=pref.country_code "+
     "AND origin_city.city_norm=lower(btrim(pref.city_label)) "+
     "LEFT JOIN luemi_private.city_centres candidate_city ON candidate_city.country_code=p.country_code "+
-    "AND candidate_city.city_norm=lower(btrim(p.city_label)) "+
+    "AND candidate_city.city_norm=lower(btrim(p.city_label)) "+    "LEFT JOIN luemi_private.precise_locations viewer_loc ON "+
+    "viewer_loc.owner_id=$2 AND viewer_loc.environment=$1 "+
+    "LEFT JOIN luemi_private.precise_locations candidate_loc ON "+
+    "candidate_loc.owner_id=p.owner_id AND candidate_loc.environment=$1 "+
+
 
     // Only coarse declared city centres are used: never precise device GPS.
     // Evidence and ranking are evaluated by PostgreSQL BEFORE LIMIT/OFFSET,
     // so later pages cannot jump ahead of better matches on earlier pages.
     "CROSS JOIN LATERAL (SELECT "+
-    "CASE WHEN lower(btrim(p.city_label))=lower(btrim(pref.city_label)) "+
+    "CASE WHEN viewer_loc.owner_id IS NOT NULL AND candidate_loc.owner_id IS NOT NULL THEN "+
+    "6371.0088*2*asin(sqrt(least(1.0,"+
+    "power(sin(radians(candidate_loc.coarse_lat-viewer_loc.coarse_lat)/2),2)+"+
+    "cos(radians(viewer_loc.coarse_lat))*cos(radians(candidate_loc.coarse_lat))*"+
+    "power(sin(radians(candidate_loc.coarse_lon-viewer_loc.coarse_lon)/2),2)))) "+
+    "WHEN lower(btrim(p.city_label))=lower(btrim(pref.city_label)) "+
     "AND p.country_code=pref.country_code THEN 0::double precision "+
-    "WHEN origin_city.lat IS NULL OR candidate_city.lat IS NULL THEN NULL::double precision "+
+    "WHEN coalesce(viewer_loc.coarse_lat,origin_city.lat) IS NULL "+
+    "OR coalesce(candidate_loc.coarse_lat,candidate_city.lat) IS NULL THEN NULL::double precision "+
     "ELSE 6371.0088*2*asin(sqrt(least(1.0,"+
-    "power(sin(radians(candidate_city.lat-origin_city.lat)/2),2)+"+
-    "cos(radians(origin_city.lat))*cos(radians(candidate_city.lat))*"+
-    "power(sin(radians(candidate_city.lon-origin_city.lon)/2),2)))) END AS km,"+
+    "power(sin(radians(coalesce(candidate_loc.coarse_lat,candidate_city.lat)-"+
+    "coalesce(viewer_loc.coarse_lat,origin_city.lat))/2),2)+"+
+    "cos(radians(coalesce(viewer_loc.coarse_lat,origin_city.lat)))*"+
+    "cos(radians(coalesce(candidate_loc.coarse_lat,candidate_city.lat)))*"+
+    "power(sin(radians(coalesce(candidate_loc.coarse_lon,candidate_city.lon)-"+
+    "coalesce(viewer_loc.coarse_lon,origin_city.lon))/2),2)))) END AS km,"+
     "cardinality(ARRAY(SELECT unnest(p.interests) INTERSECT "+
     "SELECT unnest(pref.interests))) AS shared,"+
     "CASE WHEN pref.goal='undecided' OR p.goal='undecided' THEN 0 "+

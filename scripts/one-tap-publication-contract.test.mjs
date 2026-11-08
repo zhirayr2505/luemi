@@ -54,7 +54,7 @@ test("first pictures cached only in RAM with bounded signed endpoint fetch",()=>
  assert.match(warm,/URL.revokeObjectURL/);
  assert.doesNotMatch(warm.slice(warm.indexOf("export async function")),
   /(?:window|globalThis)\.(?:localStorage|indexedDB|sessionStorage)/);
- assert.match(reg,/initialFeed=\{scopeOverride\?null:initialFeed\}/);
+ assert.match(reg,/initialFeed=\{scopeOverride\|\|cityEpoch\?null:initialFeed\}/);
  assert.match(reg,/Пока нет анкет/);
  assert.match(reg,/className="discovery-bottom-nav"/);
 });

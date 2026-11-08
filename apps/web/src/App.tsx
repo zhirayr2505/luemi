@@ -1183,6 +1183,13 @@ export function App() {
     <Suspense fallback={<div className="discovery-empty" role="status">Открываем LUEMI…</div>}>
      <RealDiscoveryHome draft={draft} theme={theme} onTheme={changeTheme}
        initialFeed={warmFeed} publishedProfile={publishStatus?.profile} ownerPhotoPreview={readyPhotos}
+       onCityChanged={place=>{
+        setDraft(current=>({...current,city:place.city,country:place.country,
+         countryCode:place.countryCode,placeId:place.id}));
+        setPublishStatus(current=>current?.profile?{
+         ...current,profile:{...current.profile,city:place.city,countryCode:place.countryCode}
+        }:current);
+       }}
       onEdit={()=>{setRealHome(false);setPhase("form");setStep(8);}}
       onReveal={()=>{void openReveal();}}
       accountPanel={<section className="luemi-real-account" aria-label="Настройки аккаунта">
