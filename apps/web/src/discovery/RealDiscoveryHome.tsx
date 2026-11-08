@@ -7,6 +7,7 @@ import {gendered} from "../ui/PersonalizedCopy";
 import type {DemoKind,DemoPerson} from "./model";
 import type {ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
+import {DemoFeedSandbox} from "./DemoFeedSandbox";
 import {cardGestureZone} from "./card-gesture-zone";
 import {selectionHaptic} from "../ui/haptic";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
@@ -120,11 +121,11 @@ function RealMatches({active,onChat,onPerson,gender}:{active:boolean;onChat:()=>
  </section>;
 }
 
-function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onSearchScopeChange,hiddenIds,onHide}:{
+function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onTryDemo,onSearchScopeChange,hiddenIds,onHide}:{
  active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
  onPerson:(p:RealPublishedProfile)=>void;onMatched:(person:RealPublishedProfile,matchId:string)=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
- onScrollTop:(top:number)=>void;filters:RealFeedFilter;onEditFilters:()=>void;
+ onScrollTop:(top:number)=>void;filters:RealFeedFilter;onEditFilters:()=>void;onTryDemo:()=>void;
  onSearchScopeChange:(scope:SearchScope)=>void;
  hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void
 }){
@@ -280,6 +281,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     <div className="discovery-deck-layer deck-active"><LuemiEmptyState className="real-discovery-empty" icon={Heart}
      title="Пока нет анкет" description="Когда появятся новые люди, ты увидишь их здесь.">
       <button type="button" className="discovery-glass-button" onClick={onEditFilters}>Изменить фильтры</button>
+      <button type="button" className="discovery-glass-button" onClick={onTryDemo}>Посмотреть тестовые карточки</button>
      {draft.searchScope==="city"&&!cursor&&<>
       <p>Анкеты в твоём городе закончились. Можно расширить поиск на весь мир — сначала покажем людей поблизости.</p>
       <button type="button" className="discovery-glass-button" disabled={scopeBusy}
@@ -336,6 +338,12 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   return route==="likes"||route==="chats"?route:"discover";
  });
  const [browse,setBrowse]=useState<BrowseTab>("feed");
+ // No fictional profile enters server discovery. Only explicit opt-in mounts QA.
+ const [demoMode,setDemoMode]=useState(()=>{
+  const params=new URLSearchParams(window.location.search);
+  const start=window.Telegram?.WebApp?.initDataUnsafe?.start_param??params.get("tgWebAppStartParam");
+  return params.get("luemiDemo")==="1"||start==="demo";
+ });
  const [scopeOverride,setScopeOverride]=useState<SearchScope|null>(null);
  const [confirmedCity,setConfirmedCity]=useState<ObservedCity|null>(null);
  const [cityEpoch,setCityEpoch]=useState(0);
@@ -728,13 +736,15 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
       style={{"--luemi-tab-offset":(-index*100)+"%"} as CSSProperties}>
       {tabs.map(([id,label])=><section key={id} className="discovery-page" role="tabpanel" aria-label={label}
        aria-hidden={browse!==id} inert={browse!==id}>
+       {id==="feed"&&demoMode?<DemoFeedSandbox key="demo-preview" draft={feedDraft}
+        active={mainTab==="discover"&&browse==="feed"} onExit={()=>setDemoMode(false)}/>:
        <LiveDeck key={id+"-"+feedDraft.searchScope+"-"+cityEpoch} active={mainTab==="discover"&&browse===id} tab={id} draft={feedDraft}
         initialFeed={scopeOverride||cityEpoch?null:initialFeed} saved={savedIds} onSave={onSave} filters={filters}
-        onEditFilters={()=>setFilterOpen(true)} onSearchScopeChange={setScopeOverride}
+        onEditFilters={()=>setFilterOpen(true)} onTryDemo={()=>setDemoMode(true)} onSearchScopeChange={setScopeOverride}
         hiddenIds={hiddenIds} onHide={onHide}
         onScrollTop={top=>onScrollTop(id,top)}
         onEditLocation={()=>setMainTab("profile")}
-        onPerson={setPerson} onMatched={(matchedPerson,matchId)=>setMatched({person:matchedPerson,matchId})}/>
+        onPerson={setPerson} onMatched={(matchedPerson,matchId)=>setMatched({person:matchedPerson,matchId})}/> }
       </section>)}
      </div>
     </div>
@@ -780,6 +790,9 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     <button className="real-discovery-account-close" type="button" onClick={()=>setAccountOpen(false)}>Закрыть</button>
     <div>{accountPanel}</div>
     {liveLocation.settings}
+    <button className="discovery-glass-button" type="button" onClick={()=>{
+     setAccountOpen(false);setPerson(null);setMainTab("discover");setDemoMode(true);requestBrowseTab(0);
+    }}><Images size={16}/> Проверить тестовые карточки (6)</button>
     <button className="discovery-glass-button" type="button" onClick={()=>{setAccountOpen(false);onEdit();}}>Редактировать анкету</button>
    </section>
   </div>}
