@@ -486,9 +486,9 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  transition:transform .18s ease,border-color .2s ease,background-color .2s ease,box-shadow .2s ease}
 .v2-runtime .preferences-step .v2-goal-choice:active{transform:scale(.98)}
 .v2-runtime .preferences-step .v2-goal-choice.is-selected{
- border-color:rgba(213,207,224,.72);
- background:linear-gradient(125deg,rgba(103,113,135,.76),rgba(78,86,104,.88));
- box-shadow:inset 0 1px rgba(255,255,255,.22),0 0 0 1px rgba(186,177,203,.11)}
+ border-color:rgba(172,135,179,.85);
+ background:linear-gradient(132deg,rgba(116,87,119,.65),rgba(65,50,73,.91));
+ box-shadow:inset 0 1px rgba(250,244,251,.19),0 0 0 1px rgba(172,135,179,.08)}
 .v2-runtime .preferences-step .v2-goal-choice:focus-visible{
  outline:2px solid #D2CCDE;outline-offset:2px}
 .v2-runtime .preferences-step .v2-goal-icon{
@@ -499,12 +499,6 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .preferences-step .goal-card-label{
  display:block;min-width:0;flex:1;font-size:12.5px;line-height:1.24;font-weight:630;
  letter-spacing:-.015em;overflow-wrap:break-word}
-.v2-runtime .preferences-step .v2-goal-check{
- position:absolute;top:5px;right:5px;width:18px;height:18px;
- display:grid;place-items:center;border-radius:50%;
- background:linear-gradient(140deg,#D7C7E5,#B6A4C8);color:#232730;
- box-shadow:inset 0 1px rgba(255,255,255,.55),0 2px 7px rgba(11,12,16,.2);
- pointer-events:none}
 .v2-runtime .geo-liquid-location{display:flex;flex-direction:column;gap:8px;padding-bottom:0}
 .v2-runtime .geo-city-area{display:flex;flex-direction:column;gap:7px}
 .v2-runtime .geo-liquid-city{display:flex;align-items:center;gap:9px;min-width:0;width:100%;
@@ -543,24 +537,35 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  transition:background .2s,border-color .2s,transform .18s}
 .v2-runtime .geo-liquid-scopes button svg{width:15px;height:15px;flex:none;color:#CAC3D8}
 .v2-runtime .geo-liquid-scopes button.active{
- position:relative;padding-right:17px;
- background:linear-gradient(132deg,rgba(164,146,188,.48),rgba(97,93,123,.85));
- border-color:rgba(216,202,230,.82);color:#FAF7FE;
- box-shadow:inset 0 1px rgba(255,255,255,.25),0 0 0 1px rgba(177,156,204,.11)}
-/* One consistent corner check across clickable registration choice cards. */
+ position:relative;
+ background:linear-gradient(132deg,rgba(116,87,119,.65),rgba(65,50,73,.91));
+ border-color:rgba(172,135,179,.85);color:#FAF4FB;
+ box-shadow:inset 0 1px rgba(250,244,251,.19),0 0 0 1px rgba(172,135,179,.08)}
+/* Selection badges sit ON the rounded upper-right stroke, not within the cards.
+   A 21px badge at -7px centres 3.5px inside both edges, on a 12-13px corner. */
 .v2-runtime .dob-step .glass-choice.has-corner-check,
 .v2-runtime .preferences-step .glass-choice.has-corner-check{position:relative}
 .v2-runtime .dob-step .glass-choice.selected,
 .v2-runtime .preferences-step>.choice-section .glass-choice.selected{
- background:linear-gradient(130deg,rgba(149,135,175,.45),rgba(78,82,105,.86));
- border-color:rgba(212,198,228,.72);color:#F9F6FD}
+ background:linear-gradient(132deg,rgba(116,87,119,.65),rgba(65,50,73,.91));
+ border-color:rgba(172,135,179,.85);color:#FAF4FB}
 .v2-runtime .glass-choice-corner-check,
-.v2-runtime .geo-scope-check{
- position:absolute;right:4px;top:4px;display:grid;place-items:center;
- width:18px;height:18px;flex:none;border-radius:50%;
- background:linear-gradient(140deg,#D7C7E5,#B6A4C8);color:#232730;
- box-shadow:inset 0 1px rgba(255,255,255,.55),0 2px 7px rgba(11,12,16,.2);
+.v2-runtime .geo-scope-check,
+.v2-runtime .preferences-step .v2-goal-check{
+ position:absolute;top:-7px;right:-7px;
+ box-sizing:border-box;width:21px;height:21px;flex:none;
+ display:grid;place-items:center;border-radius:50%;
+ border:2px solid var(--luemi-bg-deep,#1C1424);
+ background:linear-gradient(145deg,#E3C5DE,#CCA6C7 55%,#B58AB9);
+ color:#302236;z-index:2;
+ box-shadow:inset 0 1px rgba(255,255,255,.5),0 2px 6px rgba(20,14,25,.28);
  pointer-events:none}
+/* Explicit tick dimensions override the larger option icons on compact cards. */
+.v2-runtime .dob-step>.choice-section .glass-choice .glass-choice-corner-check svg,
+.v2-runtime .preferences-step>.choice-section .glass-choice .glass-choice-corner-check svg,
+.v2-runtime .preferences-step .v2-goal-check svg,
+.v2-runtime .geo-liquid-scopes .geo-scope-check svg{
+ width:11px;height:11px;flex:none;color:inherit}
 .v2-runtime .geo-liquid-scopes button.active>svg{color:#F4E9FC}
 .v2-runtime .geo-liquid-scopes button:active{transform:scale(.98)}
 /* One genuinely compact, stable-height explanation card. Mode changes animate
