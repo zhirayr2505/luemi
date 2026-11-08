@@ -16,6 +16,9 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const frame=useRef<HTMLDivElement>(null);
  const photoTrack=useRef<HTMLDivElement>(null);
  const frameId=useRef<number|null>(null);
+ // Use the image identities rather than a new array reference from card
+ // re-renders. A parent state update must never cancel a finger swipe.
+ const photoSignature=photos.map(photo=>photo.id+"::"+photo.src).join("|");
  const active=Math.min(index,Math.max(0,photos.length-1));
  const indicatorStart=Math.max(0,Math.min(active-3,photos.length-7));
  const indicators=photos.length>7?photos.slice(indicatorStart,indicatorStart+7):photos;
@@ -31,7 +34,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  useLayoutEffect(()=>{
    flush();tracking.current=null;
    renderOffset(Math.min(activeRef.current,Math.max(0,photos.length-1)),0);
- },[photos]);
+ },[photoSignature]);
  const startAt=(id:number,x:number,y:number,at:number,horizontal=false)=>{
    // Capture the displayed position once; interrupted settling follows the finger.
    const width=frame.current?.clientWidth??320;
@@ -39,7 +42,12 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    const track=photoTrack.current;
    if(track){
      const matrix=getComputedStyle(track).transform;
-     if(matrix!=="none")startIndex=-new DOMMatrixReadOnly(matrix).m41/Math.max(1,width);
+     if(matrix!=="none")try{
+      startIndex=-new DOMMatrixReadOnly(matrix).m41/Math.max(1,width);
+     }catch{
+      // Older Telegram Android WebViews may reject computed matrix parsing.
+      startIndex=activeRef.current;
+     }
      track.style.transition="none";renderOffset(startIndex,0);
    }
    tracking.current={id,x,y,t:at,horizontal,startIndex,width};
