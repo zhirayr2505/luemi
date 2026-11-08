@@ -12,12 +12,16 @@ const m=await load("apps/web/src/discovery/model.ts");
 const d=await load("apps/web/src/discovery/demo-people.ts");
 const draft={city:"Краснодар",countryCode:"ru",interests:["музыка","путешествия"]};
 const people=d.demoPeople;
-assert.equal(people.length,6,"six deliberately illustrated synthetic demo profiles");
-assert.ok(people.every(p=>p.age>=18&&p.gender==="woman"&&p.photos.length===4&&
- p.photos.every((photo,index)=>(index===0?photo.src.startsWith("https://cdn.pixabay.com/"):
-  photo.src.startsWith("https://images.unsplash.com/photo-"))&&
-  photo.fallback?.startsWith("data:image/svg+xml"))));
-assert.equal(m.filterDemoPeople(people,m.defaultFilters,draft).length,6,"worldwide fixture results");
+assert.equal(people.length,15,"fifteen fictional demo people for the isolated QA feed");
+assert.equal(new Set(people.map(p=>p.id)).size,15,"no duplicate fake people");
+assert.ok(people.some(p=>p.gender==="man")&&people.some(p=>p.gender==="woman"));
+assert.ok(people.every(p=>p.age>=18&&p.photos.length===4&&
+ (p.photos[0].src.startsWith("https://cdn.pixabay.com/")||
+  p.photos[0].src.startsWith("data:image/svg+xml"))&&
+ p.photos[1].src.startsWith("data:image/svg+xml")&&
+ p.photos.slice(2).every(photo=>photo.src.startsWith("https://images.unsplash.com/photo-"))&&
+ p.photos.every(photo=>photo.fallback?.startsWith("data:image/svg+xml"))));
+assert.equal(m.filterDemoPeople(people,m.defaultFilters,draft).length,15,"worldwide fixture results");
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,scope:"country"},draft).every(p=>p.countryCode==="RU"),true);
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,goal:"serious"},draft).every(p=>p.goal==="serious"),true);
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,language:"hy"},draft).every(p=>p.languages.includes("hy")),true);
