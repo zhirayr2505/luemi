@@ -89,7 +89,7 @@ export function PublicationJourney({phase,error,onRetry,onBack,onComplete}:{
    {!failed&&<div className="luemi-publication-progress" aria-hidden="true">
     <span style={{width:complete?"100%":Math.max(12,(current+1)/stages.length*100)+"%"}}/>
    </div>}
-   {failed?<div className="luemi-publication-recovery">
+   {failed&&<div className="luemi-publication-recovery">
     <button type="button" onClick={onRetry}><RefreshCw size={17}/> Повторить</button>
     <button type="button" onClick={onBack}><ArrowLeft size={17}/> Вернуться к анкете</button>
    </div>}
