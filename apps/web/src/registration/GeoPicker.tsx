@@ -1,5 +1,4 @@
 import {useEffect,useRef,useState} from "react";
-import type {CSSProperties} from "react";
 import {MapPin,Search,LocateFixed,LoaderCircle,Globe2,Compass,Check} from "lucide-react";
 import {normalizeCountryCode} from "@luemi/contracts";
 import {GlassField} from "../ui/Glass";
@@ -14,8 +13,6 @@ interface SearchResult {results?:unknown;coverage?:"demo"|"limited"|"world"}
 const scopeOptions:[SearchScope,string,typeof Compass][]=[
  ["radius","Рядом",Compass],["city","Мой город",MapPin],["world","Весь мир",Globe2]
 ];
-export const radiusAt=(p:number)=>Math.round(1+4999*Math.pow(Math.max(0,Math.min(p,100))/100,2));
-export const positionAt=(km:number)=>Math.round(100*Math.sqrt((Math.max(1,Math.min(km,5000))-1)/4999));
 function asPlace(value:unknown):Place|null {
  if(!value||typeof value!=="object")return null;
  const v=value as Record<string,unknown>,countryCode=normalizeCountryCode(v.countryCode);
@@ -260,32 +257,25 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
        </button>}
      </div>
      <div className="geo-liquid-mode-panel" aria-live="off">
-       {data.searchScope==="radius"?<div key="radius" className="geo-liquid-mode-content geo-liquid-radius">
-         <div className="range-title"><span>Расстояние</span><strong>{data.radius.toLocaleString("ru")} км</strong></div>
-         <div className="branded-slider" onPointerDownCapture={()=>{
-           const focused=document.activeElement;
-           if(focused instanceof HTMLInputElement&&focused.type!=="range")focused.blur();
-         }} style={{"--range-pct":positionAt(data.radius)+"%"} as CSSProperties}>
-           <input type="range" min="0" max="100" step="1" value={positionAt(data.radius)}
-             aria-label="Радиус поиска, километры"
-             onChange={e=>patch({radius:radiusAt(Number(e.target.value))})}/>
-         </div>
-         <div className="range-limits"><span>1 км</span><span>5 000 км</span></div>
-       </div>:<div key={data.searchScope} className="geo-liquid-mode-content geo-liquid-mode-info">
+       <div key={data.searchScope} className="geo-liquid-mode-content geo-liquid-mode-info">
          <span className="geo-liquid-mode-icon" aria-hidden="true">
-           {data.searchScope==="city"?<MapPin size={22} strokeWidth={1.7}/>:
+           {data.searchScope==="radius"?<Compass size={22} strokeWidth={1.7}/>:
+             data.searchScope==="city"?<MapPin size={22} strokeWidth={1.7}/>:
              <Globe2 size={22} strokeWidth={1.7}/>}
          </span>
          <span className="geo-liquid-mode-copy">
-           <strong>{data.searchScope==="city"?"Люди из твоего города":
+           <strong>{data.searchScope==="radius"?"Ближайшие сначала":
+             data.searchScope==="city"?"Люди из твоего города":
              data.searchScope==="country"?"Люди из твоей страны":"Весь мир открыт"}</strong>
-           <small>{data.searchScope==="city"?
-             "Знакомства в выбранном городе. Радиус не нужен.":
+           <small>{data.searchScope==="radius"?
+             "Сначала твой город, затем другие — от ближних к дальним.":
+             data.searchScope==="city"?
+             "Знакомства в выбранном городе, без ограничения расстояния.":
              data.searchScope==="country"?
              "Знакомства в пределах выбранной страны.":
              "Знакомься независимо от города и расстояния."}</small>
          </span>
-       </div>}
+       </div>
      </div>
    </div>
    <p className="geo-liquid-privacy">Геолокация нужна только для определения города.
