@@ -53,9 +53,9 @@ function EmptyFeed({hasProfiles,canUndo,onUndo,onRestart}:{hasProfiles:boolean;c
    <button type="button" className="discovery-glass-button" onClick={onRestart}>Начать заново</button>
  </div>;
 }
-interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:string}>;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void}
+interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:string}>;onExit:()=>void;registerBack:(handler:()=>void)=>void}
 
-export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Props){
+export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
  const [profilePrepared,setProfilePrepared]=useState(false);
  const visitorBackRef=useRef<(()=>boolean)|null>(null);
