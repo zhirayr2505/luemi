@@ -32,6 +32,17 @@ test("synthetic profiles are not inserted into server, likes, matches or convers
  assert.match(sandbox,/\[current,next\]\.filter/,"Next card remains keyed and mounted across transitions");
 });
 
+test("demo card opens the ORIGINAL full-screen visitor profile, never a small custom window",()=>{
+ assert.match(sandbox,/onOpenProfile:\(person:DemoPerson\)=>void/);
+ assert.match(sandbox,/onOpenProfile=\{foreground\?\(\)=>onOpenProfile\(person\)/);
+ assert.match(sandbox,/onInterests=\{foreground\?\(\)=>onOpenProfile\(person\)/);
+ assert.doesNotMatch(sandbox,/demo-qa-preview-backdrop|setPreview\(|aria-modal="true"/);
+ assert.doesNotMatch(style,/\.demo-qa-preview\{/);
+ assert.match(shell,/data=\{fromDemoPerson\(demoVisitor\)\}/);
+ assert.match(shell,/onExit=\{\(\)=>setDemoVisitor\(null\)\} registerBack=\{registerVisitorBack\}/);
+ assert.match(shell,/if\(person\|\|demoVisitor\)\{if\(visitorBackRef\.current\?\.\(\)\)return;/);
+ assert.doesNotMatch(shell,/onLike.*demoVisitor/);
+});
 test("fifteen photo-driven fictional profiles each keep one coherent identity",()=>{
  assert.match(photos,/const portraitSources=\[/);
  assert.match(photos,/const scenes:readonly/);
