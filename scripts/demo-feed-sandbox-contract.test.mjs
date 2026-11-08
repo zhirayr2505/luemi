@@ -28,7 +28,7 @@ test("synthetic profiles are not inserted into server, likes, matches or convers
  assert.match(sandbox,/onExit/);
  assert.match(sandbox,/setPage\(0\)/);
  assert.match(card,/\{!real&&<span className="discovery-demo-label">Демо<\/span>\}/);
- assert.match(sandbox,/busy=\{leaving\}/);
+ assert.match(sandbox,/busy=\{!foreground\|\|leaving\}/);\n assert.match(sandbox,/\[current,next\]\.filter/,"Next card remains keyed and mounted across transitions");
 });
 
 test("fifteen photo-driven fictional profiles each keep one coherent identity",()=>{
