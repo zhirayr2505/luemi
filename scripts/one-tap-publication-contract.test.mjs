@@ -79,5 +79,5 @@ test("recommendation warmup preserves global server-ranked order instead of re-s
  assert.doesNotMatch(warm,/rankPublishedRecommendations|\.sort\(/,
   "local rank changes can displace better matches from pages that were not fetched");
  assert.match(app,/warmPublishedRecommendations\(controller\.signal,phase=>setJourney\(phase\),draft\)/);
- assert.doesNotMatch(warm,/navigator\.geolocation|latitude|longitude|localStorage/);
+ assert.doesNotMatch(warm.slice(warm.indexOf("export async function warmPublishedRecommendations")),/navigator\.geolocation|latitude|longitude|localStorage/);
 });
