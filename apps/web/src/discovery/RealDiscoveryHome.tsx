@@ -121,7 +121,7 @@ function RealMatches({active,onChat,onPerson,gender}:{active:boolean;onChat:()=>
  </section>;
 }
 
-function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onTryDemo,onSearchScopeChange,hiddenIds,onHide}:{
+function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onTryDemo,onEmptyFeed,onSearchScopeChange,hiddenIds,onHide}:{
  active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
  onPerson:(p:RealPublishedProfile)=>void;onMatched:(person:RealPublishedProfile,matchId:string)=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
@@ -803,7 +803,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     {liveLocation.settings}
     <button className="discovery-glass-button" type="button" onClick={()=>{
      setAccountOpen(false);setPerson(null);setMainTab("discover");setDemoMode(true);requestBrowseTab(0);
-    }}><Images size={16}/> Проверить тестовые карточки (6)</button>
+    }}><Images size={16}/> Проверить тестовые карточки (15)</button>
     <button className="discovery-glass-button" type="button" onClick={()=>{setAccountOpen(false);onEdit();}}>Редактировать анкету</button>
    </section>
   </div>}
