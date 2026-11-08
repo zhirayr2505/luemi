@@ -11,6 +11,15 @@ const ok=(lat:number,lon:number)=>Number.isFinite(lat)&&Number.isFinite(lon)&&
  Math.abs(lat)<=90&&Math.abs(lon)<=180;
 const accuracy=(n:unknown)=>typeof n==="number"&&Number.isFinite(n)&&n>=0&&n<=3000?Math.round(n):null;
 export async function hasLiveLocationPermission(native?:TelegramLiveLocationManager):Promise<boolean>{
+ if(native&&!native.isInited){
+  // Telegram init checks the already-granted state without prompting users.
+  await new Promise<void>(resolve=>{
+   let done=false;
+   const timer=window.setTimeout(()=>{if(!done){done=true;resolve();}},1500);
+   try{native.init(()=>{if(!done){done=true;window.clearTimeout(timer);resolve();}});}
+   catch{if(!done){done=true;window.clearTimeout(timer);resolve();}}
+  });
+ }
  if(native?.isAccessGranted===true)return true;
  try{
   if(typeof navigator!=="undefined"&&navigator.permissions?.query){
@@ -46,6 +55,10 @@ export function readPreciseLocation(signal:AbortSignal,native?:TelegramLiveLocat
    try{if(native.isInited)read();else native.init(read);}
    catch{finish(undefined,"location_unavailable");}
   };
+  // On an already-permitted Telegram account, use its native location path
+  // directly. Browser permission may still be "prompt" and must not open an
+  // unexpected second permission dialog on a periodic refresh.
+  if(native?.isAccessGranted===true){fallback();return;}
   if(typeof navigator==="undefined"||!navigator.geolocation){fallback();return;}
   try{navigator.geolocation.getCurrentPosition(pos=>{
     const {latitude,longitude,accuracy:meters}=pos.coords;
