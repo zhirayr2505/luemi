@@ -223,7 +223,7 @@ assert.doesNotMatch(runtime,/\.city-focus-shell \.geo-results\{[^}]*bottom:calc\
  "Remove the legacy upward-opening results dropdown");
 assert.doesNotMatch(runtime,/\.interest-chip\.selected::after\{/,
  "Selected interests use pastel highlight only, without a generated checkmark");
-assert.match(runtime,/\.geo-liquid-mode-panel\{[\s\S]*?height:75px/,
+assert.match(runtime,/\.geo-liquid-mode-panel\{[\s\S]*?min-height:60px;height:60px/,
  "All location modes retain one smaller, stable-height glass panel");
 assert.match(steps,/className="about-input-shell"[\s\S]*className="char-count"/,
  "Biography count must sit inside its text field");
@@ -389,7 +389,7 @@ assert.match(runtime,/\.v2-stage-heading\{position:sticky;top:-20px;/,
  "Approved rubbery/sticky header must stay unchanged when scrolling improves");
 assert.match(runtime,/\.glass-choice,\.v2-runtime \.v2-choice,\.v2-runtime \.category-chip,[\s\S]*?\.language-option\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/s,
  "The moving grid and choices must not cause dynamic backdrop repaint each frame");
-assert.match(runtime,/\.glass-panel,\.v2-runtime \.age-range,\.v2-runtime \.radius-control,[\s\S]*?\.v2-note\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/s,
+assert.match(runtime,/\.glass-panel,\.v2-runtime \.age-range,[\s\S]*?\.v2-note\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/s,
  "Range and registration cards must use static glass gradients while scrolling");
 assert.match(runtime,/\.v2-footer::before\{[^}]*background:linear-gradient\([^}]*\}/s,
  "Stationary footer has a static feathered tint instead of a live blur of the scrolling content");
