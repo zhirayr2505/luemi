@@ -757,7 +757,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
      onClick={()=>setAccountOpen(true)}><Settings2 size={20}/></button>
    </section>
   </div>
-  {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)} theme={theme} onTheme={onTheme}
+  {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)}
    onExit={()=>setPerson(null)} registerBack={registerVisitorBack} onLike={async kind=>{
     const result=await likePublishedUser(person.id,kind);
     const matchedPerson=person;
