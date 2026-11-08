@@ -117,3 +117,22 @@ test("dead light/dark switch and center toolbar cannot reappear",()=>{
  assert.doesNotMatch(app,/ThemeChoice|changeTheme|theme=\\{theme\\}/);
  assert.equal(existsSync("scripts/theme-switch-mobile-qa.mjs"),false);
 });
+
+test("For You hero uses Moonstone at source without a competing light base",()=>{
+ const css=read("apps/web/src/discovery/for-you.css");
+ assert.match(css,/\.fy-hero\{[^}]*background:linear-gradient\(130deg,var\(--luemi-surface-raised\)/s);
+ assert.match(css,/\.fy-hero-copy\{[^}]*color:var\(--luemi-text\)/s);
+ assert.doesNotMatch(css,/\.luemi-shell\[data-theme=dark\] \.fy-hero(?:\{|::before|\s)/,
+  "Do not resurrect the obsolete dark overlay for a white For You hero");
+});
+test("real account and private owner screens do not load the old white theme",()=>{
+ const css=read("apps/web/src/registration/real-home.css");
+ assert.match(css,/\.luemi-real-home\{[^}]*background:linear-gradient\(165deg,var\(--luemi-bg\),var\(--luemi-bg-deep\)\)/s);
+ assert.match(css,/\.luemi-real-account\{[^}]*display:flex;flex-direction:column/s);
+ assert.match(css,/\.luemi-private-card\{[^}]*background:var\(--luemi-surface\)/s);
+ assert.match(css,/\.luemi-private-edit-bar>button\{[^}]*color:var\(--luemi-ink-on-accent\)/s);
+ assert.doesNotMatch(css,/\.luemi-shell\[data-theme="dark"\] \.luemi-(?:private|real)/,
+  "owner screen must not have a second competing dark-theme stylesheet");
+ assert.doesNotMatch(css,/background:\s*#(?:fff(?:fff)?|fffbff|f6f5f9)\b/i,
+  "old white account surfaces must be deleted, not covered");
+});
