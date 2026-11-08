@@ -6,6 +6,7 @@ import {goalLabel} from "../ui/PersonalizedCopy";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
 import {InterestChip} from "../ui/InterestCatalog";
+import {Flag} from "../ui/Flag";
 import type {DemoKind,DemoPerson} from "./model";
 import {cardGestureZone} from "./card-gesture-zone";
 
@@ -27,11 +28,11 @@ const position=(run:CardRun,now:number)=>{
 };
 
 /** The keyed complete card remains mounted as it moves through the deck. */
-export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests,real=false,onMore}:{
+export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests,real=false,onMore,demoDistanceKm}:{
  person:DemoPerson;saved:boolean;canUndo:boolean;active:boolean;busy:boolean;
  onAction:(kind:DemoKind|"undo")=>void;onOpenProfile:()=>void;onInterests:()=>void;
  /** The same approved card can render verified server users with no demo badges. */
- real?:boolean;onMore?:()=>void;
+ real?:boolean;onMore?:()=>void;demoDistanceKm?:number;
 }){
  const goal=goals.find(g=>g.id===person.goal);
  const [expanded,setExpanded]=useState(false);
@@ -318,10 +319,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
               </span>}
              </div>
              <div className="feed-v2-meta-row">
-              <div className="discovery-place"><MapPin size={14} strokeWidth={1.8}/>
+              <div className="discovery-place">{!real&&<Flag code={person.countryCode} size={14} title={person.country}/>}<MapPin size={14} strokeWidth={1.8}/>
                <span>{person.city}{person.country?", "+person.country:""}</span>
               </div>
               {goal&&<div className="feed-v2-goal"><Heart size={12}/>{goalLabel(goal.id,person.gender)}</div>}
+               {!real&&typeof demoDistanceKm==="number"&&<span className="feed-v2-demo-distance">≈ {demoDistanceKm.toLocaleString("ru")} км · демо</span>}
              </div>
             </div>
            </div>
