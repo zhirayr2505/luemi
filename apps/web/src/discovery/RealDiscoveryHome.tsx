@@ -16,6 +16,8 @@ import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profil
 import type {HeaderMotion} from "./GlobalHeader";
 import {RealForYou} from "./RealForYou";
 import {RealNearby} from "./RealNearby";
+import {useLiveLocation} from "./use-live-location";
+import type {ObservedCity} from "./live-location-client";
 import {GlobalHeader} from "./GlobalHeader";
 import {RealFeedFilters,realFeedMatches,defaultRealFeedFilter,type RealFeedFilter} from "./RealFeedFilters";
 import {ProfileMaster} from "./ProfileV3Gateway";
@@ -321,11 +323,12 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  </div>;
 }
 
-export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal}:{
+export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal,onCityChanged}:{
  draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;
  publishedProfile:OwnerPublicationStatus["profile"]|undefined;initialFeed?:PublishedFeedPage|null;
  ownerPhotoPreview?:ReadonlyArray<{src:string}>;
  accountPanel:ReactNode;onEdit:()=>void;onReveal?:()=>void;
+ onCityChanged?:(place:ObservedCity)=>void;
 }){
  const [mainTab,setMainTab]=useState<MainTab>(()=>{
   const route=new URLSearchParams(typeof window==="undefined"?"":window.location.search).get("luemiRoute")??
@@ -334,7 +337,23 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
  });
  const [browse,setBrowse]=useState<BrowseTab>("feed");
  const [scopeOverride,setScopeOverride]=useState<SearchScope|null>(null);
- const feedDraft=scopeOverride?{...draft,searchScope:scopeOverride}:draft;
+ const [confirmedCity,setConfirmedCity]=useState<ObservedCity|null>(null);
+ const [cityEpoch,setCityEpoch]=useState(0);
+ const publicCity=confirmedCity??(publishedProfile?{
+  id:"",city:publishedProfile.city,country:"",
+  countryCode:publishedProfile.countryCode
+ }:null);
+ const feedDraft={...draft,
+  ...(publicCity?{city:publicCity.city,countryCode:publicCity.countryCode,
+   ...(confirmedCity?{country:confirmedCity.country,placeId:confirmedCity.id}:{})}:{}),
+  ...(scopeOverride?{searchScope:scopeOverride}:{})};
+ const onLocationCityConfirmed=useCallback((place:ObservedCity)=>{
+  setConfirmedCity(place);setCityEpoch(value=>value+1);
+  onCityChanged?.(place);
+ },[onCityChanged]);
+ const liveLocation=useLiveLocation(
+  {city:feedDraft.city,countryCode:feedDraft.countryCode,placeId:feedDraft.placeId},
+  onLocationCityConfirmed);
  const [filters,setFilters]=useState<RealFeedFilter>(defaultRealFeedFilter);
  const [filterOpen,setFilterOpen]=useState(false);
  const [person,setPerson]=useState<RealPublishedProfile|null>(null);
@@ -389,7 +408,9 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
   header.current?.reset();
   if(mainTab==="discover"&&browse!=="feed")header.current?.setScrollTop(scrollPositions.current[browse]);
  },[mainTab,browse,person]);
- const owner=useMemo(()=>publishedToMaster(publishedProfile,ownerPhotoPreview),[publishedProfile,ownerPhotoPreview]);
+ const displayedOwner=confirmedCity&&publishedProfile?
+  {...publishedProfile,city:confirmedCity.city,countryCode:confirmedCity.countryCode}:publishedProfile;
+ const owner=useMemo(()=>publishedToMaster(displayedOwner,ownerPhotoPreview),[displayedOwner,ownerPhotoPreview]);
  const selectTab=(index:number)=>{
   const bounded=Math.max(0,Math.min(tabs.length-1,index));
   if(tabs[bounded][0]===browse)return;
@@ -707,8 +728,8 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
       style={{"--luemi-tab-offset":(-index*100)+"%"} as CSSProperties}>
       {tabs.map(([id,label])=><section key={id} className="discovery-page" role="tabpanel" aria-label={label}
        aria-hidden={browse!==id} inert={browse!==id}>
-       <LiveDeck key={id+"-"+feedDraft.searchScope} active={mainTab==="discover"&&browse===id} tab={id} draft={feedDraft}
-        initialFeed={scopeOverride?null:initialFeed} saved={savedIds} onSave={onSave} filters={filters}
+       <LiveDeck key={id+"-"+feedDraft.searchScope+"-"+cityEpoch} active={mainTab==="discover"&&browse===id} tab={id} draft={feedDraft}
+        initialFeed={scopeOverride||cityEpoch?null:initialFeed} saved={savedIds} onSave={onSave} filters={filters}
         onEditFilters={()=>setFilterOpen(true)} onSearchScopeChange={setScopeOverride}
         hiddenIds={hiddenIds} onHide={onHide}
         onScrollTop={top=>onScrollTop(id,top)}
@@ -758,9 +779,11 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
     onClick={e=>e.stopPropagation()}>
     <button className="real-discovery-account-close" type="button" onClick={()=>setAccountOpen(false)}>Закрыть</button>
     <div>{accountPanel}</div>
+    {liveLocation.settings}
     <button className="discovery-glass-button" type="button" onClick={()=>{setAccountOpen(false);onEdit();}}>Редактировать анкету</button>
    </section>
   </div>}
+ {liveLocation.dialog}
  <RealFeedFilters open={filterOpen} filter={filters} interestCount={draft.interests.length}
     onClose={()=>setFilterOpen(false)} onApply={next=>{
      setFilters(next);setFilterOpen(false);setPerson(null);setMainTab("discover");requestBrowseTab(0);
