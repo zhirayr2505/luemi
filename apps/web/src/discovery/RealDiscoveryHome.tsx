@@ -408,9 +408,9 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
   header.current?.reset();
   if(mainTab==="discover"&&browse!=="feed")header.current?.setScrollTop(scrollPositions.current[browse]);
  },[mainTab,browse,person]);
- const displayedOwner=confirmedCity&&publishedProfile?
-  {...publishedProfile,city:confirmedCity.city,countryCode:confirmedCity.countryCode}:publishedProfile;
- const owner=useMemo(()=>publishedToMaster(displayedOwner,ownerPhotoPreview),[displayedOwner,ownerPhotoPreview]);
+ const owner=useMemo(()=>publishedToMaster(confirmedCity&&publishedProfile?
+  {...publishedProfile,city:confirmedCity.city,countryCode:confirmedCity.countryCode}:publishedProfile,
+  ownerPhotoPreview),[confirmedCity,publishedProfile,ownerPhotoPreview]);
  const selectTab=(index:number)=>{
   const bounded=Math.max(0,Math.min(tabs.length-1,index));
   if(tabs[bounded][0]===browse)return;
