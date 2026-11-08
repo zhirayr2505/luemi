@@ -403,11 +403,15 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "AND (SELECT count(*) FROM luemi_private.media_assets a WHERE a.owner_id=p.owner_id "+
     "AND a.environment=p.environment AND a.state='approved' "+
     "AND a.publication_status='published') BETWEEN 3 AND 6 "+
-    // Nearby: compatible profiles first, then closest city centres within each
-    // affinity group. City: strict locality and affinity. World: expand outward
+    // Nearby: match compatibility first within a local 100km area, then expand
+    // through wider area bands. City: strict locality. World: expand outward
     // through city-distance bands, prioritize affinity inside each band.
     // Unknown city coordinates remain discoverable and rank after known places.
-    "ORDER BY CASE WHEN pref.search_scope='world' THEN ranking.band END ASC NULLS LAST,"+
+    "ORDER BY CASE WHEN pref.search_scope='world' THEN ranking.band "+
+    "WHEN pref.search_scope='radius' THEN CASE "+
+    "WHEN evidence.km IS NULL THEN 9 WHEN evidence.km<=100 THEN 0 "+
+    "WHEN evidence.km<=300 THEN 1 WHEN evidence.km<=1000 THEN 2 "+
+    "WHEN evidence.km<=3000 THEN 3 ELSE 4 END END ASC NULLS LAST,"+
     "ranking.tier DESC,ranking.score DESC,"+
     "CASE WHEN pref.search_scope IN ('radius','world') THEN evidence.km END ASC NULLS LAST,"+
     "(lower(btrim(p.city_label))=lower(btrim(pref.city_label)) AND p.country_code=pref.country_code) DESC,"+
