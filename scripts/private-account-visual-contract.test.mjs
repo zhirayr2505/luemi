@@ -14,9 +14,15 @@ const checks=[
  ["small interactive photo thumbnails",/\.luemi-private-thumb\.is-active/],
  ["full wrapping bio",/\.luemi-private-about p\s*\{[^}]*overflow-wrap:anywhere/s],
  ["sticky anchored edit footer",/\.luemi-private-edit-bar\s*\{[^}]*flex:none/s],
- ["dark theme cards",/\.luemi-shell\[data-theme="dark"\]\s+\.luemi-private-card/]
+ ["Moonstone private cards at source",/\.luemi-private-card\{[^}]*background:var\(--luemi-surface\)/s]
 ];
 for(const [name,pattern] of checks)assert.match(css,pattern,name);
+assert.doesNotMatch(css,/\.luemi-shell\[data-theme="dark"\] \.(?:luemi-real-home|luemi-private-card)/,
+ "The owner screen must no longer rely on a second dark stylesheet");
+assert.doesNotMatch(css,/background:\s*#(?:fff(?:fff)?|fffbff|f6f5f9)\b/i,
+ "Retired white account surfaces cannot return");
+assert.match(css,/\.luemi-real-account\{[^}]*display:flex;flex-direction:column/,
+ "Keep the real account page layout after CSS consolidation");
 assert.match(app,/data-account-mode=\{!realFeedPilot\.enabled&&remoteDraftPilot\.enabled\?"private":"standard"\}/);
 assert.match(app,/<PrivateAccountView draft=\{draft\} photos=\{readyPhotos\}/);
 assert.match(app,/className="luemi-private-edit-bar"/);
