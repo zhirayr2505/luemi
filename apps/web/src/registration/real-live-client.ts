@@ -201,6 +201,11 @@ export async function getPublishedProfile(id:string,signal?:AbortSignal):Promise
  const profile=object(data)?parsePublishedProfile(data.profile):null;
  if(!profile)throw new Error("invalid_profile");return profile;
 }
+/** Changes only the signed owner's discovery geography preference. */
+export async function updateDiscoverySearchScope(scope:"radius"|"city"|"world"):Promise<void>{
+ const data=await api("/api/v3/discovery/scope","POST",{scope});
+ if(!object(data)||data.scope!==scope)throw new Error("invalid_scope_response");
+}
 export async function getPublishedFeed(signal:AbortSignal,cursor:string|null=null):Promise<PublishedFeedPage>{
  requirePilot();
  if(cursor!==null&&!/^[A-Za-z0-9_-]{12,256}$/.test(cursor))throw new Error("invalid_feed_cursor");
