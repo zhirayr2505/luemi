@@ -19,6 +19,7 @@ const RealChats = lazy(() => import("./chats/RealChats").then(m=>({default:m.Rea
 import {RealRegistrationV2} from "./registration/v2/RealRegistration";
 import {readyRegistrationPhotos} from "./discovery/ProfileModel";
 import {startStartup} from "./startup/startup-coordinator";
+import {prewarmDiscoveryUi,prewarmDemoPhotos} from "./startup/discovery-prewarm";
 import {authenticateBootstrap,recoverDeletion,type AuthStartupIdentity} from "./auth/session-adapter";
 import {remoteDraftPilot,readRemoteRevision,saveRemoteDraft,saveRemoteFields} from "./registration/server-draft";
 import {recoverServerFields} from "./registration/remote-recovery";
@@ -379,6 +380,7 @@ export function App() {
           photoJobs.current.clear();
           for(const url of ownedUrls.current)URL.revokeObjectURL(url);
           ownedUrls.current=[];photoIds.current.clear();privateAssetIds.current.clear();
+          warmRef.current?.release();warmRef.current=null;setWarmFeed(null);
           setPhotos([]);setPhotosRestored(false);
           setStep(1);setDraft(newDraft(user.user.firstName));
           draftId.current=crypto.randomUUID();revision.current=0;
@@ -400,17 +402,31 @@ export function App() {
   useEffect(()=>{
     if(auth!=="authorized"||!realFeedPilot.enabled)return;
     let disposed=false;
+    const controller=new AbortController();
     setPublicationCheck("checking");
-    void ownerPublicationStatus().then(status=>{
+    void ownerPublicationStatus().then(async status=>{
       if(disposed)return;
       setPublishStatus(status);
-      setPublicationCheck("ready");
       if(status.state==="published"){
-        setRealHome(true);
+        // Returning members remain behind the intro while signed rankings,
+        // photo covers, fonts, original logo and deferred routes load.
+        const deadline=window.setTimeout(()=>controller.abort(),11500);
+        try{
+          const preload=prewarmDiscoveryUi(controller.signal);
+          const feed=warmPublishedRecommendations(controller.signal).then(warmed=>{
+            if(disposed||controller.signal.aborted){warmed.release();return null;}
+            warmRef.current?.release();warmRef.current=warmed;
+            setWarmFeed(warmed.page);
+            return warmed.page;
+          }).catch(()=>null);
+          const [page]=await Promise.all([feed,preload]);
+          if(page?.profiles.length===0&&!controller.signal.aborted)
+            await prewarmDemoPhotos(controller.signal);
+        }finally{window.clearTimeout(deadline);}
+        if(disposed)return;
+        setPublicationCheck("ready");setRealHome(true);
       }else{
-        // A new account must see the branded welcome screen. A private draft
-        // is restored by the draft loader below, which is the only place that
-        // may deliberately enter the registration form.
+        setPublicationCheck("ready");
         setRealHome(false);
       }
     }).catch(()=>{
@@ -419,7 +435,7 @@ export function App() {
         setPublishFeedback("Не удалось проверить анкету на сервере. Ничего не потеряно — повтори проверку.");
       }
     });
-    return()=>{disposed=true;};
+    return()=>{disposed=true;controller.abort();};
   },[auth,publicationRetry]);
   // LU-22: one frame-coalesced source of truth. The shell tracks the *visible*
   // viewport while the footer remains in the flex layout above the keyboard.
@@ -924,17 +940,24 @@ export function App() {
   };
   const finishSuccessfulPublication=async(status:OwnerPublicationStatus)=>{
     setPublishStatus(status);
-    const controller=new AbortController(),timeout=window.setTimeout(()=>controller.abort(),9000);
+    const controller=new AbortController(),timeout=window.setTimeout(()=>controller.abort(),11500);
     try{
-      const warmed=await warmPublishedRecommendations(controller.signal,phase=>setJourney(phase),draft);
-      warmRef.current?.release();warmRef.current=warmed;
-      setWarmFeed(warmed.page);
-    }catch{
-      // Published status is durable. Warmup failure does not lock the UI.
-      setWarmFeed(null);
+      // Prewarm live ranking and the complete first-route bundle in parallel.
+      const preload=prewarmDiscoveryUi(controller.signal);
+      let empty=false;
+      try{
+        const warmed=await warmPublishedRecommendations(controller.signal,phase=>setJourney(phase),draft);
+        warmRef.current?.release();warmRef.current=warmed;
+        setWarmFeed(warmed.page);
+        empty=warmed.page.profiles.length===0;
+      }catch{
+        // Publication is durable even if optional image warming fails.
+        setWarmFeed(null);
+      }
+      if(empty&&!controller.signal.aborted)await prewarmDemoPhotos(controller.signal);
+      await preload;
     }finally{window.clearTimeout(timeout);}
-    // Mount the real app behind the branded curtain first, then let the
-    // completion transition reveal an already-painted first feed.
+    // Reveal only after the first route has had an opportunity to warm.
     setRealHomeTab("feed");setRealHome(true);setJourney("complete");
   };
   const confirmRealRegistration=async()=>{
