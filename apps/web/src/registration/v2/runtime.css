@@ -231,6 +231,8 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-input-wrap>.glass-control.geo-input,.v2-runtime .geo-input-wrap>input[type="search"]{
  min-height:57px;padding-left:46px;padding-right:18px;appearance:none;-webkit-appearance:none}
 .v2-runtime .geo-input-wrap>.spin{z-index:1;right:14px;left:auto}
+.v2-runtime .geo-results button{color:var(--luemi-text);background:transparent}
+.v2-runtime .geo-results button:active{background:var(--luemi-surface-raised);color:var(--luemi-text)}
 .v2-runtime .city-focus-shell{position:relative;z-index:1;display:flex;flex-direction:column}
 /* Suggestions open BELOW their input, not above it under the Telegram logo.
    The focused input remains in the existing keyboard dock. */
