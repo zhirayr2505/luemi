@@ -13,6 +13,7 @@ const steps=readFileSync("apps/web/src/registration/Steps.tsx","utf8");
 const draftClient=readFileSync("apps/web/src/registration/server-draft.ts","utf8");
 const app=readFileSync("apps/web/src/App.tsx","utf8");
 const geo=readFileSync("apps/web/src/registration/GeoPicker.tsx","utf8");
+const glass=readFileSync("apps/web/src/ui/Glass.tsx","utf8");
 const focusDock=readFileSync("apps/web/src/registration/use-field-focus.ts","utf8");
 const required=[
  ["V2 runtime tokens",/\.v2-runtime\s*\{[^}]*--ink:/s],
@@ -281,10 +282,24 @@ assert.match(runtime, /\.v2-goal-check\{[^}]*width:21px;height:21px/s,
   "All choice corner badges share the compact 21px visual indicator");
 assert.doesNotMatch(runtime, /\.v2-goal-check\{[^}]*top:5px;right:5px/s,
   "Retired inset badges must not reappear on selected cards");
+assert.match(runtime,/\.v2-stage-heading::before\{[^}]*inset:0 0 -44px;[^}]*rgba\(23,27,32,0\) 100%/s,
+ "All headings feather their matte below the text into fully transparent Moonstone");
+assert.doesNotMatch(runtime,/\.v2-stage-heading--about\{[^}]*background:/s,
+ "About does not replace the shared heading with a hard-edged background");
+assert.match(glass,/showCheck&&<span className="glass-choice-corner-check"/,
+ "Gender/audience check badges stay mounted during choice transitions");
+assert.match(steps,/<span className="v2-goal-check" aria-hidden="true">/,
+ "Goal check badges stay mounted during choice transitions");
+assert.match(geo,/<span className="geo-scope-check" aria-hidden="true">/,
+ "Scope check badges stay mounted during choice transitions");
+assert.match(runtime,/\.v2-goal-check\{[^}]*opacity:0;transform:scale\(\.84\);[^}]*transition:opacity 180ms/s,
+ "Inactive badges remain at their fixed corner anchor and smoothly appear");
+assert.match(runtime,/\.glass-choice\.selected \.glass-choice-corner-check,[^}]*opacity:1;transform:scale\(1\)/s,
+ "Selected badges transition opacity and scale only, not the layout position");
 assert.match(runtime, /\.interest-chip\.selected\{[^}]*color:#242932/s,
  "Selected pastel interests use legible dark foreground");
-assert.match(runtime, /\.v2-stage-heading::after\{[^}]*backdrop-filter:blur\(8px\)/s,
- "Every step title ends with a narrow optical glass fade");
+assert.match(runtime, /\.v2-stage-heading::after\{[^}]*backdrop-filter:blur\(12px\) saturate\(114%\)/s,
+ "All registration headlines use a thin, glassy Moonstone refraction");
 assert.match(runtime, /\.v2-showcase-track\{[^}]*touch-action:pan-x pan-y/s,
  "Review photos allow vertical page scroll as well as horizontal carousel swipes");
 
@@ -374,8 +389,8 @@ assert.match(form,/useLayoutEffect\(\(\)=>\{[\s\S]*?data-registration-shell[\s\S
  "Stable layout starts before paint and follows coalesced viewport events");
 assert.match(form,/measuredBottom>=fullHeight-18[\s\S]*?Math\.max\(fullHeight,window\.innerHeight,measuredBottom\)/,
  "Transient keyboard viewport decreases cannot shrink the full canvas");
-assert.match(runtime,/\.v2-stage-heading::after\{[^}]*height:30px;[^}]*-webkit-mask-image:linear-gradient/s,
- "The new title glass is a narrow gradient-masked edge, not the retired full-size rectangle");
+assert.match(runtime,/\.v2-stage-heading::after\{[^}]*bottom:-31px;height:70px;[^}]*-webkit-mask-image:linear-gradient/s,
+ "The title's refractive edge extends past the heading without a straight dark seam");
 assert.match(runtime,/\.v2-focus-scrim\{\s*position:absolute;inset:0;z-index:90;[^}]*blur\(40px\)/s,
  "One unfenced blur covers the logo, progress, heading and all background controls");
 assert.match(runtime,/@media\(prefers-reduced-motion:reduce\)[\s\S]*?\.v2-focus-scrim\{transition:none\}/,
