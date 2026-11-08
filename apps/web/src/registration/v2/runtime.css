@@ -52,20 +52,34 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 @keyframes luemi-stage-reveal{from{opacity:0;translate:12px 0}to{opacity:1;translate:0 0}}
 .v2-runtime .v2-eyebrow{display:none}
 .v2-runtime .v2-stage-heading{position:sticky;top:-20px;z-index:6;isolation:isolate;margin:-20px -24px 0;
- padding:20px 24px 23px;
- background:linear-gradient(180deg,var(--luemi-bg-deep,#171B20) 0%,var(--luemi-bg-deep,#171B20) 63%,rgba(23,27,32,.76) 86%,rgba(23,27,32,0) 100%)}
-/* Optical glass is limited to the narrow stationary heading edge,
-   never the scrolling photo/morph hot path. The top remains opaque. */
+ padding:20px 24px 23px;background:transparent;border:0;box-shadow:none}
+/* The shared sticky title matte feathers below its box; no solid dark divider. */
+.v2-runtime .v2-stage-heading::before{
+ content:"";position:absolute;z-index:0;pointer-events:none;inset:0 0 -44px;
+ background:linear-gradient(180deg,
+  var(--luemi-bg-deep,#171B20) 0%,var(--luemi-bg-deep,#171B20) 34%,
+  rgba(23,27,32,.96) 51%,rgba(23,27,32,.79) 68%,
+  rgba(23,27,32,.42) 82%,rgba(23,27,32,.12) 93%,rgba(23,27,32,0) 100%);
+ -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 52%,rgba(0,0,0,.86) 72%,rgba(0,0,0,.36) 90%,transparent 100%);
+ mask-image:linear-gradient(180deg,#000 0%,#000 52%,rgba(0,0,0,.86) 72%,rgba(0,0,0,.36) 90%,transparent 100%)}
+/* Liquid refraction stays on a narrow stationary heading edge, never on
+   moving cards/photos, preserving Android WebView native kinetic scrolling. */
 .v2-runtime .v2-stage-heading::after{
- content:"";position:absolute;z-index:0;pointer-events:none;left:0;right:0;bottom:0;height:30px;
- background:linear-gradient(180deg,rgba(23,27,32,0),rgba(23,27,32,.22));
- -webkit-backdrop-filter:blur(8px) saturate(118%);backdrop-filter:blur(8px) saturate(118%);
- -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 70%);
- mask-image:linear-gradient(180deg,transparent 0%,#000 70%)}
+ content:"";position:absolute;z-index:0;pointer-events:none;
+ left:0;right:0;bottom:-31px;height:70px;
+ background:linear-gradient(180deg,rgba(72,82,96,.035) 0%,
+  rgba(82,92,110,.11) 35%,rgba(49,59,72,.09) 63%,rgba(23,27,32,0) 100%);
+ -webkit-backdrop-filter:blur(12px) saturate(114%);
+ backdrop-filter:blur(12px) saturate(114%);
+ -webkit-mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.20) 18%,
+  rgba(0,0,0,.63) 42%,rgba(0,0,0,.43) 73%,transparent 100%);
+ mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.20) 18%,
+  rgba(0,0,0,.63) 42%,rgba(0,0,0,.43) 73%,transparent 100%)}
 .v2-runtime .v2-stage-heading>*{position:relative;z-index:1}
 @media(prefers-reduced-transparency:reduce){
  .v2-runtime .v2-stage-heading::after{-webkit-backdrop-filter:none;backdrop-filter:none;
-  background:linear-gradient(180deg,transparent,rgba(23,27,32,.55))}}
+  background:linear-gradient(180deg,transparent,rgba(23,27,32,.1) 45%,transparent)}
+}
 .v2-runtime .v2-body h1{font-size:clamp(28px,7.3vw,36px);line-height:1.09;
  font-weight:740;letter-spacing:-.048em;margin:0 0 8px;color:#fff;text-wrap:balance}
 .v2-runtime .v2-subtitle{max-width:355px;min-height:38px;font-size:13px;line-height:1.48;
@@ -487,8 +501,8 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .preferences-step .v2-goal-choice:active{transform:scale(.98)}
 .v2-runtime .preferences-step .v2-goal-choice.is-selected{
  border-color:var(--luemi-border-active,rgba(207,192,223,.43));
- background:linear-gradient(132deg,rgba(107,99,127,.76),rgba(57,59,74,.92));
- box-shadow:inset 0 1px rgba(250,244,251,.19),0 0 0 1px rgba(172,135,179,.08)}
+ background:linear-gradient(132deg,rgba(104,114,133,.70),rgba(50,57,70,.93));
+ box-shadow:inset 0 1px rgba(250,244,251,.19),0 0 0 1px rgba(207,192,223,.10)}
 .v2-runtime .preferences-step .v2-goal-choice:focus-visible{
  outline:2px solid #D2CCDE;outline-offset:2px}
 .v2-runtime .preferences-step .v2-goal-icon{
@@ -538,16 +552,16 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-liquid-scopes button svg{width:15px;height:15px;flex:none;color:#CAC3D8}
 .v2-runtime .geo-liquid-scopes button.active{
  position:relative;
- background:linear-gradient(132deg,rgba(107,99,127,.76),rgba(57,59,74,.92));
+ background:linear-gradient(132deg,rgba(104,114,133,.70),rgba(50,57,70,.93));
  border-color:var(--luemi-border-active,rgba(207,192,223,.43));color:var(--luemi-text,#F2F3F5);
- box-shadow:inset 0 1px rgba(250,244,251,.19),0 0 0 1px rgba(172,135,179,.08)}
+ box-shadow:inset 0 1px rgba(250,244,251,.19),0 0 0 1px rgba(207,192,223,.10)}
 /* Selection badges sit ON the rounded upper-right stroke, not within the cards.
    A 21px badge at -7px centres 3.5px inside both edges, on a 12-13px corner. */
 .v2-runtime .dob-step .glass-choice.has-corner-check,
 .v2-runtime .preferences-step .glass-choice.has-corner-check{position:relative}
 .v2-runtime .dob-step .glass-choice.selected,
 .v2-runtime .preferences-step>.choice-section .glass-choice.selected{
- background:linear-gradient(132deg,rgba(107,99,127,.76),rgba(57,59,74,.92));
+ background:linear-gradient(132deg,rgba(104,114,133,.70),rgba(50,57,70,.93));
  border-color:var(--luemi-border-active,rgba(207,192,223,.43));color:var(--luemi-text,#F2F3F5)}
 .v2-runtime .glass-choice-corner-check,
 .v2-runtime .geo-scope-check,
@@ -559,7 +573,17 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  background:linear-gradient(145deg,var(--luemi-rose,#D5C8DD),var(--luemi-lavender,#B6A4C8));
  color:var(--luemi-ink-on-accent,#22252D);z-index:2;
  box-shadow:inset 0 1px rgba(255,255,255,.5),0 2px 6px rgba(20,14,25,.28);
- pointer-events:none}
+ pointer-events:none;opacity:0;transform:scale(.84);
+ transition:opacity 180ms ease-out,transform 240ms cubic-bezier(.2,.8,.22,1)}
+/* The badge anchor is stable for gender, audience, scope and dating goal.
+   Only opacity and scale change, so no layout recalculation or jump on taps. */
+.v2-runtime .glass-choice.selected .glass-choice-corner-check,
+.v2-runtime .geo-liquid-scopes button.active .geo-scope-check,
+.v2-runtime .preferences-step .v2-goal-choice.is-selected .v2-goal-check{
+ opacity:1;transform:scale(1)}
+.v2-runtime .glass-choice.has-corner-check:active,
+.v2-runtime .geo-liquid-scopes button:active,
+.v2-runtime .preferences-step .v2-goal-choice:active{transform:none}
 /* Explicit tick dimensions override the larger option icons on compact cards. */
 .v2-runtime .dob-step>.choice-section .glass-choice .glass-choice-corner-check svg,
 .v2-runtime .preferences-step>.choice-section .glass-choice .glass-choice-corner-check svg,
@@ -609,8 +633,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 /* About interests belong to the same existing sticky header, not a second
    scrollable panel. Keep one horizontal chip row with a fixed block height,
    even when empty, to avoid scroll jumps on add/remove. */
-.v2-runtime .v2-stage-heading--about{padding-bottom:13px;
- background:linear-gradient(180deg,var(--luemi-bg-deep,#171B20) 0%,var(--luemi-bg-deep,#171B20) 71%,rgba(23,27,32,.72) 90%,rgba(23,27,32,0) 100%)}
+.v2-runtime .v2-stage-heading--about{padding-bottom:13px}
 .v2-runtime .v2-sticky-interests{
  display:grid;grid-template-rows:0fr;min-width:0;
  margin-top:0;padding:0 11px;border:0 solid transparent;border-radius:17px;
@@ -732,4 +755,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 }
 @media(prefers-reduced-motion:reduce){
  .v2-runtime .preferences-step .v2-goal-choice{transition:none}
+ .v2-runtime .glass-choice-corner-check,
+ .v2-runtime .geo-scope-check,
+ .v2-runtime .preferences-step .v2-goal-check{transition:none}
 }
