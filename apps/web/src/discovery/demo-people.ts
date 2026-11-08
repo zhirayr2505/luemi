@@ -4,7 +4,8 @@ import {normalizeCountryCode} from "@luemi/contracts";
 function illustration(index:number,variation:number):string{
  const palette=[["#d7c6f0","#f1c9db","#51334f","#c88666"],["#badedc","#efd8e3","#392c49","#b57f66"],["#e4c9f4","#ffd9c6","#352b47","#946044"],["#ced8f6","#e6bcd7","#3b293b","#c08467"],["#d6e8d7","#f9cadd","#412f36","#ad765a"],["#d1c3ea","#f1dfbc","#4a354e","#996a54"],["#e2d3f5","#bedede","#332b46","#ba8762"],["#e7cfce","#d4dcf5","#422e40","#c28d65"]];
  const [bg,accent,hair,skin]=palette[index%palette.length];
- const shift=variation*8,wear=variation?"#7e699e":"#74608c",skinShade=variation?"#ce9a76":skin;
+ const shift=variation*8+(index%5)*3,wear=variation?"#7e699e":"#74608c",
+  skinShade=variation?"#ce9a76":skin;
  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 760" width="600" height="760">
  <defs><linearGradient id="bg" x1="0" x2="1" y2="1"><stop stop-color="${bg}"/><stop offset="1" stop-color="${accent}"/></linearGradient>
  <linearGradient id="shirt" x1="0" x2=".9" y2="1"><stop stop-color="${wear}"/><stop offset="1" stop-color="#dba6ca"/></linearGradient></defs>
@@ -48,16 +49,26 @@ const base=[
  ["nara","Нара",24,"woman","Гюмри","Армения","am","friendship","Путешествия|Фотография|Языки|Природа","hy|en","Обожаю горы и поездки без плана. Верю, что хорошая дружба начинается с разговора."],
  ["ella","Элла",26,"woman","Париж","Франция","fr","dates","Кино|Кофе|Живопись|Музыка","fr|en","Городские огни, утренние пробежки и разговоры обо всём на свете."],
  ["alisa","Алиса",28,"woman","Москва","Россия","ru","communication","Спорт|Дизайн|Книги|Прогулки","ru|en","Люблю начинать выходные с музеев, потом находить новое место с отличным кофе."],
- ["lina","Лина",29,"woman","Берлин","Германия","de","undecided","Технологии|Путешествия|Кулинария|Кино","de|en","Умею замечать красивые мелочи. Мне нравится узнавать новые культуры и людей."]
+ ["lina","Лина",29,"woman","Берлин","Германия","de","undecided","Технологии|Путешествия|Кулинария|Кино","de|en","Умею замечать красивые мелочи. Мне нравится узнавать новые культуры и людей."],
+ ["anahit","Анаит",26,"woman","Ереван","Армения","am","serious","Кулинария|Архитектура|Искусство|Музыка","hy|ru","Могу часами гулять по вечернему городу и обсуждать любимую музыку."],
+ ["mark","Марк",28,"man","Краснодар","Россия","ru","relationship","Спорт|Кино|Путешествия|Кофе","ru|en","Люблю горы, велосипеды и импровизированные поездки на выходные."],
+ ["maria","Мария",23,"woman","Сочи","Россия","ru","dates","Танцы|Море|Фотография|Природа","ru|en","Обожаю закаты у моря, спонтанные прогулки и искренние улыбки."],
+ ["aram","Арам",30,"man","Гюмри","Армения","am","friendship","Музыка|Технологии|Книги|Путешествия","hy|ru","Люблю живые концерты, добрый юмор и содержательные разговоры."],
+ ["eva","Ева",25,"woman","Тбилиси","Грузия","ge","communication","Искусство|Кино|Кофе|Йога","ru|en","Мечтаю однажды открыть маленькую кофейню с книжной полкой."],
+ ["david","Давид",27,"man","Москва","Россия","ru","family_goal","Кулинария|Спорт|Путешествия|Прогулки","ru|en","Умею приготовить отличный завтрак и найти красивые маршруты по городу."],
+ ["selin","Селин",24,"woman","Стамбул","Турция","tr","dates","Дизайн|Книги|Искусство|Танцы","tr|en","Люблю старинные улочки, вечерний свет и новые открытия."],
+ ["ani","Ани",29,"woman","Ванадзор","Армения","am","serious","Книги|Кофе|Природа|Фотография","hy|ru","Мне нравятся тихие места, смелые планы и люди, которые держат слово."],
+ ["leo","Лео",31,"man","Амстердам","Нидерланды","nl","undecided","Технологии|Велосипед|Музыка|Кино","en|nl","За хороший разговор и неожиданные путешествия без расписания."]
 ] as const;
 export const demoPeople:DemoPerson[]=base.map((p,index)=>({
  id:p[0],name:p[1],age:p[2],gender:p[3] as DemoPerson["gender"],city:p[4],country:p[5],countryCode:normalizeCountryCode(p[6])??"",
  goal:p[7] as DemoPerson["goal"],premium:index===0||index===3,interests:p[8].split("|").map(x=>x.toLocaleLowerCase("ru").replace(/\s+/g,"-")),
  languages:p[9].split("|"),about:p[10],
  photos:[
- {id:p[0]+"-1",src:portraitSources[index],fallback:illustration(index,0)},
- ...scenes[index].map((id,variation)=>({
-  id:p[0]+"-"+(variation+2),
+ {id:p[0]+"-1",src:index<portraitSources.length?portraitSources[index]:illustration(index,0),fallback:illustration(index,0)},
+ {id:p[0]+"-2",src:illustration(index,1),fallback:illustration(index,1)},
+ ...scenes[index%scenes.length].slice(0,2).map((id,variation)=>({
+  id:p[0]+"-"+(variation+3),
   src:sceneUrl(id),fallback:illustration(index,variation+1)
  }))
  ]
