@@ -420,7 +420,7 @@ export function App() {
             return warmed.page;
           }).catch(()=>null);
           const [page]=await Promise.all([feed,preload]);
-          if(page?.profiles.length===0&&!controller.signal.aborted)
+          if((!page||page.profiles.length===0)&&!controller.signal.aborted)
             await prewarmDemoPhotos(controller.signal);
         }finally{window.clearTimeout(deadline);}
         if(disposed)return;
