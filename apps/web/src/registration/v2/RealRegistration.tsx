@@ -18,8 +18,6 @@ interface Props{
  removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;
  resetDraft:()=>void;
- theme:"light"|"dark";
- onTheme:()=>void;
  onSave:()=>void;
  mediaEnabled:boolean;
  serverSaving:boolean;
@@ -285,7 +283,7 @@ export function RealRegistrationV2(p:Props){
    stage.id==="photos"?photoReady(photos):true;
  const fieldConfirmActive=["identity","birthday","location","about"].includes(stage.id)&&focusedField!==null;
 
- return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme={p.theme}
+ return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme="dark"
    data-fallback-entry={p.fallbackEntry?"true":undefined}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div ref={device} className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}
