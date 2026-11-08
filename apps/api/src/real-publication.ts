@@ -466,13 +466,22 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     // Evidence and ranking are evaluated by PostgreSQL BEFORE LIMIT/OFFSET,
     // so later pages cannot jump ahead of better matches on earlier pages.
     "CROSS JOIN LATERAL (SELECT "+
-    "CASE WHEN lower(btrim(p.city_label))=lower(btrim(pref.city_label)) "+
+    "CASE WHEN viewer_loc.owner_id IS NOT NULL AND candidate_loc.owner_id IS NOT NULL THEN "+
+    "6371.0088*2*asin(sqrt(least(1.0,"+
+    "power(sin(radians(candidate_loc.coarse_lat-viewer_loc.coarse_lat)/2),2)+"+
+    "cos(radians(viewer_loc.coarse_lat))*cos(radians(candidate_loc.coarse_lat))*"+
+    "power(sin(radians(candidate_loc.coarse_lon-viewer_loc.coarse_lon)/2),2)))) "+
+    "WHEN lower(btrim(p.city_label))=lower(btrim(pref.city_label)) "+
     "AND p.country_code=pref.country_code THEN 0::double precision "+
-    "WHEN origin_city.lat IS NULL OR candidate_city.lat IS NULL THEN NULL::double precision "+
+    "WHEN coalesce(viewer_loc.coarse_lat,origin_city.lat) IS NULL "+
+    "OR coalesce(candidate_loc.coarse_lat,candidate_city.lat) IS NULL THEN NULL::double precision "+
     "ELSE 6371.0088*2*asin(sqrt(least(1.0,"+
-    "power(sin(radians(candidate_city.lat-origin_city.lat)/2),2)+"+
-    "cos(radians(origin_city.lat))*cos(radians(candidate_city.lat))*"+
-    "power(sin(radians(candidate_city.lon-origin_city.lon)/2),2)))) END AS km,"+
+    "power(sin(radians(coalesce(candidate_loc.coarse_lat,candidate_city.lat)-"+
+    "coalesce(viewer_loc.coarse_lat,origin_city.lat))/2),2)+"+
+    "cos(radians(coalesce(viewer_loc.coarse_lat,origin_city.lat)))*"+
+    "cos(radians(coalesce(candidate_loc.coarse_lat,candidate_city.lat)))*"+
+    "power(sin(radians(coalesce(candidate_loc.coarse_lon,candidate_city.lon)-"+
+    "coalesce(viewer_loc.coarse_lon,origin_city.lon))/2),2)))) END AS km,"+
     "cardinality(ARRAY(SELECT unnest(p.interests) INTERSECT "+
     "SELECT unnest(pref.interests))) AS shared,"+
     "CASE WHEN pref.goal='undecided' OR p.goal='undecided' THEN 0 "+
@@ -496,6 +505,10 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "WHEN evidence.km<=100 THEN 1 WHEN evidence.km<=300 THEN 2 "+
     "WHEN evidence.km<=1000 THEN 3 WHEN evidence.km<=3000 THEN 4 "+
     "ELSE 5 END AS band) ranking "+
+    "LEFT JOIN luemi_private.precise_locations viewer_loc ON "+
+    "viewer_loc.owner_id=$2 AND viewer_loc.environment=$1 "+
+    "LEFT JOIN luemi_private.precise_locations candidate_loc ON "+
+    "candidate_loc.owner_id=p.owner_id AND candidate_loc.environment=$1 "+
     "LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment "+
     "AND incoming.sender_id=p.owner_id AND incoming.receiver_id=$2 AND incoming.status='active' "+
     "WHERE p.environment=$1 "+
