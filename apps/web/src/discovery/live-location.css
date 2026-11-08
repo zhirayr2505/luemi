@@ -1,0 +1,64 @@
+/* Opt-in location uses LUEMI's established Soft Plum palette.
+ * All controls live in a stable account sheet; the city dialog is portal-like
+ * inside the real discovery root and stays above the bottom navigation. */
+.luemi-live-location{
+ display:flex;flex-direction:column;gap:11px;min-width:0;
+ margin-top:16px;padding:16px;border-radius:20px;
+ border:1px solid rgba(199,172,225,.23);
+ background:linear-gradient(150deg,rgba(65,50,73,.96),rgba(47,34,54,.98));
+ color:#FAF4FB;
+}
+.luemi-live-location-head{display:flex;align-items:center;gap:12px;color:#D5A2C8}
+.luemi-live-location-head>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.luemi-live-location-head strong{color:#FAF4FB;font-size:15px}
+.luemi-live-location-head small,.luemi-live-location-hint{
+ font-size:11px;color:#C7BACD;line-height:1.45}
+.luemi-live-location>p{font-size:12px;line-height:1.55;color:#C7BACD;margin:0}
+.luemi-live-location button{
+ display:flex;align-items:center;justify-content:center;gap:9px;
+ min-height:43px;width:100%;padding:10px 12px;border-radius:13px;
+ font:600 13px/1.3 inherit;cursor:pointer;
+ transition:background .18s ease,transform .18s ease;
+}
+.luemi-live-location-action{background:#745777;color:#fff;border:1px solid #AC87B3}
+.luemi-live-location-delete{background:#35283D;color:#FAF4FB;border:1px solid rgba(213,162,200,.3)}
+.luemi-live-location button:active{transform:scale(.985)}
+.luemi-live-location button:disabled{opacity:.65;cursor:default}
+.luemi-live-location-error{color:#f5bccb!important;font-size:12px;line-height:1.45}
+.luemi-live-location-backdrop{
+ position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;
+ padding:calc(20px + env(safe-area-inset-top,0px)) 18px calc(24px + env(safe-area-inset-bottom,0px));
+ background:rgba(18,11,22,.78);
+}
+.luemi-live-location-dialog{
+ box-sizing:border-box;width:min(100%,390px);max-height:100%;overflow-y:auto;
+ padding:24px 19px 20px;border-radius:24px;
+ border:1px solid rgba(213,162,200,.35);
+ background:linear-gradient(150deg,#35283D,#211725);
+ box-shadow:0 24px 70px rgba(0,0,0,.4);
+ display:flex;flex-direction:column;align-items:stretch;gap:13px;
+ color:#FAF4FB;text-align:center;
+}
+.luemi-live-location-symbol{
+ display:grid;place-items:center;align-self:center;border-radius:100%;
+ background:#44334d;color:#D5A2C8;width:48px;height:48px;
+}
+.luemi-live-location-dialog h2{font-size:21px;line-height:1.2;margin:0;color:#FAF4FB}
+.luemi-live-location-dialog p{font-size:13px;line-height:1.5;margin:0;color:#C7BACD}
+.luemi-live-location-cities{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.luemi-live-location-cities span{
+ min-width:0;padding:13px 8px;border:1px solid rgba(199,172,225,.18);
+ background:#35283D;border-radius:13px;display:flex;flex-direction:column;gap:5px;
+}
+.luemi-live-location-cities small{color:#C7BACD;font-size:11px}
+.luemi-live-location-cities strong{font-size:14px;overflow-wrap:anywhere}
+.luemi-live-location-dialog button{
+ padding:12px;min-height:46px;border-radius:14px;font:600 14px/1.3 inherit;
+}
+.luemi-live-location-accept{background:#745777;color:#fff;border:1px solid #AC87B3}
+.luemi-live-location-keep{background:#35283D;color:#FAF4FB;border:1px solid rgba(199,172,225,.25)}
+.luemi-live-location-dialog button:disabled{opacity:.55}
+.luemi-live-location-dialog>small{color:#9E8FA7;font-size:11px;line-height:1.45}
+@media(prefers-reduced-motion:reduce){
+ .luemi-live-location button{transition:none}
+}
