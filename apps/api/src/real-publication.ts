@@ -329,6 +329,10 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text,"+
     "incoming.kind AS liked_you_kind "+
     "FROM luemi_private.public_profiles p CROSS JOIN preference pref "+
+    "LEFT JOIN luemi_private.city_centres origin_city ON origin_city.country_code=pref.country_code "+
+    "AND origin_city.city_norm=lower(btrim(pref.city_label)) "+
+    "LEFT JOIN luemi_private.city_centres candidate_city ON candidate_city.country_code=p.country_code "+
+    "AND candidate_city.city_norm=lower(btrim(p.city_label)) "+
     "LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment "+
     "AND incoming.sender_id=p.owner_id AND incoming.receiver_id=$2 AND incoming.status='active' "+
     "WHERE p.environment=$1 "+
@@ -346,7 +350,17 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "AND (SELECT count(*) FROM luemi_private.media_assets a WHERE a.owner_id=p.owner_id "+
     "AND a.environment=p.environment AND a.state='approved' "+
     "AND a.publication_status='published') BETWEEN 3 AND 6 "+
-    "ORDER BY (lower(p.city_label)=lower(pref.city_label) AND p.country_code=pref.country_code) DESC,"+
+    // Radius scope is now automatic nearest-first. Use ONLY city-centre distances,
+    // never a person's GPS; unknown cities remain eligible and sort last.
+    "ORDER BY CASE WHEN pref.search_scope='radius' THEN CASE "+
+    "WHEN lower(btrim(p.city_label))=lower(btrim(pref.city_label)) "+
+    "AND p.country_code=pref.country_code THEN 0::double precision "+
+    "WHEN origin_city.lat IS NULL OR candidate_city.lat IS NULL THEN NULL "+
+    "ELSE 6371.0088*2*asin(sqrt(least(1.0,"+
+    "power(sin(radians(candidate_city.lat-origin_city.lat)/2),2)+"+
+    "cos(radians(origin_city.lat))*cos(radians(candidate_city.lat))*"+
+    "power(sin(radians(candidate_city.lon-origin_city.lon)/2),2)))) END END ASC NULLS LAST,"+
+    "(lower(p.city_label)=lower(pref.city_label) AND p.country_code=pref.country_code) DESC,"+
     "(p.goal=pref.goal) DESC,cardinality(ARRAY(SELECT unnest(p.interests) INTERSECT SELECT unnest(pref.interests))) DESC,"+
     "(p.country_code=pref.country_code) DESC,p.published_at DESC,p.owner_id DESC OFFSET $3 LIMIT 21",
     [cfg.namespace,viewer,cursor?.offset??0]);
