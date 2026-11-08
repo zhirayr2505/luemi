@@ -23,7 +23,7 @@ const required=[
  ["blurred borderless action fade",/\.v2-runtime\s+\.v2-footer\s*\{[^}]*position:absolute[^}]*border:0/s],
   ["city search icon retains its text gutter",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
-  ["live city suggestions remain docked below their input",/\.v2-runtime \.city-focus-shell \.geo-results\{[^}]*position:absolute;z-index:43;[^}]*top:calc\(100% \+ 7px\)/s],
+  ["compact city suggestions open above input",/\.v2-runtime \.city-focus-shell \.geo-results\{[^}]*position:absolute;z-index:43;[^}]*top:auto;bottom:calc\(100% \+ 8px\)/s],
   ["city suggestion press feedback uses Moonstone",/\.v2-runtime \.geo-results button:active\{background:var\(--luemi-surface-raised\)/],
  ["shared Moonstone canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#171B20\)/s]
 ];
@@ -193,8 +193,8 @@ assert.match(focusDock,/const refresh=\(\)=>\{if\(!frame\)frame=window\.requestA
  "Search suggestions coalesce viewport changes into one animation-frame writer");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
  "The focused editor must use one visual viewport bottom coordinate without double keyboard compensation");
-assert.match(focusDock,/const ideal=origin\+stableHeight\*\.23;/,
- "The initial dock is computed from the stable device canvas, not the software keyboard");
+assert.match(focusDock,/const ideal=origin\+stableHeight\*\(isCity\?\.44:\.23\);/,
+ "The city editor gets extra stable room for above-input suggestions; other fields keep original anchors");
 assert.match(focusDock,/pinnedTop=Math\.round\(Math\.max\(minimum,Math\.min\(ideal,safeUpper\)\)\)/,
  "The dock stays below safe Telegram chrome and anticipates IME room");
 assert.doesNotMatch(focusDock,/pinnedTop=Math\.max\(headerBottom\+12,Math\.min\(pinnedTop,footerTop/,
@@ -213,12 +213,12 @@ assert.match(runtime,/\.v2-device\[data-field-focus="true"\] \.v2-body\{\s*overf
  "The focused input escapes body stacking and paints over the full-device glass");
 assert.match(form,/--registration-visible-bottom[\s\S]*--registration-layout-height/,
  "Viewport height and editor dock must come from one visual viewport measurement");
-assert.match(runtime,/\.city-focus-shell \.geo-results\{[\s\S]*?top:calc\(100% \+ 7px\);bottom:auto/,
- "City suggestions must expand below the input and never be clipped by the Telegram header");
+assert.match(runtime,/\.city-focus-shell \.geo-results\{[\s\S]*?top:auto;bottom:calc\(100% \+ 8px\)/,
+ "City suggestions must open above the input within header-safe room");
 assert.match(geo,/className="geo-results geo-city-suggestions"/,
- "Search results must include full city, region and country inside a dedicated scrollable list");
-assert.doesNotMatch(runtime,/\.city-focus-shell \.geo-results\{[^}]*bottom:calc\(100%/,
- "Remove the legacy upward-opening results dropdown");
+ "City suggestions keep separate city and country labels, and accessible region metadata");
+assert.doesNotMatch(runtime,/\.city-focus-shell \.geo-results\{[^}]*top:calc\(100%/,
+ "The old below-input dropdown cannot return");
 assert.doesNotMatch(runtime,/\.interest-chip\.selected::after\{/,
  "Selected interests use pastel highlight only, without a generated checkmark");
 assert.match(runtime,/\.geo-liquid-mode-panel\{[\s\S]*?min-height:60px;height:60px/,
@@ -255,6 +255,34 @@ assert.match(mediaClient,/for\(const edge of \[800,384\]\)/,
 assert.match(mediaBackend,/existing.rows\[0\].asset_state!=="reserved"/,
  "Retry cannot change any already accepted or published upload");
 
+
+
+// Registration polish contract: one-line city suggestions, selectable cards,
+// understated optical sticky header and unconstrained vertical review swipes.
+assert.match(geo, /\{!editing&&<span className="field-label">Твой город<\/span>\}/,
+ "The city headline is not repeated inside the focused editor");
+assert.match(geo, /className="geo-suggestion-country"/,
+ "Each compact result displays city and country on the same line");
+assert.match(geo, /<Flag code=\{place.countryCode\} size=\{19\}/,
+ "The city result uses a small country flag");
+assert.match(runtime, /\.geo-city-suggestions button\{[^}]*min-height:38px;height:38px/s,
+ "Several city choices fit above the editor without a nested tall row");
+assert.match(runtime, /\.geo-suggestion-copy\{[^}]*flex-direction:row/s,
+ "City and country labels must not stack vertically");
+assert.match(runtime, /\.city-focus-shell \.geo-results\{[^}]*max-height:var\(--field-suggestions-max-height/s,
+ "The above-input list obeys the safe-space budget");
+assert.match(geo, /className="geo-scope-check"/,
+ "Active nearby, city and world modes show a circular corner check");
+assert.match(steps, /<GlassChoice showCheck chosen=/,
+ "Gender and audience cards share the same selected badge");
+assert.match(runtime, /\.v2-goal-check\{[^}]*top:5px;right:5px/s,
+ "The goal check sits in the top-right corner of its selected card");
+assert.match(runtime, /\.interest-chip\.selected\{[^}]*color:#242932/s,
+ "Selected pastel interests use legible dark foreground");
+assert.match(runtime, /\.v2-stage-heading::after\{[^}]*backdrop-filter:blur\(8px\)/s,
+ "Every step title ends with a narrow optical glass fade");
+assert.match(runtime, /\.v2-showcase-track\{[^}]*touch-action:pan-x pan-y/s,
+ "Review photos allow vertical page scroll as well as horizontal carousel swipes");
 
 // Header layout regression: a fixed 80px mobile header with duplicated top
 // Telegram insets allowed the progress line to cover the title.
