@@ -52,9 +52,6 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
  background:radial-gradient(ellipse at 12% 4%,rgba(117,129,153,.105),transparent 47%),
  radial-gradient(ellipse at 86% 89%,rgba(139,131,157,.07),transparent 50%);
 }
-.luemi-shell[data-theme=dark] .milky-mist::before,
-.luemi-shell[data-theme=dark] .milky-mist::after{animation:none}
-.luemi-shell[data-theme=dark] .intro-mark::before,
 .luemi-shell[data-theme=dark] .intro-type-cursor{animation:none}
 
 /* The visible optical depth is produced by a real translucent backdrop,
