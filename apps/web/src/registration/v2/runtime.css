@@ -361,7 +361,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  scroll-behavior:smooth;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .v2-runtime .v2-showcase-track::-webkit-scrollbar{display:none}
 .v2-runtime .v2-showcase-track img{flex:0 0 100%;display:block;width:100%;height:100%;
- object-fit:cover;scroll-snap-align:start;user-select:none;touch-action:pan-x pan-y
+ object-fit:cover;scroll-snap-align:start;user-select:none;touch-action:pan-x pan-y}
 .v2-runtime .v2-showcase-overlay{position:absolute;inset:28% 0 0;pointer-events:none;
  background:linear-gradient(180deg,transparent 0%,rgba(16,18,22,.12) 22%,
  rgba(16,18,22,.83) 100%)}
