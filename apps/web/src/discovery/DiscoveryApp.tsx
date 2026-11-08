@@ -611,7 +611,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
      </section>
    </div>
    {selectedPerson&&selectedProfile&&<QaProfiler id="VisitorProfileRoute"><VisitorProfileRoute key={selectedPerson.id} data={selectedProfile}
-     theme={theme} onTheme={onTheme} onExit={exitVisitorProfile} registerBack={registerVisitorBack}/></QaProfiler>}
+     onExit={exitVisitorProfile} registerBack={registerVisitorBack}/></QaProfiler>}
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
        className={"discovery-nav-item"+(mainTab===value?" active":"")}
