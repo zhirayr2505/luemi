@@ -278,6 +278,6 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
        </div>
      </div>
    </div>
-   <p className="geo-liquid-privacy">Определяем только город — точные координаты не сохраняем.</p>
+   <p className="geo-liquid-privacy">Здесь определяем только город. Точную геолокацию можно отдельно включить в настройках профиля.</p>
  </div>;
 }
