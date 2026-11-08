@@ -630,20 +630,6 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 @keyframes luemi-geo-mode-in{
  from{opacity:.2;transform:translate3d(0,4px,0)}
  to{opacity:1;transform:translate3d(0,0,0)}}
-.v2-runtime .geo-liquid-radius{display:flex;flex-direction:column;justify-content:space-between;gap:2px}
-.v2-runtime .geo-liquid-radius .range-title{font-size:13px}
-.v2-runtime .geo-liquid-radius .range-title strong{color:#e8b8f0;font-size:14px}
-.v2-runtime .geo-liquid-radius .branded-slider{min-width:0;min-height:34px;margin:0 7px}
-.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]{
- min-width:0;flex:none;margin:0;height:34px;border:0;outline:0;appearance:none;-webkit-appearance:none;
- background:transparent;touch-action:pan-x}
-.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]::-webkit-slider-runnable-track{
- height:4px;border:0;border-radius:999px;
- background:linear-gradient(to right,#b28be5 0%,#eba6ce var(--range-pct),rgba(218,193,235,.23) var(--range-pct),rgba(218,193,235,.23) 100%)}
-.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]::-moz-range-track{
- height:4px;border:0;border-radius:999px;background:rgba(218,193,235,.23)}
-.v2-runtime .geo-liquid-radius .branded-slider input[type="range"]::-moz-range-progress{
- height:4px;background:#c993e8;border-radius:999px}
 .v2-runtime .geo-liquid-mode-info{display:flex;align-items:center;gap:9px}
 .v2-runtime .geo-liquid-mode-icon{flex:0 0 32px;width:32px;height:32px;display:grid;
  place-items:center;border-radius:10px;background:rgba(185,133,206,.17);color:#dba8ec}
@@ -651,14 +637,6 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-liquid-mode-copy{display:flex;flex-direction:column;min-width:0;gap:3px}
 .v2-runtime .geo-liquid-mode-copy strong{font-size:13px;line-height:1.2;color:#f9ecfc}
 .v2-runtime .geo-liquid-mode-copy small{font-size:11px;line-height:1.3;color:#ccb9d8}
-.v2-runtime .geo-liquid-radius .range-limits{font-size:10px}
-.v2-runtime .geo-liquid-radius input[type="range"]::-webkit-slider-thumb{
- appearance:none;-webkit-appearance:none;
- width:20px;height:20px;margin-top:-8px;border:3px solid #fff;border-radius:50%;
- background:linear-gradient(145deg,#b28be5,#e8a6d4);
- box-shadow:0 2px 7px rgba(4,2,10,.24)}
-.v2-runtime .geo-liquid-radius input[type="range"]::-moz-range-thumb{
- width:14px;height:14px;border:3px solid #fff;border-radius:50%;background:#c993e8}
 .v2-runtime .geo-liquid-privacy{font-size:11px;color:#afa1bd;line-height:1.5;margin:0}
 @media(prefers-reduced-motion:reduce){
  .v2-runtime .geo-liquid-scopes button{transition:none}
