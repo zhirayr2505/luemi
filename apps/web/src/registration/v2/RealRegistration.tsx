@@ -34,6 +34,11 @@ interface Props{
 const photoReady=(photos:PhotoItem[])=>photos.length>=3&&photos.length<=6&&
  photos.every(p=>p.status==="ready");
 const messageFor=(raw:string)=>raw||"Заполни обязательные поля.";
+/** Gentle tactile acknowledgment; the actual press-scale is handled by CSS. */
+function registrationCTAFeedback(){
+ try{window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.("light");}
+ catch{/* Telegram clients without haptics still animate the button. */}
+}
 const visualStages=[
  {id:"identity",title:"Как тебя зовут?",subtitle:"Это будет видно другим пользователям"},
  {id:"birthday",title:"Дата рождения",subtitle:"Твой возраст будет виден другим пользователям"},
@@ -353,15 +358,16 @@ export function RealRegistrationV2(p:Props){
      <footer className={"v2-footer"+(fieldConfirmActive?" is-focus-confirm":"")}>
        {stage.id==="photos"?<div className="v2-footer-review">
         <button type="button" className="v2-publish v2-draft-save"
-          disabled={!savedDraftAllowed||photoChecking} aria-busy={photoChecking} onClick={advance}>
+          disabled={!savedDraftAllowed||photoChecking} aria-busy={photoChecking}
+           onPointerDown={registrationCTAFeedback} onClick={advance}>
           {photoChecking?<LoaderCircle size={19} className="v2-next-spinner"/>:<Eye size={18}/>}
           {photoChecking?"Проверяем фото…":"Посмотреть анкету"}
         </button>
        </div>:stage.id==="review"?<div className="v2-footer-review v2-review-actions">
         <button type="button" className="v2-review-edit" disabled={p.serverSaving||changingStep}
-          onClick={()=>nav(index-1)}><Pencil size={17}/> Редактировать</button>
+          onPointerDown={registrationCTAFeedback} onClick={()=>nav(index-1)}><Pencil size={17}/> Редактировать</button>
         <button type="button" className="v2-publish v2-review-create" disabled={!savedDraftAllowed||p.serverSaving}
-          aria-busy={p.serverSaving} onClick={advance}>
+          aria-busy={p.serverSaving} onPointerDown={registrationCTAFeedback} onClick={advance}>
           {p.serverSaving?<LoaderCircle size={18} className="v2-next-spinner"/>:<Check size={18}/>}
           {p.serverSaving?"Создаём…":"Создать анкету"}
         </button>
@@ -371,7 +377,7 @@ export function RealRegistrationV2(p:Props){
           aria-label={fieldConfirmActive?"Подтвердить поле":"Продолжить"}
          aria-busy={photoChecking||changingStep}
          aria-disabled={photoChecking||changingStep||undefined}
-          onPointerDown={e=>{if(fieldConfirmActive)e.preventDefault();}}
+          onPointerDown={e=>{registrationCTAFeedback();if(fieldConfirmActive)e.preventDefault();}}
           onClick={()=>{
             if(fieldConfirmActive){
               if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
