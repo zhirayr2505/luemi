@@ -323,8 +323,8 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  </div>;
 }
 
-export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal,onCityChanged}:{
- draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;
+export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal,onCityChanged}:{
+ draft:RegistrationDraft;
  publishedProfile:OwnerPublicationStatus["profile"]|undefined;initialFeed?:PublishedFeedPage|null;
  ownerPhotoPreview?:ReadonlyArray<{src:string}>;
  accountPanel:ReactNode;onEdit:()=>void;onReveal?:()=>void;
