@@ -944,7 +944,7 @@ export function App() {
     try{
       // Prewarm live ranking and the complete first-route bundle in parallel.
       const preload=prewarmDiscoveryUi(controller.signal);
-      let empty=false;
+      let empty=true; // also prepare safe QA fallback on live feed errors
       try{
         const warmed=await warmPublishedRecommendations(controller.signal,phase=>setJourney(phase),draft);
         warmRef.current?.release();warmRef.current=warmed;
