@@ -256,7 +256,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
          <Globe2 size={18}/><span>Моя страна</span>
        </button>}
      </div>
-     <div className="geo-liquid-mode-panel" aria-live="off">
+     <div className="geo-liquid-mode-panel" role="status" aria-live="polite" aria-atomic="true">
        <div key={data.searchScope} className="geo-liquid-mode-content geo-liquid-mode-info">
          <span className="geo-liquid-mode-icon" aria-hidden="true">
            {data.searchScope==="radius"?<Compass size={22} strokeWidth={1.7}/>:
@@ -268,17 +268,16 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
              data.searchScope==="city"?"Люди из твоего города":
              data.searchScope==="country"?"Люди из твоей страны":"Весь мир открыт"}</strong>
            <small>{data.searchScope==="radius"?
-             "Сначала твой город, затем другие — от ближних к дальним.":
+             "Сначала ближе к тебе, затем дальше.":
              data.searchScope==="city"?
-             "Знакомства в выбранном городе, без ограничения расстояния.":
+             "Анкеты только из выбранного города.":
              data.searchScope==="country"?
-             "Знакомства в пределах выбранной страны.":
-             "Знакомься независимо от города и расстояния."}</small>
+             "Анкеты из выбранной страны.":
+             "Анкеты со всего мира, без границ."}</small>
          </span>
        </div>
      </div>
    </div>
-   <p className="geo-liquid-privacy">Геолокация нужна только для определения города.
-     Точные координаты в анкете не сохраняем.</p>
+   <p className="geo-liquid-privacy">Определяем только город — точные координаты не сохраняем.</p>
  </div>;
 }
