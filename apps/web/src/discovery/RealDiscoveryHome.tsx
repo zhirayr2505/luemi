@@ -34,7 +34,7 @@ import "./real-discovery.css";
 
 // EXACT approved LUEMI navigation / header / profile components. No demo profiles
 // are imported or projected into a real session.
-const navigation=[["discover","Лента",Images],["likes","Лайки",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
+const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const navigationItems=navigation.map(([id,label,icon])=>({id,label,icon}));
 const tabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 type MainTab=typeof navigation[number][0];
