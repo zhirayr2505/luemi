@@ -134,6 +134,11 @@ try{
  assert.equal(await page.getByRole("button",{name:"Пока не определился"}).getAttribute("aria-pressed"),"true",
    "registration must preselect the gender-aware undecided goal");
  await page.getByRole("button",{name:"Серьёзные отношения"}).click();
+ assert.equal(await page.getByRole("button",{name:"Серьёзные отношения"}).locator(".v2-goal-check").count(),1,
+  "selected goal has a circular check in its corner");
+ assert.equal(await page.getByRole("button",{name:"Женщин"}).locator(".glass-choice-corner-check").count(),1,
+  "audience selection uses the same corner check");
+ await screenshot("intent-corner-checks");
  const goalHeight=await page.getByRole("button",{name:"Серьёзные отношения"}).evaluate(el=>el.getBoundingClientRect().height);
  assert.ok(goalHeight<=60,"goal cards should be genuinely compact horizontal rows");
  assert.equal(await page.locator(".v2-goal-choice").count(),13,"all 13 goals remain available");
@@ -166,6 +171,7 @@ try{
  assert.equal(await page.getByRole("button",{name:/Удалить интерес/}).count(),0);
  await page.locator(".interest-choices button").first().click();
  await page.locator(".v2-sticky-interests.is-visible").waitFor();
+ await screenshot("about-pastel-interests");
  assert.equal(await page.locator(".v2-about-interest-heading").count(),1);
  assert.equal(await page.locator(".v2-sticky-interests").count(),1,"the ribbon is attached to the single sticky heading");
  assert.equal(await page.locator(".v2-stage-heading .v2-sticky-interests").count(),1);
@@ -266,6 +272,24 @@ try{
  await stage("review");
  assert.equal(await page.locator(".v2-showcase-track img").count(),3,"review shows the selected photos");
  assert.equal(await page.getByText("Люблю музыку и прогулки по городу.").count(),1);
+ const reviewPhoto=await page.locator(".v2-showcase-track").boundingBox();
+ assert.ok(reviewPhoto,"review photo must have a touchable viewport");
+ await page.locator(".v2-body").evaluate(node=>node.scrollTop=0);
+ const photoSwipe=await page.context().newCDPSession(page);
+ const px=reviewPhoto.x+reviewPhoto.width*.5,py0=reviewPhoto.y+reviewPhoto.height*.72;
+ const py1=reviewPhoto.y+reviewPhoto.height*.33;
+ try{
+  await photoSwipe.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{id:1,x:px,y:py0}]});
+  for(let i=1;i<=10;i++){
+   await photoSwipe.send("Input.dispatchTouchEvent",{type:"touchMove",
+    touchPoints:[{id:1,x:px,y:py0+(py1-py0)*i/10}]});
+   await page.waitForTimeout(16);
+  }
+  await photoSwipe.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ }finally{await photoSwipe.detach()}
+ assert.ok(await page.locator(".v2-body").evaluate(node=>node.scrollTop)>12,
+  "vertical Android touch swipe across a review photo scrolls the whole page");
+ await screenshot("review-after-photo-swipe");
  await page.getByRole("button",{name:"Редактировать"}).click();
  await stage("photos");
  await page.evaluate(()=>window.__luemiQABack?.());
