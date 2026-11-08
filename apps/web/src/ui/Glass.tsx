@@ -13,7 +13,7 @@ export function GlassCheckbox({checked,onChange,children}:{checked:boolean;onCha
 export function GlassChoice({chosen,onClick,children,icon,showCheck=false}:{chosen:boolean;onClick:()=>void;children:ReactNode;icon?:ReactNode;showCheck?:boolean}){
  return <button type="button" className={"glass-choice"+(chosen?" selected":"")+(showCheck?" has-corner-check":"")} aria-pressed={chosen} onClick={onClick}>
   {icon}{children}
-  {showCheck&&chosen&&<span className="glass-choice-corner-check" aria-hidden="true"><Check size={11} strokeWidth={3}/></span>}
+  {showCheck&&<span className="glass-choice-corner-check" aria-hidden="true"><Check size={11} strokeWidth={3}/></span>}
  </button>;
 }
 export function GlassArrow({forward=false,disabled=false,onClick}:{forward?:boolean;disabled?:boolean;onClick:()=>void}){
