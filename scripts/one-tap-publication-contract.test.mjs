@@ -47,7 +47,9 @@ test("all progress labels reflect actual work; failures allow retry",()=>{
  assert.match(app,/\{journeyOverlay\}<\/>/);
 });
 test("first pictures cached only in RAM with bounded signed endpoint fetch",()=>{
- assert.match(warm,/const MAX_IMAGES=6/);
+ assert.match(warm,/const TARGET_PROFILES=15/);
+ assert.match(warm,/const MAX_IMAGES=24/);
+ assert.match(warm,/MAX_TOTAL_IMAGE_BYTES=18_000_000/);
  assert.match(warm,/MAX_IMAGE_BYTES=1_500_000/);
  assert.match(warm,/fetch\(url,\{credentials:"same-origin",cache:"no-store",signal\}\)/);
  assert.match(warm,/URL.createObjectURL/);
@@ -75,7 +77,10 @@ test("registration reconciles durable photo identities before allocating slots",
 });
 
 test("recommendation warmup preserves global server-ranked order instead of re-sorting just page one",()=>{
- assert.match(warm,/const page=source/);
+ assert.match(warm,/const first=await getPublishedFeed\(signal\)/);
+ assert.match(warm,/const page:PublishedFeedPage=\{\.\.\.first,profiles,nextCursor:cursor\}/);
+ assert.match(warm,/getPublishedFeed\(signal,cursor\)/);
+ assert.match(warm,/const uniqueIds=new Set/);
  assert.doesNotMatch(warm,/rankPublishedRecommendations|\.sort\(/,
   "local rank changes can displace better matches from pages that were not fetched");
  assert.match(app,/warmPublishedRecommendations\(controller\.signal,phase=>setJourney\(phase\),draft\)/);
