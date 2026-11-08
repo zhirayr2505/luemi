@@ -29,6 +29,19 @@ function illustration(index:number,variation:number):string{
  * These are NOT real LUEMI users or actual people. Remote images are only for
  * the staging demo; fall back to original in-repo illustrated avatars offline. */
 const portraitSources=["https://cdn.pixabay.com/photo/2024/12/05/15/18/ai-generated-9246846_1280.jpg","https://cdn.pixabay.com/photo/2025/04/18/05/26/ai-generated-9541651_1280.jpg","https://cdn.pixabay.com/photo/2026/01/01/12/33/ai-generated-10046459_1280.jpg","https://cdn.pixabay.com/photo/2026/02/07/12/42/atal07-ultra-realistic-portrait-10109677_1280.jpg","https://cdn.pixabay.com/photo/2023/12/09/19/09/ai-generated-8439990_1280.jpg","https://cdn.pixabay.com/photo/2023/10/21/08/58/ai-generated-8331057_1280.jpg"];
+/** Distinct scene images create real photo changes and varied image-sourced ambient lighting.
+ * No identifiable people in these additional Unsplash photographs. The first
+ * portrait in every fixture is synthetic and already used by the demo client.
+ * All references are illustrative and never constitute an actual LUEMI profile. */
+const scenes:readonly (readonly string[])[]=[
+ ["photo-1441974231531-c6227db76b6e","photo-1495474472287-4d71bcdd2085","photo-1507525428034-b723cf961d3e"],
+ ["photo-1516483638261-f4dbaf036963","photo-1495446815901-a7297e633e8d","photo-1509042239860-f550ce710b93"],
+ ["photo-1464822759023-fed622ff2c3b","photo-1470770841072-f978cf4d019e","photo-1448375240586-882707db888b"],
+ ["photo-1502602898657-3e91760cbb34","photo-1489599849927-2ee91cede3ba","photo-1499856871958-5b9627545d1a"],
+ ["photo-1517836357463-d25dfeac3438","photo-1470252649378-9c29740c9fa8","photo-1519681393784-d120267933ba"],
+ ["photo-1476514525535-07fb3b4ae5f1","photo-1518770660439-4636190af475","photo-1556911220-bff31c812dba"]
+];
+const sceneUrl=(id:string)=>"https://images.unsplash.com/"+id+"?auto=format&fit=crop&w=960&q=80";
 const base=[
  ["mira","Мира",25,"woman","Краснодар","Россия","ru","relationship","Музыка|Путешествия|Фотография|Кофе|Книги","ru|en","Люблю уютные кофейни, море и длинные разговоры. Ценю искренних и добрых людей."],
  ["sofia","София",27,"woman","Тбилиси","Грузия","ge","serious","Книги|Живопись|Кофе|Танцы","ru|en","Вдохновение нахожу в маленьких кафе, старых улочках и встречах с близкими."],
@@ -43,6 +56,9 @@ export const demoPeople:DemoPerson[]=base.map((p,index)=>({
  languages:p[9].split("|"),about:p[10],
  photos:[
  {id:p[0]+"-1",src:portraitSources[index],fallback:illustration(index,0)},
- {id:p[0]+"-2",src:portraitSources[index],fallback:illustration(index,1)}
+ ...scenes[index].map((id,variation)=>({
+  id:p[0]+"-"+(variation+2),
+  src:sceneUrl(id),fallback:illustration(index,variation+1)
+ }))
  ]
 }));
