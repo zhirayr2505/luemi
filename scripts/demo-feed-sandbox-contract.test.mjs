@@ -50,9 +50,11 @@ test("fifteen photo-driven fictional profiles each keep one coherent identity",(
 
 test("demo reactions use existing directional compositor animations with zero backend writes",()=>{
  assert.match(sandbox,/deck-leaving-/);
- assert.match(sandbox,/feed-v2-pass/);
- assert.match(sandbox,/feed-v2-like/);
- assert.match(sandbox,/feed-v2-special/);
+ assert.match(sandbox,/luemi-demo-pass/);
+ assert.match(sandbox,/luemi-demo-like/);
+ assert.match(sandbox,/luemi-demo-special/);
+ assert.match(style,/@keyframes luemi-demo-pass/);
+ assert.match(style,/@keyframes luemi-demo-arrive/);
  assert.match(sandbox,/const \[history,setHistory\]/);
  assert.match(sandbox,/setHistory\(h=>h\.slice\(0,-1\)\)/);
  assert.match(sandbox,/setSaved\(before=>/);
