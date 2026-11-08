@@ -2,7 +2,7 @@ import type {ButtonHTMLAttributes,HTMLAttributes,ReactNode} from "react";
 import type {LucideIcon} from "lucide-react";
 
 export function LuemiGlassPanel({className="",...props}:HTMLAttributes<HTMLDivElement>){
- return <div className={`luemi-v5-glass ${className}`.trim()} {...props}/>;
+ return <div className={`luemi-v5-glass ${className}`.trim()} data-static-glass="true" {...props}/>;
 }
 
 export function LuemiIconButton({label,className="",children,...props}:
