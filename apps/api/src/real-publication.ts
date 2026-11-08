@@ -85,7 +85,8 @@ function acceptedCity(body:unknown):ConfirmedCity|null{
   city.length<2||city.length>120||country.length<2||country.length>120||
   !/^[A-Z]{2}$/.test(countryCode)||
   !/^(geo:|offline:)[a-z0-9:_-]{3,180}$/i.test(placeId)||
-  /[<>\x00-\x1F]/.test(city+country+placeId))return null;
+  /[<>]/.test(city+country+placeId)||
+  [...city,...country,...placeId].some(ch=>ch.charCodeAt(0)<32))return null;
  return{city,country,countryCode,placeId};
 }
 type Kind="luemi_profile_publisher"|"luemi_discovery_reader";
