@@ -103,3 +103,17 @@ test("deleted registration language flow and artificial photo cropping stay dele
  assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#2B3037\)/,
   "even isolated V3 previews must use Moonstone rather than white UI");
 });
+
+
+test("dead light/dark switch and center toolbar cannot reappear",()=>{
+ const header=read("apps/web/src/discovery/GlobalHeader.tsx");
+ const headerCss=read("apps/web/src/discovery/global-header.css");
+ const visitor=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
+ const registration=read("apps/web/src/registration/v2/RealRegistration.tsx");
+ assert.doesNotMatch(header,/onTheme|theme:"light"/);
+ assert.doesNotMatch(headerCss,/\\.lh-tools|\\.lh-profile-theme|\\.lh-tool-/);
+ assert.doesNotMatch(visitor,/onTheme|theme:\s*"light"/);
+ assert.doesNotMatch(registration,/onTheme|p\\.theme/);
+ assert.doesNotMatch(app,/ThemeChoice|changeTheme|theme=\\{theme\\}/);
+ assert.equal(existsSync("scripts/theme-switch-mobile-qa.mjs"),false);
+});
