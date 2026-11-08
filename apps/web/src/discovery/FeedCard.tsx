@@ -125,15 +125,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // Previously 'open' was hard-coded to 75% of the photo, which produced an
   // enormous empty opaque panel over the person's face on Android Telegram.
   const full=content.current?.scrollHeight??0;
-  const maxClosed=Math.max(108,Math.min(height*.56,height-actions-25));
-  const minClosed=Math.min(maxClosed,height<420?132:180);
-  // Compact geometry is content-aware by breakpoint but never grows with the
-  // complete interest list. The hidden rows still contribute to `full`, so the
-  // expanded state can reveal them without a second layout jump.
-  const desiredClosed=height<420?166:height<560?210:236;
-  // Include short biographies + interest chips in the compact state.
-  const closed=Math.max(minClosed,Math.min(maxClosed,Math.max(desiredClosed,Math.min(full+12,maxClosed))));
-  const open=Math.max(closed,Math.min(full+34,height*.77,height-actions-22));
+  // The old compact sheet grew with the FULL biography, leaving almost no
+  // travel. Make closed state truly compact; animate everything at finger speed.
+  const maxClosed=Math.max(110,Math.min(height*.43,height-actions-52));
+  const minClosed=Math.min(maxClosed,height<420?135:171);
+  const desiredClosed=height<420?160:height<560?194:216;
+  const closed=clamp(desiredClosed,minClosed,maxClosed);
+  const openCap=Math.max(closed,height-actions-18);
+  const meaningfulTravel=Math.min(155,height*.26);
+  const open=Math.min(openCap,Math.max(closed+meaningfulTravel,full+25));
   element.style.setProperty("--feed-closed-height",closed+"px");
   details.current?.style.setProperty("height",open+"px");
   // Resizing updates geometry once; all subsequent RAF paints stay composited.
