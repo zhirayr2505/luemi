@@ -126,6 +126,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  onPerson:(p:RealPublishedProfile)=>void;onMatched:(person:RealPublishedProfile,matchId:string)=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
  onScrollTop:(top:number)=>void;filters:RealFeedFilter;onEditFilters:()=>void;onTryDemo:()=>void;
+ onEmptyFeed:()=>void;
  onSearchScopeChange:(scope:SearchScope)=>void;
  hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void
 }){
@@ -174,16 +175,19 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    if(initialFeed.searchScope&&initialFeed.searchScope!==draft.searchScope)
     onSearchScopeChange(initialFeed.searchScope);
    setRows(initialFeed.profiles);setCursor(initialFeed.nextCursor);
-   setPage(0);setLoading(false);complete=true;return()=>controller.abort();
+   setPage(0);setLoading(false);complete=true;
+   if(tab==="feed"&&initialFeed.profiles.length===0)onEmptyFeed();
+   return()=>controller.abort();
   }
   void getPublishedFeed(controller.signal).then(result=>{
    if(controller.signal.aborted)return;
    if(result.searchScope&&result.searchScope!==draft.searchScope)
     onSearchScopeChange(result.searchScope);
    setRows(result.profiles);setCursor(result.nextCursor);setPage(0);setLoading(false);complete=true;
+   if(tab==="feed"&&result.profiles.length===0)onEmptyFeed();
   }).catch(()=>{if(!controller.signal.aborted){setLoading(false);setError("Не удалось загрузить анкеты.");complete=true;}});
   return ()=>{if(!complete&&lastRefresh.current===refresh)lastRefresh.current=-1;controller.abort();};
- },[active,refresh,initialFeed,draft.searchScope,onSearchScopeChange]);
+ },[active,refresh,initialFeed,draft.searchScope,onSearchScopeChange,onEmptyFeed,tab]);
  // Each tab now owns its approved presentation. Only Feed renders a full-screen deck;
  // For You and Nearby sort/filter the complete real server page themselves.
  const matchedRows=useMemo(()=>rows.filter(p=>!hiddenIds.has(p.id)),[rows,hiddenIds]);
@@ -338,12 +342,18 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   return route==="likes"||route==="chats"?route:"discover";
  });
  const [browse,setBrowse]=useState<BrowseTab>("feed");
- // No fictional profile enters server discovery. Only explicit opt-in mounts QA.
+ // No fictional profile ever enters server discovery. If the genuine feed is
+ // empty, show a transparently labelled QA sandbox instead of a dead screen.
+ const autoDemoShown=useRef(initialFeed?.profiles.length===0);
  const [demoMode,setDemoMode]=useState(()=>{
   const params=new URLSearchParams(window.location.search);
   const start=window.Telegram?.WebApp?.initDataUnsafe?.start_param??params.get("tgWebAppStartParam");
-  return params.get("luemiDemo")==="1"||start==="demo";
+  return params.get("luemiDemo")==="1"||start==="demo"||initialFeed?.profiles.length===0;
  });
+ const offerDemoOnEmpty=useCallback(()=>{
+  if(autoDemoShown.current)return;
+  autoDemoShown.current=true;setDemoMode(true);
+ },[]);
  const [scopeOverride,setScopeOverride]=useState<SearchScope|null>(null);
  const [confirmedCity,setConfirmedCity]=useState<ObservedCity|null>(null);
  const [cityEpoch,setCityEpoch]=useState(0);
@@ -737,10 +747,11 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
       {tabs.map(([id,label])=><section key={id} className="discovery-page" role="tabpanel" aria-label={label}
        aria-hidden={browse!==id} inert={browse!==id}>
        {id==="feed"&&demoMode?<DemoFeedSandbox key="demo-preview" draft={feedDraft}
-        active={mainTab==="discover"&&browse==="feed"} onExit={()=>setDemoMode(false)}/>:
+        active={mainTab==="discover"&&browse==="feed"} onExit={()=>{autoDemoShown.current=true;setDemoMode(false);}}/>:
        <LiveDeck key={id+"-"+feedDraft.searchScope+"-"+cityEpoch} active={mainTab==="discover"&&browse===id} tab={id} draft={feedDraft}
         initialFeed={scopeOverride||cityEpoch?null:initialFeed} saved={savedIds} onSave={onSave} filters={filters}
-        onEditFilters={()=>setFilterOpen(true)} onTryDemo={()=>setDemoMode(true)} onSearchScopeChange={setScopeOverride}
+        onEditFilters={()=>setFilterOpen(true)} onTryDemo={()=>setDemoMode(true)}
+        onEmptyFeed={offerDemoOnEmpty} onSearchScopeChange={setScopeOverride}
         hiddenIds={hiddenIds} onHide={onHide}
         onScrollTop={top=>onScrollTop(id,top)}
         onEditLocation={()=>setMainTab("profile")}
