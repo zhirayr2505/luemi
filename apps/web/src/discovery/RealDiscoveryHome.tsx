@@ -2,7 +2,7 @@ import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "rea
 import type {ReactNode} from "react";
 import type {CSSProperties} from "react";
 import {CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2,Sparkles,LockKeyhole} from "lucide-react";
-import type {RegistrationDraft,Gender} from "../registration/model";
+import type {RegistrationDraft,Gender,SearchScope} from "../registration/model";
 import {gendered} from "../ui/PersonalizedCopy";
 import type {DemoKind,DemoPerson} from "./model";
 import type {ProfileMasterData} from "./ProfileModel";
@@ -123,7 +123,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  onPerson:(p:RealPublishedProfile)=>void;onMatched:(person:RealPublishedProfile,matchId:string)=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
  onScrollTop:(top:number)=>void;filters:RealFeedFilter;onEditFilters:()=>void;
- onSearchScopeChange:(scope:"world")=>void;
+ onSearchScopeChange:(scope:SearchScope)=>void;
  hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void
 }){
  const [rows,setRows]=useState<RealPublishedProfile[]>([]);
@@ -168,15 +168,19 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   if(initialFeed&&refresh===0){
    // First paint already has the actual signed server recommendations and
    // the first decoded image blobs from the publication handoff.
+   if(initialFeed.searchScope&&initialFeed.searchScope!==draft.searchScope)
+    onSearchScopeChange(initialFeed.searchScope);
    setRows(initialFeed.profiles);setCursor(initialFeed.nextCursor);
    setPage(0);setLoading(false);complete=true;return()=>controller.abort();
   }
   void getPublishedFeed(controller.signal).then(result=>{
    if(controller.signal.aborted)return;
+   if(result.searchScope&&result.searchScope!==draft.searchScope)
+    onSearchScopeChange(result.searchScope);
    setRows(result.profiles);setCursor(result.nextCursor);setPage(0);setLoading(false);complete=true;
   }).catch(()=>{if(!controller.signal.aborted){setLoading(false);setError("Не удалось загрузить анкеты.");complete=true;}});
   return ()=>{if(!complete&&lastRefresh.current===refresh)lastRefresh.current=-1;controller.abort();};
- },[active,refresh,initialFeed]);
+ },[active,refresh,initialFeed,draft.searchScope,onSearchScopeChange]);
  // Each tab now owns its approved presentation. Only Feed renders a full-screen deck;
  // For You and Nearby sort/filter the complete real server page themselves.
  const matchedRows=useMemo(()=>rows.filter(p=>!hiddenIds.has(p.id)),[rows,hiddenIds]);
@@ -329,7 +333,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
   return route==="likes"||route==="chats"?route:"discover";
  });
  const [browse,setBrowse]=useState<BrowseTab>("feed");
- const [scopeOverride,setScopeOverride]=useState<"world"|null>(null);
+ const [scopeOverride,setScopeOverride]=useState<SearchScope|null>(null);
  const feedDraft=scopeOverride?{...draft,searchScope:scopeOverride}:draft;
  const [filters,setFilters]=useState<RealFeedFilter>(defaultRealFeedFilter);
  const [filterOpen,setFilterOpen]=useState(false);
