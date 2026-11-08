@@ -11,10 +11,9 @@ import {FeedCard} from "./FeedCard";
 import "./demo-feed-sandbox.css";
 
 type Props={draft:RegistrationDraft;active:boolean;onExit:()=>void};
-const previewDistance=[3,28,75,140,340,560,920,1250,1850,2300,3100,3550,4100,4800,5300] as const;
-
-/** A deliberately opt-in UI sandbox. Never calls the real feed, like, match or chat APIs.
- * Every profile is fictional and the distances are labelled illustrative.
+ 
+/** An isolated QA sandbox. Never calls the real feed, like, match or chat APIs.
+ * Every profile is fictional; no invented geographical distance is displayed.
  * There is no database insertion, public discovery indexing or fake Telegram user. */
 export function DemoFeedSandbox({draft,active,onExit}:Props){
  const people=useMemo<DemoPerson[]>(()=>demoPeople.map((person,index)=>{
@@ -71,14 +70,15 @@ export function DemoFeedSandbox({draft,active,onExit}:Props){
   else timer.current=window.setTimeout(finish,450);
  };
  return <div className="demo-qa-feed" aria-label="Тестовая лента LUEMI">
-  <div className="demo-qa-ribbon">
-   <span className="demo-qa-mode"><ShieldCheck size={14}/> ТЕСТОВЫЙ РЕЖИМ</span>
-   <span className="demo-qa-counter">{Math.min(page+1,people.length)} из {people.length}</span>
+  <div className="demo-qa-ribbon" aria-label="ТЕСТОВЫЙ РЕЖИМ">
+   <span className="demo-qa-mode"><ShieldCheck size={14}/> Демо <span className="demo-qa-counter">{Math.min(page+1,people.length)} / {people.length}</span></span>
+   <button type="button" onClick={reset} disabled={leaving} aria-label="Начать тестовые анкеты заново" title="Заново">
+    <RotateCcw size={15}/>
+   </button>
    <button type="button" onClick={onExit} aria-label="Вернуться в реальные знакомства">
     <ArrowLeft size={15}/> В ленту
    </button>
   </div>
-  <div className="demo-qa-subtitle">Вымышленные анкеты · расстояния условные · реальные лайки не отправляются</div>
   {current?<div className="discovery-deck-stage has-profiles">
     <div key={current.id} className={"discovery-deck-layer"+(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active")}
       onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
@@ -86,24 +86,19 @@ export function DemoFeedSandbox({draft,active,onExit}:Props){
       <FeedCard person={current} saved={saved.has(current.id)} canUndo={history.length>0}
        active={active} busy={leaving} onAction={action}
        onOpenProfile={()=>setPreview(current)} onInterests={()=>setPreview(current)}
-       demoDistanceKm={previewDistance[page]}/>
+       />
     </div>
     {next&&<div key={next.id} className={"discovery-deck-layer"+(leaving?" deck-entering":" deck-queued")}>
       <FeedCard person={next} saved={saved.has(next.id)} canUndo={false}
        active={false} busy onAction={()=>{}} onOpenProfile={()=>{}} onInterests={()=>{}}
-       demoDistanceKm={previewDistance[page+1]}/>
+       />
     </div>}
    </div>:<div className="demo-qa-finished">
     <ShieldCheck size={31}/><h3>Все {people.length} анкет просмотрены</h3>
     <p>Можно повторить тест свайпов, фотографий и подсветки сколько угодно раз.</p>
     <button type="button" onClick={reset}><RotateCcw size={18}/> Посмотреть заново</button>
    </div>}
-  <div className="demo-qa-footer">
-   <span role="status" aria-live="polite">{message||"Фото — влево/вправо · информация — вверх/вниз"}</span>
-   <button type="button" onClick={reset} disabled={leaving} title="Начать тест заново">
-    <RotateCcw size={16}/> Заново
-   </button>
-  </div>
+  <span className="demo-qa-sr-only" role="status" aria-live="polite">{message||"Демонстрационные анкеты. Реальные лайки не отправляются."}</span>
   {preview&&<div className="demo-qa-preview-backdrop" onClick={()=>setPreview(null)}>
    <section className="demo-qa-preview" role="dialog" aria-modal="true" aria-label={"Демо-профиль "+preview.name}
     onClick={e=>e.stopPropagation()}>
