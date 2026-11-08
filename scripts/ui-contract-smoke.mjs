@@ -31,7 +31,9 @@ assertCheck("city, radius, world and legacy country search scopes are backward-c
  model.includes('SearchScope = "radius" | "city" | "country" | "world"')&&
  geo.includes('["city","Мой город"')&&geo.includes("geo-liquid-city")&&
  geo.includes('data.searchScope==="country"'));
-assertCheck("range 5000km mapped nonlinearly",geo.includes("radiusAt")&&geo.includes("4999"));
+assertCheck("nearby automatically ranks by city distance without a user-adjusted slider",
+ geo.includes("Ближайшие сначала")&&!geo.includes("radiusAt")&&
+ !geo.includes('aria-label="Радиус поиска, километры"'));
 assertCheck("expanded goals, undecided first and gendered selection",
  model.includes('{id:"undecided"')&&model.includes('{id:"family_goal"')&&
  model.includes('{id:"travel_partner"')&&steps.includes("goalLabel(goal.id,data.gender)"));
