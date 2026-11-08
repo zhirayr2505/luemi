@@ -80,20 +80,25 @@ export function DemoFeedSandbox({draft,active,onExit}:Props){
    </button>
   </div>
   {current?<div className="discovery-deck-stage has-profiles">
-    <div key={current.id} className={"discovery-deck-layer"+(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active")}
-      onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
-       ["feed-v2-pass","feed-v2-like","feed-v2-special"].includes(event.animationName))finish();}}>
-      <FeedCard person={current} saved={saved.has(current.id)} canUndo={history.length>0}
-       active={active} busy={leaving} onAction={action}
-       onOpenProfile={()=>setPreview(current)} onInterests={()=>setPreview(current)}
-       />
-    </div>
-    {next&&<div key={next.id} className={"discovery-deck-layer"+(leaving?" deck-entering":" deck-queued")}>
-      <FeedCard person={next} saved={saved.has(next.id)} canUndo={false}
-       active={false} busy onAction={()=>{}} onOpenProfile={()=>{}} onInterests={()=>{}}
-       />
-    </div>}
-   </div>:<div className="demo-qa-finished">
+    {[current,next].filter((person):person is DemoPerson=>Boolean(person)).map((person,i)=>{
+     const foreground=i===0;
+     return <div key={person.id}
+       className={"discovery-deck-layer"+(foreground?
+         (leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active"):
+         (leaving?" deck-entering":" deck-queued"))}
+       onAnimationEnd={event=>{
+        if(foreground&&leaving&&event.target===event.currentTarget&&
+         ["feed-v2-pass","feed-v2-like","feed-v2-special","luemi-deck-leave"].includes(event.animationName))finish();
+       }}>
+       <FeedCard person={person} saved={saved.has(person.id)}
+        canUndo={foreground&&history.length>0}
+        active={foreground&&active} busy={!foreground||leaving}
+        onAction={foreground?action:()=>{}}
+        onOpenProfile={foreground?()=>setPreview(person):()=>{}}
+        onInterests={foreground?()=>setPreview(person):()=>{}}/>
+      </div>;
+    })}
+  </div>:<div className="demo-qa-finished">
     <ShieldCheck size={31}/><h3>Все {people.length} анкет просмотрены</h3>
     <p>Можно повторить тест свайпов, фотографий и подсветки сколько угодно раз.</p>
     <button type="button" onClick={reset}><RotateCcw size={18}/> Посмотреть заново</button>
