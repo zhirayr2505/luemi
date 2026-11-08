@@ -88,7 +88,7 @@ export function DemoFeedSandbox({draft,active,onExit}:Props){
          (leaving?" deck-entering":" deck-queued"))}
        onAnimationEnd={event=>{
         if(foreground&&leaving&&event.target===event.currentTarget&&
-         ["feed-v2-pass","feed-v2-like","feed-v2-special","luemi-deck-leave"].includes(event.animationName))finish();
+         ["luemi-demo-pass","luemi-demo-like","luemi-demo-special","luemi-deck-leave"].includes(event.animationName))finish();
        }}>
        <FeedCard person={person} saved={saved.has(person.id)}
         canUndo={foreground&&history.length>0}
