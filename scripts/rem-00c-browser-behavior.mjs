@@ -171,7 +171,7 @@ async function appBootstrap(browser){
    initData:window.Telegram?.WebApp?.initData,webappKeys:Object.keys(window.Telegram?.WebApp||{}).slice(0,20),
    scripts:[...document.scripts].map(x=>x.getAttribute("src")).filter(Boolean)
   }))));
-  await page.getByRole("button",{name:/^Начать(?: знакомство)?$/}).waitFor({state:"visible",timeout:9000}).catch(async error=>{
+  await page.getByRole("button",{name:/^(Зарегистрироваться|Продолжить регистрацию)$/}).waitFor({state:"visible",timeout:9000}).catch(async error=>{
    const diagnostics=await page.evaluate(()=>({
     text:document.querySelector(".entry-state")?.textContent?.slice(0,450),
     authScene:document.querySelector(".luemi-shell")?.getAttribute("data-scene"),
@@ -187,7 +187,7 @@ async function appBootstrap(browser){
   assert.equal(bridge.includes("exitFullscreen"),false,"V3 fullscreen app must never exit Telegram fullscreen");
   assert.ok(calls.includes("live")&&calls.includes("auth")&&calls.indexOf("live")<calls.indexOf("auth"),"mocked health precedes authorization, including React StrictMode effect reruns");
   await snapshot(page,"08-app-intro-mocked-telegram");
-  await page.getByRole("button",{name:/^Начать(?: знакомство)?$/}).click();
+  await page.getByRole("button",{name:/^(Зарегистрироваться|Продолжить регистрацию)$/}).click();
   const progress=await required(page,'[role="progressbar"][aria-label="Прогресс регистрации"]',"real App onboarding");
   assert.equal(await progress.getAttribute("aria-valuenow"),"1","App moves from welcome to registration step 1");
   assert.equal(await page.locator(".luemi-shell").getAttribute("data-phase"),"form");
