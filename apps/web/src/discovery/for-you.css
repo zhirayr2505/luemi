@@ -5,23 +5,23 @@
  scrollbar-width:thin;scrollbar-color:var(--line) transparent;padding:5px 1px 36px}
 .fy-scroll>*{max-width:620px;margin-left:auto;margin-right:auto}
 .fy-hero{position:relative;min-height:211px;border-radius:29px;overflow:hidden;isolation:isolate;padding:19px 18px;
- background:linear-gradient(125deg,#E6E2ED,#EAE7F0 51%,#E8E5EF);border:1px solid rgba(255,255,255,.77);
- box-shadow:inset 0 2px 2px rgba(255,255,255,.87),inset 0 -4px 20px rgba(161,151,182,.11),0 11px 28px var(--shadow)}
+ background:linear-gradient(130deg,var(--luemi-surface-raised),var(--luemi-glass),var(--luemi-surface));border:1px solid var(--luemi-border);
+ box-shadow:inset 0 1px rgba(255,255,255,.16),inset 0 -4px 20px rgba(7,11,18,.13),0 11px 28px var(--luemi-shadow-contact)}
 .fy-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
- background:linear-gradient(110deg,rgba(255,255,255,.72),rgba(255,255,255,.16) 56%,rgba(255,255,255,.35))}
+ background:linear-gradient(110deg,rgba(255,255,255,.09),rgba(255,255,255,.02) 56%,rgba(255,255,255,.06))}
 .fy-hero::after{content:"";position:absolute;inset:0;pointer-events:none;
  border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
 .fy-hero-glow{position:absolute;right:-54px;top:-72px;width:240px;height:250px;border-radius:50%;
- background:radial-gradient(circle,rgba(255,255,255,.76),rgba(202,195,217,.42) 50%,transparent 77%);pointer-events:none}
+ background:radial-gradient(circle,rgba(214,207,233,.21),rgba(138,130,160,.08) 50%,transparent 77%);pointer-events:none}
 .fy-hero-mark{position:absolute;right:-7px;top:18px;transform:rotate(-14deg);color:rgba(111,124,150,.3)}
 .fy-hero-mark svg:last-child{position:absolute;top:5px;right:28px;color:rgba(152,139,177,.55)}
-.fy-hero-copy{position:relative;z-index:2;max-width:81%;color:#434A59}
-.fy-eyebrow{display:flex;align-items:center;gap:6px;color:#707C95;font-size:10px;font-weight:800;letter-spacing:.09em}
+.fy-hero-copy{position:relative;z-index:2;max-width:81%;color:var(--luemi-text)}
+.fy-eyebrow{display:flex;align-items:center;gap:6px;color:var(--luemi-rose);font-size:10px;font-weight:800;letter-spacing:.09em}
 .fy-hero h2{margin:11px 0 9px;font-size:clamp(22px,5.7vw,28px);line-height:1.14;font-weight:790;letter-spacing:-.045em}
-.fy-hero p{max-width:275px;font-size:12px;line-height:1.5;color:#5F697C;margin:0 0 12px}
+.fy-hero p{max-width:275px;font-size:12px;line-height:1.5;color:var(--luemi-text-secondary);margin:0 0 12px}
 .fy-hero-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;border-radius:16px;
- color:#fff;font-size:12px;font-weight:740;padding:8px 13px;border:1px solid rgba(255,255,255,.69);
- background:linear-gradient(125deg,#ADA2C2,#B8AFC9);box-shadow:inset 0 1px rgba(255,255,255,.42),0 5px 15px rgba(119,132,156,.18)}
+ color:var(--luemi-ink-on-accent);font-size:12px;font-weight:740;padding:8px 13px;border:1px solid rgba(255,255,255,.69);
+ background:linear-gradient(125deg,#C5B7D5,var(--luemi-lavender));box-shadow:inset 0 1px rgba(255,255,255,.42),0 5px 15px rgba(119,132,156,.18)}
 .fy-hero-button:active{transform:scale(.98)}
 .fy-toolbar{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:17px 2px 0;
  font-size:11px;color:var(--subtle)}
@@ -85,11 +85,6 @@
 .fy-manage footer{display:flex;gap:8px;flex:none;padding:10px 1px 3px}
 .fy-manage footer button{flex:1;min-height:46px;border-radius:16px;border:1px solid var(--glass-edge);color:var(--ink);background:var(--panel);font-weight:700}
 .fy-manage footer button:last-child{background:linear-gradient(120deg,#C1B9D1,#CEC8DB);color:#3E4655}
-.luemi-shell[data-theme=dark] .fy-hero{background:linear-gradient(130deg,#3F4654,#4F5768,#3E4552);border-color:rgba(229,225,237,.28);box-shadow:0 9px 22px rgba(0,0,0,.2)}
-.luemi-shell[data-theme=dark] .fy-hero::before{background:linear-gradient(110deg,rgba(189,180,207,.09),rgba(231,227,238,.08))}
-.luemi-shell[data-theme=dark] .fy-hero-copy{color:#F6F5F9}
-.luemi-shell[data-theme=dark] .fy-hero p{color:#E5E2EB}
-.luemi-shell[data-theme=dark] .fy-eyebrow{color:#E6E2ED}
 @media(max-height:700px){.fy-hero{min-height:192px;padding:16px}.fy-hero h2{font-size:22px}.fy-section{margin-top:15px}}
 @media(max-width:350px){.fy-hero-copy{max-width:94%}.fy-rail .fy-tile{flex-basis:144px}
  .fy-manage-row{flex-wrap:wrap}.fy-section-header>button{font-size:10px}}
