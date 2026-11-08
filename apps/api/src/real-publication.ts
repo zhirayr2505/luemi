@@ -333,10 +333,46 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "AND origin_city.city_norm=lower(btrim(pref.city_label)) "+
     "LEFT JOIN luemi_private.city_centres candidate_city ON candidate_city.country_code=p.country_code "+
     "AND candidate_city.city_norm=lower(btrim(p.city_label)) "+
+
+    // Only coarse declared city centres are used: never precise device GPS.
+    // Evidence and ranking are evaluated by PostgreSQL BEFORE LIMIT/OFFSET,
+    // so later pages cannot jump ahead of better matches on earlier pages.
+    "CROSS JOIN LATERAL (SELECT "+
+    "CASE WHEN lower(btrim(p.city_label))=lower(btrim(pref.city_label)) "+
+    "AND p.country_code=pref.country_code THEN 0::double precision "+
+    "WHEN origin_city.lat IS NULL OR candidate_city.lat IS NULL THEN NULL::double precision "+
+    "ELSE 6371.0088*2*asin(sqrt(least(1.0,"+
+    "power(sin(radians(candidate_city.lat-origin_city.lat)/2),2)+"+
+    "cos(radians(origin_city.lat))*cos(radians(candidate_city.lat))*"+
+    "power(sin(radians(candidate_city.lon-origin_city.lon)/2),2)))) END AS km,"+
+    "cardinality(ARRAY(SELECT unnest(p.interests) INTERSECT "+
+    "SELECT unnest(pref.interests))) AS shared,"+
+    "CASE WHEN pref.goal='undecided' OR p.goal='undecided' THEN 0 "+
+    "WHEN p.goal=pref.goal THEN 2 "+
+    "WHEN pref.goal IN ('serious','relationship','love','family_goal') "+
+    "AND p.goal IN ('serious','relationship','love','family_goal') THEN 1 "+
+    "WHEN pref.goal IN ('dates','flirt','casual') "+
+    "AND p.goal IN ('dates','flirt','casual') THEN 1 "+
+    "WHEN pref.goal IN ('friendship','communication','new_people') "+
+    "AND p.goal IN ('friendship','communication','new_people') THEN 1 "+
+    "WHEN pref.goal IN ('activities','travel_partner') "+
+    "AND p.goal IN ('activities','travel_partner') THEN 1 "+
+    "ELSE 0 END AS goal_score) evidence "+
+    "CROSS JOIN LATERAL (SELECT "+
+    "CASE WHEN evidence.goal_score=2 AND evidence.shared>=2 THEN 4 "+
+    "WHEN evidence.goal_score>0 AND evidence.shared>=1 THEN 3 "+
+    "WHEN evidence.goal_score=2 OR evidence.shared>=2 THEN 2 "+
+    "WHEN evidence.goal_score=1 OR evidence.shared=1 THEN 1 ELSE 0 END AS tier,"+
+    "(evidence.goal_score*4 + least(evidence.shared,6)*2) AS score,"+
+    "CASE WHEN evidence.km IS NULL THEN 9 WHEN evidence.km<=25 THEN 0 "+
+    "WHEN evidence.km<=100 THEN 1 WHEN evidence.km<=300 THEN 2 "+
+    "WHEN evidence.km<=1000 THEN 3 WHEN evidence.km<=3000 THEN 4 "+
+    "ELSE 5 END AS band) ranking "+
     "LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment "+
     "AND incoming.sender_id=p.owner_id AND incoming.receiver_id=$2 AND incoming.status='active' "+
     "WHERE p.environment=$1 "+
-    "AND (pref.search_scope<>'city' OR (lower(p.city_label)=lower(pref.city_label) AND p.country_code=pref.country_code)) "+
+    "AND (pref.search_scope<>'city' OR (lower(btrim(p.city_label))=lower(btrim(pref.city_label)) AND p.country_code=pref.country_code)) "+
+    "AND (pref.search_scope<>'country' OR p.country_code=pref.country_code) "+
     "AND p.owner_id<>$2 AND p.publication_status='published' AND p.published_at IS NOT NULL "+
     "AND (pref.audience='everyone' OR (pref.audience='women' AND p.gender='woman') "+
     "OR (pref.audience='men' AND p.gender='man')) "+
@@ -350,18 +386,14 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "AND (SELECT count(*) FROM luemi_private.media_assets a WHERE a.owner_id=p.owner_id "+
     "AND a.environment=p.environment AND a.state='approved' "+
     "AND a.publication_status='published') BETWEEN 3 AND 6 "+
-    // Radius scope is now automatic nearest-first. Use ONLY city-centre distances,
-    // never a person's GPS; unknown cities remain eligible and sort last.
-    "ORDER BY CASE WHEN pref.search_scope='radius' THEN CASE "+
-    "WHEN lower(btrim(p.city_label))=lower(btrim(pref.city_label)) "+
-    "AND p.country_code=pref.country_code THEN 0::double precision "+
-    "WHEN origin_city.lat IS NULL OR candidate_city.lat IS NULL THEN NULL "+
-    "ELSE 6371.0088*2*asin(sqrt(least(1.0,"+
-    "power(sin(radians(candidate_city.lat-origin_city.lat)/2),2)+"+
-    "cos(radians(origin_city.lat))*cos(radians(candidate_city.lat))*"+
-    "power(sin(radians(candidate_city.lon-origin_city.lon)/2),2)))) END END ASC NULLS LAST,"+
-    "(lower(p.city_label)=lower(pref.city_label) AND p.country_code=pref.country_code) DESC,"+
-    "(p.goal=pref.goal) DESC,cardinality(ARRAY(SELECT unnest(p.interests) INTERSECT SELECT unnest(pref.interests))) DESC,"+
+    // Nearby: compatible profiles first, then closest city centres within each
+    // affinity group. City: strict locality and affinity. World: expand outward
+    // through city-distance bands, prioritize affinity inside each band.
+    // Unknown city coordinates remain discoverable and rank after known places.
+    "ORDER BY CASE WHEN pref.search_scope='world' THEN ranking.band END ASC NULLS LAST,"+
+    "ranking.tier DESC,ranking.score DESC,"+
+    "CASE WHEN pref.search_scope IN ('radius','world') THEN evidence.km END ASC NULLS LAST,"+
+    "(lower(btrim(p.city_label))=lower(btrim(pref.city_label)) AND p.country_code=pref.country_code) DESC,"+
     "(p.country_code=pref.country_code) DESC,p.published_at DESC,p.owner_id DESC OFFSET $3 LIMIT 21",
     [cfg.namespace,viewer,cursor?.offset??0]);
    const page=results.rows.slice(0,20);
