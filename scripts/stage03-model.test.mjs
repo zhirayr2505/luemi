@@ -15,12 +15,12 @@ const people=d.demoPeople;
 assert.equal(people.length,15,"fifteen fictional demo people for the isolated QA feed");
 assert.equal(new Set(people.map(p=>p.id)).size,15,"no duplicate fake people");
 assert.ok(people.some(p=>p.gender==="man")&&people.some(p=>p.gender==="woman"));
-assert.ok(people.every(p=>p.age>=18&&p.photos.length===4&&
- (p.photos[0].src.startsWith("https://cdn.pixabay.com/")||
-  p.photos[0].src.startsWith("data:image/svg+xml"))&&
- p.photos[1].src.startsWith("data:image/svg+xml")&&
- p.photos.slice(2).every(photo=>photo.src.startsWith("https://images.unsplash.com/photo-"))&&
- p.photos.every(photo=>photo.fallback?.startsWith("data:image/svg+xml"))));
+assert.ok(people.every(p=>p.age>=18&&p.photos.length===3&&
+ p.photos[0].src.startsWith("https://cdn.pixabay.com/photo/")&&
+ p.photos.slice(1).every(photo=>
+  photo.src.startsWith("https://images.unsplash.com/photo-")&&
+  photo.fallback===p.photos[0].src)&&p.premium===false),
+ "Every demo has a photographic AI face, two scenic images, no cartoon fallbacks or fake premium badge");
 assert.equal(m.filterDemoPeople(people,m.defaultFilters,draft).length,15,"worldwide fixture results");
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,scope:"country"},draft).every(p=>p.countryCode==="RU"),true);
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,goal:"serious"},draft).every(p=>p.goal==="serious"),true);
