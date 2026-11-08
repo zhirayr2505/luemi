@@ -142,7 +142,7 @@ test("retired registration controls leave no dormant CSS or old light background
  const base=read("apps/web/src/styles.css");
  const runtime=read("apps/web/src/registration/v2/runtime.css");
  for(const [file,css] of [["styles.css",base],["registration/v2/runtime.css",runtime]]){
-  assert.doesNotMatch(css,/\.(?:optional-profile-(?:details|toggle|screen|screen-head|screen-body|screen-foot)|optional-field-row|optional-input-wrap|optional-choice-grid|optional-facts|scope-control|scope-options|geo-mode-toggle|geo-location-primary|geo-scope|photo-make-main|branded-slider|radius-control|age-caption)\b/,
+  assert.doesNotMatch(css,/\.(?:optional-profile-(?:details|toggle|screen|screen-head|screen-body|screen-foot)|optional-field-row|optional-input-wrap|optional-choice-grid|optional-facts|scope-control|scope-options|geo-mode-toggle|geo-location-primary|geo-scope|photo-make-main|branded-slider|radius-control|age-caption)(?![\w-])/,
    "dead legacy registration selector: "+file);
   assert.doesNotMatch(css,/@keyframes luemi-details-(?:in|out)\b/,
    "unmounted optional-profile transitions must not occupy the production bundle");
