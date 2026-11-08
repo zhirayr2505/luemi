@@ -132,7 +132,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const desiredClosed=height<420?160:height<560?194:216;
   const closed=clamp(desiredClosed,minClosed,maxClosed);
   const openCap=Math.max(closed,height-actions-18);
-  const meaningfulTravel=Math.min(155,height*.26);
+  const meaningfulTravel=Math.min(108,height*.20);
   const open=Math.min(openCap,Math.max(closed+meaningfulTravel,full+25));
   element.style.setProperty("--feed-closed-height",closed+"px");
   details.current?.style.setProperty("height",open+"px");
