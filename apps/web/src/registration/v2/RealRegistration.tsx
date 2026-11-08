@@ -78,7 +78,7 @@ export function RealRegistrationV2(p:Props){
  const recoveryApplied=useRef(p.restored);
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
- const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|"language"|null>(null);
+ const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|null>(null);
  const [changingStep,setChangingStep]=useState(false);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
  const viewportRoot=useRef<HTMLElement|null>(null);
@@ -150,7 +150,7 @@ export function RealRegistrationV2(p:Props){
    if(stage.id==="intent"&&!draft.goal)patchDraft({goal:"undecided"});
  },[stage.id,draft.goal,patchDraft]);
  const body=useRef<HTMLElement|null>(null);
- const handleFieldFocus=useCallback((field:"name"|"date"|"city"|"about"|"language"|null)=>{
+ const handleFieldFocus=useCallback((field:"name"|"date"|"city"|"about"|null)=>{
   setFocusedField(field);
  },[]);
  const dateValid=birthDateValid(draft.day,draft.month,draft.year);
