@@ -721,3 +721,78 @@ test("nearby: real city-centre distance orders profiles without a radius thresho
   assert.equal(Number(count.rows[0].count),2,"coarse world index distinguishes Armenian and Russian Armavir");
  }finally{await app.close();await cityAdmin.end();}
 });
+
+test("precise location: separate opt-in, owner-only writes, coarse reader, city choice, immediate revoke",async()=>{
+ const app=makeApp({instant:true});
+ const db=new Pool({connectionString:adminUrl!});
+ const coarseReader=new Pool({connectionString:readerUrl!});
+ try{
+  const owner=await identity(app,8026101),other=await identity(app,8026102);
+  await prepare(app,owner);await prepare(app,other);
+  assert.equal((await mutate(app,owner,"/api/v3/profile/publish",{revision:1})).statusCode,200);
+  assert.equal((await mutate(app,other,"/api/v3/profile/publish",{revision:1})).statusCode,200);
+  const status=()=>app.inject({method:"GET",url:"/api/v3/location/status",
+   headers:{cookie:owner.cookie}});
+  assert.deepEqual((await status()).json(),{enabled:false,updatedAt:null},
+   "existing users must never be silently opted into precise location");
+  assert.equal((await mutate(app,owner,"/api/v3/location/consent",
+   {lat:40.180123,lon:44.503456,accuracyM:8})).statusCode,422,
+   "a GPS value without separate consent must be rejected");
+  const consent=await mutate(app,owner,"/api/v3/location/consent",
+   {lat:40.180123,lon:44.503456,accuracyM:8,consent:true,version:"precise-location-v1"});
+  assert.equal(consent.statusCode,200,consent.body);
+  assert.deepEqual(consent.json(),{enabled:true});
+  const now=(await status()).json();
+  assert.equal(now.enabled,true);
+  assert.equal(typeof now.updatedAt,"string");
+  assert.ok(!JSON.stringify(now).includes("40.180123"),"no raw coordinates in status response");
+  const stored=await db.query<{lat:number;lon:number;coarse_lat:number;coarse_lon:number}>(
+   "SELECT lat,lon,coarse_lat,coarse_lon FROM luemi_private.precise_locations "+
+   "WHERE owner_id=$1 AND environment=$2",[owner.id,namespace]);
+  assert.equal(stored.rows[0].lat,40.180123);
+  assert.equal(stored.rows[0].lon,44.503456);
+  assert.equal(stored.rows[0].coarse_lat,40.18);
+  assert.equal(stored.rows[0].coarse_lon,44.50);
+  const readerClient=await coarseReader.connect();
+  try{
+   await readerClient.query("BEGIN");
+   await readerClient.query("SELECT set_config('luemi.viewer_id',$1,true)",[owner.id]);
+   await readerClient.query("SELECT set_config('luemi.environment',$1,true)",[namespace]);
+   const ok=await readerClient.query(
+    "SELECT coarse_lat,coarse_lon FROM luemi_private.precise_locations WHERE owner_id=$1",[owner.id]);
+   assert.equal(ok.rowCount,1);
+   await assert.rejects(readerClient.query("SELECT lat,lon FROM luemi_private.precise_locations"),
+    /permission denied/,"discovery DB principal may never read exact GPS");
+   await readerClient.query("ROLLBACK");
+  }finally{readerClient.release();}
+  const noCsrf=await app.inject({method:"POST",url:"/api/v3/location/refresh",
+   headers:{cookie:owner.cookie,origin,"sec-fetch-site":"same-origin"},
+   payload:{lat:40.181,lon:44.502}});
+  assert.notEqual(noCsrf.statusCode,200,"background writes still require session CSRF");
+  assert.equal((await mutate(app,other,"/api/v3/location/refresh",
+   {lat:40.181,lon:44.502})).statusCode,409,
+   "another member cannot refresh without their own consent");
+  const refresh=await mutate(app,owner,"/api/v3/location/refresh",
+   {lat:40.182345,lon:44.502345,accuracyM:15});
+  assert.equal(refresh.statusCode,200,refresh.body);
+  const selection=await mutate(app,owner,"/api/v3/location/confirm-city",
+   {city:"Москва",country:"Россия",countryCode:"RU",placeId:"offline:ru:moscow"});
+  assert.equal(selection.statusCode,200,selection.body);
+  const changed=await db.query<{city_label:string;country_code:string}>(
+   "SELECT city_label,country_code FROM luemi_private.public_profiles WHERE owner_id=$1",[owner.id]);
+  assert.deepEqual(changed.rows[0],{city_label:"Москва",country_code:"RU"});
+  const draft=await db.query<{city:string}>(
+   "SELECT payload->>'city' AS city FROM luemi_private.private_profile_drafts WHERE owner_id=$1",[owner.id]);
+  assert.equal(draft.rows[0].city,"Москва","the next editing session must not revert the accepted city");
+  const feedBody=(await feed(app,other)).body;
+  assert.ok(!feedBody.includes("40.182345")&&!feedBody.includes("44.502345"),
+   "discovery responses must not disclose private GPS values");
+  const revoke=await mutate(app,owner,"/api/v3/location/revoke",{});
+  assert.deepEqual(revoke.json(),{enabled:false,deleted:true});
+  assert.equal((await db.query("SELECT 1 FROM luemi_private.precise_locations WHERE owner_id=$1",
+   [owner.id])).rowCount,0);
+  assert.equal((await mutate(app,owner,"/api/v3/location/refresh",
+   {lat:40.18,lon:44.50})).statusCode,409,
+   "stale timers cannot recreate revoked consent");
+ }finally{await app.close();await db.end();await coarseReader.end();}
+});
