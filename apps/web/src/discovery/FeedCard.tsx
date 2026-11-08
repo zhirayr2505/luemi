@@ -269,7 +269,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const available=active&&!busy;
  return <div className="discovery-deck-current feed-v2" aria-hidden={!active}>
    {ambientPhoto&&<div className="feed-v2-photo-ambient" aria-hidden="true">
-    <img key={ambientPhoto} src={ambientPhoto} alt="" loading={active?"eager":"lazy"} decoding="async" draggable={false}/>
+    <img key={ambientPhoto} src={ambientPhoto} alt="" loading={active?"eager":"lazy"} decoding="async" draggable={false}
+       onError={event=>{const fallback=person.photos[activePhotoIndex]?.fallback;
+        if(fallback&&event.currentTarget.src!==fallback)event.currentTarget.src=fallback;}}/>
    </div>}
    <article className="discovery-card feed-v2-card" ref={card} data-expanded={expanded}
      onPointerDownCapture={down} onPointerMoveCapture={move}
