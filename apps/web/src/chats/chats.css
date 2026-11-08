@@ -1,4 +1,4 @@
-/* LUEMI Chats V5 — server-backed chat behavior with the shared Soft Plum skin. */
+/* LUEMI Chats V5 — server-backed chat behavior with the shared Moonstone V6 skin. */
 .luemi-chats{
  --lc-ink:var(--luemi-text,#F2F3F5);--lc-muted:var(--luemi-text-secondary,#B3B8C2);
  position:relative;display:flex;flex-direction:column;width:100%;height:100%;min-height:0;
