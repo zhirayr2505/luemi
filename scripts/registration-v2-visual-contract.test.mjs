@@ -370,8 +370,8 @@ assert.match(form,/useLayoutEffect\(\(\)=>\{[\s\S]*?data-registration-shell[\s\S
  "Stable layout starts before paint and follows coalesced viewport events");
 assert.match(form,/measuredBottom>=fullHeight-18[\s\S]*?Math\.max\(fullHeight,window\.innerHeight,measuredBottom\)/,
  "Transient keyboard viewport decreases cannot shrink the full canvas");
-assert.doesNotMatch(runtime,/\.v2-stage-heading::after\{/,
- "Old translucent rectangle over the heading is fully deleted");
+assert.match(runtime,/\.v2-stage-heading::after\{[^}]*height:30px;[^}]*-webkit-mask-image:linear-gradient/s,
+ "The new title glass is a narrow gradient-masked edge, not the retired full-size rectangle");
 assert.match(runtime,/\.v2-focus-scrim\{\s*position:absolute;inset:0;z-index:90;[^}]*blur\(40px\)/s,
  "One unfenced blur covers the logo, progress, heading and all background controls");
 assert.match(runtime,/@media\(prefers-reduced-motion:reduce\)[\s\S]*?\.v2-focus-scrim\{transition:none\}/,
