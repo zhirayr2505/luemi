@@ -30,7 +30,7 @@ import {useModalLayer} from "../ui/modal-layer";
 import "./discovery.css";
 import "./feed-v2.css";
 
-const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
+const navigation=[["discover","Лента",Images],["likes","Лайки",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 const androidWebView=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 
@@ -563,7 +563,7 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
            }}
            style={{"--luemi-tab-offset":(-tabIndex*100)+"%"} as CSSProperties}>
            <section className="discovery-page" role="tabpanel" aria-label="Лента" inert={discoveryTab!=="feed"} aria-hidden={discoveryTab!=="feed"}>
-             {<div className="discovery-deck-stage">
+             {<div className={"discovery-deck-stage"+(person?" has-profiles":"")}>
                {person&&<div key={person.id}
                  className={"discovery-deck-layer"+(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active")}
                  onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
