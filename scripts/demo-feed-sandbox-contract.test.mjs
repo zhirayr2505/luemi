@@ -8,14 +8,16 @@ const photos=read("apps/web/src/discovery/demo-people.ts");
 const card=read("apps/web/src/discovery/FeedCard.tsx");
 const style=read("apps/web/src/discovery/demo-feed-sandbox.css");
 
-test("test people are exclusively opt-in; real authenticated discovery is still the default",()=>{
+test("fictional profiles remain isolated; empty genuine feed automatically opens QA preview",()=>{
  assert.match(shell,/const \[demoMode,setDemoMode\]=useState\(\(\)=>\{/);
  assert.match(shell,/params\.get\("luemiDemo"\)==="1"\|\|start==="demo"/);
  assert.match(shell,/id==="feed"&&demoMode\?<DemoFeedSandbox/);
  assert.match(shell,/<LiveDeck key=\{id\+"-"\+feedDraft\.searchScope/);
  assert.match(shell,/<FeedCard person=\{toCard\(current\)\} real/);
- assert.match(shell,/onExit=\{\(\)=>setDemoMode\(false\)\}/);
- assert.match(shell,/Проверить тестовые карточки \(6\)/);
+ assert.match(shell,/onExit=\{\(\)=>\{autoDemoShown\.current=true;setDemoMode\(false\);\}\}/);
+ assert.match(shell,/initialFeed\?\.profiles\.length===0/);
+ assert.match(shell,/onEmptyFeed=\{offerDemoOnEmpty\}/);
+ assert.match(shell,/Проверить тестовые карточки \(15\)/);
  assert.match(shell,/Посмотреть тестовые карточки/);
 });
 
@@ -29,14 +31,15 @@ test("synthetic profiles are not inserted into server, likes, matches or convers
  assert.match(sandbox,/busy=\{leaving\}/);
 });
 
-test("six distinct profiles each have one illustrated synthetic portrait plus three unique scene images",()=>{
+test("fifteen fictional profiles each have four images and distinct identities",()=>{
  assert.match(photos,/const portraitSources=\[/);
  assert.match(photos,/const scenes:readonly/);
  const sceneEntries=[...photos.matchAll(/photo-[0-9]{13}-[0-9a-f]{12}/g)].map(x=>x[0]);
  assert.equal(sceneEntries.length,18);
  assert.equal(new Set(sceneEntries).size,18);
- assert.match(photos,/\.\.\.scenes\[index\]\.map/);
- assert.match(photos,/src:portraitSources\[index\]/);
+ assert.equal([...photos.matchAll(/^\s*\["[a-z]+","[^"]+",\d+,/gm)].length,15);
+ assert.match(photos,/\.\.\.scenes\[index%scenes\.length\]\.slice\(0,2\)\.map/);
+ assert.match(photos,/src:index<portraitSources\.length\?portraitSources\[index\]:illustration\(index,0\)/);
  assert.match(photos,/fallback:illustration\(index,variation\+1\)/);
  assert.match(sandbox,/demoDistanceKm=\{previewDistance\[page\]\}/);
  assert.match(sandbox,/countryCode:draft\.countryCode\|\|person\.countryCode/);
