@@ -46,7 +46,7 @@ function IsolatedRegistrationQA(){
     draft={draft} patch={patch} photos={photos}
     fallbackEntry={false} restored={true} resumeReview={false}
     addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
-    resetDraft={()=>setDraft(newDraft())} theme="dark" onTheme={()=>{}}
+    resetDraft={()=>setDraft(newDraft())}
     onSave={submit} mediaEnabled={true} serverSaving={publishing}
     serverStatus="" mediaStatus="" storageError={null}
     onRetryStorage={()=>{}} onExit={()=>{}} registerBack={registerBack}/>}

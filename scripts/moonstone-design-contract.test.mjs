@@ -71,3 +71,49 @@ test("Telegram system chrome and entire app share same Moonstone theme",()=>{
  assert.ok(existsSync("apps/web/public/assets/brand/wordmark_original_raster_alpha_W06.webp"),
   "original LUEMI logo must remain unchanged and bundled");
 });
+
+
+test("Moonstone ships one dark shell, not a dormant legacy light palette",()=>{
+ const shell=read("apps/web/src/styles.css");
+ assert.match(shell,/--bg:var\(--luemi-bg\)/,"base shell must use Moonstone tokens before route hydration");
+ assert.doesNotMatch(shell,/--bg:\s*#|--ink:\s*#|--lavender:\s*#|--pink:\s*#/i,
+  "hardcoded parallel light/dark palettes cannot re-enter the global shell");
+ assert.doesNotMatch(shell,/@keyframes mist-one|@keyframes mist-two|@keyframes intro-glow/,
+  "retired decorative animation loops must be physically removed");
+ assert.doesNotMatch(shell,/\.luemi-shell\[data-theme=dark\]\s*\{/,
+  "the old dark-theme override must not duplicate the Moonstone source of truth");
+});
+test("deleted registration language flow and artificial photo cropping stay deleted",()=>{
+ const steps=read("apps/web/src/registration/Steps.tsx");
+ const form=read("apps/web/src/registration/v2/RealRegistration.tsx");
+ const focus=read("apps/web/src/registration/use-field-focus.ts");
+ assert.equal(existsSync("apps/web/src/registration/LanguagePicker.tsx"),false,
+  "retired language picker must not be left as dormant reachable JSX");
+ assert.doesNotMatch(steps,/LanguagePicker|personalityPart/);
+ assert.doesNotMatch(form,/personalityPart/);
+ assert.doesNotMatch(focus,/language-focus-shell|language-results-max-height|flagsMutation/);
+ for(const file of files){
+  const css=read(file);
+  assert.doesNotMatch(css,/\.language-(?:option|results|focus-shell|selected|picker)\b/,
+   "dead language selection CSS in "+file);
+  assert.doesNotMatch(css,/\.carousel-track\s+img:nth-child\(2\)/,
+   "demo-only photo crop would distort real second photos in "+file);
+ }
+ const prototype=read("apps/web/src/discovery/profile-v3/rendering/ProfileMorphSurface.css");
+ assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#2B3037\)/,
+  "even isolated V3 previews must use Moonstone rather than white UI");
+});
+
+
+test("dead light/dark switch and center toolbar cannot reappear",()=>{
+ const header=read("apps/web/src/discovery/GlobalHeader.tsx");
+ const headerCss=read("apps/web/src/discovery/global-header.css");
+ const visitor=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
+ const registration=read("apps/web/src/registration/v2/RealRegistration.tsx");
+ assert.doesNotMatch(header,/onTheme|theme:"light"/);
+ assert.doesNotMatch(headerCss,/\\.lh-tools|\\.lh-profile-theme|\\.lh-tool-/);
+ assert.doesNotMatch(visitor,/onTheme|theme:\s*"light"/);
+ assert.doesNotMatch(registration,/onTheme|p\\.theme/);
+ assert.doesNotMatch(app,/ThemeChoice|changeTheme|theme=\\{theme\\}/);
+ assert.equal(existsSync("scripts/theme-switch-mobile-qa.mjs"),false);
+});

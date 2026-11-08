@@ -18,8 +18,6 @@ interface Props{
  removePhoto:(id:string)=>void;
  movePhoto:(from:number,to:number)=>void;
  resetDraft:()=>void;
- theme:"light"|"dark";
- onTheme:()=>void;
  onSave:()=>void;
  mediaEnabled:boolean;
  serverSaving:boolean;
@@ -78,7 +76,7 @@ export function RealRegistrationV2(p:Props){
  const recoveryApplied=useRef(p.restored);
  const [hint,setHint]=useState("");
  const [photoChecking,setPhotoChecking]=useState(false);
- const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|"language"|null>(null);
+ const [focusedField,setFocusedField]=useState<"name"|"date"|"city"|"about"|null>(null);
  const [changingStep,setChangingStep]=useState(false);
  const [identityError,setIdentityError]=useState<IdentityError|null>(null);
  const viewportRoot=useRef<HTMLElement|null>(null);
@@ -150,7 +148,7 @@ export function RealRegistrationV2(p:Props){
    if(stage.id==="intent"&&!draft.goal)patchDraft({goal:"undecided"});
  },[stage.id,draft.goal,patchDraft]);
  const body=useRef<HTMLElement|null>(null);
- const handleFieldFocus=useCallback((field:"name"|"date"|"city"|"about"|"language"|null)=>{
+ const handleFieldFocus=useCallback((field:"name"|"date"|"city"|"about"|null)=>{
   setFocusedField(field);
  },[]);
  const dateValid=birthDateValid(draft.day,draft.month,draft.year);
@@ -274,7 +272,7 @@ export function RealRegistrationV2(p:Props){
     setIdentityError(previous=>previous?.field===field?null:previous);
   },onFieldFocus:handleFieldFocus
   }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft,identityError,handleFieldFocus]);
- const step=(n:number,personalityPart?:"about"|"languages")=><RegistrationStep {...stepProps} step={n} personalityPart={personalityPart}/>;
+ const step=(n:number)=><RegistrationStep {...stepProps} step={n}/>;
  const savedDraftAllowed=identityReady&&locationReady&&intentReady&&
   photoReady(photos)&&!p.serverSaving&&!changingStep;
  const continueReady=stage.id==="identity"?nameValid(draft.name):
@@ -285,7 +283,7 @@ export function RealRegistrationV2(p:Props){
    stage.id==="photos"?photoReady(photos):true;
  const fieldConfirmActive=["identity","birthday","location","about"].includes(stage.id)&&focusedField!==null;
 
- return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme={p.theme}
+ return <main ref={viewportRoot} className="v2-canvas v2-runtime" data-theme="dark"
    data-fallback-entry={p.fallbackEntry?"true":undefined}
    data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="Регистрация LUEMI V2">
    <div ref={device} className="v2-device" data-screen={stage.id} data-field-focus={focusedField!==null?"true":undefined}
@@ -339,7 +337,7 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="location"&&step(3)}
        {stage.id==="intent"&&step(4)}
        {stage.id==="about"&&<div className="v2-real-groups v2-about-groups">
-        {step(6,"about")}
+        {step(6)}
         <div className="v2-about-interest-heading"><strong>Что тебе нравится?</strong></div>
         {step(5)}
         <p className="v2-about-footnote">Можно дополнить позже в разделе «Раскрой себя».</p>

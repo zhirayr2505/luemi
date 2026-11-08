@@ -76,7 +76,6 @@ export function useFieldFocusDock(active:boolean){
   const device=shell.closest<HTMLElement>(".v2-device");
   const viewport=window.visualViewport;
   const slotTop=shell.parentElement?.getBoundingClientRect().top??shell.getBoundingClientRect().top;
-  const isLanguage=shell.classList.contains("language-focus-shell");
   const isCity=shell.classList.contains("city-focus-shell");
   const isAbout=shell.classList.contains("about-focus-shell");
   let frame=0;
@@ -89,8 +88,7 @@ export function useFieldFocusDock(active:boolean){
    const stableHeight=device?.clientHeight??window.innerHeight;
    const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??origin+120;
    const minimum=headerBottom+12;
-   const reserved=isAbout?Math.min(180,stableHeight*.22):
-    isLanguage?Math.min(125,stableHeight*.17):86;
+   const reserved=isAbout?Math.min(180,stableHeight*.22):86;
    // Aim for ~23% down the stable full-screen canvas, not keyboard height.
    // Anticipate the IME covering the lower ~48% of a compact device.
    const ideal=origin+stableHeight*.23;
@@ -105,20 +103,10 @@ export function useFieldFocusDock(active:boolean){
   const updateResults=()=>{
    frame=0;
    if(!shell.isConnected)return;
-   const footerTop=device?.querySelector<HTMLElement>(".v2-footer")?.getBoundingClientRect().top??
-    (viewport?viewport.offsetTop+viewport.height-86:window.innerHeight-86);
    const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??120;
    if(isCity){
     const available=Math.max(48,Math.min(230,Math.floor(pinnedTop-headerBottom-20)));
     shell.style.setProperty("--field-suggestions-max-height",`${available}px`);
-   }
-   if(isLanguage){
-    const list=shell.querySelector<HTMLElement>(".language-results");
-    if(list){
-     const remaining=Math.max(0,Math.floor(footerTop-list.getBoundingClientRect().top-12));
-     const rows=Math.max(0,Math.min(8,Math.floor((remaining+8)/52)));
-     shell.style.setProperty("--language-results-max-height",`${rows?rows*52-8:0}px`);
-    }
    }
   };
   const refresh=()=>{if(!frame)frame=window.requestAnimationFrame(updateResults);};
@@ -143,29 +131,13 @@ export function useFieldFocusDock(active:boolean){
    refresh();
   };
   window.addEventListener("resize",onResize);
-  const flagsResize=isLanguage&&typeof ResizeObserver!=="undefined"?new ResizeObserver(refresh):null;
-  let watchedFlags:HTMLElement|null=null;
-  const observeFlags=()=>{
-   const next=shell.querySelector<HTMLElement>(".language-selected");
-   if(watchedFlags===next)return;
-   if(watchedFlags)flagsResize?.unobserve(watchedFlags);
-   watchedFlags=next;
-   if(watchedFlags)flagsResize?.observe(watchedFlags);
-  };
-  const flagsMutation=isLanguage&&typeof MutationObserver!=="undefined"?
-   new MutationObserver(()=>{observeFlags();refresh();}):null;
-  flagsMutation?.observe(shell,{childList:true});
-  observeFlags();
   return()=>{
    if(frame)window.cancelAnimationFrame(frame);
    motion.current?.cancel();
    viewport?.removeEventListener("resize",refresh);
    viewport?.removeEventListener("scroll",refresh);
    window.removeEventListener("resize",onResize);
-   flagsMutation?.disconnect();
-   flagsResize?.disconnect();
    shell.style.removeProperty("--field-suggestions-max-height");
-   shell.style.removeProperty("--language-results-max-height");
   };
  },[active]);
  return {shellRef};

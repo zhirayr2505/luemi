@@ -19,7 +19,9 @@ test("Moonstone V6 exposes one semantic graphite-lavender token set",()=>{
  for(const token of ["--luemi-bg","--luemi-surface","--luemi-glass","--luemi-lavender","--luemi-rose","--luemi-border","--luemi-text"])
   assert.match(tokens,new RegExp(token.replaceAll("-","\\-")));
  assert.match(tokens,/html,body,#root\{background:var\(--luemi-bg-deep\)/);
- assert.match(tokens,/\.milky-mist::before[^}]*animation:none/);
+ const shell=read("apps/web/src/styles.css");
+ assert.doesNotMatch(shell,/@keyframes mist-one|@keyframes mist-two|\.milky-mist::before/,
+  "obsolete animated mist must be removed rather than disabled by override");
 });
 
 test("secondary real routes keep Moonstone surfaces without decorative motion loops",()=>{

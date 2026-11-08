@@ -152,7 +152,6 @@ function VisualQA(){
  },[]);
  return <main className="luemi-shell" data-theme={theme} data-phase="form">
   <QaProfiler id="DiscoveryApp"><DiscoveryApp draft={draft} photos={v3Photos}
-   theme={theme} onTheme={toggleTheme}
    onExit={()=>{}} registerBack={registerBack}/></QaProfiler>
   <MediaQA/>
  <span data-qa-unrelated={unrelated} hidden/>

@@ -323,8 +323,8 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  </div>;
 }
 
-export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal,onCityChanged}:{
- draft:RegistrationDraft;theme:"light"|"dark";onTheme:()=>void;
+export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal,onCityChanged}:{
+ draft:RegistrationDraft;
  publishedProfile:OwnerPublicationStatus["profile"]|undefined;initialFeed?:PublishedFeedPage|null;
  ownerPhotoPreview?:ReadonlyArray<{src:string}>;
  accountPanel:ReactNode;onEdit:()=>void;onReveal?:()=>void;
@@ -697,7 +697,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
   data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person?"true":"false"}
   data-chat-thread={chatThreadOpen?"true":"false"}>
   <div className="discovery-ambient" aria-hidden="true"/>
-  {!chatThreadOpen&&<GlobalHeader ref={header} mode={mainTab==="profile"?"profile":mainTab==="chats"?"chats":"browse"} theme={theme} onTheme={onTheme}
+  {!chatThreadOpen&&<GlobalHeader ref={header} mode={mainTab==="profile"?"profile":mainTab==="chats"?"chats":"browse"}
    onFilters={()=>setFilterOpen(true)} onSaved={()=>{setPerson(null);setMainTab("likes");}}/>}
   <div className="discovery-main-panels">
    <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
@@ -757,7 +757,7 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
      onClick={()=>setAccountOpen(true)}><Settings2 size={20}/></button>
    </section>
   </div>
-  {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)} theme={theme} onTheme={onTheme}
+  {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)}
    onExit={()=>setPerson(null)} registerBack={registerVisitorBack} onLike={async kind=>{
     const result=await likePublishedUser(person.id,kind);
     const matchedPerson=person;

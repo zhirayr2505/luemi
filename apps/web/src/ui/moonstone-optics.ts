@@ -4,7 +4,7 @@
  * Background/profile transforms and the moving photo stack are untouched. */
 const GLASS_TARGETS=[
  ".luemi-v5-glass",".luemi-v5-icon-button",
- ".lh-browse-control",".lh-tool",".lh-profile-theme",
+ ".lh-browse-control",
  ".real-discovery-settings",".real-feed-filter-apply",
  ".v2-runtime .v2-next",".v2-runtime .v2-draft-save",
  ".discovery-bottom-nav",".discovery-top-tabs",

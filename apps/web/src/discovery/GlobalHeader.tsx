@@ -11,7 +11,7 @@ export type HeaderMotion={
   reset:()=>void;
 };
 type Props={
-  mode:HeaderMode;theme:"light"|"dark";onTheme:()=>void;
+  mode:HeaderMode;
   onFilters:()=>void;onSaved:()=>void;
 };
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));

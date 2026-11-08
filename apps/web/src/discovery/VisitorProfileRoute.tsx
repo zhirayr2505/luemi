@@ -14,7 +14,7 @@ import type {ProfileMasterData} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
 
 type Props={
- data:ProfileMasterData;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;
+ data:ProfileMasterData;onExit:()=>void;
  registerBack:(handler:(()=>boolean)|null)=>void;
  onLike?:(kind:"ordinary"|"super")=>Promise<void>;
 };
@@ -27,7 +27,7 @@ const CLOSE_DURATION=230;
 const EASING="cubic-bezier(.2,.82,.24,1)";
 
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
-export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,onTheme,onExit,registerBack,onLike}:Props){
+export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,registerBack,onLike}:Props){
  const route=useRef<HTMLDivElement>(null);
  const escapeClose=useRef<()=>void>(()=>{});
  useModalLayer(true,route,()=>escapeClose.current());
@@ -301,7 +301,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,theme,o
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
      onMotionProgress={reportMotion}/></QaProfiler>
-   <GlobalHeader ref={header} mode="profile" theme={theme} onTheme={onTheme}
+   <GlobalHeader ref={header} mode="profile"
      onFilters={()=>{}} onSaved={()=>{}}/>
    {onLike&&<div className="visitor-like-actions" aria-label="Действия с анкетой">
     <button type="button" disabled={likeBusy} aria-label="Особенная симпатия" onClick={()=>{

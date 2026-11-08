@@ -53,9 +53,9 @@ function EmptyFeed({hasProfiles,canUndo,onUndo,onRestart}:{hasProfiles:boolean;c
    <button type="button" className="discovery-glass-button" onClick={onRestart}>Начать заново</button>
  </div>;
 }
-interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:string}>;theme:"light"|"dark";onTheme:()=>void;onExit:()=>void;registerBack:(handler:()=>void)=>void}
+interface Props {draft:RegistrationDraft;photos:ReadonlyArray<{id:string;src:string}>;onExit:()=>void;registerBack:(handler:()=>void)=>void}
 
-export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Props){
+export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
  const [mainTab,setMainTab]=useState<MainTab>("discover");
  const [profilePrepared,setProfilePrepared]=useState(false);
  const visitorBackRef=useRef<(()=>boolean)|null>(null);
@@ -528,8 +528,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    data-profile-renderer={androidWebView?"android":"standard"}
    data-profile-mode={profileMode?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>
-   <GlobalHeader ref={globalHeader} mode={backgroundHeaderMode} theme={theme}
-     onTheme={onTheme} onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
+   <GlobalHeader ref={globalHeader} mode={backgroundHeaderMode}
+     onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
     />
    <div className="discovery-main-panels">
      <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
@@ -611,7 +611,7 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
      </section>
    </div>
    {selectedPerson&&selectedProfile&&<QaProfiler id="VisitorProfileRoute"><VisitorProfileRoute key={selectedPerson.id} data={selectedProfile}
-     theme={theme} onTheme={onTheme} onExit={exitVisitorProfile} registerBack={registerVisitorBack}/></QaProfiler>}
+     onExit={exitVisitorProfile} registerBack={registerVisitorBack}/></QaProfiler>}
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
        className={"discovery-nav-item"+(mainTab===value?" active":"")}

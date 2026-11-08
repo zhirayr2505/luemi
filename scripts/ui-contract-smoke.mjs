@@ -24,7 +24,7 @@ assertCheck("all routes use Telegram fullscreen with one brand safe-area offset"
  sharedHeader.includes("top:var(--brand-top);left:14px")&&
  !welcomeChrome.includes("top:calc(var(--top-safe) + 32px)")&&
  !sharedHeader.includes("top:calc(var(--top-safe) + 28px)"));
-assertCheck("dark theme is the only application theme",app.includes('const theme:ThemeChoice="dark"')&&!app.includes("themeButton"));
+assertCheck("Moonstone dark theme is the only application theme",app.includes('const activeTheme="dark"')&&!app.includes("changeTheme")&&!app.includes("themeButton"));
 assertCheck("keyboard preserves footer and uses one viewport model instead of double-compensating",app.includes("installViewportController")&&style.includes("height:var(--app-height")&&style.includes(".onboard-body{flex:1")&&!style.includes("[data-keyboard=open] .onboard-footer{display:none}")&&!style.includes("margin-bottom:var(--keyboard-overlay")&&style.includes("data-viewport-compact"));
 assertCheck("input focus glass uses subtle inset ring without clipping",style.includes("inset 0 0 0 1px")&&style.includes(".glass-control:focus"));
 assertCheck("city, radius, world and legacy country search scopes are backward-compatible",
@@ -42,7 +42,7 @@ assertCheck("202 stable interests, curated colors and search in onboarding",
  steps.includes("interest-search")&&realRegistration.includes("v2-sticky-interests")&&
  steps.includes("data.interests.length>=20")&&app.includes("SelectedInterests")&&
  style.includes(".selected-interests-floating"));
-assertCheck("60 searchable languages with true vector flags",languages.includes("export const languages")&&read("apps/web/src/registration/LanguagePicker.tsx").includes("<Flag"));
+assertCheck("retired registration language UI removed while profile catalog remains",languages.includes("export const languages")&&!steps.includes("LanguagePicker")&&!style.includes(".language-picker"));
 assertCheck("portal drag renders at actual viewport finger coordinates",sorter.includes("createPortal")&&sorter.includes("getBoundingClientRect")&&sorter.includes("setDrag"));
 assertCheck("photo reorder has FLIP animation and main label",sorter.includes("node.animate(")&&sorter.includes("Главное"));
 assertCheck("single static registration preview with explicit edit and confirm actions",preview.includes("registration-static-profile")&&preview.includes("registration-static-avatar")&&app.includes("registration-static-actions")&&app.includes("Редактировать")&&app.includes("Всё верно")&&!preview.includes("ProfileMaster")&&!preview.includes("preview-tabs"));
@@ -63,7 +63,7 @@ assertCheck("photo selection and sorting finish before network publication",
  !realRegistration.includes("syncChosenPhotos"));
 assertCheck("About, photo reordering and local review lead to explicit publication",
   realRegistration.includes('stage.id==="about"')&&
-  realRegistration.includes('step(6,"about")')&&
+  realRegistration.includes('step(6)')&&
   realRegistration.includes('step(5)')&&
   realRegistration.includes('stage.id==="photos"')&&
   realRegistration.includes('stage.id==="review"')&&
@@ -103,7 +103,6 @@ assertCheck("66 genuine circular SVG flags shipped locally",flags.length===66);
 assertCheck("one theme and preview; registration route uses scoped transition",!style.includes(".preview-tabs{")&&!style.includes(".review-actions{")&&!style.includes(".theme-pulsing")&&app.includes("viewDocument.startViewTransition")&&app.includes('dataset.luemiRoute="true"'));
 
 const draftStore=read("apps/web/src/registration/local-draft.ts");
-const lang=read("apps/web/src/registration/LanguagePicker.tsx");
 const forms=read("apps/web/src/registration/Steps.tsx");
 assertCheck("device-local registration data and photos survive Telegram reopening",app.includes("loadDraftSnapshot")&&app.includes("saveDraftSnapshot")&&app.includes("clearDraftSnapshot")&&draftStore.includes("indexedDB")&&draftStore.includes('transaction(STORE,"readwrite")')&&draftStore.includes("parseEnvelope"));
 assertCheck("photo preparation completes after the bounded screen copy is ready",app.includes("preparePhotoPreview")&&app.includes('status:"success",progress:100')&&sorter.includes("photo-processing-bar"));
@@ -113,8 +112,8 @@ assertCheck("selected interest chips use color feedback without duplicate checkm
  style.includes(".interest-chip.selected{")&&!style.includes(".interest-chip.selected::after")&&
  read("apps/web/src/registration/v2/runtime.css").includes(".interest-chip.selected{color:#fff;transform:none;"));
 assertCheck("interest categories fixed while only interest list scrolls",style.includes(".onboard-body:has(.interests-step)")&&style.includes(".interests-step .interest-choices"));
-assertCheck("selected languages show only accessible flags",lang.includes('className="language-flag-selected"')&&!lang.includes('className="language-chip active"'));
-assertCheck("language search uses three columns",style.includes("grid-template-columns:repeat(3,minmax(0,1fr))"));
+assertCheck("legacy language picker no longer ships its old chip CSS",!style.includes(".language-flag-selected")&&!style.includes(".language-chip active"));
+assertCheck("global shell uses Moonstone semantic colors",style.includes("--bg:var(--luemi-bg)")&&style.includes("--ink:var(--luemi-text)"));
 assertCheck("name validation reports invalid characters visibly",forms.includes("name-input-hint")&&forms.includes("updateName"));
 console.log("LUEMI Stage 02G UI contracts PASS");
 

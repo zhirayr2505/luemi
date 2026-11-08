@@ -12,7 +12,6 @@
  background:linear-gradient(180deg,rgba(19,21,26,.45),transparent 26%,transparent 46%,rgba(17,20,24,.33) 64%,rgba(15,17,21,.96) 100%)}
 .cinematic-entry .intro-mark{position:absolute;top:var(--brand-top);left:20px;
  width:135px;height:43px;z-index:2;justify-content:flex-start}
-.cinematic-entry .intro-mark::before{display:none}
 .cinematic-entry .intro-logo{width:130px;filter:grayscale(1) brightness(0) invert(1)
  drop-shadow(0 3px 16px rgba(20,23,29,.28))}
 .entry-state.cinematic-entry h1,.entry-state.cinematic-entry h1.intro-returning-title{

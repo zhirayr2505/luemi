@@ -68,7 +68,6 @@ declare global {
 }
 
 type AuthState = "connecting" | "outside-telegram" | "authorized" | "needs-bot" | "needs-invite" | "test-full" | "pending-deletion" | "error";
-type ThemeChoice = "light" | "dark";
 const logoSrc = "/assets/brand/wordmark_original_raster_alpha_W06.webp";
 // Closed beta may never enter the synthetic Discovery deck.
 const realOnly=import.meta.env.VITE_LUEMI_REAL_ONLY==="1";
@@ -213,13 +212,12 @@ export function App() {
    return()=>window.clearInterval(timer);
   },[accountDeletionRequested,auth]);
   const [localDeletionFailed,setLocalDeletionFailed]=useState(false);
-  const theme:ThemeChoice="dark";
   const rootRef=useRef<HTMLElement>(null);
   useEffect(()=>installMoonstoneOptics(document),[]);
   const contentRef=useRef<HTMLDivElement>(null);
   const discoveryBackRef=useRef<()=>void>(()=>{});
   const v2BackRef=useRef<()=>void>(()=>{});
-  const activeTheme=theme;
+  const activeTheme="dark";
   const patch = useCallback((change:Partial<RegistrationDraft>)=>{
     persistEnabled.current=true;
     setStorageState("dirty");
@@ -804,7 +802,6 @@ export function App() {
     setRegistrationFallback(true);
     setPhase("form");
   };
-  const changeTheme=useCallback(()=>{},[]);
   const beginDemo=()=>{if(realOnly){setError("Настоящая регистрация пока не подключена. Демонстрационные анкеты недоступны.");return;}setDemoOpen(true);setError("");};
   const exitDemo=useCallback(()=>{setDemoOpen(false);setPhase("form");setStep(8);},[]);
   const readyPhotos=useMemo(()=>readyRegistrationPhotos(photos),[photos]);
@@ -1188,7 +1185,7 @@ export function App() {
   if(realHome&&auth==="authorized"&&realFeedPilot.enabled)
    return <><main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
     <Suspense fallback={<div className="discovery-empty" role="status">Открываем LUEMI…</div>}>
-     <RealDiscoveryHome draft={draft} theme={theme} onTheme={changeTheme}
+     <RealDiscoveryHome draft={draft}
        initialFeed={warmFeed} publishedProfile={publishStatus?.profile} ownerPhotoPreview={readyPhotos}
        onCityChanged={place=>{
         setDraft(current=>({...current,city:place.city,country:place.country,
@@ -1320,7 +1317,7 @@ export function App() {
     return <RealRegistrationV2 draft={draft} key={scope??"registration"} patch={patch} photos={photos}
        fallbackEntry={registrationFallback}
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
-       resetDraft={resetDraft} theme={theme} onTheme={changeTheme}
+       resetDraft={resetDraft}
         onSave={()=>{void (realFeedPilot.enabled?confirmRealRegistration():
           remoteMediaPilot.enabled?confirmPrivateRegistration():persistServerDraft());}}
         mediaEnabled={remoteMediaPilot.enabled}
@@ -1335,7 +1332,7 @@ export function App() {
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
     <div className="milky-mist" aria-hidden="true"/>
-    {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} theme={theme} onTheme={changeTheme} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
+    {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state cinematic-entry"+(visualReady?" visually-ready":"")+(heroViewportReady?" hero-viewport-ready":"")} aria-live="polite">
       <div className="intro-mark">
         <img src={logoSrc} alt="luemi" className="intro-logo"/>
