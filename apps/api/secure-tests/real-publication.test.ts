@@ -632,3 +632,49 @@ test("72h recovery requires signed same-owner Telegram confirmation and retains 
  }finally{await app.close();}
 });
 test("01D admin connection cleanup",async()=>{await admin.end();await reader.end();});
+
+
+test("nearby: real city-centre distance orders profiles without a radius threshold or GPS",async()=>{
+ const app=makeApp({instant:true});
+ try{
+  const viewer=await identity(app,8025401);
+  const cities=[
+   {telegram:8025402,city:"Краснодар",countryCode:"RU"},
+   {telegram:8025403,city:"Гюмри",countryCode:"AM"},
+   {telegram:8025404,city:"Неизвестный город",countryCode:"AM"},
+   {telegram:8025405,city:"Тбилиси",countryCode:"GE"},
+   {telegram:8025406,city:"Ереван",countryCode:"AM"}
+  ];
+  const users=[] as Array<{id:string;city:string;countryCode:string}>;
+  for(const item of [{telegram:8025401,city:"Ереван",countryCode:"AM"},...cities]){
+   const actor=item.telegram===8025401?viewer:await identity(app,item.telegram);
+   await prepare(app,actor);
+   const published=await mutate(app,actor,"/api/v3/profile/publish",{revision:1});
+   assert.equal(published.statusCode,200,published.body);
+   if(item.telegram!==8025401)users.push({id:actor.id,city:item.city,countryCode:item.countryCode});
+  }
+  for(const item of users){
+   await admin.query("UPDATE luemi_private.public_profiles SET city_label=$1,country_code=$2 "+
+    "WHERE owner_id=$3 AND environment=$4",
+    [item.city,item.countryCode,item.id,namespace]);
+  }
+  await admin.query("UPDATE luemi_private.discovery_preferences "+
+   "SET search_scope='radius',city_label='Ереван',country_code='AM' "+
+   "WHERE owner_id=$1 AND environment=$2",[viewer.id,namespace]);
+  const res=await feed(app,viewer);
+  assert.equal(res.statusCode,200,res.body);
+  const ids=new Set(users.map(user=>user.id));
+  const ranked=(res.json().profiles as Array<{id:string}>).map(p=>p.id).filter(id=>ids.has(id));
+  assert.deepEqual(ranked,[
+   users[4].id, // same city is zero approximate distance
+   users[1].id, // Gyumri ~90 km from Yerevan
+   users[3].id, // Tbilisi ~170 km
+   users[0].id, // Krasnodar ~600 km
+   users[2].id  // unknown city still shown but never assigned fake kilometres
+  ]);
+  const count=await admin.query<{count:string}>(
+   "SELECT count(*)::text AS count FROM luemi_private.city_centres WHERE "+
+   "country_code IN ('AM','RU') AND city_norm='армавир'");
+  assert.equal(Number(count.rows[0].count),2,"coarse world index distinguishes Armenian and Russian Armavir");
+ }finally{await app.close();}
+});
