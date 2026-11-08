@@ -563,11 +563,11 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
            }}
            style={{"--luemi-tab-offset":(-tabIndex*100)+"%"} as CSSProperties}>
            <section className="discovery-page" role="tabpanel" aria-label="Лента" inert={discoveryTab!=="feed"} aria-hidden={discoveryTab!=="feed"}>
-             {<div className="discovery-deck-stage">
+             {<div className={"discovery-deck-stage"+(person?" has-profiles":"")}>
                {person&&<div key={person.id}
                  className={"discovery-deck-layer"+(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active")}
                  onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
-                   ["luemi-deck-leave","feed-v2-like","feed-v2-special"].includes(event.animationName))finishDeck();}}>
+                   ["luemi-deck-leave","feed-v2-pass","feed-v2-like","feed-v2-special"].includes(event.animationName))finishDeck();}}>
                  <FeedCard person={person} saved={feed.saved.includes(person.id)}
                    canUndo={feed.history.length>0} active={true} busy={!!leaving}
                    onAction={act} onOpenProfile={()=>setPersonOpen(person.id)}

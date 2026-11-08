@@ -1,11 +1,13 @@
 /* LUEMI approved feed glass V1. Static translucent surfaces are deliberate:
    no backdrop-filter on the moving cards or tab pager in Telegram WebView. */
-.lh-browse .lh-island img{filter:none}
+/* Original registration wordmark, rendered white with identical shape. */
+.lh-browse .lh-island img{filter:brightness(0) invert(1)}
 .lh-browse .lh-logo-contrast{display:none}
 .lh-browse-controls{
  position:absolute;right:14px;top:calc(var(--top-safe) + 10px);z-index:6;
- display:flex;gap:9px;align-items:center;pointer-events:auto
+ display:flex;gap:8px;align-items:center;pointer-events:auto
 }
+.lh-browse .lh-browse-controls{top:var(--brand-top);right:14px}
 .lh-browse-control{
  display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;
  color:var(--luemi-text);border-radius:16px;border:1px solid var(--luemi-border);

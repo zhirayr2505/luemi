@@ -35,6 +35,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
 }){
  const goal=goals.find(g=>g.id===person.goal);
  const [expanded,setExpanded]=useState(false);
+ const [activePhotoIndex,setActivePhotoIndex]=useState(0);
+ // A separate, noninteractive photo glow changes only after carousel settlement.
+ const ambientPhoto=person.photos[activePhotoIndex]?.src??person.photos[0]?.src;
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
  const glass=useRef<HTMLDivElement>(null);
@@ -264,6 +267,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  };
  const available=active&&!busy;
  return <div className="discovery-deck-current feed-v2" aria-hidden={!active}>
+   {ambientPhoto&&<div className="feed-v2-photo-ambient" aria-hidden="true">
+    <img key={ambientPhoto} src={ambientPhoto} alt="" loading={active?"eager":"lazy"} decoding="async" draggable={false}/>
+   </div>}
    <article className="discovery-card feed-v2-card" ref={card} data-expanded={expanded}
      onPointerDownCapture={down} onPointerMoveCapture={move}
      onPointerUpCapture={event=>finish(event)} onPointerCancelCapture={event=>finish(event,true)}
@@ -271,7 +277,10 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      onClickCapture={event=>{if(performance.now()<blockClickUntil.current){event.preventDefault();event.stopPropagation();}}}>
      <div className="discovery-photo feed-v2-photo">
        <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age}
-         externalGesture dots/>
+         externalGesture dots onIndexChange={setActivePhotoIndex}/>
+       {person.photos.length>1&&<span className="feed-v2-photo-count">
+        {Math.min(activePhotoIndex+1,person.photos.length)} / {person.photos.length}
+       </span>}
        {!real&&<span className="discovery-demo-label">Демо</span>}
        {canUndo&&<button type="button" className="feed-v2-undo" disabled={!available}
          aria-label="Отменить пропуск" title="Отменить пропуск"
