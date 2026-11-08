@@ -1,7 +1,7 @@
 import {forwardRef,memo,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 interface Slide {id:string;src:string;fallback?:string}
-interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean}
+interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;onIndexChange?:(index:number)=>void}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
 export interface PhotoCarouselHandle {
  canAdvance:(direction:-1|1)=>boolean;
@@ -10,7 +10,7 @@ export interface PhotoCarouselHandle {
  finish:(id:number,x:number,cancelled:boolean)=>void;
  cancel:()=>void;
 }
-const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false},ref) {
+const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,onIndexChange},ref) {
  const [index,setIndex]=useState(0);
  const tracking=useRef<Tracking|null>(null);
  const frame=useRef<HTMLDivElement>(null);
@@ -87,7 +87,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(photoTrack.current)
      photoTrack.current.style.transition="transform .31s cubic-bezier(.22,.77,.23,1)";
    renderOffset(target,0);
-   if(target!==activeRef.current){activeRef.current=target;setIndex(target);}
+   if(target!==activeRef.current){activeRef.current=target;setIndex(target);onIndexChange?.(target);}
  };
  useImperativeHandle(ref,()=>({
   canAdvance:(direction:-1|1)=>activeRef.current+direction>=0&&activeRef.current+direction<photos.length,
@@ -112,7 +112,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const choose=(i:number)=>{
    flush();tracking.current=null;
    if(photoTrack.current)photoTrack.current.style.transition="transform .31s cubic-bezier(.22,.77,.23,1)";
-   renderOffset(i,0);activeRef.current=i;setIndex(i);
+   renderOffset(i,0);activeRef.current=i;setIndex(i);onIndexChange?.(i);
  };
  return <div className="carousel-frame" ref={frame} onPointerDown={start} onPointerMove={move} onPointerUp={end}
      onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}>
