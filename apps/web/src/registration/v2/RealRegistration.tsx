@@ -274,7 +274,7 @@ export function RealRegistrationV2(p:Props){
     setIdentityError(previous=>previous?.field===field?null:previous);
   },onFieldFocus:handleFieldFocus
   }),[draft,p.patch,photos,p.addPhotos,p.removePhoto,p.movePhoto,p.resetDraft,identityError,handleFieldFocus]);
- const step=(n:number,personalityPart?:"about"|"languages")=><RegistrationStep {...stepProps} step={n} personalityPart={personalityPart}/>;
+ const step=(n:number)=><RegistrationStep {...stepProps} step={n}/>;
  const savedDraftAllowed=identityReady&&locationReady&&intentReady&&
   photoReady(photos)&&!p.serverSaving&&!changingStep;
  const continueReady=stage.id==="identity"?nameValid(draft.name):
@@ -339,7 +339,7 @@ export function RealRegistrationV2(p:Props){
        {stage.id==="location"&&step(3)}
        {stage.id==="intent"&&step(4)}
        {stage.id==="about"&&<div className="v2-real-groups v2-about-groups">
-        {step(6,"about")}
+        {step(6)}
         <div className="v2-about-interest-heading"><strong>Что тебе нравится?</strong></div>
         {step(5)}
         <p className="v2-about-footnote">Можно дополнить позже в разделе «Раскрой себя».</p>
