@@ -31,38 +31,4 @@
 .lh-browse .lh-logo-contrast{opacity:0}
 .lh-chats .lh-island img{filter:none}
 .lh-chats .lh-logo-contrast{display:none}
-.lh-tools{
- position:absolute;top:48px;left:50%;transform:translateX(-50%);
- display:flex;align-items:center;gap:8px;z-index:1;pointer-events:auto;
-}
-.lh-tool,.lh-profile-theme{
- display:grid;place-items:center;flex:none;width:30px;height:30px;padding:0;
- border-radius:50%;border:1px solid rgba(255,255,255,.70);
- background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(238,235,243,.61));
- color:#5C677D;box-shadow:0 3px 13px rgba(39,45,57,.12);
- backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
-}
-.lh-tool{
- opacity:var(--lh-control-opacity,1);transform-origin:center;
- transform:translate3d(var(--lh-x,0px),var(--lh-control-y,0px),0) scale(var(--lh-control-scale,1)) scaleY(var(--lh-control-stretch,1));
- will-change:transform,opacity;
-}
-.lh-tool-filter{--lh-x:var(--lh-left-x,0px)}
-.lh-tool-saved{--lh-x:var(--lh-right-x,0px)}
-.lh-header[data-tools-merged=true] .lh-tools{pointer-events:none;visibility:hidden}
-.lh-header[data-tools-merged=true] .lh-tool{pointer-events:none}
 .lh-header button:focus-visible{outline:2px solid #B0A5C6;outline-offset:3px}
-.lh-profile-theme{
- position:absolute;top:8px;left:132px;
- width:28px;height:28px;z-index:5;padding:0;
- border-color:rgba(255,255,255,.48);
- box-shadow:0 2px 7px rgba(39,45,57,.09),inset 0 1px rgba(255,255,255,.65);
-}
-.lh-profile-theme::before{
- content:"";position:absolute;inset:-6px;pointer-events:auto;
-}
-.luemi-shell[data-theme=dark] .lh-island{background:transparent;border:0;box-shadow:none;backdrop-filter:none}
-.luemi-shell[data-theme=dark] .lh-tool,.luemi-shell[data-theme=dark] .lh-profile-theme{
- border-color:rgba(220,215,230,.44);background:rgba(55,61,75,.71);color:#F2F0F5
-}
-@media(prefers-reduced-transparency:reduce){.lh-tool,.lh-profile-theme{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}}
