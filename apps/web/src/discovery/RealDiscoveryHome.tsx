@@ -2,7 +2,7 @@ import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "rea
 import type {ReactNode} from "react";
 import type {CSSProperties} from "react";
 import {CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2,Sparkles,LockKeyhole} from "lucide-react";
-import type {RegistrationDraft,Gender} from "../registration/model";
+import type {RegistrationDraft,Gender,SearchScope} from "../registration/model";
 import {gendered} from "../ui/PersonalizedCopy";
 import type {DemoKind,DemoPerson} from "./model";
 import type {ProfileMasterData} from "./ProfileModel";
@@ -24,7 +24,7 @@ import {RealChats} from "../chats/RealChats";
 import {createChatTransport,type ChatWireConversation} from "../chats/chat-transport";
 import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiGlassPanel,LuemiIconButton,LuemiSkeleton} from "../ui/LuemiV5";
 import {geoCsrf} from "../auth/session-adapter";
-import {getPublishedFeed,getPublishedProfile,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,realMatchPilot,type PublishedFeedPage,type IncomingLike} from "../registration/real-live-client";
+import {getPublishedFeed,getPublishedProfile,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,updateDiscoverySearchScope,realMatchPilot,type PublishedFeedPage,type IncomingLike} from "../registration/real-live-client";
 import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
 import "./discovery.css";
 import "./feed-v2.css";
@@ -118,15 +118,17 @@ function RealMatches({active,onChat,onPerson,gender}:{active:boolean;onChat:()=>
  </section>;
 }
 
-function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,hiddenIds,onHide}:{
+function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onSearchScopeChange,hiddenIds,onHide}:{
  active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
  onPerson:(p:RealPublishedProfile)=>void;onMatched:(person:RealPublishedProfile,matchId:string)=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
  onScrollTop:(top:number)=>void;filters:RealFeedFilter;onEditFilters:()=>void;
+ onSearchScopeChange:(scope:SearchScope)=>void;
  hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void
 }){
  const [rows,setRows]=useState<RealPublishedProfile[]>([]);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
+ const [scopeBusy,setScopeBusy]=useState(false);
  const [refresh,setRefresh]=useState(0),[cursor,setCursor]=useState<string|null>(null);
  const lastRefresh=useRef(-1);
  const [busy,setBusy]=useState(false),[moreBusy,setMoreBusy]=useState(false);
@@ -166,15 +168,19 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   if(initialFeed&&refresh===0){
    // First paint already has the actual signed server recommendations and
    // the first decoded image blobs from the publication handoff.
+   if(initialFeed.searchScope&&initialFeed.searchScope!==draft.searchScope)
+    onSearchScopeChange(initialFeed.searchScope);
    setRows(initialFeed.profiles);setCursor(initialFeed.nextCursor);
    setPage(0);setLoading(false);complete=true;return()=>controller.abort();
   }
   void getPublishedFeed(controller.signal).then(result=>{
    if(controller.signal.aborted)return;
+   if(result.searchScope&&result.searchScope!==draft.searchScope)
+    onSearchScopeChange(result.searchScope);
    setRows(result.profiles);setCursor(result.nextCursor);setPage(0);setLoading(false);complete=true;
   }).catch(()=>{if(!controller.signal.aborted){setLoading(false);setError("Не удалось загрузить анкеты.");complete=true;}});
   return ()=>{if(!complete&&lastRefresh.current===refresh)lastRefresh.current=-1;controller.abort();};
- },[active,refresh,initialFeed]);
+ },[active,refresh,initialFeed,draft.searchScope,onSearchScopeChange]);
  // Each tab now owns its approved presentation. Only Feed renders a full-screen deck;
  // For You and Nearby sort/filter the complete real server page themselves.
  const matchedRows=useMemo(()=>rows.filter(p=>!hiddenIds.has(p.id)),[rows,hiddenIds]);
@@ -182,6 +188,14 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const visibleRows=tab==="feed"?matchedRows.filter(p=>realFeedMatches(p,filters,draft.interests)):matchedRows;
  const current=visibleRows[page];
  useEffect(()=>{setPage(0);setUndoPage(null);},[filters]);
+ const expandWorld=async()=>{
+  if(scopeBusy)return;
+  setScopeBusy(true);setMessage("");
+  try{
+   await updateDiscoverySearchScope("world");
+   onSearchScopeChange("world"); // remount every feed tab with a fresh server cursor
+  }catch{setMessage("Не удалось расширить поиск. Повтори попытку.");setScopeBusy(false);}
+ };
  const more=async()=>{
   if(!cursor||moreBusy||busy)return;
   const controller=new AbortController();abort.current?.abort();abort.current=controller;
@@ -245,7 +259,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     <RealForYou draft={draft} people={matchedRows} onPerson={onPerson} saved={saved} onSave={onSave}
      onScrollTop={onScrollTop} onMore={()=>{void more();}} hasMore={!!cursor} moreBusy={moreBusy}/>:
     <RealNearby draft={draft} people={matchedRows} onPerson={onPerson} saved={saved} onSave={onSave}
-     onScrollTop={onScrollTop} onMore={()=>{void more();}} hasMore={!!cursor} moreBusy={moreBusy} onEditLocation={onEditLocation}/>}
+     onScrollTop={onScrollTop} onMore={()=>{void more();}} hasMore={!!cursor} moreBusy={moreBusy} onEditLocation={onEditLocation} onExpandWorld={()=>{void expandWorld();}} scopeBusy={scopeBusy}/>}
  </div>;
  return <div className="real-discovery-deck">
   {message&&<div className="real-discovery-notice" role="status">{message}</div>}
@@ -264,6 +278,11 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     <div className="discovery-deck-layer deck-active"><LuemiEmptyState className="real-discovery-empty" icon={Heart}
      title="Пока нет анкет" description="Когда появятся новые люди, ты увидишь их здесь.">
       <button type="button" className="discovery-glass-button" onClick={onEditFilters}>Изменить фильтры</button>
+     {draft.searchScope==="city"&&!cursor&&<>
+      <p>Анкеты в твоём городе закончились. Можно расширить поиск на весь мир — сначала покажем людей поблизости.</p>
+      <button type="button" className="discovery-glass-button" disabled={scopeBusy}
+       onClick={()=>{void expandWorld();}}>{scopeBusy?"Расширяем поиск…":"Искать по всему миру"}</button>
+     </>}
      {undoPage!==null&&<button type="button" className="discovery-glass-button" onClick={()=>{void act("undo");}}>
       Отменить пропуск</button>}
      {cursor&&<button type="button" className="discovery-glass-button" disabled={moreBusy} onClick={()=>{void more();}}>
@@ -314,6 +333,8 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
   return route==="likes"||route==="chats"?route:"discover";
  });
  const [browse,setBrowse]=useState<BrowseTab>("feed");
+ const [scopeOverride,setScopeOverride]=useState<SearchScope|null>(null);
+ const feedDraft=scopeOverride?{...draft,searchScope:scopeOverride}:draft;
  const [filters,setFilters]=useState<RealFeedFilter>(defaultRealFeedFilter);
  const [filterOpen,setFilterOpen]=useState(false);
  const [person,setPerson]=useState<RealPublishedProfile|null>(null);
@@ -686,9 +707,9 @@ export function RealDiscoveryHome({draft,theme,onTheme,publishedProfile,ownerPho
       style={{"--luemi-tab-offset":(-index*100)+"%"} as CSSProperties}>
       {tabs.map(([id,label])=><section key={id} className="discovery-page" role="tabpanel" aria-label={label}
        aria-hidden={browse!==id} inert={browse!==id}>
-       <LiveDeck active={mainTab==="discover"&&browse===id} tab={id} draft={draft}
-        initialFeed={initialFeed} saved={savedIds} onSave={onSave} filters={filters}
-        onEditFilters={()=>setFilterOpen(true)}
+       <LiveDeck key={id+"-"+feedDraft.searchScope} active={mainTab==="discover"&&browse===id} tab={id} draft={feedDraft}
+        initialFeed={scopeOverride?null:initialFeed} saved={savedIds} onSave={onSave} filters={filters}
+        onEditFilters={()=>setFilterOpen(true)} onSearchScopeChange={setScopeOverride}
         hiddenIds={hiddenIds} onHide={onHide}
         onScrollTop={top=>onScrollTop(id,top)}
         onEditLocation={()=>setMainTab("profile")}

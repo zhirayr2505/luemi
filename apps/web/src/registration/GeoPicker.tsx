@@ -268,12 +268,12 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
              data.searchScope==="city"?"Люди из твоего города":
              data.searchScope==="country"?"Люди из твоей страны":"Весь мир открыт"}</strong>
            <small>{data.searchScope==="radius"?
-             "Сначала ближе к тебе, затем дальше.":
+             "Сначала совпадения поблизости, потом остальные.":
              data.searchScope==="city"?
-             "Анкеты только из выбранного города.":
+             "Только твой город. Лучшие совпадения — первыми.":
              data.searchScope==="country"?
              "Анкеты из выбранной страны.":
-             "Анкеты со всего мира, без границ."}</small>
+             "От ближайших городов к дальним, с учётом совпадений."}</small>
          </span>
        </div>
      </div>

@@ -35,13 +35,13 @@ function Tile({person,draft,saved,onPerson,onSave,priority}:{
   {interest&&<div className="nb-interest"><span aria-hidden="true">✦</span><span>{interest}</span></div>}
  </article>;
 }
-export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,moreBusy,onEditLocation,onScrollTop}:{
+export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,moreBusy,onEditLocation,onExpandWorld,scopeBusy,onScrollTop}:{
  draft:RegistrationDraft;people:RealPublishedProfile[];
  onPerson:(person:RealPublishedProfile)=>void;saved:ReadonlySet<string>;
  onSave:(id:string)=>void;onMore:()=>void;hasMore:boolean;moreBusy:boolean;
- onEditLocation:()=>void;onScrollTop?:(top:number)=>void
+ onEditLocation:()=>void;onExpandWorld:()=>void;scopeBusy:boolean;onScrollTop?:(top:number)=>void
 }){
- const [scope,setScope]=useState<Scope>("city");
+ const [scope,setScope]=useState<Scope>(draft.searchScope==="city"?"city":"world");
  const [settings,setSettings]=useState(false);
  const [visible,setVisible]=useState(8);
  const filtered=useMemo(()=>{
@@ -49,11 +49,10 @@ export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
   if(scope==="city")eligible=people.filter(person=>!!draft.city&&!!draft.countryCode&&
    person.countryCode===draft.countryCode&&normalize(person.city)===normalize(draft.city));
   if(scope==="country")eligible=people.filter(person=>!!draft.countryCode&&person.countryCode===draft.countryCode);
-  return [...eligible].sort((a,b)=>{
-   const common=(p:RealPublishedProfile)=>p.interests.filter(x=>draft.interests.includes(x)).length;
-   return common(b)-common(a)||a.id.localeCompare(b.id);
-  });
- },[people,scope,draft.city,draft.countryCode,draft.interests]);
+  // Do not re-rank one client page: the server orders all pages by
+  // compatibility and coarse geography before issuing the feed cursor.
+  return eligible;
+ },[people,scope,draft.city,draft.countryCode]);
  const heading=scope==="city"?(draft.city||"Город не выбран"):scope==="country"?
   (draft.country||"Страна не выбрана"):"Весь мир";
  const subline=scope==="city"?"По указанному городу · не GPS":
@@ -89,7 +88,10 @@ export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
    </div>:filtered.length===0?<div className="nb-empty"><UsersRound size={30}/>
     <h3>Здесь пока никого не нашли</h3>
     <p>Сейчас нет других опубликованных анкет в этой области. Попробуй выбрать страну или весь мир.</p>
-    <button type="button" onClick={()=>setSettings(true)}>Изменить место поиска <ArrowRight size={16}/></button>
+    {scope==="city"&&draft.searchScope==="city"&&!hasMore?
+     <button type="button" disabled={scopeBusy} onClick={onExpandWorld}>
+      {scopeBusy?"Расширяем поиск…":"Искать по всему миру"} <ArrowRight size={16}/></button>:
+     <button type="button" onClick={()=>setSettings(true)}>Изменить место поиска <ArrowRight size={16}/></button>}
    </div>:<>
     <div className="nb-grid">{filtered.slice(0,visible).map((person,i)=>
      <Tile key={person.id} person={person} draft={draft} saved={saved.has(person.id)}

@@ -54,7 +54,7 @@ test("first pictures cached only in RAM with bounded signed endpoint fetch",()=>
  assert.match(warm,/URL.revokeObjectURL/);
  assert.doesNotMatch(warm.slice(warm.indexOf("export async function")),
   /(?:window|globalThis)\.(?:localStorage|indexedDB|sessionStorage)/);
- assert.match(reg,/initialFeed=\{initialFeed\}/);
+ assert.match(reg,/initialFeed=\{scopeOverride\?null:initialFeed\}/);
  assert.match(reg,/Пока нет анкет/);
  assert.match(reg,/className="discovery-bottom-nav"/);
 });
@@ -74,13 +74,10 @@ test("registration reconciles durable photo identities before allocating slots",
  assert.match(app,/await deletePrivatePhoto\(assetId\)/);
 });
 
-test("recommendation warmup prioritizes overlapping interests and city without exact location",()=>{
- assert.match(warm,/export function rankPublishedRecommendations/);
- assert.match(warm,/new Set\(p\.interests\)/);
- assert.match(warm,/profile\.interests\.reduce/);
- assert.match(warm,/profile\.city\.trim\(\)\.toLocaleLowerCase/);
- assert.match(warm,/profile\.countryCode===p\.countryCode/);
- assert.match(warm,/b\.score-a\.score\|\|a\.i-b\.i/);
+test("recommendation warmup preserves global server-ranked order instead of re-sorting just page one",()=>{
+ assert.match(warm,/const page=source/);
+ assert.doesNotMatch(warm,/rankPublishedRecommendations|\.sort\(/,
+  "local rank changes can displace better matches from pages that were not fetched");
  assert.match(app,/warmPublishedRecommendations\(controller\.signal,phase=>setJourney\(phase\),draft\)/);
- assert.doesNotMatch(warm.slice(warm.indexOf("export function rankPublishedRecommendations")),/navigator\.geolocation|latitude|longitude|localStorage/);
+ assert.doesNotMatch(warm.slice(warm.indexOf("export async function warmPublishedRecommendations")),/navigator\.geolocation|latitude|longitude|localStorage/);
 });

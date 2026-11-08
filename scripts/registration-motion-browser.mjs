@@ -100,7 +100,7 @@ try{
   "no more manual radius controls");
  assert.equal(await page.getByText("Ближайшие сначала").count(),1,
   "nearby recommends nearest cities automatically");
- assert.ok((await page.locator(".geo-liquid-mode-panel").innerText()).includes("Сначала ближе к тебе, затем дальше"));
+ assert.ok((await page.locator(".geo-liquid-mode-panel").innerText()).includes("Сначала совпадения поблизости, потом остальные"));
  await page.getByRole("button",{name:"Мой город"}).click();
  await next("intent");
  const ageHeight=await page.locator(".age-range").evaluate(el=>el.getBoundingClientRect().height);
