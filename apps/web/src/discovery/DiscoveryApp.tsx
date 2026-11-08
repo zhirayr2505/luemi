@@ -30,7 +30,7 @@ import {useModalLayer} from "../ui/modal-layer";
 import "./discovery.css";
 import "./feed-v2.css";
 
-const navigation=[["discover","Лента",Images],["likes","Лайки",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
+const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 const androidWebView=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 
