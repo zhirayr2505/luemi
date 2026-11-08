@@ -108,9 +108,9 @@ assertCheck("device-local registration data and photos survive Telegram reopenin
 assertCheck("photo preparation completes after the bounded screen copy is ready",app.includes("preparePhotoPreview")&&app.includes('status:"success",progress:100')&&sorter.includes("photo-processing-bar"));
 assertCheck("no redundant arrow photo controls",!sorter.includes("photo-reorder-buttons")&&sorter.includes('event.altKey'));
 assertCheck("native tap highlight disabled globally",style.includes("-webkit-tap-highlight-color:transparent"));
-assertCheck("selected interest chips use color feedback without duplicate checkmarks",
+assertCheck("selected interest chips use pastel feedback without duplicate checkmarks",
  style.includes(".interest-chip.selected{")&&!style.includes(".interest-chip.selected::after")&&
- read("apps/web/src/registration/v2/runtime.css").includes(".interest-chip.selected{color:#fff;transform:none;"));
+ read("apps/web/src/registration/v2/runtime.css").includes(".interest-chip.selected{color:#242932;transform:none;"));
 assertCheck("interest categories fixed while only interest list scrolls",style.includes(".onboard-body:has(.interests-step)")&&style.includes(".interests-step .interest-choices"));
 assertCheck("legacy language picker no longer ships its old chip CSS",!style.includes(".language-flag-selected")&&!style.includes(".language-chip active"));
 assertCheck("global shell uses Moonstone semantic colors",style.includes("--bg:var(--luemi-bg)")&&style.includes("--ink:var(--luemi-text)"));
