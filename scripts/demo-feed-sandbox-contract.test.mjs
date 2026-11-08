@@ -14,7 +14,7 @@ test("fictional profiles remain isolated; empty genuine feed automatically opens
  assert.match(shell,/id==="feed"&&demoMode\?<DemoFeedSandbox/);
  assert.match(shell,/<LiveDeck key=\{id\+"-"\+feedDraft\.searchScope/);
  assert.match(shell,/<FeedCard person=\{toCard\(current\)\} real/);
- assert.match(shell,/onExit=\{\(\)=>\{autoDemoShown\.current=true;setDemoMode\(false\);\}\}/);
+ assert.match(shell,/onExit=\{\(\)=>\{setDemoVisitor\(null\);autoDemoShown\.current=true;setDemoMode\(false\);\}\}/);
  assert.match(shell,/initialFeed\?\.profiles\.length===0/);
  assert.match(shell,/onEmptyFeed=\{offerDemoOnEmpty\}/);
  assert.match(shell,/Проверить тестовые карточки \(15\)/);
