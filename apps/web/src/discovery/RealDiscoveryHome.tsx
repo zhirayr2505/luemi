@@ -34,7 +34,7 @@ import "./real-discovery.css";
 
 // EXACT approved LUEMI navigation / header / profile components. No demo profiles
 // are imported or projected into a real session.
-const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
+const navigation=[["discover","Лента",Images],["likes","Лайки",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const navigationItems=navigation.map(([id,label,icon])=>({id,label,icon}));
 const tabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
 type MainTab=typeof navigation[number][0];
@@ -268,7 +268,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   {loading?<div className="real-discovery-feed-loading"><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/></div>:
    error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
-   <div className="discovery-deck-stage">{current?
+   <div className={"discovery-deck-stage"+(current?" has-profiles":"")}>{current?
     <div className={"discovery-deck-layer"+(leaving===current.id?" deck-leaving deck-leaving-"+leavingKind:" deck-active")} key={current.id}
      onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
       ["luemi-deck-leave","feed-v2-pass","feed-v2-like","feed-v2-special"].includes(event.animationName))finishDeck();}}>
