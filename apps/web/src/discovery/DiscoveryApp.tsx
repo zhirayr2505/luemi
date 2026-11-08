@@ -528,8 +528,8 @@ export function DiscoveryApp({draft,photos,theme,onTheme,onExit,registerBack}:Pr
    data-profile-renderer={androidWebView?"android":"standard"}
    data-profile-mode={profileMode?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>
-   <GlobalHeader ref={globalHeader} mode={backgroundHeaderMode} theme={theme}
-     onTheme={onTheme} onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
+   <GlobalHeader ref={globalHeader} mode={backgroundHeaderMode}
+     onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
     />
    <div className="discovery-main-panels">
      <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
