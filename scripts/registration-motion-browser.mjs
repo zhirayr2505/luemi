@@ -72,9 +72,19 @@ try{
  assert.ok(await page.getByRole("option",{name:/Армавир, Армения/}).count()>0);
  const cityInput=await page.getByPlaceholder("Название города").boundingBox();
  const cityResults=await page.locator(".geo-city-suggestions").boundingBox();
- assert.ok(cityInput&&cityResults&&cityResults.y>=cityInput.y+cityInput.height-2,
-   "suggestions must expand below the input, never behind the top Telegram header");
- assert.ok(cityResults.y<page.viewportSize().height-260,"search results remain visible over mobile keyboard");
+ assert.ok(cityInput&&cityResults&&cityResults.y+cityResults.height<=cityInput.y-2,
+   "suggestions must open ABOVE the city field, inside the Telegram header-safe zone");
+ assert.ok(cityResults.y>0,"city suggestions may not clip above the device");
+ const firstRowHeight=await armavir.first().evaluate(node=>node.getBoundingClientRect().height);
+ assert.ok(firstRowHeight<=40,"city results use compact single-line rows");
+ assert.ok(cityResults.height>=firstRowHeight*2,"both matching cities are visible without scrolling");
+ assert.equal(await page.locator(".geo-city-area>.field-label").count(),0,
+   "city editor cannot repeat the 'Твой город' heading");
+ assert.equal(await page.locator(".geo-suggestion-country").count(),2,
+   "results display city and country on one line");
+ assert.equal(await page.locator(".geo-suggestion-flag img").first().getAttribute("width"),"19",
+   "the flag is a discreet 19px circle");
+ await screenshot("location-cities-above-input");
  await page.getByRole("option",{name:/Армавир, Россия, Краснодарский край/}).click();
  assert.ok((await page.locator(".geo-liquid-city").innerText()).includes("Армавир"));
  await page.getByRole("button",{name:"Изменить город"}).click();
@@ -88,6 +98,8 @@ try{
  assert.ok(originalRect&&originalRect.height<=62,"shared mode card should not have empty padding");
  await page.getByRole("button",{name:"Мой город"}).click();
  assert.equal(await page.getByRole("button",{name:"Мой город"}).getAttribute("aria-pressed"),"true","city search scope is selected");
+ assert.equal(await page.locator(".geo-liquid-scopes button.active .geo-scope-check").count(),1,
+   "a selected location scope has exactly one circular corner check");
  for(const mode of ["Весь мир","Рядом","Мой город"]){
   await page.getByRole("button",{name:mode,exact:true}).click();
   const rect=await panel.boundingBox();
