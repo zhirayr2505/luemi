@@ -88,10 +88,10 @@ export function useFieldFocusDock(active:boolean){
    const stableHeight=device?.clientHeight??window.innerHeight;
    const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??origin+120;
    const minimum=headerBottom+12;
-   const reserved=isAbout?Math.min(180,stableHeight*.22):86;
-   // Aim for ~23% down the stable full-screen canvas, not keyboard height.
-   // Anticipate the IME covering the lower ~48% of a compact device.
-   const ideal=origin+stableHeight*.23;
+   const reserved=isAbout?Math.min(180,stableHeight*.22):isCity?70:86;
+   // City suggestions open above the input: make room for several short rows.
+   // Keep a stable IME-safe anchor; never chase keyboard resize events.
+   const ideal=origin+stableHeight*(isCity?.44:.23);
    const safeUpper=origin+stableHeight*.53-reserved;
    pinnedTop=Math.round(Math.max(minimum,Math.min(ideal,safeUpper)));
    shell.style.setProperty("--focused-dock-top",`${pinnedTop}px`);
@@ -105,7 +105,7 @@ export function useFieldFocusDock(active:boolean){
    if(!shell.isConnected)return;
    const headerBottom=device?.querySelector<HTMLElement>(".v2-progress")?.getBoundingClientRect().bottom??120;
    if(isCity){
-    const available=Math.max(48,Math.min(230,Math.floor(pinnedTop-headerBottom-20)));
+    const available=Math.max(44,Math.min(232,Math.floor(pinnedTop-headerBottom-12)));
     shell.style.setProperty("--field-suggestions-max-height",`${available}px`);
    }
   };
