@@ -90,7 +90,10 @@ export function useLiveLocation(city:City,onConfirmed:(p:ObservedCity)=>void){
   if(!enabled)return;
   // Telegram WebView may suspend all timers offscreen. Check on visibility
   // and focus, with a throttled 10-minute visible-only refresh.
-  const visible=()=>{if(document.visibilityState==="visible")void refresh();};
+  const visible=()=>{
+   if(document.visibilityState==="visible")void refresh();
+   else op.current?.abort(); // Never finish an in-flight GPS read in the background.
+  };
   document.addEventListener("visibilitychange",visible);
   window.addEventListener("focus",visible);
   const timer=window.setInterval(visible,600000);
@@ -110,7 +113,7 @@ export function useLiveLocation(city:City,onConfirmed:(p:ObservedCity)=>void){
   try{
    // Device location permission is a distinct step after the user's
    // explicit LUEMI consent action below.
-   const reading=await readPreciseLocation(controller.signal,native());
+   const reading=await readPreciseLocation(controller.signal,native(),true);
    if(controller.signal.aborted||serial!==gate.current)return;
    await consentLiveLocation(reading);
    if(controller.signal.aborted||serial!==gate.current)return;
