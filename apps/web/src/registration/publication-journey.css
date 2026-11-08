@@ -45,7 +45,17 @@
 .luemi-publication-bottom h1{font-size:clamp(24px,6.3vw,31px);line-height:1.15;
  font-weight:760;letter-spacing:-.04em;margin:0;color:#fff}
 .luemi-publication-bottom p{font-size:13px;line-height:1.5;margin:0;color:#E1DDE8}
-.luemi-publication-progress{width:min(78vw,300px);height:5px;margin-top:10px;overflow:hidden;
+/* Reserve two lines for rotating copy: no vertical shifts of the thin progress
+   indicator, button or caption when a shorter quote replaces a longer one. */
+.luemi-publication-quote-slot{display:grid;align-items:start;min-height:44px;width:100%;
+ overflow:hidden;contain:layout}
+.luemi-publication-bottom .luemi-publication-quote{max-width:330px;width:100%;margin:0 auto;
+ font-size:14px;line-height:1.45;font-weight:420;color:rgba(244,240,248,.90);
+ animation:luemi-publication-quote-in .48s cubic-bezier(.22,.72,.3,1) both}
+@keyframes luemi-publication-quote-in{
+ from{opacity:0;transform:translate3d(0,7px,0)}
+ to{opacity:1;transform:translate3d(0,0,0)}}
+.luemi-publication-progress{width:min(78vw,300px);height:3px;margin-top:8px;overflow:hidden;
  border-radius:999px;background:rgba(245,243,248,.24)}
 .luemi-publication-progress span{display:block;height:100%;border-radius:inherit;
  background:linear-gradient(90deg,var(--luemi-lavender),var(--luemi-rose));
@@ -80,4 +90,5 @@
 @media(prefers-reduced-motion:reduce){.luemi-publication-petals i{animation:none;opacity:.4;top:25%}
  .luemi-publication-journey,.luemi-publication-glow,
  .luemi-publication-stars i,.luemi-publication-orbit,.luemi-publication-journey.is-leaving{animation:none}
- .luemi-publication-progress span,.luemi-publication-dots span{transition:none}}
+ .luemi-publication-progress span{transition:none}
+ .luemi-publication-bottom .luemi-publication-quote{animation:none;opacity:1;transform:none}}
