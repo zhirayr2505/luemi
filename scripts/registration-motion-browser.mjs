@@ -72,9 +72,19 @@ try{
  assert.ok(await page.getByRole("option",{name:/Армавир, Армения/}).count()>0);
  const cityInput=await page.getByPlaceholder("Название города").boundingBox();
  const cityResults=await page.locator(".geo-city-suggestions").boundingBox();
- assert.ok(cityInput&&cityResults&&cityResults.y>=cityInput.y+cityInput.height-2,
-   "suggestions must expand below the input, never behind the top Telegram header");
- assert.ok(cityResults.y<page.viewportSize().height-260,"search results remain visible over mobile keyboard");
+ assert.ok(cityInput&&cityResults&&cityResults.y+cityResults.height<=cityInput.y-2,
+   "suggestions must open ABOVE the city field, inside the Telegram header-safe zone");
+ assert.ok(cityResults.y>0,"city suggestions may not clip above the device");
+ const firstRowHeight=await armavir.first().evaluate(node=>node.getBoundingClientRect().height);
+ assert.ok(firstRowHeight<=40,"city results use compact single-line rows");
+ assert.ok(cityResults.height>=firstRowHeight*2,"both matching cities are visible without scrolling");
+ assert.equal(await page.locator(".geo-city-area>.field-label").count(),0,
+   "city editor cannot repeat the 'Твой город' heading");
+ assert.equal(await page.locator(".geo-suggestion-country").count(),2,
+   "results display city and country on one line");
+ assert.equal(await page.locator(".geo-suggestion-flag img").first().getAttribute("width"),"19",
+   "the flag is a discreet 19px circle");
+ await screenshot("location-cities-above-input");
  await page.getByRole("option",{name:/Армавир, Россия, Краснодарский край/}).click();
  assert.ok((await page.locator(".geo-liquid-city").innerText()).includes("Армавир"));
  await page.getByRole("button",{name:"Изменить город"}).click();
@@ -88,6 +98,8 @@ try{
  assert.ok(originalRect&&originalRect.height<=62,"shared mode card should not have empty padding");
  await page.getByRole("button",{name:"Мой город"}).click();
  assert.equal(await page.getByRole("button",{name:"Мой город"}).getAttribute("aria-pressed"),"true","city search scope is selected");
+ assert.equal(await page.locator(".geo-liquid-scopes button.active .geo-scope-check").count(),1,
+   "a selected location scope has exactly one circular corner check");
  for(const mode of ["Весь мир","Рядом","Мой город"]){
   await page.getByRole("button",{name:mode,exact:true}).click();
   const rect=await panel.boundingBox();
@@ -122,6 +134,11 @@ try{
  assert.equal(await page.getByRole("button",{name:"Пока не определился"}).getAttribute("aria-pressed"),"true",
    "registration must preselect the gender-aware undecided goal");
  await page.getByRole("button",{name:"Серьёзные отношения"}).click();
+ assert.equal(await page.getByRole("button",{name:"Серьёзные отношения"}).locator(".v2-goal-check").count(),1,
+  "selected goal has a circular check in its corner");
+ assert.equal(await page.getByRole("button",{name:"Женщин"}).locator(".glass-choice-corner-check").count(),1,
+  "audience selection uses the same corner check");
+ await screenshot("intent-corner-checks");
  const goalHeight=await page.getByRole("button",{name:"Серьёзные отношения"}).evaluate(el=>el.getBoundingClientRect().height);
  assert.ok(goalHeight<=60,"goal cards should be genuinely compact horizontal rows");
  assert.equal(await page.locator(".v2-goal-choice").count(),13,"all 13 goals remain available");
@@ -154,6 +171,7 @@ try{
  assert.equal(await page.getByRole("button",{name:/Удалить интерес/}).count(),0);
  await page.locator(".interest-choices button").first().click();
  await page.locator(".v2-sticky-interests.is-visible").waitFor();
+ await screenshot("about-pastel-interests");
  assert.equal(await page.locator(".v2-about-interest-heading").count(),1);
  assert.equal(await page.locator(".v2-sticky-interests").count(),1,"the ribbon is attached to the single sticky heading");
  assert.equal(await page.locator(".v2-stage-heading .v2-sticky-interests").count(),1);
@@ -254,6 +272,24 @@ try{
  await stage("review");
  assert.equal(await page.locator(".v2-showcase-track img").count(),3,"review shows the selected photos");
  assert.equal(await page.getByText("Люблю музыку и прогулки по городу.").count(),1);
+ const reviewPhoto=await page.locator(".v2-showcase-track").boundingBox();
+ assert.ok(reviewPhoto,"review photo must have a touchable viewport");
+ await page.locator(".v2-body").evaluate(node=>node.scrollTop=0);
+ const photoSwipe=await page.context().newCDPSession(page);
+ const px=reviewPhoto.x+reviewPhoto.width*.5,py0=reviewPhoto.y+reviewPhoto.height*.72;
+ const py1=reviewPhoto.y+reviewPhoto.height*.33;
+ try{
+  await photoSwipe.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{id:1,x:px,y:py0}]});
+  for(let i=1;i<=10;i++){
+   await photoSwipe.send("Input.dispatchTouchEvent",{type:"touchMove",
+    touchPoints:[{id:1,x:px,y:py0+(py1-py0)*i/10}]});
+   await page.waitForTimeout(16);
+  }
+  await photoSwipe.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ }finally{await photoSwipe.detach()}
+ assert.ok(await page.locator(".v2-body").evaluate(node=>node.scrollTop)>12,
+  "vertical Android touch swipe across a review photo scrolls the whole page");
+ await screenshot("review-after-photo-swipe");
  await page.getByRole("button",{name:"Редактировать"}).click();
  await stage("photos");
  await page.evaluate(()=>window.__luemiQABack?.());

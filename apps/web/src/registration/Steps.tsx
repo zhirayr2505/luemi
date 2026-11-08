@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from "react";
 import {remoteDraftPilot} from "./server-draft";
 import {realFeedPilot} from "./real-live-client";
 import type {CSSProperties,ReactNode} from "react";
-import {Info,Search,CheckCircle2} from "lucide-react";
+import {Info,Search,Check} from "lucide-react";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import {goals,goalIcons} from "../ui/Goals";
 import {GlassField,GlassCheckbox,GlassChoice,GlassTextInput} from "../ui/Glass";
@@ -180,8 +180,8 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
      {(fieldError?.field==="date"||dateInputError)&&<div className="field-inline-hint" role="alert"><Info size={16} aria-hidden="true"/>{fieldError?.field==="date"?fieldError.message:dateInputError}</div>}
    </div></div>
    <ChoiceRow label="Пол">
-     <GlassChoice chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<GenderIcon type="man"/>}>Мужчина</GlassChoice>
-     <GlassChoice chosen={data.gender==="woman"} onClick={()=>patch({gender:"woman"})} icon={<GenderIcon type="woman"/>}>Женщина</GlassChoice>
+     <GlassChoice showCheck chosen={data.gender==="man"} onClick={()=>patch({gender:"man"})} icon={<GenderIcon type="man"/>}>Мужчина</GlassChoice>
+     <GlassChoice showCheck chosen={data.gender==="woman"} onClick={()=>patch({gender:"woman"})} icon={<GenderIcon type="woman"/>}>Женщина</GlassChoice>
    </ChoiceRow>
    
  </div>;
@@ -190,9 +190,9 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
    clearFieldError={()=>clearFieldError?.("city")} onFieldFocus={onFieldFocus}/></div>;
  if(step===4)return <div className="form-stack compact-step preferences-step">
    <ChoiceRow label="Кого хочешь встретить?">
-     <GlassChoice chosen={data.audience==="women"} onClick={()=>patch({audience:"women"})} icon={<GenderIcon type="woman"/>}>Женщин</GlassChoice>
-     <GlassChoice chosen={data.audience==="men"} onClick={()=>patch({audience:"men"})} icon={<GenderIcon type="man"/>}>Мужчин</GlassChoice>
-     <GlassChoice chosen={data.audience==="everyone"} onClick={()=>patch({audience:"everyone"})} icon={<GenderIcon type="everyone"/>}>Всех</GlassChoice>
+     <GlassChoice showCheck chosen={data.audience==="women"} onClick={()=>patch({audience:"women"})} icon={<GenderIcon type="woman"/>}>Женщин</GlassChoice>
+     <GlassChoice showCheck chosen={data.audience==="men"} onClick={()=>patch({audience:"men"})} icon={<GenderIcon type="man"/>}>Мужчин</GlassChoice>
+     <GlassChoice showCheck chosen={data.audience==="everyone"} onClick={()=>patch({audience:"everyone"})} icon={<GenderIcon type="everyone"/>}>Всех</GlassChoice>
    </ChoiceRow>
    <DoubleAgeRange min={data.ageMin} max={data.ageMax} onChange={(ageMin,ageMax)=>patch({ageMin,ageMax})}/>
    <div className="goals-section"><ChoiceRow label="Цель знакомства">
@@ -203,7 +203,7 @@ export function RegistrationStep({data,patch,photos,addPhotos,removePhoto,movePh
         aria-pressed={selected} onClick={()=>patch({goal:goal.id})}>
          <span className="v2-goal-icon" aria-hidden="true"><Icon size={19} strokeWidth={1.8}/></span>
          <span className="goal-card-label">{goalLabel(goal.id,data.gender)}</span>
-         {selected&&<CheckCircle2 size={13} className="v2-goal-check" aria-hidden="true"/>}
+         {selected&&<span className="v2-goal-check" aria-hidden="true"><Check size={11} strokeWidth={3}/></span>}
        </button>;
      })}
    </ChoiceRow></div>

@@ -177,7 +177,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
  const loading=activity==="searching"||activity==="locating"||activity==="resolving";
  return <div className="geo-stack geo-liquid-location">
    <div className="geo-city-area">
-     <span className="field-label">Твой город</span>
+     {!editing&&<span className="field-label">Твой город</span>}
      {!editing&&<button type="button" className="geo-liquid-city" onClick={openCitySearch}
        aria-label={data.placeId?"Изменить город":"Выбрать город"}>
        <span className="geo-liquid-city-icon"><MapPin size={24} strokeWidth={1.7}/></span>
@@ -195,7 +195,7 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
              <Search size={19} aria-hidden="true"/>
              <input ref={inputRef} className="glass-control geo-input" role="combobox"
                autoComplete="off" aria-expanded={results.length>0} aria-controls="luemi-geo-results"
-               aria-autocomplete="list" maxLength={80} placeholder="Название города"
+               aria-autocomplete="list" aria-haspopup="listbox" maxLength={80} placeholder="Название города"
                value={query}
                onFocus={()=>{pendingBlur.current?.();pendingBlur.current=null;setCityFocused(true);onFieldFocus?.("city");clearFieldError?.();}}
                onBlur={()=>{pendingBlur.current?.();pendingBlur.current=releaseAfterKeyboardSettles(()=>{
@@ -212,11 +212,11 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
              aria-label={[place.city,place.country,place.region].filter(Boolean).join(", ")}
              aria-selected={false}
              onPointerDown={event=>event.preventDefault()} onClick={()=>choose(place)}>
-             <span className="geo-suggestion-flag"><Flag code={place.countryCode} title={"Флаг "+place.country}/></span>
+             <span className="geo-suggestion-flag"><Flag code={place.countryCode} size={19} title={"Флаг "+place.country}/></span>
              <span className="geo-suggestion-copy">
                <strong>{place.city}</strong>
-               <small>{place.country}{place.region?" · "+place.region:""}</small>
-             </span><Check size={16} className="geo-suggestion-action" aria-hidden="true"/>
+               <span className="geo-suggestion-country">· {place.country}</span>
+             </span>
            </button>)}
          </div>}
        </div></div>
@@ -250,10 +250,12 @@ export function GeoPicker({data,patch,fieldError,clearFieldError,onFieldFocus}:G
          onClick={()=>patch({searchScope:value})}>
          <Icon size={18} strokeWidth={1.7} aria-hidden="true"/>
          <span>{label}</span>
+         {data.searchScope===value&&<span className="geo-scope-check" aria-hidden="true"><Check size={11} strokeWidth={2.8}/></span>}
        </button>)}
        {data.searchScope==="country"&&<button type="button" className="active" aria-pressed="true"
          onClick={()=>patch({searchScope:"country"})}>
          <Globe2 size={18}/><span>Моя страна</span>
+         <span className="geo-scope-check" aria-hidden="true"><Check size={11} strokeWidth={2.8}/></span>
        </button>}
      </div>
      <div className="geo-liquid-mode-panel" role="status" aria-live="polite" aria-atomic="true">
