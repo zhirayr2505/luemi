@@ -206,14 +206,14 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    if(Math.abs(dx)>Math.abs(dy)*1.15){
     // A rightward gesture from the OS edge belongs to Telegram.
     if(dx>0&&g.x<26){gesture.current=null;return;}
-    if(g.zone!=="photo"||!photo.current?.canAdvance(dx<0?1:-1)){
+    if(!(g.zone==="photo"||g.info)||!photo.current?.canAdvance(dx<0?1:-1)){
      gesture.current=null;return;
     }
     g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
-   }else if(Math.abs(dy)>Math.abs(dx)*1.15&&g.info){
+   }else if(Math.abs(dy)>Math.abs(dx)*1.15&&(g.info||g.zone==="photo")){
     freeze();g.startProgress=progress.current;
     const canScroll=!!scroll.current&&scroll.current.scrollHeight>scroll.current.clientHeight+1;
-    g.axis=g.startProgress>.99&&g.nativeScroll&&canScroll&&
+    g.axis=g.info&&g.startProgress>.99&&g.nativeScroll&&canScroll&&
      (dy<0||g.scrollStart>0)?"scroll":"info";
     if(g.axis==="info"){g.y=event.clientY;dy=0;}
    }else return;
