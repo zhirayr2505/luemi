@@ -93,18 +93,16 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  box-shadow:0 0 0 2px rgba(191,182,209,.12),0 11px 28px rgba(12,14,18,.2),inset 0 1px rgba(255,255,255,.14)}
 /* Static refractive colour instead of dozens of live backdrop filters
    repainting on every finger-driven scroll frame (especially the intent grid). */
-.v2-runtime .glass-choice,.v2-runtime .v2-choice,.v2-runtime .category-chip{min-height:34px;border-radius:999px;
- background:linear-gradient(115deg,color-mix(in srgb,var(--chip-from) 24%,#2E333D),
- color-mix(in srgb,var(--chip-to) 26%,#2B3039));
- color:#F3F0F6;border:1px solid color-mix(in srgb,var(--chip-from) 39%,#565E6F);
- box-shadow:inset 0 1px rgba(255,255,255,.1);padding:6px 10px;font-size:11.5px;gap:6px;
- -webkit-backdrop-filter:none;backdrop-filter:none}
+.v2-runtime .glass-choice,.v2-runtime .v2-choice,.v2-runtime .category-chip{color:#F0EEF3;border:1px solid rgba(187,180,203,.23);
+ background:linear-gradient(135deg,rgba(61,67,80,.92),rgba(45,50,59,.91));
+ -webkit-backdrop-filter:none;backdrop-filter:none;
+ box-shadow:inset 0 1px rgba(255,255,255,.1),0 6px 17px rgba(12,14,18,.09);
+ transition:transform .18s ease,border-color .24s ease,box-shadow .24s ease,background .24s ease}
 .v2-runtime .glass-choice.selected,.v2-runtime .v2-choice.is-selected,
-.v2-runtime .category-chip.selected{color:#F8F6FB;
- background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 36%,#4C5464),
- color-mix(in srgb,var(--chip-to) 38%,#3D4350));
- border-color:color-mix(in srgb,var(--chip-from) 70%,#7D89A1);
- box-shadow:inset 0 1px rgba(255,255,255,.18),0 4px 12px rgba(13,14,18,.13)}
+.v2-runtime .category-chip.selected{
+ color:#fff;border-color:var(--luemi-border-active,rgba(226,222,234,.30));
+ background:rgba(90,99,116,.74);
+ box-shadow:inset 0 1px rgba(255,255,255,.17),0 0 0 1px rgba(173,163,194,.13)}
 .v2-runtime .glass-choice:active,.v2-runtime .category-chip:active{transform:scale(.985)}
 .v2-runtime .choice-grid{gap:9px}
 .v2-runtime .dob-step>.choice-section .choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -124,17 +122,8 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .category-chip{filter:none!important;color:#E4E1EA;border-radius:999px}
 .v2-runtime .category-chip.selected{filter:none!important}
 .v2-runtime .interest-choices{gap:8px}
-.v2-runtime .interest-chip,.v2-runtime .chip.toned{
- color:#F5F4F8;min-height:33px;padding:6px 9px;font-size:11.5px;gap:6px;
- background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 32%,#2D313B),
- color-mix(in srgb,var(--chip-to) 34%,#2A2F38));
- border:1px solid color-mix(in srgb,var(--chip-from) 42%,#4B5362);
- box-shadow:inset 0 1px rgba(255,255,255,.1)}
-.v2-runtime .interest-chip.selected{color:#242932;transform:none;
- background:linear-gradient(110deg,color-mix(in srgb,var(--chip-from) 65%,#5D667A),
- color-mix(in srgb,var(--chip-to) 63%,#5B6477));
- border:1px solid color-mix(in srgb,var(--chip-from) 76%,#B5ACC6);
- box-shadow:inset 0 1px rgba(255,255,255,.25),0 4px 11px rgba(12,13,17,.1)}
+
+
 .v2-runtime .interest-choices{overflow:visible;flex:none;padding:6px 0 10px}
 .v2-runtime .v2-note{display:flex;align-items:flex-start;gap:10px;padding:14px;
  color:#B6AFC3;font-size:12px;line-height:1.48}
@@ -457,28 +446,28 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  padding:4px 1px 7px;gap:6px;touch-action:pan-x}
 .v2-runtime .category-row::-webkit-scrollbar{display:none}
 .v2-runtime .category-chip{min-height:34px;border-radius:999px;
- background:linear-gradient(115deg,color-mix(in srgb,var(--chip-from) 13%,#2E333D),
- color-mix(in srgb,var(--chip-to) 16%,#2B3039));
- color:#EAE7EF;border:1px solid color-mix(in srgb,var(--chip-from) 36%,#565E6F);
- box-shadow:inset 0 1px rgba(255,255,255,.08);padding:6px 10px;font-size:11.5px;gap:6px;
- -webkit-backdrop-filter:none;backdrop-filter:none}
-.v2-runtime .category-chip.selected{color:#fff;
- background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 31%,#4C5464),
- color-mix(in srgb,var(--chip-to) 32%,#3D4350));
- border-color:color-mix(in srgb,var(--chip-from) 65%,#7D89A1);
+ background:linear-gradient(115deg,color-mix(in srgb,var(--chip-from) 24%,#2E333D),
+ color-mix(in srgb,var(--chip-to) 26%,#2B3039));
+ color:#F3F0F6;border:1px solid color-mix(in srgb,var(--chip-from) 39%,#565E6F);
+ box-shadow:inset 0 1px rgba(255,255,255,.1);padding:6px 10px;font-size:11.5px;gap:6px;
+ filter:none!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+.v2-runtime .category-chip.selected{color:#F8F6FB;
+ background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 36%,#4C5464),
+ color-mix(in srgb,var(--chip-to) 38%,#3D4350));
+ border-color:color-mix(in srgb,var(--chip-from) 70%,#7D89A1);
  box-shadow:inset 0 1px rgba(255,255,255,.18),0 4px 12px rgba(13,14,18,.13)}
 .v2-runtime .interest-choices{gap:6px;min-height:0;padding:4px 0 10px}
 .v2-runtime .interest-chip,.v2-runtime .chip.toned{
  color:#F5F4F8;min-height:33px;padding:6px 9px;font-size:11.5px;gap:6px;
- background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 17%,#2D313B),
- color-mix(in srgb,var(--chip-to) 19%,#2A2F38));
- border:1px solid color-mix(in srgb,var(--chip-from) 28%,#4B5362);
- box-shadow:inset 0 1px rgba(255,255,255,.07)}
-.v2-runtime .interest-chip.selected{color:#fff;transform:none;
- background:linear-gradient(110deg,color-mix(in srgb,var(--chip-from) 46%,#5D667A),
- color-mix(in srgb,var(--chip-to) 44%,#5B6477));
- border:1px solid color-mix(in srgb,var(--chip-from) 68%,#B5ACC6);
- box-shadow:inset 0 1px rgba(255,255,255,.21),0 4px 11px rgba(12,13,17,.12)}
+ background:linear-gradient(125deg,color-mix(in srgb,var(--chip-from) 32%,#2D313B),
+ color-mix(in srgb,var(--chip-to) 34%,#2A2F38));
+ border:1px solid color-mix(in srgb,var(--chip-from) 42%,#4B5362);
+ box-shadow:inset 0 1px rgba(255,255,255,.1);filter:none!important}
+.v2-runtime .interest-chip.selected{color:#242932;transform:none;
+ background:linear-gradient(110deg,color-mix(in srgb,var(--chip-from) 65%,#5D667A),
+ color-mix(in srgb,var(--chip-to) 63%,#5B6477));
+ border:1px solid color-mix(in srgb,var(--chip-from) 76%,#B5ACC6);
+ box-shadow:inset 0 1px rgba(255,255,255,.25),0 4px 11px rgba(12,13,17,.1)}
 .v2-runtime .interest-max-hint,.v2-runtime .interest-no-results{
  margin:5px 0 0;color:#B8B0C8;font-size:12px;line-height:1.4}
 .v2-runtime .v2-about-interest-heading{margin-top:0}
@@ -572,7 +561,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  background:linear-gradient(140deg,#D7C7E5,#B6A4C8);color:#232730;
  box-shadow:inset 0 1px rgba(255,255,255,.55),0 2px 7px rgba(11,12,16,.2);
  pointer-events:none}
-.v2-runtime .geo-liquid-scopes button.active svg:not(.geo-scope-check svg){color:#F4E9FC}
+.v2-runtime .geo-liquid-scopes button.active>svg{color:#F4E9FC}
 .v2-runtime .geo-liquid-scopes button:active{transform:scale(.98)}
 /* One genuinely compact, stable-height explanation card. Mode changes animate
    only its contents, keeping the layout and fixed Continue button steady. */
