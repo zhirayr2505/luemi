@@ -461,7 +461,11 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "LEFT JOIN luemi_private.city_centres origin_city ON origin_city.country_code=pref.country_code "+
     "AND origin_city.city_norm=lower(btrim(pref.city_label)) "+
     "LEFT JOIN luemi_private.city_centres candidate_city ON candidate_city.country_code=p.country_code "+
-    "AND candidate_city.city_norm=lower(btrim(p.city_label)) "+
+    "AND candidate_city.city_norm=lower(btrim(p.city_label)) "+    "LEFT JOIN luemi_private.precise_locations viewer_loc ON "+
+    "viewer_loc.owner_id=$2 AND viewer_loc.environment=$1 "+
+    "LEFT JOIN luemi_private.precise_locations candidate_loc ON "+
+    "candidate_loc.owner_id=p.owner_id AND candidate_loc.environment=$1 "+
+
 
     // Only coarse declared city centres are used: never precise device GPS.
     // Evidence and ranking are evaluated by PostgreSQL BEFORE LIMIT/OFFSET,
@@ -506,10 +510,6 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     "WHEN evidence.km<=100 THEN 1 WHEN evidence.km<=300 THEN 2 "+
     "WHEN evidence.km<=1000 THEN 3 WHEN evidence.km<=3000 THEN 4 "+
     "ELSE 5 END AS band) ranking "+
-    "LEFT JOIN luemi_private.precise_locations viewer_loc ON "+
-    "viewer_loc.owner_id=$2 AND viewer_loc.environment=$1 "+
-    "LEFT JOIN luemi_private.precise_locations candidate_loc ON "+
-    "candidate_loc.owner_id=p.owner_id AND candidate_loc.environment=$1 "+
     "LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment "+
     "AND incoming.sender_id=p.owner_id AND incoming.receiver_id=$2 AND incoming.status='active' "+
     "WHERE p.environment=$1 "+
