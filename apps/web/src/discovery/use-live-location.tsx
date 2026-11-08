@@ -84,7 +84,7 @@ export function useLiveLocation(city:City,onConfirmed:(p:ObservedCity)=>void){
    setEnabled(status.enabled);enabledRef.current=status.enabled;
    setUpdatedAt(status.updatedAt);setLoaded(true);
   }).catch(()=>{if(!ctrl.signal.aborted){setLoaded(true);setError("Настройки геолокации сейчас недоступны.");}});
-  return()=>{living.current=false;ctrl.abort();op.current?.abort();++gate.current;};
+  return()=>{living.current=false;ctrl.abort();op.current?.abort();};
  },[]);
  useEffect(()=>{
   if(!enabled)return;
