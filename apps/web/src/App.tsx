@@ -4,6 +4,7 @@ import {flushSync} from "react-dom";
 import {ArrowRight,Pencil,Sparkles} from "lucide-react";
 import {SafetyAppealPanel} from "./SafetyAppealPanel";
 import {GlassArrow} from "./ui/Glass";
+import {installMoonstoneOptics} from "./ui/moonstone-optics";
 import type { HealthResponse } from "@luemi/contracts";
 import { birthDateValid,cleanName,nameValid,newDraft,goals,selectedCityValid,steps,validateStep,type RegistrationDraft } from "./registration/model";
 import { RegistrationStep, SelectedInterests, type PhotoItem } from "./registration/Steps";
@@ -214,6 +215,7 @@ export function App() {
   const [localDeletionFailed,setLocalDeletionFailed]=useState(false);
   const theme:ThemeChoice="dark";
   const rootRef=useRef<HTMLElement>(null);
+  useEffect(()=>installMoonstoneOptics(document),[]);
   const contentRef=useRef<HTMLDivElement>(null);
   const discoveryBackRef=useRef<()=>void>(()=>{});
   const v2BackRef=useRef<()=>void>(()=>{});
@@ -299,8 +301,13 @@ export function App() {
   useEffect(()=>{
     const webApp=window.Telegram?.WebApp;
     try{
-      const background=auth==="authorized"&&!realHome?(phase==="form"?"#1c1424":"#211725"):
-        activeTheme==="dark"?"#211725":"#fffbfd";
+      // Telegram's system chrome and HTML theme-color must share the exact
+      // Moonstone semantic tokens with the rendered CSS (no stale plum hex).
+      const styles=getComputedStyle(document.documentElement);
+      const background=auth==="authorized"&&!realHome&&phase==="form"?
+        (styles.getPropertyValue("--luemi-bg-deep").trim()||"#171B20"):
+        (styles.getPropertyValue("--luemi-bg").trim()||"#1B2025");
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content",background);
       webApp?.setHeaderColor?.(background);
       webApp?.setBackgroundColor?.(background);
       webApp?.setBottomBarColor?.(background);

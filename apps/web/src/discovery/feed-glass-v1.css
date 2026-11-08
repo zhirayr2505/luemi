@@ -9,12 +9,12 @@
 .lh-browse-control{
  display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;
  color:var(--luemi-text);border-radius:16px;border:1px solid var(--luemi-border);
- background:linear-gradient(145deg,rgba(87,67,89,.58),rgba(48,36,55,.78));
- box-shadow:inset 0 1px rgba(255,255,255,.085),0 4px 14px rgba(9,6,16,.12);
+ background:linear-gradient(145deg,rgba(69,76,89,.58),rgba(42,46,54,.78));
+ box-shadow:inset 0 1px rgba(255,255,255,.085),0 4px 14px rgba(12,14,17,.12);
  -webkit-tap-highlight-color:transparent
 }
-.lh-browse-control:active{transform:scale(.96);background:rgba(105,81,125,.7)}
-.lh-browse-control:focus-visible{outline:2px solid #d0a2ed;outline-offset:2px}
+.lh-browse-control:active{transform:scale(.96);background:rgba(89,99,117,.7)}
+.lh-browse-control:focus-visible{outline:2px solid #C3BBD4;outline-offset:2px}
 /* Profile/visitor and browse chrome share one stable left-aligned brand row. */
 .discovery-app .discovery-main-panels>.discovery-panel.discovery-browse-panel{
  /* The wordmark is a real 40px pointer target at --brand-top.
@@ -25,75 +25,75 @@
  height:48px;min-height:48px;flex:none;box-sizing:border-box;
  margin:0 13px 7px;padding:4px;overflow:hidden;
  border:1px solid var(--luemi-border);border-radius:22px;
- background:linear-gradient(130deg,rgba(72,54,78,.70),rgba(40,29,47,.84));
+ background:linear-gradient(130deg,rgba(59,65,77,.70),rgba(35,39,46,.84));
  box-shadow:inset 0 1px rgba(255,255,255,.075);
- color:#f6effa
+ color:#F4F2F7
 }
 .discovery-app .discovery-top-tabs>button{
  position:relative;z-index:2;min-height:40px;padding:0 2px;
  font-size:14px;font-weight:580;letter-spacing:.01em;
- color:rgba(241,225,246,.71);white-space:nowrap
+ color:rgba(234,232,239,.71);white-space:nowrap
 }
 .discovery-app .discovery-top-tabs>button.active{color:#fff;font-weight:730}
 .discovery-app .discovery-top-tabs>.discovery-tab-underline{
  left:4px;bottom:4px;width:calc((100% - 8px)/3);height:38px;
- border-radius:18px;border:1px solid rgba(233,200,253,.22);
- background:linear-gradient(130deg,rgba(171,133,190,.53),rgba(113,88,133,.57));
- box-shadow:inset 0 1px rgba(255,255,255,.18),0 2px 8px rgba(10,5,17,.12);
+ border-radius:18px;border:1px solid rgba(224,220,233,.22);
+ background:linear-gradient(130deg,rgba(156,146,177,.53),rgba(96,106,125,.57));
+ box-shadow:inset 0 1px rgba(255,255,255,.18),0 2px 8px rgba(12,14,18,.12);
  will-change:transform
 }
 .discovery-app .discovery-bottom-nav{
  width:calc(100% - 26px);max-width:620px;min-height:55px;
  margin:6px auto max(8px,var(--bottom-safe));padding:5px 8px;
  border:1px solid var(--luemi-border);border-radius:25px;
- background:linear-gradient(135deg,rgba(56,42,65,.94),rgba(31,23,38,.97));
+ background:linear-gradient(135deg,rgba(48,53,63,.94),rgba(29,32,38,.97));
  box-shadow:inset 0 1px rgba(255,255,255,.08);
  backdrop-filter:none;-webkit-backdrop-filter:none
 }
 .discovery-app .discovery-bottom-nav .discovery-nav-item{
- color:#c7b8d0;min-height:44px;border-radius:17px
+ color:#C1BBCD;min-height:44px;border-radius:17px
 }
 .discovery-app .discovery-bottom-nav .discovery-nav-item.active{
- background:rgba(172,127,200,.14);color:#e0b9f4
+ background:rgba(158,147,180,.14);color:#D3CDE0
 }
-.discovery-app .discovery-bottom-nav .discovery-nav-item.active svg{color:#e0b9f4}
+.discovery-app .discovery-bottom-nav .discovery-nav-item.active svg{color:#D3CDE0}
 /* Card visuals live exclusively in feed-v2.css. The retired inset glass
    and button overrides were removed to prevent cascade conflicts. */
 
 /* Filters are real local client-side predicates over signed feed entries. */
-.real-discovery-home .real-feed-filter-backdrop{z-index:125;align-items:flex-end;background:rgba(15,10,23,.72);backdrop-filter:none}
+.real-discovery-home .real-feed-filter-backdrop{z-index:125;align-items:flex-end;background:rgba(17,19,23,.72);backdrop-filter:none}
 .real-feed-filter-sheet{
  width:100%;max-height:calc(100% - var(--top-safe) - 26px);
  padding:10px 18px max(18px,var(--bottom-safe));
- border:1px solid rgba(226,196,242,.23);border-bottom:0;border-radius:28px 28px 0 0;
- background:#292132;color:#f4eaf8;box-shadow:0 -12px 38px rgba(5,3,9,.34);
+ border:1px solid rgba(216,211,227,.23);border-bottom:0;border-radius:28px 28px 0 0;
+ background:#262A32;color:#F0EEF4;box-shadow:0 -12px 38px rgba(8,10,12,.34);
  display:flex;flex-direction:column;gap:12px;min-height:0
 }
 .real-feed-filter-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .real-feed-filter-head h2{display:flex;align-items:center;gap:10px;margin:0;font-size:21px}
 .real-feed-filter-head button{display:grid;place-items:center;width:42px;height:42px;border-radius:15px;
- border:1px solid rgba(235,202,255,.16);background:rgba(255,255,255,.075);color:#f5ebf9}
+ border:1px solid rgba(226,222,235,.16);background:rgba(255,255,255,.075);color:#F1EFF5}
 .real-feed-filter-fields{overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:21px;padding:8px 0}
 .real-feed-filter-fields fieldset{padding:0;margin:0;border:0;min-width:0}
-.real-feed-filter-fields legend,.real-feed-filter-goal{font-size:14px;font-weight:660;color:#f2e3f7}
+.real-feed-filter-fields legend,.real-feed-filter-goal{font-size:14px;font-weight:660;color:#ECE9F1}
 .real-feed-filter-fields legend{margin-bottom:12px}
 .real-feed-filter-options{display:flex;gap:8px;flex-wrap:wrap}
 .real-feed-filter-options button{
  flex:1;min-width:80px;min-height:44px;padding:9px 13px;border-radius:16px;
- border:1px solid rgba(240,213,253,.16);background:rgba(255,255,255,.065);color:#dacee1
+ border:1px solid rgba(231,228,238,.16);background:rgba(255,255,255,.065);color:#D5D1DE
 }
-.real-feed-filter-options button[aria-pressed=true]{background:rgba(176,137,198,.4);border-color:rgba(238,204,252,.39);color:white}
+.real-feed-filter-options button[aria-pressed=true]{background:rgba(162,152,183,.4);border-color:rgba(226,222,234,.39);color:white}
 .real-feed-filter-ages{display:flex;gap:16px}
 .real-feed-filter-ages label{display:flex;flex:1;min-width:0;flex-direction:column;gap:8px;font-size:13px}
-.real-feed-filter-ages output{font-size:19px;color:#efcdfa}
-.real-feed-filter-ages input{width:100%;accent-color:#b78ed1}
+.real-feed-filter-ages output{font-size:19px;color:#E1DDEA}
+.real-feed-filter-ages input{width:100%;accent-color:#ABA1BE}
 .real-feed-filter-goal{display:flex;flex-direction:column;gap:10px}
 .real-feed-filter-goal select{height:48px;width:100%;border-radius:15px;padding:0 12px;
- background:#3a2e45;color:#fff;border:1px solid rgba(240,213,253,.2);font:inherit}
-.real-feed-filter-check{display:flex;align-items:center;gap:10px;font-size:13px;color:#ede2f3;min-height:40px}
-.real-feed-filter-check input{width:19px;height:19px;accent-color:#b78ed1}
-.real-feed-filter-hint{margin:-12px 0 0;color:#c0b0c9;font-size:12px}
-.real-feed-filter-footer{display:flex;flex:none;gap:9px;padding-top:9px;border-top:1px solid rgba(236,212,250,.12)}
-.real-feed-filter-footer button{min-height:48px;border-radius:17px;padding:11px 15px;font:inherit;font-weight:680;border:1px solid rgba(235,209,251,.19)}
-.real-feed-filter-reset{display:flex;align-items:center;gap:7px;color:#f2e7f9;background:#40314b}
-.real-feed-filter-apply{flex:1;color:#fff;background:linear-gradient(130deg,#a477bb,#82579f)}
+ background:#343943;color:#fff;border:1px solid rgba(231,228,238,.2);font:inherit}
+.real-feed-filter-check{display:flex;align-items:center;gap:10px;font-size:13px;color:#E9E7EE;min-height:40px}
+.real-feed-filter-check input{width:19px;height:19px;accent-color:#ABA1BE}
+.real-feed-filter-hint{margin:-12px 0 0;color:#B9B2C7;font-size:12px}
+.real-feed-filter-footer{display:flex;flex:none;gap:9px;padding-top:9px;border-top:1px solid rgba(229,225,237,.12)}
+.real-feed-filter-footer button{min-height:48px;border-radius:17px;padding:11px 15px;font:inherit;font-weight:680;border:1px solid rgba(228,224,236,.19)}
+.real-feed-filter-reset{display:flex;align-items:center;gap:7px;color:#EFEDF3;background:#373D48}
+.real-feed-filter-apply{flex:1;color:#fff;background:linear-gradient(130deg,#9387AB,#69748C)}

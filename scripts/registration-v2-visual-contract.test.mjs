@@ -24,9 +24,9 @@ const required=[
  ["blurred borderless action fade",/\.v2-runtime\s+\.v2-footer\s*\{[^}]*position:absolute[^}]*border:0/s],
  ["geolocation and language search icon",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
- ["opaque search scope list",/\.v2-runtime\s+\.scope-options\s*\{[^}]*background:#292336/s],
+ ["opaque Moonstone search scope list",/\.v2-runtime\s+\.scope-options\s*\{[^}]*background:#292D35/s],
  ["scope list opens upward without covering the city field",/\.v2-runtime\s+\.scope-options\s*\{[^}]*position:relative;order:-1/s],
- ["shared Soft Plum canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#1c1424\)/s]
+ ["shared Moonstone canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#171B20\)/s]
 ];
 for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
@@ -301,8 +301,8 @@ assert.doesNotMatch(runtime,/background:#412b41|background:#38253a/,
 
 
 // Stronger optical focus and gentle glass bubbles remain a single motion path.
-assert.match(runtime,/\.v2-focus-scrim\{[^}]*background:rgba\(29,20,41,\.43\)[^}]*backdrop-filter:blur\(40px\)/s,
- "Smooth plum frost preserves faint background silhouettes without opaque blackout");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*background:rgba\(28,32,39,\.43\)[^}]*backdrop-filter:blur\(40px\)/s,
+ "Smooth Moonstone frost preserves faint background silhouettes without opaque blackout");
 assert.doesNotMatch(runtime,/\.v2-focus-scrim::before\{/,
  "Delete the old top partial-area glass mask entirely");
 assert.doesNotMatch(runtime,/\.v2-focus-scrim::after\{/,
@@ -338,7 +338,7 @@ assert.match(runtime,/\.v2-footer\{[^}]*bottom:clamp\(0px,calc\(var\(--registrat
  "Only footer position follows visual keyboard inset");
 assert.match(baseStyles,/\.luemi-shell\[data-registration-shell="true"\]\{[^}]*height:var\(--registration-layout-height,100dvh\)/,
  "Shared root shell stays painted while keyboard enters and exits");
-assert.match(baseStyles,/:root\{[^}]*background:#1c1424\}/,
+assert.match(baseStyles,/:root\{[^}]*background:var\(--luemi-bg-deep\)\}/,
  "Retired white root underlay cannot reappear after IME dismissal");
 assert.match(form,/useLayoutEffect\(\(\)=>\{[\s\S]*?data-registration-shell[\s\S]*?viewport\?\.addEventListener\("resize",schedule\)/,
  "Stable layout starts before paint and follows coalesced viewport events");

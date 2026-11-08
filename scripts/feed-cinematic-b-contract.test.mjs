@@ -28,7 +28,7 @@ test("buttons follow the approved 01 sequence: reject, centered heart, special s
 test("approved 03 editorial bio retains semantic labels and readable interests",()=>{
  assert.match(feed,/className="feed-v2-about"/);
  assert.match(feed,/О СЕБЕ/);
- assert.match(css,/border-left:2px solid rgba\(220,145,224,.9\)/);
+ assert.match(css,/border-left:2px solid rgba\(180,170,199,.9\)/);
  assert.match(css,/font-family:Georgia,"Times New Roman",serif;font-style:italic/);
  assert.ok(feed.indexOf('className="feed-v2-about"')<feed.indexOf('className="feed-v2-interests"'));
  assert.match(feed,/person\.interests\.length-2/);

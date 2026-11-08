@@ -18,12 +18,12 @@
 }
 .lh-island img{
  display:block;grid-area:1/1;width:120px;height:40px;max-width:100%;object-fit:contain;
- pointer-events:none;filter:drop-shadow(0 1px 2px rgba(29,12,40,.20));
+ pointer-events:none;filter:drop-shadow(0 1px 2px rgba(24,28,35,.20));
 }
 .lh-island .lh-logo-contrast{
  opacity:var(--lh-contrast,0);
- filter:drop-shadow(0 1px 1px rgba(41,18,60,.46))
-        drop-shadow(0 2px 4px rgba(75,34,99,.55));
+ filter:drop-shadow(0 1px 1px rgba(34,39,49,.46))
+        drop-shadow(0 2px 4px rgba(56,64,80,.55));
 }
 /* Android keeps one unfiltered static logo raster. Every route now uses the
    same left-aligned chrome below Telegram's content-safe area. */
@@ -38,8 +38,8 @@
 .lh-tool,.lh-profile-theme{
  display:grid;place-items:center;flex:none;width:30px;height:30px;padding:0;
  border-radius:50%;border:1px solid rgba(255,255,255,.70);
- background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(243,225,253,.61));
- color:#704b8e;box-shadow:0 3px 13px rgba(44,19,72,.12);
+ background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(238,235,243,.61));
+ color:#5C677D;box-shadow:0 3px 13px rgba(39,45,57,.12);
  backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
 }
 .lh-tool{
@@ -51,18 +51,18 @@
 .lh-tool-saved{--lh-x:var(--lh-right-x,0px)}
 .lh-header[data-tools-merged=true] .lh-tools{pointer-events:none;visibility:hidden}
 .lh-header[data-tools-merged=true] .lh-tool{pointer-events:none}
-.lh-header button:focus-visible{outline:2px solid #bc80eb;outline-offset:3px}
+.lh-header button:focus-visible{outline:2px solid #B0A5C6;outline-offset:3px}
 .lh-profile-theme{
  position:absolute;top:8px;left:132px;
  width:28px;height:28px;z-index:5;padding:0;
  border-color:rgba(255,255,255,.48);
- box-shadow:0 2px 7px rgba(44,19,72,.09),inset 0 1px rgba(255,255,255,.65);
+ box-shadow:0 2px 7px rgba(39,45,57,.09),inset 0 1px rgba(255,255,255,.65);
 }
 .lh-profile-theme::before{
  content:"";position:absolute;inset:-6px;pointer-events:auto;
 }
 .luemi-shell[data-theme=dark] .lh-island{background:transparent;border:0;box-shadow:none;backdrop-filter:none}
 .luemi-shell[data-theme=dark] .lh-tool,.luemi-shell[data-theme=dark] .lh-profile-theme{
- border-color:rgba(225,197,248,.44);background:rgba(65,41,85,.71);color:#f6e6ff
+ border-color:rgba(220,215,230,.44);background:rgba(55,61,75,.71);color:#F2F0F5
 }
 @media(prefers-reduced-transparency:reduce){.lh-tool,.lh-profile-theme{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}}
