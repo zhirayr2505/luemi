@@ -93,11 +93,11 @@ export const GlobalHeader=forwardRef<HeaderMotion,Props>(function GlobalHeader(
   {mode!=="profile"&&<div className="lh-browse-controls">
    {mode==="browse"&&<button type="button" className="lh-browse-control" onClick={onFilters}
     aria-label="Открыть фильтры" title="Фильтры">
-    <SlidersHorizontal size={20} strokeWidth={1.8}/>
+    <SlidersHorizontal size={18} strokeWidth={1.8}/>
    </button>}
    <button type="button" className="lh-browse-control" onClick={onSaved}
     aria-label="Симпатии и уведомления" title="Симпатии и уведомления">
-    <Bell size={20} strokeWidth={1.8}/>
+    <Bell size={18} strokeWidth={1.8}/>
    </button>
   </div>}
  </header>;
