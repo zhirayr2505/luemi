@@ -1,11 +1,11 @@
-import {useEffect,useMemo,useRef,useState} from "react";
+import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {RotateCcw,ShieldCheck} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {selectionHaptic} from "../ui/haptic";
 import type {DemoKind,DemoPerson} from "./model";
 import {demoPeople} from "./demo-people";
 import {FeedCard} from "./FeedCard";
-import {preloadUpcomingFeedPhotos} from "./feed-image-preload";
+import {ensureMountedCoverReady,preloadUpcomingFeedPhotos} from "./feed-image-preload";
 import "./demo-feed-sandbox.css";
 
 type Props={draft:RegistrationDraft;active:boolean;onExit:()=>void;onOpenProfile:(person:DemoPerson)=>void};
@@ -26,6 +26,14 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
  const [leaving,setLeaving]=useState(false);
  const [leavingKind,setLeavingKind]=useState<DemoKind|null>(null);
  const locked=useRef(false),pending=useRef<(()=>void)|null>(null),timer=useRef<number|null>(null);
+ const deckRef=useRef<HTMLDivElement>(null);
+ const coverGate=useRef<AbortController|null>(null);
+ const [readyKeys,setReadyKeys]=useState<ReadonlySet<string>>(()=>new Set<string>());
+ const markReady=useCallback((key:string)=>setReadyKeys(keys=>{
+  if(keys.has(key))return keys;
+  const next=new Set(keys);next.add(key);return next;
+ }),[]);
+ const coverKey=(person:DemoPerson)=>person.id+"::"+(person.photos[0]?.src??"");
  const current=people[page],next=people[page+1];
  // Warm covers + gallery photos *while* the member reads the current profile.
  // A 3-card DOM window stays mounted; the following cards are decoded ahead.
@@ -43,7 +51,7 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
   setLeaving(false);setLeavingKind(null);locked.current=false;
  };
  useEffect(()=>()=>{if(timer.current!==null)window.clearTimeout(timer.current);
-  pending.current=null;locked.current=false;},[]);
+  coverGate.current?.abort();pending.current=null;locked.current=false;},[]);
  const reset=()=>{
   if(locked.current)return;
   setPage(0);setHistory([]);setSaved(new Set());setMessage("");
@@ -64,24 +72,49 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
    setMessage("Сохранено только в демонстрационной сессии");selectionHaptic();return;
   }
   locked.current=true;
+  selectionHaptic();
   const originalPage=page;
-  pending.current=()=>{
-   setHistory(h=>[...h,originalPage].slice(-30));setPage(originalPage+1);
-   setMessage(kind==="like"?"Тестовый лайк · не отправлен пользователю":
-    kind==="special"?"Тестовый суперлайк · без списания и отправки":"Тестовый пропуск");
+  const beginLeave=()=>{
+   pending.current=()=>{
+    setHistory(h=>[...h,originalPage].slice(-30));setPage(originalPage+1);
+    setMessage(kind==="like"?"Тестовый лайк · не отправлен пользователю":
+     kind==="special"?"Тестовый суперлайк · без списания и отправки":"Тестовый пропуск");
+   };
+   setLeavingKind(kind);setLeaving(true);
+   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finish();
+   else timer.current=window.setTimeout(finish,570);
   };
-  setLeavingKind(kind);setLeaving(true);selectionHaptic();
-  if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finish();
-  else timer.current=window.setTimeout(finish,570);
+  // Do not animate a grey queued card into the foreground. Decode the ACTUAL
+  // mounted cover (not just a separate image cache entry) before leaving.
+  if(next&&!readyKeys.has(coverKey(next))){
+   const controller=new AbortController();
+   coverGate.current?.abort();coverGate.current=controller;
+   setMessage("Подготавливаем следующую фотографию…");
+   void ensureMountedCoverReady(deckRef.current?.querySelector<HTMLElement>(".deck-depth-one")??null,
+    controller.signal).then(ok=>{
+     if(controller.signal.aborted)return;
+     coverGate.current=null;
+     if(!ok){
+      locked.current=false;
+      setMessage("Фото следующей анкеты недоступно. Повтори попытку.");
+      return;
+     }
+     markReady(coverKey(next));beginLeave();
+   });
+   return;
+  }
+  beginLeave();
  };
  return <div className="demo-qa-feed" aria-label="Тестовая лента LUEMI">
-  {current?<div className="discovery-deck-stage has-profiles">
+  {current?<div className="discovery-deck-stage has-profiles" ref={deckRef}>
     {people.slice(page,page+3).map((person,offset)=>{
      const foreground=offset===0,successor=offset===1;
      const side=(page+offset)%2===1?"right":"left";
+     const decoded=readyKeys.has(coverKey(person));
      const state=foreground?(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active"):
       (leaving&&successor?" deck-entering":" deck-queued")+
-      (successor?" deck-depth-one":" deck-depth-two")+" deck-peek-"+side;
+      (successor?" deck-depth-one":" deck-depth-two")+" deck-peek-"+side+
+      (!decoded?" deck-photo-pending":"");
      return <div key={person.id} className={"discovery-deck-layer"+state}
        onAnimationEnd={event=>{
         if(!leaving||event.target!==event.currentTarget)return;
@@ -96,7 +129,8 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
         onAction={foreground?action:()=>{}}
         onOpenProfile={foreground?()=>onOpenProfile(person):()=>{}}
         onInterests={foreground?()=>onOpenProfile(person):()=>{}}
-        onExitDemo={foreground?onExit:undefined}/>
+        onExitDemo={foreground?onExit:undefined}
+        onCoverReady={()=>markReady(coverKey(person))}/>
       </div>;
     })}
   </div>:<div className="demo-qa-finished">
