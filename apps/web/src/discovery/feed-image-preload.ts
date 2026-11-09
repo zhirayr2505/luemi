@@ -15,12 +15,13 @@ let activeDecodes=0;
 const waiting:Array<()=>void>=[];
 async function acquireSlot(){
  if(activeDecodes<MAX_CONCURRENT){activeDecodes++;return;}
+ // Released slot ownership is transferred directly to one waiting caller.
  await new Promise<void>(resolve=>waiting.push(resolve));
- activeDecodes++;
 }
 function releaseSlot(){
- activeDecodes=Math.max(0,activeDecodes-1);
- waiting.shift()?.();
+ const next=waiting.shift();
+ if(next)next();
+ else activeDecodes=Math.max(0,activeDecodes-1);
 }
 const keyOf=(url:string):string=>{
  try{return new URL(url,window.location.href).href;}catch{return url;}
