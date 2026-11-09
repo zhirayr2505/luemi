@@ -107,7 +107,7 @@
  }
 }
 @supports ((backdrop-filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2")) or (-webkit-backdrop-filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2"))){
- :root[data-lg-optics="full"] .lg:not([data-moving="true"])::before{
+ :root[data-lg-native-refraction="on"] .lg:not([data-moving="true"])::before{
   -webkit-backdrop-filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2");
   backdrop-filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2");
  }
