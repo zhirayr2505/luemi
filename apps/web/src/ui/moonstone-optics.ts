@@ -26,6 +26,14 @@ export function installMoonstoneOptics(doc:Document):()=>void{
  const refractive=!!view?.CSS?.supports("filter","url('/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2')");
  root.dataset.lgOptics=!/Android/i.test(userAgent)&&supported&&refractive&&
   !reducedTransparency&&!reducedMotion?"full":"safe";
+ // Safari/WebKit still has an unresolved GPU crash with SVG *backdrop* URL
+ // filters; CSS.supports alone cannot detect that rendering failure. SVG
+ // distortion of the painted bevel can remain; only native background sampling
+ // is limited to desktop Chromium outside the Apple engine.
+ const desktopChromium=/Chrome\/|Chromium\/|Edg\//i.test(userAgent)&&
+  !/Android|iPhone|iPad|iPod/i.test(userAgent);
+ root.dataset.lgNativeRefraction=root.dataset.lgOptics==="full"&&desktopChromium?
+  "on":"off";
  let active:ActiveOptic|null=null;
  let pending:{x:number;y:number}|null=null;
  let raf=0;
