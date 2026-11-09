@@ -9,6 +9,8 @@ import {fromDemoPerson,type ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
 import {DemoFeedSandbox} from "./DemoFeedSandbox";
 import {selectionHaptic} from "../ui/haptic";
+import {preloadUpcomingFeedPhotos} from "./feed-image-preload";
+import {warmPublishedPagePhotos} from "../registration/recommendation-warmup";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {GestureArbiter,computedTranslation,fractionalTrack} from "../ui/gesture-arbiter";
 import type {InputKind} from "../ui/gesture-arbiter";
@@ -31,6 +33,7 @@ import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} 
 import "./discovery.css";
 import "./feed-v2.css";
 import "./real-discovery.css";
+import "./deck-v3.css";
 
 // EXACT approved LUEMI navigation / header / profile components. No demo profiles
 // are imported or projected into a real session.
@@ -145,6 +148,9 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const locked=useRef(false),pendingCommit=useRef<(()=>void)|null>(null);
  const transitionTimer=useRef<number|null>(null);
  const abort=useRef<AbortController|null>(null);
+ const mediaReleases=useRef<Array<()=>void>>([]);
+ useEffect(()=>()=>{for(const release of mediaReleases.current)release();
+  mediaReleases.current=[];},[]);
  const finishDeck=()=>{
   const commit=pendingCommit.current;if(!commit)return;
   pendingCommit.current=null;
@@ -158,7 +164,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   setLeaving(currentId);setLeavingKind(kind);
   selectionHaptic();
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
-  else transitionTimer.current=window.setTimeout(finishDeck,440);
+  else transitionTimer.current=window.setTimeout(finishDeck,570);
  };
  useEffect(()=>()=>{if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
   transitionTimer.current=null;pendingCommit.current=null;locked.current=false;},[]);
@@ -178,12 +184,20 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    if(tab==="feed"&&initialFeed.profiles.length===0)onEmptyFeed();
    return()=>controller.abort();
   }
-  void getPublishedFeed(controller.signal).then(result=>{
+  void getPublishedFeed(controller.signal).then(async result=>{
    if(controller.signal.aborted)return;
-   if(result.searchScope&&result.searchScope!==draft.searchScope)
-    onSearchScopeChange(result.searchScope);
-   setRows(result.profiles);setCursor(result.nextCursor);setPage(0);setLoading(false);complete=true;
-   if(tab==="feed"&&result.profiles.length===0)onEmptyFeed();
+   // Decode signed covers in the background before presenting the first card.
+   let warmed:Awaited<ReturnType<typeof warmPublishedPagePhotos>>|null=null;
+   try{warmed=await warmPublishedPagePhotos(result,controller.signal);}catch{
+    if(controller.signal.aborted)return;
+   }
+   if(controller.signal.aborted){warmed?.release();return;}
+   if(warmed)mediaReleases.current.push(warmed.release);
+   const prepared=warmed?.page??result;
+   if(prepared.searchScope&&prepared.searchScope!==draft.searchScope)
+    onSearchScopeChange(prepared.searchScope);
+   setRows(prepared.profiles);setCursor(prepared.nextCursor);setPage(0);setLoading(false);complete=true;
+   if(tab==="feed"&&prepared.profiles.length===0)onEmptyFeed();
   }).catch(()=>{if(!controller.signal.aborted){
    setLoading(false);setError("Не удалось загрузить анкеты.");complete=true;
    if(tab==="feed")onEmptyFeed(); // Isolated QA fallback; never fabricated server rows.
@@ -205,19 +219,41 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    onSearchScopeChange("world"); // remount every feed tab with a fresh server cursor
   }catch{setMessage("Не удалось расширить поиск. Повтори попытку.");setScopeBusy(false);}
  };
- const more=async()=>{
+ const more=useCallback(async()=>{
   if(!cursor||moreBusy||busy)return;
   const controller=new AbortController();abort.current?.abort();abort.current=controller;
   setMoreBusy(true);
   try{
    const response=await getPublishedFeed(controller.signal,cursor);
    if(controller.signal.aborted)return;
+   let warmed:Awaited<ReturnType<typeof warmPublishedPagePhotos>>|null=null;
+   try{warmed=await warmPublishedPagePhotos(response,controller.signal);}catch{
+    if(controller.signal.aborted)return;
+   }
+   if(controller.signal.aborted){warmed?.release();return;}
+   if(warmed)mediaReleases.current.push(warmed.release);
+   const prepared=warmed?.page??response;
    setRows(existing=>{const ids=new Set(existing.map(x=>x.id));
-    return [...existing,...response.profiles.filter(x=>!ids.has(x.id))];});
-   setCursor(response.nextCursor);
+    return [...existing,...prepared.profiles.filter(x=>!ids.has(x.id))];});
+   setCursor(prepared.nextCursor);
   }catch{if(!controller.signal.aborted)setMessage("Не удалось загрузить следующие анкеты.");}
   finally{if(abort.current===controller)setMoreBusy(false);}
- };
+ },[cursor,moreBusy,busy]);
+ // Decode covers and the first gallery images of the current and next five
+ // profiles while the user is still looking at the current member.
+ useEffect(()=>{
+  if(!active||tab!=="feed")return;
+  const controller=new AbortController();
+  void preloadUpcomingFeedPhotos(visibleRows.slice(page,page+6).map(toCard),controller.signal);
+  return()=>controller.abort();
+ },[active,tab,page,visibleRows]);
+ // Ask for the next ranked server page before reaching the end of this deck.
+ useEffect(()=>{
+  if(active&&tab==="feed"&&cursor&&!moreBusy&&!busy&&
+    visibleRows.length>0&&page>=Math.max(0,visibleRows.length-5)){
+   void more();
+  }
+ },[active,tab,cursor,moreBusy,busy,page,visibleRows.length,more]);
  const act=async(kind:DemoKind|"undo")=>{
   if(locked.current||busy)return;
   if(kind==="save"){
