@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
+import {readFileSync,existsSync} from "node:fs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const card=read("apps/web/src/discovery/FeedCard.tsx");
 const css=read("apps/web/src/discovery/feed-v2.css");
@@ -10,7 +10,6 @@ const real=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const demo=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 const lens=read("apps/web/src/ui/liquid-glass.css");
-const ambient=read("apps/web/src/discovery/feed-ambient.ts");
 const deck=read("apps/web/src/discovery/deck-v3.css");
 
 test("approved LUEMI wordmark is the original raster, centered below Telegram safe area",()=>{
@@ -46,28 +45,25 @@ test("three real browse routes remain distinct and tabs have only text plus thin
  assert.doesNotMatch(chrome,/\.discovery-app \.discovery-top-tabs\{/);
 });
 
-test("feed photo ambient is pre-rasterized, decoded and double-buffered without GPU masks",()=>{
- assert.match(card,/ambientPhoto=person\.photos\[activePhotoIndex\]/);
- assert.match(card,/className="feed-v2-photo-ambient"/);
- assert.match(card,/className="feed-v2-photo-vignette"/);
- assert.match(card,/onIndexChange=\{onAmbientPhotoIndexChange\}/);
- assert.match(carousel,/onIndexChange\?\.\(target\)/);
- assert.match(card,/prepareFeedAmbient\(ambientPhoto,aspect\)/);
- assert.match(card,/incoming\.decode\(\)/);
- assert.match(card,/incoming\.style\.opacity="1"/);
- assert.match(ambient,/ctx\.filter="blur\(8px\)"/);
- assert.match(ambient,/ctx\.globalCompositeOperation="destination-in"/);
- assert.match(ambient,/toDataURL\("image\/webp"/);
- assert.match(ambient,/feather\.addColorStop\(\.39/);
- assert.match(css,/\.feed-v2-photo-ambient\{\s*position:absolute;inset:0/);
- assert.doesNotMatch(css,/\.feed-v2-photo-ambient\{[^}]*height:58%/);
- assert.doesNotMatch(css,/height:172\.414%/);
- assert.match(card,/ambientSwiping\.current=true;hideAmbient\(\)/);
- assert.match(card,/ambientDisplayedSource\.current=ambientPhoto/);
- assert.match(card,/restoreAmbientAfterCarousel\(\)/);
- assert.match(css,/\.feed-v2-photo-ambient img\{[\s\S]*?transition:opacity 110ms/);
- assert.doesNotMatch(css,/filter:blur\(24px\)/);
- assert.doesNotMatch(css,/mask-image:linear-gradient\(to bottom,transparent 35%/);
+test("single decoded photo compositor replaces duplicate blur and third full-screen deck",()=>{
+ assert.equal(existsSync(new URL("../apps/web/src/discovery/feed-ambient.ts",import.meta.url)),false);
+ assert.doesNotMatch(card,/feed-v2-photo-ambient|prepareFeedAmbient|restoreAmbientAfterCarousel/);
+ assert.doesNotMatch(css,/\.feed-v2-photo-ambient\{/);
+ assert.match(card,/gpuSafe onCoverReady=\{onCoverReady\}/);
+ assert.match(card,/onIndexChange=\{setActivePhotoIndex\}/);
+ assert.match(carousel,/gpuSafe\?:boolean/);
+ assert.match(carousel,/Math\.abs\(i-active\)<=1\?p\.src:undefined/);
+ assert.match(carousel,/translateX\(calc\(-/);
+ assert.match(carousel,/is-gpu-safe/);
+ assert.match(carousel,/const farJump=gpuSafe&&Math\.abs\(i-activeRef\.current\)>1/);
+ assert.match(carousel,/style\.transition=farJump\?/);
+ assert.match(real,/visibleRows\.slice\(page,page\+2\)/);
+ assert.match(demo,/profiles\.slice\(feed\.index,feed\.index\+2\)/);
+ assert.match(css,/\.feed-v2-photo \.carousel-track\.is-gpu-safe\{will-change:auto\}/);
+ assert.doesNotMatch(css,/contain:paint;transform:translateZ\(0\)/);
+ assert.match(css,/background:#271D2B;touch-action:none/);
+ assert.match(css,/backdrop-filter:none!important/);
+ assert.match(css,/\.discovery-deck-stage\.has-profiles>\.deck-active/);
  assert.match(css,/rgba\(30,16,37,\.58\)/);
 });
 test("one nested sheet owns lens and details; RAF is layout-read-free and CSS drives fades",()=>{

@@ -146,7 +146,7 @@ assertCheck("the card owns photo swipes and profile morph; browse pager never st
  feedCard.includes('axis:"pending"|"photo"|"info"|"scroll"'));
 assertCheck("feed V2 overlays profile information on photo",feedCard.includes('className="feed-v2-information"')&&feedCard.includes('discovery-photo feed-v2-photo')&&feedCss.includes(".feed-v2-information"));
 assertCheck("collapsed about and expanded interests remain available",feedCard.includes("discovery-short-about")&&feedCard.includes("setExpanded")&&feedCard.includes("feed-v2-interests"));
-assertCheck("action buttons remain within each keyed card, with no second photo deck",feedCard.includes('className="discovery-actions"')&&discovery.includes("<FeedCard person={candidate}")&&discovery.includes('profiles.slice(feed.index,feed.index+3).map'));
+assertCheck("action buttons remain within each keyed card, with no second photo deck",feedCard.includes('className="discovery-actions"')&&discovery.includes("<FeedCard person={candidate}")&&discovery.includes('profiles.slice(feed.index,feed.index+2).map'));
 assertCheck("save bookmark stays on card",feedCard.includes("discovery-save-control")&&feedCard.includes('onAction("save")'));
 assertCheck("responsive card height uses ResizeObserver",feedCard.includes("ResizeObserver")&&feedCard.includes("dataset.size"));
 assertCheck("single original LUEMI logo retained without removed global controls",header.includes("wordmark_original_raster_alpha_W06.webp")&&!header.includes("lh-tool-filter")&&!header.includes("lh-tool-saved"));

@@ -590,7 +590,7 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
            style={{"--luemi-tab-offset":(-tabIndex*100)+"%"} as CSSProperties}>
            <section className="discovery-page" role="tabpanel" aria-label="Лента" inert={discoveryTab!=="feed"} aria-hidden={discoveryTab!=="feed"}>
              {<div className={"discovery-deck-stage"+(person?" has-profiles":"")} ref={deckRef}>
-               {profiles.slice(feed.index,feed.index+3).map((candidate,offset)=>{
+               {profiles.slice(feed.index,feed.index+2).map((candidate,offset)=>{
                  const foreground=offset===0,successor=offset===1;
                  const side=(feed.index+offset)%2===1?"right":"left";
                  const key=coverKey(candidate);

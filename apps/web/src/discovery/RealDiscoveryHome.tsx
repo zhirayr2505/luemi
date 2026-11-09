@@ -358,7 +358,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
    <div className={"discovery-deck-stage"+(current?" has-profiles":"")} ref={deckRef}>{current?
-    visibleRows.slice(page,page+3).map((person,offset)=>{
+    visibleRows.slice(page,page+2).map((person,offset)=>{
      const foreground=offset===0,successor=offset===1;
      const side=(page+offset)%2===1?"right":"left";
      const key=coverKey(person.id,cardRows[page+offset]?.photos[0]?.src??"");

@@ -116,7 +116,7 @@ test("real pages reuse approved 1:1 gesture and inertial settle without duplicat
 });
 
 test("real feed restores animated deck, undoable skip and session bookmarks across tabs",()=>{
- assert.match(shell,/visibleRows\.slice\(page,page\+3\)\.map/);
+ assert.match(shell,/visibleRows\.slice\(page,page\+2\)\.map/);
  assert.match(shell,/deck-peek-"\+side/);
  assert.match(shell,/className=\{"discovery-deck-layer"\+state\}/);
  assert.match(shell,/preloadUpcomingFeedPhotos/);

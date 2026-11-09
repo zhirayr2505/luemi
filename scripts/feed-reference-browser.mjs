@@ -74,12 +74,15 @@ try{
    background:getComputedStyle(node).backgroundImage
   }));
   assert(optics.radius!=="0px"&&optics.background.includes("gradient"),"Real layered glass material");
-  if(device.name.startsWith("ios"))assert(/blur\(23px\)/.test(optics.blur),
+  if(device.name.startsWith("ios"))assert(/blur\(13px\)/.test(optics.blur),
    "Supported WebViews keep stationary backdrop glass blur");
   await screenshot(page,device.name);
   // Verify the original Profile Morph pointer interaction remains available.
   await page.locator(".deck-active .feed-v2-expand").click({force:true});
   await page.locator('.deck-active .feed-v2-card[data-expanded="true"]').waitFor({timeout:2400});
+  const expandedBox=await rect(panel);
+  assert(expandedBox.y>=t.b+8,
+   `Expanded sheet must stay below interactive tabs: ${JSON.stringify({expandedBox,t})}`);
   await screenshot(page,device.name+"-expanded");
   await page.locator(".deck-active .feed-v2-expand").click({force:true});
   await page.locator('.deck-active .feed-v2-card[data-expanded="false"]').waitFor({timeout:2400});
