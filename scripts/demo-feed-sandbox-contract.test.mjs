@@ -13,7 +13,7 @@ test("fictional profiles remain isolated; empty genuine feed automatically opens
  assert.match(shell,/params\.get\("luemiDemo"\)==="1"\|\|start==="demo"/);
  assert.match(shell,/id==="feed"&&demoMode\?<DemoFeedSandbox/);
  assert.match(shell,/<LiveDeck key=\{id\+"-"\+feedDraft\.searchScope/);
- assert.match(shell,/<FeedCard person=\{toCard\(current\)\} real/);
+ assert.match(shell,/<FeedCard person=\{toCard\(person\)\} real/);
  assert.match(shell,/onExit=\{\(\)=>\{setDemoVisitor\(null\);autoDemoShown\.current=true;setDemoMode\(false\);\}\}/);
  assert.match(shell,/initialFeed\?\.profiles\.length===0/);
  assert.match(shell,/onEmptyFeed=\{offerDemoOnEmpty\}/);
@@ -32,7 +32,8 @@ test("synthetic profiles are not inserted into server, likes, matches or convers
  assert.match(card,/className="discovery-demo-label">Демо<\/span>/);
  assert.match(card,/className="discovery-demo-label feed-v2-demo-exit"/);
  assert.match(sandbox,/busy=\{!foreground\|\|leaving\}/);
- assert.match(sandbox,/\[current,next\]\.filter/,"Next card remains keyed and mounted across transitions");
+ assert.match(sandbox,/people\.slice\(page,page\+3\)\.map/,"Three keyed card window is retained");
+ assert.match(sandbox,/preloadUpcomingFeedPhotos/);
 });
 
 test("demo card opens the ORIGINAL full-screen visitor profile, never a small custom window",()=>{
@@ -65,16 +66,19 @@ test("fifteen photo-driven fictional profiles each keep one coherent identity",(
 
 test("demo reactions use existing directional compositor animations with zero backend writes",()=>{
  assert.match(sandbox,/deck-leaving-/);
- assert.match(sandbox,/luemi-demo-pass/);
- assert.match(sandbox,/luemi-demo-like/);
- assert.match(sandbox,/luemi-demo-special/);
- assert.match(style,/@keyframes luemi-demo-pass/);
- assert.match(style,/@keyframes luemi-demo-arrive/);
+ const deck=read("apps/web/src/discovery/deck-v3.css");
+ assert.match(sandbox,/luemi-deck-exit-left/);
+ assert.match(sandbox,/luemi-deck-exit-right/);
+ assert.match(sandbox,/luemi-deck-exit-top/);
+ assert.match(deck,/@keyframes luemi-deck-exit-left/);
+ assert.match(deck,/@keyframes luemi-deck-arrive-right/);
+ assert.match(deck,/@keyframes luemi-deck-arrive-left/);
+ assert.doesNotMatch(style,/@keyframes luemi-demo-/);
  assert.match(sandbox,/const \[history,setHistory\]/);
  assert.match(sandbox,/setHistory\(h=>h\.slice\(0,-1\)\)/);
  assert.match(sandbox,/setSaved\(before=>/);
  assert.match(sandbox,/onAnimationEnd=/);
- assert.match(sandbox,/event.animationName==="luemi-demo-arrive"/,
+ assert.match(sandbox,/event.animationName==="luemi-deck-arrive-right"/,
   "Successor must complete its entrance before the next page commits");
  assert.match(style,/\.demo-qa-feed/);
  assert.doesNotMatch(style,/backdrop-filter:blur\(/);
