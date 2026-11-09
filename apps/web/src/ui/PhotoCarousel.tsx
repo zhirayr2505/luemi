@@ -18,6 +18,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const frame=useRef<HTMLDivElement>(null);
  const photoTrack=useRef<HTMLDivElement>(null);
  const frameId=useRef<number|null>(null);
+ const pendingPhoto=useRef<number|null>(null);
  const onCoverReadyRef=useRef(onCoverReady);
  onCoverReadyRef.current=onCoverReady;
  // Use the image identities rather than a new array reference from card
@@ -30,7 +31,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const flush=()=>{
    if(frameId.current!==null){window.cancelAnimationFrame(frameId.current);frameId.current=null;}
  };
- useEffect(()=>()=>flush(),[]);
+ useEffect(()=>()=>{flush();pendingPhoto.current=null;},[]);
  const renderOffset=(baseIndex:number,dx:number)=>{
    const el=photoTrack.current;if(!el)return;
    el.style.transform="translate3d(calc(-"+baseIndex*100+"% + "+dx+"px),0,0)";
@@ -39,7 +40,31 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    flush();tracking.current=null;
    renderOffset(Math.min(activeRef.current,Math.max(0,photos.length-1)),0);
  },[photoSignature,photos.length]);
+ const photoElement=(i:number):HTMLImageElement|null=>
+  (photoTrack.current?.children.item(i) as HTMLImageElement|null)??null;
+ const painted=(i:number):boolean=>{
+  const image=photoElement(i);
+  return !!image?.isConnected&&image.complete&&image.naturalWidth>0&&
+   image.classList.contains("is-ready");
+ };
+ const queuePhoto=(i:number)=>{
+  if(i<0||i>=photos.length)return;
+  pendingPhoto.current=i;
+  const image=photoElement(i);
+  if(!image)return;
+  image.loading="eager";
+  void preloadFeedImage(photos[i].src);
+  if(typeof image.decode==="function")void image.decode().then(()=>{
+   if(!image.isConnected||image.naturalWidth===0)return;
+   image.classList.add("is-ready");noteFeedImageDecoded(image.currentSrc||image.src);
+   if(pendingPhoto.current===i){pendingPhoto.current=null;selectPhoto(i);}
+  },()=>{if(image.naturalWidth>0){
+   image.classList.add("is-ready");
+   if(pendingPhoto.current===i){pendingPhoto.current=null;selectPhoto(i);}
+  }});
+ };
  const startAt=(id:number,x:number,y:number,at:number,horizontal=false)=>{
+   pendingPhoto.current=null;
    // Capture the displayed position once; interrupted settling follows the finger.
    const width=frame.current?.clientWidth??320;
    let startIndex=activeRef.current;
@@ -58,7 +83,10 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  };
  const dragOffset=(t:Tracking,delta:number)=>{
    const atEdge=(t.startIndex<=0&&delta>0)||(t.startIndex>=photos.length-1&&delta<0);
-   return atEdge?delta*.2:Math.max(-t.width,Math.min(t.width,delta));
+   const next=Math.round(t.startIndex)+(delta<0?1:-1);
+   const unpainted=next>=0&&next<photos.length&&!painted(next);
+   // Finger feels slight resistance rather than exposing an empty slide.
+   return atEdge||unpainted?delta*.16:Math.max(-t.width,Math.min(t.width,delta));
  };
  const moveAt=(id:number,x:number,y:number,capture?:()=>void)=>{
    const t=tracking.current;
@@ -93,8 +121,11 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(t.horizontal&&!canceled){
      const delta=x-t.x;
      const velocity=Math.abs(delta)/Math.max(1,performance.now()-t.t);
-     if(Math.abs(delta)>t.width*.18||velocity>.52)
-       target=Math.max(0,Math.min(photos.length-1,Math.round(t.startIndex)+(delta<0?1:-1)));
+     if(Math.abs(delta)>t.width*.18||velocity>.52){
+       const next=Math.max(0,Math.min(photos.length-1,Math.round(t.startIndex)+(delta<0?1:-1)));
+       if(next!==activeRef.current&&!painted(next))queuePhoto(next);
+       else target=next;
+     }
    }
    if(photoTrack.current)
      photoTrack.current.style.transition="transform .31s cubic-bezier(.22,.77,.23,1)";
@@ -121,10 +152,14 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  };
  const end=(e:ReactPointerEvent)=>{if(!externalGesture)finishAt(e.pointerId,e.clientX,false);};
  const cancel=(e:ReactPointerEvent)=>{if(!externalGesture)finishAt(e.pointerId,e.clientX,true);};
- const choose=(i:number)=>{
+ const selectPhoto=(i:number)=>{
    flush();tracking.current=null;
    if(photoTrack.current)photoTrack.current.style.transition="transform .31s cubic-bezier(.22,.77,.23,1)";
    renderOffset(i,0);activeRef.current=i;setIndex(i);onIndexChange?.(i);
+ };
+ const choose=(i:number)=>{
+  if(i!==activeRef.current&&!painted(i)){queuePhoto(i);return;}
+  pendingPhoto.current=null;selectPhoto(i);
  };
  // The last decoded cover remains visible behind the slider until a new
  // image finishes decoding. Never expose a grey GPU tile mid-swipe in WebView.
@@ -137,6 +172,9 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
     noteFeedImageDecoded(source);
     image.classList.add("is-ready");
     if(photoIndex===0)onCoverReadyRef.current?.();
+    if(pendingPhoto.current===photoIndex){
+     pendingPhoto.current=null;selectPhoto(photoIndex);
+    }
    }
   };
   if(typeof image.decode==="function")void image.decode().then(reveal,()=>{
