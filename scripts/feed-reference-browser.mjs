@@ -32,6 +32,9 @@ try{
   // Profile QA switches from its light-theme toggle to production dark.
   await page.evaluate(()=>window.__luemiQaPerf?.theme?.());
   await page.locator('.luemi-shell[data-theme="dark"]').waitFor();
+  // The developer-only MediaQA focus button is not part of LUEMI production.
+  // Hide it only in these visual reference screenshots.
+  await page.addStyleTag({content:".pm-qa-focus{display:none!important}"});
   // Emulate the safe-area variables provided by Telegram, including iPhone/Android.
   await page.locator(".luemi-shell").evaluate(node=>{
    node.style.setProperty("--tg-content-safe-area-inset-top","26px");
