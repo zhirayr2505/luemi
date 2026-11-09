@@ -9,6 +9,8 @@ const header=read("apps/web/src/discovery/GlobalHeader.tsx");
 const real=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const demo=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
+const lens=read("apps/web/src/ui/liquid-glass.css");
+const ambient=read("apps/web/src/discovery/feed-ambient.ts");
 const deck=read("apps/web/src/discovery/deck-v3.css");
 
 test("approved LUEMI wordmark is the original raster, centered below Telegram safe area",()=>{
@@ -44,38 +46,45 @@ test("three real browse routes remain distinct and tabs have only text plus thin
  assert.doesNotMatch(chrome,/\.discovery-app \.discovery-top-tabs\{/);
 });
 
-test("full bleed photo gets a matching masked blur and soft plum gradient without opaque seams",()=>{
+test("feed photo ambient is pre-rasterized, decoded and double-buffered without GPU masks",()=>{
  assert.match(card,/ambientPhoto=person\.photos\[activePhotoIndex\]/);
  assert.match(card,/className="feed-v2-photo-ambient"/);
  assert.match(card,/className="feed-v2-photo-vignette"/);
  assert.match(card,/onIndexChange=\{setActivePhotoIndex\}/);
  assert.match(carousel,/onIndexChange\?\.\(target\)/);
- assert.match(css,/\.feed-v2-photo-ambient img\{[\s\S]*?filter:blur\(24px\)/);
- assert.match(css,/mask-image:linear-gradient\(to bottom,transparent 35%/);
+ assert.match(card,/prepareFeedAmbient\(ambientPhoto\)/);
+ assert.match(card,/incoming\.decode\(\)/);
+ assert.match(card,/incoming\.style\.opacity="1"/);
+ assert.match(ambient,/ctx\.filter="blur\(8px\)"/);
+ assert.match(css,/\.feed-v2-photo-ambient img\{[\s\S]*?transition:opacity 110ms/);
+ assert.doesNotMatch(css,/filter:blur\(24px\)/);
+ assert.doesNotMatch(css,/mask-image:linear-gradient\(to bottom,transparent 35%/);
  assert.match(css,/rgba\(30,16,37,\.58\)/);
- assert.doesNotMatch(css,/@keyframes moonstone-photo-light/);
 });
-
-test("profile lens is physically modeled and keeps blur radius static while profile morphs",()=>{
- assert.match(css,/\.discovery-app \.feed-v2-glass\{/);
- assert.match(css,/border-radius:clamp\(24px,7vw,31px\)/);
- assert.match(css,/-webkit-backdrop-filter:blur\(23px\) saturate\(142%\)/);
- assert.match(css,/\.feed-v2-glass::before\{/);
- assert.match(css,/\.feed-v2-glass::after\{/);
+test("one nested sheet owns lens and details; RAF is layout-read-free and CSS drives fades",()=>{
+ assert.match(card,/className="feed-v2-glass feed-v2-sheet lg lg--card"[\s\S]*?className="feed-v2-details"/);
+ assert.match(css,/\.discovery-app \.feed-v2-sheet\{/);
+ assert.match(lens,/--lg-radius-card:clamp\(26px,7\.4vw,34px\)/);
+ assert.match(lens,/--lg-blur:14px/);
+ assert.match(lens,/\.lg::before\{/);
+ assert.match(lens,/\.lg::after\{/);
+ assert.match(lens,/mask-composite:exclude/);
  const begin=card.indexOf(" const paint=(value:number)=>{");
  const end=card.indexOf("\n const flushFinger=",begin);
  assert.ok(begin>0&&end>begin);
  const paint=card.slice(begin,end);
- assert.match(paint,/scaleY\(/);
- assert.match(paint,/style\.transform=/);
- assert.match(paint,/style\.opacity=/);
- assert.doesNotMatch(paint,/style\.(?:height|width|top|bottom|left|right)=/);
+ assert.match(paint,/--sheet-p/);
+ assert.match(paint,/glass\.current\.style\.height=/);
+ assert.doesNotMatch(paint,/scaleY\(/);
  assert.doesNotMatch(paint,/getComputedStyle|offsetWidth|clientHeight|scrollHeight|backdropFilter/);
- assert.match(card,/ResizeObserver/);
+ assert.doesNotMatch(paint,/actionsView\.current\.style\.(?:opacity|transform)/);
+ assert.match(card,/if\(gesture\.current\|\|run\.current\)\{measureDirty\.current=true;return;\}/);
+ assert.doesNotMatch(card,/resize\.observe\(content\.current\)/);
+ assert.match(card,/Math\.abs\(dy\)>12&&Math\.abs\(dy\)>Math\.abs\(dx\)\*1\.6/);
+ assert.match(css,/opacity:calc\(1 - var\(--sheet-p\)\)/);
  assert.match(css,/prefers-reduced-transparency:reduce/);
  assert.match(css,/data-profile-renderer=android/);
 });
-
 test("name location quote and interest chips are actual profile data in an optical panel",()=>{
  assert.match(card,/person\.name\}, \{person\.age\}/);
  assert.match(card,/className="discovery-place"/);
