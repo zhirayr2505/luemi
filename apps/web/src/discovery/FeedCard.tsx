@@ -11,8 +11,8 @@ import type {DemoKind,DemoPerson} from "./model";
 
 const buttons=[
  ["pass","Пропустить",X],
- ["like","Нравится",Heart],
- ["special","Особенная симпатия",Star]
+ ["special","Особенная симпатия",Star],
+ ["like","Нравится",Heart]
 ] as const;
 type CardGesture={id:number;x:number;y:number;at:number;axis:"pending"|"photo"|"info"|"scroll";
  info:boolean;zone:"photo"|"browse";nativeScroll:boolean;startProgress:number;resumeTarget:0|1;
@@ -85,9 +85,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   }
   // Composite transforms only in the hot RAF path. No layout reads or blur.
   if(glass.current){
-   glass.current.style.transform=`translate3d(0,${(m.open-m.closed)*(1-p)}px,0)`;
-   glass.current.style.opacity=String(.12+p*.80);
-  }
+    // Static optical material, driven solely by compositor scale.
+    glass.current.style.transform=`translate3d(0,0,0) scaleY(${(m.closed+(m.open-m.closed)*p)/Math.max(1,m.open)})`;
+   }
  };
  const flushFinger=()=>{
   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
@@ -141,6 +141,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(element.dataset.size!==size)element.dataset.size=size;
   const style=getComputedStyle(element);
   const actions=Number.parseFloat(style.getPropertyValue("--feed-actions-height"))||83;
+  const root=element.closest<HTMLElement>(".discovery-app[data-feed-visible='true']");
+  const nav=root?.querySelector<HTMLElement>(".discovery-bottom-nav");
+  const clearance=nav?Math.max(0,element.getBoundingClientRect().bottom-nav.getBoundingClientRect().top+12):0;
+  element.style.setProperty("--feed-nav-clearance",clearance+"px");
+  const usableHeight=Math.max(280,height-clearance);
   // The sheet must grow only as much as the actual biography/interests need.
   // Previously 'open' was hard-coded to 75% of the photo, which produced an
   // enormous empty opaque panel over the person's face on Android Telegram.
@@ -149,16 +154,16 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // Compact copy ends on the first two interest chips. The remaining chips
   // stay in the DOM but are invisible until the sheet opens, avoiding reflow.
   const compactContent=Math.max(0,full-(extras?extras+5:0));
-  const maxClosed=Math.max(124,Math.min(height*.52,height-actions-24));
-  const minClosed=Math.min(maxClosed,height<420?148:183);
-  const desiredClosed=height<420?180:height<560?206:228;
-  const closed=clamp(Math.max(desiredClosed,compactContent+9),minClosed,maxClosed);
-  const openCap=Math.max(closed,height-actions-19);
-  const open=Math.min(openCap,Math.max(full+30,closed+Math.min(148,height*.29)));
+  const maxClosed=Math.max(124,Math.min(usableHeight*.54,usableHeight-actions-18));
+  const minClosed=Math.min(maxClosed,usableHeight<420?142:158);
+  const desiredClosed=usableHeight<420?156:usableHeight<590?174:188;
+  const closed=clamp(Math.max(desiredClosed,compactContent+18),minClosed,maxClosed);
+  const openCap=Math.max(closed,usableHeight-actions-18);
+  const open=Math.min(openCap,Math.max(full+32,closed+Math.min(145,usableHeight*.28)));
   element.style.setProperty("--feed-closed-height",closed+"px");
   details.current?.style.setProperty("height",open+"px");
   // Resizing updates geometry once; all subsequent RAF paints stay composited.
-  glass.current?.style.setProperty("height",(open+actions+14)+"px");
+  glass.current?.style.setProperty("height",open+"px");
   // Match the content's upper edge to the inset glass surface while dragging.
   // This keeps the label/title visible rather than leaving a blank upper half.
   const reveal=extras?extras+5:0;
@@ -289,11 +294,6 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  };
  const available=active&&!busy;
  return <div className="discovery-deck-current feed-v2" aria-hidden={!active}>
-   {ambientPhoto&&<div className="feed-v2-photo-ambient" aria-hidden="true">
-    <img src={ambientPhoto} alt="" loading={active?"eager":"lazy"} decoding="async" draggable={false}
-       onError={event=>{const fallback=person.photos[activePhotoIndex]?.fallback;
-        if(fallback&&event.currentTarget.src!==fallback)event.currentTarget.src=fallback;}}/>
-   </div>}
    <article className="discovery-card feed-v2-card" ref={card} data-expanded={expanded}
      onPointerDownCapture={down} onPointerMoveCapture={move}
      onPointerUpCapture={event=>finish(event)} onPointerCancelCapture={event=>finish(event,true)}
@@ -303,6 +303,12 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
        <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age}
          externalGesture dots prioritize={active} onCoverReady={onCoverReady}
          onIndexChange={setActivePhotoIndex}/>
+       {ambientPhoto&&<div className="feed-v2-photo-ambient" aria-hidden="true">
+        <img src={ambientPhoto} alt="" decoding="async" loading={active?"eager":"lazy"} draggable={false}
+         onError={event=>{const fallback=person.photos[activePhotoIndex]?.fallback;
+          if(fallback&&event.currentTarget.src!==fallback)event.currentTarget.src=fallback;}}/>
+       </div>}
+       <div className="feed-v2-photo-vignette" aria-hidden="true"/>
        {person.photos.length>1&&<span className="feed-v2-photo-count">
         {Math.min(activePhotoIndex+1,person.photos.length)} / {person.photos.length}
        </span>}
