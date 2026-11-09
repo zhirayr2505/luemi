@@ -18,6 +18,8 @@ async function snapshot(page){
   const actions=card?.querySelector(".discovery-actions");
   if(!sheet||!card||!details||!text||!actions)return null;
   const rect=sheet.getBoundingClientRect(),label=text.getBoundingClientRect();
+  const primary=sheet.querySelector(".feed-v2-primary-interests");
+  const interests=primary?.getBoundingClientRect();
   const accent=card.querySelector(".discovery-action.discovery-special");
   return {
    contains:sheet.contains(details),height:rect.height,
@@ -32,6 +34,8 @@ async function snapshot(page){
    special:accent?.classList.contains("lg--accent"),
    actionCount:actions.querySelectorAll(".discovery-action.lg").length,
    labelHeight:label.height,
+   titleInset:label.top-rect.top,
+   interestsBottom:interests?interests.bottom-rect.bottom:null,
    moving:sheet.dataset.moving
   };
  });
@@ -47,6 +51,10 @@ try{
   const start=await snapshot(page);
   assert.ok(start&&start.contains&&start.height>100,width+": sheet must contain content");
   assert.ok(start.name&&start.labelHeight>0,width+": nonempty name label");
+  assert.ok(start.titleInset>=0&&start.titleInset<36,
+   width+": compact title is sunk beneath a blank glass band");
+  assert.ok(start.interestsBottom===null||start.interestsBottom<=3,
+   width+": compact interest chips are clipped outside the approved panel");
   assert.ok(start.glass.includes("gradient"),width+": transparent optical fill missing");
   assert.ok(start.rim.includes("gradient"),width+": chromatic rim missing");
   assert.equal(start.actionCount,3,width+": pass/special/like must share material");
