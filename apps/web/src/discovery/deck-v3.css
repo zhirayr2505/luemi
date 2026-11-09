@@ -1,0 +1,94 @@
+/* LUEMI Discovery Deck V3
+ * The real and isolated-demo feeds share this single motion system.
+ * Each keyed card stays mounted while another card exits/enters.
+ * All moving properties are compositor-only: transform + opacity. */
+.real-discovery-home .discovery-deck-stage.has-profiles{
+ position:relative;isolation:isolate;overflow:visible;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.discovery-deck-layer{
+ position:absolute;inset:4px 0 8px;min-height:0;
+ transform-origin:50% 74%;backface-visibility:hidden;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-active{
+ z-index:4;pointer-events:auto;
+ transform:translate3d(0,0,0) scale(1);opacity:1;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-queued{
+ z-index:2;pointer-events:none;opacity:.86;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-depth-two{
+ z-index:1;opacity:.62;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-right{
+ transform:translate3d(18px,8px,0) scale(.975);
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-left{
+ transform:translate3d(-18px,8px,0) scale(.975);
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-depth-two.deck-peek-right{
+ transform:translate3d(24px,13px,0) scale(.955);
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-depth-two.deck-peek-left{
+ transform:translate3d(-24px,13px,0) scale(.955);
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving{
+ z-index:7;pointer-events:none;will-change:transform,opacity;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving-pass{
+ animation:luemi-deck-exit-left .46s cubic-bezier(.25,.72,.24,1) both;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving-like{
+ animation:luemi-deck-exit-right .46s cubic-bezier(.25,.72,.24,1) both;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving-special{
+ animation:luemi-deck-exit-top .46s cubic-bezier(.25,.72,.24,1) both;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-entering{
+ z-index:3;pointer-events:none;will-change:transform,opacity;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-entering.deck-peek-right{
+ animation:luemi-deck-arrive-right .48s cubic-bezier(.21,.73,.26,1) both;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-entering.deck-peek-left{
+ animation:luemi-deck-arrive-left .48s cubic-bezier(.21,.73,.26,1) both;
+}
+@keyframes luemi-deck-exit-left{
+ from{transform:translate3d(0,0,0) rotate(0deg) scale(1);opacity:1}
+ to{transform:translate3d(-109%,1%,0) rotate(-3deg) scale(.965);opacity:0}
+}
+@keyframes luemi-deck-exit-right{
+ from{transform:translate3d(0,0,0) rotate(0deg) scale(1);opacity:1}
+ to{transform:translate3d(109%,1%,0) rotate(3deg) scale(.965);opacity:0}
+}
+@keyframes luemi-deck-exit-top{
+ from{transform:translate3d(0,0,0) scale(1);opacity:1}
+ to{transform:translate3d(0,-110%,0) scale(.968);opacity:0}
+}
+@keyframes luemi-deck-arrive-right{
+ from{transform:translate3d(18px,8px,0) scale(.975);opacity:.86}
+ to{transform:translate3d(0,0,0) scale(1);opacity:1}
+}
+@keyframes luemi-deck-arrive-left{
+ from{transform:translate3d(-18px,8px,0) scale(.975);opacity:.86}
+ to{transform:translate3d(0,0,0) scale(1);opacity:1}
+}
+/* The visible edge is photo-only: queue controls are never falsely clickable.
+ * No visibility:hidden/display:none: those made all elements pop on promotion. */
+.real-discovery-home .discovery-deck-stage .deck-queued :is(
+ .discovery-actions,.discovery-save-control,.discovery-demo-label,
+ .feed-v2-photo-count,.photo-progress){opacity:0!important;pointer-events:none}
+.real-discovery-home .discovery-deck-stage .deck-entering :is(
+ .discovery-action:disabled,.discovery-save-control:disabled,
+ .feed-v2-expand:disabled){opacity:1}
+.real-discovery-home .discovery-deck-stage .deck-queued .feed-v2-photo-ambient,
+.real-discovery-home .discovery-deck-stage .deck-depth-two .feed-v2-photo-ambient{
+ opacity:0;pointer-events:none;
+}
+.real-discovery-home .discovery-deck-stage .deck-entering .feed-v2-photo-ambient{
+ opacity:1;
+}
+@media(prefers-reduced-motion:reduce){
+ .real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving,
+ .real-discovery-home .discovery-deck-stage.has-profiles>.deck-entering{
+  animation:none;will-change:auto}
+}
