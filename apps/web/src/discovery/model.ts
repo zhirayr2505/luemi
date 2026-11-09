@@ -8,6 +8,7 @@ export interface DemoPerson {
  id:string;name:string;age:number;gender:"woman"|"man"|"other";city:string;country:string;countryCode:string;
  goal:Exclude<RegistrationDraft["goal"],"">;interests:string[];languages:string[];
  about:string;photos:DemoPhoto[];premium?:boolean;likedYouKind?:"ordinary"|"super"|null;
+ distanceKm?:number|null;publishedAt?:string|null;verified?:boolean;
 }
 export interface DiscoveryFilter {
  audience:"everyone"|"women"|"men";minAge:number;maxAge:number;

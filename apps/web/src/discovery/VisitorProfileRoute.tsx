@@ -301,8 +301,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
      onMotionProgress={reportMotion}/></QaProfiler>
-   <GlobalHeader ref={header} mode="profile"
-     onFilters={()=>{}} onSaved={()=>{}}/>
+   <GlobalHeader ref={header} mode="profile"/>
    {onLike&&<div className="visitor-like-actions" aria-label="Действия с анкетой">
     <button type="button" disabled={likeBusy} aria-label="Особенная симпатия" onClick={()=>{
      setLikeBusy(true);void onLike("super").finally(()=>setLikeBusy(false));}}><Sparkles size={22}/></button>

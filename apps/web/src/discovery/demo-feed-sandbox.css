@@ -3,7 +3,7 @@
 .demo-qa-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .real-discovery-home .demo-qa-feed>.discovery-deck-stage{flex:1;min-height:0;width:100%;overflow:visible}
 /* Deck placement, right/left peeks and motion are unified in deck-v3.css. */
-.real-discovery-home .demo-qa-feed .feed-v2-photo>.discovery-demo-label{
+.real-discovery-home .demo-qa-feed .moonstone-demo-label{
  z-index:9;top:38px;left:12px;border:1px solid rgba(235,240,247,.34);
  background:rgba(33,41,49,.74);color:#F2F3F5;border-radius:9px;
  letter-spacing:.1em;font-size:9px;font-weight:750;padding:5px 8px}

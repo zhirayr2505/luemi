@@ -130,25 +130,26 @@ console.log("LUEMI Stage 02G UI contracts PASS");
 
 const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const feedCard=read("apps/web/src/discovery/FeedCard.tsx");
-const feedCss=read("apps/web/src/discovery/feed-v2.css");
+const feedCss=read("apps/web/src/discovery/moonstone-discovery.css");
 const discoveryCss=read("apps/web/src/discovery/discovery.css");
 const header=read("apps/web/src/discovery/GlobalHeader.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
 assertCheck("Discovery retains four main navigation destinations and three discovery tabs",
  ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Мир"].every(x=>discovery.includes(x)));
-assertCheck("feed card retains four explicit reaction controls",["undo","pass","special","like"].every(x=>feedCard.includes('"'+x+'"')));
+assertCheck("feed card exposes pass and one combined like/superlike control",
+ feedCard.includes('onAction("pass")')&&feedCard.includes('commit("like")')&&feedCard.includes('commit("special")'));
 assertCheck("photos remain an independent carousel",feedCard.includes("<PhotoCarousel")&&carousel.includes("requestAnimationFrame")&&discovery.includes("target.closest"));
 assertCheck("the card owns photo swipes and profile morph; browse pager never steals them",
- discovery.includes('target.closest(".feed-v2-card")')&&
- feedCard.includes('photo.current?.canAdvance')&&carousel.includes('canAdvance:(direction:-1|1)')&&
+ discovery.includes('target.closest(".moonstone-feed-card")')&&
+ feedCard.includes('carousel?.canAdvance')&&carousel.includes('canAdvance:(direction:-1|1)')&&
  feedCard.includes('onPointerMoveCapture={move}')&&
  feedCard.includes('axis:"pending"|"photo"|"info"|"scroll"'));
-assertCheck("feed V2 overlays profile information on photo",feedCard.includes('className="feed-v2-information"')&&feedCard.includes('discovery-photo feed-v2-photo')&&feedCss.includes(".feed-v2-information"));
-assertCheck("collapsed about and expanded interests remain available",feedCard.includes("discovery-short-about")&&feedCard.includes("setExpanded")&&feedCard.includes("feed-v2-interests"));
-assertCheck("action buttons remain within each keyed card, with no second photo deck",feedCard.includes('className="discovery-actions"')&&discovery.includes("<FeedCard person={candidate}")&&discovery.includes('profiles.slice(feed.index,feed.index+2).map'));
-assertCheck("save bookmark stays on card",feedCard.includes("discovery-save-control")&&feedCard.includes('onAction("save")'));
-assertCheck("responsive card height uses ResizeObserver",feedCard.includes("ResizeObserver")&&feedCard.includes("dataset.size"));
+assertCheck("Moonstone overlays compact profile information on the fullscreen photo",feedCard.includes('className="moonstone-compact-info"')&&feedCard.includes('className="moonstone-photo"')&&feedCss.includes(".moonstone-compact-info"));
+assertCheck("about and interests exist only in the expanded drawer",feedCard.includes("moonstone-detail-section")&&feedCard.includes("setExpanded")&&feedCard.includes("moonstone-profile-drawer"));
+assertCheck("action buttons remain within each keyed card",feedCard.includes('className="moonstone-actions"')&&discovery.includes("<FeedCard person={candidate}")&&discovery.includes('profiles.slice(feed.index,feed.index+2).map'));
+assertCheck("retired bookmark and standalone superlike controls are absent",!feedCard.includes("discovery-save-control")&&!feedCard.includes('onAction("save")'));
+assertCheck("responsive card motion uses ResizeObserver",feedCard.includes("ResizeObserver")&&feedCard.includes("travel.current"));
 assertCheck("single original LUEMI logo retained without removed global controls",header.includes("wordmark_original_raster_alpha_W06.webp")&&!header.includes("lh-tool-filter")&&!header.includes("lh-tool-saved"));
 assertCheck("feed deck and Telegram back handling retained",discovery.includes("pendingCommit.current")&&discovery.includes("registerBack")&&discoveryCss.includes(".discovery-page"));
 assertCheck("profile photo viewer and independent gestures remain present",profile.includes("PhotoViewer")&&profile.includes("setPointerCapture"));

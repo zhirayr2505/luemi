@@ -172,7 +172,6 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
 .luemi-shell[data-theme=dark] .discovery-app .discovery-tab-underline{
  position:absolute;z-index:1;
 }
-.luemi-shell[data-theme=dark] .lh-browse-control,
 .luemi-shell[data-theme=dark] .real-discovery-settings,
 .luemi-shell[data-theme=dark] .real-feed-filter-head button,
 .luemi-shell[data-theme=dark] .lc-heading-actions .luemi-v5-icon-button{
@@ -181,25 +180,20 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
  box-shadow:inset 0 1px rgba(248,252,255,.29),
   inset 0 -1px rgba(6,12,21,.27),var(--luemi-shadow-contact);
 }
-.luemi-shell[data-theme=dark] .lh-browse-control,
 .luemi-shell[data-theme=dark] .real-discovery-settings{
  position:relative;isolation:isolate;overflow:hidden;
 }
-.luemi-shell[data-theme=dark] .lh-browse-control::before,
 .luemi-shell[data-theme=dark] .real-discovery-settings::before{
  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
  background:var(--luemi-glass-shine);
  opacity:.72;transition:opacity .18s ease;
 }
-.luemi-shell[data-theme=dark] .lh-browse-control:active::before,
 .luemi-shell[data-theme=dark] .real-discovery-settings:active::before{opacity:1}
-.luemi-shell[data-theme=dark] .lh-browse-control>*,
 .luemi-shell[data-theme=dark] .real-discovery-settings>*{position:relative;z-index:1}
 /* Fixed header controls may sample the background, but not while they are
  * morphed/dragged by Profile Morph V3. */
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
- .luemi-shell[data-theme=dark] .real-discovery-settings,
- .luemi-shell[data-theme=dark] .lh-browse-control{
+ .luemi-shell[data-theme=dark] .real-discovery-settings{
   backdrop-filter:blur(12px) saturate(130%);
   -webkit-backdrop-filter:blur(12px) saturate(130%);
  }
@@ -214,7 +208,7 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
 }
 
 /* Dynamic Liquid Glass — stationary top/bottom chrome only.
- * No backdrop-filter on .feed-v2, .pm-a2-photo-track, draggable
+ * No backdrop-filter on the fullscreen feed, .pm-a2-photo-track, draggable
  * registration fields, animated page tracks, or scrollable user tiles. */
 .luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav,
 .luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs,
@@ -279,7 +273,6 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
  .luemi-shell[data-theme=dark] .lc-search,
  .luemi-shell[data-theme=dark] .lc-composer,
  .luemi-shell[data-theme=dark] .lc-chat-header,
- .luemi-shell[data-theme=dark] .lh-browse-control,
  .luemi-shell[data-theme=dark] .real-discovery-settings{
   background:var(--luemi-glass-solid);backdrop-filter:none;-webkit-backdrop-filter:none;
  }
@@ -290,6 +283,5 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
  .luemi-v5-skeleton-avatar::after,.luemi-v5-skeleton-copy>span::after{animation:none}
  .luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav::before,
  .luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs::before,
- .luemi-shell[data-theme=dark] .lh-browse-control::before,
  .luemi-shell[data-theme=dark] .real-discovery-settings::before{transition:none}
 }

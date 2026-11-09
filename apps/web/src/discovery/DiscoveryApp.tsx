@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {selectionHaptic} from "../ui/haptic";
 import type {CSSProperties} from "react";
-import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
+import {Heart,Undo2,Images,MessagesSquare,UserRound,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
 import {ensureMountedCoverReady,preloadUpcomingFeedPhotos} from "./feed-image-preload";
@@ -26,10 +26,9 @@ import type {InputKind} from "../ui/gesture-arbiter";
 import type {HeaderMotion} from "./GlobalHeader";
 import {fromDemoPerson,fromLocalDraft} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
-import {useModalLayer} from "../ui/modal-layer";
 import "./discovery.css";
-import "./feed-v2.css";
 import "./deck-v3.css";
+import "./moonstone-discovery.css";
 
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Мир"]] as const;
@@ -95,9 +94,6 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
  };
  const [filters,setFilters]=useState<DiscoveryFilter>(defaultFilters);
  const [filterOpen,setFilterOpen]=useState(false);
- const [savedOpen,setSavedOpen]=useState(false);
- const savedDialog=useRef<HTMLElement>(null);
- useModalLayer(savedOpen,savedDialog,()=>setSavedOpen(false));
  const [interestOpen,setInterestOpen]=useState<string|null>(null);
  const [forYouCollection,setForYouCollection]=useState<CollectionId|"best"|null>(null);
  const [forYouSettings,setForYouSettings]=useState(false);
@@ -196,11 +192,10 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
   if(forYouSettings){setForYouSettings(false);return;}
   if(forYouCollection){setForYouCollection(null);return;}
   if(filterOpen){setFilterOpen(false);return;}
-  if(savedOpen){setSavedOpen(false);return;}
   if(mainTab!=="discover"){if(locked.current)finishDeck();setMainTab("discover");return;}
   if(discoveryTab!=="feed"){setDiscoveryTab("feed");return;}
   onExit();
- },[personOpen,interestOpen,forYouSettings,forYouCollection,filterOpen,savedOpen,mainTab,discoveryTab,onExit,finishDeck]);
+ },[personOpen,interestOpen,forYouSettings,forYouCollection,filterOpen,mainTab,discoveryTab,onExit,finishDeck]);
  useEffect(()=>{registerBack(leave);},[leave,registerBack]);
  useEffect(()=>{
   const key=(event:KeyboardEvent)=>{if(event.key==="Escape")leave();};
@@ -362,7 +357,7 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
   if(target.closest("[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
   // The card owns its whole gesture surface; the tab pager starts only
   // outside it. Removing this duplicate is essential on Android WebView.
-  if(target.closest(".feed-v2-card"))return;
+  if(target.closest(".moonstone-feed-card"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
   // Browse touch starts can land on a ForYou/Nearby tile button after a
   // scroller layout tick. A TAP is still handled by its native onClick; only
@@ -370,9 +365,9 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
   // Keep modal controls, rails, edit fields and other custom gestures isolated.
   const tileSwipe=!!interactive?.matches("button")&&
     !!interactive.closest(".fy-scroll,.nb-scroll")&&
-    !interactive.closest(".fy-rail,.fy-expanded,.fy-manage,.discovery-action");
+    !interactive.closest(".fy-rail,.fy-expanded,.fy-manage");
   if(interactive&&!tileSwipe&&
-     !interactive.matches(".discovery-name-button,.feed-v2-expand,.discovery-top-tabs [role=tab]"))return;
+     !interactive.matches(".moonstone-name,.moonstone-profile-toggle,.discovery-top-tabs [role=tab]"))return;
   if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
   const serial=inputOwnership.current.begin(kind,event.pointerId,"browse");
   if(serial===null)return;
@@ -522,7 +517,6 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
   setFilters(next);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));setFilterOpen(false);
   indicate("Фильтры применены к демо-анкетам");
  };
- const openSaved=()=>{setSavedOpen(true);setFilterOpen(false);};
  const openNearbyFilters=useCallback(()=>setFilterOpen(true),[]);
  const savedRef=useRef(feed.saved);
  savedRef.current=feed.saved;
@@ -554,9 +548,7 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
    data-profile-renderer={androidWebView?"android":"standard"}
    data-profile-mode={profileMode?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>
-   <GlobalHeader ref={globalHeader} mode={backgroundHeaderMode}
-     onFilters={()=>setFilterOpen(true)} onSaved={openSaved}
-    />
+   <GlobalHeader ref={globalHeader} mode={backgroundHeaderMode}/>
    <div className="discovery-main-panels">
      <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
        <div className="discovery-top-tabs" ref={topTabsSurface} role="tablist" aria-label="Разделы знакомств"
@@ -654,22 +646,6 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
    </nav>
    <span className="discovery-sr-status" role="status" aria-live="polite">{announcement}</span>
    <DiscoveryFilters open={filterOpen} filter={filters} draft={draft} onClose={()=>setFilterOpen(false)} onApply={apply}/>
-   {savedOpen&&<div className="discovery-modal-backdrop" onClick={()=>setSavedOpen(false)}>
-     <section className="discovery-saved-sheet" ref={savedDialog} tabIndex={-1} role="dialog" aria-label="Сохранённые демо-анкеты" aria-modal="true"
-       onClick={e=>e.stopPropagation()}>
-       <header><h2>Сохранённые <span className="discovery-demo-label">Демо</span></h2>
-         <button className="discovery-icon-action" type="button" onClick={()=>setSavedOpen(false)} data-modal-initial aria-label="Закрыть"><X size={19}/></button>
-       </header>
-       <div className="discovery-saved-list">
-         {feed.saved.length?feed.saved.map(id=>{
-           const p=forYouDemoPeople.find(x=>x.id===id);
-           return p?<button className="discovery-saved" key={id} type="button" onClick={()=>{setSavedOpen(false);setPersonOpen(id);}}>
-             <img src={p.photos[0].src} alt=""/><span>{p.name}, {p.age}</span><ArrowRight size={17}/>
-           </button>:null;
-         }):<p className="hint">Пока нет сохранённых демо-анкет.</p>}
-       </div>
-     </section>
-   </div>}
    {interestOpen&&(()=>{const p=demoPeople.find(x=>x.id===interestOpen);return p?<DiscoveryInterestsSheet name={p.name} ids={p.interests} onClose={()=>setInterestOpen(null)}/>:null;})()}
 
  </div>;

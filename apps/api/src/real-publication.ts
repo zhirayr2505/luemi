@@ -449,14 +449,14 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
    const appliedScope=preferences.rows[0]?.search_scope??"world";
    const results=await db.query<{owner_id:string;display_name:string;city_label:string;
     country_code:string;about:string;interests:string[];gender:string;goal:string;
-    languages:string[];birth_date:string;published_at:string;liked_you_kind:"ordinary"|"super"|null}>(
+    languages:string[];birth_date:string;published_at:string;distance_km:number|null;liked_you_kind:"ordinary"|"super"|null}>(
     "WITH preference AS (SELECT owner_gender,owner_birth_date,audience,age_min,age_max,city_label,country_code,goal,interests,search_scope "+
     "FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1 UNION ALL "+
     "SELECT NULL::text,NULL::date,'everyone'::text,18::smallint,80::smallint,''::text,''::text,''::text,ARRAY[]::text[],'world'::text "+
     "WHERE NOT EXISTS(SELECT 1 FROM luemi_private.discovery_preferences WHERE owner_id=$2 AND environment=$1)) "+
     "SELECT p.owner_id,p.display_name,p.city_label,p.country_code,p.about,p.interests,"+
     "p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text,"+
-    "incoming.kind AS liked_you_kind "+
+    "incoming.kind AS liked_you_kind,evidence.km AS distance_km "+
     "FROM luemi_private.public_profiles p CROSS JOIN preference pref "+
     "LEFT JOIN luemi_private.city_centres origin_city ON origin_city.country_code=pref.country_code "+
     "AND origin_city.city_norm=lower(btrim(pref.city_label)) "+
@@ -559,7 +559,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
     id:p.owner_id,name:p.display_name,age:dateAge(p.birth_date),
     city:p.city_label,countryCode:p.country_code,about:p.about??"",
     interests:p.interests,gender:p.gender,goal:p.goal,languages:p.languages,
-    likedYouKind:p.liked_you_kind,
+    likedYouKind:p.liked_you_kind,distanceKm:p.distance_km===null?null:Number(p.distance_km),publishedAt:p.published_at,
     photos:(photos.get(p.owner_id)??[]).map(id=>({id,url:"/api/v3/discovery/photo/"+id}))
    })).filter(p=>p.age>=18&&p.age<130&&p.photos.length>=3)};
   });
@@ -596,8 +596,9 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
   return transaction(req,reply,"luemi_discovery_reader",async(db,viewer)=>{
    const found=await db.query<{owner_id:string;display_name:string;city_label:string;country_code:string;
     about:string;interests:string[];gender:string;goal:string;languages:string[];birth_date:string;
-    liked_you_kind:"ordinary"|"super"|null}>(`SELECT p.owner_id,p.display_name,p.city_label,p.country_code,
-    p.about,p.interests,p.gender,p.goal,p.languages,p.birth_date::text,incoming.kind AS liked_you_kind
+    published_at:string;distance_km:number|null;liked_you_kind:"ordinary"|"super"|null}>(`SELECT p.owner_id,p.display_name,p.city_label,p.country_code,
+    p.about,p.interests,p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text,
+    incoming.kind AS liked_you_kind,NULL::double precision AS distance_km
     FROM luemi_private.public_profiles p
     LEFT JOIN luemi_chats.likes incoming ON incoming.environment=p.environment
      AND incoming.sender_id=p.owner_id AND incoming.receiver_id=$2 AND incoming.status='active'
@@ -610,7 +611,7 @@ export function registerPublishedProfiles(app:FastifyInstance,guards:Guard|undef
    if(media.rows.length<3||media.rows.length>6)fail(404,"not_found");
    return {profile:{id:p.owner_id,name:p.display_name,age:dateAge(p.birth_date),city:p.city_label,
     countryCode:p.country_code,about:p.about??"",interests:p.interests,gender:p.gender,goal:p.goal,
-    languages:p.languages,likedYouKind:p.liked_you_kind,
+    languages:p.languages,likedYouKind:p.liked_you_kind,distanceKm:p.distance_km,publishedAt:p.published_at,
     photos:media.rows.map(photo=>({id:photo.id,url:"/api/v3/discovery/photo/"+photo.id}))}};
   });
  });
