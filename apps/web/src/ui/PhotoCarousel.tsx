@@ -2,7 +2,8 @@ import {forwardRef,memo,useEffect,useImperativeHandle,useLayoutEffect,useRef,use
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {noteFeedImageDecoded,preloadFeedImage} from "../discovery/feed-image-preload";
 interface Slide {id:string;src:string;fallback?:string}
-interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;onIndexChange?:(index:number)=>void}
+interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;
+ active?:boolean;onIndexChange?:(index:number)=>void;onCoverReady?:()=>void}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
 export interface PhotoCarouselHandle {
  canAdvance:(direction:-1|1)=>boolean;
@@ -11,12 +12,14 @@ export interface PhotoCarouselHandle {
  finish:(id:number,x:number,cancelled:boolean)=>void;
  cancel:()=>void;
 }
-const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,onIndexChange},ref) {
+const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,active=true,onIndexChange,onCoverReady},ref) {
  const [index,setIndex]=useState(0);
  const tracking=useRef<Tracking|null>(null);
  const frame=useRef<HTMLDivElement>(null);
  const photoTrack=useRef<HTMLDivElement>(null);
  const frameId=useRef<number|null>(null);
+ const onCoverReadyRef=useRef(onCoverReady);
+ onCoverReadyRef.current=onCoverReady;
  // Use the image identities rather than a new array reference from card
  // re-renders. A parent state update must never cancel a finger swipe.
  const photoSignature=photos.map(photo=>photo.id+"::"+photo.src).join("|");
@@ -125,7 +128,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  };
  // The last decoded cover remains visible behind the slider until a new
  // image finishes decoding. Never expose a grey GPU tile mid-swipe in WebView.
- const revealDecoded=(image:HTMLImageElement)=>{
+ const revealDecoded=(image:HTMLImageElement,photoIndex:number)=>{
   const source=image.currentSrc||image.src;
   const reveal=()=>{
    if(image.isConnected&&(image.currentSrc||image.src)===source&&image.naturalWidth>0){
@@ -133,6 +136,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
     // inline opacity to zero and replay the photo entrance on promotion.
     noteFeedImageDecoded(source);
     image.classList.add("is-ready");
+    if(photoIndex===0)onCoverReadyRef.current?.();
    }
   };
   if(typeof image.decode==="function")void image.decode().then(reveal,()=>{
@@ -144,9 +148,9 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
      onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}>
    {photos.length>0?<div className="carousel-track" ref={photoTrack}>
      {photos.map((p,i)=><img key={p.id+"::"+p.src} src={p.src} alt={"Фото "+(i+1)} draggable={false}
-       loading={i<3||Math.abs(i-active)<=2?"eager":"lazy"} decoding="async"
+       loading={i===0||(active&&Math.abs(i-activeRef.current)<=1)?"eager":"lazy"} decoding="async"
        className="feed-carousel-photo"
-       onLoad={event=>revealDecoded(event.currentTarget)}
+       onLoad={event=>revealDecoded(event.currentTarget,i)}
        onError={event=>{const image=event.currentTarget,fallback=p.fallback;
         if(fallback&&image.src!==fallback){
          image.classList.remove("is-ready");image.src=fallback;
