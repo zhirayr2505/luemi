@@ -127,7 +127,9 @@ export async function ensureMountedCoverReady(
     },()=>{if(loaded())finish(true);});
    }else if(loaded())finish(true);
   };
-  const timeout=window.setTimeout(()=>finish(loaded()),timeoutMs);
+  // A finished network request is not evidence of decoded bitmap paint.
+  // Never let the deadline override a still-pending decoder.
+  const timeout=window.setTimeout(()=>finish(false),timeoutMs);
   signal?.addEventListener("abort",onAbort,{once:true});
   cover.addEventListener("load",onLoad);
   if(loaded())onLoad();
