@@ -215,7 +215,7 @@
 }
 .discovery-app .feed-v2-content{
  position:relative;flex:none;display:flex;flex-direction:column;
- gap:7px;margin-top:auto;padding:14px 0 13px;
+ gap:7px;margin-top:0;padding:13px 0 12px;
  pointer-events:auto;transform:translate3d(0,0,0)
 }
 .discovery-app .feed-v2-expand{
@@ -357,15 +357,11 @@
  * Do not resurrect the flat background/box-shadow overrides here.
  */
 .discovery-app .feed-v2 .discovery-action.lg{
- border:var(--lg-rim-width) solid rgba(255,255,255,.63);
+ border:var(--lg-rim-width) solid rgba(255,255,255,.19);
  background:var(--lg-surface);
  -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
  backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
- box-shadow:var(--lg-shadow),
-  inset 1px 1px 0 rgba(255,255,255,.72),
-  inset -1px -1px 0 rgba(160,205,255,.23),
-  inset 0 2px 13px var(--lg-inner-glow),
-  inset 0 -13px 22px rgba(71,45,87,.11);
+ box-shadow:var(--lg-relief);
  transition:transform 130ms cubic-bezier(.2,.8,.2,1),box-shadow 130ms ease
 }
 .discovery-app .feed-v2 .discovery-action.discovery-special.lg--accent{
@@ -373,11 +369,7 @@
 }
 .discovery-app .feed-v2 .discovery-action.lg:active:not(:disabled){
  transform:scale(var(--lg-press-scale));
- box-shadow:var(--lg-shadow),
-  inset 1px 1px 0 rgba(255,255,255,.72),
-  inset -1px -1px 0 rgba(160,205,255,.23),
-  inset 0 2px 13px var(--lg-inner-glow),
-  0 0 17px var(--lg-press-glow)
+ box-shadow:var(--lg-press-relief)
 }
 .discovery-app .feed-v2 .discovery-action.lg:disabled{opacity:.45}
 .discovery-app .feed-v2 .discovery-action svg{position:relative;z-index:2;width:22px;height:22px}
@@ -393,7 +385,7 @@
 .luemi-shell[data-theme=dark] .discovery-app[data-feed-visible="true"]>.discovery-bottom-nav,
 .discovery-app[data-feed-visible="true"]>.discovery-bottom-nav{
  position:absolute;z-index:20;left:50%;right:auto;
- bottom:calc(var(--bottom-safe) + 9px);transform:translateX(-50%);
+ bottom:calc(var(--bottom-safe) + 16px);transform:translateX(-50%);
  width:min(calc(100% - 20px),620px);max-width:620px;min-height:58px;
  margin:0;padding:5px 6px;gap:2px;
  border:1px solid rgba(247,226,254,.21);border-radius:26px;

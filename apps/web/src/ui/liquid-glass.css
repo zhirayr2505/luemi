@@ -3,27 +3,31 @@
  * A deliberately restrained pink/cyan lens refraction, not neon glow.
  */
 :root{
- --lg-tint:rgba(250,233,255,.12);
- --lg-tint-bottom:rgba(80,54,94,.095);
- --lg-blur:16px;
- --lg-saturate:165%;
- --lg-brightness:1.09;
- --lg-contrast:1.06;
- --lg-rim-width:1.25px;
- --lg-rim-light:rgba(255,255,255,.96);
- --lg-rim-dim:rgba(255,255,255,.14);
- --lg-chroma-warm:rgba(255,144,192,.72);
- --lg-chroma-cool:rgba(118,208,255,.70);
- --lg-specular:rgba(255,255,255,.62);
- --lg-inner-glow:rgba(255,255,255,.20);
- --lg-shadow:0 15px 34px rgba(13,7,19,.25),0 3px 12px rgba(13,7,19,.11);
+ --lg-tint:rgba(71,52,83,.32);
+ --lg-tint-bottom:rgba(39,28,52,.39);
+ --lg-blur:13px;
+ --lg-saturate:145%;
+ --lg-brightness:1.025;
+ --lg-contrast:1.025;
+ --lg-rim-width:1px;
+ --lg-rim-light:rgba(255,255,255,.36);
+ --lg-rim-dim:rgba(255,255,255,.055);
+ --lg-chroma-warm:rgba(237,160,215,.22);
+ --lg-chroma-cool:rgba(146,194,239,.20);
+ --lg-specular:rgba(255,255,255,.20);
+ --lg-inner-glow:rgba(255,255,255,.065);
+ --lg-shadow:0 10px 22px rgba(14,9,22,.19),0 2px 7px rgba(14,9,22,.08);
  --lg-radius-card:clamp(25px,7.4vw,34px);
  --lg-radius-pill:999px;
  --lg-press-scale:.97;
- --lg-press-glow:rgba(255,235,255,.26);
- --lg-accent-from:rgba(237,190,239,.48);
- --lg-accent-to:rgba(164,121,191,.26);
- --lg-rim-depth:12px;
+ --lg-press-glow:rgba(255,235,255,.13);
+ --lg-accent-from:rgba(237,180,233,.94);
+ --lg-accent-to:rgba(185,126,199,.86);
+ --lg-rim-depth:2px;
+ /* The first approved reference uses a thin edge, not a 14px chrome ring. */
+ --lg-relief:var(--lg-shadow),inset 0 1px 0 rgba(255,255,255,.17),
+  inset 0 -1px 0 rgba(146,194,239,.075),inset 0 0 9px var(--lg-inner-glow);
+ --lg-press-relief:var(--lg-relief),0 0 13px var(--lg-press-glow);
 }
 /* BASE GLASS — visible photographic background, translucency, saturation and
  * polished inner relief. The surface is intentionally NOT a gray opaque card.
@@ -31,58 +35,53 @@
 .lg{
  position:relative;isolation:isolate;overflow:hidden;
  --lg-surface:
-  radial-gradient(ellipse 90% 105% at 26% -32%,rgba(255,255,255,.25),transparent 74%),
-  radial-gradient(ellipse 62% 100% at 100% 110%,rgba(135,188,246,.10),transparent 76%),
+  radial-gradient(ellipse 90% 105% at 26% -32%,rgba(255,255,255,.075),transparent 74%),
+  radial-gradient(ellipse 62% 100% at 100% 110%,rgba(135,188,246,.035),transparent 76%),
   linear-gradient(162deg,var(--lg-tint),var(--lg-tint-bottom));
- border:var(--lg-rim-width) solid rgba(255,255,255,.63);
+ border:var(--lg-rim-width) solid rgba(255,255,255,.19);
  border-radius:var(--lg-radius-card);
  color:#fff;
  background:var(--lg-surface);
  -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
  backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
- box-shadow:
-  var(--lg-shadow),
-  inset 1px 1px 0 rgba(255,255,255,.72),
-  inset -1px -1px 0 rgba(160,205,255,.23),
-  inset 0 2px 13px var(--lg-inner-glow),
-  inset 0 -13px 22px rgba(71,45,87,.11);
+ box-shadow:var(--lg-relief);
  -webkit-tap-highlight-color:transparent;
 }
-.lg--card{--lg-rim-depth:14px;border-radius:var(--lg-radius-card)}
-.lg--pill{--lg-rim-depth:10px;border-radius:var(--lg-radius-pill)}
-.lg--small{--lg-rim-depth:5px}
+.lg--card{--lg-rim-depth:2px;border-radius:var(--lg-radius-card)}
+.lg--pill{--lg-rim-depth:1.5px;border-radius:var(--lg-radius-pill)}
+.lg--small{--lg-rim-depth:1px}
 .lg--accent{
- --lg-tint:rgba(248,207,250,.26);
- --lg-tint-bottom:rgba(191,146,211,.23);
+ --lg-tint:rgba(237,180,233,.88);
+ --lg-tint-bottom:rgba(185,126,199,.83);
  --lg-surface:
-  radial-gradient(ellipse 90% 120% at 25% -20%,rgba(255,255,255,.34),transparent 76%),
+  radial-gradient(ellipse 75% 75% at 26% -30%,rgba(255,255,255,.19),transparent 76%),
   linear-gradient(125deg,var(--lg-accent-from),var(--lg-accent-to)),
   linear-gradient(162deg,var(--lg-tint),var(--lg-tint-bottom));
  background:var(--lg-surface);
 }
-/* REFRACTIVE OPTICAL BEVEL — a thick, iridescent masked ring. This layer
+/* REFRACTIVE OPTICAL BEVEL — a thin, iridescent masked ring. This layer
  * contributes chromatic dispersion and depth without refracting text or icons.
  */
 .lg::before{
  content:"";position:absolute;inset:0;z-index:3;
  padding:var(--lg-rim-depth);border-radius:inherit;pointer-events:none;
  background:
-  radial-gradient(ellipse 72% 23% at 25% 1%,rgba(255,255,255,.96),transparent 86%),
-  radial-gradient(ellipse 50% 44% at 95% 92%,rgba(151,220,255,.36),transparent 78%),
+  radial-gradient(ellipse 72% 18% at 25% 1%,rgba(255,255,255,.25),transparent 86%),
+  radial-gradient(ellipse 50% 32% at 95% 92%,rgba(151,220,255,.11),transparent 78%),
   conic-gradient(from 226deg at 50% 50%,
    var(--lg-chroma-warm) 0deg,
    var(--lg-rim-light) 40deg,
    var(--lg-rim-dim) 85deg,
    var(--lg-chroma-cool) 147deg,
    var(--lg-rim-light) 190deg,
-   rgba(255,255,255,.20) 250deg,
+   rgba(255,255,255,.08) 250deg,
    var(--lg-chroma-warm) 308deg,
    var(--lg-rim-light) 360deg);
  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  -webkit-mask-composite:xor;
  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  mask-composite:exclude;
- opacity:.83;
+ opacity:.46;
 }
 /* SPECULAR LAYER — photographic glints with pointer-following light.
  * Keep reflections behind content; do not animate the expensive backdrop.
@@ -93,9 +92,9 @@
  background:
   radial-gradient(ellipse 47% 45% at var(--moonstone-x,26%) var(--moonstone-y,1%),
     var(--lg-specular),transparent 77%),
-  linear-gradient(170deg,rgba(255,255,255,.19) 0%,transparent 35%),
-  radial-gradient(ellipse 100% 19% at 50% 106%,rgba(195,225,255,.20),transparent 100%);
- opacity:.63;
+  linear-gradient(170deg,rgba(255,255,255,.065) 0%,transparent 35%),
+  radial-gradient(ellipse 100% 19% at 50% 106%,rgba(195,225,255,.075),transparent 100%);
+ opacity:.36;
 }
 /* Chromium / WKWebView: SVG displacement of the narrow bevel, plus real
  * backdrop refraction when supported by that browser. Do not sample moving
@@ -115,11 +114,7 @@
 .lg--pill:not(:disabled){transition:transform 130ms cubic-bezier(.2,.8,.2,1),box-shadow 130ms ease}
 .lg--pill:active:not(:disabled){
  transform:scale(var(--lg-press-scale));
- box-shadow:var(--lg-shadow),
-  inset 1px 1px 0 rgba(255,255,255,.72),
-  inset -1px -1px 0 rgba(160,205,255,.23),
-  inset 0 2px 13px var(--lg-inner-glow),
-  0 0 17px var(--lg-press-glow);
+ box-shadow:var(--lg-press-relief);
 }
 .lg:disabled,.lg[aria-disabled="true"]{opacity:.48}
 .lg:disabled::after,.lg[aria-disabled="true"]::after{opacity:0}
@@ -127,9 +122,9 @@
  * specular glints, relief. Never run the costly moving SVG backdrop sampling.
  */
 :root[data-lg-optics="safe"]{
- --lg-tint:rgba(247,232,255,.15);
- --lg-tint-bottom:rgba(80,54,94,.13);
- --lg-rim-depth:12px;
+ --lg-tint:rgba(71,52,83,.32);
+ --lg-tint-bottom:rgba(39,28,52,.39);
+ --lg-rim-depth:2px;
 }
 :root[data-lg-optics="safe"] .lg::before{
  filter:none;-webkit-backdrop-filter:none;backdrop-filter:none;

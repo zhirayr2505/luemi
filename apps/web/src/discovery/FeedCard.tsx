@@ -191,16 +191,17 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const compactContent=Math.max(0,compact-(extras?extras+5:0));
   const maxClosed=Math.max(124,Math.min(usableHeight*.54,usableHeight-actions-18));
   const minClosed=Math.min(maxClosed,usableHeight<420?142:158);
-  const desiredClosed=usableHeight<420?156:usableHeight<590?170:174;
+  const desiredClosed=usableHeight<420?156:usableHeight<590?179:190;
   const closed=clamp(Math.max(desiredClosed,compactContent+18),minClosed,maxClosed);
   const openCap=Math.max(closed,usableHeight-actions-18);
   const open=Math.min(openCap,Math.max(full+32,closed+Math.min(145,usableHeight*.28)));
   element.style.setProperty("--feed-closed-height",closed+"px");
-  // Both optics and contents share the only sheet box. paint() owns its height.
-  // Match the content's upper edge to the inset glass surface while dragging.
-  // This keeps the label/title visible rather than leaving a blank upper half.
-  const reveal=extras?extras+5:0;
-  const lift=Math.min(30,Math.max(9,(open-closed)*.22));
+  // The hidden extra chips must NOT push the compact title downward.
+  // The old reveal=extras+5 translated all compact text under the glass edge,
+  // giving the A55 screenshot a ~40px blank band and clipping the chips.
+  // The visible content now stays anchored to its natural top position.
+  const reveal=0;
+  const lift=Math.min(8,Math.max(0,(open-closed)*.06));
   metrics.current={closed,open,reveal,lift,actions,canScroll:full>open-2,bioShort,bioFull};
   paint(progress.current);
  };
