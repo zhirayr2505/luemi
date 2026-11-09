@@ -56,17 +56,25 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(styles,/prefers-reduced-transparency:reduce/);
  assert.match(styles,/prefers-reduced-motion:reduce/);
  const hot=read("apps/web/src/discovery/feed-v2.css");
- assert.match(hot,/-webkit-backdrop-filter:blur\(23px\) saturate\(142%\)/,
-  "The approved stationary profile lens samples the photo in supported WebViews");
- assert.match(hot,/\.discovery-app\[data-profile-renderer=android\] \.feed-v2-glass/,
-  "Android uses photo-matched blur without costly moving backdrop sampling");
- assert.match(hot,/\.discovery-app \.feed-v2 \.discovery-action::before\{/,
-  "Independent button lenses retain optical edge highlights");
- assert.match(hot,/-webkit-backdrop-filter:blur\(12px\) saturate\(128%\)/,
-  "Static buttons retain bounded liquid glass optics");
+ const lens=read("apps/web/src/ui/liquid-glass.css");
+ const entry=read("apps/web/src/main.tsx");
+ assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/liquid-glass\.css";/);
+ assert.match(lens,/--lg-rim-light:rgba\(255,255,255,\.85\)/);
+ assert.match(lens,/--lg-chroma-warm:rgba\(255,110,190,\.42\)/);
+ assert.match(lens,/--lg-chroma-cool:rgba\(70,200,255,\.42\)/);
+ assert.match(lens,/backdrop-filter:blur\(var\(--lg-blur\)\)/);
+ assert.match(lens,/prefers-reduced-transparency:reduce/);
+ assert.match(lens,/prefers-reduced-motion:reduce/);
+ assert.match(hot,/\.discovery-app \[data-profile-renderer=android\]/);
+ assert.match(hot,/\.discovery-app\[data-profile-renderer=android\] \.feed-v2-glass/);
+ assert.match(hot,/\.discovery-app \.feed-v2 \.discovery-action\.lg\{/);
+ assert.doesNotMatch(hot,/blur\(23px\) saturate\(142%\)|blur\(12px\) saturate\(128%\)/);
  const optics=read("apps/web/src/ui/moonstone-optics.ts");
  assert.match(optics,/requestAnimationFrame/);
  assert.match(optics,/pointercancel/);
+ assert.match(optics,/\.feed-v2-sheet/);
+ assert.match(optics,/\.discovery-action/);
+ assert.match(optics,/\.feed-v2-expand/);
  assert.doesNotMatch(optics,/setInterval\(/);
 });
 test("Telegram system chrome and entire app share same Moonstone theme",()=>{
