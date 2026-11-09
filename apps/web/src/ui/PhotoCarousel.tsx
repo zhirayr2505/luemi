@@ -1,5 +1,6 @@
 import {forwardRef,memo,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
+import {isFeedImageDecoded,noteFeedImageDecoded,preloadFeedImage} from "../discovery/feed-image-preload";
 interface Slide {id:string;src:string;fallback?:string}
 interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;onIndexChange?:(index:number)=>void}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
@@ -126,8 +127,14 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  // image finishes decoding. Never expose a grey GPU tile mid-swipe in WebView.
  const revealDecoded=(image:HTMLImageElement)=>{
   const source=image.currentSrc||image.src;
-  const reveal=()=>{if(image.isConnected&&(image.currentSrc||image.src)===source)
-   image.style.opacity="1";};
+  const reveal=()=>{
+   if(image.isConnected&&(image.currentSrc||image.src)===source&&image.naturalWidth>0){
+    // One-way readiness class. Re-rendering a queued card can no longer reset
+    // inline opacity to zero and replay the photo entrance on promotion.
+    noteFeedImageDecoded(source);
+    image.classList.add("is-ready");
+   }
+  };
   if(typeof image.decode==="function")void image.decode().then(reveal,()=>{
    if(image.naturalWidth>0)reveal();
   });
@@ -137,13 +144,14 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
      onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}
      style={photos[0]?.src?{backgroundImage:`url("${photos[0].src}")`,backgroundSize:"cover",backgroundPosition:"center 38%"}:undefined}>
    {photos.length>0?<div className="carousel-track" ref={photoTrack}>
-     {photos.map((p,i)=><img key={p.id} src={p.src} alt={"Фото "+(i+1)} draggable={false}
-       loading={Math.abs(i-active)<=2?"eager":"lazy"} decoding="async"
-       style={{opacity:0,transition:"opacity .16s ease-out"}}
+     {photos.map((p,i)=><img key={p.id+"::"+p.src} src={p.src} alt={"Фото "+(i+1)} draggable={false}
+       loading={i<3||Math.abs(i-active)<=2?"eager":"lazy"} decoding="async"
+       className={isFeedImageDecoded(p.src)?"is-ready":""}
        onLoad={event=>revealDecoded(event.currentTarget)}
-       onError={event=>{const fallback=p.fallback;
-        if(fallback&&event.currentTarget.src!==fallback){
-         event.currentTarget.style.opacity="0";event.currentTarget.src=fallback;
+       onError={event=>{const image=event.currentTarget,fallback=p.fallback;
+        if(fallback&&image.src!==fallback){
+         image.classList.remove("is-ready");image.src=fallback;
+         void preloadFeedImage(fallback);
         }
        }}/>)}
    </div>:<div className="profile-placeholder">Здесь будет твоё главное фото</div>}
