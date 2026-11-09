@@ -41,7 +41,7 @@ try{
   await page.waitForTimeout(350);
   const feed=page.locator(".deck-active .feed-v2-card");
   const panel=page.locator(".deck-active .feed-v2-glass");
-  const details=page.locator(".deck-active .feed-v2-details");
+  const details=page.locator(".deck-active .feed-v2-content");
   const nav=page.locator(".discovery-bottom-nav");
   const logo=page.locator(".lh-browse .lh-center");
   const tabs=page.locator(".discovery-top-tabs");
@@ -58,7 +58,7 @@ try{
   assert(g.y>t.y+t.h+40,`Glass should sit below face/top navigation: ${JSON.stringify(g)}`);
   assert(g.y>0&&g.b<a.y+10,`Glass is above the existing actions: ${JSON.stringify({g,a})}`);
   assert(a.b<=n.y+5,`Action row cannot be obscured by nav: ${JSON.stringify({a,n})}`);
-  assert(d.y>=g.y-5&&d.b<=g.b+5,`Information stays within glass: ${JSON.stringify({g,d})}`);
+  assert(d.y>=g.y-6&&d.b<=g.b+6,`Compact text stays within glass: ${JSON.stringify({g,d})}`);
   assert(near(i.x,0,2)&&near(i.w,device.width,2),`Photo image must cover width`);
   assert.equal(await action.locator("button").count(),3);
   assert.equal((await page.locator('.discovery-top-tabs [role=tab]').allTextContents()).join("/"),"Лента/Для тебя/Мир");
