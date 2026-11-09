@@ -47,7 +47,7 @@ export function preloadFeedImage(url:string,signal?:AbortSignal):Promise<boolean
   };
   image.onerror=()=>finish(false);
   image.src=url;
-  if(image.complete&&image.naturalWidth>0)image.onload();
+  if(image.complete&&image.naturalWidth>0)finish(true);
  }).finally(()=>inflight.delete(url));
  inflight.set(url,promise);
  return promise;
