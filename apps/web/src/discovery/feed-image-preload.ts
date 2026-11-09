@@ -83,13 +83,17 @@ export async function preloadUpcomingFeedPhotos(
  people:readonly PreloadProfile[],signal?:AbortSignal
 ):Promise<void>{
  if(signal?.aborted)return;
+ // GPU memory, not network speed, is the bottleneck on Android Telegram.
+ // Decode only current/next covers and the current adjacent gallery photo.
+ // Desktop and iOS retain the longer speculative preload queue.
+ const android=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
  const urls=[...new Set([
-  ...people.slice(0,5).map(person=>person.photos[0]?.src),
-  ...people.slice(0,4).map(person=>person.photos[1]?.src),
-  ...people.slice(0,3).map(person=>person.photos[2]?.src)
- ].filter((v):v is string=>typeof v==="string"&&!!v))].slice(0,12);
+  ...people.slice(0,android?2:5).map(person=>person.photos[0]?.src),
+  ...people.slice(0,android?1:4).map(person=>person.photos[1]?.src),
+  ...people.slice(0,android?0:3).map(person=>person.photos[2]?.src)
+ ].filter((v):v is string=>typeof v==="string"&&!!v))].slice(0,android?3:12);
  let index=0;
- await Promise.all(Array.from({length:3},async()=>{
+ await Promise.all(Array.from({length:android?2:3},async()=>{
   while(index<urls.length&&!signal?.aborted){
    await preloadFeedImage(urls[index++],signal);
   }
