@@ -50,7 +50,7 @@ test("empty real feed retains navigation; QA profiles stay in a separate fixture
 });
 
 test("real FeedCard retains canonical photo/sheet gestures and removes demo badges",()=>{
- assert.match(shell,/<FeedCard person=\{toCard\(person\)\} real/);
+ assert.match(shell,/<FeedCard person=\{cardRows\[page\+offset\]\} real/);
  assert.match(card,/className="discovery-demo-label">Демо<\/span>/);
  assert.match(card,/\{!real&&\(onExitDemo\?/);
  assert.match(card,/real\?<button type="button"/);
