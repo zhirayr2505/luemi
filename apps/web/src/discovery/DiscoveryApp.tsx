@@ -589,25 +589,33 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
            }}
            style={{"--luemi-tab-offset":(-tabIndex*100)+"%"} as CSSProperties}>
            <section className="discovery-page" role="tabpanel" aria-label="Лента" inert={discoveryTab!=="feed"} aria-hidden={discoveryTab!=="feed"}>
-             {<div className={"discovery-deck-stage"+(person?" has-profiles":"")}>
-               {person&&<div key={person.id}
-                 className={"discovery-deck-layer"+(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active")}
-                 onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
-                   ["luemi-deck-leave","feed-v2-pass","feed-v2-like","feed-v2-special"].includes(event.animationName))finishDeck();}}>
-                 <FeedCard person={person} saved={feed.saved.includes(person.id)}
-                   canUndo={feed.history.length>0} active={true} busy={!!leaving}
-                   onAction={act} onOpenProfile={()=>setPersonOpen(person.id)}
-                   onInterests={()=>setInterestOpen(person.id)}/>
-               </div>}
-               {profiles[feed.index+1]&&<div key={profiles[feed.index+1].id}
-                 className={"discovery-deck-layer"+(leaving?" deck-entering":" deck-queued")}>
-                 <FeedCard person={profiles[feed.index+1]} saved={feed.saved.includes(profiles[feed.index+1].id)}
-                   canUndo={feed.history.length>0} active={false} busy={!!leaving} onAction={act}
-                   onOpenProfile={()=>setPersonOpen(profiles[feed.index+1].id)}
-                   onInterests={()=>setInterestOpen(profiles[feed.index+1].id)}/>
-               </div>}
+             {<div className={"discovery-deck-stage"+(person?" has-profiles":"")} ref={deckRef}>
+               {profiles.slice(feed.index,feed.index+3).map((candidate,offset)=>{
+                 const foreground=offset===0,successor=offset===1;
+                 const side=(feed.index+offset)%2===1?"right":"left";
+                 const key=coverKey(candidate);
+                 const decoded=readyKeys.has(key);
+                 const state=foreground?(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active"):
+                  (leaving&&successor?" deck-entering":" deck-queued")+
+                  (successor?" deck-depth-one":" deck-depth-two")+" deck-peek-"+side+
+                  (!decoded?" deck-photo-pending":"");
+                 return <div key={candidate.id} className={"discovery-deck-layer"+state}
+                   onAnimationEnd={event=>{
+                    if(!leaving||event.target!==event.currentTarget)return;
+                    const arrived=["luemi-deck-arrive-left","luemi-deck-arrive-right"].includes(event.animationName);
+                    const departed=["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName);
+                    if((successor&&arrived)||(foreground&&!profiles[feed.index+1]&&departed))finishDeck();
+                   }}>
+                   <FeedCard person={candidate} saved={feed.saved.includes(candidate.id)}
+                     canUndo={foreground&&feed.history.length>0} active={foreground} busy={!foreground||!!leaving}
+                     onAction={foreground?act:()=>{}}
+                     onOpenProfile={foreground?()=>setPersonOpen(candidate.id):()=>{}}
+                     onInterests={foreground?()=>setInterestOpen(candidate.id):()=>{}}
+                     onCoverReady={()=>markReady(key)}/>
+                 </div>;
+               })}
                {!profiles[feed.index+1]&&<div key="deck-complete"
-                 className={"discovery-deck-layer"+(leaving?" deck-entering":person?" deck-queued":" deck-active")}
+                 className={"discovery-deck-layer"+(person?" deck-queued":" deck-active")}
                  aria-hidden={!!person}>
                  <EmptyFeed hasProfiles={profiles.length>0} canUndo={feed.history.length>0}
                    onUndo={()=>act("undo")} onRestart={restartFeed}/>
