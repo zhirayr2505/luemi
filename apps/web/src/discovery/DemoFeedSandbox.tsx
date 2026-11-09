@@ -5,6 +5,7 @@ import {selectionHaptic} from "../ui/haptic";
 import type {DemoKind,DemoPerson} from "./model";
 import {demoPeople} from "./demo-people";
 import {FeedCard} from "./FeedCard";
+import {preloadUpcomingFeedPhotos} from "./feed-image-preload";
 import "./demo-feed-sandbox.css";
 
 type Props={draft:RegistrationDraft;active:boolean;onExit:()=>void;onOpenProfile:(person:DemoPerson)=>void};
@@ -26,6 +27,14 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
  const [leavingKind,setLeavingKind]=useState<DemoKind|null>(null);
  const locked=useRef(false),pending=useRef<(()=>void)|null>(null),timer=useRef<number|null>(null);
  const current=people[page],next=people[page+1];
+ // Warm covers + gallery photos *while* the member reads the current profile.
+ // A 3-card DOM window stays mounted; the following cards are decoded ahead.
+ useEffect(()=>{
+  if(!active)return;
+  const controller=new AbortController();
+  void preloadUpcomingFeedPhotos(people.slice(page,page+6),controller.signal);
+  return()=>controller.abort();
+ },[active,page,people]);
  const finish=()=>{
   const commit=pending.current;if(!commit)return;
   pending.current=null;
@@ -63,22 +72,23 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
   };
   setLeavingKind(kind);setLeaving(true);selectionHaptic();
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finish();
-  else timer.current=window.setTimeout(finish,540);
+  else timer.current=window.setTimeout(finish,570);
  };
  return <div className="demo-qa-feed" aria-label="Тестовая лента LUEMI">
   {current?<div className="discovery-deck-stage has-profiles">
-    {[current,next].filter((person):person is DemoPerson=>Boolean(person)).map((person,i)=>{
-     const foreground=i===0;
-     return <div key={person.id}
-       className={"discovery-deck-layer"+(foreground?
-         (leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active"):
-         (leaving?" deck-entering":" deck-queued"))}
+    {people.slice(page,page+3).map((person,offset)=>{
+     const foreground=offset===0,successor=offset===1;
+     const side=(page+offset)%2===1?"right":"left";
+     const state=foreground?(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active"):
+      (leaving&&successor?" deck-entering":" deck-queued")+
+      (successor?" deck-depth-one":" deck-depth-two")+" deck-peek-"+side;
+     return <div key={person.id} className={"discovery-deck-layer"+state}
        onAnimationEnd={event=>{
-        // Keep the keyed successor through the full rising animation: committing
-        // at the outgoing card's shorter exit used to cause a visible hop.
         if(!leaving||event.target!==event.currentTarget)return;
-        if((!foreground&&event.animationName==="luemi-demo-arrive")||
-           (foreground&&!next&&["luemi-demo-pass","luemi-demo-like","luemi-demo-special"].includes(event.animationName)))finish();
+        const entered=event.animationName==="luemi-deck-arrive-right"||
+         event.animationName==="luemi-deck-arrive-left";
+        const exited=["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName);
+        if((successor&&entered)||(foreground&&!next&&exited))finish();
        }}>
        <FeedCard person={person} saved={saved.has(person.id)}
         canUndo={foreground&&history.length>0}
