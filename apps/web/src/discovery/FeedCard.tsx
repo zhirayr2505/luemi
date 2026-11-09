@@ -307,6 +307,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(!g||g.id!==event.pointerId)return;
   gesture.current=null;
   if(g.axis==="photo")photo.current?.finish(g.id,event.clientX,cancel);
+  if(g.axis!=="info")refreshIfDirty();
   if(g.axis==="info"){
    flushFinger();
    if(cancel){settle(g.resumeTarget);return;}
