@@ -10,6 +10,7 @@ const near=read("apps/web/src/discovery/Nearby.tsx");
 const model=read("apps/web/src/discovery/model.ts");
 const feed=read("apps/web/src/discovery/FeedCard.tsx");
 const feedStyle=read("apps/web/src/discovery/feed-v2.css");
+const deckStyle=read("apps/web/src/discovery/deck-v3.css");
 const profile=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.tsx");
 const profileStyle=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.css");
 
@@ -41,7 +42,11 @@ assert.ok(carousel.includes("frameId.current=window.requestAnimationFrame")&&!ca
 assert.ok(carousel.includes("const cancel=(e:ReactPointerEvent)=>{if(!externalGesture)finishAt(e.pointerId,e.clientX,true)")&&
  carousel.includes("finish:(id,x,cancelled)=>finishAt(id,x,cancelled)")&&
  carousel.includes("if(t.horizontal&&!canceled)"),"pointercancel never changes photos");
-assert.ok(style.includes("luemi-deck-leave")&&style.includes("luemi-deck-enter"),"original Deck Lift keyframes retained");
+assert.ok(deckStyle.includes("luemi-deck-exit-left")&&
+ deckStyle.includes("luemi-deck-exit-right")&&
+ deckStyle.includes("luemi-deck-arrive-left")&&
+ deckStyle.includes("luemi-deck-arrive-right")&&
+ !style.includes("@keyframes luemi-deck-leave"),"one unified composited deck owns directional exits/entrances");
 assert.ok(feed.includes('const position=(run:CardRun,now:number)')&&
  feed.includes('settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0,-velocity/travel)')&&
  feedStyle.includes('position:absolute;left:0;right:0;bottom:var(--feed-actions-height);')&&
