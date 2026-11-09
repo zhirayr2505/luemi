@@ -78,6 +78,8 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(svg,/<feTurbulence/);
  const feature=read("apps/web/src/ui/moonstone-optics.ts");
  assert.match(feature,/root\.dataset\.lgOptics=/);
+ assert.match(feature,/root\\.dataset\\.lgNativeRefraction=/);
+ assert.match(lens,/data-lg-native-refraction="on"/);
  assert.match(feature,/\/Android\/i\.test\(userAgent\)/);
  assert.match(hot,/\.discovery-app\[data-profile-renderer=android\] \.feed-v2-glass/);
  assert.match(hot,/\.discovery-app \.feed-v2 \.discovery-action\.lg\{/);
