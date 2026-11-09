@@ -8,6 +8,9 @@ import {projectProfile,type ProfileMasterData,type ProfilePhoto} from "./discove
 import {viewerPhotoContext,resourceIdentity,type ViewerSource} from "./discovery/photo-viewer-state";
 import {newDraft} from "./registration/model";
 import "./styles.css";
+// Match production token initialization in the standalone browser QA entry.
+import "./ui/luemi-v5.css";
+import "./ui/liquid-glass.css";
 
 const base=newDraft("ZHIIIRRO");
 const draft={...base,trialConsent:true,day:"12",month:"5",year:"1998",gender:"man" as const,

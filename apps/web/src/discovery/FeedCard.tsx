@@ -4,6 +4,7 @@ import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,Star,X,Undo2,MoreHor
 import {goals} from "../registration/model";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
+import {prepareFeedAmbient} from "./feed-ambient";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
 import {InterestChip} from "../ui/InterestCatalog";
 import {Flag} from "../ui/Flag";
@@ -38,13 +39,19 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const [activePhotoIndex,setActivePhotoIndex]=useState(0);
  // A separate, noninteractive photo glow changes only after carousel settlement.
  const ambientPhoto=person.photos[activePhotoIndex]?.src??person.photos[0]?.src;
+ const nextAmbientPhoto=person.photos[activePhotoIndex+1]?.src;
+ const ambientFallback=person.photos[activePhotoIndex]?.fallback;
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
  const glass=useRef<HTMLDivElement>(null);
+ const ambientSlots=useRef<(HTMLImageElement|null)[]>([null,null]);
+ const ambientVisible=useRef(1);
+ const ambientRequest=useRef(0);
  const dim=useRef<HTMLDivElement>(null);
  const scroll=useRef<HTMLDivElement>(null);
  const content=useRef<HTMLDivElement>(null);
  const about=useRef<HTMLDivElement>(null);
+ const bioText=useRef<HTMLParagraphElement>(null);
  const interests=useRef<HTMLDivElement>(null);
  const extraInterests=useRef<HTMLDivElement>(null);
  const moreInterests=useRef<HTMLButtonElement>(null);
@@ -54,40 +61,29 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const blockClickUntil=useRef(0);
  const multiTouch=useRef(false);
  const progress=useRef(0),target=useRef<0|1>(0);
- const metrics=useRef({closed:225,open:430,reveal:0,lift:25,actions:83});
+ const metrics=useRef({closed:225,open:430,reveal:0,lift:25,actions:83,canScroll:false,bioShort:0,bioFull:0});
  const run=useRef<CardRun|null>(null);
  const fingerFrame=useRef<number|null>(null);
  const fingerValue=useRef(0);
  const suspend=useRef<()=>void>(()=>{});
  const measureLive=useRef<()=>void>(()=>{});
+ const measureDirty=useRef(false);
+ const measuredCard=useRef({width:-1,height:-1});
+ const setExpandedIfChanged=(next:boolean)=>setExpanded(previous=>previous===next?previous:next);
+ const refreshIfDirty=()=>{if(measureDirty.current)requestAnimationFrame(()=>measureLive.current());};
+ const markMoving=(moving:boolean)=>{if(glass.current)glass.current.dataset.moving=String(moving);};
  const paint=(value:number)=>{
   const p=progress.current=clamp(value,0,1),m=metrics.current;
-  // A single small text surface moves behind the fixed information viewport.
-  // Its layout, clipping rectangle, photograph and action buttons stay fixed.
+  // The single sheet progress is also the CSS driver for button/chip opacity.
+  // This hot path performs zero layout reads and never changes optical filters.
+  card.current?.style.setProperty("--sheet-p",String(p));
+  if(bioText.current)bioText.current.style.maxHeight=`${m.bioShort+(m.bioFull-m.bioShort)*p}px`;
   if(content.current)content.current.style.transform=
    `translate3d(0,${m.reveal*(1-p)-m.lift*p}px,0)`;
   if(dim.current)dim.current.style.opacity=String(p*.76);
-  // Keep the information above the buttons; only the photo itself sits
-  // behind the free-floating controls. Fade controls continuously with finger.
-  if(actionsView.current){
-   actionsView.current.style.opacity=String(Math.pow(1-p,1.4));
-   actionsView.current.style.transform=`translate3d(0,${8*p}px,0) scale(${1-.025*p})`;
-   actionsView.current.style.pointerEvents=p>.45?"none":"auto";
-  }
-  if(extraInterests.current){
-   extraInterests.current.style.opacity=String(clamp((p-.18)/.60,0,1));
-   extraInterests.current.style.transform=`translate3d(0,${7*(1-p)}px,0)`;
-   extraInterests.current.style.pointerEvents=p>.8?"auto":"none";
-  }
-  if(moreInterests.current){
-   moreInterests.current.style.opacity=String(clamp(1-p*2.3,0,1));
-   moreInterests.current.style.pointerEvents=p>.32?"none":"auto";
-  }
-  // Composite transforms only in the hot RAF path. No layout reads or blur.
-  if(glass.current){
-    // Static optical material, driven solely by compositor scale.
-    glass.current.style.transform=`translate3d(0,0,0) scaleY(${(m.closed+(m.open-m.closed)*p)/Math.max(1,m.open)})`;
-   }
+  if(actionsView.current)actionsView.current.inert=p>.45;
+  // One bounded surface contains text and optics; rounded corners cannot scale.
+  if(glass.current)glass.current.style.height=`${m.closed+(m.open-m.closed)*p}px`;
  };
  const flushFinger=()=>{
   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
@@ -105,15 +101,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   run.current=null;paint(position(current,performance.now()));
  };
  const settle=(next:0|1,releaseVelocity=0)=>{
-  freeze();target.current=next;
+  freeze();target.current=next;markMoving(true);
   if(scroll.current)scroll.current.style.overflowY="hidden";
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
-   paint(next);setExpanded(next===1);
-   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
+   paint(next);setExpandedIfChanged(next===1);
+   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";markMoving(false);refreshIfDirty();return;
   }
   if(Math.abs(progress.current-next)<.002){
-   paint(next);setExpanded(next===1);
-   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
+   paint(next);setExpandedIfChanged(next===1);
+   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";markMoving(false);refreshIfDirty();return;
   }
   const distance=Math.abs(next-progress.current);
   const duration=Math.max(160,Math.min(320,220+distance*90-Math.abs(releaseVelocity)*45));
@@ -128,15 +124,18 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    if(run.current!==motion)return;
    const value=position(motion,now);paint(value);
    if(now-motion.start>=motion.duration){
-    run.current=null;paint(next);setExpanded(next===1);
+    run.current=null;paint(next);setExpandedIfChanged(next===1);markMoving(false);refreshIfDirty();
     if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";
    }else motion.frame=requestAnimationFrame(tick);
   };
   motion.frame=requestAnimationFrame(tick);
  };
  const measure=()=>{
+  if(gesture.current||run.current){measureDirty.current=true;return;}
   const element=card.current;if(!element)return;
+  measureDirty.current=false;
   const height=element.clientHeight;
+  measuredCard.current={width:element.clientWidth,height};
   const size=height<320?"tiny":height<420?"compact":"regular";
   if(element.dataset.size!==size)element.dataset.size=size;
   const style=getComputedStyle(element);
@@ -149,11 +148,20 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // The sheet must grow only as much as the actual biography/interests need.
   // Previously 'open' was hard-coded to 75% of the photo, which produced an
   // enormous empty opaque panel over the person's face on Android Telegram.
+  // Keep bio layout continuously interpolated with sheet progress: toggling
+  // data-expanded only swaps the chevron, never reclamps text on the last frame.
+  const bio=bioText.current;
+  const bioFull=bio?.scrollHeight??0;
+  const bioLineHeight=bio?Number.parseFloat(getComputedStyle(bio).lineHeight)||16:0;
+  const bioShort=Math.min(bioFull,bioLineHeight*3+1);
+  if(bio)bio.style.maxHeight="none";
   const full=content.current?.scrollHeight??0;
+  if(bio)bio.style.maxHeight=bioShort+"px";
+  const compact=content.current?.scrollHeight??0;
   const extras=extraInterests.current?.scrollHeight??0;
   // Compact copy ends on the first two interest chips. The remaining chips
   // stay in the DOM but are invisible until the sheet opens, avoiding reflow.
-  const compactContent=Math.max(0,full-(extras?extras+5:0));
+  const compactContent=Math.max(0,compact-(extras?extras+5:0));
   const maxClosed=Math.max(124,Math.min(usableHeight*.54,usableHeight-actions-18));
   const minClosed=Math.min(maxClosed,usableHeight<420?142:158);
   const desiredClosed=usableHeight<420?156:usableHeight<590?170:174;
@@ -161,31 +169,66 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const openCap=Math.max(closed,usableHeight-actions-18);
   const open=Math.min(openCap,Math.max(full+32,closed+Math.min(145,usableHeight*.28)));
   element.style.setProperty("--feed-closed-height",closed+"px");
-  details.current?.style.setProperty("height",open+"px");
-  // Resizing updates geometry once; all subsequent RAF paints stay composited.
-  glass.current?.style.setProperty("height",open+"px");
+  // Both optics and contents share the only sheet box. paint() owns its height.
   // Match the content's upper edge to the inset glass surface while dragging.
   // This keeps the label/title visible rather than leaving a blank upper half.
   const reveal=extras?extras+5:0;
   const lift=Math.min(30,Math.max(9,(open-closed)*.22));
-  metrics.current={closed,open,reveal,lift,actions};
+  metrics.current={closed,open,reveal,lift,actions,canScroll:full>open-2,bioShort,bioFull};
   paint(progress.current);
  };
  measureLive.current=measure;
  useLayoutEffect(()=>{
   const element=card.current;
   if(!element)return;
-  const resize=new ResizeObserver(()=>measureLive.current());
+  const resize=new ResizeObserver(()=>{
+   if(gesture.current||run.current){measureDirty.current=true;return;}
+   const width=element.clientWidth,height=element.clientHeight;
+   if(Math.abs(width-measuredCard.current.width)>1||Math.abs(height-measuredCard.current.height)>1)
+    measureLive.current();
+  });
   resize.observe(element);
-  if(content.current)resize.observe(content.current);
   measureLive.current();
+  // Fonts can finish after hydration without resizing the card itself.
+  void document.fonts?.ready.then(()=>measureLive.current());
   const carousel=photo.current;
   return ()=>{resize.disconnect();carousel?.cancel();
    if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
    const current=run.current;if(current?.frame!=null)
     cancelAnimationFrame(current.frame);
    run.current=null;};
- },[]);
+ },[person.id]);
+ useEffect(()=>{
+  const ticket=++ambientRequest.current;
+  let cancelled=false;
+  if(ambientPhoto){
+   void (async()=>{
+    const preview=await prepareFeedAmbient(ambientPhoto);
+    if(cancelled||ambientRequest.current!==ticket)return;
+    const incomingIndex=1-ambientVisible.current;
+    const incoming=ambientSlots.current[incomingIndex];
+    const outgoing=ambientSlots.current[ambientVisible.current];
+    if(!incoming)return;
+    const sources=[preview,ambientPhoto,ambientFallback]
+     .filter((value):value is string=>!!value);
+    let decoded=false;
+    for(const src of sources){
+     incoming.src=src;
+     try{
+      await incoming.decode();
+      decoded=true;break;
+     }catch{/* Try the original or an API fallback before revealing a tile. */}
+    }
+    if(!decoded||cancelled||ambientRequest.current!==ticket)return;
+    // Keep the old decoded image until the new one is ready; 110ms crossfade.
+    incoming.style.opacity="1";
+    if(outgoing)outgoing.style.opacity="0";
+    ambientVisible.current=incomingIndex;
+   })();
+  }
+  if(nextAmbientPhoto)void prepareFeedAmbient(nextAmbientPhoto);
+  return()=>{cancelled=true;};
+ },[ambientPhoto,nextAmbientPhoto,ambientFallback]);
  useEffect(()=>{
   const stop=()=>suspend.current();
   const hidden=()=>{if(document.hidden)stop();};
@@ -236,12 +279,12 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      gesture.current=null;return;
     }
     g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
-   }else if(Math.abs(dy)>Math.abs(dx)*1.15&&(g.info||g.zone==="photo")){
+   }else if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)*1.6&&(g.info||g.zone==="photo")){
     freeze();g.startProgress=progress.current;
-    const canScroll=!!scroll.current&&scroll.current.scrollHeight>scroll.current.clientHeight+1;
+    const canScroll=metrics.current.canScroll;
     g.axis=g.info&&g.startProgress>.99&&g.nativeScroll&&canScroll&&
      (dy<0||g.scrollStart>0)?"scroll":"info";
-    if(g.axis==="info"){g.y=event.clientY;dy=0;}
+    if(g.axis==="info"){markMoving(true);g.y=event.clientY;dy=0;}
    }else return;
    blockClickUntil.current=performance.now()+350;
    try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older WebView */}
@@ -252,7 +295,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   else if(g.axis==="scroll"){
    if(scroll.current)scroll.current.scrollTop=Math.max(0,g.scrollStart-dy);
    if(dy>g.scrollStart){
-    g.axis="info";g.y+=g.scrollStart;g.startProgress=progress.current;
+    g.axis="info";markMoving(true);g.y+=g.scrollStart;g.startProgress=progress.current;
     dy=event.clientY-g.y;
    }else return;
   }
@@ -268,6 +311,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(!g||g.id!==event.pointerId)return;
   gesture.current=null;
   if(g.axis==="photo")photo.current?.finish(g.id,event.clientX,cancel);
+  if(g.axis!=="info")refreshIfDirty();
   if(g.axis==="info"){
    flushFinger();
    if(cancel){settle(g.resumeTarget);return;}
@@ -289,7 +333,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(g?.axis==="photo")photo.current?.finish(g.id,g.x,true);
   if(g?.axis==="info")flushFinger();
   freeze();const resting=g?.axis==="info"?g.resumeTarget:target.current;
-  target.current=resting;setExpanded(resting===1);paint(resting);
+  target.current=resting;setExpandedIfChanged(resting===1);paint(resting);markMoving(false);refreshIfDirty();
   if(scroll.current)scroll.current.style.overflowY=resting?"auto":"hidden";
  };
  const available=active&&!busy;
@@ -304,9 +348,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
          externalGesture dots prioritize={active} onCoverReady={onCoverReady}
          onIndexChange={setActivePhotoIndex}/>
        {ambientPhoto&&<div className="feed-v2-photo-ambient" aria-hidden="true">
-        <img src={ambientPhoto} alt="" decoding="async" loading={active?"eager":"lazy"} draggable={false}
-         onError={event=>{const fallback=person.photos[activePhotoIndex]?.fallback;
-          if(fallback&&event.currentTarget.src!==fallback)event.currentTarget.src=fallback;}}/>
+        <img ref={element=>{ambientSlots.current[0]=element;}} alt="" decoding="async" draggable={false}/>
+        <img ref={element=>{ambientSlots.current[1]=element;}} alt="" decoding="async" draggable={false}/>
        </div>}
        <div className="feed-v2-photo-vignette" aria-hidden="true"/>
        {person.photos.length>1&&<span className="feed-v2-photo-count">
@@ -329,11 +372,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      </div>
      <div className="feed-v2-dim" ref={dim} aria-hidden="true"/>
      <div className="feed-v2-information">
-       <div className="feed-v2-glass" ref={glass} aria-hidden="true"/>
-       <div className="feed-v2-details" ref={details}>
+       <div className="feed-v2-glass feed-v2-sheet lg lg--card" ref={glass} data-moving="false">
+        <div className="feed-v2-details" ref={details}>
          <div className="feed-v2-scroll" ref={scroll}>
           <div className="feed-v2-content" ref={content}>
-           <button className="feed-v2-expand" type="button" disabled={!available}
+           <button className="feed-v2-expand lg lg--pill lg--small" type="button" disabled={!available}
              aria-label={expanded?"Свернуть информацию":"Раскрыть информацию"} aria-expanded={expanded}
              onClick={()=>updateExpanded(target.current!==1)}>
              <ChevronDown size={15} className="feed-v2-collapse-icon"/>
@@ -364,7 +407,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
            </div>}
            {person.about&&<div className="feed-v2-about" ref={about}>
              <p className="feed-v2-section-label">О СЕБЕ</p>
-             <p className="discovery-short-about">{person.about}</p>
+             <p className="discovery-short-about" ref={bioText}>{person.about}</p>
            </div>}
            {person.interests.length>0&&<div className="feed-v2-interests" ref={interests}>
              <p className="feed-v2-section-label">Интересы</p>
@@ -382,10 +425,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
            </div>}
           </div>
          </div>
+        </div>
        </div>
        <div className="discovery-actions" ref={actionsView} aria-label={real?"Действия с анкетой":"Демо-действия с анкетой"}>
          {buttons.map(([kind,label,Icon])=><button type="button" key={kind}
-           className={"discovery-action discovery-"+kind} aria-label={label} title={label}
+           className={"discovery-action discovery-"+kind+" lg lg--pill"+(kind==="special"?" lg--accent":"")} aria-label={label} title={label}
            onClick={()=>onAction(kind)} disabled={!available}>
            <Icon size={kind==="like"?30:kind==="special"?24:22} strokeWidth={kind==="like"?1.9:1.8}/>
          </button>)}

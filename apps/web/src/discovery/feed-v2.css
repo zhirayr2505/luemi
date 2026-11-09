@@ -96,6 +96,7 @@
  --feed-actions-height:77px;
  --feed-nav-clearance:0px;
  --feed-closed-height:172px;
+ --sheet-p:0;
  position:relative;isolation:isolate;width:100%;height:100%;min-height:0;
  border:0;border-radius:0;box-shadow:none;
  background:var(--feed-plum,#302238);overflow:hidden;touch-action:none
@@ -116,21 +117,21 @@
  opacity:0;transition:opacity .13s ease-out
 }
 .feed-v2-photo .carousel-track img.is-ready{opacity:1}
-/* Same decoded URL as PhotoCarousel: browser cache coalesces requests.
- * The duplicate is a stationary optical copy, never animated during gestures.
- * Its gradient mask avoids a hard blur seam across the portrait.
+/* Two tiny pre-rasterized portrait previews are decoded before swapping.
+ * Only this lower region has extra color; no masked fullscreen GPU blur tiles.
  */
 .feed-v2-photo-ambient{
- position:absolute;inset:0;z-index:3;pointer-events:none;
- overflow:hidden;contain:paint;
- -webkit-mask-image:linear-gradient(to bottom,transparent 35%,rgba(0,0,0,.06) 43%,rgba(0,0,0,.35) 55%,rgba(0,0,0,.81) 74%,#000 93%);
- mask-image:linear-gradient(to bottom,transparent 35%,rgba(0,0,0,.06) 43%,rgba(0,0,0,.35) 55%,rgba(0,0,0,.81) 74%,#000 93%)
+ position:absolute;inset:auto 0 0;z-index:3;height:58%;
+ pointer-events:none;overflow:hidden
 }
 .feed-v2-photo-ambient img{
- display:block;width:100%;height:100%;
- object-fit:cover;object-position:center 35%;opacity:1;
- transform:translateZ(0);filter:blur(24px) saturate(1.09);
- transition:none
+ position:absolute;left:0;right:0;bottom:0;display:block;
+ width:100%;height:172.414%;object-fit:cover;object-position:center 35%;opacity:0;
+ transition:opacity 110ms ease-out;pointer-events:none
+}
+.feed-v2-photo-ambient::after{
+ content:"";position:absolute;inset:0;pointer-events:none;
+ background:linear-gradient(180deg,rgba(30,16,37,.34),transparent 22%,transparent 72%,rgba(25,13,31,.16))
 }
 .feed-v2-photo-vignette{
  position:absolute;inset:0;z-index:4;pointer-events:none;
@@ -142,7 +143,7 @@
 .feed-v2-dim{
  position:absolute;inset:0;z-index:5;pointer-events:none;
  background:linear-gradient(to bottom,transparent 30%,rgba(31,17,38,.14) 58%,rgba(28,15,36,.38) 100%);
- opacity:0;transform:translateZ(0)
+ opacity:0
 }
 .discovery-app .feed-v2-photo .photo-progress{
  position:absolute;left:50%;right:auto;top:calc(var(--feed-header-top,26px) + 91px);
@@ -183,51 +184,28 @@
  border:1px solid rgba(250,237,255,.26);border-radius:18px;
  color:#FCF6FF;background:rgba(56,40,66,.45)
 }
-/* Glass and details occupy separate, retained surfaces.
- * A narrow lens (rather than a bottom sheet) grows bottom-up with Profile Morph.
+/* One real sheet: text and refractive border are painted in the same box.
+ * Changing its height never stretches the rim or unhooks the content surface.
  */
 .discovery-app .feed-v2-information{
- position:absolute;inset:0;z-index:7;
- pointer-events:none;overflow:hidden
+ position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden
 }
-.discovery-app .feed-v2-glass{
- position:absolute;z-index:0;
+.discovery-app .feed-v2-sheet{
+ position:absolute;z-index:1;
  left:clamp(12px,4.1vw,22px);right:clamp(12px,4.1vw,22px);
  bottom:calc(var(--feed-nav-clearance) + var(--feed-actions-height) + 9px);
  height:var(--feed-closed-height);
- transform-origin:50% 100%;transform:translate3d(0,0,0) scaleY(1);
- border-radius:clamp(24px,7vw,31px);
- border:1px solid rgba(252,235,255,.31);
- background:
-  radial-gradient(ellipse 85% 51% at 22% 0%,rgba(254,241,255,.13),transparent 77%),
-  linear-gradient(164deg,rgba(121,104,132,.27) 0%,rgba(84,70,99,.22) 33%,rgba(61,45,71,.35) 78%,rgba(47,35,57,.41) 100%);
- box-shadow:
-  inset 0 1.5px 1px rgba(255,255,255,.37),
-  inset 0 -1px rgba(246,220,250,.13),
-  inset 1px 0 rgba(250,237,255,.10),
-  0 13px 30px rgba(16,8,22,.19),0 3px 9px rgba(13,9,19,.10);
- -webkit-backdrop-filter:blur(23px) saturate(142%) contrast(105%);
- backdrop-filter:blur(23px) saturate(142%) contrast(105%);
- overflow:hidden;pointer-events:none;will-change:transform
-}
-.feed-v2-glass::before{
- content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
- background:linear-gradient(172deg,rgba(255,250,255,.19),rgba(247,230,255,.045) 20%,transparent 50%),
-  radial-gradient(ellipse 75% 35% at 63% -4%,rgba(255,239,251,.22),transparent 83%);
- opacity:.94
-}
-.feed-v2-glass::after{
- content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
- border:1px solid rgba(255,255,255,.07);
- box-shadow:inset 0 8px 16px -16px rgba(255,255,255,.5)
+ max-height:calc(100% - var(--feed-actions-height) - var(--feed-nav-clearance) - 16px);
+ min-height:0;pointer-events:none;
+ contain:layout paint;
 }
 .discovery-app .feed-v2-details{
- position:absolute;z-index:1;left:clamp(12px,4.1vw,22px);right:clamp(12px,4.1vw,22px);
- bottom:calc(var(--feed-nav-clearance) + var(--feed-actions-height) + 9px);
- height:var(--feed-closed-height);max-height:calc(100% - var(--feed-actions-height) - var(--feed-nav-clearance) - 16px);
+ position:relative;z-index:1;width:100%;height:100%;box-sizing:border-box;
  min-height:0;padding:0 17px 1px;
  display:flex;flex-direction:column;overflow:hidden;pointer-events:none;
- color:#FFFAFF;touch-action:none;contain:layout
+ color:#fff;touch-action:none;
+ text-shadow:0 1px 6px rgba(20,8,30,.35);
+ background:linear-gradient(180deg,transparent 8%,rgba(16,9,23,.06) 44%,rgba(16,9,23,.26));
 }
 .discovery-app .feed-v2-scroll{
  min-height:0;flex:1;display:flex;flex-direction:column;overflow:hidden;
@@ -245,11 +223,9 @@
 .discovery-app .feed-v2-expand{
  position:absolute;right:0;top:8px;z-index:3;
  display:grid;place-items:center;width:26px;height:26px;min-width:26px;min-height:26px;
- padding:0;margin:0;border:1px solid rgba(239,220,246,.18);border-radius:50%;
- color:rgba(248,230,252,.86);background:rgba(72,51,80,.20);
- pointer-events:auto
+ padding:0;margin:0;border-radius:50%;
+ color:#fff;pointer-events:auto
 }
-.discovery-app .feed-v2-expand::before{display:none}
 .discovery-app .feed-v2-expand .feed-v2-expand-icon{display:block}
 .discovery-app .feed-v2-expand .feed-v2-collapse-icon{display:none}
 .discovery-app .feed-v2-card[data-expanded=true] .feed-v2-expand .feed-v2-expand-icon{display:none}
@@ -304,15 +280,12 @@
  letter-spacing:.025em;color:rgba(246,224,249,.86)
 }
 .discovery-app .feed-v2 .discovery-short-about{
- display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;
+ display:block;max-height:4em;
  margin:0;padding:0;border:0;max-width:100%;overflow:hidden;
  color:rgba(255,250,255,.91);font-size:clamp(11px,3vw,12.5px);
  font-weight:430;line-height:1.33;letter-spacing:.005em;
  font-style:italic;text-shadow:0 1px 6px rgba(18,10,22,.16);
  overflow-wrap:anywhere;white-space:pre-line
-}
-.discovery-app .feed-v2-card[data-expanded=true] .discovery-short-about{
- -webkit-line-clamp:unset;line-clamp:unset
 }
 .discovery-app .feed-v2-interests{min-width:0;min-height:0;overflow:visible}
 .discovery-app .feed-v2-interests .feed-v2-section-label{display:none}
@@ -327,10 +300,13 @@
 .discovery-app .feed-v2-primary-interests>.feed-v2-interest-primary .interest-chip{max-width:100%}
 .discovery-app .feed-v2-interests-rest{
  display:flex;flex-wrap:wrap;gap:5px;min-height:0;
- margin-top:5px;opacity:0;pointer-events:none;
- transform:translate3d(0,7px,0)
+ margin-top:5px;opacity:var(--sheet-p);pointer-events:none;
+ transform:translateY(calc((1 - var(--sheet-p)) * 7px))
 }
 .discovery-app .feed-v2-interests-rest .feed-v2-interest-extra{max-width:100%}
+.discovery-app .feed-v2-card[data-expanded=true] .feed-v2-interests-rest{pointer-events:auto}
+.discovery-app .feed-v2-interest-count{opacity:calc(1 - var(--sheet-p))}
+.discovery-app .feed-v2-card[data-expanded=true] .feed-v2-interest-count{pointer-events:none}
 /* Color comes from the actual interest catalog's --chip-from / --chip-to. */
 .discovery-app .feed-v2 .discovery-interests .interest-chip,
 .discovery-app .feed-v2 .discovery-more.feed-v2-interest-count{
@@ -361,7 +337,9 @@
  bottom:var(--feed-nav-clearance);height:var(--feed-actions-height);
  display:flex;align-items:center;justify-content:center;gap:clamp(8px,2.6vw,14px);
  padding:0 clamp(13px,3.3vw,24px) 3px;
- pointer-events:auto;transform-origin:50% 85%;background:none;box-shadow:none
+ pointer-events:auto;transform-origin:50% 85%;background:none;box-shadow:none;
+ opacity:calc(1 - var(--sheet-p));
+ transform:translateY(calc(var(--sheet-p) * 8px))
 }
 .discovery-app .feed-v2 .discovery-action,
 .discovery-app .feed-v2 .discovery-action.discovery-special,
@@ -369,35 +347,42 @@
  position:relative;isolation:isolate;overflow:hidden;flex:none;
  width:clamp(78px,23vw,110px);height:clamp(49px,7.2vh,59px);
  min-width:0;min-height:44px;padding:0;
- display:grid;place-items:center;border-radius:999px;
- border:1px solid rgba(248,228,252,.22);
- color:#F9E9FC;
- background:radial-gradient(ellipse 85% 46% at 32% 0%,rgba(255,255,255,.16),transparent 81%),
-  linear-gradient(165deg,rgba(69,49,77,.67),rgba(43,29,53,.73));
- box-shadow:inset 0 1px rgba(255,247,255,.22),
-  inset 0 -2px rgba(21,11,30,.18),0 7px 17px rgba(18,9,23,.17);
- -webkit-backdrop-filter:blur(12px) saturate(128%);
- backdrop-filter:blur(12px) saturate(128%);
- transition:transform .15s cubic-bezier(.2,.8,.2,1),filter .15s ease;
+ display:grid;place-items:center;border-radius:var(--lg-radius-pill);
+ color:#fff;
  touch-action:manipulation;-webkit-tap-highlight-color:transparent
 }
 .discovery-app .feed-v2 .discovery-action.discovery-special{
  width:clamp(112px,33vw,151px);
- color:#432748;border-color:rgba(255,242,255,.71);
- background:radial-gradient(ellipse 80% 58% at 24% 0%,rgba(255,255,255,.71),transparent 73%),
-  linear-gradient(135deg,#E5B9DF 0%,#C995CB 53%,#CDA2D4 100%);
- box-shadow:inset 0 2px rgba(255,252,255,.63),
-  inset 0 -3px rgba(123,79,141,.16),0 8px 21px rgba(31,14,39,.22)
 }
+/* Specificity fence: the generic legacy discovery-action rules must not
+ * reintroduce gradients, white outlines or their old press transform.
+ * All optical numbers still come exclusively from --lg-*.
+ */
+.discovery-app .feed-v2 .discovery-action.lg{
+ border:var(--lg-rim-width) solid rgba(255,255,255,.44);
+ background:linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+ backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+ box-shadow:var(--lg-shadow),
+  inset 1px 1px 0 var(--lg-chroma-warm),
+  inset -1px -1px 0 var(--lg-chroma-cool),
+  inset 0 0 18px var(--lg-inner-glow);
+ transition:transform 130ms cubic-bezier(.2,.8,.2,1),box-shadow 130ms ease
+}
+.discovery-app .feed-v2 .discovery-action.discovery-special.lg--accent{
+ background:linear-gradient(135deg,var(--lg-accent-from),var(--lg-accent-to)),
+  linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
+ color:#fff
+}
+.discovery-app .feed-v2 .discovery-action.lg:active:not(:disabled){
+ transform:scale(var(--lg-press-scale));
+ box-shadow:var(--lg-shadow),inset 1px 1px 0 var(--lg-chroma-warm),
+  inset -1px -1px 0 var(--lg-chroma-cool),
+  inset 0 0 18px var(--lg-inner-glow),0 0 22px var(--lg-press-glow)
+}
+.discovery-app .feed-v2 .discovery-action.lg:disabled{opacity:.45}
 .discovery-app .feed-v2 .discovery-action svg{position:relative;z-index:2;width:22px;height:22px}
 .discovery-app .feed-v2 .discovery-action.discovery-special svg{width:24px;height:24px}
-.discovery-app .feed-v2 .discovery-action::before{
- content:"";position:absolute;inset:1px;border:1px solid rgba(255,255,255,.09);
- border-radius:inherit;pointer-events:none;
- background:linear-gradient(157deg,rgba(255,250,255,.09),transparent 45%)
-}
-.discovery-app .feed-v2 .discovery-action:active:not(:disabled){transform:scale(.945);filter:brightness(1.08)}
-.discovery-app .feed-v2 .discovery-action:disabled{opacity:.45}
 .discovery-app .feed-v2 .discovery-action:focus-visible,
 .discovery-app .feed-v2-expand:focus-visible,
 .discovery-app .feed-v2 .discovery-name-button:focus-visible{
@@ -473,13 +458,13 @@
  .discovery-app .feed-v2 .discovery-action.discovery-special{width:34vw}
 }
 @media(prefers-reduced-transparency:reduce){
- .discovery-app .feed-v2-glass{
-  background:linear-gradient(155deg,rgba(82,61,91,.94),rgba(48,33,58,.95));
+ .discovery-app .feed-v2-sheet.lg,
+ .discovery-app .feed-v2 .discovery-action.lg{
   -webkit-backdrop-filter:none;backdrop-filter:none
  }
- .discovery-app .feed-v2 .discovery-action{backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 @media(prefers-reduced-motion:reduce){
+ .discovery-app .feed-v2 .discovery-action.lg:active:not(:disabled){transform:none}
  .discovery-app .feed-v2 .discovery-action,
  .discovery-app[data-feed-visible="true"] .discovery-top-tabs>.discovery-tab-underline{
   transition:none
