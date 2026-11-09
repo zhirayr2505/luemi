@@ -461,8 +461,8 @@
  .discovery-app .feed-v2 .discovery-action.discovery-special{width:34vw}
 }
 @media(prefers-reduced-transparency:reduce){
- .discovery-app .feed-v2-sheet,
- .discovery-app .feed-v2 .discovery-action{
+ .discovery-app .feed-v2-sheet.lg,
+ .discovery-app .feed-v2 .discovery-action.lg{
   -webkit-backdrop-filter:none;backdrop-filter:none
  }
 }
