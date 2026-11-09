@@ -8,6 +8,20 @@ export interface PreloadProfile {photos:readonly PreloadPhoto[]}
 const MAX_READY=72;
 const decoded=new Map<string,true>();
 const inflight=new Map<string,Promise<boolean>>();
+/* User can tap repeatedly while preloading. Keep already-started requests alive
+ * across card changes and bound total simultaneous decodes across ALL effects. */
+const MAX_CONCURRENT=4;
+let activeDecodes=0;
+const waiting:Array<()=>void>=[];
+async function acquireSlot(){
+ if(activeDecodes<MAX_CONCURRENT){activeDecodes++;return;}
+ await new Promise<void>(resolve=>waiting.push(resolve));
+ activeDecodes++;
+}
+function releaseSlot(){
+ activeDecodes=Math.max(0,activeDecodes-1);
+ waiting.shift()?.();
+}
 const keyOf=(url:string):string=>{
  try{return new URL(url,window.location.href).href;}catch{return url;}
 };
@@ -28,31 +42,35 @@ export function preloadFeedImage(url:string,signal?:AbortSignal):Promise<boolean
  if(decoded.has(url))return Promise.resolve(true);
  const existing=inflight.get(url);
  if(existing)return existing;
- const promise=new Promise<boolean>(resolve=>{
-  const image=new Image();
-  let done=false;
-  const finish=(ok:boolean)=>{
-   if(done)return;done=true;
-   clearTimeout(timeout);
-   signal?.removeEventListener("abort",cancel);
-   image.onload=null;image.onerror=null;
-   if(ok)noteFeedImageDecoded(url);
-   resolve(ok);
-  };
-  const cancel=()=>finish(false);
-  const timeout=window.setTimeout(()=>finish(false),4500);
-  signal?.addEventListener("abort",cancel,{once:true});
-  image.decoding="async";
-  image.onload=()=>{
-   if(typeof image.decode==="function"){
-    void image.decode().then(()=>finish(image.naturalWidth>0),
-      ()=>finish(image.naturalWidth>0));
-   }else finish(image.naturalWidth>0);
-  };
-  image.onerror=()=>finish(false);
-  image.src=url;
-  if(image.complete&&image.naturalWidth>0)finish(true);
- }).finally(()=>inflight.delete(url));
+ // Abort controls whether more tasks are scheduled, but does not destroy
+ // an already-started shared image request when the user changes cards.
+ const promise=(async()=>{
+  await acquireSlot();
+  try{
+   if(signal?.aborted)return false;
+   return await new Promise<boolean>(resolve=>{
+    const image=new Image();let done=false;
+    const finish=(ok:boolean)=>{
+     if(done)return;done=true;
+     clearTimeout(timeout);
+     image.onload=null;image.onerror=null;
+     if(ok)noteFeedImageDecoded(url);
+     resolve(ok);
+    };
+    const timeout=window.setTimeout(()=>finish(false),6500);
+    image.decoding="async";
+    image.onload=()=>{
+     if(typeof image.decode==="function"){
+      void image.decode().then(()=>finish(image.naturalWidth>0),
+       ()=>finish(image.naturalWidth>0));
+     }else finish(image.naturalWidth>0);
+    };
+    image.onerror=()=>finish(false);
+    image.src=url;
+    if(image.complete&&image.naturalWidth>0)finish(true);
+   });
+  }finally{releaseSlot();}
+ })().finally(()=>inflight.delete(url));
  inflight.set(url,promise);
  return promise;
 }
