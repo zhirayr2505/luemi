@@ -1,6 +1,6 @@
 import {forwardRef,memo,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {isFeedImageDecoded,noteFeedImageDecoded,preloadFeedImage} from "../discovery/feed-image-preload";
+import {noteFeedImageDecoded,preloadFeedImage} from "../discovery/feed-image-preload";
 interface Slide {id:string;src:string;fallback?:string}
 interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;onIndexChange?:(index:number)=>void}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
@@ -141,12 +141,11 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
   else reveal();
  };
  return <div className="carousel-frame" ref={frame} onPointerDown={start} onPointerMove={move} onPointerUp={end}
-     onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}
-     style={photos[0]?.src?{backgroundImage:`url("${photos[0].src}")`,backgroundSize:"cover",backgroundPosition:"center 38%"}:undefined}>
+     onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}>
    {photos.length>0?<div className="carousel-track" ref={photoTrack}>
      {photos.map((p,i)=><img key={p.id+"::"+p.src} src={p.src} alt={"Фото "+(i+1)} draggable={false}
        loading={i<3||Math.abs(i-active)<=2?"eager":"lazy"} decoding="async"
-       className={isFeedImageDecoded(p.src)?"is-ready":""}
+       className="feed-carousel-photo"
        onLoad={event=>revealDecoded(event.currentTarget)}
        onError={event=>{const image=event.currentTarget,fallback=p.fallback;
         if(fallback&&image.src!==fallback){
