@@ -3,7 +3,7 @@ import type {PointerEvent as ReactPointerEvent} from "react";
 import {noteFeedImageDecoded,preloadFeedImage} from "../discovery/feed-image-preload";
 interface Slide {id:string;src:string;fallback?:string}
 interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;
- active?:boolean;onIndexChange?:(index:number)=>void;onCoverReady?:()=>void}
+ prioritize?:boolean;onIndexChange?:(index:number)=>void;onCoverReady?:()=>void}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
 export interface PhotoCarouselHandle {
  canAdvance:(direction:-1|1)=>boolean;
@@ -12,7 +12,7 @@ export interface PhotoCarouselHandle {
  finish:(id:number,x:number,cancelled:boolean)=>void;
  cancel:()=>void;
 }
-const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,active=true,onIndexChange,onCoverReady},ref) {
+const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,prioritize=true,onIndexChange,onCoverReady},ref) {
  const [index,setIndex]=useState(0);
  const tracking=useRef<Tracking|null>(null);
  const frame=useRef<HTMLDivElement>(null);
@@ -148,7 +148,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
      onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}>
    {photos.length>0?<div className="carousel-track" ref={photoTrack}>
      {photos.map((p,i)=><img key={p.id+"::"+p.src} src={p.src} alt={"Фото "+(i+1)} draggable={false}
-       loading={i===0||(active&&Math.abs(i-activeRef.current)<=1)?"eager":"lazy"} decoding="async"
+       loading={i===0||(prioritize&&Math.abs(i-activeRef.current)<=1)?"eager":"lazy"} decoding="async"
        className="feed-carousel-photo"
        onLoad={event=>revealDecoded(event.currentTarget,i)}
        onError={event=>{const image=event.currentTarget,fallback=p.fallback;
