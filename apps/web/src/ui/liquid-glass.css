@@ -1,0 +1,91 @@
+/* LUEMI Liquid Glass optical system: one token set for sheets and controls.
+ * Static rings simulate a polished bevel without expensive SVG displacement in
+ * Android WebView. The only photographic blur on Android is pre-decoded ambient.
+ */
+:root{
+ --lg-tint:rgba(255,255,255,.07);
+ --lg-tint-bottom:rgba(40,22,52,.16);
+ --lg-blur:14px;
+ --lg-saturate:185%;
+ --lg-brightness:1.06;
+ --lg-contrast:1.04;
+ --lg-rim-width:1.5px;
+ --lg-rim-light:rgba(255,255,255,.85);
+ --lg-rim-dim:rgba(255,255,255,.10);
+ --lg-chroma-warm:rgba(255,110,190,.42);
+ --lg-chroma-cool:rgba(70,200,255,.42);
+ --lg-specular:rgba(255,255,255,.55);
+ --lg-inner-glow:rgba(255,255,255,.16);
+ --lg-shadow:0 10px 30px rgba(14,6,24,.20),0 2px 8px rgba(14,6,24,.10);
+ --lg-radius-card:clamp(26px,7.4vw,34px);
+ --lg-radius-pill:999px;
+ --lg-press-scale:.965;
+ --lg-press-glow:rgba(255,255,255,.28);
+}
+.lg{
+ --lg-rim-depth:16px;
+ position:relative;isolation:isolate;overflow:hidden;
+ border:var(--lg-rim-width) solid rgba(255,255,255,.44);
+ color:#fff;
+ background:linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+ backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+ box-shadow:var(--lg-shadow),
+  inset 1px 1px 0 var(--lg-chroma-warm),
+  inset -1px -1px 0 var(--lg-chroma-cool),
+  inset 0 0 18px var(--lg-inner-glow);
+ -webkit-tap-highlight-color:transparent;
+}
+.lg--card{border-radius:var(--lg-radius-card)}
+.lg--pill{--lg-rim-depth:10px;border-radius:var(--lg-radius-pill)}
+.lg--small{--lg-rim-depth:0px}
+.lg--accent{
+ --lg-tint:rgba(222,160,226,.38);
+ --lg-tint-bottom:rgba(190,140,205,.35);
+ background:
+  linear-gradient(135deg,rgba(236,190,232,.55),rgba(190,140,205,.35)),
+  linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
+}
+.lg::before{
+ content:"";position:absolute;inset:0;z-index:2;
+ padding:var(--lg-rim-depth);border-radius:inherit;pointer-events:none;
+ background:
+  radial-gradient(ellipse 83% 67% at 13% 3%,rgba(255,255,255,.17),transparent 73%),
+  conic-gradient(from 210deg,
+    var(--lg-rim-light),var(--lg-rim-dim) 25%,
+    var(--lg-chroma-cool) 45%,var(--lg-rim-dim) 60%,
+    var(--lg-chroma-warm) 79%,var(--lg-rim-light) 100%);
+ -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ -webkit-mask-composite:xor;
+ mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ mask-composite:exclude;
+ opacity:.55;
+}
+.lg--small::before{padding:var(--lg-rim-width);opacity:.7}
+.lg::after{
+ content:"";position:absolute;inset:0;z-index:0;
+ border-radius:inherit;pointer-events:none;
+ background:
+  radial-gradient(ellipse 70% 40% at var(--moonstone-x,30%) var(--moonstone-y,0%),
+   var(--lg-specular),transparent 70%),
+  linear-gradient(0deg,rgba(255,255,255,.14),transparent 22%);
+ opacity:.46;
+}
+.lg--pill:not(:disabled){transition:transform 130ms cubic-bezier(.2,.8,.2,1),box-shadow 130ms ease}
+.lg--pill:active:not(:disabled){
+ transform:scale(var(--lg-press-scale));
+ box-shadow:var(--lg-shadow),
+  inset 1px 1px 0 var(--lg-chroma-warm),
+  inset -1px -1px 0 var(--lg-chroma-cool),
+  inset 0 0 18px var(--lg-inner-glow),
+  0 0 22px var(--lg-press-glow)
+}
+.lg:disabled,.lg[aria-disabled=true]{opacity:.45}
+@media(prefers-reduced-transparency:reduce){
+ :root{--lg-tint:rgba(82,61,91,.94);--lg-tint-bottom:rgba(48,33,58,.95);--lg-blur:0px}
+ .lg{-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .lg--pill{transition:none}
+ .lg--pill:active:not(:disabled){transform:none}
+}
