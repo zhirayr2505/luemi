@@ -78,12 +78,12 @@ test("one nested sheet owns lens and details; RAF is layout-read-free and CSS dr
  assert.match(lens,/\.lg::before\{/);
  assert.match(lens,/\.lg::after\{/);
  assert.match(lens,/mask-composite:exclude/);
- assert.match(lens,/liquid-refraction-v2\\.svg#luemi-refraction-v2/);
+ assert.match(lens,/liquid-refraction-v2\.svg#luemi-refraction-v2/);
  assert.match(lens,/--lg-surface:/);
- assert.match(lens,/radial-gradient\\(ellipse 47% 45% at var\\(--moonstone-x/);
- assert.match(css,/\\.discovery-action\\.lg\\{[\\s\\S]*?background:var\\(--lg-surface\\)/);
- assert.match(css,/\\.discovery-action\\.discovery-special\\.lg--accent\\{[\\s\\S]*?background:var\\(--lg-surface\\)/);
- assert.doesNotMatch(css,/\\.discovery-action\\.lg\\{[^}]*?background:linear-gradient\\(180deg,var\\(--lg-tint\\)/);
+ assert.match(lens,/radial-gradient\(ellipse 47% 45% at var\(--moonstone-x/);
+ assert.match(css,/\.discovery-action\.lg\{[\s\S]*?background:var\(--lg-surface\)/);
+ assert.match(css,/\.discovery-action\.discovery-special\.lg--accent\{[\s\S]*?background:var\(--lg-surface\)/);
+ assert.doesNotMatch(css,/\.discovery-action\.lg\{[^}]*?background:linear-gradient\(180deg,var\(--lg-tint\)/);
  const begin=card.indexOf(" const paint=(value:number)=>{");
  const end=card.indexOf("\n const flushFinger=",begin);
  assert.ok(begin>0&&end>begin);
