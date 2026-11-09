@@ -74,7 +74,7 @@ test("one nested sheet owns lens and details; RAF is layout-read-free and CSS dr
  assert.match(card,/className="feed-v2-glass feed-v2-sheet lg lg--card"[\s\S]*?className="feed-v2-details"/);
  assert.match(css,/\.discovery-app \.feed-v2-sheet\{/);
  assert.match(lens,/--lg-radius-card:clamp\(25px,7\.4vw,34px\)/);
- assert.match(lens,/--lg-blur:16px/);
+ assert.match(lens,/--lg-blur:13px/);
  assert.match(lens,/\.lg::before\{/);
  assert.match(lens,/\.lg::after\{/);
  assert.match(lens,/mask-composite:exclude/);
@@ -84,6 +84,11 @@ test("one nested sheet owns lens and details; RAF is layout-read-free and CSS dr
  assert.match(css,/\.discovery-action\.lg\{[\s\S]*?background:var\(--lg-surface\)/);
  assert.match(css,/\.discovery-action\.discovery-special\.lg--accent\{[\s\S]*?background:var\(--lg-surface\)/);
  assert.doesNotMatch(css,/\.discovery-action\.lg\{[^}]*?background:linear-gradient\(180deg,var\(--lg-tint\)/);
+ assert.match(lens,/--lg-rim-width:1px/);
+ assert.match(css,/background:var\(--lg-surface\)/);
+ assert.match(css,/box-shadow:var\(--lg-relief\)/);
+ assert.match(card,/desiredClosed=usableHeight<420\?156:usableHeight<590\?179:190/);
+ assert.doesNotMatch(css,/inset 0 2px 13px var\(--lg-inner-glow\)/);
  const begin=card.indexOf(" const paint=(value:number)=>{");
  const end=card.indexOf("\n const flushFinger=",begin);
  assert.ok(begin>0&&end>begin);
@@ -132,7 +137,7 @@ test("bottom nav keeps original destinations inside a single photograph-backed l
  assert.match(real,/<LuemiBottomNavigation/);
  assert.match(demo,/className="discovery-bottom-nav"/);
  assert.match(css,/\.discovery-app\[data-feed-visible="true"\]>\.discovery-bottom-nav\{/);
- assert.match(css,/bottom:calc\(var\(--bottom-safe\) \+ 9px\)/);
+ assert.match(css,/bottom:calc\(var\(--bottom-safe\) \+ 16px\)/);
  assert.match(css,/backdrop-filter:blur\(18px\) saturate\(135%\)/);
  assert.match(css,/\.discovery-nav-item\.active/);
  assert.doesNotMatch(chrome,/\.discovery-app \.discovery-bottom-nav\{/);
