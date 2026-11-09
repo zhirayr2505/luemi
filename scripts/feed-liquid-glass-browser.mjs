@@ -62,21 +62,33 @@ try{
    const light=getComputedStyle(sheet,"::after");
    const surface=getComputedStyle(sheet);
    const action=getComputedStyle(pill);
+   const accent=getComputedStyle(document.querySelector(".deck-active .discovery-action.discovery-special"));
    return {
     mode:document.documentElement.dataset.lgOptics,
     rimBackground:rim.backgroundImage,
     rimFilter:rim.filter,
     rimOpacity:Number(rim.opacity),
+    rimDepth:parseFloat(rim.paddingTop),
+    rimBorder:parseFloat(surface.borderTopWidth),
+    actionBorder:parseFloat(action.borderTopWidth),
     shine:light.backgroundImage,
     relief:surface.boxShadow,
     tint:surface.backgroundImage,
-    actionTint:action.backgroundImage
+    actionTint:action.backgroundImage,
+    accentGradient:accent.backgroundImage,
+    accentFrom:accent.getPropertyValue("--lg-accent-from").trim()
    };
   });
   assert.equal(material?.mode,"safe",width+": Android must use safe lens mode");
   assert.equal(material?.rimFilter,"none",width+": no SVG frame recompositing on Android");
-  assert.ok(material?.rimBackground.includes("conic-gradient")&&material.rimOpacity>.7,
-   width+": colored glass refraction edge is missing");
+  assert.ok(material?.rimBackground.includes("conic-gradient")&&
+   material.rimOpacity>=.25&&material.rimOpacity<=.55,
+   width+": rim must be iridescent but subtle, without the thick white halo");
+  assert.ok(material?.rimDepth<=3&&material.rimBorder<=1.25&&material.actionBorder<=1.25,
+   width+": overbuilt chrome-like border diverges from the approved first reference");
+  assert.ok(material?.accentGradient.includes("gradient")&&
+   material?.accentFrom.includes(".94"),
+   width+": the middle action must be a unified rose-plum pill");
   assert.ok(material?.shine.includes("radial-gradient"),
    width+": specular light is missing");
   assert.ok(material?.relief.includes("inset")&&material.actionTint.includes("gradient"),
