@@ -207,7 +207,7 @@
 .discovery-app .feed-v2-content{
  position:relative;flex:none;display:flex;flex-direction:column;
  gap:7px;margin-top:0;padding:13px 0 12px;
- pointer-events:auto;transform:translate3d(0,0,0)
+ pointer-events:auto;transform:none
 }
 .discovery-app .feed-v2-expand{
  position:absolute;right:0;top:8px;z-index:3;
