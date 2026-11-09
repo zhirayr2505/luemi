@@ -286,3 +286,16 @@
   background:linear-gradient(145deg,rgba(87,94,112,.84),rgba(48,56,71,.95))
  }
 }
+
+/* Android WebView frame-budget safeguard: retain the lens-shaped highlights and
+   translucency, but avoid sampling nine independently blurred button backdrops
+   across three simultaneously composited cards during the swipe animation.
+   iOS keeps native blur; Android gets inexpensive optical borders/reflections. */
+.real-discovery-home[data-profile-renderer="android"] .feed-v2 .discovery-action,
+.real-discovery-home[data-profile-renderer="android"] .feed-v2 .discovery-action.discovery-like,
+.real-discovery-home[data-profile-renderer="android"] .feed-v2 .discovery-action.discovery-special{
+ -webkit-backdrop-filter:none;backdrop-filter:none;
+}
+.real-discovery-home[data-profile-renderer="android"] .feed-v2-photo-ambient img{
+ filter:blur(15px) saturate(1.03) brightness(.66);opacity:.16;
+}
