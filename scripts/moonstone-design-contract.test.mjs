@@ -56,7 +56,12 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(styles,/prefers-reduced-transparency:reduce/);
  assert.match(styles,/prefers-reduced-motion:reduce/);
  const hot=read("apps/web/src/discovery/feed-v2.css");
- assert.doesNotMatch(hot,/backdrop-filter:\s*blur\(/,"no hot-path photos sampling on Android");
+ assert.doesNotMatch(hot,/\.feed-v2-glass\{[^}]*backdrop-filter:\s*blur\(/s,
+  "Never sample an entire moving card or text sheet on Android");
+ assert.match(hot,/\.discovery-app \.feed-v2 \.discovery-action::before\{/,
+  "Independent button lenses must have optical edge highlights");
+ assert.match(hot,/-webkit-backdrop-filter:blur\(16px\) saturate\(155%\)/,
+  "Allow bounded static Liquid Glass refraction on the three buttons");
  const optics=read("apps/web/src/ui/moonstone-optics.ts");
  assert.match(optics,/requestAnimationFrame/);
  assert.match(optics,/pointercancel/);
