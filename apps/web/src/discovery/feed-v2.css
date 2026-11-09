@@ -86,10 +86,14 @@
 .discovery-app .feed-v2 .discovery-interests .interest-chip span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .discovery-app .feed-v2 .discovery-more{flex:none;padding:6px 9px;min-height:27px;border:1px solid rgba(224,219,233,.23);border-radius:99px;background:rgba(77,85,102,.5);color:#F2F1F5;font-size:11px}
 .discovery-app .feed-v2 .discovery-actions{position:absolute;left:0;right:0;bottom:0;z-index:7;display:flex;justify-content:center;align-items:center;gap:clamp(24px,7vw,45px);height:var(--feed-actions-height);padding:2px 14px 9px;pointer-events:auto}
-.discovery-app .feed-v2 .discovery-action{--diameter:clamp(49px,13.5vw,57px);flex:none;display:grid;place-items:center;width:var(--diameter);height:var(--diameter);min-width:44px;min-height:44px;padding:0;border-radius:50%;border:1px solid rgba(234,231,240,.23);color:#EAE7EF;background:linear-gradient(145deg,rgba(75,83,98,.76),rgba(46,51,62,.88));box-shadow:inset 0 1px rgba(255,255,255,.13),0 5px 15px rgba(11,13,17,.15);backdrop-filter:none;-webkit-backdrop-filter:none;transition:transform .13s ease,opacity .13s ease;-webkit-tap-highlight-color:transparent}
-.discovery-app .feed-v2 .discovery-action.discovery-like{--diameter:clamp(68px,19vw,78px);background:linear-gradient(150deg,#D5C8DD,var(--luemi-lavender) 52%,#998CAB);border-color:rgba(244,239,250,.49);color:var(--luemi-ink-on-accent);box-shadow:inset 0 2px rgba(255,255,255,.32),0 6px 18px rgba(16,20,27,.22)}
-.discovery-app .feed-v2 .discovery-action.discovery-special{--diameter:clamp(49px,13.5vw,57px);color:#EAE7EF;background:linear-gradient(145deg,rgba(75,83,98,.76),rgba(46,51,62,.88));border-color:rgba(234,231,240,.23);box-shadow:inset 0 1px rgba(255,255,255,.13),0 5px 15px rgba(11,13,17,.15)}
-.discovery-app .feed-v2 .discovery-action:active:not(:disabled){transform:scale(.91);transition-duration:.10s}
+/* Dimensions only. Lens fill, highlights and press physics are defined once
+   in the final optical action block below, not by a competing old palette. */
+.discovery-app .feed-v2 .discovery-action{
+ --diameter:clamp(49px,13.5vw,57px);flex:none;display:grid;place-items:center;
+ width:var(--diameter);height:var(--diameter);min-width:44px;min-height:44px;padding:0;
+}
+.discovery-app .feed-v2 .discovery-action.discovery-like{--diameter:clamp(68px,19vw,78px)}
+.discovery-app .feed-v2 .discovery-action.discovery-special{--diameter:clamp(49px,13.5vw,57px)}
 .discovery-app .feed-v2 .discovery-action:disabled{opacity:.38}
 .discovery-app .feed-v2 .discovery-action:focus-visible,.discovery-app .feed-v2-expand:focus-visible,.discovery-app .feed-v2 .discovery-name-button:focus-visible{outline:2px solid var(--luemi-focus,#C7C1D4);outline-offset:3px}
 .discovery-app .feed-v2-card[data-size=compact]{--feed-actions-height:83px}
