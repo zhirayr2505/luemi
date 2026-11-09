@@ -50,7 +50,7 @@ test("empty real feed retains navigation; QA profiles stay in a separate fixture
 });
 
 test("real FeedCard retains canonical photo/sheet gestures and removes demo badges",()=>{
- assert.match(shell,/<FeedCard person=\{toCard\(current\)\} real/);
+ assert.match(shell,/<FeedCard person=\{toCard\(person\)\} real/);
  assert.match(card,/className="discovery-demo-label">Демо<\/span>/);
  assert.match(card,/\{!real&&\(onExitDemo\?/);
  assert.match(card,/real\?<button type="button"/);
@@ -116,13 +116,16 @@ test("real pages reuse approved 1:1 gesture and inertial settle without duplicat
 });
 
 test("real feed restores animated deck, undoable skip and session bookmarks across tabs",()=>{
- assert.match(shell,/className=\{"discovery-deck-layer"\+\(leaving\?/);
- assert.match(shell,/className=\{"discovery-deck-layer"\+\(leaving===current.id\?/);
+ assert.match(shell,/visibleRows\.slice\(page,page\+3\)\.map/);
+ assert.match(shell,/deck-peek-"\+side/);
+ assert.match(shell,/className=\{"discovery-deck-layer"\+state\}/);
+ assert.match(shell,/preloadUpcomingFeedPhotos/);
+ assert.match(shell,/warmPublishedPagePhotos/);
  assert.match(shell,/onAnimationEnd=/);
  assert.match(shell,/pendingCommit/);
  assert.match(shell,/setUndoPage\(from\)/);
  assert.match(shell,/onSave\(current.id\)/);
- assert.match(shell,/saved=\{saved.has\(current.id\)\}/);
+ assert.match(shell,/saved=\{saved.has\(person.id\)\}/);
  assert.match(shell,/hiddenIds=\{hiddenIds\} onHide=\{onHide\}/);
  assert.match(shell,/onHide\(menu.id\)/);
  assert.match(shell,/people=\{matchedRows\}/);
