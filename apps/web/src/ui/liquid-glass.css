@@ -64,6 +64,16 @@
  opacity:.55;
 }
 .lg--small::before{padding:var(--lg-rim-width);opacity:.7}
+/* Supported static Chrome/WKWebView: the masked bevel samples only a narrow
+ * 10-16px rim. Android keeps the chromatic ring without any live sampling.
+ */
+@supports ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){
+ .discovery-app:not([data-profile-renderer=android]) .lg:not([data-moving=true])::before{
+  -webkit-backdrop-filter:blur(2px) brightness(1.25) saturate(190%);
+  backdrop-filter:blur(2px) brightness(1.25) saturate(190%)
+ }
+}
+
 .lg::after{
  content:"";position:absolute;inset:0;z-index:0;
  border-radius:inherit;pointer-events:none;
@@ -83,8 +93,14 @@
   0 0 22px var(--lg-press-glow)
 }
 .lg:disabled,.lg[aria-disabled=true]{opacity:.45}
+.lg:disabled::after,.lg[aria-disabled=true]::after{opacity:0}
 @media(prefers-reduced-transparency:reduce){
  :root{--lg-tint:rgba(82,61,91,.94);--lg-tint-bottom:rgba(48,33,58,.95);--lg-blur:0px}
+ .lg--accent{
+  --lg-tint:rgba(82,61,91,.94);--lg-tint-bottom:rgba(48,33,58,.95);
+  --lg-accent-from:rgba(82,61,91,.96);--lg-accent-to:rgba(48,33,58,.95)
+ }
+ .lg::before{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
  .lg{-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 @media(prefers-reduced-motion:reduce){
