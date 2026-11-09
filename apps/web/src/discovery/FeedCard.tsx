@@ -73,8 +73,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    `translate3d(0,${m.reveal*(1-p)-m.lift*p}px,0)`;
   if(dim.current)dim.current.style.opacity=String(p*.76);
   if(actionsView.current)actionsView.current.inert=p>.45;
-  if(glass.current)glass.current.style.transform=
-   `translate3d(0,0,0) scaleY(${(m.closed+(m.open-m.closed)*p)/Math.max(1,m.open)})`;
+  // One bounded surface contains text and optics; rounded corners cannot scale.
+  if(glass.current)glass.current.style.height=`${m.closed+(m.open-m.closed)*p}px`;
  };
  const flushFinger=()=>{
   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
@@ -151,9 +151,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const openCap=Math.max(closed,usableHeight-actions-18);
   const open=Math.min(openCap,Math.max(full+32,closed+Math.min(145,usableHeight*.28)));
   element.style.setProperty("--feed-closed-height",closed+"px");
-  details.current?.style.setProperty("height",open+"px");
-  // Resizing updates geometry once; all subsequent RAF paints stay composited.
-  glass.current?.style.setProperty("height",open+"px");
+  // Both optics and contents share the only sheet box. paint() owns its height.
   // Match the content's upper edge to the inset glass surface while dragging.
   // This keeps the label/title visible rather than leaving a blank upper half.
   const reveal=extras?extras+5:0;
@@ -323,11 +321,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      </div>
      <div className="feed-v2-dim" ref={dim} aria-hidden="true"/>
      <div className="feed-v2-information">
-       <div className="feed-v2-glass" ref={glass} aria-hidden="true"/>
-       <div className="feed-v2-details" ref={details}>
+       <div className="feed-v2-glass feed-v2-sheet lg lg--card" ref={glass} data-moving="false">
+        <div className="feed-v2-details" ref={details}>
          <div className="feed-v2-scroll" ref={scroll}>
           <div className="feed-v2-content" ref={content}>
-           <button className="feed-v2-expand" type="button" disabled={!available}
+           <button className="feed-v2-expand lg lg--pill lg--small" type="button" disabled={!available}
              aria-label={expanded?"Свернуть информацию":"Раскрыть информацию"} aria-expanded={expanded}
              onClick={()=>updateExpanded(target.current!==1)}>
              <ChevronDown size={15} className="feed-v2-collapse-icon"/>
@@ -376,10 +374,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
            </div>}
           </div>
          </div>
+        </div>
        </div>
        <div className="discovery-actions" ref={actionsView} aria-label={real?"Действия с анкетой":"Демо-действия с анкетой"}>
          {buttons.map(([kind,label,Icon])=><button type="button" key={kind}
-           className={"discovery-action discovery-"+kind} aria-label={label} title={label}
+           className={"discovery-action discovery-"+kind+" lg lg--pill"+(kind==="special"?" lg--accent":"")} aria-label={label} title={label}
            onClick={()=>onAction(kind)} disabled={!available}>
            <Icon size={kind==="like"?30:kind==="special"?24:22} strokeWidth={kind==="like"?1.9:1.8}/>
          </button>)}
