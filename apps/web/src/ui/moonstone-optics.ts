@@ -13,6 +13,27 @@ const GLASS_TARGETS=[
 ].join(",");
 type ActiveOptic={id:number;el:HTMLElement;left:number;top:number;width:number;height:number};
 export function installMoonstoneOptics(doc:Document):()=>void{
+ // Progressive optics: the premium SVG rim is enabled on platforms where
+ // backdrop sampling and SVG CSS filters are both available. Android Telegram
+ // retains every visible optical layer but avoids live GPU displacement.
+ const view=doc.defaultView;
+ const root=doc.documentElement;
+ const userAgent=view?.navigator.userAgent??"";
+ const reducedTransparency=view?.matchMedia?.("(prefers-reduced-transparency: reduce)").matches??false;
+ const reducedMotion=view?.matchMedia?.("(prefers-reduced-motion: reduce)").matches??false;
+ const supported=!!(view?.CSS?.supports("backdrop-filter","blur(2px)")||
+   view?.CSS?.supports("-webkit-backdrop-filter","blur(2px)"));
+ const refractive=!!view?.CSS?.supports("filter","url('/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2')");
+ root.dataset.lgOptics=!/Android/i.test(userAgent)&&supported&&refractive&&
+  !reducedTransparency&&!reducedMotion?"full":"safe";
+ // Safari/WebKit still has an unresolved GPU crash with SVG *backdrop* URL
+ // filters; CSS.supports alone cannot detect that rendering failure. SVG
+ // distortion of the painted bevel can remain; only native background sampling
+ // is limited to desktop Chromium outside the Apple engine.
+ const desktopChromium=/Chrome\/|Chromium\/|Edg\//i.test(userAgent)&&
+  !/Android|iPhone|iPad|iPod/i.test(userAgent);
+ root.dataset.lgNativeRefraction=root.dataset.lgOptics==="full"&&desktopChromium?
+  "on":"off";
  let active:ActiveOptic|null=null;
  let pending:{x:number;y:number}|null=null;
  let raf=0;

@@ -203,7 +203,7 @@
  display:flex;flex-direction:column;overflow:hidden;pointer-events:none;
  color:#fff;touch-action:none;
  text-shadow:0 1px 6px rgba(20,8,30,.35);
- background:linear-gradient(180deg,transparent 8%,rgba(16,9,23,.06) 44%,rgba(16,9,23,.26));
+ background:linear-gradient(180deg,transparent 8%,rgba(16,9,23,.02) 44%,rgba(16,9,23,.12));
 }
 .discovery-app .feed-v2-scroll{
  min-height:0;flex:1;display:flex;flex-direction:column;overflow:hidden;
@@ -352,31 +352,32 @@
 .discovery-app .feed-v2 .discovery-action.discovery-special{
  width:clamp(112px,33vw,151px);
 }
-/* Specificity fence: the generic legacy discovery-action rules must not
- * reintroduce gradients, white outlines or their old press transform.
- * All optical numbers still come exclusively from --lg-*.
+/* Only geometry is page-specific. The actual surface, accents, optical
+ * rim and pressed depth are inherited from canonical liquid-glass.css V2.
+ * Do not resurrect the flat background/box-shadow overrides here.
  */
 .discovery-app .feed-v2 .discovery-action.lg{
- border:var(--lg-rim-width) solid rgba(255,255,255,.44);
- background:linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
+ border:var(--lg-rim-width) solid rgba(255,255,255,.63);
+ background:var(--lg-surface);
  -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
  backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
  box-shadow:var(--lg-shadow),
-  inset 1px 1px 0 var(--lg-chroma-warm),
-  inset -1px -1px 0 var(--lg-chroma-cool),
-  inset 0 0 18px var(--lg-inner-glow);
+  inset 1px 1px 0 rgba(255,255,255,.72),
+  inset -1px -1px 0 rgba(160,205,255,.23),
+  inset 0 2px 13px var(--lg-inner-glow),
+  inset 0 -13px 22px rgba(71,45,87,.11);
  transition:transform 130ms cubic-bezier(.2,.8,.2,1),box-shadow 130ms ease
 }
 .discovery-app .feed-v2 .discovery-action.discovery-special.lg--accent{
- background:linear-gradient(135deg,var(--lg-accent-from),var(--lg-accent-to)),
-  linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
- color:#fff
+ background:var(--lg-surface);color:#fff
 }
 .discovery-app .feed-v2 .discovery-action.lg:active:not(:disabled){
  transform:scale(var(--lg-press-scale));
- box-shadow:var(--lg-shadow),inset 1px 1px 0 var(--lg-chroma-warm),
-  inset -1px -1px 0 var(--lg-chroma-cool),
-  inset 0 0 18px var(--lg-inner-glow),0 0 22px var(--lg-press-glow)
+ box-shadow:var(--lg-shadow),
+  inset 1px 1px 0 rgba(255,255,255,.72),
+  inset -1px -1px 0 rgba(160,205,255,.23),
+  inset 0 2px 13px var(--lg-inner-glow),
+  0 0 17px var(--lg-press-glow)
 }
 .discovery-app .feed-v2 .discovery-action.lg:disabled{opacity:.45}
 .discovery-app .feed-v2 .discovery-action svg{position:relative;z-index:2;width:22px;height:22px}

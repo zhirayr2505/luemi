@@ -11,6 +11,7 @@ import "./styles.css";
 // Match production token initialization in the standalone browser QA entry.
 import "./ui/luemi-v5.css";
 import "./ui/liquid-glass.css";
+import {installMoonstoneOptics} from "./ui/moonstone-optics";
 
 const base=newDraft("ZHIIIRRO");
 const draft={...base,trialConsent:true,day:"12",month:"5",year:"1998",gender:"man" as const,
@@ -163,15 +164,18 @@ function VisualQA(){
 // QA-only teardown hook. React owns unmount; tests can verify that app-owned
 // listeners/RAF/media are released instead of merely navigating away.
 let qaRoot:ReturnType<typeof createRoot>|null=null;
+let cleanupOptics:(()=>void)|null=null;
 const qaWindow=window as Window&{__luemiQaUnmount?:()=>void;__luemiQaRemount?:()=>void};
 const mountFixture=()=>{
  if(qaRoot)return;
+ cleanupOptics=installMoonstoneOptics(document);
  qaRoot=createRoot(document.getElementById("root")!);
  qaRoot.render(<React.StrictMode><VisualQA/></React.StrictMode>);
 };
 qaWindow.__luemiQaUnmount=()=>{
  if(!qaRoot)return;
  qaRoot.unmount();qaRoot=null;
+ cleanupOptics?.();cleanupOptics=null;
 };
 qaWindow.__luemiQaRemount=mountFixture;
 mountFixture();

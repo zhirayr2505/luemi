@@ -52,6 +52,35 @@ try{
   assert.equal(start.actionCount,3,width+": pass/special/like must share material");
   assert.equal(start.special,true,width+": star must be optical accent");
   assert.equal(start.blur,"none",width+": Android WebView must avoid moving backdrop blur");
+  // Liquid Glass V2: a fallback is optically layered, not flat/opaque. The
+  // supported WebView must never run SVG displacement on a moving photo tile.
+  const material=await page.evaluate(()=>{
+   const sheet=document.querySelector(".deck-active .feed-v2-sheet");
+   const pill=document.querySelector(".deck-active .discovery-action.discovery-like");
+   if(!sheet||!pill)return null;
+   const rim=getComputedStyle(sheet,"::before");
+   const light=getComputedStyle(sheet,"::after");
+   const surface=getComputedStyle(sheet);
+   const action=getComputedStyle(pill);
+   return {
+    mode:document.documentElement.dataset.lgOptics,
+    rimBackground:rim.backgroundImage,
+    rimFilter:rim.filter,
+    rimOpacity:Number(rim.opacity),
+    shine:light.backgroundImage,
+    relief:surface.boxShadow,
+    tint:surface.backgroundImage,
+    actionTint:action.backgroundImage
+   };
+  });
+  assert.equal(material?.mode,"safe",width+": Android must use safe lens mode");
+  assert.equal(material?.rimFilter,"none",width+": no SVG frame recompositing on Android");
+  assert.ok(material?.rimBackground.includes("conic-gradient")&&material.rimOpacity>.7,
+   width+": colored glass refraction edge is missing");
+  assert.ok(material?.shine.includes("radial-gradient"),
+   width+": specular light is missing");
+  assert.ok(material?.relief.includes("inset")&&material.actionTint.includes("gradient"),
+   width+": glass relief or pill transparency is missing");
   // Video regression: the old blur occupied 58% of the picture, with a sharp
   // horizontal edge at the model's nose and a different portrait crop.
   await page.waitForFunction(()=>{
@@ -146,4 +175,36 @@ try{
   }));
   await context.close();
  }
+ // Full optical path: verify iPhone-type user agent gets the SVG
+ // displacement only when its CSS feature probes genuinely support it.
+ const ios=await browser.newContext({
+  viewport:{width:393,height:852},isMobile:true,hasTouch:true,
+  userAgent:"Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1"
+ });
+ try{
+  const page=await ios.newPage();
+  await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
+  await page.locator(".deck-active .feed-v2-sheet").first().waitFor({state:"visible"});
+  const state=await page.evaluate(()=>{
+   const svg="/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2";
+   const supported=(CSS.supports("backdrop-filter","blur(2px)")||
+    CSS.supports("-webkit-backdrop-filter","blur(2px)"))&&
+    CSS.supports("filter","url('"+svg+"')");
+   const sheet=document.querySelector(".deck-active .feed-v2-sheet");
+   return {
+    supported,mode:document.documentElement.dataset.lgOptics,
+    nativeRefraction:document.documentElement.dataset.lgNativeRefraction,
+    rimFilter:getComputedStyle(sheet,"::before").filter
+   };
+  });
+  assert.equal(state.mode,state.supported?"full":"safe",
+   "progressive optical filtering must respect browser capabilities");
+  assert.equal(state.nativeRefraction,"off",
+   "WebKit-style user agents must never receive crash-prone SVG backdrop URL");
+  if(state.mode==="full"){
+   assert.ok(state.rimFilter.includes("liquid-refraction-v2.svg"),
+    "capable browser must receive actual SVG displacement on the lens bevel");
+  }
+  console.log("LUEMI_LG_V2_CAPABILITY_OK",state);
+ }finally{await ios.close()}
 }finally{await browser.close()}

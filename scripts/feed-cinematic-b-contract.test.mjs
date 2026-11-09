@@ -73,11 +73,17 @@ test("feed photo ambient is pre-rasterized, decoded and double-buffered without 
 test("one nested sheet owns lens and details; RAF is layout-read-free and CSS drives fades",()=>{
  assert.match(card,/className="feed-v2-glass feed-v2-sheet lg lg--card"[\s\S]*?className="feed-v2-details"/);
  assert.match(css,/\.discovery-app \.feed-v2-sheet\{/);
- assert.match(lens,/--lg-radius-card:clamp\(26px,7\.4vw,34px\)/);
- assert.match(lens,/--lg-blur:14px/);
+ assert.match(lens,/--lg-radius-card:clamp\(25px,7\.4vw,34px\)/);
+ assert.match(lens,/--lg-blur:16px/);
  assert.match(lens,/\.lg::before\{/);
  assert.match(lens,/\.lg::after\{/);
  assert.match(lens,/mask-composite:exclude/);
+ assert.match(lens,/liquid-refraction-v2\.svg#luemi-refraction-v2/);
+ assert.match(lens,/--lg-surface:/);
+ assert.match(lens,/radial-gradient\(ellipse 47% 45% at var\(--moonstone-x/);
+ assert.match(css,/\.discovery-action\.lg\{[\s\S]*?background:var\(--lg-surface\)/);
+ assert.match(css,/\.discovery-action\.discovery-special\.lg--accent\{[\s\S]*?background:var\(--lg-surface\)/);
+ assert.doesNotMatch(css,/\.discovery-action\.lg\{[^}]*?background:linear-gradient\(180deg,var\(--lg-tint\)/);
  const begin=card.indexOf(" const paint=(value:number)=>{");
  const end=card.indexOf("\n const flushFinger=",begin);
  assert.ok(begin>0&&end>begin);
