@@ -23,7 +23,7 @@ async function rasterize(src:string):Promise<string|null>{
   ctx.fillStyle="#24182A";
   ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.filter="blur(8px)";
-  ctx.drawImage(source,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
+  ctx.drawImage(source,(canvas.width-w)/2,(canvas.height-h)*.35,w,h);
   ctx.filter="none";
   return canvas.toDataURL("image/jpeg",.72);
  }catch{
