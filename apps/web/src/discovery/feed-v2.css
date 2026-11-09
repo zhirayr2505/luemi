@@ -143,7 +143,7 @@
 .feed-v2-dim{
  position:absolute;inset:0;z-index:5;pointer-events:none;
  background:linear-gradient(to bottom,transparent 30%,rgba(31,17,38,.14) 58%,rgba(28,15,36,.38) 100%);
- opacity:0;transform:translateZ(0)
+ opacity:0
 }
 .discovery-app .feed-v2-photo .photo-progress{
  position:absolute;left:50%;right:auto;top:calc(var(--feed-header-top,26px) + 91px);
@@ -280,15 +280,12 @@
  letter-spacing:.025em;color:rgba(246,224,249,.86)
 }
 .discovery-app .feed-v2 .discovery-short-about{
- display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;
+ display:block;max-height:4em;
  margin:0;padding:0;border:0;max-width:100%;overflow:hidden;
  color:rgba(255,250,255,.91);font-size:clamp(11px,3vw,12.5px);
  font-weight:430;line-height:1.33;letter-spacing:.005em;
  font-style:italic;text-shadow:0 1px 6px rgba(18,10,22,.16);
  overflow-wrap:anywhere;white-space:pre-line
-}
-.discovery-app .feed-v2-card[data-expanded=true] .discovery-short-about{
- -webkit-line-clamp:unset;line-clamp:unset
 }
 .discovery-app .feed-v2-interests{min-width:0;min-height:0;overflow:visible}
 .discovery-app .feed-v2-interests .feed-v2-section-label{display:none}
