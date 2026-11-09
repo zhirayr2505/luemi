@@ -4,24 +4,7 @@
 .discovery-page[aria-label="Лента"]{padding:4px 17px 8px}
 .discovery-page[aria-label="Лента"] .discovery-deck-stage{overflow:visible}
 .discovery-page[aria-label="Лента"] .discovery-deck-layer{inset:20px 0 8px}
-.discovery-page[aria-label="Лента"] .deck-queued{inset:9px 5px 17px;transform:translate3d(0,0,0) scale(.986);opacity:.82}
-.discovery-page[aria-label="Лента"] .deck-active,
-.discovery-page[aria-label="Лента"] .deck-entering,
-.discovery-page[aria-label="Лента"] .deck-leaving{z-index:3}
-.discovery-page[aria-label="Лента"] .deck-leaving{z-index:4}
-.discovery-page[aria-label="Лента"] .deck-entering{animation:moonstone-card-rise var(--deck-motion,340ms) cubic-bezier(.2,.74,.2,1) both}
-.discovery-page[aria-label="Лента"] .deck-leaving-like{animation:feed-v2-like var(--deck-motion,340ms) cubic-bezier(.22,.65,.3,1) both}
-.discovery-page[aria-label="Лента"] .deck-leaving-special{animation:feed-v2-special var(--deck-motion,340ms) cubic-bezier(.22,.65,.3,1) both}
-@keyframes feed-v2-like{to{transform:translate3d(115%,0,0) rotate(3deg) scale(.96);opacity:0}}
-@keyframes feed-v2-pass{to{transform:translate3d(-115%,0,0) rotate(-3deg) scale(.96);opacity:0}}
-@keyframes feed-v2-special{to{transform:translate3d(0,-115%,0) scale(.95);opacity:0}}
-@keyframes moonstone-card-rise{
- from{transform:translate3d(0,12px,0) scale(.982);opacity:.80}
- to{transform:translate3d(0,0,0) scale(1);opacity:1}
-}
-.discovery-page[aria-label="Лента"] .deck-leaving-pass{
- animation:feed-v2-pass var(--deck-motion,340ms) cubic-bezier(.22,.65,.3,1) both
-}
+/* Unified alternating deck and directional compositor animations: deck-v3.css. */
 .feed-v2{height:100%;width:100%;min-height:0}
 .discovery-app .feed-v2-card{--feed-actions-height:94px;--feed-closed-height:220px;--feed-open-height:300px;
  border-radius:29px;isolation:isolate;overflow:hidden;border:1px solid rgba(233,240,249,.28);
@@ -122,44 +105,27 @@
 @media(prefers-reduced-motion:reduce){.discovery-app .feed-v2 .discovery-action{transition:none}.discovery-page[aria-label="Лента"] .deck-leaving,.discovery-page[aria-label="Лента"] .deck-entering{animation:none}}
 @media(prefers-reduced-transparency:reduce){.discovery-app .feed-v2-glass{background:linear-gradient(180deg,transparent,rgba(26,29,35,.98))}}
 
-/* Centered, strictly parallel stacked profiles. The photograph is the hero. */
-.discovery-page[aria-label="Лента"] .discovery-deck-stage.has-profiles::before,
-.discovery-page[aria-label="Лента"] .discovery-deck-stage.has-profiles::after{
- content:"";position:absolute;pointer-events:none;border:1px solid rgba(226,234,244,.17);
- background:linear-gradient(155deg,rgba(75,83,95,.73),rgba(43,50,59,.9));
- box-shadow:inset 0 1px rgba(255,255,255,.12);border-radius:29px 29px 20px 20px;
-}
-.discovery-page[aria-label="Лента"] .discovery-deck-stage.has-profiles::before{z-index:0;top:0;left:14px;right:14px;bottom:30px;opacity:.64}
-.discovery-page[aria-label="Лента"] .discovery-deck-stage.has-profiles::after{z-index:0;top:8px;left:8px;right:8px;bottom:22px;opacity:.8}
+/* The next two real cards are the stack; removed decorative fake-card pseudo-elements. */
 .discovery-app .feed-v2-card{position:relative;z-index:1}
 .feed-v2-photo-ambient{
- position:absolute;z-index:0;left:-15px;right:-15px;top:46%;bottom:-15px;
+ position:absolute;z-index:0;left:-14px;right:-14px;top:58%;bottom:-13px;
  overflow:hidden;pointer-events:none;border-radius:40px;contain:paint;
- -webkit-mask-image:radial-gradient(ellipse 83% 80% at 50% 79%,#000 10%,rgba(0,0,0,.78) 58%,transparent 98%);
- mask-image:radial-gradient(ellipse 83% 80% at 50% 79%,#000 10%,rgba(0,0,0,.78) 58%,transparent 98%);
+ -webkit-mask-image:radial-gradient(ellipse 77% 82% at 50% 80%,rgba(0,0,0,.76) 0%,rgba(0,0,0,.34) 48%,transparent 94%);
+ mask-image:radial-gradient(ellipse 77% 82% at 50% 80%,rgba(0,0,0,.76) 0%,rgba(0,0,0,.34) 48%,transparent 94%);
 }
 .feed-v2-photo-ambient img{
  display:block;width:100%;height:100%;object-fit:cover;object-position:center 80%;
- filter:blur(24px) saturate(1.05) brightness(.69);opacity:.62;
- transform:scale(1.1);animation:moonstone-photo-light .42s ease-out both;
+ filter:blur(28px) saturate(1.06) brightness(.59);opacity:.24;
+ transform:scale(1.15);transition:opacity .24s ease;
 }
-@keyframes moonstone-photo-light{from{opacity:0}to{opacity:.62}}
-.deck-queued .feed-v2-photo-ambient{display:none}
+/* No keyframe/opacity reset on photo change; the native image colors tint the halo. */
 .feed-v2-photo-count{
  position:absolute;z-index:8;right:12px;top:11px;min-width:38px;padding:5px 8px;
  border-radius:999px;border:1px solid rgba(248,251,255,.21);
  background:rgba(29,34,42,.54);color:var(--luemi-text);
  text-align:center;font-size:10px;font-weight:650;line-height:1.2;pointer-events:none;
 }
-.discovery-app .feed-v2 .discovery-action{
- border-color:rgba(233,242,251,.28);
- background:linear-gradient(145deg,rgba(85,95,105,.55),rgba(41,49,57,.79));
- box-shadow:inset 0 1px 1px rgba(250,253,255,.22),inset 0 -1px rgba(7,12,19,.18),0 6px 15px rgba(9,13,19,.15);
-}
-.discovery-app .feed-v2 .discovery-action.discovery-like{
- background:linear-gradient(150deg,#D5C8DD,var(--luemi-lavender) 52%,#998CAB);
- color:var(--luemi-ink-on-accent);
-}
+/* Retired solid-plum button backgrounds removed; lens styles are authoritative below. */
 .luemi-shell .discovery-app .discovery-top-tabs{
  border-color:var(--luemi-glass-line);
  background:var(--luemi-glass-fill);
