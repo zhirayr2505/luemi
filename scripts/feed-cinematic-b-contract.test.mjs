@@ -8,6 +8,7 @@ const oldGlass=read("apps/web/src/discovery/feed-glass-v1.css");
 const header=read("apps/web/src/discovery/GlobalHeader.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 const real=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
+const deck=read("apps/web/src/discovery/deck-v3.css");
 
 test("Moonstone feed keeps the original registration raster, rendered white on the left",()=>{
  assert.match(header,/wordmark_original_raster_alpha_W06\.webp/);
@@ -18,13 +19,14 @@ test("Moonstone feed keeps the original registration raster, rendered white on t
  assert.doesNotMatch(oldGlass,/\.discovery-app \.feed-v2-glass/);
 });
 
-test("feed card is a centered, parallel deck with original photo carousel",()=>{
+test("three-card preview alternates sides without decorative fake-card layers",()=>{
  assert.match(feed,/<PhotoCarousel ref=\{photo\}/);
- assert.match(css,/\.discovery-deck-stage\.has-profiles::before/);
- assert.match(css,/\.discovery-deck-stage\.has-profiles::after/);
- assert.match(css,/\.deck-queued\{inset:9px 5px 17px/);
+ assert.doesNotMatch(css,/\.discovery-deck-stage\.has-profiles::(?:before|after)/);
+ assert.match(real,/visibleRows\.slice\(page,page\+3\)\.map/);
+ assert.match(deck,/\.deck-queued\.deck-peek-right/);
+ assert.match(deck,/\.deck-queued\.deck-peek-left/);
  assert.match(css,/object-fit:cover/);
- assert.doesNotMatch(css,/skew\(|perspective\(/);
+ assert.doesNotMatch(deck,/skew\(|perspective\(/);
 });
 
 test("actions remain reject / centered heart / special, with direction-matched exits",()=>{
@@ -33,10 +35,10 @@ test("actions remain reject / centered heart / special, with direction-matched e
  const star=feed.indexOf('["special","Особенная симпатия",Star]');
  assert.ok(pass>0&&like>pass&&star>like);
  assert.match(css,/\.discovery-action\.discovery-like\{--diameter:clamp\(68px,19vw,78px\)/);
- assert.match(css,/@keyframes feed-v2-pass\{to\{transform:translate3d\(-115%/);
- assert.match(css,/@keyframes feed-v2-like\{to\{transform:translate3d\(115%/);
- assert.match(css,/@keyframes feed-v2-special\{to\{transform:translate3d\(0,-115%/);
- assert.match(real,/feed-v2-pass/);
+ assert.match(deck,/@keyframes luemi-deck-exit-left/);
+ assert.match(deck,/@keyframes luemi-deck-exit-right/);
+ assert.match(deck,/@keyframes luemi-deck-exit-top/);
+ assert.match(real,/deck-leaving-"\+leavingKind/);
  assert.match(feed,/onClick=\{\(\)=>onAction\(kind\)\}/);
 });
 
@@ -47,7 +49,8 @@ test("only selected photo changes the soft ambient lighting, not the app palette
  assert.match(carousel,/onIndexChange\?\.\(target\)/);
  assert.match(carousel,/onIndexChange\?\.\(i\)/);
  assert.match(css,/\.feed-v2-photo-ambient img\{/);
- assert.match(css,/filter:blur\(24px\)/);
+ assert.match(css,/filter:blur\(28px\)/);
+ assert.doesNotMatch(css,/@keyframes moonstone-photo-light/);
  assert.match(css,/mask-image:radial-gradient/);
  assert.doesNotMatch(css,/#[0-9a-fA-F]{6}[^;]*glow/);
 });
