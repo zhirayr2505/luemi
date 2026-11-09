@@ -117,21 +117,19 @@
  opacity:0;transition:opacity .13s ease-out
 }
 .feed-v2-photo .carousel-track img.is-ready{opacity:1}
-/* Two tiny pre-rasterized portrait previews are decoded before swapping.
- * Only this lower region has extra color; no masked fullscreen GPU blur tiles.
+/* The tiny blur texture covers the exact same viewport/crop as the sharp
+ * carousel image, with a feather baked into bitmap alpha. No height:58%
+ * rectangle or WebView mask: those caused the split face in Android video.
  */
 .feed-v2-photo-ambient{
- position:absolute;inset:auto 0 0;z-index:3;height:58%;
- pointer-events:none;overflow:hidden
+ position:absolute;inset:0;z-index:3;
+ pointer-events:none;overflow:hidden;
+ opacity:0;transition:opacity 110ms ease-out
 }
 .feed-v2-photo-ambient img{
- position:absolute;left:0;right:0;bottom:0;display:block;
- width:100%;height:172.414%;object-fit:cover;object-position:center 35%;opacity:0;
+ position:absolute;inset:0;display:block;
+ width:100%;height:100%;object-fit:fill;opacity:0;
  transition:opacity 110ms ease-out;pointer-events:none
-}
-.feed-v2-photo-ambient::after{
- content:"";position:absolute;inset:0;pointer-events:none;
- background:linear-gradient(180deg,rgba(30,16,37,.34),transparent 22%,transparent 72%,rgba(25,13,31,.16))
 }
 .feed-v2-photo-vignette{
  position:absolute;inset:0;z-index:4;pointer-events:none;
