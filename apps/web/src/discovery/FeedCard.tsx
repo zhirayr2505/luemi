@@ -40,6 +40,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  // A separate, noninteractive photo glow changes only after carousel settlement.
  const ambientPhoto=person.photos[activePhotoIndex]?.src??person.photos[0]?.src;
  const nextAmbientPhoto=person.photos[activePhotoIndex+1]?.src;
+ const ambientFallback=person.photos[activePhotoIndex]?.fallback;
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
  const glass=useRef<HTMLDivElement>(null);
@@ -59,7 +60,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const blockClickUntil=useRef(0);
  const multiTouch=useRef(false);
  const progress=useRef(0),target=useRef<0|1>(0);
- const metrics=useRef({closed:225,open:430,reveal:0,lift:25,actions:83});
+ const metrics=useRef({closed:225,open:430,reveal:0,lift:25,actions:83,canScroll:false});
  const run=useRef<CardRun|null>(null);
  const fingerFrame=useRef<number|null>(null);
  const fingerValue=useRef(0);
@@ -69,6 +70,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const measuredCard=useRef({width:-1,height:-1});
  const setExpandedIfChanged=(next:boolean)=>setExpanded(previous=>previous===next?previous:next);
  const refreshIfDirty=()=>{if(measureDirty.current)requestAnimationFrame(()=>measureLive.current());};
+ const markMoving=(moving:boolean)=>{if(glass.current)glass.current.dataset.moving=String(moving);};
  const paint=(value:number)=>{
   const p=progress.current=clamp(value,0,1),m=metrics.current;
   // The single sheet progress is also the CSS driver for button/chip opacity.
@@ -97,15 +99,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   run.current=null;paint(position(current,performance.now()));
  };
  const settle=(next:0|1,releaseVelocity=0)=>{
-  freeze();target.current=next;
+  freeze();target.current=next;markMoving(true);
   if(scroll.current)scroll.current.style.overflowY="hidden";
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
    paint(next);setExpandedIfChanged(next===1);
-   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";refreshIfDirty();return;
+   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";markMoving(false);refreshIfDirty();return;
   }
   if(Math.abs(progress.current-next)<.002){
    paint(next);setExpandedIfChanged(next===1);
-   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";refreshIfDirty();return;
+   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";markMoving(false);refreshIfDirty();return;
   }
   const distance=Math.abs(next-progress.current);
   const duration=Math.max(160,Math.min(320,220+distance*90-Math.abs(releaseVelocity)*45));
@@ -120,7 +122,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    if(run.current!==motion)return;
    const value=position(motion,now);paint(value);
    if(now-motion.start>=motion.duration){
-    run.current=null;paint(next);setExpandedIfChanged(next===1);refreshIfDirty();
+    run.current=null;paint(next);setExpandedIfChanged(next===1);markMoving(false);refreshIfDirty();
     if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";
    }else motion.frame=requestAnimationFrame(tick);
   };
@@ -144,11 +146,18 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // The sheet must grow only as much as the actual biography/interests need.
   // Previously 'open' was hard-coded to 75% of the photo, which produced an
   // enormous empty opaque panel over the person's face on Android Telegram.
+  // Measure both text states once outside gestures: the full biography must
+  // fit the open sheet even when the resting card clamps the excerpt.
+  const originalExpanded=element.dataset.expanded??"false";
+  element.dataset.expanded="true";
   const full=content.current?.scrollHeight??0;
+  element.dataset.expanded="false";
+  const compact=content.current?.scrollHeight??0;
+  element.dataset.expanded=originalExpanded;
   const extras=extraInterests.current?.scrollHeight??0;
   // Compact copy ends on the first two interest chips. The remaining chips
   // stay in the DOM but are invisible until the sheet opens, avoiding reflow.
-  const compactContent=Math.max(0,full-(extras?extras+5:0));
+  const compactContent=Math.max(0,compact-(extras?extras+5:0));
   const maxClosed=Math.max(124,Math.min(usableHeight*.54,usableHeight-actions-18));
   const minClosed=Math.min(maxClosed,usableHeight<420?142:158);
   const desiredClosed=usableHeight<420?156:usableHeight<590?170:174;
@@ -161,7 +170,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // This keeps the label/title visible rather than leaving a blank upper half.
   const reveal=extras?extras+5:0;
   const lift=Math.min(30,Math.max(9,(open-closed)*.22));
-  metrics.current={closed,open,reveal,lift,actions};
+  metrics.current={closed,open,reveal,lift,actions,canScroll:full>open-2};
   paint(progress.current);
  };
  measureLive.current=measure;
@@ -176,13 +185,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   });
   resize.observe(element);
   measureLive.current();
+  // Fonts can finish after hydration without resizing the card itself.
+  void document.fonts?.ready.then(()=>measureLive.current());
   const carousel=photo.current;
   return ()=>{resize.disconnect();carousel?.cancel();
    if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
    const current=run.current;if(current?.frame!=null)
     cancelAnimationFrame(current.frame);
    run.current=null;};
- },[]);
+ },[person.id]);
  useEffect(()=>{
   const ticket=++ambientRequest.current;
   let cancelled=false;
@@ -194,7 +205,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
     const incoming=ambientSlots.current[incomingIndex];
     const outgoing=ambientSlots.current[ambientVisible.current];
     if(!incoming)return;
-    const sources=[preview,ambientPhoto,person.photos[activePhotoIndex]?.fallback]
+    const sources=[preview,ambientPhoto,ambientFallback]
      .filter((value):value is string=>!!value);
     let decoded=false;
     for(const src of sources){
@@ -213,7 +224,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   }
   if(nextAmbientPhoto)void prepareFeedAmbient(nextAmbientPhoto);
   return()=>{cancelled=true;};
- },[ambientPhoto,nextAmbientPhoto,activePhotoIndex]);
+ },[ambientPhoto,nextAmbientPhoto,ambientFallback]);
  useEffect(()=>{
   const stop=()=>suspend.current();
   const hidden=()=>{if(document.hidden)stop();};
@@ -266,10 +277,10 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
     g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
    }else if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)*1.6&&(g.info||g.zone==="photo")){
     freeze();g.startProgress=progress.current;
-    const canScroll=!!scroll.current&&scroll.current.scrollHeight>scroll.current.clientHeight+1;
+    const canScroll=metrics.current.canScroll;
     g.axis=g.info&&g.startProgress>.99&&g.nativeScroll&&canScroll&&
      (dy<0||g.scrollStart>0)?"scroll":"info";
-    if(g.axis==="info"){g.y=event.clientY;dy=0;}
+    if(g.axis==="info"){markMoving(true);g.y=event.clientY;dy=0;}
    }else return;
    blockClickUntil.current=performance.now()+350;
    try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* older WebView */}
@@ -280,7 +291,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   else if(g.axis==="scroll"){
    if(scroll.current)scroll.current.scrollTop=Math.max(0,g.scrollStart-dy);
    if(dy>g.scrollStart){
-    g.axis="info";g.y+=g.scrollStart;g.startProgress=progress.current;
+    g.axis="info";markMoving(true);g.y+=g.scrollStart;g.startProgress=progress.current;
     dy=event.clientY-g.y;
    }else return;
   }
@@ -317,7 +328,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(g?.axis==="photo")photo.current?.finish(g.id,g.x,true);
   if(g?.axis==="info")flushFinger();
   freeze();const resting=g?.axis==="info"?g.resumeTarget:target.current;
-  target.current=resting;setExpandedIfChanged(resting===1);paint(resting);refreshIfDirty();
+  target.current=resting;setExpandedIfChanged(resting===1);paint(resting);markMoving(false);refreshIfDirty();
   if(scroll.current)scroll.current.style.overflowY=resting?"auto":"hidden";
  };
  const available=active&&!busy;
