@@ -23,11 +23,14 @@ test("fictional profiles remain isolated; empty genuine feed automatically opens
 
 test("synthetic profiles are not inserted into server, likes, matches or conversations",()=>{
  assert.doesNotMatch(sandbox,/likePublishedUser|blockPublishedUser|createChatTransport|fetch\(|getPublishedFeed|localStorage|sessionStorage|indexedDB/);
- assert.match(sandbox,/ТЕСТОВЫЙ РЕЖИМ/);
+ assert.match(sandbox,/onExitDemo=\{foreground\?onExit:undefined\}/);
+ assert.doesNotMatch(sandbox,/demo-qa-ribbon|demo-qa-counter/,
+  "The test feed must not reserve vertical space for a QA toolbar");
  assert.match(sandbox,/Реальные лайки не отправляются/);
  assert.match(sandbox,/onExit/);
  assert.match(sandbox,/setPage\(0\)/);
- assert.match(card,/\{!real&&<span className="discovery-demo-label">Демо<\/span>\}/);
+ assert.match(card,/className="discovery-demo-label">Демо<\/span>/);
+ assert.match(card,/className="discovery-demo-label feed-v2-demo-exit"/);
  assert.match(sandbox,/busy=\{!foreground\|\|leaving\}/);
  assert.match(sandbox,/\[current,next\]\.filter/,"Next card remains keyed and mounted across transitions");
 });
@@ -71,6 +74,8 @@ test("demo reactions use existing directional compositor animations with zero ba
  assert.match(sandbox,/setHistory\(h=>h\.slice\(0,-1\)\)/);
  assert.match(sandbox,/setSaved\(before=>/);
  assert.match(sandbox,/onAnimationEnd=/);
+ assert.match(sandbox,/event.animationName==="luemi-demo-arrive"/,
+  "Successor must complete its entrance before the next page commits");
  assert.match(style,/\.demo-qa-feed/);
  assert.doesNotMatch(style,/backdrop-filter:blur\(/);
 });
