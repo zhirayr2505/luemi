@@ -201,7 +201,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // giving the A55 screenshot a ~40px blank band and clipping the chips.
   // The visible content now stays anchored to its natural top position.
   const reveal=0;
-  const lift=Math.min(30,Math.max(9,(open-closed)*.22));
+  const lift=Math.min(8,Math.max(0,(open-closed)*.06));
   metrics.current={closed,open,reveal,lift,actions,canScroll:full>open-2,bioShort,bioFull};
   paint(progress.current);
  };
