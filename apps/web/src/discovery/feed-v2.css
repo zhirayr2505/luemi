@@ -3,15 +3,12 @@
    light uses a cached, blurred copy of the selected image behind the card. */
 .discovery-page[aria-label="Лента"]{padding:4px 17px 8px}
 .discovery-page[aria-label="Лента"] .discovery-deck-stage{overflow:visible}
-.discovery-page[aria-label="Лента"] .discovery-deck-layer{inset:20px 0 8px}
 /* Unified alternating deck and directional compositor animations: deck-v3.css. */
 .feed-v2{height:100%;width:100%;min-height:0}
 .discovery-app .feed-v2-card{--feed-actions-height:94px;--feed-closed-height:220px;--feed-open-height:300px;
  border-radius:29px;isolation:isolate;overflow:hidden;border:1px solid rgba(233,240,249,.28);
  background:var(--luemi-surface,#2B3037);box-shadow:0 14px 30px rgba(7,11,18,.29),inset 0 1px rgba(255,255,255,.18)}
-.discovery-app .feed-v2-card::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
- background:linear-gradient(to bottom,rgba(18,20,24,.10) 0%,transparent 32%,rgba(22,25,30,.08) 47%,
- rgba(22,25,31,.38) 65%,rgba(22,25,31,.82) 84%,rgba(22,25,31,.96) 100%)}
+.discovery-app .feed-v2-card::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none}
 .feed-v2-photo>.carousel-frame{touch-action:none;contain:paint;transform:translateZ(0)}
 .feed-v2-photo .carousel-track img{
  width:100%;height:100%;object-fit:cover;object-position:center 35%;
@@ -21,11 +18,7 @@
 /* The horizontal/vertical card recognizer owns the entire photo and text
    surface. The browse pager cannot compete here on Android touch streams. */
 .discovery-app .feed-v2-card{touch-action:none}
-.discovery-app .feed-v2-photo .photo-progress{top:11px;left:50%;right:auto;transform:translateX(-50%);width:min(46%,180px);max-width:calc(100% - 122px);gap:4px}
-.discovery-app .feed-v2-photo .photo-progress button{position:relative;flex:0 1 23px;width:23px;min-width:15px;height:27px;background:none;box-shadow:none;border:0}
-.discovery-app .feed-v2-photo .photo-progress button.current{background:none}
-.discovery-app .feed-v2-photo .photo-progress button::after{content:"";position:absolute;left:0;top:10px;width:100%;height:3px;border-radius:4px;background:rgba(255,255,255,.46)}
-.discovery-app .feed-v2-photo .photo-progress button.current::after{background:#fff}
+/* Photo indicator geometry and colors are defined once in the optical block below. */
 .feed-v2-photo>.discovery-demo-label{top:40px}
 .discovery-app .feed-v2-photo>.discovery-save-control{top:40px;right:12px;z-index:8;width:37px;height:37px;border-radius:50%;border:1px solid rgba(233,230,240,.23);background:rgba(37,41,50,.72);color:white;box-shadow:inset 0 1px rgba(255,255,255,.12);backdrop-filter:none;-webkit-backdrop-filter:none}
 .discovery-app .feed-v2-undo{position:absolute;top:12px;left:12px;z-index:8;display:grid;place-items:center;width:36px;height:36px;border:1px solid rgba(224,220,233,.25);border-radius:14px;background:rgba(37,41,50,.74);color:white}
@@ -35,8 +28,6 @@
  border:0;border-radius:30px 30px 0 0;box-shadow:none;
  pointer-events:none;overflow:hidden;transform:translate3d(0,0,0);
  /* The glass surface fades in optically. No hard straight line over the face. */
- background:linear-gradient(180deg,rgba(28,35,45,0) 0%,rgba(30,37,47,.07) 20%,
-  rgba(28,35,44,.33) 42%,rgba(25,31,41,.78) 77%,rgba(23,29,38,.92) 100%);
  -webkit-mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.38) 17%,#000 38%);
  mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.38) 17%,#000 38%);
  backdrop-filter:none;-webkit-backdrop-filter:none}
@@ -47,7 +38,7 @@
 .discovery-app .feed-v2-expand::before{content:"";width:31px;height:3px;border-radius:99px;background:rgba(222,217,231,.64)}
 .discovery-app .feed-v2-expand svg{display:none}
 .discovery-app .feed-v2-scroll{min-height:0;flex:1;display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:contain;touch-action:none;text-shadow:none;pointer-events:auto}
-.discovery-app .feed-v2-content{display:flex;flex-direction:column;flex:none;gap:10px;margin-top:auto;padding:1px 0 2px;pointer-events:auto;transform:translate3d(0,0,0)}
+.discovery-app .feed-v2-content{display:flex;flex-direction:column;flex:none;margin-top:auto;padding:1px 0 2px;pointer-events:auto;transform:translate3d(0,0,0)}
 .discovery-app .feed-v2-card[data-expanded=true] .feed-v2-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:rgba(212,206,225,.42) transparent}
 .discovery-app .feed-v2-headrow{display:flex;align-items:flex-start;min-width:0}
 .discovery-app .feed-v2-identity{min-width:0;width:100%}
@@ -70,7 +61,7 @@
 /* The expanded interest rows occupy stable layout *before* finger tracking.
    Fade their content instead of display:none/display:flex at settle's last frame. */
 .discovery-app .feed-v2-interests .discovery-interests{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-height:29px;width:100%;overflow:visible;padding:0}
-.discovery-app .feed-v2-interest-primary,.discovery-app .feed-v2-interest-extra{display:inline-flex;flex:0 1 auto;min-width:0}
+.discovery-app .feed-v2-interest-primary{display:inline-flex;flex:0 1 auto;min-width:0}
 /* Keep both interest groups in the DOM throughout a finger-tracked morph.
    Their alpha is driven by FeedCard.paint(), not a layout-changing state. */
 .discovery-app .feed-v2-interest-extra{display:inline-flex;flex:0 1 auto;min-width:0}
@@ -94,7 +85,6 @@
 }
 .discovery-app .feed-v2 .discovery-action.discovery-like{--diameter:clamp(68px,19vw,78px)}
 .discovery-app .feed-v2 .discovery-action.discovery-special{--diameter:clamp(49px,13.5vw,57px)}
-.discovery-app .feed-v2 .discovery-action:disabled{opacity:.38}
 .discovery-app .feed-v2 .discovery-action:focus-visible,.discovery-app .feed-v2-expand:focus-visible,.discovery-app .feed-v2 .discovery-name-button:focus-visible{outline:2px solid var(--luemi-focus,#C7C1D4);outline-offset:3px}
 .discovery-app .feed-v2-card[data-size=compact]{--feed-actions-height:83px}
 .discovery-app .feed-v2-card[data-size=compact] .feed-v2-content{gap:6px}
@@ -113,7 +103,7 @@
 .discovery-app .feed-v2-card[data-size=tiny] .discovery-action.discovery-special{--diameter:44px}
 @media(max-width:360px){.discovery-app .feed-v2-details{padding:0 18px 3px}.discovery-app .feed-v2 .discovery-actions{gap:18px}.discovery-app .feed-v2 .discovery-name-button span{font-size:clamp(24px,7.5vw,31px)}.discovery-app .feed-v2 .discovery-short-about{font-size:12px}.discovery-app .feed-v2 .discovery-interests .interest-chip{padding:5px 7px;font-size:10px}}
 @media(max-height:700px){.discovery-app .feed-v2-card{border-radius:24px}.discovery-page[aria-label="Лента"]{padding-top:2px}}
-@media(prefers-reduced-motion:reduce){.discovery-app .feed-v2 .discovery-action{transition:none}.discovery-page[aria-label="Лента"] .deck-leaving,.discovery-page[aria-label="Лента"] .deck-entering{animation:none}}
+@media(prefers-reduced-motion:reduce){.discovery-app .feed-v2 .discovery-action{transition:none}}
 @media(prefers-reduced-transparency:reduce){.discovery-app .feed-v2-glass{background:linear-gradient(180deg,transparent,rgba(26,29,35,.98))}}
 
 /* The next two real cards are the stack; removed decorative fake-card pseudo-elements. */
@@ -149,7 +139,6 @@
 }
 @media(prefers-reduced-motion:reduce){
  .feed-v2-photo-ambient img{animation:none}
- .discovery-page[aria-label="Лента"] .deck-leaving-pass{animation:none}
 }
 @media(prefers-reduced-transparency:reduce){
  .feed-v2-photo-ambient{opacity:.33}
