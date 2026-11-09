@@ -73,7 +73,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   card.current?.style.setProperty("--sheet-p",String(p));
   if(bioText.current)bioText.current.style.maxHeight=`${m.bioShort+(m.bioFull-m.bioShort)*p}px`;
   if(content.current)content.current.style.transform=
-   `translate3d(0,${m.reveal*(1-p)-m.lift*p}px,0)`;
+   `translateY(${m.reveal*(1-p)-m.lift*p}px)`;
   if(dim.current)dim.current.style.opacity=String(p*.76);
   if(actionsView.current)actionsView.current.inert=p>.45;
   // One bounded surface contains text and optics; rounded corners cannot scale.
