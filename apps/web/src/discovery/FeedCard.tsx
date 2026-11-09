@@ -28,11 +28,11 @@ const position=(run:CardRun,now:number)=>{
 };
 
 /** The keyed complete card remains mounted as it moves through the deck. */
-export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests,real=false,onMore,demoDistanceKm}:{
+export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests,onExitDemo,real=false,onMore,demoDistanceKm}:{
  person:DemoPerson;saved:boolean;canUndo:boolean;active:boolean;busy:boolean;
  onAction:(kind:DemoKind|"undo")=>void;onOpenProfile:()=>void;onInterests:()=>void;
  /** The same approved card can render verified server users with no demo badges. */
- real?:boolean;onMore?:()=>void;demoDistanceKm?:number;
+ real?:boolean;onMore?:()=>void;onExitDemo?:()=>void;demoDistanceKm?:number;
 }){
  const goal=goals.find(g=>g.id===person.goal);
  const [expanded,setExpanded]=useState(false);
@@ -47,12 +47,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const content=useRef<HTMLDivElement>(null);
  const about=useRef<HTMLDivElement>(null);
  const interests=useRef<HTMLDivElement>(null);
+ const extraInterests=useRef<HTMLDivElement>(null);
+ const moreInterests=useRef<HTMLButtonElement>(null);
+ const actionsView=useRef<HTMLDivElement>(null);
  const photo=useRef<PhotoCarouselHandle>(null);
  const gesture=useRef<CardGesture|null>(null);
  const blockClickUntil=useRef(0);
  const multiTouch=useRef(false);
  const progress=useRef(0),target=useRef<0|1>(0);
- const metrics=useRef({closed:225,open:430,reveal:0,actions:83});
+ const metrics=useRef({closed:225,open:430,reveal:0,lift:25,actions:83});
  const run=useRef<CardRun|null>(null);
  const fingerFrame=useRef<number|null>(null);
  const fingerValue=useRef(0);
@@ -63,11 +66,29 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // A single small text surface moves behind the fixed information viewport.
   // Its layout, clipping rectangle, photograph and action buttons stay fixed.
   if(content.current)content.current.style.transform=
-   `translate3d(0,${m.reveal*(1-p)}px,0)`;
-  if(dim.current)dim.current.style.opacity=String(p);
-  // Transform/opacity only during finger tracking: never layout or animated blur.
-  if(glass.current)glass.current.style.transform=
-   `translate3d(0,${(m.open-m.closed)*(1-p)}px,0)`;
+   `translate3d(0,${m.reveal*(1-p)-m.lift*p}px,0)`;
+  if(dim.current)dim.current.style.opacity=String(p*.76);
+  // Keep the information above the buttons; only the photo itself sits
+  // behind the free-floating controls. Fade controls continuously with finger.
+  if(actionsView.current){
+   actionsView.current.style.opacity=String(Math.pow(1-p,1.4));
+   actionsView.current.style.transform=`translate3d(0,${8*p}px,0) scale(${1-.025*p})`;
+   actionsView.current.style.pointerEvents=p>.45?"none":"auto";
+  }
+  if(extraInterests.current){
+   extraInterests.current.style.opacity=String(clamp((p-.18)/.60,0,1));
+   extraInterests.current.style.transform=`translate3d(0,${7*(1-p)}px,0)`;
+   extraInterests.current.style.pointerEvents=p>.8?"auto":"none";
+  }
+  if(moreInterests.current){
+   moreInterests.current.style.opacity=String(clamp(1-p*2.3,0,1));
+   moreInterests.current.style.pointerEvents=p>.32?"none":"auto";
+  }
+  // Composite transforms only in the hot RAF path. No layout reads or blur.
+  if(glass.current){
+   glass.current.style.transform=`translate3d(0,${(m.open-m.closed)*(1-p)}px,0)`;
+   glass.current.style.opacity=String(.12+p*.80);
+  }
  };
  const flushFinger=()=>{
   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
@@ -125,24 +146,25 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // Previously 'open' was hard-coded to 75% of the photo, which produced an
   // enormous empty opaque panel over the person's face on Android Telegram.
   const full=content.current?.scrollHeight??0;
-  // The old compact sheet grew with the FULL biography, leaving almost no
-  // travel. Make closed state truly compact; animate everything at finger speed.
-  const maxClosed=Math.max(110,Math.min(height*.43,height-actions-52));
-  const minClosed=Math.min(maxClosed,height<420?135:171);
-  const desiredClosed=height<420?160:height<560?194:216;
-  const closed=clamp(desiredClosed,minClosed,maxClosed);
-  const openCap=Math.max(closed,height-actions-18);
-  const meaningfulTravel=Math.min(108,height*.20);
-  const open=Math.min(openCap,Math.max(closed+meaningfulTravel,full+25));
+  const extras=extraInterests.current?.scrollHeight??0;
+  // Compact copy ends on the first two interest chips. The remaining chips
+  // stay in the DOM but are invisible until the sheet opens, avoiding reflow.
+  const compactContent=Math.max(0,full-(extras?extras+5:0));
+  const maxClosed=Math.max(124,Math.min(height*.52,height-actions-24));
+  const minClosed=Math.min(maxClosed,height<420?148:183);
+  const desiredClosed=height<420?180:height<560?206:228;
+  const closed=clamp(Math.max(desiredClosed,compactContent+9),minClosed,maxClosed);
+  const openCap=Math.max(closed,height-actions-19);
+  const open=Math.min(openCap,Math.max(full+30,closed+Math.min(148,height*.29)));
   element.style.setProperty("--feed-closed-height",closed+"px");
   details.current?.style.setProperty("height",open+"px");
   // Resizing updates geometry once; all subsequent RAF paints stay composited.
   glass.current?.style.setProperty("height",(open+actions+14)+"px");
   // Match the content's upper edge to the inset glass surface while dragging.
   // This keeps the label/title visible rather than leaving a blank upper half.
-  const spare=Math.max(0,open-full);
-  const reveal=Math.max(0,open-closed-spare+5);
-  metrics.current={closed,open,reveal,actions};
+  const reveal=extras?extras+5:0;
+  const lift=Math.min(30,Math.max(9,(open-closed)*.22));
+  metrics.current={closed,open,reveal,lift,actions};
   paint(progress.current);
  };
  measureLive.current=measure;
@@ -284,7 +306,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
        {person.photos.length>1&&<span className="feed-v2-photo-count">
         {Math.min(activePhotoIndex+1,person.photos.length)} / {person.photos.length}
        </span>}
-       {!real&&<span className="discovery-demo-label">Демо</span>}
+       {!real&&(onExitDemo?<button type="button" className="discovery-demo-label feed-v2-demo-exit"
+         onClick={onExitDemo} title="Вернуться в настоящую ленту" aria-label="Вернуться в настоящую ленту">Демо</button>:
+         <span className="discovery-demo-label">Демо</span>)}
        {canUndo&&<button type="button" className="feed-v2-undo" disabled={!available}
          aria-label="Отменить пропуск" title="Отменить пропуск"
          onClick={()=>onAction("undo")}><Undo2 size={18} strokeWidth={1.8}/></button>}
@@ -338,18 +362,22 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
            </div>}
            {person.interests.length>0&&<div className="feed-v2-interests" ref={interests}>
              <p className="feed-v2-section-label">Интересы</p>
-             <div className="discovery-interests">
-               {person.interests.map((id,index)=><span className={index<2?"feed-v2-interest-primary":"feed-v2-interest-extra"} key={`${id}-${index}`}><InterestChip id={id}/></span>)}
-               {person.interests.length>2&&<button type="button" className="discovery-more feed-v2-interest-count"
-                 onClick={onInterests} disabled={!available} aria-label={"Показать все интересы "+person.name}>
+             <div className="discovery-interests feed-v2-primary-interests">
+               {person.interests.slice(0,2).map((id,index)=><span className="feed-v2-interest-primary" key={`${id}-${index}`}><InterestChip id={id}/></span>)}
+               {person.interests.length>2&&<button ref={moreInterests} type="button" className="discovery-more feed-v2-interest-count"
+                 onClick={()=>{if(target.current===1)onInterests();else updateExpanded(true);}}
+                 disabled={!available} aria-label={"Раскрыть ещё "+(person.interests.length-2)+" интереса"}>
                  +{person.interests.length-2}
                </button>}
              </div>
+             {person.interests.length>2&&<div className="discovery-interests feed-v2-interests-rest" ref={extraInterests}>
+               {person.interests.slice(2).map((id,index)=><span className="feed-v2-interest-extra" key={`${id}-${index+2}`}><InterestChip id={id}/></span>)}
+             </div>}
            </div>}
           </div>
          </div>
        </div>
-       <div className="discovery-actions" aria-label={real?"Действия с анкетой":"Демо-действия с анкетой"}>
+       <div className="discovery-actions" ref={actionsView} aria-label={real?"Действия с анкетой":"Демо-действия с анкетой"}>
          {buttons.map(([kind,label,Icon])=><button type="button" key={kind}
            className={"discovery-action discovery-"+kind} aria-label={label} title={label}
            onClick={()=>onAction(kind)} disabled={!available}>
