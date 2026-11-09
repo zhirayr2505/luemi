@@ -55,8 +55,8 @@ test("single decoded photo compositor replaces duplicate blur and third full-scr
  assert.match(carousel,/Math\.abs\(i-active\)<=1\?p\.src:undefined/);
  assert.match(carousel,/translateX\(calc\(-/);
  assert.match(carousel,/is-gpu-safe/);
- assert.match(carousel,/const farJump=gpuSafe&&Math\\.abs\\(i-activeRef\\.current\\)>1/);
- assert.match(carousel,/style\\.transition=farJump\\?/);
+ assert.match(carousel,/const farJump=gpuSafe&&Math\.abs\(i-activeRef\.current\)>1/);
+ assert.match(carousel,/style\.transition=farJump\?/);
  assert.match(real,/visibleRows\.slice\(page,page\+2\)/);
  assert.match(demo,/profiles\.slice\(feed\.index,feed\.index\+2\)/);
  assert.match(css,/\.feed-v2-photo \.carousel-track\.is-gpu-safe\{will-change:auto\}/);
