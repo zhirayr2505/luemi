@@ -106,7 +106,7 @@ try{
   scroll:document.querySelector(".fy-scroll")?.scrollTop
  }));
  assert.equal(returned.overlay,"false");assert.ok(Math.abs((returned.scroll??0)-scrollTop)<2);
- await page.getByRole("tab",{name:"Рядом",exact:true}).click();await delay(190);
+ await page.getByRole("tab",{name:"Мир",exact:true}).click();await delay(190);
  await page.locator(".nb-photo").first().evaluate(el=>el.click());await page.locator(".discovery-visitor-route").waitFor();
  await delay(330);await snap("nearby-covered");
  await page.keyboard.press("Escape");await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3500});
