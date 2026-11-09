@@ -160,7 +160,15 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const minClosed=Math.min(maxClosed,usableHeight<420?142:158);
   const desiredClosed=usableHeight<420?156:usableHeight<590?179:190;
   const closed=clamp(Math.max(desiredClosed,compactContent+18),minClosed,maxClosed);
-  const openCap=Math.max(closed,usableHeight-actions-18);
+  // On short phones the full sheet previously rose over the logo/tabs.
+  // It then swallowed pointer events intended for the collapse button.
+  // Measure the header ONLY at rest, and cap sheet travel below its bottom.
+  const tabs=root?.querySelector<HTMLElement>(".discovery-top-tabs");
+  const tabsEnd=tabs?.getBoundingClientRect().bottom??0;
+  const minSheetTop=Math.max(135,tabsEnd-element.getBoundingClientRect().top+12);
+  const sheetBottom=height-clearance-actions-9;
+  const safeOpenLimit=Math.max(closed,sheetBottom-minSheetTop);
+  const openCap=Math.max(closed,Math.min(usableHeight-actions-18,safeOpenLimit));
   const open=Math.min(openCap,Math.max(full+32,closed+Math.min(145,usableHeight*.28)));
   element.style.setProperty("--feed-closed-height",closed+"px");
   // The hidden extra chips must NOT push the compact title downward.
