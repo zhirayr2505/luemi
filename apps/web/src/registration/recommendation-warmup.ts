@@ -102,3 +102,45 @@ export async function warmPublishedRecommendations(
   },release};
  }catch(e){release();throw e;}
 }
+
+/** Late feed pages are prepared as the user browses; authenticated derivatives
+ * must never be copied to persistent browser storage or third-party CDNs.
+ * Return object-URL ownership to the LiveDeck for explicit teardown. */
+export async function warmPublishedPagePhotos(
+ page:PublishedFeedPage,signal:AbortSignal
+):Promise<WarmRecommendationSet>{
+ const wanted=[
+  ...page.profiles.slice(0,9).map(person=>person.photos[0]?.url),
+  ...page.profiles.slice(0,5).map(person=>person.photos[1]?.url)
+ ].filter((url):url is string=>!!url&&ALLOWED.test(url));
+ const urls=[...new Set(wanted)].slice(0,14),blobs=new Map<string,string>();
+ let index=0,bytesUsed=0;
+ const release=()=>{
+  for(const blob of blobs.values())URL.revokeObjectURL(blob);
+  blobs.clear();
+ };
+ const consume=async()=>{
+  while(index<urls.length&&!signal.aborted){
+   const url=urls[index++];
+   try{
+    const response=await fetch(url,{credentials:"same-origin",cache:"no-store",signal});
+    if(!response.ok||response.headers.get("content-type")?.split(";")[0]!=="image/png")continue;
+    const length=Number(response.headers.get("content-length")??0);
+    if(length>MAX_IMAGE_BYTES)continue;
+    const image=await response.blob();
+    if(signal.aborted)return;
+    if(image.size<1||image.size>MAX_IMAGE_BYTES||
+       bytesUsed+image.size>MAX_TOTAL_IMAGE_BYTES)continue;
+    bytesUsed+=image.size;blobs.set(url,URL.createObjectURL(image));
+   }catch{if(signal.aborted)return;}
+  }
+ };
+ try{
+  await Promise.all([consume(),consume(),consume()]);
+  if(signal.aborted)throw new DOMException("Aborted","AbortError");
+  return{page:{...page,profiles:page.profiles.map(person=>({
+   ...person,photos:person.photos.map(photo=>({...photo,
+    url:blobs.get(photo.url)??photo.url}))
+  }))},release};
+ }catch(error){release();throw error;}
+}
