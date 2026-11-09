@@ -1,109 +1,154 @@
-/* LUEMI Liquid Glass optical system: one token set for sheets and controls.
- * Static rings simulate a polished bevel without expensive SVG displacement in
- * Android WebView. The only photographic blur on Android is pre-decoded ambient.
+/* LUEMI Liquid Glass V2 — ONE optical material for the Feed sheet and
+ * pass / special / like / expand controls. No competing legacy .lg surface.
+ * A deliberately restrained pink/cyan lens refraction, not neon glow.
  */
 :root{
- --lg-tint:rgba(255,255,255,.07);
- --lg-tint-bottom:rgba(40,22,52,.16);
- --lg-blur:14px;
- --lg-saturate:185%;
- --lg-brightness:1.06;
- --lg-contrast:1.04;
- --lg-rim-width:1.5px;
- --lg-rim-light:rgba(255,255,255,.85);
- --lg-rim-dim:rgba(255,255,255,.10);
- --lg-chroma-warm:rgba(255,110,190,.42);
- --lg-chroma-cool:rgba(70,200,255,.42);
- --lg-specular:rgba(255,255,255,.55);
- --lg-inner-glow:rgba(255,255,255,.16);
- --lg-shadow:0 10px 30px rgba(14,6,24,.20),0 2px 8px rgba(14,6,24,.10);
- --lg-radius-card:clamp(26px,7.4vw,34px);
+ --lg-tint:rgba(250,233,255,.12);
+ --lg-tint-bottom:rgba(80,54,94,.095);
+ --lg-blur:16px;
+ --lg-saturate:165%;
+ --lg-brightness:1.09;
+ --lg-contrast:1.06;
+ --lg-rim-width:1.25px;
+ --lg-rim-light:rgba(255,255,255,.96);
+ --lg-rim-dim:rgba(255,255,255,.14);
+ --lg-chroma-warm:rgba(255,144,192,.72);
+ --lg-chroma-cool:rgba(118,208,255,.70);
+ --lg-specular:rgba(255,255,255,.62);
+ --lg-inner-glow:rgba(255,255,255,.20);
+ --lg-shadow:0 15px 34px rgba(13,7,19,.25),0 3px 12px rgba(13,7,19,.11);
+ --lg-radius-card:clamp(25px,7.4vw,34px);
  --lg-radius-pill:999px;
- --lg-press-scale:.965;
- --lg-press-glow:rgba(255,255,255,.28);
- --lg-accent-from:rgba(236,190,232,.55);
- --lg-accent-to:rgba(190,140,205,.35);
+ --lg-press-scale:.97;
+ --lg-press-glow:rgba(255,235,255,.26);
+ --lg-accent-from:rgba(237,190,239,.48);
+ --lg-accent-to:rgba(164,121,191,.26);
+ --lg-rim-depth:12px;
 }
+/* BASE GLASS — visible photographic background, translucency, saturation and
+ * polished inner relief. The surface is intentionally NOT a gray opaque card.
+ */
 .lg{
- --lg-rim-depth:16px;
  position:relative;isolation:isolate;overflow:hidden;
- border:var(--lg-rim-width) solid rgba(255,255,255,.44);
+ --lg-surface:
+  radial-gradient(ellipse 90% 105% at 26% -32%,rgba(255,255,255,.25),transparent 74%),
+  radial-gradient(ellipse 62% 100% at 100% 110%,rgba(135,188,246,.10),transparent 76%),
+  linear-gradient(162deg,var(--lg-tint),var(--lg-tint-bottom));
+ border:var(--lg-rim-width) solid rgba(255,255,255,.63);
+ border-radius:var(--lg-radius-card);
  color:#fff;
- background:linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
+ background:var(--lg-surface);
  -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
  backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
- box-shadow:var(--lg-shadow),
-  inset 1px 1px 0 var(--lg-chroma-warm),
-  inset -1px -1px 0 var(--lg-chroma-cool),
-  inset 0 0 18px var(--lg-inner-glow);
+ box-shadow:
+  var(--lg-shadow),
+  inset 1px 1px 0 rgba(255,255,255,.72),
+  inset -1px -1px 0 rgba(160,205,255,.23),
+  inset 0 2px 13px var(--lg-inner-glow),
+  inset 0 -13px 22px rgba(71,45,87,.11);
  -webkit-tap-highlight-color:transparent;
 }
-.lg--card{border-radius:var(--lg-radius-card)}
+.lg--card{--lg-rim-depth:14px;border-radius:var(--lg-radius-card)}
 .lg--pill{--lg-rim-depth:10px;border-radius:var(--lg-radius-pill)}
-.lg--small{--lg-rim-depth:0px}
+.lg--small{--lg-rim-depth:5px}
 .lg--accent{
- --lg-tint:rgba(222,160,226,.38);
- --lg-tint-bottom:rgba(190,140,205,.35);
- background:
-  linear-gradient(135deg,var(--lg-accent-from),var(--lg-accent-to)),
-  linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
+ --lg-tint:rgba(248,207,250,.26);
+ --lg-tint-bottom:rgba(191,146,211,.23);
+ --lg-surface:
+  radial-gradient(ellipse 90% 120% at 25% -20%,rgba(255,255,255,.34),transparent 76%),
+  linear-gradient(125deg,var(--lg-accent-from),var(--lg-accent-to)),
+  linear-gradient(162deg,var(--lg-tint),var(--lg-tint-bottom));
+ background:var(--lg-surface);
 }
+/* REFRACTIVE OPTICAL BEVEL — a thick, iridescent masked ring. This layer
+ * contributes chromatic dispersion and depth without refracting text or icons.
+ */
 .lg::before{
- content:"";position:absolute;inset:0;z-index:2;
+ content:"";position:absolute;inset:0;z-index:3;
  padding:var(--lg-rim-depth);border-radius:inherit;pointer-events:none;
  background:
-  radial-gradient(ellipse 83% 67% at 13% 3%,rgba(255,255,255,.17),transparent 73%),
-  conic-gradient(from 210deg,
-    var(--lg-rim-light),var(--lg-rim-dim) 25%,
-    var(--lg-chroma-cool) 45%,var(--lg-rim-dim) 60%,
-    var(--lg-chroma-warm) 79%,var(--lg-rim-light) 100%);
+  radial-gradient(ellipse 72% 23% at 25% 1%,rgba(255,255,255,.96),transparent 86%),
+  radial-gradient(ellipse 50% 44% at 95% 92%,rgba(151,220,255,.36),transparent 78%),
+  conic-gradient(from 226deg at 50% 50%,
+   var(--lg-chroma-warm) 0deg,
+   var(--lg-rim-light) 40deg,
+   var(--lg-rim-dim) 85deg,
+   var(--lg-chroma-cool) 147deg,
+   var(--lg-rim-light) 190deg,
+   rgba(255,255,255,.20) 250deg,
+   var(--lg-chroma-warm) 308deg,
+   var(--lg-rim-light) 360deg);
  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  -webkit-mask-composite:xor;
  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  mask-composite:exclude;
- opacity:.55;
+ opacity:.83;
 }
-.lg--small::before{padding:var(--lg-rim-width);opacity:.7}
-/* Supported static Chrome/WKWebView: the masked bevel samples only a narrow
- * 10-16px rim. Android keeps the chromatic ring without any live sampling.
+/* SPECULAR LAYER — photographic glints with pointer-following light.
+ * Keep reflections behind content; do not animate the expensive backdrop.
  */
-@supports ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){
- .discovery-app:not([data-profile-renderer=android]) .lg:not([data-moving=true])::before{
-  -webkit-backdrop-filter:blur(2px) brightness(1.25) saturate(190%);
-  backdrop-filter:blur(2px) brightness(1.25) saturate(190%)
+.lg::after{
+ content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+ border-radius:inherit;
+ background:
+  radial-gradient(ellipse 47% 45% at var(--moonstone-x,26%) var(--moonstone-y,1%),
+    var(--lg-specular),transparent 77%),
+  linear-gradient(170deg,rgba(255,255,255,.19) 0%,transparent 35%),
+  radial-gradient(ellipse 100% 19% at 50% 106%,rgba(195,225,255,.20),transparent 100%);
+ opacity:.63;
+}
+/* Chromium / WKWebView: SVG displacement of the narrow bevel, plus real
+ * backdrop refraction when supported by that browser. Do not sample moving
+ * Android photo tiles or apply SVG filters to the full-bleed portrait.
+ */
+@supports (filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2")){
+ :root[data-lg-optics="full"] .lg:not([data-moving="true"])::before{
+  filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2");
  }
 }
-
-.lg::after{
- content:"";position:absolute;inset:0;z-index:0;
- border-radius:inherit;pointer-events:none;
- background:
-  radial-gradient(ellipse 70% 40% at var(--moonstone-x,30%) var(--moonstone-y,0%),
-   var(--lg-specular),transparent 70%),
-  linear-gradient(0deg,rgba(255,255,255,.14),transparent 22%);
- opacity:.46;
+@supports ((backdrop-filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2")) or (-webkit-backdrop-filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2"))){
+ :root[data-lg-optics="full"] .lg:not([data-moving="true"])::before{
+  -webkit-backdrop-filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2");
+  backdrop-filter:url("/assets/glass/liquid-refraction-v2.svg#luemi-refraction-v2");
+ }
 }
 .lg--pill:not(:disabled){transition:transform 130ms cubic-bezier(.2,.8,.2,1),box-shadow 130ms ease}
 .lg--pill:active:not(:disabled){
  transform:scale(var(--lg-press-scale));
  box-shadow:var(--lg-shadow),
-  inset 1px 1px 0 var(--lg-chroma-warm),
-  inset -1px -1px 0 var(--lg-chroma-cool),
-  inset 0 0 18px var(--lg-inner-glow),
-  0 0 22px var(--lg-press-glow)
+  inset 1px 1px 0 rgba(255,255,255,.72),
+  inset -1px -1px 0 rgba(160,205,255,.23),
+  inset 0 2px 13px var(--lg-inner-glow),
+  0 0 17px var(--lg-press-glow);
 }
-.lg:disabled,.lg[aria-disabled=true]{opacity:.45}
-.lg:disabled::after,.lg[aria-disabled=true]::after{opacity:0}
+.lg:disabled,.lg[aria-disabled="true"]{opacity:.48}
+.lg:disabled::after,.lg[aria-disabled="true"]::after{opacity:0}
+/* Safe Android still has transparent material + chromatic refraction-like rim,
+ * specular glints, relief. Never run the costly moving SVG backdrop sampling.
+ */
+:root[data-lg-optics="safe"]{
+ --lg-tint:rgba(247,232,255,.15);
+ --lg-tint-bottom:rgba(80,54,94,.13);
+ --lg-rim-depth:12px;
+}
+:root[data-lg-optics="safe"] .lg::before{
+ filter:none;-webkit-backdrop-filter:none;backdrop-filter:none;
+}
 @media(prefers-reduced-transparency:reduce){
- :root{--lg-tint:rgba(82,61,91,.94);--lg-tint-bottom:rgba(48,33,58,.95);--lg-blur:0px}
- .lg--accent{
-  --lg-tint:rgba(82,61,91,.94);--lg-tint-bottom:rgba(48,33,58,.95);
-  --lg-accent-from:rgba(82,61,91,.96);--lg-accent-to:rgba(48,33,58,.95)
+ :root{
+  --lg-tint:rgba(70,51,82,.93);
+  --lg-tint-bottom:rgba(51,37,61,.95);
+  --lg-blur:0px;
  }
- .lg::before{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
- .lg{-webkit-backdrop-filter:none;backdrop-filter:none}
+ .lg--accent{
+  --lg-accent-from:rgba(99,70,115,.96);
+  --lg-accent-to:rgba(80,53,92,.96);
+ }
+ .lg,.lg::before{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+ .lg::before{filter:none!important}
 }
 @media(prefers-reduced-motion:reduce){
  .lg--pill{transition:none}
  .lg--pill:active:not(:disabled){transform:none}
+ .lg::before{filter:none!important}
 }
