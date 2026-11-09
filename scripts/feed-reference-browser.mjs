@@ -74,7 +74,7 @@ try{
    background:getComputedStyle(node).backgroundImage
   }));
   assert(optics.radius!=="0px"&&optics.background.includes("gradient"),"Real layered glass material");
-  if(device.name.startsWith("ios"))assert(/blur\(23px\)/.test(optics.blur),
+  if(device.name.startsWith("ios"))assert(/blur\(13px\)/.test(optics.blur),
    "Supported WebViews keep stationary backdrop glass blur");
   await screenshot(page,device.name);
   // Verify the original Profile Morph pointer interaction remains available.
