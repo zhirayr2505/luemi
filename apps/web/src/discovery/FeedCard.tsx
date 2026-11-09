@@ -156,7 +156,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const compactContent=Math.max(0,full-(extras?extras+5:0));
   const maxClosed=Math.max(124,Math.min(usableHeight*.54,usableHeight-actions-18));
   const minClosed=Math.min(maxClosed,usableHeight<420?142:158);
-  const desiredClosed=usableHeight<420?156:usableHeight<590?174:188;
+  const desiredClosed=usableHeight<420?156:usableHeight<590?170:174;
   const closed=clamp(Math.max(desiredClosed,compactContent+18),minClosed,maxClosed);
   const openCap=Math.max(closed,usableHeight-actions-18);
   const open=Math.min(openCap,Math.max(full+32,closed+Math.min(145,usableHeight*.28)));
