@@ -45,8 +45,36 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const details=useRef<HTMLDivElement>(null);
  const glass=useRef<HTMLDivElement>(null);
  const ambientSlots=useRef<(HTMLImageElement|null)[]>([null,null]);
+ const ambientLayer=useRef<HTMLDivElement>(null);
  const ambientVisible=useRef(1);
  const ambientRequest=useRef(0);
+ const ambientDisplayedSource=useRef<string|null>(null);
+ const ambientCurrentSource=useRef<string|null>(ambientPhoto??null);
+ ambientCurrentSource.current=ambientPhoto??null;
+ const ambientSwiping=useRef(false);
+ const ambientRestoreTimer=useRef<number|null>(null);
+ const hideAmbient=()=>{
+  if(ambientRestoreTimer.current!==null){window.clearTimeout(ambientRestoreTimer.current);ambientRestoreTimer.current=null;}
+  if(ambientLayer.current)ambientLayer.current.style.opacity="0";
+ };
+ const showAmbientIfReady=()=>{
+  if(!ambientSwiping.current&&ambientRestoreTimer.current===null&&
+   ambientDisplayedSource.current===ambientCurrentSource.current&&ambientLayer.current){
+   ambientLayer.current.style.opacity="1";
+  }
+ };
+ const restoreAmbientAfterCarousel=()=>{
+  if(ambientRestoreTimer.current!==null)window.clearTimeout(ambientRestoreTimer.current);
+  ambientRestoreTimer.current=window.setTimeout(()=>{
+   ambientRestoreTimer.current=null;ambientSwiping.current=false;showAmbientIfReady();
+  },340);
+ };
+ const onAmbientPhotoIndexChange=(index:number)=>{
+  ambientCurrentSource.current=person.photos[index]?.src??person.photos[0]?.src??null;
+  hideAmbient();ambientSwiping.current=true;
+  setActivePhotoIndex(index);
+  restoreAmbientAfterCarousel();
+ };
  const dim=useRef<HTMLDivElement>(null);
  const scroll=useRef<HTMLDivElement>(null);
  const content=useRef<HTMLDivElement>(null);
@@ -203,32 +231,33 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   let cancelled=false;
   if(ambientPhoto){
    void (async()=>{
-    const preview=await prepareFeedAmbient(ambientPhoto);
-    if(cancelled||ambientRequest.current!==ticket)return;
+    const size=card.current?.getBoundingClientRect();
+    const aspect=size&&size.height>0?size.width/size.height:.46;
+    const preview=await prepareFeedAmbient(ambientPhoto,aspect);
+    if(cancelled||ambientRequest.current!==ticket||!preview)return;
     const incomingIndex=1-ambientVisible.current;
     const incoming=ambientSlots.current[incomingIndex];
     const outgoing=ambientSlots.current[ambientVisible.current];
     if(!incoming)return;
-    const sources=[preview,ambientPhoto,ambientFallback]
-     .filter((value):value is string=>!!value);
-    let decoded=false;
-    for(const src of sources){
-     incoming.src=src;
-     try{
-      await incoming.decode();
-      decoded=true;break;
-     }catch{/* Try the original or an API fallback before revealing a tile. */}
-    }
-    if(!decoded||cancelled||ambientRequest.current!==ticket)return;
-    // Keep the old decoded image until the new one is ready; 110ms crossfade.
+    incoming.src=preview;
+    try{await incoming.decode();}catch{return;}
+    if(cancelled||ambientRequest.current!==ticket)return;
+    // Double-buffer only fully decoded bitmaps; never show the old portrait
+    // overlay when the sharp carousel is already moving to a new portrait.
     incoming.style.opacity="1";
     if(outgoing)outgoing.style.opacity="0";
     ambientVisible.current=incomingIndex;
+    ambientDisplayedSource.current=ambientPhoto;
+    showAmbientIfReady();
    })();
   }
-  if(nextAmbientPhoto)void prepareFeedAmbient(nextAmbientPhoto);
+  if(nextAmbientPhoto){
+   const size=card.current?.getBoundingClientRect();
+   void prepareFeedAmbient(nextAmbientPhoto,size&&size.height>0?size.width/size.height:.46);
+  }
   return()=>{cancelled=true;};
- },[ambientPhoto,nextAmbientPhoto,ambientFallback]);
+ },[ambientPhoto,nextAmbientPhoto]);
+ useEffect(()=>()=>{if(ambientRestoreTimer.current!==null)window.clearTimeout(ambientRestoreTimer.current);},[]);
  useEffect(()=>{
   const stop=()=>suspend.current();
   const hidden=()=>{if(document.hidden)stop();};
@@ -245,7 +274,10 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    multiTouch.current=true;
    blockClickUntil.current=performance.now()+350;
    const old=gesture.current;gesture.current=null;
-   if(old?.axis==="photo")photo.current?.finish(old.id,old.x,true);
+   if(old?.axis==="photo"){
+    photo.current?.finish(old.id,old.x,true);
+    restoreAmbientAfterCarousel();
+   }
    if(old?.axis==="info"){flushFinger();settle(old.resumeTarget);}
    return;
   }
@@ -278,7 +310,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
     if(!(g.zone==="photo"||g.info)||!photo.current?.canAdvance(dx<0?1:-1)){
      gesture.current=null;return;
     }
-    g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
+    g.axis="photo";
+    ambientSwiping.current=true;hideAmbient();
+    photo.current?.begin(g.id,g.x,g.y,g.at);
    }else if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)*1.6&&(g.info||g.zone==="photo")){
     freeze();g.startProgress=progress.current;
     const canScroll=metrics.current.canScroll;
@@ -310,7 +344,10 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const g=gesture.current;
   if(!g||g.id!==event.pointerId)return;
   gesture.current=null;
-  if(g.axis==="photo")photo.current?.finish(g.id,event.clientX,cancel);
+  if(g.axis==="photo"){
+   photo.current?.finish(g.id,event.clientX,cancel);
+   restoreAmbientAfterCarousel();
+  }
   if(g.axis!=="info")refreshIfDirty();
   if(g.axis==="info"){
    flushFinger();
@@ -330,7 +367,10 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  };
  suspend.current=()=>{
   const g=gesture.current;gesture.current=null;multiTouch.current=false;
-  if(g?.axis==="photo")photo.current?.finish(g.id,g.x,true);
+  if(g?.axis==="photo"){
+   photo.current?.finish(g.id,g.x,true);
+   restoreAmbientAfterCarousel();
+  }
   if(g?.axis==="info")flushFinger();
   freeze();const resting=g?.axis==="info"?g.resumeTarget:target.current;
   target.current=resting;setExpandedIfChanged(resting===1);paint(resting);markMoving(false);refreshIfDirty();
@@ -346,8 +386,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      <div className="discovery-photo feed-v2-photo">
        <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age}
          externalGesture dots prioritize={active} onCoverReady={onCoverReady}
-         onIndexChange={setActivePhotoIndex}/>
-       {ambientPhoto&&<div className="feed-v2-photo-ambient" aria-hidden="true">
+         onIndexChange={onAmbientPhotoIndexChange}/>
+       {ambientPhoto&&<div className="feed-v2-photo-ambient" ref={ambientLayer} aria-hidden="true">
         <img ref={element=>{ambientSlots.current[0]=element;}} alt="" decoding="async" draggable={false}/>
         <img ref={element=>{ambientSlots.current[1]=element;}} alt="" decoding="async" draggable={false}/>
        </div>}
