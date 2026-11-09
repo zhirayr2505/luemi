@@ -4,7 +4,6 @@ import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,Star,X,Undo2,MoreHor
 import {goals} from "../registration/model";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
-import {prepareFeedAmbient} from "./feed-ambient";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
 import {InterestChip} from "../ui/InterestCatalog";
 import {Flag} from "../ui/Flag";
@@ -37,43 +36,11 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const goal=goals.find(g=>g.id===person.goal);
  const [expanded,setExpanded]=useState(false);
  const [activePhotoIndex,setActivePhotoIndex]=useState(0);
- // A separate, noninteractive photo glow changes only after carousel settlement.
- const ambientPhoto=person.photos[activePhotoIndex]?.src??person.photos[0]?.src;
- const nextAmbientPhoto=person.photos[activePhotoIndex+1]?.src;
+ // One photo source owns the whole card. Never composite an async blur copy
+ // over a moving gallery: that produced half-painted GPU tiles in Android.
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
  const glass=useRef<HTMLDivElement>(null);
- const ambientSlots=useRef<(HTMLImageElement|null)[]>([null,null]);
- const ambientLayer=useRef<HTMLDivElement>(null);
- const ambientVisible=useRef(1);
- const ambientRequest=useRef(0);
- const ambientDisplayedSource=useRef<string|null>(null);
- const ambientCurrentSource=useRef<string|null>(ambientPhoto??null);
- ambientCurrentSource.current=ambientPhoto??null;
- const ambientSwiping=useRef(false);
- const ambientRestoreTimer=useRef<number|null>(null);
- const hideAmbient=()=>{
-  if(ambientRestoreTimer.current!==null){window.clearTimeout(ambientRestoreTimer.current);ambientRestoreTimer.current=null;}
-  if(ambientLayer.current)ambientLayer.current.style.opacity="0";
- };
- const showAmbientIfReady=()=>{
-  if(!ambientSwiping.current&&ambientRestoreTimer.current===null&&
-   ambientDisplayedSource.current===ambientCurrentSource.current&&ambientLayer.current){
-   ambientLayer.current.style.opacity="1";
-  }
- };
- const restoreAmbientAfterCarousel=()=>{
-  if(ambientRestoreTimer.current!==null)window.clearTimeout(ambientRestoreTimer.current);
-  ambientRestoreTimer.current=window.setTimeout(()=>{
-   ambientRestoreTimer.current=null;ambientSwiping.current=false;showAmbientIfReady();
-  },340);
- };
- const onAmbientPhotoIndexChange=(index:number)=>{
-  ambientCurrentSource.current=person.photos[index]?.src??person.photos[0]?.src??null;
-  hideAmbient();ambientSwiping.current=true;
-  setActivePhotoIndex(index);
-  restoreAmbientAfterCarousel();
- };
  const dim=useRef<HTMLDivElement>(null);
  const scroll=useRef<HTMLDivElement>(null);
  const content=useRef<HTMLDivElement>(null);
@@ -227,39 +194,6 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    run.current=null;};
  },[person.id]);
  useEffect(()=>{
-  const ticket=++ambientRequest.current;
-  let cancelled=false;
-  if(ambientPhoto){
-   void (async()=>{
-    const size=card.current?.getBoundingClientRect();
-    const aspect=size&&size.height>0?size.width/size.height:.46;
-    const preview=await prepareFeedAmbient(ambientPhoto,aspect);
-    if(cancelled||ambientRequest.current!==ticket||!preview)return;
-    const incomingIndex=1-ambientVisible.current;
-    const incoming=ambientSlots.current[incomingIndex];
-    const outgoing=ambientSlots.current[ambientVisible.current];
-    if(!incoming)return;
-    incoming.src=preview;
-    try{await incoming.decode();}catch{return;}
-    if(cancelled||ambientRequest.current!==ticket)return;
-    // Double-buffer only fully decoded bitmaps; never show the old portrait
-    // overlay when the sharp carousel is already moving to a new portrait.
-    incoming.style.opacity="1";
-    if(outgoing)outgoing.style.opacity="0";
-    ambientVisible.current=incomingIndex;
-    incoming.dataset.sourcePhoto=ambientPhoto;
-    ambientDisplayedSource.current=ambientPhoto;
-    showAmbientIfReady();
-   })();
-  }
-  if(nextAmbientPhoto){
-   const size=card.current?.getBoundingClientRect();
-   void prepareFeedAmbient(nextAmbientPhoto,size&&size.height>0?size.width/size.height:.46);
-  }
-  return()=>{cancelled=true;};
- },[ambientPhoto,nextAmbientPhoto]);
- useEffect(()=>()=>{if(ambientRestoreTimer.current!==null)window.clearTimeout(ambientRestoreTimer.current);},[]);
- useEffect(()=>{
   const stop=()=>suspend.current();
   const hidden=()=>{if(document.hidden)stop();};
   window.addEventListener("blur",stop);
@@ -275,10 +209,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    multiTouch.current=true;
    blockClickUntil.current=performance.now()+350;
    const old=gesture.current;gesture.current=null;
-   if(old?.axis==="photo"){
-    photo.current?.finish(old.id,old.x,true);
-    restoreAmbientAfterCarousel();
-   }
+   if(old?.axis==="photo")photo.current?.finish(old.id,old.x,true);
    if(old?.axis==="info"){flushFinger();settle(old.resumeTarget);}
    return;
   }
@@ -311,9 +242,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
     if(!(g.zone==="photo"||g.info)||!photo.current?.canAdvance(dx<0?1:-1)){
      gesture.current=null;return;
     }
-    g.axis="photo";
-    ambientSwiping.current=true;hideAmbient();
-    photo.current?.begin(g.id,g.x,g.y,g.at);
+    g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
    }else if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)*1.6&&(g.info||g.zone==="photo")){
     freeze();g.startProgress=progress.current;
     const canScroll=metrics.current.canScroll;
@@ -345,10 +274,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const g=gesture.current;
   if(!g||g.id!==event.pointerId)return;
   gesture.current=null;
-  if(g.axis==="photo"){
-   photo.current?.finish(g.id,event.clientX,cancel);
-   restoreAmbientAfterCarousel();
-  }
+  if(g.axis==="photo")photo.current?.finish(g.id,event.clientX,cancel);
   if(g.axis!=="info")refreshIfDirty();
   if(g.axis==="info"){
    flushFinger();
@@ -368,10 +294,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  };
  suspend.current=()=>{
   const g=gesture.current;gesture.current=null;multiTouch.current=false;
-  if(g?.axis==="photo"){
-   photo.current?.finish(g.id,g.x,true);
-   restoreAmbientAfterCarousel();
-  }
+  if(g?.axis==="photo")photo.current?.finish(g.id,g.x,true);
   if(g?.axis==="info")flushFinger();
   freeze();const resting=g?.axis==="info"?g.resumeTarget:target.current;
   target.current=resting;setExpandedIfChanged(resting===1);paint(resting);markMoving(false);refreshIfDirty();
@@ -386,12 +309,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      onClickCapture={event=>{if(performance.now()<blockClickUntil.current){event.preventDefault();event.stopPropagation();}}}>
      <div className="discovery-photo feed-v2-photo">
        <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age}
-         externalGesture dots prioritize={active} onCoverReady={onCoverReady}
-         onIndexChange={onAmbientPhotoIndexChange}/>
-       {ambientPhoto&&<div className="feed-v2-photo-ambient" ref={ambientLayer} aria-hidden="true">
-        <img ref={element=>{ambientSlots.current[0]=element;}} alt="" decoding="async" draggable={false}/>
-        <img ref={element=>{ambientSlots.current[1]=element;}} alt="" decoding="async" draggable={false}/>
-       </div>}
+         externalGesture dots prioritize={active} gpuSafe onCoverReady={onCoverReady}
+         onIndexChange={setActivePhotoIndex}/>
        <div className="feed-v2-photo-vignette" aria-hidden="true"/>
        {person.photos.length>1&&<span className="feed-v2-photo-count">
         {Math.min(activePhotoIndex+1,person.photos.length)} / {person.photos.length}
