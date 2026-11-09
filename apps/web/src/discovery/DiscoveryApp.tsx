@@ -4,16 +4,16 @@ import type {CSSProperties} from "react";
 import {X,Heart,Undo2,Images,MessagesSquare,UserRound,ArrowRight,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
+import {ensureMountedCoverReady,preloadUpcomingFeedPhotos} from "./feed-image-preload";
 import {RealChats} from "../chats/RealChats";
 import {ChatsPreview} from "../chats/ChatsPreview";
-import {cardGestureZone} from "./card-gesture-zone";
 import {demoPeople} from "./demo-people";
 import {forYouDemoPeople} from "./for-you-data";
 import type {CollectionId} from "./for-you-ranking";
 import {ForYou} from "./ForYou";
 import {Nearby} from "./Nearby";
 import {demoAct,demoUndo,filterDemoPeople,freshDemoState,defaultFilters} from "./model";
-import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter} from "./model";
+import type {MainTab,DiscoveryTab,DemoKind,DiscoveryFilter,DemoPerson} from "./model";
 import {DiscoveryFilters} from "./Filters";
 import {DiscoveryInterestsSheet} from "./InterestsSheet";
 import {ProfileMaster} from "./ProfileV3Gateway";
@@ -29,6 +29,7 @@ import {QaProfiler} from "./qa-profiler";
 import {useModalLayer} from "../ui/modal-layer";
 import "./discovery.css";
 import "./feed-v2.css";
+import "./deck-v3.css";
 
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
@@ -105,11 +106,27 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
  const transitionRef=useRef<number|null>(null);
  const pendingCommit=useRef<(()=>void)|null>(null);
  const locked=useRef(false);
+ const deckRef=useRef<HTMLDivElement>(null);
+ const coverGate=useRef<AbortController|null>(null);
+ const [readyKeys,setReadyKeys]=useState<ReadonlySet<string>>(()=>new Set<string>());
+ const coverKey=(p:DemoPerson)=>p.id+"::"+(p.photos[0]?.src??"");
+ const markReady=useCallback((key:string)=>setReadyKeys(keys=>{
+  if(keys.has(key))return keys;
+  const next=new Set(keys);next.add(key);return next;
+ }),[]);
  const [feed,setFeed]=useState(freshDemoState);
  const [announcement,setAnnouncement]=useState("");
  const profiles=useMemo(()=>filterDemoPeople(demoPeople,filters,draft),[filters,draft]);
  const ids=useMemo(()=>profiles.map(p=>p.id),[profiles]);
  const person=profiles[feed.index];
+ // Keep upcoming covers and neighboring gallery slides warm even while the
+ // viewer spends time on one person. All three visible card DOM nodes persist.
+ useEffect(()=>{
+  if(mainTab!=="discover"||discoveryTab!=="feed")return;
+  const controller=new AbortController();
+  void preloadUpcomingFeedPhotos(profiles.slice(feed.index,feed.index+6),controller.signal);
+  return()=>controller.abort();
+ },[mainTab,discoveryTab,profiles,feed.index]);
  const selectedPerson=forYouDemoPeople.find(p=>p.id===personOpen);
  // The fixture list is a stable module-owned dataset; only its selected
  // identity or changed data may project new profile/photos. Avoid rebuilding
@@ -169,7 +186,8 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
    commit();
  },[]);
  useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
-  transitionRef.current=null;pendingCommit.current=null;locked.current=false;},[]);
+  coverGate.current?.abort();transitionRef.current=null;
+  pendingCommit.current=null;locked.current=false;},[]);
  const leave=useCallback(()=>{
   if(personOpen&&visitorBackRef.current?.())return;
   if(mainTab==="profile"&&profileBackRef.current?.())return;
@@ -202,25 +220,40 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
     indicate(wasSaved?"Убрано из сохранённых · демо":"Сохранено · демо");
     selectionHaptic();return;
   }
-  // Both full cards, including name, photo, interests and actions, already exist
-  // in the same keyed deck before motion begins. This prevents the photo-only flash.
   locked.current=true;
-  setLeaving(person.id);
-  setLeavingKind(kind);
-  const message=kind==="pass"?"Анкета пропущена · демо":
-    kind==="like"?"Симпатия · никому не отправлена":"Особенная симпатия · только демо";
-  pendingCommit.current=()=>{
-    setFeed(prev=>demoAct(prev,ids,kind));
-    setLeaving(null);
-    setLeavingKind(null);
-    locked.current=false;
-    indicate(message);
-  };
-  // The completion callback and fallback are installed before optional bridge work.
-  // Reduced-motion clients never wait for a transition they intentionally omit.
-  if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
-  else transitionRef.current=window.setTimeout(finishDeck,440);
   selectionHaptic();
+  const message=kind==="pass"?"Анкета пропущена · демо":
+   kind==="like"?"Симпатия · никому не отправлена":"Особенная симпатия · только демо";
+  const beginLeave=()=>{
+   pendingCommit.current=()=>{
+    setFeed(prev=>demoAct(prev,ids,kind));
+    setLeaving(null);setLeavingKind(null);locked.current=false;
+    indicate(message);
+   };
+   setLeaving(person.id);setLeavingKind(kind);
+   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
+   else transitionRef.current=window.setTimeout(finishDeck,570);
+  };
+  const successor=profiles[feed.index+1];
+  if(successor&&!readyKeys.has(coverKey(successor))){
+   const controller=new AbortController();
+   coverGate.current?.abort();coverGate.current=controller;
+   indicate("Подготавливаем следующую фотографию…");
+   void ensureMountedCoverReady(
+    deckRef.current?.querySelector<HTMLElement>(".deck-depth-one")??null,
+    controller.signal
+   ).then(ok=>{
+    if(controller.signal.aborted)return;
+    coverGate.current=null;
+    if(!ok){
+     locked.current=false;
+     indicate("Фотография ещё не готова. Попробуй ещё раз.");return;
+    }
+    markReady(coverKey(successor));beginLeave();
+   });
+   return;
+  }
+  beginLeave();
  };
  const selectTab=(index:number)=>{
   const bounded=Math.max(0,Math.min(topTabs.length-1,index));
@@ -327,10 +360,9 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
   const target=event.target instanceof Element?event.target:null;
   if(!target)return;
   if(target.closest("[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
-  const feedCard=target.closest<HTMLElement>(".feed-v2-card");
-  // The photo recognizer owns the entire carousel surface. A parent candidate
-  // there races with photo pointer capture on Android touch sequences.
-  if(target.closest(".feed-v2-photo .carousel-frame"))return;
+  // The card owns its whole gesture surface; the tab pager starts only
+  // outside it. Removing this duplicate is essential on Android WebView.
+  if(target.closest(".feed-v2-card"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
   // Browse touch starts can land on a ForYou/Nearby tile button after a
   // scroller layout tick. A TAP is still handled by its native onClick; only
@@ -342,12 +374,6 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
   if(interactive&&!tileSwipe&&
      !interactive.matches(".discovery-name-button,.feed-v2-expand,.discovery-top-tabs [role=tab]"))return;
   if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
-  // The details subtree owns text gestures even when it reaches above the
-  // old cutoff. The carousel consumes in-range photo swipes in capture;
-  // a swipe past the final photo can pass through to this pager.
-  if(feedCard){const rect=feedCard.getBoundingClientRect();
-   if(!target.closest(".feed-v2-details,.feed-v2-photo .carousel-frame")&&
-     cardGestureZone(event.clientY,rect.top,rect.height)!=="browse")return;}
   const serial=inputOwnership.current.begin(kind,event.pointerId,"browse");
   if(serial===null)return;
   inputOwnership.current.begin(kind,event.pointerId,"native");
