@@ -157,26 +157,12 @@
 
 
 
-/* Atomic deck: the next COMPLETE keyed card is mounted before the action.
-   Only the selected card leaves, while its successor rises as a unit. */
-.discovery-deck-stage{position:relative;isolation:isolate;flex:1;min-height:0;width:100%;max-width:620px;margin:0 auto;overflow:visible}
-.discovery-deck-layer{position:absolute;inset:0 0 23px;min-height:0;transform-origin:50% 75%;contain:layout style}
+/* Card geometry and compositor classes live in deck-v3.css.
+   Obsolete parallel-stacked keyframes and visibility:hidden controls removed. */
+.discovery-deck-stage{position:relative;isolation:isolate;flex:1;min-height:0;
+ width:100%;max-width:620px;margin:0 auto;overflow:visible}
+.discovery-deck-layer{position:absolute;inset:0 0 8px;min-height:0;transform-origin:50% 72%;contain:layout style}
 .discovery-deck-current{position:relative;z-index:1;width:100%;height:100%;min-height:0}
-.deck-active{z-index:3;transform:none;opacity:1}
-.deck-queued{z-index:1;transform:translate3d(0,20px,0) scale(.984);pointer-events:none;opacity:.72}
-.deck-queued .discovery-actions,.deck-queued .discovery-card-overlay,
-.deck-queued .discovery-save-control,.deck-queued .discovery-demo-label,
-.deck-queued .photo-progress{visibility:hidden;opacity:0}
-.deck-entering{z-index:2;pointer-events:none;will-change:transform,opacity;animation:luemi-deck-enter var(--deck-motion,290ms) cubic-bezier(.2,.72,.22,1) both}
-.deck-entering .discovery-actions,.deck-entering .discovery-card-overlay,
-.deck-entering .discovery-save-control,.deck-entering .discovery-demo-label,
-.deck-entering .photo-progress{visibility:visible;animation:luemi-controls-with-card var(--deck-motion,290ms) cubic-bezier(.2,.72,.22,1) both}
-@keyframes luemi-controls-with-card{0%{opacity:0;transform:translateY(8px) scale(.94)}100%{opacity:1;transform:translateY(0) scale(1)}}
-.deck-leaving{z-index:4;pointer-events:none;will-change:transform,opacity;animation:luemi-deck-leave var(--deck-motion,290ms) cubic-bezier(.2,.72,.22,1) both}
-@keyframes luemi-deck-leave{from{transform:translate3d(0,0,0) scale(1);opacity:1}
- to{transform:translate3d(-13px,-24px,0) rotate(-.8deg) scale(.982);opacity:0}}
-@keyframes luemi-deck-enter{from{transform:translate3d(0,20px,0) scale(.984);opacity:.64}
- to{transform:translate3d(0,0,0) scale(1);opacity:1}}
 .discovery-deck-finish{height:100%;border-radius:28px;border:1px solid var(--glass-edge);background:var(--panel)}
 .discovery-sr-status{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;border:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(max-height:700px){.discovery-deck-layer{bottom:17px}.deck-queued{transform:translate3d(0,0,0) scale(.99);opacity:0}}
@@ -193,7 +179,7 @@
 /* Dark-theme optical glass, using the same application theme rather than a second theme state. */
 .luemi-shell[data-theme=dark] .discovery-icon-action{background:linear-gradient(140deg,rgba(90,100,119,.5),rgba(62,69,84,.3));border-color:rgba(219,214,230,.25);box-shadow:inset 0 1px rgba(255,255,255,.18),0 5px 14px rgba(0,0,0,.2)}
 
-.deck-entering .discovery-action:disabled{opacity:1}
+
 
 
 /* Keep Feed, header and navigation painted underneath the opaque visitor
