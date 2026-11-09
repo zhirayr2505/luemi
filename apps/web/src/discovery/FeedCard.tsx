@@ -217,7 +217,10 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(!active||busy||(event.pointerType==="mouse"&&event.button!==0))return;
   const element=event.target as Element;
   const interactive=element.closest("button,a,input,textarea,select,[contenteditable]");
-  if(interactive&&!interactive.matches(".discovery-name-button,.feed-v2-expand"))return;
+  // The collapse/expand button must never be claimed by the gesture arbiter:
+  // on short Android screens a second quick tap was being swallowed by the
+  // post-swipe click guard. The sheet itself still owns vertical dragging.
+  if(interactive&&!interactive.matches(".discovery-name-button"))return;
   const info=!!element.closest(".feed-v2-details");
   // The entire non-interactive card belongs to its own photo recognizer.
   // The old 85% vertical cutoff delegated the lower portion to the tab pager.
