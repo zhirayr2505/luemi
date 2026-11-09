@@ -1,290 +1,494 @@
-/* LUEMI Moonstone V7 feed — single authoritative card surface.
-   No dynamic backdrop sampling on a moving profile: the photo-matched ambient
-   light uses a cached, blurred copy of the selected image behind the card. */
-.discovery-page[aria-label="Лента"]{padding:4px 17px 8px}
-.discovery-page[aria-label="Лента"] .discovery-deck-stage{overflow:visible}
-/* Unified alternating deck and directional compositor animations: deck-v3.css. */
-.feed-v2{height:100%;width:100%;min-height:0}
-.discovery-app .feed-v2-card{--feed-actions-height:94px;--feed-closed-height:220px;--feed-open-height:300px;
- border-radius:29px;isolation:isolate;overflow:hidden;border:1px solid rgba(233,240,249,.28);
- background:var(--luemi-surface,#2B3037);box-shadow:0 14px 30px rgba(7,11,18,.29),inset 0 1px rgba(255,255,255,.18)}
-.discovery-app .feed-v2-card::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none}
-.feed-v2-photo>.carousel-frame{touch-action:none;contain:paint;transform:translateZ(0)}
+/* LUEMI / reference-approved fullscreen Feed.
+ * The only feed-specific material and geometry stylesheet.
+ * Gestures, pager, carousel and server actions stay in their original owners.
+ * Optical filters are constant: hot gesture frames only move composited layers.
+ */
+.discovery-app[data-feed-visible="true"]{
+ --feed-header-top:max(calc(var(--top-safe) + 8px),26px);
+ --feed-plum:#302238;
+ --feed-lilac:#C5A2CF;
+}
+.discovery-app[data-feed-visible="true"] .discovery-ambient{display:none}
+.discovery-app[data-feed-visible="true"] .discovery-main-panels{
+ flex:1 1 auto;height:100%;min-height:0
+}
+.discovery-app[data-feed-visible="true"] .discovery-main-panels>.discovery-panel.discovery-browse-panel{
+ top:0;bottom:0;height:100%;overflow:hidden
+}
+/* Both sides of the browse pager retain the same viewport size while swiping.
+ * Only the Feed page paints full bleed; recommendations keep their own layouts.
+ */
+.discovery-app[data-feed-visible="true"] .discovery-pages{
+ position:absolute;inset:0;display:block;width:100%;height:100%;min-height:0
+}
+.discovery-app[data-feed-visible="true"] .discovery-page-track{height:100%}
+.discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Лента"]{
+ padding:0;margin:0;overflow:hidden
+}
+.discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Для тебя"],
+.discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Мир"],
+.discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Рядом"]{
+ padding:calc(var(--feed-header-top) + 94px) 13px calc(var(--bottom-safe) + 91px)
+}
+.discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Лента"] .discovery-deck-stage{
+ width:100%;max-width:none;height:100%;margin:0;overflow:hidden
+}
+.discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Лента"] .discovery-deck-layer,
+.discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Лента"] .discovery-deck-stage.has-profiles>.discovery-deck-layer{
+ inset:0;overflow:hidden
+}
+/* The original asset, not a recreated wordmark. Keep Telegram buttons clear. */
+.discovery-app[data-feed-visible="true"] .lh-header.lh-browse .lh-center{
+ top:var(--feed-header-top);left:50%;width:96px;height:33px;
+ transform:translateX(-50%)
+}
+.discovery-app[data-feed-visible="true"] .lh-header.lh-browse .lh-center .lh-island{
+ width:96px;height:33px
+}
+.discovery-app[data-feed-visible="true"] .lh-header.lh-browse .lh-center .lh-island img{
+ width:96px;height:33px
+}
+.discovery-app[data-feed-visible="true"] .lh-header.lh-browse .lh-browse-controls{
+ top:calc(var(--feed-header-top) + 2px);right:clamp(10px,3vw,17px);gap:5px
+}
+.discovery-app[data-feed-visible="true"] .lh-header.lh-browse .lh-browse-control{
+ width:35px;height:35px;border-radius:13px;
+ background:linear-gradient(155deg,rgba(74,59,80,.41),rgba(39,29,49,.48));
+ border:1px solid rgba(241,225,251,.19);
+ box-shadow:inset 0 1px rgba(255,255,255,.15),0 3px 13px rgba(15,8,21,.16)
+}
+/* Text-only tabs; the existing one-progress underline keeps its gesture logic. */
+.luemi-shell[data-theme=dark] .discovery-app[data-feed-visible="true"] .discovery-top-tabs,
+.discovery-app[data-feed-visible="true"] .discovery-top-tabs{
+ position:absolute;top:calc(var(--feed-header-top) + 31px);
+ left:12px;right:12px;width:auto;z-index:15;
+ height:43px;min-height:43px;margin:0;padding:0;
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ border:0;border-radius:0;background:none;box-shadow:none;
+ backdrop-filter:none;-webkit-backdrop-filter:none;
+ contain:layout;overflow:visible;isolation:isolate
+}
+.luemi-shell[data-theme=dark] .discovery-app[data-feed-visible="true"] .discovery-top-tabs::before{
+ display:none
+}
+.discovery-app[data-feed-visible="true"] .discovery-top-tabs>button{
+ min-height:43px;padding:0 8px;background:transparent;border:0;border-radius:0;
+ color:rgba(255,250,255,.87);font-size:clamp(13px,3.6vw,15px);
+ font-weight:510;letter-spacing:.005em;
+ text-shadow:0 1px 7px rgba(15,9,19,.55)
+}
+.discovery-app[data-feed-visible="true"] .discovery-top-tabs>button.active{
+ color:#fff;font-weight:680
+}
+.luemi-shell[data-theme=dark] .discovery-app[data-feed-visible="true"] .discovery-top-tabs>.discovery-tab-underline,
+.discovery-app[data-feed-visible="true"] .discovery-top-tabs>.discovery-tab-underline{
+ position:absolute;left:0;bottom:2px;z-index:1;
+ width:calc(100% / 3);height:2px;padding:0;border:0;
+ border-radius:99px;background:linear-gradient(90deg,transparent 22%,#CEA8D8 38%,#D7B6DE 62%,transparent 78%);
+ box-shadow:0 1px 5px rgba(212,171,227,.30);
+ transform:translate3d(calc(var(--luemi-tab-offset,0%) + var(--luemi-underline-drag,0px)),0,0);
+ transition:transform .3s cubic-bezier(.2,.77,.21,1);
+ pointer-events:none
+}
+/* Full bleed photo and clipping are inside the real FeedCard. */
+.feed-v2{position:relative;height:100%;width:100%;min-height:0}
+.discovery-app .feed-v2-card{
+ --feed-actions-height:77px;
+ --feed-nav-clearance:0px;
+ --feed-closed-height:172px;
+ position:relative;isolation:isolate;width:100%;height:100%;min-height:0;
+ border:0;border-radius:0;box-shadow:none;
+ background:var(--feed-plum,#302238);overflow:hidden;touch-action:none
+}
+.discovery-app .feed-v2-card::after{display:none}
+.feed-v2-photo{
+ position:absolute;inset:0;z-index:0;overflow:hidden;
+ background:#271D2B
+}
+.feed-v2-photo>.carousel-frame{
+ position:absolute;inset:0;width:100%;height:100%;
+ border:0;border-radius:0;overflow:hidden;
+ touch-action:none;contain:paint;transform:translateZ(0)
+}
+.feed-v2-photo .carousel-track{height:100%}
 .feed-v2-photo .carousel-track img{
  width:100%;height:100%;object-fit:cover;object-position:center 35%;
- opacity:0;transition:opacity .12s ease-out;
+ opacity:0;transition:opacity .13s ease-out
 }
 .feed-v2-photo .carousel-track img.is-ready{opacity:1}
-/* The horizontal/vertical card recognizer owns the entire photo and text
-   surface. The browse pager cannot compete here on Android touch streams. */
-.discovery-app .feed-v2-card{touch-action:none}
-/* Photo indicator geometry and colors are defined once in the optical block below. */
-.feed-v2-photo>.discovery-demo-label{top:40px}
-.discovery-app .feed-v2-photo>.discovery-save-control{top:40px;right:12px;z-index:8;width:37px;height:37px;border-radius:50%;border:1px solid rgba(233,230,240,.23);background:rgba(37,41,50,.72);color:white;box-shadow:inset 0 1px rgba(255,255,255,.12);backdrop-filter:none;-webkit-backdrop-filter:none}
-.discovery-app .feed-v2-undo{position:absolute;top:12px;left:12px;z-index:8;display:grid;place-items:center;width:36px;height:36px;border:1px solid rgba(224,220,233,.25);border-radius:14px;background:rgba(37,41,50,.74);color:white}
-.feed-v2-dim{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,transparent 20%,rgba(16,18,22,.25) 53%,rgba(16,18,22,.58));opacity:0;transform:translateZ(0)}
-.discovery-app .feed-v2-information{position:absolute;inset:0;z-index:6;pointer-events:none}
-.discovery-app .feed-v2-glass{position:absolute;left:0;right:0;bottom:0;z-index:0;height:var(--feed-open-frame-height,380px);
- border:0;border-radius:30px 30px 0 0;box-shadow:none;
- pointer-events:none;overflow:hidden;transform:translate3d(0,0,0);
- /* The glass surface fades in optically. No hard straight line over the face. */
- -webkit-mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.38) 17%,#000 38%);
- mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.38) 17%,#000 38%);
- backdrop-filter:none;-webkit-backdrop-filter:none}
-.discovery-app .feed-v2-details{position:absolute;left:0;right:0;bottom:var(--feed-actions-height);
- z-index:1;min-height:0;height:var(--feed-open-height);max-height:calc(100% - var(--feed-actions-height) - 16px);
- padding:0 23px 3px;color:white;display:flex;flex-direction:column;overflow:hidden;pointer-events:none;touch-action:none;contain:layout}
-.discovery-app .feed-v2-expand{display:flex;align-items:center;justify-content:center;height:21px;min-height:21px;min-width:64px;margin:0 auto 5px;padding:0;color:rgba(232,229,238,.8);border:0;background:transparent;touch-action:none;pointer-events:auto}
-.discovery-app .feed-v2-expand::before{content:"";width:31px;height:3px;border-radius:99px;background:rgba(222,217,231,.64)}
-.discovery-app .feed-v2-expand svg{display:none}
-.discovery-app .feed-v2-scroll{min-height:0;flex:1;display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:contain;touch-action:none;text-shadow:none;pointer-events:auto}
-.discovery-app .feed-v2-content{display:flex;flex-direction:column;flex:none;margin-top:auto;padding:1px 0 2px;pointer-events:auto;transform:translate3d(0,0,0)}
-.discovery-app .feed-v2-card[data-expanded=true] .feed-v2-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:rgba(212,206,225,.42) transparent}
-.discovery-app .feed-v2-headrow{display:flex;align-items:flex-start;min-width:0}
-.discovery-app .feed-v2-identity{min-width:0;width:100%}
-.discovery-app .feed-v2 .discovery-name-row{min-height:33px;gap:7px}
-.discovery-app .feed-v2 .discovery-name-button{max-width:100%;text-shadow:0 2px 8px rgba(10,11,14,.25)}
-.discovery-app .feed-v2 .discovery-name-button span{display:block;color:var(--luemi-text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-style:normal;font-size:clamp(28px,7.4vw,38px);font-weight:710;letter-spacing:-.038em;line-height:1.13;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.discovery-app .feed-v2-meta-row{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;margin-top:5px}
-.discovery-app .feed-v2 .discovery-place{display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;line-height:1.35;font-weight:500;color:rgba(241,239,245,.88)}
-.discovery-app .feed-v2 .discovery-place svg{flex:none;color:#C8C1D5}
-.discovery-app .feed-v2 .discovery-place span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:175px}
-.discovery-app .feed-v2-goal{display:inline-flex;align-items:center;gap:4px;min-height:23px;max-width:100%;padding:3px 8px;border:1px solid rgba(204,198,217,.25);border-radius:99px;background:rgba(78,87,105,.32);color:#EEECF3;font-size:10px;line-height:1.2;font-weight:540}
-.discovery-app .feed-v2-goal svg{flex:none;color:#CDC6DA}
-.feed-v2-liked-you{display:flex;align-items:center;gap:6px;max-width:100%;width:max-content;padding:5px 9px;border:1px solid rgba(200,193,214,.29);border-radius:99px;background:rgba(100,111,134,.27);color:#F0EEF4;font-size:10px;line-height:1.25}
-.feed-v2-liked-you.is-super{border-color:rgba(204,197,217,.44);background:rgba(105,117,142,.33)}
-.discovery-app .feed-v2-about{flex:none;min-width:0;max-width:100%;padding:0;border:0;overflow:hidden}
-.discovery-app .feed-v2-section-label{margin:0 0 4px;font-size:12px;line-height:1.2;font-weight:680;letter-spacing:0;text-transform:none;color:var(--luemi-text-secondary)}
-.discovery-app .feed-v2 .discovery-short-about{display:block;margin:0;padding:0;border:0;overflow:visible;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-style:normal;font-weight:450;color:var(--luemi-text);font-size:clamp(12px,3.5vw,15px);line-height:1.42;letter-spacing:.008em;text-shadow:0 2px 9px rgba(13,14,18,.22);white-space:pre-line;overflow-wrap:anywhere}
-.discovery-app .feed-v2-interests{min-height:0;max-height:none;overflow:visible}
-.discovery-app .feed-v2-interests .feed-v2-section-label{display:none}
-/* The expanded interest rows occupy stable layout *before* finger tracking.
-   Fade their content instead of display:none/display:flex at settle's last frame. */
-.discovery-app .feed-v2-interests .discovery-interests{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-height:29px;width:100%;overflow:visible;padding:0}
-.discovery-app .feed-v2-interest-primary{display:inline-flex;flex:0 1 auto;min-width:0}
-/* Keep both interest groups in the DOM throughout a finger-tracked morph.
-   Their alpha is driven by FeedCard.paint(), not a layout-changing state. */
-.discovery-app .feed-v2-interest-extra{display:inline-flex;flex:0 1 auto;min-width:0}
-.discovery-app .feed-v2-interest-count{order:2}
-.discovery-app .feed-v2-primary-interests{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
-.discovery-app .feed-v2-primary-interests>.feed-v2-interest-primary{flex:0 1 auto;max-width:43%;min-width:0}
-.discovery-app .feed-v2-primary-interests>.feed-v2-interest-primary .interest-chip{max-width:100%;min-width:0}
-.discovery-app .feed-v2-interests-rest{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;
- min-height:0;opacity:0;pointer-events:none;transform:translate3d(0,7px,0)}
-.discovery-app .feed-v2-interests-rest .feed-v2-interest-extra{max-width:100%}
-.discovery-app .feed-v2 .discovery-interests .interest-chip{display:inline-flex;align-items:center;gap:5px;min-width:0;padding:6px 9px;border:1px solid rgba(224,219,233,.23);border-radius:99px;background:rgba(77,85,102,.46);color:#F2F1F5;box-shadow:inset 0 1px rgba(255,255,255,.07);font-size:11px;font-weight:540;line-height:1.2;white-space:nowrap}
-.discovery-app .feed-v2 .discovery-interests .interest-chip svg{flex:none;width:14px;height:14px;color:#D3CDDE}
-.discovery-app .feed-v2 .discovery-interests .interest-chip span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.discovery-app .feed-v2 .discovery-more{flex:none;padding:6px 9px;min-height:27px;border:1px solid rgba(224,219,233,.23);border-radius:99px;background:rgba(77,85,102,.5);color:#F2F1F5;font-size:11px}
-.discovery-app .feed-v2 .discovery-actions{position:absolute;left:0;right:0;bottom:0;z-index:7;display:flex;justify-content:center;align-items:center;gap:clamp(24px,7vw,45px);height:var(--feed-actions-height);padding:2px 14px 9px;pointer-events:auto}
-/* Dimensions only. Lens fill, highlights and press physics are defined once
-   in the final optical action block below, not by a competing old palette. */
-.discovery-app .feed-v2 .discovery-action{
- --diameter:clamp(49px,13.5vw,57px);flex:none;display:grid;place-items:center;
- width:var(--diameter);height:var(--diameter);min-width:44px;min-height:44px;padding:0;
-}
-.discovery-app .feed-v2 .discovery-action.discovery-like{--diameter:clamp(68px,19vw,78px)}
-.discovery-app .feed-v2 .discovery-action.discovery-special{--diameter:clamp(49px,13.5vw,57px)}
-.discovery-app .feed-v2 .discovery-action:focus-visible,.discovery-app .feed-v2-expand:focus-visible,.discovery-app .feed-v2 .discovery-name-button:focus-visible{outline:2px solid var(--luemi-focus,#C7C1D4);outline-offset:3px}
-.discovery-app .feed-v2-card[data-size=compact]{--feed-actions-height:83px}
-.discovery-app .feed-v2-card[data-size=compact] .feed-v2-content{gap:6px}
-.discovery-app .feed-v2-card[data-size=compact] .discovery-short-about{font-size:12px;line-height:1.3}
-.discovery-app .feed-v2-card[data-size=compact] .discovery-actions{gap:clamp(15px,6vw,35px);padding-bottom:3px}
-.discovery-app .feed-v2-card[data-size=compact] .discovery-action.discovery-like{--diameter:65px}
-.discovery-app .feed-v2-card[data-size=tiny]{--feed-actions-height:64px}
-.discovery-app .feed-v2-card[data-size=tiny] .feed-v2-expand{height:14px;min-height:14px;margin-bottom:2px}
-.discovery-app .feed-v2-card[data-size=tiny] .feed-v2-content{gap:4px}
-.discovery-app .feed-v2-card[data-size=tiny] .discovery-name-button span{font-size:24px}
-.discovery-app .feed-v2-card[data-size=tiny] .discovery-short-about{font-size:11px;line-height:1.22}
-.discovery-app .feed-v2-card[data-size=tiny] .feed-v2-section-label{font-size:9px;margin-bottom:3px}
-.discovery-app .feed-v2-card[data-size=tiny] .discovery-actions{gap:clamp(16px,6vw,34px);padding-bottom:2px}
-.discovery-app .feed-v2-card[data-size=tiny] .discovery-action{--diameter:44px}
-.discovery-app .feed-v2-card[data-size=tiny] .discovery-action.discovery-like{--diameter:55px}
-.discovery-app .feed-v2-card[data-size=tiny] .discovery-action.discovery-special{--diameter:44px}
-@media(max-width:360px){.discovery-app .feed-v2-details{padding:0 18px 3px}.discovery-app .feed-v2 .discovery-actions{gap:18px}.discovery-app .feed-v2 .discovery-name-button span{font-size:clamp(24px,7.5vw,31px)}.discovery-app .feed-v2 .discovery-short-about{font-size:12px}.discovery-app .feed-v2 .discovery-interests .interest-chip{padding:5px 7px;font-size:10px}}
-@media(max-height:700px){.discovery-app .feed-v2-card{border-radius:24px}.discovery-page[aria-label="Лента"]{padding-top:2px}}
-@media(prefers-reduced-motion:reduce){.discovery-app .feed-v2 .discovery-action{transition:none}}
-@media(prefers-reduced-transparency:reduce){.discovery-app .feed-v2-glass{background:linear-gradient(180deg,transparent,rgba(26,29,35,.98))}}
-
-/* The next two real cards are the stack; removed decorative fake-card pseudo-elements. */
-.discovery-app .feed-v2-card{position:relative;z-index:1}
+/* Same decoded URL as PhotoCarousel: browser cache coalesces requests.
+ * The duplicate is a stationary optical copy, never animated during gestures.
+ * Its gradient mask avoids a hard blur seam across the portrait.
+ */
 .feed-v2-photo-ambient{
- position:absolute;z-index:0;left:-14px;right:-14px;top:58%;bottom:-13px;
- overflow:hidden;pointer-events:none;border-radius:40px;contain:paint;
- -webkit-mask-image:radial-gradient(ellipse 77% 82% at 50% 80%,rgba(0,0,0,.76) 0%,rgba(0,0,0,.34) 48%,transparent 94%);
- mask-image:radial-gradient(ellipse 77% 82% at 50% 80%,rgba(0,0,0,.76) 0%,rgba(0,0,0,.34) 48%,transparent 94%);
+ position:absolute;inset:0;z-index:3;pointer-events:none;
+ overflow:hidden;contain:paint;
+ -webkit-mask-image:linear-gradient(to bottom,transparent 35%,rgba(0,0,0,.06) 43%,rgba(0,0,0,.35) 55%,rgba(0,0,0,.81) 74%,#000 93%);
+ mask-image:linear-gradient(to bottom,transparent 35%,rgba(0,0,0,.06) 43%,rgba(0,0,0,.35) 55%,rgba(0,0,0,.81) 74%,#000 93%)
 }
 .feed-v2-photo-ambient img{
- display:block;width:100%;height:100%;object-fit:cover;object-position:center 80%;
- filter:blur(28px) saturate(1.06) brightness(.59);opacity:.24;
- transform:scale(1.15);transition:opacity .24s ease;
+ display:block;width:100%;height:100%;
+ object-fit:cover;object-position:center 35%;opacity:1;
+ transform:translateZ(0);filter:blur(24px) saturate(1.09);
+ transition:none
 }
-/* No keyframe/opacity reset on photo change; the native image colors tint the halo. */
-.feed-v2-photo-count{
- position:absolute;z-index:8;right:12px;top:11px;min-width:38px;padding:5px 8px;
- border-radius:999px;border:1px solid rgba(248,251,255,.21);
- background:rgba(29,34,42,.54);color:var(--luemi-text);
- text-align:center;font-size:10px;font-weight:650;line-height:1.2;pointer-events:none;
+.feed-v2-photo-vignette{
+ position:absolute;inset:0;z-index:4;pointer-events:none;
+ background:linear-gradient(180deg,
+ rgba(18,11,22,.36) 0%,rgba(22,13,26,.12) 16%,transparent 31%,
+ transparent 42%,rgba(35,20,39,.08) 55%,rgba(36,20,42,.28) 70%,
+ rgba(30,16,37,.58) 86%,rgba(25,13,31,.77) 100%)
 }
-/* Retired solid-plum button backgrounds removed; lens styles are authoritative below. */
-.luemi-shell .discovery-app .discovery-top-tabs{
- border-color:var(--luemi-glass-line);
- background:var(--luemi-glass-fill);
- box-shadow:inset 0 1px rgba(255,255,255,.23),0 6px 15px rgba(5,9,16,.11);
-}
-.luemi-shell .discovery-app .discovery-bottom-nav{
- border-color:var(--luemi-glass-line);border-radius:29px;
- background:var(--luemi-glass-fill);
- box-shadow:inset 0 1px rgba(255,255,255,.23),0 9px 25px rgba(7,11,19,.18);
-}
-@media(prefers-reduced-motion:reduce){
- .feed-v2-photo-ambient img{animation:none}
-}
-@media(prefers-reduced-transparency:reduce){
- .feed-v2-photo-ambient{opacity:.33}
- .discovery-app .feed-v2-glass{background:linear-gradient(180deg,rgba(38,44,52,.06),rgba(26,31,38,.98))}
-}
-
-/* LUEMI feed refinement — fixed optical frame, centered photo segments,
-   compact quote, and free-floating glass actions. */
-.discovery-app .feed-v2-card::after{
- background:linear-gradient(to bottom,rgba(18,21,27,.10) 0%,transparent 34%,
-  rgba(19,23,29,.04) 48%,rgba(19,23,29,.26) 68%,
-  rgba(18,22,29,.46) 83%,rgba(17,22,29,.56) 100%);
+.feed-v2-dim{
+ position:absolute;inset:0;z-index:5;pointer-events:none;
+ background:linear-gradient(to bottom,transparent 30%,rgba(31,17,38,.14) 58%,rgba(28,15,36,.38) 100%);
+ opacity:0;transform:translateZ(0)
 }
 .discovery-app .feed-v2-photo .photo-progress{
- left:50%;right:auto;top:9px;transform:translateX(-50%);
- width:clamp(108px,40%,164px);max-width:calc(100% - 116px);
- display:flex;align-items:center;justify-content:center;gap:5px;
- padding:0;margin:0;z-index:9;
+ position:absolute;left:50%;right:auto;top:calc(var(--feed-header-top,26px) + 91px);
+ transform:translateX(-50%);z-index:9;
+ width:clamp(104px,35%,158px);max-width:calc(100% - 140px);
+ display:flex;gap:5px;padding:0;margin:0
 }
 .discovery-app .feed-v2-photo .photo-progress button{
- flex:1 1 0;width:0;min-width:12px;max-width:none;height:23px;
- position:relative;box-shadow:none;border:0;padding:0;background:transparent;
+ min-width:11px;max-width:none;width:0;flex:1;height:21px;
+ position:relative;padding:0;border:0;background:none;box-shadow:none
 }
 .discovery-app .feed-v2-photo .photo-progress button::after{
- top:10px;height:2.5px;left:0;width:100%;
- background:rgba(255,255,255,.42);border-radius:99px;
- box-shadow:0 1px 4px rgba(4,7,12,.18)
+ content:"";position:absolute;left:0;right:0;top:9px;height:2.5px;
+ border-radius:20px;background:rgba(255,255,255,.47);
+ box-shadow:0 1px 4px rgba(0,0,0,.25)
 }
-.discovery-app .feed-v2-photo .photo-progress button.current::after{
- background:#FAF9FC;box-shadow:0 1px 5px rgba(255,255,255,.26)
+.discovery-app .feed-v2-photo .photo-progress button.current::after{background:#FDF9FF}
+.feed-v2-photo-count{
+ position:absolute;z-index:9;right:12px;top:calc(var(--feed-header-top,26px) + 90px);
+ min-width:30px;padding:4px 7px;border-radius:999px;
+ color:rgba(255,255,255,.83);font-size:10px;text-align:center;
+ background:rgba(39,27,45,.38);border:1px solid rgba(250,240,255,.17);
+ pointer-events:none
 }
-.discovery-app .feed-v2 .discovery-name-button span{
- font-size:clamp(25px,6.7vw,33px);letter-spacing:-.028em;font-weight:720
+.discovery-app .feed-v2-photo>.discovery-save-control{
+ top:calc(var(--feed-header-top,26px) + 132px);right:13px;z-index:9;
+ width:36px;height:36px;border:1px solid rgba(246,231,249,.22);
+ background:rgba(56,39,65,.42);border-radius:18px;
+ color:#F8EDFA;box-shadow:inset 0 1px rgba(255,255,255,.19);
+ backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)
 }
-.discovery-app .feed-v2-content{gap:7px}
-.discovery-app .feed-v2-section-label{
- font-size:10px;letter-spacing:.065em;line-height:1.15;
- font-weight:630;color:rgba(232,225,241,.78);margin-bottom:4px
+.discovery-app .feed-v2-photo>.discovery-demo-label{
+ top:calc(var(--feed-header-top,26px) + 135px);left:12px;z-index:9
 }
-.discovery-app .feed-v2-about{
- position:relative;padding:0 0 0 11px;border:0;overflow:visible;
+.discovery-app .feed-v2-undo{
+ position:absolute;top:calc(var(--feed-header-top,26px) + 132px);left:12px;z-index:9;
+ display:grid;place-items:center;width:36px;height:36px;padding:0;
+ border:1px solid rgba(250,237,255,.26);border-radius:18px;
+ color:#FCF6FF;background:rgba(56,40,66,.45)
 }
-.discovery-app .feed-v2-about::before{
- content:"";position:absolute;top:1px;bottom:1px;left:0;width:2px;border-radius:99px;
- background:linear-gradient(to bottom,rgba(222,210,235,.9),rgba(177,166,204,.42));
- box-shadow:0 0 8px rgba(200,182,222,.12);
-}
-.discovery-app .feed-v2 .discovery-short-about{
- font-size:clamp(11.5px,3.15vw,13px);line-height:1.33;font-weight:445;
- letter-spacing:.003em;color:rgba(252,249,254,.93);
-}
-.discovery-app .feed-v2 .feed-v2-interest-primary .interest-chip,
-.discovery-app .feed-v2 .feed-v2-interest-extra .interest-chip{
- font-size:10.5px;line-height:1.16;padding:5px 8px;
- background:rgba(68,77,94,.36);border-color:rgba(230,222,243,.23)
-}
-.discovery-app .feed-v2 .discovery-more.feed-v2-interest-count{
- min-height:26px;padding:5px 9px;font-size:10.5px;
- color:rgba(252,248,255,.96);font-weight:680;
- background:rgba(97,99,119,.47);border-color:rgba(233,223,241,.35);
- -webkit-tap-highlight-color:transparent;
+/* Glass and details occupy separate, retained surfaces.
+ * A narrow lens (rather than a bottom sheet) grows bottom-up with Profile Morph.
+ */
+.discovery-app .feed-v2-information{
+ position:absolute;inset:0;z-index:7;
+ pointer-events:none;overflow:hidden
 }
 .discovery-app .feed-v2-glass{
- background:linear-gradient(to bottom,rgba(26,32,43,0) 0%,
- rgba(27,32,43,.07) 32%,rgba(29,33,45,.27) 58%,
- rgba(27,33,44,.62) 83%,rgba(23,29,40,.70) 100%);
+ position:absolute;z-index:0;
+ left:clamp(12px,4.1vw,22px);right:clamp(12px,4.1vw,22px);
+ bottom:calc(var(--feed-nav-clearance) + var(--feed-actions-height) + 9px);
+ height:var(--feed-closed-height);
+ transform-origin:50% 100%;transform:translate3d(0,0,0) scaleY(1);
+ border-radius:clamp(24px,7vw,31px);
+ border:1px solid rgba(252,235,255,.31);
+ background:
+  radial-gradient(ellipse 85% 51% at 22% 0%,rgba(254,241,255,.13),transparent 77%),
+  linear-gradient(164deg,rgba(121,104,132,.27) 0%,rgba(84,70,99,.22) 33%,rgba(61,45,71,.35) 78%,rgba(47,35,57,.41) 100%);
+ box-shadow:
+  inset 0 1.5px 1px rgba(255,255,255,.37),
+  inset 0 -1px rgba(246,220,250,.13),
+  inset 1px 0 rgba(250,237,255,.10),
+  0 13px 30px rgba(16,8,22,.19),0 3px 9px rgba(13,9,19,.10);
+ -webkit-backdrop-filter:blur(23px) saturate(142%) contrast(105%);
+ backdrop-filter:blur(23px) saturate(142%) contrast(105%);
+ overflow:hidden;pointer-events:none;will-change:transform
 }
+.feed-v2-glass::before{
+ content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+ background:linear-gradient(172deg,rgba(255,250,255,.19),rgba(247,230,255,.045) 20%,transparent 50%),
+  radial-gradient(ellipse 75% 35% at 63% -4%,rgba(255,239,251,.22),transparent 83%);
+ opacity:.94
+}
+.feed-v2-glass::after{
+ content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
+ border:1px solid rgba(255,255,255,.07);
+ box-shadow:inset 0 8px 16px -16px rgba(255,255,255,.5)
+}
+.discovery-app .feed-v2-details{
+ position:absolute;z-index:1;left:clamp(12px,4.1vw,22px);right:clamp(12px,4.1vw,22px);
+ bottom:calc(var(--feed-nav-clearance) + var(--feed-actions-height) + 9px);
+ height:var(--feed-closed-height);max-height:calc(100% - var(--feed-actions-height) - var(--feed-nav-clearance) - 16px);
+ min-height:0;padding:0 17px 1px;
+ display:flex;flex-direction:column;overflow:hidden;pointer-events:none;
+ color:#FFFAFF;touch-action:none;contain:layout
+}
+.discovery-app .feed-v2-scroll{
+ min-height:0;flex:1;display:flex;flex-direction:column;overflow:hidden;
+ overscroll-behavior:contain;touch-action:none;pointer-events:auto;
+ scrollbar-width:thin;scrollbar-color:rgba(225,195,230,.35) transparent
+}
+.discovery-app .feed-v2-card[data-expanded=true] .feed-v2-scroll{
+ overflow-y:auto;-webkit-overflow-scrolling:touch
+}
+.discovery-app .feed-v2-content{
+ position:relative;flex:none;display:flex;flex-direction:column;
+ gap:7px;margin-top:auto;padding:14px 0 13px;
+ pointer-events:auto;transform:translate3d(0,0,0)
+}
+.discovery-app .feed-v2-expand{
+ position:absolute;right:0;top:8px;z-index:3;
+ display:grid;place-items:center;width:26px;height:26px;min-width:26px;min-height:26px;
+ padding:0;margin:0;border:1px solid rgba(239,220,246,.18);border-radius:50%;
+ color:rgba(248,230,252,.86);background:rgba(72,51,80,.20);
+ pointer-events:auto
+}
+.discovery-app .feed-v2-expand::before{display:none}
+.discovery-app .feed-v2-expand .feed-v2-expand-icon{display:block}
+.discovery-app .feed-v2-expand .feed-v2-collapse-icon{display:none}
+.discovery-app .feed-v2-card[data-expanded=true] .feed-v2-expand .feed-v2-expand-icon{display:none}
+.discovery-app .feed-v2-card[data-expanded=true] .feed-v2-expand .feed-v2-collapse-icon{display:block}
+.discovery-app .feed-v2-headrow{min-width:0;padding-right:31px;display:flex;align-items:center}
+.discovery-app .feed-v2-identity{min-width:0;width:100%}
+.discovery-app .feed-v2 .discovery-name-row{display:flex;align-items:center;gap:6px;min-height:24px}
+.discovery-app .feed-v2 .discovery-name-button{
+ flex:0 1 auto;max-width:100%;border:0;background:none;text-align:left;
+ color:#fff;text-shadow:0 2px 8px rgba(22,12,27,.28)
+}
+.discovery-app .feed-v2 .discovery-name-button span{
+ display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+ font-size:clamp(19px,5.2vw,23px);font-weight:710;line-height:1.16;
+ letter-spacing:-.024em;color:#FFFBFF
+}
+.discovery-app .feed-v2-meta-row{
+ display:flex;flex-wrap:wrap;align-items:center;gap:3px 9px;margin-top:4px
+}
+.discovery-app .feed-v2 .discovery-place{
+ display:flex;align-items:center;gap:4px;min-width:0;
+ font-size:11px;font-weight:500;line-height:1.35;color:rgba(255,247,255,.82)
+}
+.discovery-app .feed-v2 .discovery-place svg{flex:none;width:12px;height:12px;color:#E0C5E3}
+.discovery-app .feed-v2 .discovery-place span{
+ display:block;max-width:min(51vw,200px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.discovery-app .feed-v2-goal{
+ display:inline-flex;align-items:center;gap:4px;max-width:100%;
+ padding:2px 7px;border-radius:999px;
+ border:1px solid rgba(247,215,251,.17);background:rgba(114,88,125,.22);
+ color:rgba(255,246,255,.90);font-size:10px;line-height:1.25
+}
+.discovery-app .feed-v2-goal svg{width:11px;height:11px;flex:none;color:#E6B9DF}
+.discovery-app .feed-v2-demo-distance{font-size:10px;color:#E5D2E9}
+.feed-v2-liked-you{
+ align-self:flex-start;display:flex;align-items:center;gap:6px;
+ padding:4px 8px;border-radius:99px;font-size:10px;
+ color:#FBEDFB;border:1px solid rgba(244,218,251,.25);background:rgba(139,101,145,.25)
+}
+.discovery-app .feed-v2-about{
+ position:relative;flex:none;min-width:0;overflow:visible;
+ padding:0 0 0 11px;margin:0;border:0
+}
+.discovery-app .feed-v2-about::before{
+ content:"";position:absolute;top:1px;bottom:1px;left:0;width:2px;
+ border-radius:20px;background:linear-gradient(#DCC0E4,#9D77B1);
+ box-shadow:0 0 5px rgba(215,179,228,.25)
+}
+.discovery-app .feed-v2-section-label{
+ margin:0 0 2px;font-size:10px;font-weight:650;line-height:1.15;
+ letter-spacing:.025em;color:rgba(246,224,249,.86)
+}
+.discovery-app .feed-v2 .discovery-short-about{
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;
+ margin:0;padding:0;border:0;max-width:100%;overflow:hidden;
+ color:rgba(255,250,255,.91);font-size:clamp(11px,3vw,12.5px);
+ font-weight:430;line-height:1.33;letter-spacing:.005em;
+ font-style:italic;text-shadow:0 1px 6px rgba(18,10,22,.16);
+ overflow-wrap:anywhere;white-space:pre-line
+}
+.discovery-app .feed-v2-card[data-expanded=true] .discovery-short-about{
+ -webkit-line-clamp:unset;line-clamp:unset
+}
+.discovery-app .feed-v2-interests{min-width:0;min-height:0;overflow:visible}
+.discovery-app .feed-v2-interests .feed-v2-section-label{display:none}
+.discovery-app .feed-v2-interests .discovery-interests{
+ display:flex;align-items:center;flex-wrap:wrap;gap:5px;
+ min-height:27px;width:100%;min-width:0;padding:0;overflow:visible
+}
+.discovery-app .feed-v2-interest-primary,
+.discovery-app .feed-v2-interest-extra{display:inline-flex;min-width:0;flex:0 1 auto}
+.discovery-app .feed-v2-primary-interests{display:flex;flex-wrap:nowrap;align-items:center}
+.discovery-app .feed-v2-primary-interests>.feed-v2-interest-primary{max-width:43%;min-width:0}
+.discovery-app .feed-v2-primary-interests>.feed-v2-interest-primary .interest-chip{max-width:100%}
+.discovery-app .feed-v2-interests-rest{
+ display:flex;flex-wrap:wrap;gap:5px;min-height:0;
+ margin-top:5px;opacity:0;pointer-events:none;
+ transform:translate3d(0,7px,0)
+}
+.discovery-app .feed-v2-interests-rest .feed-v2-interest-extra{max-width:100%}
+/* Color comes from the actual interest catalog's --chip-from / --chip-to. */
+.discovery-app .feed-v2 .discovery-interests .interest-chip,
+.discovery-app .feed-v2 .discovery-more.feed-v2-interest-count{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ min-width:0;min-height:25px;padding:5px 8px;
+ border-radius:999px;border:1px solid rgba(248,227,252,.22);
+ background:linear-gradient(145deg,
+  color-mix(in srgb,var(--chip-from,#BD92C8) 27%,transparent),
+  color-mix(in srgb,var(--chip-to,#9C7AAB) 14%,rgba(56,38,64,.30)));
+ box-shadow:inset 0 1px rgba(255,255,255,.16),
+  inset 0 -1px rgba(45,27,58,.15),0 2px 7px rgba(22,11,30,.08);
+ color:#FFF8FF;font-size:10px;line-height:1.15;font-weight:570;white-space:nowrap
+}
+.discovery-app .feed-v2 .discovery-interests .interest-chip svg{
+ flex:none;width:13px;height:13px;color:var(--chip-from,#E4C5EA)
+}
+.discovery-app .feed-v2 .discovery-interests .interest-chip span{
+ min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.discovery-app .feed-v2 .discovery-more.feed-v2-interest-count{
+ background:rgba(125,92,134,.30);font-weight:650;color:#F6ECFA
+}
+/* Three existing actions, ordered pass / special / like by FeedCard.
+ * Their handlers, disabled states, and server requests have not changed.
+ */
 .discovery-app .feed-v2 .discovery-actions{
- background:none;border:0;box-shadow:none;isolation:isolate;
- height:var(--feed-actions-height);padding:0 13px 7px;
- will-change:transform,opacity;transform-origin:50% 85%;
+ position:absolute;z-index:9;left:0;right:0;
+ bottom:var(--feed-nav-clearance);height:var(--feed-actions-height);
+ display:flex;align-items:center;justify-content:center;gap:clamp(8px,2.6vw,14px);
+ padding:0 clamp(13px,3.3vw,24px) 3px;
+ pointer-events:auto;transform-origin:50% 85%;background:none;box-shadow:none
 }
 .discovery-app .feed-v2 .discovery-action,
 .discovery-app .feed-v2 .discovery-action.discovery-special,
 .discovery-app .feed-v2 .discovery-action.discovery-like{
- position:relative;isolation:isolate;overflow:hidden;
- border-radius:50%;border:1px solid rgba(242,237,251,.43);
- color:#F8F6FC;
- /* Optical lens: nearby photo colors pass through a low-opacity fill.
-    Cool and warm glints are tiny specular edges, not neon gradients. */
- background:radial-gradient(ellipse at 24% 8%,rgba(255,255,255,.34),transparent 51%),
-  radial-gradient(ellipse at 89% 85%,rgba(225,178,214,.14),transparent 54%),
-  linear-gradient(145deg,rgba(170,203,226,.16),rgba(99,119,147,.12) 50%,rgba(85,76,113,.18));
- box-shadow:inset 0 1.5px 1px rgba(255,255,255,.57),
-  inset 0 -2px 5px rgba(34,39,57,.19),
-  inset 1px 0 5px rgba(255,255,255,.10),
-  0 5px 13px rgba(8,13,20,.16),0 1px 2px rgba(8,13,20,.12);
- -webkit-backdrop-filter:blur(16px) saturate(155%);
- backdrop-filter:blur(16px) saturate(155%);
- transition:transform .15s cubic-bezier(.18,.75,.24,1),box-shadow .2s ease,filter .2s ease;
- -webkit-tap-highlight-color:transparent;touch-action:manipulation
+ position:relative;isolation:isolate;overflow:hidden;flex:none;
+ width:clamp(78px,23vw,110px);height:clamp(49px,7.2vh,59px);
+ min-width:0;min-height:44px;padding:0;
+ display:grid;place-items:center;border-radius:999px;
+ border:1px solid rgba(248,228,252,.22);
+ color:#F9E9FC;
+ background:radial-gradient(ellipse 85% 46% at 32% 0%,rgba(255,255,255,.16),transparent 81%),
+  linear-gradient(165deg,rgba(69,49,77,.67),rgba(43,29,53,.73));
+ box-shadow:inset 0 1px rgba(255,247,255,.22),
+  inset 0 -2px rgba(21,11,30,.18),0 7px 17px rgba(18,9,23,.17);
+ -webkit-backdrop-filter:blur(12px) saturate(128%);
+ backdrop-filter:blur(12px) saturate(128%);
+ transition:transform .15s cubic-bezier(.2,.8,.2,1),filter .15s ease;
+ touch-action:manipulation;-webkit-tap-highlight-color:transparent
 }
+.discovery-app .feed-v2 .discovery-action.discovery-special{
+ width:clamp(112px,33vw,151px);
+ color:#432748;border-color:rgba(255,242,255,.71);
+ background:radial-gradient(ellipse 80% 58% at 24% 0%,rgba(255,255,255,.71),transparent 73%),
+  linear-gradient(135deg,#E5B9DF 0%,#C995CB 53%,#CDA2D4 100%);
+ box-shadow:inset 0 2px rgba(255,252,255,.63),
+  inset 0 -3px rgba(123,79,141,.16),0 8px 21px rgba(31,14,39,.22)
+}
+.discovery-app .feed-v2 .discovery-action svg{position:relative;z-index:2;width:22px;height:22px}
+.discovery-app .feed-v2 .discovery-action.discovery-special svg{width:24px;height:24px}
 .discovery-app .feed-v2 .discovery-action::before{
- content:"";position:absolute;inset:2px;pointer-events:none;border-radius:50%;
- border:1px solid rgba(255,255,255,.10);
- background:linear-gradient(150deg,rgba(255,255,255,.25) 0%,transparent 40%,
-  transparent 72%,rgba(195,176,213,.08) 100%);
+ content:"";position:absolute;inset:1px;border:1px solid rgba(255,255,255,.09);
+ border-radius:inherit;pointer-events:none;
+ background:linear-gradient(157deg,rgba(255,250,255,.09),transparent 45%)
 }
-.discovery-app .feed-v2 .discovery-action::after{
- content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
- border:1px solid rgba(245,243,254,.19);
- background:linear-gradient(135deg,rgba(174,216,239,.17) 0%,transparent 28%,
-  transparent 74%,rgba(227,173,209,.15) 100%);
- box-shadow:inset 1px 2px 0 rgba(255,255,255,.21),
-  inset -1px -1px 0 rgba(224,197,233,.17);
+.discovery-app .feed-v2 .discovery-action:active:not(:disabled){transform:scale(.945);filter:brightness(1.08)}
+.discovery-app .feed-v2 .discovery-action:disabled{opacity:.45}
+.discovery-app .feed-v2 .discovery-action:focus-visible,
+.discovery-app .feed-v2-expand:focus-visible,
+.discovery-app .feed-v2 .discovery-name-button:focus-visible{
+ outline:2px solid #E3BCE8;outline-offset:2px
 }
-.discovery-app .feed-v2 .discovery-action.discovery-like{
- color:#ECDDF4;border-color:rgba(242,231,252,.62);
- background:radial-gradient(ellipse at 28% 9%,rgba(255,255,255,.42),transparent 55%),
-  linear-gradient(150deg,rgba(193,170,210,.43),rgba(155,144,180,.26) 56%,rgba(70,73,96,.33));
- box-shadow:inset 0 2px 2px rgba(255,255,255,.53),
-  inset 0 -3px 7px rgba(60,56,85,.20),0 7px 18px rgba(15,18,28,.25)
+/* This navigation is not an independent opaque strip: the portrait continues
+ * behind it. Its DOM/route structure and onChange are unchanged.
+ */
+.luemi-shell[data-theme=dark] .discovery-app[data-feed-visible="true"]>.discovery-bottom-nav,
+.discovery-app[data-feed-visible="true"]>.discovery-bottom-nav{
+ position:absolute;z-index:20;left:50%;right:auto;
+ bottom:calc(var(--bottom-safe) + 9px);transform:translateX(-50%);
+ width:min(calc(100% - 20px),620px);max-width:620px;min-height:58px;
+ margin:0;padding:5px 6px;gap:2px;
+ border:1px solid rgba(247,226,254,.21);border-radius:26px;
+ background:linear-gradient(154deg,rgba(72,52,78,.73),rgba(45,31,54,.78));
+ box-shadow:inset 0 1px rgba(255,248,255,.20),
+  inset 0 -1px rgba(17,9,23,.12),0 8px 20px rgba(17,9,24,.20);
+ -webkit-backdrop-filter:blur(18px) saturate(135%);
+ backdrop-filter:blur(18px) saturate(135%);
+ isolation:isolate;overflow:hidden
 }
-.discovery-app .feed-v2 .discovery-action:active:not(:disabled){
- transform:scale(.89);filter:brightness(1.12)
+.luemi-shell[data-theme=dark] .discovery-app[data-feed-visible="true"]>.discovery-bottom-nav::before{
+ display:block;content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+ border-radius:inherit;background:linear-gradient(162deg,rgba(255,246,255,.13),transparent 45%);
+ opacity:1
 }
-.discovery-app .feed-v2 .discovery-action:disabled{opacity:.46}
-.discovery-app .feed-v2-photo>.discovery-demo-label.feed-v2-demo-exit{
- pointer-events:auto;cursor:pointer;min-height:29px;padding:5px 10px;
- color:#F7F4FB;background:rgba(46,53,67,.60);
- border:1px solid rgba(233,232,242,.26);
- -webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px)
+.discovery-app[data-feed-visible="true"]>.discovery-bottom-nav .discovery-nav-item{
+ position:relative;z-index:1;min-height:46px;gap:3px;border-radius:20px;
+ color:rgba(251,240,255,.76);background:transparent
 }
-@media(max-width:360px){
- .discovery-app .feed-v2 .discovery-name-button span{font-size:25px}
- .discovery-app .feed-v2 .discovery-short-about{font-size:11.5px}
- .discovery-app .feed-v2-primary-interests>.feed-v2-interest-primary{max-width:40%}
+.discovery-app[data-feed-visible="true"]>.discovery-bottom-nav .discovery-nav-item.active,
+.luemi-shell[data-theme=dark] .discovery-app[data-feed-visible="true"]>.discovery-bottom-nav .discovery-nav-item.active{
+ color:#FFEFFF;background:linear-gradient(145deg,rgba(196,137,205,.30),rgba(140,97,163,.15));
+ box-shadow:inset 0 1px rgba(255,243,255,.14)
 }
-@media(prefers-reduced-transparency:reduce){
+.discovery-app[data-feed-visible="true"]>.discovery-bottom-nav .discovery-nav-item.active svg{
+ color:#E5BAEA
+}
+.discovery-app[data-feed-visible="true"]>.discovery-bottom-nav .discovery-nav-item span{
+ font-size:clamp(9px,2.35vw,10.5px)
+}
+/* Fullscreen deck: no visible stacked photo corners or ghost cards. The
+ * readiness gate still controls queued/entering visibility and cached decode.
+ */
+.discovery-app[data-feed-visible="true"] .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-left,
+.discovery-app[data-feed-visible="true"] .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-right,
+.discovery-app[data-feed-visible="true"] .discovery-deck-stage.has-profiles>.deck-depth-two{
+ transform:translate3d(0,0,0) scale(1)
+}
+.discovery-app[data-feed-visible="true"] .discovery-deck-stage.has-profiles>.deck-queued{opacity:1}
+.discovery-app[data-feed-visible="true"] .discovery-deck-stage.has-profiles>.deck-queued.deck-photo-pending{opacity:0}
+/* Compact screens: squeeze spacing and tap targets, not the safe areas. */
+@media(max-height:700px){
+ .discovery-app .feed-v2-card{--feed-actions-height:69px}
+ .discovery-app .feed-v2-content{padding-top:10px;padding-bottom:10px;gap:5px}
  .discovery-app .feed-v2 .discovery-action,
- .discovery-app .feed-v2 .discovery-action.discovery-like,
- .discovery-app .feed-v2 .discovery-action.discovery-special{
-  -webkit-backdrop-filter:none;backdrop-filter:none;
-  background:linear-gradient(145deg,rgba(87,94,112,.84),rgba(48,56,71,.95))
+ .discovery-app .feed-v2 .discovery-action.discovery-special,
+ .discovery-app .feed-v2 .discovery-action.discovery-like{height:49px}
+ .discovery-app .feed-v2 .discovery-name-button span{font-size:19px}
+ .discovery-app .feed-v2 .discovery-short-about{font-size:11px;line-height:1.25}
+ .discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Для тебя"],
+ .discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Мир"],
+ .discovery-app[data-feed-visible="true"] .discovery-page[aria-label="Рядом"]{
+  padding-top:calc(var(--feed-header-top) + 84px)
  }
 }
-
-/* Android WebView frame-budget safeguard: retain the lens-shaped highlights and
-   translucency, but avoid sampling nine independently blurred button backdrops
-   across three simultaneously composited cards during the swipe animation.
-   iOS keeps native blur; Android gets inexpensive optical borders/reflections. */
-.real-discovery-home[data-profile-renderer="android"] .feed-v2 .discovery-action,
-.real-discovery-home[data-profile-renderer="android"] .feed-v2 .discovery-action.discovery-like,
-.real-discovery-home[data-profile-renderer="android"] .feed-v2 .discovery-action.discovery-special{
- -webkit-backdrop-filter:none;backdrop-filter:none;
+@media(max-width:355px){
+ .discovery-app .feed-v2-details{padding-left:12px;padding-right:12px}
+ .discovery-app .feed-v2 .discovery-place span{max-width:42vw}
+ .discovery-app .feed-v2 .discovery-action,
+ .discovery-app .feed-v2 .discovery-action.discovery-like{width:21vw}
+ .discovery-app .feed-v2 .discovery-action.discovery-special{width:34vw}
 }
-.real-discovery-home[data-profile-renderer="android"] .feed-v2-photo-ambient img{
- filter:blur(15px) saturate(1.03) brightness(.66);opacity:.16;
+@media(prefers-reduced-transparency:reduce){
+ .discovery-app .feed-v2-glass{
+  background:linear-gradient(155deg,rgba(82,61,91,.94),rgba(48,33,58,.95));
+  -webkit-backdrop-filter:none;backdrop-filter:none
+ }
+ .discovery-app .feed-v2 .discovery-action{backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .discovery-app .feed-v2 .discovery-action,
+ .discovery-app[data-feed-visible="true"] .discovery-top-tabs>.discovery-tab-underline{
+  transition:none
+ }
+}
+/* WebView: retain the photo-matched blurred image and all lens reflections
+ * but avoid expensive moving backdrop re-sampling during card transitions.
+ */
+.discovery-app[data-profile-renderer=android] .feed-v2-glass,
+.discovery-app[data-profile-renderer=android] .feed-v2 .discovery-action{
+ -webkit-backdrop-filter:none;backdrop-filter:none
 }

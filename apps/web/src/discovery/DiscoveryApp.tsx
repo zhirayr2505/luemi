@@ -32,7 +32,7 @@ import "./feed-v2.css";
 import "./deck-v3.css";
 
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
-const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
+const topTabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Мир"]] as const;
 const androidWebView=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 
 type Gesture={id:number;kind:InputKind;x:number;y:number;started:number;tracking:boolean;index:number;width:number;serial:number;token:MotionToken|null;originTrack:number;originInk:number;lastX:number;native?:boolean};
@@ -550,7 +550,7 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
    setFilters(defaultFilters);setFeed(prev=>({...freshDemoState(),saved:prev.saved}));
    indicate("Демо-Лента начата заново");
  };
- return <div className="discovery-app" data-profile-overlay={selectedPerson?"true":"false"}
+ return <div className="discovery-app" data-feed-visible={mainTab==="discover"?"true":"false"} data-profile-overlay={selectedPerson?"true":"false"}
    data-profile-renderer={androidWebView?"android":"standard"}
    data-profile-mode={profileMode?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>

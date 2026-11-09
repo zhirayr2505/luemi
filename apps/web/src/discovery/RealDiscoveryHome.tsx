@@ -39,7 +39,7 @@ import "./deck-v3.css";
 // are imported or projected into a real session.
 const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
 const navigationItems=navigation.map(([id,label,icon])=>({id,label,icon}));
-const tabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Рядом"]] as const;
+const tabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Мир"]] as const;
 type MainTab=typeof navigation[number][0];
 type BrowseTab=typeof tabs[number][0];
 const androidWebView=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
@@ -819,7 +819,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==="Escape")backRef.current();};
   window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key);},[]);
  return <section className="discovery-app real-discovery-home"
-  data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person||!!demoVisitor?"true":"false"}
+  data-feed-visible={mainTab==="discover"?"true":"false"} data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person||!!demoVisitor?"true":"false"}
   data-chat-thread={chatThreadOpen?"true":"false"}>
   <div className="discovery-ambient" aria-hidden="true"/>
   {!chatThreadOpen&&<GlobalHeader ref={header} mode={mainTab==="profile"?"profile":mainTab==="chats"?"chats":"browse"}

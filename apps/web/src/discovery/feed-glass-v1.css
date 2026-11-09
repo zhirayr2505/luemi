@@ -1,5 +1,7 @@
-/* LUEMI approved feed glass V1. Static translucent surfaces are deliberate:
-   no backdrop-filter on the moving cards or tab pager in Telegram WebView. */
+/* LUEMI browse chrome + filter sheet.
+ * Fullscreen Feed composition and glass optics are owned by feed-v2.css.
+ * Removed retired pill-tabs and old bottom-nav layers to avoid cascade conflicts.
+ */
 /* Original registration wordmark, rendered white with identical shape. */
 .lh-browse .lh-island img{filter:brightness(0) invert(1)}
 .lh-browse .lh-logo-contrast{display:none}
@@ -17,50 +19,6 @@
 }
 .lh-browse-control:active{transform:scale(.96);background:rgba(89,99,117,.7)}
 .lh-browse-control:focus-visible{outline:2px solid #C3BBD4;outline-offset:2px}
-/* Profile/visitor and browse chrome share one stable left-aligned brand row. */
-.discovery-app .discovery-main-panels>.discovery-panel.discovery-browse-panel{
- /* The wordmark is a real 40px pointer target at --brand-top.
-    Do not place "Лента" under it on devices with a small top safe-area. */
- top:max(calc(var(--top-safe) + 66px),calc(var(--brand-top) + 45px))
-}
-.discovery-app .discovery-top-tabs{
- height:48px;min-height:48px;flex:none;box-sizing:border-box;
- margin:0 13px 7px;padding:4px;overflow:hidden;
- border:1px solid var(--luemi-border);border-radius:22px;
- background:linear-gradient(130deg,rgba(59,65,77,.70),rgba(35,39,46,.84));
- box-shadow:inset 0 1px rgba(255,255,255,.075);
- color:#F4F2F7
-}
-.discovery-app .discovery-top-tabs>button{
- position:relative;z-index:2;min-height:40px;padding:0 2px;
- font-size:14px;font-weight:580;letter-spacing:.01em;
- color:rgba(234,232,239,.71);white-space:nowrap
-}
-.discovery-app .discovery-top-tabs>button.active{color:#fff;font-weight:730}
-.discovery-app .discovery-top-tabs>.discovery-tab-underline{
- left:4px;bottom:4px;width:calc((100% - 8px)/3);height:38px;
- border-radius:18px;border:1px solid rgba(224,220,233,.22);
- background:linear-gradient(130deg,rgba(156,146,177,.53),rgba(96,106,125,.57));
- box-shadow:inset 0 1px rgba(255,255,255,.18),0 2px 8px rgba(12,14,18,.12);
- will-change:transform
-}
-.discovery-app .discovery-bottom-nav{
- width:calc(100% - 26px);max-width:620px;min-height:55px;
- margin:6px auto max(8px,var(--bottom-safe));padding:5px 8px;
- border:1px solid var(--luemi-border);border-radius:25px;
- background:linear-gradient(135deg,rgba(48,53,63,.94),rgba(29,32,38,.97));
- box-shadow:inset 0 1px rgba(255,255,255,.08);
- backdrop-filter:none;-webkit-backdrop-filter:none
-}
-.discovery-app .discovery-bottom-nav .discovery-nav-item{
- color:#C1BBCD;min-height:44px;border-radius:17px
-}
-.discovery-app .discovery-bottom-nav .discovery-nav-item.active{
- background:rgba(158,147,180,.14);color:#D3CDE0
-}
-.discovery-app .discovery-bottom-nav .discovery-nav-item.active svg{color:#D3CDE0}
-/* Card visuals live exclusively in feed-v2.css. The retired inset glass
-   and button overrides were removed to prevent cascade conflicts. */
 
 /* Filters are real local client-side predicates over signed feed entries. */
 .real-discovery-home .real-feed-filter-backdrop{z-index:125;align-items:flex-end;background:rgba(17,19,23,.72);backdrop-filter:none}
@@ -100,18 +58,3 @@
 .real-feed-filter-reset{display:flex;align-items:center;gap:7px;color:#EFEDF3;background:#373D48}
 .real-feed-filter-apply{flex:1;color:#fff;background:linear-gradient(130deg,#9387AB,#69748C)}
 
-/* Browse header is a compact continuation of Telegram's safe area.
-   The original white raster is never redrawn; controls shrink, and the tabs
-   rise toward its baseline without entering Telegram's close/menu region. */
-.lh-header.lh-browse .lh-center{top:calc(var(--brand-top) - 3px)}
-.lh-header.lh-browse .lh-browse-controls{
- top:calc(var(--brand-top) - 1px);right:15px;gap:7px
-}
-.lh-header.lh-browse .lh-browse-control{
- width:39px;height:39px;border-radius:14px;
- border-color:rgba(229,224,239,.21);
- box-shadow:inset 0 1px rgba(255,255,255,.17),0 3px 10px rgba(9,14,21,.12)
-}
-.discovery-app .discovery-main-panels>.discovery-panel.discovery-browse-panel{
- top:max(calc(var(--top-safe) + 60px),calc(var(--brand-top) + 39px))
-}

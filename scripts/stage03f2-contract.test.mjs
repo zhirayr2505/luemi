@@ -49,8 +49,9 @@ assert.ok(deckStyle.includes("luemi-deck-exit-left")&&
  !style.includes("@keyframes luemi-deck-leave"),"one unified composited deck owns directional exits/entrances");
 assert.ok(feed.includes('const position=(run:CardRun,now:number)')&&
  feed.includes('settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0,-velocity/travel)')&&
- feedStyle.includes('position:absolute;left:0;right:0;bottom:var(--feed-actions-height);')&&
- feedStyle.includes('position:absolute;left:0;right:0;bottom:0;z-index:7;'),
+ feedStyle.includes('bottom:calc(var(--feed-nav-clearance) + var(--feed-actions-height) + 9px)')&&
+ feedStyle.includes('bottom:var(--feed-nav-clearance);height:var(--feed-actions-height)')&&
+ feedStyle.includes('transform-origin:50% 85%'),
  "card settles from release velocity while its buttons retain independent geometry");
 assert.ok(profile.includes('coordinator.current.claimSheetFromContent(e.pointerId,direction)')&&
  profile.includes('page.style.touchAction="none"')&&
