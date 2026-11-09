@@ -59,19 +59,24 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  const lens=read("apps/web/src/ui/liquid-glass.css");
  const entry=read("apps/web/src/main.tsx");
  assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/liquid-glass\.css";/);
- assert.match(lens,/--lg-rim-light:rgba\(255,255,255,\.96\)/);
- assert.match(lens,/--lg-chroma-warm:rgba\(255,144,192,\.72\)/);
- assert.match(lens,/--lg-chroma-cool:rgba\(118,208,255,\.70\)/);
+ assert.match(lens,/--lg-rim-light:rgba\(255,255,255,\.36\)/);
+ assert.match(lens,/--lg-chroma-warm:rgba\(237,160,215,\.22\)/);
+ assert.match(lens,/--lg-chroma-cool:rgba\(146,194,239,\.20\)/);
  assert.match(lens,/backdrop-filter:blur\(var\(--lg-blur\)\)/);
  assert.match(lens,/prefers-reduced-transparency:reduce/);
  assert.match(lens,/prefers-reduced-motion:reduce/);
  // Five complementary effects: blur/saturation, real SVG displacement when
  // supported, subtle chromatic rims, pointer-following specular and relief.
- assert.match(lens,/--lg-saturate:165%/);
+ assert.match(lens,/--lg-saturate:145%/);
  assert.match(lens,/filter:url\("\/assets\/glass\/liquid-refraction-v2\.svg/);
  assert.match(lens,/conic-gradient\(from 226deg/);
  assert.match(lens,/--lg-specular:rgba/);
- assert.match(lens,/inset 0 2px 13px var\(--lg-inner-glow\)/);
+ assert.match(lens,/--lg-relief:var\(--lg-shadow\),inset 0 1px 0 rgba/);
+ assert.match(lens,/\.lg--card\{--lg-rim-depth:2px/);
+ assert.match(lens,/\.lg--pill\{--lg-rim-depth:1\.5px/);
+ assert.match(lens,/opacity:\.46/);
+ assert.doesNotMatch(lens,/--lg-rim-depth:14px/);
+ assert.doesNotMatch(lens,/border:var\(--lg-rim-width\) solid rgba\(255,255,255,\.63\)/);
  const svg=read("apps/web/public/assets/glass/liquid-refraction-v2.svg");
  assert.match(svg,/<feDisplacementMap/);
  assert.match(svg,/scale="8"/);
