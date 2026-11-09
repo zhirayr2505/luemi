@@ -71,7 +71,12 @@ test("existing gesture RAF stays compositor-only, no live blur on moving photo c
  assert.doesNotMatch(paint,/style\.(?:height|width|top|bottom|left|right)=/);
  assert.doesNotMatch(paint,/getComputedStyle|offsetWidth|clientHeight|scrollHeight|backdropFilter/);
  assert.match(feed,/ResizeObserver/);
- assert.doesNotMatch(css,/backdrop-filter:blur\(/);
+ assert.doesNotMatch(css,/\.feed-v2-glass\{[^}]*backdrop-filter:blur\(/s,
+  "Full moving card and text surfaces do not sample backdrop blur");
+ assert.match(css,/-webkit-backdrop-filter:blur\(16px\) saturate\(155%\)/,
+  "Small independent action buttons provide bounded Liquid Glass optics");
+ assert.match(css,/\.feed-v2-photo \.photo-progress\{[^}]*justify-content:center/s);
+ assert.match(feed,/onClick=\{\(\)=>\{if\(target.current===1\)onInterests\(\);else updateExpanded\(true\);\}\}/);
  assert.match(css,/prefers-reduced-motion:reduce/);
  assert.match(css,/prefers-reduced-transparency:reduce/);
  assert.doesNotMatch(oldGlass,/\.discovery-app \.feed-v2-card/);
