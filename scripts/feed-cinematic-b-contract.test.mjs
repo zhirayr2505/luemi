@@ -61,6 +61,7 @@ test("single decoded photo compositor replaces duplicate blur and third full-scr
  assert.match(demo,/profiles\.slice\(feed\.index,feed\.index\+2\)/);
  assert.match(css,/\.feed-v2-photo \.carousel-track\.is-gpu-safe\{will-change:auto\}/);
  assert.doesNotMatch(css,/contain:paint;transform:translateZ\(0\)/);
+ assert.match(css,/background:#271D2B;touch-action:none/);
  assert.match(css,/backdrop-filter:none!important/);
  assert.match(css,/\.discovery-deck-stage\.has-profiles>\.deck-active/);
  assert.match(css,/rgba\(30,16,37,\.58\)/);
