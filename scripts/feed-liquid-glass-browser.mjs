@@ -193,11 +193,14 @@ try{
    const sheet=document.querySelector(".deck-active .feed-v2-sheet");
    return {
     supported,mode:document.documentElement.dataset.lgOptics,
+    nativeRefraction:document.documentElement.dataset.lgNativeRefraction,
     rimFilter:getComputedStyle(sheet,"::before").filter
    };
   });
   assert.equal(state.mode,state.supported?"full":"safe",
    "progressive optical filtering must respect browser capabilities");
+  assert.equal(state.nativeRefraction,"off",
+   "WebKit-style user agents must never receive crash-prone SVG backdrop URL");
   if(state.mode==="full"){
    assert.ok(state.rimFilter.includes("liquid-refraction-v2.svg"),
     "capable browser must receive actual SVG displacement on the lens bevel");
