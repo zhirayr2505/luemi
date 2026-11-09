@@ -21,6 +21,8 @@
  --lg-radius-pill:999px;
  --lg-press-scale:.965;
  --lg-press-glow:rgba(255,255,255,.28);
+ --lg-accent-from:rgba(236,190,232,.55);
+ --lg-accent-to:rgba(190,140,205,.35);
 }
 .lg{
  --lg-rim-depth:16px;
@@ -43,7 +45,7 @@
  --lg-tint:rgba(222,160,226,.38);
  --lg-tint-bottom:rgba(190,140,205,.35);
  background:
-  linear-gradient(135deg,rgba(236,190,232,.55),rgba(190,140,205,.35)),
+  linear-gradient(135deg,var(--lg-accent-from),var(--lg-accent-to)),
   linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
 }
 .lg::before{
