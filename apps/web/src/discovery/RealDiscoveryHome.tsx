@@ -312,14 +312,29 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
    <div className={"discovery-deck-stage"+(current?" has-profiles":"")}>{current?
-    <div className={"discovery-deck-layer"+(leaving===current.id?" deck-leaving deck-leaving-"+leavingKind:" deck-active")} key={current.id}
-     onAnimationEnd={event=>{if(leaving&&!visibleRows[page+1]&&event.target===event.currentTarget&&
-      ["luemi-deck-leave","feed-v2-pass","feed-v2-like","feed-v2-special"].includes(event.animationName))finishDeck();}}>
-     <FeedCard person={toCard(current)} real saved={saved.has(current.id)} canUndo={undoPage!==null}
-      active={active} busy={busy||!!leaving} onAction={kind=>{void act(kind);}}
-      onOpenProfile={()=>onPerson(current)} onInterests={()=>onPerson(current)}
-      onMore={()=>{setMenu(current);setReporting(false);}}/>
-    </div>:
+    visibleRows.slice(page,page+3).map((person,offset)=>{
+     const foreground=offset===0,successor=offset===1;
+     const side=(page+offset)%2===1?"right":"left";
+     const state=foreground?(leaving===person.id?
+       " deck-leaving deck-leaving-"+leavingKind:" deck-active"):
+       (leaving&&successor?" deck-entering":" deck-queued")+
+       (successor?" deck-depth-one":" deck-depth-two")+" deck-peek-"+side;
+     return <div key={person.id} className={"discovery-deck-layer"+state}
+      onAnimationEnd={event=>{
+       if(!leaving||event.target!==event.currentTarget)return;
+       const arrived=["luemi-deck-arrive-left","luemi-deck-arrive-right"].includes(event.animationName);
+       const departed=["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName);
+       if((successor&&arrived)||(foreground&&!visibleRows[page+1]&&departed))finishDeck();
+      }}>
+      <FeedCard person={toCard(person)} real saved={saved.has(person.id)}
+       canUndo={foreground&&undoPage!==null} active={foreground&&active}
+       busy={!foreground||busy||!!leaving}
+       onAction={foreground?kind=>{void act(kind);}:()=>{}}
+       onOpenProfile={foreground?()=>onPerson(person):()=>{}}
+       onInterests={foreground?()=>onPerson(person):()=>{}}
+       onMore={foreground?()=>{setMenu(person);setReporting(false);}:undefined}/>
+     </div>;
+    }):
     <div className="discovery-deck-layer deck-active"><LuemiEmptyState className="real-discovery-empty" icon={Heart}
      title="Пока нет анкет" description="Когда появятся новые люди, ты увидишь их здесь.">
       <button type="button" className="discovery-glass-button" onClick={onEditFilters}>Изменить фильтры</button>
@@ -335,14 +350,6 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
       {moreBusy?"Загружаем…":"Посмотреть дальше"}</button>}
      <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>
       <RefreshCw size={16}/> Обновить</button></LuemiEmptyState></div>}
-    {current&&visibleRows[page+1]&&<div className={"discovery-deck-layer"+(leaving?" deck-entering":" deck-queued")}
-     key={visibleRows[page+1].id}
-     onAnimationEnd={event=>{if(leaving&&event.target===event.currentTarget&&
-      event.animationName==="moonstone-card-rise")finishDeck();}}>
-      <FeedCard person={toCard(visibleRows[page+1])} real saved={saved.has(visibleRows[page+1].id)}
-       canUndo={undoPage!==null} active={false} busy onAction={()=>{}}
-       onOpenProfile={()=>{}} onInterests={()=>{}}/>
-     </div>}
    </div>}
   {!!current&&cursor&&page>=visibleRows.length-1&&<button type="button"
    className="real-discovery-more" disabled={moreBusy} onClick={()=>{void more();}}>
