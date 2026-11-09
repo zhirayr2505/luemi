@@ -59,7 +59,7 @@
   linear-gradient(162deg,var(--lg-tint),var(--lg-tint-bottom));
  background:var(--lg-surface);
 }
-/* REFRACTIVE OPTICAL BEVEL — a thick, iridescent masked ring. This layer
+/* REFRACTIVE OPTICAL BEVEL — a thin, iridescent masked ring. This layer
  * contributes chromatic dispersion and depth without refracting text or icons.
  */
 .lg::before{
@@ -124,7 +124,7 @@
 :root[data-lg-optics="safe"]{
  --lg-tint:rgba(71,52,83,.32);
  --lg-tint-bottom:rgba(39,28,52,.39);
- --lg-rim-depth:12px;
+ --lg-rim-depth:2px;
 }
 :root[data-lg-optics="safe"] .lg::before{
  filter:none;-webkit-backdrop-filter:none;backdrop-filter:none;
