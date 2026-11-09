@@ -81,11 +81,16 @@
    Fade their content instead of display:none/display:flex at settle's last frame. */
 .discovery-app .feed-v2-interests .discovery-interests{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-height:29px;width:100%;overflow:visible;padding:0}
 .discovery-app .feed-v2-interest-primary,.discovery-app .feed-v2-interest-extra{display:inline-flex;flex:0 1 auto;min-width:0}
-.discovery-app .feed-v2-interest-extra{order:3;transition:opacity .21s ease,visibility .21s}
-.discovery-app .feed-v2-interest-count{order:2;transition:opacity .21s ease}
-.discovery-app .feed-v2-card:not([data-expanded=true]) .feed-v2-interest-extra{opacity:0;visibility:hidden}
-.discovery-app .feed-v2-card[data-expanded=true] .feed-v2-interest-extra{opacity:1;visibility:visible}
-.discovery-app .feed-v2-card[data-expanded=true] .feed-v2-interest-count{opacity:0;visibility:hidden}
+/* Keep both interest groups in the DOM throughout a finger-tracked morph.
+   Their alpha is driven by FeedCard.paint(), not a layout-changing state. */
+.discovery-app .feed-v2-interest-extra{display:inline-flex;flex:0 1 auto;min-width:0}
+.discovery-app .feed-v2-interest-count{order:2}
+.discovery-app .feed-v2-primary-interests{display:flex;flex-wrap:nowrap;align-items:center;gap:6px}
+.discovery-app .feed-v2-primary-interests>.feed-v2-interest-primary{flex:0 1 auto;max-width:43%;min-width:0}
+.discovery-app .feed-v2-primary-interests>.feed-v2-interest-primary .interest-chip{max-width:100%;min-width:0}
+.discovery-app .feed-v2-interests-rest{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;
+ min-height:0;opacity:0;pointer-events:none;transform:translate3d(0,7px,0)}
+.discovery-app .feed-v2-interests-rest .feed-v2-interest-extra{max-width:100%}
 .discovery-app .feed-v2 .discovery-interests .interest-chip{display:inline-flex;align-items:center;gap:5px;min-width:0;padding:6px 9px;border:1px solid rgba(224,219,233,.23);border-radius:99px;background:rgba(77,85,102,.46);color:#F2F1F5;box-shadow:inset 0 1px rgba(255,255,255,.07);font-size:11px;font-weight:540;line-height:1.2;white-space:nowrap}
 .discovery-app .feed-v2 .discovery-interests .interest-chip svg{flex:none;width:14px;height:14px;color:#D3CDDE}
 .discovery-app .feed-v2 .discovery-interests .interest-chip span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -172,4 +177,123 @@
 @media(prefers-reduced-transparency:reduce){
  .feed-v2-photo-ambient{opacity:.33}
  .discovery-app .feed-v2-glass{background:linear-gradient(180deg,rgba(38,44,52,.06),rgba(26,31,38,.98))}
+}
+
+/* LUEMI feed refinement — fixed optical frame, centered photo segments,
+   compact quote, and free-floating glass actions. */
+.discovery-app .feed-v2-card::after{
+ background:linear-gradient(to bottom,rgba(18,21,27,.10) 0%,transparent 34%,
+  rgba(19,23,29,.04) 48%,rgba(19,23,29,.26) 68%,
+  rgba(18,22,29,.46) 83%,rgba(17,22,29,.56) 100%);
+}
+.discovery-app .feed-v2-photo .photo-progress{
+ left:50%;right:auto;top:9px;transform:translateX(-50%);
+ width:clamp(108px,40%,164px);max-width:calc(100% - 116px);
+ display:flex;align-items:center;justify-content:center;gap:5px;
+ padding:0;margin:0;z-index:9;
+}
+.discovery-app .feed-v2-photo .photo-progress button{
+ flex:1 1 0;width:0;min-width:12px;max-width:none;height:23px;
+ position:relative;box-shadow:none;border:0;padding:0;background:transparent;
+}
+.discovery-app .feed-v2-photo .photo-progress button::after{
+ top:10px;height:2.5px;left:0;width:100%;
+ background:rgba(255,255,255,.42);border-radius:99px;
+ box-shadow:0 1px 4px rgba(4,7,12,.18)
+}
+.discovery-app .feed-v2-photo .photo-progress button.current::after{
+ background:#FAF9FC;box-shadow:0 1px 5px rgba(255,255,255,.26)
+}
+.discovery-app .feed-v2 .discovery-name-button span{
+ font-size:clamp(25px,6.7vw,33px);letter-spacing:-.028em;font-weight:720
+}
+.discovery-app .feed-v2-content{gap:7px}
+.discovery-app .feed-v2-section-label{
+ font-size:10px;letter-spacing:.065em;line-height:1.15;
+ font-weight:630;color:rgba(232,225,241,.78);margin-bottom:4px
+}
+.discovery-app .feed-v2-about{
+ position:relative;padding:0 0 0 11px;border:0;overflow:visible;
+}
+.discovery-app .feed-v2-about::before{
+ content:"";position:absolute;top:1px;bottom:1px;left:0;width:2px;border-radius:99px;
+ background:linear-gradient(to bottom,rgba(222,210,235,.9),rgba(177,166,204,.42));
+ box-shadow:0 0 8px rgba(200,182,222,.12);
+}
+.discovery-app .feed-v2 .discovery-short-about{
+ font-size:clamp(11.5px,3.15vw,13px);line-height:1.33;font-weight:445;
+ letter-spacing:.003em;color:rgba(252,249,254,.93);
+}
+.discovery-app .feed-v2 .feed-v2-interest-primary .interest-chip,
+.discovery-app .feed-v2 .feed-v2-interest-extra .interest-chip{
+ font-size:10.5px;line-height:1.16;padding:5px 8px;
+ background:rgba(68,77,94,.36);border-color:rgba(230,222,243,.23)
+}
+.discovery-app .feed-v2 .discovery-more.feed-v2-interest-count{
+ min-height:26px;padding:5px 9px;font-size:10.5px;
+ color:rgba(252,248,255,.96);font-weight:680;
+ background:rgba(97,99,119,.47);border-color:rgba(233,223,241,.35);
+ -webkit-tap-highlight-color:transparent;
+}
+.discovery-app .feed-v2-glass{
+ background:linear-gradient(to bottom,rgba(26,32,43,0) 0%,
+ rgba(27,32,43,.07) 32%,rgba(29,33,45,.27) 58%,
+ rgba(27,33,44,.62) 83%,rgba(23,29,40,.70) 100%);
+}
+.discovery-app .feed-v2 .discovery-actions{
+ background:none;border:0;box-shadow:none;isolation:isolate;
+ height:var(--feed-actions-height);padding:0 13px 7px;
+ will-change:transform,opacity;transform-origin:50% 85%;
+}
+.discovery-app .feed-v2 .discovery-action,
+.discovery-app .feed-v2 .discovery-action.discovery-special,
+.discovery-app .feed-v2 .discovery-action.discovery-like{
+ position:relative;isolation:isolate;overflow:hidden;
+ border-radius:50%;border:1px solid rgba(242,237,251,.43);
+ color:#F8F6FC;
+ background:radial-gradient(ellipse at 27% 10%,rgba(255,255,255,.30),transparent 57%),
+  linear-gradient(150deg,rgba(195,199,217,.23),rgba(95,106,126,.18) 50%,rgba(50,57,70,.33));
+ box-shadow:inset 0 1.5px 1px rgba(255,255,255,.52),
+  inset 0 -2px 5px rgba(34,39,57,.26),
+  inset 1px 0 4px rgba(255,255,255,.08),
+  0 5px 15px rgba(8,13,20,.22),0 1px 3px rgba(8,13,20,.14);
+ -webkit-backdrop-filter:blur(16px) saturate(155%);
+ backdrop-filter:blur(16px) saturate(155%);
+ transition:transform .15s cubic-bezier(.18,.75,.24,1),box-shadow .2s ease,filter .2s ease;
+ -webkit-tap-highlight-color:transparent;touch-action:manipulation
+}
+.discovery-app .feed-v2 .discovery-action::before{
+ content:"";position:absolute;inset:2px;pointer-events:none;border-radius:50%;
+ border:1px solid rgba(255,255,255,.08);
+ background:linear-gradient(155deg,rgba(255,255,255,.17) 0%,transparent 47%);
+}
+.discovery-app .feed-v2 .discovery-action.discovery-like{
+ color:#ECDDF4;border-color:rgba(242,231,252,.62);
+ background:radial-gradient(ellipse at 28% 9%,rgba(255,255,255,.42),transparent 55%),
+  linear-gradient(150deg,rgba(193,170,210,.43),rgba(155,144,180,.26) 56%,rgba(70,73,96,.33));
+ box-shadow:inset 0 2px 2px rgba(255,255,255,.53),
+  inset 0 -3px 7px rgba(60,56,85,.20),0 7px 18px rgba(15,18,28,.25)
+}
+.discovery-app .feed-v2 .discovery-action:active:not(:disabled){
+ transform:scale(.89);filter:brightness(1.12)
+}
+.discovery-app .feed-v2 .discovery-action:disabled{opacity:.46}
+.discovery-app .feed-v2-photo>.discovery-demo-label.feed-v2-demo-exit{
+ pointer-events:auto;cursor:pointer;min-height:29px;padding:5px 10px;
+ color:#F7F4FB;background:rgba(46,53,67,.60);
+ border:1px solid rgba(233,232,242,.26);
+ -webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px)
+}
+@media(max-width:360px){
+ .discovery-app .feed-v2 .discovery-name-button span{font-size:25px}
+ .discovery-app .feed-v2 .discovery-short-about{font-size:11.5px}
+ .discovery-app .feed-v2-primary-interests>.feed-v2-interest-primary{max-width:40%}
+}
+@media(prefers-reduced-transparency:reduce){
+ .discovery-app .feed-v2 .discovery-action,
+ .discovery-app .feed-v2 .discovery-action.discovery-like,
+ .discovery-app .feed-v2 .discovery-action.discovery-special{
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+  background:linear-gradient(145deg,rgba(87,94,112,.84),rgba(48,56,71,.95))
+ }
 }
