@@ -41,14 +41,15 @@ try{
   await page.waitForTimeout(350);
   const feed=page.locator(".deck-active .feed-v2-card");
   const panel=page.locator(".deck-active .feed-v2-glass");
-  const details=page.locator(".deck-active .feed-v2-content");
+  const details=page.locator(".deck-active .feed-v2-headrow");
+  const chips=page.locator(".deck-active .feed-v2-primary-interests");
   const nav=page.locator(".discovery-bottom-nav");
   const logo=page.locator(".lh-browse .lh-center");
   const tabs=page.locator(".discovery-top-tabs");
   const img=page.locator(".deck-active .feed-v2-photo .carousel-track img.is-ready").first();
   const action=page.locator(".deck-active .discovery-actions");
-  const [f,g,d,n,l,t,i,a]=await Promise.all([
-   rect(feed),rect(panel),rect(details),rect(nav),rect(logo),rect(tabs),rect(img),rect(action)
+  const [f,g,d,chipBox,n,l,t,i,a]=await Promise.all([
+   rect(feed),rect(panel),rect(details),rect(chips),rect(nav),rect(logo),rect(tabs),rect(img),rect(action)
   ]);
   assert(near(f.x,0,1)&&near(f.y,0,1)&&near(f.w,device.width,1),
    `Full-bleed card must start at viewport origin on ${device.name}: ${JSON.stringify(f)}`);
@@ -58,7 +59,9 @@ try{
   assert(g.y>t.y+t.h+40,`Glass should sit below face/top navigation: ${JSON.stringify(g)}`);
   assert(g.y>0&&g.b<a.y+10,`Glass is above the existing actions: ${JSON.stringify({g,a})}`);
   assert(a.b<=n.y+5,`Action row cannot be obscured by nav: ${JSON.stringify({a,n})}`);
-  assert(d.y>=g.y-6&&d.b<=g.b+6,`Compact text stays within glass: ${JSON.stringify({g,d})}`);
+  assert(d.y>=g.y-8&&d.b<=g.b+8,`Compact identity stays inside glass: ${JSON.stringify({g,d})}`);
+  assert(chipBox.y>=g.y-8&&chipBox.b<=g.b+10,
+   `Compact interests stay inside glass: ${JSON.stringify({g,chipBox})}`);
   assert(near(i.x,0,2)&&near(i.w,device.width,2),`Photo image must cover width`);
   assert.equal(await action.locator("button").count(),3);
   assert.equal((await page.locator('.discovery-top-tabs [role=tab]').allTextContents()).join("/"),"Лента/Для тебя/Мир");
