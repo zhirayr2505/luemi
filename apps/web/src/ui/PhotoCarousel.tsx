@@ -3,7 +3,7 @@ import type {PointerEvent as ReactPointerEvent} from "react";
 import {noteFeedImageDecoded,preloadFeedImage} from "../discovery/feed-image-preload";
 interface Slide {id:string;src:string;fallback?:string}
 interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;
- prioritize?:boolean;onIndexChange?:(index:number)=>void;onCoverReady?:()=>void}
+ prioritize?:boolean;gpuSafe?:boolean;onIndexChange?:(index:number)=>void;onCoverReady?:()=>void}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
 export interface PhotoCarouselHandle {
  canAdvance:(direction:-1|1)=>boolean;
@@ -12,7 +12,7 @@ export interface PhotoCarouselHandle {
  finish:(id:number,x:number,cancelled:boolean)=>void;
  cancel:()=>void;
 }
-const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,prioritize=true,onIndexChange,onCoverReady},ref) {
+const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,prioritize=true,gpuSafe=false,onIndexChange,onCoverReady},ref) {
  const [index,setIndex]=useState(0);
  const tracking=useRef<Tracking|null>(null);
  const frame=useRef<HTMLDivElement>(null);
@@ -34,7 +34,11 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  useEffect(()=>()=>{flush();pendingPhoto.current=null;},[]);
  const renderOffset=(baseIndex:number,dx:number)=>{
    const el=photoTrack.current;if(!el)return;
-   el.style.transform="translate3d(calc(-"+baseIndex*100+"% + "+dx+"px),0,0)";
+   // Feed uses a 2D slide translation on Android instead of forcing a wide
+  // RGBA 3D texture (three decks times six full-height pictures).
+  el.style.transform=gpuSafe?
+   "translateX(calc(-"+baseIndex*100+"% + "+dx+"px))":
+   "translate3d(calc(-"+baseIndex*100+"% + "+dx+"px),0,0)";
  };
  useLayoutEffect(()=>{
    flush();tracking.current=null;
@@ -53,6 +57,9 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
   const image=photoElement(i);
   if(!image)return;
   image.loading="eager";
+  // Far slides have no src in GPU-safe feed mode until requested. Attaching
+  // only the needed image prevents adjacent full-size bitmap allocation.
+  if(gpuSafe&&!image.getAttribute("src"))image.src=photos[i].src;
   void preloadFeedImage(photos[i].src);
   if(typeof image.decode==="function")void image.decode().then(()=>{
    if(!image.isConnected||image.naturalWidth===0)return;
@@ -184,8 +191,10 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  };
  return <div className="carousel-frame" ref={frame} onPointerDown={start} onPointerMove={move} onPointerUp={end}
      onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}>
-   {photos.length>0?<div className="carousel-track" ref={photoTrack}>
-     {photos.map((p,i)=><img key={p.id+"::"+p.src} src={p.src} alt={"Фото "+(i+1)} draggable={false}
+   {photos.length>0?<div className={"carousel-track"+(gpuSafe?" is-gpu-safe":"")} ref={photoTrack}>
+     {photos.map((p,i)=><img key={p.id+"::"+p.src}
+       src={!gpuSafe||Math.abs(i-active)<=1?p.src:undefined}
+       alt={"Фото "+(i+1)} draggable={false}
        loading={i===0||(prioritize&&Math.abs(i-activeRef.current)<=1)?"eager":"lazy"} decoding="async"
        className="feed-carousel-photo"
        onLoad={event=>revealDecoded(event.currentTarget,i)}
