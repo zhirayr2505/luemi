@@ -13,7 +13,14 @@
  background:linear-gradient(to bottom,rgba(18,20,24,.10) 0%,transparent 32%,rgba(22,25,30,.08) 47%,
  rgba(22,25,31,.38) 65%,rgba(22,25,31,.82) 84%,rgba(22,25,31,.96) 100%)}
 .feed-v2-photo>.carousel-frame{touch-action:none;contain:paint;transform:translateZ(0)}
-.feed-v2-photo .carousel-track img{width:100%;height:100%;object-fit:cover;object-position:center 35%}
+.feed-v2-photo .carousel-track img{
+ width:100%;height:100%;object-fit:cover;object-position:center 35%;
+ opacity:0;transition:opacity .12s ease-out;
+}
+.feed-v2-photo .carousel-track img.is-ready{opacity:1}
+/* The horizontal/vertical card recognizer owns the entire photo and text
+   surface. The browse pager cannot compete here on Android touch streams. */
+.discovery-app .feed-v2-card{touch-action:none}
 .discovery-app .feed-v2-photo .photo-progress{top:11px;left:50%;right:auto;transform:translateX(-50%);width:min(46%,180px);max-width:calc(100% - 122px);gap:4px}
 .discovery-app .feed-v2-photo .photo-progress button{position:relative;flex:0 1 23px;width:23px;min-width:15px;height:27px;background:none;box-shadow:none;border:0}
 .discovery-app .feed-v2-photo .photo-progress button.current{background:none}
