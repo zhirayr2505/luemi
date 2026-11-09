@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {mkdir,writeFile} from "node:fs/promises";
 import {chromium} from "playwright";
+import {feedDeckBrowserQa} from "./feed-deck-browser-qa.mjs";
 /** Profile Morph V3 behavioral QA on synthetic Chromium, not physical Telegram A55. */
 const BASE=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 const OUT=process.env.LUEMI_QA_OUT||"qa-artifacts/rem-00c/profile-morph-v3";
@@ -199,6 +200,7 @@ async function appBootstrap(browser){
 const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
 try{
  await profileV3(browser,"android");
+ await feedDeckBrowserQa(browser,BASE);
  await profileV3(browser,"ios-emulation");
  await appBootstrap(browser);
  await missingSelectorNegative(browser);
