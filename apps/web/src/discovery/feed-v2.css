@@ -184,51 +184,28 @@
  border:1px solid rgba(250,237,255,.26);border-radius:18px;
  color:#FCF6FF;background:rgba(56,40,66,.45)
 }
-/* Glass and details occupy separate, retained surfaces.
- * A narrow lens (rather than a bottom sheet) grows bottom-up with Profile Morph.
+/* One real sheet: text and refractive border are painted in the same box.
+ * Changing its height never stretches the rim or unhooks the content surface.
  */
 .discovery-app .feed-v2-information{
- position:absolute;inset:0;z-index:7;
- pointer-events:none;overflow:hidden
+ position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden
 }
-.discovery-app .feed-v2-glass{
- position:absolute;z-index:0;
+.discovery-app .feed-v2-sheet{
+ position:absolute;z-index:1;
  left:clamp(12px,4.1vw,22px);right:clamp(12px,4.1vw,22px);
  bottom:calc(var(--feed-nav-clearance) + var(--feed-actions-height) + 9px);
  height:var(--feed-closed-height);
- transform-origin:50% 100%;transform:translate3d(0,0,0) scaleY(1);
- border-radius:clamp(24px,7vw,31px);
- border:1px solid rgba(252,235,255,.31);
- background:
-  radial-gradient(ellipse 85% 51% at 22% 0%,rgba(254,241,255,.13),transparent 77%),
-  linear-gradient(164deg,rgba(121,104,132,.27) 0%,rgba(84,70,99,.22) 33%,rgba(61,45,71,.35) 78%,rgba(47,35,57,.41) 100%);
- box-shadow:
-  inset 0 1.5px 1px rgba(255,255,255,.37),
-  inset 0 -1px rgba(246,220,250,.13),
-  inset 1px 0 rgba(250,237,255,.10),
-  0 13px 30px rgba(16,8,22,.19),0 3px 9px rgba(13,9,19,.10);
- -webkit-backdrop-filter:blur(23px) saturate(142%) contrast(105%);
- backdrop-filter:blur(23px) saturate(142%) contrast(105%);
- overflow:hidden;pointer-events:none;will-change:transform
-}
-.feed-v2-glass::before{
- content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
- background:linear-gradient(172deg,rgba(255,250,255,.19),rgba(247,230,255,.045) 20%,transparent 50%),
-  radial-gradient(ellipse 75% 35% at 63% -4%,rgba(255,239,251,.22),transparent 83%);
- opacity:.94
-}
-.feed-v2-glass::after{
- content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
- border:1px solid rgba(255,255,255,.07);
- box-shadow:inset 0 8px 16px -16px rgba(255,255,255,.5)
+ max-height:calc(100% - var(--feed-actions-height) - var(--feed-nav-clearance) - 16px);
+ min-height:0;pointer-events:none;
+ contain:layout paint;
 }
 .discovery-app .feed-v2-details{
- position:absolute;z-index:1;left:clamp(12px,4.1vw,22px);right:clamp(12px,4.1vw,22px);
- bottom:calc(var(--feed-nav-clearance) + var(--feed-actions-height) + 9px);
- height:var(--feed-closed-height);max-height:calc(100% - var(--feed-actions-height) - var(--feed-nav-clearance) - 16px);
+ position:relative;z-index:1;width:100%;height:100%;box-sizing:border-box;
  min-height:0;padding:0 17px 1px;
  display:flex;flex-direction:column;overflow:hidden;pointer-events:none;
- color:#FFFAFF;touch-action:none;contain:layout
+ color:#fff;touch-action:none;
+ text-shadow:0 1px 6px rgba(20,8,30,.35);
+ background:linear-gradient(180deg,transparent 8%,rgba(16,9,23,.06) 44%,rgba(16,9,23,.26));
 }
 .discovery-app .feed-v2-scroll{
  min-height:0;flex:1;display:flex;flex-direction:column;overflow:hidden;
@@ -246,11 +223,9 @@
 .discovery-app .feed-v2-expand{
  position:absolute;right:0;top:8px;z-index:3;
  display:grid;place-items:center;width:26px;height:26px;min-width:26px;min-height:26px;
- padding:0;margin:0;border:1px solid rgba(239,220,246,.18);border-radius:50%;
- color:rgba(248,230,252,.86);background:rgba(72,51,80,.20);
- pointer-events:auto
+ padding:0;margin:0;border-radius:50%;
+ color:#fff;pointer-events:auto
 }
-.discovery-app .feed-v2-expand::before{display:none}
 .discovery-app .feed-v2-expand .feed-v2-expand-icon{display:block}
 .discovery-app .feed-v2-expand .feed-v2-collapse-icon{display:none}
 .discovery-app .feed-v2-card[data-expanded=true] .feed-v2-expand .feed-v2-expand-icon{display:none}
@@ -375,35 +350,15 @@
  position:relative;isolation:isolate;overflow:hidden;flex:none;
  width:clamp(78px,23vw,110px);height:clamp(49px,7.2vh,59px);
  min-width:0;min-height:44px;padding:0;
- display:grid;place-items:center;border-radius:999px;
- border:1px solid rgba(248,228,252,.22);
- color:#F9E9FC;
- background:radial-gradient(ellipse 85% 46% at 32% 0%,rgba(255,255,255,.16),transparent 81%),
-  linear-gradient(165deg,rgba(69,49,77,.67),rgba(43,29,53,.73));
- box-shadow:inset 0 1px rgba(255,247,255,.22),
-  inset 0 -2px rgba(21,11,30,.18),0 7px 17px rgba(18,9,23,.17);
- -webkit-backdrop-filter:blur(12px) saturate(128%);
- backdrop-filter:blur(12px) saturate(128%);
- transition:transform .15s cubic-bezier(.2,.8,.2,1),filter .15s ease;
+ display:grid;place-items:center;border-radius:var(--lg-radius-pill);
+ color:#fff;
  touch-action:manipulation;-webkit-tap-highlight-color:transparent
 }
 .discovery-app .feed-v2 .discovery-action.discovery-special{
  width:clamp(112px,33vw,151px);
- color:#432748;border-color:rgba(255,242,255,.71);
- background:radial-gradient(ellipse 80% 58% at 24% 0%,rgba(255,255,255,.71),transparent 73%),
-  linear-gradient(135deg,#E5B9DF 0%,#C995CB 53%,#CDA2D4 100%);
- box-shadow:inset 0 2px rgba(255,252,255,.63),
-  inset 0 -3px rgba(123,79,141,.16),0 8px 21px rgba(31,14,39,.22)
 }
 .discovery-app .feed-v2 .discovery-action svg{position:relative;z-index:2;width:22px;height:22px}
 .discovery-app .feed-v2 .discovery-action.discovery-special svg{width:24px;height:24px}
-.discovery-app .feed-v2 .discovery-action::before{
- content:"";position:absolute;inset:1px;border:1px solid rgba(255,255,255,.09);
- border-radius:inherit;pointer-events:none;
- background:linear-gradient(157deg,rgba(255,250,255,.09),transparent 45%)
-}
-.discovery-app .feed-v2 .discovery-action:active:not(:disabled){transform:scale(.945);filter:brightness(1.08)}
-.discovery-app .feed-v2 .discovery-action:disabled{opacity:.45}
 .discovery-app .feed-v2 .discovery-action:focus-visible,
 .discovery-app .feed-v2-expand:focus-visible,
 .discovery-app .feed-v2 .discovery-name-button:focus-visible{
@@ -479,11 +434,10 @@
  .discovery-app .feed-v2 .discovery-action.discovery-special{width:34vw}
 }
 @media(prefers-reduced-transparency:reduce){
- .discovery-app .feed-v2-glass{
-  background:linear-gradient(155deg,rgba(82,61,91,.94),rgba(48,33,58,.95));
+ .discovery-app .feed-v2-sheet,
+ .discovery-app .feed-v2 .discovery-action{
   -webkit-backdrop-filter:none;backdrop-filter:none
  }
- .discovery-app .feed-v2 .discovery-action{backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 @media(prefers-reduced-motion:reduce){
  .discovery-app .feed-v2 .discovery-action,
