@@ -8,10 +8,13 @@ export interface PreloadProfile {photos:readonly PreloadPhoto[]}
 const MAX_READY=72;
 const decoded=new Map<string,true>();
 const inflight=new Map<string,Promise<boolean>>();
-
-export function isFeedImageDecoded(url:string):boolean{return decoded.has(url);}
+const keyOf=(url:string):string=>{
+ try{return new URL(url,window.location.href).href;}catch{return url;}
+};
+export function isFeedImageDecoded(url:string):boolean{return decoded.has(keyOf(url));}
 export function noteFeedImageDecoded(url:string):void{
  if(!url)return;
+ url=keyOf(url);
  decoded.delete(url);decoded.set(url,true);
  while(decoded.size>MAX_READY){
   const oldest=decoded.keys().next().value;
@@ -21,6 +24,7 @@ export function noteFeedImageDecoded(url:string):void{
 }
 export function preloadFeedImage(url:string,signal?:AbortSignal):Promise<boolean>{
  if(!url||signal?.aborted)return Promise.resolve(false);
+ url=keyOf(url);
  if(decoded.has(url))return Promise.resolve(true);
  const existing=inflight.get(url);
  if(existing)return existing;
