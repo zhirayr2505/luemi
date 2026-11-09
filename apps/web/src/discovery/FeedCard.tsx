@@ -246,6 +246,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
     incoming.style.opacity="1";
     if(outgoing)outgoing.style.opacity="0";
     ambientVisible.current=incomingIndex;
+    incoming.dataset.sourcePhoto=ambientPhoto;
     ambientDisplayedSource.current=ambientPhoto;
     showAmbientIfReady();
    })();
