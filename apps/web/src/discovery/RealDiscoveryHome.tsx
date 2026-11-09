@@ -8,7 +8,6 @@ import type {DemoKind,DemoPerson} from "./model";
 import {fromDemoPerson,type ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
 import {DemoFeedSandbox} from "./DemoFeedSandbox";
-import {cardGestureZone} from "./card-gesture-zone";
 import {selectionHaptic} from "../ui/haptic";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {GestureArbiter,computedTranslation,fractionalTrack} from "../ui/gesture-arbiter";
@@ -543,10 +542,10 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   const target=event.target instanceof Element?event.target:null;
   if(!target)return;
   if(target.closest("[role=dialog],.discovery-filter-sheet,.fy-rail,.fy-expanded,.fy-manage"))return;
-  const feedCard=target.closest<HTMLElement>(".feed-v2-card");
-  // The photo recognizer owns the entire carousel surface. A parent candidate
-  // there races with photo pointer capture on Android touch sequences.
-  if(target.closest(".feed-v2-photo .carousel-frame"))return;
+  // A feed card has one owner for horizontal photos and vertical information.
+  // Parent browse pagination only starts outside its bounds (tabs/background).
+  // This prevents Android's Touch adapter taking the lower-card swipe first.
+  if(target.closest(".feed-v2-card"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
   // Browse touch starts can land on a ForYou/Nearby tile button after a
   // scroller layout tick. A TAP is still handled by its native onClick; only
@@ -558,12 +557,6 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   if(interactive&&!tileSwipe&&
      !interactive.matches(".discovery-name-button,.feed-v2-expand,.discovery-top-tabs [role=tab]"))return;
   if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
-  // The details subtree owns text gestures even when it reaches above the
-  // old cutoff. The carousel consumes in-range photo swipes in capture;
-  // a swipe past the final photo can pass through to this pager.
-  if(feedCard){const rect=feedCard.getBoundingClientRect();
-   if(!target.closest(".feed-v2-details,.feed-v2-photo .carousel-frame")&&
-     cardGestureZone(event.clientY,rect.top,rect.height)!=="browse")return;}
   const serial=inputOwnership.current.begin(kind,event.pointerId,"browse");
   if(serial===null)return;
   inputOwnership.current.begin(kind,event.pointerId,"native");
