@@ -209,7 +209,9 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  // For You and Nearby sort/filter the complete real server page themselves.
  const matchedRows=useMemo(()=>rows.filter(p=>!hiddenIds.has(p.id)),[rows,hiddenIds]);
  // Keep approved For You / Nearby collections untouched.
- const visibleRows=tab==="feed"?matchedRows.filter(p=>realFeedMatches(p,filters,draft.interests)):matchedRows;
+ const visibleRows=useMemo(()=>tab==="feed"?
+  matchedRows.filter(p=>realFeedMatches(p,filters,draft.interests)):matchedRows,
+  [tab,matchedRows,filters,draft.interests]);
  // Stable display models prevent unrelated likes/save state from rebuilding
  // the photo arrays and resetting queued carousel props during animation.
  const cardRows=useMemo(()=>visibleRows.map(toCard),[visibleRows]);
