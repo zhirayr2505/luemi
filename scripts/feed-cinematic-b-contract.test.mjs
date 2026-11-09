@@ -2,85 +2,114 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-const feed=read("apps/web/src/discovery/FeedCard.tsx");
+const card=read("apps/web/src/discovery/FeedCard.tsx");
 const css=read("apps/web/src/discovery/feed-v2.css");
-const oldGlass=read("apps/web/src/discovery/feed-glass-v1.css");
+const chrome=read("apps/web/src/discovery/feed-glass-v1.css");
 const header=read("apps/web/src/discovery/GlobalHeader.tsx");
-const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 const real=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
+const demo=read("apps/web/src/discovery/DiscoveryApp.tsx");
+const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 const deck=read("apps/web/src/discovery/deck-v3.css");
 
-test("Moonstone feed keeps the original registration raster, rendered white on the left",()=>{
+test("approved LUEMI wordmark is the original raster, centered below Telegram safe area",()=>{
  assert.match(header,/wordmark_original_raster_alpha_W06\.webp/);
- assert.match(oldGlass,/\.lh-browse \.lh-island img\{filter:brightness\(0\) invert\(1\)\}/);
- assert.match(oldGlass,/\.lh-browse \.lh-browse-controls\{top:var\(--brand-top\)/);
- assert.ok(header.indexOf('onClick={onFilters}')<header.indexOf('onClick={onSaved}'),
-  "filters must precede notifications on the right");
- assert.doesNotMatch(oldGlass,/\.discovery-app \.feed-v2-glass/);
+ assert.match(chrome,/\.lh-browse \.lh-island img\{filter:brightness\(0\) invert\(1\)\}/);
+ assert.match(css,/--feed-header-top:max\(calc\(var\(--top-safe\) \+ 8px\),26px\)/);
+ assert.match(css,/\.lh-header\.lh-browse \.lh-center\{[\s\S]*?left:50%/);
+ assert.match(css,/transform:translateX\(-50%\)/);
+ assert.doesNotMatch(header,/>\s*LUEMI\s*</);
+ assert.ok(header.indexOf('onClick={onFilters}')<header.indexOf('onClick={onSaved}'));
 });
 
-test("three-card preview alternates sides without decorative fake-card layers",()=>{
- assert.match(feed,/<PhotoCarousel ref=\{photo\}/);
- assert.doesNotMatch(css,/\.discovery-deck-stage\.has-profiles::(?:before|after)/);
- assert.match(real,/visibleRows\.slice\(page,page\+3\)\.map/);
- assert.match(deck,/\.deck-queued\.deck-peek-right/);
- assert.match(deck,/\.deck-queued\.deck-peek-left/);
+test("photo fills the entire feed and continues beneath all transparent chrome",()=>{
+ assert.match(real,/data-feed-visible=\{mainTab==="discover"/);
+ assert.match(demo,/data-feed-visible=\{mainTab==="discover"/);
+ assert.match(css,/\.discovery-main-panels>\.discovery-panel\.discovery-browse-panel\{[\s\S]*?top:0;bottom:0;height:100%/);
+ assert.match(css,/\.discovery-page\[aria-label="Лента"\]\{\s*padding:0/);
+ assert.match(css,/\.feed-v2-card\{[\s\S]*?border:0;border-radius:0/);
+ assert.match(css,/\.feed-v2-photo\{[\s\S]*?inset:0/);
  assert.match(css,/object-fit:cover/);
- assert.doesNotMatch(deck,/skew\(|perspective\(/);
+ assert.doesNotMatch(css,/\.feed-v2-card\{[^}]*box-shadow:0 14px 30px/s);
 });
 
-test("actions remain reject / centered heart / special, with direction-matched exits",()=>{
- const pass=feed.indexOf('["pass","Пропустить",X]');
- const like=feed.indexOf('["like","Нравится",Heart]');
- const star=feed.indexOf('["special","Особенная симпатия",Star]');
- assert.ok(pass>0&&like>pass&&star>like);
- assert.match(css,/\.discovery-action\.discovery-like\{--diameter:clamp\(68px,19vw,78px\)/);
- assert.match(deck,/@keyframes luemi-deck-exit-left/);
- assert.match(deck,/@keyframes luemi-deck-exit-right/);
- assert.match(deck,/@keyframes luemi-deck-exit-top/);
- assert.match(real,/deck-leaving-"\+leavingKind/);
- assert.match(feed,/onClick=\{\(\)=>onAction\(kind\)\}/);
+test("three real browse routes remain distinct and tabs have only text plus thin moving underline",()=>{
+ assert.match(real,/\["feed","Лента"\],\["for-you","Для тебя"\],\["nearby","Мир"\]/);
+ assert.match(demo,/\["feed","Лента"\],\["for-you","Для тебя"\],\["nearby","Мир"\]/);
+ assert.match(real,/tab==="for-you"\?/);
+ assert.match(real,/<RealForYou\b/);
+ assert.match(real,/<RealNearby\b/);
+ assert.match(css,/\.discovery-top-tabs>\.discovery-tab-underline\{[\s\S]*?height:2px/);
+ assert.match(css,/--luemi-tab-offset/);
+ assert.match(css,/\.discovery-top-tabs\{[\s\S]*?border:0;border-radius:0;background:none/);
+ assert.doesNotMatch(chrome,/\.discovery-app \.discovery-top-tabs\{/);
 });
 
-test("only selected photo changes the soft ambient lighting, not the app palette",()=>{
- assert.match(feed,/ambientPhoto=person\.photos\[activePhotoIndex\]/);
- assert.match(feed,/className="feed-v2-photo-ambient"/);
- assert.match(feed,/onIndexChange=\{setActivePhotoIndex\}/);
+test("full bleed photo gets a matching masked blur and soft plum gradient without opaque seams",()=>{
+ assert.match(card,/ambientPhoto=person\.photos\[activePhotoIndex\]/);
+ assert.match(card,/className="feed-v2-photo-ambient"/);
+ assert.match(card,/className="feed-v2-photo-vignette"/);
+ assert.match(card,/onIndexChange=\{setActivePhotoIndex\}/);
  assert.match(carousel,/onIndexChange\?\.\(target\)/);
- assert.match(carousel,/onIndexChange\?\.\(i\)/);
- assert.match(css,/\.feed-v2-photo-ambient img\{/);
- assert.match(css,/filter:blur\(28px\)/);
+ assert.match(css,/\.feed-v2-photo-ambient img\{[\s\S]*?filter:blur\(24px\)/);
+ assert.match(css,/mask-image:linear-gradient\(to bottom,transparent 35%/);
+ assert.match(css,/rgba\(30,16,37,\.58\)/);
  assert.doesNotMatch(css,/@keyframes moonstone-photo-light/);
- assert.match(css,/mask-image:radial-gradient/);
- assert.doesNotMatch(css,/#[0-9a-fA-F]{6}[^;]*glow/);
 });
 
-test("biography, goal and interests stay semantic and legible on the glass",()=>{
- assert.match(feed,/className="feed-v2-about"/);
- assert.match(feed,/О СЕБЕ/);
- assert.match(feed,/person\.interests\.length-2/);
- assert.ok(feed.indexOf('className="feed-v2-about"')<feed.indexOf('className="feed-v2-interests"'));
- assert.match(css,/font-family:Inter,ui-sans-serif,system-ui/);
- assert.match(css,/\.discovery-app \.feed-v2-glass/);
-});
-
-test("existing gesture RAF stays compositor-only, no live blur on moving photo cards",()=>{
- const begin=feed.indexOf(" const paint=(value:number)=>{");
- const end=feed.indexOf("\n const flushFinger=",begin);
+test("profile lens is physically modeled and keeps blur radius static while profile morphs",()=>{
+ assert.match(css,/\.discovery-app \.feed-v2-glass\{/);
+ assert.match(css,/border-radius:clamp\(24px,7vw,31px\)/);
+ assert.match(css,/-webkit-backdrop-filter:blur\(23px\) saturate\(142%\)/);
+ assert.match(css,/\.feed-v2-glass::before\{/);
+ assert.match(css,/\.feed-v2-glass::after\{/);
+ const begin=card.indexOf(" const paint=(value:number)=>{");
+ const end=card.indexOf("\n const flushFinger=",begin);
  assert.ok(begin>0&&end>begin);
- const paint=feed.slice(begin,end);
+ const paint=card.slice(begin,end);
+ assert.match(paint,/scaleY\(/);
  assert.match(paint,/style\.transform=/);
  assert.match(paint,/style\.opacity=/);
  assert.doesNotMatch(paint,/style\.(?:height|width|top|bottom|left|right)=/);
  assert.doesNotMatch(paint,/getComputedStyle|offsetWidth|clientHeight|scrollHeight|backdropFilter/);
- assert.match(feed,/ResizeObserver/);
- assert.doesNotMatch(css,/\.feed-v2-glass\{[^}]*backdrop-filter:blur\(/s,
-  "Full moving card and text surfaces do not sample backdrop blur");
- assert.match(css,/-webkit-backdrop-filter:blur\(16px\) saturate\(155%\)/,
-  "Small independent action buttons provide bounded Liquid Glass optics");
- assert.match(css,/\.feed-v2-photo \.photo-progress\{[^}]*justify-content:center/s);
- assert.match(feed,/onClick=\{\(\)=>\{if\(target.current===1\)onInterests\(\);else updateExpanded\(true\);\}\}/);
- assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(card,/ResizeObserver/);
  assert.match(css,/prefers-reduced-transparency:reduce/);
- assert.doesNotMatch(oldGlass,/\.discovery-app \.feed-v2-card/);
+ assert.match(css,/data-profile-renderer=android/);
+});
+
+test("name location quote and interest chips are actual profile data in an optical panel",()=>{
+ assert.match(card,/person\.name\}, \{person\.age\}/);
+ assert.match(card,/className="discovery-place"/);
+ assert.match(card,/className="feed-v2-about"/);
+ assert.match(card,/className="feed-v2-interests"/);
+ assert.match(card,/person\.interests\.slice\(0,2\)/);
+ assert.ok(card.indexOf('className="feed-v2-about"')<card.indexOf('className="feed-v2-interests"'));
+ assert.match(css,/\.feed-v2-about::before\{/);
+ assert.match(css,/font-style:italic/);
+ assert.match(css,/color-mix\(in srgb,var\(--chip-from/);
+ assert.match(css,/\.discovery-interests \.interest-chip svg\{/);
+});
+
+test("existing pass / special / like actions keep handlers, business logic and swipe exit keys",()=>{
+ const pass=card.indexOf('["pass","Пропустить",X]');
+ const special=card.indexOf('["special","Особенная симпатия",Star]');
+ const like=card.indexOf('["like","Нравится",Heart]');
+ assert.ok(pass>=0&&special>pass&&like>special);
+ assert.match(card,/onClick=\{\(\)=>onAction\(kind\)\}/);
+ assert.match(real,/likePublishedUser\(current\.id,kind==="special"\?"super":"ordinary"\)/);
+ assert.match(css,/\.discovery-action\.discovery-special\{[\s\S]*?width:clamp\(112px,33vw,151px\)/);
+ assert.match(css,/border-radius:999px/);
+ assert.match(deck,/@keyframes luemi-deck-exit-left/);
+ assert.match(deck,/@keyframes luemi-deck-exit-right/);
+ assert.match(deck,/@keyframes luemi-deck-exit-top/);
+ assert.doesNotMatch(css,/🔥/);
+});
+
+test("bottom nav keeps original destinations inside a single photograph-backed lens",()=>{
+ assert.match(real,/<LuemiBottomNavigation/);
+ assert.match(demo,/className="discovery-bottom-nav"/);
+ assert.match(css,/\.discovery-app\[data-feed-visible="true"\]>\.discovery-bottom-nav\{/);
+ assert.match(css,/bottom:calc\(var\(--bottom-safe\) \+ 9px\)/);
+ assert.match(css,/backdrop-filter:blur\(18px\) saturate\(135%\)/);
+ assert.match(css,/\.discovery-nav-item\.active/);
+ assert.doesNotMatch(chrome,/\.discovery-app \.discovery-bottom-nav\{/);
 });
