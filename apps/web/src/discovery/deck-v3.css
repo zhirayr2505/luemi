@@ -15,6 +15,10 @@
 }
 .real-discovery-home .discovery-deck-stage.has-profiles>.deck-queued{
  z-index:2;pointer-events:none;opacity:.86;
+ transition:opacity .18s ease-out;
+}
+.real-discovery-home .discovery-deck-stage.has-profiles>.deck-queued.deck-photo-pending{
+ opacity:0;
 }
 .real-discovery-home .discovery-deck-stage.has-profiles>.deck-depth-two{
  z-index:1;opacity:.62;
@@ -72,19 +76,12 @@
  from{transform:translate3d(-18px,8px,0) scale(.975);opacity:.86}
  to{transform:translate3d(0,0,0) scale(1);opacity:1}
 }
-/* The visible edge is photo-only: queue controls are never falsely clickable.
- * No visibility:hidden/display:none: those made all elements pop on promotion. */
-.real-discovery-home .discovery-deck-stage .deck-queued :is(
- .discovery-actions,.discovery-save-control,.discovery-demo-label,
- .feed-v2-photo-count,.photo-progress){opacity:0!important;pointer-events:none}
-.real-discovery-home .discovery-deck-stage .deck-entering :is(
- .discovery-action:disabled,.discovery-save-control:disabled,
- .feed-v2-expand:disabled){opacity:1}
-.real-discovery-home .discovery-deck-stage .deck-queued .feed-v2-photo-ambient,
-.real-discovery-home .discovery-deck-stage .deck-depth-two .feed-v2-photo-ambient{
- opacity:0;pointer-events:none;
-}
-.real-discovery-home .discovery-deck-stage .deck-entering .feed-v2-photo-ambient{
+/* No interior visibility changes between queued/entering/active states.
+ * The photo indicators, icons and text remain painted in one retained layer.
+ * Only the outer card composites. Actions stay inert via pointer-events and
+ * React disabled props, not via sudden opacity flips on promotion. */
+.real-discovery-home .discovery-deck-stage.has-profiles :is(.deck-queued,.deck-entering)
+ :is(.discovery-action:disabled,.discovery-save-control:disabled,.feed-v2-expand:disabled){
  opacity:1;
 }
 @media(prefers-reduced-motion:reduce){
