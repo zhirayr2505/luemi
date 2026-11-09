@@ -125,8 +125,8 @@
  pointer-events:none;overflow:hidden
 }
 .feed-v2-photo-ambient img{
- position:absolute;inset:0;display:block;width:100%;height:100%;
- object-fit:cover;object-position:center 48%;opacity:0;
+ position:absolute;left:0;right:0;bottom:0;display:block;
+ width:100%;height:172.414%;object-fit:cover;object-position:center 35%;opacity:0;
  transition:opacity 110ms ease-out;pointer-events:none
 }
 .feed-v2-photo-ambient::after{
@@ -370,7 +370,7 @@
  transition:transform 130ms cubic-bezier(.2,.8,.2,1),box-shadow 130ms ease
 }
 .discovery-app .feed-v2 .discovery-action.discovery-special.lg--accent{
- background:linear-gradient(135deg,rgba(236,190,232,.55),rgba(190,140,205,.35)),
+ background:linear-gradient(135deg,var(--lg-accent-from),var(--lg-accent-to)),
   linear-gradient(180deg,var(--lg-tint),var(--lg-tint-bottom));
  color:#fff
 }
