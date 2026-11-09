@@ -20,8 +20,8 @@ test("REAL_ONLY runs the approved LUEMI shell, not the provisional list shell",(
  assert.match(app,/const realOnly=import\.meta\.env\.VITE_LUEMI_REAL_ONLY==="1"/);
 });
 
-test("real published discovery has original four tabs and three browse tabs",()=>{
- for(const label of ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Рядом"])
+test("real published discovery preserves four routes and three approved reference tabs",()=>{
+ for(const label of ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Мир"])
   assert(shell.includes('"'+label+'"'),label+" missing");
  assert.match(shell,/<GlobalHeader/);
  assert.match(shell,/className="discovery-bottom-nav"/);
