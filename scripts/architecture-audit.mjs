@@ -47,7 +47,7 @@ for(const file of paths){
  graph.set(file,[...imports]);
 }
 const roots=["apps/web/src/main.tsx","apps/api/src/server.ts"];
-const qaRoots=paths.filter(p=>/\/(?:profile-qa|rem-\d+[a-z]?(?:-[\w-]+)?-qa)\.tsx?$/.test(p));
+const qaRoots=paths.filter(p=>/\/(?:profile-qa|feed-deck-qa|rem-\d+[a-z]?(?:-[\w-]+)?-qa)\.tsx?$/.test(p));
 // V3's synthetic preview is a separate HTML/Vite QA entry, intentionally
 // isolated from apps/web/src/main.tsx until the A55 acceptance gate.
 // Track the entry as a QA root so all its transitive modules stay audited.
