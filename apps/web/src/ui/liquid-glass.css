@@ -135,7 +135,7 @@
  filter:none;-webkit-backdrop-filter:none;backdrop-filter:none;
 }
 @media(prefers-reduced-transparency:reduce){
- :root{
+ :root,:root[data-lg-optics="safe"]{
   --lg-tint:rgba(70,51,82,.93);
   --lg-tint-bottom:rgba(51,37,61,.95);
   --lg-blur:0px;
