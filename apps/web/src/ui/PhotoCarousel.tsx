@@ -161,7 +161,11 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const cancel=(e:ReactPointerEvent)=>{if(!externalGesture)finishAt(e.pointerId,e.clientX,true);};
  const selectPhoto=(i:number)=>{
    flush();tracking.current=null;
-   if(photoTrack.current)photoTrack.current.style.transition="transform .31s cubic-bezier(.22,.77,.23,1)";
+   // Distant dot jumps cannot animate across unloaded intermediate images;
+   // do an atomic 2D move to the fully decoded destination instead.
+   const farJump=gpuSafe&&Math.abs(i-activeRef.current)>1;
+   if(photoTrack.current)photoTrack.current.style.transition=farJump?
+    "none":"transform .31s cubic-bezier(.22,.77,.23,1)";
    renderOffset(i,0);activeRef.current=i;setIndex(i);onIndexChange?.(i);
  };
  const choose=(i:number)=>{
