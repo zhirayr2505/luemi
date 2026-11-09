@@ -68,17 +68,17 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  // Five complementary effects: blur/saturation, real SVG displacement when
  // supported, subtle chromatic rims, pointer-following specular and relief.
  assert.match(lens,/--lg-saturate:165%/);
- assert.match(lens,/filter:url\\("\/assets\/glass\/liquid-refraction-v2\\.svg/);
- assert.match(lens,/conic-gradient\\(from 226deg/);
+ assert.match(lens,/filter:url\("\/assets\/glass\/liquid-refraction-v2\.svg/);
+ assert.match(lens,/conic-gradient\(from 226deg/);
  assert.match(lens,/--lg-specular:rgba/);
- assert.match(lens,/inset 0 2px 13px var\\(--lg-inner-glow\\)/);
+ assert.match(lens,/inset 0 2px 13px var\(--lg-inner-glow\)/);
  const svg=read("apps/web/public/assets/glass/liquid-refraction-v2.svg");
  assert.match(svg,/<feDisplacementMap/);
  assert.match(svg,/scale="8"/);
  assert.match(svg,/<feTurbulence/);
  const feature=read("apps/web/src/ui/moonstone-optics.ts");
- assert.match(feature,/root\\.dataset\\.lgOptics=/);
- assert.match(feature,/\\/Android\\/i\\.test\\(userAgent\\)/);
+ assert.match(feature,/root\.dataset\.lgOptics=/);
+ assert.match(feature,/\/Android\/i\.test\(userAgent\)/);
  assert.match(hot,/\.discovery-app\[data-profile-renderer=android\] \.feed-v2-glass/);
  assert.match(hot,/\.discovery-app \.feed-v2 \.discovery-action\.lg\{/);
  assert.doesNotMatch(hot,/blur\(23px\) saturate\(142%\)|blur\(12px\) saturate\(128%\)/);
