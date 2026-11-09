@@ -51,6 +51,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const scroll=useRef<HTMLDivElement>(null);
  const content=useRef<HTMLDivElement>(null);
  const about=useRef<HTMLDivElement>(null);
+ const bioText=useRef<HTMLParagraphElement>(null);
  const interests=useRef<HTMLDivElement>(null);
  const extraInterests=useRef<HTMLDivElement>(null);
  const moreInterests=useRef<HTMLButtonElement>(null);
@@ -60,7 +61,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const blockClickUntil=useRef(0);
  const multiTouch=useRef(false);
  const progress=useRef(0),target=useRef<0|1>(0);
- const metrics=useRef({closed:225,open:430,reveal:0,lift:25,actions:83,canScroll:false});
+ const metrics=useRef({closed:225,open:430,reveal:0,lift:25,actions:83,canScroll:false,bioShort:0,bioFull:0});
  const run=useRef<CardRun|null>(null);
  const fingerFrame=useRef<number|null>(null);
  const fingerValue=useRef(0);
@@ -76,6 +77,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // The single sheet progress is also the CSS driver for button/chip opacity.
   // This hot path performs zero layout reads and never changes optical filters.
   card.current?.style.setProperty("--sheet-p",String(p));
+  if(bioText.current)bioText.current.style.maxHeight=`${m.bioShort+(m.bioFull-m.bioShort)*p}px`;
   if(content.current)content.current.style.transform=
    `translate3d(0,${m.reveal*(1-p)-m.lift*p}px,0)`;
   if(dim.current)dim.current.style.opacity=String(p*.76);
@@ -146,14 +148,16 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // The sheet must grow only as much as the actual biography/interests need.
   // Previously 'open' was hard-coded to 75% of the photo, which produced an
   // enormous empty opaque panel over the person's face on Android Telegram.
-  // Measure both text states once outside gestures: the full biography must
-  // fit the open sheet even when the resting card clamps the excerpt.
-  const originalExpanded=element.dataset.expanded??"false";
-  element.dataset.expanded="true";
+  // Keep bio layout continuously interpolated with sheet progress: toggling
+  // data-expanded only swaps the chevron, never reclamps text on the last frame.
+  const bio=bioText.current;
+  const bioFull=bio?.scrollHeight??0;
+  const bioLineHeight=bio?Number.parseFloat(getComputedStyle(bio).lineHeight)||16:0;
+  const bioShort=Math.min(bioFull,bioLineHeight*3+1);
+  if(bio)bio.style.maxHeight="none";
   const full=content.current?.scrollHeight??0;
-  element.dataset.expanded="false";
+  if(bio)bio.style.maxHeight=bioShort+"px";
   const compact=content.current?.scrollHeight??0;
-  element.dataset.expanded=originalExpanded;
   const extras=extraInterests.current?.scrollHeight??0;
   // Compact copy ends on the first two interest chips. The remaining chips
   // stay in the DOM but are invisible until the sheet opens, avoiding reflow.
@@ -170,7 +174,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   // This keeps the label/title visible rather than leaving a blank upper half.
   const reveal=extras?extras+5:0;
   const lift=Math.min(30,Math.max(9,(open-closed)*.22));
-  metrics.current={closed,open,reveal,lift,actions,canScroll:full>open-2};
+  metrics.current={closed,open,reveal,lift,actions,canScroll:full>open-2,bioShort,bioFull};
   paint(progress.current);
  };
  measureLive.current=measure;
@@ -403,7 +407,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
            </div>}
            {person.about&&<div className="feed-v2-about" ref={about}>
              <p className="feed-v2-section-label">О СЕБЕ</p>
-             <p className="discovery-short-about">{person.about}</p>
+             <p className="discovery-short-about" ref={bioText}>{person.about}</p>
            </div>}
            {person.interests.length>0&&<div className="feed-v2-interests" ref={interests}>
              <p className="feed-v2-section-label">Интересы</p>
