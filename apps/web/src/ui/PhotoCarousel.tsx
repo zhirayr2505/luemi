@@ -1,4 +1,4 @@
-import {forwardRef,memo,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState} from "react";
+import {forwardRef,memo,useCallback,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {noteFeedImageDecoded,preloadFeedImage} from "../discovery/feed-image-preload";
 interface Slide {id:string;src:string;fallback?:string}
@@ -32,18 +32,18 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(frameId.current!==null){window.cancelAnimationFrame(frameId.current);frameId.current=null;}
  };
  useEffect(()=>()=>{flush();pendingPhoto.current=null;},[]);
- const renderOffset=(baseIndex:number,dx:number)=>{
+ const renderOffset=useCallback((baseIndex:number,dx:number)=>{
    const el=photoTrack.current;if(!el)return;
    // Feed uses a 2D slide translation on Android instead of forcing a wide
   // RGBA 3D texture (three decks times six full-height pictures).
   el.style.transform=gpuSafe?
    "translateX(calc(-"+baseIndex*100+"% + "+dx+"px))":
    "translate3d(calc(-"+baseIndex*100+"% + "+dx+"px),0,0)";
- };
+ },[gpuSafe]);
  useLayoutEffect(()=>{
    flush();tracking.current=null;
    renderOffset(Math.min(activeRef.current,Math.max(0,photos.length-1)),0);
- },[photoSignature,photos.length]);
+ },[photoSignature,photos.length,renderOffset]);
  const photoElement=(i:number):HTMLImageElement|null=>
   (photoTrack.current?.children.item(i) as HTMLImageElement|null)??null;
  const painted=(i:number):boolean=>{
