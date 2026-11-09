@@ -27,11 +27,11 @@ const position=(run:CardRun,now:number)=>{
 };
 
 /** The keyed complete card remains mounted as it moves through the deck. */
-export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests,onExitDemo,real=false,onMore,demoDistanceKm}:{
+export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests,onExitDemo,onCoverReady,real=false,onMore,demoDistanceKm}:{
  person:DemoPerson;saved:boolean;canUndo:boolean;active:boolean;busy:boolean;
  onAction:(kind:DemoKind|"undo")=>void;onOpenProfile:()=>void;onInterests:()=>void;
  /** The same approved card can render verified server users with no demo badges. */
- real?:boolean;onMore?:()=>void;onExitDemo?:()=>void;demoDistanceKm?:number;
+ real?:boolean;onMore?:()=>void;onExitDemo?:()=>void;onCoverReady?:()=>void;demoDistanceKm?:number;
 }){
  const goal=goals.find(g=>g.id===person.goal);
  const [expanded,setExpanded]=useState(false);
@@ -301,7 +301,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      onClickCapture={event=>{if(performance.now()<blockClickUntil.current){event.preventDefault();event.stopPropagation();}}}>
      <div className="discovery-photo feed-v2-photo">
        <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age}
-         externalGesture dots onIndexChange={setActivePhotoIndex}/>
+         externalGesture dots prioritize={active} onCoverReady={onCoverReady}
+         onIndexChange={setActivePhotoIndex}/>
        {person.photos.length>1&&<span className="feed-v2-photo-count">
         {Math.min(activePhotoIndex+1,person.photos.length)} / {person.photos.length}
        </span>}
