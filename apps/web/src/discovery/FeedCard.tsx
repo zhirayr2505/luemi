@@ -8,7 +8,6 @@ import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
 import {InterestChip} from "../ui/InterestCatalog";
 import {Flag} from "../ui/Flag";
 import type {DemoKind,DemoPerson} from "./model";
-import {cardGestureZone} from "./card-gesture-zone";
 
 const buttons=[
  ["pass","Пропустить",X],
@@ -208,9 +207,9 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   const interactive=element.closest("button,a,input,textarea,select,[contenteditable]");
   if(interactive&&!interactive.matches(".discovery-name-button,.feed-v2-expand"))return;
   const info=!!element.closest(".feed-v2-details");
-  const rect=card.current?.getBoundingClientRect();
-  const zone=info?"browse":rect?cardGestureZone(event.clientY,rect.top,rect.height):null;
-  if(!zone||(!info&&zone!=="photo"))return;
+  // The entire non-interactive card belongs to its own photo recognizer.
+  // The old 85% vertical cutoff delegated the lower portion to the tab pager.
+  const zone=info?"browse":"photo";
   const now=performance.now();
   gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,at:now,
    axis:"pending",info,nativeScroll:!!element.closest(".feed-v2-scroll"),
@@ -291,7 +290,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const available=active&&!busy;
  return <div className="discovery-deck-current feed-v2" aria-hidden={!active}>
    {ambientPhoto&&<div className="feed-v2-photo-ambient" aria-hidden="true">
-    <img key={ambientPhoto} src={ambientPhoto} alt="" loading={active?"eager":"lazy"} decoding="async" draggable={false}
+    <img src={ambientPhoto} alt="" loading={active?"eager":"lazy"} decoding="async" draggable={false}
        onError={event=>{const fallback=person.photos[activePhotoIndex]?.fallback;
         if(fallback&&event.currentTarget.src!==fallback)event.currentTarget.src=fallback;}}/>
    </div>}
