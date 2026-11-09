@@ -1,36 +1,24 @@
 /* Explicit, isolated QA preview — production discovery and matches are unaffected. */
 .demo-qa-feed{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;width:100%;isolation:isolate}
-.demo-qa-ribbon{flex:none;min-height:31px;margin:0 3px 5px;padding:1px 7px;display:flex;
- align-items:center;gap:7px;border:1px solid rgba(211,220,233,.19);border-radius:14px;
- color:var(--luemi-text);background:linear-gradient(125deg,rgba(62,69,79,.79),rgba(36,43,52,.87));
- box-shadow:inset 0 1px rgba(255,255,255,.1)}
-.demo-qa-mode{display:inline-flex;align-items:center;gap:5px;flex:0 1 auto;min-width:0;font-size:10px;font-weight:750;
- color:var(--luemi-lavender);letter-spacing:.028em;white-space:nowrap}
-.demo-qa-mode svg{flex:none}
-.demo-qa-counter{margin-left:5px;white-space:nowrap;color:var(--luemi-text-secondary);font-size:10px;font-weight:500}
-.demo-qa-ribbon>button{display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:none;
- padding:5px 7px;min-height:26px;border:1px solid rgba(227,231,242,.18);
- border-radius:10px;background:rgba(203,212,227,.11);color:var(--luemi-text);font:inherit;font-size:10px}
-.demo-qa-ribbon>button:first-of-type{margin-left:auto;min-width:30px}
 .demo-qa-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .real-discovery-home .demo-qa-feed>.discovery-deck-stage{flex:1;min-height:0;width:100%;overflow:visible}
-.real-discovery-home .demo-qa-feed .discovery-deck-layer{inset:7px 0 4px}
+.real-discovery-home .demo-qa-feed .discovery-deck-layer{inset:3px 0 4px}
 .real-discovery-home .demo-qa-feed .deck-queued{inset:0 5px 13px}
 /* Demo uses the SAME full-card gestures as production, with an explicit
    leave/enter compositor pair. The previous QA route often fell back to a
    near-instant generic fade because the feed page selector did not own it. */
 .real-discovery-home .demo-qa-feed .deck-leaving-pass{
  z-index:5;will-change:transform,opacity;
- animation:luemi-demo-pass .40s cubic-bezier(.22,.72,.23,1) both}
+ animation:luemi-demo-pass .42s cubic-bezier(.23,.72,.25,1) both}
 .real-discovery-home .demo-qa-feed .deck-leaving-like{
  z-index:5;will-change:transform,opacity;
- animation:luemi-demo-like .40s cubic-bezier(.22,.72,.23,1) both}
+ animation:luemi-demo-like .42s cubic-bezier(.23,.72,.25,1) both}
 .real-discovery-home .demo-qa-feed .deck-leaving-special{
  z-index:5;will-change:transform,opacity;
- animation:luemi-demo-special .40s cubic-bezier(.22,.72,.23,1) both}
+ animation:luemi-demo-special .42s cubic-bezier(.23,.72,.25,1) both}
 .real-discovery-home .demo-qa-feed .deck-entering{
  z-index:3;pointer-events:none;will-change:transform,opacity;
- animation:luemi-demo-arrive .43s cubic-bezier(.17,.78,.22,1) both}
+ animation:luemi-demo-arrive .46s cubic-bezier(.19,.72,.24,1) both}
 @keyframes luemi-demo-pass{
  from{transform:translate3d(0,0,0) rotate(0) scale(1);opacity:1}
  to{transform:translate3d(-112%,4%,0) rotate(-4deg) scale(.955);opacity:.1}}
@@ -41,9 +29,8 @@
  from{transform:translate3d(0,0,0) scale(1);opacity:1}
  to{transform:translate3d(0,-105%,0) scale(.96);opacity:.05}}
 @keyframes luemi-demo-arrive{
- 0%{transform:translate3d(0,23px,0) scale(.969);opacity:.72}
- 64%{transform:translate3d(0,-2px,0) scale(1.006);opacity:1}
- 100%{transform:translate3d(0,0,0) scale(1);opacity:1}}
+ from{transform:translate3d(0,15px,0) scale(.979);opacity:.80}
+ to{transform:translate3d(0,0,0) scale(1);opacity:1}}
 .real-discovery-home .demo-qa-feed .feed-v2-photo>.discovery-demo-label{
  z-index:9;top:38px;left:12px;border:1px solid rgba(235,240,247,.34);
  background:rgba(33,41,49,.74);color:#F2F3F5;border-radius:9px;
@@ -51,18 +38,14 @@
 .demo-qa-finished button{display:inline-flex;align-items:center;justify-content:center;gap:5px;
  min-height:30px;padding:5px 9px;border:1px solid rgba(224,229,238,.21);border-radius:11px;
  color:var(--luemi-text);background:rgba(74,82,94,.45);font-size:11px;font:inherit}
-.demo-qa-ribbon>button:disabled{opacity:.48}
-.demo-qa-finished{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ .demo-qa-finished{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
  text-align:center;gap:12px;padding:24px;color:var(--luemi-text)}
 .demo-qa-finished>svg{color:var(--luemi-lavender)}
 .demo-qa-finished>h3{font-size:20px;margin:0}
 .demo-qa-finished>p{color:var(--luemi-text-secondary);font-size:13px;max-width:290px;line-height:1.45;margin:0}
 .demo-qa-finished>button{min-height:42px}
 /* QA never invents distance values for profiles without verified coordinates. */
-@media(max-height:710px){
- .demo-qa-ribbon{min-height:28px}
- .demo-qa-ribbon>button{padding:3px 5px}
-}
+@media(max-height:710px){.real-discovery-home .demo-qa-feed .discovery-deck-layer{inset:2px 0 2px}}
 @media(prefers-reduced-motion:reduce){
  .real-discovery-home .demo-qa-feed .deck-leaving,
  .real-discovery-home .demo-qa-feed .deck-entering{animation:none}
