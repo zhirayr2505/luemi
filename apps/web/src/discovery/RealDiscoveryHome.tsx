@@ -9,7 +9,7 @@ import {fromDemoPerson,type ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
 import {DemoFeedSandbox} from "./DemoFeedSandbox";
 import {selectionHaptic} from "../ui/haptic";
-import {preloadUpcomingFeedPhotos} from "./feed-image-preload";
+import {ensureMountedCoverReady,preloadUpcomingFeedPhotos} from "./feed-image-preload";
 import {warmPublishedPagePhotos} from "../registration/recommendation-warmup";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {GestureArbiter,computedTranslation,fractionalTrack} from "../ui/gesture-arbiter";
@@ -149,7 +149,20 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const transitionTimer=useRef<number|null>(null);
  const abort=useRef<AbortController|null>(null);
  const mediaReleases=useRef<Array<()=>void>>([]);
- useEffect(()=>()=>{abort.current?.abort();
+ const deckRef=useRef<HTMLDivElement>(null);
+ const coverGate=useRef<AbortController|null>(null);
+ const [readyKeys,setReadyKeys]=useState<ReadonlySet<string>>(()=>new Set<string>());
+ const [coverUnavailable,setCoverUnavailable]=useState(false);
+ const waitingGate=useRef<null|{key:string;begin:()=>void}>(null);
+ const coverKey=(id:string,src:string)=>id+"::"+src;
+ const markReady=useCallback((key:string)=>{
+  setReadyKeys(keys=>{if(keys.has(key))return keys;
+   const next=new Set(keys);next.add(key);return next;});
+  const pending=waitingGate.current;
+  if(pending?.key===key){waitingGate.current=null;setCoverUnavailable(false);pending.begin();}
+ },[]);
+ useEffect(()=>()=>{abort.current?.abort();coverGate.current?.abort();
+  waitingGate.current=null;
   for(const release of mediaReleases.current)release();
   mediaReleases.current=[];},[]);
  const finishDeck=()=>{
@@ -161,13 +174,40 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  };
  const leaveCard=(kind:DemoKind,commit:()=>void,currentId:string)=>{
   if(locked.current)return;
-  locked.current=true;pendingCommit.current=commit;
-  setLeaving(currentId);setLeavingKind(kind);
+  locked.current=true;
   selectionHaptic();
-  if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
-  else transitionTimer.current=window.setTimeout(finishDeck,570);
+  const begin=()=>{
+   coverGate.current?.abort();coverGate.current=null;
+   waitingGate.current=null;setCoverUnavailable(false);
+   pendingCommit.current=commit;
+   setLeaving(currentId);setLeavingKind(kind);
+   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
+   else transitionTimer.current=window.setTimeout(finishDeck,570);
+  };
+  const successor=visibleRows[page+1],photoUrl=cardRows[page+1]?.photos[0]?.src;
+  if(successor&&photoUrl){
+   const key=coverKey(successor.id,photoUrl);
+   if(!readyKeys.has(key)){
+    waitingGate.current={key,begin};
+    const controller=new AbortController();coverGate.current=controller;
+    setMessage("Подготавливаем следующую фотографию…");
+    void ensureMountedCoverReady(deckRef.current?.querySelector<HTMLElement>(".deck-depth-one")??null,
+     controller.signal).then(ok=>{
+      if(controller.signal.aborted||waitingGate.current?.key!==key)return;
+      if(ok){markReady(key);}else{
+       // Do not repeat a server-side like or show a grey card. Keep the
+       // completed action pending until the actual queued cover loads.
+       setCoverUnavailable(true);
+       setMessage("Не удалось загрузить следующее фото. Повтори загрузку.");
+      }
+    });
+    return;
+   }
+  }
+  begin();
  };
  useEffect(()=>()=>{if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
+  coverGate.current?.abort();waitingGate.current=null;
   transitionTimer.current=null;pendingCommit.current=null;locked.current=false;},[]);
  useEffect(()=>{
   if(!active||lastRefresh.current===refresh)return;
@@ -317,14 +357,17 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   {loading?<div className="real-discovery-feed-loading"><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/></div>:
    error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
-   <div className={"discovery-deck-stage"+(current?" has-profiles":"")}>{current?
+   <div className={"discovery-deck-stage"+(current?" has-profiles":"")} ref={deckRef}>{current?
     visibleRows.slice(page,page+3).map((person,offset)=>{
      const foreground=offset===0,successor=offset===1;
      const side=(page+offset)%2===1?"right":"left";
+     const key=coverKey(person.id,cardRows[page+offset]?.photos[0]?.src??"");
+     const isReady=readyKeys.has(key);
      const state=foreground?(leaving===person.id?
        " deck-leaving deck-leaving-"+leavingKind:" deck-active"):
        (leaving&&successor?" deck-entering":" deck-queued")+
-       (successor?" deck-depth-one":" deck-depth-two")+" deck-peek-"+side;
+       (successor?" deck-depth-one":" deck-depth-two")+" deck-peek-"+side+
+       (!isReady?" deck-photo-pending":"");
      return <div key={person.id} className={"discovery-deck-layer"+state}
       onAnimationEnd={event=>{
        if(!leaving||event.target!==event.currentTarget)return;
@@ -338,7 +381,8 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
        onAction={foreground?kind=>{void act(kind);}:()=>{}}
        onOpenProfile={foreground?()=>onPerson(person):()=>{}}
        onInterests={foreground?()=>onPerson(person):()=>{}}
-       onMore={foreground?()=>{setMenu(person);setReporting(false);}:undefined}/>
+       onMore={foreground?()=>{setMenu(person);setReporting(false);}:undefined}
+       onCoverReady={()=>markReady(key)}/>
      </div>;
     }):
     <div className="discovery-deck-layer deck-active"><LuemiEmptyState className="real-discovery-empty" icon={Heart}
@@ -357,6 +401,18 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
      <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>
       <RefreshCw size={16}/> Обновить</button></LuemiEmptyState></div>}
    </div>}
+  {coverUnavailable&&waitingGate.current&&
+   <button type="button" className="real-discovery-more" onClick={()=>{
+    const gate=waitingGate.current;if(!gate)return;
+    setCoverUnavailable(false);setMessage("Повторяем загрузку фотографии…");
+    const controller=new AbortController();coverGate.current?.abort();coverGate.current=controller;
+    void ensureMountedCoverReady(deckRef.current?.querySelector<HTMLElement>(".deck-depth-one")??null,
+     controller.signal).then(ok=>{
+      if(controller.signal.aborted||waitingGate.current!==gate)return;
+      if(ok)markReady(gate.key);
+      else{setCoverUnavailable(true);setMessage("Фото недоступно. Попробуй снова.");}
+    });
+   }}>Повторить загрузку фото</button>}
   {!!current&&cursor&&page>=visibleRows.length-1&&<button type="button"
    className="real-discovery-more" disabled={moreBusy} onClick={()=>{void more();}}>
    {moreBusy?"Загружаем…":"Загрузить ещё анкеты"}</button>}
