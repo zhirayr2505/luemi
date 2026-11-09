@@ -2,58 +2,58 @@
  * The real and isolated-demo feeds share this single motion system.
  * Each keyed card stays mounted while another card exits/enters.
  * All moving properties are compositor-only: transform + opacity. */
-.real-discovery-home .discovery-deck-stage.has-profiles{
+.discovery-app .discovery-deck-stage.has-profiles{
  position:relative;isolation:isolate;overflow:visible;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.discovery-deck-layer{
+.discovery-app .discovery-deck-stage.has-profiles>.discovery-deck-layer{
  position:absolute;inset:4px 0 8px;min-height:0;
  transform-origin:50% 74%;backface-visibility:hidden;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-active{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-active{
  z-index:4;pointer-events:auto;
  transform:translate3d(0,0,0) scale(1);opacity:1;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-queued{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-queued{
  z-index:2;pointer-events:none;opacity:.86;
  transition:opacity .18s ease-out;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-queued.deck-photo-pending{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-queued.deck-photo-pending{
  opacity:0;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-depth-two{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-depth-two{
  z-index:1;opacity:.62;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-right{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-right{
  transform:translate3d(18px,8px,0) scale(.975);
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-left{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-left{
  transform:translate3d(-18px,8px,0) scale(.975);
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-depth-two.deck-peek-right{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-depth-two.deck-peek-right{
  transform:translate3d(24px,13px,0) scale(.955);
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-depth-two.deck-peek-left{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-depth-two.deck-peek-left{
  transform:translate3d(-24px,13px,0) scale(.955);
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-leaving{
  z-index:7;pointer-events:none;will-change:transform,opacity;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving-pass{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-leaving-pass{
  animation:luemi-deck-exit-left .46s cubic-bezier(.25,.72,.24,1) both;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving-like{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-leaving-like{
  animation:luemi-deck-exit-right .46s cubic-bezier(.25,.72,.24,1) both;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving-special{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-leaving-special{
  animation:luemi-deck-exit-top .46s cubic-bezier(.25,.72,.24,1) both;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-entering{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-entering{
  z-index:3;pointer-events:none;will-change:transform,opacity;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-entering.deck-peek-right{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-entering.deck-peek-right{
  animation:luemi-deck-arrive-right .48s cubic-bezier(.21,.73,.26,1) both;
 }
-.real-discovery-home .discovery-deck-stage.has-profiles>.deck-entering.deck-peek-left{
+.discovery-app .discovery-deck-stage.has-profiles>.deck-entering.deck-peek-left{
  animation:luemi-deck-arrive-left .48s cubic-bezier(.21,.73,.26,1) both;
 }
 @keyframes luemi-deck-exit-left{
@@ -80,12 +80,12 @@
  * The photo indicators, icons and text remain painted in one retained layer.
  * Only the outer card composites. Actions stay inert via pointer-events and
  * React disabled props, not via sudden opacity flips on promotion. */
-.real-discovery-home .discovery-deck-stage.has-profiles :is(.deck-queued,.deck-entering)
+.discovery-app .discovery-deck-stage.has-profiles :is(.deck-queued,.deck-entering)
  :is(.discovery-action:disabled,.discovery-save-control:disabled,.feed-v2-expand:disabled){
  opacity:1;
 }
 @media(prefers-reduced-motion:reduce){
- .real-discovery-home .discovery-deck-stage.has-profiles>.deck-leaving,
- .real-discovery-home .discovery-deck-stage.has-profiles>.deck-entering{
+ .discovery-app .discovery-deck-stage.has-profiles>.deck-leaving,
+ .discovery-app .discovery-deck-stage.has-profiles>.deck-entering{
   animation:none;will-change:auto}
 }
