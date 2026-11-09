@@ -13,7 +13,7 @@ test("fictional profiles remain isolated; empty genuine feed automatically opens
  assert.match(shell,/params\.get\("luemiDemo"\)==="1"\|\|start==="demo"/);
  assert.match(shell,/id==="feed"&&demoMode\?<DemoFeedSandbox/);
  assert.match(shell,/<LiveDeck key=\{id\+"-"\+feedDraft\.searchScope/);
- assert.match(shell,/<FeedCard person=\{toCard\(person\)\} real/);
+ assert.match(shell,/<FeedCard person=\{cardRows\[page\+offset\]\} real/);
  assert.match(shell,/onExit=\{\(\)=>\{setDemoVisitor\(null\);autoDemoShown\.current=true;setDemoMode\(false\);\}\}/);
  assert.match(shell,/initialFeed\?\.profiles\.length===0/);
  assert.match(shell,/onEmptyFeed=\{offerDemoOnEmpty\}/);
