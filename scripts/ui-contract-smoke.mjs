@@ -136,7 +136,7 @@ const header=read("apps/web/src/discovery/GlobalHeader.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
 assertCheck("Discovery retains four main navigation destinations and three discovery tabs",
- ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Рядом"].every(x=>discovery.includes(x)));
+ ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Мир"].every(x=>discovery.includes(x)));
 assertCheck("feed card retains four explicit reaction controls",["undo","pass","special","like"].every(x=>feedCard.includes('"'+x+'"')));
 assertCheck("photos remain an independent carousel",feedCard.includes("<PhotoCarousel")&&carousel.includes("requestAnimationFrame")&&discovery.includes("target.closest"));
 assertCheck("the card owns photo swipes and profile morph; browse pager never steals them",
