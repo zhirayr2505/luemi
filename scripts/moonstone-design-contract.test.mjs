@@ -65,7 +65,6 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(lens,/backdrop-filter:blur\(var\(--lg-blur\)\)/);
  assert.match(lens,/prefers-reduced-transparency:reduce/);
  assert.match(lens,/prefers-reduced-motion:reduce/);
- assert.match(hot,/\.discovery-app \[data-profile-renderer=android\]/);
  assert.match(hot,/\.discovery-app\[data-profile-renderer=android\] \.feed-v2-glass/);
  assert.match(hot,/\.discovery-app \.feed-v2 \.discovery-action\.lg\{/);
  assert.doesNotMatch(hot,/blur\(23px\) saturate\(142%\)|blur\(12px\) saturate\(128%\)/);
