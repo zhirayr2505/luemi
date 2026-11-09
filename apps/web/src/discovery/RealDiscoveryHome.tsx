@@ -149,7 +149,8 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const transitionTimer=useRef<number|null>(null);
  const abort=useRef<AbortController|null>(null);
  const mediaReleases=useRef<Array<()=>void>>([]);
- useEffect(()=>()=>{for(const release of mediaReleases.current)release();
+ useEffect(()=>()=>{abort.current?.abort();
+  for(const release of mediaReleases.current)release();
   mediaReleases.current=[];},[]);
  const finishDeck=()=>{
   const commit=pendingCommit.current;if(!commit)return;
@@ -209,6 +210,9 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const matchedRows=useMemo(()=>rows.filter(p=>!hiddenIds.has(p.id)),[rows,hiddenIds]);
  // Keep approved For You / Nearby collections untouched.
  const visibleRows=tab==="feed"?matchedRows.filter(p=>realFeedMatches(p,filters,draft.interests)):matchedRows;
+ // Stable display models prevent unrelated likes/save state from rebuilding
+ // the photo arrays and resetting queued carousel props during animation.
+ const cardRows=useMemo(()=>visibleRows.map(toCard),[visibleRows]);
  const current=visibleRows[page];
  useEffect(()=>{setPage(0);setUndoPage(null);},[filters]);
  const expandWorld=async()=>{
@@ -235,7 +239,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    const prepared=warmed?.page??response;
    setRows(existing=>{const ids=new Set(existing.map(x=>x.id));
     return [...existing,...prepared.profiles.filter(x=>!ids.has(x.id))];});
-   setCursor(prepared.nextCursor);
+   setCursor(prepared.nextCursor===cursor?null:prepared.nextCursor);
   }catch{if(!controller.signal.aborted)setMessage("Не удалось загрузить следующие анкеты.");}
   finally{if(abort.current===controller)setMoreBusy(false);}
  },[cursor,moreBusy,busy]);
@@ -244,9 +248,9 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  useEffect(()=>{
   if(!active||tab!=="feed")return;
   const controller=new AbortController();
-  void preloadUpcomingFeedPhotos(visibleRows.slice(page,page+6).map(toCard),controller.signal);
+  void preloadUpcomingFeedPhotos(cardRows.slice(page,page+6),controller.signal);
   return()=>controller.abort();
- },[active,tab,page,visibleRows]);
+ },[active,tab,page,cardRows]);
  // Ask for the next ranked server page before reaching the end of this deck.
  useEffect(()=>{
   if(active&&tab==="feed"&&cursor&&!moreBusy&&!busy&&
@@ -326,7 +330,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
        const departed=["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName);
        if((successor&&arrived)||(foreground&&!visibleRows[page+1]&&departed))finishDeck();
       }}>
-      <FeedCard person={toCard(person)} real saved={saved.has(person.id)}
+      <FeedCard person={cardRows[page+offset]} real saved={saved.has(person.id)}
        canUndo={foreground&&undoPage!==null} active={foreground&&active}
        busy={!foreground||busy||!!leaving}
        onAction={foreground?kind=>{void act(kind);}:()=>{}}
