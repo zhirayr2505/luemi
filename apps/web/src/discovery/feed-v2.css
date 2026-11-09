@@ -109,7 +109,7 @@
 .feed-v2-photo>.carousel-frame{
  position:absolute;inset:0;width:100%;height:100%;
  border:0;border-radius:0;overflow:hidden;
- touch-action:none;contain:paint;transform:translateZ(0)
+ touch-action:none
 }
 .feed-v2-photo .carousel-track{height:100%}
 .feed-v2-photo .carousel-track img{
@@ -117,20 +117,11 @@
  opacity:0;transition:opacity .13s ease-out
 }
 .feed-v2-photo .carousel-track img.is-ready{opacity:1}
-/* The tiny blur texture covers the exact same viewport/crop as the sharp
- * carousel image, with a feather baked into bitmap alpha. No height:58%
- * rectangle or WebView mask: those caused the split face in Android video.
+/* The live portrait is the ONLY fullscreen photographic bitmap. The old
+ * asynchronous canvas blur + two overlay IMG elements were removed: stacked
+ * decoded textures inside translating clipped layers caused Android GPU tiles.
  */
-.feed-v2-photo-ambient{
- position:absolute;inset:0;z-index:3;
- pointer-events:none;overflow:hidden;
- opacity:0;transition:opacity 110ms ease-out
-}
-.feed-v2-photo-ambient img{
- position:absolute;inset:0;display:block;
- width:100%;height:100%;object-fit:fill;opacity:0;
- transition:opacity 110ms ease-out;pointer-events:none
-}
+.feed-v2-photo .carousel-track.is-gpu-safe{will-change:auto}
 .feed-v2-photo-vignette{
  position:absolute;inset:0;z-index:4;pointer-events:none;
  background:linear-gradient(180deg,
@@ -461,10 +452,28 @@
   transition:none
  }
 }
-/* WebView: retain the photo-matched blurred image and all lens reflections
- * but avoid expensive moving backdrop re-sampling during card transitions.
+/* Android Telegram photo compositor: no fullscreen duplicated glass or
+ * nested GPU filters during horizontal gallery swipes and deck movement.
+ * The colorful lens tint/rim remains, but the photo is drawn exactly once.
  */
-.discovery-app[data-profile-renderer=android] .feed-v2-glass,
-.discovery-app[data-profile-renderer=android] .feed-v2 .discovery-action{
- -webkit-backdrop-filter:none;backdrop-filter:none
+.discovery-app[data-profile-renderer=android] .feed-v2-photo>.carousel-frame{
+ contain:none;transform:none
+}
+.discovery-app[data-profile-renderer=android] .feed-v2-photo .carousel-track img{
+ transition:none
+}
+.discovery-app[data-profile-renderer=android][data-feed-visible="true"]
+ :is(.feed-v2-sheet.lg,.feed-v2-expand.lg,.feed-v2 .discovery-action.lg,
+      .feed-v2-photo>.discovery-save-control,.discovery-bottom-nav){
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important
+}
+.discovery-app[data-profile-renderer=android][data-feed-visible="true"]
+ .feed-v2-sheet.lg::before,
+.discovery-app[data-profile-renderer=android][data-feed-visible="true"]
+ .feed-v2 .discovery-action.lg::before{
+ filter:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+ -webkit-mask:none;mask:none;padding:0;
+ background:none;border:1px solid rgba(248,232,255,.14);
+ box-shadow:inset 0 1px rgba(255,255,255,.12),inset 0 -1px rgba(166,176,233,.08);
+ opacity:1
 }
