@@ -16,7 +16,7 @@
 @keyframes feed-v2-pass{to{transform:translate3d(-115%,0,0) rotate(-3deg) scale(.96);opacity:0}}
 @keyframes feed-v2-special{to{transform:translate3d(0,-115%,0) scale(.95);opacity:0}}
 @keyframes moonstone-card-rise{
- from{transform:translate3d(0,-12px,0) scale(.986);opacity:.8}
+ from{transform:translate3d(0,12px,0) scale(.982);opacity:.80}
  to{transform:translate3d(0,0,0) scale(1);opacity:1}
 }
 .discovery-page[aria-label="Лента"] .deck-leaving-pass{
