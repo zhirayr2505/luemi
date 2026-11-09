@@ -4,6 +4,7 @@ import {Bookmark,ChevronDown,ChevronUp,Crown,Heart,Sparkles,Star,X,Undo2,MoreHor
 import {goals} from "../registration/model";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
+import {prepareFeedAmbient} from "./feed-ambient";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
 import {InterestChip} from "../ui/InterestCatalog";
 import {Flag} from "../ui/Flag";
@@ -38,9 +39,13 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const [activePhotoIndex,setActivePhotoIndex]=useState(0);
  // A separate, noninteractive photo glow changes only after carousel settlement.
  const ambientPhoto=person.photos[activePhotoIndex]?.src??person.photos[0]?.src;
+ const nextAmbientPhoto=person.photos[activePhotoIndex+1]?.src;
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
  const glass=useRef<HTMLDivElement>(null);
+ const ambientSlots=useRef<(HTMLImageElement|null)[]>([null,null]);
+ const ambientVisible=useRef(1);
+ const ambientRequest=useRef(0);
  const dim=useRef<HTMLDivElement>(null);
  const scroll=useRef<HTMLDivElement>(null);
  const content=useRef<HTMLDivElement>(null);
@@ -179,6 +184,37 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    run.current=null;};
  },[]);
  useEffect(()=>{
+  const ticket=++ambientRequest.current;
+  let cancelled=false;
+  if(ambientPhoto){
+   void (async()=>{
+    const preview=await prepareFeedAmbient(ambientPhoto);
+    if(cancelled||ambientRequest.current!==ticket)return;
+    const incomingIndex=1-ambientVisible.current;
+    const incoming=ambientSlots.current[incomingIndex];
+    const outgoing=ambientSlots.current[ambientVisible.current];
+    if(!incoming)return;
+    const sources=[preview,ambientPhoto,person.photos[activePhotoIndex]?.fallback]
+     .filter((value):value is string=>!!value);
+    let decoded=false;
+    for(const src of sources){
+     incoming.src=src;
+     try{
+      await incoming.decode();
+      decoded=true;break;
+     }catch{/* Try the original or an API fallback before revealing a tile. */}
+    }
+    if(!decoded||cancelled||ambientRequest.current!==ticket)return;
+    // Keep the old decoded image until the new one is ready; 110ms crossfade.
+    incoming.style.opacity="1";
+    if(outgoing)outgoing.style.opacity="0";
+    ambientVisible.current=incomingIndex;
+   })();
+  }
+  if(nextAmbientPhoto)void prepareFeedAmbient(nextAmbientPhoto);
+  return()=>{cancelled=true;};
+ },[ambientPhoto,nextAmbientPhoto,activePhotoIndex]);
+ useEffect(()=>{
   const stop=()=>suspend.current();
   const hidden=()=>{if(document.hidden)stop();};
   window.addEventListener("blur",stop);
@@ -296,9 +332,8 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
          externalGesture dots prioritize={active} onCoverReady={onCoverReady}
          onIndexChange={setActivePhotoIndex}/>
        {ambientPhoto&&<div className="feed-v2-photo-ambient" aria-hidden="true">
-        <img src={ambientPhoto} alt="" decoding="async" loading={active?"eager":"lazy"} draggable={false}
-         onError={event=>{const fallback=person.photos[activePhotoIndex]?.fallback;
-          if(fallback&&event.currentTarget.src!==fallback)event.currentTarget.src=fallback;}}/>
+        <img ref={element=>{ambientSlots.current[0]=element;}} alt="" decoding="async" draggable={false}/>
+        <img ref={element=>{ambientSlots.current[1]=element;}} alt="" decoding="async" draggable={false}/>
        </div>}
        <div className="feed-v2-photo-vignette" aria-hidden="true"/>
        {person.photos.length>1&&<span className="feed-v2-photo-count">
