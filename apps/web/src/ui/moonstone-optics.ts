@@ -8,6 +8,7 @@ const GLASS_TARGETS=[
  ".real-discovery-settings",".real-feed-filter-apply",
  ".v2-runtime .v2-next",".v2-runtime .v2-draft-save",
  ".discovery-bottom-nav",".discovery-top-tabs",
+ ".feed-v2-sheet",".discovery-action",".feed-v2-expand",
  ".lc-search",".lc-categories-panel",".lc-chat-header"
 ].join(",");
 type ActiveOptic={id:number;el:HTMLElement;left:number;top:number;width:number;height:number};
@@ -34,6 +35,7 @@ export function installMoonstoneOptics(doc:Document):()=>void{
  };
  const move=(e:PointerEvent)=>{
   if(!active||e.pointerId!==active.id)return;
+  if(active.el.matches(".feed-v2-sheet[data-moving=true]"))return;
   pending={x:e.clientX,y:e.clientY};
   if(!raf)raf=requestAnimationFrame(paint);
  };
