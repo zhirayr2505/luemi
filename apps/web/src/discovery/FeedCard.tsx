@@ -40,7 +40,6 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  // A separate, noninteractive photo glow changes only after carousel settlement.
  const ambientPhoto=person.photos[activePhotoIndex]?.src??person.photos[0]?.src;
  const nextAmbientPhoto=person.photos[activePhotoIndex+1]?.src;
- const ambientFallback=person.photos[activePhotoIndex]?.fallback;
  const card=useRef<HTMLElement>(null);
  const details=useRef<HTMLDivElement>(null);
  const glass=useRef<HTMLDivElement>(null);
