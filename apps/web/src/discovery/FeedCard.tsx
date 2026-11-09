@@ -60,34 +60,21 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  const fingerValue=useRef(0);
  const suspend=useRef<()=>void>(()=>{});
  const measureLive=useRef<()=>void>(()=>{});
+ const measureDirty=useRef(false);
+ const measuredCard=useRef({width:-1,height:-1});
+ const setExpandedIfChanged=(next:boolean)=>setExpanded(previous=>previous===next?previous:next);
+ const refreshIfDirty=()=>{if(measureDirty.current)requestAnimationFrame(()=>measureLive.current());};
  const paint=(value:number)=>{
   const p=progress.current=clamp(value,0,1),m=metrics.current;
-  // A single small text surface moves behind the fixed information viewport.
-  // Its layout, clipping rectangle, photograph and action buttons stay fixed.
+  // The single sheet progress is also the CSS driver for button/chip opacity.
+  // This hot path performs zero layout reads and never changes optical filters.
+  card.current?.style.setProperty("--sheet-p",String(p));
   if(content.current)content.current.style.transform=
    `translate3d(0,${m.reveal*(1-p)-m.lift*p}px,0)`;
   if(dim.current)dim.current.style.opacity=String(p*.76);
-  // Keep the information above the buttons; only the photo itself sits
-  // behind the free-floating controls. Fade controls continuously with finger.
-  if(actionsView.current){
-   actionsView.current.style.opacity=String(Math.pow(1-p,1.4));
-   actionsView.current.style.transform=`translate3d(0,${8*p}px,0) scale(${1-.025*p})`;
-   actionsView.current.style.pointerEvents=p>.45?"none":"auto";
-  }
-  if(extraInterests.current){
-   extraInterests.current.style.opacity=String(clamp((p-.18)/.60,0,1));
-   extraInterests.current.style.transform=`translate3d(0,${7*(1-p)}px,0)`;
-   extraInterests.current.style.pointerEvents=p>.8?"auto":"none";
-  }
-  if(moreInterests.current){
-   moreInterests.current.style.opacity=String(clamp(1-p*2.3,0,1));
-   moreInterests.current.style.pointerEvents=p>.32?"none":"auto";
-  }
-  // Composite transforms only in the hot RAF path. No layout reads or blur.
-  if(glass.current){
-    // Static optical material, driven solely by compositor scale.
-    glass.current.style.transform=`translate3d(0,0,0) scaleY(${(m.closed+(m.open-m.closed)*p)/Math.max(1,m.open)})`;
-   }
+  if(actionsView.current)actionsView.current.inert=p>.45;
+  if(glass.current)glass.current.style.transform=
+   `translate3d(0,0,0) scaleY(${(m.closed+(m.open-m.closed)*p)/Math.max(1,m.open)})`;
  };
  const flushFinger=()=>{
   if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}
@@ -108,12 +95,12 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   freeze();target.current=next;
   if(scroll.current)scroll.current.style.overflowY="hidden";
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
-   paint(next);setExpanded(next===1);
-   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
+   paint(next);setExpandedIfChanged(next===1);
+   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";refreshIfDirty();return;
   }
   if(Math.abs(progress.current-next)<.002){
-   paint(next);setExpanded(next===1);
-   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
+   paint(next);setExpandedIfChanged(next===1);
+   if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";refreshIfDirty();return;
   }
   const distance=Math.abs(next-progress.current);
   const duration=Math.max(160,Math.min(320,220+distance*90-Math.abs(releaseVelocity)*45));
@@ -128,15 +115,18 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    if(run.current!==motion)return;
    const value=position(motion,now);paint(value);
    if(now-motion.start>=motion.duration){
-    run.current=null;paint(next);setExpanded(next===1);
+    run.current=null;paint(next);setExpandedIfChanged(next===1);refreshIfDirty();
     if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";
    }else motion.frame=requestAnimationFrame(tick);
   };
   motion.frame=requestAnimationFrame(tick);
  };
  const measure=()=>{
+  if(gesture.current||run.current){measureDirty.current=true;return;}
   const element=card.current;if(!element)return;
+  measureDirty.current=false;
   const height=element.clientHeight;
+  measuredCard.current={width:element.clientWidth,height};
   const size=height<320?"tiny":height<420?"compact":"regular";
   if(element.dataset.size!==size)element.dataset.size=size;
   const style=getComputedStyle(element);
@@ -175,9 +165,13 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
  useLayoutEffect(()=>{
   const element=card.current;
   if(!element)return;
-  const resize=new ResizeObserver(()=>measureLive.current());
+  const resize=new ResizeObserver(()=>{
+   if(gesture.current||run.current){measureDirty.current=true;return;}
+   const width=element.clientWidth,height=element.clientHeight;
+   if(Math.abs(width-measuredCard.current.width)>1||Math.abs(height-measuredCard.current.height)>1)
+    measureLive.current();
+  });
   resize.observe(element);
-  if(content.current)resize.observe(content.current);
   measureLive.current();
   const carousel=photo.current;
   return ()=>{resize.disconnect();carousel?.cancel();
@@ -236,7 +230,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
      gesture.current=null;return;
     }
     g.axis="photo";photo.current?.begin(g.id,g.x,g.y,g.at);
-   }else if(Math.abs(dy)>Math.abs(dx)*1.15&&(g.info||g.zone==="photo")){
+   }else if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)*1.6&&(g.info||g.zone==="photo")){
     freeze();g.startProgress=progress.current;
     const canScroll=!!scroll.current&&scroll.current.scrollHeight>scroll.current.clientHeight+1;
     g.axis=g.info&&g.startProgress>.99&&g.nativeScroll&&canScroll&&
@@ -289,7 +283,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
   if(g?.axis==="photo")photo.current?.finish(g.id,g.x,true);
   if(g?.axis==="info")flushFinger();
   freeze();const resting=g?.axis==="info"?g.resumeTarget:target.current;
-  target.current=resting;setExpanded(resting===1);paint(resting);
+  target.current=resting;setExpandedIfChanged(resting===1);paint(resting);refreshIfDirty();
   if(scroll.current)scroll.current.style.overflowY=resting?"auto":"hidden";
  };
  const available=active&&!busy;
