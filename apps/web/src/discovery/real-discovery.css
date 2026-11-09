@@ -3,7 +3,6 @@
    No changes to approved colors, animations or component geometry. */
 .real-discovery-home .real-discovery-deck{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;height:100%;width:100%}
 .real-discovery-home .real-discovery-deck>.discovery-deck-stage{min-height:0;flex:1}
-.real-discovery-home .real-discovery-deck .discovery-deck-layer{inset:0 0 8px}
 .real-discovery-home .discovery-page{overflow:hidden}
 .real-discovery-home .real-discovery-deck .discovery-empty{height:100%;max-width:480px;margin:0 auto}
 .real-discovery-home .real-discovery-deck .real-discovery-empty{padding:26px 20px;gap:12px}
