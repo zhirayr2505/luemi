@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,RotateCcw,ShieldCheck} from "lucide-react";
+import {RotateCcw,ShieldCheck} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {selectionHaptic} from "../ui/haptic";
 import type {DemoKind,DemoPerson} from "./model";
@@ -63,18 +63,9 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
   };
   setLeavingKind(kind);setLeaving(true);selectionHaptic();
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finish();
-  else timer.current=window.setTimeout(finish,450);
+  else timer.current=window.setTimeout(finish,540);
  };
  return <div className="demo-qa-feed" aria-label="Тестовая лента LUEMI">
-  <div className="demo-qa-ribbon" aria-label="ТЕСТОВЫЙ РЕЖИМ">
-   <span className="demo-qa-mode"><ShieldCheck size={14}/> Демо <span className="demo-qa-counter">{Math.min(page+1,people.length)} / {people.length}</span></span>
-   <button type="button" onClick={reset} disabled={leaving} aria-label="Начать тестовые анкеты заново" title="Заново">
-    <RotateCcw size={15}/>
-   </button>
-   <button type="button" onClick={onExit} aria-label="Вернуться в реальные знакомства">
-    <ArrowLeft size={15}/> В ленту
-   </button>
-  </div>
   {current?<div className="discovery-deck-stage has-profiles">
     {[current,next].filter((person):person is DemoPerson=>Boolean(person)).map((person,i)=>{
      const foreground=i===0;
@@ -83,15 +74,19 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
          (leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active"):
          (leaving?" deck-entering":" deck-queued"))}
        onAnimationEnd={event=>{
-        if(foreground&&leaving&&event.target===event.currentTarget&&
-         ["luemi-demo-pass","luemi-demo-like","luemi-demo-special","luemi-deck-leave"].includes(event.animationName))finish();
+        // Keep the keyed successor through the full rising animation: committing
+        // at the outgoing card's shorter exit used to cause a visible hop.
+        if(!leaving||event.target!==event.currentTarget)return;
+        if((!foreground&&event.animationName==="luemi-demo-arrive")||
+           (foreground&&!next&&["luemi-demo-pass","luemi-demo-like","luemi-demo-special"].includes(event.animationName)))finish();
        }}>
        <FeedCard person={person} saved={saved.has(person.id)}
         canUndo={foreground&&history.length>0}
         active={foreground&&active} busy={!foreground||leaving}
         onAction={foreground?action:()=>{}}
         onOpenProfile={foreground?()=>onOpenProfile(person):()=>{}}
-        onInterests={foreground?()=>onOpenProfile(person):()=>{}}/>
+        onInterests={foreground?()=>onOpenProfile(person):()=>{}}
+        onExitDemo={foreground?onExit:undefined}/>
       </div>;
     })}
   </div>:<div className="demo-qa-finished">
