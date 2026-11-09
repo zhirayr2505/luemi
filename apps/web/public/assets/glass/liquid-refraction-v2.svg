@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" aria-hidden="true">
+  <!-- A small, fixed optical wave for the rim, not a full-screen GPU blur. -->
+  <filter id="luemi-refraction-v2" x="-8%" y="-8%" width="116%" height="116%"
+          color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency=".018 .024"
+                  numOctaves="1" seed="13" result="microRipples"/>
+    <feGaussianBlur in="microRipples" stdDeviation="3.4" result="silkyRipples"/>
+    <feDisplacementMap in="SourceGraphic" in2="silkyRipples"
+                       scale="8" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
