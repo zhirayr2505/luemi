@@ -36,6 +36,29 @@ export async function feedDeckBrowserQa(browser,baseUrl){
   },{timeout:12000});
   assert.equal(await page.locator(".deck-photo-pending").count()>0,true,
    "unready queued card must not show its grey frame at startup");
+  // Arm RAF sampling *before* the tap and the delayed cover's decode.
+  // Otherwise Playwright can observe .deck-entering late (or just before
+  // promotion to .deck-active) and miss a valid 480ms compositor animation.
+  // Collect exactly the same real DOM + decoded image invariant as before.
+  await page.evaluate(()=>{
+   const capture={frames:[],stop:false};
+   window.__luemiFeedDeckFrames=capture;
+   const since=performance.now();
+   const sample=()=>{
+    if(capture.stop||performance.now()-since>7000)return;
+    const entering=document.querySelector(".deck-entering");
+    if(entering){
+     const image=entering.querySelector(".carousel-track img:first-child");
+     capture.frames.push({
+      at:Math.round(performance.now()-since),
+      decoded:!!image?.complete&&image.naturalWidth>0&&image.classList.contains("is-ready"),
+      incomingOpacity:Number(getComputedStyle(entering).opacity)
+     });
+    }
+    requestAnimationFrame(sample);
+   };
+   requestAnimationFrame(sample);
+  });
   await page.locator(".deck-active .discovery-action.discovery-like").click();
   const before=await page.evaluate(()=>{
    const queued=document.querySelector(".deck-depth-one");
@@ -49,25 +72,13 @@ export async function feedDeckBrowserQa(browser,baseUrl){
   assert.ok(before.opacity<.05,"queued card is invisible before its cover decode");
 
   await page.locator(".deck-entering").waitFor({state:"attached",timeout:6000});
-  const frames=await page.evaluate(async()=>{
-   const samples=[];
-   await new Promise(resolve=>{
-    const start=performance.now();
-    const sample=()=>{
-     const entering=document.querySelector(".deck-entering");
-     if(entering){
-      const image=entering.querySelector(".carousel-track img:first-child");
-      samples.push({
-       at:Math.round(performance.now()-start),
-       decoded:!!image?.complete&&image.naturalWidth>0&&image.classList.contains("is-ready"),
-       incomingOpacity:Number(getComputedStyle(entering).opacity)
-      });
-     }
-     if(performance.now()-start<520)requestAnimationFrame(sample);else resolve();
-    };
-    requestAnimationFrame(sample);
-   });
-   return samples;
+  // Let the entering animation complete before reading the already running
+  // frame recorder; it cannot miss its start while the test driver is busy.
+  await page.waitForTimeout(540);
+  const frames=await page.evaluate(()=>{
+   const capture=window.__luemiFeedDeckFrames;
+   capture.stop=true;
+   return capture.frames;
   });
   assert.ok(frames.length>=8,"sample the real WebView compositor over consecutive animation frames");
   assert.ok(frames.every(frame=>frame.decoded),"every entering-frame cover must already be painted");
