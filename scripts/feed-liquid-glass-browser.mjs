@@ -56,7 +56,9 @@ try{
   assert.ok(start.interestsBottom===null||start.interestsBottom<=3,
    width+": compact interest chips are clipped outside the approved panel");
   assert.ok(start.glass.includes("gradient"),width+": transparent optical fill missing");
-  assert.ok(start.rim.includes("gradient"),width+": chromatic rim missing");
+  // Android draws the polished rim with a static 1px border rather than
+  // an offscreen CSS mask that can evict fullscreen photograph tiles.
+  assert.ok(start.rim==="none"||start.rim.includes("gradient"),width+": invalid lens rim");
   assert.equal(start.actionCount,3,width+": pass/special/like must share material");
   assert.equal(start.special,true,width+": star must be optical accent");
   assert.equal(start.blur,"none",width+": Android WebView must avoid moving backdrop blur");
@@ -77,7 +79,9 @@ try{
     rimFilter:rim.filter,
     rimOpacity:Number(rim.opacity),
     rimDepth:parseFloat(rim.paddingTop),
+    rimMask:rim.maskImage,
     rimBorder:parseFloat(surface.borderTopWidth),
+    rimInnerBorder:parseFloat(rim.borderTopWidth),
     actionBorder:parseFloat(action.borderTopWidth),
     shine:light.backgroundImage,
     relief:surface.boxShadow,
@@ -89,9 +93,9 @@ try{
   });
   assert.equal(material?.mode,"safe",width+": Android must use safe lens mode");
   assert.equal(material?.rimFilter,"none",width+": no SVG frame recompositing on Android");
-  assert.ok(material?.rimBackground.includes("conic-gradient")&&
-   material.rimOpacity>=.25&&material.rimOpacity<=.55,
-   width+": rim must be iridescent but subtle, without the thick white halo");
+  assert.ok(material?.rimBackground==="none"&&material.rimOpacity>=.9&&
+   material.rimInnerBorder<=1.25&&material.rimMask==="none",
+   width+": Android rim must be a static thin edge with no GPU mask");
   assert.ok(material?.rimDepth<=3&&material.rimBorder<=1.25&&material.actionBorder<=1.25,
    width+": overbuilt chrome-like border diverges from the approved first reference");
   assert.ok(material?.accentGradient.includes("gradient")&&
@@ -101,71 +105,67 @@ try{
    width+": specular light is missing");
   assert.ok(material?.relief.includes("inset")&&material.actionTint.includes("gradient"),
    width+": glass relief or pill transparency is missing");
-  // Video regression: the old blur occupied 58% of the picture, with a sharp
-  // horizontal edge at the model's nose and a different portrait crop.
+  // The Galaxy A55 recording showed the portrait reduced to a top-left
+  // tile surrounded by lavender blank space. Regression contract: only one
+  // photographic source per slide, 2D transforms, no hidden ambient canvas,
+  // and at most two mounted cards with at most 3 decoded sources per gallery.
   await page.waitForFunction(()=>{
-   const layer=document.querySelector(".deck-active .feed-v2-photo-ambient");
-   const image=layer?.querySelector('img[data-source-photo]');
-   return !!image?.naturalWidth&&Number(getComputedStyle(layer).opacity)>.95;
-  },null,{timeout:6000});
-  const ambient=await page.evaluate(()=>{
-   const hero=document.querySelector(".deck-active .feed-v2-photo");
-   const layer=hero?.querySelector(".feed-v2-photo-ambient");
-   const image=layer?.querySelector('img[data-source-photo]');
-   const h=hero?.getBoundingClientRect(),l=layer?.getBoundingClientRect();
-   if(!hero||!layer||!image||!h||!l)return null;
-   const canvas=document.createElement("canvas");
-   canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
-   const context=canvas.getContext("2d");
-   context.drawImage(image,0,0);
-   const alpha=y=>context.getImageData(Math.round(canvas.width*.5),
-    Math.round(canvas.height*y),1,1).data[3];
+   const image=document.querySelector(".deck-active .carousel-track img:first-child");
+   return !!image?.complete&&image.naturalWidth>0&&image.classList.contains("is-ready");
+  });
+  const audit=()=>page.evaluate(()=>{
+   const stage=document.querySelector(".discovery-deck-stage.has-profiles");
+   const hero=stage?.querySelector(".deck-active .feed-v2-photo");
+   const track=hero?.querySelector(".carousel-track");
+   const frame=hero?.querySelector(".carousel-frame");
+   const img=hero?.querySelector(".carousel-track img:first-child");
    return {
-    top:l.top-h.top,heightDelta:Math.abs(l.height-h.height),
-    alphaTop:alpha(.25),alphaBottom:alpha(.92),
-    source:image.dataset.sourcePhoto,
-    original:hero.querySelector(".carousel-track img:first-child")?.src
+    layers:stage?.querySelectorAll(".discovery-deck-layer").length??0,
+    duplicate:stage?.querySelectorAll(".feed-v2-photo-ambient").length??0,
+    activeSrc:img?.currentSrc,
+    activeReady:!!img?.complete&&!!img?.naturalWidth,
+    sources:hero?.querySelectorAll(".carousel-track img[src]").length??0,
+    trackTransform:track?getComputedStyle(track).transform:"",
+    frameTransform:frame?getComputedStyle(frame).transform:"",
+    frameContain:frame?getComputedStyle(frame).contain:"",
+    navBlur:getComputedStyle(document.querySelector(".discovery-bottom-nav")).backdropFilter
    };
   });
-  assert.ok(ambient&&Math.abs(ambient.top)<2&&ambient.heightDelta<2,
-   width+": the feathered blur must exactly align with the whole photograph");
-  assert.ok(ambient.alphaTop<12&&ambient.alphaBottom>210,
-   width+": blur alpha must be feathered inside bitmap, never a rectangular JPG seam");
-  assert.equal(ambient.source,ambient.original,
-   width+": initial blurred photo source must match the sharp carousel");
+  const before=await audit();
+  assert.ok(before.layers<=2&&before.duplicate===0,
+   width+": old deck or duplicate fullscreen blur remains");
+  assert.ok(before.activeReady&&before.sources<=3,
+   width+": unloaded portrait or too many simultaneous decoded gallery bitmaps");
+  assert.ok(!before.trackTransform.includes("matrix3d")&&before.frameTransform==="none",
+   width+": nested 3D photo compositor causes Android tile eviction");
+  assert.equal(before.navBlur,"none",width+": navigation must not resample live portrait tiles");
   const cdp=await context.newCDPSession(page);
-  // Tap on portrait only: a tap is not an info gesture.
   const portrait={x:Math.round(width*.55),y:Math.round(height*.34)};
   await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{id:1,...portrait}]});
   await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
   await pause(100);
   const tapped=await snapshot(page);
   assert.ok(tapped&&Math.abs(tapped.height-start.height)<2,width+": tap changed sheet height");
-  // Swipe the photo track while the ambient copy is visible. It must be hidden
-  // during the finger drag and decode the new photo before resurfacing.
   const swipe={x:Math.round(width*.79),y:Math.round(height*.36)};
   await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{id:3,...swipe}]});
+  const swipeFrames=[];
   for(let i=1;i<=13;i++){
    await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{
     id:3,x:swipe.x-i*14,y:swipe.y}]});
    await pause(17);
+   swipeFrames.push(await audit());
   }
-  await pause(140);
-  const hidden=await page.evaluate(()=>{
-   const layer=document.querySelector(".deck-active .feed-v2-photo-ambient");
-   return layer?Number(getComputedStyle(layer).opacity):NaN;
-  });
-  assert.ok(hidden<.08,width+": old blurred portrait must disappear during photo swipe");
   await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+  assert.ok(swipeFrames.every(v=>v.layers<=2&&v.duplicate===0&&
+    v.activeReady&&v.sources<=3&&!v.trackTransform.includes("matrix3d")),
+   width+": gallery swipes must not add GPU photo copies or lose decoded covers");
   await page.waitForFunction(()=>{
    const hero=document.querySelector(".deck-active .feed-v2-photo");
    const current=Array.from(hero?.querySelectorAll(".photo-progress button")??[])
     .findIndex(el=>el.classList.contains("current"));
-   const ambient=hero?.querySelector(".feed-v2-photo-ambient");
-   const displayed=ambient?.querySelector('img[data-source-photo][style*="opacity: 1"]');
-   const original=hero?.querySelectorAll(".carousel-track img")[current];
-   return current===1&&displayed?.dataset.sourcePhoto===original?.src&&
-    Number(getComputedStyle(ambient).opacity)>.95;
+   const image=hero?.querySelectorAll(".carousel-track img")[current];
+   return current===1&&!!image?.complete&&image.naturalWidth>0&&
+    image.classList.contains("is-ready");
   },null,{timeout:6000});
   // A deliberate vertical touch on the sheet must not unmount text or remount
   // another glass box while its height tracks the pointer.
