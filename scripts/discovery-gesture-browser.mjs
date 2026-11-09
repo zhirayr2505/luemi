@@ -42,7 +42,7 @@ try{
  await page.locator(".deck-active .feed-v2-card[data-expanded=true]").waitFor({timeout:1800});
  assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
- assert.ok(Math.abs(await offset())<1,"Expanded text reaches the visible endpoint");
+ assert.ok(await offset()<compactOffset-1,"Expanded text moves upward smoothly without recreating the photo");
  const expandedHeight=await info.evaluate(node=>node.clientHeight);
  const cardHeight=await page.locator(".deck-active .feed-v2-card").evaluate(node=>node.clientHeight);
  assert.ok(expandedHeight>=height&&expandedHeight<cardHeight,
@@ -57,10 +57,13 @@ try{
 
  await swipe(".deck-active .feed-v2-details .discovery-place",-205,0);
  await page.waitForTimeout(430);
- assert.equal((await selected())?.trim(),"Для тебя","Feed text swipes to For You");
+ assert.equal((await selected())?.trim(),"Лента","Feed text horizontal swipes belong to the photo carousel");
+ await swipe(".discovery-top-tabs",-205,0);
+ await page.waitForTimeout(430);
+ assert.equal((await selected())?.trim(),"Для тебя","Shared upper tabs swipe to For You");
  await swipe(".fy-hero h2",-205,0);
  await page.waitForTimeout(430);
- assert.equal((await selected())?.trim(),"Рядом","For You text swipes to Nearby");
+ assert.equal((await selected())?.trim(),"Мир","For You text swipes to World/Nearby");
  await swipe(".nb-head h2",205,0);
  await page.waitForTimeout(430);
  assert.equal((await selected())?.trim(),"Для тебя","Nearby text swipes back to For You");
