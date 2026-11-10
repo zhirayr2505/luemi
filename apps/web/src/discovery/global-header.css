@@ -8,16 +8,16 @@
 .lh-header button{font:inherit;cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent}
 .lh-center{
  position:absolute;top:var(--brand-top);left:14px;
- transform:none;height:42px;width:120px;pointer-events:none;
+ transform:none;height:38px;width:108px;pointer-events:none;
 }
 .lh-island{
  position:absolute;left:0;top:0;z-index:4;transform:scale(calc(1 + var(--lh-impact)));
- display:grid;place-items:center;width:120px;height:40px;padding:0;border:0;
+ display:grid;place-items:center;width:108px;height:36px;padding:0;border:0;
  border-radius:0;background:transparent;box-shadow:none;
  backdrop-filter:none;-webkit-backdrop-filter:none;transform-origin:center;
 }
 .lh-island img{
- display:block;grid-area:1/1;width:120px;height:40px;max-width:100%;object-fit:contain;
+ display:block;grid-area:1/1;width:108px;height:36px;max-width:100%;object-fit:contain;
  pointer-events:none;filter:drop-shadow(0 1px 2px rgba(24,28,35,.20));
 }
 .lh-island .lh-logo-contrast{

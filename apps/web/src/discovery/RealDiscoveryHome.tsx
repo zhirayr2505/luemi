@@ -148,38 +148,46 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const [leavingKind,setLeavingKind]=useState<DemoKind|null>(null);
  const locked=useRef(false),pendingCommit=useRef<(()=>void)|null>(null);
  const transitionTimer=useRef<number|null>(null);
+ const gateDeadline=useRef<number|null>(null),requestPending=useRef(false);
  const abort=useRef<AbortController|null>(null);
  const mediaReleases=useRef<Array<()=>void>>([]);
  const deckRef=useRef<HTMLDivElement>(null);
  const coverGate=useRef<AbortController|null>(null);
  const [readyKeys,setReadyKeys]=useState<ReadonlySet<string>>(()=>new Set<string>());
- const [coverUnavailable,setCoverUnavailable]=useState(false);
  const waitingGate=useRef<null|{key:string;begin:()=>void}>(null);
  const coverKey=(id:string,src:string)=>id+"::"+src;
  const markReady=useCallback((key:string)=>{
   setReadyKeys(keys=>{if(keys.has(key))return keys;
    const next=new Set(keys);next.add(key);return next;});
   const pending=waitingGate.current;
-  if(pending?.key===key){waitingGate.current=null;setCoverUnavailable(false);pending.begin();}
+  if(pending?.key===key){waitingGate.current=null;pending.begin();}
  },[]);
  useEffect(()=>()=>{abort.current?.abort();coverGate.current?.abort();
   waitingGate.current=null;
   for(const release of mediaReleases.current)release();
   mediaReleases.current=[];},[]);
+ const clearGate=()=>{
+  if(gateDeadline.current!==null)window.clearTimeout(gateDeadline.current);
+  gateDeadline.current=null;
+  coverGate.current?.abort();coverGate.current=null;waitingGate.current=null;
+ };
  const finishDeck=()=>{
   const commit=pendingCommit.current;if(!commit)return;
   pendingCommit.current=null;
   if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
   transitionTimer.current=null;
-  commit();setLeaving(null);setLeavingKind(null);locked.current=false;
+  clearGate();
+  // The animation event is only an optimization. Always release the deck,
+  // including when navigation, callback code or WebView interrupts it.
+  try{commit();}
+  finally{setLeaving(null);setLeavingKind(null);locked.current=false;requestPending.current=false;setBusy(false);}
  };
  const leaveCard=(kind:DemoKind,commit:()=>void,currentId:string)=>{
   if(locked.current)return;
   locked.current=true;
   selectionHaptic();
   const begin=()=>{
-   coverGate.current?.abort();coverGate.current=null;
-   waitingGate.current=null;setCoverUnavailable(false);
+   clearGate();
    pendingCommit.current=commit;
    setLeaving(currentId);setLeavingKind(kind);
    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
@@ -192,15 +200,22 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     waitingGate.current={key,begin};
     const controller=new AbortController();coverGate.current=controller;
     setMessage("Подготавливаем следующую фотографию…");
+    // A failed decode must never retain the permanent locked state.
+    // The deadline also covers a suspended Promise in Android WebView.
+    gateDeadline.current=window.setTimeout(()=>{
+     if(waitingGate.current?.key!==key)return;
+     setMessage("Фото ещё загружается — переход продолжается.");
+     begin();
+    },2400);
     void ensureMountedCoverReady(deckRef.current?.querySelector<HTMLElement>(".deck-depth-one")??null,
-     controller.signal).then(ok=>{
-      if(controller.signal.aborted||waitingGate.current?.key!==key)return;
-      if(ok){markReady(key);}else{
-       // Do not repeat a server-side like or show a grey card. Keep the
-       // completed action pending until the actual queued cover loads.
-       setCoverUnavailable(true);
-       setMessage("Не удалось загрузить следующее фото. Повтори загрузку.");
-      }
+     controller.signal,2200).then(ok=>{
+     if(controller.signal.aborted||waitingGate.current?.key!==key)return;
+     if(ok){markReady(key);}
+     else{setMessage("Следующее фото ещё загружается.");begin();}
+    }).catch(()=>{
+     if(!controller.signal.aborted&&waitingGate.current?.key===key){
+      setMessage("Не удалось подготовить фото, продолжаем ленту.");begin();
+     }
     });
     return;
    }
@@ -208,8 +223,16 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   begin();
  };
  useEffect(()=>()=>{if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
+  if(gateDeadline.current!==null)window.clearTimeout(gateDeadline.current);
   coverGate.current?.abort();waitingGate.current=null;
-  transitionTimer.current=null;pendingCommit.current=null;locked.current=false;},[]);
+  transitionTimer.current=null;gateDeadline.current=null;pendingCommit.current=null;locked.current=false;requestPending.current=false;},[]);
+ // Recovery after Telegram backgrounds or resumes the page.
+ useEffect(()=>{
+  const recover=()=>{const gate=waitingGate.current;if(gate)gate.begin();if(pendingCommit.current)finishDeck();};
+  const onVisibility=()=>{if(document.visibilityState==="visible")recover();};
+  window.addEventListener("focus",recover);document.addEventListener("visibilitychange",onVisibility);
+  return()=>{window.removeEventListener("focus",recover);document.removeEventListener("visibilitychange",onVisibility);};
+ });
  useEffect(()=>{
   if(!active||lastRefresh.current===refresh)return;
   lastRefresh.current=refresh;
@@ -306,7 +329,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   }
  },[active,tab,cursor,moreBusy,busy,page,visibleRows.length,more]);
  const act=async(kind:DemoKind|"undo")=>{
-  if(locked.current||busy)return;
+  if(locked.current||requestPending.current||busy)return;
   if(kind==="save"){
    if(current){onSave(current.id);setMessage(saved.has(current.id)?"Убрано из закладок":"Добавлено в закладки этой сессии");selectionHaptic();}
    return;
@@ -321,20 +344,26 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    leaveCard(kind,()=>{setPage(from+1);setUndoPage(from);setMessage("Анкета пропущена");},current.id);
    return;
   }
-  setBusy(true);setMessage("");
+  requestPending.current=true;setBusy(true);setMessage("");
   try{
    const result=await likePublishedUser(current.id,kind==="special"?"super":"ordinary");
    const targetId=current.id;
    leaveCard(kind,()=>{
-    onHide(targetId);setUndoPage(null);setBusy(false);
+    onHide(targetId);setUndoPage(null);
     setMessage(result.matched?"Взаимная симпатия!":kind==="special"?`Особенная симпатия отправлена · осталось ${result.superlikes.total}`:"Симпатия отправлена");
     if(result.matched&&result.matchId)onMatched(current,result.matchId);
    },targetId);
-  }catch(error){setBusy(false);
+  }catch(error){
    const reason=error instanceof Error?error.message:"";
    setMessage(reason==="superlikes_empty"?"Особенные симпатии закончились. Попробуй позже.":
     reason==="daily_like_limit"?"Дневной лимит симпатий закончился.":
-    "Не удалось поставить симпатию. Повтори попытку.");}
+    "Не удалось поставить симпатию. Повтори попытку.");
+  }finally{
+   requestPending.current=false;
+   // Successful actions stay guarded until the card commits.
+   // An API failure always unlocks immediately.
+   if(!locked.current)setBusy(false);
+  }
  };
  const block=async()=>{
   if(!menu||busy)return;
@@ -386,7 +415,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
       }}>
       <FeedCard person={cardRows[page+offset]} real saved={saved.has(person.id)}
        canUndo={foreground&&undoPage!==null} active={foreground&&active}
-       busy={!foreground||busy||!!leaving}
+       busy={!foreground||busy||!!leaving||locked.current}
        onAction={foreground?kind=>{void act(kind);}:()=>{}}
        onOpenProfile={foreground?()=>onPerson(person):()=>{}}
        onInterests={foreground?()=>onPerson(person):()=>{}}
@@ -410,18 +439,6 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
      <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>
       <RefreshCw size={16}/> Обновить</button></LuemiEmptyState></div>}
    </div>}
-  {coverUnavailable&&waitingGate.current&&
-   <button type="button" className="real-discovery-more" onClick={()=>{
-    const gate=waitingGate.current;if(!gate)return;
-    setCoverUnavailable(false);setMessage("Повторяем загрузку фотографии…");
-    const controller=new AbortController();coverGate.current?.abort();coverGate.current=controller;
-    void ensureMountedCoverReady(deckRef.current?.querySelector<HTMLElement>(".deck-depth-one")??null,
-     controller.signal).then(ok=>{
-      if(controller.signal.aborted||waitingGate.current!==gate)return;
-      if(ok)markReady(gate.key);
-      else{setCoverUnavailable(true);setMessage("Фото недоступно. Попробуй снова.");}
-    });
-   }}>Повторить загрузку фото</button>}
   {!!current&&cursor&&page>=visibleRows.length-1&&<button type="button"
    className="real-discovery-more" disabled={moreBusy} onClick={()=>{void more();}}>
    {moreBusy?"Загружаем…":"Загрузить ещё анкеты"}</button>}

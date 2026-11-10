@@ -59,3 +59,28 @@ test("background photo decoding is shared, bounded and survives page changes",()
  assert.match(live,/preloadUpcomingFeedPhotos\(cardRows\.slice\(page,page\+6\)/);
  assert.match(demo,/preloadUpcomingFeedPhotos\(people\.slice\(page,page\+6\)/);
 });
+
+test("real deck always settles a finished action even when media preparation fails",()=>{
+ assert.match(live,/gateDeadline\.current=window\.setTimeout/);
+ assert.match(live,/if\(ok\)\{markReady\(key\);\}/);
+ assert.match(live,/\.catch\(\(\)=>\{/);
+ assert.match(live,/try\{commit\(\);\}\s*finally\{/);
+ assert.match(live,/locked\.current=false/);
+ assert.match(live,/requestPending\.current=true/);
+ assert.match(live,/\}finally\{\s*requestPending\.current=false/);
+ assert.doesNotMatch(live,/coverUnavailable/,"failed covers must not leave a manual-retry-only lock");
+});
+
+test("focus and expanded copy share one retained photo and one progress source",()=>{
+ const visual=read("apps/web/src/discovery/moonstone-discovery.css");
+ assert.match(feed,/releasePhotoHold\(event\.pointerId\)/);
+ assert.match(feed,/window\.addEventListener\("blur",resetHold\)/);
+ assert.match(feed,/--profile-main-p/);
+ assert.match(feed,/--profile-interests-p/);
+ assert.match(feed,/--profile-extra-p/);
+ assert.match(visual,/\.moonstone-profile-drawer\{[\s\S]*?border:0;border-radius:0/);
+ assert.match(visual,/\.moonstone-reveal-interests\{/);
+ assert.match(visual,/\.discovery-app\[data-photo-focus=true\]/);
+ assert.doesNotMatch(visual,/@keyframes moonstone-photo-focus-away/);
+ assert.match(feed,/current\.max\*\.72/);
+});
