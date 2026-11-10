@@ -8,7 +8,7 @@
 .lh-header button{font:inherit;cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent}
 .lh-center{
  position:absolute;top:var(--brand-top);left:14px;
- transform:none;height:38px;width:108px;pointer-events:none;
+ transform:translateY(-4px);height:38px;width:108px;pointer-events:none;
 }
 .lh-island{
  position:absolute;left:0;top:0;z-index:4;transform:scale(calc(1 + var(--lh-impact)));
