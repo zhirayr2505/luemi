@@ -121,6 +121,21 @@ test("Moonstone ships one dark shell, not a dormant legacy light palette",()=>{
  assert.doesNotMatch(shell,/\.luemi-shell\[data-theme=dark\]\s*\{/,
   "the old dark-theme override must not duplicate the Moonstone source of truth");
 });
+test("square and landscape feed photos become one cached portrait bitmap",()=>{
+ const adaptive=read("apps/web/src/discovery/adaptive-feed-photo.ts");
+ const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
+ const card=read("apps/web/src/discovery/FeedCard.tsx");
+ assert.match(adaptive,/const OUTPUT_ASPECT=6\/13/);
+ assert.match(adaptive,/needsAdaptiveFeedPhoto/);
+ assert.match(adaptive,/context\.filter=`blur\(/);
+ assert.match(adaptive,/sharp\.globalCompositeOperation="destination-in"/);
+ assert.match(adaptive,/MAX_CACHE_ENTRIES=18/);
+ assert.match(carousel,/adaptiveFullscreen/);
+ assert.match(carousel,/URL\.revokeObjectURL/);
+ assert.match(card,/gpuSafe onCoverReady=\{onCoverReady\} adaptiveFullscreen/);
+ assert.doesNotMatch(adaptive,/requestAnimationFrame|setInterval/,
+  "one-time photo preparation must not enter the gesture animation path");
+});
 test("deleted registration language flow and artificial photo cropping stay deleted",()=>{
  const steps=read("apps/web/src/registration/Steps.tsx");
  const form=read("apps/web/src/registration/v2/RealRegistration.tsx");

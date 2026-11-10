@@ -1,4 +1,4 @@
-import {useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
+import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {BadgeCheck,ChevronDown,ChevronRight,ChevronUp,Heart,MapPin,MoreHorizontal,Star,X} from "lucide-react";
 import {goals} from "../registration/model";
@@ -92,6 +92,7 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
 }){
  const goal=goals.find(item=>item.id===person.goal);
  const [expanded,setExpanded]=useState(false),[activePhotoIndex,setActivePhotoIndex]=useState(0);
+ const [adaptiveSources,setAdaptiveSources]=useState<{personId:string;sources:Record<number,string>}>({personId:person.id,sources:{}});
  const card=useRef<HTMLElement>(null),drawer=useRef<HTMLDivElement>(null),scroll=useRef<HTMLDivElement>(null);
  const photo=useRef<PhotoCarouselHandle>(null),gesture=useRef<ExpandGesture|null>(null);
  const progress=useRef(0),target=useRef<0|1>(0),travel=useRef(310),run=useRef<SettleRun|null>(null);
@@ -99,7 +100,12 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  const available=active&&!busy;
  const location=useMemo(()=>[person.city,countryName(person.countryCode,person.country)].filter(Boolean).join(", "),[person.city,person.country,person.countryCode]);
  const distance=distanceLabel(real?person.distanceKm:demoDistanceKm,real);
- const currentPhoto=person.photos[Math.min(activePhotoIndex,Math.max(0,person.photos.length-1))]?.src;
+ const rememberAdaptiveSource=useCallback((index:number,source:string)=>{
+  setAdaptiveSources(current=>current.personId===person.id?
+   {...current,sources:{...current.sources,[index]:source}}:{personId:person.id,sources:{[index]:source}});
+ },[person.id]);
+ const currentPhotoIndex=Math.min(activePhotoIndex,Math.max(0,person.photos.length-1));
+ const currentPhoto=(adaptiveSources.personId===person.id?adaptiveSources.sources[currentPhotoIndex]:undefined)??person.photos[currentPhotoIndex]?.src;
  const languageNames=person.languages.map(id=>languages.find(item=>item.id===id)?.name??id).filter(Boolean);
  const paint=(next:number)=>{
   const value=progress.current=clamp(next);card.current?.style.setProperty("--profile-p",String(value));
@@ -189,7 +195,8 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
    onClickCapture={event=>{if(performance.now()<blockClickUntil.current){event.preventDefault();event.stopPropagation();}}}>
    <div className="moonstone-photo">
     <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age} externalGesture
-     prioritize={active} gpuSafe onCoverReady={onCoverReady} onIndexChange={setActivePhotoIndex}/>
+     prioritize={active} gpuSafe onCoverReady={onCoverReady} adaptiveFullscreen
+     onResolvedSource={rememberAdaptiveSource} onIndexChange={setActivePhotoIndex}/>
     {currentPhoto&&<img className="moonstone-blur-photo" src={currentPhoto} alt="" aria-hidden="true" decoding="async"/>}
     <div className="moonstone-photo-shade" aria-hidden="true"/>
     {!real&&(onExitDemo?<button type="button" className="moonstone-demo-label" onClick={onExitDemo}>Демо</button>:<span className="moonstone-demo-label">Демо</span>)}

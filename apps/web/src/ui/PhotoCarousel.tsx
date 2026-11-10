@@ -1,9 +1,11 @@
 import {forwardRef,memo,useCallback,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {noteFeedImageDecoded,preloadFeedImage} from "../discovery/feed-image-preload";
+import {needsAdaptiveFeedPhoto,prepareAdaptiveFeedPhoto} from "../discovery/adaptive-feed-photo";
 interface Slide {id:string;src:string;fallback?:string}
 interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;
- prioritize?:boolean;gpuSafe?:boolean;onIndexChange?:(index:number)=>void;onCoverReady?:()=>void}
+ prioritize?:boolean;gpuSafe?:boolean;adaptiveFullscreen?:boolean;onIndexChange?:(index:number)=>void;
+ onResolvedSource?:(index:number,source:string)=>void;onCoverReady?:()=>void}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
 export interface PhotoCarouselHandle {
  canAdvance:(direction:-1|1)=>boolean;
@@ -12,15 +14,18 @@ export interface PhotoCarouselHandle {
  finish:(id:number,x:number,cancelled:boolean)=>void;
  cancel:()=>void;
 }
-const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,prioritize=true,gpuSafe=false,onIndexChange,onCoverReady},ref) {
+const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,prioritize=true,gpuSafe=false,adaptiveFullscreen=false,onIndexChange,onResolvedSource,onCoverReady},ref) {
  const [index,setIndex]=useState(0);
  const tracking=useRef<Tracking|null>(null);
  const frame=useRef<HTMLDivElement>(null);
  const photoTrack=useRef<HTMLDivElement>(null);
  const frameId=useRef<number|null>(null);
  const pendingPhoto=useRef<number|null>(null);
+ const adaptiveUrls=useRef(new Map<number,string>());
  const onCoverReadyRef=useRef(onCoverReady);
+ const onResolvedSourceRef=useRef(onResolvedSource);
  onCoverReadyRef.current=onCoverReady;
+ onResolvedSourceRef.current=onResolvedSource;
  // Use the image identities rather than a new array reference from card
  // re-renders. A parent state update must never cancel a finger swipe.
  const photoSignature=photos.map(photo=>photo.id+"::"+photo.src).join("|");
@@ -31,7 +36,9 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const flush=()=>{
    if(frameId.current!==null){window.cancelAnimationFrame(frameId.current);frameId.current=null;}
  };
- useEffect(()=>()=>{flush();pendingPhoto.current=null;},[]);
+ const releaseAdaptiveUrls=()=>{for(const url of adaptiveUrls.current.values())URL.revokeObjectURL(url);adaptiveUrls.current.clear();};
+ useEffect(()=>()=>{flush();pendingPhoto.current=null;releaseAdaptiveUrls();},[]);
+ useEffect(()=>()=>releaseAdaptiveUrls(),[photoSignature]);
  const renderOffset=useCallback((baseIndex:number,dx:number)=>{
    const el=photoTrack.current;if(!el)return;
    // Feed uses a 2D slide translation on Android instead of forcing a wide
@@ -61,14 +68,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
   // only the needed image prevents adjacent full-size bitmap allocation.
   if(gpuSafe&&!image.getAttribute("src"))image.src=photos[i].src;
   void preloadFeedImage(photos[i].src);
-  if(typeof image.decode==="function")void image.decode().then(()=>{
-   if(!image.isConnected||image.naturalWidth===0)return;
-   image.classList.add("is-ready");noteFeedImageDecoded(image.currentSrc||image.src);
-   if(pendingPhoto.current===i){pendingPhoto.current=null;selectPhoto(i);}
-  },()=>{if(image.naturalWidth>0){
-   image.classList.add("is-ready");
-   if(pendingPhoto.current===i){pendingPhoto.current=null;selectPhoto(i);}
-  }});
+  if(image.complete&&image.naturalWidth>0)revealDecoded(image,i);
  };
  const startAt=(id:number,x:number,y:number,at:number,horizontal=false)=>{
    pendingPhoto.current=null;
@@ -176,6 +176,24 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  // image finishes decoding. Never expose a grey GPU tile mid-swipe in WebView.
  const revealDecoded=(image:HTMLImageElement,photoIndex:number)=>{
   const source=image.currentSrc||image.src;
+  if(adaptiveFullscreen&&image.dataset.adaptiveReady!=="true"&&
+   needsAdaptiveFeedPhoto(image.naturalWidth,image.naturalHeight)){
+   if(image.dataset.adaptivePreparing==="true")return;
+   image.dataset.adaptivePreparing="true";
+   void prepareAdaptiveFeedPhoto(source,image.naturalWidth,image.naturalHeight).then(blob=>{
+    delete image.dataset.adaptivePreparing;
+    if(!blob||!image.isConnected||(image.currentSrc||image.src)!==source){
+     if(image.isConnected&&(image.currentSrc||image.src)===source)revealDecoded(image,photoIndex);
+     return;
+    }
+    const previous=adaptiveUrls.current.get(photoIndex);if(previous)URL.revokeObjectURL(previous);
+    const resolved=URL.createObjectURL(blob);adaptiveUrls.current.set(photoIndex,resolved);
+    image.dataset.adaptiveReady="true";image.dataset.adaptiveOrigin=source;
+    image.classList.remove("is-ready");image.src=resolved;
+    onResolvedSourceRef.current?.(photoIndex,resolved);
+   });
+   return;
+  }
   const reveal=()=>{
    if(image.isConnected&&(image.currentSrc||image.src)===source&&image.naturalWidth>0){
     // One-way readiness class. Re-rendering a queued card can no longer reset
@@ -203,6 +221,8 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
        className="feed-carousel-photo"
        onLoad={event=>revealDecoded(event.currentTarget,i)}
        onError={event=>{const image=event.currentTarget,fallback=p.fallback;
+        const origin=image.dataset.adaptiveOrigin;
+        if(origin&&image.src!==origin){delete image.dataset.adaptiveOrigin;delete image.dataset.adaptiveReady;image.src=origin;return;}
         if(fallback&&image.src!==fallback){
          image.classList.remove("is-ready");image.src=fallback;
          void preloadFeedImage(fallback);
