@@ -1,19 +1,11 @@
 /**
- * The banner SVG includes the original approved raster wordmark unchanged,
- * centered inside a true Soft Plum glass composition. The public converter
- * returns a Telegram-compatible JPEG. No personal data is sent to the image service.
- * The SVG is self-hosted and can be pre-rendered locally into JPEG later.
+ * The /start photo is a locally served JPEG, pre-rendered from the branded
+ * source SVG with the approved original LUEMI wordmark intact.
+ * Runtime delivery never depends on an external image-conversion service.
  */
 export function welcomePhotoUrl(origin: string): string {
-  const artwork = new URL("/assets/telegram/luemi-welcome-banner.svg", origin);
-  const image = new URL("https://wsrv.nl/");
-  image.searchParams.set("url", artwork.toString());
-  image.searchParams.set("w", "1200");
-  image.searchParams.set("h", "700");
-  image.searchParams.set("fit", "cover");
-  image.searchParams.set("output", "jpg");
-  image.searchParams.set("q", "90");
-  return image.toString();
+  // Static, first-party JPEG. No third-party image proxy or user data.
+  return new URL("/assets/telegram/luemi-welcome-banner.jpg", origin).toString();
 }
 
 export interface WelcomePhotoMessage {

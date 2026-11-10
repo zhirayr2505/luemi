@@ -4,9 +4,11 @@
 
 The /start webhook now sends one branded photo message with an inline
 native web_app button. The source is the approved
-`wordmark_original_raster_alpha_W06.webp` raster; an original self-hosted SVG composition includes the exact wordmark
-and supplies a JPEG through an image conversion proxy (wsrv.nl). The proxy receives only a public static image URL; never
-Telegram user IDs, auth tokens or private profile data.
+`wordmark_original_raster_alpha_W06.webp` raster, included without
+modification in the branded Soft Plum SVG artwork. GitHub Actions pre-renders
+this design to `apps/web/public/assets/telegram/luemi-welcome-banner.jpg`.
+Telegram fetches the static JPEG from LUEMI itself; no external converter,
+Telegram user IDs or private profile data are sent to other image services.
 
 The bot calls sendPhoto explicitly so a rejected/unavailable image
 falls back to a regular sendMessage with identical button and caption.
@@ -17,9 +19,8 @@ New/unpublished/unknown: “Начать знакомство 💜”.
 Published: “Продолжить знакомство 💜”.
 Invite-only: “Открыть LUEMI 💜”.
 
-Conversion to JPEG still uses an external image proxy. After visual
-approval, replace it with a self-hosted pre-rendered JPEG to remove the
-third-party runtime dependency.
+The self-hosted JPEG is generated automatically from the SVG on a push to
+`main`; the sent `sendPhoto` URL is served directly by LUEMI.
 
 ## User-facing behavior
 

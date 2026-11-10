@@ -13,13 +13,12 @@ const config: ApiConfig = {
   healthKey: "h".repeat(32), logger: false
 };
 
-test("composed welcome banner is converted to a JPEG; no user data in URL", () => {
+test("approved branded JPEG is served from our own origin, with no external proxy", () => {
   const url = new URL(welcomePhotoUrl(config.origin));
-  assert.equal(url.origin, "https://wsrv.nl");
-  assert.equal(url.searchParams.get("output"), "jpg");
-  assert.equal(url.searchParams.get("fit"), "cover");
-  assert.equal(url.searchParams.get("url"), config.origin + "/assets/telegram/luemi-welcome-banner.svg");
-  assert.doesNotMatch(url.toString(), /fake-credential|telegram_id|chat_id/);
+  assert.equal(url.origin, config.origin);
+  assert.equal(url.pathname, "/assets/telegram/luemi-welcome-banner.jpg");
+  assert.equal(url.search, "");
+  assert.doesNotMatch(url.toString(), /wsrv|fake-credential|telegram_id|chat_id/);
 });
 
 test("signed /start sends a single branded photo with native Mini App button", async () => {
