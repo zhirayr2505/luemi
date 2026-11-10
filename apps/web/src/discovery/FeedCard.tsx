@@ -326,7 +326,7 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
      {person.about&&<div className="moonstone-detail-section moonstone-reveal-about"><h3>О себе</h3><p className="moonstone-reveal-text">{person.about}</p></div>}
      {person.interests.length>0&&<div className="moonstone-detail-section moonstone-reveal-interests"><h3>Интересы</h3>
       <div className="moonstone-interest-list">{person.interests.map((id,index)=><InterestChip key={`${id}-${index}`} id={id}/>)}</div></div>}
-     {languageNames.length>0&&<div className="moonstone-detail-section moonstone-reveal-extra"><h3>Языки</h3><p>{languageNames.join(" · ")}</p></div>
+     {languageNames.length>0&&<div className="moonstone-detail-section moonstone-reveal-extra"><h3>Языки</h3><p>{languageNames.join(" · ")}</p></div>}
      {person.likedYouKind&&<p className="moonstone-liked-you moonstone-reveal-extra">Ты уже понравился(ась) этому человеку</p>}
     </div>
    </section>
