@@ -4,9 +4,8 @@
 
 The /start webhook now sends one branded photo message with an inline
 native web_app button. The source is the approved
-`wordmark_original_raster_alpha_W06.webp` raster; an external
-image conversion proxy (wsrv.nl) gives Telegram a JPEG on a Soft Plum
-background. The proxy receives only a public static image URL; never
+`wordmark_original_raster_alpha_W06.webp` raster; an original self-hosted SVG composition includes the exact wordmark
+and supplies a JPEG through an image conversion proxy (wsrv.nl). The proxy receives only a public static image URL; never
 Telegram user IDs, auth tokens or private profile data.
 
 The bot calls sendPhoto explicitly so a rejected/unavailable image
@@ -18,9 +17,9 @@ New/unpublished/unknown: “Начать знакомство 💜”.
 Published: “Продолжить знакомство 💜”.
 Invite-only: “Открыть LUEMI 💜”.
 
-The current external image proxy is an interim delivery solution.
-Prefer a locally hosted pre-rendered JPEG when a branded banner asset
-is available, avoiding the third-party uptime dependency.
+Conversion to JPEG still uses an external image proxy. After visual
+approval, replace it with a self-hosted pre-rendered JPEG to remove the
+third-party runtime dependency.
 
 ## User-facing behavior
 

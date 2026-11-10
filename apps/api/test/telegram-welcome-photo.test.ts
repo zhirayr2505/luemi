@@ -13,13 +13,12 @@ const config: ApiConfig = {
   healthKey: "h".repeat(32), logger: false
 };
 
-test("logo artwork is transformed to a JPEG with plum canvas; no user data in URL", () => {
+test("composed welcome banner is converted to a JPEG; no user data in URL", () => {
   const url = new URL(welcomePhotoUrl(config.origin));
   assert.equal(url.origin, "https://wsrv.nl");
   assert.equal(url.searchParams.get("output"), "jpg");
-  assert.equal(url.searchParams.get("fit"), "contain");
-  assert.equal(url.searchParams.get("cbg"), "211725");
-  assert.equal(url.searchParams.get("url"), config.origin + "/assets/brand/wordmark_original_raster_alpha_W06.webp");
+  assert.equal(url.searchParams.get("fit"), "cover");
+  assert.equal(url.searchParams.get("url"), config.origin + "/assets/telegram/luemi-welcome-banner.svg");
   assert.doesNotMatch(url.toString(), /fake-credential|telegram_id|chat_id/);
 });
 

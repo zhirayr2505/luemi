@@ -1,17 +1,16 @@
 /**
- * The welcome photo uses the approved LUEMI raster wordmark untouched.
- * wsrv.nl converts the public WebP into a Telegram-compatible JPEG and adds
- * a solid Soft Plum background. No user IDs or bot credentials are forwarded.
- * Replace this with a self-hosted JPEG when a pre-rendered brand asset is ready.
+ * The banner SVG includes the original approved raster wordmark unchanged,
+ * centered inside a true Soft Plum glass composition. The public converter
+ * returns a Telegram-compatible JPEG. No personal data is sent to the image service.
+ * The SVG is self-hosted and can be pre-rendered locally into JPEG later.
  */
 export function welcomePhotoUrl(origin: string): string {
-  const logo = new URL("/assets/brand/wordmark_original_raster_alpha_W06.webp", origin);
+  const artwork = new URL("/assets/telegram/luemi-welcome-banner.svg", origin);
   const image = new URL("https://wsrv.nl/");
-  image.searchParams.set("url", logo.toString());
-  image.searchParams.set("w", "1000");
-  image.searchParams.set("h", "540");
-  image.searchParams.set("fit", "contain");
-  image.searchParams.set("cbg", "211725");
+  image.searchParams.set("url", artwork.toString());
+  image.searchParams.set("w", "1200");
+  image.searchParams.set("h", "700");
+  image.searchParams.set("fit", "cover");
   image.searchParams.set("output", "jpg");
   image.searchParams.set("q", "90");
   return image.toString();
