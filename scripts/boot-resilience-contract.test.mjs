@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-test("Telegram ready never fires before the React app mounts",()=>{
+test("Telegram fullscreen bootstrap does not signal readiness before first paint",()=>{
  const early=read("apps/web/public/telegram-early-fullscreen.js");
  const app=read("apps/web/src/App.tsx");
  assert.doesNotMatch(early,/\bapp\.ready\s*\(/);
@@ -25,6 +25,10 @@ test("Telegram SDK is a first-party asset, not a network-critical CDN",()=>{
  assert.ok(fallback.includes('MutationObserver'));
  assert.ok(fallback.includes('window.setTimeout(showRecovery, 10000)'));
  assert.ok(fallback.includes('window.location.replace'));
+ assert.ok(fallback.includes('webApp.ready()'));
+ assert.ok(fallback.includes('DOMContentLoaded'));
+ assert.ok(fallback.includes('requestAnimationFrame(releaseNativeLoader)'));
+ assert.ok(fallback.includes('window.setTimeout(releaseNativeLoader, 1600)'));
  assert.doesNotMatch(fallback,/localStorage|indexedDB/);
 });
 test("HTML and startup scripts are never served from stale cache",()=>{
