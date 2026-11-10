@@ -1,5 +1,27 @@
 # LUEMI Telegram /start welcome — rollout
 
+## Live native welcome (Bot API)
+
+The /start webhook now sends one branded photo message with an inline
+native web_app button. The source is the approved
+`wordmark_original_raster_alpha_W06.webp` raster; an external
+image conversion proxy (wsrv.nl) gives Telegram a JPEG on a Soft Plum
+background. The proxy receives only a public static image URL; never
+Telegram user IDs, auth tokens or private profile data.
+
+The bot calls sendPhoto explicitly so a rejected/unavailable image
+falls back to a regular sendMessage with identical button and caption.
+Only the private-chat signed webhook can send this response. /myid,
+invite-only mode, sender checks and Mini App auth/routing are retained.
+
+New/unpublished/unknown: “Начать знакомство 💜”.
+Published: “Продолжить знакомство 💜”.
+Invite-only: “Открыть LUEMI 💜”.
+
+The current external image proxy is an interim delivery solution.
+Prefer a locally hosted pre-rendered JPEG when a branded banner asset
+is available, avoiding the third-party uptime dependency.
+
 ## User-facing behavior
 
 The bot /start greeting uses the verified Telegram webhook and opens
@@ -8,7 +30,7 @@ The Mini App validates initData and chooses registration or published account.
 Never trust a button label for authorization.
 
 - Published account: “Продолжить знакомство 💜”.
-- New account or unpublished draft: “Зарегистрироваться 💜”.
+- New account or unpublished draft: “Начать знакомство 💜”.
 - DB unavailable or missing trustworthy sender: “Начать знакомство 💜”.
 - Explicit invite-only test config: preserve its test language and /myid.
 
@@ -47,8 +69,8 @@ existing web_app button. Never put private account details in public_data.
 
 ## Manual QA before release
 
-1. Run npm run test -w @luemi/api and npm run typecheck.
-2. Send /start from an unregistered Telegram account; register normally.
+1. Run npm run test -w @luemi/api and npm run typecheck; check banner JPEG proxy returns a real image.
+2. Send /start from an unregistered Telegram account; verify a photo and clickable web_app button, then register normally.
 3. Send /start from a published account; confirm returning-user copy.
 4. With database lookup unavailable, verify neutral copy and in-app routing.
 5. Verify /myid, invalid signatures and non-private chats remain unchanged.

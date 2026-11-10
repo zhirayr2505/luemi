@@ -4,6 +4,8 @@ import type { ApiConfig } from "./config.js";
 import { versionedWebAppUrl } from "./telegram-web-app-url.js";
 import { createWelcomeStatusLookup } from "./telegram-welcome-status.js";
 import type { WelcomeStatusLookup } from "./telegram-welcome-status.js";
+import { sendTelegramWelcomePhoto, welcomePhotoUrl } from "./telegram-welcome-photo.js";
+import type { WelcomePhotoSender } from "./telegram-welcome-photo.js";
 export { versionedWebAppUrl } from "./telegram-web-app-url.js";
 
 function constantTimeMatch(received: unknown, expected: string): boolean {
@@ -23,7 +25,8 @@ interface TelegramUpdate {
 
 export function registerTelegramWebhook(
   app: FastifyInstance, config: ApiConfig,
-  lookup: WelcomeStatusLookup = createWelcomeStatusLookup(app, config)
+  lookup: WelcomeStatusLookup = createWelcomeStatusLookup(app, config),
+  sendPhoto: WelcomePhotoSender = sendTelegramWelcomePhoto
 ): void {
   app.post<{ Body: TelegramUpdate }>("/api/telegram/webhook", async (request, reply) => {
     const header = request.headers["x-telegram-bot-api-secret-token"];
@@ -32,47 +35,56 @@ export function registerTelegramWebhook(
     const chat = request.body?.message?.chat;
     const text = request.body?.message?.text ?? "";
     if (chat?.type !== "private" || !Number.isSafeInteger(chat.id))
-      return {ok:true};
-    const senderId=request.body?.message?.from?.id;
+      return { ok: true };
+    const senderId = request.body?.message?.from?.id;
     // Private /myid replies expose only the requesting Telegram sender's ID.
     if (/^\/(?:id|myid)(?:@LuemiAppBot)?(?:\s|$)/i.test(text)) {
-      if (!Number.isSafeInteger(senderId)||senderId!==chat.id)return {ok:true};
-      return {method:"sendMessage",chat_id:chat.id,
-       text:"Твой Telegram ID: "+senderId+
-        (config.rem05b?.inviteOnly===true?
-         "\nЭто закрытый тест. Для приглашения отправь свой ID владельцу: @zhiiirro. После подтверждения снова открой /start.":
-         "\nДля регистрации открой LUEMI через /start.")};
+      if (!Number.isSafeInteger(senderId) || senderId !== chat.id) return { ok: true };
+      return { method: "sendMessage", chat_id: chat.id,
+        text: "Твой Telegram ID: " + senderId +
+          (config.rem05b?.inviteOnly === true
+            ? "\nЭто закрытый тест. Для приглашения отправь свой ID владельцу: @zhiiirro. После подтверждения снова открой /start."
+            : "\nДля регистрации открой LUEMI через /start.") };
     }
-    if (!/^\/start(?:\s|$)/i.test(text))return {ok:true};
+    if (!/^\/start(?:\s|$)/i.test(text)) return { ok: true };
 
-    // The only trusted identity for the greeting is the Telegram webhook
-    // sender in the same private chat. Without it, show a neutral welcome.
+    // Only the Telegram sender in their own private chat can be looked up.
+    // The app, not the greeting, authenticates and routes to registration/home.
     const state = Number.isSafeInteger(senderId) && senderId === chat.id
       ? await lookup(senderId as number).catch(() => "unknown" as const)
       : "unknown";
     const inviteOnly = config.rem05b?.inviteOnly === true;
-    const button = inviteOnly ? "Открыть LUEMI 💜" :
-      state === "registered" ? "Продолжить знакомство 💜" :
-      state === "new" ? "Зарегистрироваться 💜" : "Начать знакомство 💜";
+    const button = inviteOnly ? "Открыть LUEMI 💜"
+      : state === "registered" ? "Продолжить знакомство 💜"
+      : "Начать знакомство 💜";
     const greeting = inviteOnly
-      ? "<b>luemi 💜</b>\n\nИдёт закрытый тест для приглашённых друзей. Нажми кнопку ниже, чтобы открыть приложение. Для получения Telegram ID отправь /myid."
+      ? "<b>LUEMI 💜</b>\n\nИдёт закрытый тест для приглашённых друзей. Нажми кнопку ниже, чтобы открыть приложение. Для получения Telegram ID отправь /myid."
       : state === "registered"
-        ? "<b>luemi 💜</b>\n\n<b>Снова вместе!</b>\nТвоя анкета уже здесь. Продолжай знакомиться и находить близких по духу людей."
-        : "<b>luemi 💜</b>\n\n<b>Люди ближе, чем кажется.</b>\nЗнакомься, общайся и находи тех, с кем хочется быть собой.\n\nТвоя история начинается здесь.";
-    // Telegram's public Bot API does not yet support sending HTML/JS
-    // message widgets. This standard Web App CTA works on stable clients.
-    // The app authenticates the viewer and chooses registration vs home.
+        ? "<b>С возвращением в LUEMI 💜</b>\n\nТвоя анкета уже здесь. Продолжай знакомиться и находить близких по духу людей."
+        : "<b>Знакомства начинаются здесь.</b>\n\nНовые люди, взаимные симпатии и живое общение — всё в LUEMI.\n\nТвоя история начинается здесь.";
+    const reply_markup = {
+      inline_keyboard: [[{
+        text: button,
+        web_app: { url: versionedWebAppUrl(config.origin, process.env.RENDER_GIT_COMMIT) }
+      }]]
+    };
+
+    // A direct sendPhoto returns an acknowledgement, unlike a webhook-method
+    // response. If Telegram or the image CDN fails, deliver the CTA as text.
+    const sent = await sendPhoto(config.botToken, {
+      chat_id: chat.id,
+      photo: welcomePhotoUrl(config.origin),
+      caption: greeting,
+      parse_mode: "HTML",
+      reply_markup
+    }).catch(() => false);
+    if (sent) return { ok: true };
     return {
       method: "sendMessage",
       chat_id: chat.id,
       parse_mode: "HTML",
       text: greeting,
-      reply_markup: {
-        inline_keyboard: [[{
-          text: button,
-          web_app: { url: versionedWebAppUrl(config.origin, process.env.RENDER_GIT_COMMIT) }
-        }]]
-      }
+      reply_markup
     };
   });
 }

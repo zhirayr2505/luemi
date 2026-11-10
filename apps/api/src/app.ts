@@ -5,6 +5,7 @@ import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import type { ApiConfig } from "./config.js";
 import { validateTelegramInitData } from "./telegram-auth.js";
 import { registerTelegramWebhook } from "./telegram-webhook.js";
+import type { WelcomePhotoSender } from "./telegram-welcome-photo.js";
 import { registerGeography } from "./geo-routes.js";
 import { registerRem05b } from "./rem05b-session.js";
 import { installHttpPolicy } from "./rem05c-headers.js";
@@ -24,7 +25,7 @@ function equalSecret(a: string, b: string): boolean {
   const right = Buffer.from(b);
   return left.length === right.length && timingSafeEqual(left, right);
 }
-export function buildApp(config: ApiConfig) {
+export function buildApp(config: ApiConfig, welcomeSender?: WelcomePhotoSender) {
   const app = Fastify({
     logger: config.logger,
     bodyLimit: 10240,
@@ -70,7 +71,7 @@ export function buildApp(config: ApiConfig) {
     return response;
   });
   const guards=config.rem05b?.enabled?registerRem05b(app,config.rem05b):undefined;
-  registerTelegramWebhook(app,config);
+  registerTelegramWebhook(app,config,undefined,welcomeSender);
   registerGeography(app,config.rem05c?.geo,guards);
   registerRem05d(app,guards,config.rem05d);
   registerRealRegistrationDrafts(app,guards,config.realRegistration);

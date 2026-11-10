@@ -15,7 +15,7 @@ function config(): ApiConfig {
   };
 }
 test("webhook rejects unsigned requests, then generates genuine Telegram Web App button", async () => {
-  const app = buildApp(config());
+  const app = buildApp(config(), async () => false);
   try {
     const payload = { message: { text: "/start", chat: { id: 12345, type: "private" } } };
     const unsigned = await app.inject({ method: "POST", url: "/api/telegram/webhook", payload });
@@ -55,7 +55,7 @@ test("signed /start supplies a fresh versioned Web App button using the Render c
   const previous=process.env.RENDER_GIT_COMMIT;
   const commit="a5b0ce72e52ee7b4f282fe3cfbaa5bec4ef6e2a2";
   process.env.RENDER_GIT_COMMIT=commit;
-  const app=buildApp(config());
+  const app=buildApp(config(), async () => false);
   try{
     const r=await app.inject({method:"POST",url:"/api/telegram/webhook",
       headers:{"x-telegram-bot-api-secret-token":"s".repeat(32)},
@@ -93,7 +93,7 @@ test("signed /myid never instructs public users to seek invitations",async()=>{
 test("private invited friends see accurate enrollment instructions and only their own Telegram ID",async()=>{
  const betaConfig=config();
  betaConfig.rem05b={enabled:false,inviteOnly:true} as NonNullable<ApiConfig["rem05b"]>;
- const app=buildApp(betaConfig);
+ const app=buildApp(betaConfig, async () => false);
  try{
   const headers={"x-telegram-bot-api-secret-token":"s".repeat(32)};
   const own=await app.inject({method:"POST",url:"/api/telegram/webhook",headers,

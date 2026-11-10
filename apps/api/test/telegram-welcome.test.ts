@@ -21,7 +21,7 @@ async function greeting(state: WelcomeState, from = 42, chat = 42) {
     lookups++;
     assert.equal(id, 42);
     return state;
-  });
+  }, async () => false);
   try {
     const res = await app.inject({
       method: "POST", url: "/api/telegram/webhook", headers,
@@ -32,13 +32,13 @@ async function greeting(state: WelcomeState, from = 42, chat = 42) {
   } finally { await app.close(); }
 }
 
-test("new users see registration CTA, never an untrusted prefilled account", async () => {
+test("new users see start CTA, never an untrusted prefilled account", async () => {
   const {response,lookups}=await greeting("new");
   assert.equal(lookups,1);
   assert.equal(response.method,"sendMessage");
   assert.equal(response.parse_mode,"HTML");
-  assert.match(response.text,/Люди ближе/);
-  assert.match(response.reply_markup.inline_keyboard[0][0].text,/Зарегистрироваться/);
+  assert.match(response.text,/Знакомства начинаются здесь/);
+  assert.match(response.reply_markup.inline_keyboard[0][0].text,/Начать знакомство/);
   assert.equal(response.reply_markup.inline_keyboard[0][0].web_app.url,
     versionedWebAppUrl(config.origin, process.env.RENDER_GIT_COMMIT));
 });
