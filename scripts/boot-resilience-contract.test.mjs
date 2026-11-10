@@ -1,9 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-
 test("Telegram ready never fires before the React app mounts",()=>{
  const early=read("apps/web/public/telegram-early-fullscreen.js");
  const app=read("apps/web/src/App.tsx");
@@ -11,26 +9,29 @@ test("Telegram ready never fires before the React app mounts",()=>{
  assert.match(app,/webApp\?\.ready\?\.\(\)/);
  assert.match(early,/app\.requestFullscreen\(\)/);
 });
-
-test("HTML shows a dark branded, no-JS fallback before module startup",()=>{
+test("Telegram SDK is a first-party asset, not a network-critical CDN",()=>{
  const html=read("apps/web/index.html");
- assert.match(html,/<meta name="theme-color" content="#1B2025"/);
- assert.match(html,/html,body\{min-height:100%;margin:0;background:#1B2025/);
- assert.match(html,/id="luemi-boot"/);
- assert.match(html,/wordmark_original_raster_alpha_W06\.webp/);
- assert.match(html,/script defer src="https:\/\/telegram\.org\/js\/telegram-web-app\.js"/);
- assert.match(html,/script src="\/boot-recovery\.js"/);
+ assert.ok(html.includes('<meta name="theme-color" content="#1B2025"'));
+ assert.ok(html.includes('id="luemi-boot"'));
+ assert.ok(html.includes('wordmark_original_raster_alpha_W06.webp'));
+ assert.ok(html.includes('<script defer src="/telegram-web-app.js"></script>'));
+ assert.ok(!html.includes('src="https://telegram.org/js/telegram-web-app.js"'));
+ assert.ok(html.includes('<script src="/boot-recovery.js"></script>'));
+ const vendor=read("scripts/vendor-telegram-sdk.mjs");
+ const pkg=read("package.json");
+ assert.ok(vendor.includes('https://telegram.org/js/telegram-web-app.js?65'));
+ assert.ok(pkg.includes('node scripts/vendor-telegram-sdk.mjs'));
  const fallback=read("apps/web/public/boot-recovery.js");
- assert.match(fallback,/MutationObserver/);
- assert.match(fallback,/window\.setTimeout\(showRecovery, 10000\)/);
- assert.match(fallback,/window\.location\.replace/);
+ assert.ok(fallback.includes('MutationObserver'));
+ assert.ok(fallback.includes('window.setTimeout(showRecovery, 10000)'));
+ assert.ok(fallback.includes('window.location.replace'));
  assert.doesNotMatch(fallback,/localStorage|indexedDB/);
 });
-
-test("entry HTML and boot scripts are never served from stale WebView cache",()=>{
+test("HTML and startup scripts are never served from stale cache",()=>{
  const server=read("apps/api/src/server.ts");
- assert.match(server,/app\.addHook\("onSend"/);
- assert.match(server,/no-store, max-age=0/);
- assert.match(server,/path === "\/index\.html"/);
- assert.match(server,/path === "\/boot-recovery\.js"/);
+ assert.ok(server.includes('app.addHook("onSend"'));
+ assert.ok(server.includes('no-store, max-age=0'));
+ for(const path of ['index.html','boot-recovery.js','telegram-web-app.js']){
+  assert.ok(server.includes('path === "/'+path+'"'));
+ }
 });

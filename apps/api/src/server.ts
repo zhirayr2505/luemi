@@ -26,6 +26,7 @@ async function start(): Promise<void> {
         if (request.method === "GET" && (
           path === "/" || path === "/index.html" ||
           path === "/telegram-early-fullscreen.js" ||
+          path === "/telegram-web-app.js" ||
           path === "/boot-recovery.js" ||
           (request.headers.accept?.includes("text/html") && !path.startsWith("/api/"))
         )) {
