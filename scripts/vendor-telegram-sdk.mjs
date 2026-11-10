@@ -8,7 +8,7 @@ import {createHash} from "node:crypto";
 const endpoint="https://telegram.org/js/telegram-web-app.js?65";
 const output=new URL("../apps/web/public/telegram-web-app.js",import.meta.url);
 
-async function download(attempt){
+async function download(){
  const response=await fetch(endpoint,{
   signal:AbortSignal.timeout(15000),
   headers:{"Accept":"application/javascript,text/javascript,*/*"}
@@ -29,7 +29,7 @@ async function download(attempt){
 
 let failed;
 for(let attempt=0;attempt<2;attempt++){
- try{await download(attempt);failed=null;break;}catch(error){
+ try{await download();failed=null;break;}catch(error){
   failed=error;
   if(attempt===0)await new Promise(resolve=>setTimeout(resolve,800));
  }
