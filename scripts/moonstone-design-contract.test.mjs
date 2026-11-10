@@ -49,13 +49,14 @@ test("all rendered CSS is free of legacy V5 plum literals and malformed rgba",()
  }
 });
 test("true backdrop sampling is restricted to static chrome, moving profiles stay compositor-only",()=>{
- assert.match(styles,/\.discovery-app \.discovery-bottom-nav/);
- assert.match(styles,/backdrop-filter:blur\(15px\) saturate\(135%\)/);
+ const hot=read("apps/web/src/discovery/moonstone-discovery.css");
+ assert.match(hot,/\.discovery-app>\.discovery-bottom-nav/);
+ assert.match(hot,/backdrop-filter:blur\(15px\) saturate\(115%\)/);
+ assert.doesNotMatch(styles,/\.discovery-app \.discovery-(?:bottom-nav|top-tabs)/);
  assert.match(styles,/--luemi-glass-shine:radial-gradient/);
  assert.match(styles,/--moonstone-x/);
  assert.match(styles,/prefers-reduced-transparency:reduce/);
  assert.match(styles,/prefers-reduced-motion:reduce/);
- const hot=read("apps/web/src/discovery/moonstone-discovery.css");
  const lens=read("apps/web/src/ui/liquid-glass.css");
  const entry=read("apps/web/src/main.tsx");
  assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/liquid-glass\.css";/);

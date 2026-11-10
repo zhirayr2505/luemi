@@ -58,7 +58,7 @@ test("first pictures cached only in RAM with bounded signed endpoint fetch",()=>
   /(?:window|globalThis)\.(?:localStorage|indexedDB|sessionStorage)/);
  assert.match(reg,/initialFeed=\{scopeOverride\|\|cityEpoch\?null:initialFeed\}/);
  assert.match(reg,/Пока нет анкет/);
- assert.match(reg,/className="discovery-bottom-nav"/);
+ assert.match(reg,/<LuemiBottomNavigation items=\{navigationItems\}/);
 });
 test("server resumes same expired media intent without new asset",()=>{
  assert.match(media,/existing.rows\[0\].state==="reserved"/);

@@ -7,6 +7,7 @@ const shell=src("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const card=src("apps/web/src/discovery/FeedCard.tsx");
 const forYou=src("apps/web/src/discovery/RealForYou.tsx");
 const nearby=src("apps/web/src/discovery/RealNearby.tsx");
+const sharedUi=src("apps/web/src/ui/LuemiV5.tsx");
 
 test("REAL_ONLY runs the approved LUEMI shell, not the provisional list shell",()=>{
  const live=app.indexOf('if(realHome&&auth==="authorized"&&realFeedPilot.enabled)');
@@ -24,7 +25,8 @@ test("real published discovery preserves four routes and three approved referenc
  for(const label of ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Мир"])
   assert(shell.includes('"'+label+'"'),label+" missing");
  assert.match(shell,/<GlobalHeader/);
- assert.match(shell,/className="discovery-bottom-nav"/);
+ assert.match(shell,/<LuemiBottomNavigation items=\{navigationItems\}/);
+ assert.match(sharedUi,/className=\{`discovery-bottom-nav luemi-v5-bottom-nav/);
  assert.match(shell,/className="discovery-top-tabs"/);
  assert.match(shell,/<ProfileMaster data=\{owner\} mode="owner"/);
  assert.match(shell,/<VisitorProfileRoute/);

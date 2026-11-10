@@ -7,7 +7,7 @@ import {PhotoCarousel} from "../ui/PhotoCarousel";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
 import {InterestChip} from "../ui/InterestCatalog";
 import {languages} from "../ui/Languages";
-import {selectionHaptic} from "../ui/haptic";
+import {impactHaptic,selectionHaptic} from "../ui/haptic";
 import type {DemoKind,DemoPerson} from "./model";
 
 const clamp=(value:number,min=0,max=1)=>Math.max(min,Math.min(max,value));
@@ -28,7 +28,7 @@ type SettleRun={from:number;to:0|1;started:number;duration:number;frame:number|n
 
 function LikeSuperButton({disabled,onAction}:{disabled:boolean;onAction:(kind:"like"|"special")=>void}){
  const button=useRef<HTMLButtonElement>(null);
- const gesture=useRef<null|{id:number;x:number;y:number;claimed:boolean;threshold:boolean;max:number}>(null);
+ const gesture=useRef<null|{id:number;x:number;y:number;claimed:boolean;threshold:boolean;max:number;hapticStep:number}>(null);
  const frame=useRef<number|null>(null),pending=useRef(0),committed=useRef(false);
  useEffect(()=>{if(!disabled)committed.current=false;},[disabled]);
  useEffect(()=>()=>{if(frame.current!==null)cancelAnimationFrame(frame.current);},[]);
@@ -38,12 +38,12 @@ function LikeSuperButton({disabled,onAction}:{disabled:boolean;onAction:(kind:"l
  const reset=()=>{if(frame.current!==null){cancelAnimationFrame(frame.current);frame.current=null;}paint(0);
   button.current?.classList.remove("is-dragging","is-armed");};
  const commit=(kind:"like"|"special")=>{if(committed.current||disabled)return;
-  committed.current=true;selectionHaptic();onAction(kind);};
+  committed.current=true;if(kind==="special")impactHaptic("heavy");else selectionHaptic();onAction(kind);};
  const down=(event:ReactPointerEvent<HTMLButtonElement>)=>{
   if(disabled||committed.current||!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
   const width=event.currentTarget.getBoundingClientRect().width;
   const max=Math.max(1,width-58);event.currentTarget.style.setProperty("--like-travel",max+"px");
-  gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,claimed:false,threshold:false,max};
+  gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,claimed:false,threshold:false,max,hapticStep:0};
  };
  const move=(event:ReactPointerEvent<HTMLButtonElement>)=>{
   const current=gesture.current;if(!current||current.id!==event.pointerId)return;
@@ -57,8 +57,11 @@ function LikeSuperButton({disabled,onAction}:{disabled:boolean;onAction:(kind:"l
   if(event.cancelable)event.preventDefault();event.stopPropagation();
   const raw=clamp(dx/current.max),resisted=raw<.75?raw:Math.min(1,.75+(raw-.75)*.62);
   schedule(resisted);
+  const hapticStep=raw>=.75?3:raw>=.5?2:raw>=.25?1:0;
+  if(hapticStep>current.hapticStep){current.hapticStep=hapticStep;
+   if(hapticStep===3)impactHaptic("medium");else selectionHaptic();}
   const armed=raw>=.75;
-  if(armed!==current.threshold){current.threshold=armed;event.currentTarget.classList.toggle("is-armed",armed);if(armed)selectionHaptic();}
+  if(armed!==current.threshold){current.threshold=armed;event.currentTarget.classList.toggle("is-armed",armed);}
  };
  const finish=(event:ReactPointerEvent<HTMLButtonElement>,cancelled=false)=>{
   const current=gesture.current;if(!current||current.id!==event.pointerId)return;gesture.current=null;

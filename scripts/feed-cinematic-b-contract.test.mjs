@@ -4,6 +4,7 @@ import {readFileSync,existsSync} from "node:fs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const card=read("apps/web/src/discovery/FeedCard.tsx");
 const css=read("apps/web/src/discovery/moonstone-discovery.css");
+const haptic=read("apps/web/src/ui/haptic.ts");
 const header=read("apps/web/src/discovery/GlobalHeader.tsx");
 const real=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
@@ -47,6 +48,12 @@ test("tap likes and 75 percent right drag superlikes through one control",()=>{
  assert.match(card,/commit\("special"\)/);
  assert.match(card,/setPointerCapture/);
  assert.match(card,/--like-slide-p/);
+ assert.match(card,/hapticStep=raw>=\.75\?3:raw>=\.5\?2:raw>=\.25\?1:0/);
+ assert.match(card,/impactHaptic\("medium"\)/);
+ assert.match(card,/impactHaptic\("heavy"\)/);
+ assert.match(haptic,/impactOccurred/);
+ assert.match(css,/--like-scale:calc\(1 \+ var\(--like-slide-p\) \* \.035\)/);
+ assert.match(css,/@keyframes moonstone-super-wobble/);
  assert.match(css,/\.moonstone-like-button\.is-armed/);
 });
 

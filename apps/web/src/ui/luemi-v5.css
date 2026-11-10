@@ -148,30 +148,9 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
 .luemi-v5-segments button:disabled{opacity:.42;cursor:not-allowed}
 .luemi-v5-segments button:not(:disabled):active{transform:scale(.96)}
 
-/* Curved specular light traverses the two persistent navigation lenses.
- * All child tab hit-targets stay above the optical layer. */
-.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav,
-.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs{
- position:relative;isolation:isolate;overflow:hidden;
-}
-.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav::before,
-.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs::before{
- content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
- background:var(--luemi-glass-shine);
- opacity:.74;z-index:0;
- transition:opacity .18s ease;
-}
-.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav:active::before,
-.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs:active::before{opacity:1}
-.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav>*,
-.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs>*{
- position:relative;z-index:1;
-}
-/* The underline remains absolutely placed and is still moved only by the
- * existing one-progress gesture controller; never change its transform. */
-.luemi-shell[data-theme=dark] .discovery-app .discovery-tab-underline{
- position:absolute;z-index:1;
-}
+/* Discovery tabs and navigation own their complete Moonstone optics in
+ * moonstone-discovery.css. Keeping a second shared lens here used to override
+ * their absolute geometry and paint a full-width bar over the photograph. */
 .luemi-shell[data-theme=dark] .real-discovery-settings,
 .luemi-shell[data-theme=dark] .real-feed-filter-head button,
 .luemi-shell[data-theme=dark] .lc-heading-actions .luemi-v5-icon-button{
@@ -210,8 +189,6 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
 /* Dynamic Liquid Glass — stationary top/bottom chrome only.
  * No backdrop-filter on the fullscreen feed, .pm-a2-photo-track, draggable
  * registration fields, animated page tracks, or scrollable user tiles. */
-.luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav,
-.luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs,
 .luemi-shell[data-theme=dark] .real-feed-filter-sheet,
 .luemi-shell[data-theme=dark] .lc-categories-panel,
 .luemi-shell[data-theme=dark] .lc-search,
@@ -229,18 +206,6 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
 .luemi-shell[data-theme=dark] .lc-chat-header{
  background:linear-gradient(165deg,rgba(48,58,69,.92),rgba(27,34,43,.94));
 }
-.luemi-shell[data-theme=dark] .discovery-app .discovery-tab-underline{
- border-color:rgba(234,228,246,.36);
- background:linear-gradient(140deg,rgba(183,167,204,.62),rgba(110,113,138,.48));
- box-shadow:inset 0 1px rgba(255,255,255,.26),0 2px 9px rgba(9,12,19,.24);
-}
-.luemi-shell[data-theme=dark] .discovery-app .discovery-nav-item.active{
- color:var(--luemi-text);
- background:rgba(175,161,199,.20);
-}
-.luemi-shell[data-theme=dark] .discovery-app .discovery-nav-item.active svg{
- color:var(--luemi-rose);
-}
 .luemi-shell[data-theme=dark] .real-feed-filter-apply{
  background:var(--luemi-lavender);color:var(--luemi-ink-on-accent);
  border-color:rgba(240,234,250,.32);
@@ -253,11 +218,6 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
   backdrop-filter:blur(16px) saturate(138%) contrast(104%);
   -webkit-backdrop-filter:blur(16px) saturate(138%) contrast(104%);
  }
- .luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav,
- .luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs{
-  backdrop-filter:blur(15px) saturate(135%) contrast(104%);
-  -webkit-backdrop-filter:blur(15px) saturate(135%) contrast(104%);
- }
  .luemi-shell[data-theme=dark] .lc-composer,
  .luemi-shell[data-theme=dark] .lc-chat-header{
   backdrop-filter:blur(12px) saturate(120%);
@@ -266,8 +226,6 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
 }
 @media(prefers-reduced-transparency:reduce){
  .luemi-v5-glass,.luemi-v5-icon-button,
- .luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav,
- .luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs,
  .luemi-shell[data-theme=dark] .real-feed-filter-sheet,
  .luemi-shell[data-theme=dark] .lc-categories-panel,
  .luemi-shell[data-theme=dark] .lc-search,
@@ -281,7 +239,5 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
  .luemi-v5-icon-button,.luemi-v5-segments button,
  .luemi-v5-glass::before,.luemi-v5-icon-button::before{transition:none}
  .luemi-v5-skeleton-avatar::after,.luemi-v5-skeleton-copy>span::after{animation:none}
- .luemi-shell[data-theme=dark] .discovery-app .discovery-bottom-nav::before,
- .luemi-shell[data-theme=dark] .discovery-app .discovery-top-tabs::before,
  .luemi-shell[data-theme=dark] .real-discovery-settings::before{transition:none}
 }

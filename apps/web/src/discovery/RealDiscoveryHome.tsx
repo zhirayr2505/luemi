@@ -911,7 +911,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     <button type="button" disabled title="Подарки будут подключены после запуска Stars ledger">Подарок · скоро</button>
     <button type="button" onClick={()=>setMatched(null)}>Продолжить знакомства</button>
    </div></div>}
-  {!chatThreadOpen&&<LuemiBottomNavigation className="discovery-bottom-nav" items={navigationItems} value={mainTab}
+  {!chatThreadOpen&&<LuemiBottomNavigation items={navigationItems} value={mainTab}
    onChange={id=>{setPerson(null);setDemoVisitor(null);setChatThreadOpen(false);setMainTab(id);}}/>}
   {accountOpen&&<div className="discovery-modal-backdrop real-discovery-account-modal"
    onClick={()=>setAccountOpen(false)}>
