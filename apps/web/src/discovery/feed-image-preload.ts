@@ -75,7 +75,6 @@ export function preloadFeedImage(url:string,signal?:AbortSignal):Promise<boolean
  inflight.set(url,promise);
  return promise;
 }
-
 /** Prioritize 1 cover per next card before additional gallery photos.
  * Bounded: at most 3 network/decode operations concurrently and 12 urls.
  * Does not block interaction and never displays a half-loaded card image. */
@@ -98,68 +97,4 @@ export async function preloadUpcomingFeedPhotos(
    await preloadFeedImage(urls[index++],signal);
   }
  }));
-}
-
-/**
- * Transition gate for the ACTUAL img element in the already mounted queued
- * card. A different preload Image succeeding does not guarantee WebView has
- * decoded/painted the DOM element itself. Only promote after this returns true.
- * Loading an image does not construct or mount any new cards.
- */
-export async function ensureMountedCoverReady(
- card:HTMLElement|null,signal?:AbortSignal,timeoutMs=2400
-):Promise<boolean>{
- const cover=card?.querySelector<HTMLImageElement>(".carousel-track img:first-child");
- if(!cover||signal?.aborted)return false;
- const loaded=()=>cover.isConnected&&cover.naturalWidth>0&&cover.complete;
- const unavailable=()=>cover.isConnected&&cover.classList.contains("is-unavailable");
- const showFallback=()=>{
-  if(cover.isConnected){cover.classList.remove("is-ready");cover.classList.add("is-unavailable");}
- };
- if(unavailable())return true;
- if(cover.classList.contains("is-ready")&&loaded())return true;
- const result=await new Promise<boolean>(resolve=>{
-  let finished=false;
-  const finish=(ok:boolean)=>{
-   if(finished)return;
-   finished=true;window.clearTimeout(timeout);
-   cover.removeEventListener("load",onLoad);
-   cover.removeEventListener("error",onError);
-   signal?.removeEventListener("abort",onAbort);
-   resolve(ok);
-  };
-  const onAbort=()=>finish(false);
-  const onError=()=>{
-   const fallback=cover.dataset.fallback;
-   if(fallback){
-    try{if((cover.currentSrc||cover.src)!==new URL(fallback,window.location.href).href)return;}
-    catch{if((cover.currentSrc||cover.src)!==fallback)return;}
-   }
-   showFallback();finish(true);
-  };
-  const onLoad=()=>{
-   const source=cover.currentSrc||cover.src;
-   if(typeof cover.decode==="function"){
-    void cover.decode().then(()=>{
-     if(!signal?.aborted&&loaded()&&(cover.currentSrc||cover.src)===source)finish(true);
-    },()=>{if(loaded())finish(true);});
-   }else if(loaded())finish(true);
-  };
-  // A slow or undecodable remote image must never retain the feed lock. Keep
-  // the same card mounted with a branded fallback; a late image may still
-  // replace it after WebView eventually finishes decoding.
-  const timeout=window.setTimeout(()=>{showFallback();finish(true);},timeoutMs);
-  signal?.addEventListener("abort",onAbort,{once:true});
-  cover.addEventListener("load",onLoad);
-  cover.addEventListener("error",onError);
-  if(loaded())onLoad();
- });
- if(!result||signal?.aborted)return false;
- if(loaded()){
-  cover.classList.remove("is-unavailable");cover.classList.add("is-ready");
-  noteFeedImageDecoded(cover.currentSrc||cover.src);
- }
- // React's 120ms opacity reveal must finish before deck compositor begins.
- await new Promise<void>(resolve=>window.setTimeout(resolve,140));
- return !signal?.aborted&&(loaded()||unavailable());
 }

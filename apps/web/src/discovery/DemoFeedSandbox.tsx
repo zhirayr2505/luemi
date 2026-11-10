@@ -5,7 +5,7 @@ import {selectionHaptic} from "../ui/haptic";
 import type {DemoKind,DemoPerson} from "./model";
 import {demoPeople} from "./demo-people";
 import {FeedCard} from "./FeedCard";
-import {ensureMountedCoverReady,preloadUpcomingFeedPhotos} from "./feed-image-preload";
+import {preloadUpcomingFeedPhotos} from "./feed-image-preload";
 import "./demo-feed-sandbox.css";
 
 type Props={draft:RegistrationDraft;active:boolean;onExit:()=>void;onOpenProfile:(person:DemoPerson)=>void};
@@ -27,7 +27,6 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
  const [leavingKind,setLeavingKind]=useState<DemoKind|null>(null);
  const locked=useRef(false),pending=useRef<(()=>void)|null>(null),timer=useRef<number|null>(null);
  const deckRef=useRef<HTMLDivElement>(null);
- const coverGate=useRef<AbortController|null>(null);
  const [readyKeys,setReadyKeys]=useState<ReadonlySet<string>>(()=>new Set<string>());
  const markReady=useCallback((key:string)=>setReadyKeys(keys=>{
   if(keys.has(key))return keys;
@@ -51,7 +50,7 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
   setLeaving(false);setLeavingKind(null);locked.current=false;
  };
  useEffect(()=>()=>{if(timer.current!==null)window.clearTimeout(timer.current);
-  coverGate.current?.abort();pending.current=null;locked.current=false;},[]);
+  pending.current=null;locked.current=false;},[]);
  const reset=()=>{
   if(locked.current)return;
   setPage(0);setHistory([]);setSaved(new Set());setMessage("");
@@ -84,24 +83,9 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finish();
    else timer.current=window.setTimeout(finish,570);
   };
-  // Do not animate a grey queued card into the foreground. Decode the ACTUAL
-  // mounted cover (not just a separate image cache entry) before leaving.
-  if(next&&!readyKeys.has(coverKey(next))){
-   const controller=new AbortController();
-   coverGate.current?.abort();coverGate.current=controller;
-   setMessage("Подготавливаем следующую фотографию…");
-   void ensureMountedCoverReady(deckRef.current?.querySelector<HTMLElement>(".deck-depth-one")??null,
-    controller.signal).then(ok=>{
-     if(controller.signal.aborted)return;
-     coverGate.current=null;
-     if(!ok)setMessage("Открываем следующую анкету без задержки…");
-     markReady(coverKey(next));beginLeave();
-   }).catch(()=>{
-    if(controller.signal.aborted)return;
-    coverGate.current=null;markReady(coverKey(next));beginLeave();
-   });
-   return;
-  }
+  // Media readiness is visual-only. It must never sit between an accepted
+  // action and its commit: Android WebView may defer image/timer callbacks.
+  // The already-mounted next card keeps its branded fallback until decoded.
   beginLeave();
  };
  return <div className="demo-qa-feed" aria-label="Тестовая лента LUEMI">

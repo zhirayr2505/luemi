@@ -7,24 +7,15 @@ const prefetch=read("apps/web/src/discovery/feed-image-preload.ts");
 const demo=read("apps/web/src/discovery/DemoFeedSandbox.tsx");
 const live=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const feed=read("apps/web/src/discovery/FeedCard.tsx");
+const realClient=read("apps/web/src/registration/real-live-client.ts");
 const css=read("apps/web/src/discovery/deck-v3.css");
 
-test("the next profile never enters until its own DOM img is decoded",()=>{
- assert.match(prefetch,/ensureMountedCoverReady\(/);
- assert.match(prefetch,/querySelector<HTMLImageElement>\("\.carousel-track img:first-child"\)/);
- assert.match(prefetch,/cover\.decode\(\)/);
- assert.match(prefetch,/cover\.classList\.add\("is-ready"\)/);
- assert.match(demo,/ensureMountedCoverReady\(deckRef\.current\?\.querySelector/);
- assert.match(live,/ensureMountedCoverReady\(deckRef\.current\?\.querySelector/);
- assert.match(prefetch,/timeoutMs=2400/);
- assert.match(prefetch,/showFallback\(\);finish\(true\)/,
-  "a stalled Android image must resolve to the retained fallback instead of freezing the feed");
- assert.match(demo,/markReady\(coverKey\(next\)\);beginLeave\(\)/,
-  "the Alice-to-Lina transition must commit even when Lina's remote cover cannot decode");
- assert.match(demo,/\.catch\(\(\)=>\{[\s\S]*?beginLeave\(\)/);
- assert.doesNotMatch(demo,/Фото следующей анкеты недоступно\. Повтори попытку/);
- assert.match(live,/waitingGate\.current=\{key,begin\}/,"server likes must not be repeated while waiting");
- assert.match(live,/if\(ok\)\{markReady\(key\);\}/);
+test("media readiness can never gate or freeze an accepted feed action",()=>{
+ assert.doesNotMatch(prefetch,/ensureMountedCoverReady|querySelector<HTMLImageElement>/);
+ assert.doesNotMatch(demo,/ensureMountedCoverReady|coverGate/);
+ assert.doesNotMatch(live,/ensureMountedCoverReady|waitingGate|gateDeadline|coverGate/);
+ assert.match(demo,/Android WebView may defer image\/timer callbacks[\s\S]*?beginLeave\(\)/);
+ assert.match(live,/Never hold the accepted action behind media readiness[\s\S]*?begin\(\)/);
 });
 
 test("queued photo peeks are invisible before decode, then fade without repainting interior",()=>{
@@ -71,21 +62,19 @@ test("background photo decoding is shared, bounded and survives page changes",()
 });
 
 test("real deck always settles a finished action even when media preparation fails",()=>{
- assert.match(live,/gateDeadline\.current=window\.setTimeout/);
- assert.match(live,/if\(ok\)\{markReady\(key\);\}/);
- assert.match(live,/\.catch\(\(\)=>\{/);
  assert.match(live,/try\{commit\(\);\}\s*finally\{/);
  assert.match(live,/locked\.current=false/);
  assert.match(live,/requestPending\.current=true/);
  assert.match(live,/\}finally\{\s*requestPending\.current=false/);
- assert.doesNotMatch(live,/coverUnavailable/,"failed covers must not leave a manual-retry-only lock");
+ assert.match(realClient,/window\.setTimeout\(\(\)=>controller\.abort\(\),10000\)/);
+ assert.match(realClient,/if\(controller\.signal\.aborted\)throw new Error\("like_timeout"\)/);
 });
 
 test("focus and expanded copy share one retained photo and one progress source",()=>{
  const visual=read("apps/web/src/discovery/moonstone-discovery.css");
  assert.match(feed,/releasePhotoHold\(event\.pointerId\)/);
  assert.match(feed,/window\.addEventListener\("blur",resetHold\)/);
- assert.match(feed,/--profile-main-p/);
+ assert.match(feed,/--profile-info-y/);
  assert.match(feed,/--profile-interests-p/);
  assert.match(feed,/--profile-extra-p/);
  assert.match(visual,/\.moonstone-profile-drawer\{[\s\S]*?border:0;border-radius:0/);

@@ -18,7 +18,12 @@ export async function likePublishedUser(id:string,kind:RealLikeKind="ordinary"):
  if(!realMatchPilot.enabled)throw new Error("matches_disabled");
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
   throw new Error("invalid_target");
- const data=await api("/api/v4/matches/like","POST",{targetId:id,kind});
+ const controller=new AbortController();
+ const timeout=window.setTimeout(()=>controller.abort(),10000);
+ let data:unknown;
+ try{data=await api("/api/v4/matches/like","POST",{targetId:id,kind},controller.signal);}
+ catch(error){if(controller.signal.aborted)throw new Error("like_timeout");throw error;}
+ finally{window.clearTimeout(timeout);}
  if(!object(data)||data.liked!==true||data.kind!==kind||typeof data.matched!=="boolean"||
     (data.matched&&(typeof data.matchId!=="string"||!uuid.test(data.matchId)))||
     !validBalance(data.superlikes))
@@ -110,11 +115,12 @@ export interface OwnerPublicationStatus{
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const photoPath=/^\/api\/v3\/discovery\/photo\/[0-9a-f-]{36}$/i;
 function requirePilot(){if(!realFeedPilot.enabled)throw new Error("real_feed_disabled");}
-async function api(url:string,method:"GET"|"POST",body?:unknown):Promise<unknown>{
+async function api(url:string,method:"GET"|"POST",body?:unknown,signal?:AbortSignal):Promise<unknown>{
  requirePilot();
  const csrf=method==="POST"?geoCsrf():null;
  if(method==="POST"&&!csrf)throw new Error("session_required");
  const res=await fetch(url,{method,credentials:"same-origin",cache:"no-store",
+  signal,
   headers:method==="POST"?{"Content-Type":"application/json","X-Luemi-CSRF":csrf!}:undefined,
   ...(method==="POST"?{body:JSON.stringify(body??{})}:{})});
  if(!res.ok){

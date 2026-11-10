@@ -58,7 +58,7 @@
 .discovery-app[data-feed-visible="true"] .discovery-deck-stage.has-profiles>.discovery-deck-layer{inset:0}
 .moonstone-feed,.moonstone-feed-card{position:relative;width:100%;height:100%;min-height:0}
 .discovery-app .moonstone-feed-card{
- --profile-p:0;position:relative;height:100%;border:0;border-radius:0;background:var(--moon-deep);
+ --profile-p:0;--profile-info-y:0px;--super-p:0;position:relative;height:100%;border:0;border-radius:0;background:var(--moon-deep);
  overflow:hidden;isolation:isolate;box-shadow:none;touch-action:none;color:var(--moon-text)
 }
 .discovery-app .moonstone-feed-card::after{display:none}
@@ -81,9 +81,9 @@
 .moonstone-demo-label{position:absolute;z-index:6;top:calc(var(--top-safe) + 108px);left:16px;padding:5px 9px;border-radius:9px;
  border:1px solid var(--moon-edge);background:rgba(36,42,49,.72);color:var(--moon-text);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
 .moonstone-compact-info{
- position:absolute;z-index:10;left:26px;right:24px;bottom:var(--moon-info-bottom);
+ position:absolute;z-index:13;left:26px;right:24px;bottom:var(--moon-info-bottom);
  display:flex;flex-direction:column;align-items:flex-start;pointer-events:auto;
- opacity:calc(1 - var(--profile-p));transform:translate3d(0,calc(var(--profile-p) * 16px),0);transition:opacity .4s cubic-bezier(.22,.8,.2,1),transform .4s cubic-bezier(.22,.8,.2,1)
+ opacity:1;transform:translate3d(0,var(--profile-info-y),0);transition:transform .4s cubic-bezier(.22,.8,.2,1)
 }
 .moonstone-indicator-row{position:relative;width:100%;height:24px;margin-bottom:3px;display:flex;align-items:center}
 .moonstone-photo-indicator{display:flex;align-items:center;gap:6px;min-height:18px}
@@ -96,10 +96,13 @@
 .moonstone-profile-toggle svg{width:24px;height:24px;stroke-width:2.6;transform:rotate(calc(var(--profile-p) * 180deg))}
 .moonstone-profile-toggle:disabled{opacity:.45}
 @keyframes moonstone-hint{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,calc(-50% - 3px))}}
-.moonstone-name{display:flex;align-items:center;gap:7px;max-width:100%;padding:0;border:0;background:transparent;color:#fff;text-align:left;
+.moonstone-name-row{display:flex;align-items:center;justify-content:space-between;gap:11px;width:100%}
+.moonstone-name{display:flex;align-items:center;gap:7px;min-width:0;max-width:100%;padding:0;border:0;background:transparent;color:#fff;text-align:left;
  text-shadow:0 2px 10px rgba(0,0,0,.58)}
 .moonstone-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(24px,6.6vw,30px);font-weight:720;line-height:1.05;letter-spacing:-.025em}
 .moonstone-name svg{flex:none;width:19px;height:19px;color:#C8B5D7}
+.moonstone-profile-more{display:grid;place-items:center;flex:none;width:34px;height:34px;padding:0;border:1px solid rgba(238,232,246,.16);border-radius:50%;background:rgba(47,42,52,.46);color:#F1EBF4;box-shadow:inset 0 1px rgba(255,255,255,.12)}
+.moonstone-profile-more svg{width:18px;height:18px}
 .moonstone-location{display:flex;align-items:center;gap:5px;max-width:100%;margin-top:4px;color:rgba(242,243,245,.83);font-size:12px;line-height:1.3;text-shadow:0 1px 7px rgba(0,0,0,.62)}
 .moonstone-location svg{width:13px;height:13px}.moonstone-location b{font-weight:400;color:rgba(242,243,245,.5)}
 .moonstone-goal,.moonstone-drawer-goal{
@@ -120,31 +123,28 @@
  box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
  opacity:var(--profile-p);transform:translate3d(0,calc((1 - var(--profile-p)) * 38px),0);pointer-events:none
 }
-.moonstone-feed-card[data-expanded=true] .moonstone-profile-drawer{pointer-events:auto}
+.moonstone-feed-card[data-expanded=true] .moonstone-profile-drawer{pointer-events:none}
+.moonstone-feed-card[data-expanded=true] .moonstone-profile-scroll{pointer-events:auto}
 .moonstone-feed-card.is-profile-dragging>.moonstone-compact-info,
 .moonstone-feed-card.is-profile-dragging>.moonstone-profile-drawer{transition:none}
-.moonstone-reveal-main{opacity:var(--profile-main-p,0);transform:translate3d(0,calc((1 - var(--profile-main-p,0)) * 17px),0)}
-.moonstone-reveal-goal{opacity:var(--profile-goal-p,0);transform:translate3d(0,calc((1 - var(--profile-goal-p,0)) * 16px),0)}
 .moonstone-reveal-about>h3{opacity:var(--profile-about-p,0);transform:translate3d(0,calc((1 - var(--profile-about-p,0)) * 15px),0)}
 .moonstone-reveal-text{opacity:var(--profile-text-p,0);transform:translate3d(0,calc((1 - var(--profile-text-p,0)) * 20px),0)}
 .moonstone-reveal-interests{opacity:var(--profile-interests-p,0);transform:translate3d(0,calc((1 - var(--profile-interests-p,0)) * 19px),0)}
 .moonstone-reveal-extra{opacity:var(--profile-extra-p,0);transform:translate3d(0,calc((1 - var(--profile-extra-p,0)) * 19px),0)}
-.moonstone-profile-gesture-zone{height:28px;display:grid;place-items:center;touch-action:none}
+.moonstone-profile-gesture-zone{height:28px;display:grid;place-items:center;touch-action:none;opacity:calc(var(--profile-p) * .8)}
 .moonstone-profile-gesture-zone span:first-child{width:42px;height:4px;border-radius:999px;background:rgba(233,235,240,.36)}
 .moonstone-profile-gesture-zone span:last-child{display:none}
-.moonstone-profile-scroll{position:absolute;inset:28px 0 0;padding:4px 5px 24px;overflow:hidden;overscroll-behavior:contain;touch-action:none}
-.moonstone-profile-scroll header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.moonstone-drawer-name{display:flex;align-items:center;gap:6px;max-width:100%;margin:0;padding:0;border:0;background:transparent;color:#fff;text-align:left}
-.moonstone-drawer-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:25px;font-weight:720;line-height:1.1;letter-spacing:-.02em}
-.moonstone-drawer-name svg{flex:none;width:18px;color:#C8B5D7}
-.moonstone-profile-scroll header p{display:flex;align-items:center;gap:5px;margin:5px 0 0;color:rgba(242,243,245,.7);font-size:12px}
-.moonstone-profile-scroll header p svg{width:13px;height:13px}
-.moonstone-profile-scroll header>button{display:grid;place-items:center;flex:none;width:39px;height:39px;border:1px solid var(--moon-edge);border-radius:50%;background:rgba(77,85,96,.42);color:#F2F3F5}
-.moonstone-drawer-goal{margin:16px 0 0}
-.moonstone-detail-section{margin-top:22px}.moonstone-detail-section h3{margin:0 0 8px;color:#D8CCD9;font-size:12px;font-weight:680;text-transform:uppercase;letter-spacing:.09em}
-.moonstone-detail-section>p{margin:0;color:rgba(246,247,249,.88);font-size:14px;line-height:1.55;white-space:pre-wrap}
+.moonstone-profile-scroll{position:absolute;inset:var(--profile-detail-top,172px) 0 0;padding:0 5px 25px;overflow:hidden;overscroll-behavior:contain;touch-action:none}
+.moonstone-detail-section{position:relative;margin:0;padding:0 0 18px}
+.moonstone-detail-section+.moonstone-detail-section{margin-top:18px;padding-top:18px;border-top:1px solid rgba(230,218,236,.13)}
+.moonstone-detail-section h3{display:flex;align-items:center;gap:7px;margin:0 0 9px;color:#DCCFE2;font-size:11px;font-weight:720;text-transform:uppercase;letter-spacing:.11em}
+.moonstone-detail-section h3::before{content:"";width:5px;height:5px;border-radius:50%;background:#C3A5D0;box-shadow:0 0 9px rgba(195,165,208,.44)}
+.moonstone-detail-section>p{margin:0;color:rgba(249,246,250,.9);font-size:14px;line-height:1.58;white-space:pre-wrap;text-shadow:0 1px 8px rgba(0,0,0,.28)}
 .moonstone-interest-list{display:flex;flex-wrap:wrap;gap:8px}
-.moonstone-interest-list .interest-chip{min-height:34px;padding:7px 10px;border:1px solid rgba(238,236,244,.2);border-radius:999px;color:#F4F3F7;background:rgba(105,112,124,.34);font-size:11px}
+.moonstone-interest-list .interest-chip{min-height:34px;padding:7px 11px;border:1px solid rgba(238,226,244,.18);border-radius:999px;color:#F7F1F8;background:linear-gradient(145deg,rgba(117,91,128,.4),rgba(55,48,60,.48));box-shadow:inset 0 1px rgba(255,255,255,.09);font-size:11px}
+.moonstone-language-list{display:flex;flex-wrap:wrap;gap:8px}
+.moonstone-language-chip{display:inline-flex;align-items:center;gap:7px;min-height:35px;padding:6px 11px 6px 7px;border:1px solid rgba(237,228,242,.17);border-radius:999px;background:linear-gradient(145deg,rgba(88,75,96,.52),rgba(45,40,51,.56));color:#F5EFF7;font-size:12px;box-shadow:inset 0 1px rgba(255,255,255,.1)}
+.moonstone-language-flag{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:rgba(255,255,255,.09);font-size:15px;line-height:1;box-shadow:inset 0 1px rgba(255,255,255,.12)}
 .moonstone-liked-you{margin:20px 0 0;padding:12px;border:1px solid rgba(182,164,200,.26);border-radius:16px;background:rgba(182,164,200,.11);color:#E9E0F0;font-size:12px}
 .moonstone-actions{
  position:absolute;z-index:20;left:26px;right:26px;bottom:var(--moon-actions-bottom);height:var(--moon-actions-height);
@@ -160,7 +160,7 @@
 .moonstone-pass-button{display:grid;place-items:center;flex:none;width:58px;padding:0;border-radius:50%}
 .moonstone-pass-button svg{width:28px;height:28px;stroke-width:1.7}.moonstone-pass-button:active:not(:disabled){transform:scale(.95)}
 .moonstone-like-button{
- --like-slide-p:0;--like-travel:180px;--like-scale:calc(1 + var(--like-slide-p) * .035);
+ --like-slide-p:0;--like-travel:180px;--like-scale:calc(1 + var(--like-slide-p) * .052);
  flex:1;min-width:0;overflow:visible;border-radius:999px;touch-action:pan-y;transform:translate3d(0,0,0) scale(var(--like-scale));transform-origin:center;
  transition:transform .24s cubic-bezier(.2,.8,.2,1),border-color .2s ease,box-shadow .2s ease
 }
@@ -201,6 +201,22 @@
 .moonstone-like-copy{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:17px;font-weight:610;letter-spacing:.01em;white-space:nowrap}
 .moonstone-like-arrows{position:absolute;right:20px;top:50%;display:flex;transform:translateY(-50%);color:rgba(231,230,238,.68)}
 .moonstone-like-arrows svg{width:17px;height:17px;margin-left:-7px;stroke-width:1.5}.moonstone-like-button.is-armed{border-color:rgba(226,205,242,.68);box-shadow:inset 0 1px rgba(255,255,255,.3),inset 0 -2px rgba(8,10,13,.22),0 11px 34px rgba(130,91,166,.34)}
+.moonstone-super-preview{position:absolute;z-index:24;left:50%;top:45%;display:grid;place-items:center;width:132px;height:132px;opacity:var(--super-p);transform:translate(-50%,-50%) scale(calc(.54 + var(--super-p) * .46));pointer-events:none;filter:drop-shadow(0 16px 32px rgba(54,30,70,.34))}
+.moonstone-super-core{grid-area:1/1;position:relative;display:grid;place-items:center;width:96px;height:96px;border:1px solid rgba(244,231,251,.35);border-radius:50%;overflow:hidden;color:#F0DDF9;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.24),transparent 35%),linear-gradient(145deg,rgba(151,105,176,.76),rgba(83,58,103,.72) 48%,rgba(41,36,48,.78));box-shadow:inset 0 1px rgba(255,255,255,.3),inset 0 -10px 24px rgba(43,25,57,.24),0 13px 38px rgba(16,9,21,.3)}
+.moonstone-super-core::after{content:"";position:absolute;inset:-45%;background:conic-gradient(from 25deg,transparent,rgba(232,180,255,.38),transparent 28%,rgba(173,212,255,.28),transparent 57%,rgba(255,187,222,.32),transparent 84%)}
+.moonstone-feed-card[data-super-preview] .moonstone-super-core::after{animation:moonstone-super-spectrum 1.5s linear infinite}
+.moonstone-super-core svg{position:relative;z-index:1;width:52px;height:52px;fill:rgba(239,215,250,.32);stroke-width:1.55;filter:drop-shadow(0 4px 10px rgba(48,23,64,.45))}
+.moonstone-feed-card[data-super-armed] .moonstone-super-core{animation:moonstone-super-tremble .34s ease-in-out infinite alternate}
+.moonstone-super-orbit{grid-area:1/1;position:relative;width:100%;height:100%}
+.moonstone-super-orbit i{--orbit-r:0deg;position:absolute;left:50%;top:50%;width:12px;height:12px;opacity:0;color:#EEDCF7;transform:translate(-50%,-50%) rotate(var(--orbit-r)) translateY(-37px) scale(.2)}
+.moonstone-super-orbit i svg{width:100%;height:100%;fill:rgba(225,196,239,.35);stroke-width:1.5}
+.moonstone-super-orbit i:nth-child(1){--orbit-r:0deg}.moonstone-super-orbit i:nth-child(2){--orbit-r:36deg}.moonstone-super-orbit i:nth-child(3){--orbit-r:72deg}.moonstone-super-orbit i:nth-child(4){--orbit-r:108deg}.moonstone-super-orbit i:nth-child(5){--orbit-r:144deg}.moonstone-super-orbit i:nth-child(6){--orbit-r:180deg}.moonstone-super-orbit i:nth-child(7){--orbit-r:216deg}.moonstone-super-orbit i:nth-child(8){--orbit-r:252deg}.moonstone-super-orbit i:nth-child(9){--orbit-r:288deg}.moonstone-super-orbit i:nth-child(10){--orbit-r:324deg}
+.moonstone-feed-card.is-super-committing .moonstone-super-preview{animation:moonstone-super-release .62s cubic-bezier(.18,.78,.22,1) both}
+.moonstone-feed-card.is-super-committing .moonstone-super-orbit i{animation:moonstone-super-orbit-burst .58s cubic-bezier(.18,.72,.18,1) both}
+@keyframes moonstone-super-spectrum{to{transform:rotate(360deg)}}
+@keyframes moonstone-super-tremble{0%{transform:rotate(-2deg) scale(.99)}100%{transform:rotate(2deg) scale(1.04)}}
+@keyframes moonstone-super-release{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}55%{opacity:1;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:0;transform:translate(-50%,calc(-50% - 28px)) scale(1.24)}}
+@keyframes moonstone-super-orbit-burst{0%{opacity:0;transform:translate(-50%,-50%) rotate(var(--orbit-r)) translateY(-34px) scale(.2)}22%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) rotate(var(--orbit-r)) translateY(-82px) scale(1.05)}}
 .moonstone-action-feedback{position:absolute;z-index:24;left:50%;top:47%;display:grid;place-items:center;width:104px;height:104px;
  transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;color:#F7F8FA}
 .moonstone-action-feedback>span{display:grid;place-items:center;width:92px;height:92px;border:1px solid rgba(242,244,248,.28);border-radius:50%;
@@ -210,8 +226,6 @@
 .moonstone-action-feedback svg{width:50px;height:50px;stroke-width:1.7;filter:drop-shadow(0 4px 9px rgba(0,0,0,.25))}
 .moonstone-action-feedback.is-like>span{color:#E4D4ED;border-color:rgba(210,190,226,.48);background:linear-gradient(145deg,rgba(112,86,131,.76),rgba(50,45,60,.78))}
 .moonstone-action-feedback.is-like svg{fill:rgba(205,178,223,.28)}
-.moonstone-action-feedback.is-special>span{color:#EBDDF5;border-color:rgba(224,204,239,.56);background:linear-gradient(145deg,rgba(126,94,151,.82),rgba(55,45,66,.8))}
-.moonstone-action-feedback.is-special svg{fill:rgba(225,202,240,.38)}
 @keyframes moonstone-action-symbol{
  0%{opacity:0;transform:scale(.34) rotate(-11deg)}
  34%{opacity:1;transform:scale(1.12) rotate(3deg)}
@@ -265,7 +279,7 @@
 @media(max-width:355px){.moonstone-actions{left:18px;right:18px}.moonstone-compact-info{left:20px;right:18px}.moonstone-like-copy{font-size:15px}.moonstone-profile-drawer{left:9px;right:9px}}
 @media(prefers-reduced-motion:reduce){
  .moonstone-photo-indicator i,.moonstone-profile-toggle,.moonstone-like-thumb,.moonstone-like-button,
- .moonstone-super-particles i,.moonstone-action-feedback>span{transition:none;animation:none}
+ .moonstone-super-particles i,.moonstone-action-feedback>span,.moonstone-super-core,.moonstone-super-core::after,.moonstone-super-preview,.moonstone-super-orbit i{transition:none;animation:none}
 }
 @media(prefers-reduced-transparency:reduce){.moonstone-goal,.moonstone-pass-button,.moonstone-like-button,.discovery-app>.discovery-bottom-nav{backdrop-filter:none;-webkit-backdrop-filter:none;background:#2B3037}}
 /* Android uses the prepared current-photo blur layer and never samples the moving backdrop. */

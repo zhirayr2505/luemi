@@ -9,7 +9,7 @@ import {fromDemoPerson,type ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
 import {DemoFeedSandbox} from "./DemoFeedSandbox";
 import {selectionHaptic} from "../ui/haptic";
-import {ensureMountedCoverReady,preloadUpcomingFeedPhotos} from "./feed-image-preload";
+import {preloadUpcomingFeedPhotos} from "./feed-image-preload";
 import {warmPublishedPagePhotos} from "../registration/recommendation-warmup";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {GestureArbiter,computedTranslation,fractionalTrack} from "../ui/gesture-arbiter";
@@ -147,36 +147,24 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const [leaving,setLeaving]=useState<string|null>(null);
  const [leavingKind,setLeavingKind]=useState<DemoKind|null>(null);
  const locked=useRef(false),pendingCommit=useRef<(()=>void)|null>(null);
- const transitionTimer=useRef<number|null>(null);
- const gateDeadline=useRef<number|null>(null),requestPending=useRef(false);
+ const transitionTimer=useRef<number|null>(null),requestPending=useRef(false);
  const abort=useRef<AbortController|null>(null);
  const mediaReleases=useRef<Array<()=>void>>([]);
  const deckRef=useRef<HTMLDivElement>(null);
- const coverGate=useRef<AbortController|null>(null);
  const [readyKeys,setReadyKeys]=useState<ReadonlySet<string>>(()=>new Set<string>());
- const waitingGate=useRef<null|{key:string;begin:()=>void}>(null);
  const coverKey=(id:string,src:string)=>id+"::"+src;
  const markReady=useCallback((key:string)=>{
   setReadyKeys(keys=>{if(keys.has(key))return keys;
    const next=new Set(keys);next.add(key);return next;});
-  const pending=waitingGate.current;
-  if(pending?.key===key){waitingGate.current=null;pending.begin();}
  },[]);
- useEffect(()=>()=>{abort.current?.abort();coverGate.current?.abort();
-  waitingGate.current=null;
+ useEffect(()=>()=>{abort.current?.abort();
   for(const release of mediaReleases.current)release();
   mediaReleases.current=[];},[]);
- const clearGate=()=>{
-  if(gateDeadline.current!==null)window.clearTimeout(gateDeadline.current);
-  gateDeadline.current=null;
-  coverGate.current?.abort();coverGate.current=null;waitingGate.current=null;
- };
  const finishDeck=()=>{
   const commit=pendingCommit.current;if(!commit)return;
   pendingCommit.current=null;
   if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
   transitionTimer.current=null;
-  clearGate();
   // The animation event is only an optimization. Always release the deck,
   // including when navigation, callback code or WebView interrupts it.
   try{commit();}
@@ -187,48 +175,20 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   locked.current=true;
   selectionHaptic();
   const begin=()=>{
-   clearGate();
    pendingCommit.current=commit;
    setLeaving(currentId);setLeavingKind(kind);
    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
    else transitionTimer.current=window.setTimeout(finishDeck,570);
   };
-  const successor=visibleRows[page+1],photoUrl=cardRows[page+1]?.photos[0]?.src;
-  if(successor&&photoUrl){
-   const key=coverKey(successor.id,photoUrl);
-   if(!readyKeys.has(key)){
-    waitingGate.current={key,begin};
-    const controller=new AbortController();coverGate.current=controller;
-    setMessage("Подготавливаем следующую фотографию…");
-    // A failed decode must never retain the permanent locked state.
-    // The deadline also covers a suspended Promise in Android WebView.
-    gateDeadline.current=window.setTimeout(()=>{
-     if(waitingGate.current?.key!==key)return;
-     setMessage("Фото ещё загружается — переход продолжается.");
-     begin();
-    },2400);
-    void ensureMountedCoverReady(deckRef.current?.querySelector<HTMLElement>(".deck-depth-one")??null,
-     controller.signal,2200).then(ok=>{
-     if(controller.signal.aborted||waitingGate.current?.key!==key)return;
-     if(ok){markReady(key);}
-     else{setMessage("Следующее фото ещё загружается.");begin();}
-    }).catch(()=>{
-     if(!controller.signal.aborted&&waitingGate.current?.key===key){
-      setMessage("Не удалось подготовить фото, продолжаем ленту.");begin();
-     }
-    });
-    return;
-   }
-  }
+  // Never hold the accepted action behind media readiness. A queued card can
+  // enter on the branded fallback and swap in its decoded photo independently.
   begin();
  };
  useEffect(()=>()=>{if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
-  if(gateDeadline.current!==null)window.clearTimeout(gateDeadline.current);
-  coverGate.current?.abort();waitingGate.current=null;
-  transitionTimer.current=null;gateDeadline.current=null;pendingCommit.current=null;locked.current=false;requestPending.current=false;},[]);
+  transitionTimer.current=null;pendingCommit.current=null;locked.current=false;requestPending.current=false;},[]);
  // Recovery after Telegram backgrounds or resumes the page.
  useEffect(()=>{
-  const recover=()=>{const gate=waitingGate.current;if(gate)gate.begin();if(pendingCommit.current)finishDeck();};
+  const recover=()=>{if(pendingCommit.current)finishDeck();};
   const onVisibility=()=>{if(document.visibilityState==="visible")recover();};
   window.addEventListener("focus",recover);document.addEventListener("visibilitychange",onVisibility);
   return()=>{window.removeEventListener("focus",recover);document.removeEventListener("visibilitychange",onVisibility);};

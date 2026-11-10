@@ -4,7 +4,7 @@ import type {CSSProperties} from "react";
 import {Heart,Undo2,Images,MessagesSquare,UserRound,Layers3} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {FeedCard} from "./FeedCard";
-import {ensureMountedCoverReady,preloadUpcomingFeedPhotos} from "./feed-image-preload";
+import {preloadUpcomingFeedPhotos} from "./feed-image-preload";
 import {RealChats} from "../chats/RealChats";
 import {ChatsPreview} from "../chats/ChatsPreview";
 import {demoPeople} from "./demo-people";
@@ -103,7 +103,6 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
  const pendingCommit=useRef<(()=>void)|null>(null);
  const locked=useRef(false);
  const deckRef=useRef<HTMLDivElement>(null);
- const coverGate=useRef<AbortController|null>(null);
  const [readyKeys,setReadyKeys]=useState<ReadonlySet<string>>(()=>new Set<string>());
  const coverKey=(p:DemoPerson)=>p.id+"::"+(p.photos[0]?.src??"");
  const markReady=useCallback((key:string)=>setReadyKeys(keys=>{
@@ -182,7 +181,7 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
    commit();
  },[]);
  useEffect(()=>()=>{if(transitionRef.current!==null)window.clearTimeout(transitionRef.current);
-  coverGate.current?.abort();transitionRef.current=null;
+  transitionRef.current=null;
   pendingCommit.current=null;locked.current=false;},[]);
  const leave=useCallback(()=>{
   if(personOpen&&visitorBackRef.current?.())return;
@@ -229,25 +228,8 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
    else transitionRef.current=window.setTimeout(finishDeck,570);
   };
-  const successor=profiles[feed.index+1];
-  if(successor&&!readyKeys.has(coverKey(successor))){
-   const controller=new AbortController();
-   coverGate.current?.abort();coverGate.current=controller;
-   indicate("Подготавливаем следующую фотографию…");
-   void ensureMountedCoverReady(
-    deckRef.current?.querySelector<HTMLElement>(".deck-depth-one")??null,
-    controller.signal
-   ).then(ok=>{
-    if(controller.signal.aborted)return;
-    coverGate.current=null;
-    if(!ok)indicate("Открываем следующую анкету без задержки…");
-    markReady(coverKey(successor));beginLeave();
-   }).catch(()=>{
-    if(controller.signal.aborted)return;
-    coverGate.current=null;markReady(coverKey(successor));beginLeave();
-   });
-   return;
-  }
+  // The action pipeline never waits for a remote image. The queued card is
+  // already mounted with a fallback and reveals its photo whenever it decodes.
   beginLeave();
  };
  const selectTab=(index:number)=>{

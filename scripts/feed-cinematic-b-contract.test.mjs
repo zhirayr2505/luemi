@@ -39,7 +39,6 @@ test("one progress drives overlay copy stages, prepared blur and dim without Rea
  assert.match(css,/opacity:calc\(var\(--profile-p\) \* \.96\)/);
  assert.match(css,/opacity:var\(--profile-p\)/);
  assert.match(css,/calc\(\(1 - var\(--profile-p\)\) \* 38px\)/);
- assert.match(card,/--profile-main-p/);
  assert.match(card,/--profile-about-p/);
  assert.match(card,/--profile-interests-p/);
  assert.match(css,/border:0;border-radius:0/);
@@ -58,10 +57,13 @@ test("tap likes and 72 percent right drag superlikes through one control",()=>{
  assert.match(card,/impactHaptic\("medium"\)/);
  assert.match(card,/impactHaptic\("heavy"\)/);
  assert.match(haptic,/impactOccurred/);
- assert.match(css,/--like-scale:calc\(1 \+ var\(--like-slide-p\) \* \.035\)/);
- assert.doesNotMatch(css,/@keyframes moonstone-super-wobble/);
+ assert.match(css,/--like-scale:calc\(1 \+ var\(--like-slide-p\) \* \.052\)/);
  assert.match(css,/@keyframes moonstone-button-star-burst/);
  assert.match(card,/moonstone-super-particles/);
+ assert.match(card,/onPreview=\{paintSuperPreview\}/);
+ assert.match(card,/moonstone-super-preview/);
+ assert.match(css,/@keyframes moonstone-super-tremble/);
+ assert.match(css,/@keyframes moonstone-super-orbit-burst/);
  assert.match(css,/\.moonstone-like-button\.is-armed/);
 });
 
@@ -78,16 +80,21 @@ test("holding the photo hides controls while logo and navigation stay mounted",(
 test("expanded profile is a full-photo blur with clickable identity and no rectangular sheet",()=>{
  assert.match(css,/filter:blur\(19px\) saturate\(\.78\) brightness\(\.76\)/);
  assert.match(css,/\.moonstone-profile-drawer\{[\s\S]*?background:transparent/);
- assert.match(card,/className="moonstone-drawer-name"[\s\S]*?onClick=\{onOpenProfile\}/);
  assert.match(card,/className="moonstone-name"[\s\S]*?onClick=\{onOpenProfile\}/);
  assert.match(card,/moonstone-goal-mark/);
  assert.match(css,/\.moonstone-goal-mark\{/);
+ assert.match(css,/\.moonstone-compact-info\{[\s\S]*?opacity:1;transform:translate3d\(0,var\(--profile-info-y\),0\)/);
+ assert.doesNotMatch(card,/moonstone-drawer-name/);
+ assert.match(card,/moonstone-language-flag/);
+ assert.match(css,/\.moonstone-language-chip\{/);
 });
 
-test("every reaction paints a centered symbol before its directional deck exit",()=>{
+test("reactions paint centered feedback and superlike has a live release burst",()=>{
  assert.match(card,/moonstone-action-feedback/);
  assert.match(card,/is-\$\{actionFeedback\.kind\}/);
  assert.match(css,/@keyframes moonstone-action-symbol/);
+ assert.match(card,/is-super-committing/);
+ assert.match(css,/@keyframes moonstone-super-release/);
 });
 
 test("actions and icon-only navigation match the approved two-button composition",()=>{

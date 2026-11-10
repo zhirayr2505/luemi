@@ -17,6 +17,10 @@ const countryName=(code:string,fallback:string)=>{
  try{return new Intl.DisplayNames(["ru"],{type:"region"}).of(code.toUpperCase())??code.toUpperCase();}
  catch{return code.toUpperCase();}
 };
+const flagEmoji=(code:string)=>{
+ const normalized=code.trim().toUpperCase();
+ return /^[A-Z]{2}$/.test(normalized)?String.fromCodePoint(...[...normalized].map(char=>127397+char.charCodeAt(0))):"🌐";
+};
 const distanceLabel=(distance:number|null|undefined,real:boolean)=>{
  if(typeof distance!=="number"||!Number.isFinite(distance)||distance<0)return "";
  const value=distance<1?"< 1":Math.round(distance).toLocaleString("ru");
@@ -29,14 +33,16 @@ type SettleRun={from:number;to:0|1;started:number;duration:number;frame:number|n
 type PhotoHold={id:number;x:number;y:number;timer:number|null;active:boolean;host:HTMLElement|null};
 type ActionFeedback={kind:"pass"|"like"|"special";token:number};
 
-function LikeSuperButton({disabled,onAction}:{disabled:boolean;onAction:(kind:"like"|"special")=>void}){
+function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onAction:(kind:"like"|"special")=>void;
+ onPreview:(progress:number,armed:boolean)=>void}){
  const button=useRef<HTMLButtonElement>(null);
  const gesture=useRef<null|{id:number;x:number;y:number;started:number;claimed:boolean;threshold:boolean;max:number;lastX:number;lastT:number;velocity:number}>(null);
  const frame=useRef<number|null>(null),pending=useRef(0),committed=useRef(false);
+ const paint=(value:number)=>{const progress=clamp(value);
+  button.current?.style.setProperty("--like-slide-p",String(progress));onPreview(progress,progress>=.72);};
  useEffect(()=>{if(!disabled){committed.current=false;paint(0);
-  button.current?.classList.remove("is-dragging","is-armed","is-bursting");}},[disabled]);
- useEffect(()=>()=>{if(frame.current!==null)cancelAnimationFrame(frame.current);},[]);
- const paint=(value:number)=>button.current?.style.setProperty("--like-slide-p",String(clamp(value)));
+  button.current?.classList.remove("is-dragging","is-armed","is-bursting");}},[disabled,onPreview]);
+ useEffect(()=>()=>{if(frame.current!==null)cancelAnimationFrame(frame.current);onPreview(0,false);},[onPreview]);
  const schedule=(value:number)=>{pending.current=value;if(frame.current!==null)return;
   frame.current=requestAnimationFrame(()=>{frame.current=null;paint(pending.current);});};
  const reset=()=>{if(frame.current!==null){cancelAnimationFrame(frame.current);frame.current=null;}paint(0);
@@ -119,10 +125,11 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  const [expanded,setExpanded]=useState(false),[activePhotoIndex,setActivePhotoIndex]=useState(0);
  const [adaptiveSources,setAdaptiveSources]=useState<{personId:string;sources:Record<number,string>}>({personId:person.id,sources:{}});
  const [actionFeedback,setActionFeedback]=useState<ActionFeedback|null>(null);
- const card=useRef<HTMLElement>(null),drawer=useRef<HTMLDivElement>(null),scroll=useRef<HTMLDivElement>(null);
+ const card=useRef<HTMLElement>(null),compactInfo=useRef<HTMLDivElement>(null);
+ const drawer=useRef<HTMLDivElement>(null),scroll=useRef<HTMLDivElement>(null);
  const photo=useRef<PhotoCarouselHandle>(null),gesture=useRef<ExpandGesture|null>(null);
  const photoHold=useRef<PhotoHold|null>(null),actionLocked=useRef(false),feedbackTimer=useRef<number|null>(null);
- const progress=useRef(0),target=useRef<0|1>(0),travel=useRef(310),run=useRef<SettleRun|null>(null);
+ const progress=useRef(0),target=useRef<0|1>(0),travel=useRef(310),infoShift=useRef(-260),run=useRef<SettleRun|null>(null);
  const fingerFrame=useRef<number|null>(null),fingerValue=useRef(0),blockClickUntil=useRef(0);
  const available=active&&!busy;
  const location=useMemo(()=>[person.city,countryName(person.countryCode,person.country)].filter(Boolean).join(", "),[person.city,person.country,person.countryCode]);
@@ -133,7 +140,14 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  },[person.id]);
  const currentPhotoIndex=Math.min(activePhotoIndex,Math.max(0,person.photos.length-1));
  const currentPhoto=(adaptiveSources.personId===person.id?adaptiveSources.sources[currentPhotoIndex]:undefined)??person.photos[currentPhotoIndex]?.src;
- const languageNames=person.languages.map(id=>languages.find(item=>item.id===id)?.name??id).filter(Boolean);
+ const languageOptions=person.languages.map(id=>{const item=languages.find(language=>language.id===id);
+  return {id,name:item?.name??id,flag:flagEmoji(item?.flag??id)};});
+ const paintSuperPreview=useCallback((value:number,armed:boolean)=>{
+  const element=card.current;if(!element)return;
+  element.style.setProperty("--super-p",String(clamp(value)));
+  element.toggleAttribute("data-super-preview",value>.02);
+  element.toggleAttribute("data-super-armed",armed);
+ },[]);
  const releasePhotoHold=(pointerId?:number,keepCapture=false)=>{
   const hold=photoHold.current;if(!hold||(pointerId!==undefined&&hold.id!==pointerId))return false;
   if(hold.timer!==null)window.clearTimeout(hold.timer);
@@ -160,10 +174,12 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   if(actionLocked.current||!available)return;
   actionLocked.current=true;
   const feedback={kind,token:performance.now()};setActionFeedback(feedback);
+  if(kind==="special")card.current?.classList.add("is-super-committing");
   if(feedbackTimer.current!==null)window.clearTimeout(feedbackTimer.current);
   feedbackTimer.current=window.setTimeout(()=>{
    setActionFeedback(current=>current?.token===feedback.token?null:current);
    actionLocked.current=false;feedbackTimer.current=null;
+   card.current?.classList.remove("is-super-committing");paintSuperPreview(0,false);
   },900);
   onAction(kind);
  };
@@ -171,8 +187,7 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   const value=progress.current=clamp(next),element=card.current;
   if(element){
    element.style.setProperty("--profile-p",String(value));
-   element.style.setProperty("--profile-main-p",String(revealStage(value,.05,.30)));
-   element.style.setProperty("--profile-goal-p",String(revealStage(value,.12,.42)));
+   element.style.setProperty("--profile-info-y",value*infoShift.current+"px");
    element.style.setProperty("--profile-about-p",String(revealStage(value,.22,.55)));
    element.style.setProperty("--profile-text-p",String(revealStage(value,.32,.70)));
    element.style.setProperty("--profile-interests-p",String(revealStage(value,.52,.85)));
@@ -203,16 +218,24 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  useLayoutEffect(()=>{
   const element=card.current;if(!element)return;
   const photoController=photo.current;
-  const measure=()=>{travel.current=Math.max(220,Math.min(420,element.clientHeight*.48));};measure();
+  const measure=()=>{travel.current=Math.max(220,Math.min(420,element.clientHeight*.48));
+   const info=compactInfo.current,details=drawer.current;if(!info||!details)return;
+   const infoBox=info.getBoundingClientRect(),detailsBox=details.getBoundingClientRect();
+   const oldShift=infoShift.current;
+   const unshiftedTop=infoBox.top-progress.current*oldShift;
+   const shift=Math.min(-72,detailsBox.top+32-unshiftedTop);
+   infoShift.current=shift;element.style.setProperty("--profile-info-y",progress.current*shift+"px");
+   element.style.setProperty("--profile-detail-top",Math.ceil(32+infoBox.height+17)+"px");
+  };measure();
   const observer=new ResizeObserver(measure);observer.observe(element);
   return()=>{observer.disconnect();photoController?.cancel();releasePhotoHold();
    if(feedbackTimer.current!==null)window.clearTimeout(feedbackTimer.current);
    if(fingerFrame.current!==null)cancelAnimationFrame(fingerFrame.current);
    const motion=run.current;if(motion&&motion.frame!==null)cancelAnimationFrame(motion.frame);};
  },[person.id]);
- useEffect(()=>{paint(0);target.current=0;actionLocked.current=false;setExpanded(false);setActionFeedback(null);
+ useEffect(()=>{paint(0);paintSuperPreview(0,false);target.current=0;actionLocked.current=false;setExpanded(false);setActionFeedback(null);
   releasePhotoHold();gesture.current=null;
-  card.current?.classList.remove("is-profile-dragging");if(scroll.current)scroll.current.scrollTop=0;},[person.id]);
+  card.current?.classList.remove("is-profile-dragging","is-super-committing");if(scroll.current)scroll.current.scrollTop=0;},[person.id,paintSuperPreview]);
  useEffect(()=>{
   if(!available){releasePhotoHold();gesture.current=null;photo.current?.cancel();card.current?.classList.remove("is-profile-dragging");}
  },[available,person.id]);
@@ -299,7 +322,7 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
     <div className="moonstone-photo-shade" aria-hidden="true"/>
     {!real&&(onExitDemo?<button type="button" className="moonstone-demo-label" onClick={onExitDemo}>Демо</button>:<span className="moonstone-demo-label">Демо</span>)}
    </div>
-   <div className="moonstone-compact-info">
+   <div ref={compactInfo} className="moonstone-compact-info">
     <div className="moonstone-indicator-row">
      <div className="moonstone-photo-indicator" aria-label={`Фото ${activePhotoIndex+1} из ${person.photos.length}`}>
       {person.photos.map((item,index)=><i key={item.id} className={index===activePhotoIndex?"active":""}/>) }
@@ -309,35 +332,33 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
       <ChevronUp/>
      </button>
     </div>
-    <button type="button" className="moonstone-name" disabled={!available} onClick={onOpenProfile}>
+    <div className="moonstone-name-row"><button type="button" className="moonstone-name" disabled={!available} onClick={onOpenProfile}>
      <span>{person.name}, {person.age}</span>{person.verified&&<BadgeCheck aria-label="Профиль подтверждён"/>}
-    </button>
+    </button>{onMore&&<button type="button" className="moonstone-profile-more" disabled={!available} onClick={onMore} aria-label="Действия с анкетой"><MoreHorizontal/></button>}</div>
     <div className="moonstone-location"><MapPin/><span>{location}</span>{distance&&<><b>·</b><span>{distance}</span></>}</div>
     {goal&&<div className="moonstone-goal"><span className="moonstone-goal-mark"><Heart/></span><span>{goalLabel(goal.id,person.gender)}</span></div>}
    </div>
    <section ref={drawer} className="moonstone-profile-drawer" aria-label="Подробная информация" aria-hidden={!expanded}>
     <div className="moonstone-profile-gesture-zone"><span/><span/></div>
     <div ref={scroll} className="moonstone-profile-scroll">
-     <header className="moonstone-reveal-main"><div><button type="button" className="moonstone-drawer-name" disabled={!available} onClick={onOpenProfile}>
-      <span>{person.name}, {person.age}</span>{person.verified&&<BadgeCheck aria-label="Профиль подтверждён"/>}</button>
-      <p><MapPin/>{location}{distance?` · ${distance}`:""}</p></div>
-      {onMore&&<button type="button" onClick={onMore} aria-label="Действия с анкетой"><MoreHorizontal/></button>}
-     </header>
-     {goal&&<div className="moonstone-drawer-goal moonstone-reveal-goal"><span className="moonstone-goal-mark"><Heart/></span><span>{goalLabel(goal.id,person.gender)}</span></div>}
      {person.about&&<div className="moonstone-detail-section moonstone-reveal-about"><h3>О себе</h3><p className="moonstone-reveal-text">{person.about}</p></div>}
      {person.interests.length>0&&<div className="moonstone-detail-section moonstone-reveal-interests"><h3>Интересы</h3>
       <div className="moonstone-interest-list">{person.interests.map((id,index)=><InterestChip key={`${id}-${index}`} id={id}/>)}</div></div>}
-     {languageNames.length>0&&<div className="moonstone-detail-section moonstone-reveal-extra"><h3>Языки</h3><p>{languageNames.join(" · ")}</p></div>}
+     {languageOptions.length>0&&<div className="moonstone-detail-section moonstone-reveal-extra"><h3>Языки</h3>
+      <div className="moonstone-language-list">{languageOptions.map(language=><span className="moonstone-language-chip" key={language.id}>
+       <b className="moonstone-language-flag" aria-hidden="true">{language.flag}</b><span>{language.name}</span></span>)}</div></div>}
      {person.likedYouKind&&<p className="moonstone-liked-you moonstone-reveal-extra">Ты уже понравился(ась) этому человеку</p>}
     </div>
    </section>
-   {actionFeedback&&<div key={actionFeedback.token}
+   <div className="moonstone-super-preview" aria-hidden="true"><span className="moonstone-super-core"><Star/></span>
+    <span className="moonstone-super-orbit">{Array.from({length:10},(_,index)=><i key={index}><Star/></i>)}</span></div>
+   {actionFeedback&&actionFeedback.kind!=="special"&&<div key={actionFeedback.token}
     className={`moonstone-action-feedback is-${actionFeedback.kind}`} aria-hidden="true">
-    <span>{actionFeedback.kind==="pass"?<X/>:actionFeedback.kind==="like"?<Heart/>:<Star/>}</span>
+    <span>{actionFeedback.kind==="pass"?<X/>:<Heart/>}</span>
    </div>}
    <div className="moonstone-actions" aria-label="Действия с анкетой">
     <button type="button" className="moonstone-pass-button" disabled={!available} aria-label="Пропустить" onClick={()=>performAction("pass")}><X/></button>
-    <LikeSuperButton disabled={!available} onAction={performAction}/>
+    <LikeSuperButton disabled={!available} onAction={performAction} onPreview={paintSuperPreview}/>
    </div>
   </article>
  </div>;
