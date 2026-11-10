@@ -21,7 +21,7 @@ test("photo is one fullscreen carousel beneath all chrome",()=>{
  assert.match(css,/\.moonstone-photo,\.moonstone-photo>\.carousel-frame\{position:absolute;inset:0/);
  assert.match(css,/object-fit:cover/);
  assert.match(real,/visibleRows\.slice\(page,page\+2\)/);
- assert.match(carousel,/Math\.abs\(i-active\)<=1\?p\.src:undefined/);
+ assert.match(carousel,/src=\{!gpuSafe\|\|i<=1\?p\.src:undefined\}/);
 });
 
 test("compact state contains only indicator, identity, location and goal",()=>{
@@ -54,7 +54,24 @@ test("tap likes and 75 percent right drag superlikes through one control",()=>{
  assert.match(haptic,/impactOccurred/);
  assert.match(css,/--like-scale:calc\(1 \+ var\(--like-slide-p\) \* \.035\)/);
  assert.match(css,/@keyframes moonstone-super-wobble/);
+ assert.match(css,/@keyframes moonstone-button-star-burst/);
+ assert.match(card,/moonstone-super-particles/);
  assert.match(css,/\.moonstone-like-button\.is-armed/);
+});
+
+test("holding the photo hides controls while logo and navigation stay mounted",()=>{
+ assert.match(card,/host\.dataset\.photoFocus="true"/);
+ assert.match(card,/window\.setTimeout\(\(\)=>\{/);
+ assert.match(card,/releasePhotoHold/);
+ assert.match(css,/data-photo-focus=true/);
+ assert.doesNotMatch(css,/data-photo-focus=true[^}]*lh-island/);
+ assert.doesNotMatch(css,/data-photo-focus=true[^}]*discovery-bottom-nav/);
+});
+
+test("every reaction paints a centered symbol before its directional deck exit",()=>{
+ assert.match(card,/moonstone-action-feedback/);
+ assert.match(card,/is-\$\{actionFeedback\.kind\}/);
+ assert.match(css,/@keyframes moonstone-action-symbol/);
 });
 
 test("actions and icon-only navigation match the approved two-button composition",()=>{

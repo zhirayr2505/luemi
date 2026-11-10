@@ -39,13 +39,13 @@
  z-index:7;pointer-events:none;will-change:transform,opacity;
 }
 .discovery-app .discovery-deck-stage.has-profiles>.deck-leaving-pass{
- animation:luemi-deck-exit-left .46s cubic-bezier(.25,.72,.24,1) both;
+ animation:luemi-deck-exit-left .5s cubic-bezier(.2,.76,.22,1) both;
 }
 .discovery-app .discovery-deck-stage.has-profiles>.deck-leaving-like{
- animation:luemi-deck-exit-right .46s cubic-bezier(.25,.72,.24,1) both;
+ animation:luemi-deck-exit-right .5s cubic-bezier(.2,.76,.22,1) both;
 }
 .discovery-app .discovery-deck-stage.has-profiles>.deck-leaving-special{
- animation:luemi-deck-exit-top .46s cubic-bezier(.25,.72,.24,1) both;
+ animation:luemi-deck-exit-top .52s cubic-bezier(.18,.76,.2,1) both;
 }
 .discovery-app .discovery-deck-stage.has-profiles>.deck-entering{
  z-index:3;pointer-events:none;will-change:transform,opacity;
@@ -58,15 +58,18 @@
 }
 @keyframes luemi-deck-exit-left{
  from{transform:translate3d(0,0,0) rotate(0deg) scale(1);opacity:1}
- to{transform:translate3d(-109%,1%,0) rotate(-3deg) scale(.965);opacity:0}
+ 24%{transform:translate3d(-3%,0,0) rotate(-.35deg) scale(.998);opacity:1}
+ to{transform:translate3d(-112%,1%,0) rotate(-4deg) scale(.96);opacity:0}
 }
 @keyframes luemi-deck-exit-right{
  from{transform:translate3d(0,0,0) rotate(0deg) scale(1);opacity:1}
- to{transform:translate3d(109%,1%,0) rotate(3deg) scale(.965);opacity:0}
+ 24%{transform:translate3d(3%,0,0) rotate(.35deg) scale(.998);opacity:1}
+ to{transform:translate3d(112%,1%,0) rotate(4deg) scale(.96);opacity:0}
 }
 @keyframes luemi-deck-exit-top{
  from{transform:translate3d(0,0,0) scale(1);opacity:1}
- to{transform:translate3d(0,-110%,0) scale(.968);opacity:0}
+ 22%{transform:translate3d(0,-2.5%,0) scale(1.006);opacity:1}
+ to{transform:translate3d(0,-116%,0) scale(.955);opacity:0}
 }
 @keyframes luemi-deck-arrive-right{
  from{transform:translate3d(18px,8px,0) scale(.975);opacity:.86}

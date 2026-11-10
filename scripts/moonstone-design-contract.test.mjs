@@ -132,6 +132,7 @@ test("square and landscape feed photos become one cached portrait bitmap",()=>{
  assert.match(adaptive,/MAX_CACHE_ENTRIES=18/);
  assert.match(carousel,/adaptiveFullscreen/);
  assert.match(carousel,/URL\.revokeObjectURL/);
+ assert.match(carousel,/const warmPhoto=/);
  assert.match(card,/gpuSafe onCoverReady=\{onCoverReady\} adaptiveFullscreen/);
  assert.doesNotMatch(adaptive,/requestAnimationFrame|setInterval/,
   "one-time photo preparation must not enter the gesture animation path");

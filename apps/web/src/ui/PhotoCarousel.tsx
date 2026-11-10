@@ -58,9 +58,9 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
   return !!image?.isConnected&&image.complete&&image.naturalWidth>0&&
    image.classList.contains("is-ready");
  };
- const queuePhoto=(i:number)=>{
+ const requestPhoto=(i:number,selectWhenReady:boolean)=>{
   if(i<0||i>=photos.length)return;
-  pendingPhoto.current=i;
+  if(selectWhenReady)pendingPhoto.current=i;
   const image=photoElement(i);
   if(!image)return;
   image.loading="eager";
@@ -70,6 +70,8 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
   void preloadFeedImage(photos[i].src);
   if(image.complete&&image.naturalWidth>0)revealDecoded(image,i);
  };
+ const queuePhoto=(i:number)=>requestPhoto(i,true);
+ const warmPhoto=(i:number)=>requestPhoto(i,false);
  const startAt=(id:number,x:number,y:number,at:number,horizontal=false)=>{
    pendingPhoto.current=null;
    // Capture the displayed position once; interrupted settling follows the finger.
@@ -130,14 +132,15 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
      const velocity=Math.abs(delta)/Math.max(1,performance.now()-t.t);
      if(Math.abs(delta)>t.width*.18||velocity>.52){
        const next=Math.max(0,Math.min(photos.length-1,Math.round(t.startIndex)+(delta<0?1:-1)));
-       if(next!==activeRef.current&&!painted(next))queuePhoto(next);
+       if(next!==activeRef.current&&!painted(next))warmPhoto(next);
        else target=next;
      }
    }
    if(photoTrack.current)
      photoTrack.current.style.transition="transform .31s cubic-bezier(.22,.77,.23,1)";
    renderOffset(target,0);
-   if(target!==activeRef.current){activeRef.current=target;setIndex(target);onIndexChange?.(target);}
+   if(target!==activeRef.current){activeRef.current=target;setIndex(target);onIndexChange?.(target);
+    warmPhoto(target-1);warmPhoto(target+1);}
  };
  useImperativeHandle(ref,()=>({
   canAdvance:(direction:-1|1)=>activeRef.current+direction>=0&&activeRef.current+direction<photos.length,
@@ -167,6 +170,10 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(photoTrack.current)photoTrack.current.style.transition=farJump?
     "none":"transform .31s cubic-bezier(.22,.77,.23,1)";
    renderOffset(i,0);activeRef.current=i;setIndex(i);onIndexChange?.(i);
+   // Once a slide has been requested its DOM src is retained. Warm only the
+   // next neighbor so repeated back/forward swipes never detach and reload an
+   // already painted image (the source of the Android white/grey flash).
+   warmPhoto(i-1);warmPhoto(i+1);
  };
  const choose=(i:number)=>{
   if(i!==activeRef.current&&!painted(i)){queuePhoto(i);return;}
@@ -215,7 +222,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
      onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}>
    {photos.length>0?<div className={"carousel-track"+(gpuSafe?" is-gpu-safe":"")} ref={photoTrack}>
      {photos.map((p,i)=><img key={p.id+"::"+p.src}
-       src={!gpuSafe||Math.abs(i-active)<=1?p.src:undefined}
+       src={!gpuSafe||i<=1?p.src:undefined}
        alt={"Фото "+(i+1)} draggable={false}
        loading={i===0||(prioritize&&Math.abs(i-activeRef.current)<=1)?"eager":"lazy"} decoding="async"
        className="feed-carousel-photo"

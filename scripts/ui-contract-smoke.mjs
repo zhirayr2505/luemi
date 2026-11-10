@@ -138,7 +138,7 @@ const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
 assertCheck("Discovery retains four main navigation destinations and three discovery tabs",
  ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Мир"].every(x=>discovery.includes(x)));
 assertCheck("feed card exposes pass and one combined like/superlike control",
- feedCard.includes('onAction("pass")')&&feedCard.includes('commit("like")')&&feedCard.includes('commit("special")'));
+ feedCard.includes('performAction("pass")')&&feedCard.includes('commit("like")')&&feedCard.includes('commit("special")'));
 assertCheck("photos remain an independent carousel",feedCard.includes("<PhotoCarousel")&&carousel.includes("requestAnimationFrame")&&discovery.includes("target.closest"));
 assertCheck("the card owns photo swipes and profile morph; browse pager never steals them",
  discovery.includes('target.closest(".moonstone-feed-card")')&&

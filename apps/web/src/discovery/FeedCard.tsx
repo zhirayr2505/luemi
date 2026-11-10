@@ -25,12 +25,15 @@ const distanceLabel=(distance:number|null|undefined,real:boolean)=>{
 type ExpandGesture={id:number;x:number;y:number;started:number;axis:"pending"|"photo"|"info"|"scroll";
  startProgress:number;scrollStart:number;samples:Array<{y:number;t:number}>};
 type SettleRun={from:number;to:0|1;started:number;duration:number;frame:number|null};
+type PhotoHold={id:number;x:number;y:number;timer:number|null;active:boolean;host:HTMLElement|null};
+type ActionFeedback={kind:"pass"|"like"|"special";token:number};
 
 function LikeSuperButton({disabled,onAction}:{disabled:boolean;onAction:(kind:"like"|"special")=>void}){
  const button=useRef<HTMLButtonElement>(null);
  const gesture=useRef<null|{id:number;x:number;y:number;claimed:boolean;threshold:boolean;max:number;hapticStep:number}>(null);
  const frame=useRef<number|null>(null),pending=useRef(0),committed=useRef(false);
- useEffect(()=>{if(!disabled)committed.current=false;},[disabled]);
+ useEffect(()=>{if(!disabled){committed.current=false;paint(0);
+  button.current?.classList.remove("is-dragging","is-armed","is-bursting");}},[disabled]);
  useEffect(()=>()=>{if(frame.current!==null)cancelAnimationFrame(frame.current);},[]);
  const paint=(value:number)=>button.current?.style.setProperty("--like-slide-p",String(clamp(value)));
  const schedule=(value:number)=>{pending.current=value;if(frame.current!==null)return;
@@ -38,7 +41,11 @@ function LikeSuperButton({disabled,onAction}:{disabled:boolean;onAction:(kind:"l
  const reset=()=>{if(frame.current!==null){cancelAnimationFrame(frame.current);frame.current=null;}paint(0);
   button.current?.classList.remove("is-dragging","is-armed");};
  const commit=(kind:"like"|"special")=>{if(committed.current||disabled)return;
-  committed.current=true;if(kind==="special")impactHaptic("heavy");else selectionHaptic();onAction(kind);};
+  committed.current=true;
+  if(kind==="special"){button.current?.classList.add("is-bursting");impactHaptic("heavy");}
+  else selectionHaptic();
+  onAction(kind);
+ };
  const down=(event:ReactPointerEvent<HTMLButtonElement>)=>{
   if(disabled||committed.current||!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
   const width=event.currentTarget.getBoundingClientRect().width;
@@ -67,17 +74,20 @@ function LikeSuperButton({disabled,onAction}:{disabled:boolean;onAction:(kind:"l
   const current=gesture.current;if(!current||current.id!==event.pointerId)return;gesture.current=null;
   if(frame.current!==null){cancelAnimationFrame(frame.current);frame.current=null;paint(pending.current);}
   const dx=event.clientX-current.x,dy=event.clientY-current.y;
-  if(!cancelled&&current.claimed&&current.threshold)commit("special");
-  else if(!cancelled&&!current.claimed&&Math.abs(dx)<8&&Math.abs(dy)<10)commit("like");
-  reset();
+  if(!cancelled&&current.claimed&&current.threshold){commit("special");paint(1);
+   button.current?.classList.remove("is-dragging","is-armed");}
+  else{if(!cancelled&&!current.claimed&&Math.abs(dx)<8&&Math.abs(dy)<10)commit("like");reset();}
  };
  return <button ref={button} type="button" className="moonstone-like-button" disabled={disabled}
   aria-label="Нравится. Проведи вправо для особенной симпатии"
   onPointerDown={down} onPointerMove={move} onPointerUp={event=>finish(event)}
   onPointerCancel={event=>finish(event,true)} onLostPointerCapture={event=>finish(event,true)}
+  onAnimationEnd={event=>{if(event.animationName==="moonstone-button-star-burst")button.current?.classList.remove("is-bursting");}}
   onClick={event=>{if(event.detail===0)commit("like");}}>
   <span className="moonstone-like-glint" aria-hidden="true"/>
-  <span className="moonstone-like-thumb" aria-hidden="true"><Heart/><Star className="moonstone-super-star"/></span>
+  <span className="moonstone-like-thumb" aria-hidden="true"><Heart/><Star className="moonstone-super-star"/>
+   <span className="moonstone-super-particles">{Array.from({length:14},(_,index)=><i key={index}><Star/></i>)}</span>
+  </span>
   <span className="moonstone-like-copy">Нравится</span>
   <span className="moonstone-like-arrows" aria-hidden="true"><ChevronRight/><ChevronRight/></span>
  </button>;
@@ -93,8 +103,10 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  const goal=goals.find(item=>item.id===person.goal);
  const [expanded,setExpanded]=useState(false),[activePhotoIndex,setActivePhotoIndex]=useState(0);
  const [adaptiveSources,setAdaptiveSources]=useState<{personId:string;sources:Record<number,string>}>({personId:person.id,sources:{}});
+ const [actionFeedback,setActionFeedback]=useState<ActionFeedback|null>(null);
  const card=useRef<HTMLElement>(null),drawer=useRef<HTMLDivElement>(null),scroll=useRef<HTMLDivElement>(null);
  const photo=useRef<PhotoCarouselHandle>(null),gesture=useRef<ExpandGesture|null>(null);
+ const photoHold=useRef<PhotoHold|null>(null),actionLocked=useRef(false),feedbackTimer=useRef<number|null>(null);
  const progress=useRef(0),target=useRef<0|1>(0),travel=useRef(310),run=useRef<SettleRun|null>(null);
  const fingerFrame=useRef<number|null>(null),fingerValue=useRef(0),blockClickUntil=useRef(0);
  const available=active&&!busy;
@@ -107,6 +119,38 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  const currentPhotoIndex=Math.min(activePhotoIndex,Math.max(0,person.photos.length-1));
  const currentPhoto=(adaptiveSources.personId===person.id?adaptiveSources.sources[currentPhotoIndex]:undefined)??person.photos[currentPhotoIndex]?.src;
  const languageNames=person.languages.map(id=>languages.find(item=>item.id===id)?.name??id).filter(Boolean);
+ const releasePhotoHold=(pointerId?:number)=>{
+  const hold=photoHold.current;if(!hold||(pointerId!==undefined&&hold.id!==pointerId))return false;
+  if(hold.timer!==null)window.clearTimeout(hold.timer);
+  if(hold.host)delete hold.host.dataset.photoFocus;
+  photoHold.current=null;return hold.active;
+ };
+ const armPhotoHold=(event:ReactPointerEvent<HTMLElement>)=>{
+  if(!(event.target as Element).closest(".moonstone-photo")||
+   (event.target as Element).closest("button,a"))return;
+  releasePhotoHold();
+  const host=card.current?.closest<HTMLElement>(".discovery-app")??null;
+  const hold:PhotoHold={id:event.pointerId,x:event.clientX,y:event.clientY,timer:null,active:false,host};
+  hold.timer=window.setTimeout(()=>{
+   if(photoHold.current!==hold||!available)return;
+   hold.timer=null;hold.active=true;gesture.current=null;
+   if(host)host.dataset.photoFocus="true";
+   blockClickUntil.current=performance.now()+360;selectionHaptic();
+   try{card.current?.setPointerCapture(event.pointerId);}catch{/* old WebView */}
+  },210);
+  photoHold.current=hold;
+ };
+ const performAction=(kind:"pass"|"like"|"special")=>{
+  if(actionLocked.current||!available)return;
+  actionLocked.current=true;
+  const feedback={kind,token:performance.now()};setActionFeedback(feedback);
+  if(feedbackTimer.current!==null)window.clearTimeout(feedbackTimer.current);
+  feedbackTimer.current=window.setTimeout(()=>{
+   setActionFeedback(current=>current?.token===feedback.token?null:current);
+   actionLocked.current=false;feedbackTimer.current=null;
+  },900);
+  onAction(kind);
+ };
  const paint=(next:number)=>{
   const value=progress.current=clamp(next);card.current?.style.setProperty("--profile-p",String(value));
   if(drawer.current)drawer.current.inert=value<.98;
@@ -136,18 +180,28 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   const photoController=photo.current;
   const measure=()=>{travel.current=Math.max(220,Math.min(420,element.clientHeight*.48));};measure();
   const observer=new ResizeObserver(measure);observer.observe(element);
-  return()=>{observer.disconnect();photoController?.cancel();if(fingerFrame.current!==null)cancelAnimationFrame(fingerFrame.current);
+  return()=>{observer.disconnect();photoController?.cancel();releasePhotoHold();
+   if(feedbackTimer.current!==null)window.clearTimeout(feedbackTimer.current);
+   if(fingerFrame.current!==null)cancelAnimationFrame(fingerFrame.current);
    const motion=run.current;if(motion&&motion.frame!==null)cancelAnimationFrame(motion.frame);};
  },[person.id]);
- useEffect(()=>{paint(0);target.current=0;setExpanded(false);if(scroll.current)scroll.current.scrollTop=0;},[person.id]);
+ useEffect(()=>{paint(0);target.current=0;actionLocked.current=false;setExpanded(false);setActionFeedback(null);
+  if(scroll.current)scroll.current.scrollTop=0;},[person.id]);
  const down=(event:ReactPointerEvent<HTMLElement>)=>{
   if(!available||!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
   const element=event.target as Element;
   if(element.closest("button,a,input,textarea,select,[contenteditable]"))return;
+  armPhotoHold(event);
   gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,started:performance.now(),axis:"pending",
    startProgress:progress.current,scrollStart:scroll.current?.scrollTop??0,samples:[{y:event.clientY,t:performance.now()}]};
  };
  const move=(event:ReactPointerEvent<HTMLElement>)=>{
+  const hold=photoHold.current;
+  if(hold?.id===event.pointerId){
+   const moved=Math.hypot(event.clientX-hold.x,event.clientY-hold.y);
+   if(hold.active){if(event.cancelable)event.preventDefault();event.stopPropagation();return;}
+   if(moved>7)releasePhotoHold(event.pointerId);
+  }
   const current=gesture.current;if(!current||current.id!==event.pointerId)return;
   let dy=event.clientY-current.y;const dx=event.clientX-current.x;
   if(current.axis==="pending"){
@@ -178,6 +232,8 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   }
  };
  const finish=(event:ReactPointerEvent<HTMLElement>,cancelled=false)=>{
+  const held=releasePhotoHold(event.pointerId);
+  if(held){gesture.current=null;if(event.cancelable)event.preventDefault();event.stopPropagation();return;}
   const current=gesture.current;if(!current||current.id!==event.pointerId)return;gesture.current=null;
   if(current.axis==="photo")photo.current?.finish(current.id,event.clientX,cancelled);
   if(current.axis!=="info")return;flushFinger();
@@ -232,9 +288,13 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
      {person.likedYouKind&&<p className="moonstone-liked-you">Ты уже понравился(ась) этому человеку</p>}
     </div>
    </section>
+   {actionFeedback&&<div key={actionFeedback.token}
+    className={`moonstone-action-feedback is-${actionFeedback.kind}`} aria-hidden="true">
+    <span>{actionFeedback.kind==="pass"?<X/>:actionFeedback.kind==="like"?<Heart/>:<Star/>}</span>
+   </div>}
    <div className="moonstone-actions" aria-label="Действия с анкетой">
-    <button type="button" className="moonstone-pass-button" disabled={!available} aria-label="Пропустить" onClick={()=>onAction("pass")}><X/></button>
-    <LikeSuperButton disabled={!available} onAction={kind=>onAction(kind)}/>
+    <button type="button" className="moonstone-pass-button" disabled={!available} aria-label="Пропустить" onClick={()=>performAction("pass")}><X/></button>
+    <LikeSuperButton disabled={!available} onAction={performAction}/>
    </div>
   </article>
  </div>;

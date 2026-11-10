@@ -36,11 +36,15 @@ test("queued photo peeks are invisible before decode, then fade without repainti
 test("gallery must retain the current image until the requested next image is decoded",()=>{
  assert.match(photo,/const pendingPhoto=useRef<number\|null>\(null\)/);
  assert.match(photo,/const painted=\(i:number\)/);
- assert.match(photo,/if\(next!==activeRef\.current&&!painted\(next\)\)queuePhoto\(next\)/);
+ assert.match(photo,/if\(next!==activeRef\.current&&!painted\(next\)\)warmPhoto\(next\)/);
  assert.match(photo,/return atEdge\|\|unpainted\?delta\*\.16/);
  assert.match(photo,/if\(i!==activeRef\.current&&!painted\(i\)\)\{queuePhoto\(i\);return;\}/);
  assert.match(photo,/image\.classList\.add\("is-ready"\)/);
  assert.match(photo,/loading=\{i===0\|\|\(prioritize/);
+ assert.match(photo,/src=\{!gpuSafe\|\|i<=1\?p\.src:undefined\}/);
+ assert.match(photo,/warmPhoto\(i-1\);warmPhoto\(i\+1\)/);
+ assert.doesNotMatch(photo,/Math\.abs\(i-active\)<=1\?p\.src:undefined/,
+  "React must not detach an already painted src when the user returns to it");
  assert.doesNotMatch(photo,/style=\{\{opacity:0/,
   "React render may not reset a decoded photo to opacity zero");
 });
