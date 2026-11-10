@@ -1,0 +1,54 @@
+name: Render LUEMI bot welcome banner JPEG
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/public/assets/telegram/luemi-welcome-banner.svg"
+      - ".github/workflows/telegram-welcome-jpeg.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  render-welcome:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install image renderer
+        run: python -m pip install --disable-pip-version-check --quiet Pillow==11.3.0 CairoSVG==2.8.2
+      - name: Convert approved SVG composition to deterministic JPEG
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from io import BytesIO
+          import cairosvg
+          from PIL import Image
+
+          source = Path("apps/web/public/assets/telegram/luemi-welcome-banner.svg")
+          target = source.with_suffix(".jpg")
+          png = cairosvg.svg2png(bytestring=source.read_bytes(), output_width=1200, output_height=700)
+          with Image.open(BytesIO(png)) as rendered:
+              rendered.convert("RGB").save(target, "JPEG", quality=90, subsampling=0, optimize=True)
+          print(f"Welcome JPEG ready: {target.stat().st_size} bytes")
+          PY
+      - name: Commit generated image to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/public/assets/telegram/luemi-welcome-banner.jpg
+          if git diff --staged --quiet; then
+            echo "Welcome JPEG already up to date"
+            exit 0
+          fi
+          git commit -m "assets(bot): pre-render self-hosted LUEMI Telegram welcome JPEG"
+          git push origin HEAD:main
