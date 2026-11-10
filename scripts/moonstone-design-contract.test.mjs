@@ -55,7 +55,7 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(styles,/--moonstone-x/);
  assert.match(styles,/prefers-reduced-transparency:reduce/);
  assert.match(styles,/prefers-reduced-motion:reduce/);
- const hot=read("apps/web/src/discovery/feed-v2.css");
+ const hot=read("apps/web/src/discovery/moonstone-discovery.css");
  const lens=read("apps/web/src/ui/liquid-glass.css");
  const entry=read("apps/web/src/main.tsx");
  assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/liquid-glass\.css";/);
@@ -86,17 +86,17 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(feature,/root\.dataset\.lgNativeRefraction=/);
  assert.match(lens,/data-lg-native-refraction="on"/);
  assert.match(feature,/\/Android\/i\.test\(userAgent\)/);
- assert.match(hot,/\.discovery-app\[data-profile-renderer=android\]\[data-feed-visible="true"\]/);
- assert.match(hot,/backdrop-filter:none!important/);
- assert.match(hot,/-webkit-mask:none;mask:none;padding:0/);
- assert.match(hot,/\.discovery-app \.feed-v2 \.discovery-action\.lg\{/);
+ assert.match(hot,/\.discovery-app\[data-profile-renderer=android\] \.moonstone-profile-drawer/);
+ assert.match(hot,/backdrop-filter:none/);
+ assert.match(hot,/\.moonstone-blur-photo\{/);
+ assert.match(hot,/\.moonstone-like-button\{/);
  assert.doesNotMatch(hot,/blur\(23px\) saturate\(142%\)|blur\(12px\) saturate\(128%\)/);
  const optics=read("apps/web/src/ui/moonstone-optics.ts");
  assert.match(optics,/requestAnimationFrame/);
  assert.match(optics,/pointercancel/);
- assert.match(optics,/\.feed-v2-sheet/);
- assert.match(optics,/\.discovery-action/);
- assert.match(optics,/\.feed-v2-expand/);
+ assert.match(optics,/\.moonstone-profile-drawer/);
+ assert.match(optics,/\.moonstone-like-button/);
+ assert.match(optics,/\.moonstone-pass-button/);
  assert.doesNotMatch(optics,/setInterval\(/);
 });
 test("Telegram system chrome and entire app share same Moonstone theme",()=>{

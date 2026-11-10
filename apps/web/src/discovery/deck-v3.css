@@ -81,7 +81,7 @@
  * Only the outer card composites. Actions stay inert via pointer-events and
  * React disabled props, not via sudden opacity flips on promotion. */
 .discovery-app .discovery-deck-stage.has-profiles :is(.deck-queued,.deck-entering)
- :is(.discovery-action:disabled,.discovery-save-control:disabled,.feed-v2-expand:disabled){
+ :is(.moonstone-pass-button:disabled,.moonstone-like-button:disabled,.moonstone-profile-toggle:disabled){
  opacity:1;
 }
 @media(prefers-reduced-motion:reduce){

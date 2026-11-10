@@ -36,10 +36,11 @@ test("the immutable original raster remains the global brand source",()=>{
 });
 
 test("feed compact content follows approved information order",()=>{
- const about=feed.indexOf('className="feed-v2-about"');
- const interests=feed.indexOf('className="feed-v2-interests"');
+ const about=feed.indexOf('className="moonstone-detail-section"><h3>О себе');
+ const interests=feed.indexOf('className="moonstone-detail-section"><h3>Интересы');
  assert.ok(about>0&&interests>about);
- assert.match(feed,/person\.interests\.length-2/);
+ assert.match(feed,/person\.interests\.map/);
+ assert.ok(feed.indexOf('className="moonstone-compact-info"')<about);
 });
 
 test("real chat list and thread share V5 without white route surfaces",()=>{

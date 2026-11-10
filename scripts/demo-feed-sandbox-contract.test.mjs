@@ -29,8 +29,8 @@ test("synthetic profiles are not inserted into server, likes, matches or convers
  assert.match(sandbox,/Реальные лайки не отправляются/);
  assert.match(sandbox,/onExit/);
  assert.match(sandbox,/setPage\(0\)/);
- assert.match(card,/className="discovery-demo-label">Демо<\/span>/);
- assert.match(card,/className="discovery-demo-label feed-v2-demo-exit"/);
+ assert.match(card,/className="moonstone-demo-label">Демо<\/span>/);
+ assert.match(card,/className="moonstone-demo-label" onClick=\{onExitDemo\}/);
  assert.match(sandbox,/busy=\{!foreground\|\|leaving\}/);
  assert.match(sandbox,/people\.slice\(page,page\+3\)\.map/,"Three keyed card window is retained");
  assert.match(sandbox,/preloadUpcomingFeedPhotos/);
@@ -60,7 +60,7 @@ test("fifteen photo-driven fictional profiles each keep one coherent identity",(
  assert.doesNotMatch(photos,/illustration\(/,"never paint a cartoon or another person when photos are missing");
  assert.doesNotMatch(sandbox,/demoDistanceKm=\{/,"do not present invented distances");
  assert.match(sandbox,/countryCode:draft\.countryCode\|\|person\.countryCode/);
- assert.doesNotMatch(style,/\.feed-v2-demo-distance\{/);
+ assert.doesNotMatch(style,/\.moonstone-demo-distance\{/);
  assert.match(style,/\.demo-qa-sr-only/);
 });
 

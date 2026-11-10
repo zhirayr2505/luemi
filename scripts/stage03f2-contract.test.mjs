@@ -9,7 +9,7 @@ const forYouCss=read("apps/web/src/discovery/for-you.css");
 const near=read("apps/web/src/discovery/Nearby.tsx");
 const model=read("apps/web/src/discovery/model.ts");
 const feed=read("apps/web/src/discovery/FeedCard.tsx");
-const feedStyle=read("apps/web/src/discovery/feed-v2.css");
+const feedStyle=read("apps/web/src/discovery/moonstone-discovery.css");
 const deckStyle=read("apps/web/src/discovery/deck-v3.css");
 const profile=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.tsx");
 const profileStyle=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.css");
@@ -47,12 +47,11 @@ assert.ok(deckStyle.includes("luemi-deck-exit-left")&&
  deckStyle.includes("luemi-deck-arrive-left")&&
  deckStyle.includes("luemi-deck-arrive-right")&&
  !style.includes("@keyframes luemi-deck-leave"),"one unified composited deck owns directional exits/entrances");
-assert.ok(feed.includes('const position=(run:CardRun,now:number)')&&
- feed.includes('settle((Math.abs(velocity)>.45?velocity<0:projected>=.5)?1:0,-velocity/travel)')&&
- feedStyle.includes('bottom:calc(var(--feed-nav-clearance) + var(--feed-actions-height) + 9px)')&&
- feedStyle.includes('bottom:var(--feed-nav-clearance);height:var(--feed-actions-height)')&&
- feedStyle.includes('transform-origin:50% 85%'),
- "card settles from release velocity while its buttons retain independent geometry");
+assert.ok(feed.includes('const paint=(next:number)=>')&&
+ feed.includes('scheduleFinger(current.startProgress-dy/travel.current)')&&
+ feed.includes('Math.abs(velocity)>.42?velocity<0')&&
+ feedStyle.includes('.moonstone-actions{')&&feedStyle.includes('.moonstone-profile-drawer{'),
+ "card uses one finger-driven progress while its actions retain independent geometry");
 assert.ok(profile.includes('coordinator.current.claimSheetFromContent(e.pointerId,direction)')&&
  profile.includes('page.style.touchAction="none"')&&
  profile.includes('const next=(g.scrollStart??0)+excess')&&

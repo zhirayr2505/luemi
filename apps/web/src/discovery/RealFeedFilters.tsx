@@ -11,9 +11,13 @@ export type RealFeedFilter={
  maxAge:number;
  goal:string;
  commonOnly:boolean;
+ newOnly:boolean;
+ verifiedOnly:boolean;
+ order:"recommended"|"new"|"nearby";
 };
 export const defaultRealFeedFilter:RealFeedFilter={
- gender:"all",minAge:18,maxAge:80,goal:"all",commonOnly:false
+ gender:"all",minAge:18,maxAge:80,goal:"all",commonOnly:false,
+ newOnly:false,verifiedOnly:false,order:"recommended"
 };
 
 export function realFeedMatches(profile:RealPublishedProfile,filter:RealFeedFilter,interests:readonly string[]){
@@ -21,6 +25,7 @@ export function realFeedMatches(profile:RealPublishedProfile,filter:RealFeedFilt
  if(filter.gender!=="all"&&profile.gender!==filter.gender)return false;
  if(filter.goal!=="all"&&profile.goal!==filter.goal)return false;
  if(filter.commonOnly&&(!interests.length||!profile.interests.some(id=>interests.includes(id))))return false;
+ if(filter.newOnly&&(!profile.publishedAt||Date.now()-Date.parse(profile.publishedAt)>14*24*60*60*1000))return false;
  return true;
 }
 
@@ -29,20 +34,28 @@ export function RealFeedFilters({open,filter,onClose,onApply,interestCount}:{
  onApply:(next:RealFeedFilter)=>void;interestCount:number;
 }){
  const dialog=useRef<HTMLElement>(null);
+ const swipe=useRef<{id:number;y:number}|null>(null);
  const [working,setWorking]=useState(filter);
  useModalLayer(open,dialog,onClose);
  useEffect(()=>{if(open)setWorking(filter);},[open,filter]);
  if(!open)return null;
  return <div className="discovery-modal-backdrop real-feed-filter-backdrop" onClick={onClose}>
   <section ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Фильтры анкет"
-   className="real-feed-filter-sheet" onClick={event=>event.stopPropagation()}>
+   className="real-feed-filter-sheet" onClick={event=>event.stopPropagation()}
+   onPointerDown={event=>{if(!(event.target as Element).closest(".real-feed-filter-head,.discovery-sheet-grip"))return;
+    swipe.current={id:event.pointerId,y:event.clientY};}}
+   onPointerMove={event=>{const current=swipe.current;if(!current||current.id!==event.pointerId)return;
+    const dy=Math.max(0,event.clientY-current.y);dialog.current?.style.setProperty("--filter-drag",dy+"px");}}
+   onPointerUp={event=>{const current=swipe.current;if(!current||current.id!==event.pointerId)return;swipe.current=null;
+    const close=event.clientY-current.y>78;dialog.current?.style.removeProperty("--filter-drag");if(close)onClose();}}
+   onPointerCancel={()=>{swipe.current=null;dialog.current?.style.removeProperty("--filter-drag");}}>
    <div className="discovery-sheet-grip" aria-hidden="true"/>
    <header className="real-feed-filter-head">
     <h2><SlidersHorizontal size={20}/> Фильтры</h2>
     <button type="button" aria-label="Закрыть фильтры" data-modal-initial onClick={onClose}><X size={21}/></button>
    </header>
    <div className="real-feed-filter-fields">
-    <fieldset><legend>Кого ищем?</legend>
+    <fieldset><legend>Кого показывать</legend>
      <div className="real-feed-filter-options">
       {([["all","Всех"],["woman","Женщин"],["man","Мужчин"]] as const).map(([value,label])=>
        <button type="button" key={value} aria-pressed={working.gender===value}
@@ -73,6 +86,22 @@ export function RealFeedFilters({open,filter,onClose,onApply,interestCount}:{
      <span>Только с общими интересами</span>
     </label>
     {interestCount===0&&<p className="real-feed-filter-hint">Добавь интересы в свою анкету, чтобы включить этот фильтр.</p>}
+    <fieldset><legend>Порядок показа</legend>
+     <div className="real-feed-filter-options">
+      {([['recommended','Рекомендации'],['new','Новые'],['nearby','Ближайшие']] as const).map(([value,label])=>
+       <button type="button" key={value} aria-pressed={working.order===value}
+        onClick={()=>setWorking(previous=>({...previous,order:value}))}>{label}</button>)}
+     </div>
+    </fieldset>
+    <label className="real-feed-filter-check">
+     <input type="checkbox" checked={working.newOnly}
+      onChange={event=>setWorking(previous=>({...previous,newOnly:event.target.checked}))}/>
+     <span>Только новые анкеты</span>
+    </label>
+    <label className="real-feed-filter-check is-unavailable" title="FaceTrust пока не подключён">
+     <input type="checkbox" checked={working.verifiedOnly} disabled/>
+     <span>Только проверенные <small>пока недоступно</small></span>
+    </label>
    </div>
    <footer className="real-feed-filter-footer">
     <button type="button" className="real-feed-filter-reset" onClick={()=>setWorking(defaultRealFeedFilter)}>

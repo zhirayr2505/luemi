@@ -97,6 +97,7 @@ export interface RealPublishedProfile{
  interests:string[];languages:string[];
  photos:Array<{id:string;url:string}>;
  likedYouKind:RealLikeKind|null;
+ distanceKm:number|null;publishedAt:string|null;
 }
 export interface OwnerPublicationStatus{
  state:"draft"|"published"|"hidden";publishedRevision:number;
@@ -116,7 +117,12 @@ async function api(url:string,method:"GET"|"POST",body?:unknown):Promise<unknown
  const res=await fetch(url,{method,credentials:"same-origin",cache:"no-store",
   headers:method==="POST"?{"Content-Type":"application/json","X-Luemi-CSRF":csrf!}:undefined,
   ...(method==="POST"?{body:JSON.stringify(body??{})}:{})});
- if(!res.ok)throw new Error("api_"+res.status);
+ if(!res.ok){
+  let reason="api_"+res.status;
+  try{const failure:unknown=await res.json();if(object(failure)&&typeof failure.error==="string")reason=failure.error;}
+  catch{/* retain status-based error */}
+  throw new Error(reason);
+ }
  return res.json() as Promise<unknown>;
 }
 const object=(x:unknown):x is Record<string,unknown>=>
@@ -190,10 +196,13 @@ function parsePublishedProfile(item:unknown):RealPublishedProfile|null{
   typeof p.id==="string"&&uuid.test(p.id)&&typeof p.url==="string"&&photoPath.test(p.url)&&p.url.endsWith(p.id));
  if(photos.length!==item.photos.length||!item.interests.every((x:unknown)=>typeof x==="string")||
   !item.languages.every((x:unknown)=>typeof x==="string"))return null;
+ const distanceKm=item.distanceKm===null?null:typeof item.distanceKm==="number"&&Number.isFinite(item.distanceKm)&&item.distanceKm>=0?item.distanceKm:null;
+ const publishedAt=typeof item.publishedAt==="string"&&Number.isFinite(Date.parse(item.publishedAt))?item.publishedAt:null;
  return {id:item.id,name:item.name,age:Number(item.age),city:item.city,countryCode:item.countryCode,
   gender:item.gender as "man"|"woman"|"other",goal:item.goal,about:item.about,
   interests:item.interests as string[],languages:item.languages as string[],photos,
-  likedYouKind:item.likedYouKind==="ordinary"||item.likedYouKind==="super"?item.likedYouKind:null};
+  likedYouKind:item.likedYouKind==="ordinary"||item.likedYouKind==="super"?item.likedYouKind:null,
+  distanceKm,publishedAt};
 }
 export async function getPublishedProfile(id:string,signal?:AbortSignal):Promise<RealPublishedProfile>{
  if(!uuid.test(id))throw new Error("invalid_target");

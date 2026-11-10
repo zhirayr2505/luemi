@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {ReactNode} from "react";
 import type {CSSProperties} from "react";
-import {CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2,Sparkles,LockKeyhole} from "lucide-react";
+import {ChevronDown,CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2,Sparkles,LockKeyhole} from "lucide-react";
 import type {RegistrationDraft,Gender,SearchScope} from "../registration/model";
 import {gendered} from "../ui/PersonalizedCopy";
 import type {DemoKind,DemoPerson} from "./model";
@@ -31,9 +31,9 @@ import {geoCsrf} from "../auth/session-adapter";
 import {getPublishedFeed,getPublishedProfile,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,updateDiscoverySearchScope,realMatchPilot,type PublishedFeedPage,type IncomingLike} from "../registration/real-live-client";
 import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
 import "./discovery.css";
-import "./feed-v2.css";
 import "./real-discovery.css";
 import "./deck-v3.css";
+import "./moonstone-discovery.css";
 
 // EXACT approved LUEMI navigation / header / profile components. No demo profiles
 // are imported or projected into a real session.
@@ -72,7 +72,8 @@ const toCard=(p:RealPublishedProfile):DemoPerson=>({
  id:p.id,name:p.name,age:p.age,city:p.city,country:"",countryCode:p.countryCode,
  gender:p.gender,goal:p.goal as DemoPerson["goal"],about:p.about,
  interests:[...p.interests],languages:[...p.languages],
- photos:p.photos.map(photo=>({id:photo.id,src:photo.url})),likedYouKind:p.likedYouKind
+ photos:p.photos.map(photo=>({id:photo.id,src:photo.url})),likedYouKind:p.likedYouKind,
+ distanceKm:p.distanceKm,publishedAt:p.publishedAt
 });
 
 function RealMatches({active,onChat,onPerson,gender}:{active:boolean;onChat:()=>void;onPerson:(id:string)=>void;gender:Gender}){
@@ -250,7 +251,11 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const matchedRows=useMemo(()=>rows.filter(p=>!hiddenIds.has(p.id)),[rows,hiddenIds]);
  // Keep approved For You / Nearby collections untouched.
  const visibleRows=useMemo(()=>tab==="feed"?
-  matchedRows.filter(p=>realFeedMatches(p,filters,draft.interests)):matchedRows,
+  matchedRows.filter(p=>realFeedMatches(p,filters,draft.interests)).slice().sort((a,b)=>{
+   if(filters.order==="new")return Date.parse(b.publishedAt??"")-Date.parse(a.publishedAt??"");
+   if(filters.order==="nearby")return (a.distanceKm??Number.POSITIVE_INFINITY)-(b.distanceKm??Number.POSITIVE_INFINITY);
+   return 0;
+  }):matchedRows,
   [tab,matchedRows,filters,draft.interests]);
  // Stable display models prevent unrelated likes/save state from rebuilding
  // the photo arrays and resetting queued carousel props during animation.
@@ -325,7 +330,11 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     setMessage(result.matched?"Взаимная симпатия!":kind==="special"?`Особенная симпатия отправлена · осталось ${result.superlikes.total}`:"Симпатия отправлена");
     if(result.matched&&result.matchId)onMatched(current,result.matchId);
    },targetId);
-  }catch{setBusy(false);setMessage("Не удалось поставить симпатию. Повтори попытку.");}
+  }catch(error){setBusy(false);
+   const reason=error instanceof Error?error.message:"";
+   setMessage(reason==="superlikes_empty"?"Особенные симпатии закончились. Попробуй позже.":
+    reason==="daily_like_limit"?"Дневной лимит симпатий закончился.":
+    "Не удалось поставить симпатию. Повтори попытку.");}
  };
  const block=async()=>{
   if(!menu||busy)return;
@@ -650,7 +659,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   // A feed card has one owner for horizontal photos and vertical information.
   // Parent browse pagination only starts outside its bounds (tabs/background).
   // This prevents Android's Touch adapter taking the lower-card swipe first.
-  if(target.closest(".feed-v2-card"))return;
+  if(target.closest(".moonstone-feed-card"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable]");
   // Browse touch starts can land on a ForYou/Nearby tile button after a
   // scroller layout tick. A TAP is still handled by its native onClick; only
@@ -658,9 +667,9 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   // Keep modal controls, rails, edit fields and other custom gestures isolated.
   const tileSwipe=!!interactive?.matches("button")&&
     !!interactive.closest(".fy-scroll,.nb-scroll")&&
-    !interactive.closest(".fy-rail,.fy-expanded,.fy-manage,.discovery-action");
+    !interactive.closest(".fy-rail,.fy-expanded,.fy-manage");
   if(interactive&&!tileSwipe&&
-     !interactive.matches(".discovery-name-button,.feed-v2-expand,.discovery-top-tabs [role=tab]"))return;
+     !interactive.matches(".moonstone-name,.moonstone-profile-toggle,.discovery-top-tabs [role=tab]"))return;
   if(event.clientX-(pages.current?.getBoundingClientRect().left??0)<26)return;
   const serial=inputOwnership.current.begin(kind,event.pointerId,"browse");
   if(serial===null)return;
@@ -822,8 +831,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   data-feed-visible={mainTab==="discover"?"true":"false"} data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person||!!demoVisitor?"true":"false"}
   data-chat-thread={chatThreadOpen?"true":"false"}>
   <div className="discovery-ambient" aria-hidden="true"/>
-  {!chatThreadOpen&&<GlobalHeader ref={header} mode={mainTab==="profile"?"profile":mainTab==="chats"?"chats":"browse"}
-   onFilters={()=>setFilterOpen(true)} onSaved={()=>{setPerson(null);setMainTab("likes");}}/>}
+  {!chatThreadOpen&&<GlobalHeader ref={header} mode={mainTab==="profile"?"profile":mainTab==="chats"?"chats":"browse"}/>}
   <div className="discovery-main-panels">
    <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
     <div className="discovery-top-tabs" ref={topTabsSurface} role="tablist" aria-label="Разделы знакомств"
@@ -837,7 +845,8 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
      onLostPointerCapture={e=>{if(e.pointerType!=="touch")up(e,true);}}>
      {tabs.map(([id,label],i)=><button key={id} type="button" role="tab" className={browse===id?"active":""}
       aria-selected={browse===id} tabIndex={browse===id?0:-1}
-      onClick={()=>{if(performance.now()>=clickBlockUntil.current)requestBrowseTab(i);}}>{label}</button>)}
+      onClick={()=>{if(performance.now()<clickBlockUntil.current)return;if(id==="feed"&&browse==="feed")setFilterOpen(true);else requestBrowseTab(i);}}>
+      {label}{id==="feed"&&<ChevronDown aria-hidden="true"/>}</button>)}
      <span className="discovery-tab-underline" ref={underline} aria-hidden="true"
       style={{"--luemi-tab-offset":index*100+"%"} as CSSProperties}/>
     </div>
