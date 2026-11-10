@@ -55,8 +55,10 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
   (photoTrack.current?.children.item(i) as HTMLImageElement|null)??null;
  const painted=(i:number):boolean=>{
   const image=photoElement(i);
-  return !!image?.isConnected&&image.complete&&image.naturalWidth>0&&
-   image.classList.contains("is-ready");
+  return !!image?.isConnected&&(
+   image.classList.contains("is-unavailable")||
+   (image.complete&&image.naturalWidth>0&&image.classList.contains("is-ready"))
+  );
  };
  const requestPhoto=(i:number,selectWhenReady:boolean)=>{
   if(i<0||i>=photos.length)return;
@@ -182,6 +184,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  // The last decoded cover remains visible behind the slider until a new
  // image finishes decoding. Never expose a grey GPU tile mid-swipe in WebView.
  const revealDecoded=(image:HTMLImageElement,photoIndex:number)=>{
+  image.classList.remove("is-unavailable");
   const source=image.currentSrc||image.src;
   if(adaptiveFullscreen&&image.dataset.adaptiveReady!=="true"&&
    needsAdaptiveFeedPhoto(image.naturalWidth,image.naturalHeight)){
@@ -220,9 +223,11 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  };
  return <div className="carousel-frame" ref={frame} onPointerDown={start} onPointerMove={move} onPointerUp={end}
      onPointerCancel={cancel} onContextMenu={e=>e.preventDefault()}>
-   {photos.length>0?<div className={"carousel-track"+(gpuSafe?" is-gpu-safe":"")} ref={photoTrack}>
+   {photos.length>0?<><div className="feed-carousel-fallback" aria-hidden="true"><span>{name.trim().slice(0,1).toUpperCase()||"L"}</span></div>
+    <div className={"carousel-track"+(gpuSafe?" is-gpu-safe":"")} ref={photoTrack}>
      {photos.map((p,i)=><img key={p.id+"::"+p.src}
        src={!gpuSafe||i<=1?p.src:undefined}
+       data-fallback={p.fallback||undefined}
        alt={"Фото "+(i+1)} draggable={false}
        loading={i===0||(prioritize&&Math.abs(i-activeRef.current)<=1)?"eager":"lazy"} decoding="async"
        className="feed-carousel-photo"
@@ -233,9 +238,13 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
         if(fallback&&image.src!==fallback){
          image.classList.remove("is-ready");image.src=fallback;
          void preloadFeedImage(fallback);
+         return;
         }
+        image.classList.remove("is-ready");image.classList.add("is-unavailable");
+        if(i===0)onCoverReadyRef.current?.();
+        if(pendingPhoto.current===i){pendingPhoto.current=null;selectPhoto(i);}
        }}/>)}
-   </div>:<div className="profile-placeholder">Здесь будет твоё главное фото</div>}
+   </div></>:<div className="profile-placeholder">Здесь будет твоё главное фото</div>}
    <div className={"photo-progress"+(dots?" is-dots":"")} aria-label="Фотографии">{indicators.map((p,slot)=>{
      const i=photos.length>7?indicatorStart+slot:slot;
      return <button key={p.id} type="button"

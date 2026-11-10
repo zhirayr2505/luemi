@@ -16,7 +16,13 @@ test("the next profile never enters until its own DOM img is decoded",()=>{
  assert.match(prefetch,/cover\.classList\.add\("is-ready"\)/);
  assert.match(demo,/ensureMountedCoverReady\(deckRef\.current\?\.querySelector/);
  assert.match(live,/ensureMountedCoverReady\(deckRef\.current\?\.querySelector/);
- assert.match(demo,/if\(!ok\)\{/,"failed demo media cannot promote a blank card");
+ assert.match(prefetch,/timeoutMs=2400/);
+ assert.match(prefetch,/showFallback\(\);finish\(true\)/,
+  "a stalled Android image must resolve to the retained fallback instead of freezing the feed");
+ assert.match(demo,/markReady\(coverKey\(next\)\);beginLeave\(\)/,
+  "the Alice-to-Lina transition must commit even when Lina's remote cover cannot decode");
+ assert.match(demo,/\.catch\(\(\)=>\{[\s\S]*?beginLeave\(\)/);
+ assert.doesNotMatch(demo,/Фото следующей анкеты недоступно\. Повтори попытку/);
  assert.match(live,/waitingGate\.current=\{key,begin\}/,"server likes must not be repeated while waiting");
  assert.match(live,/if\(ok\)\{markReady\(key\);\}/);
 });
@@ -31,11 +37,15 @@ test("queued photo peeks are invisible before decode, then fade without repainti
  assert.doesNotMatch(css,/opacity:0!important/);
  assert.match(feed,/onCoverReady=\{onCoverReady\}/);
  assert.match(photo,/onCoverReadyRef\.current\?\.\(\)/);
+ assert.match(photo,/className="feed-carousel-fallback"/);
+ assert.match(photo,/image\.classList\.add\("is-unavailable"\)/);
+ assert.match(photo,/data-fallback=\{p\.fallback\|\|undefined\}/);
 });
 
 test("gallery must retain the current image until the requested next image is decoded",()=>{
  assert.match(photo,/const pendingPhoto=useRef<number\|null>\(null\)/);
  assert.match(photo,/const painted=\(i:number\)/);
+ assert.match(photo,/image\.classList\.contains\("is-unavailable"\)/);
  assert.match(photo,/if\(next!==activeRef\.current&&!painted\(next\)\)warmPhoto\(next\)/);
  assert.match(photo,/return atEdge\|\|unpainted\?delta\*\.16/);
  assert.match(photo,/if\(i!==activeRef\.current&&!painted\(i\)\)\{queuePhoto\(i\);return;\}/);

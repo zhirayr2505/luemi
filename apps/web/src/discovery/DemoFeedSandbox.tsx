@@ -94,12 +94,11 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
     controller.signal).then(ok=>{
      if(controller.signal.aborted)return;
      coverGate.current=null;
-     if(!ok){
-      locked.current=false;
-      setMessage("Фото следующей анкеты недоступно. Повтори попытку.");
-      return;
-     }
+     if(!ok)setMessage("Открываем следующую анкету без задержки…");
      markReady(coverKey(next));beginLeave();
+   }).catch(()=>{
+    if(controller.signal.aborted)return;
+    coverGate.current=null;markReady(coverKey(next));beginLeave();
    });
    return;
   }

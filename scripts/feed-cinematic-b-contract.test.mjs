@@ -36,9 +36,9 @@ test("compact state contains only indicator, identity, location and goal",()=>{
 test("one progress drives overlay copy stages, prepared blur and dim without React pointer renders",()=>{
  assert.match(card,/--profile-p/);
  assert.match(card,/scheduleFinger\(current\.startProgress-dy\/travel\.current\)/);
- assert.match(css,/opacity:calc\(var\(--profile-p\) \* \.92\)/);
+ assert.match(css,/opacity:calc\(var\(--profile-p\) \* \.96\)/);
  assert.match(css,/opacity:var\(--profile-p\)/);
- assert.match(css,/calc\(\(1 - var\(--profile-p\)\) \* 26px\)/);
+ assert.match(css,/calc\(\(1 - var\(--profile-p\)\) \* 38px\)/);
  assert.match(card,/--profile-main-p/);
  assert.match(card,/--profile-about-p/);
  assert.match(card,/--profile-interests-p/);
@@ -72,6 +72,16 @@ test("holding the photo hides controls while logo and navigation stay mounted",(
  assert.match(css,/data-photo-focus=true/);
  assert.doesNotMatch(css,/data-photo-focus=true[^}]*lh-island/);
  assert.doesNotMatch(css,/data-photo-focus=true[^}]*discovery-bottom-nav/);
+ assert.match(css,/transition:opacity \.4s cubic-bezier\(\.22,\.8,\.2,1\)/);
+});
+
+test("expanded profile is a full-photo blur with clickable identity and no rectangular sheet",()=>{
+ assert.match(css,/filter:blur\(19px\) saturate\(\.78\) brightness\(\.76\)/);
+ assert.match(css,/\.moonstone-profile-drawer\{[\s\S]*?background:transparent/);
+ assert.match(card,/className="moonstone-drawer-name"[\s\S]*?onClick=\{onOpenProfile\}/);
+ assert.match(card,/className="moonstone-name"[\s\S]*?onClick=\{onOpenProfile\}/);
+ assert.match(card,/moonstone-goal-mark/);
+ assert.match(css,/\.moonstone-goal-mark\{/);
 });
 
 test("every reaction paints a centered symbol before its directional deck exit",()=>{

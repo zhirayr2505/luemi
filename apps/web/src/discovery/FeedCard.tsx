@@ -182,17 +182,17 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  };
  const freeze=()=>{const current=run.current;if(!current)return;if(current.frame!==null)cancelAnimationFrame(current.frame);
   const t=clamp((performance.now()-current.started)/current.duration);run.current=null;
-  paint(current.from+(current.to-current.from)*(1-Math.pow(1-t,3)));};
+  paint(current.from+(current.to-current.from)*(1-Math.pow(1-t,4)));};
  const settle=(next:0|1)=>{
   freeze();target.current=next;
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||Math.abs(progress.current-next)<.002){
    paint(next);setExpanded(next===1);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
   }
   if(scroll.current)scroll.current.style.overflowY="hidden";
-  const motion:SettleRun={from:progress.current,to:next,started:performance.now(),duration:230+Math.abs(next-progress.current)*90,frame:null};
+  const motion:SettleRun={from:progress.current,to:next,started:performance.now(),duration:270+Math.abs(next-progress.current)*110,frame:null};
   run.current=motion;
   const tick=(now:number)=>{if(run.current!==motion)return;const t=clamp((now-motion.started)/motion.duration);
-   paint(motion.from+(motion.to-motion.from)*(1-Math.pow(1-t,3)));
+   paint(motion.from+(motion.to-motion.from)*(1-Math.pow(1-t,4)));
    if(t>=1){run.current=null;paint(next);setExpanded(next===1);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";}
    else motion.frame=requestAnimationFrame(tick);};
   motion.frame=requestAnimationFrame(tick);
@@ -313,16 +313,17 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
      <span>{person.name}, {person.age}</span>{person.verified&&<BadgeCheck aria-label="Профиль подтверждён"/>}
     </button>
     <div className="moonstone-location"><MapPin/><span>{location}</span>{distance&&<><b>·</b><span>{distance}</span></>}</div>
-    {goal&&<div className="moonstone-goal"><Heart/>{goalLabel(goal.id,person.gender)}</div>}
+    {goal&&<div className="moonstone-goal"><span className="moonstone-goal-mark"><Heart/></span><span>{goalLabel(goal.id,person.gender)}</span></div>}
    </div>
    <section ref={drawer} className="moonstone-profile-drawer" aria-label="Подробная информация" aria-hidden={!expanded}>
     <div className="moonstone-profile-gesture-zone"><span/><span/></div>
     <div ref={scroll} className="moonstone-profile-scroll">
-     <header className="moonstone-reveal-main"><div><h2>{person.name}, {person.age}{person.verified&&<BadgeCheck/>}</h2>
+     <header className="moonstone-reveal-main"><div><button type="button" className="moonstone-drawer-name" disabled={!available} onClick={onOpenProfile}>
+      <span>{person.name}, {person.age}</span>{person.verified&&<BadgeCheck aria-label="Профиль подтверждён"/>}</button>
       <p><MapPin/>{location}{distance?` · ${distance}`:""}</p></div>
       {onMore&&<button type="button" onClick={onMore} aria-label="Действия с анкетой"><MoreHorizontal/></button>}
      </header>
-     {goal&&<div className="moonstone-drawer-goal moonstone-reveal-goal"><Heart/>{goalLabel(goal.id,person.gender)}</div>}
+     {goal&&<div className="moonstone-drawer-goal moonstone-reveal-goal"><span className="moonstone-goal-mark"><Heart/></span><span>{goalLabel(goal.id,person.gender)}</span></div>}
      {person.about&&<div className="moonstone-detail-section moonstone-reveal-about"><h3>О себе</h3><p className="moonstone-reveal-text">{person.about}</p></div>}
      {person.interests.length>0&&<div className="moonstone-detail-section moonstone-reveal-interests"><h3>Интересы</h3>
       <div className="moonstone-interest-list">{person.interests.map((id,index)=><InterestChip key={`${id}-${index}`} id={id}/>)}</div></div>}

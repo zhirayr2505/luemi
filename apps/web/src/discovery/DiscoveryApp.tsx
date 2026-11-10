@@ -240,11 +240,11 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
    ).then(ok=>{
     if(controller.signal.aborted)return;
     coverGate.current=null;
-    if(!ok){
-     locked.current=false;
-     indicate("Фотография ещё не готова. Попробуй ещё раз.");return;
-    }
+    if(!ok)indicate("Открываем следующую анкету без задержки…");
     markReady(coverKey(successor));beginLeave();
+   }).catch(()=>{
+    if(controller.signal.aborted)return;
+    coverGate.current=null;markReady(coverKey(successor));beginLeave();
    });
    return;
   }

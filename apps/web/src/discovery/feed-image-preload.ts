@@ -107,11 +107,16 @@ export async function preloadUpcomingFeedPhotos(
  * Loading an image does not construct or mount any new cards.
  */
 export async function ensureMountedCoverReady(
- card:HTMLElement|null,signal?:AbortSignal,timeoutMs=8000
+ card:HTMLElement|null,signal?:AbortSignal,timeoutMs=2400
 ):Promise<boolean>{
  const cover=card?.querySelector<HTMLImageElement>(".carousel-track img:first-child");
  if(!cover||signal?.aborted)return false;
  const loaded=()=>cover.isConnected&&cover.naturalWidth>0&&cover.complete;
+ const unavailable=()=>cover.isConnected&&cover.classList.contains("is-unavailable");
+ const showFallback=()=>{
+  if(cover.isConnected){cover.classList.remove("is-ready");cover.classList.add("is-unavailable");}
+ };
+ if(unavailable())return true;
  if(cover.classList.contains("is-ready")&&loaded())return true;
  const result=await new Promise<boolean>(resolve=>{
   let finished=false;
@@ -119,10 +124,19 @@ export async function ensureMountedCoverReady(
    if(finished)return;
    finished=true;window.clearTimeout(timeout);
    cover.removeEventListener("load",onLoad);
+   cover.removeEventListener("error",onError);
    signal?.removeEventListener("abort",onAbort);
    resolve(ok);
   };
   const onAbort=()=>finish(false);
+  const onError=()=>{
+   const fallback=cover.dataset.fallback;
+   if(fallback){
+    try{if((cover.currentSrc||cover.src)!==new URL(fallback,window.location.href).href)return;}
+    catch{if((cover.currentSrc||cover.src)!==fallback)return;}
+   }
+   showFallback();finish(true);
+  };
   const onLoad=()=>{
    const source=cover.currentSrc||cover.src;
    if(typeof cover.decode==="function"){
@@ -131,17 +145,21 @@ export async function ensureMountedCoverReady(
     },()=>{if(loaded())finish(true);});
    }else if(loaded())finish(true);
   };
-  // A finished network request is not evidence of decoded bitmap paint.
-  // Never let the deadline override a still-pending decoder.
-  const timeout=window.setTimeout(()=>finish(false),timeoutMs);
+  // A slow or undecodable remote image must never retain the feed lock. Keep
+  // the same card mounted with a branded fallback; a late image may still
+  // replace it after WebView eventually finishes decoding.
+  const timeout=window.setTimeout(()=>{showFallback();finish(true);},timeoutMs);
   signal?.addEventListener("abort",onAbort,{once:true});
   cover.addEventListener("load",onLoad);
+  cover.addEventListener("error",onError);
   if(loaded())onLoad();
  });
  if(!result||signal?.aborted)return false;
- cover.classList.add("is-ready");
- noteFeedImageDecoded(cover.currentSrc||cover.src);
+ if(loaded()){
+  cover.classList.remove("is-unavailable");cover.classList.add("is-ready");
+  noteFeedImageDecoded(cover.currentSrc||cover.src);
+ }
  // React's 120ms opacity reveal must finish before deck compositor begins.
  await new Promise<void>(resolve=>window.setTimeout(resolve,140));
- return !signal?.aborted&&loaded();
+ return !signal?.aborted&&(loaded()||unavailable());
 }
