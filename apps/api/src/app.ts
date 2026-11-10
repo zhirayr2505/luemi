@@ -5,7 +5,7 @@ import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
 import type { ApiConfig } from "./config.js";
 import { validateTelegramInitData } from "./telegram-auth.js";
 import { registerTelegramWebhook } from "./telegram-webhook.js";
-import type { WelcomePhotoSender } from "./telegram-welcome-photo.js";
+import type { WelcomeWidgetSender } from "./telegram-welcome-widget.js";
 import { registerGeography } from "./geo-routes.js";
 import { registerRem05b } from "./rem05b-session.js";
 import { installHttpPolicy } from "./rem05c-headers.js";
@@ -25,7 +25,7 @@ function equalSecret(a: string, b: string): boolean {
   const right = Buffer.from(b);
   return left.length === right.length && timingSafeEqual(left, right);
 }
-export function buildApp(config: ApiConfig, welcomeSender?: WelcomePhotoSender) {
+export function buildApp(config: ApiConfig, welcomeSender?: WelcomeWidgetSender) {
   const app = Fastify({
     logger: config.logger,
     bodyLimit: 10240,

@@ -4,8 +4,8 @@ import type { ApiConfig } from "./config.js";
 import { versionedWebAppUrl } from "./telegram-web-app-url.js";
 import { createWelcomeStatusLookup } from "./telegram-welcome-status.js";
 import type { WelcomeStatusLookup } from "./telegram-welcome-status.js";
-import { sendTelegramWelcomePhoto, welcomePhotoUrl } from "./telegram-welcome-photo.js";
-import type { WelcomePhotoSender } from "./telegram-welcome-photo.js";
+import { sendTelegramWelcomeWidget, welcomeWidgetHtml } from "./telegram-welcome-widget.js";
+import type { WelcomeWidgetSender } from "./telegram-welcome-widget.js";
 export { versionedWebAppUrl } from "./telegram-web-app-url.js";
 
 function constantTimeMatch(received: unknown, expected: string): boolean {
@@ -26,7 +26,7 @@ interface TelegramUpdate {
 export function registerTelegramWebhook(
   app: FastifyInstance, config: ApiConfig,
   lookup: WelcomeStatusLookup = createWelcomeStatusLookup(app, config),
-  sendPhoto: WelcomePhotoSender = sendTelegramWelcomePhoto
+  sendWidget: WelcomeWidgetSender = sendTelegramWelcomeWidget
 ): void {
   app.post<{ Body: TelegramUpdate }>("/api/telegram/webhook", async (request, reply) => {
     const header = request.headers["x-telegram-bot-api-secret-token"];
@@ -70,16 +70,21 @@ export function registerTelegramWebhook(
       }]]
     };
 
-    // A direct sendPhoto returns an acknowledgement, unlike a webhook-method
-    // response. If Telegram or the image CDN fails, deliver the CTA as text.
-    const sent = await sendPhoto(config.botToken, {
-      chat_id: chatId,
-      photo: welcomePhotoUrl(config.origin),
-      caption: greeting,
-      parse_mode: "HTML",
-      reply_markup
-    }).catch(() => false);
-    if (sent) return { ok: true };
+    // A genuine HTML widget is sent directly to Telegram, not as an image.
+    // Widgets are currently supported in production only in private chats.
+    // On rejection, preserve a safe native Web App button without sendPhoto.
+    const html = welcomeWidgetHtml();
+    if (html) {
+      const sent = await sendWidget(config.botToken, {
+        chat_id: chatId,
+        html,
+        height: 440,
+        chat_data: JSON.stringify({ state: inviteOnly ? "invite" : state }),
+        allow_queries: false,
+        is_shared: false
+      }).catch(() => false);
+      if (sent) return { ok: true };
+    }
     return {
       method: "sendMessage",
       chat_id: chatId,
