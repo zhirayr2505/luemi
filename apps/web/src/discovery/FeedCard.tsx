@@ -38,10 +38,10 @@ function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onActio
  const button=useRef<HTMLButtonElement>(null);
  const gesture=useRef<null|{id:number;x:number;y:number;started:number;claimed:boolean;threshold:boolean;max:number;lastX:number;lastT:number;velocity:number}>(null);
  const frame=useRef<number|null>(null),pending=useRef(0),committed=useRef(false);
- const paint=(value:number)=>{const progress=clamp(value);
-  button.current?.style.setProperty("--like-slide-p",String(progress));onPreview(progress,progress>=.72);};
+ const paint=useCallback((value:number)=>{const progress=clamp(value);
+  button.current?.style.setProperty("--like-slide-p",String(progress));onPreview(progress,progress>=.72);},[onPreview]);
  useEffect(()=>{if(!disabled){committed.current=false;paint(0);
-  button.current?.classList.remove("is-dragging","is-armed","is-bursting");}},[disabled,onPreview]);
+  button.current?.classList.remove("is-dragging","is-armed","is-bursting");}},[disabled,paint]);
  useEffect(()=>()=>{if(frame.current!==null)cancelAnimationFrame(frame.current);onPreview(0,false);},[onPreview]);
  const schedule=(value:number)=>{pending.current=value;if(frame.current!==null)return;
   frame.current=requestAnimationFrame(()=>{frame.current=null;paint(pending.current);});};
