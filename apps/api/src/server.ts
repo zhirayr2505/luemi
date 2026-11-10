@@ -18,6 +18,22 @@ const staticRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../web/d
 async function start(): Promise<void> {
   try {
     if (config.serveWeb) {
+      // Telegram WebView may retain an older index.html pointing at JS chunks
+      // that no longer exist after a deployment. Never cache the entry document
+      // or its bootstrap helpers; hashed Vite assets keep their normal caching.
+      app.addHook("onSend", async (request, reply, payload) => {
+        const path = request.url.split("?")[0];
+        if (request.method === "GET" && (
+          path === "/" || path === "/index.html" ||
+          path === "/telegram-early-fullscreen.js" ||
+          path === "/boot-recovery.js" ||
+          (request.headers.accept?.includes("text/html") && !path.startsWith("/api/"))
+        )) {
+          reply.header("Cache-Control", "no-store, max-age=0");
+          reply.header("Pragma", "no-cache");
+        }
+        return payload;
+      });
       await app.register(fastifyStatic, { root: staticRoot, prefix: "/", wildcard: false });
       // Public, authentication-free privacy information. The legal notice stays
       // explicitly review-only until the owner approves its live policy version.

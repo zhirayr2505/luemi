@@ -1,10 +1,9 @@
-/* Runs after the Telegram SDK but before the React bundle and first paint.
- * Fullscreen must start before the cinematic poster is composited.
- * The App retains activated-event retry support for already-open Mini Apps. */
+/* Request fullscreen before React paints, but DO NOT signal Telegram readiness here.
+ * App.tsx calls WebApp.ready() after its first React render; an early ready()
+ * dismisses the Telegram loader while the document is still blank. */
 (function () {
   const app = window.Telegram && window.Telegram.WebApp;
   if (!app) return;
-  try { if (typeof app.ready === "function") app.ready(); } catch (_) {/* Unsupported clients keep their own loading state. */}
   try { if (typeof app.expand === "function") app.expand(); } catch (_) {/* Older Telegram clients may omit gesture controls. */}
   try {
     if (typeof app.disableVerticalSwipes === "function") app.disableVerticalSwipes();

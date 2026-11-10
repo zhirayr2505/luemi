@@ -3,16 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <meta name="theme-color" content="#1B2025" />
+    <meta name="theme-color" content="#1C1F25" />
     <link rel="preload" as="image" href="/assets/registration/welcome-cinematic.webp" />
     <meta name="referrer" content="no-referrer" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.pixabay.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>LUEMI · Telegram Mini App</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="/telegram-early-fullscreen.js"></script>
+    <style>
+      html,body{min-height:100%;margin:0;background:#1C1F25;color:#F7F3FA}
+      #luemi-boot{position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;gap:18px;box-sizing:border-box;padding:26px;
+        background:#1C1F25;color:#F7F3FA;text-align:center;font-family:system-ui,-apple-system,sans-serif}
+      #root:not(:empty)+#luemi-boot{display:none}
+      #luemi-boot img{width:116px;height:auto;max-height:45px;object-fit:contain}
+      #luemi-boot-status{margin:0;font-size:13px;color:#C7BACD}
+      #luemi-boot-retry[hidden]{display:none}
+      #luemi-boot-retry{font:inherit;font-size:14px;font-weight:600;min-height:46px;padding:0 25px;
+        border:1px solid #7B6884;border-radius:999px;background:#413249;color:#FAF4FB}
+    </style>
+    <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script defer src="/telegram-early-fullscreen.js"></script>
   </head>
   <body>
     <div id="root"></div>
+    <div id="luemi-boot" role="status" aria-live="polite">
+      <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" />
+      <p id="luemi-boot-status">Открываем LUEMI…</p>
+      <button id="luemi-boot-retry" type="button" hidden>Повторить открытие</button>
+    </div>
+    <script src="/boot-recovery.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
