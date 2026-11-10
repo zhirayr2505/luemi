@@ -33,27 +33,33 @@ test("compact state contains only indicator, identity, location and goal",()=>{
  assert.doesNotMatch(compact,/О себе|Интересы|Языки/);
 });
 
-test("one progress drives drawer, prepared blur and dim without React pointer renders",()=>{
+test("one progress drives overlay copy stages, prepared blur and dim without React pointer renders",()=>{
  assert.match(card,/--profile-p/);
  assert.match(card,/scheduleFinger\(current\.startProgress-dy\/travel\.current\)/);
  assert.match(css,/opacity:calc\(var\(--profile-p\) \* \.92\)/);
  assert.match(css,/opacity:var\(--profile-p\)/);
- assert.match(css,/calc\(\(1 - var\(--profile-p\)\) \* 104%\)/);
+ assert.match(css,/calc\(\(1 - var\(--profile-p\)\) \* 26px\)/);
+ assert.match(card,/--profile-main-p/);
+ assert.match(card,/--profile-about-p/);
+ assert.match(card,/--profile-interests-p/);
+ assert.match(css,/border:0;border-radius:0/);
  assert.doesNotMatch(card,/setProgress\(/);
 });
 
-test("tap likes and 75 percent right drag superlikes through one control",()=>{
- assert.match(card,/raw>=\.75/);
+test("tap likes and 72 percent right drag superlikes through one control",()=>{
+ assert.match(card,/raw>=\.72/);
+ assert.match(card,/current\.max\*\.48&&speed>\.72/);
  assert.match(card,/commit\("like"\)/);
  assert.match(card,/commit\("special"\)/);
  assert.match(card,/setPointerCapture/);
  assert.match(card,/--like-slide-p/);
- assert.match(card,/hapticStep=raw>=\.75\?3:raw>=\.5\?2:raw>=\.25\?1:0/);
+ assert.doesNotMatch(card,/hapticStep=raw>=/);
+ assert.match(card,/if\(armed\)impactHaptic\("medium"\)/);
  assert.match(card,/impactHaptic\("medium"\)/);
  assert.match(card,/impactHaptic\("heavy"\)/);
  assert.match(haptic,/impactOccurred/);
  assert.match(css,/--like-scale:calc\(1 \+ var\(--like-slide-p\) \* \.035\)/);
- assert.match(css,/@keyframes moonstone-super-wobble/);
+ assert.doesNotMatch(css,/@keyframes moonstone-super-wobble/);
  assert.match(css,/@keyframes moonstone-button-star-burst/);
  assert.match(card,/moonstone-super-particles/);
  assert.match(css,/\.moonstone-like-button\.is-armed/);
