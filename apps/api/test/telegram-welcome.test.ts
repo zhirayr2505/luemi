@@ -44,7 +44,7 @@ test("new users see start CTA, never an untrusted prefilled account", async () =
 });
 test("registered users see resume CTA", async () => {
   const {response}=await greeting("registered");
-  assert.match(response.text,/Твоя анкета уже здесь/);
+  assert.match(response.text,/Твоя история продолжается/);
   assert.match(response.reply_markup.inline_keyboard[0][0].text,/Продолжить знакомство/);
 });
 test("unavailable status uses neutral CTA; app owns final authentication", async () => {
