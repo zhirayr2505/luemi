@@ -14,8 +14,8 @@ test("Telegram ready never fires before the React app mounts",()=>{
 
 test("HTML shows a dark branded, no-JS fallback before module startup",()=>{
  const html=read("apps/web/index.html");
- assert.match(html,/<meta name="theme-color" content="#1C1F25"/);
- assert.match(html,/html,body\{min-height:100%;margin:0;background:#1C1F25/);
+ assert.match(html,/<meta name="theme-color" content="#1B2025"/);
+ assert.match(html,/html,body\{min-height:100%;margin:0;background:#1B2025/);
  assert.match(html,/id="luemi-boot"/);
  assert.match(html,/wordmark_original_raster_alpha_W06\.webp/);
  assert.match(html,/script defer src="https:\/\/telegram\.org\/js\/telegram-web-app\.js"/);
