@@ -34,13 +34,14 @@ export function registerTelegramWebhook(
       return reply.code(404).send({ error: "not_found" });
     const chat = request.body?.message?.chat;
     const text = request.body?.message?.text ?? "";
-    if (chat?.type !== "private" || !Number.isSafeInteger(chat.id))
+    if (chat?.type !== "private" || typeof chat.id !== "number" || !Number.isSafeInteger(chat.id))
       return { ok: true };
+    const chatId = chat.id;
     const senderId = request.body?.message?.from?.id;
     // Private /myid replies expose only the requesting Telegram sender's ID.
     if (/^\/(?:id|myid)(?:@LuemiAppBot)?(?:\s|$)/i.test(text)) {
-      if (!Number.isSafeInteger(senderId) || senderId !== chat.id) return { ok: true };
-      return { method: "sendMessage", chat_id: chat.id,
+      if (!Number.isSafeInteger(senderId) || senderId !== chatId) return { ok: true };
+      return { method: "sendMessage", chat_id: chatId,
         text: "Твой Telegram ID: " + senderId +
           (config.rem05b?.inviteOnly === true
             ? "\nЭто закрытый тест. Для приглашения отправь свой ID владельцу: @zhiiirro. После подтверждения снова открой /start."
@@ -50,7 +51,7 @@ export function registerTelegramWebhook(
 
     // Only the Telegram sender in their own private chat can be looked up.
     // The app, not the greeting, authenticates and routes to registration/home.
-    const state = Number.isSafeInteger(senderId) && senderId === chat.id
+    const state = Number.isSafeInteger(senderId) && senderId === chatId
       ? await lookup(senderId as number).catch(() => "unknown" as const)
       : "unknown";
     const inviteOnly = config.rem05b?.inviteOnly === true;
@@ -72,7 +73,7 @@ export function registerTelegramWebhook(
     // A direct sendPhoto returns an acknowledgement, unlike a webhook-method
     // response. If Telegram or the image CDN fails, deliver the CTA as text.
     const sent = await sendPhoto(config.botToken, {
-      chat_id: chat.id,
+      chat_id: chatId,
       photo: welcomePhotoUrl(config.origin),
       caption: greeting,
       parse_mode: "HTML",
@@ -81,7 +82,7 @@ export function registerTelegramWebhook(
     if (sent) return { ok: true };
     return {
       method: "sendMessage",
-      chat_id: chat.id,
+      chat_id: chatId,
       parse_mode: "HTML",
       text: greeting,
       reply_markup
