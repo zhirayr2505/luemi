@@ -53,7 +53,8 @@ test("photo rejection falls back to a text message with the same working CTA", a
       payload: { message: { text: "/start", from: { id: 42 }, chat: { id: 42, type: "private" } } } });
     assert.equal(res.json().method, "sendMessage");
     assert.match(res.json().text, /Знакомства начинаются здесь/);
-    assert.equal(res.json().reply_markup.inline_keyboard[0][0].web_app.url, config.origin);
+    assert.equal(res.json().reply_markup.inline_keyboard[0][0].web_app.url,
+      versionedWebAppUrl(config.origin, process.env.RENDER_GIT_COMMIT));
   } finally { await app.close(); }
 });
 
