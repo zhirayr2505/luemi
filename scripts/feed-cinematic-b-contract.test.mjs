@@ -21,7 +21,10 @@ test("photo is one fullscreen carousel beneath all chrome",()=>{
  assert.match(css,/\.moonstone-photo,\.moonstone-photo>\.carousel-frame\{position:absolute;inset:0/);
  assert.match(css,/object-fit:cover/);
  assert.match(real,/visibleRows\.slice\(page,page\+2\)/);
- assert.match(carousel,/src=\{!gpuSafe\|\|i<=1\?p\.src:undefined\}/);
+ // Queued cards load only the cover; active cards may also warm the next photo.
+ assert.match(carousel,/src=\{!gpuSafe\|\|i===0\|\|\(i===1&&prioritize\)\?p\.src:undefined\}/);
+ // A user-requested gallery image must still load on demand.
+ assert.match(carousel,/if\(gpuSafe&&!image\.getAttribute\("src"\)\)image\.src=photos\[i\]\.src/);
 });
 
 test("compact state contains only indicator, identity, location and goal",()=>{
