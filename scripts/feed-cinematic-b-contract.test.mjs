@@ -108,11 +108,11 @@ test("actions and icon-only navigation match the approved two-button composition
  assert.match(css,/width:min\(calc\(100% - 76px\),318px\)/);
 });
 
-test("refined chrome keeps independent tabs, a borderless nav and the smaller safe wordmark",()=>{
+test("refined chrome keeps independent tabs, a borderless nav and the 20 percent smaller and slightly higher safe wordmark",()=>{
  assert.match(css,/\.discovery-app\[data-feed-visible="true"\] \.discovery-tab-underline::after\{[^}]*width:22px/s);
  assert.doesNotMatch(css,/\.discovery-app\[data-feed-visible="true"\] \.discovery-top-tabs>button\.active\{[^}]*background:/s);
  assert.match(css,/\.discovery-app>\.discovery-bottom-nav\{[^}]*border:0/s);
- assert.match(css,/\.discovery-app\[data-feed-visible="true"\] \.lh-center\{[^}]*width:110px/s);
+ assert.match(css,/\.discovery-app\[data-feed-visible="true"\] \.lh-center\{[^}]*width:88px/s);
  assert.match(css,/\.discovery-app\[data-feed-visible="true"\] \.lh-center\{[^}]*top:max\(2px,calc\(var\(--top-safe\) - 3px\)\)/s);
 });
 
