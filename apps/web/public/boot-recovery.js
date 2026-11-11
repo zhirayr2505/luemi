@@ -41,28 +41,31 @@
   // On slow Telegram SDK initialization, never wait for React to call ready().
   window.setTimeout(releaseNativeLoader, 1600);
 
-  const observer = new MutationObserver(() => {
+  // A mounted React root can still be rendering a lazy-route fallback.
+  // Remove the poster only on an explicit destination-screen-ready event.
+  const revealScreen = () => {
     if (settled || !root.firstElementChild) return;
     settled = true;
     window.clearTimeout(watchdog);
     observer.disconnect();
-    window.requestAnimationFrame(() => boot.remove());
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => boot.remove());
+    });
+  };
+  const observer = new MutationObserver(() => {
+    if (root.firstElementChild) observer.disconnect();
   });
+  window.addEventListener("luemi:screen-ready", revealScreen, { once: true });
 
   const showRecovery = () => {
-    if (settled || root.firstElementChild) return;
-    status.textContent = "Не удалось загрузить интерфейс. Попробуй открыть ещё раз.";
+    if (settled) return;
+    boot.dataset.state = "error";
+    status.textContent = "Не удалось открыть LUEMI. Проверь соединение и попробуй ещё раз.";
     retry.hidden = false;
     releaseNativeLoader();
   };
-
   observer.observe(root, { childList: true });
-  window.setTimeout(() => {
-    if (!settled && !root.firstElementChild) {
-      status.textContent = "Подключаемся к LUEMI…";
-    }
-  }, 3500);
-  watchdog = window.setTimeout(showRecovery, 10000);
+  watchdog = window.setTimeout(showRecovery, 20000);
   window.addEventListener("error", event => {
     if (!root.firstElementChild && (event.target === window ||
         event.target?.tagName === "SCRIPT")) showRecovery();

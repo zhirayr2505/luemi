@@ -112,6 +112,18 @@ function prepareBrandImage(signal: AbortSignal): Promise<void> {
   });
 }
 
+/** Release the first-paint poster only after the destination screen paints. */
+function BootReadySignal(){
+  useEffect(()=>{
+    let second=0;
+    const first=window.requestAnimationFrame(()=>{
+      second=window.requestAnimationFrame(()=>window.dispatchEvent(new Event("luemi:screen-ready")));
+    });
+    return()=>{window.cancelAnimationFrame(first);window.cancelAnimationFrame(second);};
+  },[]);
+  return null;
+}
+const signalBootReady=()=>window.dispatchEvent(new Event("luemi:screen-ready"));
 export function App() {
   const [auth,setAuth] = useState<AuthState>("connecting");
   const [connectAttempt,setConnectAttempt]=useState(0);
@@ -1213,6 +1225,7 @@ export function App() {
   const remainingTime=`${Math.floor(remainingMs/86400000)} дн. ${String(Math.floor(remainingMs%86400000/3600000)).padStart(2,"0")}:${String(Math.floor(remainingMs%3600000/60000)).padStart(2,"0")}:${String(Math.floor(remainingMs%60000/1000)).padStart(2,"0")}`;
   if(accountDeletionRequested||auth==="pending-deletion")return <main className="luemi-shell" data-theme={activeTheme}
     data-scene="intro" role="status" style={{padding:"32px 22px",display:"grid",alignContent:"center",gap:18}}>
+    <BootReadySignal/>
     <img src={logoSrc} alt="LUEMI" style={{width:150,maxWidth:"100%",justifySelf:"center"}}/>
     <h2>Аккаунт готовится к удалению</h2>
     <p>Анкета и фото уже скрыты от других людей, а прежние сессии отключены.</p>
@@ -1235,8 +1248,8 @@ export function App() {
   // cinematic photo cards and Profile Morph V3. REAL_ONLY changes data, not UI.
   if(realHome&&auth==="authorized"&&realFeedPilot.enabled)
    return <><main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
-    <Suspense fallback={<div className="discovery-empty" role="status">Открываем LUEMI…</div>}>
-     <RealDiscoveryHome draft={draft}
+    <Suspense fallback={null}>
+     <RealDiscoveryHome onFirstScreenReady={signalBootReady} draft={draft}
        initialFeed={warmFeed} publishedProfile={publishStatus?.profile} ownerPhotoPreview={readyPhotos}
        onCityChanged={place=>{
         setDraft(current=>({...current,city:place.city,country:place.country,
@@ -1293,6 +1306,7 @@ export function App() {
     </Suspense>
    </main>{journeyOverlay}</>;
   if(realHome&&auth==="authorized")return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme}>
+     <BootReadySignal/>
     <section className="luemi-real-home" data-account-mode={!realFeedPilot.enabled&&remoteDraftPilot.enabled?"private":"standard"}
       data-telegram-ui={window.Telegram?.WebApp?"true":"false"} aria-label="LUEMI — настоящие анкеты">
       <header className="luemi-real-home-top">
@@ -1363,9 +1377,9 @@ export function App() {
       </nav>}
     </section>
   </main>;
-  if(auth==="authorized"&&journey!==null)return journeyOverlay;
+  if(auth==="authorized"&&journey!==null)return <><BootReadySignal/>{journeyOverlay}</>;
   if(auth==="authorized"&&phase==="form"&&registrationV2Pilot&&!demoOpen)
-    return <RealRegistrationV2 draft={draft} key={scope??"registration"} patch={patch} photos={photos}
+    return <><BootReadySignal/><RealRegistrationV2 draft={draft} key={scope??"registration"} patch={patch} photos={photos}
        fallbackEntry={registrationFallback}
        addPhotos={addPhotos} removePhoto={removePhoto} movePhoto={movePhoto}
        resetDraft={resetDraft}
@@ -1378,10 +1392,15 @@ export function App() {
        storageError={storageState==="error"?(storageCode??"io"):null}
        restored={photosRestored} resumeReview={step===8&&privateDraftSaved}
        onRetryStorage={retryStorage}
-       onExit={()=>{setRegistrationFallback(false);setPhase("welcome");}} registerBack={registerV2Back}/>;
+       onExit={()=>{setRegistrationFallback(false);setPhase("welcome");}} registerBack={registerV2Back}/></>;
   return <main ref={rootRef} className="luemi-shell" data-theme={activeTheme} data-phase={phase}
     data-registration-preview={auth==="authorized"&&phase==="form"&&!demoOpen&&step===8?"true":undefined}
     data-scene={auth==="authorized"&&phase==="form"?"form":"intro"}>
+    {heroSceneReady&&introSequenceComplete&&auth!=="connecting"&&
+      (auth!=="authorized"||(
+        (!registrationV2Pilot||photosRestored||storageState==="error")&&
+        (!realFeedPilot.enabled||publicationCheck==="ready"||publicationCheck==="error")
+      ))&&<BootReadySignal/>}
     <div className="milky-mist" aria-hidden="true"/>
     {demoOpen&&auth==="authorized"&&!realFeedPilot.enabled&&!realOnly?<Suspense fallback={null}><DiscoveryApp draft={draft} photos={readyPhotos} onExit={exitDemo} registerBack={registerDiscoveryBack}/></Suspense>:null}
     {!demoOpen&&(auth!=="authorized"||phase==="welcome"?<section className={"entry-state cinematic-entry"+(heroSceneReady?" visually-ready":"")+(heroViewportReady?" hero-viewport-ready":"")+(heroImageReady?" hero-image-ready":"")} aria-live="polite">

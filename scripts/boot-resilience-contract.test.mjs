@@ -23,13 +23,23 @@ test("Telegram SDK is a first-party asset, not a network-critical CDN",()=>{
  assert.ok(pkg.includes('node scripts/vendor-telegram-sdk.mjs'));
  const fallback=read("apps/web/public/boot-recovery.js");
  assert.ok(fallback.includes('MutationObserver'));
- assert.ok(fallback.includes('window.setTimeout(showRecovery, 10000)'));
+ assert.ok(fallback.includes('luemi:screen-ready'));
+ assert.ok(html.includes('welcome-cinematic.webp'));
+ assert.ok(html.includes('id="luemi-boot-spinner"'));
+ assert.ok(!html.includes('#root:not(:empty)+#luemi-boot'));
+ assert.ok(!html.includes('Открываем LUEMI…'));
+ assert.ok(fallback.includes('window.setTimeout(showRecovery, 20000)'));
  assert.ok(fallback.includes('window.location.replace'));
  assert.ok(fallback.includes('webApp.ready()'));
  assert.ok(fallback.includes('DOMContentLoaded'));
  assert.ok(fallback.includes('requestAnimationFrame(releaseNativeLoader)'));
  assert.ok(fallback.includes('window.setTimeout(releaseNativeLoader, 1600)'));
  assert.doesNotMatch(fallback,/localStorage|indexedDB/);
+ const app=read("apps/web/src/App.tsx");
+ const discovery=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
+ assert.ok(app.includes('onFirstScreenReady={signalBootReady}'));
+ assert.ok(app.includes('<Suspense fallback={null}>'));
+ assert.ok(discovery.includes('if(foreground&&active)onFirstScreenReady?.()'));
 });
 test("HTML and startup scripts are never served from stale cache",()=>{
  const server=read("apps/api/src/server.ts");

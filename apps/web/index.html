@@ -9,16 +9,38 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.pixabay.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>LUEMI · Telegram Mini App</title>
     <style>
-      html,body{min-height:100%;margin:0;background:#1B2025;color:#F2F3F5}
-      #luemi-boot{position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;
-        align-items:center;justify-content:center;gap:18px;box-sizing:border-box;padding:26px;
-        background:#1B2025;color:#F2F3F5;text-align:center;font-family:system-ui,-apple-system,sans-serif}
-      #root:not(:empty)+#luemi-boot{display:none}
-      #luemi-boot img{width:116px;height:auto;max-height:45px;object-fit:contain}
-      #luemi-boot-status{margin:0;font-size:13px;color:#C5C2CB}
+      html,body{min-height:100%;margin:0;background:#17191e;color:#fff}
+      /* Persistent first-paint poster, identical to the original hero photograph. */
+      #luemi-boot{position:fixed;inset:0;z-index:2147483647;overflow:hidden;background:#17191e;
+        color:#fff;font-family:system-ui,-apple-system,sans-serif}
+      #luemi-boot::before{content:"";position:absolute;inset:0;
+        background:url('/assets/registration/welcome-cinematic.webp') center 38%/cover no-repeat}
+      #luemi-boot::after{content:"";position:absolute;inset:0;pointer-events:none;
+        background:linear-gradient(180deg,rgba(19,21,26,.45),transparent 26%,
+          transparent 46%,rgba(17,20,24,.33) 64%,rgba(15,17,21,.96) 100%)}
+      #luemi-boot-mark{position:absolute;z-index:2;left:20px;
+        top:max(calc(env(safe-area-inset-top,0px) + 18px),84px);height:43px}
+      #luemi-boot-mark img{width:130px;height:43px;object-fit:contain;object-position:left center;
+        filter:grayscale(1) brightness(0) invert(1) drop-shadow(0 3px 16px rgba(20,23,29,.28))}
+      #luemi-boot-spinner{position:absolute;z-index:2;left:calc(50% - 18px);
+        bottom:calc(48px + env(safe-area-inset-bottom,0px));width:36px;height:36px;
+        box-sizing:border-box;border:2.5px solid rgba(255,255,255,.23);
+        border-top-color:rgba(255,255,255,.96);border-radius:50%;
+        animation:luemi-boot-spin .8s linear infinite}
+      @keyframes luemi-boot-spin{to{transform:rotate(360deg)}}
+      #luemi-boot-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+        overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+      #luemi-boot[data-state="error"] #luemi-boot-spinner{display:none}
+      #luemi-boot[data-state="error"] #luemi-boot-status{position:absolute;z-index:2;
+        left:26px;right:26px;bottom:calc(117px + env(safe-area-inset-bottom,0px));
+        width:auto;height:auto;margin:0;clip-path:none;white-space:normal;
+        font-size:14px;line-height:1.5;text-align:center;color:#fff}
       #luemi-boot-retry[hidden]{display:none}
-      #luemi-boot-retry{font:inherit;font-size:14px;font-weight:600;min-height:46px;padding:0 25px;
-        border:1px solid #676273;border-radius:999px;background:#2B3037;color:#F2F3F5}
+      #luemi-boot-retry{position:absolute;z-index:2;bottom:calc(38px + env(safe-area-inset-bottom,0px));
+        left:26px;right:26px;min-height:54px;font:inherit;font-size:15px;font-weight:650;
+        border:1px solid rgba(255,255,255,.7);border-radius:999px;
+        background:#d0c9de;color:#202128}
+      @media(prefers-reduced-motion:reduce){#luemi-boot-spinner{animation-duration:1.8s}}
     </style>
     <script defer src="/telegram-web-app.js"></script>
     <script defer src="/telegram-early-fullscreen.js"></script>
@@ -26,8 +48,9 @@
   <body>
     <div id="root"></div>
     <div id="luemi-boot" role="status" aria-live="polite">
-      <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" />
-      <p id="luemi-boot-status">Открываем LUEMI…</p>
+      <div id="luemi-boot-mark"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" /></div>
+      <span id="luemi-boot-spinner" aria-hidden="true"></span>
+      <p id="luemi-boot-status">Загружаем приложение…</p>
       <button id="luemi-boot-retry" type="button" hidden>Повторить открытие</button>
     </div>
     <script src="/boot-recovery.js"></script>

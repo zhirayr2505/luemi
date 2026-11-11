@@ -124,17 +124,19 @@ function RealMatches({active,onChat,onPerson,gender}:{active:boolean;onChat:()=>
  </section>;
 }
 
-function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onTryDemo,onEmptyFeed,onSearchScopeChange,hiddenIds,onHide}:{
+function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onTryDemo,onEmptyFeed,onSearchScopeChange,hiddenIds,onHide,onFirstScreenReady}:{
  active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
  onPerson:(p:RealPublishedProfile)=>void;onMatched:(person:RealPublishedProfile,matchId:string)=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
  onScrollTop:(top:number)=>void;filters:RealFeedFilter;onEditFilters:()=>void;onTryDemo:()=>void;
  onEmptyFeed:()=>void;
  onSearchScopeChange:(scope:SearchScope)=>void;
- hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void
+ hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void;
+ onFirstScreenReady?:()=>void
 }){
  const [rows,setRows]=useState<RealPublishedProfile[]>([]);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
+ const [firstLoadSettled,setFirstLoadSettled]=useState(false);
  const [scopeBusy,setScopeBusy]=useState(false);
  const [refresh,setRefresh]=useState(0),[cursor,setCursor]=useState<string|null>(null);
  const lastRefresh=useRef(-1);
@@ -198,14 +200,14 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   lastRefresh.current=refresh;
   const controller=new AbortController();abort.current?.abort();abort.current=controller;
   let complete=false;
-  setLoading(true);setError("");setMessage("");
+  setLoading(true);setFirstLoadSettled(false);setError("");setMessage("");
   if(initialFeed&&refresh===0){
    // First paint already has the actual signed server recommendations and
    // the first decoded image blobs from the publication handoff.
    if(initialFeed.searchScope&&initialFeed.searchScope!==draft.searchScope)
     onSearchScopeChange(initialFeed.searchScope);
    setRows(initialFeed.profiles);setCursor(initialFeed.nextCursor);
-   setPage(0);setLoading(false);complete=true;
+   setPage(0);setLoading(false);setFirstLoadSettled(true);complete=true;
    if(tab==="feed"&&initialFeed.profiles.length===0)onEmptyFeed();
    return()=>controller.abort();
   }
@@ -221,10 +223,10 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    const prepared=warmed?.page??result;
    if(prepared.searchScope&&prepared.searchScope!==draft.searchScope)
     onSearchScopeChange(prepared.searchScope);
-   setRows(prepared.profiles);setCursor(prepared.nextCursor);setPage(0);setLoading(false);complete=true;
+   setRows(prepared.profiles);setCursor(prepared.nextCursor);setPage(0);setLoading(false);setFirstLoadSettled(true);complete=true;
    if(tab==="feed"&&prepared.profiles.length===0)onEmptyFeed();
   }).catch(()=>{if(!controller.signal.aborted){
-   setLoading(false);setError("Не удалось загрузить анкеты.");complete=true;
+   setLoading(false);setFirstLoadSettled(true);setError("Не удалось загрузить анкеты.");complete=true;
    if(tab==="feed")onEmptyFeed(); // Isolated QA fallback; never fabricated server rows.
   }});
   return ()=>{if(!complete&&lastRefresh.current===refresh)lastRefresh.current=-1;controller.abort();};
@@ -244,6 +246,11 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  // the photo arrays and resetting queued carousel props during animation.
  const cardRows=useMemo(()=>visibleRows.map(toCard),[visibleRows]);
  const current=visibleRows[page];
+ useEffect(()=>{
+  // Empty and retryable error states can reveal without any photo.
+  if(active&&tab==="feed"&&firstLoadSettled&&!loading&&(!current||!!error))
+   onFirstScreenReady?.();
+ },[active,tab,firstLoadSettled,loading,current,error,onFirstScreenReady]);
  useEffect(()=>{setPage(0);setUndoPage(null);},[filters]);
  const expandWorld=async()=>{
   if(scopeBusy)return;
@@ -380,7 +387,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
        onOpenProfile={foreground?()=>onPerson(person):()=>{}}
        onInterests={foreground?()=>onPerson(person):()=>{}}
        onMore={foreground?()=>{setMenu(person);setReporting(false);}:undefined}
-       onCoverReady={()=>markReady(key)}/>
+       onCoverReady={()=>{markReady(key);if(foreground&&active)onFirstScreenReady?.();}}/>
      </div>;
     }):
     <div className="discovery-deck-layer deck-active"><LuemiEmptyState className="real-discovery-empty" icon={Heart}
@@ -425,12 +432,13 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  </div>;
 }
 
-export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal,onCityChanged}:{
+export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal,onCityChanged,onFirstScreenReady}:{
  draft:RegistrationDraft;
  publishedProfile:OwnerPublicationStatus["profile"]|undefined;initialFeed?:PublishedFeedPage|null;
  ownerPhotoPreview?:ReadonlyArray<{src:string}>;
  accountPanel:ReactNode;onEdit:()=>void;onReveal?:()=>void;
  onCityChanged?:(place:ObservedCity)=>void;
+ onFirstScreenReady?:()=>void;
 }){
  const [mainTab,setMainTab]=useState<MainTab>(()=>{
   const route=new URLSearchParams(typeof window==="undefined"?"":window.location.search).get("luemiRoute")??
@@ -446,6 +454,13 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   const start=window.Telegram?.WebApp?.initDataUnsafe?.start_param??params.get("tgWebAppStartParam");
   return params.get("luemiDemo")==="1"||start==="demo"||initialFeed?.profiles.length===0;
  });
+ // A link to chats/likes or a demo should not wait for a hidden feed cover.
+ useEffect(()=>{
+  if(mainTab==="discover"&&!demoMode)return;
+  const frame=window.requestAnimationFrame(()=>onFirstScreenReady?.());
+  return()=>window.cancelAnimationFrame(frame);
+ },[mainTab,demoMode,onFirstScreenReady]);
+
  const offerDemoOnEmpty=useCallback(()=>{
   if(autoDemoShown.current)return;
   autoDemoShown.current=true;setDemoMode(true);
@@ -846,7 +861,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
         initialFeed={scopeOverride||cityEpoch?null:initialFeed} saved={savedIds} onSave={onSave} filters={filters}
         onEditFilters={()=>setFilterOpen(true)} onTryDemo={()=>setDemoMode(true)}
         onEmptyFeed={offerDemoOnEmpty} onSearchScopeChange={setScopeOverride}
-        hiddenIds={hiddenIds} onHide={onHide}
+        hiddenIds={hiddenIds} onHide={onHide} onFirstScreenReady={onFirstScreenReady}
         onScrollTop={top=>onScrollTop(id,top)}
         onEditLocation={()=>setMainTab("profile")}
         onPerson={setPerson} onMatched={(matchedPerson,matchId)=>setMatched({person:matchedPerson,matchId})}/> }
