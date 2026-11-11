@@ -226,7 +226,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    {photos.length>0?<><div className="feed-carousel-fallback" aria-hidden="true"><span>{name.trim().slice(0,1).toUpperCase()||"L"}</span></div>
     <div className={"carousel-track"+(gpuSafe?" is-gpu-safe":"")} ref={photoTrack}>
      {photos.map((p,i)=><img key={p.id+"::"+p.src}
-       src={!gpuSafe||i<=1?p.src:undefined}
+       src={!gpuSafe||i===0||(i===1&&prioritize)?p.src:undefined}
        data-fallback={p.fallback||undefined}
        alt={"Фото "+(i+1)} draggable={false}
        loading={i===0||(prioritize&&Math.abs(i-activeRef.current)<=1)?"eager":"lazy"} decoding="async"

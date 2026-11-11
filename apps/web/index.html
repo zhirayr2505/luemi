@@ -22,6 +22,11 @@
         top:max(calc(env(safe-area-inset-top,0px) + 18px),84px);height:43px}
       #luemi-boot-mark img{width:130px;height:43px;object-fit:contain;object-position:left center;
         filter:grayscale(1) brightness(0) invert(1) drop-shadow(0 3px 16px rgba(20,23,29,.28))}
+      #luemi-boot-copy{position:absolute;z-index:2;left:24px;right:24px;bottom:calc(128px + env(safe-area-inset-bottom,0px));text-align:center;pointer-events:none;text-shadow:0 3px 22px rgba(10,12,18,.65)}
+      #luemi-boot-copy h1{margin:0;font-size:clamp(25px,6vw,34px);line-height:1.1;font-weight:750;letter-spacing:-.035em;color:#fff}
+      #luemi-boot-copy p{margin:12px auto 0;max-width:320px;font-size:13px;line-height:1.5;font-weight:450;color:rgba(255,255,255,.9)}
+      #luemi-boot[data-state="error"] #luemi-boot-copy{display:none}
+      @media(max-height:650px){#luemi-boot-copy{bottom:calc(108px + env(safe-area-inset-bottom,0px))}#luemi-boot-copy h1{font-size:24px}#luemi-boot-copy p{margin-top:7px;font-size:12px}}
       #luemi-boot-spinner{position:absolute;z-index:2;left:calc(50% - 18px);
         bottom:calc(48px + env(safe-area-inset-bottom,0px));width:36px;height:36px;
         box-sizing:border-box;border:2.5px solid rgba(255,255,255,.23);
@@ -49,6 +54,7 @@
     <div id="root"></div>
     <div id="luemi-boot" role="status" aria-live="polite">
       <div id="luemi-boot-mark"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" /></div>
+      <div id="luemi-boot-copy"><h1>Больше, чем знакомства</h1><p>Реальные люди. Настоящие эмоции.<br/>Ближе, чем кажется.</p></div>
       <span id="luemi-boot-spinner" aria-hidden="true"></span>
       <p id="luemi-boot-status">Загружаем приложение…</p>
       <button id="luemi-boot-retry" type="button" hidden>Повторить открытие</button>

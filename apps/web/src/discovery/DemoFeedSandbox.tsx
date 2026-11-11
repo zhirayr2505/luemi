@@ -46,18 +46,27 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
   const commit=pending.current;if(!commit)return;
   pending.current=null;
   if(timer.current!==null)window.clearTimeout(timer.current);
-  timer.current=null;commit();
-  setLeaving(false);setLeavingKind(null);locked.current=false;
+  timer.current=null;
+  try{commit();}finally{setLeaving(false);setLeavingKind(null);locked.current=false;}
  };
- useEffect(()=>()=>{if(timer.current!==null)window.clearTimeout(timer.current);
-  pending.current=null;locked.current=false;},[]);
+ const finishRef=useRef<()=>void>(()=>{});finishRef.current=finish;
+ useEffect(()=>{
+  const recover=()=>{if(pending.current)finishRef.current();};
+  const onVisible=()=>{if(document.visibilityState==="visible")recover();};
+  window.addEventListener("focus",recover);
+  document.addEventListener("visibilitychange",onVisible);
+  return()=>{window.removeEventListener("focus",recover);
+   document.removeEventListener("visibilitychange",onVisible);
+   if(timer.current!==null)window.clearTimeout(timer.current);
+   pending.current=null;locked.current=false;};
+ },[]);
  const reset=()=>{
   if(locked.current)return;
   setPage(0);setHistory([]);setSaved(new Set());setMessage("");
   selectionHaptic();
  };
  const action=(kind:DemoKind|"undo")=>{
-  if(locked.current)return;
+  if(locked.current){if(pending.current)finish();return;}
   if(kind==="undo"){
    const previous=history.at(-1);
    if(previous!==undefined){setPage(previous);setHistory(h=>h.slice(0,-1));
