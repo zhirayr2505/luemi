@@ -256,8 +256,8 @@
 .discovery-app>.discovery-bottom-nav .discovery-nav-item span{display:none}
 .discovery-app>.discovery-bottom-nav .discovery-nav-item svg{width:23px;height:23px}
 .discovery-app>.discovery-bottom-nav .discovery-nav-item.active{color:#E2D4EA;background:linear-gradient(145deg,rgba(154,119,169,.42),rgba(111,84,125,.32));box-shadow:inset 0 1px rgba(255,255,255,.12),0 4px 13px rgba(15,10,19,.14)}
-.discovery-app[data-feed-visible="true"] .lh-center{top:max(2px,calc(var(--top-safe) - 3px));left:50%;width:110px;transform:translateX(-50%)}
-.discovery-app[data-feed-visible="true"] .lh-island{width:110px;height:38px}.discovery-app[data-feed-visible="true"] .lh-island img{width:110px;height:38px;filter:brightness(0) invert(1) drop-shadow(0 2px 7px rgba(0,0,0,.38))}
+.discovery-app[data-feed-visible="true"] .lh-center{top:max(2px,calc(var(--top-safe) - 6px));left:50%;width:88px;transform:translateX(-50%)}
+.discovery-app[data-feed-visible="true"] .lh-island{width:88px;height:30.4px}.discovery-app[data-feed-visible="true"] .lh-island img{width:88px;height:30.4px;filter:brightness(0) invert(1) drop-shadow(0 2px 7px rgba(0,0,0,.38))}
 
 /* Compact Moonstone filter dropdown anchored below the active Feed tab. */
 .real-discovery-home .real-feed-filter-backdrop{z-index:125;align-items:flex-start;justify-content:center;padding:calc(var(--top-safe) + 99px) 12px 0;background:rgba(7,9,12,.34);backdrop-filter:none}
