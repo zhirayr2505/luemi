@@ -113,7 +113,7 @@ test("refined chrome keeps independent tabs, a borderless nav and the 20 percent
  assert.doesNotMatch(css,/\.discovery-app\[data-feed-visible="true"\] \.discovery-top-tabs>button\.active\{[^}]*background:/s);
  assert.match(css,/\.discovery-app>\.discovery-bottom-nav\{[^}]*border:0/s);
  assert.match(css,/\.discovery-app\[data-feed-visible="true"\] \.lh-center\{[^}]*width:88px/s);
- assert.match(css,/\.discovery-app\[data-feed-visible="true"\] \.lh-center\{[^}]*top:max\(2px,calc\(var\(--top-safe\) - 3px\)\)/s);
+ assert.match(css,/\.discovery-app\[data-feed-visible="true"\] \.lh-center\{[^}]*top:max\(2px,calc\(var\(--top-safe\) - 6px\)\)/s);
 });
 
 test("old feed implementation is physically removed",()=>{
