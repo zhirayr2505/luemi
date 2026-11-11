@@ -176,7 +176,7 @@ assert.match(app,/await saveDraftSnapshot\(scope,draftId\.current,photoRevision,
  "Private signup requires a confirmed local photo snapshot before server save");
 assert.match(app,/if\(realHome&&auth==="authorized"&&realFeedPilot.enabled\)/,
  "Published users retain the accepted REAL_ONLY discovery shell");
-assert.match(app,/<RealDiscoveryHome draft=\{draft\}/,
+assert.match(app,/<RealDiscoveryHome (?:onFirstScreenReady=\{signalBootReady\} )?draft=\{draft\}/,
  "The full discovery and profile route is available after one-tap creation");
 assert.match(app,/setWarmFeed\(warmed.page\)/,
  "The accepted home is hydrated from authenticated server feed warmup");
