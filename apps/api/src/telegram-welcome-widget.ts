@@ -28,6 +28,8 @@ export interface WelcomeWidgetMessage {
   chat_id: number;
   html: string;
   height: number;
+  caption?: string;
+  show_caption_above_media?: boolean;
   chat_data: string;
   allow_queries: false;
   is_shared: false;

@@ -23,6 +23,11 @@ test("widget HTML fits Telegram 10.4 limits, has inline branding and real button
   assert.match(html, /<svg[^>]+class="brand"/);
   assert.match(html, /openTelegramLink/);
   assert.match(html, /data-tab="1"/);
+  assert.match(html, /ЗНАКОМСТВА ПО-НОВОМУ/);
+  assert.match(html, /Люди ближе/);
+  assert.match(html, /class="tiles"/);
+  assert.match(html, /class="cta"/);
+  assert.doesNotMatch(html, /[0-9]{3}\s*(?:симпат|сообщени|совпаден)/i);
   assert.match(html, /https:\/\/t\.me\/LuemiAppBot\?startapp=welcome/);
   assert.doesNotMatch(html, /https?:\/\/[^"']+\.(?:jpg|png|webp)|<script[^>]+src=/);
 });
@@ -39,7 +44,9 @@ test("signed /start sends one interactive widget to owner's private chat", async
       payload:{message:{text:"/start",from:{id:42},chat:{id:42,type:"private"}}}});
     assert.deepEqual(res.json(), { ok: true });
     assert.equal(payload?.chat_id,42);
-    assert.equal(payload?.height,440);
+    assert.equal(payload?.height,556);
+    assert.equal(payload?.caption,"Добро пожаловать в LUEMI 💜");
+    assert.equal(payload?.show_caption_above_media,true);
     assert.equal(payload?.allow_queries,false);
     assert.equal(payload?.is_shared,false);
     assert.equal(JSON.parse(payload?.chat_data ?? "{}").state,"registered");
@@ -64,7 +71,7 @@ test("sendWidget rejection falls back to text with native Mini App button", asyn
 test("sender calls real sendWidget and requires an acknowledged response",async()=>{
   const html=welcomeWidgetHtml();
   assert.ok(html);
-  const payload: WelcomeWidgetMessage = { chat_id:42,html,height:440,
+  const payload: WelcomeWidgetMessage = { chat_id:42,html,height:556,
     chat_data:JSON.stringify({state:"new"}),allow_queries:false,is_shared:false };
   let actualUrl="";
   const ok=(async (url:string|URL|Request,init?:RequestInit)=>{

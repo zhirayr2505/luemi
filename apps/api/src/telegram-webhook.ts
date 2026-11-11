@@ -78,7 +78,9 @@ export function registerTelegramWebhook(
       const sent = await sendWidget(config.botToken, {
         chat_id: chatId,
         html,
-        height: 440,
+        height: 556,
+        caption: "Добро пожаловать в LUEMI 💜",
+        show_caption_above_media: true,
         chat_data: JSON.stringify({ state: inviteOnly ? "invite" : state }),
         allow_queries: false,
         is_shared: false
