@@ -169,7 +169,7 @@
 .moonstone-fact span,.moonstone-answer span{color:#D8C8DE;font-size:11px;letter-spacing:.03em}
 .moonstone-fact strong{font-size:13px;line-height:1.4;color:#FFF7FF;font-weight:640;overflow-wrap:anywhere}
 .moonstone-answer-list{display:grid;gap:9px}
-.moonstone-answer p{margin:7px 0 0;color:#FAF4FB;font-size:14px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.moonstone-answer p{margin:7px 0 0;color:#F6F0F8;font-size:14px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
 .moonstone-liked-you{margin:20px 0 0;padding:12px;border:1px solid rgba(182,164,200,.26);border-radius:16px;background:rgba(182,164,200,.11);color:#E9E0F0;font-size:12px}
 .moonstone-actions{
  position:absolute;z-index:20;left:26px;right:26px;bottom:var(--moon-actions-bottom);height:var(--moon-actions-height);
