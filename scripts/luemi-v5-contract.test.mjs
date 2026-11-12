@@ -39,7 +39,8 @@ test("feed compact content follows approved information order",()=>{
  const about=feed.indexOf('className="moonstone-detail-section moonstone-reveal-about"><h3>О себе');
  const interests=feed.indexOf('className="moonstone-detail-section moonstone-reveal-interests"><h3>Интересы');
  assert.ok(about>0&&interests>about);
- assert.match(feed,/person\.interests\.map/);
+ assert.match(feed,/orderedInterests\.map/);
+ assert.match(feed,/Number\(commonInterestIds\.has\(b\)\)-Number\(commonInterestIds\.has\(a\)\)/);
  assert.ok(feed.indexOf('className="moonstone-compact-info"')<about);
 });
 
