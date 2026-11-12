@@ -54,6 +54,11 @@ export const demoPeople:DemoPerson[]=base.map((p,index)=>({
  id:p[0],name:p[1],age:p[2],gender:p[3] as DemoPerson["gender"],city:p[4],country:p[5],countryCode:normalizeCountryCode(p[6])??"",
  goal:p[7] as DemoPerson["goal"],premium:false,interests:p[8].split("|").map(x=>x.toLocaleLowerCase("ru").replace(/\s+/g,"-")),
  languages:p[9].split("|"),about:p[10],
+ // A clearly labelled fictional card demonstrates long-form scrolling and optional facts.
+ ...(index===0?{heightCm:168,occupation:"Дизайнер",facts:[{label:"Любимое место",value:"Кофейни у моря"}],
+  answers:[{question:"Идеальный выходной?",answer:"Долгая прогулка, вкусный завтрак и разговоры без спешки."},
+   {question:"Что меня вдохновляет?",answer:"Новые города, музыка и тёплые встречи с друзьями."},
+   {question:"Что ценю в людях?",answer:"Искренность, чувство юмора и умение слушать."}]}:{}),
  photos:[
   {id:p[0]+"-1",src:portraitSources[index]},
   ...scenes[index%scenes.length].slice(0,2).map((id,variation)=>({

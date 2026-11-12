@@ -380,7 +380,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
        const departed=["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName);
        if((successor&&arrived)||(foreground&&!visibleRows[page+1]&&departed))finishDeck();
       }}>
-      <FeedCard person={cardRows[page+offset]} real saved={saved.has(person.id)}
+      <FeedCard person={cardRows[page+offset]} real viewerInterestIds={draft.interests} saved={saved.has(person.id)}
        canUndo={foreground&&undoPage!==null} active={foreground&&active}
        busy={!foreground||busy||!!leaving||locked.current}
        onAction={foreground?kind=>{void act(kind);}:()=>{}}

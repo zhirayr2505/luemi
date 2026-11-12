@@ -12,6 +12,13 @@ import type {DemoKind,DemoPerson} from "./model";
 
 const clamp=(value:number,min=0,max=1)=>Math.max(min,Math.min(max,value));
 const revealStage=(p:number,start:number,end:number)=>clamp((p-start)/(end-start));
+// A damped settle, not a second CSS transition competing with the pointer.
+const settleEase=(t:number)=>1-Math.pow(1-clamp(t),4)*(1+.10*Math.sin(Math.PI*3*t));
+const settleNudge=(t:number,to:0|1)=>{
+ const phase=clamp((t-.63)/.37);
+ return t<=.63?0:Math.sin(phase*Math.PI*1.8)*Math.pow(1-phase,1.2)*(to===1?-5:5);
+};
+const EMPTY_INTERESTS:readonly string[]=[];
 const countryName=(code:string,fallback:string)=>{
  if(fallback)return fallback;
  try{return new Intl.DisplayNames(["ru"],{type:"region"}).of(code.toUpperCase())??code.toUpperCase();}
@@ -116,10 +123,11 @@ function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onActio
 
 /** Moonstone V6 fullscreen discovery surface. The keyed card remains mounted during deck transitions. */
 export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenProfile,onInterests:___,
- onExitDemo,onCoverReady,real=false,onMore,demoDistanceKm}:{
+ onExitDemo,onCoverReady,real=false,onMore,demoDistanceKm,viewerInterestIds=EMPTY_INTERESTS}:{
  person:DemoPerson;saved:boolean;canUndo:boolean;active:boolean;busy:boolean;
  onAction:(kind:DemoKind|"undo")=>void;onOpenProfile:()=>void;onInterests:()=>void;
  real?:boolean;onMore?:()=>void;onExitDemo?:()=>void;onCoverReady?:()=>void;demoDistanceKm?:number;
+ viewerInterestIds?:readonly string[];
 }){
  const goal=goals.find(item=>item.id===person.goal);
  const [expanded,setExpanded]=useState(false),[activePhotoIndex,setActivePhotoIndex]=useState(0);
@@ -131,6 +139,7 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  const photoHold=useRef<PhotoHold|null>(null),actionLocked=useRef(false),feedbackTimer=useRef<number|null>(null);
  const progress=useRef(0),target=useRef<0|1>(0),travel=useRef(310),infoShift=useRef(-260),run=useRef<SettleRun|null>(null);
  const fingerFrame=useRef<number|null>(null),fingerValue=useRef(0),blockClickUntil=useRef(0);
+ const scrollFlingFrame=useRef<number|null>(null);
  const available=active&&!busy;
  const location=useMemo(()=>[person.city,countryName(person.countryCode,person.country)].filter(Boolean).join(", "),[person.city,person.country,person.countryCode]);
  const distance=distanceLabel(real?person.distanceKm:demoDistanceKm,real);
@@ -142,6 +151,16 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  const currentPhoto=(adaptiveSources.personId===person.id?adaptiveSources.sources[currentPhotoIndex]:undefined)??person.photos[currentPhotoIndex]?.src;
  const languageOptions=person.languages.map(id=>{const item=languages.find(language=>language.id===id);
   return {id,name:item?.name??id,flag:flagEmoji(item?.flag??id)};});
+ const commonInterestIds=useMemo(()=>new Set(viewerInterestIds),[viewerInterestIds]);
+ const orderedInterests=useMemo(()=>person.interests.slice().sort((a,b)=>
+  Number(commonInterestIds.has(b))-Number(commonInterestIds.has(a))),[person.interests,commonInterestIds]);
+ const profileFacts=[
+  ...(typeof person.heightCm==="number"&&person.heightCm>=90&&person.heightCm<=250?[{label:"Рост",value:`${person.heightCm} см`}]:[]),
+  ...(person.occupation?.trim()?[{label:"Занятие",value:person.occupation.trim()}]:[]),
+  ...(person.education?.trim()?[{label:"Образование",value:person.education.trim()}]:[]),
+  ...(person.facts??[]).filter(f=>f.label.trim()&&f.value.trim())
+ ];
+ const profileAnswers=(person.answers??[]).filter(a=>a.question.trim()&&a.answer.trim());
  const paintSuperPreview=useCallback((value:number,armed:boolean)=>{
   const element=card.current;if(!element)return;
   element.style.setProperty("--super-p",String(clamp(value)));
@@ -187,6 +206,8 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   const value=progress.current=clamp(next),element=card.current;
   if(element){
    element.style.setProperty("--profile-p",String(value));
+   element.style.setProperty("--profile-blur-p",String(revealStage(value,.04,.97)));
+   element.style.setProperty("--profile-scrim-p",String(revealStage(value,.12,1)));
    element.style.setProperty("--profile-info-y",value*infoShift.current+"px");
    // The detail surface follows the compact summary with exactly the same displacement.
    // No separate CSS interpolation: both layers must use the same RAF progress.
@@ -194,23 +215,26 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
    element.style.setProperty("--profile-about-p",String(revealStage(value,.22,.55)));
    element.style.setProperty("--profile-text-p",String(revealStage(value,.32,.70)));
    element.style.setProperty("--profile-interests-p",String(revealStage(value,.52,.85)));
-   element.style.setProperty("--profile-extra-p",String(revealStage(value,.65,1)));
+   element.style.setProperty("--profile-extra-p",String(revealStage(value,.60,.98)));
+   element.style.setProperty("--profile-elastic-y","0px");
   }
   if(drawer.current)drawer.current.inert=value<.98;
  };
  const freeze=()=>{const current=run.current;if(!current)return;if(current.frame!==null)cancelAnimationFrame(current.frame);
   const t=clamp((performance.now()-current.started)/current.duration);run.current=null;
-  paint(current.from+(current.to-current.from)*(1-Math.pow(1-t,4)));};
+  paint(current.from+(current.to-current.from)*settleEase(t));};
  const settle=(next:0|1)=>{
   freeze();target.current=next;
+  if(next===0&&scroll.current)scroll.current.scrollTop=0;
   if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||Math.abs(progress.current-next)<.002){
    paint(next);setExpanded(next===1);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";return;
   }
   if(scroll.current)scroll.current.style.overflowY="hidden";
-  const motion:SettleRun={from:progress.current,to:next,started:performance.now(),duration:270+Math.abs(next-progress.current)*110,frame:null};
+  const motion:SettleRun={from:progress.current,to:next,started:performance.now(),duration:310+Math.abs(next-progress.current)*115,frame:null};
   run.current=motion;
   const tick=(now:number)=>{if(run.current!==motion)return;const t=clamp((now-motion.started)/motion.duration);
-   paint(motion.from+(motion.to-motion.from)*(1-Math.pow(1-t,4)));
+   paint(motion.from+(motion.to-motion.from)*settleEase(t));
+   card.current?.style.setProperty("--profile-elastic-y",settleNudge(t,next)+"px");
    if(t>=1){run.current=null;paint(next);setExpanded(next===1);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";}
    else motion.frame=requestAnimationFrame(tick);};
   motion.frame=requestAnimationFrame(tick);
@@ -218,6 +242,23 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  const scheduleFinger=(value:number)=>{fingerValue.current=value;if(fingerFrame.current!==null)return;
   fingerFrame.current=requestAnimationFrame(()=>{fingerFrame.current=null;paint(fingerValue.current);});};
  const flushFinger=()=>{if(fingerFrame.current!==null){cancelAnimationFrame(fingerFrame.current);fingerFrame.current=null;}paint(fingerValue.current);};
+ const stopScrollFling=()=>{if(scrollFlingFrame.current!==null){cancelAnimationFrame(scrollFlingFrame.current);scrollFlingFrame.current=null;}};
+ const startScrollFling=(fingerVelocity:number)=>{
+  const node=scroll.current;
+  if(!node||window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)return;
+  let speed=-Math.max(-1.8,Math.min(1.8,fingerVelocity));
+  if(Math.abs(speed)<.07)return;
+  let last=performance.now();
+  const tick=(now:number)=>{
+   const dt=Math.min(32,Math.max(1,now-last));last=now;
+   const previous=node.scrollTop;
+   node.scrollTop=previous+speed*dt;
+   speed*=Math.pow(.91,dt/16.7);
+   if(Math.abs(speed)>.025&&Math.abs(node.scrollTop-previous)>.1)scrollFlingFrame.current=requestAnimationFrame(tick);
+   else scrollFlingFrame.current=null;
+  };
+  scrollFlingFrame.current=requestAnimationFrame(tick);
+ };
  useLayoutEffect(()=>{
   const element=card.current;if(!element)return;
   const photoController=photo.current;
@@ -240,21 +281,23 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   return()=>{observer.disconnect();photoController?.cancel();releasePhotoHold();
    if(feedbackTimer.current!==null)window.clearTimeout(feedbackTimer.current);
    if(fingerFrame.current!==null)cancelAnimationFrame(fingerFrame.current);
+   stopScrollFling();
    const motion=run.current;if(motion&&motion.frame!==null)cancelAnimationFrame(motion.frame);};
  },[person.id]);
  useEffect(()=>{paint(0);paintSuperPreview(0,false);target.current=0;actionLocked.current=false;setExpanded(false);setActionFeedback(null);
-  releasePhotoHold();gesture.current=null;
+  releasePhotoHold();gesture.current=null;stopScrollFling();
   card.current?.classList.remove("is-profile-dragging","is-super-committing");if(scroll.current)scroll.current.scrollTop=0;},[person.id,paintSuperPreview]);
  useEffect(()=>{
-  if(!available){releasePhotoHold();gesture.current=null;photo.current?.cancel();card.current?.classList.remove("is-profile-dragging");}
+  if(!available){releasePhotoHold();gesture.current=null;stopScrollFling();photo.current?.cancel();card.current?.classList.remove("is-profile-dragging");}
  },[available,person.id]);
  useEffect(()=>{
-  const resetHold=()=>{releasePhotoHold();gesture.current=null;photo.current?.cancel();card.current?.classList.remove("is-profile-dragging");};
+  const resetHold=()=>{releasePhotoHold();gesture.current=null;stopScrollFling();photo.current?.cancel();card.current?.classList.remove("is-profile-dragging");};
   const onVisibility=()=>{if(document.hidden)resetHold();};
   window.addEventListener("blur",resetHold);document.addEventListener("visibilitychange",onVisibility);
   return()=>{window.removeEventListener("blur",resetHold);document.removeEventListener("visibilitychange",onVisibility);};
  },[]);
  const down=(event:ReactPointerEvent<HTMLElement>)=>{
+  stopScrollFling();
   if(!available||!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
   const element=event.target as Element;
   if(element.closest("button,a,input,textarea,select,[contenteditable]"))return;
@@ -288,7 +331,9 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
     current.axis="photo";carousel.begin(current.id,current.x,current.y,current.started);
    }else if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.35&&(inInfo||progress.current>0)){
     freeze();current.startProgress=progress.current;
-    current.axis=progress.current>.99&&!!(event.target as Element).closest(".moonstone-profile-scroll")&&
+    const touchingDetails=!!(event.target as Element).closest(".moonstone-profile-scroll");
+    const canScroll=!!scroll.current&&scroll.current.scrollHeight>scroll.current.clientHeight+1;
+    current.axis=progress.current>.99&&touchingDetails&&canScroll&&
      (dy<0||current.scrollStart>0)?"scroll":"info";
     if(current.axis==="info"){current.y=event.clientY;dy=0;card.current?.classList.add("is-profile-dragging");}
    }else return;
@@ -300,6 +345,8 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   else if(current.axis==="scroll"){
    if(scroll.current)scroll.current.scrollTop=Math.max(0,current.scrollStart-dy);
    if(dy>current.scrollStart){current.axis="info";current.y+=current.scrollStart;current.startProgress=progress.current;}
+   else {const now=performance.now();current.samples.push({y:event.clientY,t:now});
+    if(current.samples.length>8)current.samples.shift();}
   }else if(current.axis==="info"){
    scheduleFinger(current.startProgress-dy/travel.current);const now=performance.now();current.samples.push({y:event.clientY,t:now});
    if(current.samples.length>8)current.samples.shift();
@@ -310,6 +357,12 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   if(held){gesture.current=null;if(event.cancelable)event.preventDefault();event.stopPropagation();return;}
   const current=gesture.current;if(!current||current.id!==event.pointerId)return;gesture.current=null;
   if(current.axis==="photo")photo.current?.finish(current.id,event.clientX,cancelled);
+  if(current.axis==="scroll"){
+   if(!cancelled){const now=performance.now();let sample=current.samples[current.samples.length-1];
+    for(let i=current.samples.length-2;i>=0&&now-current.samples[i].t<90;i--)sample=current.samples[i];
+    startScrollFling((event.clientY-sample.y)/Math.max(1,now-sample.t));}
+   return;
+  }
   if(current.axis!=="info")return;flushFinger();card.current?.classList.remove("is-profile-dragging");
   if(cancelled){settle(target.current);return;}
   const now=performance.now();let sample=current.samples[current.samples.length-1];
@@ -350,12 +403,21 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
    <section ref={drawer} className="moonstone-profile-drawer" aria-label="Подробная информация" aria-hidden={!expanded}>
     <div className="moonstone-profile-gesture-zone"><span/><span/></div>
     <div ref={scroll} className="moonstone-profile-scroll">
-     {person.about&&<div className="moonstone-detail-section moonstone-reveal-about"><h3>О себе</h3><p className="moonstone-reveal-text">{person.about}</p></div>}
-     {person.interests.length>0&&<div className="moonstone-detail-section moonstone-reveal-interests"><h3>Интересы</h3>
-      <div className="moonstone-interest-list">{person.interests.map((id,index)=><InterestChip key={`${id}-${index}`} id={id}/>)}</div></div>}
+     {person.about&&<div className="moonstone-detail-section moonstone-reveal-about"><h3>О себе</h3>
+      <blockquote className="moonstone-about-quote"><p className="moonstone-reveal-text">{person.about}</p></blockquote></div>}
+     {orderedInterests.length>0&&<div className="moonstone-detail-section moonstone-reveal-interests"><h3>Интересы</h3>
+      <div className="moonstone-interest-list">{orderedInterests.map(id=><span key={id}
+       className={"moonstone-interest-pill"+(commonInterestIds.has(id)?" is-shared":"")}
+       title={commonInterestIds.has(id)?"Общий интерес":undefined}><InterestChip id={id}/></span>)}</div></div>}
      {languageOptions.length>0&&<div className="moonstone-detail-section moonstone-reveal-extra"><h3>Языки</h3>
       <div className="moonstone-language-list">{languageOptions.map(language=><span className="moonstone-language-chip" key={language.id}>
        <b className="moonstone-language-flag" aria-hidden="true">{language.flag}</b><span>{language.name}</span></span>)}</div></div>}
+     {profileFacts.length>0&&<div className="moonstone-detail-section moonstone-reveal-extra"><h3>Подробнее</h3>
+      <div className="moonstone-fact-grid">{profileFacts.map((item,index)=><div className="moonstone-fact" key={`${item.label}-${index}`}>
+       <span>{item.label}</span><strong>{item.value}</strong></div>)}</div></div>}
+     {profileAnswers.length>0&&<div className="moonstone-detail-section moonstone-reveal-extra"><h3>Вопросы и ответы</h3>
+      <div className="moonstone-answer-list">{profileAnswers.map((item,index)=><div className="moonstone-answer" key={`${item.question}-${index}`}>
+       <span>{item.question}</span><p>{item.answer}</p></div>)}</div></div>}
      {person.likedYouKind&&<p className="moonstone-liked-you moonstone-reveal-extra">Ты уже понравился(ась) этому человеку</p>}
     </div>
    </section>

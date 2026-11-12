@@ -9,6 +9,10 @@ export interface DemoPerson {
  goal:Exclude<RegistrationDraft["goal"],"">;interests:string[];languages:string[];
  about:string;photos:DemoPhoto[];premium?:boolean;likedYouKind?:"ordinary"|"super"|null;
  distanceKm?:number|null;publishedAt?:string|null;verified?:boolean;
+ // Render only public optional fields actually supplied by a profile (demo fixtures are separate).
+ heightCm?:number|null;occupation?:string;education?:string;
+ facts?:Array<{label:string;value:string}>;
+ answers?:Array<{question:string;answer:string}>;
 }
 export interface DiscoveryFilter {
  audience:"everyone"|"women"|"men";minAge:number;maxAge:number;

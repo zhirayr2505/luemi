@@ -39,13 +39,15 @@ test("compact state contains only indicator, identity, location and goal",()=>{
 test("one progress drives overlay copy stages, prepared blur and dim without React pointer renders",()=>{
  assert.match(card,/--profile-p/);
  assert.match(card,/scheduleFinger\(current\.startProgress-dy\/travel\.current\)/);
- assert.match(css,/opacity:calc\(var\(--profile-p\) \* \.96\)/);
+ assert.match(css,/opacity:var\(--profile-blur-p\)/);
+ assert.match(css,/mask-image:linear-gradient\(to top/);
+ assert.match(card,/--profile-scrim-p/);
  assert.match(css,/opacity:var\(--profile-p\)/);
  // Profile summary and detail sections share the same RAF displacement,
  // instead of the old independent 38px easing that made text overlap on Android.
  assert.match(card,/--profile-detail-y/);
  assert.match(card,/\(value-1\)\*infoShift\.current/);
- assert.match(css,/transform:translate3d\(0,var\(--profile-detail-y,0px\),0\)/);
+ assert.match(css,/transform:translate3d\(0,calc\(var\(--profile-detail-y,0px\) \+ var\(--profile-elastic-y\)\),0\)/);
  assert.match(css,/\.moonstone-compact-info\{[\s\S]*?transition:none/);
  assert.match(css,/\.moonstone-profile-drawer\{[\s\S]*?transition:none/);
  assert.doesNotMatch(css,/\.moonstone-actions,\.moonstone-demo-label,\.moonstone-profile-drawer\{/);
@@ -89,15 +91,30 @@ test("holding the photo hides controls while logo and navigation stay mounted",(
 });
 
 test("expanded profile is a full-photo blur with clickable identity and no rectangular sheet",()=>{
- assert.match(css,/filter:blur\(19px\) saturate\(\.78\) brightness\(\.76\)/);
+ assert.match(css,/filter:blur\(29px\) saturate\(\.72\) brightness\(\.64\)/);
  assert.match(css,/\.moonstone-profile-drawer\{[\s\S]*?background:transparent/);
  assert.match(card,/className="moonstone-name"[\s\S]*?onClick=\{onOpenProfile\}/);
  assert.match(card,/moonstone-goal-mark/);
  assert.match(css,/\.moonstone-goal-mark\{/);
- assert.match(css,/\.moonstone-compact-info\{[\s\S]*?opacity:1;transform:translate3d\(0,var\(--profile-info-y\),0\)/);
+ assert.match(css,/\.moonstone-compact-info\{[\s\S]*?opacity:1;transform:translate3d\(0,calc\(var\(--profile-info-y\) \+ var\(--profile-elastic-y\)\),0\)/);
  assert.doesNotMatch(card,/moonstone-drawer-name/);
  assert.match(card,/moonstone-language-flag/);
  assert.match(css,/\.moonstone-language-chip\{/);
+});
+
+test("expanded details scroll only within the sheet; common interests and optional data are stable",()=>{
+ assert.match(real,/viewerInterestIds=\{draft\.interests\}/);
+ assert.match(card,/commonInterestIds/);
+ assert.match(card,/orderedInterests/);
+ assert.match(card,/moonstone-about-quote/);
+ assert.match(card,/profileFacts\.length>0/);
+ assert.match(card,/profileAnswers\.length>0/);
+ assert.match(card,/startScrollFling/);
+ assert.match(card,/current\.scrollStart-dy/);
+ assert.match(card,/stopScrollFling\(\)/);
+ assert.match(css,/\.moonstone-interest-pill\.is-shared/);
+ assert.match(css,/\.moonstone-language-flag\{[^}]*border-radius:50%/);
+ assert.doesNotMatch(css,/\.moonstone-reveal-text\{[^}]*transform:/);
 });
 
 test("reactions paint centered feedback and superlike has a live release burst",()=>{

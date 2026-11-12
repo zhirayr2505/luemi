@@ -115,7 +115,7 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
         const exited=["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName);
         if((successor&&entered)||(foreground&&!next&&exited))finish();
        }}>
-       <FeedCard person={person} saved={saved.has(person.id)}
+       <FeedCard person={person} viewerInterestIds={draft.interests} saved={saved.has(person.id)}
         canUndo={foreground&&history.length>0}
         active={foreground&&active} busy={!foreground||leaving}
         onAction={foreground?action:()=>{}}
