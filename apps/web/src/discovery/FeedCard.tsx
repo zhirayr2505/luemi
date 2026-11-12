@@ -232,7 +232,10 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
    infoShift.current=shift;
    element.style.setProperty("--profile-detail-top",Math.ceil(32+infoBox.height+17)+"px");
    paint(progress.current);
-  };measure();
+  };
+  // Install the initial drawer displacement before reading translated geometry.
+  // Otherwise the first measurement mistakes the fallback (0px) for the RAF position.
+  paint(progress.current);measure();
   const observer=new ResizeObserver(measure);observer.observe(element);
   return()=>{observer.disconnect();photoController?.cancel();releasePhotoHold();
    if(feedbackTimer.current!==null)window.clearTimeout(feedbackTimer.current);
