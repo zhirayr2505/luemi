@@ -41,7 +41,15 @@ test("one progress drives overlay copy stages, prepared blur and dim without Rea
  assert.match(card,/scheduleFinger\(current\.startProgress-dy\/travel\.current\)/);
  assert.match(css,/opacity:calc\(var\(--profile-p\) \* \.96\)/);
  assert.match(css,/opacity:var\(--profile-p\)/);
- assert.match(css,/calc\(\(1 - var\(--profile-p\)\) \* 38px\)/);
+ // Profile summary and detail sections share the same RAF displacement,
+ // instead of the old independent 38px easing that made text overlap on Android.
+ assert.match(card,/--profile-detail-y/);
+ assert.match(card,/\(value-1\)\*infoShift\.current/);
+ assert.match(css,/transform:translate3d\(0,var\(--profile-detail-y,0px\),0\)/);
+ assert.match(css,/\.moonstone-compact-info\{[\s\S]*?transition:none/);
+ assert.match(css,/\.moonstone-profile-drawer\{[\s\S]*?transition:none/);
+ assert.doesNotMatch(css,/\.moonstone-actions,\.moonstone-demo-label,\.moonstone-profile-drawer\{/);
+ assert.doesNotMatch(css,/\.moonstone-reveal-text\{[^}]*transform:/);
  assert.match(card,/--profile-about-p/);
  assert.match(card,/--profile-interests-p/);
  assert.match(css,/border:0;border-radius:0/);
