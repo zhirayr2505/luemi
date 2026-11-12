@@ -3,7 +3,7 @@
  color:var(--luemi-text);background:linear-gradient(165deg,var(--luemi-bg),var(--luemi-bg-deep));overflow:hidden}
 .luemi-real-home-top{display:flex;align-items:center;justify-content:space-between;
  padding:max(12px,env(safe-area-inset-top)) 17px 8px;flex:none;
- background:rgba(44,20,35,.96);border-bottom:1px solid var(--luemi-border)}
+ background:rgba(30,18,46,.96);border-bottom:1px solid var(--luemi-border)}
 .luemi-real-home-top .onboard-logo{width:122px;height:auto;max-height:38px;object-fit:contain}
 .luemi-real-home-main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
  -webkit-overflow-scrolling:touch;padding:6px 10px 12px}
@@ -11,12 +11,12 @@
 .luemi-real-home-main>.luemi-chats,.luemi-real-home-main .luemi-chats{
  height:100%;min-height:0;width:100%;max-width:none;box-shadow:none}
 .luemi-real-home-nav{display:flex;align-items:center;justify-content:space-around;gap:5px;flex:none;
- padding:7px 10px max(10px,env(safe-area-inset-bottom));background:rgba(44,20,35,.96);
+ padding:7px 10px max(10px,env(safe-area-inset-bottom));background:rgba(30,18,46,.96);
  border-top:1px solid var(--luemi-border)}
 .luemi-real-home-nav button{flex:1;min-width:0;min-height:44px;border:0;border-radius:17px;
  background:transparent;color:var(--luemi-text-secondary);font-family:inherit;font-size:13px;font-weight:600;line-height:1.2;cursor:pointer;
  -webkit-tap-highlight-color:transparent;transition:background-color .18s,color .18s}
-.luemi-real-home-nav button[aria-current="page"]{color:var(--luemi-text);background:rgba(205,130,147,.22)}
+.luemi-real-home-nav button[aria-current="page"]{color:var(--luemi-text);background:rgba(176,136,199,.22)}
 .luemi-real-account{padding:22px 14px 32px;display:flex;flex-direction:column;gap:15px}
 .luemi-real-account h1{font-size:26px;margin:0}
 .luemi-real-account p{color:var(--luemi-text-secondary);margin:0}
@@ -27,7 +27,7 @@
 }
 
 .luemi-real-account-card{display:flex;flex-direction:column;gap:9px;padding:14px;border-radius:23px;
- background:rgba(59,27,44,.9);border:1px solid rgba(179,91,115,.15)}
+ background:rgba(40,25,61,.9);border:1px solid rgba(127,84,186,.15)}
 .luemi-real-account-card h2{font-size:24px;font-weight:700;margin:3px 0 0}
 .luemi-real-account-photos{display:flex;gap:7px;overflow-x:auto;scroll-snap-type:x mandatory;
  scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -43,12 +43,12 @@
  * existing registration and chats retain their approved styles. No backdrop
  * filters or continuously moving gradients in the scroll/photo hot path.
  */
-.luemi-real-home[data-account-mode="private"]{background:radial-gradient(ellipse at 15% 4%,rgba(178,90,114,.11),transparent 48%),radial-gradient(ellipse at 85% 83%,rgba(154,67,94,.07),transparent 50%),var(--luemi-bg-deep);color:var(--luemi-text)}
+.luemi-real-home[data-account-mode="private"]{background:radial-gradient(ellipse at 15% 4%,rgba(126,83,185,.11),transparent 48%),radial-gradient(ellipse at 85% 83%,rgba(102,60,161,.07),transparent 50%),var(--luemi-bg-deep);color:var(--luemi-text)}
 .luemi-real-home[data-account-mode="private"] .luemi-real-home-top{
  position:relative;z-index:2;min-height:70px;
  padding:16px 22px 12px;
- background:rgba(44,20,35,.96);
- border-bottom:1px solid rgba(187,103,126,.14);
+ background:rgba(30,18,46,.96);
+ border-bottom:1px solid rgba(137,97,193,.14);
 }
 .luemi-real-home[data-account-mode="private"][data-telegram-ui="true"] .luemi-real-home-top{
  /* The Telegram Back/menu pill is a native overlay at the top, not app
@@ -76,7 +76,7 @@
 .luemi-private-heading h1{display:flex;align-items:center;gap:10px;margin:0;
  font-size:clamp(29px,7.6vw,36px);letter-spacing:-.038em;
  font-weight:800;line-height:1.16;color:var(--luemi-text)}
-.luemi-private-heading h1 svg{color:var(--luemi-text-secondary);flex:none;filter:drop-shadow(0 2px 5px rgba(207,138,154,.16))}
+.luemi-private-heading h1 svg{color:var(--luemi-text-secondary);flex:none;filter:drop-shadow(0 2px 5px rgba(180,143,202,.16))}
 .luemi-private-heading>p{color:var(--luemi-text-secondary);font-size:14px;line-height:1.5;margin:0}
 .luemi-private-status{
  display:flex;align-items:flex-start;gap:12px;border-radius:19px;
@@ -92,7 +92,7 @@
 .luemi-private-card{
  min-width:0;overflow:hidden;border-radius:27px;
  border:1px solid var(--luemi-border);background:var(--luemi-surface);
- box-shadow:0 15px 35px rgba(117,55,76,.10),0 2px 8px rgba(117,55,76,.045);
+ box-shadow:0 15px 35px rgba(80,50,122,.10),0 2px 8px rgba(80,50,122,.045);
 }
 .luemi-private-gallery{padding:12px 12px 0;min-width:0}
 .luemi-private-hero{
@@ -102,16 +102,16 @@
 .luemi-private-hero>img{width:100%;height:100%;display:block;object-fit:cover;object-position:center 27%}
 .luemi-private-hero:after{
  content:"";pointer-events:none;position:absolute;left:0;right:0;bottom:0;height:88px;
- background:linear-gradient(to top,rgba(43,20,34,.47),transparent);
+ background:linear-gradient(to top,rgba(29,18,45,.47),transparent);
 }
 .luemi-private-photo-count,.luemi-private-photo-label{
  position:absolute;z-index:1;display:flex;align-items:center;gap:5px;
  color:#FFFFFF;font-size:11px;font-weight:700;
- background:rgba(55,25,40,.54);border:1px solid rgba(255,255,255,.25);
+ background:rgba(37,23,57,.54);border:1px solid rgba(255,255,255,.25);
  border-radius:999px;padding:7px 10px;
 }
 .luemi-private-photo-count{right:12px;top:12px}
-.luemi-private-photo-label{left:12px;bottom:12px;background:rgba(63,29,47,.52)}
+.luemi-private-photo-label{left:12px;bottom:12px;background:rgba(43,26,66,.52)}
 .luemi-private-empty{display:flex;flex-direction:column;align-items:center;
  justify-content:center;gap:12px;color:var(--luemi-text-secondary);font-size:14px;padding:24px;text-align:center}
 .luemi-private-empty:after{display:none}
@@ -172,15 +172,15 @@
  color:var(--luemi-text-secondary);font-weight:730;text-decoration:none}
 .luemi-private-edit-bar{flex:none;z-index:3;
  padding:12px 18px max(16px,var(--bottom-safe,env(safe-area-inset-bottom,0px)));
- background:rgba(44,20,35,.96);border-top:1px solid var(--luemi-border);
- box-shadow:0 -7px 18px rgba(134,61,84,.055)}
+ background:rgba(30,18,46,.96);border-top:1px solid var(--luemi-border);
+ box-shadow:0 -7px 18px rgba(91,56,139,.055)}
 .luemi-private-edit-bar>button{
  display:flex;align-items:center;justify-content:center;gap:11px;
  width:100%;max-width:524px;margin:0 auto;min-height:55px;
- border:1px solid rgba(209,144,159,.44);border-radius:18px;
- background:linear-gradient(110deg,#E2C9CD,var(--luemi-lavender));color:var(--luemi-ink-on-accent);
+ border:1px solid rgba(184,149,204,.44);border-radius:18px;
+ background:linear-gradient(110deg,#D8CBE0,var(--luemi-lavender));color:var(--luemi-ink-on-accent);
  font-size:15px;font-weight:760;letter-spacing:.005em;
- box-shadow:0 8px 19px rgba(174,83,109,.17);
+ box-shadow:0 8px 19px rgba(120,76,181,.17);
 }
 .luemi-private-edit-bar>button svg:last-child{margin-left:auto;margin-right:14px}
 .luemi-private-edit-bar>button svg:first-child{margin-left:13px}

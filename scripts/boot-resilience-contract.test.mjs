@@ -11,7 +11,7 @@ test("Telegram fullscreen bootstrap does not signal readiness before first paint
 });
 test("Telegram SDK is a first-party asset, not a network-critical CDN",()=>{
  const html=read("apps/web/index.html");
- assert.ok(html.includes('<meta name="theme-color" content="#24111F"'));
+ assert.ok(html.includes('<meta name="theme-color" content="#1E0F38"'));
  assert.ok(html.includes('id="luemi-boot"'));
  assert.ok(html.includes('wordmark_original_raster_alpha_W06.webp'));
  assert.ok(html.includes('<script defer src="/telegram-web-app.js"></script>'));

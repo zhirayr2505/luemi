@@ -15,10 +15,10 @@ function filesUnder(path){
  });
 }
 const files=dirs.flatMap(filesUnder);
-const forbiddenOld=/#(?:211725|1c1424|191322|302236|35283d|413249|574359|745777|ac87b3|d5a2c8|faf4fb|c7bacd|9e8fa7|1b2025|171b20|252b32|2b3037|363d45|3a4149|665f74|b6a4c8|d5c8dd|f2f3f5|b3b8c2|9098a4)\b/i;
+const forbiddenOld=/#(?:211725|1c1424|191322|302236|35283d|413249|574359|745777|ac87b3|d5a2c8|faf4fb|c7bacd|9e8fa7|1b2025|171b20|252b32|2b3037|363d45|3a4149|665f74|b6a4c8|d5c8dd|f2f3f5|b3b8c2|9098a4|190e18|24111f|2f1726|351827|482236|542a3d|a74864|df7377|f28b79|ffaa83|ce8495|fff5f2|dcc2c9|b99aa7)\b/i;
 const hex=(id)=>{
  const m=styles.match(new RegExp("--"+id+":(#[0-9A-F]{6})","i"));
- assert.ok(m,"Sunset Cherry token missing: "+id);
+ assert.ok(m,"Badoo Purple token missing: "+id);
  return m[1];
 };
 function contrast(a,b){
@@ -27,17 +27,18 @@ function contrast(a,b){
  const x=lum(a),y=lum(b);
  return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);
 }
-test("Sunset Cherry owns one warm dark cherry/coral palette",()=>{
- assert.equal(hex("luemi-bg").toUpperCase(),"#24111F");
- assert.equal(hex("luemi-bg-deep").toUpperCase(),"#190E18");
- assert.equal(hex("luemi-surface").toUpperCase(),"#351827");
- assert.equal(hex("luemi-glass").toUpperCase(),"#542A3D");
- assert.equal(hex("luemi-lavender").toUpperCase(),"#F28B79");
- assert.equal(hex("luemi-rose").toUpperCase(),"#FFAA83");
- assert.equal(hex("luemi-text").toUpperCase(),"#FFF5F2");
- assert.ok(contrast(hex("luemi-text"),hex("luemi-bg"))>=7,"primary text is accessible on Sunset Cherry");
+test("Badoo Purple owns one deep violet/lilac palette",()=>{
+ assert.equal(hex("luemi-bg").toUpperCase(),"#1E0F38");
+ assert.equal(hex("luemi-bg-deep").toUpperCase(),"#160A2B");
+ assert.equal(hex("luemi-surface").toUpperCase(),"#32165F");
+ assert.equal(hex("luemi-glass").toUpperCase(),"#4C2787");
+ assert.equal(hex("luemi-accent").toUpperCase(),"#6E3EFF");
+ assert.equal(hex("luemi-lavender").toUpperCase(),"#BCA8F2");
+ assert.equal(hex("luemi-rose").toUpperCase(),"#FFBBD0");
+ assert.equal(hex("luemi-text").toUpperCase(),"#F8F5FF");
+ assert.ok(contrast(hex("luemi-text"),hex("luemi-bg"))>=7,"primary text is accessible on Badoo Purple");
  assert.ok(contrast(hex("luemi-text-secondary"),hex("luemi-surface"))>=4.5,"subtle text is legible");
- assert.ok(contrast(hex("luemi-ink-on-accent"),hex("luemi-lavender"))>=4.5,"accent CTA is legible");
+ assert.ok(contrast(hex("luemi-text"),hex("luemi-accent"))>=4.5,"accent CTA is legible");
 });
 test("all rendered CSS is free of legacy V5 plum literals and malformed rgba",()=>{
  assert.ok(files.length>=22,"audit must include every style module");
@@ -61,8 +62,8 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  const entry=read("apps/web/src/main.tsx");
  assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/liquid-glass\.css";/);
  assert.match(lens,/--lg-rim-light:rgba\(255,255,255,\.36\)/);
- assert.match(lens,/--lg-chroma-warm:rgba\(255,170,131,\.28\)/);
- assert.match(lens,/--lg-chroma-cool:rgba\(206,132,149,\.18\)/);
+ assert.match(lens,/--lg-chroma-warm:rgba\(255,187,208,\.26\)/);
+ assert.match(lens,/--lg-chroma-cool:rgba\(188,168,242,\.24\)/);
  assert.match(lens,/backdrop-filter:blur\(var\(--lg-blur\)\)/);
  assert.match(lens,/prefers-reduced-transparency:reduce/);
  assert.match(lens,/prefers-reduced-motion:reduce/);
@@ -100,26 +101,26 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(optics,/\.moonstone-pass-button/);
  assert.doesNotMatch(optics,/setInterval\(/);
 });
-test("Telegram system chrome and entire app share same Sunset Cherry theme",()=>{
+test("Telegram system chrome and entire app share same Badoo Purple theme",()=>{
  assert.match(app,/getComputedStyle\(document.documentElement\)/);
  assert.match(app,/getPropertyValue\("--luemi-bg"\)/);
  assert.match(app,/installMoonstoneOptics\(document\)/);
- assert.match(markup,/name="theme-color" content="#24111F"/);
+ assert.match(markup,/name="theme-color" content="#1E0F38"/);
  assert.match(app,/wordmark_original_raster_alpha_W06\.webp/);
  assert.ok(existsSync("apps/web/public/assets/brand/wordmark_original_raster_alpha_W06.webp"),
   "original LUEMI logo must remain unchanged and bundled");
 });
 
 
-test("Sunset Cherry ships one dark shell, not a dormant legacy light palette",()=>{
+test("Badoo Purple ships one dark shell, not a dormant legacy light palette",()=>{
  const shell=read("apps/web/src/styles.css");
- assert.match(shell,/--bg:var\(--luemi-bg\)/,"base shell must use Sunset Cherry tokens before route hydration");
+ assert.match(shell,/--bg:var\(--luemi-bg\)/,"base shell must use Badoo Purple tokens before route hydration");
  assert.doesNotMatch(shell,/--bg:\s*#|--ink:\s*#|--lavender:\s*#|--pink:\s*#/i,
   "hardcoded parallel light/dark palettes cannot re-enter the global shell");
  assert.doesNotMatch(shell,/@keyframes mist-one|@keyframes mist-two|@keyframes intro-glow/,
   "retired decorative animation loops must be physically removed");
  assert.doesNotMatch(shell,/\.luemi-shell\[data-theme=dark\]\s*\{/,
-  "the old dark-theme override must not duplicate the Sunset Cherry source of truth");
+  "the old dark-theme override must not duplicate the Badoo Purple source of truth");
 });
 test("square and landscape feed photos become one cached portrait bitmap",()=>{
  const adaptive=read("apps/web/src/discovery/adaptive-feed-photo.ts");
@@ -154,8 +155,8 @@ test("deleted registration language flow and artificial photo cropping stay dele
    "demo-only photo crop would distort real second photos in "+file);
  }
  const prototype=read("apps/web/src/discovery/profile-v3/rendering/ProfileMorphSurface.css");
- assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#351827\)/,
-  "even isolated V3 previews must use Sunset Cherry rather than white UI");
+ assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#32165F\)/,
+  "even isolated V3 previews must use Badoo Purple rather than white UI");
 });
 
 
@@ -172,7 +173,7 @@ test("dead light/dark switch and center toolbar cannot reappear",()=>{
  assert.equal(existsSync("scripts/theme-switch-mobile-qa.mjs"),false);
 });
 
-test("For You hero uses Sunset Cherry at source without a competing light base",()=>{
+test("For You hero uses Badoo Purple at source without a competing light base",()=>{
  const css=read("apps/web/src/discovery/for-you.css");
  assert.match(css,/\.fy-hero\{[^}]*background:linear-gradient\(130deg,var\(--luemi-surface-raised\)/s);
  assert.match(css,/\.fy-hero-copy\{[^}]*color:var\(--luemi-text\)/s);
