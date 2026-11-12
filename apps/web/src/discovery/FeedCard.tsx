@@ -188,6 +188,9 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   if(element){
    element.style.setProperty("--profile-p",String(value));
    element.style.setProperty("--profile-info-y",value*infoShift.current+"px");
+   // The detail surface follows the compact summary with exactly the same displacement.
+   // No separate CSS interpolation: both layers must use the same RAF progress.
+   element.style.setProperty("--profile-detail-y",(value-1)*infoShift.current+"px");
    element.style.setProperty("--profile-about-p",String(revealStage(value,.22,.55)));
    element.style.setProperty("--profile-text-p",String(revealStage(value,.32,.70)));
    element.style.setProperty("--profile-interests-p",String(revealStage(value,.52,.85)));
@@ -223,9 +226,12 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
    const infoBox=info.getBoundingClientRect(),detailsBox=details.getBoundingClientRect();
    const oldShift=infoShift.current;
    const unshiftedTop=infoBox.top-progress.current*oldShift;
-   const shift=Math.min(-72,detailsBox.top+32-unshiftedTop);
-   infoShift.current=shift;element.style.setProperty("--profile-info-y",progress.current*shift+"px");
+   // Both boxes are already translated by the same progress; measure their base positions.
+   const drawerBaseTop=detailsBox.top-(progress.current-1)*oldShift;
+   const shift=Math.min(-72,drawerBaseTop+32-unshiftedTop);
+   infoShift.current=shift;
    element.style.setProperty("--profile-detail-top",Math.ceil(32+infoBox.height+17)+"px");
+   paint(progress.current);
   };measure();
   const observer=new ResizeObserver(measure);observer.observe(element);
   return()=>{observer.disconnect();photoController?.cancel();releasePhotoHold();

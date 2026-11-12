@@ -83,7 +83,7 @@
 .moonstone-compact-info{
  position:absolute;z-index:13;left:26px;right:24px;bottom:var(--moon-info-bottom);
  display:flex;flex-direction:column;align-items:flex-start;pointer-events:auto;
- opacity:1;transform:translate3d(0,var(--profile-info-y),0);transition:transform .4s cubic-bezier(.22,.8,.2,1)
+ opacity:1;transform:translate3d(0,var(--profile-info-y),0);transition:none
 }
 .moonstone-indicator-row{position:relative;width:100%;height:24px;margin-bottom:3px;display:flex;align-items:center}
 .moonstone-photo-indicator{display:flex;align-items:center;gap:6px;min-height:18px}
@@ -121,16 +121,16 @@
  border:0;border-radius:0;overflow:hidden;
  background:transparent;
  box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
- opacity:var(--profile-p);transform:translate3d(0,calc((1 - var(--profile-p)) * 38px),0);pointer-events:none
+ opacity:var(--profile-p);transform:translate3d(0,var(--profile-detail-y,0px),0);pointer-events:none;transition:none
 }
 .moonstone-feed-card[data-expanded=true] .moonstone-profile-drawer{pointer-events:none}
 .moonstone-feed-card[data-expanded=true] .moonstone-profile-scroll{pointer-events:auto}
 .moonstone-feed-card.is-profile-dragging>.moonstone-compact-info,
 .moonstone-feed-card.is-profile-dragging>.moonstone-profile-drawer{transition:none}
-.moonstone-reveal-about>h3{opacity:var(--profile-about-p,0);transform:translate3d(0,calc((1 - var(--profile-about-p,0)) * 15px),0)}
-.moonstone-reveal-text{opacity:var(--profile-text-p,0);transform:translate3d(0,calc((1 - var(--profile-text-p,0)) * 20px),0)}
-.moonstone-reveal-interests{opacity:var(--profile-interests-p,0);transform:translate3d(0,calc((1 - var(--profile-interests-p,0)) * 19px),0)}
-.moonstone-reveal-extra{opacity:var(--profile-extra-p,0);transform:translate3d(0,calc((1 - var(--profile-extra-p,0)) * 19px),0)}
+.moonstone-reveal-about>h3{opacity:var(--profile-about-p,0)}
+.moonstone-reveal-text{opacity:var(--profile-text-p,0)}
+.moonstone-reveal-interests{opacity:var(--profile-interests-p,0)}
+.moonstone-reveal-extra{opacity:var(--profile-extra-p,0)}
 .moonstone-profile-gesture-zone{height:28px;display:grid;place-items:center;touch-action:none;opacity:calc(var(--profile-p) * .8)}
 .moonstone-profile-gesture-zone span:first-child{width:42px;height:4px;border-radius:999px;background:rgba(233,235,240,.36)}
 .moonstone-profile-gesture-zone span:last-child{display:none}
@@ -233,7 +233,7 @@
  78%{opacity:.96;transform:scale(1)}
  100%{opacity:0;transform:scale(1.13)}
 }
-.moonstone-actions,.moonstone-demo-label,.moonstone-profile-drawer{transition:opacity .42s cubic-bezier(.22,.8,.2,1),transform .42s cubic-bezier(.22,.8,.2,1)}
+.moonstone-actions,.moonstone-demo-label{transition:opacity .42s cubic-bezier(.22,.8,.2,1),transform .42s cubic-bezier(.22,.8,.2,1)}
 .discovery-app[data-feed-visible=true] .discovery-top-tabs{transition:opacity .4s cubic-bezier(.22,.8,.2,1)}
 .discovery-app[data-photo-focus=true] .moonstone-feed-card>.moonstone-compact-info,
 .discovery-app[data-photo-focus=true] .moonstone-feed-card>.moonstone-actions,
