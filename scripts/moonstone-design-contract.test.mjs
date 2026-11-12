@@ -15,10 +15,10 @@ function filesUnder(path){
  });
 }
 const files=dirs.flatMap(filesUnder);
-const forbiddenOld=/#(?:211725|1c1424|191322|302236|35283d|413249|574359|745777|ac87b3|d5a2c8|faf4fb|c7bacd|9e8fa7)\b/i;
+const forbiddenOld=/#(?:211725|1c1424|191322|302236|35283d|413249|574359|745777|ac87b3|d5a2c8|faf4fb|c7bacd|9e8fa7|1b2025|171b20|252b32|2b3037|363d45|3a4149|665f74|b6a4c8|d5c8dd|f2f3f5|b3b8c2|9098a4)\b/i;
 const hex=(id)=>{
  const m=styles.match(new RegExp("--"+id+":(#[0-9A-F]{6})","i"));
- assert.ok(m,"Moonstone token missing: "+id);
+ assert.ok(m,"Sunset Cherry token missing: "+id);
  return m[1];
 };
 function contrast(a,b){
@@ -27,15 +27,15 @@ function contrast(a,b){
  const x=lum(a),y=lum(b);
  return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);
 }
-test("Moonstone V6 owns a single cool graphite/lavender palette",()=>{
- assert.equal(hex("luemi-bg").toUpperCase(),"#1B2025");
- assert.equal(hex("luemi-bg-deep").toUpperCase(),"#171B20");
- assert.equal(hex("luemi-surface").toUpperCase(),"#2B3037");
- assert.equal(hex("luemi-glass").toUpperCase(),"#3A4149");
- assert.equal(hex("luemi-lavender").toUpperCase(),"#B6A4C8");
- assert.equal(hex("luemi-rose").toUpperCase(),"#D5C8DD");
- assert.equal(hex("luemi-text").toUpperCase(),"#F2F3F5");
- assert.ok(contrast(hex("luemi-text"),hex("luemi-bg"))>=7,"primary text is accessible on Moonstone");
+test("Sunset Cherry owns one warm dark cherry/coral palette",()=>{
+ assert.equal(hex("luemi-bg").toUpperCase(),"#24111F");
+ assert.equal(hex("luemi-bg-deep").toUpperCase(),"#190E18");
+ assert.equal(hex("luemi-surface").toUpperCase(),"#351827");
+ assert.equal(hex("luemi-glass").toUpperCase(),"#542A3D");
+ assert.equal(hex("luemi-lavender").toUpperCase(),"#F28B79");
+ assert.equal(hex("luemi-rose").toUpperCase(),"#FFAA83");
+ assert.equal(hex("luemi-text").toUpperCase(),"#FFF5F2");
+ assert.ok(contrast(hex("luemi-text"),hex("luemi-bg"))>=7,"primary text is accessible on Sunset Cherry");
  assert.ok(contrast(hex("luemi-text-secondary"),hex("luemi-surface"))>=4.5,"subtle text is legible");
  assert.ok(contrast(hex("luemi-ink-on-accent"),hex("luemi-lavender"))>=4.5,"accent CTA is legible");
 });
@@ -61,8 +61,8 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  const entry=read("apps/web/src/main.tsx");
  assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/liquid-glass\.css";/);
  assert.match(lens,/--lg-rim-light:rgba\(255,255,255,\.36\)/);
- assert.match(lens,/--lg-chroma-warm:rgba\(237,160,215,\.22\)/);
- assert.match(lens,/--lg-chroma-cool:rgba\(146,194,239,\.20\)/);
+ assert.match(lens,/--lg-chroma-warm:rgba\(255,170,131,\.28\)/);
+ assert.match(lens,/--lg-chroma-cool:rgba\(206,132,149,\.18\)/);
  assert.match(lens,/backdrop-filter:blur\(var\(--lg-blur\)\)/);
  assert.match(lens,/prefers-reduced-transparency:reduce/);
  assert.match(lens,/prefers-reduced-motion:reduce/);
@@ -100,26 +100,26 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(optics,/\.moonstone-pass-button/);
  assert.doesNotMatch(optics,/setInterval\(/);
 });
-test("Telegram system chrome and entire app share same Moonstone theme",()=>{
+test("Telegram system chrome and entire app share same Sunset Cherry theme",()=>{
  assert.match(app,/getComputedStyle\(document.documentElement\)/);
  assert.match(app,/getPropertyValue\("--luemi-bg"\)/);
  assert.match(app,/installMoonstoneOptics\(document\)/);
- assert.match(markup,/name="theme-color" content="#1B2025"/);
+ assert.match(markup,/name="theme-color" content="#24111F"/);
  assert.match(app,/wordmark_original_raster_alpha_W06\.webp/);
  assert.ok(existsSync("apps/web/public/assets/brand/wordmark_original_raster_alpha_W06.webp"),
   "original LUEMI logo must remain unchanged and bundled");
 });
 
 
-test("Moonstone ships one dark shell, not a dormant legacy light palette",()=>{
+test("Sunset Cherry ships one dark shell, not a dormant legacy light palette",()=>{
  const shell=read("apps/web/src/styles.css");
- assert.match(shell,/--bg:var\(--luemi-bg\)/,"base shell must use Moonstone tokens before route hydration");
+ assert.match(shell,/--bg:var\(--luemi-bg\)/,"base shell must use Sunset Cherry tokens before route hydration");
  assert.doesNotMatch(shell,/--bg:\s*#|--ink:\s*#|--lavender:\s*#|--pink:\s*#/i,
   "hardcoded parallel light/dark palettes cannot re-enter the global shell");
  assert.doesNotMatch(shell,/@keyframes mist-one|@keyframes mist-two|@keyframes intro-glow/,
   "retired decorative animation loops must be physically removed");
  assert.doesNotMatch(shell,/\.luemi-shell\[data-theme=dark\]\s*\{/,
-  "the old dark-theme override must not duplicate the Moonstone source of truth");
+  "the old dark-theme override must not duplicate the Sunset Cherry source of truth");
 });
 test("square and landscape feed photos become one cached portrait bitmap",()=>{
  const adaptive=read("apps/web/src/discovery/adaptive-feed-photo.ts");
@@ -154,8 +154,8 @@ test("deleted registration language flow and artificial photo cropping stay dele
    "demo-only photo crop would distort real second photos in "+file);
  }
  const prototype=read("apps/web/src/discovery/profile-v3/rendering/ProfileMorphSurface.css");
- assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#2B3037\)/,
-  "even isolated V3 previews must use Moonstone rather than white UI");
+ assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#351827\)/,
+  "even isolated V3 previews must use Sunset Cherry rather than white UI");
 });
 
 
@@ -172,7 +172,7 @@ test("dead light/dark switch and center toolbar cannot reappear",()=>{
  assert.equal(existsSync("scripts/theme-switch-mobile-qa.mjs"),false);
 });
 
-test("For You hero uses Moonstone at source without a competing light base",()=>{
+test("For You hero uses Sunset Cherry at source without a competing light base",()=>{
  const css=read("apps/web/src/discovery/for-you.css");
  assert.match(css,/\.fy-hero\{[^}]*background:linear-gradient\(130deg,var\(--luemi-surface-raised\)/s);
  assert.match(css,/\.fy-hero-copy\{[^}]*color:var\(--luemi-text\)/s);

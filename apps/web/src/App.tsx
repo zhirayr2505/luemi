@@ -330,11 +330,11 @@ export function App() {
     const webApp=window.Telegram?.WebApp;
     try{
       // Telegram's system chrome and HTML theme-color must share the exact
-      // Moonstone semantic tokens with the rendered CSS (no stale plum hex).
+      // Sunset Cherry semantic tokens with the rendered CSS (no stale theme hex).
       const styles=getComputedStyle(document.documentElement);
       const background=auth==="authorized"&&!realHome&&phase==="form"?
-        (styles.getPropertyValue("--luemi-bg-deep").trim()||"#171B20"):
-        (styles.getPropertyValue("--luemi-bg").trim()||"#1B2025");
+        (styles.getPropertyValue("--luemi-bg-deep").trim()||"#190E18"):
+        (styles.getPropertyValue("--luemi-bg").trim()||"#24111F");
       document.querySelector('meta[name="theme-color"]')?.setAttribute("content",background);
       webApp?.setHeaderColor?.(background);
       webApp?.setBackgroundColor?.(background);

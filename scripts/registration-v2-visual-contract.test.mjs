@@ -18,15 +18,15 @@ const focusDock=readFileSync("apps/web/src/registration/use-field-focus.ts","utf
 const required=[
  ["V2 runtime tokens",/\.v2-runtime\s*\{[^}]*--ink:/s],
   ["Telegram clearance only on the shared header",/\.v2-runtime\[data-telegram-ui="true"\]\s*\{[^}]*--registration-header-top:max\(82px,[^}]*--tg-content-safe-area-inset-top[^}]*--tg-safe-area-inset-top[^}]*safe-area-inset-top/s],
- ["dark readable form inputs",/\.v2-runtime\s+\.glass-control,\.v2-runtime\s+\.v2-input\s*\{[^}]*background:rgba\(43,42,57,\.9\)/s],
+ ["dark readable form inputs",/\.v2-runtime\s+\.glass-control,\.v2-runtime\s+\.v2-input\s*\{[^}]*background:rgba\(51,23,38,\.9\)/s],
  ["stable focused field dock",/\.v2-runtime\s+\.focus-field-shell\.is-focused\s*\{[^}]*position:fixed[^}]*--focused-dock-top/s],
  ["single confirm action",/\.v2-runtime\s+\.v2-next\.v2-next-confirm[^}]*display:grid/s],
  ["blurred borderless action fade",/\.v2-runtime\s+\.v2-footer\s*\{[^}]*position:absolute[^}]*border:0/s],
   ["city search icon retains its text gutter",/\.v2-runtime\s+\.geo-input-wrap>svg:first-child\s*\{/],
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
   ["compact city suggestions open above input",/\.v2-runtime \.city-focus-shell \.geo-results\{[^}]*position:absolute;z-index:43;[^}]*top:auto;bottom:calc\(100% \+ 8px\)/s],
-  ["city suggestion press feedback uses Moonstone",/\.v2-runtime \.geo-results button:active\{background:var\(--luemi-surface-raised\)/],
- ["shared Moonstone canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#171B20\)/s]
+  ["city suggestion press feedback uses Sunset Cherry",/\.v2-runtime \.geo-results button:active\{background:var\(--luemi-surface-raised\)/],
+ ["shared Sunset Cherry canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#190E18\)/s]
 ];
 for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
@@ -282,8 +282,8 @@ assert.match(runtime, /\.v2-goal-check\{[^}]*width:21px;height:21px/s,
   "All choice corner badges share the compact 21px visual indicator");
 assert.doesNotMatch(runtime, /\.v2-goal-check\{[^}]*top:5px;right:5px/s,
   "Retired inset badges must not reappear on selected cards");
-assert.match(runtime,/\.v2-stage-heading::before\{[^}]*inset:0 0 -44px;[^}]*rgba\(23,27,32,0\) 100%/s,
- "All headings feather their matte below the text into fully transparent Moonstone");
+assert.match(runtime,/\.v2-stage-heading::before\{[^}]*inset:0 0 -44px;[^}]*rgba\(30,15,27,0\) 100%/s,
+ "All headings feather their matte below the text into fully transparent Sunset Cherry");
 assert.doesNotMatch(runtime,/\.v2-stage-heading--about\{[^}]*background:/s,
  "About does not replace the shared heading with a hard-edged background");
 assert.match(glass,/showCheck&&<span className="glass-choice-corner-check"/,
@@ -296,10 +296,10 @@ assert.match(runtime,/\.v2-goal-check\{[^}]*opacity:0;transform:scale\(\.84\);[^
  "Inactive badges remain at their fixed corner anchor and smoothly appear");
 assert.match(runtime,/\.glass-choice\.selected \.glass-choice-corner-check,[^}]*opacity:1;transform:scale\(1\)/s,
  "Selected badges transition opacity and scale only, not the layout position");
-assert.match(runtime, /\.interest-chip\.selected\{[^}]*color:#242932/s,
+assert.match(runtime, /\.interest-chip\.selected\{[^}]*color:#2C1423/s,
  "Selected pastel interests use legible dark foreground");
 assert.match(runtime, /\.v2-stage-heading::after\{[^}]*backdrop-filter:blur\(12px\) saturate\(114%\)/s,
- "All registration headlines use a thin, glassy Moonstone refraction");
+ "All registration headlines use a thin, glassy Sunset Cherry refraction");
 assert.match(runtime, /\.v2-showcase-track\{[^}]*touch-action:pan-x pan-y/s,
  "Review photos allow vertical page scroll as well as horizontal carousel swipes");
 
@@ -346,8 +346,8 @@ assert.doesNotMatch(runtime,/background:#412b41|background:#38253a/,
 
 
 // Stronger optical focus and gentle glass bubbles remain a single motion path.
-assert.match(runtime,/\.v2-focus-scrim\{[^}]*background:rgba\(28,32,39,\.43\)[^}]*backdrop-filter:blur\(40px\)/s,
- "Smooth Moonstone frost preserves faint background silhouettes without opaque blackout");
+assert.match(runtime,/\.v2-focus-scrim\{[^}]*background:rgba\(34,17,30,\.43\)[^}]*backdrop-filter:blur\(40px\)/s,
+ "Smooth Sunset Cherry frost preserves faint background silhouettes without opaque blackout");
 assert.doesNotMatch(runtime,/\.v2-focus-scrim::before\{/,
  "Delete the old top partial-area glass mask entirely");
 assert.doesNotMatch(runtime,/\.v2-focus-scrim::after\{/,

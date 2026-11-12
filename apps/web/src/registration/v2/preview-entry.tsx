@@ -205,7 +205,7 @@ function RegistrationV2Preview(){
            <span className="v2-camera-caption">Камера не запущена — дизайн-макет</span></div>
          <div className="v2-challenge">
           {["Посмотри прямо","Поверни голову налево","Посмотри направо","Подними взгляд"].map((x,i)=>
-          <span key={x}><b>{i+1}</b>{x}{i===0?<Check size={16} color="#9B91A7"/>:null}</span>)}
+          <span key={x}><b>{i+1}</b>{x}{i===0?<Check size={16} color="#DCC2C9"/>:null}</span>)}
          </div>
          <div className="v2-note"><ShieldCheck size={18}/> Движений головы недостаточно для подтверждения личности. В рабочей версии потребуется серверная проверка живости и сравнение всех фотографий.</div>
        </div>}

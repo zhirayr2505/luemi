@@ -1,10 +1,10 @@
 /* LUEMI Liquid Glass V2 — ONE optical material for the Feed sheet and
  * pass / special / like / expand controls. No competing legacy .lg surface.
- * A deliberately restrained pink/cyan lens refraction, not neon glow.
+ * A deliberately restrained cherry/peach lens refraction, not neon glow.
  */
 :root{
- --lg-tint:rgba(71,52,83,.32);
- --lg-tint-bottom:rgba(39,28,52,.39);
+ --lg-tint:rgba(109,40,64,.38);
+ --lg-tint-bottom:rgba(38,16,31,.56);
  --lg-blur:13px;
  --lg-saturate:145%;
  --lg-brightness:1.025;
@@ -12,21 +12,21 @@
  --lg-rim-width:1px;
  --lg-rim-light:rgba(255,255,255,.36);
  --lg-rim-dim:rgba(255,255,255,.055);
- --lg-chroma-warm:rgba(237,160,215,.22);
- --lg-chroma-cool:rgba(146,194,239,.20);
+ --lg-chroma-warm:rgba(255,170,131,.28);
+ --lg-chroma-cool:rgba(206,132,149,.18);
  --lg-specular:rgba(255,255,255,.20);
  --lg-inner-glow:rgba(255,255,255,.065);
- --lg-shadow:0 10px 22px rgba(14,9,22,.19),0 2px 7px rgba(14,9,22,.08);
+ --lg-shadow:0 10px 22px rgba(18,5,13,.27),0 2px 7px rgba(18,5,13,.12);
  --lg-radius-card:clamp(25px,7.4vw,34px);
  --lg-radius-pill:999px;
  --lg-press-scale:.97;
- --lg-press-glow:rgba(255,235,255,.13);
- --lg-accent-from:rgba(237,180,233,.94);
- --lg-accent-to:rgba(185,126,199,.86);
+ --lg-press-glow:rgba(255,204,181,.16);
+ --lg-accent-from:rgba(223,115,119,.88);
+ --lg-accent-to:rgba(167,72,100,.82);
  --lg-rim-depth:2px;
  /* The first approved reference uses a thin edge, not a 14px chrome ring. */
  --lg-relief:var(--lg-shadow),inset 0 1px 0 rgba(255,255,255,.17),
-  inset 0 -1px 0 rgba(146,194,239,.075),inset 0 0 9px var(--lg-inner-glow);
+  inset 0 -1px 0 rgba(255,170,131,.085),inset 0 0 9px var(--lg-inner-glow);
  --lg-press-relief:var(--lg-relief),0 0 13px var(--lg-press-glow);
 }
 /* BASE GLASS — visible photographic background, translucency, saturation and
@@ -36,11 +36,11 @@
  position:relative;isolation:isolate;overflow:hidden;
  --lg-surface:
   radial-gradient(ellipse 90% 105% at 26% -32%,rgba(255,255,255,.075),transparent 74%),
-  radial-gradient(ellipse 62% 100% at 100% 110%,rgba(135,188,246,.035),transparent 76%),
+  radial-gradient(ellipse 62% 100% at 100% 110%,rgba(255,170,131,.05),transparent 76%),
   linear-gradient(162deg,var(--lg-tint),var(--lg-tint-bottom));
  border:var(--lg-rim-width) solid rgba(255,255,255,.19);
  border-radius:var(--lg-radius-card);
- color:#fff;
+ color:#FFFFFF;
  background:var(--lg-surface);
  -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
  backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
@@ -51,8 +51,8 @@
 .lg--pill{--lg-rim-depth:1.5px;border-radius:var(--lg-radius-pill)}
 .lg--small{--lg-rim-depth:1px}
 .lg--accent{
- --lg-tint:rgba(237,180,233,.88);
- --lg-tint-bottom:rgba(185,126,199,.83);
+ --lg-tint:rgba(223,115,119,.72);
+ --lg-tint-bottom:rgba(124,45,72,.78);
  --lg-surface:
   radial-gradient(ellipse 75% 75% at 26% -30%,rgba(255,255,255,.19),transparent 76%),
   linear-gradient(125deg,var(--lg-accent-from),var(--lg-accent-to)),
@@ -67,7 +67,7 @@
  padding:var(--lg-rim-depth);border-radius:inherit;pointer-events:none;
  background:
   radial-gradient(ellipse 72% 18% at 25% 1%,rgba(255,255,255,.25),transparent 86%),
-  radial-gradient(ellipse 50% 32% at 95% 92%,rgba(151,220,255,.11),transparent 78%),
+  radial-gradient(ellipse 50% 32% at 95% 92%,rgba(255,170,131,.13),transparent 78%),
   conic-gradient(from 226deg at 50% 50%,
    var(--lg-chroma-warm) 0deg,
    var(--lg-rim-light) 40deg,
@@ -77,9 +77,9 @@
    rgba(255,255,255,.08) 250deg,
    var(--lg-chroma-warm) 308deg,
    var(--lg-rim-light) 360deg);
- -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ -webkit-mask:linear-gradient(#000000 0 0) content-box,linear-gradient(#000000 0 0);
  -webkit-mask-composite:xor;
- mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ mask:linear-gradient(#000000 0 0) content-box,linear-gradient(#000000 0 0);
  mask-composite:exclude;
  opacity:.46;
 }
@@ -93,7 +93,7 @@
   radial-gradient(ellipse 47% 45% at var(--moonstone-x,26%) var(--moonstone-y,1%),
     var(--lg-specular),transparent 77%),
   linear-gradient(170deg,rgba(255,255,255,.065) 0%,transparent 35%),
-  radial-gradient(ellipse 100% 19% at 50% 106%,rgba(195,225,255,.075),transparent 100%);
+  radial-gradient(ellipse 100% 19% at 50% 106%,rgba(255,170,131,.09),transparent 100%);
  opacity:.36;
 }
 /* Chromium / WKWebView: SVG displacement of the narrow bevel, plus real
@@ -122,8 +122,8 @@
  * specular glints, relief. Never run the costly moving SVG backdrop sampling.
  */
 :root[data-lg-optics="safe"]{
- --lg-tint:rgba(71,52,83,.32);
- --lg-tint-bottom:rgba(39,28,52,.39);
+ --lg-tint:rgba(109,40,64,.38);
+ --lg-tint-bottom:rgba(38,16,31,.56);
  --lg-rim-depth:2px;
 }
 :root[data-lg-optics="safe"] .lg::before{
@@ -131,13 +131,13 @@
 }
 @media(prefers-reduced-transparency:reduce){
  :root,:root[data-lg-optics="safe"]{
-  --lg-tint:rgba(70,51,82,.93);
-  --lg-tint-bottom:rgba(51,37,61,.95);
+  --lg-tint:rgba(91,37,57,.94);
+  --lg-tint-bottom:rgba(53,24,39,.97);
   --lg-blur:0px;
  }
  .lg--accent{
-  --lg-accent-from:rgba(99,70,115,.96);
-  --lg-accent-to:rgba(80,53,92,.96);
+  --lg-accent-from:rgba(167,72,100,.96);
+  --lg-accent-to:rgba(103,38,65,.97);
  }
  .lg,.lg::before{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
  .lg::before{filter:none!important}

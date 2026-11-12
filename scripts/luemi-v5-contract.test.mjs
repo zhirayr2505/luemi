@@ -15,8 +15,8 @@ const registration=read("apps/web/src/registration/v2/RealRegistration.tsx");
 const app=read("apps/web/src/App.tsx");
 const legacyRealFeed=read("apps/web/src/registration/RealLiveFeed.tsx");
 
-test("Moonstone V6 exposes one semantic graphite-lavender token set",()=>{
- for(const token of ["--luemi-bg","--luemi-surface","--luemi-glass","--luemi-lavender","--luemi-rose","--luemi-border","--luemi-text"])
+test("Sunset Cherry exposes one semantic warm-dark token set",()=>{
+ for(const token of ["--luemi-bg","--luemi-surface","--luemi-glass","--luemi-accent","--luemi-coral","--luemi-peach","--luemi-border","--luemi-text"])
   assert.match(tokens,new RegExp(token.replaceAll("-","\\-")));
  assert.match(tokens,/html,body,#root\{background:var\(--luemi-bg-deep\)/);
  const shell=read("apps/web/src/styles.css");
@@ -24,7 +24,7 @@ test("Moonstone V6 exposes one semantic graphite-lavender token set",()=>{
   "obsolete animated mist must be removed rather than disabled by override");
 });
 
-test("secondary real routes keep Moonstone surfaces without decorative motion loops",()=>{
+test("secondary real routes keep Sunset Cherry surfaces without decorative motion loops",()=>{
  assert.doesNotMatch(legacyFeed,/background\s*:\s*(?:#fff(?:fff)?|white)(?:[;}])/i);
  assert.doesNotMatch(publication,/animation:[^;}]*infinite/);
  assert.match(publication,/\.luemi-publication-petals\{display:none\}/);

@@ -30,7 +30,7 @@ assertCheck("all routes use Telegram fullscreen with one brand safe-area offset"
  sharedHeader.includes("top:var(--brand-top);left:14px")&&
  !welcomeChrome.includes("top:calc(var(--top-safe) + 32px)")&&
  !sharedHeader.includes("top:calc(var(--top-safe) + 28px)"));
-assertCheck("Moonstone dark theme is the only application theme",app.includes('const activeTheme="dark"')&&!app.includes("changeTheme")&&!app.includes("themeButton"));
+assertCheck("Sunset Cherry dark theme is the only application theme",app.includes('const activeTheme="dark"')&&!app.includes("changeTheme")&&!app.includes("themeButton"));
 assertCheck("keyboard preserves footer and uses one viewport model instead of double-compensating",app.includes("installViewportController")&&style.includes("height:var(--app-height")&&style.includes(".onboard-body{flex:1")&&!style.includes("[data-keyboard=open] .onboard-footer{display:none}")&&!style.includes("margin-bottom:var(--keyboard-overlay")&&style.includes("data-viewport-compact"));
 assertCheck("input focus glass uses subtle inset ring without clipping",style.includes("inset 0 0 0 1px")&&style.includes(".glass-control:focus"));
 assertCheck("city, radius, world and legacy country search scopes are backward-compatible",
@@ -121,10 +121,10 @@ assertCheck("no redundant arrow photo controls",!sorter.includes("photo-reorder-
 assertCheck("native tap highlight disabled globally",style.includes("-webkit-tap-highlight-color:transparent"));
 assertCheck("selected interest chips use pastel feedback without duplicate checkmarks",
  style.includes(".interest-chip.selected{")&&!style.includes(".interest-chip.selected::after")&&
- read("apps/web/src/registration/v2/runtime.css").includes(".interest-chip.selected{color:#242932;transform:none;"));
+ read("apps/web/src/registration/v2/runtime.css").includes(".interest-chip.selected{color:#2C1423;transform:none;"));
 assertCheck("interest categories fixed while only interest list scrolls",style.includes(".onboard-body:has(.interests-step)")&&style.includes(".interests-step .interest-choices"));
 assertCheck("legacy language picker no longer ships its old chip CSS",!style.includes(".language-flag-selected")&&!style.includes(".language-chip active"));
-assertCheck("global shell uses Moonstone semantic colors",style.includes("--bg:var(--luemi-bg)")&&style.includes("--ink:var(--luemi-text)"));
+assertCheck("global shell uses Sunset Cherry semantic colors",style.includes("--bg:var(--luemi-bg)")&&style.includes("--ink:var(--luemi-text)"));
 assertCheck("name validation reports invalid characters visibly",forms.includes("name-input-hint")&&forms.includes("updateName"));
 console.log("LUEMI Stage 02G UI contracts PASS");
 

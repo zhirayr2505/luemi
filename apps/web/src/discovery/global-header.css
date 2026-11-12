@@ -18,12 +18,12 @@
 }
 .lh-island img{
  display:block;grid-area:1/1;width:108px;height:36px;max-width:100%;object-fit:contain;
- pointer-events:none;filter:drop-shadow(0 1px 2px rgba(24,28,35,.20));
+ pointer-events:none;filter:drop-shadow(0 1px 2px rgba(32,16,28,.20));
 }
 .lh-island .lh-logo-contrast{
  opacity:var(--lh-contrast,0);
- filter:drop-shadow(0 1px 1px rgba(34,39,49,.46))
-        drop-shadow(0 2px 4px rgba(56,64,80,.55));
+ filter:drop-shadow(0 1px 1px rgba(42,20,34,.46))
+        drop-shadow(0 2px 4px rgba(69,32,52,.55));
 }
 /* Android keeps one unfiltered static logo raster. Every route now uses the
    same left-aligned chrome below Telegram's content-safe area. */
@@ -31,4 +31,4 @@
 .lh-browse .lh-logo-contrast{opacity:0}
 .lh-chats .lh-island img{filter:none}
 .lh-chats .lh-logo-contrast{display:none}
-.lh-header button:focus-visible{outline:2px solid #B0A5C6;outline-offset:3px}
+.lh-header button:focus-visible{outline:2px solid #D9B3BD;outline-offset:3px}
