@@ -2,12 +2,11 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 
 const read=(path)=>readFile(path,"utf8");
-const [styles,app,sorter,carousel,registration,realChats,chatsCss,moonstone,cinematic,v2Css]=await Promise.all([
+const [styles,app,sorter,carousel,realChats,chatsCss,moonstone,cinematic,v2Css]=await Promise.all([
   read("apps/web/src/styles.css"),
   read("apps/web/src/App.tsx"),
   read("apps/web/src/registration/PhotoSorter.tsx"),
   read("apps/web/src/ui/PhotoCarousel.tsx"),
-  read("apps/web/src/registration/RealRegistration.tsx").catch(()=>read("apps/web/src/registration/v2/RealRegistration.tsx")),
   read("apps/web/src/chats/RealChats.tsx"),
   read("apps/web/src/chats/chats.css"),
   read("apps/web/src/discovery/moonstone-discovery.css"),
