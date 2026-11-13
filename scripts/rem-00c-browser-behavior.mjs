@@ -114,7 +114,9 @@ async function profileV3(browser,platform="android"){
   assert.ok(await pageEl.evaluate(el=>el.scrollTop)>=0,"native biography scroll functional");
 
   if(android){
-   await page.getByRole("button",{name:"Знакомства",exact:true}).click();
+   const discoveryNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"});
+   await discoveryNav.waitFor({state:"visible",timeout:6000});
+   await discoveryNav.click();
    await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
    await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
    const visitor=await required(page,".discovery-visitor-route .v3-profile-host","visitor V3");
