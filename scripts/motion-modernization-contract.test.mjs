@@ -38,7 +38,7 @@ assert.ok(identityPreflight>=0&&authUpsert>identityPreflight,
  "signed Telegram account state must be read before the auth upsert");
 assert.match(session,/set_config\('luemi\.actor_id',\$1,true\)/);
 assert.match(session,/account_pending_deletion/);
-assert.match(session,/existing\.status!==\"active\"/);
+assert.match(session,/existing\.status!=="active"/);
 
 assert.match(styles,/animation:intro-cursor-blink \.8s steps\(2,end\) 3/);
 assert.match(cinematic,/animation:luemi-hero-drift 4\.6s/);
