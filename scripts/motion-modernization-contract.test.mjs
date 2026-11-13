@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 
 const read=(path)=>readFile(path,"utf8");
-const [styles,app,sorter,carousel,realChats,chatsCss,moonstone,cinematic,v2Css]=await Promise.all([
+const [styles,app,sorter,carousel,realChats,chatsCss,moonstone,cinematic,v2Css,session]=await Promise.all([
   read("apps/web/src/styles.css"),
   read("apps/web/src/App.tsx"),
   read("apps/web/src/registration/PhotoSorter.tsx"),
@@ -11,7 +11,8 @@ const [styles,app,sorter,carousel,realChats,chatsCss,moonstone,cinematic,v2Css]=
   read("apps/web/src/chats/chats.css"),
   read("apps/web/src/discovery/moonstone-discovery.css"),
   read("apps/web/src/registration/cinematic-welcome.css"),
-  read("apps/web/src/registration/v2/runtime.css")
+  read("apps/web/src/registration/v2/runtime.css"),
+  read("apps/api/src/rem05b-session.ts")
 ]);
 
 assert.match(styles,/\.progress-track span\{[^}]*transform:scaleX\(0\)/);
@@ -30,6 +31,14 @@ assert.match(styles,/transition-property:color,background-color,border-color,out
 assert.doesNotMatch(styles,/@media\(prefers-reduced-motion:reduce\)\{\*,\*::before,\*::after\{animation:none!important;transition:none!important\}/);
 assert.match(chatsCss,/\.lc-chat-row\{transition-property:background-color\}/);
 assert.match(v2Css,/\.v2-runtime \.v2-feedback\{transition-property:color,background-color,border-color,box-shadow\}/);
+assert.match(v2Css,/\.goal-card-label\{[^}]*overflow-wrap:anywhere\}/);
+const identityPreflight=session.indexOf("const knownActor=await db.query");
+const authUpsert=session.indexOf("INSERT INTO luemi_private.actors");
+assert.ok(identityPreflight>=0&&authUpsert>identityPreflight,
+ "signed Telegram account state must be read before the auth upsert");
+assert.match(session,/set_config\('luemi\.actor_id',\$1,true\)/);
+assert.match(session,/account_pending_deletion/);
+assert.match(session,/existing\.status!==\"active\"/);
 
 assert.match(styles,/animation:intro-cursor-blink \.8s steps\(2,end\) 3/);
 assert.match(cinematic,/animation:luemi-hero-drift 4\.6s/);
