@@ -49,9 +49,12 @@ export async function feedDeckBrowserQa(browser,baseUrl){
     const entering=document.querySelector(".deck-entering");
     if(entering){
      const image=entering.querySelector(".carousel-track img:first-child");
+     const fallback=entering.querySelector(".feed-carousel-fallback");
      capture.frames.push({
       at:Math.round(performance.now()-since),
       decoded:!!image?.complete&&image.naturalWidth>0&&image.classList.contains("is-ready"),
+      fallbackVisible:!!fallback&&getComputedStyle(fallback).display!=="none"&&
+       Number(getComputedStyle(entering).opacity)>.01,
       incomingOpacity:Number(getComputedStyle(entering).opacity)
      });
     }
@@ -61,15 +64,20 @@ export async function feedDeckBrowserQa(browser,baseUrl){
   });
   await page.locator(".deck-active .moonstone-like-button").click();
   const before=await page.evaluate(()=>{
-   const queued=document.querySelector(".deck-depth-one");
-   const image=queued?.querySelector(".carousel-track img:first-child");
+   const incoming=document.querySelector(".deck-entering");
+   const image=incoming?.querySelector(".carousel-track img:first-child");
+   const fallback=incoming?.querySelector(".feed-carousel-fallback");
    return {leaving:document.querySelectorAll(".deck-leaving").length,
+    entering:!!incoming,pending:incoming?.classList.contains("deck-photo-pending")??false,
     painted:image?.classList.contains("is-ready")??false,
-    opacity:queued?Number(getComputedStyle(queued).opacity):NaN};
+    fallbackVisible:!!fallback&&getComputedStyle(fallback).display!=="none"&&
+     Number(getComputedStyle(incoming).opacity)>.01};
   });
-  assert.equal(before.leaving,0,"tap must not start an animation before actual DOM decode");
+  assert.equal(before.leaving,1,"the like action begins the deck transition immediately");
+  assert.equal(before.entering,true,"the queued card becomes the entering card");
+  assert.equal(before.pending,true,"the delayed cover remains explicitly pending during entry");
   assert.equal(before.painted,false,"the delayed image really is unready at click");
-  assert.ok(before.opacity<.05,"queued card is invisible before its cover decode");
+  assert.equal(before.fallbackVisible,true,"the retained fallback remains visible behind the unready image");
 
   await page.locator(".deck-entering").waitFor({state:"attached",timeout:6000});
   // Let the entering animation complete before reading the already running
@@ -81,7 +89,10 @@ export async function feedDeckBrowserQa(browser,baseUrl){
    return capture.frames;
   });
   assert.ok(frames.length>=8,"sample the real WebView compositor over consecutive animation frames");
-  assert.ok(frames.every(frame=>frame.decoded),"every entering-frame cover must already be painted");
+  assert.ok(frames.every(frame=>frame.decoded||frame.fallbackVisible),
+   "every entering frame shows either a decoded cover or the retained fallback");
+  assert.ok(frames.some(frame=>!frame.decoded&&frame.fallbackVisible),
+   "the delayed decode window is covered by the fallback rather than a blank GPU tile");
   await page.waitForFunction(()=>{
    const top=document.querySelector(".deck-active .discovery-name-button");
    return top?.textContent?.includes("София");
