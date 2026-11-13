@@ -48,7 +48,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    "translate3d(calc(-"+baseIndex*100+"% + "+dx+"px),0,0)";
  },[gpuSafe]);
  useLayoutEffect(()=>{
-   flush();tracking.current=null;
+   flush();tracking.current=null;photoTrack.current?.classList.remove("is-dragging");
    renderOffset(Math.min(activeRef.current,Math.max(0,photos.length-1)),0);
  },[photoSignature,photos.length,renderOffset]);
  const photoElement=(i:number):HTMLImageElement|null=>
@@ -75,7 +75,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const queuePhoto=(i:number)=>requestPhoto(i,true);
  const warmPhoto=(i:number)=>requestPhoto(i,false);
  const startAt=(id:number,x:number,y:number,at:number,horizontal=false)=>{
-   pendingPhoto.current=null;
+   pendingPhoto.current=null;photoTrack.current?.classList.remove("is-dragging");
    // Capture the displayed position once; interrupted settling follows the finger.
    const width=frame.current?.clientWidth??320;
    let startIndex=activeRef.current;
@@ -105,6 +105,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    const delta=x-t.x,vertical=y-t.y;
    if(!t.horizontal&&Math.abs(delta)>7&&Math.abs(delta)>Math.abs(vertical)*1.15){
      t.horizontal=true;
+     photoTrack.current?.classList.add("is-dragging");
      if(photoTrack.current)photoTrack.current.style.transition="none";
      capture?.();
    }
@@ -121,6 +122,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const finishAt=(id:number,x:number,canceled:boolean)=>{
    const t=tracking.current;if(!t||t.id!==id)return;
    tracking.current=null;
+   photoTrack.current?.classList.remove("is-dragging");
    flush();
    // A final pointer sample may arrive after the last scheduled RAF. Commit
    // its position before re-enabling CSS easing, including a quick flick.
@@ -165,7 +167,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const end=(e:ReactPointerEvent)=>{if(!externalGesture)finishAt(e.pointerId,e.clientX,false);};
  const cancel=(e:ReactPointerEvent)=>{if(!externalGesture)finishAt(e.pointerId,e.clientX,true);};
  const selectPhoto=(i:number)=>{
-   flush();tracking.current=null;
+   flush();tracking.current=null;photoTrack.current?.classList.remove("is-dragging");
    // Distant dot jumps cannot animate across unloaded intermediate images;
    // do an atomic 2D move to the fully decoded destination instead.
    const farJump=gpuSafe&&Math.abs(i-activeRef.current)>1;
