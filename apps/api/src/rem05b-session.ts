@@ -210,6 +210,35 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
      return reply.code(403).send({error:"invitation_required"});
     }
    }
+   // Resolve a previously authenticated Telegram identity BEFORE the
+   // INSERT .. ON CONFLICT path. After a deletion or safety suspension, the
+   // restrictive actor UPDATE policy intentionally rejects an ordinary login
+   // refresh. Pre-reading the signed identity lets us return the correct
+   // explicit-recovery/blocked result without attempting that forbidden UPDATE.
+   const knownActor=await db.query<{id:string;status:string}>(
+    "SELECT id,status FROM luemi_private.actors WHERE environment=$1 AND telegram_id=$2",
+    [cfg.namespace,String(verified.user.id)]);
+   if(knownActor.rowCount===1){
+    const existing=knownActor.rows[0];
+    await db.query("SELECT set_config('luemi.actor_id',$1,true)",[existing.id]);
+    if(existing.status==="deleted"){
+     const pending=await db.query<{eligible_at:string}>(
+      "SELECT eligible_at FROM luemi_private.erasure_requests "+
+      "WHERE actor_id=$1 AND environment=$2 AND state='pending' LIMIT 1",
+      [existing.id,cfg.namespace]);
+     await db.query("ROLLBACK");
+     if(pending.rowCount===1){
+      const deadline=new Date(pending.rows[0].eligible_at);
+      if(Number.isFinite(deadline.getTime())&&deadline.getTime()>Date.now())
+       return reply.code(409).send({error:"account_pending_deletion",restoreUntil:deadline.toISOString()});
+     }
+     return reply.code(403).send({error:"account_unavailable"});
+    }
+    if(existing.status!=="active"){
+     await db.query("ROLLBACK");
+     return reply.code(403).send({error:"account_unavailable"});
+    }
+   }
    if(cfg.maxNewActors!==undefined){
     // Admission must be serialized for the WHOLE namespace, not per user,
     // to stop concurrent distinct Telegram logins exceeding the quota.
