@@ -45,7 +45,9 @@ async function profileV3(browser,platform="android"){
  const page=await context.newPage(),errors=recordErrors(page);
  try{
   await page.goto(BASE+"/profile-qa.html?profileV3=1",{waitUntil:"domcontentloaded"});
-  await page.getByRole("button",{name:"Профиль",exact:true}).click();
+  const ownProfileNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"});
+  await ownProfileNav.waitFor({state:"visible",timeout:6000});
+  await ownProfileNav.click();
   const host=await required(page,".v3-profile-host.pm-inline","owner V3");
   const compact=await state(page);
   assert.equal(compact.mode,"compact","V3 owner starts compact");
