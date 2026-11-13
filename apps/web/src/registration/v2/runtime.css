@@ -523,7 +523,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  background:rgba(230,216,238,.17);color:#EEE3F5}
 .v2-runtime .preferences-step .goal-card-label{
  display:block;min-width:0;flex:1;font-size:12.5px;line-height:1.24;font-weight:630;
- letter-spacing:-.015em;overflow-wrap:break-word}
+ letter-spacing:-.015em;overflow-wrap:anywhere}
 .v2-runtime .geo-liquid-location{display:flex;flex-direction:column;gap:8px;padding-bottom:0}
 .v2-runtime .geo-city-area{display:flex;flex-direction:column;gap:7px}
 .v2-runtime .geo-liquid-city{display:flex;align-items:center;gap:9px;min-width:0;width:100%;
