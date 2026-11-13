@@ -59,7 +59,7 @@ export async function feedDeckBrowserQa(browser,baseUrl){
    };
    requestAnimationFrame(sample);
   });
-  await page.locator(".deck-active .discovery-action.discovery-like").click();
+  await page.locator(".deck-active .moonstone-like-button").click();
   const before=await page.evaluate(()=>{
    const queued=document.querySelector(".deck-depth-one");
    const image=queued?.querySelector(".carousel-track img:first-child");
