@@ -94,7 +94,7 @@ export async function feedDeckBrowserQa(browser,baseUrl){
   assert.ok(frames.some(frame=>!frame.decoded&&frame.fallbackVisible),
    "the delayed decode window is covered by the fallback rather than a blank GPU tile");
   await page.waitForFunction(()=>{
-   const top=document.querySelector(".deck-active .discovery-name-button");
+   const top=document.querySelector(".deck-active .moonstone-name");
    return top?.textContent?.includes("София");
   },{timeout:5000});
   assert.deepEqual(errors,[],"no runtime errors in the real feed components");
