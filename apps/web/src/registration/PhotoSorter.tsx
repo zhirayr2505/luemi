@@ -287,7 +287,7 @@ export function PhotoSorter({photos,addPhotos,removePhoto,movePhoto}:Props){
            <button className="photo-drag-handle" type="button" aria-label={"Перетащить фото "+(i+1)}><GripVertical size={18}/></button>
            {photo.status==="reading"&&<div className="photo-processing" aria-label="Подготовка фотографии">
              <div className="photo-processing-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100}
-               aria-valuenow={photo.progress??0}><span style={{width:(photo.progress??0)+"%"}}/></div>
+               aria-valuenow={photo.progress??0}><span style={{transform:`scaleX(${(photo.progress??0)/100})`}}/></div>
              <small>Подготовка {photo.progress??0}%</small>
            </div>}
            {photo.status==="success"&&<div className="photo-processed" aria-label="Фотография готова"><CheckCircle2 size={25}/></div>}
