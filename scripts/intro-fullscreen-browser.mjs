@@ -11,7 +11,7 @@ const page=await browser.newPage({
 const failures=[];
 page.on("pageerror",error=>failures.push(error.message));
 try{
- await page.route("https://telegram.org/js/telegram-web-app.js",route=>
+ await page.route("**/telegram-web-app.js",route=>
   route.fulfill({status:200,contentType:"application/javascript",body:`
     window.__tgListeners={};
     window.Telegram={WebApp:{
