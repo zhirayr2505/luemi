@@ -41,8 +41,8 @@ assert.match(session,/account_pending_deletion/);
 assert.match(session,/existing\.status!=="active"/);
 
 assert.match(styles,/animation:intro-cursor-blink \.8s steps\(2,end\) 3/);
-assert.match(cinematic,/animation:luemi-hero-drift 4\.6s/);
-assert.doesNotMatch(cinematic,/animation:luemi-hero-drift 13s/);
+assert.match(cinematic,/hero-viewport-ready\.hero-image-ready::before\{\s*opacity:1;animation:none;transform:none\}/);
+assert.doesNotMatch(cinematic,/luemi-hero-drift|@keyframes luemi-hero-drift/);
 assert.match(moonstone,/animation:moonstone-super-spectrum 1\.5s ease-out both/);
 assert.match(moonstone,/animation:moonstone-super-tremble \.34s ease-in-out 3 alternate both/);
 
