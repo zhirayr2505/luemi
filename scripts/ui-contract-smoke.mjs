@@ -92,8 +92,9 @@ assertCheck("first-entry hero headline and subtitle can appear while auth is pre
  app.includes('heroSceneReady&&introSequenceComplete')&&
  !app.includes('className="luemi-privacy-footer"'));
 assertCheck("cinematic hero, staged copy and touch feedback respect reduced motion",
- welcomeChrome.includes("luemi-hero-drift")&&welcomeChrome.includes("luemi-hero-logo")&&
- welcomeChrome.includes("luemi-hero-line")&&
+ welcomeChrome.includes("hero-viewport-ready.hero-image-ready::before")&&
+ welcomeChrome.includes("animation:none;transform:none")&&
+ welcomeChrome.includes("luemi-hero-logo")&&welcomeChrome.includes("luemi-hero-line")&&
  welcomeChrome.includes(".primary-action:active:not(:disabled)")&&
  welcomeChrome.includes("@media(prefers-reduced-motion:reduce)"));
 
