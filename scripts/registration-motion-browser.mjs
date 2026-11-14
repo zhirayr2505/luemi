@@ -146,7 +146,9 @@ try{
  const relationshipIcon=await page.getByRole("button",{name:"Отношения",exact:true}).locator(".v2-goal-icon svg").innerHTML();
  assert.notEqual(loveIcon,relationshipIcon,"love and relationships must never share identical icons");
  await page.setViewportSize({width:360,height:780});
- const compactOverflow=await page.locator(".v2-goal-choice").evaluateAll(nodes=>
+ // The selected-state check badge is intentionally anchored 7px outside the
+ // button border. Measure the actual text boxes, not the decorative badge.
+ const compactOverflow=await page.locator(".v2-goal-choice .goal-card-label").evaluateAll(nodes=>
   nodes.some(node=>node.scrollWidth>node.clientWidth+1));
  assert.equal(compactOverflow,false,"goal labels must not clip or overflow on narrow phones");
  await page.setViewportSize({width:412,height:915});

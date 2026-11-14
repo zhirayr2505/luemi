@@ -45,7 +45,9 @@ async function profileV3(browser,platform="android"){
  const page=await context.newPage(),errors=recordErrors(page);
  try{
   await page.goto(BASE+"/profile-qa.html?profileV3=1",{waitUntil:"domcontentloaded"});
-  await page.getByRole("button",{name:"Профиль",exact:true}).click();
+  const ownProfileNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"});
+  await ownProfileNav.waitFor({state:"visible",timeout:6000});
+  await ownProfileNav.click();
   const host=await required(page,".v3-profile-host.pm-inline","owner V3");
   const compact=await state(page);
   assert.equal(compact.mode,"compact","V3 owner starts compact");
@@ -112,7 +114,9 @@ async function profileV3(browser,platform="android"){
   assert.ok(await pageEl.evaluate(el=>el.scrollTop)>=0,"native biography scroll functional");
 
   if(android){
-   await page.getByRole("button",{name:"Знакомства",exact:true}).click();
+   const discoveryNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"});
+   await discoveryNav.waitFor({state:"visible",timeout:6000});
+   await discoveryNav.click();
    await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
    await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
    const visitor=await required(page,".discovery-visitor-route .v3-profile-host","visitor V3");

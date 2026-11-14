@@ -39,7 +39,9 @@ const routeDrag=async(dx,hold=15)=>{
 };
 try{
  await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
- await page.getByRole("button",{name:"Знакомства",exact:true}).click();
+ const discoveryNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"});
+ await discoveryNav.waitFor({state:"visible",timeout:6000});
+ await discoveryNav.click();
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
  await open();
  near(await translation(),0,3);

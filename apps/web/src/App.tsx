@@ -1437,7 +1437,7 @@ export function App() {
         <div className="onboard-brand-row">
           <div className="onboard-wordmark"><img src={logoSrc} alt="luemi" className="onboard-logo"/></div>
         </div>
-        <div className="progress-track" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={8} aria-label="Прогресс регистрации"><span style={{width:step/8*100+"%"}}/></div>
+        <div className="progress-track" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={8} aria-label="Прогресс регистрации"><span style={{transform:`scaleX(${step/8})`}}/></div>
       </div>
       <header className="onboard-head">
         <h1>{steps[step-1].title}</h1>

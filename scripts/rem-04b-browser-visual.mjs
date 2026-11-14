@@ -52,7 +52,9 @@ const snap=async(label)=>{
 try{
  await ctx.tracing.start({screenshots:true,snapshots:true,sources:false});
  await page.goto("http://127.0.0.1:5173/profile-qa.html",{waitUntil:"domcontentloaded"});
- await page.getByRole("button",{name:"Профиль",exact:true}).click();
+ const ownProfileNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"});
+ await ownProfileNav.waitFor({state:"visible",timeout:6000});
+ await ownProfileNav.click();
  const root=page.locator(".pm-inline .v3-int-root");await root.waitFor({state:"visible"});
  const compact=await snap("owner-compact");
  assert.equal(compact.mode,"compact");assert.ok(compact.face?.w>=56&&compact.face.w<150);
@@ -81,7 +83,9 @@ try{
  }else assert.ok(final.face.w>compact.face.w*2.4,"settled expanded photo geometry");
  await root.locator(".v3-int-photo-dots button").nth(1).click();await delay(250);
  const photo=await snap("photo-2-selected");assert.equal(photo.activeDot,"Фото 2 из 3");
- await page.getByRole("button",{name:"Знакомства",exact:true}).click();
+ const discoveryNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"});
+ await discoveryNav.waitFor({state:"visible",timeout:6000});
+ await discoveryNav.click();
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
  const scroll=page.locator(".fy-scroll");await scroll.evaluate(el=>el.scrollTop=125);
  const scrollTop=await scroll.evaluate(el=>el.scrollTop);
@@ -111,7 +115,7 @@ try{
  await delay(330);await snap("nearby-covered");
  await page.keyboard.press("Escape");await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3500});
  await page.getByRole("tab",{name:"Лента",exact:true}).click();
- await page.locator(".discovery-deck-layer.deck-active .discovery-name-button").first().evaluate(el=>el.click());
+ await page.locator(".discovery-deck-layer.deck-active .moonstone-name").first().evaluate(el=>el.click());
  await page.locator(".discovery-visitor-route").waitFor();await delay(340);await snap("feed-covered");
  await page.keyboard.press("Escape");await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3500});
  assert.deepEqual(errors,[],"no Chromium errors");

@@ -32,7 +32,9 @@ const snapshot=()=>page.evaluate(()=>{
 const near=(a,b,delta=4)=>assert.ok(Math.abs(a-b)<=delta,"expected "+a+" near "+b+" (±"+delta+")");
 try{
  await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
- await page.getByRole("button",{name:"Профиль",exact:true}).click();
+ const ownProfileNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"});
+ await ownProfileNav.waitFor({state:"visible",timeout:6000});
+ await ownProfileNav.click();
  await root.waitFor({state:"visible"});
  await wait(130);
  const initial=await snapshot();

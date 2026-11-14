@@ -9,7 +9,9 @@ const base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 try{
  await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
  // The existing QA app starts on Discover; mount the actual owner profile first.
- await page.getByRole("button",{name:"Профиль",exact:true}).click();
+ const ownProfileNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"});
+ await ownProfileNav.waitFor({state:"visible",timeout:6000});
+ await ownProfileNav.click();
  await page.locator(".pm-shell").waitFor({state:"visible"});
  const result=await page.evaluate(async()=>{
   const m=await import("/src/ui/motion-controller.ts");

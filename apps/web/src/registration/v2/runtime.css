@@ -354,10 +354,12 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 @media(prefers-reduced-motion:reduce){
  .v2-runtime .name-input-hint,
  .v2-runtime .field-inline-hint:not(.name-input-hint),
- .v2-runtime .field-warning,.v2-runtime .v2-feedback{animation:none;transition:none}
+ .v2-runtime .field-warning,.v2-runtime .v2-feedback{animation:none}
+ .v2-runtime .field-warning,.v2-runtime .v2-feedback{transition-property:color,background-color,border-color,box-shadow}
  .v2-runtime .v2-next.v2-next-confirm,.v2-runtime{animation:none}
  .v2-runtime .v2-next-spinner{animation:none}
- .v2-runtime .v2-next,.v2-runtime .v2-publish,.v2-runtime .v2-focus-scrim{transition:none}}
+ .v2-runtime .v2-next,.v2-runtime .v2-publish{transition-property:color,background-color,border-color,box-shadow}
+ .v2-runtime .v2-focus-scrim{transition:none}}
 
 /* V2 — biography, interests and secure read-only review. Everything stays in the
    existing dark LUEMI canvas and the native vertical scroll container. */
@@ -449,7 +451,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
 @media(prefers-reduced-motion:reduce){
  .v2-runtime .v2-showcase-track{scroll-behavior:auto}
- .v2-runtime .v2-showcase-dots button{transition:none}
+ .v2-runtime .v2-showcase-dots button{transition-property:background-color}
  .photo-handle-tooltip{animation:none}
 }
 
@@ -521,7 +523,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  background:rgba(230,216,238,.17);color:#EEE3F5}
 .v2-runtime .preferences-step .goal-card-label{
  display:block;min-width:0;flex:1;font-size:12.5px;line-height:1.24;font-weight:630;
- letter-spacing:-.015em;overflow-wrap:break-word}
+ letter-spacing:-.015em;overflow-wrap:anywhere}
 .v2-runtime .geo-liquid-location{display:flex;flex-direction:column;gap:8px;padding-bottom:0}
 .v2-runtime .geo-city-area{display:flex;flex-direction:column;gap:7px}
 .v2-runtime .geo-liquid-city{display:flex;align-items:center;gap:9px;min-width:0;width:100%;
@@ -624,7 +626,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .v2-runtime .geo-liquid-privacy{font-size:11px;color:#C3AAD2;line-height:1.5;margin:0}
 @media(prefers-reduced-motion:reduce){
- .v2-runtime .geo-liquid-scopes button{transition:none}
+ .v2-runtime .geo-liquid-scopes button{transition-property:background-color,border-color,color}
  .v2-runtime .geo-liquid-mode-content{animation:none}
 }
 
@@ -703,8 +705,8 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  .v2-runtime .v2-stage-heading--about{padding-bottom:10px}
  .v2-runtime .v2-sticky-interests.is-visible{margin-top:9px;padding-top:8px;padding-bottom:6px}}
 @media(prefers-reduced-motion:reduce){
- .v2-runtime .v2-sticky-interests,.v2-runtime .v2-sticky-interests.is-visible,
- .v2-runtime .v2-selected-interest-close{transition:none}
+ .v2-runtime .v2-sticky-interests,.v2-runtime .v2-sticky-interests.is-visible{transition:none}
+ .v2-runtime .v2-selected-interest-close{transition-property:background-color,color}
  .v2-runtime .v2-selected-interest-chip{animation:none}
 }
 
@@ -763,8 +765,8 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  .v2-runtime .geo-liquid-mode-content{padding:5px 9px}
 }
 @media(prefers-reduced-motion:reduce){
- .v2-runtime .preferences-step .v2-goal-choice{transition:none}
+ .v2-runtime .preferences-step .v2-goal-choice{transition-property:background-color,border-color,color,box-shadow}
  .v2-runtime .glass-choice-corner-check,
  .v2-runtime .geo-scope-check,
- .v2-runtime .preferences-step .v2-goal-check{transition:none}
+ .v2-runtime .preferences-step .v2-goal-check{transition-property:background-color,border-color,color}
 }
