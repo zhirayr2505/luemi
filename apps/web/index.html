@@ -47,8 +47,9 @@
         background:#6E3EFF;color:#FFFFFF}
       @media(prefers-reduced-motion:reduce){#luemi-boot-spinner{animation-duration:1.8s}}
     </style>
-    <script defer src="/telegram-web-app.js"></script>
-    <script defer src="/telegram-early-fullscreen.js"></script>
+    <!-- Load Telegram first, then request fullscreen synchronously before the parser creates #root. -->
+    <script src="/telegram-web-app.js"></script>
+    <script src="/telegram-early-fullscreen.js"></script>
   </head>
   <body>
     <div id="root"></div>
