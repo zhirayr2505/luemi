@@ -14,7 +14,16 @@ test("Telegram SDK is a first-party asset, not a network-critical CDN",()=>{
  assert.ok(html.includes('<meta name="theme-color" content="#1E0F38"'));
  assert.ok(html.includes('id="luemi-boot"'));
  assert.ok(html.includes('wordmark_original_raster_alpha_W06.webp'));
- assert.ok(html.includes('<script defer src="/telegram-web-app.js"></script>'));
+ const sdkTag='<script src="/telegram-web-app.js"></script>';
+ const fullscreenTag='<script src="/telegram-early-fullscreen.js"></script>';
+ assert.ok(html.includes(sdkTag),"Telegram SDK is served from the first-party origin");
+ assert.ok(html.includes(fullscreenTag),"the early fullscreen bootstrap is a first-party asset");
+ assert.ok(html.indexOf(sdkTag)<html.indexOf(fullscreenTag),
+  "Telegram must initialize before the early fullscreen request");
+ assert.ok(html.indexOf(fullscreenTag)<html.indexOf('<div id="root">'),
+  "the early fullscreen request must execute before the browser creates the React root");
+ assert.ok(!html.includes('<script defer src="/telegram-web-app.js"></script>'));
+ assert.ok(!html.includes('<script defer src="/telegram-early-fullscreen.js"></script>'));
  assert.ok(!html.includes('src="https://telegram.org/js/telegram-web-app.js"'));
  assert.ok(html.includes('<script src="/boot-recovery.js"></script>'));
  const vendor=read("scripts/vendor-telegram-sdk.mjs");
