@@ -52,7 +52,9 @@ const awaitActive=async id=>{
 };
 try{
  await page.goto("http://127.0.0.1:5173/profile-qa.html?profileV3=1",{waitUntil:"domcontentloaded"});
- await page.getByRole("button",{name:"Профиль",exact:true}).click();
+ const ownProfileNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"});
+ await ownProfileNav.waitFor({state:"visible",timeout:6000});
+ await ownProfileNav.click();
  await root().waitFor({state:"visible"});
  await count(6);
  let opening=await capture("six-compact");
