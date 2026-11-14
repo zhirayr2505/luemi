@@ -7,12 +7,9 @@
  background:url('/assets/registration/welcome-cinematic.webp') center 38%/cover no-repeat;
  opacity:0;transform-origin:50% 40%;transform:translate3d(0,0,0) scale(1.015)}
 .entry-state.cinematic-entry.hero-viewport-ready.hero-image-ready::before{
- opacity:1;animation:luemi-hero-drift 4.6s cubic-bezier(.18,.62,.32,1) both}
+ opacity:1;animation:none;transform:none}
 /* Start on the final Telegram viewport, after the original poster is decoded. */
 .entry-state.cinematic-entry:not(.visually-ready)>*{visibility:hidden}
-@keyframes luemi-hero-drift{
- from{transform:translate3d(0,0,0) scale(1.015)}
- to{transform:translate3d(0,-.8%,0) scale(1.068)}}
 .entry-state.cinematic-entry::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
  background:linear-gradient(180deg,rgba(27,14,25,.45),transparent 26%,transparent 46%,rgba(22,10,43,.33) 64%,rgba(23,13,22,.96) 100%)}
 .cinematic-entry .intro-mark{position:absolute;top:var(--brand-top);left:20px;
