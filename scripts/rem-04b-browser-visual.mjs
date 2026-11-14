@@ -115,7 +115,7 @@ try{
  await delay(330);await snap("nearby-covered");
  await page.keyboard.press("Escape");await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3500});
  await page.getByRole("tab",{name:"Лента",exact:true}).click();
- await page.locator(".discovery-deck-layer.deck-active .discovery-name-button").first().evaluate(el=>el.click());
+ await page.locator(".discovery-deck-layer.deck-active .moonstone-name").first().evaluate(el=>el.click());
  await page.locator(".discovery-visitor-route").waitFor();await delay(340);await snap("feed-covered");
  await page.keyboard.press("Escape");await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3500});
  assert.deepEqual(errors,[],"no Chromium errors");
