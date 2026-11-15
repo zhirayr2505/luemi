@@ -136,6 +136,10 @@ try {
   const identity=auth.json() as {user?:{id?:string}};
   assert.ok(identity.user?.id,"Synthetic viewer must receive a server-side actor ID");
   viewerActorId=identity.user.id;
+  await admin.query(
+    "INSERT INTO luemi_private.private_profile_drafts(owner_id,environment,revision,payload,birth_date,consent_version) VALUES($1,$2,1,'{}'::jsonb,DATE '1995-01-01',$3)",
+    [viewerActorId,namespace,consentVersion]
+  );
   viewerCookie=String(auth.headers["set-cookie"]??"").split(";")[0];
   assert.match(viewerCookie,/^__Host-luemi_sid=/);
 
@@ -188,6 +192,7 @@ try {
     [namespace,lower.toString(),upper.toString()]
   ).catch(()=>{});
   if(viewerActorId) {
+    await admin.query("DELETE FROM luemi_private.private_profile_drafts WHERE owner_id=$1 AND environment=$2",[viewerActorId,namespace]).catch(()=>{});
     await admin.query("DELETE FROM luemi_private.sessions WHERE actor_id=$1 AND environment=$2",[viewerActorId,namespace]).catch(()=>{});
     await admin.query("DELETE FROM luemi_private.actors WHERE id=$1 AND environment=$2",[viewerActorId,namespace]).catch(()=>{});
   }
