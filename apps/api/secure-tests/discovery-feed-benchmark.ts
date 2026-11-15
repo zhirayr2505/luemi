@@ -170,7 +170,7 @@ try {
 } finally {
   if(app) await app.close().catch(()=>{});
   // Delete only the isolated synthetic environment and the single synthetic viewer.
-  const lower=BigInt(baseTelegramId),upper=lower+BigInt(profileCount);
+  const lower=BigInt(baseTelegramId),upper=lower+BigInt(profileCount)+1n;
   await admin.query(
     `DELETE FROM luemi_private.media_assets
      WHERE environment=$1 AND owner_id IN (
