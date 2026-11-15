@@ -13,9 +13,9 @@ export const DISCOVERY_FEED_QUERY =
     "p.gender,p.goal,p.languages,p.birth_date::text,p.published_at::text,"+
     "incoming.kind AS liked_you_kind,evidence.km AS distance_km "+
     "FROM luemi_private.public_profiles p CROSS JOIN preference pref "+
-    "LEFT JOIN luemi_private.city_centres origin_city ON origin_city.country_code=pref.country_code "+
+    "LEFT JOIN luemi_private.city_centres origin_city ON origin_city.country_code=pref.country_code::char(2) "+
     "AND origin_city.city_norm=lower(btrim(pref.city_label)) "+
-    "LEFT JOIN luemi_private.city_centres candidate_city ON candidate_city.country_code=p.country_code "+
+    "LEFT JOIN luemi_private.city_centres candidate_city ON candidate_city.country_code=p.country_code::char(2) "+
     "AND candidate_city.city_norm=lower(btrim(p.city_label)) "+    "LEFT JOIN luemi_private.precise_locations viewer_loc ON "+
     "viewer_loc.owner_id=$2 AND viewer_loc.environment=$1 "+
     "LEFT JOIN luemi_private.precise_locations candidate_loc ON "+
