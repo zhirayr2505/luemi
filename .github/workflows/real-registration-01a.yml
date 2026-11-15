@@ -158,8 +158,8 @@ jobs:
       - name: Multi-user signed-session / RLS / privacy / CAS tests
         run: npx --no-install tsx --test apps/api/secure-tests/real-registration.test.ts apps/api/secure-tests/real-publication.test.ts apps/api/secure-tests/real-ops.test.ts apps/api/secure-tests/real-safety.test.ts
       - name: Optional discovery feed scale benchmark (disposable PostgreSQL only)
-        if: github.event_name == 'workflow_dispatch' && inputs.discovery_feed_benchmark && matrix.postgres == '17'
+        if: (github.event_name == 'workflow_dispatch' && inputs.discovery_feed_benchmark && matrix.postgres == '17') || (github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'perf/discovery-feed-benchmark-20261115' && matrix.postgres == '17')
         env:
           FEED_BENCH_CONFIRM_DISPOSABLE: '1'
-          FEED_BENCH_PROFILE_COUNT: ${{ inputs.discovery_feed_profiles }}
+          FEED_BENCH_PROFILE_COUNT: ${{ inputs.discovery_feed_profiles || '10000' }}
         run: npx --no-install tsx apps/api/secure-tests/discovery-feed-benchmark.ts
