@@ -114,7 +114,7 @@ try {
   await admin.query("ANALYZE luemi_private.media_assets");
 
   app=buildApp({
-    port:3001,origin,botToken,healthKey:"synthetic_feed_benchmark_health_key_123",
+    port:3001,origin,botToken,webhookSecret:"",healthKey:"synthetic_feed_benchmark_health_key_123",
     logger:false,
     rem05b:{
       enabled:true,issuerDatabaseUrl:issuerUrl,requestDatabaseUrl:requestUrl,
