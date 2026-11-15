@@ -18,6 +18,7 @@ if(process.env.FEED_BENCH_CONFIRM_DISPOSABLE!=="1") {
 if(!adminUrl||!issuerUrl||!requestUrl||!publisherUrl||!readerUrl) {
   throw new Error("Feed benchmark requires the isolated REG01 PostgreSQL roles");
 }
+const explainOnly=process.env.FEED_BENCH_EXPLAIN_ONLY==="1";
 const profileCount=Number(process.env.FEED_BENCH_PROFILE_COUNT??"10000");
 if(!Number.isSafeInteger(profileCount)||![10000,25000,100000].includes(profileCount)) {
   throw new Error("FEED_BENCH_PROFILE_COUNT must be 10000, 25000 or 100000");
@@ -114,6 +115,7 @@ try {
   await admin.query("ANALYZE luemi_private.actors");
   await admin.query("ANALYZE luemi_private.public_profiles");
   await admin.query("ANALYZE luemi_private.media_assets");
+  await admin.query("ANALYZE luemi_private.city_centres");
 
   app=buildApp({
     port:3001,origin,botToken,webhookSecret:"",healthKey:"synthetic_feed_benchmark_health_key_123",
@@ -145,17 +147,21 @@ try {
   viewerCookie=String(auth.headers["set-cookie"]??"").split(";")[0];
   assert.match(viewerCookie,/^__Host-luemi_sid=/);
 
-  // Warm the route once, then take ten serial samples for each page position.
-  const warmup=await app.inject({
-    method:"GET",url:"/api/v3/discovery/feed",headers:{cookie:viewerCookie}
-  });
-  assert.equal(warmup.statusCode,200,warmup.body);
-  assert.equal((warmup.json() as {profiles:unknown[]}).profiles.length,20);
-
-  const firstPage=await sample("/api/v3/discovery/feed",20);
+  let firstPage:number[]=[];
+  let deepPage:number[]=[];
   const deepOffset=Math.min(10000,profileCount-20);
-  const deepCursor=encodePublishedFeedCursor({offset:deepOffset});
-  const deepPage=await sample("/api/v3/discovery/feed?after="+encodeURIComponent(deepCursor),20);
+  if(!explainOnly) {
+    // Warm the route once, then take ten serial samples for each page position.
+    const warmup=await app.inject({
+      method:"GET",url:"/api/v3/discovery/feed",headers:{cookie:viewerCookie}
+    });
+    assert.equal(warmup.statusCode,200,warmup.body);
+    assert.equal((warmup.json() as {profiles:unknown[]}).profiles.length,20);
+
+    firstPage=await sample("/api/v3/discovery/feed",20);
+    const deepCursor=encodePublishedFeedCursor({offset:deepOffset});
+    deepPage=await sample("/api/v3/discovery/feed?after="+encodeURIComponent(deepCursor),20);
+  }
   const version=await admin.query<{version:string}>("SELECT version() AS version");
 
   // Same SQL, same read-only database role, and same RLS request settings as
@@ -174,18 +180,44 @@ try {
     const payload=(explained.rows[0]["QUERY PLAN"] as Array<Record<string,unknown>>)[0];
     const root=payload.Plan as Record<string,unknown>;
     const nodes:Array<Record<string,unknown>>=[];
+    const planFields=[
+      "Node Type","Parent Relationship","Relation Name","Alias","Index Name",
+      "Index Cond","Recheck Cond","Join Type","Join Filter","Hash Cond","Merge Cond",
+      "Filter","Plan Rows","Actual Rows","Actual Loops","Actual Total Time",
+      "Rows Removed by Filter","Rows Removed by Join Filter",
+      "Shared Hit Blocks","Shared Read Blocks"
+    ];
+    const summarizePlanNode=(node:Record<string,unknown>):Record<string,unknown>=>{
+      const summary:Record<string,unknown>={};
+      for(const field of planFields) {
+        if(node[field]!==undefined)summary[field]=node[field];
+      }
+      const children=node.Plans;
+      if(Array.isArray(children))summary.children=children.map(child=>summarizePlanNode(child as Record<string,unknown>));
+      return summary;
+    };
     const visit=(node:Record<string,unknown>)=>{
       nodes.push({
         nodeType:node["Node Type"],
         relation:node["Relation Name"]??null,
+        alias:node["Alias"]??null,
         index:node["Index Name"]??null,
+        joinType:node["Join Type"]??null,
+        joinFilter:node["Join Filter"]??null,
+        hashCond:node["Hash Cond"]??null,
+        mergeCond:node["Merge Cond"]??null,
+        indexCond:node["Index Cond"]??null,
         actualRows:node["Actual Rows"]??null,
         loops:node["Actual Loops"]??null,
         actualTotalTimeMs:node["Actual Total Time"]??null,
         sharedHitBlocks:node["Shared Hit Blocks"]??null,
         sharedReadBlocks:node["Shared Read Blocks"]??null,
         rowsRemovedByFilter:node["Rows Removed by Filter"]??null,
-        rowsRemovedByJoinFilter:node["Rows Removed by Join Filter"]??null
+        rowsRemovedByJoinFilter:node["Rows Removed by Join Filter"]??null,
+        childScans:Array.isArray(node.Plans)?node.Plans.map(child=>{
+          const value=child as Record<string,unknown>;
+          return {nodeType:value["Node Type"],relation:value["Relation Name"]??null,alias:value["Alias"]??null,index:value["Index Name"]??null};
+        }):[]
       });
       const children=node.Plans;
       if(Array.isArray(children))for(const child of children)visit(child as Record<string,unknown>);
@@ -199,7 +231,8 @@ try {
       rootActualRows:root["Actual Rows"],
       sharedHitBlocks:root["Shared Hit Blocks"],
       sharedReadBlocks:root["Shared Read Blocks"],
-      topNodesByActualTime:nodes.sort((a,b)=>Number(b.actualTotalTimeMs??0)-Number(a.actualTotalTimeMs??0)).slice(0,12)
+      topNodesByActualTime:nodes.sort((a,b)=>Number(b.actualTotalTimeMs??0)-Number(a.actualTotalTimeMs??0)).slice(0,20),
+      planTree:summarizePlanNode(root)
     };
   } catch(error) {
     await explainClient.query("ROLLBACK").catch(()=>{});
@@ -213,12 +246,12 @@ try {
     postgres:version.rows[0].version,
     syntheticProfiles:profileCount,
     syntheticApprovedMedia:seeded.rowCount,
-    samplesPerPage:10,
-    warmupRequests:1,
-    firstPageMs:{p50:percentile(firstPage,.5),p95:percentile(firstPage,.95),samples:firstPage.map(x=>Number(x.toFixed(2)))},
-    deepPage:{offset:deepOffset,p50:percentile(deepPage,.5),p95:percentile(deepPage,.95),samples:deepPage.map(x=>Number(x.toFixed(2)))},
+    samplesPerPage:explainOnly?0:10,
+    warmupRequests:explainOnly?0:1,
+    firstPageMs:firstPage.length?{p50:percentile(firstPage,.5),p95:percentile(firstPage,.95),samples:firstPage.map(x=>Number(x.toFixed(2)))}:null,
+    deepPage:deepPage.length?{offset:deepOffset,p50:percentile(deepPage,.5),p95:percentile(deepPage,.95),samples:deepPage.map(x=>Number(x.toFixed(2)))}:null,
     explainAnalyze:explainSummary,
-    note:"End-to-end authenticated API timing against disposable synthetic PostgreSQL data; no latency threshold is asserted."
+    note:explainOnly?"EXPLAIN-only diagnostic against disposable synthetic PostgreSQL data after ANALYZE; no latency threshold is asserted.":"End-to-end authenticated API timing against disposable synthetic PostgreSQL data; no latency threshold is asserted."
   }));
 } finally {
   if(app) await app.close().catch(()=>{});
