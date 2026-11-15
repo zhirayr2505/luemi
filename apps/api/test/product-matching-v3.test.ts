@@ -6,6 +6,7 @@ const sql=readFileSync(new URL("../../../db/chats-v4-product-matching.sql",impor
 const preferences=readFileSync(new URL("../../../infra/migrations/0011_discovery_preferences.sql",import.meta.url),"utf8");
 const api=readFileSync(new URL("../src/matches-api.ts",import.meta.url),"utf8");
 const publication=readFileSync(new URL("../src/real-publication.ts",import.meta.url),"utf8");
+const feedQuery=readFileSync(new URL("../src/discovery-feed-query.ts",import.meta.url),"utf8");
 
 test("legacy published profiles keep discovery access after preference migration",()=>{
  assert.match(preferences,/INSERT INTO luemi_private\.discovery_preferences/);
@@ -14,8 +15,8 @@ test("legacy published profiles keep discovery access after preference migration
  assert.match(publication,/data\.audience\?\?"everyone"/);
  assert.match(publication,/data\.ageMin\?\?18/);
  assert.match(publication,/data\.ageMax\?\?80/);
- assert.match(publication,/WHERE NOT EXISTS\(SELECT 1 FROM luemi_private\.discovery_preferences/);
- assert.match(publication,/pref\.owner_gender IS NULL OR p\.audience='everyone'/);
+ assert.match(feedQuery,/WHERE NOT EXISTS\(SELECT 1 FROM luemi_private\.discovery_preferences/);
+ assert.match(feedQuery,/pref\.owner_gender IS NULL OR p\.audience='everyone'/);
 });
 
 test("weekly and purchased superlikes are physically separate and weekly-first",()=>{
