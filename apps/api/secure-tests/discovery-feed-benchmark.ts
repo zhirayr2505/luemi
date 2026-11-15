@@ -77,8 +77,8 @@ try {
   const seeded=await admin.query(
     `WITH inserted_actors AS (
        INSERT INTO luemi_private.actors(id,environment,telegram_id,first_name,status)
-       SELECT gen_random_uuid(),$1,$2::bigint+s::bigint,'Feed benchmark','active'
-       FROM generate_series(1,$3::integer) AS s
+       SELECT gen_random_uuid(),$1,$2::bigint+series.i::bigint,'Feed benchmark','active'
+       FROM generate_series(1,$3::integer) AS series(i)
        RETURNING id
      ), inserted_profiles AS (
        INSERT INTO luemi_private.public_profiles(
@@ -98,12 +98,12 @@ try {
        publication_status,actual_mime,byte_count,width,height,content_sha256,position
      )
      SELECT gen_random_uuid(),p.owner_id,$1,
-       'original-'||md5(p.owner_id::text||':'||n::text),
-       'derivative-'||md5(p.owner_id::text||':'||n::text),
+       'original-'||md5(p.owner_id::text||':'||slots.position::text),
+       'derivative-'||md5(p.owner_id::text||':'||slots.position::text),
        1,'approved','published','image/png',1024,64,64,
        md5(p.owner_id::text||':sha-a:'||n::text)||md5(p.owner_id::text||':sha-b:'||n::text),
-       n-1
-     FROM inserted_profiles p CROSS JOIN generate_series(1,3) AS n`,
+       slots.position-1
+     FROM inserted_profiles p CROSS JOIN generate_series(1,3) AS slots(position)`,
     [namespace,baseTelegramId,profileCount]
   );
   assert.equal(seeded.rowCount,profileCount*3,
