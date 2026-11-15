@@ -101,7 +101,7 @@ try {
        'original-'||md5(p.owner_id::text||':'||slots.position::text),
        'derivative-'||md5(p.owner_id::text||':'||slots.position::text),
        1,'approved','published','image/png',1024,64,64,
-       md5(p.owner_id::text||':sha-a:'||n::text)||md5(p.owner_id::text||':sha-b:'||n::text),
+       md5(p.owner_id::text||':sha-a:'||slots.position::text)||md5(p.owner_id::text||':sha-b:'||slots.position::text),
        slots.position-1
      FROM inserted_profiles p CROSS JOIN generate_series(1,3) AS slots(position)`,
     [namespace,baseTelegramId,profileCount]
