@@ -162,4 +162,5 @@ jobs:
         env:
           FEED_BENCH_CONFIRM_DISPOSABLE: '1'
           FEED_BENCH_PROFILE_COUNT: ${{ inputs.discovery_feed_profiles || '10000' }}
+          FEED_BENCH_EXPLAIN_ONLY: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         run: npx --no-install tsx apps/api/secure-tests/discovery-feed-benchmark.ts
