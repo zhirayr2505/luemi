@@ -168,10 +168,42 @@ try {
   // the production Discovery route. EXPLAIN ANALYZE intentionally runs once.
   const explainClient=await explainPool.connect();
   let explainSummary:Record<string,unknown>={};
+  let cityIndexDiagnostics:Record<string,unknown>={};
   try {
     await explainClient.query("BEGIN");
     await explainClient.query("SELECT set_config('luemi.viewer_id',$1,true)",[viewerActorId!]);
     await explainClient.query("SELECT set_config('luemi.environment',$1,true)",[namespace]);
+    const cityIndexes=await admin.query<{
+      indexName:string;isPrimary:boolean;isValid:boolean;isReady:boolean;definition:string
+    }>(
+      "SELECT idx.relname AS \"indexName\",i.indisprimary AS \"isPrimary\",i.indisvalid AS \"isValid\",i.indisready AS \"isReady\",pg_get_indexdef(idx.oid) AS definition "+
+      "FROM pg_index i JOIN pg_class idx ON idx.oid=i.indexrelid "+
+      "WHERE i.indrelid='luemi_private.city_centres'::regclass ORDER BY idx.relname"
+    );
+    const plannerSettings=await explainClient.query(
+      "SELECT current_setting('enable_indexscan') AS enable_indexscan,"+
+      "current_setting('enable_indexonlyscan') AS enable_indexonlyscan,"+
+      "current_setting('enable_bitmapscan') AS enable_bitmapscan,"+
+      "current_setting('enable_seqscan') AS enable_seqscan,"+
+      "current_setting('random_page_cost') AS random_page_cost"
+    );
+    const cityKey=await explainClient.query<{country_code:string;city_norm:string}>(
+      "SELECT country_code::text AS country_code,city_norm FROM luemi_private.city_centres "+
+      "ORDER BY country_code,city_norm LIMIT 1"
+    );
+    assert.ok(cityKey.rows[0],"Disposable city-centres seed must contain at least one city");
+    const directLookup=await explainClient.query(
+      "EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) SELECT lat,lon FROM luemi_private.city_centres "+
+      "WHERE country_code=$1::char(2) AND city_norm=$2::text",
+      [cityKey.rows[0].country_code,cityKey.rows[0].city_norm]
+    );
+    const directLookupPayload=(directLookup.rows[0]["QUERY PLAN"] as Array<Record<string,unknown>>)[0];
+    cityIndexDiagnostics={
+      indexes:cityIndexes.rows,
+      plannerSettings:plannerSettings.rows[0],
+      directLookupPlan:directLookupPayload.Plan,
+      directLookupExecutionTimeMs:directLookupPayload["Execution Time"]
+    };
     const explained=await explainClient.query(
       "EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) "+DISCOVERY_FEED_QUERY,
       [namespace,viewerActorId,0]
@@ -232,7 +264,8 @@ try {
       sharedHitBlocks:root["Shared Hit Blocks"],
       sharedReadBlocks:root["Shared Read Blocks"],
       topNodesByActualTime:nodes.sort((a,b)=>Number(b.actualTotalTimeMs??0)-Number(a.actualTotalTimeMs??0)).slice(0,20),
-      planTree:summarizePlanNode(root)
+      planTree:summarizePlanNode(root),
+      cityIndexDiagnostics
     };
   } catch(error) {
     await explainClient.query("ROLLBACK").catch(()=>{});
