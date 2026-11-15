@@ -47,6 +47,23 @@ function signedInitData(id:number):string {
   return new URLSearchParams({...data,hash}).toString();
 }
 
+function summarizePlanNode(node:Record<string,unknown>,depth=0):Record<string,unknown> {
+  const summary:Record<string,unknown>={
+    depth,
+    nodeType:node["Node Type"],
+    relation:node["Relation Name"]??null,
+    index:node["Index Name"]??null,
+    actualRows:node["Actual Rows"]??null,
+    loops:node["Actual Loops"]??null,
+    actualTotalTimeMs:node["Actual Total Time"]??null,
+    rowsRemovedByFilter:node["Rows Removed by Filter"]??null,
+    rowsRemovedByJoinFilter:node["Rows Removed by Join Filter"]??null
+  };
+  const children=node.Plans;
+  if(Array.isArray(children))summary.children=children.map(child=>
+    summarizePlanNode(child as Record<string,unknown>,depth+1));
+  return summary;
+}
 function percentile(values:number[],p:number):number {
   const sorted=[...values].sort((a,b)=>a-b);
   return Number(sorted[Math.min(sorted.length-1,Math.ceil(sorted.length*p)-1)].toFixed(2));
