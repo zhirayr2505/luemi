@@ -4,6 +4,19 @@ on:
     branches: ['main', 'feature/real-registration-01*']
   pull_request:
     branches: ['main', 'refactor/architecture-dead-code-motion-20261025', 'feature/real-registration-01-private-draft-20261025', 'feature/real-registration-01b-client-save-20261025', 'feature/real-registration-01c-durable-private-media-20261025', 'feature/real-registration-01d-published-feed-20261025']
+  workflow_dispatch:
+    inputs:
+      discovery_feed_benchmark:
+        description: Run the authenticated discovery feed benchmark on disposable PostgreSQL data
+        type: boolean
+        required: true
+        default: false
+      discovery_feed_profiles:
+        description: Number of synthetic published profiles to seed
+        type: choice
+        options: ['10000', '25000', '100000']
+        required: true
+        default: '10000'
 permissions:
   contents: read
 jobs:
@@ -144,3 +157,10 @@ jobs:
           SQL
       - name: Multi-user signed-session / RLS / privacy / CAS tests
         run: npx --no-install tsx --test apps/api/secure-tests/real-registration.test.ts apps/api/secure-tests/real-publication.test.ts apps/api/secure-tests/real-ops.test.ts apps/api/secure-tests/real-safety.test.ts
+      - name: Optional discovery feed scale benchmark and EXPLAIN (disposable PostgreSQL only)
+        if: (github.event_name == 'workflow_dispatch' && inputs.discovery_feed_benchmark && matrix.postgres == '17') || (github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'perf/discovery-feed-benchmark-20261115' || github.event.pull_request.head.ref == 'perf/discovery-feed-query-plan-20261115') && matrix.postgres == '17')
+        env:
+          FEED_BENCH_CONFIRM_DISPOSABLE: '1'
+          FEED_BENCH_PROFILE_COUNT: ${{ inputs.discovery_feed_profiles || '10000' }}
+          FEED_BENCH_EXPLAIN_ONLY: '0'
+        run: npx --no-install tsx apps/api/secure-tests/discovery-feed-benchmark.ts
