@@ -8,6 +8,7 @@ const styles=read("apps/web/src/ui/luemi-v5.css");
 const app=read("apps/web/src/App.tsx");
 const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const gestureQa=read("scripts/discovery-gesture-browser.mjs");
+const feedReferenceQa=read("scripts/feed-reference-browser.mjs");
 const markup=read("apps/web/index.html");
 const dirs=["apps/web/src"];
 function filesUnder(path){
@@ -41,6 +42,14 @@ test("Badoo Purple owns one deep violet/lilac palette",()=>{
  assert.ok(contrast(hex("luemi-text"),hex("luemi-bg"))>=7,"primary text is accessible on Badoo Purple");
  assert.ok(contrast(hex("luemi-text-secondary"),hex("luemi-surface"))>=4.5,"subtle text is legible");
  assert.ok(contrast(hex("luemi-text"),hex("luemi-accent"))>=4.5,"accent CTA is legible");
+});
+test("feed visual QA references current Moonstone Feed and semantic action controls",()=>{
+ assert.ok(feedReferenceQa.includes(".moonstone-feed-card"));
+ assert.ok(feedReferenceQa.includes(".moonstone-compact-info"));
+ assert.ok(feedReferenceQa.includes(".moonstone-profile-toggle"));
+ assert.ok(feedReferenceQa.includes(".moonstone-profile-drawer"));
+ assert.ok(feedReferenceQa.includes(".moonstone-like-button"));
+ assert.doesNotMatch(feedReferenceQa,/feed-v2-/,"retired Feed V2 selectors must not return");
 });
 test("Discovery gesture QA targets the current Moonstone feed DOM",()=>{
  assert.ok(gestureQa.includes(".moonstone-feed-card[data-expanded=false]"));
