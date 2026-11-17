@@ -38,7 +38,7 @@ try{
  const offset=()=>text.evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node).transform).m42);
  const compactOffset=await offset();
  const before=await image.evaluate(node=>{window.__feedPhoto=node;return node.src;});
- await swipe(".deck-active .moonstone-profile-drawer .moonstone-location",0,-180);
+ await swipe(".deck-active .moonstone-location",0,-180);
  await page.locator(".deck-active .moonstone-feed-card[data-expanded=true]").waitFor({timeout:1800});
  assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
@@ -50,12 +50,12 @@ try{
  const actions=page.locator(".deck-active .moonstone-actions");
  const buttons=await actions.locator("button").count();
  assert.equal(buttons,3,"X / heart / star remain available during reveal");
- await swipe(".deck-active .moonstone-profile-drawer .moonstone-location",0,190);
+ await swipe(".deck-active .moonstone-location",0,190);
  await page.locator(".deck-active .moonstone-feed-card[data-expanded=false]").waitFor({timeout:1800});
  assert.ok(await image.evaluate(node=>node===window.__feedPhoto),"Close preserves the same photo");
  assert.ok(Math.abs(await offset()-compactOffset)<1,"Close restores compact text position");
 
- await swipe(".deck-active .moonstone-profile-drawer .moonstone-location",-205,0);
+ await swipe(".deck-active .moonstone-location",-205,0);
  await page.waitForTimeout(430);
  assert.equal((await selected())?.trim(),"Лента","Feed text horizontal swipes belong to the photo carousel");
  await swipe(".discovery-top-tabs",-205,0);
