@@ -37,7 +37,7 @@ Load only skills relevant to the current task; do not load every skill on every 
 | Multi-step feature or refactor | `writing-plans`, then `executing-plans`; use `to-spec` first when requirements are not yet crisp |
 | Bug, regression, failed test, or unexplained performance issue | `systematic-debugging` before proposing a fix; use `test-driven-development` for the regression test |
 | Any production-code behavior change | `test-driven-development` unless the change is documentation/configuration-only or generated |
-| Before PR/merge readiness | `code-review` and `verification-before-completion` |
+| Before PR/merge readiness | `requesting-code-review`, `code-review`, and `verification-before-completion` |
 | React/Vite UI and rendering performance | `react-best-practices` and `modern-web-guidance`; for visual/accessibility audits use `web-design-guidelines` |
 | Motion, swipe, sheet, carousel, profile morph, scroll handoff | `gestures` and `luemi-motion-architecture` |
 | Telegram WebView, keyboard, safe-area, touch/device QA | `luemi-telegram-webview-qa` |
