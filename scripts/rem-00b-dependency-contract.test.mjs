@@ -19,6 +19,16 @@ function assertWorkspaceLock(manifest,locked){
  assert.equal(locked.packages["node_modules/eslint-plugin-react-hooks"].version,manifest.devDependencies["eslint-plugin-react-hooks"]);
 }
 assertWorkspaceLock(pkg,lock);
+const api=JSON.parse(read("apps/api/package.json"));
+assert.equal(api.dependencies["@fastify/static"],"^10.1.11","static plugin must stay on a patched Fastify 5-compatible line");
+assert.equal(lock.packages["apps/api"].dependencies["@fastify/static"],api.dependencies["@fastify/static"],"API static package range differs from lockfile");
+const staticPlugin=lock.packages["node_modules/@fastify/static"];
+assert.ok(staticPlugin,"@fastify/static must exist in package lock");
+const [staticMajor,staticMinor,staticPatch]=String(staticPlugin.version).split(".").map(Number);
+const staticPatched=staticMajor>10||(staticMajor===10&&(staticMinor>1||(staticMinor===1&&staticPatch>=11)));
+assert.ok(staticPatched,"@fastify/static "+staticPlugin.version+" is below the 10.1.11 security floor (GHSA-83w8-p2f5-377r and related advisories)");
+assert.equal(staticPlugin.resolved,"https://registry.npmjs.org/@fastify/static/-/static-"+staticPlugin.version+".tgz","static package tarball must match its locked version");
+assert.ok(/^sha512-[A-Za-z0-9+/]+=*$/.test(staticPlugin.integrity??""),"static package lock must retain SHA-512 integrity");
 const web=JSON.parse(read("apps/web/package.json"));
 assert.equal(web.dependencies.vite,"^6.4.6","Vite workspace range must stay on the patched 6.4 line");
 assert.equal(lock.packages["apps/web"].dependencies.vite,web.dependencies.vite,"workspace Vite range differs from lockfile");
@@ -53,4 +63,4 @@ const debt=JSON.parse(read("qa/react-hooks-baseline.json"));
 assert.equal(debt.schemaVersion,1);
 assert.ok(Array.isArray(debt.allowed));
 assert.ok(debt.allowed.every(x=>x.rule==="react-hooks/exhaustive-deps"),"only explicitly audited hooks debt may be grandfathered");
-console.log("REM-00B CI infra contracts PASS: manifest/lock equality, patched Vite >=6.4.6 security floor, negative mismatch fixture, PR/main/staging triggers, bounded lanes, pinned browser, no global skip.");
+console.log("REM-00B CI infra contracts PASS: manifest/lock equality, patched Vite >=6.4.6 and @fastify/static >=10.1.11 security floors, negative mismatch fixture, PR/main/staging triggers, bounded lanes, pinned browser, no global skip.");
