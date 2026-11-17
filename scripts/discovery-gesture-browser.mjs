@@ -35,12 +35,12 @@ try{
  await page.locator(".moonstone-feed-card[data-expanded=false]").first().waitFor();
  await page.evaluate(()=>{
   window.__discoveryPointerTrace=[];
-  for(const kind of ["pointerdown","pointermove","pointercancel","pointerup"]){
+  for(const kind of ["pointerdown","pointermove","pointercancel","pointerup","lostpointercapture"]){
    document.addEventListener(kind,event=>{
     if(window.__discoveryPointerTrace.length>=100)return;
     const target=event.target;
     window.__discoveryPointerTrace.push({kind,x:event.clientX,y:event.clientY,
-     pointerType:event.pointerType,buttons:event.buttons,
+     pointerType:event.pointerType,pointerId:event.pointerId,buttons:event.buttons,
      className:typeof target?.className==="string"?target.className:String(target)});
    },true);
   }
@@ -53,7 +53,7 @@ try{
  const compactOffset=await offset();
  const before=await image.evaluate(node=>{window.__feedPhoto=node;return node.src;});
  await swipe(".deck-active .moonstone-location",0,-180);
- try{await page.locator(".deck-active .moonstone-feed-card[data-expanded=true]").waitFor({timeout:1800});}catch(error){console.log("DISCOVERY_GESTURE_REVEAL_DIAGNOSTIC",await page.locator(".deck-active .moonstone-feed-card").first().getAttribute("data-expanded"),await page.evaluate(()=>window.__discoveryPointerTrace));throw error;}
+ try{await page.locator(".deck-active .moonstone-feed-card[data-expanded=true]").waitFor({timeout:1800});}catch(error){console.log("DISCOVERY_GESTURE_REVEAL_DIAGNOSTIC",await page.locator(".deck-active .moonstone-feed-card").first().evaluate(node=>({expanded:node.getAttribute("data-expanded"),className:node.className,style:node.getAttribute("style"),touchAction:getComputedStyle(node).touchAction,hasCapture:node.hasPointerCapture(1),drawer:node.querySelector(".moonstone-profile-drawer")?.getBoundingClientRect().toJSON()})),await page.evaluate(()=>window.__discoveryPointerTrace));throw error;}
  assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
  assert.ok(await offset()<compactOffset-1,"Expanded text moves upward smoothly without recreating the photo");
