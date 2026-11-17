@@ -85,7 +85,7 @@ jobs:
             source-marker-contracts) npm run test:source-contracts ;;
             api-isolated) npm run test:api:isolated ;;
             beta-bootstrap-contract) node --test scripts/closed-beta-bootstrap.test.mjs ;;
-            security-dependencies) npm audit --audit-level=high ;;
+            security-dependencies) npm audit --audit-level=moderate ;;
             build) npm run build ;;
             local-smoke) npm run build && npm run smoke ;;
             *) echo "Unknown required gate: $GATE" >&2; exit 2 ;;
