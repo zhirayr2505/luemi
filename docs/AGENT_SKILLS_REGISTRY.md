@@ -12,6 +12,7 @@
 | `modern-web-guidance` | Modern browser behavior and web platform guidance | Pre-existing in main |
 | `find-skills` | Discover and vet future skills before installation | Adapted from [vercel-labs/skills](https://github.com/vercel-labs/skills) |
 | `code-review` | Spec + standards + security review of diffs/PRs | LUEMI adaptation inspired by [mattpocock/skills](https://github.com/mattpocock/skills) |
+| `requesting-code-review` | Review checklist and handoff prompt adapted for single-agent/human review | [obra/superpowers](https://github.com/obra/superpowers) |
 | `domain-modeling` | Maintain domain glossary and architecture decisions | [mattpocock/skills](https://github.com/mattpocock/skills) |
 | `research` | Primary-source technical research | LUEMI adaptation inspired by Matt Pocock |
 | `handoff` | Durable session/context transfer | LUEMI adaptation inspired by Matt Pocock |
