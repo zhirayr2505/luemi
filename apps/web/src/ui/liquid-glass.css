@@ -131,8 +131,8 @@
 }
 @media(prefers-reduced-transparency:reduce){
  :root,:root[data-lg-optics="safe"]{
-  --lg-tint:rgba(55,14,123,.94);
-  --lg-tint-bottom:rgba(22,10,43,.97);
+  --lg-tint:rgba(82,28,133,.96);
+  --lg-tint-bottom:rgba(26,10,42,.98);
   --lg-blur:0px;
  }
  .lg--accent{
