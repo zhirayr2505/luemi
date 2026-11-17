@@ -62,8 +62,10 @@ try{
  assert.ok(expandedHeight>=height&&expandedHeight<cardHeight,
   "Editorial bio may grow to measured content while staying inside the photo card");
  const actions=page.locator(".deck-active .moonstone-actions");
- const buttons=await actions.locator("button").count();
- assert.equal(buttons,3,"X / heart / star remain available during reveal");
+ assert.equal(await actions.locator(".moonstone-pass-button").count(),1,"skip action remains available during reveal");
+ assert.equal(await actions.locator(".moonstone-like-button").count(),1,"like / special action remains available during reveal");
+ assert.equal(await actions.locator(".moonstone-like-button .moonstone-super-star").count(),1,
+  "special like remains inside the combined brand action control");
  await swipe(".deck-active .moonstone-location",0,280);
  await page.locator(".deck-active .moonstone-feed-card[data-expanded=false]").waitFor({timeout:1800});
  assert.ok(await image.evaluate(node=>node===window.__feedPhoto),"Close preserves the same photo");
