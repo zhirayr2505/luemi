@@ -6,6 +6,7 @@ import {join} from "node:path";
 const read=path=>readFileSync(path,"utf8");
 const styles=read("apps/web/src/ui/luemi-v5.css");
 const app=read("apps/web/src/App.tsx");
+const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const markup=read("apps/web/index.html");
 const dirs=["apps/web/src"];
 function filesUnder(path){
@@ -39,6 +40,12 @@ test("Badoo Purple owns one deep violet/lilac palette",()=>{
  assert.ok(contrast(hex("luemi-text"),hex("luemi-bg"))>=7,"primary text is accessible on Badoo Purple");
  assert.ok(contrast(hex("luemi-text-secondary"),hex("luemi-surface"))>=4.5,"subtle text is legible");
  assert.ok(contrast(hex("luemi-text"),hex("luemi-accent"))>=4.5,"accent CTA is legible");
+});
+test("primary bottom navigation exposes accessible labels even when visible captions are hidden",()=>{
+ assert.ok(discovery.includes("aria-label={label}"),
+  "bottom navigation buttons must have a stable accessible name");
+ assert.ok(discovery.includes("aria-current={mainTab===value?\"page\":undefined}"),
+  "active navigation destination remains announced");
 });
 test("Warm Berry text roles replace silver-gray and retain readable contrast",()=>{
  assert.equal(hex("luemi-text-secondary").toUpperCase(),"#F3E8FC");

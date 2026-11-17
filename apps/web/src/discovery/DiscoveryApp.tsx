@@ -623,7 +623,7 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
    <nav className="discovery-bottom-nav" aria-label="Главная навигация LUEMI">
      {navigation.map(([value,label,Icon])=><button type="button" key={value}
        className={"discovery-nav-item"+(mainTab===value?" active":"")}
-       aria-current={mainTab===value?"page":undefined} onClick={()=>selectMainTab(value)}>
+       aria-label={label} aria-current={mainTab===value?"page":undefined} onClick={()=>selectMainTab(value)}>
        <Icon size={22} strokeWidth={1.75}/><span>{label}</span></button>)}
    </nav>
    <span className="discovery-sr-status" role="status" aria-live="polite">{announcement}</span>
