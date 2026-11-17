@@ -122,7 +122,7 @@ assertCheck("no redundant arrow photo controls",!sorter.includes("photo-reorder-
 assertCheck("native tap highlight disabled globally",style.includes("-webkit-tap-highlight-color:transparent"));
 assertCheck("selected interest chips use pastel feedback without duplicate checkmarks",
  style.includes(".interest-chip.selected{")&&!style.includes(".interest-chip.selected::after")&&
- read("apps/web/src/registration/v2/runtime.css").includes(".interest-chip.selected{color:#160A2B;transform:none;"));
+ read("apps/web/src/registration/v2/runtime.css").includes(".interest-chip.selected{color:#1A0A2A;transform:none;"));
 assertCheck("interest categories fixed while only interest list scrolls",style.includes(".onboard-body:has(.interests-step)")&&style.includes(".interests-step .interest-choices"));
 assertCheck("legacy language picker no longer ships its old chip CSS",!style.includes(".language-flag-selected")&&!style.includes(".language-chip active"));
 assertCheck("global shell uses Badoo Purple semantic colors",style.includes("--bg:var(--luemi-bg)")&&style.includes("--ink:var(--luemi-text)"));
