@@ -52,17 +52,17 @@ try{
    rect(feed),rect(summary),rect(details),rect(location),rect(goal),rect(nav),rect(logo),rect(tabs),rect(image),rect(actions)
   ]);
   assert(near(f.x,0,1)&&near(f.y,0,1)&&near(f.w,device.width,1),
-   \`Full-bleed Moonstone card must start at viewport origin on \${device.name}: \${JSON.stringify(f)}\`);
-  assert(near(f.h,device.height,2),\`Photo extends behind bottom navigation: \${JSON.stringify(f)}\`);
-  assert(near(l.x+l.w/2,device.width/2,2),\`Original LUEMI wordmark remains centered: \${JSON.stringify(l)}\`);
-  assert(t.y>=l.y+l.h-2,\`Tabs must follow logo: \${JSON.stringify({l,t})}\`);
-  assert(s.y>t.y+t.h+20,\`Compact identity follows top navigation: \${JSON.stringify({s,t})}\`);
-  assert(s.y>0&&s.b<a.y+10,\`Compact identity stays above actions: \${JSON.stringify({s,a})}\`);
-  assert(a.b<=n.y+5,\`Action row cannot be obscured by navigation: \${JSON.stringify({a,n})}\`);
-  assert(d.y>=s.y-2&&d.b<=s.b+2,\`Name/age remains in compact identity: \${JSON.stringify({s,d})}\`);
-  assert(loc.y>=s.y-2&&loc.b<=s.b+2,\`Location remains in compact identity: \${JSON.stringify({s,loc})}\`);
-  assert(g.y>=s.y-2&&g.b<=s.b+2,\`Goal chip remains in compact identity: \${JSON.stringify({s,g})}\`);
-  assert(near(i.x,0,2)&&near(i.w,device.width,2),\`Photo image must cover the viewport width\`);
+   `Full-bleed Moonstone card must start at viewport origin on ${device.name}: ${JSON.stringify(f)}`);
+  assert(near(f.h,device.height,2),`Photo extends behind bottom navigation: ${JSON.stringify(f)}`);
+  assert(near(l.x+l.w/2,device.width/2,2),`Original LUEMI wordmark remains centered: ${JSON.stringify(l)}`);
+  assert(t.y>=l.y+l.h-2,`Tabs must follow logo: ${JSON.stringify({l,t})}`);
+  assert(s.y>t.y+t.h+20,`Compact identity follows top navigation: ${JSON.stringify({s,t})}`);
+  assert(s.y>0&&s.b<a.y+10,`Compact identity stays above actions: ${JSON.stringify({s,a})}`);
+  assert(a.b<=n.y+5,`Action row cannot be obscured by navigation: ${JSON.stringify({a,n})}`);
+  assert(d.y>=s.y-2&&d.b<=s.b+2,`Name/age remains in compact identity: ${JSON.stringify({s,d})}`);
+  assert(loc.y>=s.y-2&&loc.b<=s.b+2,`Location remains in compact identity: ${JSON.stringify({s,loc})}`);
+  assert(g.y>=s.y-2&&g.b<=s.b+2,`Goal chip remains in compact identity: ${JSON.stringify({s,g})}`);
+  assert(near(i.x,0,2)&&near(i.w,device.width,2),`Photo image must cover the viewport width`);
   assert.equal(await actions.locator(".moonstone-pass-button").count(),1);
   assert.equal(await actions.locator(".moonstone-like-button").count(),1);
   assert.equal(await actions.locator(".moonstone-like-button .moonstone-super-star").count(),1);
@@ -82,11 +82,11 @@ try{
   const drawer=page.locator(".deck-active .moonstone-profile-drawer");
   const expanded=await rect(drawer);
   assert(expanded.y>=t.b+8,
-   \`Expanded detail layer must stay below interactive tabs: \${JSON.stringify({expanded,t})}\`);
+   `Expanded detail layer must stay below interactive tabs: ${JSON.stringify({expanded,t})}`);
   await screenshot(page,device.name+"-expanded");
   await toggle.click({force:true});
   await page.locator('.deck-active .moonstone-feed-card[data-expanded="false"]').waitFor({timeout:2400});
-  assert.deepEqual(errors,[],\`No runtime errors in \${device.name}\`);
+  assert.deepEqual(errors,[],`No runtime errors in ${device.name}`);
   console.log("FEED_REFERENCE_BROWSER_PASS",device.name,{goalBlur:material.blur,photo:f.h,nav:n.y,actions:a.y});
   await ctx.close();
  }
