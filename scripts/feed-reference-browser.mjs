@@ -19,7 +19,7 @@ const near=(a,b,tolerance=2)=>Math.abs(a-b)<=tolerance;
 const rect=async locator=>locator.evaluate(el=>{
  const r=el.getBoundingClientRect();return {x:r.left,y:r.top,w:r.width,h:r.height,b:r.bottom,r:r.right};
 });
-const screenshot=async(page,name)=>page.screenshot({path:\`\${root}/\${name}.png\`,animations:"disabled"});
+const screenshot=async(page,name)=>page.screenshot({path:root+"/"+name+".png",animations:"disabled"});
 try{
  for(const device of variants){
   const ctx=await browser.newContext({viewport:{width:device.width,height:device.height},isMobile:true,hasTouch:true,
