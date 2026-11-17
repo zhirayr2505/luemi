@@ -26,7 +26,7 @@ const required=[
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
   ["compact city suggestions open above input",/\.v2-runtime \.city-focus-shell \.geo-results\{[^}]*position:absolute;z-index:43;[^}]*top:auto;bottom:calc\(100% \+ 8px\)/s],
   ["city suggestion press feedback uses Badoo Purple",/\.v2-runtime \.geo-results button:active\{background:var\(--luemi-surface-raised\)/],
- ["shared Badoo Purple canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#160A2B\)/s]
+ ["shared Badoo Purple canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#1A0A2A\)/s]
 ];
 for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
