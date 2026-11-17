@@ -7,6 +7,7 @@ const read=path=>readFileSync(path,"utf8");
 const styles=read("apps/web/src/ui/luemi-v5.css");
 const app=read("apps/web/src/App.tsx");
 const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
+const gestureQa=read("scripts/discovery-gesture-browser.mjs");
 const markup=read("apps/web/index.html");
 const dirs=["apps/web/src"];
 function filesUnder(path){
@@ -40,6 +41,14 @@ test("Badoo Purple owns one deep violet/lilac palette",()=>{
  assert.ok(contrast(hex("luemi-text"),hex("luemi-bg"))>=7,"primary text is accessible on Badoo Purple");
  assert.ok(contrast(hex("luemi-text-secondary"),hex("luemi-surface"))>=4.5,"subtle text is legible");
  assert.ok(contrast(hex("luemi-text"),hex("luemi-accent"))>=4.5,"accent CTA is legible");
+});
+test("Discovery gesture QA targets the current Moonstone feed DOM",()=>{
+ assert.ok(gestureQa.includes(".moonstone-feed-card[data-expanded=false]"));
+ assert.ok(gestureQa.includes(".moonstone-profile-drawer"));
+ assert.ok(gestureQa.includes(".moonstone-location"));
+ assert.ok(gestureQa.includes(".moonstone-actions"));
+ assert.doesNotMatch(gestureQa,/feed-v2-(?:card|photo|details|content)/,
+  "retired Feed V2 selectors must not break active discovery browser QA");
 });
 test("primary bottom navigation exposes accessible labels even when visible captions are hidden",()=>{
  assert.ok(discovery.includes("aria-label={label}"),

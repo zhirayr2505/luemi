@@ -30,32 +30,32 @@ const swipe=async(selector,dx,dy)=>{
 try{
  await page.goto((process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173")+"/profile-qa.html",
   {waitUntil:"domcontentloaded"});
- await page.locator(".feed-v2-card[data-expanded=false]").first().waitFor();
- const image=page.locator(".deck-active .feed-v2-photo .carousel-track img").first();
- const info=page.locator(".deck-active .feed-v2-details");
- const text=page.locator(".deck-active .feed-v2-content");
+ await page.locator(".moonstone-feed-card[data-expanded=false]").first().waitFor();
+ const image=page.locator(".deck-active .moonstone-photo .carousel-track img").first();
+ const info=page.locator(".deck-active .moonstone-profile-drawer");
+ const text=page.locator(".deck-active .moonstone-profile-drawer");
  const height=await info.evaluate(node=>node.clientHeight);
  const offset=()=>text.evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node).transform).m42);
  const compactOffset=await offset();
  const before=await image.evaluate(node=>{window.__feedPhoto=node;return node.src;});
- await swipe(".deck-active .feed-v2-details .discovery-place",0,-180);
- await page.locator(".deck-active .feed-v2-card[data-expanded=true]").waitFor({timeout:1800});
+ await swipe(".deck-active .moonstone-profile-drawer .moonstone-location",0,-180);
+ await page.locator(".deck-active .moonstone-feed-card[data-expanded=true]").waitFor({timeout:1800});
  assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
  assert.ok(await offset()<compactOffset-1,"Expanded text moves upward smoothly without recreating the photo");
  const expandedHeight=await info.evaluate(node=>node.clientHeight);
- const cardHeight=await page.locator(".deck-active .feed-v2-card").evaluate(node=>node.clientHeight);
+ const cardHeight=await page.locator(".deck-active .moonstone-feed-card").evaluate(node=>node.clientHeight);
  assert.ok(expandedHeight>=height&&expandedHeight<cardHeight,
   "Editorial bio may grow to measured content while staying inside the photo card");
- const actions=page.locator(".deck-active .discovery-actions");
+ const actions=page.locator(".deck-active .moonstone-actions");
  const buttons=await actions.locator("button").count();
  assert.equal(buttons,3,"X / heart / star remain available during reveal");
- await swipe(".deck-active .feed-v2-details .discovery-place",0,190);
- await page.locator(".deck-active .feed-v2-card[data-expanded=false]").waitFor({timeout:1800});
+ await swipe(".deck-active .moonstone-profile-drawer .moonstone-location",0,190);
+ await page.locator(".deck-active .moonstone-feed-card[data-expanded=false]").waitFor({timeout:1800});
  assert.ok(await image.evaluate(node=>node===window.__feedPhoto),"Close preserves the same photo");
  assert.ok(Math.abs(await offset()-compactOffset)<1,"Close restores compact text position");
 
- await swipe(".deck-active .feed-v2-details .discovery-place",-205,0);
+ await swipe(".deck-active .moonstone-profile-drawer .moonstone-location",-205,0);
  await page.waitForTimeout(430);
  assert.equal((await selected())?.trim(),"Лента","Feed text horizontal swipes belong to the photo carousel");
  await swipe(".discovery-top-tabs",-205,0);
