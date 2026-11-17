@@ -41,7 +41,7 @@ for (const dir of skillDirs) {
     const target = rawTarget.split("#", 1)[0].split("?", 1)[0];
     if (!target) continue;
     const resolved = path.resolve(skillDir, target);
-    if (!resolved.startsWith(skillDir + path.sep) && resolved !== skillDir) {
+    if (!resolved.startsWith(skillsRoot + path.sep) && resolved !== skillsRoot) {
       failures.push(dir + ": link escapes skill directory: " + rawTarget);
       continue;
     }
