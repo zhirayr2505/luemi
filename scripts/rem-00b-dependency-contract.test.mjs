@@ -26,9 +26,8 @@ const lockedVite=lock.packages["node_modules/vite"];
 assert.ok(lockedVite,"Vite must be present in the npm lockfile");
 const versionTuple=String(lockedVite.version).split(".").map(Number);
 assert.equal(versionTuple.length,3,"locked Vite version must be a stable semver release");
-const minVite=[6,4,6];
-const patched=versionTuple.some((part,index)=>part>minVite[index]&&versionTuple.slice(0,index).every((v,i)=>v===minVite[i]))||
- versionTuple.every((part,index)=>part===minVite[index]||index>2);
+const [viteMajor,viteMinor,vitePatch]=versionTuple;
+const patched=viteMajor>6||(viteMajor===6&&(viteMinor>4||(viteMinor===4&&vitePatch>=6)));
 assert.ok(patched,"Vite "+lockedVite.version+" is below the 6.4.6 security floor (GHSA-p4f5-76q4-ffq7)");
 assert.equal(lockedVite.resolved,"https://registry.npmjs.org/vite/-/vite-"+lockedVite.version+".tgz","Vite lockfile tarball must match its locked version");
 assert.ok(/^sha512-[A-Za-z0-9+/]+=*$/.test(lockedVite.integrity??""),"Vite lockfile must retain SHA-512 integrity");
