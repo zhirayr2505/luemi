@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { LogController } from "fastify";
 import cors from "@fastify/cors";
 import { timingSafeEqual } from "node:crypto";
 import type { BootstrapResponse, HealthResponse } from "@luemi/contracts";
@@ -30,7 +30,7 @@ export function buildApp(config: ApiConfig, welcomeSender?: WelcomeWidgetSender)
     logger: config.logger,
     bodyLimit: 10240,
     trustProxy: false,
-    disableRequestLogging: true
+    logController: new LogController({ disableRequestLogging: true })
   });
   app.register(cors, {
     origin: config.origin,
