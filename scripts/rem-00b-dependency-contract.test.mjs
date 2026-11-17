@@ -19,6 +19,19 @@ function assertWorkspaceLock(manifest,locked){
  assert.equal(locked.packages["node_modules/eslint-plugin-react-hooks"].version,manifest.devDependencies["eslint-plugin-react-hooks"]);
 }
 assertWorkspaceLock(pkg,lock);
+const web=JSON.parse(read("apps/web/package.json"));
+assert.equal(web.dependencies.vite,"^6.4.6","Vite workspace range must stay on the patched 6.4 line");
+assert.equal(lock.packages["apps/web"].dependencies.vite,web.dependencies.vite,"workspace Vite range differs from lockfile");
+const lockedVite=lock.packages["node_modules/vite"];
+assert.ok(lockedVite,"Vite must be present in the npm lockfile");
+const versionTuple=String(lockedVite.version).split(".").map(Number);
+assert.equal(versionTuple.length,3,"locked Vite version must be a stable semver release");
+const minVite=[6,4,6];
+const patched=versionTuple.some((part,index)=>part>minVite[index]&&versionTuple.slice(0,index).every((v,i)=>v===minVite[i]))||
+ versionTuple.every((part,index)=>part===minVite[index]||index>2);
+assert.ok(patched,"Vite "+lockedVite.version+" is below the 6.4.6 security floor (GHSA-p4f5-76q4-ffq7)");
+assert.equal(lockedVite.resolved,"https://registry.npmjs.org/vite/-/vite-"+lockedVite.version+".tgz","Vite lockfile tarball must match its locked version");
+assert.ok(/^sha512-[A-Za-z0-9+/]+=*$/.test(lockedVite.integrity??""),"Vite lockfile must retain SHA-512 integrity");
 assert.throws(()=>assertWorkspaceLock({...pkg,devDependencies:{...pkg.devDependencies,playwright:"0.0.0"}},lock),/lockfile does not match|playwright/,"mismatched package manifest must fail");
 assert.equal(pkg.packageManager,"npm@10.9.2");
 assert.equal(read(".node-version").trim(),"22.16.0");
@@ -41,4 +54,4 @@ const debt=JSON.parse(read("qa/react-hooks-baseline.json"));
 assert.equal(debt.schemaVersion,1);
 assert.ok(Array.isArray(debt.allowed));
 assert.ok(debt.allowed.every(x=>x.rule==="react-hooks/exhaustive-deps"),"only explicitly audited hooks debt may be grandfathered");
-console.log("REM-00B CI infra contracts PASS: manifest/lock equality, negative mismatch fixture, PR/main/staging triggers, bounded lanes, pinned browser, no global skip.");
+console.log("REM-00B CI infra contracts PASS: manifest/lock equality, patched Vite >=6.4.6 security floor, negative mismatch fixture, PR/main/staging triggers, bounded lanes, pinned browser, no global skip.");
