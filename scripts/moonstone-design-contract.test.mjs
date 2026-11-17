@@ -75,7 +75,7 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/liquid-glass\.css";/);
  assert.match(lens,/--lg-rim-light:rgba\(255,255,255,\.36\)/);
  assert.match(lens,/--lg-chroma-warm:rgba\(255,187,208,\.34\)/);
- assert.match(lens,/--lg-chroma-cool:rgba\\(188,168,242,\\.28\\)/);
+ assert.match(lens,/--lg-chroma-cool:rgba\(188,168,242,\.28\)/);
  assert.match(lens,/backdrop-filter:blur\(var\(--lg-blur\)\)/);
  assert.match(lens,/prefers-reduced-transparency:reduce/);
  assert.match(lens,/prefers-reduced-motion:reduce/);
