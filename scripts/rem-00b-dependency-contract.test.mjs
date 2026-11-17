@@ -19,6 +19,23 @@ function assertWorkspaceLock(manifest,locked){
  assert.equal(locked.packages["node_modules/eslint-plugin-react-hooks"].version,manifest.devDependencies["eslint-plugin-react-hooks"]);
 }
 assertWorkspaceLock(pkg,lock);
+assert.equal(pkg.devDependencies["typescript-eslint"],"^8.73.0","TypeScript ESLint must be on the fixed minimatch dependency line");
+assert.equal(lock.packages["node_modules/typescript-eslint"].version,"8.73.0","TypeScript ESLint lock entry must match the approved minor release");
+const estree=lock.packages["node_modules/@typescript-eslint/typescript-estree"];
+assert.equal(estree.version,"8.73.0","typescript-estree lock entry must match the approved minor release");
+assert.equal(estree.dependencies.minimatch,"^11.0.1","typescript-estree must request patched minimatch 11");
+function isPatchedMinimatch(version){
+ const [major,minor,patch]=String(version).split(".").map(Number);
+ return major>11||(major===11&&(minor>0||(minor===0&&patch>=1)));
+}
+const vulnerableMinimatch=Object.entries(lock.packages).filter(([path,item])=>{
+ if(!(path==="node_modules/minimatch"||path.endsWith("/node_modules/minimatch"))) return false;
+ const [major]=String(item.version).split(".").map(Number);
+ return major>=7&&!isPatchedMinimatch(item.version);
+});
+assert.deepEqual(vulnerableMinimatch,[],"lockfile must not contain a vulnerable minimatch >=7,<11.0.1 copy");
+assert.ok(isPatchedMinimatch(lock.packages["node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch"]?.version??"0.0.0"),"typescript-estree must resolve patched minimatch 11.0.1 or later");
+assert.ok(/^sha512-[A-Za-z0-9+/]+=*$/.test(estree.integrity??""),"typescript-estree lock entry must retain SHA-512 integrity");
 const api=JSON.parse(read("apps/api/package.json"));
 assert.equal(api.dependencies["@fastify/static"],"^10.1.11","static plugin must stay on a patched Fastify 5-compatible line");
 assert.equal(lock.packages["apps/api"].dependencies["@fastify/static"],api.dependencies["@fastify/static"],"API static package range differs from lockfile");
@@ -44,6 +61,8 @@ assert.ok(/^sha512-[A-Za-z0-9+/]+=*$/.test(lockedVite.integrity??""),"Vite lockf
 assert.throws(()=>assertWorkspaceLock({...pkg,devDependencies:{...pkg.devDependencies,playwright:"0.0.0"}},lock),/lockfile does not match|playwright/,"mismatched package manifest must fail");
 assert.equal(pkg.packageManager,"npm@10.9.2");
 assert.equal(read(".node-version").trim(),"22.16.0");
+const apiSource=read("apps/api/src/app.ts");
+assert.match(apiSource,/logController:\s*new LogController\(\{\s*disableRequestLogging:\s*true\s*\}\)/,"Fastify request logging must use the non-deprecated LogController API");
 const foundation=read(".github/workflows/rebuild-ci.yml");
 const visual=read(".github/workflows/stage03g3-visual.yml");
 for(const [name,config] of [["foundation",foundation],["visual",visual]]){
