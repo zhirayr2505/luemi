@@ -52,7 +52,7 @@ try{
  const offset=()=>text.evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node).transform).m42);
  const compactOffset=await offset();
  const before=await image.evaluate(node=>{window.__feedPhoto=node;return node.src;});
- await swipe(".deck-active .moonstone-location",0,-180);
+ await swipe(".deck-active .moonstone-location",0,-280);
  try{await page.locator(".deck-active .moonstone-feed-card[data-expanded=true]").waitFor({timeout:1800});}catch(error){console.log("DISCOVERY_GESTURE_REVEAL_DIAGNOSTIC",await page.locator(".deck-active .moonstone-feed-card").first().evaluate(node=>({expanded:node.getAttribute("data-expanded"),className:node.className,style:node.getAttribute("style"),touchAction:getComputedStyle(node).touchAction,hasCapture:node.hasPointerCapture(1),drawer:node.querySelector(".moonstone-profile-drawer")?.getBoundingClientRect().toJSON()})),await page.evaluate(()=>window.__discoveryPointerTrace));throw error;}
  assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
@@ -64,7 +64,7 @@ try{
  const actions=page.locator(".deck-active .moonstone-actions");
  const buttons=await actions.locator("button").count();
  assert.equal(buttons,3,"X / heart / star remain available during reveal");
- await swipe(".deck-active .moonstone-location",0,190);
+ await swipe(".deck-active .moonstone-location",0,280);
  await page.locator(".deck-active .moonstone-feed-card[data-expanded=false]").waitFor({timeout:1800});
  assert.ok(await image.evaluate(node=>node===window.__feedPhoto),"Close preserves the same photo");
  assert.ok(Math.abs(await offset()-compactOffset)<1,"Close restores compact text position");
