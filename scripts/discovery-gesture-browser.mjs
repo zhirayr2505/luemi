@@ -33,6 +33,18 @@ try{
  await page.goto((process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173")+"/profile-qa.html",
   {waitUntil:"domcontentloaded"});
  await page.locator(".moonstone-feed-card[data-expanded=false]").first().waitFor();
+ await page.evaluate(()=>{
+  window.__discoveryPointerTrace=[];
+  for(const kind of ["pointerdown","pointermove","pointercancel","pointerup"]){
+   document.addEventListener(kind,event=>{
+    if(window.__discoveryPointerTrace.length>=100)return;
+    const target=event.target;
+    window.__discoveryPointerTrace.push({kind,x:event.clientX,y:event.clientY,
+     pointerType:event.pointerType,buttons:event.buttons,
+     className:typeof target?.className==="string"?target.className:String(target)});
+   },true);
+  }
+ });
  const image=page.locator(".deck-active .moonstone-photo .carousel-track img").first();
  const info=page.locator(".deck-active .moonstone-profile-drawer");
  const text=page.locator(".deck-active .moonstone-profile-drawer");
