@@ -27,3 +27,36 @@ Authoritative source: [docs/PRODUCT_DIRECTION.md](docs/PRODUCT_DIRECTION.md).
 - Do not overwrite main, merge or deploy changes when the task explicitly forbids it.
 
 When blocked by infrastructure or approvals, work on the actual blockers, report the precise missing readiness, and NEVER suggest shrinking LUEMI's intended audience to two people as the solution.
+
+## Agent skill routing (17 November 2026)
+
+Load only skills relevant to the current task; do not load every skill on every request.
+
+| Work type | Required skill routing |
+|---|---|
+| Multi-step feature or refactor | `writing-plans`, then `executing-plans`; use `to-spec` first when requirements are not yet crisp |
+| Bug, regression, failed test, or unexplained performance issue | `systematic-debugging` before proposing a fix; use `test-driven-development` for the regression test |
+| Any production-code behavior change | `test-driven-development` unless the change is documentation/configuration-only or generated |
+| Before PR/merge readiness | `code-review` and `verification-before-completion` |
+| React/Vite UI and rendering performance | `react-best-practices` and `modern-web-guidance`; for visual/accessibility audits use `web-design-guidelines` |
+| Motion, swipe, sheet, carousel, profile morph, scroll handoff | `gestures` and `luemi-motion-architecture` |
+| Telegram WebView, keyboard, safe-area, touch/device QA | `luemi-telegram-webview-qa` |
+| SQL, schema, indexes, PostgreSQL roles, RLS, pooling, migrations | `supabase-postgres-best-practices` and `luemi-security-review` |
+| Authentication, media privacy, consent, moderation, account deletion | `luemi-security-review` |
+| Architecture or technical-debt review | `architecture-audit` |
+| Domain terms, domain model, or durable decisions | `domain-modeling` |
+| External technical research | `research` |
+| Context transfer between sessions | `handoff` |
+| Finding/adding future agent capabilities | `find-skills`; validate with `skill-creator` |
+
+### Cross-skill guardrails
+
+- Skill files are agent guidance, not runtime dependencies. Do not install npm packages or change application behavior merely by adding a skill.
+- LUEMI is React 19 + Vite and Fastify 5, not Next.js. Ignore Next.js-only guidance unless the stack changes deliberately.
+- Do not add shadcn/ui, Motion, Vaul, Zustand, SWR, or another framework/library without a demonstrated gap and an explicit architecture decision.
+- Preserve approved product direction, visual system, original wordmark, Profile Morph V3, and existing gesture arbitration.
+- All database changes must be validated on disposable PostgreSQL. No production migration, live Storage write, secret/config change, or deployment without explicit scoped authorization.
+- Distinguish source/static checks, CI, browser automation, and physical-device QA. Never claim a layer that was not run.
+- Skills that assume background agents, an unconfigured issue tracker, or unavailable CLI tools must be adapted to the current single-agent and repository workflow; do not invent those capabilities.
+
+Registry and upstream pinning: [docs/AGENT_SKILLS_REGISTRY.md](docs/AGENT_SKILLS_REGISTRY.md).

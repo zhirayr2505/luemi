@@ -1,43 +1,17 @@
 ---
 name: web-design-guidelines
-description: Review UI code for Web Interface Guidelines compliance. Use when asked to "review my UI", "check accessibility", "audit design", "review UX", or "check my site against best practices".
+description: Review LUEMI frontend code for accessibility, mobile usability, semantic controls, forms, responsive behavior, and interface-quality issues. Use when asked to audit or review UI/UX.
 metadata:
-  author: vercel
-  version: "1.0.0"
-  argument-hint: <file-or-pattern>
+  source: https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines
 ---
 
 # Web Interface Guidelines
 
-Review files for compliance with Web Interface Guidelines.
-
-## How It Works
-
-1. Fetch the latest guidelines from the source URL below
-2. Read the specified files (or prompt user for files/pattern)
-3. Check against all rules in the fetched guidelines
-4. Output findings in the terse `file:line` format
-
-## Guidelines Source
-
-Fetch fresh guidelines before each review:
-
-```
+Before each review, fetch the latest official checklist:
 https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md
-```
 
-Use WebFetch to retrieve the latest rules. The fetched content contains all the rules and output format instructions.
+Read the requested files and relevant rendered states. Report concise actionable findings with file/line references when source evidence exists.
 
-## Usage
+## LUEMI constraints
 
-When a user provides a file or pattern argument:
-1. Fetch guidelines from the source URL above
-2. Read the specified files
-3. Apply all rules from the fetched guidelines
-4. Output findings using the format specified in the guidelines
-
-If no files specified, ask the user which files to review.
-
-
-## LUEMI compatibility
-Use this as an audit checklist, not a mandate to redesign. Preserve the currently approved LUEMI visual system, original wordmark, typography, component geometry, and motion decisions. Report accessibility/usability defects and propose minimal fixes; do not replace the palette or invent themes without explicit owner direction. Before each audit, fetch current upstream guidelines as described above and record the access date.
+This is an audit skill, not a redesign mandate. Preserve the owner-approved visual system, original wordmark, component hierarchy, typography, Profile Morph, and gesture behavior. Report actual accessibility/usability defects and propose the smallest corrections. Do not change the palette, introduce a new design system, or add UI dependencies without explicit approval.
