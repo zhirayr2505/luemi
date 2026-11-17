@@ -26,7 +26,7 @@ const required=[
  ["search input text gutter",/\.v2-runtime\s+\.geo-input-wrap>\.glass-control\.geo-input/],
   ["compact city suggestions open above input",/\.v2-runtime \.city-focus-shell \.geo-results\{[^}]*position:absolute;z-index:43;[^}]*top:auto;bottom:calc\(100% \+ 8px\)/s],
   ["city suggestion press feedback uses Badoo Purple",/\.v2-runtime \.geo-results button:active\{background:var\(--luemi-surface-raised\)/],
- ["shared Badoo Purple canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#160A2B\)/s]
+ ["shared Badoo Purple canvas",/\.v2-runtime\s*\{[^}]*background:var\(--luemi-bg-deep,#1A0A2A\)/s]
 ];
 for(const [description,pattern] of required)
  assert.match(runtime,pattern,description+" must stay visible on Android Telegram");
@@ -296,7 +296,7 @@ assert.match(runtime,/\.v2-goal-check\{[^}]*opacity:0;transform:scale\(\.84\);[^
  "Inactive badges remain at their fixed corner anchor and smoothly appear");
 assert.match(runtime,/\.glass-choice\.selected \.glass-choice-corner-check,[^}]*opacity:1;transform:scale\(1\)/s,
  "Selected badges transition opacity and scale only, not the layout position");
-assert.match(runtime, /\.interest-chip\.selected\{[^}]*color:#160A2B/s,
+assert.match(runtime, /\.interest-chip\.selected\{[^}]*color:#1A0A2A/s,
  "Selected pastel interests use legible dark foreground");
 assert.match(runtime, /\.v2-stage-heading::after\{[^}]*backdrop-filter:blur\(12px\) saturate\(114%\)/s,
  "All registration headlines use a thin, glassy Badoo Purple refraction");

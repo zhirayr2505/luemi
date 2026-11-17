@@ -31,4 +31,4 @@
 .lh-browse .lh-logo-contrast{opacity:0}
 .lh-chats .lh-island img{filter:none}
 .lh-chats .lh-logo-contrast{display:none}
-.lh-header button:focus-visible{outline:2px solid #CAB6D6;outline-offset:3px}
+.lh-header button:focus-visible{outline:2px solid var(--luemi-focus);outline-offset:3px}

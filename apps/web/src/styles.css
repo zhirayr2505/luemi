@@ -5,9 +5,9 @@
 button{cursor:pointer}button:disabled{cursor:not-allowed}
 .luemi-shell{
  --bg:var(--luemi-bg);--ink:var(--luemi-text);--subtle:var(--luemi-text-secondary);
- --panel:rgba(34,21,53,.82);--glass-edge:var(--luemi-border);--line:var(--luemi-border);
- --lavender:var(--luemi-lavender);--pink:var(--luemi-rose);--shadow:rgba(20,11,19,.28);
- --mist-lavender:rgba(134,93,191,.12);--mist-rose:rgba(149,111,202,.06);
+ --panel:rgba(66,27,107,.88);--glass-edge:var(--luemi-border);--line:var(--luemi-border);
+ --lavender:var(--luemi-lavender);--pink:var(--luemi-rose);--shadow:rgba(12,4,25,.36);
+ --mist-lavender:rgba(110,62,255,.18);--mist-rose:rgba(255,187,208,.14);
  --top-safe:max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px),var(--tg-content-safe-area-inset-top,0px),var(--viewport-safe-top,0px));
  --brand-top:max(calc(var(--top-safe) + 18px),84px);
  --bottom-safe:max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px),var(--tg-content-safe-area-inset-bottom,0px),var(--viewport-safe-bottom,0px));
@@ -17,7 +17,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 /* No white underlay or shell resize while Android closes the keyboard. */
 .luemi-shell[data-registration-shell="true"]{
  top:0;height:var(--registration-layout-height,100dvh);
- background:var(--luemi-bg-deep,#160A2B);
+ background:var(--luemi-bg-deep,#1A0A2A);
 }
 .milky-mist{position:absolute;inset:-9%;z-index:-1;pointer-events:none;
  background:radial-gradient(ellipse at 14% 11%,var(--mist-lavender),transparent 58%),radial-gradient(ellipse at 82% 85%,var(--mist-rose),transparent 59%)}
@@ -58,7 +58,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .onboard-logo{width:94px;height:auto;display:block;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(82,51,126,.15))}
 .progress-track{height:4px;border-radius:999px;background:var(--line);overflow:hidden;margin:7px 0 0}
 .progress-track span{display:block;width:100%;height:100%;border-radius:inherit;
- transform:scaleX(0);transform-origin:left center;background:linear-gradient(90deg,#C3A9D2,#D8CBE0);
+ transform:scaleX(0);transform-origin:left center;background:linear-gradient(90deg,var(--luemi-rose),var(--luemi-lavender));
  transition:transform .24s ease}
 .onboard-head{flex:none;min-height:0;margin:0 0 12px}
 .onboard-head h1{font-size:clamp(28px,7.1vw,39px);line-height:1.17;letter-spacing:-.044em;margin:0 0 7px}
@@ -107,7 +107,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .glass-check-indicator{width:23px;height:23px;flex:none;border:1px solid rgba(193,166,209,.5);border-radius:8px;
  display:grid;place-items:center;background:rgba(255,255,255,.65);box-shadow:inset 0 1px rgba(255,255,255,.7);color:transparent;
  transition:background .18s,border .18s,transform .18s}
-.glass-check input:checked + .glass-check-indicator{background:linear-gradient(132deg,#CBB7D6,#D8CBE0);
+.glass-check input:checked + .glass-check-indicator{background:linear-gradient(132deg,var(--luemi-rose),var(--luemi-lavender));
  border-color:rgba(196,171,211,.7);color:white;transform:scale(1.03)}
 .glass-check input:focus-visible + .glass-check-indicator{outline:3px solid #AA81C2;outline-offset:3px}
 .glass-check-copy{flex:1;display:flex;align-items:center;gap:8px}
@@ -183,7 +183,7 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .mosaic-slot.drag-source>img{opacity:.36}
 .slot-index{position:absolute;bottom:5px;left:7px;background:#FFFBE9;color:#372352;border-radius:999px;
  padding:3px 7px;font-size:10px;font-weight:800}
-.primary-photo{position:absolute;top:7px;left:7px;border-radius:999px;background:linear-gradient(125deg,#C9B4D5,#D8CBE0);
+.primary-photo{position:absolute;top:7px;left:7px;border-radius:999px;background:linear-gradient(125deg,var(--luemi-lavender),var(--luemi-lavender));
  color:#FFFFFF;padding:6px 10px;font-size:11px;font-weight:700}
 .add-photo{border:0;background:transparent;color:#BD9FCF;display:grid;place-items:center;width:100%;height:100%}
 .empty-number{opacity:.3;font-weight:700}

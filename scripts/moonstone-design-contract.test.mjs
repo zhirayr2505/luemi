@@ -6,6 +6,9 @@ import {join} from "node:path";
 const read=path=>readFileSync(path,"utf8");
 const styles=read("apps/web/src/ui/luemi-v5.css");
 const app=read("apps/web/src/App.tsx");
+const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
+const gestureQa=read("scripts/discovery-gesture-browser.mjs");
+const feedReferenceQa=read("scripts/feed-reference-browser.mjs");
 const markup=read("apps/web/index.html");
 const dirs=["apps/web/src"];
 function filesUnder(path){
@@ -28,17 +31,51 @@ function contrast(a,b){
  return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);
 }
 test("Badoo Purple owns one deep violet/lilac palette",()=>{
- assert.equal(hex("luemi-bg").toUpperCase(),"#1E0F38");
- assert.equal(hex("luemi-bg-deep").toUpperCase(),"#160A2B");
- assert.equal(hex("luemi-surface").toUpperCase(),"#32165F");
- assert.equal(hex("luemi-glass").toUpperCase(),"#4C2787");
+ assert.equal(hex("luemi-bg").toUpperCase(),"#26103E");
+ assert.equal(hex("luemi-bg-deep").toUpperCase(),"#1A0A2A");
+ assert.equal(hex("luemi-surface").toUpperCase(),"#421B6B");
+ assert.equal(hex("luemi-glass").toUpperCase(),"#613090");
  assert.equal(hex("luemi-accent").toUpperCase(),"#6E3EFF");
  assert.equal(hex("luemi-lavender").toUpperCase(),"#BCA8F2");
  assert.equal(hex("luemi-rose").toUpperCase(),"#FFBBD0");
- assert.equal(hex("luemi-text").toUpperCase(),"#F8F5FF");
+ assert.equal(hex("luemi-text").toUpperCase(),"#FFF8FF");
  assert.ok(contrast(hex("luemi-text"),hex("luemi-bg"))>=7,"primary text is accessible on Badoo Purple");
  assert.ok(contrast(hex("luemi-text-secondary"),hex("luemi-surface"))>=4.5,"subtle text is legible");
  assert.ok(contrast(hex("luemi-text"),hex("luemi-accent"))>=4.5,"accent CTA is legible");
+});
+test("feed visual QA references current Moonstone Feed and semantic action controls",()=>{
+ assert.ok(feedReferenceQa.includes(".moonstone-feed-card"));
+ assert.ok(feedReferenceQa.includes(".moonstone-compact-info"));
+ assert.ok(feedReferenceQa.includes(".moonstone-profile-toggle"));
+ assert.ok(feedReferenceQa.includes(".moonstone-profile-drawer"));
+ assert.ok(feedReferenceQa.includes(".moonstone-like-button"));
+ assert.doesNotMatch(feedReferenceQa,/feed-v2-/,"retired Feed V2 selectors must not return");
+});
+test("Discovery gesture QA targets the current Moonstone feed DOM",()=>{
+ assert.ok(gestureQa.includes(".moonstone-feed-card[data-expanded=false]"));
+ assert.ok(gestureQa.includes(".moonstone-profile-drawer"));
+ assert.ok(gestureQa.includes(".moonstone-location"));
+ assert.ok(gestureQa.includes(".moonstone-actions"));
+ assert.doesNotMatch(gestureQa,/feed-v2-(?:card|photo|details|content)/,
+  "retired Feed V2 selectors must not break active discovery browser QA");
+});
+test("primary bottom navigation exposes accessible labels even when visible captions are hidden",()=>{
+ assert.ok(discovery.includes("aria-label={label}"),
+  "bottom navigation buttons must have a stable accessible name");
+ assert.ok(discovery.includes("aria-current={mainTab===value?\"page\":undefined}"),
+  "active navigation destination remains announced");
+});
+test("Warm Berry text roles replace silver-gray and retain readable contrast",()=>{
+ assert.equal(hex("luemi-text-secondary").toUpperCase(),"#F3E8FC");
+ assert.equal(hex("luemi-text-muted").toUpperCase(),"#D4BBDD");
+ assert.notEqual(hex("luemi-text-muted").toUpperCase(),"#AAA2B8",
+  "Silver Lining gray must not dominate everyday UI text");
+ assert.ok(contrast(hex("luemi-text-secondary"),hex("luemi-accent"))>=4.5,
+  "secondary text remains legible on the primary action color");
+ assert.ok(contrast(hex("luemi-text-muted"),hex("luemi-glass"))>=4.5,
+  "muted text remains legible on glass surfaces");
+ assert.ok(contrast(hex("luemi-text"),hex("luemi-accent"))>=4.5,
+  "primary action labels remain legible");
 });
 test("all rendered CSS is free of legacy V5 plum literals and malformed rgba",()=>{
  assert.ok(files.length>=22,"audit must include every style module");
@@ -62,8 +99,8 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  const entry=read("apps/web/src/main.tsx");
  assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/liquid-glass\.css";/);
  assert.match(lens,/--lg-rim-light:rgba\(255,255,255,\.36\)/);
- assert.match(lens,/--lg-chroma-warm:rgba\(255,187,208,\.26\)/);
- assert.match(lens,/--lg-chroma-cool:rgba\(188,168,242,\.24\)/);
+ assert.match(lens,/--lg-chroma-warm:rgba\(255,187,208,\.34\)/);
+ assert.match(lens,/--lg-chroma-cool:rgba\(188,168,242,\.28\)/);
  assert.match(lens,/backdrop-filter:blur\(var\(--lg-blur\)\)/);
  assert.match(lens,/prefers-reduced-transparency:reduce/);
  assert.match(lens,/prefers-reduced-motion:reduce/);
@@ -105,7 +142,7 @@ test("Telegram system chrome and entire app share same Badoo Purple theme",()=>{
  assert.match(app,/getComputedStyle\(document.documentElement\)/);
  assert.match(app,/getPropertyValue\("--luemi-bg"\)/);
  assert.match(app,/installMoonstoneOptics\(document\)/);
- assert.match(markup,/name="theme-color" content="#1E0F38"/);
+ assert.match(markup,/name="theme-color" content="#26103E"/);
  assert.match(app,/wordmark_original_raster_alpha_W06\.webp/);
  assert.ok(existsSync("apps/web/public/assets/brand/wordmark_original_raster_alpha_W06.webp"),
   "original LUEMI logo must remain unchanged and bundled");
@@ -155,7 +192,7 @@ test("deleted registration language flow and artificial photo cropping stay dele
    "demo-only photo crop would distort real second photos in "+file);
  }
  const prototype=read("apps/web/src/discovery/profile-v3/rendering/ProfileMorphSurface.css");
- assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#32165F\)/,
+ assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#421B6B\)/,
   "even isolated V3 previews must use Badoo Purple rather than white UI");
 });
 

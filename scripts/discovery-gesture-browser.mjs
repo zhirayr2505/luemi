@@ -16,6 +16,8 @@ const center=async selector=>{
 };
 const swipe=async(selector,dx,dy)=>{
  const {x,y}=await center(selector);
+ const hit=await page.evaluate(({x,y})=>{const el=document.elementFromPoint(x,y);return {tag:el?.tagName,cls:typeof el?.className==="string"?el.className:"",chain:(()=>{const a=[];let n=el;while(n&&a.length<6){a.push(n.tagName.toLowerCase()+"."+String(n.className??"").trim().replace(/\\s+/g,"."));n=n.parentElement;}return a;})()};},{x,y});
+ console.log("DISCOVERY_GESTURE_HIT",selector,{x,y,hit});
  const session=await context.newCDPSession(page);
  try{
   await session.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y,id:1}]});
@@ -30,32 +32,46 @@ const swipe=async(selector,dx,dy)=>{
 try{
  await page.goto((process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173")+"/profile-qa.html",
   {waitUntil:"domcontentloaded"});
- await page.locator(".feed-v2-card[data-expanded=false]").first().waitFor();
- const image=page.locator(".deck-active .feed-v2-photo .carousel-track img").first();
- const info=page.locator(".deck-active .feed-v2-details");
- const text=page.locator(".deck-active .feed-v2-content");
+ await page.locator(".moonstone-feed-card[data-expanded=false]").first().waitFor();
+ await page.evaluate(()=>{
+  window.__discoveryPointerTrace=[];
+  for(const kind of ["pointerdown","pointermove","pointercancel","pointerup","lostpointercapture"]){
+   document.addEventListener(kind,event=>{
+    if(window.__discoveryPointerTrace.length>=100)return;
+    const target=event.target;
+    window.__discoveryPointerTrace.push({kind,x:event.clientX,y:event.clientY,
+     pointerType:event.pointerType,pointerId:event.pointerId,buttons:event.buttons,
+     className:typeof target?.className==="string"?target.className:String(target)});
+   },true);
+  }
+ });
+ const image=page.locator(".deck-active .moonstone-photo .carousel-track img").first();
+ const info=page.locator(".deck-active .moonstone-profile-drawer");
+ const text=page.locator(".deck-active .moonstone-profile-drawer");
  const height=await info.evaluate(node=>node.clientHeight);
  const offset=()=>text.evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node).transform).m42);
  const compactOffset=await offset();
  const before=await image.evaluate(node=>{window.__feedPhoto=node;return node.src;});
- await swipe(".deck-active .feed-v2-details .discovery-place",0,-180);
- await page.locator(".deck-active .feed-v2-card[data-expanded=true]").waitFor({timeout:1800});
+ await swipe(".deck-active .moonstone-location",0,-280);
+ try{await page.locator(".deck-active .moonstone-feed-card[data-expanded=true]").waitFor({timeout:1800});}catch(error){console.log("DISCOVERY_GESTURE_REVEAL_DIAGNOSTIC",await page.locator(".deck-active .moonstone-feed-card").first().evaluate(node=>({expanded:node.getAttribute("data-expanded"),className:node.className,style:node.getAttribute("style"),touchAction:getComputedStyle(node).touchAction,hasCapture:node.hasPointerCapture(1),drawer:node.querySelector(".moonstone-profile-drawer")?.getBoundingClientRect().toJSON()})),await page.evaluate(()=>window.__discoveryPointerTrace));throw error;}
  assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
  assert.ok(await offset()<compactOffset-1,"Expanded text moves upward smoothly without recreating the photo");
  const expandedHeight=await info.evaluate(node=>node.clientHeight);
- const cardHeight=await page.locator(".deck-active .feed-v2-card").evaluate(node=>node.clientHeight);
+ const cardHeight=await page.locator(".deck-active .moonstone-feed-card").evaluate(node=>node.clientHeight);
  assert.ok(expandedHeight>=height&&expandedHeight<cardHeight,
   "Editorial bio may grow to measured content while staying inside the photo card");
- const actions=page.locator(".deck-active .discovery-actions");
- const buttons=await actions.locator("button").count();
- assert.equal(buttons,3,"X / heart / star remain available during reveal");
- await swipe(".deck-active .feed-v2-details .discovery-place",0,190);
- await page.locator(".deck-active .feed-v2-card[data-expanded=false]").waitFor({timeout:1800});
+ const actions=page.locator(".deck-active .moonstone-actions");
+ assert.equal(await actions.locator(".moonstone-pass-button").count(),1,"skip action remains available during reveal");
+ assert.equal(await actions.locator(".moonstone-like-button").count(),1,"like / special action remains available during reveal");
+ assert.equal(await actions.locator(".moonstone-like-button .moonstone-super-star").count(),1,
+  "special like remains inside the combined brand action control");
+ await swipe(".deck-active .moonstone-location",0,280);
+ await page.locator(".deck-active .moonstone-feed-card[data-expanded=false]").waitFor({timeout:1800});
  assert.ok(await image.evaluate(node=>node===window.__feedPhoto),"Close preserves the same photo");
  assert.ok(Math.abs(await offset()-compactOffset)<1,"Close restores compact text position");
 
- await swipe(".deck-active .feed-v2-details .discovery-place",-205,0);
+ await swipe(".deck-active .moonstone-location",-205,0);
  await page.waitForTimeout(430);
  assert.equal((await selected())?.trim(),"Лента","Feed text horizontal swipes belong to the photo carousel");
  await swipe(".discovery-top-tabs",-205,0);
