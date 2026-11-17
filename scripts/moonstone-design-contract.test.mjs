@@ -28,17 +28,29 @@ function contrast(a,b){
  return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);
 }
 test("Badoo Purple owns one deep violet/lilac palette",()=>{
- assert.equal(hex("luemi-bg").toUpperCase(),"#1E0F38");
- assert.equal(hex("luemi-bg-deep").toUpperCase(),"#160A2B");
- assert.equal(hex("luemi-surface").toUpperCase(),"#32165F");
- assert.equal(hex("luemi-glass").toUpperCase(),"#4C2787");
+ assert.equal(hex("luemi-bg").toUpperCase(),"#26103E");
+ assert.equal(hex("luemi-bg-deep").toUpperCase(),"#1A0A2A");
+ assert.equal(hex("luemi-surface").toUpperCase(),"#421B6B");
+ assert.equal(hex("luemi-glass").toUpperCase(),"#613090");
  assert.equal(hex("luemi-accent").toUpperCase(),"#6E3EFF");
  assert.equal(hex("luemi-lavender").toUpperCase(),"#BCA8F2");
  assert.equal(hex("luemi-rose").toUpperCase(),"#FFBBD0");
- assert.equal(hex("luemi-text").toUpperCase(),"#F8F5FF");
+ assert.equal(hex("luemi-text").toUpperCase(),"#FFF8FF");
  assert.ok(contrast(hex("luemi-text"),hex("luemi-bg"))>=7,"primary text is accessible on Badoo Purple");
  assert.ok(contrast(hex("luemi-text-secondary"),hex("luemi-surface"))>=4.5,"subtle text is legible");
  assert.ok(contrast(hex("luemi-text"),hex("luemi-accent"))>=4.5,"accent CTA is legible");
+});
+test("Warm Berry text roles replace silver-gray and retain readable contrast",()=>{
+ assert.equal(hex("luemi-text-secondary").toUpperCase(),"#F3E8FC");
+ assert.equal(hex("luemi-text-muted").toUpperCase(),"#D4BBDD");
+ assert.notEqual(hex("luemi-text-muted").toUpperCase(),"#AAA2B8",
+  "Silver Lining gray must not dominate everyday UI text");
+ assert.ok(contrast(hex("luemi-text-secondary"),hex("luemi-accent"))>=4.5,
+  "secondary text remains legible on the primary action color");
+ assert.ok(contrast(hex("luemi-text-muted"),hex("luemi-glass"))>=4.5,
+  "muted text remains legible on glass surfaces");
+ assert.ok(contrast(hex("luemi-text"),hex("luemi-accent"))>=4.5,
+  "primary action labels remain legible");
 });
 test("all rendered CSS is free of legacy V5 plum literals and malformed rgba",()=>{
  assert.ok(files.length>=22,"audit must include every style module");
@@ -105,7 +117,7 @@ test("Telegram system chrome and entire app share same Badoo Purple theme",()=>{
  assert.match(app,/getComputedStyle\(document.documentElement\)/);
  assert.match(app,/getPropertyValue\("--luemi-bg"\)/);
  assert.match(app,/installMoonstoneOptics\(document\)/);
- assert.match(markup,/name="theme-color" content="#1E0F38"/);
+ assert.match(markup,/name="theme-color" content="#26103E"/);
  assert.match(app,/wordmark_original_raster_alpha_W06\.webp/);
  assert.ok(existsSync("apps/web/public/assets/brand/wordmark_original_raster_alpha_W06.webp"),
   "original LUEMI logo must remain unchanged and bundled");
