@@ -1,13 +1,13 @@
 /* LUEMI cinematic registration. One scoped visual system for every real step.
    The input dock and the server-backed registration state live in React. */
 .v2-runtime{
- --ink:var(--luemi-text,#F8F5FF);--subtle:var(--luemi-text-secondary,#D9D1EE);--panel:rgba(44,27,68,.78);
+ --ink:var(--luemi-text,#FFF8FF);--subtle:var(--luemi-text-secondary,#F3E8FC);--panel:rgba(44,27,68,.78);
  --glass-edge:var(--luemi-border,rgba(188,168,242,.22));--line:var(--luemi-border,rgba(188,168,242,.22));
  --lavender:var(--luemi-lavender,#BCA8F2);--pink:var(--luemi-rose,#FFBBD0);--shadow:rgba(0,0,0,.28);
  --registration-header-top:12px;
  --registration-footer-height:calc(91px + max(14px,env(safe-area-inset-bottom)));
  width:100%;height:var(--registration-layout-height,100dvh);min-height:0;padding:0;
- overflow:hidden;background:var(--luemi-bg-deep,#160A2B);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+ overflow:hidden;background:var(--luemi-bg-deep,#1A0A2A);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 /* Telegram owns the top controls; reserve clearance exactly once on the
    shared step header, not again as device padding. */
@@ -23,21 +23,21 @@ html[data-luemi-route="true"] .v2-runtime{animation:none}
 .v2-runtime .v2-device{width:min(100%,520px);height:var(--registration-layout-height,100dvh);
  max-height:none;min-height:0;position:relative;isolation:isolate;overflow:hidden;
  padding:0;border:0;border-radius:0;box-shadow:0 30px 90px rgba(0,0,0,.35);
- color:var(--ink);background:var(--luemi-bg-deep,#160A2B)}
+ color:var(--ink);background:var(--luemi-bg-deep,#1A0A2A)}
 html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-route}
 .v2-runtime .v2-backdrop{display:none}
 .v2-runtime .v2-header{flex:none;z-index:3;height:auto;min-height:0;
  padding:var(--registration-header-top) 24px 0;
  display:flex;flex-direction:column;align-items:stretch;gap:11px;
- background:var(--luemi-bg-deep,#160A2B)}
+ background:var(--luemi-bg-deep,#1A0A2A)}
 .v2-runtime .v2-header-logo{display:block;align-self:flex-start;width:108px;height:36px;
  object-fit:contain;object-position:left center;
  filter:brightness(0) invert(1);user-select:none;pointer-events:none}
 .v2-runtime .v2-progress{position:relative;display:block;flex:none;
  width:100%;height:3px;min-height:3px;padding:0;border-radius:999px;
- background:rgba(224,212,231,.16);overflow:hidden}
+ background:rgba(255,187,208,.22);overflow:hidden}
 .v2-runtime .v2-progress-fill{display:block;width:100%;height:100%;border-radius:inherit;
- background:linear-gradient(90deg,#D6C8DE,#DDD0E4);transform-origin:left center;
+ background:linear-gradient(90deg,var(--luemi-accent),var(--luemi-coral));transform-origin:left center;
  transition:transform .42s cubic-bezier(.2,.76,.25,1)}
 /* Keep browser-native momentum (fling/deceleration and edge stretch). Never
    intercept touchmove or animate scrollTop: Android WebView composites the
@@ -57,7 +57,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-stage-heading::before{
  content:"";position:absolute;z-index:0;pointer-events:none;inset:0 0 -44px;
  background:linear-gradient(180deg,
-  var(--luemi-bg-deep,#160A2B) 0%,var(--luemi-bg-deep,#160A2B) 34%,
+  var(--luemi-bg-deep,#1A0A2A) 0%,var(--luemi-bg-deep,#1A0A2A) 34%,
   rgba(22,10,43,.96) 51%,rgba(22,10,43,.79) 68%,
   rgba(22,10,43,.42) 82%,rgba(22,10,43,.12) 93%,rgba(22,10,43,0) 100%);
  -webkit-mask-image:linear-gradient(180deg,#000000 0%,#000000 52%,rgba(0,0,0,.86) 72%,rgba(0,0,0,.36) 90%,transparent 100%);
@@ -83,7 +83,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-body h1{font-size:clamp(28px,7.3vw,36px);line-height:1.09;
  font-weight:740;letter-spacing:-.048em;margin:0 0 8px;color:#FFFFFF;text-wrap:balance}
 .v2-runtime .v2-subtitle{max-width:355px;min-height:38px;font-size:13px;line-height:1.48;
- color:#D0C1D9;margin:0}
+ color:var(--luemi-text-secondary);margin:0}
 .v2-runtime .v2-stage-heading+.form-stack,.v2-runtime .v2-stage-heading+.v2-real-groups,
 .v2-runtime .v2-stage-heading+.v2-fields{margin-top:22px}
 .v2-runtime .v2-real-groups{display:flex;flex-direction:column;gap:28px}
@@ -91,24 +91,24 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-body .form-stack>*{animation:none}
 .v2-runtime .v2-real-groups>.form-stack+.form-stack{border:0;padding-top:0}
 .v2-runtime .glass-field-label,.v2-runtime .field-label,.v2-runtime .range-title,
-.v2-runtime .v2-label{color:#F3E9F8;font-size:15px;font-weight:690;letter-spacing:-.018em}
+.v2-runtime .v2-label{color:var(--luemi-text-secondary);font-size:15px;font-weight:690;letter-spacing:-.018em}
 .v2-runtime .glass-field{color:var(--subtle)}
 .v2-runtime .glass-field small,.v2-runtime .hint,
-.v2-runtime .v2-footnote{color:#BFA1D0;font-size:12px;line-height:1.5}
+.v2-runtime .v2-footnote{color:var(--luemi-text-muted);font-size:12px;line-height:1.5}
 .v2-runtime .glass-control,.v2-runtime .v2-input{
- width:100%;min-height:57px;padding:13px 15px;border-radius:16px;border:1px solid rgba(215,202,223,.3);
+ width:100%;min-height:57px;padding:13px 15px;border-radius:16px;border:1px solid var(--luemi-border-active);
  background:rgba(50,22,95,.90);color:#FFFFFF;
  box-shadow:inset 0 1px rgba(255,255,255,.1),0 7px 18px rgba(20,11,19,.1);
  font-size:16px;opacity:1;outline:0;backdrop-filter:none;-webkit-backdrop-filter:none;
  transition:border-color .25s ease,box-shadow .25s ease,background-color .25s ease}
-.v2-runtime .glass-control::placeholder,.v2-runtime .v2-input::placeholder{color:#C7B0D4;opacity:1}
+.v2-runtime .glass-control::placeholder,.v2-runtime .v2-input::placeholder{color:var(--luemi-text-muted);opacity:1}
 .v2-runtime .glass-control:focus,.v2-runtime .glass-control:focus-visible{
- border-color:#E1D4E8;outline:0;
- box-shadow:0 0 0 2px rgba(214,201,222,.12),0 11px 28px rgba(21,12,20,.2),inset 0 1px rgba(255,255,255,.14)}
+ border-color:var(--luemi-lavender);outline:0;
+ box-shadow:0 0 0 2px rgba(255,187,208,.18),0 11px 28px rgba(21,12,20,.2),inset 0 1px rgba(255,255,255,.14)}
 /* Static refractive colour instead of dozens of live backdrop filters
    repainting on every finger-driven scroll frame (especially the intent grid). */
-.v2-runtime .glass-choice,.v2-runtime .v2-choice,.v2-runtime .category-chip{color:#F2E7F8;border:1px solid rgba(212,198,220,.23);
- background:linear-gradient(135deg,rgba(49,31,74,.92),rgba(36,22,56,.91));
+.v2-runtime .glass-choice,.v2-runtime .v2-choice,.v2-runtime .category-chip{color:#F2E7F8;border:1px solid rgba(188,168,242,.32);
+ background:linear-gradient(135deg,rgba(75,29,113,.92),rgba(37,14,57,.94));
  -webkit-backdrop-filter:none;backdrop-filter:none;
  box-shadow:inset 0 1px rgba(255,255,255,.1),0 6px 17px rgba(21,12,20,.09);
  transition:transform .18s ease,border-color .24s ease,box-shadow .24s ease,background .24s ease}
@@ -122,15 +122,15 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .dob-step>.choice-section .choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .v2-runtime .glass-panel,.v2-runtime .age-range,
 .v2-runtime .glass-check,.v2-runtime .v2-note{
- background:linear-gradient(145deg,rgba(49,31,74,.89),rgba(34,21,52,.92));
+ background:linear-gradient(145deg,rgba(75,29,113,.90),rgba(37,14,57,.94));
  border:1px solid rgba(216,203,224,.22);color:#EDE0F4;border-radius:18px;
  -webkit-backdrop-filter:none;backdrop-filter:none;
  box-shadow:inset 0 1px rgba(255,255,255,.08)}
 .v2-runtime .glass-check{font-size:12px;line-height:1.45;align-items:flex-start;padding:13px}
-.v2-runtime .glass-check-indicator{background:#221535;border-color:#C6ADD4}
+.v2-runtime .glass-check-indicator{background:#221535;border-color:var(--luemi-lavender)}
 .v2-runtime .registration-consent-compact{margin:0 0 10px}
-.v2-runtime .registration-consent-compact a,.v2-runtime .v2-fields a{color:#E4D7EC;text-underline-offset:2px}
-.v2-runtime .range-title strong{color:#EADBF2}
+.v2-runtime .registration-consent-compact a,.v2-runtime .v2-fields a{color:var(--luemi-text-secondary);text-underline-offset:2px}
+.v2-runtime .range-title strong{color:var(--luemi-text-secondary)}
 .v2-runtime .double-range-track{accent-color:#6E3EFF}
 .v2-runtime .category-row{display:flex;max-width:100%;overflow-x:auto;scrollbar-width:none;padding:3px 1px 8px}
 .v2-runtime .category-chip{filter:none!important;color:#EBDEF3;border-radius:999px}
@@ -140,8 +140,8 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 
 .v2-runtime .interest-choices{overflow:visible;flex:none;padding:6px 0 10px}
 .v2-runtime .v2-note{display:flex;align-items:flex-start;gap:10px;padding:14px;
- color:#CEBDD8;font-size:12px;line-height:1.48}
-.v2-runtime .v2-note svg{flex:none;color:#DBCEE3}
+ color:var(--luemi-text-muted);font-size:12px;line-height:1.48}
+.v2-runtime .v2-note svg{flex:none;color:var(--luemi-lavender)}
 /* One unified fullscreen frost for every registration editor.
    The scrim is an immediate child of the device, not the scrolling body.
    No masks, pseudo-lenses or clipped regional backdrop-filter layers. */
@@ -179,7 +179,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
    Small static blur only: never blur the entire scroll or gesture surface. */
 .v2-runtime .field-inline-hint,.v2-runtime .field-warning,.v2-runtime .v2-feedback{
  position:relative;isolation:isolate;overflow:hidden;
- color:#F3E9F8;font-size:12px;line-height:1.45;
+ color:var(--luemi-text-secondary);font-size:12px;line-height:1.45;
  padding:12px 15px;border:1px solid transparent;
  border-radius:21px 23px 21px 24px;
  background:
@@ -230,7 +230,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 }
 .v2-runtime .has-error .field-inline-hint,
 .v2-runtime .v2-feedback[role="alert"]{
- color:#F3E9F8;
+ color:var(--luemi-text-secondary);
  background:
   radial-gradient(ellipse 65% 125% at 100% 0%,rgba(223,210,230,.20),transparent 78%) padding-box,
   linear-gradient(125deg,rgba(79,49,120,.38),rgba(44,27,68,.49) 57%,rgba(33,20,51,.54)) padding-box,
@@ -241,7 +241,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
   -webkit-backdrop-filter:none;backdrop-filter:none;background:#291A3E;border-color:rgba(238,226,245,.32);
  }
 }
-.v2-runtime .has-error .glass-control{border-color:#D6C9DE}
+.v2-runtime .has-error .glass-control{border-color:var(--luemi-rose)}
 .v2-runtime .about-input-shell{position:relative}
 .v2-runtime .about-input-shell .glass-textarea{min-height:132px;resize:none;padding-bottom:42px}
 .v2-runtime .about-input-shell .char-count{position:absolute;bottom:11px;right:11px;
@@ -251,7 +251,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-stack{gap:13px}
 .v2-runtime .geo-input-wrap{position:relative;min-width:0}
 .v2-runtime .geo-input-wrap>svg:first-child{position:absolute;left:15px;top:50%;transform:translateY(-50%);
- z-index:1;pointer-events:none;color:#E3D6EB}
+ z-index:1;pointer-events:none;color:var(--luemi-rose)}
 .v2-runtime .geo-input-wrap>.glass-control.geo-input,.v2-runtime .geo-input-wrap>input[type="search"]{
  min-height:57px;padding-left:46px;padding-right:18px;appearance:none;-webkit-appearance:none}
 .v2-runtime .geo-input-wrap>.spin{z-index:1;right:14px;left:auto}
@@ -320,7 +320,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-next-spinner{display:block;flex:none;
  animation:luemi-step-spinner .75s linear infinite;transform-origin:center}
 @keyframes luemi-step-spinner{to{transform:rotate(360deg)}}
-.v2-runtime .v2-next.is-incomplete{color:#D6C9DE;background:#2C1B43;border-color:#603A96;box-shadow:none}
+.v2-runtime .v2-next.is-incomplete{color:var(--luemi-rose);background:#2C1B43;border-color:#603A96;box-shadow:none}
 .v2-runtime .v2-next.v2-next-confirm,.v2-runtime .v2-next.is-incomplete.v2-next-confirm{
  margin-left:auto;flex:0 0 58px;width:58px;min-height:58px;height:58px;padding:0;
  display:grid;place-items:center;border-radius:50%;color:var(--luemi-text);
@@ -344,7 +344,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .slot-index{bottom:auto;top:6px;left:6px}
 .v2-runtime .add-photo,.v2-runtime .empty-number{color:#E0D3E7}
 .v2-runtime .primary-photo{background:rgba(30,15,56,.83);color:#EFE4F6}
-.v2-runtime .sort-tip,.v2-runtime .photo-count{color:#D9D1EE}
+.v2-runtime .sort-tip,.v2-runtime .photo-count{color:#F3E8FC}
 @media(max-width:720px){
  .v2-runtime .v2-device{width:100%;box-shadow:none}
  .v2-runtime .v2-body{padding:20px 24px calc(var(--registration-footer-height) + 46px)}
@@ -367,7 +367,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-about-groups .about-step{gap:0}
 .v2-runtime .v2-about-groups .glass-textarea{min-height:142px;resize:none}
 .v2-runtime .v2-about-interest-heading{display:flex;justify-content:space-between;align-items:center;
- gap:10px;margin-top:9px;color:#F3E9F8}
+ gap:10px;margin-top:9px;color:var(--luemi-text-secondary)}
 .v2-runtime .v2-about-interest-heading strong{font-size:16px;letter-spacing:-.025em}
 .v2-runtime .v2-about-interest-heading span{color:#D7CADF;font-size:12px;font-variant-numeric:tabular-nums}
 .v2-runtime .v2-about-footnote{font-size:12px;line-height:1.5;color:#C4ABD3;margin:0}
@@ -390,7 +390,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  border-radius:999px;background:rgba(26,17,38,.81);border:1px solid rgba(234,221,242,.25);
  color:#F5EDFA;font-size:10px;font-weight:750;letter-spacing:.035em}
 .v2-runtime .v2-showcase-preview-pill{left:12px;display:flex;align-items:center;gap:6px}
-.v2-runtime .v2-showcase-preview-pill svg{color:#D8CBE0}
+.v2-runtime .v2-showcase-preview-pill svg{color:var(--luemi-lavender)}
 .v2-runtime .v2-showcase-photo-count{right:12px;letter-spacing:0;font-variant-numeric:tabular-nums}
 .v2-runtime .v2-showcase-person{position:absolute;z-index:2;bottom:19px;left:17px;right:17px;pointer-events:none}
 .v2-runtime .v2-showcase-person h2{font-size:clamp(25px,7vw,35px);line-height:1.05;
@@ -404,7 +404,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .v2-showcase-dots button{width:7px;height:7px;min-height:7px;border:0;
  padding:0;border-radius:999px;background:rgba(219,206,226,.35);
  transition:width .2s,background-color .2s}
-.v2-runtime .v2-showcase-dots button.selected{width:23px;background:#D6C9DE}
+.v2-runtime .v2-showcase-dots button.selected{width:23px;background:var(--luemi-rose)}
 .v2-runtime .v2-showcase-content{display:flex;flex-direction:column;gap:12px}
 .v2-runtime .v2-showcase-panel{border:1px solid rgba(218,205,226,.21);border-radius:18px;
  padding:16px;background:linear-gradient(135deg,rgba(50,31,76,.58),rgba(33,20,51,.67));
@@ -418,12 +418,12 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  border:1px solid rgba(215,202,223,.32);font-size:12px}
 .v2-runtime .v2-showcase-private{display:flex;align-items:flex-start;gap:8px;
  color:#BD9FCF;line-height:1.5;font-size:11px;margin:5px 0 0}
-.v2-runtime .v2-showcase-private svg{flex:none;color:#D6C9DE}
+.v2-runtime .v2-showcase-private svg{flex:none;color:var(--luemi-rose)}
 .v2-runtime .v2-review-actions{gap:9px}
 .v2-runtime .v2-review-actions .v2-review-edit{flex:0 0 41%;min-width:0;min-height:56px;
  display:flex;align-items:center;justify-content:center;gap:8px;
  border:1px solid rgba(221,208,228,.4);border-radius:999px;
- background:rgba(54,34,81,.92);color:#F3E9F8;font-weight:690;font-size:13px}
+ background:rgba(74,25,114,.94);color:var(--luemi-text-secondary);font-weight:690;font-size:13px}
 .v2-runtime .v2-review-actions .v2-review-create{width:auto;min-width:0;flex:1;font-size:13px;padding:10px}
 .v2-runtime .v2-review-actions button:disabled{opacity:.55}
 .v2-runtime .v2-review-actions .v2-review-edit{
@@ -466,7 +466,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .interest-search input{display:block;min-width:0;flex:1;min-height:43px;
  border:0;background:transparent;color:#F4EBF9;font-size:16px;outline:0;appearance:none}
 .v2-runtime .interest-search input::placeholder{color:#BEA0CF}
-.v2-runtime .interest-search-count{font-size:11px;color:#D8CBE0;font-variant-numeric:tabular-nums}
+.v2-runtime .interest-search-count{font-size:11px;color:var(--luemi-lavender);font-variant-numeric:tabular-nums}
 .v2-runtime .category-row{position:relative;scrollbar-width:none;overscroll-behavior-x:contain;
  padding:4px 1px 7px;gap:6px;touch-action:pan-x}
 .v2-runtime .category-row::-webkit-scrollbar{display:none}
@@ -488,10 +488,10 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  color-mix(in srgb,var(--chip-to) 34%,#221535));
  border:1px solid color-mix(in srgb,var(--chip-from) 42%,#402961);
  box-shadow:inset 0 1px rgba(255,255,255,.1);filter:none!important}
-.v2-runtime .interest-chip.selected{color:#160A2B;transform:none;
+.v2-runtime .interest-chip.selected{color:#1A0A2A;transform:none;
  background:linear-gradient(110deg,color-mix(in srgb,var(--chip-from) 65%,#573685),
  color-mix(in srgb,var(--chip-to) 63%,#543481));
- border:1px solid color-mix(in srgb,var(--chip-from) 76%,#CEBDD8);
+ border:1px solid color-mix(in srgb,var(--chip-from) 76%,var(--luemi-text-muted));
  box-shadow:inset 0 1px rgba(255,255,255,.25),0 4px 11px rgba(21,12,20,.1)}
 .v2-runtime .interest-max-hint,.v2-runtime .interest-no-results{
  margin:5px 0 0;color:#D2C3DA;font-size:12px;line-height:1.4}
@@ -548,11 +548,11 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-liquid-city-editor .glass-field{margin:0}
 .v2-runtime .geo-liquid-cancel{align-self:flex-end;padding:7px 10px;border:0;background:transparent;
  color:#E0D3E7;font-size:12px}
-.v2-runtime .geo-liquid-current,.v2-runtime .geo-liquid-caption{font-size:12px;color:#D6C9DE;line-height:1.45;margin:0}
+.v2-runtime .geo-liquid-current,.v2-runtime .geo-liquid-caption{font-size:12px;color:var(--luemi-rose);line-height:1.45;margin:0}
 .v2-runtime .geo-liquid-search-section{display:flex;flex-direction:column;gap:6px}
 .v2-runtime .geo-liquid-section-head{display:flex;flex-direction:column;gap:3px}
 .v2-runtime .geo-liquid-section-head strong{font-size:14px;color:#F4ECF9}
-.v2-runtime .geo-liquid-section-head small{font-size:11px;color:#C6ADD4}
+.v2-runtime .geo-liquid-section-head small{font-size:11px;color:var(--luemi-lavender)}
 .v2-runtime .geo-liquid-scopes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .v2-runtime .geo-liquid-scopes button{min-width:0;min-height:42px;padding:6px 4px;
  display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;
@@ -564,7 +564,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .geo-liquid-scopes button.active{
  position:relative;
  background:linear-gradient(132deg,rgba(100,60,156,.70),rgba(41,26,63,.93));
- border-color:var(--luemi-border-active,rgba(223,210,230,.43));color:var(--luemi-text,#F8F5FF);
+ border-color:var(--luemi-border-active,rgba(223,210,230,.43));color:var(--luemi-text,#FFF8FF);
  box-shadow:inset 0 1px rgba(246,238,250,.19),0 0 0 1px rgba(223,210,230,.10)}
 /* Selection badges sit ON the rounded upper-right stroke, not within the cards.
    A 21px badge at -7px centres 3.5px inside both edges, on a 12-13px corner. */
@@ -573,14 +573,14 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .dob-step .glass-choice.selected,
 .v2-runtime .preferences-step>.choice-section .glass-choice.selected{
  background:linear-gradient(132deg,rgba(100,60,156,.70),rgba(41,26,63,.93));
- border-color:var(--luemi-border-active,rgba(223,210,230,.43));color:var(--luemi-text,#F8F5FF)}
+ border-color:var(--luemi-border-active,rgba(223,210,230,.43));color:var(--luemi-text,#FFF8FF)}
 .v2-runtime .glass-choice-corner-check,
 .v2-runtime .geo-scope-check,
 .v2-runtime .preferences-step .v2-goal-check{
  position:absolute;top:-7px;right:-7px;
  box-sizing:border-box;width:21px;height:21px;flex:none;
  display:grid;place-items:center;border-radius:50%;
- border:2px solid var(--luemi-bg-deep,#160A2B);
+ border:2px solid var(--luemi-bg-deep,#1A0A2A);
  background:linear-gradient(145deg,var(--luemi-rose,#FFBBD0),var(--luemi-lavender,#BCA8F2));
  color:var(--luemi-ink-on-accent,#FFFFFF);z-index:2;
  box-shadow:inset 0 1px rgba(255,255,255,.5),0 2px 6px rgba(24,14,23,.28);
@@ -601,7 +601,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
 .v2-runtime .preferences-step .v2-goal-check svg,
 .v2-runtime .geo-liquid-scopes .geo-scope-check svg{
  width:11px;height:11px;flex:none;color:inherit}
-.v2-runtime .geo-liquid-scopes button.active>svg{color:#F3E9F8}
+.v2-runtime .geo-liquid-scopes button.active>svg{color:var(--luemi-text-secondary)}
 .v2-runtime .geo-liquid-scopes button:active{transform:scale(.98)}
 /* One genuinely compact, stable-height explanation card. Mode changes animate
    only its contents, keeping the layout and fixed Continue button steady. */
@@ -618,7 +618,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  to{opacity:1;transform:translate3d(0,0,0)}}
 .v2-runtime .geo-liquid-mode-info{display:flex;align-items:center;gap:8px}
 .v2-runtime .geo-liquid-mode-icon{flex:0 0 28px;width:28px;height:28px;display:grid;
- place-items:center;border-radius:9px;background:rgba(189,159,207,.17);color:#DBCEE3}
+ place-items:center;border-radius:9px;background:rgba(255,187,208,.18);color:var(--luemi-lavender)}
 .v2-runtime .geo-liquid-mode-icon svg{width:17px;height:17px}
 .v2-runtime .geo-liquid-mode-copy{display:flex;flex-direction:column;min-width:0;gap:3px}
 .v2-runtime .geo-liquid-mode-copy strong{font-size:13px;line-height:1.2;color:#F4EBF9}
@@ -685,7 +685,7 @@ html[data-luemi-route="true"] .v2-runtime .v2-device{view-transition-name:luemi-
  display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;
  min-height:29px;max-width:none;margin:0;padding:4px 7px 4px 9px;
  color:#1E122E;white-space:nowrap;font-size:10.5px;font-weight:650;
- border-radius:999px;border:1px solid color-mix(in srgb,var(--chip-from) 76%,#CEBDD8);
+ border-radius:999px;border:1px solid color-mix(in srgb,var(--chip-from) 76%,var(--luemi-text-muted));
  background:linear-gradient(110deg,color-mix(in srgb,var(--chip-from) 65%,#573685),
  color-mix(in srgb,var(--chip-to) 63%,#543481));
  box-shadow:inset 0 1px rgba(255,255,255,.25);

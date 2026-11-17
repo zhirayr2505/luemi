@@ -3,26 +3,26 @@
  * A restrained Badoo Purple/lilac lens refraction, never a neon glow.
  */
 :root{
- --lg-tint:rgba(55,14,123,.46);
- --lg-tint-bottom:rgba(22,10,43,.66);
+ --lg-tint:rgba(82,28,133,.62);
+ --lg-tint-bottom:rgba(26,10,42,.82);
  --lg-blur:13px;
  --lg-saturate:145%;
  --lg-brightness:1.025;
  --lg-contrast:1.025;
  --lg-rim-width:1px;
  --lg-rim-light:rgba(255,255,255,.36);
- --lg-rim-dim:rgba(255,255,255,.055);
- --lg-chroma-warm:rgba(255,187,208,.26);
- --lg-chroma-cool:rgba(188,168,242,.24);
- --lg-specular:rgba(255,255,255,.20);
- --lg-inner-glow:rgba(255,255,255,.065);
- --lg-shadow:0 10px 22px rgba(10,4,19,.27),0 2px 7px rgba(10,4,19,.12);
+ --lg-rim-dim:rgba(255,187,208,.10);
+ --lg-chroma-warm:rgba(255,187,208,.34);
+ --lg-chroma-cool:rgba(188,168,242,.28);
+ --lg-specular:rgba(255,248,255,.24);
+ --lg-inner-glow:rgba(255,187,208,.09);
+ --lg-shadow:0 10px 22px rgba(12,4,25,.36),0 2px 7px rgba(12,4,25,.18);
  --lg-radius-card:clamp(25px,7.4vw,34px);
  --lg-radius-pill:999px;
  --lg-press-scale:.97;
- --lg-press-glow:rgba(188,168,242,.18);
- --lg-accent-from:rgba(110,62,255,.92);
- --lg-accent-to:rgba(55,14,123,.88);
+ --lg-press-glow:rgba(255,187,208,.22);
+ --lg-accent-from:rgba(110,62,255,.96);
+ --lg-accent-to:rgba(132,55,190,.94);
  --lg-rim-depth:2px;
  /* The first approved reference uses a thin edge, not a 14px chrome ring. */
  --lg-relief:var(--lg-shadow),inset 0 1px 0 rgba(255,255,255,.17),
@@ -51,8 +51,8 @@
 .lg--pill{--lg-rim-depth:1.5px;border-radius:var(--lg-radius-pill)}
 .lg--small{--lg-rim-depth:1px}
 .lg--accent{
- --lg-tint:rgba(110,62,255,.72);
- --lg-tint-bottom:rgba(55,14,123,.82);
+ --lg-tint:rgba(110,62,255,.78);
+ --lg-tint-bottom:rgba(55,14,123,.92);
  --lg-surface:
   radial-gradient(ellipse 75% 75% at 26% -30%,rgba(255,255,255,.19),transparent 76%),
   linear-gradient(125deg,var(--lg-accent-from),var(--lg-accent-to)),
@@ -122,8 +122,8 @@
  * specular glints, relief. Never run the costly moving SVG backdrop sampling.
  */
 :root[data-lg-optics="safe"]{
- --lg-tint:rgba(55,14,123,.46);
- --lg-tint-bottom:rgba(22,10,43,.66);
+ --lg-tint:rgba(82,28,133,.62);
+ --lg-tint-bottom:rgba(26,10,42,.82);
  --lg-rim-depth:2px;
 }
 :root[data-lg-optics="safe"] .lg::before{

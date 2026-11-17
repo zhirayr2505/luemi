@@ -74,8 +74,8 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  const entry=read("apps/web/src/main.tsx");
  assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/liquid-glass\.css";/);
  assert.match(lens,/--lg-rim-light:rgba\(255,255,255,\.36\)/);
- assert.match(lens,/--lg-chroma-warm:rgba\(255,187,208,\.26\)/);
- assert.match(lens,/--lg-chroma-cool:rgba\(188,168,242,\.24\)/);
+ assert.match(lens,/--lg-chroma-warm:rgba\(255,187,208,\.34\)/);
+ assert.match(lens,/--lg-chroma-cool:rgba(188,168,242,.28)/);
  assert.match(lens,/backdrop-filter:blur\(var\(--lg-blur\)\)/);
  assert.match(lens,/prefers-reduced-transparency:reduce/);
  assert.match(lens,/prefers-reduced-motion:reduce/);
@@ -167,7 +167,7 @@ test("deleted registration language flow and artificial photo cropping stay dele
    "demo-only photo crop would distort real second photos in "+file);
  }
  const prototype=read("apps/web/src/discovery/profile-v3/rendering/ProfileMorphSurface.css");
- assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#32165F\)/,
+ assert.match(prototype,/\.v3-sheet\{[^}]*background:var\(--luemi-surface,#421B6B\)/,
   "even isolated V3 previews must use Badoo Purple rather than white UI");
 });
 
