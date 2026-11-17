@@ -71,10 +71,12 @@
 .moonstone-photo .carousel-caption,.moonstone-photo .photo-progress{display:none}
 .moonstone-blur-photo{
  position:absolute;z-index:2;inset:-30px;width:calc(100% + 60px);height:calc(100% + 60px);object-fit:cover;
- /* One prepared bitmap; blur strength is fixed and only its opacity follows the finger. */
- filter:blur(29px) saturate(.72) brightness(.64);transform:scale(1.045);opacity:var(--profile-blur-p);pointer-events:none;
- -webkit-mask-image:linear-gradient(to top,#000000 0%,#000000 30%,rgba(0,0,0,.96) 48%,rgba(0,0,0,.52) 69%,transparent 93%);
- mask-image:linear-gradient(to top,#000000 0%,#000000 30%,rgba(0,0,0,.96) 48%,rgba(0,0,0,.52) 69%,transparent 93%)
+ /* A soft baseline blur stays visible beneath the compact identity. Profile Morph
+    increases the same prepared bitmap; no live backdrop sampling is added. */
+ filter:blur(29px) saturate(.72) brightness(.64);transform:scale(1.045);
+ opacity:calc(.4 + var(--profile-blur-p) * .6);pointer-events:none;
+ -webkit-mask-image:linear-gradient(to top,#000 0%,#000 32%,rgba(0,0,0,.88) 42%,rgba(0,0,0,.4) 52%,transparent 62%);
+ mask-image:linear-gradient(to top,#000 0%,#000 32%,rgba(0,0,0,.88) 42%,rgba(0,0,0,.4) 52%,transparent 62%)
 }
 .moonstone-photo-shade{
  position:absolute;z-index:3;inset:0;pointer-events:none;

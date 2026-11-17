@@ -39,7 +39,10 @@ test("compact state contains only indicator, identity, location and goal",()=>{
 test("one progress drives overlay copy stages, prepared blur and dim without React pointer renders",()=>{
  assert.match(card,/--profile-p/);
  assert.match(card,/scheduleFinger\(current\.startProgress-dy\/travel\.current\)/);
- assert.match(css,/opacity:var\(--profile-blur-p\)/);
+ assert.ok(css.includes("opacity:calc(.4 + var(--profile-blur-p) * .6)"),
+  "the prepared blur has a soft baseline in the collapsed feed and still scales with Profile Morph");
+ assert.ok(css.includes("transparent 62%"),
+  "the lower-photo blur mask fades before reaching the upper face area");
  assert.match(css,/mask-image:linear-gradient\(to top/);
  assert.match(card,/--profile-scrim-p/);
  assert.match(css,/opacity:var\(--profile-p\)/);
