@@ -16,6 +16,8 @@ const center=async selector=>{
 };
 const swipe=async(selector,dx,dy)=>{
  const {x,y}=await center(selector);
+ const hit=await page.evaluate(({x,y})=>{const el=document.elementFromPoint(x,y);return {tag:el?.tagName,cls:typeof el?.className==="string"?el.className:"",chain:(()=>{const a=[];let n=el;while(n&&a.length<6){a.push(n.tagName.toLowerCase()+"."+String(n.className??"").trim().replace(/\\s+/g,"."));n=n.parentElement;}return a;})()};},{x,y});
+ console.log("DISCOVERY_GESTURE_HIT",selector,{x,y,hit});
  const session=await context.newCDPSession(page);
  try{
   await session.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y,id:1}]});
@@ -39,7 +41,7 @@ try{
  const compactOffset=await offset();
  const before=await image.evaluate(node=>{window.__feedPhoto=node;return node.src;});
  await swipe(".deck-active .moonstone-location",0,-180);
- await page.locator(".deck-active .moonstone-feed-card[data-expanded=true]").waitFor({timeout:1800});
+ try{await page.locator(".deck-active .moonstone-feed-card[data-expanded=true]").waitFor({timeout:1800});}catch(error){console.log("DISCOVERY_GESTURE_REVEAL_DIAGNOSTIC",await page.locator(".deck-active .moonstone-feed-card").first().getAttribute("data-expanded"),await page.evaluate(()=>window.__discoveryPointerTrace));throw error;}
  assert.ok(await image.evaluate((node,src)=>node===window.__feedPhoto&&node.src===src,before),
   "Reveal keeps the decoded photo node mounted");
  assert.ok(await offset()<compactOffset-1,"Expanded text moves upward smoothly without recreating the photo");
