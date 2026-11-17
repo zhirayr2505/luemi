@@ -41,6 +41,14 @@ const patched=viteMajor>6||(viteMajor===6&&(viteMinor>4||(viteMinor===4&&vitePat
 assert.ok(patched,"Vite "+lockedVite.version+" is below the 6.4.6 security floor (GHSA-p4f5-76q4-ffq7)");
 assert.equal(lockedVite.resolved,"https://registry.npmjs.org/vite/-/vite-"+lockedVite.version+".tgz","Vite lockfile tarball must match its locked version");
 assert.ok(/^sha512-[A-Za-z0-9+/]+=*$/.test(lockedVite.integrity??""),"Vite lockfile must retain SHA-512 integrity");
+const api=JSON.parse(read("apps/api/package.json"));
+assert.equal(api.dependencies["@fastify/static"],"^10.1.11","Fastify static must use the patched 10.1.11 line");
+assert.equal(lock.packages["apps/api"].dependencies["@fastify/static"],api.dependencies["@fastify/static"],"Fastify static workspace range differs from lockfile");
+const staticPlugin=lock.packages["node_modules/@fastify/static"];
+assert.ok(staticPlugin,"@fastify/static must be present in the npm lockfile");
+const staticVersion=staticPlugin.version.split(".").map(Number);
+assert.ok(staticVersion[0]>10||(staticVersion[0]===10&&(staticVersion[1]>1||(staticVersion[1]===1&&staticVersion[2]>=11))),"@fastify/static "+staticPlugin.version+" is below the patched 10.1.11 floor");
+
 assert.throws(()=>assertWorkspaceLock({...pkg,devDependencies:{...pkg.devDependencies,playwright:"0.0.0"}},lock),/lockfile does not match|playwright/,"mismatched package manifest must fail");
 assert.equal(pkg.packageManager,"npm@10.9.2");
 assert.equal(read(".node-version").trim(),"22.16.0");
