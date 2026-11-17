@@ -296,7 +296,7 @@ assert.match(runtime,/\.v2-goal-check\{[^}]*opacity:0;transform:scale\(\.84\);[^
  "Inactive badges remain at their fixed corner anchor and smoothly appear");
 assert.match(runtime,/\.glass-choice\.selected \.glass-choice-corner-check,[^}]*opacity:1;transform:scale\(1\)/s,
  "Selected badges transition opacity and scale only, not the layout position");
-assert.match(runtime, /\.interest-chip\.selected\{[^}]*color:#160A2B/s,
+assert.match(runtime, /\.interest-chip\.selected\{[^}]*color:#1A0A2A/s,
  "Selected pastel interests use legible dark foreground");
 assert.match(runtime, /\.v2-stage-heading::after\{[^}]*backdrop-filter:blur\(12px\) saturate\(114%\)/s,
  "All registration headlines use a thin, glassy Badoo Purple refraction");
