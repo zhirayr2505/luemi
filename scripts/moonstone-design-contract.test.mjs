@@ -127,11 +127,12 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(feature,/\/Android\/i\.test\(userAgent\)/);
  assert.match(hot,/\.discovery-app\[data-profile-renderer=android\] \.moonstone-profile-drawer/);
  assert.match(hot,/backdrop-filter:none/);
- assert.match(hot,/\.moonstone-blur-photo\{/);
- assert.ok(hot.includes("opacity:calc(.4 + var(--profile-blur-p) * .6)"),
-  "the collapsed feed keeps a restrained lower-photo blur; expansion only increases it");
- assert.match(hot,/transparent 62%/,
-  "the lower-photo blur fades out before reaching the face and upper photo");
+ assert.match(hot,/\.moonstone-photo::after\{[\s\S]*?backdrop-filter:blur\(20px\) saturate\(1\.16\)/,
+  "the collapsed feed blurs the actual photo beneath its lower identity area");
+ assert.match(hot,/\.moonstone-photo::after\{[\s\S]*?height:48%[\s\S]*?mask-image:linear-gradient\(to top/,
+  "the lower-photo blur fades upward before reaching the face");
+ assert.doesNotMatch(read("apps/web/src/discovery/FeedCard.tsx"),/moonstone-blur-photo/,
+  "no duplicate image overlay is used for the photo blur");
  assert.match(hot,/\.moonstone-like-button\{/);
  assert.doesNotMatch(hot,/blur\(23px\) saturate\(142%\)|blur\(12px\) saturate\(128%\)/);
  const optics=read("apps/web/src/ui/moonstone-optics.ts");
