@@ -58,7 +58,7 @@
 .discovery-app[data-feed-visible="true"] .discovery-deck-stage.has-profiles>.discovery-deck-layer{inset:0}
 .moonstone-feed,.moonstone-feed-card{position:relative;width:100%;height:100%;min-height:0}
 .discovery-app .moonstone-feed-card{
- --profile-p:0;--profile-info-y:0px;--profile-blur-p:0;--profile-scrim-p:0;--profile-elastic-y:0px;--super-p:0;position:relative;height:100%;border:0;border-radius:0;background:var(--moon-deep);
+ --profile-p:0;--profile-info-y:0px;--profile-scrim-p:0;--profile-elastic-y:0px;--super-p:0;position:relative;height:100%;border:0;border-radius:0;background:var(--moon-deep);
  overflow:hidden;isolation:isolate;box-shadow:none;touch-action:none;color:var(--moon-text)
 }
 .discovery-app .moonstone-feed-card::after{display:none}
@@ -69,15 +69,6 @@
 .moonstone-photo .carousel-track img.is-ready{opacity:1}
 .moonstone-photo .carousel-track img.is-unavailable{opacity:0}
 .moonstone-photo .carousel-caption,.moonstone-photo .photo-progress{display:none}
-.moonstone-blur-photo{
- position:absolute;z-index:4;inset:-26px;width:calc(100% + 52px);height:calc(100% + 52px);
- object-fit:cover;object-position:center;pointer-events:none;
- /* One prepared current-photo image, not a live backdrop sample on the
-    moving full-screen surface. Keep the face clear and blur the lower area. */
- filter:blur(24px) saturate(1.02) brightness(.9);opacity:.88;transform:scale(1.04);
- -webkit-mask-image:linear-gradient(to top,#000 0%,#000 44%,rgba(0,0,0,.92) 62%,rgba(0,0,0,.46) 80%,transparent 100%);
- mask-image:linear-gradient(to top,#000 0%,#000 44%,rgba(0,0,0,.92) 62%,rgba(0,0,0,.46) 80%,transparent 100%)
-}
 .moonstone-photo-shade{
  position:absolute;z-index:3;inset:0;pointer-events:none;
  background:linear-gradient(180deg,rgba(20,11,19,.42) 0,rgba(20,11,19,.08) 18%,transparent 43%,rgba(21,12,20,.18) 62%,rgba(20,11,19,.48) 79%,rgba(18,10,17,.87) 100%);

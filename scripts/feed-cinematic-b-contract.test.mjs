@@ -36,16 +36,13 @@ test("compact state contains only indicator, identity, location and goal",()=>{
  assert.doesNotMatch(compact,/О себе|Интересы|Языки/);
 });
 
-test("one progress drives overlay copy stages, prepared blur and dim without React pointer renders",()=>{
+test("one progress drives overlay copy stages and gradient without React pointer renders",()=>{
  assert.match(card,/--profile-p/);
  assert.match(card,/scheduleFinger\(current\.startProgress-dy\/travel\.current\)/);
- assert.match(card,/onResolvedSource=\{rememberAdaptiveSource\}/,
-  "the blur layer tracks the currently resolved adaptive photo");
- assert.match(card,/currentPhoto&&<img className="moonstone-blur-photo"/);
- assert.match(css,/\.moonstone-blur-photo\{[\s\S]*?filter:blur\(24px\)/);
- assert.match(css,/\.moonstone-blur-photo\{[\s\S]*?transparent 100%/);
+ assert.doesNotMatch(card,/moonstone-blur-photo|onResolvedSource|adaptiveFullscreen/);
+ assert.doesNotMatch(css,/\.moonstone-blur-photo\{/);
+ assert.match(css,/\.moonstone-photo-shade\{/);
  assert.doesNotMatch(css,/\.moonstone-photo::after\{[\s\S]*?backdrop-filter/);
- assert.match(css,/mask-image:linear-gradient\(to top/);
  assert.match(card,/--profile-scrim-p/);
  assert.match(css,/opacity:var\(--profile-p\)/);
  // Profile summary and detail sections share the same RAF displacement,
@@ -95,8 +92,8 @@ test("holding the photo hides controls while logo and navigation stay mounted",(
  assert.match(css,/transition:opacity \.4s cubic-bezier\(\.22,\.8,\.2,1\)/);
 });
 
-test("expanded profile keeps the prepared lower-photo blur with clickable identity and no rectangular sheet",()=>{
- assert.match(css,/\.moonstone-blur-photo\{[\s\S]*?filter:blur\(24px\)/);
+test("expanded profile keeps the photo sharp with clickable identity and no rectangular sheet",()=>{
+ assert.doesNotMatch(css,/\.moonstone-blur-photo\{/);
  assert.match(css,/\.moonstone-profile-drawer\{[\s\S]*?background:transparent/);
  assert.match(card,/className="moonstone-name"[\s\S]*?onClick=\{onOpenProfile\}/);
  assert.match(card,/moonstone-goal-mark/);

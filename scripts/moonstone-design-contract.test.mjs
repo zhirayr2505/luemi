@@ -127,11 +127,9 @@ test("true backdrop sampling is restricted to static chrome, moving profiles sta
  assert.match(feature,/\/Android\/i\.test\(userAgent\)/);
  assert.match(hot,/\.discovery-app\[data-profile-renderer=android\] \.moonstone-profile-drawer/);
  assert.match(hot,/backdrop-filter:none/);
- assert.match(hot,/\.moonstone-blur-photo\{/);
- assert.match(hot,/\.moonstone-blur-photo\{[\s\S]*?filter:blur\(24px\)/,
-  "the lower-photo blur uses a prepared image layer");
- assert.match(hot,/\.moonstone-blur-photo\{[\s\S]*?transparent 100%/,
-  "the lower-photo blur fades upward before reaching the face");
+ assert.doesNotMatch(hot,/\.moonstone-blur-photo\{/);
+ assert.match(hot,/\.moonstone-photo-shade\{/);
+ assert.match(hot,/background:linear-gradient\(180deg,rgba\(20,11,19/);
  assert.doesNotMatch(hot,/\.moonstone-photo::after\{[\s\S]*?backdrop-filter/,
   "the moving fullscreen photo never samples a live backdrop on Android");
  assert.match(hot,/\.moonstone-like-button\{/);
@@ -165,21 +163,17 @@ test("Badoo Purple ships one dark shell, not a dormant legacy light palette",()=
  assert.doesNotMatch(shell,/\.luemi-shell\[data-theme=dark\]\s*\{/,
   "the old dark-theme override must not duplicate the Badoo Purple source of truth");
 });
-test("square and landscape feed photos become one cached portrait bitmap",()=>{
- const adaptive=read("apps/web/src/discovery/adaptive-feed-photo.ts");
+test("feed photographs use unchanged source pixels without canvas blur",()=>{
  const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
  const card=read("apps/web/src/discovery/FeedCard.tsx");
- assert.match(adaptive,/const OUTPUT_ASPECT=6\/13/);
- assert.match(adaptive,/needsAdaptiveFeedPhoto/);
- assert.match(adaptive,/context\.filter=`blur\(/);
- assert.match(adaptive,/sharp\.globalCompositeOperation="destination-in"/);
- assert.match(adaptive,/MAX_CACHE_ENTRIES=18/);
- assert.match(carousel,/adaptiveFullscreen/);
- assert.match(carousel,/URL\.revokeObjectURL/);
+ const css=read("apps/web/src/discovery/moonstone-discovery.css");
+ assert.equal(existsSync("apps/web/src/discovery/adaptive-feed-photo.ts"),false);
+ assert.doesNotMatch(carousel,/prepareAdaptiveFeedPhoto|adaptiveFullscreen|canvas\.toBlob/);
+ assert.doesNotMatch(card,/moonstone-blur-photo|onResolvedSource|adaptiveFullscreen/);
+ assert.doesNotMatch(css,/\.moonstone-blur-photo\{|filter:blur\(24px\)/);
  assert.match(carousel,/const warmPhoto=/);
- assert.match(card,/gpuSafe onCoverReady=\{onCoverReady\} adaptiveFullscreen/);
- assert.doesNotMatch(adaptive,/requestAnimationFrame|setInterval/,
-  "one-time photo preparation must not enter the gesture animation path");
+ assert.match(card,/gpuSafe onCoverReady=\{onCoverReady\}/);
+ assert.match(css,/\.moonstone-photo-shade\{/);
 });
 test("deleted registration language flow and artificial photo cropping stay deleted",()=>{
  const steps=read("apps/web/src/registration/Steps.tsx");

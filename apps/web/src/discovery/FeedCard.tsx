@@ -131,7 +131,6 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
 }){
  const goal=goals.find(item=>item.id===person.goal);
  const [expanded,setExpanded]=useState(false),[activePhotoIndex,setActivePhotoIndex]=useState(0);
- const [adaptiveSources,setAdaptiveSources]=useState<{personId:string;sources:Record<number,string>}>({personId:person.id,sources:{}});
  const [actionFeedback,setActionFeedback]=useState<ActionFeedback|null>(null);
  const card=useRef<HTMLElement>(null),compactInfo=useRef<HTMLDivElement>(null);
  const drawer=useRef<HTMLDivElement>(null),scroll=useRef<HTMLDivElement>(null);
@@ -143,12 +142,6 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
  const available=active&&!busy;
  const location=useMemo(()=>[person.city,countryName(person.countryCode,person.country)].filter(Boolean).join(", "),[person.city,person.country,person.countryCode]);
  const distance=distanceLabel(real?person.distanceKm:demoDistanceKm,real);
- const rememberAdaptiveSource=useCallback((index:number,source:string)=>{
-  setAdaptiveSources(current=>current.personId===person.id?
-   {...current,sources:{...current.sources,[index]:source}}:{personId:person.id,sources:{[index]:source}});
- },[person.id]);
- const currentPhotoIndex=Math.min(activePhotoIndex,Math.max(0,person.photos.length-1));
- const currentPhoto=(adaptiveSources.personId===person.id?adaptiveSources.sources[currentPhotoIndex]:undefined)??person.photos[currentPhotoIndex]?.src;
  const languageOptions=person.languages.map(id=>{const item=languages.find(language=>language.id===id);
   return {id,name:item?.name??id,flag:flagEmoji(item?.flag??id)};});
  const commonInterestIds=useMemo(()=>new Set(viewerInterestIds),[viewerInterestIds]);
@@ -206,7 +199,6 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
   const value=progress.current=clamp(next),element=card.current;
   if(element){
    element.style.setProperty("--profile-p",String(value));
-   element.style.setProperty("--profile-blur-p",String(revealStage(value,.04,.97)));
    element.style.setProperty("--profile-scrim-p",String(revealStage(value,.12,1)));
    element.style.setProperty("--profile-info-y",value*infoShift.current+"px");
    // The detail surface follows the compact summary with exactly the same displacement.
@@ -378,9 +370,7 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
    onClickCapture={event=>{if(performance.now()<blockClickUntil.current){event.preventDefault();event.stopPropagation();}}}>
    <div className="moonstone-photo">
     <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age} externalGesture
-     prioritize={active} gpuSafe onCoverReady={onCoverReady} adaptiveFullscreen
-     onResolvedSource={rememberAdaptiveSource} onIndexChange={setActivePhotoIndex}/>
-    {currentPhoto&&<img className="moonstone-blur-photo" src={currentPhoto} alt="" aria-hidden="true" decoding="async"/>}
+     prioritize={active} gpuSafe onCoverReady={onCoverReady} onIndexChange={setActivePhotoIndex}/>
     <div className="moonstone-photo-shade" aria-hidden="true"/>
     {!real&&(onExitDemo?<button type="button" className="moonstone-demo-label" onClick={onExitDemo}>Демо</button>:<span className="moonstone-demo-label">Демо</span>)}
    </div>
