@@ -15,23 +15,35 @@ export interface PhotoCarouselHandle {
 }
 const atmosphereCache=new Map<string,string>();
 const ATMOSPHERE_CACHE_LIMIT=32;
-/* Tiny color thumbnails echo the photograph, without fullscreen GPU blur. */
-function photoAtmosphere(image:HTMLImageElement):string|null{
+/* Low-resolution atmospheric cover: preserve the photograph's actual
+ * shapes and colors instead of stretching a 16x26 blurred color block.
+ * It runs only when an image decodes, never in the pointer/animation path. */
+function photoAtmosphere(image:HTMLImageElement,frameRatio:number):string|null{
  const source=image.currentSrc||image.src;
- const saved=atmosphereCache.get(source);if(saved)return saved;
+ const cacheKey=source+"::"+frameRatio.toFixed(2);
+ const saved=atmosphereCache.get(cacheKey);if(saved)return saved;
  try{
-  const canvas=document.createElement("canvas");canvas.width=16;canvas.height=26;
+  const canvas=document.createElement("canvas");
+  canvas.width=72;
+  canvas.height=Math.max(88,Math.min(192,Math.round(72/Math.max(.25,frameRatio))));
   const context=canvas.getContext("2d");if(!context)return null;
   context.imageSmoothingEnabled=true;context.imageSmoothingQuality="high";
-  context.filter="blur(4px)";context.drawImage(image,-4,-4,24,34);
-  const data=canvas.toDataURL("image/webp",.56);
-  atmosphereCache.delete(source);atmosphereCache.set(source,data);
+  const width=image.naturalWidth,height=image.naturalHeight;
+  const targetRatio=canvas.width/canvas.height;
+  let sampleWidth=width,sampleHeight=height;
+  if(width/height>targetRatio)sampleWidth=height*targetRatio;
+  else sampleHeight=width/targetRatio;
+  context.filter="blur(2.2px)";
+  context.drawImage(image,(width-sampleWidth)/2,(height-sampleHeight)/2,
+   sampleWidth,sampleHeight,0,0,canvas.width,canvas.height);
+  const data=canvas.toDataURL("image/webp",.72);
+  atmosphereCache.delete(cacheKey);atmosphereCache.set(cacheKey,data);
   while(atmosphereCache.size>ATMOSPHERE_CACHE_LIMIT){
    const oldest=atmosphereCache.keys().next().value;
    if(typeof oldest!=="string")break;atmosphereCache.delete(oldest);
   }
   return data;
- }catch{return null;} // Cross-origin images are never read or uploaded.
+ }catch{return null;} // Cross-origin photos can still use the CSS fallback.
 }
 const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,prioritize=true,gpuSafe=false,adaptive=false,loop=false,onIndexChange,onCoverReady},ref) {
  const [index,setIndex]=useState(0);
@@ -262,7 +274,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
       const full=Math.abs(Math.log(ratio/frameRatio))<.075;
       slide.dataset.photoFit=full?"full":ratio>frameRatio?"letterbox":"pillarbox";
       if(!full&&!slide.style.getPropertyValue("--photo-atmosphere")){
-       const colors=photoAtmosphere(image);
+       const colors=photoAtmosphere(image,frameRatio);
        if(colors)slide.style.setProperty("--photo-atmosphere",'url("'+colors+'")');
        else{
         // Only cross-origin legacy sources need a CSS-filter fallback.

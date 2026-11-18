@@ -18,14 +18,21 @@ test("all live and private QA cards use sharp adaptive photo layout",()=>{
  assert.match(photoCss,/\[data-photo-fit="full"\] \.feed-carousel-photo\{[\s\S]*?object-fit:cover/);
  assert.match(photoCss,/\[data-photo-fit="pillarbox"\] \.feed-carousel-photo/);
  assert.match(photoCss,/-webkit-mask-image:linear-gradient/);
+ assert.match(photoCss,/position:absolute;z-index:1;top:42%;left:50%/);
+ assert.match(photoCss,/black 23%,black 72%/);
+ assert.doesNotMatch(photoCss,/black 9%,black 91%/);
+ assert.match(photoCss,/background-size:cover;background-position:center/);
  assert.match(base,/\.carousel-track>\.carousel-slide\{[\s\S]*?flex:0 0 100%/);
 });
 test("color-matched blurred atmosphere is thumbnail sized, never a live framebuffer blur",()=>{
- assert.match(carousel,/canvas\.width=16;canvas\.height=26/);
+ assert.match(carousel,/canvas\.width=72/);
+ assert.match(carousel,/Math\.round\(72\/Math\.max\(\.25,frameRatio\)\)/);
+ assert.match(carousel,/const targetRatio=canvas\.width\/canvas\.height/);
+ assert.match(carousel,/context\.drawImage\(image,\(width-sampleWidth\)\/2/);
  assert.match(carousel,/photoAtmosphere\(image\)/);
  assert.match(carousel,/atmosphereCache=new Map<string,string>/);
  assert.match(carousel,/ATMOSPHERE_CACHE_LIMIT=32/);
- assert.match(carousel,/canvas\.toDataURL\("image\/webp",\.56\)/);
+ assert.match(carousel,/canvas\.toDataURL\("image\/webp",\.72\)/);
  assert.match(photoCss,/background-image:var\(--photo-atmosphere/);
  assert.match(photoCss,/\.carousel-slide-adaptive\[data-photo-fit="full"\]::before\{display:none\}/);
  assert.doesNotMatch(carousel,/canvas\.toBlob|localStorage|sessionStorage|fetch\(/);

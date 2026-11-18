@@ -172,7 +172,8 @@ test("feed keeps original image sharp and uses a tiny derived color-only atmosph
  assert.doesNotMatch(card,/moonstone-blur-photo|onResolvedSource|adaptiveFullscreen/);
  assert.doesNotMatch(css,/\.moonstone-blur-photo\{|filter:blur\(24px\)/);
  assert.match(carousel,/const warmPhoto=/);
- assert.match(carousel,/canvas\.width=16;canvas\.height=26/);
+ assert.match(carousel,/canvas\.width=72/);
+ assert.match(carousel,/context\.drawImage\(image,\(width-sampleWidth\)\/2/);
  assert.match(carousel,/const full=Math\.abs\(Math\.log\(ratio\/frameRatio\)\)<\.075/);
  assert.match(card,/gpuSafe adaptive loop onCoverReady=\{onCoverReady\}/);
  assert.match(css,/\.moonstone-photo-shade\{/);
