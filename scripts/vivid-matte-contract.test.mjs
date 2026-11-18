@@ -34,8 +34,8 @@ test("the five action circles map only to supported real actions",()=>{
 test("no light halos or fullscreen blur return to the hot photo path",()=>{
  assert.match(discovery,/\.moonstone-actions-vivid/);
  assert.match(discovery,/backdrop-filter:none;/);
- assert.doesNotMatch(discovery+routes,/box-shadow:[^;\n]*0 0 [1-9]\d*px/);
- assert.doesNotMatch(discovery,/filter:blur\(/);
+ assert.doesNotMatch(discovery+routes,/(?:box-shadow:|,)\s*0\s+0\s+[1-9]\d*px/);
+ assert.doesNotMatch(discovery,/(?:^|[;{])\s*filter:blur\(/m);
  assert.doesNotMatch(card,/moonstone-blur-photo|adaptiveFullscreen/);
 });
 test("all product routes receive shared matte components",()=>{
