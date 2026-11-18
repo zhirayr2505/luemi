@@ -95,8 +95,8 @@ test("holding the photo hides controls while logo and navigation stay mounted",(
  assert.match(css,/transition:opacity \.4s cubic-bezier\(\.22,\.8,\.2,1\)/);
 });
 
-test("expanded profile is a full-photo blur with clickable identity and no rectangular sheet",()=>{
- assert.match(css,/filter:blur\(29px\) saturate\(\.72\) brightness\(\.64\)/);
+test("expanded profile keeps the photo backdrop treatment with clickable identity and no rectangular sheet",()=>{
+ assert.match(css,/\.moonstone-photo::after\{[\s\S]*?backdrop-filter:blur\(20px\) saturate\(1\.16\)/);
  assert.match(css,/\.moonstone-profile-drawer\{[\s\S]*?background:transparent/);
  assert.match(card,/className="moonstone-name"[\s\S]*?onClick=\{onOpenProfile\}/);
  assert.match(card,/moonstone-goal-mark/);
