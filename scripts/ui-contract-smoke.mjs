@@ -149,7 +149,7 @@ assertCheck("the card owns photo swipes and profile morph; browse pager never st
 assertCheck("Moonstone overlays compact profile information on the fullscreen photo",feedCard.includes('className="moonstone-compact-info"')&&feedCard.includes('className="moonstone-photo"')&&feedCss.includes(".moonstone-compact-info"));
 assertCheck("about and interests exist only in the expanded drawer",feedCard.includes("moonstone-detail-section")&&feedCard.includes("setExpanded")&&feedCard.includes("moonstone-profile-drawer"));
 assertCheck("action buttons remain within each keyed card",feedCard.includes('className="moonstone-actions moonstone-actions-vivid"')&&discovery.includes("<FeedCard person={candidate}")&&discovery.includes('profiles.slice(feed.index,feed.index+2).map'));
-assertCheck("retired bookmark and standalone superlike controls are absent",!feedCard.includes("discovery-save-control")&&!feedCard.includes('onAction("save")'));
+assertCheck("bookmark and special actions use real supported handlers, no retired control",!feedCard.includes("discovery-save-control")&&feedCard.includes('onAction("save")')&&feedCard.includes('performAction("special")'));
 assertCheck("responsive card motion uses ResizeObserver",feedCard.includes("ResizeObserver")&&feedCard.includes("travel.current"));
 assertCheck("single original LUEMI logo retained without removed global controls",header.includes("wordmark_original_raster_alpha_W06.webp")&&!header.includes("lh-tool-filter")&&!header.includes("lh-tool-saved"));
 assertCheck("feed deck and Telegram back handling retained",discovery.includes("pendingCommit.current")&&discovery.includes("registerBack")&&discoveryCss.includes(".discovery-page"));
