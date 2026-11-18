@@ -118,6 +118,13 @@ test("real pages reuse approved 1:1 gesture and inertial settle without duplicat
  assert.match(nearby,/onScroll=\{e=>onScrollTop/);
 });
 
+test("real feed continues paging when the visible filtered deck is exhausted",()=>{
+ assert.match(shell,/visibleRows\.length===0\|\|page>=Math\.max\(0,visibleRows\.length-5\)/);
+ assert.match(shell,/if\(active&&tab==="feed"&&!loading&&!error&&cursor&&!moreBusy&&!busy/);
+ assert.match(shell,/setCursor\(prepared\.nextCursor===cursor\?null:prepared\.nextCursor\)/);
+ assert.match(shell,/if\(active&&tab==="feed"&&firstLoadSettled&&!loading&&\(!current\|\|!!error\)\)/);
+});
+
 test("real feed restores animated deck, undoable skip and session bookmarks across tabs",()=>{
  assert.match(shell,/visibleRows\.slice\(page,page\+2\)\.map/);
  assert.match(shell,/deck-peek-"\+side/);

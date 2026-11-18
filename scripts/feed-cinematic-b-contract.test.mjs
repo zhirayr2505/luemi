@@ -39,10 +39,12 @@ test("compact state contains only indicator, identity, location and goal",()=>{
 test("one progress drives overlay copy stages, prepared blur and dim without React pointer renders",()=>{
  assert.match(card,/--profile-p/);
  assert.match(card,/scheduleFinger\(current\.startProgress-dy\/travel\.current\)/);
- assert.ok(css.includes("opacity:calc(.4 + var(--profile-blur-p) * .6)"),
-  "the prepared blur has a soft baseline in the collapsed feed and still scales with Profile Morph");
- assert.ok(css.includes("transparent 62%"),
-  "the lower-photo blur mask fades before reaching the upper face area");
+ assert.match(css,/\.moonstone-photo::after\{[\s\S]*?backdrop-filter:blur\(20px\) saturate\(1\.16\)/,
+  "the lower feed photo uses actual backdrop sampling, not a duplicate image");
+ assert.match(css,/\.moonstone-photo::after\{[\s\S]*?height:48%[\s\S]*?mask-image:linear-gradient\(to top/,
+  "the visible blur occupies the lower half and fades toward the face");
+ assert.doesNotMatch(card,/moonstone-blur-photo|currentPhoto&&<img/,
+  "the old duplicate bitmap overlay cannot hide or drift from the displayed photo");
  assert.match(css,/mask-image:linear-gradient\(to top/);
  assert.match(card,/--profile-scrim-p/);
  assert.match(css,/opacity:var\(--profile-p\)/);
@@ -93,8 +95,8 @@ test("holding the photo hides controls while logo and navigation stay mounted",(
  assert.match(css,/transition:opacity \.4s cubic-bezier\(\.22,\.8,\.2,1\)/);
 });
 
-test("expanded profile is a full-photo blur with clickable identity and no rectangular sheet",()=>{
- assert.match(css,/filter:blur\(29px\) saturate\(\.72\) brightness\(\.64\)/);
+test("expanded profile keeps the photo backdrop treatment with clickable identity and no rectangular sheet",()=>{
+ assert.match(css,/\.moonstone-photo::after\{[\s\S]*?backdrop-filter:blur\(20px\) saturate\(1\.16\)/);
  assert.match(css,/\.moonstone-profile-drawer\{[\s\S]*?background:transparent/);
  assert.match(card,/className="moonstone-name"[\s\S]*?onClick=\{onOpenProfile\}/);
  assert.match(card,/moonstone-goal-mark/);
