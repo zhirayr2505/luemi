@@ -135,12 +135,15 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  onFirstScreenReady?:()=>void
 }){
  const [rows,setRows]=useState<RealPublishedProfile[]>([]);
+ const rowsRef=useRef(rows);rowsRef.current=rows;
+ const autoEmptyPages=useRef(0);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
  const [firstLoadSettled,setFirstLoadSettled]=useState(false);
  const [scopeBusy,setScopeBusy]=useState(false);
  const [refresh,setRefresh]=useState(0),[cursor,setCursor]=useState<string|null>(null);
  const lastRefresh=useRef(-1);
  const [busy,setBusy]=useState(false),[moreBusy,setMoreBusy]=useState(false);
+ const [autoLoadPaused,setAutoLoadPaused]=useState(false);
  const [message,setMessage]=useState("");
  const [menu,setMenu]=useState<RealPublishedProfile|null>(null);
  const [reporting,setReporting]=useState(false),[reason,setReason]=useState<PublishedReportReason>("spam");
@@ -251,7 +254,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   if(active&&tab==="feed"&&firstLoadSettled&&!loading&&(!current||!!error))
    onFirstScreenReady?.();
  },[active,tab,firstLoadSettled,loading,current,error,onFirstScreenReady]);
- useEffect(()=>{setPage(0);setUndoPage(null);},[filters]);
+ useEffect(()=>{setPage(0);setUndoPage(null);autoEmptyPages.current=0;setAutoLoadPaused(false);},[filters]);
  const expandWorld=async()=>{
   if(scopeBusy)return;
   setScopeBusy(true);setMessage("");
@@ -267,19 +270,26 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   try{
    const response=await getPublishedFeed(controller.signal,cursor);
    if(controller.signal.aborted)return;
-   let warmed:Awaited<ReturnType<typeof warmPublishedPagePhotos>>|null=null;
-   try{warmed=await warmPublishedPagePhotos(response,controller.signal);}catch{
-    if(controller.signal.aborted)return;
+   // Admit server profiles immediately. Photo decoding is speculative and
+   // must never hold the deck when a single image request stalls on WebView.
+   const known=new Set(rowsRef.current.map(person=>person.id));
+   const additions=response.profiles.filter(person=>!known.has(person.id));
+   const foundVisible=additions.some(person=>
+    !hiddenIds.has(person.id)&&realFeedMatches(person,filters,draft.interests));
+   autoEmptyPages.current=foundVisible?0:autoEmptyPages.current+1;
+   setRows(existing=>{
+    const ids=new Set(existing.map(person=>person.id));
+    return [...existing,...additions.filter(person=>!ids.has(person.id))];
+   });
+   setCursor(response.nextCursor===cursor?null:response.nextCursor);
+   setAutoLoadPaused(false);
+  }catch{
+   if(!controller.signal.aborted){
+    setMessage("Не удалось загрузить следующие анкеты.");
+    setAutoLoadPaused(true);
    }
-   if(controller.signal.aborted){warmed?.release();return;}
-   if(warmed)mediaReleases.current.push(warmed.release);
-   const prepared=warmed?.page??response;
-   setRows(existing=>{const ids=new Set(existing.map(x=>x.id));
-    return [...existing,...prepared.profiles.filter(x=>!ids.has(x.id))];});
-   setCursor(prepared.nextCursor===cursor?null:prepared.nextCursor);
-  }catch{if(!controller.signal.aborted)setMessage("Не удалось загрузить следующие анкеты.");}
-  finally{if(abort.current===controller)setMoreBusy(false);}
- },[cursor,moreBusy,busy]);
+  }finally{if(abort.current===controller)setMoreBusy(false);}
+ },[cursor,moreBusy,busy,hiddenIds,filters,draft.interests]);
  // Decode covers and the first gallery images of the current and next five
  // profiles while the user is still looking at the current member.
  useEffect(()=>{
@@ -293,11 +303,13 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  // the server cursor until a matching published profile arrives or the feed
  // is genuinely exhausted. A zero-result filtered page is not an end state.
  useEffect(()=>{
-  if(active&&tab==="feed"&&!loading&&!error&&cursor&&!moreBusy&&!busy&&
+  const canScanEmptyPages=visibleRows.length>0||autoEmptyPages.current<3;
+  if(active&&tab==="feed"&&!loading&&!error&&!autoLoadPaused&&canScanEmptyPages&&
+    cursor&&!moreBusy&&!busy&&
     (visibleRows.length===0||page>=Math.max(0,visibleRows.length-5))){
    void more();
   }
- },[active,tab,loading,error,cursor,moreBusy,busy,page,visibleRows.length,more]);
+ },[active,tab,loading,error,autoLoadPaused,cursor,moreBusy,busy,page,visibleRows.length,more]);
  const act=async(kind:DemoKind|"undo")=>{
   if(locked.current||requestPending.current||busy)return;
   if(kind==="save"){
@@ -404,13 +416,13 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
      </>}
      {undoPage!==null&&<button type="button" className="discovery-glass-button" onClick={()=>{void act("undo");}}>
       Отменить пропуск</button>}
-     {cursor&&<button type="button" className="discovery-glass-button" disabled={moreBusy} onClick={()=>{void more();}}>
+     {cursor&&<button type="button" className="discovery-glass-button" disabled={moreBusy} onClick={()=>{autoEmptyPages.current=0;setAutoLoadPaused(false);void more();}}>
       {moreBusy?"Загружаем…":"Посмотреть дальше"}</button>}
      <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>
       <RefreshCw size={16}/> Обновить</button></LuemiEmptyState></div>}
    </div>}
   {!!current&&cursor&&page>=visibleRows.length-1&&<button type="button"
-   className="real-discovery-more" disabled={moreBusy} onClick={()=>{void more();}}>
+   className="real-discovery-more" disabled={moreBusy} onClick={()=>{autoEmptyPages.current=0;setAutoLoadPaused(false);void more();}}>
    {moreBusy?"Загружаем…":"Загрузить ещё анкеты"}</button>}
   {menu&&<div className="discovery-modal-backdrop real-discovery-modal" onClick={()=>{if(!busy){setMenu(null);setReporting(false);}}}>
    <section className="real-discovery-modal-sheet" role="dialog" aria-modal="true" aria-label="Действия с анкетой"
