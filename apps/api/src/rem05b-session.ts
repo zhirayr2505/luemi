@@ -1,4 +1,5 @@
 import {createHmac,randomBytes,timingSafeEqual} from "node:crypto";
+import {readFile} from "node:fs/promises";
 import type {FastifyInstance,FastifyReply,FastifyRequest} from "fastify";
 import {Pool} from "pg";
 import type {PoolClient} from "pg";
@@ -402,12 +403,36 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   return{mode:"session_v2",user:{id:s.actorId,firstName:s.firstName},
     csrfToken:csrf(cfg.pepper,s.hash),expiresAt:s.expiresAt};
  });
- // Only the authenticated owner may preview fictional cards.
- // A URL flag or browser-side identity is never authorization.
+ // Synthetic QA is never inserted into the published feed or its database.
+ // Exact authenticated actor UUID is required; unconfigured owners fail closed.
+ // No public static asset path or image CDN exposes the private QA photographs.
+ const qaNames=new Set(["karina","elina","milana","sara","arpi","diana"]);
+ const qaAllowed=(req:FastifyRequest):boolean=>
+  !!cfg.qaOwnerActorId&&req.authActor?.actorId===cfg.qaOwnerActorId;
  app.get("/api/v2/qa/fixtures-access",{preHandler:protectedGeoRead},async(req,reply)=>{
-  reply.header("Cache-Control","no-store");
-  return {allowed:!!cfg.qaOwnerActorId&&req.authActor?.actorId===cfg.qaOwnerActorId};
+  reply.header("Cache-Control","private, no-store");
+  return {allowed:qaAllowed(req)};
  });
+ app.get<{Params:{person:string;shot:string}}>(
+  "/api/v2/qa/portraits/:person/:shot",{preHandler:authenticated},async(req,reply)=>{
+   reply.header("Cache-Control","private, no-store");
+   // SameSite cookies alone are insufficient for private image GETs: reject
+   // cross-site navigation/embedding even if the session is authenticated.
+   const site=req.headers["sec-fetch-site"],mode=req.headers["sec-fetch-mode"];
+   const dest=req.headers["sec-fetch-dest"];
+   const safeRequest=(req.headers.origin===undefined||req.headers.origin===cfg.origin)&&
+    (site===undefined||site==="same-origin")&&mode!=="navigate"&&dest!=="document";
+   if(!qaAllowed(req)||!safeRequest)return reply.code(404).send({error:"not_found"});
+   const {person,shot}=req.params;
+   if(!qaNames.has(person)||!/^[1-4]\.webp$/.test(shot))
+    return reply.code(404).send({error:"not_found"});
+   // This lives in apps/api/src both in local TSX and after tsc to dist/.
+   const file=new URL("../src/qa-fixtures/photos/"+person+"-"+shot,import.meta.url);
+   const bytes=await readFile(file).catch(()=>null);
+   if(!bytes)return reply.code(404).send({error:"not_found"});
+   return reply.type("image/webp").send(bytes);
+  });
+
  app.get("/api/v2/me",{preHandler:authenticated},async(req,reply)=>{
   const s=req.authActor!;
   const db=await roleClient(scoped,"luemi_request");

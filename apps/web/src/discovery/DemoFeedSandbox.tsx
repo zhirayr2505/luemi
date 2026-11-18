@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {RotateCcw,ShieldCheck} from "lucide-react";
 import type {RegistrationDraft} from "../registration/model";
 import {selectionHaptic} from "../ui/haptic";
@@ -14,11 +14,9 @@ type Props={draft:RegistrationDraft;active:boolean;onExit:()=>void;onOpenProfile
  * Every profile is fictional; no invented geographical distance is displayed.
  * There is no database insertion, public discovery indexing or fake Telegram user. */
 export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
- const people=useMemo<DemoPerson[]>(()=>demoPeople.map((person,index)=>{
-  if(index!==0||!draft.city.trim())return person;
-  return {...person,city:draft.city.trim(),country:draft.country.trim()||person.country,
-   countryCode:draft.countryCode||person.countryCode};
- }),[draft.city,draft.country,draft.countryCode]);
+ // Fictional cities are fixed metadata; don't pretend a person's location
+ // matches the viewer just because the viewer changed discovery filters.
+ const people=demoPeople;
  const [page,setPage]=useState(0);
  const [saved,setSaved]=useState<ReadonlySet<string>>(()=>new Set<string>());
  const [history,setHistory]=useState<number[]>([]);

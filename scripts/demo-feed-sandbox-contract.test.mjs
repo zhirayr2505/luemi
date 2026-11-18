@@ -49,19 +49,18 @@ test("demo card opens the ORIGINAL full-screen visitor profile, never a small cu
  assert.match(shell,/if\(person\|\|demoVisitor\)\{if\(visitorBackRef\.current\?\.\(\)\)return;/);
  assert.doesNotMatch(shell,/onLike.*demoVisitor/);
 });
-test("fifteen photo-driven fictional profiles each keep one coherent identity",()=>{
- assert.match(photos,/const portraitSources=\[/);
- assert.match(photos,/const scenes:readonly/);
- const urls=[...photos.matchAll(/https:\/\/cdn\.pixabay\.com\/photo\/[^"]+/g)].map(x=>x[0]);
- assert.equal(urls.length,15,"15 different AI-generated portrait source URLs");
- assert.equal(new Set(urls).size,15,"no borrowed identity between demo users");
- assert.equal([...photos.matchAll(/^\s*\["[a-z]+","[^"]+",\d+,/gm)].length,15);
- assert.match(photos,/\.\.\.scenes\[index%scenes\.length\]\.slice\(0,2\)\.map/);
- assert.match(photos,/src:portraitSources\[index\]/);
- assert.match(photos,/fallback:portraitSources\[index\]/);
- assert.doesNotMatch(photos,/illustration\(/,"never paint a cartoon or another person when photos are missing");
- assert.doesNotMatch(sandbox,/demoDistanceKm=\{/,"do not present invented distances");
- assert.match(sandbox,/countryCode:draft\.countryCode\|\|person\.countryCode/);
+test("six adult fictional women have four unique same-person photos via private owner-only URLs",()=>{
+ assert.match(photos,/const base=\[/);
+ const women=[...photos.matchAll(/^\s*\["(?:karina|elina|milana|sara|arpi|diana)","[^"]+",(\d+),/gm)];
+ assert.equal(women.length,6,"exactly six separate new female profiles");
+ assert.ok(women.every(m=>Number(m[1])>=18));
+ assert.match(photos,/gender:"woman"/);
+ assert.match(photos,/photos:Array\.from\(\{length:4\}/);
+ assert.match(photos,/\/api\/v2\/qa\/portraits\//);
+ assert.doesNotMatch(photos,/pixabay\.com|unsplash\.com|const scenes|portraitSources/,
+  "retired stock photos and scenes must stay removed");
+ assert.doesNotMatch(sandbox,/demoDistanceKm=\{/);
+ assert.match(sandbox,/const people=demoPeople/);
  assert.doesNotMatch(style,/\.moonstone-demo-distance\{/);
  assert.match(style,/\.demo-qa-sr-only/);
 });

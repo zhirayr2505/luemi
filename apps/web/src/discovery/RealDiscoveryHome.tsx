@@ -946,7 +946,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     {liveLocation.settings}
     {qaAllowed&&<button className="discovery-glass-button" type="button" onClick={()=>{
      setAccountOpen(false);setPerson(null);setMainTab("discover");setDemoMode(true);requestBrowseTab(0);
-    }}><Images size={16}/> Проверить тестовые карточки (15)</button>}
+    }}><Images size={16}/> Проверить 6 тестовых анкет</button>}
     <button className="discovery-glass-button" type="button" onClick={()=>{setAccountOpen(false);onEdit();}}>Редактировать анкету</button>
    </section>
   </div>}
