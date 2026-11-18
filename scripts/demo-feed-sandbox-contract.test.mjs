@@ -8,17 +8,19 @@ const photos=read("apps/web/src/discovery/demo-people.ts");
 const card=read("apps/web/src/discovery/FeedCard.tsx");
 const style=read("apps/web/src/discovery/demo-feed-sandbox.css");
 
-test("fictional profiles remain isolated; empty genuine feed automatically opens QA preview",()=>{
- assert.match(shell,/const \[demoMode,setDemoMode\]=useState\(\(\)=>\{/);
+test("fictional profiles remain isolated and only a server-verified owner can open QA preview",()=>{
+ assert.match(shell,/const \[qaAllowed,setQaAllowed\]=useState\(false\)/);
+ assert.match(shell,/fetch\("\/api\/v2\/qa\/fixtures-access"/);
  assert.match(shell,/params\.get\("luemiDemo"\)==="1"\|\|start==="demo"/);
- assert.match(shell,/id==="feed"&&demoMode\?<DemoFeedSandbox/);
+ assert.match(shell,/id==="feed"&&demoMode&&qaAllowed\?<DemoFeedSandbox/);
+ assert.match(shell,/if\(!qaAllowed\|\|autoDemoShown\.current\)return/);
  assert.match(shell,/<LiveDeck key=\{id\+"-"\+feedDraft\.searchScope/);
  assert.match(shell,/<FeedCard person=\{cardRows\[page\+offset\]\} real/);
  assert.match(shell,/onExit=\{\(\)=>\{setDemoVisitor\(null\);autoDemoShown\.current=true;setDemoMode\(false\);\}\}/);
  assert.match(shell,/initialFeed\?\.profiles\.length===0/);
  assert.match(shell,/onEmptyFeed=\{offerDemoOnEmpty\}/);
- assert.match(shell,/Проверить тестовые карточки \(15\)/);
- assert.match(shell,/Посмотреть тестовые карточки/);
+ assert.match(shell,/qaAllowed&&<button className="discovery-glass-button"/);
+ assert.match(shell,/qaAllowed&&<button type="button" className="discovery-glass-button" onClick=\{onTryDemo\}/);
 });
 
 test("synthetic profiles are not inserted into server, likes, matches or conversations",()=>{

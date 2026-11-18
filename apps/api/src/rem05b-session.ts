@@ -11,6 +11,8 @@ export interface Rem05bOptions {
  inviteOnly?:boolean;
  /** Capacity-bounded self-service test, distinct from global public signup. */
  maxNewActors?:number;
+ /** Server-allowlisted identity for isolated preview; unset always denies. */
+ qaOwnerActorId?:string;
 }
 type Session={actorId:string;sessionId:string;hash:Buffer;expiresAt:string;firstName:string};
 declare module "fastify" {interface FastifyRequest{authActor?:Session}}
@@ -399,6 +401,12 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
   const s=req.authActor!;
   return{mode:"session_v2",user:{id:s.actorId,firstName:s.firstName},
     csrfToken:csrf(cfg.pepper,s.hash),expiresAt:s.expiresAt};
+ });
+ // Only the authenticated owner may preview fictional cards.
+ // A URL flag or browser-side identity is never authorization.
+ app.get("/api/v2/qa/fixtures-access",{preHandler:protectedGeoRead},async(req,reply)=>{
+  reply.header("Cache-Control","no-store");
+  return {allowed:!!cfg.qaOwnerActorId&&req.authActor?.actorId===cfg.qaOwnerActorId};
  });
  app.get("/api/v2/me",{preHandler:authenticated},async(req,reply)=>{
   const s=req.authActor!;

@@ -124,11 +124,11 @@ function RealMatches({active,onChat,onPerson,gender}:{active:boolean;onChat:()=>
  </section>;
 }
 
-function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onTryDemo,onEmptyFeed,onSearchScopeChange,hiddenIds,onHide,onFirstScreenReady}:{
+function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onTryDemo,qaAllowed,onEmptyFeed,onSearchScopeChange,hiddenIds,onHide,onFirstScreenReady}:{
  active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
  onPerson:(p:RealPublishedProfile)=>void;onMatched:(person:RealPublishedProfile,matchId:string)=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
- onScrollTop:(top:number)=>void;filters:RealFeedFilter;onEditFilters:()=>void;onTryDemo:()=>void;
+ onScrollTop:(top:number)=>void;filters:RealFeedFilter;onEditFilters:()=>void;onTryDemo:()=>void;qaAllowed:boolean;
  onEmptyFeed:()=>void;
  onSearchScopeChange:(scope:SearchScope)=>void;
  hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void;
@@ -408,7 +408,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     <div className="discovery-deck-layer deck-active"><LuemiEmptyState className="real-discovery-empty" icon={Heart}
      title="Пока нет анкет" description="Когда появятся новые люди, ты увидишь их здесь.">
       <button type="button" className="discovery-glass-button" onClick={onEditFilters}>Изменить фильтры</button>
-      <button type="button" className="discovery-glass-button" onClick={onTryDemo}>Посмотреть тестовые карточки</button>
+      {qaAllowed&&<button type="button" className="discovery-glass-button" onClick={onTryDemo}>Посмотреть тестовые карточки</button>}
      {draft.searchScope==="city"&&!cursor&&<>
       <p>Анкеты в твоём городе закончились. Можно расширить поиск на весь мир — сначала покажем людей поблизости.</p>
       <button type="button" className="discovery-glass-button" disabled={scopeBusy}
@@ -461,14 +461,29 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   return route==="likes"||route==="chats"?route:"discover";
  });
  const [browse,setBrowse]=useState<BrowseTab>("feed");
- // No fictional profile ever enters server discovery. If the genuine feed is
- // empty, show a transparently labelled QA sandbox instead of a dead screen.
- const autoDemoShown=useRef(initialFeed?.profiles.length===0);
- const [demoMode,setDemoMode]=useState(()=>{
+ // Never authorize QA by URL parameters or unverified browser metadata.
+ const autoDemoShown=useRef(false);
+ const [qaAllowed,setQaAllowed]=useState(false);
+ const [demoMode,setDemoMode]=useState(false);
+ useEffect(()=>{
+  const csrf=geoCsrf();if(!csrf)return;
+  const controller=new AbortController();
+  void fetch("/api/v2/qa/fixtures-access",{credentials:"same-origin",cache:"no-store",
+   headers:{"x-luemi-csrf":csrf},signal:controller.signal}).then(async response=>
+   response.ok?await response.json() as {allowed?:boolean}:null).then(result=>{
+    if(!controller.signal.aborted)setQaAllowed(result?.allowed===true);
+   }).catch(()=>{if(!controller.signal.aborted)setQaAllowed(false);});
+  return()=>controller.abort();
+ },[]);
+ useEffect(()=>{
+  if(!qaAllowed)return;
   const params=new URLSearchParams(window.location.search);
   const start=window.Telegram?.WebApp?.initDataUnsafe?.start_param??params.get("tgWebAppStartParam");
-  return params.get("luemiDemo")==="1"||start==="demo"||initialFeed?.profiles.length===0;
- });
+  if(params.get("luemiDemo")==="1"||start==="demo"||initialFeed?.profiles.length===0){
+   autoDemoShown.current=initialFeed?.profiles.length===0;
+   setDemoMode(true);
+  }
+ },[qaAllowed,initialFeed]);
  // A link to chats/likes or a demo should not wait for a hidden feed cover.
  useEffect(()=>{
   if(mainTab==="discover"&&!demoMode)return;
@@ -477,9 +492,9 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  },[mainTab,demoMode,onFirstScreenReady]);
 
  const offerDemoOnEmpty=useCallback(()=>{
-  if(autoDemoShown.current)return;
+  if(!qaAllowed||autoDemoShown.current)return;
   autoDemoShown.current=true;setDemoMode(true);
- },[]);
+ },[qaAllowed]);
  const [scopeOverride,setScopeOverride]=useState<SearchScope|null>(null);
  const [confirmedCity,setConfirmedCity]=useState<ObservedCity|null>(null);
  const [cityEpoch,setCityEpoch]=useState(0);
@@ -869,12 +884,12 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
       style={{"--luemi-tab-offset":(-index*100)+"%"} as CSSProperties}>
       {tabs.map(([id,label])=><section key={id} className="discovery-page" role="tabpanel" aria-label={label}
        aria-hidden={browse!==id} inert={browse!==id}>
-       {id==="feed"&&demoMode?<DemoFeedSandbox key="demo-preview" draft={feedDraft}
+       {id==="feed"&&demoMode&&qaAllowed?<DemoFeedSandbox key="demo-preview" draft={feedDraft}
         active={mainTab==="discover"&&browse==="feed"} onOpenProfile={setDemoVisitor}
          onExit={()=>{setDemoVisitor(null);autoDemoShown.current=true;setDemoMode(false);}}/>:
        <LiveDeck key={id+"-"+feedDraft.searchScope+"-"+cityEpoch} active={mainTab==="discover"&&browse===id} tab={id} draft={feedDraft}
         initialFeed={scopeOverride||cityEpoch?null:initialFeed} saved={savedIds} onSave={onSave} filters={filters}
-        onEditFilters={()=>setFilterOpen(true)} onTryDemo={()=>setDemoMode(true)}
+        onEditFilters={()=>setFilterOpen(true)} qaAllowed={qaAllowed} onTryDemo={()=>{if(qaAllowed)setDemoMode(true);}}
         onEmptyFeed={offerDemoOnEmpty} onSearchScopeChange={setScopeOverride}
         hiddenIds={hiddenIds} onHide={onHide} onFirstScreenReady={onFirstScreenReady}
         onScrollTop={top=>onScrollTop(id,top)}
@@ -927,9 +942,9 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     <button className="real-discovery-account-close" type="button" onClick={()=>setAccountOpen(false)}>Закрыть</button>
     <div>{accountPanel}</div>
     {liveLocation.settings}
-    <button className="discovery-glass-button" type="button" onClick={()=>{
+    {qaAllowed&&<button className="discovery-glass-button" type="button" onClick={()=>{
      setAccountOpen(false);setPerson(null);setMainTab("discover");setDemoMode(true);requestBrowseTab(0);
-    }}><Images size={16}/> Проверить тестовые карточки (15)</button>
+    }}><Images size={16}/> Проверить тестовые карточки (15)</button>}
     <button className="discovery-glass-button" type="button" onClick={()=>{setAccountOpen(false);onEdit();}}>Редактировать анкету</button>
    </section>
   </div>}

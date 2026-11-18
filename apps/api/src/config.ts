@@ -134,7 +134,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     absoluteMs: 7 * 24 * 60 * 60 * 1000,
     maxSessions: 5,
     inviteOnly: betaInvites,
-    maxNewActors: selfServiceBeta?selfServiceCap:earlyBeta?earlyBetaCap:undefined
+    maxNewActors: selfServiceBeta?selfServiceCap:earlyBeta?earlyBetaCap:undefined,
+    qaOwnerActorId:/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(env.REM06_QA_OWNER_ACTOR_ID??"")?
+      env.REM06_QA_OWNER_ACTOR_ID:undefined
   } : undefined;
   if(env.REM06_BETA_INVITES_ENABLED==="1"&&(!v2Enabled||
     env.REM06_BETA_INVITES_APPROVED!=="1"||!privateDraftDisclosure))
