@@ -136,7 +136,7 @@ test("real feed restores animated deck, undoable skip and session bookmarks acro
  assert.match(shell,/className=\{"discovery-deck-layer"\+state\}/);
  assert.match(shell,/preloadUpcomingFeedPhotos/);
  assert.match(shell,/warmPublishedPagePhotos/); // initial first-page preparation only
- assert.match(card,/onResolvedSource=\{rememberAdaptiveSource\}/);
+ assert.doesNotMatch(card,/onResolvedSource|adaptiveFullscreen|moonstone-blur-photo/);
  assert.match(shell,/onAnimationEnd=/);
  assert.match(shell,/pendingCommit/);
  assert.match(shell,/setUndoPage\(from\)/);
