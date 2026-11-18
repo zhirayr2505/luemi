@@ -34,6 +34,8 @@ import "./discovery.css";
 import "./real-discovery.css";
 import "./deck-v3.css";
 import "./moonstone-discovery.css";
+// This route loads lazily: repair CSS must follow Moonstone, not only global main.css.
+import "./real-discovery-layout-repair.css";
 
 // EXACT approved LUEMI navigation / header / profile components. No demo profiles
 // are imported or projected into a real session.

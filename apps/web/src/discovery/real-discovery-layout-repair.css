@@ -1,0 +1,173 @@
+/* LUEMI real feed recovery: correct CSS cascade after lazy-loaded Moonstone.
+ * No changes to photo coordinates, scroll gestures, API, registration or logo raster.
+ * Fixes Vivid Matte tabs/nav and centers the real empty state below Telegram chrome. */
+.real-discovery-home[data-feed-visible="true"] .discovery-top-tabs{
+ width:min(calc(100% - 42px),390px);
+ height:44px;
+ padding:3px;
+ border:1px solid rgba(238,246,255,.15);
+ border-radius:999px;
+ background:rgba(29,38,51,.90);
+ box-shadow:0 7px 18px rgba(5,12,21,.17);
+ overflow:hidden;
+}
+.real-discovery-home[data-feed-visible="true"] .discovery-top-tabs>button{
+ height:36px;
+ min-width:0;
+ padding:0 8px;
+ border:0;
+ border-radius:999px;
+ background:transparent;
+ color:#E5EAF2;
+ text-shadow:none;
+}
+.real-discovery-home[data-feed-visible="true"] .discovery-top-tabs>button.active{
+ background:#C34865;
+ color:#FFFFFF;
+ border-radius:999px;
+}
+.real-discovery-home[data-feed-visible="true"] .discovery-tab-underline,
+.real-discovery-home[data-feed-visible="true"] .discovery-tab-underline::after{
+ opacity:0;
+ background:none;
+ box-shadow:none;
+ pointer-events:none;
+}
+/* Real empty/error/loading content must not paint under the wordmark or tabs.
+ * The stage is full-screen; the content needs its own safe-area constraints. */
+.real-discovery-home[data-feed-visible="true"] .real-discovery-deck .discovery-deck-layer>.real-discovery-empty{
+ position:absolute;
+ top:calc(var(--top-safe,0px) + 105px);
+ right:14px;
+ bottom:calc(var(--bottom-safe,0px) + 102px);
+ left:14px;
+ width:auto;
+ max-width:none;
+ height:auto;
+ min-height:0;
+ margin:0;
+ padding:16px 16px;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:center;
+ gap:13px;
+ overflow-y:auto;
+ overscroll-behavior:contain;
+ text-align:center;
+}
+.real-discovery-home[data-feed-visible="true"] .real-discovery-empty .luemi-v5-empty-mark{
+ flex:none;
+ width:56px;
+ height:56px;
+ border:1px solid rgba(236,243,249,.18);
+ border-radius:18px;
+ background:#263141;
+ color:#E96A86;
+ box-shadow:none;
+}
+.real-discovery-home[data-feed-visible="true"] .real-discovery-empty h3{
+ color:#FAFCFF;
+ font-size:21px;
+ font-weight:680;
+ line-height:1.18;
+ margin:0;
+}
+.real-discovery-home[data-feed-visible="true"] .real-discovery-empty p{
+ max-width:310px;
+ color:#B8C5D6;
+ font-size:13px;
+ line-height:1.5;
+ margin:0;
+}
+.real-discovery-home[data-feed-visible="true"] .real-discovery-empty .discovery-glass-button{
+ flex:none;
+ min-height:44px;
+ padding:9px 17px;
+ border-radius:16px;
+ border:1px solid rgba(238,246,255,.17);
+ background:#303B4B;
+ color:#FAFCFF;
+ box-shadow:none;
+}
+/* The approved raster wordmark is always borderless, never a glass avatar. */
+.real-discovery-home .lh-header .lh-center,
+.real-discovery-home .lh-header .lh-island{
+ background:transparent!important;
+ border:0!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ -webkit-backdrop-filter:none!important;
+ backdrop-filter:none!important;
+}
+.real-discovery-home .lh-header .lh-island::before,
+.real-discovery-home .lh-header .lh-island::after{content:none!important}
+.real-discovery-home .lh-header .lh-island img{
+ background:transparent;
+ border:0;
+ box-shadow:none;
+}
+/* Old lazy Moonstone CSS used to hide nav captions and repaint active purple.
+ * These exact high-specificity rules belong to the real route and load last. */
+.real-discovery-home>.discovery-bottom-nav{
+ width:min(calc(100% - 32px),412px);
+ height:65px;
+ min-height:65px;
+ padding:5px 7px;
+ border:1px solid rgba(250,252,255,.17);
+ border-radius:24px;
+ background:rgba(29,38,51,.95);
+ box-shadow:0 8px 22px rgba(4,10,18,.23);
+ -webkit-backdrop-filter:none;
+ backdrop-filter:none;
+}
+.real-discovery-home>.discovery-bottom-nav::before{content:none}
+.real-discovery-home>.discovery-bottom-nav .discovery-nav-item{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:3px;
+ min-height:53px;
+ border:0;
+ border-radius:19px;
+ background:transparent;
+ box-shadow:none;
+ color:#DDE6F0;
+}
+.real-discovery-home>.discovery-bottom-nav .discovery-nav-item span{
+ display:block;
+ font-size:10px;
+ font-weight:560;
+ line-height:1.12;
+ color:inherit;
+ white-space:nowrap;
+}
+.real-discovery-home>.discovery-bottom-nav .discovery-nav-item svg{
+ width:22px;
+ height:22px;
+ color:inherit;
+}
+.real-discovery-home>.discovery-bottom-nav .discovery-nav-item.active{
+ color:#FFFFFF;
+ background:#B84261;
+ box-shadow:none;
+}
+/* Keep compact safe-area fits on Galaxy A55 portrait and small devices. */
+@media(max-height:710px){
+ .real-discovery-home>.discovery-bottom-nav{height:56px;min-height:56px}
+ .real-discovery-home>.discovery-bottom-nav .discovery-nav-item{min-height:45px}
+ .real-discovery-home[data-feed-visible="true"] .real-discovery-empty{gap:9px}
+ .real-discovery-home[data-feed-visible="true"] .real-discovery-deck .discovery-deck-layer>.real-discovery-empty{
+  top:calc(var(--top-safe,0px) + 96px);
+  bottom:calc(var(--bottom-safe,0px) + 80px);
+ }
+}
+@media(max-width:360px){
+ .real-discovery-home>.discovery-bottom-nav .discovery-nav-item span{font-size:9px}
+ .real-discovery-home[data-feed-visible="true"] .discovery-top-tabs>button{font-size:12px}
+}
+@media(prefers-reduced-transparency:reduce){
+ .real-discovery-home>.discovery-bottom-nav,
+ .real-discovery-home[data-feed-visible="true"] .discovery-top-tabs{background:#232E3D}
+}
