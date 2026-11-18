@@ -10,35 +10,28 @@ const photoCss=read("apps/web/src/discovery/moonstone-discovery.css");
 const repair=read("apps/web/src/discovery/real-discovery-layout-repair.css");
 const card=read("apps/web/src/discovery/FeedCard.tsx");
 const base=read("apps/web/src/styles.css");
-test("all live and private QA cards use sharp adaptive photo layout",()=>{
+test("feed contains original photo, with no forced cropping for square uploads",()=>{
  assert.match(card,/gpuSafe adaptive loop onCoverReady=\{onCoverReady\}/);
  assert.match(carousel,/const full=Math\.abs\(Math\.log\(ratio\/frameRatio\)\)<\.075/);
  assert.match(carousel,/slide\.dataset\.photoFit=full\?"full":ratio>frameRatio\?"letterbox":"pillarbox"/);
  assert.match(photoCss,/\.carousel-slide-adaptive \.feed-carousel-photo\{[\s\S]*?object-fit:contain/);
  assert.match(photoCss,/\[data-photo-fit="full"\] \.feed-carousel-photo\{[\s\S]*?object-fit:cover/);
  assert.match(photoCss,/\[data-photo-fit="pillarbox"\] \.feed-carousel-photo/);
- assert.match(photoCss,/-webkit-mask-image:linear-gradient/);
- assert.match(photoCss,/position:absolute;z-index:1;top:42%;left:50%/);
- assert.match(photoCss,/black 23%,black 72%/);
- assert.doesNotMatch(photoCss,/black 9%,black 91%/);
- assert.match(photoCss,/background-size:cover;background-position:center/);
  assert.match(base,/\.carousel-track>\.carousel-slide\{[\s\S]*?flex:0 0 100%/);
 });
-test("color-matched blurred atmosphere is thumbnail sized, never a live framebuffer blur",()=>{
- assert.match(carousel,/canvas\.width=72/);
- assert.match(carousel,/Math\.round\(72\/Math\.max\(\.25,frameRatio\)\)/);
- assert.match(carousel,/const targetRatio=canvas\.width\/canvas\.height/);
- assert.match(carousel,/context\.drawImage\(image,\(width-sampleWidth\)\/2/);
- assert.match(carousel,/photoAtmosphere\(image,frameRatio\)/);
- assert.match(carousel,/atmosphereCache=new Map<string,string>/);
- assert.match(carousel,/ATMOSPHERE_CACHE_LIMIT=32/);
- assert.match(carousel,/canvas\.toDataURL\("image\/webp",\.72\)/);
- assert.match(photoCss,/background-image:var\(--photo-atmosphere/);
- assert.match(photoCss,/\.carousel-slide-adaptive\[data-photo-fit="full"\]::before\{display:none\}/);
- assert.doesNotMatch(carousel,/canvas\.toBlob|localStorage|sessionStorage|fetch\(/);
- const adaptiveCss=photoCss.slice(photoCss.indexOf("/* Seamless adaptive photo stage"));
- assert.ok(adaptiveCss.length>300);
- assert.doesNotMatch(adaptiveCss,/backdrop-filter:blur\(/);
+test("background uses exact same original photo, blurred only behind sharp image",()=>{
+ assert.match(carousel,/slide\.style\.setProperty\("--photo-backdrop",'url\('\+JSON\.stringify\(source\)\+'\)'\)/);
+ assert.match(carousel,/slide\.style\.removeProperty\("--photo-backdrop"\)/);
+ assert.match(photoCss,/background-image:var\(--photo-backdrop,none\)/);
+ assert.match(photoCss,/background-size:cover;background-position:center/);
+ assert.match(photoCss,/filter:blur\(24px\) brightness\(\.78\) saturate\(\.94\)/);
+ assert.match(photoCss,/\.carousel-slide-adaptive\[data-photo-fit="full"\]::before\{[\s\S]*?display:none/);
+ assert.match(photoCss,/-webkit-mask-image:linear-gradient\(180deg,[\s\S]*?black 30%,black 70%/);
+ assert.doesNotMatch(carousel,/photoAtmosphere|atmosphereCache|canvas\.|toDataURL\(/);
+ assert.doesNotMatch(photoCss,/--photo-atmosphere|is-photo-atmosphere-fallback/);
+ const adaptiveCss=photoCss.slice(photoCss.indexOf("/* Same-image photo stage."));
+ assert.ok(adaptiveCss.length>400);
+ assert.doesNotMatch(adaptiveCss,/backdrop-filter:/);
 });
 test("cyclic swipes animate across duplicated edges and rebase with WebView fallback",()=>{
  assert.match(carousel,/const cyclic=loop&&photos\.length>1/);

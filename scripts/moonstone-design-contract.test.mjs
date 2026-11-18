@@ -163,17 +163,18 @@ test("Vivid Matte ships one dark shell, not a dormant legacy light palette",()=>
  assert.doesNotMatch(shell,/\.luemi-shell\[data-theme=dark\]\s*\{/,
   "the old dark-theme override must not duplicate the Vivid Matte source of truth");
 });
-test("feed keeps original image sharp and uses a tiny derived color-only atmosphere",()=>{
+test("feed keeps sharp photo while its identical source blurs behind it",()=>{
  const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
  const card=read("apps/web/src/discovery/FeedCard.tsx");
  const css=read("apps/web/src/discovery/moonstone-discovery.css");
  assert.equal(existsSync("apps/web/src/discovery/adaptive-feed-photo.ts"),false);
- assert.doesNotMatch(carousel,/prepareAdaptiveFeedPhoto|adaptiveFullscreen|canvas\.toBlob/);
+ assert.doesNotMatch(carousel,/prepareAdaptiveFeedPhoto|adaptiveFullscreen|canvas\.toBlob|photoAtmosphere/);
  assert.doesNotMatch(card,/moonstone-blur-photo|onResolvedSource|adaptiveFullscreen/);
- assert.doesNotMatch(css,/\.moonstone-blur-photo\{|filter:blur\(24px\)/);
+ assert.doesNotMatch(css,/\.moonstone-blur-photo\{/);
  assert.match(carousel,/const warmPhoto=/);
- assert.match(carousel,/canvas\.width=72/);
- assert.match(carousel,/context\.drawImage\(image,\(width-sampleWidth\)\/2/);
+ assert.match(carousel,/--photo-backdrop/);
+ assert.match(css,/background-image:var\(--photo-backdrop,none\)/);
+ assert.match(css,/filter:blur\(24px\) brightness\(\.78\)/);
  assert.match(carousel,/const full=Math\.abs\(Math\.log\(ratio\/frameRatio\)\)<\.075/);
  assert.match(card,/gpuSafe adaptive loop onCoverReady=\{onCoverReady\}/);
  assert.match(css,/\.moonstone-photo-shade\{/);

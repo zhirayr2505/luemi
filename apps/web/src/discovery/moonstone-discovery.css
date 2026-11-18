@@ -310,52 +310,56 @@
 .discovery-app[data-profile-renderer=android]>.discovery-bottom-nav{backdrop-filter:none;-webkit-backdrop-filter:none}
 
 
-/* Seamless adaptive photo stage (square/portrait/landscape).
- * A correctly cropped, pre-blurred 72px ambient thumbnail provides an actual
- * continuation of the photograph. The full-resolution foreground is never blurred.
- * Keep all expensive work outside RAF and do not sample any live backdrop. */
+/* Same-image photo stage.
+ * The exact loaded photograph fills the entire background with blur.
+ * The untouched contain-fit photograph sits over it with a long feather.
+ * No canvas thumbnails, invented colors, or live backdrop-filter. */
 .moonstone-photo .carousel-track>.carousel-slide-adaptive{
  position:relative;flex:0 0 100%;width:100%;height:100%;
  overflow:hidden;background:#18212D;isolation:isolate
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive::before{
- content:"";position:absolute;z-index:0;inset:-1.5%;pointer-events:none;
- background-color:#253140;
- background-image:var(--photo-atmosphere,linear-gradient(180deg,#354154,#192532 48%,#2A3442));
- background-size:cover;background-position:center;image-rendering:auto
+ content:"";position:absolute;z-index:0;inset:-4%;
+ pointer-events:none;
+ background-color:#18212D;
+ background-image:var(--photo-backdrop,none);
+ background-size:cover;background-position:center;
+ filter:blur(24px) brightness(.78) saturate(.94);
+ transform:scale(1.075)
 }
-.moonstone-photo .carousel-track>.carousel-slide-adaptive.is-photo-atmosphere-fallback::before{
- background-size:cover;filter:blur(22px)
+.moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"]::before{
+ display:none
 }
-.moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"]::before{display:none}
 .moonstone-photo .carousel-track>.carousel-slide-adaptive .feed-carousel-photo{
- position:absolute;z-index:1;top:42%;left:50%;
+ position:absolute;z-index:1;top:50%;left:50%;
  width:auto;height:auto;max-width:100%;max-height:100%;
  min-width:0;min-height:0;flex:none;display:block;
  object-fit:contain;object-position:center;
  transform:translate(-50%,-50%);image-rendering:auto;
- /* The old 9% linear fade exposed an obvious horizontal seam at the edge
-  * of square photos. A 23% smooth multi-stop feather hides the border. */
  -webkit-mask-image:linear-gradient(180deg,
-  transparent 0%,rgba(0,0,0,.1) 6%,rgba(0,0,0,.48) 14%,
-  black 23%,black 72%,rgba(0,0,0,.62) 84%,transparent 100%);
+   transparent 0%,rgba(0,0,0,.13) 6%,
+   rgba(0,0,0,.51) 14%,rgba(0,0,0,.88) 23%,
+   black 30%,black 70%,
+   rgba(0,0,0,.88) 77%,rgba(0,0,0,.51) 86%,
+   rgba(0,0,0,.13) 94%,transparent 100%);
  mask-image:linear-gradient(180deg,
-  transparent 0%,rgba(0,0,0,.1) 6%,rgba(0,0,0,.48) 14%,
-  black 23%,black 72%,rgba(0,0,0,.62) 84%,transparent 100%);
+   transparent 0%,rgba(0,0,0,.13) 6%,
+   rgba(0,0,0,.51) 14%,rgba(0,0,0,.88) 23%,
+   black 30%,black 70%,
+   rgba(0,0,0,.88) 77%,rgba(0,0,0,.51) 86%,
+   rgba(0,0,0,.13) 94%,transparent 100%);
  pointer-events:none
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="pillarbox"] .feed-carousel-photo{
- top:50%;
  -webkit-mask-image:linear-gradient(90deg,
-  transparent 0%,rgba(0,0,0,.35) 8%,black 18%,
-  black 82%,rgba(0,0,0,.35) 92%,transparent 100%);
+  transparent 0%,rgba(0,0,0,.4) 7%,black 18%,
+  black 82%,rgba(0,0,0,.4) 93%,transparent 100%);
  mask-image:linear-gradient(90deg,
-  transparent 0%,rgba(0,0,0,.35) 8%,black 18%,
-  black 82%,rgba(0,0,0,.35) 92%,transparent 100%)
+  transparent 0%,rgba(0,0,0,.4) 7%,black 18%,
+  black 82%,rgba(0,0,0,.4) 93%,transparent 100%)
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"] .feed-carousel-photo{
- top:50%;width:100%;height:100%;max-width:none;max-height:none;
+ width:100%;height:100%;max-width:none;max-height:none;
  object-fit:cover;-webkit-mask-image:none;mask-image:none
 }
-/* The carousel remains a single compositor track with all real dimensions
- * intact; blur thumbnails and masks never intercept swipe events. */
+/* Keep swipe-hit areas, progress and the approved chrome untouched. */
