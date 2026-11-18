@@ -17,12 +17,14 @@ test("Moonstone Discovery uses the original centered wordmark and no header tool
 
 test("photo is one fullscreen carousel beneath all chrome",()=>{
  assert.match(card,/className="moonstone-photo"/);
- assert.match(card,/gpuSafe onCoverReady=\{onCoverReady\}/);
+ assert.match(card,/gpuSafe adaptive loop onCoverReady=\{onCoverReady\}/);
  assert.match(css,/\.moonstone-photo,\.moonstone-photo>\.carousel-frame\{position:absolute;inset:0/);
- assert.match(css,/object-fit:cover/);
+ assert.match(css,/\.carousel-slide-adaptive \.feed-carousel-photo\{[\s\S]*?object-fit:contain/);
+ assert.match(css,/data-photo-fit="full"/);
  assert.match(real,/visibleRows\.slice\(page,page\+2\)/);
  // Queued cards load only the cover; active cards may also warm the next photo.
- assert.match(carousel,/src=\{!gpuSafe\|\|i===0\|\|\(i===1&&prioritize\)\?p\.src:undefined\}/);
+ assert.match(carousel,/const load=!gpuSafe\|\|i===0\|\|\(i===1&&prioritize\)/);
+ assert.match(carousel,/src=\{load\?p\.src:undefined\}/);
  // A user-requested gallery image must still load on demand.
  assert.match(carousel,/if\(gpuSafe&&!image\.getAttribute\("src"\)\)image\.src=photos\[i\]\.src/);
 });

@@ -245,6 +245,11 @@ button{cursor:pointer}button:disabled{cursor:not-allowed}
 .carousel-track{position:relative;z-index:1;height:100%;display:flex}
 .carousel-track.is-dragging{will-change:transform}
 .carousel-track img{display:block;width:100%;height:100%;flex:0 0 100%;object-fit:cover;pointer-events:none}
+/* Every carousel item retains exactly one viewport width; photo layout inside
+ * each item is free to preserve original aspect ratio in discovery mode. */
+.carousel-track>.carousel-slide{position:relative;display:block;flex:0 0 100%;width:100%;height:100%;min-width:0;overflow:hidden}
+.carousel-track>.carousel-slide:not(.carousel-slide-adaptive)>.feed-carousel-photo{width:100%;height:100%;object-fit:cover}
+
 .profile-placeholder{height:100%;display:grid;place-items:center;text-align:center;padding:20px;color:#4C3173}
 .carousel-caption{position:absolute;z-index:2;left:17px;bottom:16px;color:white;font-size:29px;font-weight:800;
  text-shadow:0 2px 10px rgba(32,19,49,.7)}

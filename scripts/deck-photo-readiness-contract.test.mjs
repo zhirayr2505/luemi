@@ -37,15 +37,17 @@ test("gallery must retain the current image until the requested next image is de
  assert.match(photo,/const pendingPhoto=useRef<number\|null>\(null\)/);
  assert.match(photo,/const painted=\(i:number\)/);
  assert.match(photo,/image\.classList\.contains\("is-unavailable"\)/);
- assert.match(photo,/if\(next!==activeRef\.current&&!painted\(next\)\)warmPhoto\(next\)/);
+ assert.match(photo,/next!==activeRef\.current&&\(!painted\(next\)\|\|!paintedVisual\(nextVisual\)\)/);
  assert.match(photo,/return atEdge\|\|unpainted\?delta\*\.16/);
  assert.match(photo,/if\(i!==activeRef\.current&&!painted\(i\)\)\{queuePhoto\(i\);return;\}/);
  assert.match(photo,/image\.classList\.add\("is-ready"\)/);
  assert.match(photo,/loading=\{i===0\|\|\(prioritize/);
  // The queued deck paints its cover without eagerly allocating the next gallery bitmap.
- assert.match(photo,/src=\{!gpuSafe\|\|i===0\|\|\(i===1&&prioritize\)\?p\.src:undefined\}/);
+ assert.match(photo,/const load=!gpuSafe\|\|i===0\|\|\(i===1&&prioritize\)/);
+ assert.match(photo,/src=\{load\?p\.src:undefined\}/);
  assert.match(photo,/if\(gpuSafe&&!image\.getAttribute\("src"\)\)image\.src=photos\[i\]\.src/);
- assert.match(photo,/warmPhoto\(i-1\);warmPhoto\(i\+1\)/);
+ assert.match(photo,/warmNeighbors\(i\)/);
+ assert.match(photo,/const wrapTimer=useRef<number\|null>\(null\)/);
  assert.doesNotMatch(photo,/Math\.abs\(i-active\)<=1\?p\.src:undefined/,
   "React must not detach an already painted src when the user returns to it");
  assert.doesNotMatch(photo,/style=\{\{opacity:0/,

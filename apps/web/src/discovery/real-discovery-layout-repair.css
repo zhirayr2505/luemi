@@ -171,3 +171,29 @@
  .real-discovery-home>.discovery-bottom-nav,
  .real-discovery-home[data-feed-visible="true"] .discovery-top-tabs{background:#232E3D}
 }
+
+
+/* Compact premium chrome over adaptive photography.
+ * Raise the entire action rail and compact info together (no overlap).
+ * Expand/collapse is a bare chevron with a comfortably large hit target. */
+.real-discovery-home[data-feed-visible="true"]{
+ --moon-action-gap:24px;
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-toggle,
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-toggle:focus,
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-toggle:active{
+ border:0!important;background:transparent!important;
+ box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+ width:44px;height:36px;border-radius:0;
+ color:#FAFCFF;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-toggle::before,
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-toggle::after{
+ content:none!important
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-toggle svg{
+ width:25px;height:25px;stroke-width:2.6
+}
+@media(max-height:710px){
+ .real-discovery-home[data-feed-visible="true"]{--moon-action-gap:18px}
+}

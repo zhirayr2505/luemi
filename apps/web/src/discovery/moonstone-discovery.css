@@ -308,3 +308,42 @@
 .discovery-app[data-profile-renderer=android] .moonstone-pass-button,
 .discovery-app[data-profile-renderer=android] .moonstone-like-button,
 .discovery-app[data-profile-renderer=android]>.discovery-bottom-nav{backdrop-filter:none;-webkit-backdrop-filter:none}
+
+
+/* Adaptive photo stage: the full-resolution photograph is always unblurred.
+ * A 16x26 color thumbnail, generated once on decode, fills any letterbox.
+ * No fullscreen backdrop-filter and no stretched/cropped square portraits. */
+.moonstone-photo .carousel-track>.carousel-slide-adaptive{
+ position:relative;flex:0 0 100%;width:100%;height:100%;
+ overflow:hidden;background:#18212D;isolation:isolate
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive::before{
+ content:"";position:absolute;z-index:0;inset:-3%;pointer-events:none;
+ background-color:#253140;
+ background-image:var(--photo-atmosphere,linear-gradient(180deg,#354154,#192532 48%,#2A3442));
+ background-size:100% 100%;background-position:center;image-rendering:auto;
+ transform:scale(1.025)
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive.is-photo-atmosphere-fallback::before{
+ background-size:cover;filter:blur(22px)
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"]::before{display:none}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive .feed-carousel-photo{
+ position:absolute;z-index:1;top:50%;left:50%;
+ width:auto;height:auto;max-width:100%;max-height:100%;
+ min-width:0;min-height:0;flex:none;display:block;
+ object-fit:contain;object-position:center;
+ transform:translate(-50%,-50%);image-rendering:auto;
+ -webkit-mask-image:linear-gradient(180deg,transparent 0%,black 9%,black 91%,transparent 100%);
+ mask-image:linear-gradient(180deg,transparent 0%,black 9%,black 91%,transparent 100%);
+ pointer-events:none
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="pillarbox"] .feed-carousel-photo{
+ -webkit-mask-image:linear-gradient(90deg,transparent 0%,black 8%,black 92%,transparent 100%);
+ mask-image:linear-gradient(90deg,transparent 0%,black 8%,black 92%,transparent 100%)
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"] .feed-carousel-photo{
+ width:100%;height:100%;max-width:none;max-height:none;
+ object-fit:cover;-webkit-mask-image:none;mask-image:none
+}
+/* The navigation and discovery gestures retain their existing stacking order. */

@@ -163,7 +163,7 @@ test("Vivid Matte ships one dark shell, not a dormant legacy light palette",()=>
  assert.doesNotMatch(shell,/\.luemi-shell\[data-theme=dark\]\s*\{/,
   "the old dark-theme override must not duplicate the Vivid Matte source of truth");
 });
-test("feed photographs use unchanged source pixels without canvas blur",()=>{
+test("feed keeps original image sharp and uses a tiny derived color-only atmosphere",()=>{
  const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
  const card=read("apps/web/src/discovery/FeedCard.tsx");
  const css=read("apps/web/src/discovery/moonstone-discovery.css");
@@ -172,7 +172,9 @@ test("feed photographs use unchanged source pixels without canvas blur",()=>{
  assert.doesNotMatch(card,/moonstone-blur-photo|onResolvedSource|adaptiveFullscreen/);
  assert.doesNotMatch(css,/\.moonstone-blur-photo\{|filter:blur\(24px\)/);
  assert.match(carousel,/const warmPhoto=/);
- assert.match(card,/gpuSafe onCoverReady=\{onCoverReady\}/);
+ assert.match(carousel,/canvas\.width=16;canvas\.height=26/);
+ assert.match(carousel,/const full=Math\.abs\(Math\.log\(ratio\/frameRatio\)\)<\.075/);
+ assert.match(card,/gpuSafe adaptive loop onCoverReady=\{onCoverReady\}/);
  assert.match(css,/\.moonstone-photo-shade\{/);
 });
 test("deleted registration language flow and artificial photo cropping stay deleted",()=>{
