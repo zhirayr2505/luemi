@@ -118,10 +118,15 @@ test("real pages reuse approved 1:1 gesture and inertial settle without duplicat
  assert.match(nearby,/onScroll=\{e=>onScrollTop/);
 });
 
-test("real feed continues paging when the visible filtered deck is exhausted",()=>{
+test("real feed continues paging without blocking profile admission on photo prefetch",()=>{
+ const more= shell.slice(shell.indexOf("const more=useCallback"),shell.indexOf("// Decode covers"));
  assert.match(shell,/visibleRows\.length===0\|\|page>=Math\.max\(0,visibleRows\.length-5\)/);
- assert.match(shell,/if\(active&&tab==="feed"&&!loading&&!error&&cursor&&!moreBusy&&!busy/);
- assert.match(shell,/setCursor\(prepared\.nextCursor===cursor\?null:prepared\.nextCursor\)/);
+ assert.match(shell,/autoEmptyPages\.current<3/);
+ assert.match(shell,/setAutoLoadPaused\(true\)/);
+ assert.match(more,/const response=await getPublishedFeed\(controller\.signal,cursor\)/);
+ assert.match(more,/setRows\(existing=>/);
+ assert.match(more,/setCursor\(response\.nextCursor===cursor\?null:response\.nextCursor\)/);
+ assert.doesNotMatch(more,/warmPublishedPagePhotos/);
  assert.match(shell,/if\(active&&tab==="feed"&&firstLoadSettled&&!loading&&\(!current\|\|!!error\)\)/);
 });
 
@@ -130,7 +135,8 @@ test("real feed restores animated deck, undoable skip and session bookmarks acro
  assert.match(shell,/deck-peek-"\+side/);
  assert.match(shell,/className=\{"discovery-deck-layer"\+state\}/);
  assert.match(shell,/preloadUpcomingFeedPhotos/);
- assert.match(shell,/warmPublishedPagePhotos/);
+ assert.match(shell,/warmPublishedPagePhotos/); // initial first-page preparation only
+ assert.match(card,/onResolvedSource=\{rememberAdaptiveSource\}/);
  assert.match(shell,/onAnimationEnd=/);
  assert.match(shell,/pendingCommit/);
  assert.match(shell,/setUndoPage\(from\)/);
