@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {BadgeCheck,ChevronRight,ChevronUp,Heart,MapPin,MoreHorizontal,Star,X} from "lucide-react";
+import {BadgeCheck,Bookmark,ChevronUp,Heart,MapPin,MoreHorizontal,RotateCcw,Star,X} from "lucide-react";
 import {goals} from "../registration/model";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
@@ -63,7 +63,7 @@ function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onActio
  const down=(event:ReactPointerEvent<HTMLButtonElement>)=>{
   if(disabled||committed.current||!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
   const width=event.currentTarget.getBoundingClientRect().width;
-  const max=Math.max(1,width-58);event.currentTarget.style.setProperty("--like-travel",max+"px");
+  const max=Math.max(72,width-58);event.currentTarget.style.setProperty("--like-travel",max+"px");
   const now=performance.now();
   gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,started:now,claimed:false,threshold:false,max,lastX:event.clientX,lastT:now,velocity:0};
  };
@@ -116,13 +116,11 @@ function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onActio
   <span className="moonstone-like-thumb" aria-hidden="true"><Heart/><Star className="moonstone-super-star"/>
    <span className="moonstone-super-particles">{Array.from({length:14},(_,index)=><i key={index}><Star/></i>)}</span>
   </span>
-  <span className="moonstone-like-copy">Нравится</span>
-  <span className="moonstone-like-arrows" aria-hidden="true"><ChevronRight/><ChevronRight/></span>
  </button>;
 }
 
 /** Moonstone V6 fullscreen discovery surface. The keyed card remains mounted during deck transitions. */
-export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenProfile,onInterests:___,
+export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests:___,
  onExitDemo,onCoverReady,real=false,onMore,demoDistanceKm,viewerInterestIds=EMPTY_INTERESTS}:{
  person:DemoPerson;saved:boolean;canUndo:boolean;active:boolean;busy:boolean;
  onAction:(kind:DemoKind|"undo")=>void;onOpenProfile:()=>void;onInterests:()=>void;
@@ -417,9 +415,12 @@ export function FeedCard({person,saved:_,canUndo:__,active,busy,onAction,onOpenP
     className={`moonstone-action-feedback is-${actionFeedback.kind}`} aria-hidden="true">
     <span>{actionFeedback.kind==="pass"?<X/>:<Heart/>}</span>
    </div>}
-   <div className="moonstone-actions" aria-label="Действия с анкетой">
+   <div className="moonstone-actions moonstone-actions-vivid" aria-label="Действия с анкетой">
+    <button type="button" className="moonstone-undo-button" disabled={!available||!canUndo} aria-label="Отменить пропуск" onClick={()=>{selectionHaptic();onAction("undo");}}><RotateCcw/></button>
     <button type="button" className="moonstone-pass-button" disabled={!available} aria-label="Пропустить" onClick={()=>performAction("pass")}><X/></button>
+    <button type="button" className="moonstone-special-button" disabled={!available} aria-label="Особенная симпатия" onClick={()=>{impactHaptic("medium");performAction("special");}}><Star/></button>
     <LikeSuperButton disabled={!available} onAction={performAction} onPreview={paintSuperPreview}/>
+    <button type="button" className={"moonstone-save-button"+(saved?" is-saved":"")} disabled={!available} aria-label={saved?"Убрать из сохранённых":"Сохранить анкету"} aria-pressed={saved} onClick={()=>{selectionHaptic();onAction("save");}}><Bookmark/></button>
    </div>
   </article>
  </div>;

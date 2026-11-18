@@ -1,42 +1,42 @@
-/* LUEMI Badoo Purple — single semantic palette / optical materials.
+/* LUEMI Vivid Matte — single semantic palette / optical materials.
  * Optically layered controls, not blur on moving photo decks or Profile Morph.
  * Original raster logo and accepted geometry stay untouched.
  */
 :root{
  color-scheme:dark;
- --luemi-bg:#26103E;
- --luemi-bg-deep:#1A0A2A;
- --luemi-bg-top:#351451;
- --luemi-surface:#421B6B;
- --luemi-surface-raised:#54247F;
- --luemi-glass:#613090;
- --luemi-glass-accent:#6E3EFF;
- --luemi-accent:#6E3EFF;
- --luemi-coral:#FC846D;
- --luemi-coral-light:#FFA34E;
- --luemi-peach:#FFE7BA;
- --luemi-dusty-rose:#FFBBD0;
- --luemi-lavender:#BCA8F2;
- --luemi-rose:#FFBBD0;
- --luemi-text:#FFF8FF;
- --luemi-text-secondary:#F3E8FC;
- --luemi-text-muted:#D4BBDD;
- --luemi-border:rgba(188,168,242,.32);
- --luemi-border-active:rgba(255,187,208,.74);
- --luemi-focus:#FFBBD0;
- --luemi-danger:#B82D51;
- --luemi-success:#04A39C;
- --luemi-disabled:#B78DAF;
+ --luemi-bg:#151B25;
+ --luemi-bg-deep:#10151D;
+ --luemi-bg-top:#232B39;
+ --luemi-surface:#232A36;
+ --luemi-surface-raised:#2D3442;
+ --luemi-glass:#354154;
+ --luemi-glass-accent:#E96A86;
+ --luemi-accent:#A93E60;
+ --luemi-coral:#E96A86;
+ --luemi-coral-light:#F2A8B8;
+ --luemi-peach:#E8B84F;
+ --luemi-dusty-rose:#F2ADB9;
+ --luemi-lavender:#9EBFE2;
+ --luemi-rose:#E96A86;
+ --luemi-text:#FAFCFF;
+ --luemi-text-secondary:#E4EAF2;
+ --luemi-text-muted:#B8C5D6;
+ --luemi-border:rgba(224,234,246,.20);
+ --luemi-border-active:rgba(233,106,134,.46);
+ --luemi-focus:#F5B4C3;
+ --luemi-danger:#E26079;
+ --luemi-success:#4FC995;
+ --luemi-disabled:#778597;
  --luemi-ink-on-accent:#FFFFFF;
- --luemi-shadow:0 12px 28px rgba(10,3,23,.40);
- --luemi-shadow-contact:0 5px 16px rgba(12,4,25,.32);
- --luemi-glass-fill:linear-gradient(144deg,rgba(82,28,133,.72),rgba(66,27,107,.82) 53%,rgba(26,10,42,.94));
- --luemi-glass-accent-fill:linear-gradient(138deg,rgba(110,62,255,.96),rgba(132,55,190,.94) 48%,rgba(184,45,81,.90));
- --luemi-glass-solid:linear-gradient(145deg,#613090,#26103E);
- --luemi-glass-line:rgba(255,187,208,.38);
- --luemi-glass-light:rgba(255,248,255,.42);
- --luemi-glass-shine:radial-gradient(ellipse 98% 75% at var(--moonstone-x,26%) var(--moonstone-y,2%),rgba(255,187,208,.24),transparent 62%),
-  linear-gradient(175deg,rgba(255,248,255,.16) 0%,rgba(188,168,242,.09) 34%,transparent 60%);
+ --luemi-shadow:0 12px 28px rgba(3,8,16,.25);
+ --luemi-shadow-contact:0 5px 16px rgba(3,8,16,.23);
+ --luemi-glass-fill:linear-gradient(160deg,rgba(56,67,83,.78),rgba(27,35,47,.88) 80%);
+ --luemi-glass-accent-fill:linear-gradient(135deg,#D75B77,#B64463);
+ --luemi-glass-solid:linear-gradient(145deg,#354154,#1B2430);
+ --luemi-glass-line:rgba(236,243,249,.21);
+ --luemi-glass-light:rgba(248,252,255,.23);
+ --luemi-glass-shine:radial-gradient(ellipse 98% 75% at var(--moonstone-x,26%) var(--moonstone-y,2%),rgba(250,252,255,.105),transparent 62%),
+  linear-gradient(175deg,rgba(248,252,255,.11) 0%,transparent 60%);
  --luemi-radius-sm:14px;
  --luemi-radius-md:19px;
  --luemi-radius-lg:26px;
@@ -47,17 +47,16 @@
 html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
 .luemi-shell[data-theme=dark]{
  --bg:var(--luemi-bg);--ink:var(--luemi-text);--subtle:var(--luemi-text-secondary);
- --panel:rgba(66,27,107,.88);
+ --panel:rgba(35,42,54,.90);
  --glass-edge:var(--luemi-border);--line:var(--luemi-border);
  --lavender:var(--luemi-lavender);--pink:var(--luemi-rose);
  --shadow:rgba(10,4,19,.30);
- --mist-lavender:rgba(110,62,255,.18);
- --mist-rose:rgba(255,187,208,.14);
+ --mist-lavender:rgba(79,169,247,.06);
+ --mist-rose:rgba(233,106,134,.07);
  background:var(--luemi-bg);color:var(--luemi-text);
 }
 .luemi-shell[data-theme=dark] .milky-mist{
- background:radial-gradient(ellipse at 12% 4%,rgba(188,168,242,.105),transparent 47%),
- radial-gradient(ellipse at 86% 89%,rgba(255,187,208,.08),transparent 50%);
+ background:none;
 }
 .luemi-shell[data-theme=dark] .intro-type-cursor{animation:none}
 

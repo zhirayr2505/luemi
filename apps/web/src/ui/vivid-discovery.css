@@ -1,0 +1,161 @@
+/* LUEMI Vivid Matte: discovery only. Keep original fullscreen photo, gestures,
+   deck animations and raster wordmark. No emissive neon, no photo filters. */
+:root{
+ --vivid-deep:#10151D;--vivid-ink:#151B25;--vivid-panel:#232A36;
+ --vivid-surface:#354154;--vivid-rose:#E96A86;--vivid-rose-cta:#C34865;
+ --vivid-sky:#4FA9F7;--vivid-gold:#E8B84F;--vivid-pearl:#FAFCFF;
+ --vivid-stroke:rgba(238,246,255,.19);--vivid-shadow:0 10px 25px rgba(3,9,17,.24);
+}
+.discovery-app[data-feed-visible=true] .moonstone-photo,
+.discovery-app[data-feed-visible=true] .moonstone-photo>.carousel-frame{background:var(--vivid-deep)}
+.discovery-app[data-feed-visible=true] .moonstone-photo-shade{
+ background:linear-gradient(180deg,rgba(10,15,22,.35) 0%,transparent 28%,transparent 45%,rgba(11,16,24,.22) 64%,rgba(10,15,22,.88) 100%)
+}
+.discovery-app[data-feed-visible=true] .moonstone-photo-shade::after{
+ background:linear-gradient(180deg,transparent 0%,rgba(10,15,22,.12) 26%,rgba(10,15,22,.74) 100%)
+}
+.discovery-app[data-feed-visible=true] .discovery-top-tabs{
+ width:min(calc(100% - 40px),390px);height:42px;padding:3px;
+ background:rgba(28,37,50,.76);border:1px solid rgba(255,255,255,.13);
+ border-radius:999px;overflow:hidden;box-shadow:0 7px 18px rgba(5,12,21,.16)
+}
+.discovery-app[data-feed-visible=true] .discovery-top-tabs>button{
+ height:34px;border-radius:999px;color:#E7ECF4;text-shadow:none;font-weight:600
+}
+.discovery-app[data-feed-visible=true] .discovery-top-tabs>button.active{
+ color:#FFFFFF;background:#C34865
+}
+.discovery-app[data-feed-visible=true] .discovery-tab-underline{bottom:0;height:2px;opacity:0;pointer-events:none}
+.discovery-app[data-feed-visible=true] .moonstone-photo-indicator i.active{background:var(--vivid-rose)}
+.discovery-app[data-feed-visible=true] .moonstone-profile-toggle,
+.discovery-app[data-feed-visible=true] .moonstone-profile-more,
+.discovery-app[data-feed-visible=true] .moonstone-goal,
+.discovery-app[data-feed-visible=true] .moonstone-drawer-goal{
+ background:rgba(30,39,52,.70);border-color:rgba(241,247,255,.18);
+ box-shadow:var(--vivid-shadow);color:var(--vivid-pearl)
+}
+.discovery-app[data-feed-visible=true] .moonstone-goal-mark{background:rgba(233,106,134,.16)}
+.discovery-app[data-feed-visible=true] .moonstone-goal-mark svg{color:var(--vivid-rose)}
+.discovery-app[data-feed-visible=true] .moonstone-interest-list .interest-chip{
+ color:var(--vivid-pearl);border-color:rgba(238,245,255,.17);
+ background:rgba(41,51,66,.82);box-shadow:none
+}
+.discovery-app[data-feed-visible=true] .moonstone-interest-pill.is-shared .interest-chip{border-color:var(--vivid-rose)}
+.discovery-app[data-feed-visible=true] .moonstone-language-chip,
+.discovery-app[data-feed-visible=true] .moonstone-fact,
+.discovery-app[data-feed-visible=true] .moonstone-answer{
+ background:rgba(36,44,58,.80);border-color:var(--vivid-stroke);box-shadow:none
+}
+/* Five round controls are backed by real actions: undo / pass / super / like / save.
+   There is no Boost API, so no decorative or fictitious Boost button. */
+.discovery-app[data-feed-visible=true]{
+ --moon-nav-bottom:calc(var(--bottom-safe) + 9px);
+ --moon-nav-height:67px;--moon-action-gap:10px;
+ --moon-actions-height:72px;--moon-info-gap:13px
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid{
+ left:18px;right:18px;gap:clamp(5px,2.2vw,11px);
+ height:var(--moon-actions-height);display:flex;align-items:center;justify-content:space-between
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-undo-button,
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-pass-button,
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-special-button,
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button,
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-save-button{
+ position:relative;isolation:isolate;flex:0 1 auto;display:grid;place-items:center;
+ width:clamp(42px,12vw,54px);height:clamp(42px,12vw,54px);padding:0;margin:0;
+ border:1px solid rgba(255,255,255,.13);border-radius:50%;overflow:visible;
+ color:var(--vivid-pearl);background:rgba(45,55,70,.94);
+ box-shadow:0 7px 15px rgba(4,10,18,.20),inset 0 1px rgba(255,255,255,.12);
+ -webkit-backdrop-filter:none;backdrop-filter:none;
+ touch-action:manipulation;transition:transform .16s ease,background-color .2s ease,opacity .2s ease
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-pass-button{
+ width:clamp(60px,17vw,72px);height:clamp(60px,17vw,72px);background:#303C4B
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button{
+ width:clamp(67px,19vw,80px);height:clamp(67px,19vw,80px);
+ flex:0 1 auto;min-width:0;overflow:visible;background:var(--vivid-rose-cta);
+ border-color:rgba(255,255,255,.15);touch-action:pan-y;
+ --like-scale:calc(1 + var(--like-slide-p) * .052)
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-special-button{
+ background:#325777;color:#FFFFFF
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-save-button.is-saved{
+ background:#7C6334;color:#FFF2CA
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>button>svg{
+ width:clamp(21px,6vw,29px);height:clamp(21px,6vw,29px);stroke-width:1.9
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-pass-button svg{width:34px;height:34px}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button .moonstone-like-thumb{
+ left:50%;top:50%;width:39px;height:39px;
+ transform:translate3d(-50%,-50%,0);transition:transform .2s ease
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button .moonstone-like-thumb>svg{
+ width:37px;height:37px
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button::before,
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button .moonstone-like-glint{
+ opacity:0;box-shadow:none;background:none
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button.is-armed{
+ border-color:rgba(255,255,255,.35);box-shadow:0 8px 18px rgba(4,10,18,.22)
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button.is-armed .moonstone-like-thumb{
+ transform:translate3d(-50%,-50%,0) scale(1.15)
+}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>button:disabled{opacity:.34}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>button:active:not(:disabled){transform:scale(.94)}
+.discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button:active:not(:disabled){transform:scale(calc(.94 + var(--like-slide-p) * .052))}
+.discovery-app[data-feed-visible=true] .moonstone-super-core{
+ background:#325777;border-color:rgba(255,255,255,.20);color:#FFFFFF;
+ box-shadow:0 12px 22px rgba(4,10,18,.28)
+}
+.discovery-app[data-feed-visible=true] .moonstone-super-core::after{background:none}
+.discovery-app[data-feed-visible=true] .moonstone-super-preview{filter:none}
+.discovery-app[data-feed-visible=true] .moonstone-action-feedback>span{filter:none}
+/* Four real destinations. The backend Bliki category is disabled; no fake tab. */
+.discovery-app>.discovery-bottom-nav{
+ width:min(calc(100% - 28px),412px);height:67px;min-height:67px;padding:5px 7px;
+ border:1px solid rgba(250,252,255,.17);border-radius:24px;
+ background:rgba(29,38,51,.91);box-shadow:0 8px 22px rgba(4,10,18,.27);
+ -webkit-backdrop-filter:blur(8px) saturate(105%);backdrop-filter:blur(8px) saturate(105%)
+}
+.discovery-app>.discovery-bottom-nav::before{background:none}
+.discovery-app>.discovery-bottom-nav .discovery-nav-item{
+ min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:3px;border-radius:19px;color:#DFE7F0
+}
+.discovery-app>.discovery-bottom-nav .discovery-nav-item span{
+ display:block;font-size:10px;font-weight:550;line-height:1.1;white-space:nowrap
+}
+.discovery-app>.discovery-bottom-nav .discovery-nav-item svg{width:22px;height:22px}
+.discovery-app>.discovery-bottom-nav .discovery-nav-item.active{
+ background:#B84261;color:#FFFFFF;box-shadow:none
+}
+.discovery-app[data-profile-renderer=android]>.discovery-bottom-nav{
+ -webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(29,38,51,.96)
+}
+@media(max-height:710px){
+ .discovery-app[data-feed-visible=true]{--moon-nav-height:56px;--moon-actions-height:57px;--moon-action-gap:7px;--moon-info-gap:9px}
+ .discovery-app>.discovery-bottom-nav{height:56px;min-height:56px}
+ .discovery-app>.discovery-bottom-nav .discovery-nav-item{min-height:46px}
+ .discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-pass-button{width:55px;height:55px}
+ .discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button{width:60px;height:60px}
+}
+@media(max-width:360px){
+ .discovery-app[data-feed-visible=true] .moonstone-actions-vivid{left:10px;right:10px;gap:4px}
+ .discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-pass-button{width:54px;height:54px}
+ .discovery-app[data-feed-visible=true] .moonstone-actions-vivid>.moonstone-like-button{width:60px;height:60px}
+ .discovery-app>.discovery-bottom-nav .discovery-nav-item span{font-size:9px}
+}
+@media(prefers-reduced-transparency:reduce){
+ .discovery-app>.discovery-bottom-nav,.discovery-app[data-feed-visible=true] .discovery-top-tabs{
+  background:#232E3D;-webkit-backdrop-filter:none;backdrop-filter:none
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .discovery-app[data-feed-visible=true] .moonstone-actions-vivid>button{transition:none}
+}

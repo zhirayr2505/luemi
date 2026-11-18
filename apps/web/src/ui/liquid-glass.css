@@ -1,33 +1,33 @@
 /* LUEMI Liquid Glass V2 — ONE optical material for the Feed sheet and
  * pass / special / like / expand controls. No competing legacy .lg surface.
- * A restrained Badoo Purple/lilac lens refraction, never a neon glow.
+ * Neutral frosted glass, without luminous rims or halos.
  */
 :root{
- --lg-tint:rgba(82,28,133,.62);
- --lg-tint-bottom:rgba(26,10,42,.82);
+ --lg-tint:rgba(48,59,74,.74);
+ --lg-tint-bottom:rgba(20,27,37,.89);
  --lg-blur:13px;
- --lg-saturate:145%;
+ --lg-saturate:112%;
  --lg-brightness:1.025;
  --lg-contrast:1.025;
  --lg-rim-width:1px;
- --lg-rim-light:rgba(255,255,255,.36);
- --lg-rim-dim:rgba(255,187,208,.10);
- --lg-chroma-warm:rgba(255,187,208,.34);
- --lg-chroma-cool:rgba(188,168,242,.28);
- --lg-specular:rgba(255,248,255,.24);
- --lg-inner-glow:rgba(255,187,208,.09);
- --lg-shadow:0 10px 22px rgba(12,4,25,.36),0 2px 7px rgba(12,4,25,.18);
+ --lg-rim-light:rgba(255,255,255,.23);
+ --lg-rim-dim:rgba(240,246,252,.055);
+ --lg-chroma-warm:rgba(244,251,255,.10);
+ --lg-chroma-cool:rgba(244,251,255,.07);
+ --lg-specular:rgba(255,255,255,.13);
+ --lg-inner-glow:rgba(255,255,255,.025);
+ --lg-shadow:0 10px 22px rgba(4,10,19,.24),0 2px 7px rgba(4,10,19,.12);
  --lg-radius-card:clamp(25px,7.4vw,34px);
  --lg-radius-pill:999px;
  --lg-press-scale:.97;
- --lg-press-glow:rgba(255,187,208,.22);
- --lg-accent-from:rgba(110,62,255,.96);
- --lg-accent-to:rgba(132,55,190,.94);
+ --lg-press-glow:rgba(255,255,255,.065);
+ --lg-accent-from:rgba(213,86,116,.98);
+ --lg-accent-to:rgba(174,62,91,.98);
  --lg-rim-depth:2px;
  /* The first approved reference uses a thin edge, not a 14px chrome ring. */
  --lg-relief:var(--lg-shadow),inset 0 1px 0 rgba(255,255,255,.17),
   inset 0 -1px 0 rgba(188,168,242,.10),inset 0 0 9px var(--lg-inner-glow);
- --lg-press-relief:var(--lg-relief),0 0 13px var(--lg-press-glow);
+ --lg-press-relief:var(--lg-relief);
 }
 /* BASE GLASS — visible photographic background, translucency, saturation and
  * polished inner relief. The surface is intentionally NOT a gray opaque card.
@@ -51,8 +51,8 @@
 .lg--pill{--lg-rim-depth:1.5px;border-radius:var(--lg-radius-pill)}
 .lg--small{--lg-rim-depth:1px}
 .lg--accent{
- --lg-tint:rgba(110,62,255,.78);
- --lg-tint-bottom:rgba(55,14,123,.92);
+ --lg-tint:rgba(201,73,105,.85);
+ --lg-tint-bottom:rgba(154,48,78,.95);
  --lg-surface:
   radial-gradient(ellipse 75% 75% at 26% -30%,rgba(255,255,255,.19),transparent 76%),
   linear-gradient(125deg,var(--lg-accent-from),var(--lg-accent-to)),
@@ -122,8 +122,8 @@
  * specular glints, relief. Never run the costly moving SVG backdrop sampling.
  */
 :root[data-lg-optics="safe"]{
- --lg-tint:rgba(82,28,133,.62);
- --lg-tint-bottom:rgba(26,10,42,.82);
+ --lg-tint:rgba(48,59,74,.74);
+ --lg-tint-bottom:rgba(20,27,37,.89);
  --lg-rim-depth:2px;
 }
 :root[data-lg-optics="safe"] .lg::before{
@@ -136,8 +136,8 @@
   --lg-blur:0px;
  }
  .lg--accent{
-  --lg-accent-from:rgba(110,62,255,.96);
-  --lg-accent-to:rgba(55,14,123,.97);
+  --lg-accent-from:rgba(213,86,116,.98);
+  --lg-accent-to:rgba(155,49,79,.98);
  }
  .lg,.lg::before{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
  .lg::before{filter:none!important}

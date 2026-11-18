@@ -1,0 +1,181 @@
+/* LUEMI Vivid Matte — app-wide neutral materials, no colored halo.
+ * This is a paint-only layer for established registration, chats, profile,
+ * discover collections, overlays and loading states. */
+html,body,#root{background:#10151D}
+.luemi-shell,.luemi-shell[data-theme=dark]{background:var(--luemi-bg);color:var(--luemi-text)}
+.luemi-shell .milky-mist{background:none}
+.luemi-shell button:focus-visible,.luemi-shell [role=tab]:focus-visible{
+ outline:2px solid #F6B3C2;outline-offset:2px
+}
+.luemi-shell .luemi-v5-glass,.luemi-shell .luemi-v5-icon-button{
+ border-color:rgba(238,246,255,.19);background:var(--luemi-glass-fill);
+ box-shadow:inset 0 1px rgba(255,255,255,.13),var(--luemi-shadow-contact)
+}
+.luemi-shell .luemi-v5-glass::before,.luemi-shell .luemi-v5-icon-button::before{opacity:.30}
+.luemi-shell .luemi-v5-segments button{
+ background:rgba(36,44,58,.82);border-color:rgba(238,246,255,.19);color:#B8C5D6
+}
+.luemi-shell .luemi-v5-segments button.active{
+ background:#B84261;color:#FFFFFF;border-color:rgba(255,255,255,.15);box-shadow:none
+}
+.luemi-shell .luemi-v5-empty-mark,.luemi-shell .luemi-v5-skeleton{
+ background:#263141;border-color:rgba(238,246,255,.19);box-shadow:none
+}
+.luemi-shell .luemi-v5-empty-mark{color:#E96A86}
+.luemi-shell .luemi-v5-skeleton-avatar,.luemi-shell .luemi-v5-skeleton-copy>span{background:rgba(255,255,255,.09)}
+.luemi-shell .nav-circle:not(.forward),.luemi-shell .discovery-glass-button{
+ background:rgba(49,60,77,.83);border-color:rgba(238,246,255,.19);color:#FAFCFF;
+ box-shadow:0 5px 13px rgba(5,12,21,.17)
+}
+.luemi-shell .nav-circle.forward,.luemi-shell .primary-action,
+.luemi-shell .glass-choice.selected .glass-choice-indicator{
+ background:#B84261;border-color:rgba(255,255,255,.14);color:#FFFFFF
+}
+.luemi-shell .glass-panel,.luemi-shell .glass-check,.luemi-shell .glass-control,
+.luemi-shell .glass-choice,.luemi-shell .geo-results{
+ background:rgba(39,50,66,.88);border-color:rgba(238,246,255,.19);color:#FAFCFF
+}
+.luemi-shell .glass-control:focus{border-color:#E96A86;box-shadow:0 0 0 2px rgba(233,106,134,.12)}
+.luemi-shell .glass-choice.selected,.luemi-shell .category-chip.selected{
+ background:rgba(169,62,96,.30);border-color:#E96A86;color:#FAFCFF
+}
+.luemi-shell .double-range-track span,.luemi-shell .progress-track span{background:#E96A86}
+.luemi-shell .field-error,.luemi-shell .field-warning{background:#2B3544;color:#FFD0DC;border:1px solid rgba(233,106,134,.29)}
+/* Registration and welcome. Original hero photograph is unchanged. */
+.v2-runtime,.v2-runtime .v2-device{background:#10151D;color:#FAFCFF}
+.v2-runtime .v2-progress-fill,.v2-runtime .v2-next:not(:disabled),
+.v2-runtime .v2-publish:not(:disabled),.v2-runtime .v2-review-create,
+.v2-runtime .v2-showcase-create,.cinematic-entry .primary-action{
+ background:#B84261;border-color:rgba(255,255,255,.14);color:#FFFFFF;
+ box-shadow:0 9px 18px rgba(5,12,21,.23)
+}
+.v2-runtime .v2-next:disabled,.v2-runtime .v2-publish:disabled{
+ background:#354154;color:#AAB8C8;border-color:rgba(238,246,255,.19)
+}
+.v2-runtime .glass-control,.v2-runtime .v2-input,.v2-runtime .glass-choice,
+.v2-runtime .v2-choice,.v2-runtime .category-chip,.v2-runtime .glass-panel,
+.v2-runtime .glass-check,.v2-runtime .v2-showcase-panel,
+.v2-runtime .geo-liquid-city,.v2-runtime .geo-liquid-scopes,.v2-runtime .interest-search{
+ background:rgba(41,52,69,.91);border-color:rgba(238,246,255,.19);color:#FAFCFF;
+ box-shadow:none
+}
+.v2-runtime .glass-choice.selected,.v2-runtime .v2-choice.is-selected,
+.v2-runtime .category-chip.selected,.v2-runtime .v2-goal-choice.is-selected,
+.v2-runtime .geo-liquid-scopes .active{
+ background:rgba(154,48,78,.35);border-color:#E96A86;color:#FAFCFF
+}
+.v2-runtime .glass-control:focus-visible,.v2-runtime .v2-input:focus-visible,
+.v2-runtime .focus-field-shell.is-focused .glass-control{
+ border-color:#E96A86;box-shadow:0 0 0 2px rgba(233,106,134,.12)
+}
+.v2-runtime input:checked{accent-color:#E96A86}
+.v2-runtime .v2-showcase-dots .active,.v2-runtime .v2-photo-indicator .active{
+ background:#E96A86
+}
+.v2-runtime .v2-goal-icon,.v2-runtime .geo-liquid-city-icon{
+ background:#34475E;color:#D9EBFC
+}
+.v2-runtime .v2-next-spinner{color:#FFFFFF}
+.luemi-shell:has(.cinematic-entry),.entry-state.cinematic-entry{
+ background:#10151D;color:#FAFCFF
+}
+.entry-state.cinematic-entry::after{
+ background:linear-gradient(180deg,rgba(12,18,26,.35),transparent 27%,transparent 48%,rgba(10,16,24,.88) 100%)
+}
+.luemi-publication-journey{background:#10151D;color:#FAFCFF}
+.luemi-publication-glow,.luemi-publication-orbs{display:none}
+.luemi-publication-progress,.luemi-publication-dots .is-current{background:#E96A86}
+/* Real chats, match center and message thread. */
+.luemi-shell[data-theme=dark] .real-discovery-match,
+.luemi-shell[data-theme=dark] .lc-chat-row,
+.luemi-shell[data-theme=dark] .lc-search,
+.luemi-shell[data-theme=dark] .lc-categories-panel{
+ background:rgba(36,44,58,.82);border-color:rgba(238,246,255,.19);
+ box-shadow:inset 0 1px rgba(255,255,255,.08),0 8px 18px rgba(3,9,17,.16)
+}
+.luemi-shell[data-theme=dark] .lc-chat-row:active{background:rgba(55,66,82,.83)}
+.luemi-shell[data-theme=dark] .lc-chat-header,
+.luemi-shell[data-theme=dark] .lc-composer{
+ background:rgba(23,31,43,.98);border-color:rgba(238,246,255,.19)
+}
+.luemi-shell[data-theme=dark] .lc-input-row textarea,
+.luemi-shell[data-theme=dark] .lc-input-row>button{
+ background:#303B4C;border-color:rgba(238,246,255,.19);color:#FAFCFF
+}
+.luemi-shell[data-theme=dark] .lc-input-row>.lc-send{
+ background:#B84261;border-color:transparent;color:#FFFFFF
+}
+.luemi-shell[data-theme=dark] .lc-bubble{
+ background:#283545;border-color:rgba(238,246,255,.19);box-shadow:none
+}
+.luemi-shell[data-theme=dark] .lc-own .lc-bubble{
+ background:#8F3855;border-color:rgba(255,255,255,.14)
+}
+.luemi-shell[data-theme=dark] .lc-meta b,
+.luemi-shell[data-theme=dark] .lc-new-matches-head span{
+ background:#C34865;color:#FFFFFF
+}
+.luemi-shell[data-theme=dark] .lc-day,
+.luemi-shell[data-theme=dark] .lc-notice,
+.luemi-shell[data-theme=dark] .lc-new,
+.luemi-shell[data-theme=dark] .lc-menu,
+.luemi-shell[data-theme=dark] .lc-dialog{
+ background:#253242;border-color:rgba(238,246,255,.19);color:#FAFCFF
+}
+.luemi-shell[data-theme=dark] .lc-spinner{
+ border-color:rgba(255,255,255,.20);border-top-color:#E96A86
+}
+.luemi-shell[data-theme=dark] .lc-viewer{background:#10151D}
+.luemi-shell[data-theme=dark] .real-discovery-likes-locked,
+.luemi-shell[data-theme=dark] .real-discovery-account-sheet,
+.luemi-shell[data-theme=dark] .real-discovery-modal-sheet,
+.luemi-shell[data-theme=dark] .luemi-match-card{
+ background:#253142;border-color:rgba(238,246,255,.19);color:#FAFCFF
+}
+.luemi-shell[data-theme=dark] .luemi-match-primary{background:#B84261;color:#FFFFFF}
+.luemi-shell[data-theme=dark] .real-feed-filter-sheet,
+.luemi-shell[data-theme=dark] .real-nearby-scope,
+.luemi-shell[data-theme=dark] .real-discovery-settings{
+ background:rgba(34,43,57,.96);border-color:rgba(238,246,255,.19);
+ box-shadow:0 8px 18px rgba(3,9,17,.18)
+}
+.luemi-shell[data-theme=dark] .real-feed-filter-apply{
+ background:#B84261;color:#FFFFFF;border-color:transparent
+}
+/* Discovery collections and search. Transparent photo overlays stay neutral. */
+.luemi-shell[data-theme=dark] .fy-real .fy-hero,
+.luemi-shell[data-theme=dark] .fy-real .fy-chip,
+.luemi-shell[data-theme=dark] .fy-real .fy-section,
+.luemi-shell[data-theme=dark] .nb-location,
+.luemi-shell[data-theme=dark] .nb-card{
+ background-color:#232E3D;border-color:rgba(238,246,255,.19);box-shadow:none
+}
+.luemi-shell[data-theme=dark] .fy-real .fy-chip-active{
+ background:#B84261;color:#FFFFFF;border-color:transparent
+}
+.luemi-shell[data-theme=dark] .fy-real .fy-avatar-all,
+.luemi-shell[data-theme=dark] .fy-real .fy-customize,
+.luemi-shell[data-theme=dark] .nb-location-edit,
+.luemi-shell[data-theme=dark] .nb-more{
+ background:#354154;color:#FAFCFF;border-color:rgba(238,246,255,.19)
+}
+/* Profile Morph, visitor route, editing and viewers.
+   Never alter translate transforms, photo scale or approved gesture touch-action. */
+.pm-a2-root,.v3-int-root,.pm-viewer{background:#10151D;color:#FAFCFF}
+.pm-card,.pm-a2-sheet,.pm-a2-tabs,
+.v3-int-sheet,.v3-int-tabs,.luemi-reveal-entry,.luemi-reveal-editor{
+ background-color:rgba(36,44,58,.82);border-color:rgba(238,246,255,.19)
+}
+.pm-a2-tab.active,.v3-int-tab.active,.pm-a2-owner-actions button,
+.v3-int-owner-actions button,.luemi-reveal-actions button{
+ color:#FAFCFF;border-color:rgba(238,246,255,.19)
+}
+.pm-a2-ink,.v3-int-ink{background:#E96A86}
+.pm-bliki-mark,.pm-a2-goal,.v3-int-goal{border-color:rgba(233,106,134,.30)}
+@media(prefers-reduced-transparency:reduce){
+ .luemi-shell .luemi-v5-glass,
+ .luemi-shell[data-theme=dark] .lc-categories-panel,
+ .luemi-shell[data-theme=dark] .lc-chat-header{
+  -webkit-backdrop-filter:none;backdrop-filter:none;background:#283545
+ }
+}

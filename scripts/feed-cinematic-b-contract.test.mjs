@@ -127,12 +127,15 @@ test("reactions paint centered feedback and superlike has a live release burst",
  assert.match(css,/@keyframes moonstone-super-release/);
 });
 
-test("actions and icon-only navigation match the approved two-button composition",()=>{
- assert.match(card,/className="moonstone-pass-button"/);
- assert.match(card,/className="moonstone-like-button"/);
- assert.doesNotMatch(card,/discovery-save-control|discovery-special/);
- assert.match(css,/\.discovery-nav-item span\{display:none\}/);
- assert.match(css,/width:min\(calc\(100% - 76px\),318px\)/);
+test("five real circular actions and the labeled navigation use the matte theme",()=>{
+ for(const cls of ["moonstone-undo-button","moonstone-pass-button","moonstone-special-button","moonstone-like-button","moonstone-save-button"])
+  assert.ok(card.includes(cls),cls);
+ const matte=read("apps/web/src/ui/vivid-discovery.css");
+ assert.match(matte,/\.moonstone-actions-vivid/);
+ assert.match(matte,/\.discovery-app>\.discovery-bottom-nav \.discovery-nav-item span/);
+ assert.match(card,/onAction\("undo"\)/);
+ assert.match(card,/onAction\("save"\)/);
+ assert.match(card,/performAction\("special"\)/);
 });
 
 test("refined chrome keeps independent tabs, a borderless nav and the 20 percent smaller and slightly higher safe wordmark",()=>{
