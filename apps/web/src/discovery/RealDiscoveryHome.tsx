@@ -288,13 +288,16 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   void preloadUpcomingFeedPhotos(cardRows.slice(page,page+6),controller.signal);
   return()=>controller.abort();
  },[active,tab,page,cardRows]);
- // Ask for the next ranked server page before reaching the end of this deck.
+ // Keep the deck alive across short filtered pages. If the current page has
+ // no card left (including after the fifth/last visible profile), keep walking
+ // the server cursor until a matching published profile arrives or the feed
+ // is genuinely exhausted. A zero-result filtered page is not an end state.
  useEffect(()=>{
-  if(active&&tab==="feed"&&cursor&&!moreBusy&&!busy&&
-    visibleRows.length>0&&page>=Math.max(0,visibleRows.length-5)){
+  if(active&&tab==="feed"&&!loading&&!error&&cursor&&!moreBusy&&!busy&&
+    (visibleRows.length===0||page>=Math.max(0,visibleRows.length-5))){
    void more();
   }
- },[active,tab,cursor,moreBusy,busy,page,visibleRows.length,more]);
+ },[active,tab,loading,error,cursor,moreBusy,busy,page,visibleRows.length,more]);
  const act=async(kind:DemoKind|"undo")=>{
   if(locked.current||requestPending.current||busy)return;
   if(kind==="save"){
