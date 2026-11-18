@@ -29,14 +29,14 @@ test("color-matched blurred atmosphere is thumbnail sized, never a live framebuf
  assert.match(carousel,/Math\.round\(72\/Math\.max\(\.25,frameRatio\)\)/);
  assert.match(carousel,/const targetRatio=canvas\.width\/canvas\.height/);
  assert.match(carousel,/context\.drawImage\(image,\(width-sampleWidth\)\/2/);
- assert.match(carousel,/photoAtmosphere\(image\)/);
+ assert.match(carousel,/photoAtmosphere\(image,frameRatio\)/);
  assert.match(carousel,/atmosphereCache=new Map<string,string>/);
  assert.match(carousel,/ATMOSPHERE_CACHE_LIMIT=32/);
  assert.match(carousel,/canvas\.toDataURL\("image\/webp",\.72\)/);
  assert.match(photoCss,/background-image:var\(--photo-atmosphere/);
  assert.match(photoCss,/\.carousel-slide-adaptive\[data-photo-fit="full"\]::before\{display:none\}/);
  assert.doesNotMatch(carousel,/canvas\.toBlob|localStorage|sessionStorage|fetch\(/);
- const adaptiveCss=photoCss.slice(photoCss.indexOf("/* Adaptive photo stage:"));
+ const adaptiveCss=photoCss.slice(photoCss.indexOf("/* Seamless adaptive photo stage"));
  assert.ok(adaptiveCss.length>300);
  assert.doesNotMatch(adaptiveCss,/backdrop-filter:blur\(/);
 });
