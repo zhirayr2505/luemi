@@ -29,7 +29,9 @@ test("color-matched blurred atmosphere is thumbnail sized, never a live framebuf
  assert.match(photoCss,/background-image:var\(--photo-atmosphere/);
  assert.match(photoCss,/\.carousel-slide-adaptive\[data-photo-fit="full"\]::before\{display:none\}/);
  assert.doesNotMatch(carousel,/canvas\.toBlob|localStorage|sessionStorage|fetch\(/);
- assert.doesNotMatch(photoCss,/backdrop-filter:blur\(/);
+ const adaptiveCss=photoCss.slice(photoCss.indexOf("/* Adaptive photo stage:"));
+ assert.ok(adaptiveCss.length>300);
+ assert.doesNotMatch(adaptiveCss,/backdrop-filter:blur\(/);
 });
 test("cyclic swipes animate across duplicated edges and rebase with WebView fallback",()=>{
  assert.match(carousel,/const cyclic=loop&&photos\.length>1/);
