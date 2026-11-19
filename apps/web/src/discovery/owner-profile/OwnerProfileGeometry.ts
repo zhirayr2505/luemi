@@ -3,45 +3,43 @@ export type OwnerProfileRect={x:number;y:number;width:number;height:number};
 export type OwnerProfileLayout={
  width:number;height:number;topInset:number;bottomInset:number;
  hero:OwnerProfileRect;compactAvatar:OwnerProfileRect;
- compactContentTop:number;morphDistance:number;
+ compactContentTop:number;expandedTabsTop:number;morphDistance:number;contentOffset:number;
 };
 export type OwnerMorphFrame={
  mask:OwnerProfileRect;radius:number;expandedAlpha:number;compactAlpha:number;
- actionsAlpha:number;photoShadeAlpha:number;
+ actionsAlpha:number;photoShadeAlpha:number;contentOffset:number;
 };
 const finite=(value:number,fallback:number)=>Number.isFinite(value)?value:fallback;
 export const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,finite(value,min)));
 const mix=(from:number,to:number,progress:number)=>from+(to-from)*clamp(progress,0,1);
 const soften=(p:number)=>p*p*(3-2*p);
 
-/** One native-scroll authority for photo, tabs and cards. The first 14% of
- * scroll belongs to the content: the full photograph must not shrink yet.
- * The photograph then rounds rapidly and finishes as a centered avatar.
- * The tabs reach their sticky stop at EXACTLY morphDistance. */
-export const OWNER_TABS_OVERLAP=18;
+/** One geometry contract for the native scroll, photo, identity, tabs and cards.
+ * The expanded photograph is always a full-width square at the content edge.
+ * The tabs begin directly below the expanded square and may reach their
+ * sticky stop before the longer visual morph ends;
+ * contentOffset keeps the first card below that single tab element. */
 export function createOwnerProfileLayout(viewport:OwnerProfileViewport):OwnerProfileLayout{
  const width=Math.max(280,finite(viewport.width,393));
  const height=Math.max(360,finite(viewport.height,852));
  const topInset=clamp(viewport.topInset??0,0,height*.2);
  const bottomInset=clamp(viewport.bottomInset??0,0,height*.16);
  const landscape=width>height;
- // A reserved Telegram inset keeps both the original wordmark and portrait
- // below the native close/menu chrome.
- const heroY=clamp(topInset-24,36,Math.max(36,height*.18));
- const heroHeight=landscape?
-  clamp(height*.70,238,Math.max(238,height-bottomInset-heroY-60)):
-  clamp(height*.58,350,Math.max(350,height-bottomInset-heroY-158));
- const avatarSize=landscape?clamp(width*.19,78,104):clamp(width*.31,108,136);
- const avatarY=clamp(topInset+55,topInset+36,Math.max(topInset+36,height-avatarSize-215));
+ const hero={x:0,y:0,width,height:width};
+ const avatarSize=landscape?clamp(Math.min(width,height)*.24,88,118):clamp(width*.31,108,136);
+ const avatarY=Math.min(topInset+52,Math.max(topInset+42,width-avatarSize-100));
  const compactAvatar={x:(width-avatarSize)/2,y:avatarY,width:avatarSize,height:avatarSize};
- const contentMinimum=avatarY+avatarSize+42;
- const contentMaximum=Math.max(contentMinimum,heroY+heroHeight-OWNER_TABS_OVERLAP-76);
- const compactContentTop=clamp(avatarY+avatarSize+92,contentMinimum,contentMaximum);
- // Four tabs begin exactly OWNER_TABS_OVERLAP above the expanded photo's end.
- // A 4px sticky gap is deliberately included in the single scroll distance.
- const morphDistance=Math.max(72,heroY+heroHeight-OWNER_TABS_OVERLAP-compactContentTop-4);
+ const expandedTabsTop=hero.height;
+ const contentMinimum=avatarY+avatarSize+62;
+ const contentMaximum=Math.max(contentMinimum,expandedTabsTop-20);
+ const compactContentTop=clamp(avatarY+avatarSize+74,contentMinimum,contentMaximum);
+ const tabTravel=Math.max(0,expandedTabsTop-compactContentTop);
+ // A short visual travel makes the square-to-circle morph unreadable. Keep a
+ // bounded motion interval that is independent of tab panel/scrollHeight.
+ const morphDistance=Math.max(tabTravel,clamp(width*.24,88,112));
+ const contentOffset=Math.max(0,morphDistance-tabTravel);
  return {width,height,topInset,bottomInset,
-  hero:{x:0,y:heroY,width,height:heroHeight},compactAvatar,compactContentTop,morphDistance};
+  hero,compactAvatar,compactContentTop,expandedTabsTop,morphDistance,contentOffset};
 }
 export function ownerMorphProgress(scrollTop:number,morphDistance:number):number{
  const distance=Math.max(1,finite(morphDistance,1));
@@ -53,19 +51,29 @@ export function ownerMorphProgress(scrollTop:number,morphDistance:number):number
  if(scroll>=distance-.75)return 1;
  return clamp(scroll/distance,0,1);
 }
+/** Velocity is native scroll velocity in CSS pixels per millisecond:
+ * positive moves toward the compact endpoint, negative toward expanded. */
+export function ownerMorphEndpoint(scrollTop:number,morphDistance:number,velocity=0):number{
+ const distance=Math.max(1,finite(morphDistance,1));
+ const current=clamp(scrollTop,0,distance);
+ const speed=finite(velocity,0);
+ if(speed>=.38)return distance;
+ if(speed<=-.38)return 0;
+ return current>=distance*.5?distance:0;
+}
 export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):OwnerMorphFrame{
  const p=clamp(progress,0,1),from=layout.hero,to=layout.compactAvatar;
- // Phase A (0-.14): content moves over the unchanged full-bleed photograph.
- // Phase B (.14-.71): one continuous clipped photo rounds into a circle.
- // Phase C (.71-1): the circle glides to its final centered position.
- const rounding=soften(clamp((p-.14)/.57,0,1));
- const settling=soften(clamp((p-.71)/.29,0,1));
- const intermediateSize=Math.min(layout.width*.41,154);
+ // Phase A (0-.18): content moves over the unchanged square photograph.
+ // Phase B (.18-.72): the same square mask shrinks and becomes a circle.
+ // Phase C (.72-1): the already circular mask glides into its final position.
+ const rounding=soften(clamp((p-.18)/.54,0,1));
+ const settling=soften(clamp((p-.72)/.28,0,1));
+ const intermediateSize=clamp(to.width*1.18,to.width,Math.min(layout.width*.42,154));
  const intermediate={
   x:(layout.width-intermediateSize)/2,
-  y:to.y+28,width:intermediateSize,height:intermediateSize
+  y:to.y+Math.max(14,to.height*.16),width:intermediateSize,height:intermediateSize
  };
- const mask=p<=.14?{...from}:p>=1?{...to}:p<.71?{
+ const mask=p<=.18?{...from}:p>=1?{...to}:p<.72?{
   x:mix(from.x,intermediate.x,rounding),y:mix(from.y,intermediate.y,rounding),
   width:mix(from.width,intermediate.width,rounding),
   height:mix(from.height,intermediate.height,rounding)
@@ -74,13 +82,13 @@ export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):Owner
   width:mix(intermediate.width,to.width,settling),
   height:mix(intermediate.height,to.height,settling)
  };
- const radius=p<=.14?0:p<.71?mix(0,intermediateSize/2,rounding):
-  mix(intermediateSize/2,to.width/2,settling);
+ const radius=p<=.18?0:p<.72?mix(0,intermediateSize/2,rounding):mask.width/2;
  return {mask,radius,
-  expandedAlpha:clamp((.37-p)/.22,0,1),
-  compactAlpha:clamp((p-.69)/.27,0,1),
-  actionsAlpha:clamp((.34-p)/.19,0,1),
-  photoShadeAlpha:1-clamp((p-.16)/.54,0,1)*.84};
+  expandedAlpha:clamp((.54-p)/.24,0,1),
+  compactAlpha:clamp((p-.66)/.20,0,1),
+  actionsAlpha:clamp((.38-p)/.20,0,1),
+  photoShadeAlpha:1-clamp((p-.20)/.56,0,1)*.65,
+  contentOffset:mix(0,layout.contentOffset,soften(p))};
 }
 /** Aspect-safe cover dimensions for the single foreground photo surface. */
 export function coverPhoto(sourceWidth:number,sourceHeight:number,mask:OwnerProfileRect){

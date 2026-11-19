@@ -60,7 +60,8 @@ try{
 
  await open();
  const expanded=await portrait();
- assert.ok(expanded.width>330&&expanded.height>350&&expanded.y>35);
+ assert.ok(expanded.width>380&&Math.abs(expanded.width-expanded.height)<1.5&&expanded.y<1.5,
+  "V4 owner/visitor expanded hero is full-bleed 1:1 at y=0");
  await scroll().evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
  const compact=await portrait();

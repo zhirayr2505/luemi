@@ -53,7 +53,8 @@ async function profileV3(browser,platform="android"){
    const image=ownerProfile.locator(".owner-profile-photo-mask>img");
    const scroller=ownerProfile.locator(".owner-profile-scroll");
    const expanded=await image.boundingBox();
-   assert.ok(expanded&&expanded.width>300&&expanded.height>430&&expanded.y>35,"owner photo stays below Telegram chrome");
+   assert.ok(expanded&&expanded.width>380&&Math.abs(expanded.width-expanded.height)<1.5&&expanded.y<1.5,
+    "owner photo is a full-bleed square behind the safe Telegram chrome");
    assert.equal(await ownerProfile.locator(".owner-profile-actions button").count(),4,"four real owner actions");
    const photoNode=await image.elementHandle();
    await page.evaluate(node=>{window.__ownerMorphPhoto=node;},photoNode);
@@ -70,6 +71,15 @@ async function profileV3(browser,platform="android"){
    await scroller.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
    await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
    await scroller.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
+   const profileScrollDebug=async()=>scroller.evaluate(el=>{
+    const host=el.closest(".owner-premium-profile");
+    return {scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,
+     distance:Number.parseFloat(getComputedStyle(host).getPropertyValue("--owner-morph-distance")),
+     state:host?.dataset.morphState,progress:getComputedStyle(host).getPropertyValue("--owner-morph-progress")};
+   });
+   console.log("PROFILE_V4_SCROLL_FULL_INITIAL "+JSON.stringify(await profileScrollDebug()));
+   await page.waitForTimeout(280);
+   console.log("PROFILE_V4_SCROLL_FULL_AFTER_SETTLE "+JSON.stringify(await profileScrollDebug()));
    await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
    const compact=await image.boundingBox();
    assert.ok(compact&&Math.abs(compact.width-compact.height)<1.5&&compact.width<130,"owner photo becomes a circle");

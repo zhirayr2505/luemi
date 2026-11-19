@@ -29,8 +29,23 @@ try{
  const face=root.locator(".owner-profile-photo-mask"),hero=await face.boundingBox();
  assert.ok(hero&&hero.width>300&&hero.height>350,"big photo begins expanded");
  assert.ok((await root.locator(".owner-profile-photo-pager button").count())>=2,"photo dots available");
+ await face.evaluate(node=>{
+  window.__v4PhotoGestureTrace=[];
+  for(const type of ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture"]){
+   node.addEventListener(type,e=>{
+    if(window.__v4PhotoGestureTrace.length<50)
+     window.__v4PhotoGestureTrace.push({type,x:e.clientX,y:e.clientY,pointerType:e.pointerType,isPrimary:e.isPrimary});
+   },true);
+  }
+ });
  await swipe(hero.x+hero.width*.72,hero.y+hero.height*.49,-hero.width*.46,0);
  await delay(140);
+ console.log("PROFILE_V4_PHOTO_SWIPE_DEBUG "+JSON.stringify(await root.evaluate(node=>({
+  trace:window.__v4PhotoGestureTrace,
+  selected:[...node.querySelectorAll(".owner-profile-photo-pager button")].map(x=>({current:x.getAttribute("aria-current"),cls:x.className})),
+  photoId:node.querySelector(".owner-profile-photo-mask>img")?.getAttribute("data-photo-id"),
+  morph:node.dataset.morphState
+ }))));
  assert.equal(await root.locator(".owner-profile-photo-pager button").nth(1).getAttribute("aria-current"),
   "true","left photo swipe moves to the second photo");
  await swipe(hero.x+hero.width*.28,hero.y+hero.height*.49,hero.width*.46,0);

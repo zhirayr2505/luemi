@@ -66,14 +66,18 @@ assert.ok(ownerSurface.includes('isOwner&&<div className="owner-profile-actions"
  "visitor profiles cannot access owner action controls");
 assert.ok(ownerSurface.includes('data-morph-state="expanded"')&&
  ownerSurface.includes("ownerMorphFrame(layout.current,progress)"),"owner opens expanded and uses one geometric morph");
+assert.ok(profile.includes("gestureArbiter={gestureArbiter}")&&ownerSurface.includes("ownerMorphEndpoint")&&
+ ownerSurface.includes('new GeometryMotion("sheet"'),
+ "shared owner/visitor profile uses the route arbiter and one endpoint-settle authority");
 assert.ok(profile.includes("PhotoViewer")&&profile.includes("initialPhotoId={viewer.photoId}")&&
  viewer.includes("createPortal"),"existing fullscreen viewer and active photo ID retained");
 assert.ok(profile.includes("reconcilePhotoId")&&profile.includes("resourceIdentity"),
  "media identity preserved on reorder and viewer return");
 assert.ok(css.includes(".owner-premium-profile")&&css.includes("isolation:isolate")&&
  css.includes(".owner-profile-photo-mask"),"opaque owner backing masks the feed throughout morph");
-assert.ok(ownerGeometry.includes("ownerMorphProgress")&&ownerGeometry.includes("compactAvatar"),
- "owner geometry normalizes native scroll and centers the compact avatar");
+assert.ok(ownerGeometry.includes("ownerMorphProgress")&&ownerGeometry.includes("compactAvatar")&&
+ ownerGeometry.includes("height:width")&&ownerGeometry.includes("ownerMorphEndpoint"),
+ "owner geometry keeps a square hero, normalizes scroll and centers the compact avatar");
 const gateway=read("apps/web/src/discovery/ProfileV3Gateway.tsx");
 const v3=read("apps/web/src/discovery/ProfileMasterV3.tsx");
 const v3Surface=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.tsx");

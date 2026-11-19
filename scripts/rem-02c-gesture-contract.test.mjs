@@ -137,16 +137,19 @@ const profile=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 const css=read("apps/web/src/discovery/owner-profile/owner-premium-profile.css");
 const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
-assert.ok(profile.includes('addEventListener("scroll",schedulePaint,{passive:true})')&&
- profile.includes("paintRaf.current=requestAnimationFrame"),
- "owner morph follows native scrolling with one coalesced RAF writer");
+assert.ok(profile.includes('addEventListener("scroll",onScroll,{passive:true})')&&
+ profile.includes("paintRaf.current=requestAnimationFrame")&&profile.includes('new GeometryMotion("sheet"'),
+ "owner morph follows native scrolling and uses one interruptible settle writer");
 assert.ok(css.includes(".owner-profile-scroll")&&css.includes("overflow-y:auto")&&
  /\.owner-profile-scroll\{[^}]*touch-action:pan-y/.test(css)&&
  /\.owner-profile-photo-mask\{[^}]*touch-action:none/.test(css)&&
- profile.includes("onPointerMove={heroMove}"),
- "native content scroll remains untouched; floating photo exclusively forwards its pointer gestures");
+ profile.includes('gestures.claim(owner,current.serial)')&&
+ profile.includes('onPointerMove={profileMove}'),
+ "native content scroll remains untouched; photo and tab gestures use the shared arbiter");
 assert.ok(route.includes('gestureArbiter={gestures}')&&route.includes('if(isGestureModalBlocked(target))return;'),
  "Telegram modal and route arbitration preserved");
+assert.ok(route.includes('if(!g.edge&&route.current?.querySelector(".owner-premium-profile"))return;'),
+ "visitor route back cannot steal a central Premium Profile photo swipe");
 assert.ok(browse.includes("browseMotion.current.schedulePaint")&&
  !read("apps/web/src/discovery/discovery.css").includes("touch-action:none"),
  "Discovery gesture ownership unchanged");

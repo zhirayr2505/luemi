@@ -1,41 +1,61 @@
-# Profile Morph V3 architecture decision
+# Premium Profile V4 motion architecture
 
-## Directed audit at main c8c3399
+## Active runtime
 
-| Source | DOM / animated properties | Writer | Gesture owner / cleanup |
-| --- | --- | --- | --- |
-| `owner-profile/OwnerPremiumProfile.tsx` | one photo mask, expanded/compact identity and action opacity | passive native scroll coalesced into one RAF paint | native vertical scroll; observer, RAF and Telegram viewport listeners are disposed together |
-| `owner-profile/OwnerProfileGeometry.ts` | expanded hero, centered compact avatar and normalized scroll progress | pure geometry calculation used by owner paint | none |
-| `profile-v3/rendering/IntegratedProfileV3.tsx` | visitor sheet, photo and tab tracks | V3 motion engine | `GestureArbiter`; native scroll inside the About page |
-| `VisitorProfileRoute.tsx` + `discovery.css` | route translateX, CSS transition; modal backing | route `MotionController` / authority | route pointer claim, deferred touch suppression; route timer cleanup |
-| `DiscoveryApp.tsx` + `GlobalHeader.tsx` | browse tracks, header contrast and route entrance | browse controller and header ref | browse / route gestures; do not connect prototype |
-| `PhotoViewer.tsx` | viewer track, source morph, pan/pinch | viewer controller and DOM handlers | own modal capture and cleanup; do not connect prototype |
+`OwnerPremiumProfile.tsx` is the single premium surface for owner and visitor routes. `ProfileMasterV3.tsx` supplies the same projected public data and the existing `PhotoViewer`; owner-only edit, preview and settings actions stay gated by `view.mode === "owner"`.
 
-The A2 combination of a nonuniformly scaled clipping ancestor, inner counter scale, overflow, dynamic border radius, and separately translated photo track has no single simple pixel mapping. Android device evidence reports missing/clipped media and portrait rectangles. PR #87 removes one risky transform but remains experimental and is not merged. A2 also applies a scaled blurred background image. Route and sheet each have distinct owners yet share gesture candidates at the profile boundary. In V3 the foreground properties have one imperative painter; React only changes decorative selected tab state in the prototype.
+The older `profile-v3/rendering/IntegratedProfileV3.tsx` remains only for the explicitly separate `local-self-preview` route. It is not a second owner/visitor runtime.
 
-## Choice
+## Geometry and progress
 
-1. **One persistent IMG, independent rectangular mask:** use intrinsic cover dimensions calculated once from supplied source width/height and expanded hero geometry. The IMG receives translation only; the mask receives explicit rect and radius. Its width and height maintain the source aspect ratio. The photograph does not switch `src` during progress, and the backdrop is a static gradient.
-2. **Prepared compact and expanded surfaces:** can keep fixed rasters and translate or crossfade them, but costs two decoded surfaces and risks visible duplication or a seam at intermediate progress. It also needs coordinated source identity and decode gates. Deferred until actual device evidence demands it.
+`OwnerProfileGeometry.ts` is the only profile-geometry source.
 
-Choose 1 for simpler ownership and one decoded image. This removes the A2 nested nonuniform transform and per-frame blur. Changing mask bounds causes layout/paint work; [Chrome's performance guidance](https://developer.chrome.com/blog/performant-expand-and-collapse) warns that animating width/height can miss frames. This is an explicit unresolved A55 performance risk, not a claim of hardware smoothness.
+- Expanded hero: `x = 0`, `y = 0`, `width = viewport width`, `height = viewport width`.
+- Compact avatar: safe-area-aware, centered square clipped to a circle.
+- `p = clamp(scrollTop / morphDistance, 0, 1)` drives the mask, radius, both identity opacities, compact backdrop, pager and card compensation.
+- Phase A keeps the full square unchanged while content lifts.
+- Phase B shrinks and rounds the same mask.
+- Phase C moves the already circular mask to its final center.
+- `ownerMorphEndpoint()` chooses only `0` or `morphDistance` from position and release velocity. Intermediate progress is never a semantic resting state.
 
-The image's explicit rendered size is proportional to its intrinsic dimensions. The CSS `object-fit: fill` is harmless only because both dimensions retain the same scale, unlike arbitrary fill dimensions. The cover equation and intermediate crops are tested. On integration, obtain intrinsic dimensions from authorized media metadata or decoded IMG before enabling interaction; unknown/failed dimensions need a placeholder, never a guessed aspect.
+The sticky tab travel can be shorter than the visual morph. `contentOffset` is derived from the same layout and progress so the first card remains below the one sticky tab panel without a second copy or `scrollHeight` correction.
 
-## Layers and writers
+## Writers
 
-| z | Layer | Frame changes |
+| Surface | Properties | Owner |
 | --- | --- | --- |
-| 0 | opaque root/backing | none |
-| 1 | static gradient ambient | none |
-| 2 | clipped hero: mask bounds/radius, IMG translation, two identity opacities | one surface painter |
-| 3 | white sheet, tabs and native content scroll | sheet translateY by same painter; tab selection in React |
-| later | modal PhotoViewer | outside V3 foundation |
+| Profile scroller | native `scrollTop`; programmatic endpoint settle only inside morph range | `GeometryMotion("sheet")`, backed by `MotionController` |
+| Photo mask | rect, radius | profile imperative painter |
+| Identity/backdrop/pager | transform and opacity | same profile painter and same `p` |
+| Profile flow | compositor `translateY(contentOffset)` | same profile painter and same `p` |
+| Photo carousel | three prepared visual slots translated with the finger | `hero` gesture claim |
+| Tab content swipe | semantic tab selection after horizontal claim | `tabs` gesture claim |
+| Visitor route | route `translateX` | route `MotionController` |
 
-`p ∈ [0,1]` is owned by one `ProfileMotionEngine`. State: COMPACT → DRAGGING → SETTLING_TO_EXPANDED → EXPANDED, reversible in either direction; SUSPENDED and DISPOSED are lifecycle states. Each interruption samples current progress, increments generation, cancels RAF and repaints before continuing. Viewport rebase preserves the physical panel Y while active. The root remains opaque; no transparent path to Discovery is part of this prototype.
+There is no CSS keyframe or CSS smooth-scroll writer for the morph. A new gesture cancels the current `GeometryMotion` generation and continues from the sampled `scrollTop`. Resize and Telegram viewport changes rebase the active settle to the new geometry.
 
-Gesture coordinator yields one owner from candidate movement: handle vertical → SHEET; photo horizontal → PHOTO; tab/content horizontal → TABS; content vertical → NATIVE_SCROLL; route horizontal → ROUTE_BACK. The prototype actually wires only SHEET. The other decisions are typed reservations for integration, not implemented galleries or route navigation. Capture is requested only after vertical sheet claim. No global touch action is disabled.
+## Gesture arbitration
 
-## Reference and fallback
+The visitor route passes its `GestureArbiter` into `ProfileMasterV3` and `OwnerPremiumProfile`. Owner mode creates one local arbiter only when there is no parent route.
 
-The attached A2 image is a visual target; this synthetic prototype is not pixel accepted. There is no per-frame expensive blur and no universal `will-change`. If the measured Android mask repaint is too slow, the later integration must test a simpler photo composition with intact foreground and sheet before replacing the renderer. Avoid hiding/replacing the IMG as a fallback without device evidence.
+- Photo horizontal → `hero`.
+- Photo vertical → `sheet` and direct 1:1 scroll tracking.
+- Content horizontal → `tabs`.
+- Content vertical → `native`.
+- Visitor back → `route`, restricted to the left edge when the gesture starts on the Premium Profile photo.
+
+Pointer cancellation, second-finger input, lost capture, background suspension, unmount and geometry changes terminate or rebase the active owner. Native content scrolling beyond `morphDistance` is never snapped back to the profile header.
+
+## Media
+
+The foreground photo remains one semantic `<img>` with `object-fit: cover` and the saved focal point inside every square/circular profile mask. Adjacent decoded photos provide the horizontal slide without replacing the current source under the finger.
+
+Tapping or keyboard-activating the profile photo opens the existing portal `PhotoViewer`. The viewer retains `object-fit: contain`, original aspect ratio, swipe, zoom and source-morph behavior; Profile V4 does not duplicate or replace it.
+
+## Performance and QA boundary
+
+- No React state updates on scroll/pointer frames.
+- Scroll paint is coalesced to one RAF; settle animation is cancellable.
+- No moving `backdrop-filter` surface.
+- `prefers-reduced-motion` keeps direct tracking and shortens the release settle to its endpoint.
+- Browser contracts cannot prove Samsung Galaxy A55 Telegram WebView or iOS WKWebView acceptance; both remain manual next-stage checks.
