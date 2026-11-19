@@ -29,4 +29,16 @@ assert.match(component,/movePhotoTrack\(available\?dx:dx\*\.2/,
  "existing photo carousel direct tracking remains intact");
 assert.match(component,/gestures\.claim\(owner,current\.serial\)/,
  "existing gesture arbiter remains the only gesture owner");
+
+// Legacy violet/turquoise/yellow gradients were not LUEMI Sunset Cherry.
+// Every catalog pigment must be one of the approved muted berry tones; this
+// applies to the registration category pills and shared profile interest chips.
+const approved=new Set(["#6B344E","#8D435C","#75405B","#925167","#52273E","#6C3C4C"]);
+const pigments=[...new Set(catalog.match(/#[0-9a-fA-F]{6}/g)??[])].map(x=>x.toUpperCase());
+assert.equal(pigments.length,approved.size,"preserve six distinct tones rather than flattening interests");
+assert(pigments.every(color=>approved.has(color)),"all interest catalog colors must use muted Sunset Cherry pigments");
+const styles=readFileSync("apps/web/src/styles.css","utf8");
+assert.match(styles,/\.chip\.toned\s*\{[^}]*color:#FFF5F2/s,"interest labels must be readable on berry pigments");
+assert.match(styles,/\.category-chip\s*\{[^}]*color:#FFF5F2/s,"registration category labels use the same readable light ink");
+
 console.log("PROFILE_V4_1_UI_CONTRACT_PASS rounded sheet, tabs, flag, glow, elasticity and canonical interests");
