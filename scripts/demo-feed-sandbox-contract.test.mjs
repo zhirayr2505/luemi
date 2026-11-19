@@ -15,7 +15,7 @@ test("fictional profiles remain isolated and only a server-verified owner can op
  assert.match(shell,/id==="feed"&&demoMode&&qaAllowed\?<DemoFeedSandbox/);
  assert.match(shell,/if\(!qaAllowed\|\|autoDemoShown\.current\)return/);
  assert.match(shell,/<LiveDeck key=\{id\+"-"\+feedDraft\.searchScope/);
- assert.match(shell,/<FeedCard person=\{cardRows\[page\+offset\]\} real/);
+ assert.match(shell,/<FeedCard person=\{cardRows\[page\]\} real/);
  assert.match(shell,/onExit=\{\(\)=>\{setDemoVisitor\(null\);autoDemoShown\.current=true;setDemoMode\(false\);\}\}/);
  assert.match(shell,/initialFeed\?\.profiles\.length===0/);
  assert.match(shell,/onEmptyFeed=\{offerDemoOnEmpty\}/);
@@ -25,7 +25,7 @@ test("fictional profiles remain isolated and only a server-verified owner can op
 
 test("synthetic profiles are not inserted into server, likes, matches or conversations",()=>{
  assert.doesNotMatch(sandbox,/likePublishedUser|blockPublishedUser|createChatTransport|fetch\(|getPublishedFeed|localStorage|sessionStorage|indexedDB/);
- assert.match(sandbox,/onExitDemo=\{foreground\?onExit:undefined\}/);
+ assert.match(sandbox,/onExitDemo=\{onExit\}/);
  assert.doesNotMatch(sandbox,/demo-qa-ribbon|demo-qa-counter/,
   "The test feed must not reserve vertical space for a QA toolbar");
  assert.match(sandbox,/Реальные лайки не отправляются/);
@@ -33,15 +33,16 @@ test("synthetic profiles are not inserted into server, likes, matches or convers
  assert.match(sandbox,/setPage\(0\)/);
  assert.match(card,/className="moonstone-demo-label">Демо<\/span>/);
  assert.match(card,/className="moonstone-demo-label" onClick=\{onExitDemo\}/);
- assert.match(sandbox,/busy=\{!foreground\|\|leaving\}/);
- assert.match(sandbox,/people\.slice\(page,page\+3\)\.map/,"Three keyed card window is retained");
+ assert.match(sandbox,/busy=\{leaving\}/);
+ assert.match(sandbox,/const person=current/,"Only one visible QA card is mounted");
+ assert.doesNotMatch(sandbox,/people\.slice\(page,page\+3\)\.map/);
  assert.match(sandbox,/preloadUpcomingFeedPhotos/);
 });
 
 test("demo card opens the ORIGINAL full-screen visitor profile, never a small custom window",()=>{
  assert.match(sandbox,/onOpenProfile:\(person:DemoPerson\)=>void/);
- assert.match(sandbox,/onOpenProfile=\{foreground\?\(\)=>onOpenProfile\(person\)/);
- assert.match(sandbox,/onInterests=\{foreground\?\(\)=>onOpenProfile\(person\)/);
+ assert.match(sandbox,/onOpenProfile=\{\(\)=>onOpenProfile\(person\)\}/);
+ assert.match(sandbox,/onInterests=\{\(\)=>onOpenProfile\(person\)\}/);
  assert.doesNotMatch(sandbox,/demo-qa-preview-backdrop|setPreview\(|aria-modal="true"/);
  assert.doesNotMatch(style,/\.demo-qa-preview\{/);
  assert.match(shell,/data=\{fromDemoPerson\(demoVisitor\)\}/);
