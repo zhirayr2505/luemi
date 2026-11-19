@@ -24,9 +24,10 @@ test("background uses exact same original photo, blurred only behind sharp image
  assert.match(carousel,/slide\.style\.removeProperty\("--photo-backdrop"\)/);
  assert.match(photoCss,/background-image:var\(--photo-backdrop,none\)/);
  assert.match(photoCss,/background-size:cover;background-position:center/);
- assert.match(photoCss,/filter:blur\(24px\) brightness\(\.78\) saturate\(\.94\)/);
+ assert.match(photoCss,/filter:blur\(17px\) brightness\(\.84\) saturate\(\.96\)/);
  assert.match(photoCss,/\.carousel-slide-adaptive\[data-photo-fit="full"\]::before\{[\s\S]*?display:none/);
- assert.match(photoCss,/-webkit-mask-image:linear-gradient\(180deg,[\s\S]*?black 30%,black 70%/);
+ assert.match(photoCss,/-webkit-mask-image:linear-gradient\(180deg,[\s\S]*?black 12%,[\s\S]*?black 88%/);
+ assert.doesNotMatch(photoCss,/black 30%,black 70%/);
  assert.doesNotMatch(carousel,/photoAtmosphere|atmosphereCache|canvas\.|toDataURL\(/);
  assert.doesNotMatch(photoCss,/--photo-atmosphere|is-photo-atmosphere-fallback/);
  const adaptiveCss=photoCss.slice(photoCss.indexOf("/* Same-image photo stage."));
