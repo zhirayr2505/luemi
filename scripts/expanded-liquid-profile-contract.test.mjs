@@ -12,17 +12,18 @@ test("expanded profile is the active photo blurred within the rounded card",()=>
  assert.match(card,/const activePhoto=person\.photos\[activePhotoIndex\]/);
  assert.match(card,/--profile-photo/);
  assert.match(card,/data-expanded=\{expanded\} style=\{detailPhotoStyle\}/);
- assert.match(styles,/\.moonstone-profile-drawer::before\{[\s\S]*?background-image:var\(--profile-photo,none\)/);
+ assert.match(styles,/\.moonstone-person-card::after\{[\s\S]*?background-image:var\(--profile-photo,none\)/);
  assert.match(styles,/filter:blur\(17px\) brightness\(\.68\)/);
- assert.match(styles,/\.moonstone-profile-drawer::after\{/);
+ assert.match(styles,/\.moonstone-profile-drawer::after\{[\s\S]*?content:none/);
  assert.doesNotMatch(styles,/position:fixed|filter:blur\(70px\)|\.discovery-photo-ambient-current/);
 });
 test("header is pinned over scrolling detail, photo dots and old handle vanish",()=>{
  assert.match(card,/const paint=\(next:number\)=>/);
  assert.match(card,/--profile-info-y/);
  assert.match(card,/aria-label=\{expanded\?"Свернуть анкету":"Раскрыть анкету"\}/);
- assert.match(styles,/\.moonstone-compact-info::before\{[\s\S]*?opacity:var\(--profile-p\)/);
- assert.match(styles,/\.moonstone-profile-scroll\{[\s\S]*?padding:calc\(var\(--profile-detail-top,172px\) \+ 12px\)/);
+ assert.match(styles,/\.moonstone-compact-info::before\{[\s\S]*?opacity:calc\(1 - var\(--profile-p\)\)/);
+ assert.match(styles,/\.moonstone-compact-info::after\{[\s\S]*?opacity:var\(--profile-p\)/);
+ assert.match(styles,/\.moonstone-profile-scroll\{[\s\S]*?padding:calc\(var\(--profile-detail-top,172px\) \+ 0px\)/);
  assert.match(styles,/\.moonstone-photo-indicator\{[\s\S]*?opacity:clamp\(0,calc\(1 - var\(--profile-p\) \* 3\),1\)/);
  assert.match(styles,/\.moonstone-profile-gesture-zone\{[\s\S]*?display:none/);
  assert.doesNotMatch(card,/moonstone-profile-gesture-zone"><span/);
@@ -57,4 +58,17 @@ test("gesture handling and action row are unchanged",()=>{
  assert.match(card,/const settle=\(next:0\|1\)=>/);
  assert.match(card,/\{!preview&&<div className="moonstone-actions/);
  assert.match(styles,/@media\(prefers-reduced-transparency:reduce\)/);
+});
+
+test("expanded profile is one uninterrupted glass sheet with a thin pinned divider",()=>{
+ assert.match(card,/<span className="moonstone-profile-divider" aria-hidden="true"\/>/);
+ assert.match(styles,/\.moonstone-profile-divider\{[\s\S]*?height:1px/);
+ assert.match(styles,/\.moonstone-profile-divider\{[\s\S]*?opacity:var\(--profile-p\)/);
+ assert.match(styles,/\.moonstone-compact-info\{[\s\S]*?background:transparent;[\s\S]*?border:0;[\s\S]*?border-radius:0/);
+ assert.match(styles,/\.moonstone-profile-drawer\{[\s\S]*?background:transparent;[\s\S]*?border:0/);
+ assert.match(styles,/\.moonstone-profile-drawer::before,[\s\S]*?\.moonstone-profile-drawer::after\{[\s\S]*?content:none/);
+ assert.match(styles,/\.moonstone-person-card::after\{[\s\S]*?opacity:var\(--profile-p\)/);
+ assert.match(styles,/\.moonstone-profile-scroll\{[\s\S]*?inset:0/);
+ assert.match(styles,/\.moonstone-compact-info::before\{[\s\S]*?backdrop-filter:none/);
+ assert.doesNotMatch(styles,/rgba\(43,37,49,\.88\)/);
 });

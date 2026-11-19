@@ -387,6 +387,7 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
     </button>{onMore&&<button type="button" className="moonstone-profile-more" disabled={!available} onClick={onMore} aria-label="Действия с анкетой"><MoreHorizontal/></button>}</div>
     <div className="moonstone-location"><MapPin/><span>{location}</span>{distance&&<><b>·</b><span>{distance}</span></>}</div>
     {goal&&<div className="moonstone-goal"><span className="moonstone-goal-mark"><Heart/></span><span>{goalLabel(goal.id,person.gender)}</span></div>}
+    <span className="moonstone-profile-divider" aria-hidden="true"/>
     </div>
    </div>
    <section ref={drawer} className="moonstone-profile-drawer" aria-label="Подробная информация" aria-hidden={!expanded}>
