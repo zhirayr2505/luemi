@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {chromium} from "playwright";
+import {setPremiumProfileState} from "./premium-profile-browser-input.mjs";
 
 /** Current shared Premium Photo Profile lifecycle in Android Chromium emulation.
  * A physical Telegram Galaxy A55 or WKWebView is not certified by this test. */
@@ -63,8 +64,7 @@ try{
  const expanded=await portrait();
  assert.ok(expanded.width>380&&Math.abs(expanded.width-expanded.height)<1.5&&expanded.y<1.5,
   "V4 owner/visitor expanded hero is full-bleed 1:1 at y=0");
- await scroll().evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
- await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
+ await setPremiumProfileState(page,profile(),"compact");
  const compact=await portrait();
  assert.ok(compact.width>=94&&compact.width<=112&&Math.abs(compact.width-compact.height)<1.5&&
   compact.radius>=compact.width/2-1,"compact photo becomes a circle in safe-area coordinates");
@@ -73,8 +73,7 @@ try{
  await sleep(280);
  console.log("PREMIUM_PROFILE_AFTER_TAB "+JSON.stringify({
   portrait:await portrait(),
-  scroll:await scroll().evaluate(el=>({scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight})),
-  morphDistance:await profile().evaluate(el=>getComputedStyle(el).getPropertyValue("--owner-morph-distance"))
+  scroll:await scroll().evaluate(el=>({scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight}))
  }));
  await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
  assert.equal(await currentTab().innerText(),"Фото");
@@ -86,7 +85,6 @@ try{
  const after=await portrait();
  console.log("PREMIUM_PROFILE_RESUME_DIAGNOSTIC "+JSON.stringify({after,
   scroll:await scroll().evaluate(el=>({scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight})),
-  morphDistance:await profile().evaluate(el=>getComputedStyle(el).getPropertyValue("--owner-morph-distance")),
   rootState:await profile().getAttribute("data-morph-state")}));
  assert.ok(Number.isFinite(after.y)&&Number.isFinite(after.width)&&
   after.width>=94&&after.width<=112,"portrait geometry remains bounded after resume");
@@ -112,8 +110,7 @@ try{
  await page.keyboard.press("Escape");
  await route().waitFor({state:"detached",timeout:5000});
  await open();
- await scroll().evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
- await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
+ await setPremiumProfileState(page,profile(),"compact");
  await edgeSwipe(212);
  await route().waitFor({state:"detached",timeout:5000});
  await open();

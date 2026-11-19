@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {mkdir,writeFile} from "node:fs/promises";
 import {chromium} from "playwright";
+import {setPremiumProfileState} from "./premium-profile-browser-input.mjs";
 import {feedDeckBrowserQa} from "./feed-deck-browser-qa.mjs";
 /** Profile Morph V3 behavioral QA on synthetic Chromium, not physical Telegram A55. */
 const BASE=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
@@ -50,45 +51,26 @@ async function profileV3(browser,platform="android"){
   await ownProfileNav.click();
   const ownerProfile=page.locator(".owner-premium-profile");
   if(await ownerProfile.count()){
-   const image=ownerProfile.locator(".owner-profile-photo-mask>img");
-   const scroller=ownerProfile.locator(".owner-profile-scroll");
+   const image=ownerProfile.locator(".owner-profile-photo-mask img[data-slot=current]");
    const expanded=await image.boundingBox();
    assert.ok(expanded&&expanded.width>380&&Math.abs(expanded.width-expanded.height)<1.5&&expanded.y<1.5,
     "owner photo is a full-bleed square behind the safe Telegram chrome");
    assert.equal(await ownerProfile.locator(".owner-profile-actions button").count(),4,"four real owner actions");
    const photoNode=await image.elementHandle();
    await page.evaluate(node=>{window.__ownerMorphPhoto=node;},photoNode);
-   // The floating hero is outside native scroll; a finger starting on the
-   // portrait must still drive scroll-based morph rather than trapping it.
-   const box=await image.boundingBox();
-   assert.ok(box,"photo should have a measurable hit surface");
-   await page.mouse.move(box.x+box.width*.5,box.y+box.height*.56);
+   // A drag starting on the portrait must collapse the profile.
+   await page.mouse.move(expanded.x+expanded.width*.5,expanded.y+expanded.height*.56);
    await page.mouse.down();
-   await page.mouse.move(box.x+box.width*.5,box.y+box.height*.31,{steps:8});
+   await page.mouse.move(expanded.x+expanded.width*.5,expanded.y+expanded.height*.10,{steps:8});
    await page.mouse.up();
-   const dragScroll=await scroller.evaluate(el=>el.scrollTop);
-   assert.ok(dragScroll>35,"vertical drag beginning on expanded photo collapses the profile");
-   await scroller.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
-   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
-   await scroller.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
-   const profileScrollDebug=async()=>scroller.evaluate(el=>{
-    const host=el.closest(".owner-premium-profile");
-    return {scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,
-     distance:Number.parseFloat(getComputedStyle(host).getPropertyValue("--owner-morph-distance")),
-     state:host?.dataset.morphState,progress:getComputedStyle(host).getPropertyValue("--owner-morph-progress")};
-   });
-   console.log("PROFILE_V4_SCROLL_FULL_INITIAL "+JSON.stringify(await profileScrollDebug()));
-   await page.waitForTimeout(280);
-   console.log("PROFILE_V4_SCROLL_FULL_AFTER_SETTLE "+JSON.stringify(await profileScrollDebug()));
-   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
+   await ownerProfile.locator('xpath=self::*[@data-morph-state="compact"]').waitFor({state:"visible",timeout:5000});
    const compact=await ownerProfile.locator(".owner-profile-avatar-circle").boundingBox();
    assert.ok(compact&&Math.abs(compact.width-compact.height)<1.5&&compact.width>=94&&compact.width<=112,
     "owner photo becomes the smaller Telegram-style compact circle");
    assert.ok(Math.abs(compact.x+compact.width/2-393/2)<1.5,"compact owner avatar is centered");
    assert.equal(await ownerProfile.locator(".owner-profile-brand img").count(),1,"one original logo overlays the hero");
    assert.equal(await image.evaluate(node=>window.__ownerMorphPhoto===node),true,"morph keeps one image node");
-   await scroller.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
-   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
+   await setPremiumProfileState(page,ownerProfile,"expanded");
    for(const label of ["О себе","Фото","Блики","Подарки"]){
     await ownerProfile.getByRole("tab",{name:label,exact:true}).click();
     assert.equal(await ownerProfile.getByRole("tab",{name:label,exact:true}).getAttribute("aria-selected"),"true");
@@ -108,21 +90,19 @@ async function profileV3(browser,platform="android"){
     // Expanded visitor photos must own both horizontal directions, not the
     // legacy collapsed-shell back recognizer.
     await page.waitForTimeout(320);
-    const vImage=visitor.locator(".owner-profile-photo-mask img");
+    const vImage=visitor.locator(".owner-profile-photo-mask img[data-slot=current]");
     const vRect=await vImage.boundingBox();
     assert.ok(vRect,"visitor photo has a visible interactive hitbox");
     await page.mouse.move(vRect.x+vRect.width*.7,vRect.y+vRect.height*.55);
     await page.mouse.down();
     await page.mouse.move(vRect.x+vRect.width*.26,vRect.y+vRect.height*.55,{steps:8});
     await page.mouse.up();
-    assert.equal(await visitor.locator(".owner-profile-photo-pager button").nth(1).getAttribute("aria-current"),
-     "true","left swipe changes a visitor's photo");
+    await visitor.locator('.owner-profile-photo-pager button:nth-child(2)[aria-current="true"]').waitFor({state:"visible",timeout:5000});
     await page.mouse.move(vRect.x+vRect.width*.26,vRect.y+vRect.height*.55);
     await page.mouse.down();
     await page.mouse.move(vRect.x+vRect.width*.72,vRect.y+vRect.height*.55,{steps:8});
     await page.mouse.up();
-    assert.equal(await visitor.locator(".owner-profile-photo-pager button").first().getAttribute("aria-current"),
-     "true","right swipe returns visitor photo without closing the route");
+    await visitor.locator('.owner-profile-photo-pager button:first-child[aria-current="true"]').waitFor({state:"visible",timeout:5000});
     assert.equal(await page.locator(".discovery-visitor-route").count(),1,"right photo swipe cannot close visitor profile");
     await page.keyboard.press("Escape");
     await visitor.waitFor({state:"detached",timeout:4000});

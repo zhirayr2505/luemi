@@ -5,18 +5,18 @@ const css=readFileSync("apps/web/src/discovery/owner-profile/owner-premium-profi
 const component=readFileSync("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx","utf8");
 const catalog=readFileSync("apps/web/src/ui/InterestCatalog.tsx","utf8");
 
-assert.match(css,/\.owner-profile-tabs\s*\{[^}]*border-radius:32px 32px 0 0/s,
- "tabs are the continuous rounded sheet cap, not a detached sticky child");
-assert.match(css,/\.owner-profile-tabs\s*\{[^}]*pointer-events:auto/s,
- "the extracted tab cap must remain independently interactive");
-assert.match(component,/className="owner-profile-hero-spacer"[\s\S]*className="owner-profile-tabs"[\s\S]*className="owner-profile-content"/,
- "tab rail must sit outside short tab content, within the full scrollbox");
-assert.match(css,/\.owner-profile-avatar-circle\s*\{[^}]*border-radius:50%/s,
- "V4.2 uses a fully circular image plane, no rounded-square intermediate");
-assert.match(component,/ownerAutoSnapTarget\(current\.startScroll,position/,
- "V4.2 automatically snaps after the finger crosses the threshold");
-assert.match(css,/\.owner-profile-tabs\s*\{[^}]*top:var\(--owner-compact-top\)/s,
- "tab bar is pinned to the rounded panel, without the old detached 4px gap");
+const motion=readFileSync("apps/web/src/discovery/owner-profile/useOwnerProfileMotion.ts","utf8");
+
+assert.match(css,/\.owner-profile-sheet\s*\{[^}]*border-radius:32px 32px 0 0/s,
+ "the rounded cap belongs to the whole sheet");
+assert.match(component,/className="owner-profile-sheet"[\s\S]*className="owner-profile-tabs"[\s\S]*className="owner-profile-scroll"/,
+ "tabs are kept in the sheet above its independent card scroller");
+assert.equal((component.match(/className="owner-profile-photo-mask"/g)??[]).length,1,
+ "one mask hosts both the expanded square and the compact circle");
+assert.match(motion,/ownerAutoSnapTarget\(accepted,next,current.distance\)/,
+ "the held-finger check can accept an endpoint during movement");
+assert.match(css,/\[data-morph-state="compact"\] .owner-profile-scroll\{[^}]*overflow:hidden auto/s,
+ "card scrolling begins when the profile is compact");
 assert.match(css,/\.owner-profile-photo-pager\s*\{[^}]*right:2[0-9]px/s,
  "photo pager must be right aligned, not centered under the identity");
 assert.match(css,/\.owner-profile-tabs::after\s*\{/,
@@ -31,14 +31,12 @@ assert.match(component,/import \{Flag\} from "\.\.\/\.\.\/ui\/Flag";/,
  "country indicator must use the shared circular flag component");
 assert.match(component,/countryCode\s*\?\s*<Flag/,
  "country flag must be guarded by an actual code");
-assert.match(component,/className="owner-profile-avatar-glow"/,
- "compact photo must have its subtle image-based glow");
-assert.match(component,/ownerElastic/,
- "photo and content must have one bounded overpull amount");
-assert.match(component,/movePhotoTrack\(available\?dx:dx\*\.2/,
- "existing photo carousel direct tracking remains intact");
-assert.match(component,/gestures\.claim\(owner,current\.serial\)/,
- "existing gesture arbiter remains the only gesture owner");
+assert.match(motion,/ownerRubberPosition\(Math.min\(raw,/,
+ "photo and sheet derive elastic motion from the same pull");
+assert.match(component,/photos\[loop\(selectedIndex-direction,photos.length\)\]/,
+ "photo paging wraps around the available items");
+assert.match(motion,/gestures\.claim\(owner,current\.serial\)/,
+ "the shared arbiter remains the only gesture owner");
 
 // Legacy violet/turquoise/yellow gradients were not LUEMI Sunset Cherry.
 // Every catalog pigment must be one of the approved muted berry tones; this
@@ -51,4 +49,4 @@ const styles=readFileSync("apps/web/src/styles.css","utf8");
 assert.match(styles,/\.chip\.toned\s*\{[^}]*color:var\(--luemi-text,#FAFCFF\)/s,"interest labels must be readable on berry pigments");
 assert.match(styles,/\.category-chip\s*\{[^}]*color:var\(--luemi-text,#FAFCFF\)/s,"registration category labels use the same readable light ink");
 
-console.log("PROFILE_V4_1_UI_CONTRACT_PASS rounded sheet, tabs, flag, glow, elasticity and canonical interests");
+console.log("PROFILE_V4_1_UI_CONTRACT_PASS rounded sheet, tabs, flag, one photo mask, elasticity and canonical interests");

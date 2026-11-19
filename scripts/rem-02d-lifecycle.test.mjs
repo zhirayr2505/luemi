@@ -36,14 +36,15 @@ assert.ok([...telegram.values()].every(s=>s.size===0),"no Telegram leaked subscr
 console.log("REM02D_UNIT_PASS lifecycle suspend/resume idempotent, Telegram/browser listener baseline restored");
 
 const profile=read("apps/web/src/discovery/ProfileMasterV3.tsx");
-const owner=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
+const owner=read("apps/web/src/discovery/owner-profile/useOwnerProfileMotion.ts");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 for(const x of ["suspendForRoute","rollbackRoute","commitRouteClose","suspendForBackground","resumeFromBackground"])
  assert.ok(profile.includes(x)&&route.includes(x),"profile and route retain lifecycle handoff "+x);
 assert.ok(owner.includes('window.visualViewport?.addEventListener("resize",resize)')&&
  owner.includes('window.visualViewport?.removeEventListener("resize",resize)')&&
- owner.includes("observer.disconnect()")&&owner.includes("cancelAnimationFrame(paintRaf.current)")&&
- owner.includes("settleTarget.current=motion.snapshot().target")&&owner.includes("motion.reveal"),
+ owner.includes("observer.disconnect()")&&owner.includes("cancelAnimationFrame(paintRaf)")&&
+ owner.includes("motion.dispose()")&&owner.includes("settleTo(accepted)")&&
+ owner.includes("register?.(null)"),
  "owner geometry observer, viewport listener and pending RAF are disposed");
 assert.ok(route.includes('routeMotion.current.finish(token')&&route.includes('routeMotion.current.cancel(liveToken.current,"external")'));
 console.log("OWNER_PROFILE_LIFECYCLE_ADAPTER_PASS");

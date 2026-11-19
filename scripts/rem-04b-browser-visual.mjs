@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {mkdirSync,writeFileSync} from "node:fs";
 import {chromium} from "playwright";
+import {setPremiumProfileState} from "./premium-profile-browser-input.mjs";
 
 /** Premium Photo Profile visual smoke with real Chromium screenshots.
  * Static compositor checks cannot certify physical Telegram A55 GPU behavior. */
@@ -13,7 +14,6 @@ const dir="qa-artifacts/rem-04b/after";mkdirSync(dir,{recursive:true});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const own=()=>page.locator('.owner-premium-profile[data-mode="owner"]');
 const visitor=()=>page.locator('.discovery-visitor-route .owner-premium-profile[data-mode="visitor"]');
-const scrollOf=host=>host.locator(".owner-profile-scroll");
 const read=host=>host.evaluate(node=>{
  const bounds=element=>{const r=element?.getBoundingClientRect();return r?{
   x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom}:null;};
@@ -22,25 +22,19 @@ const read=host=>host.evaluate(node=>{
  const tabs=node.querySelector(".owner-profile-tabs");
  const logo=node.querySelector(".owner-profile-brand img");
  const body=node.querySelector(".owner-profile-content");
- const backdrop=node.querySelector(".owner-profile-compact-backdrop");
  const actions=node.querySelector(".owner-profile-actions");
- const identity=node.querySelector(".owner-profile-expanded-identity");
- const compactName=node.querySelector(".owner-profile-compact-identity");
+ const city=node.querySelector(".owner-profile-identity p");
  const avatar=visiblePhoto?getComputedStyle(visiblePhoto):null;
  return {state:node.dataset.morphState,mode:node.dataset.mode,
   isolated:getComputedStyle(node).isolation,
   bg:getComputedStyle(node).backgroundColor,
   cover:bounds(visiblePhoto),radius:parseFloat(avatar?.borderRadius||"0"),
   tabs:bounds(tabs),logo:bounds(logo),content:bounds(body),
-  expandedName:bounds(identity),compactName:bounds(compactName),actions:bounds(actions),
-  blurOpacity:Number(getComputedStyle(backdrop).opacity),
+  city:bounds(city),actions:bounds(actions),
   selected:node.querySelector('.owner-profile-tabs [aria-selected="true"]')?.textContent?.trim(),
-  photoId:photo?.querySelector("img")?.dataset.photoId??null,
+  photoId:photo?.querySelector("img[data-slot=current]")?.dataset.photoId??null,
   photoCount:node.querySelectorAll(".owner-profile-photo-tile").length,
-  dots:node.querySelectorAll(".owner-profile-photo-pager button").length,
-  progress:(()=>{const el=node.querySelector(".owner-profile-scroll");
-   const distance=Number.parseFloat(getComputedStyle(node).getPropertyValue("--owner-morph-distance"));
-   return distance>0?Math.max(0,Math.min(1,(el?.scrollTop??0)/distance)):0;})()};
+  dots:node.querySelectorAll(".owner-profile-photo-pager button").length};
 });
 const snap=async(host,label)=>{
  const data=await read(host);
@@ -49,9 +43,8 @@ const snap=async(host,label)=>{
  assert.equal(data.isolated,"isolate","profile compositing remains isolated");
  assert.ok(data.bg!=="rgba(0, 0, 0, 0)"&&data.cover&&data.logo,
   "real opaque profile backing, hero and original brand are mounted");
- assert.ok(data.progress>=0&&data.progress<=1,"scroll morph progress is bounded");
  console.log("PREMIUM_PROFILE_VISUAL "+JSON.stringify({label,state:data.state,
-  cover:data.cover,progress:data.progress,blur:data.blurOpacity}));
+  cover:data.cover}));
  return data;
 };
 
@@ -64,24 +57,21 @@ try{
  assert.equal(first.state,"expanded");
  assert.ok(first.cover.y<1.5&&Math.abs(first.cover.width-first.cover.height)<1.5,
   "photo is a full-bleed square behind native Telegram chrome");
- assert.ok(first.expandedName?.bottom<first.actions?.y-4,
+ assert.ok(first.city?.bottom<first.actions?.y-4,
   "expanded name and photo action row never overlap");
  assert.ok(first.logo?.y<first.actions.y,"white wordmark sits above controls");
- assert.equal(first.blurOpacity,0,"sharp expanded hero has no blurred compact backing");
 
- const firstImage=await own().locator(".owner-profile-photo-mask img").elementHandle();
- await scrollOf(own()).evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
- await page.waitForFunction(()=>document.querySelector('.owner-premium-profile[data-mode="owner"]')?.dataset.morphState==="compact");
+ const firstImage=await own().locator(".owner-profile-photo-mask img[data-slot=current]").elementHandle();
+ await setPremiumProfileState(page,own(),"compact");
  const compact=await snap(own(),"owner-compact");
  assert.ok(compact.cover.width>=94&&compact.cover.width<=112&&Math.abs(compact.cover.width-compact.cover.height)<1.5);
- assert.ok(compact.blurOpacity>.93,"same-photo blurred backing appears beneath circular avatar");
+ assert.ok(compact.cover.y>=compact.logo.bottom+8,"the single compact photo clears the original logo");
  assert.ok(compact.tabs?.y>compact.cover.bottom+35,"tabs sit below avatar and name");
  assert.ok(compact.tabs?.y+compact.tabs.height<530,"tabs remain pinned in compact header");
- assert(await own().locator(".owner-profile-photo-mask img").evaluate((node,original)=>node===original,firstImage),
+ assert(await own().locator(".owner-profile-photo-mask img[data-slot=current]").evaluate((node,original)=>node===original,firstImage),
   "one persistent foreground image is preserved throughout the morph");
 
- await scrollOf(own()).evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
- await page.waitForFunction(()=>document.querySelector('.owner-premium-profile[data-mode="owner"]')?.dataset.morphState==="expanded");
+ await setPremiumProfileState(page,own(),"expanded");
  const reversed=await snap(own(),"owner-reversed");
  assert.ok(Math.abs(reversed.cover.width-first.cover.width)<2);
  await own().locator(".owner-profile-photo-pager button").nth(1).click();
@@ -101,13 +91,12 @@ try{
  assert.equal(guest.state,"expanded");
  assert.equal(await visitor().locator(".owner-profile-actions button").count(),0,"visitor cannot edit profile");
  assert.equal(await page.locator(".discovery-app").getAttribute("data-profile-overlay"),"true");
- await visitor().locator(".owner-profile-photo-mask img").click();
+ await visitor().locator(".owner-profile-photo-mask").click();
  await page.locator(".pm-viewer").waitFor({state:"visible",timeout:4000});
  await page.keyboard.press("Escape");
  await page.locator(".pm-viewer").waitFor({state:"detached",timeout:4000});
  await snap(visitor(),"visitor-viewer-return");
- await scrollOf(visitor()).evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
- await page.waitForFunction(()=>document.querySelector('.owner-premium-profile[data-mode="visitor"]')?.dataset.morphState==="compact");
+ await setPremiumProfileState(page,visitor(),"compact");
  await snap(visitor(),"visitor-compact");
  await page.keyboard.press("Escape");
  await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:4500});

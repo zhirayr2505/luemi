@@ -1,21 +1,13 @@
-/* LUEMI profile • screenshot composition, single native scroll + staged photo morph.
-   Shared owner/visitor. Reuse real LUEMI tokens and original raster wordmark. */
+/* The hero uses one square surface. The rounded sheet and tabs move together,
+   with card scrolling clipped to its own viewport once compact. */
 .owner-premium-profile{
- position:absolute;inset:0;overflow:hidden;isolation:isolate;
- --owner-hero-height:393px;--owner-hero-bottom:393px;
- --owner-expanded-tabs-top:393px;--owner-compact-top:318px;--owner-compact-name-top:270px;
- --owner-morph-distance:94px;--owner-content-shift:37px;
- --owner-avatar-x:130px;--owner-avatar-y:142px;--owner-avatar-size:132px;
+ position:absolute;inset:0;overflow:hidden;overflow:clip;isolation:isolate;
  --owner-brand-top:max(calc(var(--top-safe,0px) - 9px),34px);
  color:var(--luemi-text);background:var(--luemi-bg-deep);
 }
 .owner-profile-backdrop{
- position:absolute;inset:0;z-index:0;pointer-events:none;
+ position:absolute;inset:0;pointer-events:none;
  background:linear-gradient(180deg,var(--luemi-bg-top),var(--luemi-bg-deep) 68%,var(--luemi-bg));
-}
-.owner-profile-brand-probe{
- position:absolute;left:0;top:var(--owner-brand-top);z-index:-1;
- width:0;height:1px;visibility:hidden;pointer-events:none;
 }
 .owner-profile-brand{
  position:absolute;z-index:14;top:var(--owner-brand-top);
@@ -25,79 +17,37 @@
  display:block;width:90px;height:31px;object-fit:contain;
  filter:brightness(0) invert(1) drop-shadow(0 2px 7px rgba(0,0,0,.38));
 }
-.owner-profile-compact-backdrop{
- position:absolute;z-index:10;top:0;left:0;right:0;
- height:calc(var(--owner-compact-top) + 58px);overflow:hidden;
- opacity:0;pointer-events:none;contain:paint;background:var(--luemi-bg-deep);
-}
-.owner-profile-compact-backdrop img{
- display:block;width:112%;height:112%;margin:-6% 0 0 -6%;
- object-fit:cover;filter:blur(23px) brightness(.52) saturate(.82);
- transform:translateZ(0);
-}
-.owner-profile-compact-tint{
- position:absolute;inset:0;
- background:linear-gradient(180deg,rgba(16,21,29,.42),rgba(21,27,37,.55) 34%,var(--luemi-bg-deep) 95%);
-}
 .owner-profile-photo-mask{
- position:absolute;z-index:12;top:0;left:0;
- width:100%;height:var(--owner-hero-height);overflow:hidden;isolation:isolate;
- transform:translate3d(0,0,0);transform-origin:0 0;contain:layout paint;
- backface-visibility:hidden;-webkit-backface-visibility:hidden;
- touch-action:none;user-select:none;-webkit-user-select:none;
+ position:absolute;z-index:1;top:0;left:0;width:100%;aspect-ratio:1;overflow:hidden;
+ isolation:isolate;transform:translate3d(0,0,0);transform-origin:0 0;
+ backface-visibility:hidden;touch-action:none;user-select:none;-webkit-user-select:none;
  background:var(--luemi-surface-raised);
  -webkit-tap-highlight-color:transparent;
- box-shadow:0 9px 25px rgba(7,5,14,.22);
 }
-/* V4.2: a second lightweight view of the SAME source, clipped as a circle
-   throughout the entire fast handoff; never render oval intermediate masks. */
-.owner-profile-avatar-circle{
- position:absolute;z-index:14;left:0;top:0;
- width:102px;height:102px;border-radius:50%;overflow:hidden;
- opacity:0;pointer-events:none;isolation:isolate;
- touch-action:none;user-select:none;-webkit-user-select:none;
- background:var(--luemi-surface-raised);
- box-shadow:0 8px 20px rgba(7,5,14,.2),0 0 0 1px rgba(255,255,255,.18);
- transform:translate3d(0,0,0);backface-visibility:hidden;
- -webkit-tap-highlight-color:transparent;cursor:pointer;
-}
-.owner-profile-avatar-circle>img{
- display:block;width:100%;height:100%;object-fit:cover;object-position:50% 34%;
- user-select:none;-webkit-user-select:none;pointer-events:none;
-}
-.owner-profile-avatar-circle:focus-visible{outline:2px solid var(--luemi-focus);outline-offset:3px}
+.owner-profile-photo-mask[role="button"]{cursor:pointer}
 .owner-profile-photo-mask:focus-visible{outline:2px solid var(--luemi-focus);outline-offset:-4px}
-.owner-profile-photo-mask>img{
- position:absolute;inset:-1px;display:block;width:calc(100% + 2px);height:calc(100% + 2px);
- object-fit:cover;object-position:50% 34%;
- user-select:none;-webkit-user-select:none;cursor:pointer;
+.owner-profile-photo-track{position:absolute;inset:0;transform:translate3d(0,0,0)}
+.owner-profile-photo-track>img{
+ position:absolute;top:0;left:0;width:100%;height:100%;
+ object-fit:cover;object-position:50% 38%;pointer-events:none;
 }
-.owner-profile-photo-mask>img{z-index:1}
-.owner-profile-photo-mask>.owner-profile-photo-adjacent{
- position:absolute;inset:-1px;z-index:0;pointer-events:none;
- width:calc(100% + 2px);height:calc(100% + 2px);background-size:cover;background-repeat:no-repeat;
- background-position:center center;
-}
-.owner-profile-photo-mask>.owner-profile-photo-adjacent.previous{
- transform:translate3d(-100%,0,0);
-}
-.owner-profile-photo-mask>.owner-profile-photo-adjacent.next{
- transform:translate3d(100%,0,0);
-}
+.owner-profile-photo-track>img[data-slot="previous"]{left:-100%}
+.owner-profile-photo-track>img[data-slot="next"],
+.owner-profile-photo-track[data-two-photos="true"][data-direction="next"]>img[data-slot="previous"]{left:100%}
 .owner-profile-photo-empty{
  width:100%;height:100%;display:grid;place-content:center;justify-items:center;gap:10px;
  color:var(--luemi-text-secondary);
 }
 .owner-profile-photo-shade{
- position:absolute;z-index:2;inset:0;pointer-events:none;
+ position:absolute;inset:0;pointer-events:none;
  background:linear-gradient(180deg,rgba(8,6,13,.23),transparent 33%,rgba(10,7,15,.08) 52%,rgba(11,7,16,.69));
 }
 .owner-profile-photo-pager{
- position:absolute;z-index:13;top:calc(var(--owner-hero-bottom) - 39px);
- right:24px;left:auto;transform:none;
+ position:absolute;z-index:4;top:0;right:24px;
  display:flex;align-items:center;justify-content:center;gap:6px;min-height:18px;
- pointer-events:auto;
+ touch-action:none;
 }
+.owner-profile-photo-pager[hidden],.owner-profile-photo-pager[inert]{visibility:hidden}
 .owner-profile-photo-pager button{
  position:relative;display:block;flex:0 0 auto;width:7px;height:5px;padding:0;border:0;
  border-radius:999px;background:rgba(228,234,242,.42);box-shadow:none;
@@ -109,98 +59,55 @@
  position:absolute;z-index:15;top:calc(var(--owner-brand-top) + 43px);left:14px;right:14px;
  display:flex;align-items:center;justify-content:flex-end;pointer-events:none;
 }
+.owner-premium-profile:not([data-morph-state="expanded"]) .owner-profile-topbar{visibility:hidden}
 .owner-profile-glass{
  position:relative;display:grid;place-items:center;width:44px;height:44px;padding:0;
  border:1px solid rgba(255,255,255,.21);border-radius:50%;color:#fff;
  background:rgba(53,65,84,.48);pointer-events:auto;
- -webkit-backdrop-filter:blur(12px) saturate(1.12);
- backdrop-filter:blur(12px) saturate(1.12);
  box-shadow:inset 0 1px rgba(255,255,255,.12),0 5px 14px rgba(9,5,15,.16);
  -webkit-tap-highlight-color:transparent;
  transition:transform .16s ease,background-color .16s ease;
+}
+.owner-profile-edit-top{
+ -webkit-backdrop-filter:blur(12px) saturate(1.12);
+ backdrop-filter:blur(12px) saturate(1.12);
 }
 .owner-profile-glass:active{transform:scale(.95)}
 .owner-profile-glass:focus-visible,.owner-profile-tabs button:focus-visible,
 .owner-profile-photo-tile:focus-visible,.owner-profile-photo-pager button:focus-visible,
 .owner-profile-manage:focus-visible{outline:2px solid var(--luemi-focus);outline-offset:3px}
-.owner-profile-edit-top{width:44px;height:44px}
-.owner-profile-expanded-identity{
- position:absolute;z-index:13;top:calc(var(--owner-hero-bottom) - 95px);
- left:24px;right:24px;color:#fff;pointer-events:none;
- transform:translate3d(0,0,0);text-shadow:0 2px 12px rgba(0,0,0,.48);
+.owner-profile-identity{
+ position:absolute;z-index:3;top:0;left:0;right:0;
+ color:#fff;pointer-events:none;text-shadow:0 2px 12px rgba(0,0,0,.48);
 }
-.owner-profile-expanded-identity h1{
- margin:0;font-size:clamp(27px,7.3vw,35px);line-height:1.1;
- font-weight:780;letter-spacing:-.035em;
+.owner-profile-identity h1{
+ width:max-content;max-width:calc(100% - 48px);margin:0;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ font-size:clamp(27px,7.3vw,35px);line-height:1.1;font-weight:780;letter-spacing:-.035em;
 }
-.owner-profile-expanded-identity p{
- display:flex;align-items:center;gap:6px;margin:8px 0 0;
- font-size:13px;font-weight:550;line-height:1.3;color:rgba(255,255,255,.91);
+.owner-profile-identity p{
+ display:flex;align-items:center;gap:6px;width:max-content;max-width:calc(100% - 144px);
+ margin:8px 0 0;font-size:13px;font-weight:550;line-height:1.3;color:rgba(255,255,255,.91);
 }
-.owner-profile-expanded-identity p svg{flex:none}
+.owner-profile-identity p svg{flex:none}
 .owner-profile-location{display:inline-flex;align-items:center;gap:7px;min-width:0}
+.owner-profile-city{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .owner-profile-location .round-flag,.owner-profile-location .flag-fallback{
  display:block;flex:none;border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.3)
 }
-.owner-profile-avatar-glow{
- position:absolute;z-index:11;pointer-events:none;
- left:calc(var(--owner-avatar-x) - 9px);top:calc(var(--owner-avatar-y) - 9px);
- width:calc(var(--owner-avatar-size) + 18px);height:calc(var(--owner-avatar-size) + 18px);
- border-radius:50%;opacity:0;overflow:hidden;
- background-size:cover;background-position:center;
- filter:blur(12px) saturate(1.18);
- box-shadow:0 0 18px 4px rgba(223,115,119,.12);
- transform:translateZ(0);
-}
-.owner-profile-compact-identity{
- position:absolute;z-index:13;left:50%;top:var(--owner-compact-name-top);
- width:min(310px,calc(100% - 32px));
- display:flex;flex-direction:column;align-items:center;gap:6px;
- opacity:0;pointer-events:none;color:var(--luemi-text);text-align:center;
- transform:translate3d(-50%,8px,0);
- text-shadow:0 2px 8px rgba(0,0,0,.32);
-}
-.owner-profile-compact-identity strong{
- display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
- font-size:clamp(21px,5.5vw,25px);font-weight:760;line-height:1.15;letter-spacing:-.025em;
-}
-.owner-profile-compact-identity span{
- display:flex;align-items:center;gap:5px;max-width:100%;overflow:hidden;
- font-size:12px;color:var(--luemi-text-secondary);white-space:nowrap;text-overflow:ellipsis;
-}
-.owner-profile-compact-identity span svg{flex:none}
-.owner-profile-scroll{
- position:absolute;z-index:13;inset:0;overflow-x:hidden;overflow-y:auto;
- overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;overflow-anchor:none;
- scrollbar-width:none;
- /* Never reserve a top scroll snap zone higher than the sticky tab itself:
-    focus/click scrolling would reset compact scrollTop to zero. */
- scroll-padding-top:0;
- touch-action:pan-y;pointer-events:none;
-}
-.owner-profile-scroll::-webkit-scrollbar{display:none}
-.owner-profile-hero-spacer{
- height:var(--owner-expanded-tabs-top);
- pointer-events:none;
-}
-.owner-profile-content{
- position:relative;pointer-events:auto;
- /* The rounded cap is the sibling tab rail. The content sits seamlessly
-    below it; keeping it out of the sticky containing block avoids drift. */
- min-height:calc(100% - var(--owner-expanded-tabs-top) + var(--owner-morph-distance) - 4px);
- margin:0;padding:13px 13px calc(120px + var(--bottom-safe,0px));
- border-radius:0;
- background:linear-gradient(180deg,var(--luemi-bg-deep),var(--luemi-bg-deep) 126px,var(--luemi-bg));
- box-shadow:0 -8px 24px rgba(7,5,14,.25);
+.owner-profile-sheet{
+ position:absolute;z-index:2;top:0;left:0;right:0;
+ display:flex;flex-direction:column;min-height:49px;height:66%;
+ border-radius:32px 32px 0 0;overflow:hidden;
+ background:var(--luemi-bg-deep);box-shadow:0 -7px 24px rgba(7,5,14,.20);
+ transform:translate3d(0,calc(100vw - 22px),0);
 }
 .owner-profile-tabs{
- position:sticky;z-index:16;top:var(--owner-compact-top);
+ position:relative;z-index:1;flex:none;
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
  height:52px;align-items:stretch;margin:0;padding:0 13px;
- pointer-events:auto;touch-action:pan-y;overscroll-behavior-x:contain;
- border:0;border-bottom:1px solid var(--luemi-border);
- border-radius:32px 32px 0 0;background:var(--luemi-bg-deep);
- box-shadow:0 -4px 17px rgba(7,5,14,.1);
+ touch-action:none;border:0;border-bottom:1px solid var(--luemi-border);
+ background:var(--luemi-bg-deep);
 }
 .owner-profile-tabs::after{
  content:"";position:absolute;bottom:-1px;
@@ -218,10 +125,18 @@
 .owner-profile-tabs button[aria-selected="true"]{
  color:var(--luemi-text);font-weight:730;
 }
-.owner-profile-flow{position:relative;transform:translate3d(0,0,0);padding-bottom:var(--owner-content-shift)}
-.owner-profile-pages{
- position:relative;min-height:295px;touch-action:pan-y;overscroll-behavior-x:contain;
+.owner-profile-scroll{
+ flex:1;min-height:0;overflow:hidden;overflow:clip;
+ overscroll-behavior:none;overflow-anchor:none;scrollbar-width:none;
+ touch-action:none;
 }
+.owner-premium-profile[data-morph-state="compact"] .owner-profile-scroll{overflow:hidden auto;touch-action:pan-y}
+.owner-profile-scroll::-webkit-scrollbar{display:none}
+.owner-profile-content{
+ position:relative;margin:0;padding:13px 13px calc(120px + var(--bottom-safe,0px));
+ background:linear-gradient(180deg,var(--luemi-bg-deep),var(--luemi-bg-deep) 126px,var(--luemi-bg));
+}
+.owner-profile-pages{position:relative;min-height:295px}
 .owner-profile-panel{min-height:290px;padding:0 1px 30px}
 .owner-profile-panel[hidden],.owner-profile-about[hidden]{display:none!important}
 .owner-profile-about{display:flex;flex-direction:column;gap:11px}
@@ -300,21 +215,17 @@
 .owner-profile-disclaimer{text-align:center;color:var(--luemi-text-muted);font-size:12px}
 @media(max-width:360px){
  .owner-profile-content{padding-inline:10px}
- .owner-profile-tabs{padding-inline:10px}
- .owner-profile-expanded-identity{left:18px;right:18px}
+ .owner-profile-tabs{height:49px;padding-inline:10px}
  .owner-profile-about article{padding:15px}
- .owner-profile-tabs{height:49px}
  .owner-profile-photo-pager{right:18px}
  .owner-profile-basics{gap:10px}
 }
 @media(prefers-reduced-transparency:reduce){
- .owner-profile-glass{background:var(--luemi-glass-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
- .owner-profile-compact-backdrop img{filter:blur(18px) brightness(.50)}
+ .owner-profile-edit-top{background:var(--luemi-glass-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
- .owner-profile-glass{background:var(--luemi-glass-solid)}
+ .owner-profile-edit-top{background:var(--luemi-glass-solid)}
 }
 @media(prefers-reduced-motion:reduce){
  .owner-profile-glass,.owner-profile-tabs button,.owner-profile-tabs::after,.owner-profile-photo-pager button{transition:none}
 }
-

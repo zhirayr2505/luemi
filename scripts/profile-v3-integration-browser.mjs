@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {chromium} from "playwright";
+import {setPremiumProfileState} from "./premium-profile-browser-input.mjs";
 
 /**
  * Integration of the active owner/visitor V4 profile into Discovery.
@@ -29,11 +30,7 @@ try{
   ["О себе","Фото","Блики","Подарки"],"one approved four-tab strip");
  assert.equal(await owner.locator(".owner-profile-actions button").count(),4,"owner tools remain available");
 
- const distance=await owner.evaluate(el=>Number.parseFloat(getComputedStyle(el).getPropertyValue("--owner-morph-distance")));
- assert(distance>40,"scroll-driven photo morph has a positive endpoint");
- await scroll.evaluate((el,d)=>{el.scrollTop=d;el.dispatchEvent(new Event("scroll"));},distance);
- await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact",
-  null,{timeout:5000});
+ await setPremiumProfileState(page,owner,"compact");
  const compact=await owner.locator(".owner-profile-avatar-circle").boundingBox();
  assert(compact&&compact.width>=94&&compact.width<=112&&Math.abs(compact.width-compact.height)<1.5,
   "square hands off directly to Telegram-sized perfectly circular avatar");
@@ -47,7 +44,7 @@ try{
    position:el.scrollTop,max:el.scrollHeight-el.clientHeight,scrollHeight:el.scrollHeight,
    clientHeight:el.clientHeight,state:el.closest(".owner-premium-profile")?.dataset.morphState
   }));
-  console.log("PROFILE_V4_TAB_DEBUG "+JSON.stringify({label,tabMotion,distance}));
+  console.log("PROFILE_V4_TAB_DEBUG "+JSON.stringify({label,tabMotion}));
   assert.equal(await owner.getAttribute("data-morph-state"),"compact",
    "tab changes may not expand the compact photo");
  }
@@ -67,9 +64,7 @@ try{
   assert.equal(await owner.locator(".owner-profile-photo-pager button").count(),count>1?count:0,
    "photo pager corresponds to permitted photos");
  }
- await scroll.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
- await page.waitForFunction(()=>document.querySelector(".v3-profile-host.pm-inline .owner-premium-profile")?.dataset.morphState==="expanded",
-  null,{timeout:5000});
+ await setPremiumProfileState(page,owner,"expanded");
 
  await page.getByRole("button",{name:"Знакомства",exact:true}).click();
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();

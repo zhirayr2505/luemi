@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {chromium} from "playwright";
+import {setPremiumProfileState} from "./premium-profile-browser-input.mjs";
 
 /** Responsive premium photo profile QA on synthetic Chromium (not a physical Telegram WebView). */
 const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
@@ -11,21 +12,19 @@ const page=await context.newPage(),errors=[];
 page.on("pageerror",err=>errors.push(err.message));
 const base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 const root=page.locator(".owner-premium-profile");
-const scroll=page.locator(".owner-premium-profile .owner-profile-scroll");
 const measure=()=>page.evaluate(()=>{
  const host=document.querySelector(".owner-premium-profile");
  if(!host)throw Error("Premium profile is missing");
  const mask=host.querySelector(host.dataset.morphState==="compact"?".owner-profile-avatar-circle":".owner-profile-photo-mask");
  const tabs=host.querySelector(".owner-profile-tabs");
- const avatar=host.querySelector(".owner-profile-compact-identity");
+ const avatar=host.querySelector(".owner-profile-identity");
  if(!mask||!tabs||!avatar)throw Error("Premium photo profile geometry incomplete");
  const face=mask.getBoundingClientRect(),strip=tabs.getBoundingClientRect();
  const panel=host.getBoundingClientRect();
  return {mode:host.dataset.morphState,photo:{
   x:face.x-panel.x,y:face.y-panel.y,width:face.width,height:face.height
  },tabTop:strip.top-panel.top,tabHeight:strip.height,avatarTop:avatar.getBoundingClientRect().top-panel.top,
-  tabLabels:[...tabs.querySelectorAll('[role="tab"]')].map(node=>node.textContent?.trim()),
-  progress:getComputedStyle(host).getPropertyValue("--owner-morph-progress")};
+  tabLabels:[...tabs.querySelectorAll('[role="tab"]')].map(node=>node.textContent?.trim())};
 });
 try{
  await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
@@ -35,8 +34,7 @@ try{
  assert.equal(await root.locator(".owner-profile-brand img").count(),1,"original LUEMI wordmark");
  for(const height of [852,722,648,782]){
   await page.setViewportSize({width:393,height});
-  await scroll.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
-  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
+  await setPremiumProfileState(page,root,"expanded");
   const full=await measure();
   assert(full.photo.y<1.5&&Math.abs(full.photo.width-full.photo.height)<1.5,
    "expanded photo stays full-bleed and square at "+height);
@@ -44,19 +42,23 @@ try{
   assert(Math.abs(full.tabTop-(full.photo.y+full.photo.height-22))<1.5,
    "rounded sheet overlaps the expanded square photo by 22px at "+height);
   // Mid-morph the expanded city line must still clear the rising panel.
-  const handoff=await scroll.evaluate(async el=>{
-   const host=el.closest(".owner-premium-profile");
-   const d=Number.parseFloat(getComputedStyle(host).getPropertyValue("--owner-morph-distance"));
-   el.scrollTop=d*.42;el.dispatchEvent(new Event("scroll"));
-   await new Promise(resolve=>requestAnimationFrame(resolve));
-   const city=host.querySelector(".owner-profile-expanded-identity p");
+  const x=full.photo.x+full.photo.width/2,y=full.photo.y+full.photo.height/2;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await page.mouse.move(x,y-55,{steps:5});
+  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="transition");
+  const handoff=await root.evaluate(host=>{
+   const city=host.querySelector(".owner-profile-identity p");
    const tabs=host.querySelector(".owner-profile-tabs");
-   return {cityBottom:city.getBoundingClientRect().bottom,tabTop:tabs.getBoundingClientRect().top};
+   const photo=host.querySelector(".owner-profile-photo-mask");
+   return {cityBottom:city.getBoundingClientRect().bottom,tabTop:tabs.getBoundingClientRect().top,photoTop:photo.getBoundingClientRect().top};
   });
   assert(handoff.cityBottom<=handoff.tabTop+1.5,
    "city label cannot disappear behind the sheet at mid morph "+height);
-  await scroll.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
-  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact");
+  assert(Math.abs(handoff.photoTop+55*.42)<2,"photo follows the sheet at the specified parallax ratio");
+  await page.mouse.move(x,y-190,{steps:6});
+  await page.mouse.up();
+  await root.locator('xpath=self::*[@data-morph-state="compact"]').waitFor({state:"visible",timeout:5000});
   const compact=await measure();
   assert(Math.abs(compact.photo.width-compact.photo.height)<1.5,
    "avatar is square at "+height);
