@@ -1,0 +1,196 @@
+/* LUEMI Expanded Photo Glass — approved inset-card profile detail.
+ * Overlay stays inside the existing photo card; no second page, no fullscreen
+ * backdrop-filter. All fades are driven by FeedCard's existing --profile-p.
+ * Gesture ownership, RAF interpolation and routing are unchanged. */
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-photo-indicator{
+ opacity:clamp(0,calc(1 - var(--profile-p) * 3),1);
+ transform:translateY(calc(var(--profile-p) * -7px));
+ pointer-events:none
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-demo-label{
+ opacity:clamp(0,calc(1 - var(--profile-p) * 2.5),1);
+ pointer-events:auto
+}
+/* Pinned name/age/city/goal header travels via the existing 1:1 progress, then
+ * stays above the scroll content. Only this small header uses true glass. */
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info{
+ isolation:isolate;
+ border-radius:19px;
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info::before{
+ content:"";
+ position:absolute;z-index:-1;inset:0;pointer-events:none;
+ border-radius:inherit;
+ background:linear-gradient(145deg,
+  rgba(43,37,49,.88),rgba(29,30,42,.91) 68%,rgba(27,27,39,.94));
+ border:1px solid rgba(245,222,236,.17);
+ box-shadow:inset 0 1px rgba(255,255,255,.10),0 9px 25px rgba(8,8,17,.25);
+ -webkit-backdrop-filter:blur(12px) saturate(108%);
+ backdrop-filter:blur(12px) saturate(108%);
+ opacity:var(--profile-p);
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info>.moonstone-indicator-row,
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info>.moonstone-name-row,
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info>.moonstone-location,
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info>.moonstone-goal{
+ z-index:1;
+}
+/* The detail panel sits over a blurred version of this same active photo.
+ * Blur is confined to this card, not the Telegram WebView or the entire page. */
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-drawer{
+ isolation:isolate;
+ overflow:hidden;
+ background:rgba(15,20,31,.16);
+ border:1px solid rgba(244,231,240,.16);
+ box-shadow:inset 0 1px rgba(255,255,255,.09);
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-drawer::before{
+ content:"";position:absolute;z-index:0;inset:-18px;
+ pointer-events:none;
+ background-image:var(--profile-photo,none);
+ background-size:cover;background-position:center;background-repeat:no-repeat;
+ filter:blur(17px) brightness(.68) saturate(.87);
+ transform:scale(1.05);
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-drawer::after{
+ content:"";position:absolute;z-index:1;inset:0;pointer-events:none;
+ background:linear-gradient(180deg,
+  rgba(19,22,34,.55),rgba(22,25,36,.57) 42%,rgba(15,21,32,.76));
+}
+/* Old grey grab bar and dots are meaningless while photos are hidden. */
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-gesture-zone{
+ display:none;
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-profile-scroll{
+ position:absolute;z-index:2;inset:0;
+ padding:calc(var(--profile-detail-top,172px) + 12px) 14px 36px;
+ overflow-x:hidden;overflow-y:auto;
+ overscroll-behavior:contain;
+ scroll-padding-top:15px;
+ scrollbar-width:none;
+ -webkit-overflow-scrolling:touch;
+}
+/* Scroll passes behind the raised header, which remains at z-index 13.
+ * No fixed separate page, no header duplication and no extra gesture owner. */
+.real-discovery-home[data-feed-visible="true"] .moonstone-detail-section{
+ padding-bottom:19px;
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-detail-section+.moonstone-detail-section{
+ margin-top:13px;padding-top:20px;
+ border-top:1px solid rgba(238,223,236,.15)
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-detail-section h3{
+ color:#F3DCE8;
+ font-size:11px;font-weight:740;letter-spacing:.12em;
+ margin-bottom:12px;
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-detail-section h3::before{
+ width:5px;height:5px;
+ background:#E96A86;
+ box-shadow:none
+}
+/* Quotation ribbon: warm coral-rose, no grey vertical stripe or glow. */
+.real-discovery-home[data-feed-visible="true"] .moonstone-about-quote{
+ border:0;margin:2px 0 0;
+ padding:8px 4px 9px 19px;
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-about-quote::before{
+ left:0;top:5px;bottom:5px;width:3px;border-radius:999px;
+ background:linear-gradient(180deg,#F4A2B4,#E96A86 58%,#B84C70);
+ box-shadow:none
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-about-quote .moonstone-reveal-text{
+ color:#FAEDF4;
+ font-size:14px;line-height:1.68;letter-spacing:.005em;
+ text-shadow:none;
+}
+/* Seven soft, distinct, non-neon interest tones. */
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill.tone-0{
+ --interest-bg:rgba(66,135,95,.23);--interest-line:rgba(122,186,145,.39);--interest-ink:#BCE6C6
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill.tone-1{
+ --interest-bg:rgba(64,109,159,.25);--interest-line:rgba(134,177,229,.43);--interest-ink:#B4D9FF
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill.tone-2{
+ --interest-bg:rgba(150,103,60,.24);--interest-line:rgba(224,173,119,.41);--interest-ink:#F1D0A3
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill.tone-3{
+ --interest-bg:rgba(127,96,156,.25);--interest-line:rgba(185,150,219,.39);--interest-ink:#DBB8F2
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill.tone-4{
+ --interest-bg:rgba(144,76,104,.24);--interest-line:rgba(230,147,181,.38);--interest-ink:#F8B9D0
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill.tone-5{
+ --interest-bg:rgba(51,135,139,.24);--interest-line:rgba(125,202,205,.39);--interest-ink:#A8E8E5
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill.tone-6{
+ --interest-bg:rgba(156,118,89,.23);--interest-line:rgba(215,174,136,.37);--interest-ink:#EED1B8
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill .interest-chip{
+ display:inline-flex;align-items:center;gap:8px;
+ min-height:36px;padding:7px 12px;
+ border-radius:999px;border:1px solid var(--interest-line);
+ background:var(--interest-bg);
+ color:var(--interest-ink);
+ box-shadow:inset 0 1px rgba(255,255,255,.07);
+ font-size:12px;font-weight:510;
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill .interest-chip svg{
+ color:inherit;flex:none
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill.is-shared .interest-chip{
+ padding-right:26px;border-color:var(--interest-ink);
+ box-shadow:inset 0 1px rgba(255,255,255,.08)
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-interest-pill.is-shared::after{
+ color:var(--interest-ink);
+}
+/* Circular real SVG flags; never use platform emoji. */
+.real-discovery-home[data-feed-visible="true"] .moonstone-language-chip{
+ min-height:41px;padding:5px 12px 5px 6px;gap:9px;
+ border:1px solid rgba(240,225,240,.19);
+ background:rgba(48,51,69,.57);
+ color:#F6ECF5;
+ box-shadow:inset 0 1px rgba(255,255,255,.07);
+ font-size:12px
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-language-flag{
+ width:30px;height:30px;
+ border-radius:50%;overflow:hidden;
+ background:rgba(247,240,250,.08);
+ border:1px solid rgba(255,255,255,.19);
+ box-shadow:0 2px 6px rgba(8,9,18,.25);
+ display:grid;place-items:center;
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-language-flag .round-flag{
+ width:27px!important;height:27px!important;
+ display:block;border-radius:50%;
+ object-fit:cover;
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-language-flag .flag-fallback{
+ display:grid;place-items:center;
+ border-radius:50%;color:#B6BBCB
+}
+.real-discovery-home[data-feed-visible="true"] .moonstone-fact,
+.real-discovery-home[data-feed-visible="true"] .moonstone-answer{
+ background:rgba(42,44,61,.46);
+ border-color:rgba(239,224,240,.17);
+ box-shadow:inset 0 1px rgba(255,255,255,.05)
+}
+@media(max-height:710px){
+ .real-discovery-home[data-feed-visible="true"] .moonstone-profile-scroll{
+  padding:calc(var(--profile-detail-top,145px) + 8px) 9px 25px;
+ }
+ .real-discovery-home[data-feed-visible="true"] .moonstone-detail-section+.moonstone-detail-section{
+  margin-top:10px;padding-top:15px
+ }
+}
+@media(prefers-reduced-transparency:reduce){
+ .real-discovery-home[data-feed-visible="true"] .moonstone-profile-drawer::before{
+  filter:none;opacity:.3
+ }
+ .real-discovery-home[data-feed-visible="true"] .moonstone-compact-info::before{
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+  background:#272534
+ }
+}

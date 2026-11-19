@@ -40,6 +40,8 @@ import "./real-discovery-layout-repair.css";
 import "./card-deck-edition.css";
 // Approved Vivid Matte photo atmosphere; loaded last for the approved card layout.
 import "./photo-ambient-edition.css";
+// Approved photo-backed expanded profile, rounded SVG flags and soft-interest palette.
+import "./expanded-liquid-profile.css";
 
 // EXACT approved LUEMI navigation / header / profile components. No demo profiles
 // are imported or projected into a real session.

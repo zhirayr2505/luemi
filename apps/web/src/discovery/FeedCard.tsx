@@ -1,11 +1,12 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import type {PointerEvent as ReactPointerEvent} from "react";
+import type {CSSProperties,PointerEvent as ReactPointerEvent} from "react";
 import {BadgeCheck,Bookmark,ChevronUp,Heart,MapPin,MoreHorizontal,RotateCcw,Star,X} from "lucide-react";
 import {goals} from "../registration/model";
 import {goalLabel} from "../ui/PersonalizedCopy";
 import {PhotoCarousel} from "../ui/PhotoCarousel";
 import type {PhotoCarouselHandle} from "../ui/PhotoCarousel";
 import {InterestChip} from "../ui/InterestCatalog";
+import {Flag} from "../ui/Flag";
 import {languages} from "../ui/Languages";
 import {impactHaptic,selectionHaptic} from "../ui/haptic";
 import type {DemoKind,DemoPerson} from "./model";
@@ -23,10 +24,6 @@ const countryName=(code:string,fallback:string)=>{
  if(fallback)return fallback;
  try{return new Intl.DisplayNames(["ru"],{type:"region"}).of(code.toUpperCase())??code.toUpperCase();}
  catch{return code.toUpperCase();}
-};
-const flagEmoji=(code:string)=>{
- const normalized=code.trim().toUpperCase();
- return /^[A-Z]{2}$/.test(normalized)?String.fromCodePoint(...[...normalized].map(char=>127397+char.charCodeAt(0))):"🌐";
 };
 const distanceLabel=(distance:number|null|undefined,real:boolean)=>{
  if(typeof distance!=="number"||!Number.isFinite(distance)||distance<0)return "";
@@ -141,7 +138,7 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
  const location=useMemo(()=>[person.city,countryName(person.countryCode,person.country)].filter(Boolean).join(", "),[person.city,person.country,person.countryCode]);
  const distance=distanceLabel(real?person.distanceKm:demoDistanceKm,real);
  const languageOptions=person.languages.map(id=>{const item=languages.find(language=>language.id===id);
-  return {id,name:item?.name??id,flag:flagEmoji(item?.flag??id)};});
+  return {id,name:item?.name??id,flag:item?.flag??id};});
  const commonInterestIds=useMemo(()=>new Set(viewerInterestIds),[viewerInterestIds]);
  const orderedInterests=useMemo(()=>person.interests.slice().sort((a,b)=>
   Number(commonInterestIds.has(b))-Number(commonInterestIds.has(a))),[person.interests,commonInterestIds]);
@@ -361,8 +358,10 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
   paint(current.startProgress-(event.clientY-current.y)/travel.current);
   settle((Math.abs(velocity)>.42?velocity<0:progress.current-velocity*.16>=.5)?1:0);
  };
+ const activePhoto=person.photos[activePhotoIndex]?.src??person.photos[0]?.src??"";
+ const detailPhotoStyle={"--profile-photo":activePhoto?"url("+JSON.stringify(activePhoto)+")":"none"} as CSSProperties;
  return <div className="discovery-deck-current moonstone-feed" aria-hidden={!active}>
-  <article ref={card} className="moonstone-feed-card" data-expanded={expanded}
+  <article ref={card} className="moonstone-feed-card" data-expanded={expanded} style={detailPhotoStyle}
    onPointerDownCapture={down} onPointerMoveCapture={move} onPointerUpCapture={event=>finish(event)}
    onPointerCancelCapture={event=>finish(event,true)} onLostPointerCapture={event=>{if(event.target===event.currentTarget)finish(event,true);}}
    onClickCapture={event=>{if(performance.now()<blockClickUntil.current){event.preventDefault();event.stopPropagation();}}}>
@@ -391,17 +390,17 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
     </div>
    </div>
    <section ref={drawer} className="moonstone-profile-drawer" aria-label="Подробная информация" aria-hidden={!expanded}>
-    <div className="moonstone-profile-gesture-zone"><span/><span/></div>
+    <div className="moonstone-profile-gesture-zone" aria-hidden="true"/>
     <div ref={scroll} className="moonstone-profile-scroll">
      {person.about&&<div className="moonstone-detail-section moonstone-reveal-about"><h3>О себе</h3>
       <blockquote className="moonstone-about-quote"><p className="moonstone-reveal-text">{person.about}</p></blockquote></div>}
      {orderedInterests.length>0&&<div className="moonstone-detail-section moonstone-reveal-interests"><h3>Интересы</h3>
-      <div className="moonstone-interest-list">{orderedInterests.map(id=><span key={id}
-       className={"moonstone-interest-pill"+(commonInterestIds.has(id)?" is-shared":"")}
+      <div className="moonstone-interest-list">{orderedInterests.map((id,index)=><span key={id}
+       className={"moonstone-interest-pill tone-"+(index%7)+(commonInterestIds.has(id)?" is-shared":"")}
        title={commonInterestIds.has(id)?"Общий интерес":undefined}><InterestChip id={id}/></span>)}</div></div>}
      {languageOptions.length>0&&<div className="moonstone-detail-section moonstone-reveal-extra"><h3>Языки</h3>
       <div className="moonstone-language-list">{languageOptions.map(language=><span className="moonstone-language-chip" key={language.id}>
-       <b className="moonstone-language-flag" aria-hidden="true">{language.flag}</b><span>{language.name}</span></span>)}</div></div>}
+       <span className="moonstone-language-flag"><Flag code={language.flag} size={26} title={"Флаг языка: "+language.name}/></span><span>{language.name}</span></span>)}</div></div>}
      {profileFacts.length>0&&<div className="moonstone-detail-section moonstone-reveal-extra"><h3>Подробнее</h3>
       <div className="moonstone-fact-grid">{profileFacts.map((item,index)=><div className="moonstone-fact" key={`${item.label}-${index}`}>
        <span>{item.label}</span><strong>{item.value}</strong></div>)}</div></div>}
