@@ -28,6 +28,17 @@ try{
   assert.equal(layout.compactAvatar.x,(layout.width-layout.compactAvatar.width)/2,"compact avatar is horizontally centered");
   assert(layout.compactContentTop>layout.compactAvatar.y+layout.compactAvatar.height,"content starts below the compact identity");
 
+  // Phase A follows the Telegram reference: the sheet moves first, the
+  // photo must stay rectangular until the reserved 14% scroll threshold.
+  const preMorph=ownerMorphFrame(layout,.12);
+  assert.deepEqual(preMorph.mask,layout.hero,"content overlaps the unchanged photo before the round transition");
+  assert.equal(preMorph.radius,0,"photo cannot round before the initial content lift");
+  const rounding=ownerMorphFrame(layout,.71);
+  assert.equal(rounding.mask.width,rounding.mask.height,"photo reaches a circle before the final glide");
+  assert.equal(rounding.radius,rounding.mask.width/2,"rounding phase ends as a true circle");
+  assert(Math.abs(layout.hero.y+layout.hero.height-18-layout.compactContentTop-4-layout.morphDistance)<1e-8
+   ||layout.morphDistance===72,"tabs meet their sticky stop at the compact endpoint");
+
   const expanded=ownerMorphFrame(layout,0);
   assert.deepEqual(expanded.mask,layout.hero,"p=0 uses the full expanded photograph");
   assert.equal(expanded.radius,0,"expanded photograph has no artificial circular crop");

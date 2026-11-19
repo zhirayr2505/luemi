@@ -1,7 +1,6 @@
 import {useCallback,useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {KeyboardEvent,PointerEvent as ReactPointerEvent} from "react";
-import {ArrowLeft,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,SlidersHorizontal,Sparkles,UserRound} from "lucide-react";
-import {Flag} from "../../ui/Flag";
+import {ArrowLeft,CalendarDays,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,SlidersHorizontal,Sparkles,UserRound} from "lucide-react";
 import {InterestChip} from "../../ui/InterestCatalog";
 import {goals,type RegistrationDraft} from "../../registration/model";
 import {goalLabel} from "../../ui/PersonalizedCopy";
@@ -37,7 +36,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const root=useRef<HTMLElement>(null),scroller=useRef<HTMLDivElement>(null);
  const mask=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null);
  const shade=useRef<HTMLDivElement>(null),expandedIdentity=useRef<HTMLDivElement>(null);
- const compactIdentity=useRef<HTMLDivElement>(null),actions=useRef<HTMLDivElement>(null);
+ const compactIdentity=useRef<HTMLDivElement>(null);
  const tablist=useRef<HTMLDivElement>(null),brandProbe=useRef<HTMLDivElement>(null);
  const compactBackdrop=useRef<HTMLDivElement>(null),pager=useRef<HTMLDivElement>(null);
  const topEdit=useRef<HTMLButtonElement>(null);
@@ -75,28 +74,21 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    expandedIdentity.current.style.transform=`translate3d(0,${-progress*18}px,0)`;
    expandedIdentity.current.setAttribute("aria-hidden",progress>.58?"true":"false");
   }
-  if(actions.current){
-   actions.current.style.opacity=String(frame.actionsAlpha);
-   actions.current.style.transform=`translate3d(-50%,${-progress*14}px,0)`;
-   actions.current.style.pointerEvents=progress<.26?"auto":"none";
-   actions.current.toggleAttribute("inert",progress>=.26);
-   actions.current.setAttribute("aria-hidden",progress>=.26?"true":"false");
-  }
   if(compactIdentity.current){
    compactIdentity.current.style.opacity=String(frame.compactAlpha);
    compactIdentity.current.style.transform=`translate3d(-50%,${(1-progress)*8}px,0)`;
    compactIdentity.current.setAttribute("aria-hidden",progress<=.58?"true":"false");
   }
-  if(compactBackdrop.current)compactBackdrop.current.style.opacity=String(Math.max(0,Math.min(1,(progress-.48)/.35)));
+  if(compactBackdrop.current)compactBackdrop.current.style.opacity=String(Math.max(0,Math.min(1,(progress-.40)/.36)));
   if(pager.current){
-   pager.current.style.opacity=String(Math.max(0,1-progress*4));
-   pager.current.style.pointerEvents=progress<.22?"auto":"none";
-   pager.current.toggleAttribute("inert",progress>=.22);
+   pager.current.style.opacity=String(Math.max(0,Math.min(1,(.43-progress)/.23)));
+   pager.current.style.pointerEvents=progress<.31?"auto":"none";
+   pager.current.toggleAttribute("inert",progress>=.31);
   }
   if(topEdit.current){
-   topEdit.current.style.opacity=String(Math.max(0,1-progress*3.6));
-   topEdit.current.style.pointerEvents=progress<.25?"auto":"none";
-   topEdit.current.toggleAttribute("inert",progress>=.25);
+   topEdit.current.style.opacity=String(frame.actionsAlpha);
+   topEdit.current.style.pointerEvents=progress<.29?"auto":"none";
+   topEdit.current.toggleAttribute("inert",progress>=.29);
   }
   root.current?.style.setProperty("--owner-morph-progress",String(progress));
   const state=progress<=.001?"expanded":progress>=.999?"compact":"transition";
@@ -258,31 +250,21 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   <header className="owner-profile-topbar">
    <button type="button" className="owner-profile-glass owner-profile-back" onClick={onBack} aria-label="Назад"><ArrowLeft/></button>
    {isOwner&&<button ref={topEdit} type="button" className="owner-profile-glass owner-profile-edit-top" onClick={onEdit} aria-label="Редактировать профиль">
-    <PenLine size={16}/><span>Изменить</span>
+    <PenLine size={18}/>
    </button>}
   </header>
   <div ref={expandedIdentity} className="owner-profile-expanded-identity">
    <h1>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</h1>
-   <p>{isOwner?(view.published?"Анкета опубликована":"Анкета не опубликована"):location}</p>
+   <p><MapPin size={15} aria-hidden="true"/>{location}</p>
   </div>
-  {isOwner&&<div ref={actions} className="owner-profile-actions" aria-label="Действия профиля">
-   <button type="button" className="owner-profile-glass" onClick={onEdit} aria-label="Изменить данные"><PenLine/></button>
-   <button type="button" className="owner-profile-glass" onClick={onPreview} aria-label="Посмотреть анкету глазами других"><Eye/></button>
-   <button type="button" className="owner-profile-glass" onClick={showPhotos} aria-label="Управлять фотографиями"><Images/></button>
-   <button type="button" className="owner-profile-glass" onClick={onSettings} aria-label="Настройки профиля"><Settings2/></button>
-  </div>}
+
   <div ref={compactIdentity} className="owner-profile-compact-identity" aria-hidden="true">
    <strong>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</strong>
-   <span>{location}</span>
+   <span><MapPin size={13} aria-hidden="true"/>{location}</span>
   </div>
   <div ref={scroller} className="owner-profile-scroll">
    <div className="owner-profile-hero-spacer" aria-hidden="true"/>
    <main className="owner-profile-content">
-    <section className="owner-profile-summary" aria-label="Основная информация">
-     <div><MapPin size={17}/><span>{p.countryCode&&<Flag code={p.countryCode} size={20}/>} {location}</span></div>
-     <div><Heart size={17}/><span>{goalText}</span></div>
-     {p.about&&<p>{p.about}</p>}
-    </section>
     <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля">
      {tabs.map(([id,label],index)=><button type="button" role="tab" key={id}
       id={tabPrefix+"-"+id+"-tab"} aria-controls={tabPrefix+"-"+id+"-panel"}
@@ -294,10 +276,19 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
      <section id={tabPrefix+"-about-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-about-tab"}
       aria-label="О себе" hidden={tab!=="about"} className="owner-profile-panel owner-profile-about">
       <article><h2>О себе</h2><p>{p.about||"Описание пока не заполнено."}</p></article>
-      <article><h2>Основное</h2><dl><div><dt>Город</dt><dd>{location}</dd></div><div><dt>Цель знакомства</dt><dd>{goalText}</dd></div>
-       {details.map(item=><div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl></article>
+      <article><h2>Основное</h2><div className="owner-profile-basics">
+       {p.age!==null&&<div><CalendarDays size={18} aria-hidden="true"/><span>{p.age} лет</span></div>}
+       <div><MapPin size={18} aria-hidden="true"/><span>{location}</span></div>
+      </div>
+      {goal&&<div className="owner-profile-goal"><Heart size={16} aria-hidden="true"/>{goalText}</div>}
+      {details.length>0&&<dl>{details.map(item=><div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>}</article>
       {p.interests.length>0&&<article><h2>Интересы</h2><div className="owner-profile-interests">{p.interests.map(id=><InterestChip key={id} id={id}/>)}</div></article>}
-      {isOwner&&<button type="button" className="owner-profile-manage" onClick={onEdit}><PenLine size={18}/> Изменить информацию</button>}
+      {isOwner&&<div className="owner-profile-actions" aria-label="Действия профиля">
+       <button type="button" className="owner-profile-glass" onClick={onEdit} aria-label="Изменить данные"><PenLine/></button>
+       <button type="button" className="owner-profile-glass" onClick={onPreview} aria-label="Посмотреть анкету глазами других"><Eye/></button>
+       <button type="button" className="owner-profile-glass" onClick={showPhotos} aria-label="Управлять фотографиями"><Images/></button>
+       <button type="button" className="owner-profile-glass" onClick={onSettings} aria-label="Настройки профиля"><Settings2/></button>
+      </div>}
       {p.source==="fixture"&&<p className="owner-profile-disclaimer">Демонстрационный профиль, не реальный пользователь.</p>}
      </section>
      <section id={tabPrefix+"-photos-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-photos-tab"}
