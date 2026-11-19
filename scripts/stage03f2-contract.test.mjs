@@ -44,9 +44,10 @@ assert.ok(carousel.includes("const cancel=(e:ReactPointerEvent)=>{if(!externalGe
  carousel.includes("if(t.horizontal&&!canceled)"),"pointercancel never changes photos");
 assert.ok(deckStyle.includes("luemi-deck-exit-left")&&
  deckStyle.includes("luemi-deck-exit-right")&&
- deckStyle.includes("luemi-deck-arrive-left")&&
- deckStyle.includes("luemi-deck-arrive-right")&&
- !style.includes("@keyframes luemi-deck-leave"),"one unified composited deck owns directional exits/entrances");
+ deckStyle.includes("luemi-deck-exit-top")&&
+ deckStyle.includes(".deck-queued")&&deckStyle.includes(":has(>.deck-leaving)>.deck-queued")&&
+ !style.includes("@keyframes luemi-deck-leave"),
+ "single visible card with queued decoded successor and direction-aware compositor exits");
 assert.ok(feed.includes('const paint=(next:number)=>')&&
  feed.includes('scheduleFinger(current.startProgress-dy/travel.current)')&&
  feed.includes('Math.abs(velocity)>.42?velocity<0')&&
