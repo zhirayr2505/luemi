@@ -276,7 +276,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   scrollSample.current={position:0,time:performance.now(),velocity:0};
   selectedPhotoId.current=mainPhoto?.id??null;
   root.current?.setAttribute("data-morph-state","expanded");setHeroIndex(0);setRenderIndex(0);paint(0);
- },[active,interruptMorph,p.id,paint]);
+ },[active,interruptMorph,p.id,mainPhoto?.id,paint]);
  useEffect(()=>{
   if(!heroPhoto||!heroImage.current)return;
   const image=heroImage.current;
@@ -336,7 +336,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    void image.decode?.().then(applyFocus).catch(()=>{/* the visible hero retains its own fallback */});
   }
   return()=>{cancelled=true;};
- },[preloadPrevious,preloadNext,previousPhoto?.focalPoint,nextPhoto?.focalPoint]);
+ },[preloadPrevious,preloadNext,previousPhoto,nextPhoto]);
  useEffect(()=>()=>{if(photoSlideTimer.current!==null)window.clearTimeout(photoSlideTimer.current);},[]);
  const choosePhoto=(index:number)=>{
   stopPhotoTimer();resetPhotoTrack();
@@ -350,7 +350,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   const next=preserved>=0?preserved:0;
   selectedPhotoId.current=photos[next]?.id??null;
   setHeroIndex(next);setRenderIndex(next);
- },[photoSignature]);
+ },[photoSignature,photos]);
  const finishCandidates=(current:ProfileGesture)=>{
   if(current.source==="photo"){
    gestures.finishCandidate(current.serial,"hero");gestures.finishCandidate(current.serial,"sheet");
