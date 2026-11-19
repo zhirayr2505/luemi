@@ -132,7 +132,7 @@
 .owner-profile-hero-spacer{height:var(--owner-hero-bottom);pointer-events:none}
 .owner-profile-content{
  position:relative;min-height:calc(100% + 115px);
- margin-top:-28px;padding:0 12px calc(135px + var(--bottom-safe,0px));
+ margin-top:0;padding:0 12px calc(135px + var(--bottom-safe,0px));
  border-radius:27px 27px 0 0;
  background:linear-gradient(180deg,rgba(24,21,34,.96),var(--luemi-bg-deep) 75px,var(--luemi-bg));
  box-shadow:0 -12px 30px rgba(4,10,18,.16);
