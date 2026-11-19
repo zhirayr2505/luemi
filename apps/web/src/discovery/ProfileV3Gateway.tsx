@@ -9,4 +9,3 @@ type ProfileProps=ComponentProps<typeof ProfileV3>;
 export const ProfileMaster=memo(function ProfileMaster(props:ProfileProps){
  return <ProfileV3 {...props}/>;
 });
-export type {ProfileRouteMotionHandle} from "./ProfileMasterV3";

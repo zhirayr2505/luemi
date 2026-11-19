@@ -7,7 +7,7 @@ import {goals,type RegistrationDraft} from "../../registration/model";
 import {goalLabel} from "../../ui/PersonalizedCopy";
 import {computedTranslation,type GestureArbiter} from "../../ui/gesture-arbiter";
 import type {ProfileView} from "../ProfileModel";
-import type {ProfileRouteMotionHandle} from "../ProfileV3Gateway";
+import type {ProfileRouteMotionHandle} from "../profile-route-motion";
 import {resolvePhotoFocus} from "../profile-v3/geometry/ProfileGeometry";
 import {clamp} from "./OwnerProfileGeometry";
 import {useOwnerProfileMotion} from "./useOwnerProfileMotion";

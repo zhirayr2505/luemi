@@ -37,9 +37,12 @@ console.log("REM02D_UNIT_PASS lifecycle suspend/resume idempotent, Telegram/brow
 
 const profile=read("apps/web/src/discovery/ProfileMasterV3.tsx");
 const owner=read("apps/web/src/discovery/owner-profile/useOwnerProfileMotion.ts");
+const handle=read("apps/web/src/discovery/profile-route-motion.ts");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 for(const x of ["suspendForRoute","rollbackRoute","commitRouteClose","suspendForBackground","resumeFromBackground"])
- assert.ok(profile.includes(x)&&route.includes(x),"profile and route retain lifecycle handoff "+x);
+ assert.ok(handle.includes(x)&&owner.includes(x)&&route.includes(x),"profile and route retain lifecycle handoff "+x);
+assert.ok(profile.includes("registerRouteMotion={registerRouteMotion}")&&owner.includes("register?.(routeHandle)"),
+ "the premium renderer registers its lifecycle with the visitor route");
 assert.ok(owner.includes('window.visualViewport?.addEventListener("resize",resize)')&&
  owner.includes('window.visualViewport?.removeEventListener("resize",resize)')&&
  owner.includes("observer.disconnect()")&&owner.includes("cancelAnimationFrame(paintRaf)")&&

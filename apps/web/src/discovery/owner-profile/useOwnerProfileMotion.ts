@@ -2,7 +2,7 @@ import {useLayoutEffect,useRef} from "react";
 import {impactHaptic} from "../../ui/haptic";
 import {GestureArbiter,type GestureOwner} from "../../ui/gesture-arbiter";
 import {bindMotionLifecycle} from "../../ui/motion-lifecycle";
-import type {ProfileRouteMotionHandle} from "../ProfileV3Gateway";
+import type {ProfileRouteMotionHandle} from "../profile-route-motion";
 import {GeometryMotion,type Easing} from "../geometry-motion";
 import {
  clamp,createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,
