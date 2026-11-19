@@ -104,9 +104,9 @@ export function useOwnerProfileMotion(options:Options){
    scroll=panes[index];
    resetTabs(index);
   };
-  const startTabs=()=>{
+  const startTabs=(scrollAtPress:number)=>{
    tabMotion.cancel();
-   scroll.scrollTop=scroll.scrollTop;
+   scroll.scrollTop=scrollAtPress;
    tabOrigin=tabPosition;
    tabDragWidth=tabWidth;
    tabRail.dataset.paging="";
@@ -320,7 +320,7 @@ export function useOwnerProfileMotion(options:Options){
      }catch{/* The pointer may have already left the WebView. */}
     }
     if(owner==="hero")latest.current.horizontal.startPhoto(ownerMorphFrame(geometry,position).mask.width,geometry.width);
-    if(owner==="tabs")startTabs();
+    if(owner==="tabs")startTabs(current.startScroll);
     else if(tabPages.dataset.paging!==undefined)resetTabs(selectedTab);
     // Freeze native inertia only once an exclusive gesture has taken over.
     if(owner==="sheet"&&current.startedCompact)scroll.scrollTop=current.startScroll;

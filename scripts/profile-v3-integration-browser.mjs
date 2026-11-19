@@ -39,7 +39,7 @@ async function checkPager(profile){
      await finger("touchMove",x-dir*width*fraction,y);
      await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
      const current=await outgoing.boundingBox(),neighbour=await incoming.boundingBox();
-     assert(Math.abs(current.x-start.x+dir*width*fraction)<2,"track follows forward and reverse input");
+     assert(Math.abs(current.x-start.x+dir*width*fraction)<2,`track follows input: ${state} ${from}->${to} fraction=${fraction} actual=${current.x-start.x} expected=${-dir*width*fraction}`);
      assert(Math.abs(neighbour.x-current.x-dir*width)<1&&Math.abs(neighbour.y-next.y)<1,
       "incoming page stays adjacent at the same height");
      assert.equal(await outgoing.evaluate(el=>el.scrollTop),scrollTop);
@@ -111,6 +111,10 @@ try{
  await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
  const visitor=page.locator(".discovery-visitor-route .owner-premium-profile");
  await visitor.waitFor({state:"visible",timeout:5000});
+ await page.waitForFunction(()=>{
+  const route=document.querySelector(".discovery-visitor-route");
+  return route&&Math.abs(route.getBoundingClientRect().left)<.05;
+ });
  await checkPager(visitor);
  assert.equal(await visitor.getAttribute("data-mode"),"visitor");
  assert.equal(await visitor.locator(".owner-profile-actions button").count(),0,
