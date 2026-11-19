@@ -29,7 +29,7 @@ try{
   return {state:node.getAttribute("data-morph-state"),rect:rect.toJSON(),photoId:image.dataset.photoId};
  });
  assert.equal(initial.state,"expanded","owner profile opens with the large photo");
- assert(initial.rect.width>360&&initial.rect.height>430,"expanded photo dominates the mobile viewport");
+ assert(initial.rect.width>360&&initial.rect.height>430&&initial.rect.y>35,"expanded photo respects Telegram chrome");
 
  await scroll.evaluate(element=>{element.scrollTop=element.scrollHeight;});
  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
@@ -46,13 +46,15 @@ try{
  assert(Math.abs((compact.rect.x+compact.rect.width/2)-393/2)<1,"compact avatar is horizontally centered");
  assert(Math.abs(compact.rect.width-compact.rect.height)<1,"compact avatar is square");
  assert(parseFloat(compact.radius)>=compact.rect.width/2-1,"compact avatar is circular");
+ assert((await root.locator(".owner-profile-compact-backdrop").evaluate(el=>Number(getComputedStyle(el).opacity)))>.95,
+  "compact photograph is backed by its blurred original image");
 
  await scroll.evaluate(element=>{element.scrollTop=0;});
  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
  assert.equal(await image.evaluate(element=>element===window.__ownerProfileImage),true,
   "reverse scroll expands the same photo element without remounting");
 
- for(const label of ["Фото","О себе","Интересы"]){
+ for(const label of ["О себе","Фото","Блики","Подарки"]){
   await root.getByRole("tab",{name:label,exact:true}).click();
   assert.equal(await root.getByRole("tab",{name:label,exact:true}).getAttribute("aria-selected"),"true");
   assert.equal(await root.getByRole("tabpanel",{name:label,exact:true}).isVisible(),true);
