@@ -41,7 +41,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const compactBackdrop=useRef<HTMLDivElement>(null),pager=useRef<HTMLDivElement>(null);
  const topEdit=useRef<HTMLButtonElement>(null);
  const layout=useRef<OwnerProfileLayout>(createOwnerProfileLayout({width:393,height:852}));
- const paintRaf=useRef(0),lastState=useRef("expanded");
+ const paintRaf=useRef(0),lastState=useRef("expanded"),lastPaintedProgress=useRef(0);
  const motionProgress=useRef(onMotionProgress);
  const tabPrefix=useId();
  const goal=p.goal&&p.goal!=="undecided"?goals.find(item=>item.id===p.goal):null;
@@ -61,6 +61,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const paint=useCallback((scrollTop:number)=>{
   const progress=ownerMorphProgress(scrollTop,layout.current.morphDistance);
   const frame=ownerMorphFrame(layout.current,progress);
+  lastPaintedProgress.current=progress;
   const surface=mask.current;
   if(surface){
    surface.style.transform=`translate3d(${frame.mask.x}px,${frame.mask.y}px,0)`;
@@ -110,6 +111,10 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    const brandY=brandProbe.current?brandProbe.current.getBoundingClientRect().top-rect.top:84;
    const next=createOwnerProfileLayout({width:rect.width,height:rect.height,
     topInset:Math.max(44,brandY),bottomInset:numericToken(host,"--bottom-safe")});
+   // Telegram can shrink visualViewport and clamp scrollTop while backgrounded.
+   // Preserve the LAST painted morph state before remeasuring; do not reopen
+   // a compact portrait just because the WebView height changed.
+   const previousProgress=lastPaintedProgress.current;
    layout.current=next;
    host.style.setProperty("--owner-hero-height",`${next.hero.height}px`);
    host.style.setProperty("--owner-hero-top",`${next.hero.y}px`);
@@ -117,6 +122,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    host.style.setProperty("--owner-compact-top",`${next.compactContentTop}px`);
    host.style.setProperty("--owner-compact-name-top",`${next.compactAvatar.y+next.compactAvatar.height+8}px`);
    host.style.setProperty("--owner-morph-distance",`${next.morphDistance}px`);
+   if(previousProgress>.001)scroll.scrollTop=Math.max(scroll.scrollTop,previousProgress*next.morphDistance);
    paint(scroll.scrollTop);
   };
   const resize=()=>{if(resizeRaf)return;resizeRaf=requestAnimationFrame(()=>{resizeRaf=0;measure();});};

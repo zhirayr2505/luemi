@@ -61,7 +61,7 @@ assert.ok(profile.includes('mode==="owner"')&&ownerSurface.includes("onClick={on
  "only the owner surface renders editing actions");
 assert.ok(ownerSurface.includes('[["about","О себе"],["photos","Фото"],["bliki","Блики"],["gifts","Подарки"]]'),
  "approved shared premium profile has the requested four tabs in order");
-assert.ok(ownerSurface.includes('isOwner&&<div ref={actions}')&&
+assert.ok(ownerSurface.includes('isOwner&&<div className="owner-profile-actions"')&&
  ownerSurface.includes('isOwner&&<button ref={topEdit}'),
  "visitor profiles cannot access owner action controls");
 assert.ok(ownerSurface.includes('data-morph-state="expanded"')&&
