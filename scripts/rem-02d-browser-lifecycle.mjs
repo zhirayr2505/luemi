@@ -1,84 +1,104 @@
 import assert from "node:assert/strict";
 import {chromium} from "playwright";
+
+/** Current shared Premium Photo Profile lifecycle in Android Chromium emulation.
+ * A physical Telegram Galaxy A55 or WKWebView is not certified by this test. */
 const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
-const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
- userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 Chrome/135 Mobile Safari/537.36"});
-const page=await context.newPage(),errors=[],BASE=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
-page.on("pageerror",e=>errors.push(e.message));
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const visitor=()=>page.locator(".discovery-visitor-route");
-const profile=()=>visitor().locator(".v3-profile-host");
-const handle=()=>profile().locator(".v3-int-handle");
-const translation=()=>visitor().evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
-const physical=()=>profile().evaluate(el=>{
- const root=el.querySelector(".v3-int-root"),sheet=root?.querySelector(".v3-int-sheet");
- if(!root||!sheet)throw Error("V3 lifecycle surface absent");
- const style=getComputedStyle(root),a=parseFloat(sheet.style.top);
- const b=a+parseFloat(style.getPropertyValue("--v3-extra-scroll"))-24;
- return {mode:el.dataset.morphState,y:sheet.getBoundingClientRect().top-root.getBoundingClientRect().top,a,b};
+const context=await browser.newContext({
+ viewport:{width:393,height:852},isMobile:true,hasTouch:true,
+ userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 Chrome/135 Mobile Safari/537.36"
 });
-const near=(a,b,tol=4)=>assert.ok(Math.abs(a-b)<=tol,"V3 route mismatch: "+a+" vs "+b);
+const page=await context.newPage();
+const errors=[];page.on("pageerror",error=>errors.push(error.message));
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const route=()=>page.locator(".discovery-visitor-route");
+const profile=()=>route().locator(".owner-premium-profile");
+const photo=()=>profile().locator(".owner-profile-photo-mask");
+const scroll=()=>profile().locator(".owner-profile-scroll");
+const currentTab=()=>profile().locator('.owner-profile-tabs [role="tab"][aria-selected="true"]');
+const getTranslation=()=>route().evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node).transform).m41);
+const near=(actual,expected,tolerance=3)=>
+ assert.ok(Math.abs(actual-expected)<=tolerance,
+  "premium visitor profile moved unexpectedly: "+actual+" versus "+expected);
+const portrait=()=>photo().evaluate(el=>{
+ const rect=el.getBoundingClientRect();
+ return {state:el.closest(".owner-premium-profile")?.dataset.morphState,
+  x:rect.x,y:rect.y,width:rect.width,height:rect.height,
+  radius:parseFloat(getComputedStyle(el).borderRadius)};
+});
+const setBackground=hidden=>page.evaluate(hidden=>{
+ if(!("__premiumHidden" in window)){
+  window.__premiumHidden=false;
+  Object.defineProperty(document,"visibilityState",{
+   configurable:true,get(){return window.__premiumHidden?"hidden":"visible";}
+  });
+ }
+ window.__premiumHidden=hidden;
+ document.dispatchEvent(new Event("visibilitychange"));
+},hidden);
 const open=async()=>{
  await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
- await visitor().waitFor({state:"visible"});
- await sleep(310);
- assert.equal((await physical()).mode,"compact");
+ await profile().waitFor({state:"visible",timeout:6000});
+ await sleep(320);
+ assert.equal(await profile().getAttribute("data-morph-state"),"expanded",
+  "visitor opens with a large portrait, not the retired compact V3 sheet");
+ near(await getTranslation(),0);
 };
-const setBackground=async hidden=>page.evaluate(hidden=>{
- if(!("__v3Hidden" in window)){
-  window.__v3Hidden=false;
-  Object.defineProperty(document,"visibilityState",{configurable:true,get(){return window.__v3Hidden?"hidden":"visible";}});
- }
- window.__v3Hidden=hidden;document.dispatchEvent(new Event("visibilitychange"));
-},hidden);
-const routeDrag=async(dx,hold=15)=>{
- const target=await handle().boundingBox();assert.ok(target?.height>=25);
- const x=target.x+Math.min(target.width*.17,60),y=target.y+target.height*.5;
+const edgeSwipe=async(dx)=>{
+ const x=11,y=112;
  await page.mouse.move(x,y);await page.mouse.down();
- await page.mouse.move(x+dx,y,{steps:10});await sleep(hold);await page.mouse.up();
+ await page.mouse.move(x+dx,y,{steps:12});
+ await page.mouse.up();await sleep(360);
 };
+
 try{
- await page.goto(BASE+"/profile-qa.html",{waitUntil:"domcontentloaded"});
- const discoveryNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"});
- await discoveryNav.waitFor({state:"visible",timeout:6000});
- await discoveryNav.click();
+ await page.goto((process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173")+
+  "/profile-qa.html",{waitUntil:"domcontentloaded"});
+ const nav=page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"});
+ await nav.waitFor({state:"visible",timeout:6000});await nav.click();
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
+
  await open();
- near(await translation(),0,3);
- let initial=await physical();near(initial.y,initial.a);
- await handle().press("Enter");
- await sleep(60);
- let mid=await physical();assert.ok(mid.y>initial.y+2&&mid.y<mid.b,"sheet really settling");
- await setBackground(true);await sleep(150);
- const frozen=await physical();await sleep(70);
- near((await physical()).y,frozen.y,1.5);
- await setBackground(false);await sleep(370);
- let expanded=await physical();
- assert.equal(expanded.mode,"expanded");near(expanded.y,expanded.b);
- console.log("PROFILE_V3_LIFECYCLE_PASS suspend/resume at fractional morph");
- await routeDrag(40,75);await sleep(320);
- assert.equal(await visitor().count(),1);
- near(await translation(),0,3);
- expanded=await physical();assert.equal(expanded.mode,"expanded");
+ const expanded=await portrait();
+ assert.ok(expanded.width>330&&expanded.height>350&&expanded.y>35);
+ await scroll().evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
+ await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
+ const compact=await portrait();
+ assert.ok(compact.width<135&&Math.abs(compact.width-compact.height)<1.5&&
+  compact.radius>=compact.width/2-1,"compact photo becomes a circle in safe-area coordinates");
+ near(compact.x+compact.width/2,393/2,1.5);
  await profile().getByRole("tab",{name:"Фото",exact:true}).click();
- await sleep(240);
- assert.equal(await profile().locator('.v3-int-tab[aria-selected=true]').innerText(),"Фото");
- await routeDrag(40,60);await sleep(310);
- near(await translation(),0,3);
- assert.equal(await profile().locator('.v3-int-tab[aria-selected=true]').innerText(),"Фото");
- console.log("PROFILE_V3_LIFECYCLE_PASS route rollback and tab state");
- await setBackground(true);
- await page.setViewportSize({width:393,height:765});await sleep(75);
- await setBackground(false);await sleep(340);
- expanded=await physical();assert.equal(expanded.mode,"expanded");near(expanded.y,expanded.b);
- await page.keyboard.press("Escape");await sleep(360);
- assert.equal(await visitor().count(),0);
- await open();near(await translation(),0,3);
- await routeDrag(192,30);await sleep(410);
- assert.equal(await visitor().count(),0,"rightward route gesture closes visitor");
- await open();await page.keyboard.press("Escape");await sleep(390);
- assert.equal(await visitor().count(),0,"system Escape/back also closes");
- console.log("PROFILE_V3_LIFECYCLE_PASS route close/reopen and no stale owner callbacks");
- assert.deepEqual(errors,[],"no browser runtime exceptions");
- console.log("REM-02D V3 BROWSER LIFECYCLE QA PASS; physical A55 NOT VERIFIED");
-}finally{await context.close();await browser.close();}
+ assert.equal(await currentTab().innerText(),"Фото");
+
+ // A suspended WebView can change its viewport height before resuming.
+ await setBackground(true);await sleep(80);
+ await page.setViewportSize({width:393,height:765});await sleep(120);
+ await setBackground(false);await sleep(320);
+ const after=await portrait();
+ assert.ok(Number.isFinite(after.y)&&Number.isFinite(after.width)&&
+  after.width>60&&after.width<135,"portrait geometry remains bounded after resume");
+ near(after.x+after.width/2,393/2,1.5);
+ assert.equal(await currentTab().innerText(),"Фото","tab selection survives Telegram background/resume");
+ near(await getTranslation(),0);
+ console.log("PREMIUM_PROFILE_LIFECYCLE_PASS suspended resize, compact geometry, tab retention");
+
+ // A short edge pull returns to the same visitor instead of dismissing it.
+ await edgeSwipe(19);
+ assert.equal(await route().count(),1);
+ near(await getTranslation(),0);
+ assert.equal(await currentTab().innerText(),"Фото");
+ console.log("PREMIUM_PROFILE_LIFECYCLE_PASS interrupted route rollback");
+
+ await page.keyboard.press("Escape");
+ await route().waitFor({state:"detached",timeout:5000});
+ await open();
+ await edgeSwipe(212);
+ await route().waitFor({state:"detached",timeout:5000});
+ await open();
+ await page.keyboard.press("Escape");
+ await route().waitFor({state:"detached",timeout:5000});
+ assert.deepEqual(errors,[],"no uncaught browser errors across route cleanup and reopen");
+ console.log("REM-02D PREMIUM PROFILE LIFECYCLE QA PASS; physical Telegram WebView not tested");
+}finally{
+ await context.close();await browser.close();
+}
