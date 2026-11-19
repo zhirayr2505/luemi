@@ -16,7 +16,8 @@ test("approved photo ambiance stays outside the card and follows the active gall
  assert.match(root,/data-browse-page=\{browse\}/);
  assert.match(root,/import "\.\/photo-ambient-edition\.css";/);
  assert.match(card,/gpuSafe adaptive loop ambientActive=\{active\}/);
- assert.match(carousel,/activateFeedAmbient\(frame\.current,photoSource\(activeRef\.current\)\)/);
+ assert.match(carousel,/ambientPhotoSource\.current=\(\)=>photoSource\(activeRef\.current\)/);
+ assert.match(carousel,/activateFeedAmbient\(frame\.current,ambientPhotoSource\.current\(\)\)/);
  assert.match(carousel,/const photoSource=\(i:number\):string=>/);
  assert.match(controller,/closest<HTMLElement>\("\.real-discovery-home"\)/);
  assert.match(css,/\.real-discovery-home>\.discovery-photo-ambient/);
