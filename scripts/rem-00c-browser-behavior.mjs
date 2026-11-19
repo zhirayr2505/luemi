@@ -57,6 +57,18 @@ async function profileV3(browser,platform="android"){
    assert.equal(await ownerProfile.locator(".owner-profile-actions button").count(),4,"four real owner actions");
    const photoNode=await image.elementHandle();
    await page.evaluate(node=>{window.__ownerMorphPhoto=node;},photoNode);
+   // The floating hero is outside native scroll; a finger starting on the
+   // portrait must still drive scroll-based morph rather than trapping it.
+   const box=await image.boundingBox();
+   assert.ok(box,"photo should have a measurable hit surface");
+   await page.mouse.move(box.x+box.width*.5,box.y+box.height*.56);
+   await page.mouse.down();
+   await page.mouse.move(box.x+box.width*.5,box.y+box.height*.31,{steps:8});
+   await page.mouse.up();
+   const dragScroll=await scroller.evaluate(el=>el.scrollTop);
+   assert.ok(dragScroll>35,"vertical drag beginning on expanded photo collapses the profile");
+   await scroller.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
+   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
    await scroller.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
    await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
    const compact=await image.boundingBox();
