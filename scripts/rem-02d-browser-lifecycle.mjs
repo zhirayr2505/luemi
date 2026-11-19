@@ -25,7 +25,7 @@ const portrait=()=>profile().evaluate(node=>{
  const rect=el.getBoundingClientRect();
  return {state:el.closest(".owner-premium-profile")?.dataset.morphState,
   x:rect.x,y:rect.y,width:rect.width,height:rect.height,
-  radius:parseFloat(getComputedStyle(el).borderRadius)};
+  radius:(()=>{const css=getComputedStyle(el).borderRadius;return css.includes("%")?rect.width*parseFloat(css)/100:parseFloat(css);})()};
 });
 const setBackground=hidden=>page.evaluate(hidden=>{
  if(!("__premiumHidden" in window)){
