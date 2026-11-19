@@ -22,16 +22,20 @@ export function createOwnerProfileLayout(viewport:OwnerProfileViewport):OwnerPro
  const topInset=clamp(viewport.topInset??0,0,height*.2);
  const bottomInset=clamp(viewport.bottomInset??0,0,height*.16);
  const landscape=width>height;
+ // The Telegram chrome/brand has a real reserved inset. Never start the
+ // image at y=0 underneath the native controls.
+ const heroY=clamp(topInset-24,36,Math.max(36,height*.18));
  const heroHeight=landscape?
-  clamp(height*.82,286,height-bottomInset-58):
-  clamp(height*.69,430,height-bottomInset-132);
+  clamp(height*.70,238,Math.max(238,height-bottomInset-heroY-60)):
+  clamp(height*.58,350,Math.max(350,height-bottomInset-heroY-158));
  const avatarSize=clamp(width*(landscape?.19:.235),78,104);
- const avatarY=clamp(topInset+12,12,Math.max(12,height-avatarSize-190));
+ const avatarY=clamp(topInset+52,84,Math.max(84,height-avatarSize-225));
  const compactAvatar={x:(width-avatarSize)/2,y:avatarY,width:avatarSize,height:avatarSize};
- const compactContentTop=clamp(avatarY+avatarSize+64,avatarY+avatarSize+52,height-bottomInset-118);
- const morphDistance=Math.max(96,heroHeight-compactContentTop);
+ // Leave enough room for name, city and a quiet gap before the content.
+ const compactContentTop=clamp(avatarY+avatarSize+82,avatarY+avatarSize+75,height-bottomInset-112);
+ const morphDistance=Math.max(96,heroY+heroHeight-28-compactContentTop);
  return {width,height,topInset,bottomInset,
-  hero:{x:0,y:0,width,height:heroHeight},compactAvatar,compactContentTop,morphDistance};
+  hero:{x:0,y:heroY,width,height:heroHeight},compactAvatar,compactContentTop,morphDistance};
 }
 
 export function ownerMorphProgress(scrollTop:number,morphDistance:number):number{
