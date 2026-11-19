@@ -63,7 +63,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  const gesture=useRef<ProfileGesture|null>(null);
  const suppressPhotoClick=useRef(false),suppressTabClick=useRef(false);
  const root=useRef<HTMLElement>(null),scroller=useRef<HTMLDivElement>(null);
- const mask=useRef<HTMLDivElement>(null),avatarMask=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null);
+ const mask=useRef<HTMLDivElement>(null),avatarMask=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null),avatarImage=useRef<HTMLImageElement>(null);
  const prevImage=useRef<HTMLDivElement>(null),nextImage=useRef<HTMLDivElement>(null);
  const photoSlideTimer=useRef<number|null>(null);
  const shade=useRef<HTMLDivElement>(null),expandedIdentity=useRef<HTMLDivElement>(null);
@@ -453,11 +453,11 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   gestures.begin("pointer",event.pointerId,secondary);
   const position=scroller.current?.scrollTop??0,time=performance.now();
   gesture.current={id:event.pointerId,serial,source,axis:null,x:event.clientX,y:event.clientY,
-   startScroll:position,width:mask.current?.clientWidth??393,captured:false,
+   startScroll:position,width:mask.current?.clientWidth??393,captured:false,autoSnapped:false,
    samples:[{position,time}]};
  };
  const profileMove=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  const current=gesture.current;if(!current||current.id!==event.pointerId)return;
+  const current=gesture.current;if(!current||current.id!==event.pointerId||current.autoSnapped)return;
   const dx=event.clientX-current.x,dy=event.clientY-current.y;
   if(!current.axis){
    if(Math.max(Math.abs(dx),Math.abs(dy))<9)return;
@@ -482,6 +482,13 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    ownerElastic.current=raw<0?Math.min(26,Math.pow(-raw,.66)*1.2):0;
    scroller.current.scrollTop=position;paint(position);
    current.samples.push({position,time:performance.now()});
+   const target=ownerAutoSnapTarget(current.startScroll,position,layout.current.morphDistance);
+   if(target!==null){
+    // The finger may still be held. Once the Telegram threshold is reached,
+    // surrender direct tracking to the SINGLE cancellable spring driver.
+    current.autoSnapped=true;ownerElastic.current=0;
+    settleMorph(recentVelocity(current.samples),target);
+   }
   }else if(current.axis==="horizontal"){
    current.samples.push({position:event.clientX,time:performance.now()});
    if(current.source==="photo"){
@@ -498,13 +505,17 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   if(current.captured){
    try{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}catch{/* old WebView */}
   }
-  if(current.axis==="vertical"&&current.source==="photo"){
+  if(current.autoSnapped){
+   // Do NOT overwrite the spring's position with a stale pointerup coordinate.
+   suppressPhotoClick.current=true;
+   gestures.finish("sheet",current.serial);
+  }else if(current.axis==="vertical"&&current.source==="photo"){
    suppressPhotoClick.current=true;
    const position=Math.max(0,current.startScroll-dy);
    if(scroller.current)scroller.current.scrollTop=position;
    gestures.finish("sheet",current.serial);
-   releaseElastic();
-   settleMorph(cancelled?0:recentVelocity([...current.samples,{position,time:performance.now()}]));
+   if(ownerElastic.current>.1)releaseElastic();
+   else settleMorph(cancelled?0:recentVelocity([...current.samples,{position,time:performance.now()}]));
   }else if(current.axis==="horizontal"&&current.source==="photo"){
    suppressPhotoClick.current=true;
    gestures.finish("hero",current.serial);
@@ -574,6 +585,21 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
      backgroundPosition:(resolvePhotoFocus(1,2,nextPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,nextPhoto.focalPoint).y*100)+"%"}}/>}
    <div ref={shade} className="owner-profile-photo-shade" aria-hidden="true"/>
   </div>
+  {heroPhoto&&<div ref={avatarMask} className="owner-profile-avatar-circle" role="button"
+   tabIndex={0} aria-label="Открыть фотографию профиля" inert
+   onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){
+    event.preventDefault();onPhotoOpen(heroPhoto.id,avatarImage.current);
+   }}}
+   onClick={()=>{if(!suppressPhotoClick.current)onPhotoOpen(heroPhoto.id,avatarImage.current);}}
+   onPointerDown={profileDown("photo")} onPointerMove={profileMove}
+   onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
+   onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
+   <img ref={avatarImage} src={heroPhoto.src} alt="" draggable={false} loading="eager"
+    decoding="async" style={{objectPosition:(resolvePhotoFocus(1,2,heroPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,heroPhoto.focalPoint).y*100)+"%"}}
+    onLoad={event=>{const point=resolvePhotoFocus(event.currentTarget.naturalWidth,event.currentTarget.naturalHeight,heroPhoto.focalPoint);
+     event.currentTarget.style.objectPosition=(point.x*100)+"% "+(point.y*100)+"%";}}
+    onError={event=>{if(heroPhoto.fallback&&event.currentTarget.src!==heroPhoto.fallback)event.currentTarget.src=heroPhoto.fallback;}}/>
+  </div>}
   {photos.length>1&&<div ref={pager} className="owner-profile-photo-pager" aria-label="Фотографии">
    {photos.map((photo,index)=><button key={photo.id} type="button" className={index===heroIndex?"active":""}
     aria-label={"Показать фото "+(index+1)} aria-current={index===heroIndex?"true":undefined}
