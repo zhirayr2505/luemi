@@ -16,22 +16,20 @@ export async function feedDeckBrowserQa(browser,baseUrl){
   <rect width="660" height="990" fill="${color}"/><circle cx="330" cy="380" r="165" fill="white" opacity=".28"/>
   <text x="330" y="760" font-size="52" fill="white" text-anchor="middle">${name}</text></svg>`;
  try{
-  await page.route(/https:\/\/cdn\.pixabay\.com\/photo\//,async route=>{
+  // Private QA portrait service is protected in production. Browser tests
+  // intercept synthetic local URLs; no public CDN or real user photos.
+  await page.route("**/api/v2/qa/portraits/**",async route=>{
    const url=route.request().url();
-   // Profile 2 cover arrives much later than the first, matching the
-   // screen recording's grey 40–54ms transition windows.
-   if(url.includes("9541651"))await new Promise(r=>setTimeout(r,2500));
-   const color=url.includes("9541651")?"#a37780":"#527485";
+   if(url.includes("/elina/1.webp"))await new Promise(r=>setTimeout(r,2500));
+   const color=url.includes("/elina/")?"#a37780":"#527485";
    await route.fulfill({status:200,contentType:"image/svg+xml",
-    body:image(url.includes("9541651")?"PROFILE 2":"READY PHOTO",color)});
+    body:image(url.includes("/elina/")?"PROFILE 2":"READY PHOTO",color)});
   });
-  await page.route(/https:\/\/images\.unsplash\.com\//,async route=>
-   route.fulfill({status:200,contentType:"image/svg+xml",body:image("SECONDARY","#526b64")}));
   await page.goto(baseUrl+"/feed-deck-qa.html",{waitUntil:"domcontentloaded"});
-  const current=page.locator(".deck-active .carousel-track img:first-child");
+  const current=page.locator(".deck-active .carousel-slide:nth-child(2) img.feed-carousel-photo");
   await current.waitFor({state:"attached",timeout:12000});
   await page.waitForFunction(()=>{
-   const first=document.querySelector(".deck-active .carousel-track img:first-child");
+   const first=document.querySelector(".deck-active .carousel-slide:nth-child(2) img.feed-carousel-photo");
    return first?.classList.contains("is-ready")&&first?.naturalWidth>0;
   },{timeout:12000});
   assert.equal(await page.locator(".deck-photo-pending").count()>0,true,
@@ -48,7 +46,7 @@ export async function feedDeckBrowserQa(browser,baseUrl){
     if(capture.stop||performance.now()-since>7000)return;
     const entering=document.querySelector(".deck-entering");
     if(entering){
-     const image=entering.querySelector(".carousel-track img:first-child");
+     const image=entering.querySelector(".carousel-slide:nth-child(2) img.feed-carousel-photo");
      const fallback=entering.querySelector(".feed-carousel-fallback");
      capture.frames.push({
       at:Math.round(performance.now()-since),
@@ -65,7 +63,7 @@ export async function feedDeckBrowserQa(browser,baseUrl){
   await page.locator(".deck-active .moonstone-like-button").click();
   const before=await page.evaluate(()=>{
    const incoming=document.querySelector(".deck-entering");
-   const image=incoming?.querySelector(".carousel-track img:first-child");
+   const image=incoming?.querySelector(".carousel-slide:nth-child(2) img.feed-carousel-photo");
    const fallback=incoming?.querySelector(".feed-carousel-fallback");
    return {leaving:document.querySelectorAll(".deck-leaving").length,
     entering:!!incoming,pending:incoming?.classList.contains("deck-photo-pending")??false,
@@ -95,7 +93,7 @@ export async function feedDeckBrowserQa(browser,baseUrl){
    "the delayed decode window is covered by the fallback rather than a blank GPU tile");
   await page.waitForFunction(()=>{
    const top=document.querySelector(".deck-active .moonstone-name");
-   return top?.textContent?.includes("София");
+   return top?.textContent?.includes("Элина");
   },{timeout:5000});
   assert.deepEqual(errors,[],"no runtime errors in the real feed components");
   console.log("FEED_DECK_FRAME_QA_PASS "+JSON.stringify({
