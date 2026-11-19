@@ -29,7 +29,29 @@ try{
   return {state:node.getAttribute("data-morph-state"),rect:rect.toJSON(),photoId:image.dataset.photoId};
  });
  assert.equal(initial.state,"expanded","owner profile opens with the large photo");
- assert(initial.rect.width>360&&initial.rect.height>430&&initial.rect.y>35,"expanded photo respects Telegram chrome");
+ assert(initial.rect.width>380&&Math.abs(initial.rect.width-initial.rect.height)<1.5&&initial.rect.y<1.5,
+  "expanded photo is a full-bleed square behind the safe Telegram chrome");
+
+ await scroll.evaluate(element=>{
+  const root=element.closest(".owner-premium-profile");
+  const distance=Number.parseFloat(getComputedStyle(root).getPropertyValue("--owner-morph-distance"));
+  element.scrollTop=distance*.32;element.dispatchEvent(new Event("scroll"));
+  element.dispatchEvent(new Event("scrollend"));
+ });
+ await page.waitForFunction(()=>{
+  const root=document.querySelector(".owner-premium-profile");
+  const scroll=root?.querySelector(".owner-profile-scroll");
+  return root?.getAttribute("data-morph-state")==="expanded"&&(scroll?.scrollTop??2)<1;
+ });
+ await scroll.evaluate(element=>{
+  const root=element.closest(".owner-premium-profile");
+  const distance=Number.parseFloat(getComputedStyle(root).getPropertyValue("--owner-morph-distance"));
+  element.scrollTop=distance*.68;element.dispatchEvent(new Event("scroll"));
+  element.dispatchEvent(new Event("scrollend"));
+ });
+ await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
+ assert.equal(await root.getAttribute("data-morph-state"),"compact",
+  "releasing inside the morph range always settles to a semantic endpoint");
 
  await scroll.evaluate(element=>{element.scrollTop=element.scrollHeight;});
  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
@@ -49,16 +71,17 @@ try{
  assert((await root.locator(".owner-profile-compact-backdrop").evaluate(el=>Number(getComputedStyle(el).opacity)))>.95,
   "compact photograph is backed by its blurred original image");
 
- await scroll.evaluate(element=>{element.scrollTop=0;});
- await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
- assert.equal(await image.evaluate(element=>element===window.__ownerProfileImage),true,
-  "reverse scroll expands the same photo element without remounting");
-
  for(const label of ["О себе","Фото","Блики","Подарки"]){
   await root.getByRole("tab",{name:label,exact:true}).click();
   assert.equal(await root.getByRole("tab",{name:label,exact:true}).getAttribute("aria-selected"),"true");
   assert.equal(await root.getByRole("tabpanel",{name:label,exact:true}).isVisible(),true);
+  assert.equal(await root.getAttribute("data-morph-state"),"compact",
+   "changing tab content cannot reopen the compact avatar");
  }
+ await scroll.evaluate(element=>{element.scrollTop=0;});
+ await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
+ assert.equal(await image.evaluate(element=>element===window.__ownerProfileImage),true,
+  "reverse scroll expands the same photo element without remounting");
  for(const action of ["Назад","Редактировать профиль","Посмотреть анкету глазами других","Управлять фотографиями","Настройки профиля"])
   assert.equal(await root.getByRole("button",{name:action,exact:true}).count(),1,action);
  assert.deepEqual(errors,[],"owner profile has no uncaught browser errors");

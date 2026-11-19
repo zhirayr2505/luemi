@@ -38,9 +38,11 @@ try{
   await scroll.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
   const full=await measure();
-  assert(full.photo.y>35&&full.photo.height>300,
-   "expanded photo stays below Telegram chrome at "+height);
-  assert(full.photo.width>300,"expanded picture occupies width at "+height);
+  assert(full.photo.y<1.5&&Math.abs(full.photo.width-full.photo.height)<1.5,
+   "expanded photo stays full-bleed and square at "+height);
+  assert(full.photo.width>380,"expanded picture occupies width at "+height);
+  assert(Math.abs(full.tabTop-(full.photo.y+full.photo.height))<1.5,
+   "expanded tabs begin directly below the square photo at "+height);
   await scroll.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact");
   const compact=await measure();

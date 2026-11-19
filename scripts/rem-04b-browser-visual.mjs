@@ -59,7 +59,8 @@ try{
  await own().waitFor({state:"visible",timeout:6500});
  const first=await snap(own(),"owner-expanded");
  assert.equal(first.state,"expanded");
- assert.ok(first.cover.y>35&&first.cover.height>350,"photo respects native Telegram chrome");
+ assert.ok(first.cover.y<1.5&&Math.abs(first.cover.width-first.cover.height)<1.5,
+  "photo is a full-bleed square behind native Telegram chrome");
  assert.ok(first.expandedName?.bottom<first.actions?.y-4,
   "expanded name and photo action row never overlap");
  assert.ok(first.logo?.y<first.actions.y,"white wordmark sits above controls");

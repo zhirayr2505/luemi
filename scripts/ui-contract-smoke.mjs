@@ -155,5 +155,6 @@ assertCheck("responsive card motion uses ResizeObserver",feedCard.includes("Resi
 assertCheck("single original LUEMI logo retained without removed global controls",header.includes("wordmark_original_raster_alpha_W06.webp")&&!header.includes("lh-tool-filter")&&!header.includes("lh-tool-saved"));
 assertCheck("feed deck and Telegram back handling retained",discovery.includes("pendingCommit.current")&&discovery.includes("registerBack")&&discoveryCss.includes(".discovery-page"));
 assertCheck("profile photo viewer and independent owner scroll morph remain present",
- profile.includes("PhotoViewer")&&ownerProfile.includes('addEventListener("scroll",schedulePaint,{passive:true})'));
+ profile.includes("PhotoViewer")&&ownerProfile.includes('addEventListener("scroll",onScroll,{passive:true})')&&
+ ownerProfile.includes('new GeometryMotion("sheet"'));
 console.log("LUEMI Discovery V2 UI contracts PASS");

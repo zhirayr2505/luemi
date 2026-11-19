@@ -249,6 +249,10 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
    // Preserve the existing gallery and tab pager until their first item;
    // a page with remaining content always owns its own right swipe.
    if(g.source==="photo"){
+    // Premium Profile owns horizontal photo paging across the image. Route
+    // back remains available from the explicit 26px edge and never steals a
+    // central right swipe from the first photograph.
+    if(!g.edge&&route.current?.querySelector(".owner-premium-profile"))return;
     const track=route.current?.querySelector<HTMLElement>(".pm-photo-track");
     const hero=route.current?.querySelector<HTMLElement>(".pm-hero");
     if(fractionalTrack(track??null,hero?.clientWidth??0,0)>.015)return;

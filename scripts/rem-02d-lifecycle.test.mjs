@@ -42,7 +42,8 @@ for(const x of ["suspendForRoute","rollbackRoute","commitRouteClose","suspendFor
  assert.ok(profile.includes(x)&&route.includes(x),"profile and route retain lifecycle handoff "+x);
 assert.ok(owner.includes('window.visualViewport?.addEventListener("resize",resize)')&&
  owner.includes('window.visualViewport?.removeEventListener("resize",resize)')&&
- owner.includes("observer.disconnect()")&&owner.includes("cancelAnimationFrame(paintRaf.current)"),
+ owner.includes("observer.disconnect()")&&owner.includes("cancelAnimationFrame(paintRaf.current)")&&
+ owner.includes("settleTarget.current=motion.snapshot().target")&&owner.includes("motion.reveal"),
  "owner geometry observer, viewport listener and pending RAF are disposed");
 assert.ok(route.includes('routeMotion.current.finish(token')&&route.includes('routeMotion.current.cancel(liveToken.current,"external")'));
 console.log("OWNER_PROFILE_LIFECYCLE_ADAPTER_PASS");
