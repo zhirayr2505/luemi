@@ -16,7 +16,7 @@ const soften=(p:number)=>p*p*(3-2*p);
 
 /** One geometry contract for the native scroll, photo, identity, tabs and cards.
  * The expanded photograph is always a full-width square at the content edge.
- * The tabs begin directly below the expanded square and may reach their
+ * The rounded sheet begins 22px over the expanded square and may reach its
  * sticky stop before the longer visual morph ends;
  * contentOffset keeps the first card below that single tab element. */
 export function createOwnerProfileLayout(viewport:OwnerProfileViewport):OwnerProfileLayout{
@@ -26,10 +26,11 @@ export function createOwnerProfileLayout(viewport:OwnerProfileViewport):OwnerPro
  const bottomInset=clamp(viewport.bottomInset??0,0,height*.16);
  const landscape=width>height;
  const hero={x:0,y:0,width,height:width};
- const avatarSize=landscape?clamp(Math.min(width,height)*.24,88,118):clamp(width*.31,108,136);
+ const avatarSize=landscape?clamp(Math.min(width,height)*.27,96,132):clamp(width*.35,120,150);
  const avatarY=Math.min(topInset+52,Math.max(topInset+42,width-avatarSize-100));
  const compactAvatar={x:(width-avatarSize)/2,y:avatarY,width:avatarSize,height:avatarSize};
- const expandedTabsTop=hero.height;
+ // The rounded content sheet covers the bottom 22px of the expanded photo.
+ const expandedTabsTop=hero.height-22;
  const contentMinimum=avatarY+avatarSize+62;
  const contentMaximum=Math.max(contentMinimum,expandedTabsTop-20);
  const compactContentTop=clamp(avatarY+avatarSize+74,contentMinimum,contentMaximum);
@@ -82,10 +83,13 @@ export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):Owner
   width:mix(intermediate.width,to.width,settling),
   height:mix(intermediate.height,to.height,settling)
  };
- const radius=p<=.18?0:p<.72?mix(0,intermediateSize/2,rounding):mask.width/2;
+ // Radius tracks the live square width, avoiding a partially clipped GPU edge
+ // as width/height change together during the Android WebView morph.
+ const radius=p<=.18?0:p<.72?mask.width*rounding/2:mask.width/2;
  return {mask,radius,
-  expandedAlpha:clamp((.54-p)/.24,0,1),
-  compactAlpha:clamp((p-.66)/.20,0,1),
+  // A narrow crossfade replaces the invisible interval in the old identity morph.
+  expandedAlpha:clamp((.66-p)/.10,0,1),
+  compactAlpha:clamp((p-.60)/.12,0,1),
   actionsAlpha:clamp((.38-p)/.20,0,1),
   photoShadeAlpha:1-clamp((p-.20)/.56,0,1)*.65,
   contentOffset:mix(0,layout.contentOffset,soften(p))};

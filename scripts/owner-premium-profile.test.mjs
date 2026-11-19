@@ -26,8 +26,10 @@ try{
   assert.equal(layout.hero.y,0,"expanded photo begins at the top content edge");
   assert.equal(layout.hero.width,layout.width,"expanded photo uses the complete available width");
   assert.equal(layout.hero.height,layout.width,"expanded photo is always a 1:1 square");
-  assert.equal(layout.expandedTabsTop,layout.hero.y+layout.hero.height,
-   "tabs begin below the photo before Phase A moves them into overlap");
+  assert.equal(layout.expandedTabsTop,layout.hero.y+layout.hero.height-22,
+   "rounded bottom sheet overlaps the hero by exactly 22 CSS pixels");
+  assert(layout.compactAvatar.width>=(layout.width>layout.height?96:Math.min(120,layout.width*.35))-.1,
+   "compact avatar is large enough for the approved V4.1 visual");
   assert(layout.hero.height>layout.compactAvatar.height,"expanded photo must be materially larger than the avatar");
   assert(layout.morphDistance>0,"native scroll must have a positive morph range");
   assert(layout.compactAvatar.y>=viewport.topInset,"compact avatar stays below the Telegram safe area");
@@ -63,6 +65,10 @@ try{
   assert.equal(compact.expandedAlpha,0);
   assert.equal(compact.compactAlpha,1);
 
+  for(let step=0;step<=100;step++){
+   const f=ownerMorphFrame(layout,step/100);
+   assert(f.expandedAlpha+f.compactAlpha>=.49,"name cannot vanish during the morph");
+  }
   for(const progress of [0,.08,.18,.33,.5,.72,.86,1]){
    const frame=ownerMorphFrame(layout,progress);
    assert.equal(frame.mask.width,frame.mask.height,

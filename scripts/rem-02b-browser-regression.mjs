@@ -41,8 +41,20 @@ try{
   assert(full.photo.y<1.5&&Math.abs(full.photo.width-full.photo.height)<1.5,
    "expanded photo stays full-bleed and square at "+height);
   assert(full.photo.width>380,"expanded picture occupies width at "+height);
-  assert(Math.abs(full.tabTop-(full.photo.y+full.photo.height))<1.5,
-   "expanded tabs begin directly below the square photo at "+height);
+  assert(Math.abs(full.tabTop-(full.photo.y+full.photo.height-22))<1.5,
+   "rounded sheet overlaps the expanded square photo by 22px at "+height);
+  // Mid-morph the expanded city line must still clear the rising panel.
+  const handoff=await scroll.evaluate(async el=>{
+   const host=el.closest(".owner-premium-profile");
+   const d=Number.parseFloat(getComputedStyle(host).getPropertyValue("--owner-morph-distance"));
+   el.scrollTop=d*.42;el.dispatchEvent(new Event("scroll"));
+   await new Promise(resolve=>requestAnimationFrame(resolve));
+   const city=host.querySelector(".owner-profile-expanded-identity p");
+   const tabs=host.querySelector(".owner-profile-tabs");
+   return {cityBottom:city.getBoundingClientRect().bottom,tabTop:tabs.getBoundingClientRect().top};
+  });
+  assert(handoff.cityBottom<=handoff.tabTop+1.5,
+   "city label cannot disappear behind the sheet at mid morph "+height);
   await scroll.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact");
   const compact=await measure();

@@ -57,8 +57,13 @@ try{
  // The hero is floating outside the native scrollbox. A vertical photo-origin
  // swipe must advance that scrollbox 1:1 instead of being lost to the WebView.
  await swipe(hero.x+hero.width*.5,hero.y+hero.height*.58,0,-180);
- await page.waitForFunction(()=>Number.parseFloat(
-  getComputedStyle(document.querySelector(".owner-premium-profile")).getPropertyValue("--owner-morph-progress"))>.25);
+ await page.waitForFunction(()=>{
+  const root=document.querySelector(".owner-premium-profile");
+  const scroll=root?.querySelector(".owner-profile-scroll");
+  if(!root||!scroll)return false;
+  const distance=Number.parseFloat(getComputedStyle(root).getPropertyValue("--owner-morph-distance"));
+  return distance>0&&scroll.scrollTop/distance>.25;
+ });
  assert.equal(await page.locator(".pm-viewer").count(),0,"portrait swipe never opens fullscreen photo viewer");
  await root.locator(".owner-profile-scroll").evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact");
@@ -81,6 +86,13 @@ try{
  await swipe(touchX,touchY,-rect.width*.48,0);
  await delay(150);
  assert.equal(await selected().innerText(),"Фото","page swipe switches to next tab");
+ // Swipe the actual underline tab bar as well as the content panel. The
+ // selected button must not steal a directional swipe as a delayed click.
+ const rail=await root.locator(".owner-profile-tabs").boundingBox();
+ assert.ok(rail&&rail.height>40,"tab rail stays reachable");
+ await swipe(rail.x+rail.width*.62,rail.y+rail.height*.5,-rail.width*.46,0);
+ await delay(150);
+ assert.equal(await selected().innerText(),"Блики","tab rail swipe switches to next tab once");
  await root.getByRole("tab",{name:"Подарки",exact:true}).click();
  await root.getByRole("tab",{name:"Блики",exact:true}).click();
  assert.equal(await selected().innerText(),"Блики","latest tab tap wins");
