@@ -138,7 +138,10 @@
 .owner-profile-scroll{
  position:absolute;z-index:10;inset:0;overflow-x:hidden;overflow-y:auto;
  overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;overflow-anchor:none;
- scrollbar-width:none;scroll-padding-top:calc(var(--owner-compact-top) + 67px);
+ scrollbar-width:none;
+ /* Never reserve a top scroll snap zone higher than the sticky tab itself:
+    focus/click scrolling would reset compact scrollTop to zero. */
+ scroll-padding-top:0;
  touch-action:pan-y;pointer-events:none;
 }
 .owner-profile-scroll::-webkit-scrollbar{display:none}
