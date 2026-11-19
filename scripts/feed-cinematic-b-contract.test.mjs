@@ -20,7 +20,7 @@ test("bounded Tinder-style card keeps the gallery beneath its own information fo
  assert.match(card,/className="moonstone-person-card"/);
  assert.match(card,/className="moonstone-photo"/);
  assert.match(card,/gpuSafe adaptive loop ambientActive=\{active\} onCoverReady=\{onCoverReady\}/);
- assert.match(cardCss,/\.moonstone-person-card \.moonstone-photo\{[\s\S]*?bottom:var\(--luemi-card-footer-height\)/);
+ assert.match(cardCss,/\.moonstone-person-card \.moonstone-photo\{[\s\S]*?bottom:0/);
  assert.match(css,/\.carousel-slide-adaptive \.feed-carousel-photo\{[\s\S]*?object-fit:contain/);
  assert.match(css,/data-photo-fit="full"/);
  assert.match(real,/visibleRows\.slice\(page,page\+2\)/);
