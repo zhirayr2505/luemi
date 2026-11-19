@@ -137,6 +137,9 @@ const header=read("apps/web/src/discovery/GlobalHeader.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 const profile=read("apps/web/src/discovery/ProfileMasterV3.tsx");
 const ownerProfile=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
+const ownerMotion=read("apps/web/src/discovery/owner-profile/useOwnerProfileMotion.ts");
+const ownerCss=read("apps/web/src/discovery/owner-profile/owner-premium-profile.css");
+const photoViewer=read("apps/web/src/discovery/PhotoViewer.tsx");
 assertCheck("Discovery retains four main navigation destinations and three discovery tabs",
  ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Мир"].every(x=>discovery.includes(x)));
 assertCheck("feed card exposes pass and one combined like/superlike control",
@@ -154,7 +157,16 @@ assertCheck("bookmark and special actions use real supported handlers, no retire
 assertCheck("responsive card motion uses ResizeObserver",feedCard.includes("ResizeObserver")&&feedCard.includes("travel.current"));
 assertCheck("single original LUEMI logo retained without removed global controls",header.includes("wordmark_original_raster_alpha_W06.webp")&&!header.includes("lh-tool-filter")&&!header.includes("lh-tool-saved"));
 assertCheck("feed deck and Telegram back handling retained",discovery.includes("pendingCommit.current")&&discovery.includes("registerBack")&&discoveryCss.includes(".discovery-page"));
-assertCheck("profile photo viewer and independent owner scroll morph remain present",
- profile.includes("PhotoViewer")&&ownerProfile.includes('addEventListener("scroll",onScroll,{passive:true})')&&
- ownerProfile.includes('new GeometryMotion("sheet"'));
+assertCheck("premium profile opens the real PhotoViewer on the selected image",
+ ownerProfile.includes("onPhotoOpen(heroPhoto.id,heroImage.current)")&&
+ profile.includes("onPhotoOpen={openPhoto}")&&profile.includes("setViewer({photoId:id,source})")&&
+ profile.includes("<PhotoViewer view={view} photos={photos} initialPhotoId={viewer.photoId}")&&
+ profile.includes("source={viewer.source}")&&photoViewer.includes("createPortal("));
+assertCheck("premium profile morph settles independently before handing off to native card scroll",
+ ownerProfile.includes("useOwnerProfileMotion({")&&
+ /className="owner-profile-sheet"[\s\S]*className="owner-profile-tabs"[\s\S]*className="owner-profile-scroll"/.test(ownerProfile)&&
+ ownerMotion.includes('new GeometryMotion("sheet"')&&ownerMotion.includes("ownerAutoSnapTarget(")&&
+ ownerMotion.includes("const startScroll=Math.max(0,scroll.scrollTop)")&&
+ ownerMotion.includes("!atTop(current.startScroll)")&&ownerMotion.includes("if(target===1)afterCompact?.()")&&
+ /\[data-morph-state="compact"\] .owner-profile-scroll\{[^}]*overflow:hidden auto;touch-action:pan-y/.test(ownerCss));
 console.log("LUEMI Discovery V2 UI contracts PASS");

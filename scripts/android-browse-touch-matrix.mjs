@@ -22,9 +22,9 @@ async function swipe(cdp,x,y,dx,dy,steps=14){
  await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
 }
 async function active(page,n){
- await delay(390);
- assert.equal(await page.locator(".discovery-top-tabs [role=tab]").nth(n).getAttribute("aria-selected"),
-  "true","expected tab "+n+" to be active after touch");
+ const tab=page.locator(".discovery-top-tabs [role=tab]").nth(n);
+ await tab.and(page.locator('[aria-selected="true"]')).waitFor({state:"visible",timeout:1600});
+ assert.equal(await tab.getAttribute("aria-selected"),"true","expected tab "+n+" to be active after touch");
 }
 async function scrollerPoint(page,selector){
  return await page.evaluate(selector=>{

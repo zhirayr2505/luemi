@@ -39,37 +39,47 @@ try{
   }
  });
  await swipe(hero.x+hero.width*.72,hero.y+hero.height*.49,-hero.width*.46,0);
- await delay(140);
+ await delay(265);
  console.log("PROFILE_V4_PHOTO_SWIPE_DEBUG "+JSON.stringify(await root.evaluate(node=>({
   trace:window.__v4PhotoGestureTrace,
   selected:[...node.querySelectorAll(".owner-profile-photo-pager button")].map(x=>({current:x.getAttribute("aria-current"),cls:x.className})),
-  photoId:node.querySelector(".owner-profile-photo-mask>img")?.getAttribute("data-photo-id"),
+  photoId:node.querySelector(".owner-profile-photo-mask img[data-slot=current]")?.getAttribute("data-photo-id"),
   morph:node.dataset.morphState
  }))));
  assert.equal(await root.locator(".owner-profile-photo-pager button").nth(1).getAttribute("aria-current"),
   "true","left photo swipe moves to the second photo");
  await swipe(hero.x+hero.width*.28,hero.y+hero.height*.49,hero.width*.46,0);
- await delay(140);
+ await delay(265);
  assert.equal(await root.locator(".owner-profile-photo-pager button").first().getAttribute("aria-current"),
   "true","right photo swipe returns to the main photo");
  console.log("PREMIUM_PROFILE_GESTURE_PASS photo left and right");
 
  // Telegram V4.2: the spring must finish WHILE the finger is still held.
  // Deliberately do NOT dispatch touchEnd until after the state changes.
- const autoDistance=await root.evaluate(node=>Number.parseFloat(
-  getComputedStyle(node).getPropertyValue("--owner-morph-distance")));
+ const autoDistance=hero.width*.48;
  const held=await context.newCDPSession(page);
  const finger=async(type,x,y)=>held.send("Input.dispatchTouchEvent",{
   type,touchPoints:type==="touchEnd"?[]:[{x,y,id:2}]});
  try{
-  const hx=hero.x+hero.width*.5,hy=hero.y+hero.height*.58;
+   const cards=root.locator(".owner-profile-scroll");
+  const cardRect=await cards.boundingBox();
+  const hx=cardRect.x+cardRect.width*.5,hy=cardRect.y+70;
   await finger("touchStart",hx,hy);
   for(let n=1;n<=4;n++){await finger("touchMove",hx,hy-autoDistance*.75*n/4);await delay(18);}
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact",
    null,{timeout:3500});
   assert.equal(await root.getAttribute("data-morph-state"),"compact",
-   "threshold auto-collapse completes before held finger is released");
-  await finger("touchEnd",hx,hy-autoDistance*.75);
+   "a swipe starting on the cards auto-collapses the profile while held");
+  assert.equal(await cards.evaluate(el=>el.scrollTop),0,"card scroll remains at the start through morph");
+  await finger("touchMove",hx,hy-230);
+  await page.waitForFunction(()=>document.querySelector(".owner-profile-scroll")?.scrollTop>0);
+  await finger("touchEnd",hx,hy-230);
+
+  const scrolledCards=await cards.boundingBox();
+  await swipe(hx,scrolledCards.y+75,0,240);
+  await page.waitForFunction(()=>document.querySelector(".owner-profile-scroll")?.scrollTop<=.5);
+  assert.equal(await root.getAttribute("data-morph-state"),"compact",
+   "the swipe that returned cards to their top cannot also expand the profile");
   await delay(80);
   const c=await root.locator(".owner-profile-avatar-circle").boundingBox();
   assert(c&&c.width>=94&&c.width<=112,"auto-compact shows the smaller true circular avatar");
@@ -87,19 +97,11 @@ try{
  console.log("PREMIUM_PROFILE_TELEGRAM_THRESHOLD_PASS auto-collapse/expand before touchEnd");
 
 
- // The hero is floating outside the native scrollbox. A vertical photo-origin
- // swipe must advance that scrollbox 1:1 instead of being lost to the WebView.
+ // A vertical gesture from the hero collapses the profile without opening
+ // the viewer or needing to scroll the cards first.
  await swipe(hero.x+hero.width*.5,hero.y+hero.height*.58,0,-180);
- await page.waitForFunction(()=>{
-  const root=document.querySelector(".owner-premium-profile");
-  const scroll=root?.querySelector(".owner-profile-scroll");
-  if(!root||!scroll)return false;
-  const distance=Number.parseFloat(getComputedStyle(root).getPropertyValue("--owner-morph-distance"));
-  return distance>0&&scroll.scrollTop/distance>.25;
- });
- assert.equal(await page.locator(".pm-viewer").count(),0,"portrait swipe never opens fullscreen photo viewer");
- await root.locator(".owner-profile-scroll").evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact");
+ assert.equal(await page.locator(".pm-viewer").count(),0,"portrait swipe never opens fullscreen photo viewer");
  const avatar=await root.locator(".owner-profile-avatar-circle").boundingBox();
  assert.ok(avatar&&Math.abs(avatar.width-avatar.height)<1.2,"photo becomes a round avatar");
  console.log("PREMIUM_PROFILE_GESTURE_PASS vertical photo-origin morph");

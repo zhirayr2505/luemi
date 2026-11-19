@@ -26,7 +26,7 @@ try{
  await page.locator(".fy-tile-photo").first().click();
  const premium=page.locator(".discovery-visitor-route .owner-premium-profile");
  await premium.waitFor({state:"visible",timeout:4000});
- await premium.locator(".owner-profile-photo-mask img").click();
+ await premium.locator(".owner-profile-photo-mask").click();
  await page.locator(".pm-viewer").waitFor({state:"visible",timeout:5000});
  await page.waitForFunction(()=>document.querySelector(".pm-viewer-image")?.style.opacity==="1");
  await delay(350);

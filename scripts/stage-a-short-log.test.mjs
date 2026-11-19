@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-const renderer=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
+const renderer=read("apps/web/src/discovery/owner-profile/useOwnerProfileMotion.ts");
 const geometry=read("apps/web/src/discovery/owner-profile/OwnerProfileGeometry.ts");
 assert.ok(!renderer.includes("Error().stack")&&!renderer.includes("console.log("));
 assert.ok(!geometry.includes("getBoundingClientRect(")&&!geometry.includes("setTimeout("));
-const paint=renderer.slice(renderer.indexOf("const paint=useCallback"),renderer.indexOf("const schedulePaint"));
+const paint=renderer.slice(renderer.indexOf("const paint="),renderer.indexOf("const schedulePaint"));
 assert.ok(!paint.includes("getBoundingClientRect(")&&!paint.includes("setState(")&&!paint.includes("console."));
 assert.ok(renderer.includes("requestAnimationFrame")&&renderer.includes("cancelAnimationFrame"));
-assert.ok(renderer.includes('addEventListener("scroll",onScroll,{passive:true})'));
+assert.ok(!renderer.includes('addEventListener("scroll",'));
 assert.ok(renderer.includes('new GeometryMotion("sheet"')&&renderer.includes("ownerMorphEndpoint"));
 console.log("OWNER_PROFILE_NO_STACK_LOGS_AND_SINGLE_RAF_PASS");

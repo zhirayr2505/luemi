@@ -1,94 +1,106 @@
-export type OwnerProfileViewport={width:number;height:number;topInset?:number;bottomInset?:number};
+export type OwnerProfileViewport={width:number;height:number;brandBottom:number};
 export type OwnerProfileRect={x:number;y:number;width:number;height:number};
 export type OwnerProfileLayout={
- width:number;height:number;topInset:number;bottomInset:number;
- hero:OwnerProfileRect;compactAvatar:OwnerProfileRect;
- compactContentTop:number;expandedTabsTop:number;morphDistance:number;contentOffset:number;
+ width:number;
+ hero:OwnerProfileRect;
+ compactAvatar:OwnerProfileRect;
+ expandedTabsTop:number;
+ compactContentTop:number;
+ initialSheetTravel:number;
+ morphDistance:number;
 };
 export type OwnerMorphFrame={
- /** The original square remains mounted: never expose a rounded rectangle. */
- mask:OwnerProfileRect;avatar:OwnerProfileRect;radius:number;
- squareAlpha:number;circleAlpha:number;expandedAlpha:number;compactAlpha:number;
- actionsAlpha:number;photoShadeAlpha:number;contentOffset:number;
+ mask:OwnerProfileRect;
+ radius:number;
+ sheetTop:number;
+ identityTop:number;
+ identityCenter:number;
 };
+
+const COLLAPSE_THRESHOLD=.64;
+const ROUND_PHOTO=.89;
+const EXPAND_THRESHOLD=.88;
+const PHOTO_PARALLAX=.42;
+const MAX_RUBBER=26;
+const RUBBER_RESISTANCE=50;
+
 const finite=(value:number,fallback:number)=>Number.isFinite(value)?value:fallback;
 export const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,finite(value,min)));
-const mix=(from:number,to:number,progress:number)=>from+(to-from)*clamp(progress,0,1);
-const soften=(p:number)=>p*p*(3-2*p);
+const mix=(from:number,to:number,p:number)=>from*(1-p)+to*p;
+const smooth=(p:number)=>{
+ const t=clamp(p,0,1);
+ return t*t*(3-2*t);
+};
 
-/** Telegram-style two-stage profile:
- * a 30%-ish sheet climb in front of the full rectangular image, followed by
- * a SHORT square-to-always-round image handoff. The circle, name and tabs fit
- * in the compact header without the previous oversized 120-150px avatar. */
 export function createOwnerProfileLayout(viewport:OwnerProfileViewport):OwnerProfileLayout{
- const width=Math.max(280,finite(viewport.width,393));
- const height=Math.max(360,finite(viewport.height,852));
- const topInset=clamp(viewport.topInset??0,0,height*.2);
- const bottomInset=clamp(viewport.bottomInset??0,0,height*.16);
- const landscape=width>height;
- const hero={x:0,y:0,width,height:width};
- const avatarSize=landscape?clamp(height*.245,84,108):clamp(width*.26,94,112);
- const avatarY=Math.min(topInset+42,Math.max(topInset+20,width-avatarSize-100));
- const compactAvatar={x:(width-avatarSize)/2,y:avatarY,width:avatarSize,height:avatarSize};
- // Keep the compact title/city and the 52px tab rail underneath the avatar.
+ const width=Math.max(1,finite(viewport.width,393));
+ const height=Math.max(1,finite(viewport.height,852));
+ const brandBottom=Math.max(0,finite(viewport.brandBottom,65));
  const expandedTabsTop=width-22;
- const contentMinimum=avatarY+avatarSize+58;
- const contentMaximum=Math.max(contentMinimum,expandedTabsTop-20);
- const compactContentTop=clamp(avatarY+avatarSize+68,contentMinimum,contentMaximum);
- const tabTravel=expandedTabsTop-compactContentTop;
- // The panel finishes climbing BEFORE the photo switches shape. The remainder
- // of the virtual scroll interval is absorbed by the internal content offset.
- const morphDistance=Math.max(tabTravel+84,clamp(width*.49,168,242));
- const contentOffset=Math.max(0,morphDistance-tabTravel);
- return {width,height,topInset,bottomInset,hero,compactAvatar,
-  compactContentTop,expandedTabsTop,morphDistance,contentOffset};
+ const preferredDiameter=width>height?clamp(height*.245,84,108):clamp(width*.26,94,112);
+ const diameter=Math.min(preferredDiameter,Math.max(60,expandedTabsTop-brandBottom-10-8-56-10));
+ const compactAvatar={x:(width-diameter)/2,y:brandBottom+10,width:diameter,height:diameter};
+ const compactContentTop=compactAvatar.y+diameter+8+56;
+ const panelTravel=Math.max(0,expandedTabsTop-compactContentTop);
+ // The first part of the gesture moves the sheet by the same number of pixels.
+ // Leave room for the sheet to glide into its compact position during rounding.
+ const initialTravel=Math.min(width*.30,panelTravel*.90);
+ return {
+  width,hero:{x:0,y:0,width,height:width},compactAvatar,
+  expandedTabsTop,compactContentTop,initialSheetTravel:initialTravel,morphDistance:Math.max(44,initialTravel/COLLAPSE_THRESHOLD)
+ };
 }
-export function ownerMorphProgress(scrollTop:number,morphDistance:number):number{
- const distance=Math.max(1,finite(morphDistance,1));
- const scroll=Math.max(0,finite(scrollTop,0));
- if(scroll>=distance-.75)return 1;
- return clamp(scroll/distance,0,1);
+
+export function ownerMorphProgress(position:number,distance:number):number{
+ return clamp(position/Math.max(1,distance),0,1);
 }
-/** Positive velocity shrinks toward compact, negative expands. */
-export function ownerMorphEndpoint(scrollTop:number,morphDistance:number,velocity=0):number{
- const distance=Math.max(1,finite(morphDistance,1));
- const current=clamp(scrollTop,0,distance),speed=finite(velocity,0);
- if(speed>=.38)return distance;
- if(speed<=-.38)return 0;
- return current>=distance*.5?distance:0;
+
+export function ownerMorphEndpoint(position:number,distance:number,velocity=0):number{
+ if(velocity>=.38)return distance;
+ if(velocity<=-.38)return 0;
+ return position>=distance*.5?distance:0;
 }
-/** A held pointer crosses the threshold: snap WITHOUT waiting for pointerup. */
-export function ownerAutoSnapTarget(start:number,current:number,distance:number):number|null{
- const travel=Math.max(1,finite(distance,1));
- if(start<=travel*.12&&current>=travel*.61)return travel;
- if(start>=travel*.88&&current<=travel*.39)return 0;
+
+/** Evaluate while the finger is held. A running settle owns input until it ends. */
+export function ownerAutoSnapTarget(accepted:0|1,position:number,distance:number):0|1|null{
+ if(accepted===0&&position>=distance*COLLAPSE_THRESHOLD)return 1;
+ if(accepted===1&&position<=distance*EXPAND_THRESHOLD)return 0;
  return null;
 }
-export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):OwnerMorphFrame{
- const p=clamp(progress,0,1),from=layout.hero,to=layout.compactAvatar;
- // Never interpolate border-radius through pill/oval/rounded-square shapes.
- // The original large photo stays exactly square and fades out as an already
- // circular, independently clipped image fades into the same photograph.
- const circleTravel=soften(clamp((p-.62)/.17,0,1));
- const startDiameter=to.width*1.25,diameter=mix(startDiameter,to.width,circleTravel);
- const avatar={x:(layout.width-diameter)/2,y:to.y+(1-circleTravel)*18,
-  width:diameter,height:diameter};
- const squareAlpha=1-soften(clamp((p-.60)/.105,0,1));
- const circleAlpha=soften(clamp((p-.61)/.13,0,1));
- const tabTravel=layout.expandedTabsTop-layout.compactContentTop;
- return {mask:from,avatar,radius:diameter/2,squareAlpha,circleAlpha,
-  expandedAlpha:1-soften(clamp((p-.59)/.14,0,1)),
-  compactAlpha:soften(clamp((p-.63)/.14,0,1)),
-  actionsAlpha:clamp((.38-p)/.20,0,1),
-  photoShadeAlpha:1-clamp((p-.20)/.56,0,1)*.65,
-  // Until sticky activates, cards stay bonded to the tab bar. After that
-  // offset exactly compensates the remaining virtual morph scroll distance.
-  contentOffset:clamp(p*layout.morphDistance-tabTravel,0,layout.contentOffset)};
+
+export function ownerRubberPosition(position:number):number{
+ if(position>=0)return position;
+ const pull=-position;
+ return -MAX_RUBBER*pull/(pull+RUBBER_RESISTANCE);
 }
-/** Aspect-safe cover dimensions for both the hero and circle image planes. */
-export function coverPhoto(sourceWidth:number,sourceHeight:number,mask:OwnerProfileRect){
- const width=Math.max(1,finite(sourceWidth,mask.width));
- const height=Math.max(1,finite(sourceHeight,mask.height));
- const scale=Math.max(mask.width/width,mask.height/height);
- return {width:width*scale,height:height*scale,scale};
+
+/** Reconstruct the finger coordinate when grabbing an ongoing rubber settle. */
+export function ownerUnresistedPosition(position:number):number{
+ if(position>=0)return position;
+ const stretch=clamp(-position,0,MAX_RUBBER-.01);
+ return -RUBBER_RESISTANCE*stretch/(MAX_RUBBER-stretch);
+}
+
+export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):OwnerMorphFrame{
+ const p=clamp(progress,0,1),avatar=layout.compactAvatar;
+ const initialClimb=Math.min(p/COLLAPSE_THRESHOLD,1)*layout.initialSheetTravel;
+ const photoMorph=smooth((p-COLLAPSE_THRESHOLD)/(ROUND_PHOTO-COLLAPSE_THRESHOLD));
+ const finalSettle=smooth((p-ROUND_PHOTO)/(1-ROUND_PHOTO));
+ const roundness=smooth((p-.77)/(ROUND_PHOTO-.77));
+ const sheetTop=mix(layout.expandedTabsTop-initialClimb,layout.compactContentTop,
+  Math.max(0,(p-COLLAPSE_THRESHOLD)/(1-COLLAPSE_THRESHOLD)));
+ const diameter=mix(layout.width,avatar.width+7,photoMorph)-7*finalSettle;
+ const avatarY=mix(-initialClimb*PHOTO_PARALLAX,avatar.y,photoMorph);
+ const stretch=clamp(-progress*layout.morphDistance,0,MAX_RUBBER);
+ const rebound=clamp((progress-1)*layout.morphDistance,0,7);
+ const size=diameter*(1+stretch*.001);
+ // One square mask, scaled uniformly. Once circular, its radius is exactly
+ // half its diameter, and both the avatar and the text clear the actual brand.
+ return {
+  mask:{x:(layout.width-size)/2,y:avatarY-rebound,width:size,height:size},
+  radius:size*roundness/2,
+  sheetTop:sheetTop+stretch-rebound,
+  identityTop:sheetTop-mix(70,56,photoMorph)+stretch-rebound,
+  identityCenter:photoMorph
+ };
 }

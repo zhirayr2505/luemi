@@ -12,16 +12,13 @@ import {QaProfiler} from "./qa-profiler";
 import {resourceIdentity,viewerPhotoContext,reconcilePhotoId,type ViewerSource} from "./photo-viewer-state";
 import {useModalLayer} from "../ui/modal-layer";
 import type {GestureArbiter} from "../ui/gesture-arbiter";
+import type {ProfileRouteMotionHandle} from "./profile-route-motion";
 import {IntegratedProfileV3,type V3TabId} from "./profile-v3/rendering/IntegratedProfileV3";
 import {OwnerPremiumProfile} from "./owner-profile/OwnerPremiumProfile";
 import {resolvePhotoFocus} from "./profile-v3/geometry/ProfileGeometry";
 import "./profile-content.css";
 import "./profile-v3/rendering/IntegratedProfileV3.css";
 
-export type ProfileRouteMotionHandle={
- suspendForRoute:()=>void;rollbackRoute:()=>void;commitRouteClose:()=>void;
- suspendForBackground:()=>void;resumeFromBackground:()=>void;
-};
 type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;onReveal?:()=>void;
  onSettings?:()=>void;
@@ -176,7 +173,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    {mode!=="local-self-preview"?<OwnerPremiumProfile view={view} ownerDetails={mode==="owner"?ownerDetails:undefined} active={active}
     onEdit={()=>onEdit?.()} onSettings={()=>{if(onSettings)onSettings();else onEdit?.();}}
     onPreview={()=>{if(mode==="owner")setPreview(true);}} onPhotoOpen={openPhoto} onMotionProgress={onMotionProgress}
-    gestureArbiter={gestureArbiter}/>:
+    gestureArbiter={gestureArbiter} registerRouteMotion={registerRouteMotion}/>:
    <IntegratedProfileV3 view={view} photoId={photoId} onPhotoId={choosePhoto}
     onPhotoOpen={openPhoto} onState={setExpanded} onMotionProgress={onMotionProgress}
     initialExpanded={initialExpanded}

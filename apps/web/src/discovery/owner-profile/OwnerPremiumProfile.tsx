@@ -1,20 +1,22 @@
-import {useCallback,useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from "react";
-import type {CSSProperties,KeyboardEvent,PointerEvent as ReactPointerEvent} from "react";
+import {useCallback,useId,useLayoutEffect,useMemo,useRef,useState} from "react";
+import type {CSSProperties,KeyboardEvent} from "react";
 import {CalendarDays,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,Sparkles,UserRound} from "lucide-react";
 import {InterestChip} from "../../ui/InterestCatalog";
 import {Flag} from "../../ui/Flag";
 import {goals,type RegistrationDraft} from "../../registration/model";
 import {goalLabel} from "../../ui/PersonalizedCopy";
-import {GestureArbiter} from "../../ui/gesture-arbiter";
-import {bindMotionLifecycle} from "../../ui/motion-lifecycle";
+import {computedTranslation,type GestureArbiter} from "../../ui/gesture-arbiter";
 import type {ProfileView} from "../ProfileModel";
-import {GeometryMotion} from "../geometry-motion";
+import type {ProfileRouteMotionHandle} from "../profile-route-motion";
 import {resolvePhotoFocus} from "../profile-v3/geometry/ProfileGeometry";
-import {createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,ownerMorphFrame,ownerMorphProgress,type OwnerProfileLayout} from "./OwnerProfileGeometry";
+import {clamp} from "./OwnerProfileGeometry";
+import {useOwnerProfileMotion} from "./useOwnerProfileMotion";
 import "./owner-premium-profile.css";
 
 type OwnerTab="about"|"photos"|"bliki"|"gifts";
 const tabs:[OwnerTab,string][]=[["about","О себе"],["photos","Фото"],["bliki","Блики"],["gifts","Подарки"]];
+const slideDuration=230;
+const loop=(index:number,count:number)=>(index+count)%count;
 
 type Props={
  view:ProfileView;ownerDetails?:RegistrationDraft;active?:boolean;
@@ -22,73 +24,24 @@ type Props={
  onPhotoOpen:(id:string,element:HTMLImageElement|null)=>void;
  onMotionProgress?:(progress:number,dragging:boolean)=>void;
  gestureArbiter?:GestureArbiter;
-};
-
-type ProfileGesture={
- id:number;serial:number;source:"photo"|"pages"|"tabs";axis:"horizontal"|"vertical"|null;
- x:number;y:number;startScroll:number;width:number;captured:boolean;autoSnapped:boolean;
- samples:{position:number;time:number}[];
-};
-
-// Only settle uses overshoot; direct finger tracking stays exactly 1:1.
-const MORPH_EASING=[.17,.84,.18,1.13] as const;
-const recentVelocity=(samples:readonly {position:number;time:number}[])=>{
- if(samples.length<2)return 0;
- const last=samples[samples.length-1];
- let first=samples[0];
- for(let index=samples.length-2;index>=0;index--){
-  first=samples[index];if(last.time-first.time>=42)break;
- }
- const elapsed=Math.max(1,last.time-first.time);
- return (last.position-first.position)/elapsed;
-};
-
-const numericToken=(node:HTMLElement,name:string)=>{
- const value=Number.parseFloat(getComputedStyle(node).getPropertyValue(name));
- return Number.isFinite(value)?value:0;
+ registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
 };
 
 export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSettings,onPreview,
- onPhotoOpen,onMotionProgress,gestureArbiter}:Props){
- const p=view.profile,photos=view.photos,mainPhoto=photos[0]??null,isOwner=view.mode==="owner";
+ onPhotoOpen,onMotionProgress,gestureArbiter,registerRouteMotion}:Props){
+ const p=view.profile,photos=view.photos,isOwner=view.mode==="owner";
  const [tab,setTab]=useState<OwnerTab>("about");
- const [heroIndex,setHeroIndex]=useState(0);
- // The selected tab indicator changes immediately; the still-mounted hero image
- // only swaps its src once its adjacent photo has finished sliding into place.
- const [renderIndex,setRenderIndex]=useState(0);
- const heroPhoto=photos[Math.min(renderIndex,Math.max(0,photos.length-1))]??mainPhoto;
- const previousPhoto=photos[renderIndex-1]??null,nextPhoto=photos[renderIndex+1]??null;
- const photoSignature=photos.map(photo=>photo.id).join("\u0000");
- const selectedPhotoId=useRef(mainPhoto?.id??null);
- const gesture=useRef<ProfileGesture|null>(null);
- const suppressPhotoClick=useRef(false),suppressTabClick=useRef(false);
- const root=useRef<HTMLElement>(null),scroller=useRef<HTMLDivElement>(null);
- const mask=useRef<HTMLDivElement>(null),avatarMask=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null),avatarImage=useRef<HTMLImageElement>(null);
- const prevImage=useRef<HTMLDivElement>(null),nextImage=useRef<HTMLDivElement>(null);
- const photoSlideTimer=useRef<number|null>(null);
- const shade=useRef<HTMLDivElement>(null),expandedIdentity=useRef<HTMLDivElement>(null);
- const compactIdentity=useRef<HTMLDivElement>(null);
- const tablist=useRef<HTMLDivElement>(null),brandProbe=useRef<HTMLDivElement>(null);
- const compactBackdrop=useRef<HTMLDivElement>(null),pager=useRef<HTMLDivElement>(null);
- const glow=useRef<HTMLDivElement>(null),contentRoot=useRef<HTMLElement>(null);
- const ownerElastic=useRef(0);
- const nativeTouchStart=useRef(0),nativeSnapLocked=useRef(false);
- const topEdit=useRef<HTMLButtonElement>(null);
- const flow=useRef<HTMLDivElement>(null);
- const layout=useRef<OwnerProfileLayout>(createOwnerProfileLayout({width:393,height:852}));
- const layoutRevision=useRef(0),paintRaf=useRef(0),lastState=useRef("expanded"),lastPaintedProgress=useRef(0);
- const scrollEndTimer=useRef<number|null>(null),paused=useRef(false),nativeTouchActive=useRef(false);
- const settleTarget=useRef(0);
- const scrollSample=useRef({position:0,time:0,velocity:0});
- const latestSettleWrite=useRef<number|null>(null);
- const localArbiter=useRef<GestureArbiter|null>(null);
- if(!gestureArbiter&&!localArbiter.current)localArbiter.current=new GestureArbiter();
- const gestures=gestureArbiter??localArbiter.current!;
- const morphMotion=useRef<GeometryMotion|null>(null);
- if(!morphMotion.current||morphMotion.current.isDisposed())
-  morphMotion.current=new GeometryMotion("sheet",()=>performance.now(),cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),0);
- const motionProgress=useRef(onMotionProgress);
+ const [selectedId,setSelectedId]=useState(photos[0]?.id??null);
+ const selectedIndex=Math.max(0,photos.findIndex(photo=>photo.id===selectedId));
+ const heroPhoto=photos[selectedIndex];
+ const previousPhoto=photos.length>1?photos[loop(selectedIndex-1,photos.length)]:null;
+ const nextPhoto=photos.length>2?photos[loop(selectedIndex+1,photos.length)]:null;
+ const track=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null);
+ const photoTimer=useRef<number|undefined>(undefined);
+ const drag=useRef({width:1,origin:0,offset:0});
+ const tablist=useRef<HTMLDivElement>(null);
  const tabPrefix=useId();
+
  const goal=p.goal&&p.goal!=="undecided"?goals.find(item=>item.id===p.goal):null;
  const goalText=goal?goalLabel(goal.id,ownerDetails?.gender??p.gender??""):"Цель не указана";
  const location=p.city||p.country||"Город не указан";
@@ -102,546 +55,172 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   ].filter((item):item is {label:string;value:string}=>item!==null);
  },[ownerDetails]);
 
- useEffect(()=>{motionProgress.current=onMotionProgress;},[onMotionProgress]);
-
- const paint=useCallback((scrollTop:number)=>{
-  const geometry=layout.current,distance=geometry.morphDistance;
-  const bounded=Math.max(0,Math.min(distance,scrollTop));
-  const progress=ownerMorphProgress(bounded,distance);
-  const frame=ownerMorphFrame(geometry,progress);
-  // Spring endpoints can overrun the SCROLL boundary by a few pixels; keep
-  // scrollTop legal and paint that overrun on the photo + sheet together.
-  const beyond=scrollTop<0?-scrollTop:scrollTop>distance?distance-scrollTop:0;
-  const elastic=ownerElastic.current+beyond;
-  const stretch=Math.max(0,elastic);
-  lastPaintedProgress.current=progress;
-  const surface=mask.current;
-  if(surface){
-   const scale=1+Math.min(28,stretch)*.0008;
-   surface.style.transform=`translate3d(${frame.mask.x-(scale-1)*frame.mask.width/2}px,${frame.mask.y}px,0) scale(${scale})`;
-   surface.style.width=`${frame.mask.width}px`;
-   surface.style.height=`${frame.mask.height}px`;
-   surface.style.borderRadius="0px";
-   surface.style.opacity=String(frame.squareAlpha);
-   surface.style.pointerEvents=progress<.70?"auto":"none";
-   surface.toggleAttribute("inert",progress>=.74);
-  }
-  // The second plane is ALWAYS clipped to a true circle. At no point is a
-  // rounded rectangle or oval rendered between the square and compact avatar.
-  if(avatarMask.current){
-   const a=avatarMask.current;
-   a.style.transform=`translate3d(${frame.avatar.x}px,${frame.avatar.y+Math.min(0,elastic)}px,0)`;
-   a.style.width=`${frame.avatar.width}px`;
-   a.style.height=`${frame.avatar.height}px`;
-   a.style.opacity=String(frame.circleAlpha);
-   a.style.pointerEvents=progress>=.70?"auto":"none";
-   a.toggleAttribute("inert",progress<.70);
-  }
-  if(shade.current)shade.current.style.opacity=String(frame.photoShadeAlpha);
-  if(expandedIdentity.current){
-   expandedIdentity.current.style.opacity=String(frame.expandedAlpha);
-   // Match the actual sheet climb, not the longer virtual morph interval.
-   const travel=Math.min(bounded,geometry.expandedTabsTop-geometry.compactContentTop);
-   expandedIdentity.current.style.transform=`translate3d(0,${-travel+elastic}px,0)`;
-   const hidden=progress>=.67?"true":"false";
-   if(expandedIdentity.current.getAttribute("aria-hidden")!==hidden)expandedIdentity.current.setAttribute("aria-hidden",hidden);
-  }
-  if(compactIdentity.current){
-   compactIdentity.current.style.opacity=String(frame.compactAlpha);
-   compactIdentity.current.style.transform=`translate3d(-50%,${(1-progress)*8+Math.min(0,elastic)}px,0)`;
-   const hidden=progress<.70?"true":"false";
-   if(compactIdentity.current.getAttribute("aria-hidden")!==hidden)compactIdentity.current.setAttribute("aria-hidden",hidden);
-  }
-  if(compactBackdrop.current)compactBackdrop.current.style.opacity=String(Math.max(0,Math.min(1,(progress-.60)/.22)));
-  if(glow.current)glow.current.style.opacity=String(Math.max(0,Math.min(.5,(progress-.70)/.26*.5)));
-  if(pager.current){
-   pager.current.style.opacity=String(Math.max(0,Math.min(1,(.60-progress)/.15)));
-   pager.current.style.pointerEvents=progress<.45?"auto":"none";
-   pager.current.toggleAttribute("inert",progress>=.45);
-  }
-  if(topEdit.current){
-   topEdit.current.style.opacity=String(frame.actionsAlpha);
-   topEdit.current.style.pointerEvents=progress<.29?"auto":"none";
-   topEdit.current.toggleAttribute("inert",progress>=.29);
-  }
-  if(flow.current)flow.current.style.transform=`translate3d(0,${frame.contentOffset}px,0)`;
-  if(tablist.current)tablist.current.style.transform=`translate3d(0,${elastic}px,0)`;
-  if(contentRoot.current)contentRoot.current.style.transform=`translate3d(0,${elastic}px,0)`;
-  const state=progress<=.001?"expanded":progress>=.999?"compact":"transition";
-  if(root.current&&lastState.current!==state){root.current.dataset.morphState=state;lastState.current=state;}
-  const moving=gesture.current?.axis==="vertical"||morphMotion.current?.snapshot().phase==="settling";
-  motionProgress.current?.(1-progress,moving);
+ const cancelPhoto=useCallback(()=>{
+  window.clearTimeout(photoTimer.current);
+  photoTimer.current=undefined;
+  const el=track.current;
+  if(!el)return;
+  el.style.removeProperty("transition");
+  el.style.removeProperty("transform");
+  delete el.dataset.direction;
  },[]);
- const stopElastic=useCallback(()=>{
-  if(ownerElastic.current!==0){ownerElastic.current=0;paint(scroller.current?.scrollTop??0);}
- },[paint]);
- const releaseElastic=useCallback(()=>{
-  const amplitude=ownerElastic.current,motion=morphMotion.current;
-  ownerElastic.current=0;
-  if(Math.abs(amplitude)<.1||!motion){paint(scroller.current?.scrollTop??0);return;}
-  const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // Reuse the sole GeometryMotion RAF instead of running a competing elastic
-  // animation beside the morph. This also makes it cancellable mid-bounce.
-  motion.start(-amplitude,0,reduced?0:410,MORPH_EASING,value=>paint(value),
-   ()=>paint(0),layoutRevision.current,true);
- },[paint]);
- const schedulePaint=useCallback(()=>{
-  if(paintRaf.current)return;
-  paintRaf.current=requestAnimationFrame(()=>{paintRaf.current=0;paint(scroller.current?.scrollTop??0);});
- },[paint]);
-
- const clearScrollEnd=useCallback(()=>{
-  if(scrollEndTimer.current!==null){window.clearTimeout(scrollEndTimer.current);scrollEndTimer.current=null;}
- },[]);
- const interruptMorph=useCallback(()=>{
-  clearScrollEnd();
-  const motion=morphMotion.current;
-  if(!motion||motion.snapshot().phase==="idle")return;
-  latestSettleWrite.current=null;
-  const position=motion.cancel();
-  if(scroller.current){scroller.current.scrollTop=position;paint(position);}
- },[clearScrollEnd,paint]);
- const settleMorph=useCallback((velocity=scrollSample.current.velocity,forcedTarget?:number)=>{
-  const scroll=scroller.current,motion=morphMotion.current;
-  if(!scroll||!motion||paused.current)return;
-  if(motion.snapshot().phase==="settling")return;
-  clearScrollEnd();
-  const distance=layout.current.morphDistance,current=scroll.scrollTop;
-  // After compact is reached, the list uses genuine native card scrolling.
-  if(current>=distance-.75&&forcedTarget===undefined){paint(current);return;}
-  if(current<=.75&&forcedTarget===undefined){scroll.scrollTop=0;paint(0);return;}
-  const target=forcedTarget??ownerMorphEndpoint(current,distance,velocity);
-  settleTarget.current=target;
-  const fraction=Math.abs(target-current)/Math.max(1,distance);
-  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const duration=reduce?0:Math.max(230,Math.min(365,250+fraction*105-Math.min(35,Math.abs(velocity)*35)));
-  motion.start(current,target,duration,MORPH_EASING,value=>{
-   if(!scroller.current)return;
-   // Mark the RAF writer before its native scroll event.
-   const bounded=Math.max(0,Math.min(distance,value));
-   latestSettleWrite.current=bounded;
-   scroller.current.scrollTop=bounded;paint(value);
-  },()=>{
-   if(!scroller.current)return;
-   latestSettleWrite.current=null;
-   scroller.current.scrollTop=target;paint(target);
-  },layoutRevision.current,true);
- },[clearScrollEnd,paint]);
-
- useLayoutEffect(()=>{
-  const host=root.current,scroll=scroller.current;if(!host||!scroll)return;
-  if(!morphMotion.current||morphMotion.current.isDisposed())
-   morphMotion.current=new GeometryMotion("sheet",()=>performance.now(),cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),scroll.scrollTop,layoutRevision.current);
-  let resizeRaf=0;
-  const measure=()=>{
-   const rect=host.getBoundingClientRect();if(rect.width<280||rect.height<360)return;
-   // Measure a real element: getComputedStyle(custom-property) may return
-   // unevaluated max() on Android WebView, so parseFloat() would give NaN.
-   const brandY=brandProbe.current?brandProbe.current.getBoundingClientRect().top-rect.top:84;
-   const next=createOwnerProfileLayout({width:rect.width,height:rect.height,
-    topInset:Math.max(44,brandY),bottomInset:numericToken(host,"--bottom-safe")});
-   const previous=layout.current,previousTop=scroll.scrollTop;
-   const previousProgress=lastPaintedProgress.current;
-   const previousMotion=morphMotion.current?.snapshot();
-   layout.current=next;
-   layoutRevision.current++;
-   host.style.setProperty("--owner-hero-height",`${next.hero.height}px`);
-   host.style.setProperty("--owner-hero-bottom",`${next.hero.y+next.hero.height}px`);
-   host.style.setProperty("--owner-expanded-tabs-top",`${next.expandedTabsTop}px`);
-   host.style.setProperty("--owner-compact-top",`${next.compactContentTop}px`);
-   host.style.setProperty("--owner-compact-name-top",`${next.compactAvatar.y+next.compactAvatar.height+8}px`);
-   host.style.setProperty("--owner-morph-distance",`${next.morphDistance}px`);
-   host.style.setProperty("--owner-avatar-x",`${next.compactAvatar.x}px`);
-   host.style.setProperty("--owner-avatar-y",`${next.compactAvatar.y}px`);
-   host.style.setProperty("--owner-avatar-size",`${next.compactAvatar.width}px`);
-   host.style.setProperty("--owner-content-shift",`${next.contentOffset}px`);
-   const extra=Math.max(0,previousTop-previous.morphDistance);
-   const nextTop=previousTop<=1?0:previousTop>=previous.morphDistance-.75?
-    next.morphDistance+extra:previousProgress*next.morphDistance;
-   scroll.scrollTop=nextTop;
-   if(previousMotion&&previousMotion.phase!=="idle"){
-    const previousTarget=previousMotion.phase==="suspended"?settleTarget.current:previousMotion.target;
-    const target=previousTarget<=.75?0:next.morphDistance;
-    settleTarget.current=target;
-    if(previousMotion.phase==="settling")morphMotion.current?.rebase(layoutRevision.current,nextTop,target);
-   }
-   paint(scroll.scrollTop);
-  };
-  const resize=()=>{if(resizeRaf)return;resizeRaf=requestAnimationFrame(()=>{resizeRaf=0;measure();});};
-  const onScroll=()=>{
-   const now=performance.now(),position=scroll.scrollTop,previous=scrollSample.current;
-   const elapsed=now-previous.time;
-   const velocity=previous.time>0&&elapsed>0?(position-previous.position)/elapsed:0;
-   scrollSample.current={position,time:now,velocity:Number.isFinite(velocity)?velocity:0};
-   const settling=morphMotion.current?.snapshot().phase==="settling";
-   if(settling){
-    const expected=latestSettleWrite.current;
-    if(expected!==null&&Math.abs(position-expected)<=1.5)return;
-    // A native scroll, programmatic scroll, tab focus or inertia changed the
-    // actual coordinate. Cancel stale RAF without restoring its old position.
-    morphMotion.current?.cancel();
-    latestSettleWrite.current=null;
-    paint(position);
-   }else schedulePaint();
-   // Telegram-style snap fires DURING a held gesture. Temporarily pause
-   // native scrolling while the sole motion controller finishes the spring.
-   if(nativeTouchActive.current&&!nativeSnapLocked.current&&!settling){
-    const target=ownerAutoSnapTarget(nativeTouchStart.current,position,layout.current.morphDistance);
-    if(target!==null){
-     nativeSnapLocked.current=true;scroll.style.overflowY="hidden";
-     settleMorph(velocity,target);return;
-    }
-   }
-   if(nativeTouchActive.current)return;
-   clearScrollEnd();
-   if(position>.75&&position<layout.current.morphDistance-.75)
-    scrollEndTimer.current=window.setTimeout(()=>settleMorph(scrollSample.current.velocity),105);
-  };
-  const onScrollEnd=()=>{if(!nativeTouchActive.current)settleMorph(scrollSample.current.velocity);};
-  const onTouchStart=()=>{
-   nativeTouchActive.current=true;interruptMorph();
-   nativeTouchStart.current=scroll.scrollTop;nativeSnapLocked.current=false;
-   scrollSample.current={position:scroll.scrollTop,time:performance.now(),velocity:0};
-  };
-  const onTouchEnd=()=>{
-   nativeTouchActive.current=false;
-   if(nativeSnapLocked.current){
-    nativeSnapLocked.current=false;scroll.style.overflowY="auto";return;
-   }
-   settleMorph(scrollSample.current.velocity);
-  };
-  const observer=new ResizeObserver(resize);observer.observe(host);
-  scroll.addEventListener("scroll",onScroll,{passive:true});
-  scroll.addEventListener("scrollend",onScrollEnd,{passive:true});
-  scroll.addEventListener("touchstart",onTouchStart,{passive:true});
-  scroll.addEventListener("touchend",onTouchEnd,{passive:true});
-  scroll.addEventListener("touchcancel",onTouchEnd,{passive:true});
-  window.visualViewport?.addEventListener("resize",resize);
-  const web=window.Telegram?.WebApp;
-  const viewportChanged=(event?:{isStateStable?:boolean})=>{if(event?.isStateStable!==false)resize();};
-  web?.onEvent?.("viewportChanged",viewportChanged);web?.onEvent?.("safeAreaChanged",resize);web?.onEvent?.("contentSafeAreaChanged",resize);
-  measure();
-  return()=>{
-   observer.disconnect();scroll.removeEventListener("scroll",onScroll);
-   scroll.removeEventListener("scrollend",onScrollEnd);
-   scroll.removeEventListener("touchstart",onTouchStart);
-   scroll.removeEventListener("touchend",onTouchEnd);scroll.removeEventListener("touchcancel",onTouchEnd);
-   window.visualViewport?.removeEventListener("resize",resize);
-   web?.offEvent?.("viewportChanged",viewportChanged);web?.offEvent?.("safeAreaChanged",resize);web?.offEvent?.("contentSafeAreaChanged",resize);
-   clearScrollEnd();morphMotion.current?.dispose();
-   ownerElastic.current=0;scroll.style.overflowY="auto";nativeSnapLocked.current=false;
-   if(resizeRaf)cancelAnimationFrame(resizeRaf);if(paintRaf.current)cancelAnimationFrame(paintRaf.current);
-   resizeRaf=0;paintRaf.current=0;
-  };
- },[clearScrollEnd,interruptMorph,paint,schedulePaint,settleMorph]);
- useEffect(()=>bindMotionLifecycle(()=>{
-  paused.current=true;clearScrollEnd();stopElastic();latestSettleWrite.current=null;gesture.current=null;gestures.cancel();
-  const motion=morphMotion.current;
-  if(motion?.snapshot().phase==="settling"){
-   settleTarget.current=motion.snapshot().target;motion.suspend();
+ const pickPhoto=(index:number)=>{
+  const next=photos[index];
+  if(!next)return;
+  cancelPhoto();
+  setSelectedId(next.id);
+ };
+ const startPhoto=(visibleWidth:number,fullWidth:number)=>{
+  const el=track.current;
+  if(!el||photos.length<=1)return;
+  window.clearTimeout(photoTimer.current);
+  photoTimer.current=undefined;
+  // Read the visible offset before interrupting the CSS transition. Once
+  // claimed, movement uses the sampled width and an unscaled percentage.
+  const offset=computedTranslation(el)/fullWidth;
+  drag.current={width:visibleWidth,origin:offset,offset};
+  el.style.transition="none";
+  el.style.transform=`translate3d(${offset*100}%,0,0)`;
+ };
+ const movePhoto=(delta:number)=>{
+  const el=track.current;
+  if(!el||photos.length<=1)return;
+  const offset=clamp(drag.current.origin+delta/drag.current.width,-1,1);
+  drag.current.offset=offset;
+  const direction=offset<0?"next":"previous";
+  if(el.dataset.direction!==direction)el.dataset.direction=direction;
+  el.style.transform=`translate3d(${offset*100}%,0,0)`;
+ };
+ const endPhoto=(swipe:-1|0|1)=>{
+  const el=track.current;
+  if(!el||photos.length<=1)return;
+  const direction=swipe*drag.current.offset>0?swipe:0;
+  const next=photos[loop(selectedIndex-direction,photos.length)];
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches){
+   cancelPhoto();
+   setSelectedId(next.id);
+   return;
   }
- },()=>{
-  paused.current=false;
-  const motion=morphMotion.current;
-  if(motion?.snapshot().phase==="suspended"){
-   const snapshot=motion.snapshot();
-   motion.reveal(layoutRevision.current+1,scroller.current?.scrollTop??snapshot.current,settleTarget.current);
-   layoutRevision.current++;
-  }else paint(scroller.current?.scrollTop??0);
- }),[clearScrollEnd,gestures,paint,stopElastic]);
- useEffect(()=>()=>{if(!gestureArbiter)localArbiter.current?.dispose();},[gestureArbiter]);
- useLayoutEffect(()=>{
-  if(!active||!scroller.current)return;
-  interruptMorph();
-  scroller.current.scrollTop=0;lastState.current="expanded";
-  scrollSample.current={position:0,time:performance.now(),velocity:0};
-  selectedPhotoId.current=mainPhoto?.id??null;
-  root.current?.setAttribute("data-morph-state","expanded");setHeroIndex(0);setRenderIndex(0);paint(0);
- },[active,interruptMorph,p.id,mainPhoto?.id,paint]);
- useEffect(()=>{
-  if(!heroPhoto||!heroImage.current)return;
-  const image=heroImage.current;
-  image.loading="eager";
-  void image.decode?.().catch(()=>{/* onLoad/onError keeps the visible surface authoritative */});
- },[heroPhoto]);
+  if(direction!==0)el.dataset.direction=direction<0?"next":"previous";
+  el.style.transition=`transform ${slideDuration}ms cubic-bezier(.20,.82,.24,1)`;
+  el.style.transform=`translate3d(${direction*100}%,0,0)`;
+  photoTimer.current=window.setTimeout(()=>{
+   photoTimer.current=undefined;
+   if(direction===0)cancelPhoto();
+   else setSelectedId(next.id);
+  },slideDuration);
+ };
 
  const selectTab=(next:OwnerTab,focus=false)=>{
-  setTab(next);
-  requestAnimationFrame(()=>{
-   const button=tablist.current?.querySelector<HTMLButtonElement>(`#${CSS.escape(tabPrefix+"-"+next+"-tab")}`);
-   if(focus)button?.focus({preventScroll:true});
-   // Do not scroll the entire native viewport when moving between tabs.
-   if(button&&tablist.current){const r=button.getBoundingClientRect(),t=tablist.current.getBoundingClientRect();
-    if(r.left<t.left||r.right>t.right)button.scrollIntoView({block:"nearest",inline:"nearest"});}
-  });
+  if(next!==tab){
+   commands.current.resetCards();
+   setTab(next);
+  }
+  if(focus)tablist.current?.querySelector<HTMLButtonElement>(`[data-tab-id="${next}"]`)?.focus({preventScroll:true});
  };
+ const {root,commands}=useOwnerProfileMotion({
+  active,profileId:p.id,gestureArbiter,registerRouteMotion,onMotionProgress,
+  horizontal:{startPhoto,movePhoto,endPhoto,cancelPhoto,pageTab:direction=>{
+   const index=tabs.findIndex(([id])=>id===tab);
+   selectTab(tabs[clamp(index+direction,0,tabs.length-1)][0]);
+  }}
+ });
  const tabKey=(event:KeyboardEvent<HTMLButtonElement>,index:number)=>{
   const next=event.key==="ArrowRight"?Math.min(tabs.length-1,index+1):
    event.key==="ArrowLeft"?Math.max(0,index-1):event.key==="Home"?0:event.key==="End"?tabs.length-1:-1;
-  if(next<0)return;event.preventDefault();selectTab(tabs[next][0],true);
- };
- // Photo swipes keep the existing image element alive. Adjacent photographs
- // are already mounted, so the finger drags real pixels rather than triggering
- // a hard src replacement or a second carousel/morph authority.
- const resetPhotoTrack=()=>{
-  for(const el of [heroImage.current,prevImage.current,nextImage.current]){
-   if(!el)continue;el.style.removeProperty("transition");el.style.removeProperty("transform");
-  }
- };
- const stopPhotoTimer=()=>{
-  if(photoSlideTimer.current!==null){window.clearTimeout(photoSlideTimer.current);photoSlideTimer.current=null;}
- };
- const movePhotoTrack=(delta:number,width:number,animated:boolean)=>{
-  const transition=animated?"transform 250ms cubic-bezier(.20,.82,.24,1)":"none";
-  for(const [el,x] of [[heroImage.current,delta],[prevImage.current,delta-width],
-   [nextImage.current,delta+width]] as const){
-   if(!el)continue;el.style.transition=transition;
-   el.style.transform="translate3d("+x+"px,0,0)";
-  }
- };
- useLayoutEffect(()=>{resetPhotoTrack();},[renderIndex]);
- // Preload the neighboring images without adding duplicate <img> nodes:
- // accessibility, the photo viewer, and GPU/image identity still see one hero.
- const preloadPrevious=previousPhoto?.src,preloadNext=nextPhoto?.src;
- useEffect(()=>{
-  let cancelled=false;
-  for(const [photo,target] of [[previousPhoto,prevImage],[nextPhoto,nextImage]] as const){
-   if(!photo)continue;
-   const image=new Image();
-   const applyFocus=()=>{
-    if(cancelled||!target.current)return;
-    const point=resolvePhotoFocus(image.naturalWidth,image.naturalHeight,photo.focalPoint);
-    target.current.style.backgroundPosition=(point.x*100)+"% "+(point.y*100)+"%";
-   };
-   image.onload=applyFocus;image.src=photo.src;
-   void image.decode?.().then(applyFocus).catch(()=>{/* the visible hero retains its own fallback */});
-  }
-  return()=>{cancelled=true;};
- },[preloadPrevious,preloadNext,previousPhoto,nextPhoto]);
- useEffect(()=>()=>{if(photoSlideTimer.current!==null)window.clearTimeout(photoSlideTimer.current);},[]);
- const choosePhoto=(index:number)=>{
-  stopPhotoTimer();resetPhotoTrack();
-  selectedPhotoId.current=photos[index]?.id??null;
-  setHeroIndex(index);setRenderIndex(index);
- };
- useLayoutEffect(()=>{
-  stopPhotoTimer();resetPhotoTrack();
-  const selected=selectedPhotoId.current;
-  const preserved=selected?photos.findIndex(photo=>photo.id===selected):-1;
-  const next=preserved>=0?preserved:0;
-  selectedPhotoId.current=photos[next]?.id??null;
-  setHeroIndex(next);setRenderIndex(next);
- },[photoSignature,photos]);
- const finishCandidates=(current:ProfileGesture)=>{
-  if(current.source==="photo"){
-   gestures.finishCandidate(current.serial,"hero");gestures.finishCandidate(current.serial,"sheet");
-  }else{
-   gestures.finishCandidate(current.serial,"tabs");gestures.finishCandidate(current.serial,"native");
-  }
- };
- const profileDown=(source:ProfileGesture["source"])=>(event:ReactPointerEvent<HTMLDivElement>)=>{
-  if(!event.isPrimary){
-   gestures.secondFinger();gesture.current=null;stopElastic();stopPhotoTimer();resetPhotoTrack();settleMorph(0);return;
-  }
-  if(event.pointerType==="mouse"&&event.button!==0)return;
-  if(source==="pages"&&(event.target as HTMLElement).closest("button,a,input,textarea,select"))return;
-  interruptMorph();stopElastic();
-  if(source==="photo"&&photoSlideTimer.current!==null){stopPhotoTimer();setRenderIndex(heroIndex);resetPhotoTrack();}
-  const primary=source==="photo"?"hero":"tabs";
-  const secondary=source==="photo"?"sheet":"native";
-  const serial=gestures.begin("pointer",event.pointerId,primary);
-  if(serial===null)return;
-  gestures.begin("pointer",event.pointerId,secondary);
-  const position=scroller.current?.scrollTop??0,time=performance.now();
-  gesture.current={id:event.pointerId,serial,source,axis:null,x:event.clientX,y:event.clientY,
-   startScroll:position,width:mask.current?.clientWidth??393,captured:false,autoSnapped:false,
-   samples:[{position,time}]};
- };
- const profileMove=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  const current=gesture.current;if(!current||current.id!==event.pointerId||current.autoSnapped)return;
-  const dx=event.clientX-current.x,dy=event.clientY-current.y;
-  if(!current.axis){
-   if(Math.max(Math.abs(dx),Math.abs(dy))<9)return;
-   current.axis=Math.abs(dx)>Math.abs(dy)*1.2?"horizontal":
-    Math.abs(dy)>Math.abs(dx)*1.2?"vertical":null;
-   if(!current.axis)return;
-   const owner=current.axis==="horizontal"?(current.source==="photo"?"hero":"tabs"):
-    (current.source==="photo"?"sheet":"native");
-   const claimed=owner==="native"?gestures.nativeScroll(current.serial):gestures.claim(owner,current.serial);
-   if(!claimed){gesture.current=null;return;}
-   current.samples=[{position:current.axis==="horizontal"?event.clientX:current.startScroll,time:performance.now()}];
-   if(owner!=="native"){
-    try{event.currentTarget.setPointerCapture(event.pointerId);current.captured=true;}catch{/* older WebView */}
-   }
-  }
-  if(current.axis==="vertical"&&current.source!=="photo")return;
-  if(event.cancelable)event.preventDefault();
-  if(current.axis==="vertical"&&scroller.current){
-   const raw=current.startScroll-dy;
-   const position=Math.max(0,raw);
-   // The hero and rounded sheet share this bounded rubber-band distance.
-   ownerElastic.current=raw<0?Math.min(26,Math.pow(-raw,.66)*1.2):0;
-   scroller.current.scrollTop=position;paint(position);
-   current.samples.push({position,time:performance.now()});
-   const target=ownerAutoSnapTarget(current.startScroll,position,layout.current.morphDistance);
-   if(target!==null){
-    // The finger may still be held. Once the Telegram threshold is reached,
-    // surrender direct tracking to the SINGLE cancellable spring driver.
-    current.autoSnapped=true;ownerElastic.current=0;
-    settleMorph(recentVelocity(current.samples),target);
-   }
-  }else if(current.axis==="horizontal"){
-   current.samples.push({position:event.clientX,time:performance.now()});
-   if(current.source==="photo"){
-    const available=dx<0?renderIndex<photos.length-1:renderIndex>0;
-    movePhotoTrack(available?dx:dx*.2,current.width,false);
-   }
-  }
-  if(current.samples.length>10)current.samples.shift();
- };
- const profileEnd=(event:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
-  const current=gesture.current;if(!current||current.id!==event.pointerId)return;
-  gesture.current=null;
-  const dx=event.clientX-current.x,dy=event.clientY-current.y;
-  if(current.captured){
-   try{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}catch{/* old WebView */}
-  }
-  if(current.autoSnapped){
-   // Do NOT overwrite the spring's position with a stale pointerup coordinate.
-   suppressPhotoClick.current=true;
-   gestures.finish("sheet",current.serial);
-  }else if(current.axis==="vertical"&&current.source==="photo"){
-   suppressPhotoClick.current=true;
-   const position=Math.max(0,current.startScroll-dy);
-   if(scroller.current)scroller.current.scrollTop=position;
-   gestures.finish("sheet",current.serial);
-   if(ownerElastic.current>.1)releaseElastic();
-   else settleMorph(cancelled?0:recentVelocity([...current.samples,{position,time:performance.now()}]));
-  }else if(current.axis==="horizontal"&&current.source==="photo"){
-   suppressPhotoClick.current=true;
-   gestures.finish("hero",current.serial);
-   const velocity=recentVelocity([...current.samples,{position:event.clientX,time:performance.now()}]);
-   const direction=dx<0||(!dx&&velocity<0)?-1:1;
-   const target=renderIndex+(direction<0?1:-1);
-   const valid=!cancelled&&target>=0&&target<photos.length&&
-    (Math.abs(dx)>Math.max(38,current.width*.18)||Math.abs(velocity)>.55);
-   if(valid){selectedPhotoId.current=photos[target]?.id??null;setHeroIndex(target);}
-   movePhotoTrack(valid?direction*current.width:0,current.width,true);
-   stopPhotoTimer();
-   photoSlideTimer.current=window.setTimeout(()=>{
-    photoSlideTimer.current=null;if(valid)setRenderIndex(target);else resetPhotoTrack();
-   },250);
-  }else if(current.axis==="horizontal"&&current.source!=="photo"){
-   gestures.finish("tabs",current.serial);
-   if(current.source==="tabs")suppressTabClick.current=true;
-   const velocity=recentVelocity([...current.samples,{position:event.clientX,time:performance.now()}]);
-   if(!cancelled&&(Math.abs(dx)>48||Math.abs(velocity)>.55)&&Math.abs(dx)>Math.abs(dy)*1.2){
-    const index=tabs.findIndex(item=>item[0]===tab);
-    selectTab(tabs[Math.max(0,Math.min(tabs.length-1,index+(dx<0?1:-1)))][0]);
-   }
-  }else if(current.axis==="vertical"){
-   gestures.finish("native",current.serial);settleMorph(scrollSample.current.velocity);
-  }else finishCandidates(current);
-  if(suppressPhotoClick.current||suppressTabClick.current)requestAnimationFrame(()=>{
-   suppressPhotoClick.current=false;suppressTabClick.current=false;
-  });
+  if(next<0)return;
+  event.preventDefault();
+  selectTab(tabs[next][0],true);
  };
  const showPhotos=()=>{
   selectTab("photos");
-  const target=layout.current.morphDistance+110;
-  if(scroller.current){interruptMorph();scroller.current.scrollTop=target;paint(target);}
+  commands.current.compact();
  };
+ useLayoutEffect(()=>{
+  if(!active)return;
+  setTab("about");
+  setSelectedId(photos[0]?.id??null);
+ // The view can refresh media without reopening the profile or resetting its selection.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[active,p.id]);
+ const photoOrder=photos.map(photo=>photo.id).join("\u0000");
+ useLayoutEffect(()=>{
+  // Role positions and the track reset land in the same paint. The destination
+  // slide stays keyed by its photo ID, so it keeps the decoded image.
+  cancelPhoto();
+  const availableId=heroPhoto?.id??null;
+  if(selectedId!==availableId)setSelectedId(availableId);
+ },[photoOrder,selectedId,heroPhoto?.id,cancelPhoto]);
+
+ const openPhoto=()=>{if(heroPhoto)onPhotoOpen(heroPhoto.id,heroImage.current);};
+ const visiblePhotos=[
+  {photo:previousPhoto,slot:"previous"},
+  {photo:heroPhoto,slot:"current"},
+  {photo:nextPhoto,slot:"next"}
+ ];
 
  return <section ref={root} className="owner-premium-profile" data-morph-state="expanded"
-  data-mode={isOwner?"owner":"visitor"} aria-label={isOwner?"Мой профиль":"Профиль"}>
+  data-mode={isOwner?"owner":"visitor"} aria-label={isOwner?"Мой профиль":"Профиль"}
+  onClickCapture={event=>{
+   if(event.detail!==0&&!commands.current.allowClick()){event.preventDefault();event.stopPropagation();}
+  }}>
   <div className="owner-profile-backdrop" aria-hidden="true"/>
-  <div ref={brandProbe} className="owner-profile-brand-probe" aria-hidden="true"/>
-  <div ref={compactBackdrop} className="owner-profile-compact-backdrop" aria-hidden="true">
-   {heroPhoto&&<img src={heroPhoto.src} alt="" draggable={false} decoding="async"/>}
-   <div className="owner-profile-compact-tint"/>
+  <div className="owner-profile-photo-mask" role={heroPhoto?"button":undefined}
+   tabIndex={heroPhoto?0:-1} aria-label={heroPhoto?"Открыть фотографию профиля":undefined}
+   onClick={openPhoto} onKeyDown={event=>{
+    if(heroPhoto&&(event.key==="Enter"||event.key===" ")){event.preventDefault();openPhoto();}
+   }}>
+   <div ref={track} className="owner-profile-photo-track" data-two-photos={photos.length===2?"true":undefined}>
+    {visiblePhotos.map(({photo,slot})=>{
+     if(!photo)return null;
+     const selected=slot==="current",focus=resolvePhotoFocus(1,2,photo.focalPoint);
+     return <img key={photo.id} ref={selected?heroImage:undefined} data-slot={slot} data-photo-id={photo.id}
+      src={photo.src} alt={selected?"Фото профиля "+p.name:""} aria-hidden={selected?undefined:true}
+      draggable={false} loading="eager" decoding="async" fetchPriority={selected?"high":"auto"}
+      style={{objectPosition:`${focus.x*100}% ${focus.y*100}%`}}
+      onLoad={event=>{
+       const image=event.currentTarget,point=resolvePhotoFocus(image.naturalWidth,image.naturalHeight,photo.focalPoint);
+       image.style.objectPosition=`${point.x*100}% ${point.y*100}%`;
+      }}
+      onError={event=>{
+       if(photo.fallback&&event.currentTarget.getAttribute("src")!==photo.fallback)event.currentTarget.src=photo.fallback;
+      }}/>;
+    })}
+    {!heroPhoto&&<div className="owner-profile-photo-empty"><UserRound size={42}/><span>Фото пока нет</span></div>}
+   </div>
+   <div className="owner-profile-photo-shade" aria-hidden="true"/>
   </div>
-  <div ref={glow} className="owner-profile-avatar-glow" aria-hidden="true"
-   style={heroPhoto?{backgroundImage:"url("+JSON.stringify(heroPhoto.src)+")"}:undefined}/>
-  <div ref={mask} className="owner-profile-photo-mask" role={heroPhoto?"button":undefined}
-    tabIndex={heroPhoto?0:-1} aria-label={heroPhoto?"Открыть фотографию профиля":undefined}
-    onKeyDown={event=>{if(heroPhoto&&(event.key==="Enter"||event.key===" ")){
-     event.preventDefault();onPhotoOpen(heroPhoto.id,heroImage.current);
-    }}}
-    onPointerDown={profileDown("photo")} onPointerMove={profileMove}
-    onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
-    onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
-   {heroPhoto?<img ref={heroImage} data-photo-id={heroPhoto.id} src={heroPhoto.src}
-    alt={"Фото профиля "+p.name} draggable={false} loading="eager" decoding="async" fetchPriority="high"
-    style={{objectPosition:(resolvePhotoFocus(1,2,heroPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,heroPhoto.focalPoint).y*100)+"%"}}
-    onLoad={event=>{const point=resolvePhotoFocus(event.currentTarget.naturalWidth,event.currentTarget.naturalHeight,heroPhoto.focalPoint);
-     event.currentTarget.style.objectPosition=(point.x*100)+"% "+(point.y*100)+"%";}}
-    onClick={()=>{if(!suppressPhotoClick.current)onPhotoOpen(heroPhoto.id,heroImage.current);}}
-    onError={event=>{if(heroPhoto.fallback&&event.currentTarget.src!==heroPhoto.fallback)event.currentTarget.src=heroPhoto.fallback;}}/>:
-    <div className="owner-profile-photo-empty"><UserRound size={42}/><span>Фото пока нет</span></div>}
-   {previousPhoto&&<div ref={prevImage} className="owner-profile-photo-adjacent previous" aria-hidden="true"
-    style={{backgroundImage:"url("+JSON.stringify(previousPhoto.src)+")",
-     backgroundPosition:(resolvePhotoFocus(1,2,previousPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,previousPhoto.focalPoint).y*100)+"%"}}/>}
-   {nextPhoto&&<div ref={nextImage} className="owner-profile-photo-adjacent next" aria-hidden="true"
-    style={{backgroundImage:"url("+JSON.stringify(nextPhoto.src)+")",
-     backgroundPosition:(resolvePhotoFocus(1,2,nextPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,nextPhoto.focalPoint).y*100)+"%"}}/>}
-   <div ref={shade} className="owner-profile-photo-shade" aria-hidden="true"/>
+  <div className="owner-profile-photo-pager" hidden={photos.length<=1} aria-label="Фотографии">
+   {photos.length>1&&photos.map((photo,index)=><button key={photo.id} type="button" className={index===selectedIndex?"active":""}
+    aria-label={"Показать фото "+(index+1)} aria-current={index===selectedIndex?"true":undefined}
+    onClick={()=>pickPhoto(index)}/>)}
   </div>
-  {heroPhoto&&<div ref={avatarMask} className="owner-profile-avatar-circle" role="button"
-   tabIndex={0} aria-label="Открыть фотографию профиля" inert
-   onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){
-    event.preventDefault();onPhotoOpen(heroPhoto.id,avatarImage.current);
-   }}}
-   onClick={()=>{if(!suppressPhotoClick.current)onPhotoOpen(heroPhoto.id,avatarImage.current);}}
-   onPointerDown={profileDown("photo")} onPointerMove={profileMove}
-   onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
-   onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
-   <img ref={avatarImage} src={heroPhoto.src} data-photo-id={heroPhoto.id} alt="" draggable={false} loading="eager"
-    decoding="async" style={{objectPosition:(resolvePhotoFocus(1,2,heroPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,heroPhoto.focalPoint).y*100)+"%"}}
-    onLoad={event=>{const point=resolvePhotoFocus(event.currentTarget.naturalWidth,event.currentTarget.naturalHeight,heroPhoto.focalPoint);
-     event.currentTarget.style.objectPosition=(point.x*100)+"% "+(point.y*100)+"%";}}
-    onError={event=>{if(heroPhoto.fallback&&event.currentTarget.src!==heroPhoto.fallback)event.currentTarget.src=heroPhoto.fallback;}}/>
-  </div>}
-  {photos.length>1&&<div ref={pager} className="owner-profile-photo-pager" aria-label="Фотографии">
-   {photos.map((photo,index)=><button key={photo.id} type="button" className={index===heroIndex?"active":""}
-    aria-label={"Показать фото "+(index+1)} aria-current={index===heroIndex?"true":undefined}
-    onClick={()=>choosePhoto(index)}/>)}
-  </div>}
   <div className="owner-profile-brand" translate="no">
    <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" decoding="async"/>
   </div>
   {isOwner&&<header className="owner-profile-topbar">
-   <button ref={topEdit} type="button" className="owner-profile-glass owner-profile-edit-top" onClick={onEdit} aria-label="Редактировать профиль">
+   <button type="button" className="owner-profile-glass owner-profile-edit-top" onClick={onEdit} aria-label="Редактировать профиль">
     <PenLine size={18}/>
    </button>
   </header>}
-  <div ref={expandedIdentity} className="owner-profile-expanded-identity">
+  <div className="owner-profile-identity">
    <h1>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</h1>
-   <p><MapPin size={15} aria-hidden="true"/><span className="owner-profile-location">{location}{countryCode?<Flag code={countryCode} size={17} title={"Флаг "+p.country}/>:null}</span></p>
+   <p><MapPin size={15} aria-hidden="true"/><span className="owner-profile-location">
+    <span className="owner-profile-city">{location}</span>{countryCode?<Flag code={countryCode} size={17} title={"Флаг "+p.country}/>:null}
+   </span></p>
   </div>
 
-  <div ref={compactIdentity} className="owner-profile-compact-identity" aria-hidden="true">
-   <strong>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</strong>
-   <span><MapPin size={13} aria-hidden="true"/><span className="owner-profile-location">{location}{countryCode?<Flag code={countryCode} size={15} title={"Флаг "+p.country}/>:null}</span></span>
-  </div>
-  <div ref={scroller} className="owner-profile-scroll">
-   <div className="owner-profile-hero-spacer" aria-hidden="true"/>
-   {/* The tab cap is a direct scroll sibling: sticky is constrained by the
-        full scrollport, not by a short tab panel. It cannot drift onto the avatar. */}
-    <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля"
-     style={{"--owner-tab-offset":`${tabs.findIndex(([id])=>id===tab)*25}%`} as CSSProperties}
-     onPointerDown={profileDown("tabs")} onPointerMove={profileMove}
-     onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
-     onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
-     {tabs.map(([id,label],index)=><button type="button" role="tab" key={id}
-      id={tabPrefix+"-"+id+"-tab"} aria-controls={tabPrefix+"-"+id+"-panel"}
-      aria-selected={tab===id} tabIndex={tab===id?0:-1}
-      onClick={()=>{if(!suppressTabClick.current)selectTab(id);}} onKeyDown={event=>tabKey(event,index)}>{label}</button>)}
-    </div>
-   <main ref={contentRoot} className="owner-profile-content">
-    <div ref={flow} className="owner-profile-flow">
-    <div className="owner-profile-pages" onPointerDown={profileDown("pages")} onPointerMove={profileMove}
-      onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
-      onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
+  <main className="owner-profile-sheet">
+   <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля"
+    style={{"--owner-tab-offset":`${tabs.findIndex(([id])=>id===tab)*25}%`} as CSSProperties}>
+    {tabs.map(([id,label],index)=><button type="button" role="tab" key={id} data-tab-id={id}
+     id={tabPrefix+"-"+id+"-tab"} aria-controls={tabPrefix+"-"+id+"-panel"}
+     aria-selected={tab===id} tabIndex={tab===id?0:-1}
+     onClick={()=>selectTab(id)} onKeyDown={event=>tabKey(event,index)}>{label}</button>)}
+   </div>
+   <div className="owner-profile-scroll">
+    <div className="owner-profile-content">
+     <div className="owner-profile-pages">
      <section id={tabPrefix+"-about-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-about-tab"}
       aria-label="О себе" hidden={tab!=="about"} className="owner-profile-panel owner-profile-about">
       <article><h2>О себе</h2><p>{p.about||"Описание пока не заполнено."}</p></article>
@@ -681,8 +260,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
        <button type="button" className="owner-profile-glass" onClick={onSettings} aria-label="Настройки профиля"><Settings2/></button>
       </div>}
     </div>
-   </main>
-  </div>
+   </div>
+  </main>
  </section>;
 }
-

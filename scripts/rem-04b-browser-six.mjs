@@ -25,11 +25,11 @@ const read=()=>root().evaluate(host=>{
  const photos=[...host.querySelectorAll(".owner-profile-photo-tile img")];
  const dots=[...host.querySelectorAll(".owner-profile-photo-pager button")];
  const index=dots.findIndex(node=>node.getAttribute("aria-current")==="true");
- const active=host.querySelector(".owner-profile-photo-mask img");
+ const active=host.querySelector(".owner-profile-photo-mask img[data-slot=current]");
  return {state:host.dataset.morphState,count:photos.length,
   ids:photos.map(node=>node.dataset.photoId),dots:dots.length,index,
   activeId:active?.dataset.photoId??null,
-  avatarCount:host.querySelectorAll(".owner-profile-photo-mask img").length,
+  avatarCount:host.querySelectorAll(".owner-profile-photo-mask img[data-slot=current]").length,
   logoCount:host.querySelectorAll(".owner-profile-brand img").length};
 });
 const capture=async label=>{
@@ -46,7 +46,7 @@ const active=async index=>{
   const root=document.querySelector('.owner-premium-profile[data-mode="owner"]');
   const nodes=[...(root?.querySelectorAll(".owner-profile-photo-pager button")??[])];
   return nodes[index]?.getAttribute("aria-current")==="true"&&
-   root?.querySelector(".owner-profile-photo-mask img")?.dataset.photoId===
+   root?.querySelector(".owner-profile-photo-mask img[data-slot=current]")?.dataset.photoId===
    root?.querySelectorAll(".owner-profile-photo-tile img")[index]?.dataset.photoId;
  },index,{timeout:3500});
 };
@@ -80,7 +80,7 @@ try{
 
  // The viewer opens on the exact displayed hero photo, even after jumps.
  const before=await read();
- await root().locator(".owner-profile-photo-mask img").click();
+ await root().locator(".owner-profile-photo-mask").click();
  await page.locator(".pm-viewer").waitFor({state:"visible",timeout:4500});
  assert.equal(await page.locator(".pm-viewer-image").getAttribute("data-photo-id"),
   before.activeId,"viewer uses the selected hero ID");

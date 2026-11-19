@@ -197,12 +197,12 @@ assert.deepEqual(revisions,[[19,19],[20,20]]);
 console.log("REM02A_ADAPTER_PASS viewport revision bridge monotonicity and listener cleanup");
 
 
-const owner=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
+const owner=read("apps/web/src/discovery/owner-profile/useOwnerProfileMotion.ts");
 const css=read("apps/web/src/discovery/owner-profile/owner-premium-profile.css");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
 assert.ok(owner.includes("ownerMorphProgress")&&owner.includes("ownerMorphFrame")&&
- owner.includes("paintRaf.current=requestAnimationFrame"),"owner profile owns normalized progress and one RAF writer");
+ owner.includes("paintRaf=requestAnimationFrame"),"owner profile owns normalized progress and one RAF writer");
 assert.ok(css.includes(".owner-profile-photo-mask")&&css.includes("transform:translate3d")&&
  /\.owner-profile-photo-mask\{[^}]*touch-action:none/.test(css)&&
  !/\.owner-profile-photo-mask\{[^}]*backdrop-filter/.test(css)&&

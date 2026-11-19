@@ -33,7 +33,7 @@ try{
    await tab.nth(sources.indexOf(source)).click();
    // Do not count the accepted 300ms tab-settling animation as a tap delay.
    await pause(340);
-   const selector=source==="feed"?".discovery-deck-layer.deck-active .discovery-name-button":
+   const selector=source==="feed"?".discovery-deck-layer.deck-active .moonstone-name":
     source==="for-you"?".fy-tile-photo":".nb-photo";
    const target=page.locator(selector).first();
    await target.waitFor({state:"visible",timeout:6000});
@@ -43,18 +43,24 @@ try{
    await route.waitFor({state:"attached",timeout:2600});
    const openMs=await page.evaluate(()=>performance.now())-started;
    assert.ok(openMs<(rate===1?1200:3200),key+": synthetic tap-to-route too slow: "+openMs);
-   await pause(320);
+   await route.evaluate(async element=>{
+    const started=performance.now();
+    while(Math.abs(new DOMMatrixReadOnly(getComputedStyle(element).transform).m41)>1){
+     if(performance.now()-started>2500)throw Error("visitor route did not settle after opening");
+     await new Promise(resolve=>requestAnimationFrame(resolve));
+    }
+   });
    const chrome=await page.evaluate(()=>{
     const scene=document.querySelector(".discovery-app"),route=scene?.querySelector(".discovery-visitor-route");
-    const front=route?.querySelector(".lh-header"),back=scene?.querySelector(":scope > .lh-header");
-    return {front:front?.querySelectorAll(".lh-island img").length,
+    const front=route?.querySelector(".owner-premium-profile"),back=scene?.querySelector(":scope > .lh-header");
+    return {front:front?.querySelectorAll(".owner-profile-brand img").length,
       back:back?.querySelectorAll(".lh-island img").length,
       browse:getComputedStyle(scene.querySelector(".discovery-browse-panel")).visibility,
       nav:getComputedStyle(scene.querySelector(".discovery-bottom-nav")).visibility,
       bg:getComputedStyle(route).backgroundColor,
       frontZ:Number(getComputedStyle(route).zIndex),backZ:Number(getComputedStyle(back).zIndex),
       routeWillChange:getComputedStyle(route).willChange,
-      logoFilter:getComputedStyle(front.querySelector(".lh-island img")).filter,
+      logoFilter:getComputedStyle(front.querySelector(".owner-profile-brand img")).filter,
       mistAnimation:getComputedStyle(document.querySelector(".milky-mist"),"::before").animationName};
    });
    assert.equal(chrome.front,1,key+": multiple moving logos");
@@ -64,13 +70,11 @@ try{
    assert.ok(chrome.frontZ>chrome.backZ,key+": logo occlusion lost");
    assert.ok(/^rgb\(/.test(chrome.bg),key+": visitor route must be opaque");
    assert.ok(chrome.routeWillChange.includes("transform"),key+": route compositor hint missing");
-   assert.equal(chrome.logoFilter,"none",key+": animated logo filter still creates raster churn");
    assert.equal(chrome.mistAnimation,"none",key+": background GPU animation active on mobile");
-   // Profile Morph V3 replaced the obsolete .pm-identity node. A route-back
-   // swipe starts at the SHEET edge, never on the photo rail: the first photo
-   // must retain its own gesture ownership.
-   const box=await page.locator(".discovery-visitor-route .v3-int-sheet").first().boundingBox();
-   assert.ok(box&&box.width>80&&box.height>43,key+": missing V3 white sheet");
+   // The edge of the current card scroller belongs to route navigation.
+   // Starting there leaves central photo and tab swipes to the profile.
+   const box=await route.locator(".owner-profile-scroll").boundingBox();
+   assert.ok(box&&box.width>80&&box.height>43,key+": missing premium profile cards");
    const x=Math.max(12,box.x+18),y=box.y+21;
    const closeBySwipe=round===1;
    // Half the matrix now uses actual Chromium Input.dispatchTouchEvent,
@@ -88,14 +92,15 @@ try{
      const scene=document.querySelector(".discovery-app"),route=scene.querySelector(".discovery-visitor-route");
      return {x:new DOMMatrixReadOnly(getComputedStyle(route).transform).m41,
        underlay:getComputedStyle(scene.querySelector(".discovery-browse-panel")).visibility,
-       front:route.querySelectorAll(".lh-island img").length};
+       front:route.querySelectorAll(".owner-profile-brand img").length,
+       logoFilter:getComputedStyle(route.querySelector(".owner-profile-brand img")).filter};
     }));
     await pause(30);
    }
    if(realTouch)await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
    else await page.mouse.up();
    assert.ok(frames.some(p=>p.x>width*.06),key+": route did not follow pointer");
-   assert.ok(frames.every(p=>p.underlay==="visible"&&p.front===1),key+": flicker-prone paint/logo state");
+   assert.ok(frames.every(p=>p.underlay==="visible"&&p.front===1&&p.logoFilter===chrome.logoFilter),key+": flicker-prone paint/logo state");
    assert.ok(frames.every((p,i)=>i===0||p.x>=frames[i-1].x-8),key+": backward jump mid-drag");
    await pause(345);
    if(closeBySwipe){
