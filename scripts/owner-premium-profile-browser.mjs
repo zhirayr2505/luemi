@@ -20,7 +20,7 @@ try{
  await root.waitFor({state:"visible",timeout:5000});
  const photo=root.locator(".owner-profile-photo-mask");
  const image=photo.locator("img[data-slot=current]");
- const scroll=root.locator(".owner-profile-scroll");
+ const scroll=root.getByRole("tabpanel");
  const initial=await root.evaluate(node=>{
   const mask=node.querySelector(".owner-profile-photo-mask");
   const image=mask?.querySelector("img[data-slot=current]");

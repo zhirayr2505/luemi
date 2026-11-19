@@ -17,16 +17,12 @@ export type OwnerMorphFrame={
  sheetTop:number;
  identityTop:number;
  identityCenter:number;
- ambientOpacity:number;
  haloOpacity:number;
 };
 
 const COLLAPSE_THRESHOLD=.64;
-const ROUND_START=.75;
 const ROUND_PHOTO=.85;
 const EXPAND_THRESHOLD=.88;
-const ROUND_HOLD_START=.74;
-const ROUND_HOLD_END=.84;
 const PHOTO_PARALLAX=.42;
 const MAX_RUBBER=26;
 const RUBBER_RESISTANCE=50;
@@ -83,23 +79,6 @@ export function ownerSnapFrom(origin:number,target:0|1):number{
  return target===1?Math.max(origin,COLLAPSE_THRESHOLD):Math.min(origin,EXPAND_THRESHOLD);
 }
 
-/** Keep a perfectly round photo at a usable range of finger positions in both directions. */
-export function ownerMorphDrag(raw:number):number{
- if(raw<=COLLAPSE_THRESHOLD)return raw;
- if(raw<ROUND_HOLD_START)
-  return mix(COLLAPSE_THRESHOLD,ROUND_PHOTO,(raw-COLLAPSE_THRESHOLD)/(ROUND_HOLD_START-COLLAPSE_THRESHOLD));
- if(raw<=ROUND_HOLD_END)return ROUND_PHOTO;
- return mix(ROUND_PHOTO,1,(raw-ROUND_HOLD_END)/(1-ROUND_HOLD_END));
-}
-
-export function ownerMorphDragOrigin(position:number):number{
- if(position<=COLLAPSE_THRESHOLD)return position;
- if(position<ROUND_PHOTO)
-  return mix(COLLAPSE_THRESHOLD,ROUND_HOLD_START,(position-COLLAPSE_THRESHOLD)/(ROUND_PHOTO-COLLAPSE_THRESHOLD));
- if(position===ROUND_PHOTO)return (ROUND_HOLD_START+ROUND_HOLD_END)/2;
- return mix(ROUND_HOLD_END,1,(position-ROUND_PHOTO)/(1-ROUND_PHOTO));
-}
-
 export function ownerRubberPosition(position:number):number{
  if(position>=0)return position;
  const pull=-position;
@@ -118,13 +97,22 @@ export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):Owner
  const initialClimb=Math.min(p/COLLAPSE_THRESHOLD,1)*layout.initialSheetTravel;
  const photoMorph=smooth((p-COLLAPSE_THRESHOLD)/(ROUND_PHOTO-COLLAPSE_THRESHOLD));
  const finalSettle=smooth((p-ROUND_PHOTO)/(1-ROUND_PHOTO));
- const roundness=smooth((p-ROUND_START)/(ROUND_PHOTO-ROUND_START));
  const roundContentTop=layout.roundTop+layout.roundDiameter+8+56;
  const sheetToCircle=clamp((p-COLLAPSE_THRESHOLD)/(ROUND_PHOTO-COLLAPSE_THRESHOLD),0,1);
  const sheetTop=mix(mix(layout.expandedTabsTop-initialClimb,roundContentTop,sheetToCircle),
   layout.compactContentTop,finalSettle);
- const diameter=mix(mix(layout.width,layout.roundDiameter,photoMorph),avatar.width,finalSettle);
- const avatarY=mix(mix(-initialClimb*PHOTO_PARALLAX,layout.roundTop,photoMorph),avatar.y,finalSettle);
+ // Match the slope on both sides of the shape switch. The final segment
+ // decelerates to rest at the compact endpoint.
+ const t=sheetToCircle;
+ const u=clamp((p-ROUND_PHOTO)/(1-ROUND_PHOTO),0,1);
+ const throughCircle=(start:number,medium:number,end:number)=>{
+  const slope=2*(end-medium)/(1-ROUND_PHOTO);
+  if(p<ROUND_PHOTO)return mix(start,medium,photoMorph)
+   +t*t*(t-1)*(ROUND_PHOTO-COLLAPSE_THRESHOLD)*slope;
+  return mix(medium,end,u*(2-u));
+ };
+ const diameter=throughCircle(layout.width,layout.roundDiameter,avatar.width);
+ const avatarY=throughCircle(-initialClimb*PHOTO_PARALLAX,layout.roundTop,avatar.y);
  const stretch=clamp(-progress*layout.morphDistance,0,MAX_RUBBER);
  const rebound=clamp((progress-1)*layout.morphDistance,0,7);
  const size=diameter*(1+stretch*.001);
@@ -132,11 +120,10 @@ export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):Owner
  // half its diameter, and both the avatar and the text clear the actual brand.
  return {
   mask:{x:(layout.width-size)/2,y:avatarY-rebound,width:size,height:size},
-  radius:size*roundness/2,
+  radius:p>=ROUND_PHOTO?size/2:0,
   sheetTop:sheetTop+stretch-rebound,
   identityTop:sheetTop-mix(70,56,photoMorph)+stretch-rebound,
   identityCenter:photoMorph,
-  ambientOpacity:Math.sqrt(roundness),
   haloOpacity:finalSettle
  };
 }

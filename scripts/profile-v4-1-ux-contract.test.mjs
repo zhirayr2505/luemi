@@ -9,11 +9,11 @@ const motion=readFileSync("apps/web/src/discovery/owner-profile/useOwnerProfileM
 
 assert.match(css,/\.owner-profile-sheet\s*\{[^}]*border-radius:32px 32px 0 0/s,
  "the rounded cap belongs to the whole sheet");
-assert.match(component,/className="owner-profile-sheet"[\s\S]*className="owner-profile-tabs"[\s\S]*className="owner-profile-scroll"/,
+assert.match(component,/className="owner-profile-sheet"[\s\S]*className="owner-profile-tabs"[\s\S]*className="owner-profile-viewport"/,
  "tabs are kept in the sheet above its independent card scroller");
 assert.equal((component.match(/className="owner-profile-photo-mask"/g)??[]).length,1,
  "one mask hosts both the expanded square and the compact circle");
-assert.match(motion,/schedulePaint\(ownerMorphDrag\(next\)\)/,
+assert.match(motion,/schedulePaint\(current.startedCompact\?Math.max\(0,next\):next\)/,
  "the held finger renders the interactive circle and can continue past it");
 assert.match(css,/\[data-morph-state="compact"\] .owner-profile-scroll\{[^}]*overflow:hidden auto/s,
  "card scrolling begins when the profile is compact");

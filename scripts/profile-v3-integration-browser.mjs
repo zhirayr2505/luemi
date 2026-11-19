@@ -15,12 +15,51 @@ const context=await browser.newContext({
 });
 const page=await context.newPage();
 const errors=[];page.on("pageerror",e=>errors.push(e.message));
+async function checkPager(profile){
+ const viewport=profile.locator(".owner-profile-viewport");
+ const pages=profile.locator(".owner-profile-pages");
+ const panels=profile.locator('[role="tabpanel"]');
+ const input=await context.newCDPSession(page);
+ const finger=(type,x,y)=>input.send("Input.dispatchTouchEvent",{
+  type,touchPoints:type==="touchEnd"?[]:[{x,y,id:1}]
+ });
+ try{
+  for(const state of ["expanded","compact"]){
+   await setPremiumProfileState(page,profile,state);
+   for(const [from,to] of [[0,1],[1,2],[2,3],[3,2],[2,1],[1,0]]){
+    const box=await viewport.boundingBox(),width=box.width,dir=Math.sign(to-from);
+    const outgoing=panels.nth(from),incoming=panels.nth(to);
+    const y=box.y+65,x=box.x+width*(dir>0?.73:.27);
+    const start=await outgoing.boundingBox(),next=await incoming.boundingBox();
+    assert(Math.abs(start.x-box.x)<1&&Math.abs(next.x-start.x-dir*width)<1,
+     "resting neighbour is entirely beyond the screen edge");
+    const scrollTop=await outgoing.evaluate(el=>el.scrollTop);
+    await finger("touchStart",x,y);
+    for(const fraction of [.18,.10,.52]){
+     await finger("touchMove",x-dir*width*fraction,y);
+     await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+     const current=await outgoing.boundingBox(),neighbour=await incoming.boundingBox();
+     assert(Math.abs(current.x-start.x+dir*width*fraction)<2,`track follows input: ${state} ${from}->${to} fraction=${fraction} actual=${current.x-start.x} expected=${-dir*width*fraction}`);
+     assert(Math.abs(neighbour.x-current.x-dir*width)<1&&Math.abs(neighbour.y-next.y)<1,
+      "incoming page stays adjacent at the same height");
+     assert.equal(await outgoing.evaluate(el=>el.scrollTop),scrollTop);
+    }
+    await finger("touchEnd");
+    await profile.getByRole("tab").nth(to).locator("xpath=self::*[@aria-selected='true']").waitFor();
+    await pages.locator("xpath=self::*[not(@data-paging)]").waitFor();
+    assert(Math.abs((await incoming.boundingBox()).x-box.x)<1);
+    assert(Math.abs((await incoming.boundingBox()).y-next.y)<1);
+    assert.equal(await profile.getAttribute("data-morph-state"),state);
+   }
+  }
+ }finally{await input.detach();}
+}
 try{
  await page.goto(base+"/profile-qa.html?profileV3=1",{waitUntil:"domcontentloaded"});
  await page.getByRole("button",{name:"Профиль",exact:true}).click();
  const owner=page.locator(".v3-profile-host.pm-inline .owner-premium-profile");
  await owner.waitFor({state:"visible",timeout:7000});
- const scroll=owner.locator(".owner-profile-scroll");
+ const scroll=owner.getByRole("tabpanel");
  const photo=owner.locator(".owner-profile-photo-mask");
  const initial=await photo.boundingBox();
  assert(initial&&initial.width>380&&Math.abs(initial.width-initial.height)<1.5&&initial.y<1.5,
@@ -28,8 +67,9 @@ try{
  assert.equal(await owner.locator(".owner-profile-brand img").count(),1,"one original LUEMI wordmark");
  assert.deepEqual(await owner.locator(".owner-profile-tabs [role=tab]").allTextContents(),
   ["О себе","Фото","Блики","Подарки"],"one approved four-tab strip");
- assert.equal(await owner.locator(".owner-profile-actions button").count(),4,"owner tools remain available");
+ assert.equal(await owner.getByRole("tabpanel").locator(".owner-profile-actions button").count(),4,"owner tools remain available");
 
+ await checkPager(owner);
  await setPremiumProfileState(page,owner,"compact");
  const compact=await owner.locator(".owner-profile-avatar-circle").boundingBox();
  assert(compact&&compact.width>=94&&compact.width<=112&&Math.abs(compact.width-compact.height)<1.5,
@@ -71,6 +111,11 @@ try{
  await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
  const visitor=page.locator(".discovery-visitor-route .owner-premium-profile");
  await visitor.waitFor({state:"visible",timeout:5000});
+ await page.waitForFunction(()=>{
+  const route=document.querySelector(".discovery-visitor-route");
+  return route&&Math.abs(route.getBoundingClientRect().left)<.05;
+ });
+ await checkPager(visitor);
  assert.equal(await visitor.getAttribute("data-mode"),"visitor");
  assert.equal(await visitor.locator(".owner-profile-actions button").count(),0,
   "no owner actions on a visitor profile");

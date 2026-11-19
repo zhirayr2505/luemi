@@ -26,7 +26,7 @@ async function swipeCards(input,page,cards,deltaY){
 // immediately. Continuous wheel input can remain in a single scroll burst.
 export async function setPremiumProfileState(page,profile,state){
  if(await profile.getAttribute("data-morph-state")===state)return;
- const cards=profile.locator(".owner-profile-scroll");
+ const cards=profile.getByRole("tabpanel");
  const readTop=()=>cards.evaluate(list=>new Promise(resolve=>
   requestAnimationFrame(()=>resolve(list.scrollTop))));
  const input=await page.context().newCDPSession(page);

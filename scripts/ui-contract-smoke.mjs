@@ -164,7 +164,7 @@ assertCheck("premium profile opens the real PhotoViewer on the selected image",
  profile.includes("source={viewer.source}")&&photoViewer.includes("createPortal("));
 assertCheck("premium profile morph settles independently before handing off to native card scroll",
  ownerProfile.includes("useOwnerProfileMotion({")&&
- /className="owner-profile-sheet"[\s\S]*className="owner-profile-tabs"[\s\S]*className="owner-profile-scroll"/.test(ownerProfile)&&
+ /className="owner-profile-sheet"[\s\S]*className="owner-profile-tabs"[\s\S]*className="owner-profile-viewport"/.test(ownerProfile)&&
  ownerMotion.includes('new GeometryMotion("sheet"')&&ownerMotion.includes("ownerAutoSnapTarget(")&&
  ownerMotion.includes("const startScroll=Math.max(0,scroll.scrollTop)")&&
  ownerMotion.includes("!atTop(current.startScroll)")&&ownerMotion.includes("if(target===1)afterCompact?.()")&&

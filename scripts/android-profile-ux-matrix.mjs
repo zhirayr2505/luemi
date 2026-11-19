@@ -73,7 +73,7 @@ try{
    assert.equal(chrome.mistAnimation,"none",key+": background GPU animation active on mobile");
    // The edge of the current card scroller belongs to route navigation.
    // Starting there leaves central photo and tab swipes to the profile.
-   const box=await route.locator(".owner-profile-scroll").boundingBox();
+   const box=await route.getByRole("tabpanel").boundingBox();
    assert.ok(box&&box.width>80&&box.height>43,key+": missing premium profile cards");
    const x=Math.max(12,box.x+18),y=box.y+21;
    const closeBySwipe=round===1;

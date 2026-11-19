@@ -14,7 +14,7 @@ const errors=[];page.on("pageerror",error=>errors.push(error.message));
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=()=>page.locator(".discovery-visitor-route");
 const profile=()=>route().locator(".owner-premium-profile");
-const scroll=()=>profile().locator(".owner-profile-scroll");
+const scroll=()=>profile().getByRole("tabpanel");
 const currentTab=()=>profile().locator('.owner-profile-tabs [role="tab"][aria-selected="true"]');
 const getTranslation=()=>route().evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node).transform).m41);
 const near=(actual,expected,tolerance=3)=>

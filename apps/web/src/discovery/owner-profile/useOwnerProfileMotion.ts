@@ -6,7 +6,7 @@ import type {ProfileRouteMotionHandle} from "../profile-route-motion";
 import {GeometryMotion,type Easing} from "../geometry-motion";
 import {
  clamp,createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,
- ownerMorphDrag,ownerMorphDragOrigin,ownerMorphFrame,ownerMorphProgress,ownerRubberPosition,ownerSnapFrom,ownerUnresistedPosition
+ ownerMorphFrame,ownerMorphProgress,ownerRubberPosition,ownerSnapFrom,ownerUnresistedPosition
 } from "./OwnerProfileGeometry";
 
 type Endpoint=0|1;
@@ -16,7 +16,7 @@ type Press={
  id:number;serial:number;source:Source;owner:GestureOwner|null;
  start:Point;last:Point;distance:number;origin:number;startedCompact:boolean;
  startScroll:number;velocity:number;sampleTime:number;
- committed:Endpoint|null;remainder:number;scrollCards:boolean;captured:boolean;
+ remainder:number;scrollCards:boolean;captured:boolean;
 };
 type Horizontal={
  startPhoto:(visibleWidth:number,fullWidth:number)=>void;
@@ -58,7 +58,8 @@ export function useOwnerProfileMotion(options:Options){
   const location=identity.querySelector<HTMLElement>("p")!;
   const pager=host.querySelector<HTMLElement>(".owner-profile-photo-pager")!;
   const sheet=host.querySelector<HTMLElement>(".owner-profile-sheet")!;
-  const scroll=host.querySelector<HTMLElement>(".owner-profile-scroll")!;
+  const panes=Array.from(host.querySelectorAll<HTMLElement>(".owner-profile-scroll"));
+  let scroll=panes[latest.current.tabIndex];
   const tabRail=host.querySelector<HTMLElement>(".owner-profile-tabs")!;
   const tabInk=tabRail.querySelector<HTMLElement>(".owner-profile-tab-ink")!;
   const tabPages=host.querySelector<HTMLElement>(".owner-profile-pages")!;
@@ -95,28 +96,25 @@ export function useOwnerProfileMotion(options:Options){
    paintTabs(index);
    delete tabRail.dataset.paging;
    delete tabPages.dataset.paging;
-   tabPages.style.removeProperty("--owner-page-scroll");
   };
   syncTab.current=index=>{
    if(selectedTab===index)return;
-   selectedTab=index;
    scroll.scrollTop=0;
+   selectedTab=index;
+   scroll=panes[index];
    resetTabs(index);
   };
-  const startTabs=()=>{
+  const startTabs=(scrollAtPress:number)=>{
    tabMotion.cancel();
+   scroll.scrollTop=scrollAtPress;
    tabOrigin=tabPosition;
    tabDragWidth=tabWidth;
-   const scrollTop=scroll.scrollTop;
-   scroll.scrollTop=scrollTop;
    tabRail.dataset.paging="";
    tabPages.dataset.paging="";
-   tabPages.style.setProperty("--owner-page-scroll",`${scrollTop}px`);
   };
   const moveTabs=(delta:number)=>{
    const position=tabOrigin-delta/tabDragWidth;
-   const edge=clamp(position,0,tabCount-1);
-   pendingTabPosition=edge+(position-edge)*.18;
+   pendingTabPosition=clamp(position,Math.max(0,selectedTab-1),Math.min(tabCount-1,selectedTab+1));
    if(tabPaintRaf)return;
    tabPaintRaf=requestAnimationFrame(()=>{
     tabPaintRaf=0;
@@ -124,9 +122,10 @@ export function useOwnerProfileMotion(options:Options){
    });
   };
   const endTabs=(speed:number,cancelled:boolean)=>{
-   // Settle from the last painted position, while counting the latest input towards the threshold.
+   // Include the last queued move before handing the track to the settle animation.
    const fingerPosition=tabPaintRaf?pendingTabPosition:tabPosition;
    cancelTabPaint();
+   paintTabs(fingerPosition);
    const projected=fingerPosition-clamp(speed*120/tabDragWidth,-.25,.25);
    const shift=projected-selectedTab;
    const target=clamp(selectedTab+(!cancelled&&Math.abs(shift)>.29?Math.sign(shift):0),0,tabCount-1);
@@ -148,7 +147,6 @@ export function useOwnerProfileMotion(options:Options){
    mask.style.transform=`${translate(photo.x,photo.y)} scale(${photo.width/geometry.width})`;
    mask.style.borderRadius=`${frame.radius/photo.width*100}%`;
    shade.style.opacity=String(1-center);
-   ambient.style.opacity=String(frame.ambientOpacity);
    halo.style.opacity=String(frame.haloOpacity*.82);
    sheet.style.transform=translate(0,frame.sheetTop);
    identity.style.transform=translate(0,frame.identityTop);
@@ -165,7 +163,7 @@ export function useOwnerProfileMotion(options:Options){
     host.dataset.morphState=state;
     mask.classList.toggle("owner-profile-avatar-circle",state==="compact");
    }
-   latest.current.onMotionProgress?.(1-progress,settling!==null||(press?.owner==="sheet"&&press.committed===null&&!press.scrollCards));
+   latest.current.onMotionProgress?.(1-progress,settling!==null||(press?.owner==="sheet"&&!press.scrollCards));
   };
   const cancelPaint=()=>{
    if(paintRaf)cancelAnimationFrame(paintRaf);
@@ -194,29 +192,31 @@ export function useOwnerProfileMotion(options:Options){
    if(accepted!==target&&notify)impactHaptic("light");
    accepted=target;
    if(settling===target)return;
-   if(settling===null&&position===target){
-    if(target===1)afterCompact?.();
-    paint(target);
-    return;
-   }
-   const from=position;
-   const duration=clamp(215+Math.abs(target-from)*120,215,325);
-   const distance=geometry.morphDistance;
-   const slope=velocity*duration/(distance*(target-from));
-   const curve:Easing=[.21,clamp(slope*.21,.22,.9),.27,1.12];
-   settling=target;
-   paint(from);
-   motion.start(from*distance,target*distance,duration,curve,value=>paint(value/distance),()=>{
+   const from=position,distance=geometry.morphDistance;
+   const finish=()=>{
     settling=null;
     paint(target);
     if(target===1)afterCompact?.();
-   },undefined,true);
+   };
+   const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+   const bounce=notify&&!reduced&&from>=0&&from<=1&&!(target===1&&scroll.scrollTop>0);
+   if(from===target&&!bounce){finish();return;}
+   const landing=target+(bounce?(target===1?4:-5)/distance:0);
+   const duration=clamp(110+Math.abs(target-from)*190,110,300);
+   const slope=velocity*duration/(distance*(landing-from));
+   const curve:Easing=[.22,clamp(slope*.22,.24,.85),.32,1];
+   settling=target;
+   paint(from);
+   motion.start(from*distance,landing*distance,duration,curve,value=>paint(value/distance),()=>{
+    if(!bounce){finish();return;}
+    motion.start(landing*distance,target*distance,115,[.26,.72,.38,1],value=>paint(value/distance),finish);
+   });
   };
   const settleRelease=(velocity:number,touch=false)=>{
    flushPaint();
    const distance=geometry.morphDistance;
    const crossed=touch?ownerAutoSnapTarget(accepted,position*distance,distance):null;
-   const target=crossed??(ownerMorphEndpoint(position*distance,distance,velocity)===0?0:1);
+   const target=(Math.abs(velocity)>=.38?null:crossed)??(ownerMorphEndpoint(position*distance,distance,velocity)===0?0:1);
    // Rubber returns to expanded even if a small reversal ended the pull.
    settleTo(position<0?0:target,velocity,true);
   };
@@ -254,39 +254,31 @@ export function useOwnerProfileMotion(options:Options){
    if(serial===null)return;
    gestures.begin(kind,id,"sheet");
    gestures.begin(kind,id,"native");
+   if(tabPages.dataset.paging!==undefined)tabMotion.cancel();
    clearWheel();
    blockedUntil=0;
    flushPaint();
    interrupt();
    const startScroll=Math.max(0,scroll.scrollTop);
    press={id,serial,source,owner:null,start:point,last:point,
-    distance:geometry.morphDistance,origin:ownerMorphDragOrigin(position),startedCompact:compact(),startScroll,
-    velocity:0,sampleTime:performance.now(),committed:null,remainder:0,scrollCards:false,captured:false};
+    distance:geometry.morphDistance,origin:position,startedCompact:compact(),startScroll,
+    velocity:0,sampleTime:performance.now(),remainder:0,scrollCards:false,captured:false};
   };
 
   const dragMorph=(current:Press,dy:number)=>{
    const from=ownerUnresistedPosition(current.origin*current.distance);
    const raw=from-dy;
-   if(current.committed===0)return;
-   if(current.committed===1||raw>=current.distance){
-    current.remainder=Math.max(0,raw-current.distance);
-    if(compact())writeCards(current);
-    else if(current.committed===null){
-     // Transfer the unused travel to card scrolling once the circle docks.
-     cancelPaint();
-     settleTo(1,current.velocity,true,()=>writeCards(current));
-    }
-    current.committed=1;
-    return;
-   }
-   if(accepted===1&&raw<=0){
-    current.committed=0;
+   const previousRemainder=current.remainder;
+   current.remainder=Math.max(0,raw-current.distance);
+   if(raw>=current.distance){
     cancelPaint();
-    settleTo(0,current.velocity,true);
+    paint(1);
+    writeCards(current);
     return;
    }
+   if(previousRemainder>0)scroll.scrollTop=0;
    const next=ownerRubberPosition(raw)/current.distance;
-   schedulePaint(ownerMorphDrag(next));
+   schedulePaint(current.startedCompact?Math.max(0,next):next);
   };
   const sample=(current:Press,point:Point,horizontal:boolean)=>{
    const now=performance.now(),elapsed=now-current.sampleTime;
@@ -328,7 +320,7 @@ export function useOwnerProfileMotion(options:Options){
      }catch{/* The pointer may have already left the WebView. */}
     }
     if(owner==="hero")latest.current.horizontal.startPhoto(ownerMorphFrame(geometry,position).mask.width,geometry.width);
-    if(owner==="tabs")startTabs();
+    if(owner==="tabs")startTabs(current.startScroll);
     else if(tabPages.dataset.paging!==undefined)resetTabs(selectedTab);
     // Freeze native inertia only once an exclusive gesture has taken over.
     if(owner==="sheet"&&current.startedCompact)scroll.scrollTop=current.startScroll;
@@ -349,12 +341,14 @@ export function useOwnerProfileMotion(options:Options){
    const owner=current.owner;
    if(owner&&owner!=="native")blockedUntil=performance.now()+400;
    const speed=performance.now()-current.sampleTime<=76?current.velocity:0;
-   if(owner==="sheet"&&!current.scrollCards&&current.committed===null){
+   if(owner==="sheet"&&!current.scrollCards){
     if(cancelled)settleTo(accepted);
+    else if(current.remainder>0)settleTo(1,speed,true,()=>writeCards(current));
     else settleRelease(speed,true);
     return;
    }
    if(owner==="tabs")endTabs(speed,cancelled);
+   else if(!owner&&tabPages.dataset.paging!==undefined)endTabs(0,true);
    if(owner==="hero"){
     const dx=current.last.x-current.start.x;
     const width=ownerMorphFrame(geometry,position).mask.width;
@@ -363,7 +357,7 @@ export function useOwnerProfileMotion(options:Options){
      (dx<0?-1:1):0;
     latest.current.horizontal.endPhoto(direction);
    }
-   if(current.committed===null&&settling===null&&position!==accepted)settleTo(accepted);
+   if(settling===null&&position!==accepted)settleTo(accepted);
   };
 
   const touchStart=(event:TouchEvent)=>{
@@ -444,11 +438,9 @@ export function useOwnerProfileMotion(options:Options){
    geometry=createOwnerProfileLayout({width:rect.width,height:rect.height,
     brandBottom:brand.getBoundingClientRect().bottom-rect.top});
    sheet.style.height=`calc(100% - ${geometry.compactContentTop}px)`;
-   ambient.style.height=`${geometry.roundTop+geometry.roundDiameter+108}px`;
+   ambient.style.height=`${Math.max(geometry.width,geometry.roundTop+geometry.roundDiameter+108)}px`;
    halo.style.top=`${geometry.compactAvatar.y-17}px`;
    halo.style.width=`${geometry.compactAvatar.width+34}px`;
-   const contentInset=tabPages.offsetTop;
-   tabPages.style.setProperty("--owner-page-viewport",`${Math.max(0,scroll.clientHeight-contentInset)}px`);
    tabWidth=tabPages.clientWidth||rect.width;
    inkStep=tabRail.clientWidth/tabCount;
    paintTabs(tabPosition);

@@ -1,5 +1,5 @@
 import {useCallback,useId,useLayoutEffect,useMemo,useRef,useState} from "react";
-import type {CSSProperties,KeyboardEvent} from "react";
+import type {KeyboardEvent,ReactNode} from "react";
 import {CalendarDays,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,Sparkles,UserRound} from "lucide-react";
 import {InterestChip} from "../../ui/InterestCatalog";
 import {Flag} from "../../ui/Flag";
@@ -158,11 +158,21 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   paintAtmosphere(heroImage.current);
  },[heroPhoto?.id,heroPhoto?.src,paintAtmosphere]);
 
- const panel=(id:OwnerTab,index:number)=>({
-  id:tabPrefix+"-"+id+"-panel",role:"tabpanel",
-  "aria-labelledby":tabPrefix+"-"+id+"-tab","aria-hidden":tab!==id,
-  inert:tab!==id,style:{"--owner-panel-index":index} as CSSProperties
- });
+ const panel=(id:OwnerTab,label:string,content:ReactNode)=>(
+  <section id={tabPrefix+"-"+id+"-panel"} role="tabpanel" aria-label={label}
+   aria-labelledby={tabPrefix+"-"+id+"-tab"} aria-hidden={tab!==id} inert={tab!==id}
+   className="owner-profile-scroll">
+   <div className="owner-profile-content">
+    <div className={"owner-profile-panel"+(id==="about"?" owner-profile-about":"")}>{content}</div>
+    {isOwner&&<div className="owner-profile-actions" aria-label="Действия профиля">
+       <button type="button" className="owner-profile-glass" onClick={onEdit} aria-label="Изменить данные"><PenLine/></button>
+       <button type="button" className="owner-profile-glass" onClick={onPreview} aria-label="Посмотреть анкету глазами других"><Eye/></button>
+       <button type="button" className="owner-profile-glass" onClick={showPhotos} aria-label="Управлять фотографиями"><Images/></button>
+       <button type="button" className="owner-profile-glass" onClick={onSettings} aria-label="Настройки профиля"><Settings2/></button>
+      </div>}
+   </div>
+  </section>
+ );
 
  const openPhoto=()=>{if(heroPhoto)onPhotoOpen(heroPhoto.id,heroImage.current);};
  const visiblePhotos=[
@@ -235,10 +245,9 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
      onClick={()=>selectTab(id)} onKeyDown={event=>tabKey(event,index)}>{label}</button>)}
     <span className="owner-profile-tab-ink" aria-hidden="true"/>
    </div>
-   <div className="owner-profile-scroll">
-    <div className="owner-profile-content">
-     <div className="owner-profile-pages">
-     <section {...panel("about",0)} aria-label="О себе" className="owner-profile-panel owner-profile-about">
+   <div className="owner-profile-viewport">
+    <div className="owner-profile-pages">
+     {panel("about","О себе",<>
       <article><h2>О себе</h2><p>{p.about||"Описание пока не заполнено."}</p></article>
       <article><h2>Основное</h2><div className="owner-profile-basics">
        {p.age!==null&&<div><CalendarDays size={18} aria-hidden="true"/><span>{p.age} лет</span></div>}
@@ -249,8 +258,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
       {p.interests.length>0&&<article><h2>Интересы</h2><div className="owner-profile-interests">{p.interests.map(id=><InterestChip key={id} id={id}/>)}</div></article>}
 
       {p.source==="fixture"&&<p className="owner-profile-disclaimer">Демонстрационный профиль, не реальный пользователь.</p>}
-     </section>
-     <section {...panel("photos",1)} aria-label="Фото" className="owner-profile-panel">
+     </>)}
+     {panel("photos","Фото",<>
       {photos.length?<div className="owner-profile-gallery">{photos.map((photo,index)=><button type="button" key={photo.id}
        className="owner-profile-photo-tile" aria-label={"Открыть фото "+(index+1)}
        onClick={event=>onPhotoOpen(photo.id,event.currentTarget.querySelector("img"))}>
@@ -258,20 +267,13 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
         onError={event=>{if(photo.fallback&&event.currentTarget.src!==photo.fallback)event.currentTarget.src=photo.fallback;}}/>
        {index===0&&<span>Главное</span>}
       </button>)}</div>:<div className="owner-profile-empty"><Images/><p>Фотографии ещё не добавлены</p></div>}
-     </section>
-     <section {...panel("bliki",2)} aria-label="Блики" className="owner-profile-panel">
+     </>)}
+     {panel("bliki","Блики",<>
       <div className="owner-profile-empty"><Sparkles size={34}/><h2>Пока нет бликов</h2><p>Здесь появятся моменты из жизни.</p></div>
-     </section>
-     <section {...panel("gifts",3)} aria-label="Подарки" className="owner-profile-panel">
+     </>)}
+     {panel("gifts","Подарки",<>
       <div className="owner-profile-empty"><Gift size={34}/><h2>Подарков пока нет</h2><p>Здесь будут отображаться полученные подарки.</p></div>
-     </section>
-    </div>
-      {isOwner&&<div className="owner-profile-actions" aria-label="Действия профиля">
-       <button type="button" className="owner-profile-glass" onClick={onEdit} aria-label="Изменить данные"><PenLine/></button>
-       <button type="button" className="owner-profile-glass" onClick={onPreview} aria-label="Посмотреть анкету глазами других"><Eye/></button>
-       <button type="button" className="owner-profile-glass" onClick={showPhotos} aria-label="Управлять фотографиями"><Images/></button>
-       <button type="button" className="owner-profile-glass" onClick={onSettings} aria-label="Настройки профиля"><Settings2/></button>
-      </div>}
+     </>)}
     </div>
    </div>
   </main>

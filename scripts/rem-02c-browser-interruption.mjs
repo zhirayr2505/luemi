@@ -62,7 +62,7 @@ try{
  const measurePhoto=()=>face.evaluate((node)=>{
   const rect=node.getBoundingClientRect();
   return {radius:parseFloat(node.style.borderRadius),width:rect.width,y:rect.y,
-   ambient:Number(node.closest(".owner-premium-profile").querySelector(".owner-profile-ambient").style.opacity)};
+   ambient:Number(getComputedStyle(node.closest(".owner-premium-profile").querySelector(".owner-profile-ambient")).opacity)};
  });
  const moveUntil=async(x,y,direction,reached)=>{
   for(let distance=4;distance<=180;distance+=4){
@@ -81,7 +81,7 @@ try{
   return before;
  };
  try{
-  const cards=root.locator(".owner-profile-scroll");
+  const cards=root.getByRole("tabpanel");
   const cardRect=await cards.boundingBox();
   const hx=cardRect.x+cardRect.width*.5,hy=cardRect.y+70;
   await face.evaluate(node=>{
@@ -89,7 +89,7 @@ try{
    const frames=[];
    window.__ownerRoundFrames=frames;
    const observe=new MutationObserver(()=>{
-    frames.push({radius:parseFloat(node.style.borderRadius),ambient:Number(ambient.style.opacity)});
+    frames.push({radius:parseFloat(node.style.borderRadius),ambient:Number(getComputedStyle(ambient).opacity)});
     if(node.classList.contains("owner-profile-avatar-circle"))observe.disconnect();
    });
    observe.observe(node,{attributes:true,attributeFilter:["style"]});
@@ -100,14 +100,22 @@ try{
   assert.equal(await cards.evaluate(el=>el.scrollTop),0,"card scroll stays pinned during the morph");
   const rounding=(await page.evaluate(()=>window.__ownerRoundFrames)).find(frame=>frame.radius>0);
   assert(rounding&&rounding.ambient>0,"blur appears as soon as the mask rounds");
+  await finger("touchMove",hx,hy-distanceUp+9);
+  await delay(40);
+  assert.equal((await measurePhoto()).radius,0,"reversing before release restores the square");
+  await finger("touchMove",hx,hy-distanceUp);
+  await delay(40);
+  assert.deepEqual(await measurePhoto(),medium,"the same finger position restores the identical frame");
+  assert((await page.evaluate(()=>window.__ownerRoundFrames)).every(f=>f.radius===0||f.radius===50));
   await finger("touchEnd",hx,hy-distanceUp);
   await root.locator(".owner-profile-avatar-circle").waitFor();
   const c=await face.boundingBox();
   assert(c&&c.width>=94&&c.width<=112&&c.width<medium.width,"release docks the medium circle");
   const cx=c.x+c.width*.5,cy=c.y+c.height*.5;
   await finger("touchStart",cx,cy);
-  const distanceDown=await moveUntil(cx,cy,1,frame=>Math.abs(frame.width-medium.width)<.1);
-  assert.deepEqual(await assertHeld(),medium,"opening pauses at the same circle");
+  const distanceDown=await moveUntil(cx,cy,1,frame=>frame.radius===50&&frame.width>medium.width-6);
+  const reopening=await assertHeld();
+  assert(Math.abs(reopening.width-medium.width)<15,"opening reaches the medium circle with 4px touch samples");
   await finger("touchEnd",cx,cy+distanceDown);
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
 
@@ -125,7 +133,7 @@ try{
    "the gesture that scrolls cards to their top cannot also expand the profile");
   await delay(80);
   await finger("touchStart",cx,cy);
-  await moveUntil(cx,cy,1,frame=>Math.abs(frame.width-medium.width)<.1);
+  await moveUntil(cx,cy,1,frame=>frame.radius===50&&frame.width>medium.width-6);
   await finger("touchMove",cx,cy+210);
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
   await finger("touchEnd",cx,cy+210);
@@ -155,9 +163,9 @@ try{
   {x:touchX,y:touchY}),"visible page receives horizontal gestures");
  const ink=root.locator(".owner-profile-tab-ink");
  const inkBefore=await ink.boundingBox();
- const nextPanel=root.locator('.owner-profile-panel[aria-label="Фото"]');
+ const nextPanel=root.locator('[role="tabpanel"][aria-label="Фото"]');
  const nextPanelBefore=await nextPanel.boundingBox();
- const scrollAtStart=await root.locator(".owner-profile-scroll").evaluate(node=>node.scrollTop);
+
  let incomingY;
  await swipe(touchX,touchY,-rect.width*.48,0,12,async step=>{
   if(step!==6)return;
@@ -167,7 +175,7 @@ try{
   assert(Math.abs(moving.x-(rect.x-shift))<2,"the current page tracks mid-gesture displacement 1:1");
   assert(Math.abs(next.x-(moving.x+rect.width))<2,"the next page follows as a neighboring panel");
   assert.equal(next.height,nextPanelBefore.height,"incoming pane keeps the same layout on the drag frame");
-  assert(Math.abs(next.y-(nextPanelBefore.y+scrollAtStart))<.5,"the incoming page is aligned to the top of the viewport");
+  assert(Math.abs(next.y-(nextPanelBefore.y))<.5,"the incoming page is aligned to the top of the viewport");
   incomingY=next.y;
   assert((await ink.boundingBox()).x>inkBefore.x+8,"the underline tracks the same swipe");
   assert.equal(await selected().innerText(),"О себе","selection commits after release");
@@ -191,7 +199,7 @@ try{
  await root.getByRole("tab",{name:"Блики",exact:true}).click();
  assert.equal(await selected().innerText(),"Блики","latest tab tap wins");
  assert.equal(await selected().count(),1);
- const emptyBackground=await root.locator(".owner-profile-content").evaluate(element=>({
+ const emptyBackground=await root.getByRole("tabpanel").locator(".owner-profile-content").evaluate(element=>({
   image:getComputedStyle(element).backgroundImage,
   content:element.getBoundingClientRect().height,
   viewport:element.parentElement.clientHeight
