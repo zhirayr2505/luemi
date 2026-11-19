@@ -75,6 +75,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const scrollEndTimer=useRef<number|null>(null),paused=useRef(false),nativeTouchActive=useRef(false);
  const settleTarget=useRef(0);
  const scrollSample=useRef({position:0,time:0,velocity:0});
+ const latestSettleWrite=useRef<number|null>(null);
  const localArbiter=useRef<GestureArbiter|null>(null);
  if(!gestureArbiter&&!localArbiter.current)localArbiter.current=new GestureArbiter();
  const gestures=gestureArbiter??localArbiter.current!;
@@ -149,6 +150,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   clearScrollEnd();
   const motion=morphMotion.current;
   if(!motion||motion.snapshot().phase==="idle")return;
+  latestSettleWrite.current=null;
   const position=motion.cancel();
   if(scroller.current){scroller.current.scrollTop=position;paint(position);}
  },[clearScrollEnd,paint]);
@@ -168,9 +170,12 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   const duration=reduce?0:Math.max(120,Math.min(290,150+fraction*140-Math.min(45,Math.abs(velocity)*48)));
   motion.start(current,target,duration,MORPH_EASING,value=>{
    if(!scroller.current)return;
+   // Mark the RAF writer before its native scroll event.
+   latestSettleWrite.current=value;
    scroller.current.scrollTop=value;paint(value);
   },()=>{
    if(!scroller.current)return;
+   latestSettleWrite.current=null;
    scroller.current.scrollTop=target;paint(target);
   },layoutRevision.current);
  },[clearScrollEnd,paint]);
@@ -218,8 +223,16 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    const velocity=previous.time>0&&elapsed>0?(position-previous.position)/elapsed:0;
    scrollSample.current={position,time:now,velocity:Number.isFinite(velocity)?velocity:0};
    const settling=morphMotion.current?.snapshot().phase==="settling";
-   if(!settling)schedulePaint();
-   if(settling||nativeTouchActive.current)return;
+   if(settling){
+    const expected=latestSettleWrite.current;
+    if(expected!==null&&Math.abs(position-expected)<=1.5)return;
+    // A native scroll, programmatic scroll, tab focus or inertia changed the
+    // actual coordinate. Cancel stale RAF without restoring its old position.
+    morphMotion.current?.cancel();
+    latestSettleWrite.current=null;
+    paint(position);
+   }else schedulePaint();
+   if(nativeTouchActive.current)return;
    clearScrollEnd();
    if(position>.75&&position<layout.current.morphDistance-.75)
     scrollEndTimer.current=window.setTimeout(()=>settleMorph(scrollSample.current.velocity),105);
@@ -254,7 +267,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   };
  },[clearScrollEnd,interruptMorph,paint,schedulePaint,settleMorph]);
  useEffect(()=>bindMotionLifecycle(()=>{
-  paused.current=true;clearScrollEnd();gesture.current=null;gestures.cancel();
+  paused.current=true;clearScrollEnd();latestSettleWrite.current=null;gesture.current=null;gestures.cancel();
   const motion=morphMotion.current;
   if(motion?.snapshot().phase==="settling"){
    settleTarget.current=motion.snapshot().target;motion.suspend();

@@ -43,6 +43,11 @@ try{
  for(const label of tabs){
   const tab=owner.getByRole("tab",{name:label,exact:true});await tab.click();
   assert.equal(await tab.getAttribute("aria-selected"),"true");
+  const tabMotion=await scroll.evaluate(el=>({
+   position:el.scrollTop,max:el.scrollHeight-el.clientHeight,scrollHeight:el.scrollHeight,
+   clientHeight:el.clientHeight,state:el.closest(".owner-premium-profile")?.dataset.morphState
+  }));
+  console.log("PROFILE_V4_TAB_DEBUG "+JSON.stringify({label,tabMotion,distance}));
   assert.equal(await owner.getAttribute("data-morph-state"),"compact",
    "tab changes may not expand the compact photo");
  }
