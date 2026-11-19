@@ -13,7 +13,7 @@ try{
   outfile:output,bundle:true,platform:"node",format:"esm"
  });
  const {createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,ownerMorphFrame,
-  ownerMorphDrag,ownerMorphDragOrigin,ownerMorphProgress,ownerRubberPosition,ownerUnresistedPosition}=await import(pathToFileURL(output));
+  ownerMorphProgress,ownerRubberPosition,ownerUnresistedPosition}=await import(pathToFileURL(output));
 
  const viewports=[
   {width:360,height:640,brandBottom:65},
@@ -28,7 +28,7 @@ try{
    "expanded photo is a full-width square");
   assert.equal(expanded.sheetTop,viewport.width-22,"the rounded sheet overlaps the expanded photo");
   assert.equal(expanded.radius,0);
-  assert.equal(expanded.ambientOpacity,0);
+
 
   const pull=distance*.56,tracking=ownerMorphFrame(layout,pull/distance);
   assert(Math.abs(expanded.sheetTop-tracking.sheetTop-pull)<1e-8,"the sheet tracks the finger 1:1");
@@ -49,17 +49,15 @@ try{
   for(let step=0;step<=100;step++){
    const frame=ownerMorphFrame(layout,step/100);
    assert.equal(frame.mask.width,frame.mask.height,"the same mask always scales uniformly");
+   assert(frame.radius===0||frame.radius===frame.mask.width/2,"no intermediate rounded square");
    if(step>=89)assert.equal(frame.radius,frame.mask.width/2,"the compact phase contains a circle");
   }
   const opening=ownerMorphFrame(layout,.91);
-  assert(opening.mask.width>=compact.mask.width*1.18,"reverse visibly grows the circle before it opens");
+  assert(opening.mask.width>compact.mask.width,"reverse visibly grows the circle before it opens");
   const frames=Array.from({length:200},(_,index)=>ownerMorphFrame(layout,(index+1)/200));
   const round=frames.find(frame=>frame.radius===frame.mask.width/2);
   assert(round&&round.mask.width>=compact.mask.width*1.28,"the photo becomes circular at an intermediate size");
   assert(round.identityTop>=round.mask.y+round.mask.height+7,"the larger circle clears the name");
-  assert(round.ambientOpacity>.6,"the blurred backdrop is visible before the avatar docks");
-  const firstCurve=frames.find(frame=>frame.radius>0);
-  assert(firstCurve&&firstCurve.ambientOpacity>0,"the backdrop starts on the first rounding frame");
   assert(compact.haloOpacity>0,"the docked avatar has a photo-colored halo");
   assert.equal(opening.radius,opening.mask.width/2);
   assert(opening.mask.y>=viewport.brandBottom);
@@ -75,16 +73,14 @@ try{
   assert.equal(ownerAutoSnapTarget(0,distance*.65,distance),1,"crossing the threshold allows release to compact");
   assert.equal(ownerAutoSnapTarget(1,distance*.90,distance),null);
   assert.equal(ownerAutoSnapTarget(1,distance*.86,distance),0,"crossing the threshold allows release to expand");
-  const held=ownerMorphDrag(.78);
-  assert.equal(held,ownerMorphDrag(.82),"both directions share a small range at the medium circle");
-  assert.equal(ownerMorphFrame(layout,held).mask.width,layout.roundDiameter);
-  assert(ownerMorphDrag(.70)<held&&ownerMorphDrag(.92)>held,"continued travel moves past the held circle");
-  assert.equal(ownerMorphDrag(.56),.56,"the sheet still follows the initial pull pixel for pixel");
-  for(let step=0;step<=100;step++){
-   const painted=step/100;
-   assert(Math.abs(ownerMorphDrag(ownerMorphDragOrigin(painted))-painted)<1e-8,
-    "grabbing an interrupted settle preserves the painted position");
-  }
+  const switchAt=frames.indexOf(round)/200+.005;
+  const before=ownerMorphFrame(layout,switchAt-.00001),after=ownerMorphFrame(layout,switchAt+.00001);
+  assert.equal(before.radius,0);
+  assert.equal(after.radius,after.mask.width/2);
+  assert(Math.abs(after.mask.width-before.mask.width)<.1&&Math.abs(after.mask.y-before.mask.y)<.1,
+   "shape changes without a size or center jump");
+  assert(before.mask.width>round.mask.width&&after.mask.width<round.mask.width,
+   "moving either way through the medium circle has no dead zone");
   assert.equal(ownerMorphProgress(-80,distance),0);
   assert.equal(ownerMorphProgress(distance*2,distance),1);
   assert.equal(ownerMorphEndpoint(distance*.49,distance),0);

@@ -55,7 +55,7 @@ async function profileV3(browser,platform="android"){
    const expanded=await image.boundingBox();
    assert.ok(expanded&&expanded.width>380&&Math.abs(expanded.width-expanded.height)<1.5&&expanded.y<1.5,
     "owner photo is a full-bleed square behind the safe Telegram chrome");
-   assert.equal(await ownerProfile.locator(".owner-profile-actions button").count(),4,"four real owner actions");
+   assert.equal(await ownerProfile.getByRole("tabpanel").locator(".owner-profile-actions button").count(),4,"four real owner actions");
    const photoNode=await image.elementHandle();
    await page.evaluate(node=>{window.__ownerMorphPhoto=node;},photoNode);
    // A drag starting on the portrait must collapse the profile.

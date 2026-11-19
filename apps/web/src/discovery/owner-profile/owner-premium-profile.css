@@ -9,10 +9,10 @@
  position:absolute;inset:0;pointer-events:none;
  background:linear-gradient(180deg,var(--luemi-bg-top),var(--luemi-bg-deep) 68%,var(--luemi-bg));
 }
-/* The blurred textures stay in place. The morph only changes their opacity. */
+/* The foreground mask uncovers the already painted photo texture. */
 .owner-profile-atmosphere{position:absolute;inset:0;pointer-events:none;contain:paint}
 .owner-profile-ambient{
- position:absolute;inset:0 0 auto;height:280px;overflow:hidden;opacity:0;
+ position:absolute;inset:0 0 auto;height:280px;overflow:hidden;
  mask-image:linear-gradient(#000 58%,transparent);
 }
 .owner-profile-ambient::before,.owner-profile-halo{
@@ -143,32 +143,23 @@
 .owner-profile-tabs button[aria-selected="true"]{
  color:var(--luemi-text);font-weight:730;
 }
+.owner-profile-viewport{
+ flex:1;min-height:0;overflow:hidden;overflow:clip;background:var(--luemi-bg-deep);
+}
+.owner-profile-pages{
+ display:flex;width:100%;height:100%;transform:translate3d(0,0,0);
+}
 .owner-profile-scroll{
- flex:1;min-height:0;overflow:hidden;overflow:clip;
- overscroll-behavior:none;overflow-anchor:none;scrollbar-width:none;
- touch-action:none;
+ flex:0 0 100%;min-width:0;height:100%;overflow:hidden;
+ overscroll-behavior:none;overflow-anchor:none;scrollbar-width:none;touch-action:none;
+ background:var(--luemi-bg-deep);
 }
 .owner-premium-profile[data-morph-state="compact"] .owner-profile-scroll{overflow:hidden auto;touch-action:pan-y}
 .owner-profile-scroll::-webkit-scrollbar{display:none}
 .owner-profile-content{
- position:relative;box-sizing:border-box;min-height:100%;
- margin:0;padding:13px 13px calc(120px + var(--bottom-safe,0px));
- overflow:clip;
+ box-sizing:border-box;min-height:100%;padding:13px 13px calc(120px + var(--bottom-safe,0px));
 }
-.owner-profile-pages{
- position:relative;min-height:295px;
- transform:translate3d(0,0,0);
-}
-.owner-profile-panel{
- position:relative;left:calc(var(--owner-panel-index)*100%);
- min-height:290px;width:100%;box-sizing:border-box;padding:0 1px 30px;
-}
-/* Keep the neighboring page ready to paint without changing the native scroll range. */
-.owner-profile-panel[aria-hidden="true"]{
- position:absolute;top:0;height:var(--owner-page-viewport,0px);min-height:0;
- overflow:clip;
- transform:translate3d(0,var(--owner-page-scroll,0px),0);
-}
+.owner-profile-panel{box-sizing:border-box;min-height:295px;padding:0 1px 30px}
 .owner-profile-about{display:flex;flex-direction:column;gap:11px}
 .owner-profile-about article{
  padding:17px 18px;border-radius:22px;

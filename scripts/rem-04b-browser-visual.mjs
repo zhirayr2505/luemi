@@ -71,7 +71,7 @@ try{
  assert(await own().locator(".owner-profile-photo-mask img[data-slot=current]").evaluate((node,original)=>node===original,firstImage),
   "one persistent foreground image is preserved throughout the morph");
 
- assert(await own().locator(".owner-profile-scroll").evaluate(list=>list.scrollTop>0),
+ assert(await own().getByRole("tabpanel").evaluate(list=>list.scrollTop>0),
   "the long collapse swipe passes its remaining distance to the cards");
  await setPremiumProfileState(page,own(),"expanded");
  const reversed=await snap(own(),"owner-reversed");
