@@ -48,7 +48,8 @@ test("Telegram SDK is a first-party asset, not a network-critical CDN",()=>{
  const discovery=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
  assert.ok(app.includes('onFirstScreenReady={signalBootReady}'));
  assert.ok(app.includes('<Suspense fallback={null}>'));
- assert.ok(discovery.includes('if(foreground&&active)onFirstScreenReady?.()'));
+ assert.ok(discovery.includes('if(active)onFirstScreenReady?.()'));
+ assert.doesNotMatch(discovery,/visibleRows\.slice\(page,page\+2\)\.map/);
 });
 test("HTML and startup scripts are never served from stale cache",()=>{
  const server=read("apps/api/src/server.ts");
