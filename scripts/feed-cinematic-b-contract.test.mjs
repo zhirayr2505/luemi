@@ -15,10 +15,12 @@ test("Moonstone Discovery uses the original centered wordmark and no header tool
  assert.match(css,/\.discovery-app\[data-feed-visible="true"\] \.lh-center\{[^}]*left:50%/);
 });
 
-test("photo is one fullscreen carousel beneath all chrome",()=>{
+test("bounded Tinder-style card keeps the gallery beneath its own information footer",()=>{
+ const cardCss=read("apps/web/src/discovery/card-deck-edition.css");
+ assert.match(card,/className="moonstone-person-card"/);
  assert.match(card,/className="moonstone-photo"/);
  assert.match(card,/gpuSafe adaptive loop onCoverReady=\{onCoverReady\}/);
- assert.match(css,/\.moonstone-photo,\.moonstone-photo>\.carousel-frame\{position:absolute;inset:0/);
+ assert.match(cardCss,/\.moonstone-person-card \.moonstone-photo\{[\s\S]*?bottom:var\(--luemi-card-footer-height\)/);
  assert.match(css,/\.carousel-slide-adaptive \.feed-carousel-photo\{[\s\S]*?object-fit:contain/);
  assert.match(css,/data-photo-fit="full"/);
  assert.match(real,/visibleRows\.slice\(page,page\+2\)/);

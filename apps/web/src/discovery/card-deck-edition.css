@@ -1,0 +1,171 @@
+/* LUEMI Card Deck V1 — real Tinder/Badoo-style inset photo cards.
+ * Keeps the existing action handlers, carousel, gesture coordinator and
+ * compact-to-expanded profile progress. No fullscreen photo background. */
+.discovery-app[data-feed-visible="true"]{
+ --luemi-card-top:calc(var(--top-safe,0px) + 99px);
+ --luemi-card-bottom:calc(var(--moon-actions-bottom) + var(--moon-actions-height) + 13px);
+ --luemi-card-footer-height:148px;
+ background:#151B25;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-feed-card{
+ background:#151B25;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card{
+ position:absolute;z-index:auto;
+ top:var(--luemi-card-top);bottom:var(--luemi-card-bottom);
+ left:13px;right:13px;
+ min-height:0;
+ border:1px solid rgba(241,246,252,.16);
+ border-radius:25px;
+ background:#232D3A;
+ box-shadow:0 12px 28px rgba(3,9,17,.28);
+ /* The info text still slides up during the existing profile gesture. */
+ overflow:visible;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-photo{
+ position:absolute;
+ top:0;left:0;right:0;bottom:var(--luemi-card-footer-height);
+ width:auto;height:auto;
+ border-radius:24px 24px 0 0;
+ overflow:hidden;
+ background:#253141;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-photo>.carousel-frame{
+ position:absolute;inset:0;width:100%;height:100%;
+ aspect-ratio:auto;
+ background:#253141;
+ border-radius:inherit;
+ overflow:hidden
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .carousel-slide-adaptive{
+ background:#253141;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .carousel-slide-adaptive::before,
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .carousel-slide-adaptive::after,
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .carousel-photo-bleed{
+ display:none!important;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-photo
+ .carousel-track>.carousel-slide-adaptive .feed-carousel-photo,
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-photo
+ .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"] .feed-carousel-photo{
+ position:absolute;top:0;left:0;
+ width:100%;height:100%;
+ max-width:none;max-height:none;
+ min-width:0;min-height:0;
+ object-fit:contain;object-position:center;
+ transform:none;
+ -webkit-mask-image:none;mask-image:none;
+ filter:none;
+ background:transparent
+}
+/* Photo never extends under Telegram chrome or the buttons. */
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-photo-shade{
+ inset:0;
+ background:linear-gradient(180deg,rgba(9,16,25,.08),transparent 33%,transparent 78%,rgba(9,16,25,.14));
+ box-shadow:none
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-photo-shade::after{
+ display:none;
+}
+/* The identity is an actual matte footer, rather than text blended into photo. */
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info{
+ position:absolute;
+ z-index:13;
+ left:0;right:0;bottom:0;
+ width:100%;height:var(--luemi-card-footer-height);
+ padding:9px 16px 10px;
+ display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+ background:#232D3A;
+ border-radius:0 0 24px 24px;
+ color:#FAFCFF;
+ opacity:1;
+ box-shadow:inset 0 1px rgba(244,249,255,.075);
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-indicator-row{
+ height:23px;min-height:23px;flex:none;margin:0 0 2px;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-photo-indicator i{
+ background:#6C798A;box-shadow:none;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-photo-indicator i.active{
+ background:#E96A86;box-shadow:none
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-name{
+ color:#FAFCFF;text-shadow:none
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-name span{
+ font-size:clamp(22px,5.6vw,28px);font-weight:730;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-location{
+ margin-top:4px;color:#CCD6E3;text-shadow:none;font-size:12px;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-goal{
+ margin-top:9px;
+ background:#354154;
+ box-shadow:none;
+ -webkit-backdrop-filter:none;backdrop-filter:none;
+ border-color:rgba(237,246,255,.13);
+ color:#F1F5FA;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-goal::before{display:none}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-goal-mark{
+ background:rgba(233,106,134,.18);box-shadow:none
+}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-goal-mark svg{color:#E96A86}
+.discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-profile-toggle{
+ background:transparent!important;border:0!important;box-shadow:none!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+ filter:none;
+ color:#FAFCFF;
+}
+/* Expanded panel opens inside the same inset card without escaping to header. */
+.discovery-app[data-feed-visible="true"] .moonstone-profile-drawer{
+ position:absolute;z-index:12;
+ left:13px;right:13px;
+ top:calc(var(--luemi-card-top) + 1px);
+ bottom:calc(var(--luemi-card-bottom) + 1px);
+ padding:12px 15px 20px;
+ border-radius:24px;
+ background:linear-gradient(180deg,rgba(27,36,48,.97),rgba(19,27,39,.985));
+ border:1px solid rgba(237,246,255,.12);
+ box-shadow:none;
+ -webkit-backdrop-filter:none;backdrop-filter:none;
+}
+/* The detail sheet no longer starts behind the moving summary/footer. */
+.discovery-app[data-feed-visible="true"] .moonstone-profile-scroll{
+ padding:0 4px 30px;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-actions-vivid{
+ /* Outside the photo card, between it and the navigation dock. */
+ z-index:20;
+}
+.discovery-app[data-feed-visible="true"] .moonstone-demo-label{
+ top:12px;left:12px;
+ color:#FAFCFF;
+ background:rgba(31,40,52,.86);
+ border:1px solid rgba(243,250,255,.19);
+}
+@media(max-height:710px){
+ .discovery-app[data-feed-visible="true"]{
+  --luemi-card-top:calc(var(--top-safe,0px) + 91px);
+  --luemi-card-bottom:calc(var(--moon-actions-bottom) + var(--moon-actions-height) + 9px);
+  --luemi-card-footer-height:124px;
+ }
+ .discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info{padding:5px 13px}
+ .discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-name span{font-size:22px}
+ .discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-goal{margin-top:5px}
+}
+@media(max-height:560px) and (orientation:landscape){
+ .discovery-app[data-feed-visible="true"]{
+  --luemi-card-top:calc(var(--top-safe,0px) + 83px);
+  --luemi-card-footer-height:96px;
+ }
+ .discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-indicator-row{height:16px;min-height:16px}
+ .discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-name span{font-size:18px}
+ .discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-goal{padding:1px 6px;margin-top:3px}
+ .discovery-app[data-feed-visible="true"] .moonstone-person-card .moonstone-goal-mark{width:20px;height:20px}
+}
+@media(prefers-reduced-motion:reduce){
+ .discovery-app[data-feed-visible="true"] .moonstone-person-card{transition:none}
+}

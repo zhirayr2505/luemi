@@ -366,13 +366,14 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    onPointerDownCapture={down} onPointerMoveCapture={move} onPointerUpCapture={event=>finish(event)}
    onPointerCancelCapture={event=>finish(event,true)} onLostPointerCapture={event=>{if(event.target===event.currentTarget)finish(event,true);}}
    onClickCapture={event=>{if(performance.now()<blockClickUntil.current){event.preventDefault();event.stopPropagation();}}}>
-   <div className="moonstone-photo">
-    <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age} externalGesture
-     prioritize={active} gpuSafe adaptive loop onCoverReady={onCoverReady} onIndexChange={setActivePhotoIndex}/>
-    <div className="moonstone-photo-shade" aria-hidden="true"/>
-    {!real&&(onExitDemo?<button type="button" className="moonstone-demo-label" onClick={onExitDemo}>Демо</button>:<span className="moonstone-demo-label">Демо</span>)}
-   </div>
-   <div ref={compactInfo} className="moonstone-compact-info">
+   <div className="moonstone-person-card">
+    <div className="moonstone-photo">
+     <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age} externalGesture
+      prioritize={active} gpuSafe adaptive loop onCoverReady={onCoverReady} onIndexChange={setActivePhotoIndex}/>
+     <div className="moonstone-photo-shade" aria-hidden="true"/>
+     {!real&&(onExitDemo?<button type="button" className="moonstone-demo-label" onClick={onExitDemo}>Демо</button>:<span className="moonstone-demo-label">Демо</span>)}
+    </div>
+    <div ref={compactInfo} className="moonstone-compact-info">
     <div className="moonstone-indicator-row">
      <div className="moonstone-photo-indicator" aria-label={`Фото ${activePhotoIndex+1} из ${person.photos.length}`}>
       {person.photos.map((item,index)=><i key={item.id} className={index===activePhotoIndex?"active":""}/>) }
@@ -387,6 +388,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
     </button>{onMore&&<button type="button" className="moonstone-profile-more" disabled={!available} onClick={onMore} aria-label="Действия с анкетой"><MoreHorizontal/></button>}</div>
     <div className="moonstone-location"><MapPin/><span>{location}</span>{distance&&<><b>·</b><span>{distance}</span></>}</div>
     {goal&&<div className="moonstone-goal"><span className="moonstone-goal-mark"><Heart/></span><span>{goalLabel(goal.id,person.gender)}</span></div>}
+    </div>
    </div>
    <section ref={drawer} className="moonstone-profile-drawer" aria-label="Подробная информация" aria-hidden={!expanded}>
     <div className="moonstone-profile-gesture-zone"><span/><span/></div>

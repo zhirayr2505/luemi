@@ -36,6 +36,8 @@ import "./deck-v3.css";
 import "./moonstone-discovery.css";
 // This route loads lazily: repair CSS must follow Moonstone, not only global main.css.
 import "./real-discovery-layout-repair.css";
+// Card Deck is the final feed paint layer; original gestures remain in FeedCard.
+import "./card-deck-edition.css";
 
 // EXACT approved LUEMI navigation / header / profile components. No demo profiles
 // are imported or projected into a real session.
