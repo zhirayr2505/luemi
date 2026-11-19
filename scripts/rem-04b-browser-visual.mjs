@@ -18,6 +18,7 @@ const read=host=>host.evaluate(node=>{
  const bounds=element=>{const r=element?.getBoundingClientRect();return r?{
   x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom}:null;};
  const photo=node.querySelector(".owner-profile-photo-mask");
+ const visiblePhoto=node.dataset.morphState==="compact"?node.querySelector(".owner-profile-avatar-circle"):photo;
  const tabs=node.querySelector(".owner-profile-tabs");
  const logo=node.querySelector(".owner-profile-brand img");
  const body=node.querySelector(".owner-profile-content");
@@ -25,11 +26,11 @@ const read=host=>host.evaluate(node=>{
  const actions=node.querySelector(".owner-profile-actions");
  const identity=node.querySelector(".owner-profile-expanded-identity");
  const compactName=node.querySelector(".owner-profile-compact-identity");
- const avatar=photo?getComputedStyle(photo):null;
+ const avatar=visiblePhoto?getComputedStyle(visiblePhoto):null;
  return {state:node.dataset.morphState,mode:node.dataset.mode,
   isolated:getComputedStyle(node).isolation,
   bg:getComputedStyle(node).backgroundColor,
-  cover:bounds(photo),radius:parseFloat(avatar?.borderRadius||"0"),
+  cover:bounds(visiblePhoto),radius:parseFloat(avatar?.borderRadius||"0"),
   tabs:bounds(tabs),logo:bounds(logo),content:bounds(body),
   expandedName:bounds(identity),compactName:bounds(compactName),actions:bounds(actions),
   blurOpacity:Number(getComputedStyle(backdrop).opacity),
@@ -72,7 +73,7 @@ try{
  await scrollOf(own()).evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector('.owner-premium-profile[data-mode="owner"]')?.dataset.morphState==="compact");
  const compact=await snap(own(),"owner-compact");
- assert.ok(compact.cover.width>=120&&compact.cover.width<=150&&Math.abs(compact.cover.width-compact.cover.height)<1.5);
+ assert.ok(compact.cover.width>=94&&compact.cover.width<=112&&Math.abs(compact.cover.width-compact.cover.height)<1.5);
  assert.ok(compact.blurOpacity>.93,"same-photo blurred backing appears beneath circular avatar");
  assert.ok(compact.tabs?.y>compact.cover.bottom+35,"tabs sit below avatar and name");
  assert.ok(compact.tabs?.y+compact.tabs.height<530,"tabs remain pinned in compact header");
