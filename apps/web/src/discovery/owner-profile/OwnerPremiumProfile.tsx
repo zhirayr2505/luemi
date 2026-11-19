@@ -57,7 +57,6 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const heroPhoto=photos[Math.min(renderIndex,Math.max(0,photos.length-1))]??mainPhoto;
  const previousPhoto=photos[renderIndex-1]??null,nextPhoto=photos[renderIndex+1]??null;
  const photoSignature=photos.map(photo=>photo.id).join("\u0000");
- const photoSignature=photos.map(photo=>photo.id).join("\u0000");
  const selectedPhotoId=useRef(mainPhoto?.id??null);
  const gesture=useRef<ProfileGesture|null>(null);
  const suppressPhotoClick=useRef(false);
