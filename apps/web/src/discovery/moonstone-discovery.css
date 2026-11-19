@@ -310,54 +310,80 @@
 .discovery-app[data-profile-renderer=android]>.discovery-bottom-nav{backdrop-filter:none;-webkit-backdrop-filter:none}
 
 
-/* Same-image photo stage.
- * The exact loaded photograph fills the entire background with blur.
- * The untouched contain-fit photograph stays fully sharp across its central 76%.
- * No canvas thumbnails, invented colors, or live backdrop-filter. */
+/* Adaptive image stage V4: exact edge continuation, no enlarged second face.
+ * A small source strip from each missing side is softly extended outward.
+ * Within the photo's fitted bounds, a blurred *aligned* copy sits directly
+ * under the original: even during a feather transition, pixels line up.
+ * All filters are ordinary static CSS filters (no backdrop-filter in hot path).
+ */
 .moonstone-photo .carousel-track>.carousel-slide-adaptive{
- position:relative;flex:0 0 100%;width:100%;height:100%;
- overflow:hidden;background:#18212D;isolation:isolate
+ position:relative;flex:0 0 100%;width:100%;height:100%;overflow:hidden;
+ background:#18212D;isolation:isolate
 }
-.moonstone-photo .carousel-track>.carousel-slide-adaptive::before{
- content:"";position:absolute;z-index:0;inset:-3%;
- pointer-events:none;
- background-color:#18212D;
+/* No full-screen cover copy: it was creating duplicated / displaced faces. */
+.moonstone-photo .carousel-track>.carousel-slide-adaptive::before{content:none}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive::after{
+ content:"";position:absolute;z-index:2;pointer-events:none;
+ left:var(--photo-left,0px);top:var(--photo-top,0px);
+ width:var(--photo-width,100%);height:var(--photo-height,100%);
  background-image:var(--photo-backdrop,none);
- background-size:cover;background-position:center;
- filter:blur(17px) brightness(.84) saturate(.96);
- transform:scale(1.045)
+ background-size:100% 100%;background-position:center;background-repeat:no-repeat;
+ filter:blur(11px) brightness(.88);
 }
-.moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"]::before{
- display:none
+/* The only pixels outside the original are stretched *edge fragments* of that
+ * very same file. They contain no separately zoomed portrait or second face. */
+.moonstone-photo .carousel-track>.carousel-slide-adaptive .carousel-photo-bleed{
+ position:absolute;z-index:1;pointer-events:none;
+ background-image:var(--photo-backdrop,none);
+ background-repeat:no-repeat;
+ filter:blur(12px) brightness(.82) saturate(.95)
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive .carousel-photo-bleed-top{
+ top:0;left:var(--photo-left,0px);
+ width:var(--photo-width,100%);height:var(--photo-top,0px);
+ background-size:100% 800%;background-position:center top
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive .carousel-photo-bleed-bottom{
+ top:calc(var(--photo-top,0px) + var(--photo-height,100%));bottom:0;
+ left:var(--photo-left,0px);width:var(--photo-width,100%);
+ background-size:100% 800%;background-position:center bottom
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive .carousel-photo-bleed-left{
+ top:var(--photo-top,0px);left:0;
+ height:var(--photo-height,100%);width:var(--photo-left,0px);
+ background-size:800% 100%;background-position:left center
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive .carousel-photo-bleed-right{
+ top:var(--photo-top,0px);left:calc(var(--photo-left,0px) + var(--photo-width,100%));right:0;
+ height:var(--photo-height,100%);
+ background-size:800% 100%;background-position:right center
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive .feed-carousel-photo{
- position:absolute;z-index:1;top:50%;left:50%;
- width:auto;height:auto;max-width:100%;max-height:100%;
- min-width:0;min-height:0;flex:none;display:block;
- object-fit:contain;object-position:center;
- transform:translate(-50%,-50%);image-rendering:auto;
+ position:absolute;z-index:3;top:50%;left:50%;width:auto;height:auto;
+ max-width:100%;max-height:100%;min-width:0;min-height:0;flex:none;
+ display:block;object-fit:contain;object-position:center;
+ transform:translate(-50%,-50%);image-rendering:auto;pointer-events:none;
+ /* Only 5% of the original's edge blends into its geometrically aligned blur. */
  -webkit-mask-image:linear-gradient(180deg,
-   transparent 0%,rgba(0,0,0,.6) 5%,
-   rgba(0,0,0,.92) 9%,black 12%,
-   black 88%,rgba(0,0,0,.92) 91%,
-   rgba(0,0,0,.6) 95%,transparent 100%);
+  transparent 0%,rgba(0,0,0,.78) 2%,black 5%,
+  black 95%,rgba(0,0,0,.78) 98%,transparent 100%);
  mask-image:linear-gradient(180deg,
-   transparent 0%,rgba(0,0,0,.6) 5%,
-   rgba(0,0,0,.92) 9%,black 12%,
-   black 88%,rgba(0,0,0,.92) 91%,
-   rgba(0,0,0,.6) 95%,transparent 100%);
- pointer-events:none
+  transparent 0%,rgba(0,0,0,.78) 2%,black 5%,
+  black 95%,rgba(0,0,0,.78) 98%,transparent 100%)
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="pillarbox"] .feed-carousel-photo{
  -webkit-mask-image:linear-gradient(90deg,
-  transparent 0%,rgba(0,0,0,.4) 7%,black 18%,
-  black 82%,rgba(0,0,0,.4) 93%,transparent 100%);
+  transparent 0%,rgba(0,0,0,.78) 2%,black 5%,
+  black 95%,rgba(0,0,0,.78) 98%,transparent 100%);
  mask-image:linear-gradient(90deg,
-  transparent 0%,rgba(0,0,0,.4) 7%,black 18%,
-  black 82%,rgba(0,0,0,.4) 93%,transparent 100%)
+  transparent 0%,rgba(0,0,0,.78) 2%,black 5%,
+  black 95%,rgba(0,0,0,.78) 98%,transparent 100%)
+}
+.moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"]::after,
+.moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"] .carousel-photo-bleed{
+ display:none
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"] .feed-carousel-photo{
  width:100%;height:100%;max-width:none;max-height:none;
  object-fit:cover;-webkit-mask-image:none;mask-image:none
 }
-/* Keep swipe-hit areas, progress and the approved chrome untouched. */

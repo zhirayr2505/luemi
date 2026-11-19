@@ -13,7 +13,30 @@ export interface PhotoCarouselHandle {
  finish:(id:number,x:number,cancelled:boolean)=>void;
  cancel:()=>void;
 }
-/* Same photo source is rendered sharply in front and blurred behind. */
+/* Match background geometry to the sharp photo's contain-fit bounds.
+ * Edge bands then extend the *edge pixels* of that same source instead of
+ * enlarging the person's face with a separate full-screen cover. This stays
+ * compatible with cross-origin/signed images: only CSS reads the URL. */
+function syncAdaptiveSlide(image:HTMLImageElement,stage:HTMLElement):void{
+ if(!image.naturalWidth||!image.naturalHeight)return;
+ const slide=image.closest<HTMLElement>(".carousel-slide-adaptive");
+ if(!slide)return;
+ const width=Math.max(1,stage.clientWidth),height=Math.max(1,stage.clientHeight);
+ const imageRatio=image.naturalWidth/image.naturalHeight,frameRatio=width/height;
+ const full=Math.abs(Math.log(imageRatio/frameRatio))<.075;
+ slide.dataset.photoFit=full?"full":imageRatio>frameRatio?"letterbox":"pillarbox";
+ if(full){slide.style.removeProperty("--photo-backdrop");return;}
+ const scale=Math.min(width/image.naturalWidth,height/image.naturalHeight);
+ const imageWidth=image.naturalWidth*scale,imageHeight=image.naturalHeight*scale;
+ const rect={
+  "--photo-left":(width-imageWidth)/2,
+  "--photo-top":(height-imageHeight)/2,
+  "--photo-width":imageWidth,
+  "--photo-height":imageHeight
+ };
+ for(const [key,value] of Object.entries(rect))slide.style.setProperty(key,value.toFixed(2)+"px");
+ slide.style.setProperty("--photo-backdrop",'url('+JSON.stringify(image.currentSrc||image.src)+')');
+}
 const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,prioritize=true,gpuSafe=false,adaptive=false,loop=false,onIndexChange,onCoverReady},ref) {
  const [index,setIndex]=useState(0);
  const tracking=useRef<Tracking|null>(null);
@@ -64,6 +87,17 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(photoTrack.current)photoTrack.current.style.transition="none";
    renderOffset(Math.min(activeRef.current,Math.max(0,photos.length-1))+visualOffset,0);
  },[photoSignature,photos.length,renderOffset,visualOffset]);
+ useEffect(()=>{
+  if(!adaptive||typeof ResizeObserver==="undefined")return;
+  const stage=frame.current;
+  if(!stage)return;
+  const observer=new ResizeObserver(()=>{
+   photoTrack.current?.querySelectorAll<HTMLImageElement>(".carousel-slide-adaptive img.is-ready")
+    .forEach(img=>syncAdaptiveSlide(img,stage));
+  });
+  observer.observe(stage);
+  return ()=>observer.disconnect();
+ },[adaptive,photoSignature]);
  const imageAtVisual=(position:number):HTMLImageElement|null=>{
   const child=photoTrack.current?.children.item(position);
   return child?.querySelector<HTMLImageElement>("img.feed-carousel-photo")??null;
@@ -238,13 +272,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
     if(adaptive){
      const slide=image.closest<HTMLElement>(".carousel-slide-adaptive");
      if(slide){
-      const ratio=image.naturalWidth/Math.max(1,image.naturalHeight);
-      const frameRatio=(frame.current?.clientWidth??1)/Math.max(1,frame.current?.clientHeight??1);
-      const full=Math.abs(Math.log(ratio/frameRatio))<.075;
-      slide.dataset.photoFit=full?"full":ratio>frameRatio?"letterbox":"pillarbox";
-      if(!full){
-       slide.style.setProperty("--photo-backdrop",'url('+JSON.stringify(source)+')');
-      }else slide.style.removeProperty("--photo-backdrop");
+      if(frame.current)syncAdaptiveSlide(image,frame.current);
      }
     }
     if(photoIndex===0&&!isClone)onCoverReadyRef.current?.();
@@ -288,7 +316,13 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
          }}/>;
        return adaptive?
         <div key={p.id+"::"+visualIndex} className="carousel-slide carousel-slide-adaptive"
-         aria-hidden={isClone} data-photo-fit="pending">{picture}</div>:
+         aria-hidden={isClone} data-photo-fit="pending">
+         <div className="carousel-photo-bleed carousel-photo-bleed-top" aria-hidden="true"/>
+         <div className="carousel-photo-bleed carousel-photo-bleed-bottom" aria-hidden="true"/>
+         <div className="carousel-photo-bleed carousel-photo-bleed-left" aria-hidden="true"/>
+         <div className="carousel-photo-bleed carousel-photo-bleed-right" aria-hidden="true"/>
+         {picture}
+        </div>:
         <div key={p.id+"::"+visualIndex} className="carousel-slide" aria-hidden={isClone}>{picture}</div>;
       })}
    </div></>:<div className="profile-placeholder">Здесь будет твоё главное фото</div>}

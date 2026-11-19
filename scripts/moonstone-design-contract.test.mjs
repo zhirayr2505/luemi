@@ -174,8 +174,9 @@ test("feed keeps sharp photo while its identical source blurs behind it",()=>{
  assert.match(carousel,/const warmPhoto=/);
  assert.match(carousel,/--photo-backdrop/);
  assert.match(css,/background-image:var\(--photo-backdrop,none\)/);
- assert.match(css,/filter:blur\(17px\) brightness\(\.84\)/);
- assert.match(carousel,/const full=Math\.abs\(Math\.log\(ratio\/frameRatio\)\)<\.075/);
+ assert.match(css,/filter:blur\(11px\) brightness\(\.88\)/);
+ assert.match(css,/\.carousel-slide-adaptive::before\{content:none\}/);
+ assert.match(carousel,/const full=Math\.abs\(Math\.log\(imageRatio\/frameRatio\)\)<\.075/);
  assert.match(card,/gpuSafe adaptive loop onCoverReady=\{onCoverReady\}/);
  assert.match(css,/\.moonstone-photo-shade\{/);
 });
