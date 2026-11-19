@@ -67,7 +67,7 @@ try{
  assert.equal(await page.locator(".pm-viewer").count(),0,"portrait swipe never opens fullscreen photo viewer");
  await root.locator(".owner-profile-scroll").evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact");
- const avatar=await face.boundingBox();
+ const avatar=await root.locator(".owner-profile-avatar-circle").boundingBox();
  assert.ok(avatar&&Math.abs(avatar.width-avatar.height)<1.2,"photo becomes a round avatar");
  console.log("PREMIUM_PROFILE_GESTURE_PASS vertical photo-origin morph");
 
