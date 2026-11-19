@@ -39,7 +39,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const shade=useRef<HTMLDivElement>(null),expandedIdentity=useRef<HTMLDivElement>(null);
  const compactIdentity=useRef<HTMLDivElement>(null),actions=useRef<HTMLDivElement>(null);
  const tablist=useRef<HTMLDivElement>(null),brandProbe=useRef<HTMLDivElement>(null);
- const compactBackdrop=useRef<HTMLDivElement>(null);
+ const compactBackdrop=useRef<HTMLDivElement>(null),pager=useRef<HTMLDivElement>(null);
+ const topEdit=useRef<HTMLButtonElement>(null);
  const layout=useRef<OwnerProfileLayout>(createOwnerProfileLayout({width:393,height:852}));
  const paintRaf=useRef(0),lastState=useRef("expanded");
  const motionProgress=useRef(onMotionProgress);
@@ -87,6 +88,16 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    compactIdentity.current.setAttribute("aria-hidden",progress<=.58?"true":"false");
   }
   if(compactBackdrop.current)compactBackdrop.current.style.opacity=String(Math.max(0,Math.min(1,(progress-.48)/.35)));
+  if(pager.current){
+   pager.current.style.opacity=String(Math.max(0,1-progress*4));
+   pager.current.style.pointerEvents=progress<.22?"auto":"none";
+   pager.current.toggleAttribute("inert",progress>=.22);
+  }
+  if(topEdit.current){
+   topEdit.current.style.opacity=String(Math.max(0,1-progress*3.6));
+   topEdit.current.style.pointerEvents=progress<.25?"auto":"none";
+   topEdit.current.toggleAttribute("inert",progress>=.25);
+  }
   root.current?.style.setProperty("--owner-morph-progress",String(progress));
   const state=progress<=.001?"expanded":progress>=.999?"compact":"transition";
   if(root.current&&lastState.current!==state){root.current.dataset.morphState=state;lastState.current=state;}
@@ -211,7 +222,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
     <div className="owner-profile-photo-empty"><UserRound size={42}/><span>Фото пока нет</span></div>}
    <div ref={shade} className="owner-profile-photo-shade" aria-hidden="true"/>
   </div>
-  {photos.length>1&&<div className="owner-profile-photo-pager" aria-label="Фотографии">
+  {photos.length>1&&<div ref={pager} className="owner-profile-photo-pager" aria-label="Фотографии">
    {photos.map((photo,index)=><button key={photo.id} type="button" className={index===heroIndex?"active":""}
     aria-label={"Показать фото "+(index+1)} aria-current={index===heroIndex?"true":undefined}
     onClick={()=>setHeroIndex(index)}/>)}
@@ -221,7 +232,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   </div>
   <header className="owner-profile-topbar">
    <button type="button" className="owner-profile-glass owner-profile-back" onClick={onBack} aria-label="Назад"><ArrowLeft/></button>
-   {isOwner&&<button type="button" className="owner-profile-glass owner-profile-edit-top" onClick={onEdit} aria-label="Редактировать профиль">
+   {isOwner&&<button ref={topEdit} type="button" className="owner-profile-glass owner-profile-edit-top" onClick={onEdit} aria-label="Редактировать профиль">
     <PenLine size={16}/><span>Изменить</span>
    </button>}
   </header>
