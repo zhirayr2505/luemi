@@ -178,6 +178,7 @@
  position:sticky;z-index:16;top:calc(var(--owner-compact-top) + 4px);
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
  height:52px;align-items:stretch;margin:0 0 13px;padding:0;
+ touch-action:pan-y;overscroll-behavior-x:contain;
  border:0;border-bottom:1px solid var(--luemi-border);
  border-radius:0;background:var(--luemi-bg-deep);
 }
