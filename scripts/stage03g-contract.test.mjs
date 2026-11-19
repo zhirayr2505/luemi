@@ -59,8 +59,11 @@ assert.ok(profile.includes('mode={data.source==="local-draft"?"local-self-previe
  "self preview retains private local-only capability");
 assert.ok(profile.includes('mode==="owner"')&&ownerSurface.includes("onClick={onEdit}"),
  "only the owner surface renders editing actions");
-assert.ok(ownerSurface.includes('["photos","Фото"]')&&ownerSurface.includes('["about","О себе"]')&&
- ownerSurface.includes('["interests","Интересы"]'),"approved owner profile tabs and order");
+assert.ok(ownerSurface.includes('[["about","О себе"],["photos","Фото"],["bliki","Блики"],["gifts","Подарки"]]'),
+ "approved shared premium profile has the requested four tabs in order");
+assert.ok(ownerSurface.includes('isOwner&&<div ref={actions}')&&
+ ownerSurface.includes('isOwner&&<button ref={topEdit}'),
+ "visitor profiles cannot access owner action controls");
 assert.ok(ownerSurface.includes('data-morph-state="expanded"')&&
  ownerSurface.includes("ownerMorphFrame(layout.current,progress)"),"owner opens expanded and uses one geometric morph");
 assert.ok(profile.includes("PhotoViewer")&&profile.includes("initialPhotoId={viewer.photoId}")&&
