@@ -31,7 +31,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const [tab,setTab]=useState<OwnerTab>("about");
  const [heroIndex,setHeroIndex]=useState(0);
  const heroPhoto=photos[Math.min(heroIndex,Math.max(0,photos.length-1))]??mainPhoto;
- const photoSwipe=useRef<{id:number;x:number;y:number}|null>(null);
+ const photoSwipe=useRef<{id:number;x:number;y:number;startScroll:number;axis:"horizontal"|"vertical"|null}|null>(null);
  const pageSwipe=useRef<{id:number;x:number;y:number}|null>(null);
  const suppressPhotoClick=useRef(false);
  const root=useRef<HTMLElement>(null),scroller=useRef<HTMLDivElement>(null);
@@ -170,18 +170,42 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    event.key==="ArrowLeft"?Math.max(0,index-1):event.key==="Home"?0:event.key==="End"?tabs.length-1:-1;
   if(next<0)return;event.preventDefault();selectTab(tabs[next][0],true);
  };
+ // The photo is a floating morph layer (outside the native scroller).
+ // Forward vertical finger travel to the scroll authority; otherwise a drag
+ // starting on the big picture cannot ever collapse the profile on Android.
  const heroDown=(event:ReactPointerEvent<HTMLDivElement>)=>{
-  if(event.isPrimary)photoSwipe.current={id:event.pointerId,x:event.clientX,y:event.clientY};
+  if(!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
+  photoSwipe.current={id:event.pointerId,x:event.clientX,y:event.clientY,
+   startScroll:scroller.current?.scrollTop??0,axis:null};
+ };
+ const heroMove=(event:ReactPointerEvent<HTMLDivElement>)=>{
+  const first=photoSwipe.current;
+  if(!first||first.id!==event.pointerId)return;
+  const dx=event.clientX-first.x,dy=event.clientY-first.y;
+  if(!first.axis){
+   if(Math.max(Math.abs(dx),Math.abs(dy))<9)return;
+   first.axis=Math.abs(dx)>Math.abs(dy)*1.2?"horizontal":
+    Math.abs(dy)>Math.abs(dx)*1.2?"vertical":null;
+   if(!first.axis)return;
+  }
+  if(event.cancelable)event.preventDefault();
+  if(first.axis==="vertical"&&scroller.current){
+   scroller.current.scrollTop=Math.max(0,first.startScroll-dy);
+   schedulePaint();
+  }
  };
  const heroUp=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const first=photoSwipe.current;photoSwipe.current=null;
   if(!first||first.id!==event.pointerId)return;
   const dx=event.clientX-first.x,dy=event.clientY-first.y;
-  if(photos.length>1&&Math.abs(dx)>38&&Math.abs(dx)>Math.abs(dy)*1.25){
+  if(first.axis==="vertical"){
+   suppressPhotoClick.current=true;
+   if(scroller.current)scroller.current.scrollTop=Math.max(0,first.startScroll-dy);
+  }else if(photos.length>1&&Math.abs(dx)>38&&Math.abs(dx)>Math.abs(dy)*1.25){
    suppressPhotoClick.current=true;
    setHeroIndex(i=>Math.max(0,Math.min(photos.length-1,i+(dx<0?1:-1))));
-   requestAnimationFrame(()=>{suppressPhotoClick.current=false;});
   }
+  if(suppressPhotoClick.current)requestAnimationFrame(()=>{suppressPhotoClick.current=false;});
  };
  const pageDown=(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(!event.isPrimary||((event.target as HTMLElement).closest("button,a,input,textarea,select")))return;
@@ -211,7 +235,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    <div className="owner-profile-compact-tint"/>
   </div>
   <div ref={mask} className="owner-profile-photo-mask" onPointerDown={heroDown}
-    onPointerUp={heroUp} onPointerCancel={()=>{photoSwipe.current=null;}}>
+    onPointerMove={heroMove} onPointerUp={heroUp}
+    onPointerCancel={()=>{photoSwipe.current=null;}}>
    {heroPhoto?<img ref={heroImage} data-photo-id={heroPhoto.id} src={heroPhoto.src}
     alt={"Фото профиля "+p.name} draggable={false} loading="eager" decoding="async" fetchPriority="high"
     style={{objectPosition:(resolvePhotoFocus(1,2,heroPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,heroPhoto.focalPoint).y*100)+"%"}}
