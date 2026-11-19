@@ -131,7 +131,7 @@
 .owner-profile-scroll::-webkit-scrollbar{display:none}
 .owner-profile-hero-spacer{height:var(--owner-hero-bottom);pointer-events:none}
 .owner-profile-content{
- position:relative;min-height:calc(100% - var(--owner-compact-top));
+ position:relative;min-height:calc(100% + 115px);
  margin-top:-28px;padding:0 12px calc(135px + var(--bottom-safe,0px));
  border-radius:27px 27px 0 0;
  background:linear-gradient(180deg,rgba(24,21,34,.96),var(--luemi-bg-deep) 75px,var(--luemi-bg));
