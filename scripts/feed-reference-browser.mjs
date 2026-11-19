@@ -3,6 +3,7 @@
  */
 import assert from "node:assert/strict";
 import {mkdir} from "node:fs/promises";
+import {readFileSync} from "node:fs";
 import {chromium} from "playwright";
 
 const root="qa-artifacts/feed-reference";
@@ -26,6 +27,15 @@ try{
    userAgent:device.ua,deviceScaleFactor:1});
   const page=await ctx.newPage();
   const errors=[];page.on("pageerror",error=>errors.push(error.message));
+  // Isolated Vite QA runs without the API server. Resolve production QA
+  // portrait routes from the repo's actual synthetic QA WebP files.
+  await page.route("**/api/v2/qa/portraits/**",async route=>{
+   const path=new URL(route.request().url()).pathname;
+   const match=path.match(/^\/api\/v2\/qa\/portraits\/([a-z0-9-]+)\/([1-4])\.webp$/);
+   if(!match){await route.continue();return;}
+   const photo=new URL("../apps/api/src/qa-fixtures/photos/"+match[1]+"-"+match[2]+".webp",import.meta.url);
+   await route.fulfill({status:200,contentType:"image/webp",body:readFileSync(photo)});
+  });
   await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
   await page.locator(".deck-active .moonstone-feed-card").waitFor({timeout:15000});
   await page.evaluate(()=>window.__luemiQaPerf?.theme?.());
@@ -36,18 +46,6 @@ try{
    node.style.setProperty("--tg-safe-area-inset-bottom","9px");
   });
   const feed=page.locator(".deck-active .moonstone-feed-card");
-  // Diagnose the historical feed reference's hard-coded ready selector.
-  const imageDebug=await page.evaluate(()=>{
-   const frame=document.querySelector(".deck-active .moonstone-photo .carousel-track");
-   return {cards:document.querySelectorAll(".deck-active .moonstone-feed-card").length,
-    frame:!!frame,
-    images:[...(frame?.querySelectorAll("img")??[])].slice(0,5).map(img=>({
-     src:img.getAttribute("src")?.slice(0,95),className:img.className,
-     complete:img.complete,naturalWidth:img.naturalWidth,naturalHeight:img.naturalHeight,
-     visibility:getComputedStyle(img).visibility,opacity:getComputedStyle(img).opacity
-    }))};
-  });
-  console.log("FEED_REFERENCE_IMAGE_DIAGNOSTIC "+JSON.stringify(imageDebug));
   const image=page.locator(".deck-active .moonstone-photo .carousel-track img.is-ready").first();
   await image.waitFor({timeout:15000});
   await image.evaluate(img=>img.decode());
