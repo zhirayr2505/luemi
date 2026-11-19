@@ -68,6 +68,12 @@ try{
   compact.radius>=compact.width/2-1,"compact photo becomes a circle in safe-area coordinates");
  near(compact.x+compact.width/2,393/2,1.5);
  await profile().getByRole("tab",{name:"Фото",exact:true}).click();
+ await sleep(280);
+ console.log("PREMIUM_PROFILE_AFTER_TAB "+JSON.stringify({
+  portrait:await portrait(),
+  scroll:await scroll().evaluate(el=>({scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight})),
+  morphDistance:await profile().evaluate(el=>getComputedStyle(el).getPropertyValue("--owner-morph-distance"))
+ }));
  await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
  assert.equal(await currentTab().innerText(),"Фото");
 
