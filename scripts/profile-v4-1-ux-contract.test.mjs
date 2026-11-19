@@ -5,8 +5,14 @@ const css=readFileSync("apps/web/src/discovery/owner-profile/owner-premium-profi
 const component=readFileSync("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx","utf8");
 const catalog=readFileSync("apps/web/src/ui/InterestCatalog.tsx","utf8");
 
-assert.match(css,/\.owner-profile-content\s*\{[^}]*border-radius:2[0-9]px 2[0-9]px 0 0/s,
+assert.match(css,/\.owner-profile-content\s*\{[^}]*border-radius:32px 32px 0 0/s,
  "content sheet must overlap the image through its rounded upper corners");
+assert.match(css,/\.owner-profile-avatar-circle\s*\{[^}]*border-radius:50%/s,
+ "V4.2 uses a fully circular image plane, no rounded-square intermediate");
+assert.match(component,/ownerAutoSnapTarget\(current\.startScroll,position/,
+ "V4.2 automatically snaps after the finger crosses the threshold");
+assert.match(css,/\.owner-profile-tabs\s*\{[^}]*top:var\(--owner-compact-top\)/s,
+ "tab bar is pinned to the rounded panel, without the old detached 4px gap");
 assert.match(css,/\.owner-profile-photo-pager\s*\{[^}]*right:2[0-9]px/s,
  "photo pager must be right aligned, not centered under the identity");
 assert.match(css,/\.owner-profile-tabs::after\s*\{/,
