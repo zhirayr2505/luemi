@@ -15,14 +15,14 @@ test("Moonstone Discovery uses the original centered wordmark and no header tool
  assert.match(css,/\.discovery-app\[data-feed-visible="true"\] \.lh-center\{[^}]*left:50%/);
 });
 
-test("bounded Tinder-style card keeps the gallery beneath its own information footer",()=>{
+test("approved card keeps the sharp gallery under its translucent information overlay",()=>{
  const cardCss=read("apps/web/src/discovery/card-deck-edition.css");
  assert.match(card,/className="moonstone-person-card"/);
  assert.match(card,/className="moonstone-photo"/);
  assert.match(card,/gpuSafe adaptive loop ambientActive=\{active\} onCoverReady=\{onCoverReady\}/);
  assert.match(cardCss,/\.moonstone-person-card \.moonstone-photo\{[\s\S]*?bottom:0/);
  assert.match(css,/\.carousel-slide-adaptive \.feed-carousel-photo\{[\s\S]*?object-fit:contain/);
- assert.match(css,/data-photo-fit="full"/);
+ assert.doesNotMatch(carousel,/syncAdaptiveSlide|carousel-photo-bleed/);
  assert.match(real,/visibleRows\.slice\(page,page\+2\)/);
  // Queued cards load only the cover; active cards may also warm the next photo.
  assert.match(carousel,/const load=!gpuSafe\|\|i===0\|\|\(i===1&&prioritize\)/);
