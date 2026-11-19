@@ -53,8 +53,17 @@ try{
 
  await root.getByRole("tab",{name:"О себе",exact:true}).click();
  const pages=root.locator(".owner-profile-pages"),rect=await pages.boundingBox();
- assert.ok(rect&&rect.height>90,"tab pages remain visible");
- await swipe(rect.x+rect.width*.75,rect.y+Math.min(90,rect.height*.35),-rect.width*.48,0);
+ const pinned=await root.locator(".owner-profile-tabs").boundingBox();
+ assert.ok(rect&&pinned&&rect.height>90,"tab pages and pinned tabs remain visible");
+ // The tab body can be scrolled underneath the opaque sticky bar; start the
+ // gesture on the visible page, never at a hidden document coordinate.
+ const touchY=Math.max(rect.y+Math.min(90,rect.height*.35),pinned.y+pinned.height+34);
+ assert.ok(touchY<Math.min(rect.y+rect.height-24,760),
+  "the page offers a usable swipe area below pinned tabs and above bottom navigation");
+ const touchX=rect.x+rect.width*.75;
+ assert(await page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest(".owner-profile-pages"),
+  {x:touchX,y:touchY}),"visible page receives horizontal gestures");
+ await swipe(touchX,touchY,-rect.width*.48,0);
  await delay(150);
  assert.equal(await selected().innerText(),"Фото","page swipe switches to next tab");
  await root.getByRole("tab",{name:"Подарки",exact:true}).click();
