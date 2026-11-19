@@ -20,7 +20,9 @@ const getTranslation=()=>route().evaluate(node=>new DOMMatrixReadOnly(getCompute
 const near=(actual,expected,tolerance=3)=>
  assert.ok(Math.abs(actual-expected)<=tolerance,
   "premium visitor profile moved unexpectedly: "+actual+" versus "+expected);
-const portrait=()=>photo().evaluate(el=>{
+const portrait=()=>profile().evaluate(node=>{
+ const el=node.querySelector(node.dataset.morphState==="compact"?".owner-profile-avatar-circle":".owner-profile-photo-mask");
+ if(!el)throw Error("visible profile photograph missing");
  const rect=el.getBoundingClientRect();
  return {state:el.closest(".owner-premium-profile")?.dataset.morphState,
   x:rect.x,y:rect.y,width:rect.width,height:rect.height,
@@ -65,7 +67,7 @@ try{
  await scroll().evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
  const compact=await portrait();
- assert.ok(compact.width>=120&&compact.width<=150&&Math.abs(compact.width-compact.height)<1.5&&
+ assert.ok(compact.width>=94&&compact.width<=112&&Math.abs(compact.width-compact.height)<1.5&&
   compact.radius>=compact.width/2-1,"compact photo becomes a circle in safe-area coordinates");
  near(compact.x+compact.width/2,393/2,1.5);
  await profile().getByRole("tab",{name:"Фото",exact:true}).click();
@@ -88,7 +90,7 @@ try{
   morphDistance:await profile().evaluate(el=>getComputedStyle(el).getPropertyValue("--owner-morph-distance")),
   rootState:await profile().getAttribute("data-morph-state")}));
  assert.ok(Number.isFinite(after.y)&&Number.isFinite(after.width)&&
-  after.width>=120&&after.width<=150,"portrait geometry remains bounded after resume");
+  after.width>=94&&after.width<=112,"portrait geometry remains bounded after resume");
  near(after.x+after.width/2,393/2,1.5);
  assert.equal(await currentTab().innerText(),"Фото","tab selection survives Telegram background/resume");
  near(await getTranslation(),0);
