@@ -21,7 +21,6 @@ const swipe=async(x,y,dx,dy,steps=12)=>{
 };
 const root=page.locator(".owner-premium-profile");
 const selected=()=>root.locator('.owner-profile-tabs [role="tab"][aria-selected="true"]');
-const activePhoto=()=>root.locator('.owner-profile-photo-pager button[aria-current="true"]');
 try{
  await page.goto(base+"/profile-qa.html",{waitUntil:"domcontentloaded"});
  await page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"}).click();
