@@ -480,7 +480,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
     }}}
     onPointerDown={profileDown("photo")} onPointerMove={profileMove}
     onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
-    onLostPointerCapture={event=>profileEnd(event,true)}>
+    onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
    {heroPhoto?<img ref={heroImage} data-photo-id={heroPhoto.id} src={heroPhoto.src}
     alt={"Фото профиля "+p.name} draggable={false} loading="eager" decoding="async" fetchPriority="high"
     style={{objectPosition:(resolvePhotoFocus(1,2,heroPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,heroPhoto.focalPoint).y*100)+"%"}}
@@ -532,7 +532,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
     <div ref={flow} className="owner-profile-flow">
     <div className="owner-profile-pages" onPointerDown={profileDown("pages")} onPointerMove={profileMove}
       onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
-      onLostPointerCapture={event=>profileEnd(event,true)}>
+      onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
      <section id={tabPrefix+"-about-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-about-tab"}
       aria-label="О себе" hidden={tab!=="about"} className="owner-profile-panel owner-profile-about">
       <article><h2>О себе</h2><p>{p.about||"Описание пока не заполнено."}</p></article>
