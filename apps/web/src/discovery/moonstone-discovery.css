@@ -341,22 +341,27 @@
 .moonstone-photo .carousel-track>.carousel-slide-adaptive .carousel-photo-bleed-top{
  top:0;left:var(--photo-left,0px);
  width:var(--photo-width,100%);height:var(--photo-top,0px);
- background-size:100% 800%;background-position:center top
+ background-size:100% 800%;background-position:center top;
+ /* A reflected top edge touches the sharp photo at the same source pixels. */
+ transform:scaleY(-1)
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive .carousel-photo-bleed-bottom{
  top:calc(var(--photo-top,0px) + var(--photo-height,100%));bottom:0;
  left:var(--photo-left,0px);width:var(--photo-width,100%);
- background-size:100% 800%;background-position:center bottom
+ background-size:100% 800%;background-position:center bottom;
+ transform:scaleY(-1)
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive .carousel-photo-bleed-left{
  top:var(--photo-top,0px);left:0;
  height:var(--photo-height,100%);width:var(--photo-left,0px);
- background-size:800% 100%;background-position:left center
+ background-size:800% 100%;background-position:left center;
+ transform:scaleX(-1)
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive .carousel-photo-bleed-right{
  top:var(--photo-top,0px);left:calc(var(--photo-left,0px) + var(--photo-width,100%));right:0;
  height:var(--photo-height,100%);
- background-size:800% 100%;background-position:right center
+ background-size:800% 100%;background-position:right center;
+ transform:scaleX(-1)
 }
 .moonstone-photo .carousel-track>.carousel-slide-adaptive .feed-carousel-photo{
  position:absolute;z-index:3;top:50%;left:50%;width:auto;height:auto;

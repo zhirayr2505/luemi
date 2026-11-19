@@ -36,6 +36,12 @@ test("same-image bleed matches foreground geometry instead of zoomed cover",()=>
  }
  assert.match(photoCss,/background-size:100% 800%/);
  assert.match(photoCss,/background-size:800% 100%/);
+ for(const edge of ["top","bottom"]){
+  assert.match(photoCss,new RegExp("carousel-photo-bleed-"+edge+"\\{[\\s\\S]*?transform:scaleY\\(-1\\)"));
+ }
+ for(const edge of ["left","right"]){
+  assert.match(photoCss,new RegExp("carousel-photo-bleed-"+edge+"\\{[\\s\\S]*?transform:scaleX\\(-1\\)"));
+ }
  assert.match(photoCss,/black 5%,[\s\S]*?black 95%/);
  assert.match(photoCss,/\[data-photo-fit="full"\]::after/);
  assert.doesNotMatch(photoCss.slice(photoCss.indexOf("/* Adaptive image stage V4:")),/background-size:cover/);
