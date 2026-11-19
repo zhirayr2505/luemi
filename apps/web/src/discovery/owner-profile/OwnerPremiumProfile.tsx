@@ -10,7 +10,7 @@ import {bindMotionLifecycle} from "../../ui/motion-lifecycle";
 import type {ProfileView} from "../ProfileModel";
 import {GeometryMotion} from "../geometry-motion";
 import {resolvePhotoFocus} from "../profile-v3/geometry/ProfileGeometry";
-import {createOwnerProfileLayout,ownerMorphEndpoint,ownerMorphFrame,ownerMorphProgress,type OwnerProfileLayout} from "./OwnerProfileGeometry";
+import {createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,ownerMorphFrame,ownerMorphProgress,type OwnerProfileLayout} from "./OwnerProfileGeometry";
 import "./owner-premium-profile.css";
 
 type OwnerTab="about"|"photos"|"bliki"|"gifts";
@@ -26,11 +26,12 @@ type Props={
 
 type ProfileGesture={
  id:number;serial:number;source:"photo"|"pages"|"tabs";axis:"horizontal"|"vertical"|null;
- x:number;y:number;startScroll:number;width:number;captured:boolean;
+ x:number;y:number;startScroll:number;width:number;captured:boolean;autoSnapped:boolean;
  samples:{position:number;time:number}[];
 };
 
-const MORPH_EASING=[.2,.82,.24,1] as const;
+// Only settle uses overshoot; direct finger tracking stays exactly 1:1.
+const MORPH_EASING=[.17,.84,.18,1.13] as const;
 const recentVelocity=(samples:readonly {position:number;time:number}[])=>{
  if(samples.length<2)return 0;
  const last=samples[samples.length-1];
@@ -62,7 +63,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  const gesture=useRef<ProfileGesture|null>(null);
  const suppressPhotoClick=useRef(false),suppressTabClick=useRef(false);
  const root=useRef<HTMLElement>(null),scroller=useRef<HTMLDivElement>(null);
- const mask=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null);
+ const mask=useRef<HTMLDivElement>(null),avatarMask=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null);
  const prevImage=useRef<HTMLDivElement>(null),nextImage=useRef<HTMLDivElement>(null);
  const photoSlideTimer=useRef<number|null>(null);
  const shade=useRef<HTMLDivElement>(null),expandedIdentity=useRef<HTMLDivElement>(null);
@@ -70,7 +71,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  const tablist=useRef<HTMLDivElement>(null),brandProbe=useRef<HTMLDivElement>(null);
  const compactBackdrop=useRef<HTMLDivElement>(null),pager=useRef<HTMLDivElement>(null);
  const glow=useRef<HTMLDivElement>(null),contentRoot=useRef<HTMLElement>(null);
- const ownerElastic=useRef(0),elasticRaf=useRef(0);
+ const ownerElastic=useRef(0);
+ const nativeTouchStart=useRef(0),nativeSnapLocked=useRef(false);
  const topEdit=useRef<HTMLButtonElement>(null);
  const flow=useRef<HTMLDivElement>(null);
  const layout=useRef<OwnerProfileLayout>(createOwnerProfileLayout({width:393,height:852}));
@@ -103,37 +105,59 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  useEffect(()=>{motionProgress.current=onMotionProgress;},[onMotionProgress]);
 
  const paint=useCallback((scrollTop:number)=>{
-  const progress=ownerMorphProgress(scrollTop,layout.current.morphDistance);
-  const frame=ownerMorphFrame(layout.current,progress);
+  const geometry=layout.current,distance=geometry.morphDistance;
+  const bounded=Math.max(0,Math.min(distance,scrollTop));
+  const progress=ownerMorphProgress(bounded,distance);
+  const frame=ownerMorphFrame(geometry,progress);
+  // Spring endpoints can overrun the SCROLL boundary by a few pixels; keep
+  // scrollTop legal and paint that overrun on the photo + sheet together.
+  const beyond=scrollTop<0?-scrollTop:scrollTop>distance?distance-scrollTop:0;
+  const elastic=ownerElastic.current+beyond;
+  const stretch=Math.max(0,elastic);
   lastPaintedProgress.current=progress;
   const surface=mask.current;
   if(surface){
-   surface.style.transform=`translate3d(${frame.mask.x}px,${frame.mask.y}px,0)`;
+   const scale=1+Math.min(28,stretch)*.0008;
+   surface.style.transform=`translate3d(${frame.mask.x-(scale-1)*frame.mask.width/2}px,${frame.mask.y}px,0) scale(${scale})`;
    surface.style.width=`${frame.mask.width}px`;
-   surface.style.height=`${frame.mask.height+(progress<=.001?ownerElastic.current:0)}px`;
-   surface.style.borderRadius=`${frame.radius}px`;
+   surface.style.height=`${frame.mask.height}px`;
+   surface.style.borderRadius="0px";
+   surface.style.opacity=String(frame.squareAlpha);
+   surface.style.pointerEvents=progress<.70?"auto":"none";
+   surface.toggleAttribute("inert",progress>=.74);
+  }
+  // The second plane is ALWAYS clipped to a true circle. At no point is a
+  // rounded rectangle or oval rendered between the square and compact avatar.
+  if(avatarMask.current){
+   const a=avatarMask.current;
+   a.style.transform=`translate3d(${frame.avatar.x}px,${frame.avatar.y+Math.min(0,elastic)*.75}px,0)`;
+   a.style.width=`${frame.avatar.width}px`;
+   a.style.height=`${frame.avatar.height}px`;
+   a.style.opacity=String(frame.circleAlpha);
+   a.style.pointerEvents=progress>=.70?"auto":"none";
+   a.toggleAttribute("inert",progress<.70);
   }
   if(shade.current)shade.current.style.opacity=String(frame.photoShadeAlpha);
   if(expandedIdentity.current){
    expandedIdentity.current.style.opacity=String(frame.expandedAlpha);
-   // The visible identity follows the sheet edge, so it never slips behind the
-   // rising rounded panel before the compact identity takes over.
-   expandedIdentity.current.style.transform=`translate3d(0,${-progress*layout.current.morphDistance}px,0)`;
-   const hidden=progress>=.66?"true":"false";
+   // Match the actual sheet climb, not the longer virtual morph interval.
+   const travel=Math.min(bounded,geometry.expandedTabsTop-geometry.compactContentTop);
+   expandedIdentity.current.style.transform=`translate3d(0,${-travel+elastic}px,0)`;
+   const hidden=progress>=.67?"true":"false";
    if(expandedIdentity.current.getAttribute("aria-hidden")!==hidden)expandedIdentity.current.setAttribute("aria-hidden",hidden);
   }
   if(compactIdentity.current){
    compactIdentity.current.style.opacity=String(frame.compactAlpha);
-   compactIdentity.current.style.transform=`translate3d(-50%,${(1-progress)*8}px,0)`;
-   const hidden=progress<.66?"true":"false";
+   compactIdentity.current.style.transform=`translate3d(-50%,${(1-progress)*8+Math.min(0,elastic)*.75}px,0)`;
+   const hidden=progress<.70?"true":"false";
    if(compactIdentity.current.getAttribute("aria-hidden")!==hidden)compactIdentity.current.setAttribute("aria-hidden",hidden);
   }
-  if(compactBackdrop.current)compactBackdrop.current.style.opacity=String(Math.max(0,Math.min(1,(progress-.40)/.36)));
-  if(glow.current)glow.current.style.opacity=String(Math.max(0,Math.min(.5,(progress-.70)/.3*.5)));
+  if(compactBackdrop.current)compactBackdrop.current.style.opacity=String(Math.max(0,Math.min(1,(progress-.60)/.22)));
+  if(glow.current)glow.current.style.opacity=String(Math.max(0,Math.min(.5,(progress-.70)/.26*.5)));
   if(pager.current){
-   pager.current.style.opacity=String(Math.max(0,Math.min(1,(.43-progress)/.23)));
-   pager.current.style.pointerEvents=progress<.31?"auto":"none";
-   pager.current.toggleAttribute("inert",progress>=.31);
+   pager.current.style.opacity=String(Math.max(0,Math.min(1,(.60-progress)/.15)));
+   pager.current.style.pointerEvents=progress<.45?"auto":"none";
+   pager.current.toggleAttribute("inert",progress>=.45);
   }
   if(topEdit.current){
    topEdit.current.style.opacity=String(frame.actionsAlpha);
@@ -141,31 +165,25 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    topEdit.current.toggleAttribute("inert",progress>=.29);
   }
   if(flow.current)flow.current.style.transform=`translate3d(0,${frame.contentOffset}px,0)`;
-  if(contentRoot.current)contentRoot.current.style.transform=`translate3d(0,${ownerElastic.current}px,0)`;
+  if(contentRoot.current)contentRoot.current.style.transform=`translate3d(0,${elastic}px,0)`;
   const state=progress<=.001?"expanded":progress>=.999?"compact":"transition";
   if(root.current&&lastState.current!==state){root.current.dataset.morphState=state;lastState.current=state;}
   const moving=gesture.current?.axis==="vertical"||morphMotion.current?.snapshot().phase==="settling";
   motionProgress.current?.(1-progress,moving);
  },[]);
  const stopElastic=useCallback(()=>{
-  if(elasticRaf.current){cancelAnimationFrame(elasticRaf.current);elasticRaf.current=0;}
   if(ownerElastic.current!==0){ownerElastic.current=0;paint(scroller.current?.scrollTop??0);}
  },[paint]);
  const releaseElastic=useCallback(()=>{
-  const amplitude=ownerElastic.current;
-  if(Math.abs(amplitude)<.1)return;
-  if(matchMedia("(prefers-reduced-motion: reduce)").matches){stopElastic();return;}
-  if(elasticRaf.current)cancelAnimationFrame(elasticRaf.current);
-  const start=performance.now();
-  const frame=(now:number)=>{
-   const elapsed=now-start;
-   const value=amplitude*Math.exp(-elapsed/125)*Math.cos(elapsed/83);
-   ownerElastic.current=elapsed>=510||Math.abs(value)<.12?0:value;
-   paint(scroller.current?.scrollTop??0);
-   elasticRaf.current=ownerElastic.current===0?0:requestAnimationFrame(frame);
-  };
-  elasticRaf.current=requestAnimationFrame(frame);
- },[paint,stopElastic]);
+  const amplitude=ownerElastic.current,motion=morphMotion.current;
+  ownerElastic.current=0;
+  if(Math.abs(amplitude)<.1||!motion){paint(scroller.current?.scrollTop??0);return;}
+  const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Reuse the sole GeometryMotion RAF instead of running a competing elastic
+  // animation beside the morph. This also makes it cancellable mid-bounce.
+  motion.start(-amplitude,0,reduced?0:410,MORPH_EASING,value=>paint(value),
+   ()=>paint(0),layoutRevision.current,true);
+ },[paint]);
  const schedulePaint=useCallback(()=>{
   if(paintRaf.current)return;
   paintRaf.current=requestAnimationFrame(()=>{paintRaf.current=0;paint(scroller.current?.scrollTop??0);});
@@ -293,8 +311,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    window.visualViewport?.removeEventListener("resize",resize);
    web?.offEvent?.("viewportChanged",viewportChanged);web?.offEvent?.("safeAreaChanged",resize);web?.offEvent?.("contentSafeAreaChanged",resize);
    clearScrollEnd();morphMotion.current?.dispose();
-   if(elasticRaf.current)cancelAnimationFrame(elasticRaf.current);
-   elasticRaf.current=0;ownerElastic.current=0;
+   ownerElastic.current=0;scroll.style.overflowY="auto";nativeSnapLocked.current=false;
    if(resizeRaf)cancelAnimationFrame(resizeRaf);if(paintRaf.current)cancelAnimationFrame(paintRaf.current);
    resizeRaf=0;paintRaf.current=0;
   };
