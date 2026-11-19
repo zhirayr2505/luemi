@@ -197,17 +197,14 @@ assert.deepEqual(revisions,[[19,19],[20,20]]);
 console.log("REM02A_ADAPTER_PASS viewport revision bridge monotonicity and listener cleanup");
 
 
-const a2=read("apps/web/src/discovery/ProfileMorphA2.tsx");
-const a2MotionSource=read("apps/web/src/discovery/profile-morph-a2-motion.ts");
-const css=read("apps/web/src/discovery/profile-morph-a2.css");
+const owner=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
+const css=read("apps/web/src/discovery/owner-profile/owner-premium-profile.css");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
-assert.ok(a2MotionSource.includes("class ProfileMorphMotion")&&a2MotionSource.includes("private generation=0")&&
- a2MotionSource.includes("this.sample()")&&a2MotionSource.includes("this.clock.cancel"),"A2 motion owns normalized progress, interruptible RAF");
-assert.ok(a2.includes("new ProfileMorphMotion")&&a2.includes("morphFrame(geometry.current,p)")&&
- !a2.includes("ProfileSheetMotion")&&!a2.includes('style.top='),"A2 sheet uses one writer, no legacy top");
-assert.ok(css.includes(".pm-a2-sheet")&&css.includes("transform:translate3d")&&
- !css.includes(".pm-sheet-viewport"),"A2 fixed layout compositor geometry");
+assert.ok(owner.includes("ownerMorphProgress")&&owner.includes("ownerMorphFrame")&&
+ owner.includes("paintRaf.current=requestAnimationFrame"),"owner profile owns normalized progress and one RAF writer");
+assert.ok(css.includes(".owner-profile-photo-mask")&&css.includes("transform:translate3d")&&
+ !css.includes("backdrop-filter"),"owner photo morph stays on bounded compositor-friendly surfaces");
 assert.ok(route.includes('motionAuthority.current.run("route",PROFILE_MOTION_WRITER_TABLE.route'));
 assert.ok(browse.includes('motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse'));
-console.log("PROFILE_A2_MOTION_ADAPTER_PASS shared route/browse motion and new single-owner profile motion");
+console.log("OWNER_PROFILE_MOTION_ADAPTER_PASS shared route/browse motion and single-owner profile paint");

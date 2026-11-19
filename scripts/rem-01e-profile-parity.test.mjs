@@ -75,7 +75,7 @@ assert.ok(!preview.includes("ProfileMaster")&&!preview.includes("PhotoCarousel")
 const app=read("apps/web/src/App.tsx");
 assert.ok(app.includes("readyRegistrationPhotos(photos)"));
 assert.ok(app.includes("Редактировать")&&app.includes("Всё верно"),"step-8 controls stay accessible");
-const master=read("apps/web/src/discovery/ProfileMorphA2.tsx");
+const master=read("apps/web/src/discovery/ProfileMasterV3.tsx");
 assert.ok(master.includes('mode={data.source==="local-draft"?"local-self-preview":"preview"}'));
 assert.ok(!preview.includes("GlobalHeader"),"registration never creates another header");
 console.log("REM-01E MODEL AND PRIVACY QA PASS");

@@ -53,14 +53,14 @@ console.log("✓ Stage 03D integration: preserved FeedCard, isolated gestures, v
 const forYou=readFileSync(new URL("../apps/web/src/discovery/ForYou.tsx",import.meta.url),"utf8");
 const forYouCss=readFileSync(new URL("../apps/web/src/discovery/for-you.css",import.meta.url),"utf8");
 const discoveryStyles=readFileSync(new URL("../apps/web/src/discovery/discovery.css",import.meta.url),"utf8");
-const demoProfile=readFileSync(new URL("../apps/web/src/discovery/ProfileMorphA2.tsx",import.meta.url),"utf8");
+const ownerProfile=readFileSync(new URL("../apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx",import.meta.url),"utf8");
 const globalHeader=readFileSync(new URL("../apps/web/src/discovery/GlobalHeader.tsx",import.meta.url),"utf8");
 const headerCss=readFileSync(new URL("../apps/web/src/discovery/global-header.css",import.meta.url),"utf8");
 const feedCard=readFileSync(new URL("../apps/web/src/discovery/FeedCard.tsx",import.meta.url),"utf8");
 assert.ok(!forYouCss.includes("touch-action:pan-x;")&&forYouCss.includes("touch-action:pan-x pan-y"),"portraits allow native vertical panning");
 assert.ok(forYou.includes("list.slice(0,6)")&&forYou.includes("memo(function ForYou"),"bounded collections and memoized page");
 assert.ok(globalHeader.includes("lh-island")&&globalHeader.includes("wordmark_original_raster_alpha_W06.webp"),"original LUEMI logo in full profile");
-assert.ok(headerCss.includes(".lh-center")&&headerCss.includes("left:14px")&&!headerCss.includes(".lh-center{left:50%")&&demoProfile.includes('data-morph-state={state}')&&!globalHeader.includes("setProfileMorph"),"profile logo shares the left-aligned safe brand row");
+assert.ok(headerCss.includes(".lh-center")&&headerCss.includes("left:14px")&&!headerCss.includes(".lh-center{left:50%")&&ownerProfile.includes('data-morph-state="expanded"')&&!globalHeader.includes("setProfileMorph"),"owner profile owns its morph while the discovery logo keeps the safe brand row");
 assert.ok(discoveryStyles.includes(".discovery-page-track.is-finger-tracking")&&discoveryStyles.includes("font-weight:700"),"steady active-tab typography");
 assert.ok(active.includes('el.addEventListener("touchcancel",cancel')&&
  active.includes('el.addEventListener("touchmove",track,{passive:false})')&&

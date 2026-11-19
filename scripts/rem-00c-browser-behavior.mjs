@@ -48,6 +48,41 @@ async function profileV3(browser,platform="android"){
   const ownProfileNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"});
   await ownProfileNav.waitFor({state:"visible",timeout:6000});
   await ownProfileNav.click();
+  const ownerProfile=page.locator(".owner-premium-profile");
+  if(await ownerProfile.count()){
+   const image=ownerProfile.locator(".owner-profile-photo-mask>img");
+   const scroller=ownerProfile.locator(".owner-profile-scroll");
+   const expanded=await image.boundingBox();
+   assert.ok(expanded&&expanded.width>300&&expanded.height>430,"owner opens with a large photo");
+   assert.equal(await ownerProfile.locator(".owner-profile-actions button").count(),4,"four real owner actions");
+   const photoNode=await image.elementHandle();
+   await page.evaluate(node=>{window.__ownerMorphPhoto=node;},photoNode);
+   await scroller.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
+   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
+   const compact=await image.boundingBox();
+   assert.ok(compact&&Math.abs(compact.width-compact.height)<1.5&&compact.width<130,"owner photo becomes a circle");
+   assert.ok(Math.abs(compact.x+compact.width/2-393/2)<1.5,"compact owner avatar is centered");
+   assert.equal(await image.evaluate(node=>window.__ownerMorphPhoto===node),true,"morph keeps one image node");
+   await scroller.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
+   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
+   for(const label of ["Фото","О себе","Интересы"]){
+    await ownerProfile.getByRole("tab",{name:label,exact:true}).click();
+    assert.equal(await ownerProfile.getByRole("tab",{name:label,exact:true}).getAttribute("aria-selected"),"true");
+   }
+   await snapshot(page,platform+"-01-owner-premium");
+   if(android){
+    await page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"}).click();
+    await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
+    await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
+    const visitor=await required(page,".discovery-visitor-route .v3-profile-host","visitor V3");
+    assert.equal((await state(page,".discovery-visitor-route .v3-profile-host")).mode,"compact");
+    await page.keyboard.press("Escape");
+    await visitor.waitFor({state:"detached",timeout:4000});
+   }
+   assert.deepEqual(errors,[],"no uncaught browser exceptions");
+   console.log("OWNER_PREMIUM_PROFILE_BROWSER_PASS "+JSON.stringify({platform}));
+   return;
+  }
   const host=await required(page,".v3-profile-host.pm-inline","owner V3");
   const compact=await state(page);
   assert.equal(compact.mode,"compact","V3 owner starts compact");
@@ -57,7 +92,6 @@ async function profileV3(browser,platform="android"){
   assert.equal(compact.tab,"О себе");assert.equal(compact.selectedCount,1);
   assert.equal(compact.photoCount,3,"QA fixture has three visible photos");
   assert.ok(compact.backing!=="none"&&compact.sheetBg!=="rgba(0, 0, 0, 0)","V3 opaque sheet and backing");
-  assert.equal(await page.locator(".pm-inline.pm-a2-root").count(),0,"retired A2 must not appear");
   const logo=page.locator(".lh-header .lh-island img").first();
   assert.ok(await logo.count()>0,"original LUEMI brand image in global header");
   await snapshot(page,platform+"-01-v3-compact");

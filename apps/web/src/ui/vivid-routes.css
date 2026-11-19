@@ -161,17 +161,17 @@ html,body,#root{background:#10151D}
 }
 /* Profile Morph, visitor route, editing and viewers.
    Never alter translate transforms, photo scale or approved gesture touch-action. */
-.pm-a2-root,.v3-int-root,.pm-viewer{background:#10151D;color:#FAFCFF}
-.pm-card,.pm-a2-sheet,.pm-a2-tabs,
+.owner-premium-profile,.v3-int-root,.pm-viewer{background:#10151D;color:#FAFCFF}
+.pm-card,
 .v3-int-sheet,.v3-int-tabs,.luemi-reveal-entry,.luemi-reveal-editor{
  background-color:rgba(36,44,58,.82);border-color:rgba(238,246,255,.19)
 }
-.pm-a2-tab.active,.v3-int-tab.active,.pm-a2-owner-actions button,
+.v3-int-tab.active,
 .v3-int-owner-actions button,.luemi-reveal-actions button{
  color:#FAFCFF;border-color:rgba(238,246,255,.19)
 }
-.pm-a2-ink,.v3-int-ink{background:#E96A86}
-.pm-bliki-mark,.pm-a2-goal,.v3-int-goal{border-color:rgba(233,106,134,.30)}
+.v3-int-ink{background:#E96A86}
+.pm-bliki-mark,.v3-int-goal{border-color:rgba(233,106,134,.30)}
 @media(prefers-reduced-transparency:reduce){
  .luemi-shell .luemi-v5-glass,
  .luemi-shell[data-theme=dark] .lc-categories-panel,

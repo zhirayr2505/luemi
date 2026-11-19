@@ -4,10 +4,9 @@
 
 | Source | DOM / animated properties | Writer | Gesture owner / cleanup |
 | --- | --- | --- | --- |
-| `ProfileMorphA2.tsx` + `profile-morph-a2-motion.ts` | `.pm-a2-sheet` transform; `.pm-a2-face` translate and nonuniform scale; inner viewport counter `scaleY`; compact/expanded text and backdrop opacity; dots | `paint()` via A2 RAF engine | handle pointer candidate/claim; effect disposes engine, observer, viewport listeners |
-| `profile-morph-a2-geometry.ts` | sheet span and photo transform factors | pure calculation used by A2 paint | none |
-| `ProfileMorphBackground.tsx` + A2 CSS | two bounded photo slots, opacity transition, `scale(6)` with blur | React decode effects and CSS | effects cancel RAF/timer; potential raster cost |
-| `ProfileMorphA2.tsx` photo and tab tracks | horizontal transform and CSS transition; ink width/transform | `choosePhoto`, `chooseTab`, slide handlers | `GestureArbiter`; native scroll inside `.pm-a2-page` |
+| `owner-profile/OwnerPremiumProfile.tsx` | one photo mask, expanded/compact identity and action opacity | passive native scroll coalesced into one RAF paint | native vertical scroll; observer, RAF and Telegram viewport listeners are disposed together |
+| `owner-profile/OwnerProfileGeometry.ts` | expanded hero, centered compact avatar and normalized scroll progress | pure geometry calculation used by owner paint | none |
+| `profile-v3/rendering/IntegratedProfileV3.tsx` | visitor sheet, photo and tab tracks | V3 motion engine | `GestureArbiter`; native scroll inside the About page |
 | `VisitorProfileRoute.tsx` + `discovery.css` | route translateX, CSS transition; modal backing | route `MotionController` / authority | route pointer claim, deferred touch suppression; route timer cleanup |
 | `DiscoveryApp.tsx` + `GlobalHeader.tsx` | browse tracks, header contrast and route entrance | browse controller and header ref | browse / route gestures; do not connect prototype |
 | `PhotoViewer.tsx` | viewer track, source morph, pan/pinch | viewer controller and DOM handlers | own modal capture and cleanup; do not connect prototype |

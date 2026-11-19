@@ -39,6 +39,6 @@ test("no light halos or fullscreen blur return to the hot photo path",()=>{
  assert.doesNotMatch(card,/moonstone-blur-photo|adaptiveFullscreen/);
 });
 test("all product routes receive shared matte components",()=>{
- for(const sel of [".v2-runtime",".lc-bubble",".fy-real",".nb-card",".pm-a2-root",".v3-int-root",".luemi-publication-journey",".luemi-v5-segments"])
+ for(const sel of [".v2-runtime",".lc-bubble",".fy-real",".nb-card",".owner-premium-profile",".v3-int-root",".luemi-publication-journey",".luemi-v5-segments"])
   assert.ok(routes.includes(sel),sel);
 });

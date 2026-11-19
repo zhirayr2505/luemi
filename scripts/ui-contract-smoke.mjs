@@ -135,7 +135,8 @@ const feedCss=read("apps/web/src/discovery/moonstone-discovery.css");
 const discoveryCss=read("apps/web/src/discovery/discovery.css");
 const header=read("apps/web/src/discovery/GlobalHeader.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
-const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
+const profile=read("apps/web/src/discovery/ProfileMasterV3.tsx");
+const ownerProfile=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
 assertCheck("Discovery retains four main navigation destinations and three discovery tabs",
  ["Знакомства","Симпатии","Чаты","Профиль","Лента","Для тебя","Мир"].every(x=>discovery.includes(x)));
 assertCheck("feed card exposes pass and one combined like/superlike control",
@@ -153,5 +154,6 @@ assertCheck("bookmark and special actions use real supported handlers, no retire
 assertCheck("responsive card motion uses ResizeObserver",feedCard.includes("ResizeObserver")&&feedCard.includes("travel.current"));
 assertCheck("single original LUEMI logo retained without removed global controls",header.includes("wordmark_original_raster_alpha_W06.webp")&&!header.includes("lh-tool-filter")&&!header.includes("lh-tool-saved"));
 assertCheck("feed deck and Telegram back handling retained",discovery.includes("pendingCommit.current")&&discovery.includes("registerBack")&&discoveryCss.includes(".discovery-page"));
-assertCheck("profile photo viewer and independent gestures remain present",profile.includes("PhotoViewer")&&profile.includes("setPointerCapture"));
+assertCheck("profile photo viewer and independent owner scroll morph remain present",
+ profile.includes("PhotoViewer")&&ownerProfile.includes('addEventListener("scroll",schedulePaint,{passive:true})'));
 console.log("LUEMI Discovery V2 UI contracts PASS");

@@ -133,23 +133,19 @@ globalThis.getComputedStyle=prevCSS;
 console.log("REM02C_UNIT_PASS actual matrix freezing recovers half-slide fractional coordinate");
 
 
-const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
+const profile=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
-const css=read("apps/web/src/discovery/profile-morph-a2.css");
+const css=read("apps/web/src/discovery/owner-profile/owner-premium-profile.css");
 const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
-assert.ok(profile.includes('gestureArbiter?.begin("pointer"')&&
- profile.includes('gestureArbiter?.claim(')&&profile.includes('gestureArbiter?.finish('),
- "A2 visitor route shares exclusive GestureArbiter for sheet/hero/tabs");
-assert.ok(profile.includes('onPointerCancel={e=>endSheet(e,true)}')&&
- profile.includes('onPointerCancel={e=>slideEnd(e,"photo",true)}')&&
- profile.includes('onPointerCancel={e=>slideEnd(e,"tab",true)}'),
- "all A2 pointer owners cancel deterministically");
-assert.ok(css.includes(".pm-a2-page")&&css.includes("overflow-y:auto")&&
- css.includes("touch-action:pan-y")&&css.includes(".pm-a2-handle")&&css.includes("touch-action:none"),
- "native vertical scroll preserved, touch-action none only in gesture handle");
+assert.ok(profile.includes('addEventListener("scroll",schedulePaint,{passive:true})')&&
+ profile.includes("paintRaf.current=requestAnimationFrame"),
+ "owner morph follows native scrolling with one coalesced RAF writer");
+assert.ok(css.includes(".owner-profile-scroll")&&css.includes("overflow-y:auto")&&
+ css.includes("touch-action:pan-y")&&!css.includes("touch-action:none"),
+ "owner profile preserves native vertical scrolling without a competing gesture handle");
 assert.ok(route.includes('gestureArbiter={gestures}')&&route.includes('if(isGestureModalBlocked(target))return;'),
  "Telegram modal and route arbitration preserved");
 assert.ok(browse.includes("browseMotion.current.schedulePaint")&&
  !read("apps/web/src/discovery/discovery.css").includes("touch-action:none"),
  "Discovery gesture ownership unchanged");
-console.log("PROFILE_A2_GESTURE_ADAPTER_PASS shared arbiter and scroll boundaries");
+console.log("OWNER_PROFILE_GESTURE_ADAPTER_PASS native scroll and route boundaries");

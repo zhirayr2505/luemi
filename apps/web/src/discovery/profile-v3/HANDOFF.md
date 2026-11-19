@@ -14,17 +14,15 @@ Baseline: `main` c8c3399ca278ca9772560a40537d53363f086c28. PR #87 was draft and 
 
 | Existing file | Action later | Reason / consumers |
 | --- | --- | --- |
-| `ProfileMorphA2.tsx` | Replace | `DiscoveryApp.tsx`, `VisitorProfileRoute.tsx`; current JSX, A2 gesture writers and viewer bridge |
-| `profile-morph-a2-motion.ts` | Delete after replacement | A2 engine and tests; V3 engine takes its role |
-| `profile-morph-a2-geometry.ts` | Delete after replacement | A2 nonuniform geometry; V3 pure layout replaces it |
-| `profile-morph-a2.css` | Adapt then delete A2 selectors | profile cards/sections still used by A2 JSX; preserve approved visual assets when integrating |
-| `ProfileMorphBackground.tsx` | Replace or adapt | A2 two slot blurred backdrop; V3 static backdrop now, actual photo backdrop later only if measured |
+| `owner-profile/OwnerPremiumProfile.tsx` | Integrated | Dedicated owner surface with native-scroll Telegram morph and existing edit/viewer/settings callbacks |
+| `owner-profile/OwnerProfileGeometry.ts` | Integrated | Pure, viewport-safe owner geometry and centered compact avatar |
+| `profile-content.css` | Integrated | Shared visitor content primitives extracted before A2 removal |
 | `profile-motion.ts` | Keep/adapt | route and browse consumers; remove only unused profile capabilities after ownership audit |
 | `gesture-arbiter.ts`, `motion-controller.ts`, `motion-lifecycle.ts` | Keep/adapt | PhotoViewer, route and Discovery still use these contracts; do not globally delete |
 | `VisitorProfileRoute.tsx`, `DiscoveryApp.tsx`, `GlobalHeader.tsx` | Adapt | replace entry import and add explicit gesture handoff; preserve header and route behavior |
 | `PhotoViewer.tsx`, `ProfileModel.ts`, `modal-layer.ts` | Keep | rights, viewer source and modal/focus contracts |
 | `discovery.css` | Adapt | route compositor styling and backing need A55 verification; no broad removal |
-| `scripts/profile-morph-a2.test.mjs` and A2 visual tests | Replace once V3 integrated | tests currently guard A2 and should not validate V3 by proxy |
+| `scripts/owner-premium-profile.test.mjs` | Integrated | Owner geometry, reversibility, centering and aspect contracts |
 
 ## Tests and open risks
 

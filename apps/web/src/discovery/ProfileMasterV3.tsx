@@ -13,8 +13,9 @@ import {resourceIdentity,viewerPhotoContext,reconcilePhotoId,type ViewerSource} 
 import {useModalLayer} from "../ui/modal-layer";
 import type {GestureArbiter} from "../ui/gesture-arbiter";
 import {IntegratedProfileV3,type V3TabId} from "./profile-v3/rendering/IntegratedProfileV3";
+import {OwnerPremiumProfile} from "./owner-profile/OwnerPremiumProfile";
 import {resolvePhotoFocus} from "./profile-v3/geometry/ProfileGeometry";
-import "./profile-morph-a2.css";
+import "./profile-content.css";
 import "./profile-v3/rendering/IntegratedProfileV3.css";
 
 export type ProfileRouteMotionHandle={
@@ -23,6 +24,7 @@ export type ProfileRouteMotionHandle={
 };
 type Props={
  data:ProfileMasterData;mode:ProfileView["mode"];onClose?:()=>void;onEdit?:()=>void;onReveal?:()=>void;
+ onSettings?:()=>void;
  ownerDetails?:RegistrationDraft;
  registerBack?:(handler:(()=>boolean)|null)=>void;
  active?:boolean;onMotionProgress?:(progress:number,dragging:boolean)=>void;
@@ -112,12 +114,12 @@ function Meta({view}:{view:ProfileView}){
 
 
 export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,onReveal,ownerDetails,registerBack,
- active=true,onMotionProgress,registerRouteMotion,gestureArbiter,initialExpanded=false}:Props){
+ onSettings,active=true,onMotionProgress,registerRouteMotion,gestureArbiter,initialExpanded=false}:Props){
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]),photos=view.photos;
  const [photoId,setPhotoId]=useState<string|null>(photos[0]?.id??null);
  const [viewer,setViewer]=useState<{photoId:string;source:ViewerSource|null}|null>(null);
  const [preview,setPreview]=useState(false);
- const [expanded,setExpanded]=useState(initialExpanded);
+ const [expanded,setExpanded]=useState(mode==="owner"||initialExpanded);
  const root=useRef<HTMLElement>(null);
  const selectedViewerBack=useRef<(()=>boolean)|null>(null),selectedPreviewBack=useRef<(()=>boolean)|null>(null);
  const innerBack=useRef<()=>void>(()=>{});
@@ -171,11 +173,14 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    role={inline?undefined:"dialog"} aria-modal={inline?undefined:true}
    tabIndex={mode==="visitor"?-1:undefined} data-modal-initial={mode==="visitor"?"true":undefined}
    aria-label={mode==="owner"?"Мой профиль":mode==="visitor"?"Профиль":"Предпросмотр профиля"}>
+   {mode==="owner"?<OwnerPremiumProfile view={view} ownerDetails={ownerDetails} active={active}
+    onBack={()=>onClose?.()} onEdit={()=>onEdit?.()} onSettings={()=>{if(onSettings)onSettings();else onEdit?.();}}
+    onPreview={()=>setPreview(true)} onPhotoOpen={openPhoto} onMotionProgress={onMotionProgress}/>:
    <IntegratedProfileV3 view={view} photoId={photoId} onPhotoId={choosePhoto}
     onPhotoOpen={openPhoto} onState={setExpanded} onMotionProgress={onMotionProgress}
     initialExpanded={initialExpanded}
     registerRouteMotion={registerRouteMotion} gestureArbiter={gestureArbiter}
-    onEdit={onEdit} onShowPreview={()=>setPreview(true)} renderPage={renderPage}/>
+    onEdit={onEdit} onShowPreview={()=>setPreview(true)} renderPage={renderPage}/>}
    {nested&&<div className="pm-preview-toolbar"><button type="button" data-modal-initial onClick={onClose}>Закрыть предпросмотр</button></div>}
    {viewer&&<QaProfiler id="PhotoViewer"><PhotoViewer view={view} photos={photos} initialPhotoId={viewer.photoId}
      source={viewer.source} contextId={viewerPhotoContext(view)} onClose={returnId=>{
