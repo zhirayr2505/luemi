@@ -19,7 +19,7 @@ assert.match(css,/\[data-morph-state="compact"\] .owner-profile-scroll\{[^}]*ove
  "card scrolling begins when the profile is compact");
 assert.match(css,/\.owner-profile-photo-pager\s*\{[^}]*right:2[0-9]px/s,
  "photo pager must be right aligned, not centered under the identity");
-assert.match(css,/\.owner-profile-tabs::after\s*\{/,
+assert.match(css,/\.owner-profile-tab-ink\s*\{/,
  "active tab is indicated by a single sliding underline");
 assert.doesNotMatch(css,/\.owner-profile-tabs button\[aria-selected="true"\]\s*\{[^}]*background:/s,
  "selected tab must not have a filled button background");

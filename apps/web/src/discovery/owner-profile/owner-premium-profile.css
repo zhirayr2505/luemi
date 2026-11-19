@@ -9,6 +9,24 @@
  position:absolute;inset:0;pointer-events:none;
  background:linear-gradient(180deg,var(--luemi-bg-top),var(--luemi-bg-deep) 68%,var(--luemi-bg));
 }
+/* The blurred textures stay in place. The morph only changes their opacity. */
+.owner-profile-atmosphere{position:absolute;inset:0;pointer-events:none;contain:paint}
+.owner-profile-ambient{
+ position:absolute;inset:0 0 auto;height:280px;overflow:hidden;opacity:0;
+ mask-image:linear-gradient(#000 58%,transparent);
+}
+.owner-profile-ambient::before,.owner-profile-halo{
+ background:var(--owner-ambient-image,none) center 38%/cover no-repeat;
+}
+.owner-profile-ambient::before{
+ content:"";position:absolute;inset:-30px;
+ filter:blur(24px) brightness(.59) saturate(.92);
+}
+.owner-profile-halo{
+ position:absolute;left:50%;top:72px;width:136px;aspect-ratio:1;
+ border-radius:50%;opacity:0;transform:translateX(-50%);
+ filter:blur(15px) saturate(1.17) brightness(1.18);
+}
 .owner-profile-brand{
  position:absolute;z-index:14;top:var(--owner-brand-top);
  left:50%;height:31px;width:90px;transform:translate3d(-50%,0,0);pointer-events:none;
@@ -109,13 +127,13 @@
  touch-action:none;border:0;border-bottom:1px solid var(--luemi-border);
  background:var(--luemi-bg-deep);
 }
-.owner-profile-tabs::after{
- content:"";position:absolute;bottom:-1px;
- left:calc(var(--owner-tab-offset,0%) + 12px);
+.owner-profile-tab-ink{
+ position:absolute;bottom:-1px;left:12px;
  width:calc(25% - 24px);height:2px;border-radius:999px;
  pointer-events:none;background:var(--luemi-coral);
- transition:left .27s cubic-bezier(.2,.82,.24,1);
+ transition:transform .27s cubic-bezier(.2,.82,.24,1);
 }
+.owner-profile-tabs[data-paging] .owner-profile-tab-ink{transition:none}
 .owner-profile-tabs button{
  min-width:0;border:0;border-radius:0;padding:0 2px;
  font:inherit;font-size:clamp(11px,3.1vw,13px);font-weight:600;
@@ -134,11 +152,22 @@
 .owner-profile-scroll::-webkit-scrollbar{display:none}
 .owner-profile-content{
  position:relative;margin:0;padding:13px 13px calc(120px + var(--bottom-safe,0px));
+ overflow-x:clip;
  background:linear-gradient(180deg,var(--luemi-bg-deep),var(--luemi-bg-deep) 126px,var(--luemi-bg));
 }
 .owner-profile-pages{position:relative;min-height:295px}
-.owner-profile-panel{min-height:290px;padding:0 1px 30px}
-.owner-profile-panel[hidden],.owner-profile-about[hidden]{display:none!important}
+.owner-profile-panel{
+ position:relative;left:calc(var(--owner-panel-index)*100%);
+ min-height:290px;width:100%;box-sizing:border-box;padding:0 1px 30px;
+}
+.owner-profile-panel[aria-hidden="true"]{
+ position:absolute;top:0;height:0;min-height:0;padding-bottom:0;
+ visibility:hidden;overflow:hidden;
+}
+.owner-profile-pages[data-paging] .owner-profile-panel[aria-hidden="true"]{
+ top:var(--owner-page-scroll,0px);height:var(--owner-page-peek,0px);
+ visibility:visible;
+}
 .owner-profile-about{display:flex;flex-direction:column;gap:11px}
 .owner-profile-about article{
  padding:17px 18px;border-radius:22px;
@@ -227,5 +256,5 @@
  .owner-profile-edit-top{background:var(--luemi-glass-solid)}
 }
 @media(prefers-reduced-motion:reduce){
- .owner-profile-glass,.owner-profile-tabs button,.owner-profile-tabs::after,.owner-profile-photo-pager button{transition:none}
+ .owner-profile-glass,.owner-profile-tabs button,.owner-profile-tab-ink,.owner-profile-photo-pager button{transition:none}
 }

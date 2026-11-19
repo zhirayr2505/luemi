@@ -40,6 +40,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  const photoTimer=useRef<number|undefined>(undefined);
  const drag=useRef({width:1,origin:0,offset:0});
  const tablist=useRef<HTMLDivElement>(null);
+ const atmosphere=useRef<HTMLDivElement>(null);
+ const tabIndex=tabs.findIndex(([id])=>id===tab);
  const tabPrefix=useId();
 
  const goal=p.goal&&p.goal!=="undecided"?goals.find(item=>item.id===p.goal):null;
@@ -112,18 +114,14 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  };
 
  const selectTab=(next:OwnerTab,focus=false)=>{
-  if(next!==tab){
-   commands.current.resetCards();
-   setTab(next);
-  }
+  commands.current.cancelTabs();
+  setTab(next);
   if(focus)tablist.current?.querySelector<HTMLButtonElement>(`[data-tab-id="${next}"]`)?.focus({preventScroll:true});
  };
  const {root,commands}=useOwnerProfileMotion({
   active,profileId:p.id,gestureArbiter,registerRouteMotion,onMotionProgress,
-  horizontal:{startPhoto,movePhoto,endPhoto,cancelPhoto,pageTab:direction=>{
-   const index=tabs.findIndex(([id])=>id===tab);
-   selectTab(tabs[clamp(index+direction,0,tabs.length-1)][0]);
-  }}
+  tabIndex,onTabChange:index=>setTab(tabs[index][0]),
+  horizontal:{startPhoto,movePhoto,endPhoto,cancelPhoto}
  });
  const tabKey=(event:KeyboardEvent<HTMLButtonElement>,index:number)=>{
   const next=event.key==="ArrowRight"?Math.min(tabs.length-1,index+1):
@@ -152,6 +150,20 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   if(selectedId!==availableId)setSelectedId(availableId);
  },[photoOrder,selectedId,heroPhoto?.id,cancelPhoto]);
 
+ const paintAtmosphere=useCallback((image:HTMLImageElement|null)=>{
+  const src=image?.currentSrc||image?.getAttribute("src");
+  atmosphere.current?.style.setProperty("--owner-ambient-image",src?`url(${JSON.stringify(src)})`:"none");
+ },[]);
+ useLayoutEffect(()=>{
+  paintAtmosphere(heroImage.current);
+ },[heroPhoto?.id,heroPhoto?.src,paintAtmosphere]);
+
+ const panel=(id:OwnerTab,index:number)=>({
+  id:tabPrefix+"-"+id+"-panel",role:"tabpanel",
+  "aria-labelledby":tabPrefix+"-"+id+"-tab","aria-hidden":tab!==id,
+  inert:tab!==id,style:{"--owner-panel-index":index} as CSSProperties
+ });
+
  const openPhoto=()=>{if(heroPhoto)onPhotoOpen(heroPhoto.id,heroImage.current);};
  const visiblePhotos=[
   {photo:previousPhoto,slot:"previous"},
@@ -165,6 +177,10 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    if(event.detail!==0&&!commands.current.allowClick()){event.preventDefault();event.stopPropagation();}
   }}>
   <div className="owner-profile-backdrop" aria-hidden="true"/>
+  <div ref={atmosphere} className="owner-profile-atmosphere" aria-hidden="true">
+   <div className="owner-profile-ambient"/>
+   <div className="owner-profile-halo"/>
+  </div>
   <div className="owner-profile-photo-mask" role={heroPhoto?"button":undefined}
    tabIndex={heroPhoto?0:-1} aria-label={heroPhoto?"Открыть фотографию профиля":undefined}
    onClick={openPhoto} onKeyDown={event=>{
@@ -181,6 +197,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
       onLoad={event=>{
        const image=event.currentTarget,point=resolvePhotoFocus(image.naturalWidth,image.naturalHeight,photo.focalPoint);
        image.style.objectPosition=`${point.x*100}% ${point.y*100}%`;
+       if(image===heroImage.current)paintAtmosphere(image);
       }}
       onError={event=>{
        if(photo.fallback&&event.currentTarget.getAttribute("src")!==photo.fallback)event.currentTarget.src=photo.fallback;
@@ -211,18 +228,17 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   </div>
 
   <main className="owner-profile-sheet">
-   <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля"
-    style={{"--owner-tab-offset":`${tabs.findIndex(([id])=>id===tab)*25}%`} as CSSProperties}>
+   <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля">
     {tabs.map(([id,label],index)=><button type="button" role="tab" key={id} data-tab-id={id}
      id={tabPrefix+"-"+id+"-tab"} aria-controls={tabPrefix+"-"+id+"-panel"}
      aria-selected={tab===id} tabIndex={tab===id?0:-1}
      onClick={()=>selectTab(id)} onKeyDown={event=>tabKey(event,index)}>{label}</button>)}
+    <span className="owner-profile-tab-ink" aria-hidden="true"/>
    </div>
    <div className="owner-profile-scroll">
     <div className="owner-profile-content">
      <div className="owner-profile-pages">
-     <section id={tabPrefix+"-about-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-about-tab"}
-      aria-label="О себе" hidden={tab!=="about"} className="owner-profile-panel owner-profile-about">
+     <section {...panel("about",0)} aria-label="О себе" className="owner-profile-panel owner-profile-about">
       <article><h2>О себе</h2><p>{p.about||"Описание пока не заполнено."}</p></article>
       <article><h2>Основное</h2><div className="owner-profile-basics">
        {p.age!==null&&<div><CalendarDays size={18} aria-hidden="true"/><span>{p.age} лет</span></div>}
@@ -234,8 +250,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
 
       {p.source==="fixture"&&<p className="owner-profile-disclaimer">Демонстрационный профиль, не реальный пользователь.</p>}
      </section>
-     <section id={tabPrefix+"-photos-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-photos-tab"}
-      aria-label="Фото" hidden={tab!=="photos"} className="owner-profile-panel">
+     <section {...panel("photos",1)} aria-label="Фото" className="owner-profile-panel">
       {photos.length?<div className="owner-profile-gallery">{photos.map((photo,index)=><button type="button" key={photo.id}
        className="owner-profile-photo-tile" aria-label={"Открыть фото "+(index+1)}
        onClick={event=>onPhotoOpen(photo.id,event.currentTarget.querySelector("img"))}>
@@ -244,12 +259,10 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
        {index===0&&<span>Главное</span>}
       </button>)}</div>:<div className="owner-profile-empty"><Images/><p>Фотографии ещё не добавлены</p></div>}
      </section>
-     <section id={tabPrefix+"-bliki-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-bliki-tab"}
-      aria-label="Блики" hidden={tab!=="bliki"} className="owner-profile-panel">
+     <section {...panel("bliki",2)} aria-label="Блики" className="owner-profile-panel">
       <div className="owner-profile-empty"><Sparkles size={34}/><h2>Пока нет бликов</h2><p>Здесь появятся моменты из жизни.</p></div>
      </section>
-     <section id={tabPrefix+"-gifts-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-gifts-tab"}
-      aria-label="Подарки" hidden={tab!=="gifts"} className="owner-profile-panel">
+     <section {...panel("gifts",3)} aria-label="Подарки" className="owner-profile-panel">
       <div className="owner-profile-empty"><Gift size={34}/><h2>Подарков пока нет</h2><p>Здесь будут отображаться полученные подарки.</p></div>
      </section>
     </div>

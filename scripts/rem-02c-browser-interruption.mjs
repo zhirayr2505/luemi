@@ -8,13 +8,14 @@ const context=await browser.newContext({viewport:{width:393,height:852},isMobile
 const page=await context.newPage(),errors=[],base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 page.on("pageerror",e=>errors.push(e.message));
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const swipe=async(x,y,dx,dy,steps=12)=>{
+const swipe=async(x,y,dx,dy,steps=12,onMove)=>{
  const cdp=await context.newCDPSession(page);
  try{
   await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y,id:1}]});
   for(let n=1;n<=steps;n++){
    await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:x+dx*n/steps,y:y+dy*n/steps,id:1}]});
    await delay(12);
+   if(onMove)await onMove(n);
   }
   await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
  }finally{await cdp.detach();}
@@ -56,14 +57,29 @@ try{
 
  // Telegram V4.2: the spring must finish WHILE the finger is still held.
  // Deliberately do NOT dispatch touchEnd until after the state changes.
- const autoDistance=hero.width*.48;
+ const autoDistance=hero.width*.36;
  const held=await context.newCDPSession(page);
  const finger=async(type,x,y)=>held.send("Input.dispatchTouchEvent",{
   type,touchPoints:type==="touchEnd"?[]:[{x,y,id:2}]});
  try{
-   const cards=root.locator(".owner-profile-scroll");
+  const cards=root.locator(".owner-profile-scroll");
   const cardRect=await cards.boundingBox();
   const hx=cardRect.x+cardRect.width*.5,hy=cardRect.y+70;
+  await root.evaluate(node=>{
+   const picture=node.querySelector(".owner-profile-photo-mask");
+   const ambient=node.querySelector(".owner-profile-ambient");
+   const frames=[];
+   window.__ownerRoundFrames=frames;
+   const observe=new MutationObserver(()=>{
+    frames.push({
+     radius:parseFloat(picture.style.borderRadius),
+     width:picture.getBoundingClientRect().width,
+     ambient:Number(ambient.style.opacity)
+    });
+    if(node.dataset.morphState==="compact")observe.disconnect();
+   });
+   observe.observe(picture,{attributes:true,attributeFilter:["style"]});
+  });
   await finger("touchStart",hx,hy);
   for(let n=1;n<=4;n++){await finger("touchMove",hx,hy-autoDistance*.75*n/4);await delay(18);}
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact",
@@ -71,6 +87,11 @@ try{
   assert.equal(await root.getAttribute("data-morph-state"),"compact",
    "a swipe starting on the cards auto-collapses the profile while held");
   assert.equal(await cards.evaluate(el=>el.scrollTop),0,"card scroll remains at the start through morph");
+  const frames=await page.evaluate(()=>window.__ownerRoundFrames);
+  const rounding=frames.find(frame=>frame.radius>0);
+  assert(rounding&&rounding.ambient>0,"blur appears as soon as the mask starts rounding");
+  assert(frames.some(frame=>Math.abs(frame.radius-50)<.01&&frame.width>126),
+   "the same photo is visibly circular before reaching the compact diameter");
   await finger("touchMove",hx,hy-230);
   await page.waitForFunction(()=>document.querySelector(".owner-profile-scroll")?.scrollTop>0);
   await finger("touchEnd",hx,hy-230);
@@ -118,15 +139,31 @@ try{
  const touchX=rect.x+rect.width*.75;
  assert(await page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest(".owner-profile-pages"),
   {x:touchX,y:touchY}),"visible page receives horizontal gestures");
- await swipe(touchX,touchY,-rect.width*.48,0);
- await delay(150);
+ const ink=root.locator(".owner-profile-tab-ink");
+ const inkBefore=await ink.boundingBox();
+ await swipe(touchX,touchY,-rect.width*.48,0,12,async step=>{
+  if(step!==6)return;
+  const shift=rect.width*.24;
+  const moving=await pages.boundingBox();
+  const next=await root.locator('.owner-profile-panel[aria-label="Фото"]').boundingBox();
+  assert(Math.abs(moving.x-(rect.x-shift))<2,"the current page tracks mid-gesture displacement 1:1");
+  assert(Math.abs(next.x-(moving.x+rect.width))<2,"the next page follows as a neighboring panel");
+  assert((await ink.boundingBox()).x>inkBefore.x+8,"the underline tracks the same swipe");
+  assert.equal(await selected().innerText(),"О себе","selection commits after release");
+ });
+ await root.locator('[role="tab"][data-tab-id="photos"][aria-selected="true"]').waitFor();
  assert.equal(await selected().innerText(),"Фото","page swipe switches to next tab");
+ const registeredX=(await pages.boundingBox()).x;
+ await swipe(touchX,touchY,-25,0,7);
+ await root.locator(".owner-profile-pages:not([data-paging])").waitFor();
+ assert.equal(await selected().innerText(),"Фото","a short swipe returns without switching tabs");
+ assert(Math.abs((await pages.boundingBox()).x-registeredX)<1,"short swipe restores the exact page position");
  // Swipe the actual underline tab bar as well as the content panel. The
  // selected button must not steal a directional swipe as a delayed click.
  const rail=await root.locator(".owner-profile-tabs").boundingBox();
  assert.ok(rail&&rail.height>40,"tab rail stays reachable");
  await swipe(rail.x+rail.width*.62,rail.y+rail.height*.5,-rail.width*.46,0);
- await delay(150);
+ await root.locator('[role="tab"][data-tab-id="bliki"][aria-selected="true"]').waitFor();
  assert.equal(await selected().innerText(),"Блики","tab rail swipe switches to next tab once");
  await root.getByRole("tab",{name:"Подарки",exact:true}).click();
  await root.getByRole("tab",{name:"Блики",exact:true}).click();

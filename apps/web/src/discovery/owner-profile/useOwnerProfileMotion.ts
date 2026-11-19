@@ -6,7 +6,7 @@ import type {ProfileRouteMotionHandle} from "../profile-route-motion";
 import {GeometryMotion,type Easing} from "../geometry-motion";
 import {
  clamp,createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,
- ownerMorphFrame,ownerMorphProgress,ownerRubberPosition,ownerUnresistedPosition
+ ownerMorphFrame,ownerMorphProgress,ownerRubberPosition,ownerSnapFrom,ownerUnresistedPosition
 } from "./OwnerProfileGeometry";
 
 type Endpoint=0|1;
@@ -23,10 +23,10 @@ type Horizontal={
  movePhoto:(delta:number)=>void;
  endPhoto:(direction:-1|0|1)=>void;
  cancelPhoto:()=>void;
- pageTab:(direction:-1|1)=>void;
 };
 type Options={
  active:boolean;profileId:string|null;gestureArbiter?:GestureArbiter;
+ tabIndex:number;onTabChange:(index:number)=>void;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
  onMotionProgress?:(progress:number,dragging:boolean)=>void;
  horizontal:Horizontal;
@@ -36,11 +36,12 @@ const translate=(x:number,y:number)=>`translate3d(${x}px,${y}px,0)`;
 const atTop=(scrollTop:number)=>scrollTop<=.5;
 
 export function useOwnerProfileMotion(options:Options){
- const {active,profileId,gestureArbiter}=options;
+ const {active,profileId,gestureArbiter,tabIndex}=options;
  const latest=useRef(options);
  const root=useRef<HTMLElement>(null);
- const commands=useRef<{compact:()=>void;resetCards:()=>void;allowClick:()=>boolean}>({
-  compact:()=>{},resetCards:()=>{},allowClick:()=>true
+ const syncTab=useRef<((index:number)=>void)|null>(null);
+ const commands=useRef<{compact:()=>void;cancelTabs:()=>void;allowClick:()=>boolean}>({
+  compact:()=>{},cancelTabs:()=>{},allowClick:()=>true
  });
 
  useLayoutEffect(()=>{latest.current=options;});
@@ -50,14 +51,22 @@ export function useOwnerProfileMotion(options:Options){
   const brand=host.querySelector<HTMLElement>(".owner-profile-brand")!;
   const mask=host.querySelector<HTMLElement>(".owner-profile-photo-mask")!;
   const shade=host.querySelector<HTMLElement>(".owner-profile-photo-shade")!;
+  const ambient=host.querySelector<HTMLElement>(".owner-profile-ambient")!;
+  const halo=host.querySelector<HTMLElement>(".owner-profile-halo")!;
   const identity=host.querySelector<HTMLElement>(".owner-profile-identity")!;
   const name=identity.querySelector<HTMLElement>("h1")!;
   const location=identity.querySelector<HTMLElement>("p")!;
   const pager=host.querySelector<HTMLElement>(".owner-profile-photo-pager")!;
   const sheet=host.querySelector<HTMLElement>(".owner-profile-sheet")!;
   const scroll=host.querySelector<HTMLElement>(".owner-profile-scroll")!;
+  const tabRail=host.querySelector<HTMLElement>(".owner-profile-tabs")!;
+  const tabInk=tabRail.querySelector<HTMLElement>(".owner-profile-tab-ink")!;
+  const tabPages=host.querySelector<HTMLElement>(".owner-profile-pages")!;
+  const tabCount=tabRail.querySelectorAll('[role="tab"]').length;
   const gestures=gestureArbiter??new GestureArbiter();
   const motion=new GeometryMotion("sheet",()=>performance.now(),
+   callback=>requestAnimationFrame(callback),id=>cancelAnimationFrame(id),0);
+  const tabMotion=new GeometryMotion("tabs",()=>performance.now(),
    callback=>requestAnimationFrame(callback),id=>cancelAnimationFrame(id),0);
 
   let geometry=createOwnerProfileLayout({width:393,height:852,brandBottom:65});
@@ -69,6 +78,52 @@ export function useOwnerProfileMotion(options:Options){
   const paused=()=>routePaused||backgroundPaused;
   const compact=()=>settling===null&&position===1;
 
+  let selectedTab=latest.current.tabIndex,tabPosition=selectedTab,tabOrigin=selectedTab;
+  let tabWidth=1,inkStep=0,tabDragWidth=1;
+  const paintTabs=(position:number)=>{
+   tabPosition=position;
+   tabPages.style.transform=`translate3d(${-position*100}%,0,0)`;
+   tabInk.style.transform=translate(position*inkStep,0);
+  };
+  const resetTabs=(index:number)=>{
+   tabMotion.cancel();
+   paintTabs(index);
+   delete tabRail.dataset.paging;
+   delete tabPages.dataset.paging;
+  };
+  syncTab.current=index=>{
+   if(selectedTab===index)return;
+   selectedTab=index;
+   scroll.scrollTop=0;
+   resetTabs(index);
+  };
+  const startTabs=()=>{
+   tabMotion.cancel();
+   tabOrigin=tabPosition;
+   tabDragWidth=tabWidth;
+   tabRail.dataset.paging="";
+   tabPages.dataset.paging="";
+   tabPages.style.setProperty("--owner-page-scroll",`${scroll.scrollTop}px`);
+   tabPages.style.setProperty("--owner-page-peek",`${Math.max(0,scroll.clientHeight-13)}px`);
+  };
+  const moveTabs=(delta:number)=>{
+   const position=tabOrigin-delta/tabDragWidth;
+   const edge=clamp(position,0,tabCount-1);
+   paintTabs(edge+(position-edge)*.18);
+  };
+  const endTabs=(speed:number,cancelled:boolean)=>{
+   const projected=tabPosition-clamp(speed*120/tabDragWidth,-.25,.25);
+   const shift=projected-selectedTab;
+   const target=clamp(selectedTab+(!cancelled&&Math.abs(shift)>.29?Math.sign(shift):0),0,tabCount-1);
+   const width=tabWidth,from=tabPosition;
+   const duration=clamp(Math.abs(target-from)*235,145,235);
+   tabMotion.start(from*width,target*width,duration,[.22,.76,.25,1],
+    value=>paintTabs(value/width),()=>{
+     if(target===selectedTab)resetTabs(selectedTab);
+     else latest.current.onTabChange(target);
+    });
+  };
+
   const paint=(value:number)=>{
    position=value;
    const distance=geometry.morphDistance;
@@ -78,6 +133,8 @@ export function useOwnerProfileMotion(options:Options){
    mask.style.transform=`${translate(photo.x,photo.y)} scale(${photo.width/geometry.width})`;
    mask.style.borderRadius=`${frame.radius/photo.width*100}%`;
    shade.style.opacity=String(1-center);
+   ambient.style.opacity=String(frame.ambientOpacity);
+   halo.style.opacity=String(frame.haloOpacity*.82);
    sheet.style.transform=translate(0,frame.sheetTop);
    identity.style.transform=translate(0,frame.identityTop);
    const x=24+(geometry.width/2-24)*center;
@@ -167,6 +224,7 @@ export function useOwnerProfileMotion(options:Options){
    if(current)release(current);
    clearWheel();
    latest.current.horizontal.cancelPhoto();
+   resetTabs(selectedTab);
    cancelPaint();
   };
 
@@ -191,7 +249,7 @@ export function useOwnerProfileMotion(options:Options){
   };
 
   const dragMorph=(current:Press,dy:number)=>{
-    const from=ownerUnresistedPosition(current.origin*current.distance);
+   const from=ownerUnresistedPosition(current.origin*current.distance);
    const raw=from-dy;
    if(current.auto!==null){
     if(current.auto===1){
@@ -203,12 +261,12 @@ export function useOwnerProfileMotion(options:Options){
    const next=ownerRubberPosition(Math.min(raw,Math.max(current.distance,from)));
    const auto=raw>=current.distance?1:ownerAutoSnapTarget(accepted,next,current.distance);
    const towardTarget=auto===1?raw>from:raw<from;
-   schedulePaint(next/current.distance);
    if(auto!==null&&towardTarget){
+    schedulePaint(ownerSnapFrom(current.origin,auto));
     current.auto=auto;
     current.remainder=Math.max(0,raw-current.distance);
     settleTo(auto,current.velocity,true,()=>writeCards(current));
-   }
+   }else schedulePaint(next/current.distance);
   };
   const sample=(current:Press,point:Point,horizontal:boolean)=>{
    const now=performance.now(),elapsed=now-current.sampleTime;
@@ -239,7 +297,10 @@ export function useOwnerProfileMotion(options:Options){
      return;
     }
     current.owner=owner;
-    if(owner==="native")return;
+    if(owner==="native"){
+     if(tabPages.dataset.paging!==undefined)resetTabs(selectedTab);
+     return;
+    }
     if(event.type==="pointermove"){
      try{
       host.setPointerCapture(current.id);
@@ -247,6 +308,8 @@ export function useOwnerProfileMotion(options:Options){
      }catch{/* The pointer may have already left the WebView. */}
     }
     if(owner==="hero")latest.current.horizontal.startPhoto(ownerMorphFrame(geometry,position).mask.width,geometry.width);
+    if(owner==="tabs")startTabs();
+    else if(tabPages.dataset.paging!==undefined)resetTabs(selectedTab);
     // Freeze native inertia only once an exclusive gesture has taken over.
     if(owner==="sheet"&&current.startedCompact)scroll.scrollTop=current.startScroll;
    }
@@ -258,6 +321,7 @@ export function useOwnerProfileMotion(options:Options){
     if(current.scrollCards)scroll.scrollTop=current.startScroll-dy;
     else dragMorph(current,dy);
    }else if(current.owner==="hero")latest.current.horizontal.movePhoto(dx);
+   else if(current.owner==="tabs")moveTabs(dx);
   };
   const end=(current:Press,cancelled:boolean)=>{
    press=null;
@@ -270,14 +334,14 @@ export function useOwnerProfileMotion(options:Options){
     else settleRelease(speed);
     return;
    }
-   if(owner==="hero"||owner==="tabs"){
+   if(owner==="tabs")endTabs(speed,cancelled);
+   if(owner==="hero"){
     const dx=current.last.x-current.start.x;
-    const width=owner==="hero"?ownerMorphFrame(geometry,position).mask.width:geometry.width;
-    const threshold=owner==="hero"?Math.max(24,width*.18):48;
+    const width=ownerMorphFrame(geometry,position).mask.width;
+    const threshold=Math.max(24,width*.18);
     const direction=!cancelled&&(Math.abs(dx)>=threshold||(Math.abs(dx)>=12&&Math.abs(speed)>.48))?
      (dx<0?-1:1):0;
-    if(owner==="hero")latest.current.horizontal.endPhoto(direction);
-    else if(direction!==0)latest.current.horizontal.pageTab(direction===-1?1:-1);
+    latest.current.horizontal.endPhoto(direction);
    }
    if(current.auto===null&&settling===null&&position!==accepted)settleTo(accepted);
   };
@@ -346,12 +410,12 @@ export function useOwnerProfileMotion(options:Options){
    }
    const next=ownerRubberPosition(Math.min(current.raw,distance));
    const target=current.raw>=distance?1:ownerAutoSnapTarget(accepted,next,distance);
-   schedulePaint(next/distance);
    if(target!==null){
+    schedulePaint(ownerSnapFrom(paintRaf?pendingPaint:position,target));
     current.auto=target;
     current.remainder=Math.max(0,current.raw-distance);
     settleTo(target,0,true,()=>{scroll.scrollTop=current.remainder;});
-   }
+   }else schedulePaint(next/distance);
   };
 
   const measure=()=>{
@@ -360,6 +424,12 @@ export function useOwnerProfileMotion(options:Options){
    geometry=createOwnerProfileLayout({width:rect.width,height:rect.height,
     brandBottom:brand.getBoundingClientRect().bottom-rect.top});
    sheet.style.height=`calc(100% - ${geometry.compactContentTop}px)`;
+   ambient.style.height=`${geometry.roundTop+geometry.roundDiameter+108}px`;
+   halo.style.top=`${geometry.compactAvatar.y-17}px`;
+   halo.style.width=`${geometry.compactAvatar.width+34}px`;
+   tabWidth=tabPages.clientWidth||rect.width;
+   inkStep=tabRail.clientWidth/tabCount;
+   paintTabs(tabPosition);
    if(paintRaf)flushPaint();
    else paint(position);
   };
@@ -390,7 +460,7 @@ export function useOwnerProfileMotion(options:Options){
 
   commands.current={
    compact:()=>{if(!paused())settleTo(1,0,true);},
-   resetCards:()=>{scroll.scrollTop=0;},
+   cancelTabs:()=>{if(tabPages.dataset.paging!==undefined)resetTabs(selectedTab);},
    allowClick:()=>performance.now()>=blockedUntil
   };
   host.addEventListener("touchstart",touchStart,{passive:true});
@@ -413,6 +483,8 @@ export function useOwnerProfileMotion(options:Options){
    disposeLifecycle();
    cancelInput();
    motion.dispose();
+   tabMotion.dispose();
+   syncTab.current=null;
    observer.disconnect();
    if(resizeRaf)cancelAnimationFrame(resizeRaf);
    window.visualViewport?.removeEventListener("resize",resize);
@@ -429,9 +501,10 @@ export function useOwnerProfileMotion(options:Options){
    window.removeEventListener("pointerup",pointerEnd);
    window.removeEventListener("pointercancel",pointerEnd);
    host.removeEventListener("wheel",onWheel);
-   commands.current={compact:()=>{},resetCards:()=>{},allowClick:()=>true};
+   commands.current={compact:()=>{},cancelTabs:()=>{},allowClick:()=>true};
   };
  },[active,profileId,gestureArbiter]);
+ useLayoutEffect(()=>{syncTab.current?.(tabIndex);},[tabIndex]);
 
  return {root,commands};
 }
