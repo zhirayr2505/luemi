@@ -148,6 +148,7 @@ export function App() {
   const [phase,setPhase] = useState<"welcome"|"form">("welcome");
   const [demoOpen,setDemoOpen] = useState(false);
   const [realHome,setRealHome] = useState(false);
+  const [realHomeBackActive,setRealHomeBackActive]=useState(false);
   const [realHomeTab,setRealHomeTab] = useState<"feed"|"chats"|"profile">("feed");
   const [publishedEditor,setPublishedEditor]=useState<{name:string;about:string;goal:string}|null>(null);
   const submitting=useRef(false);
@@ -231,6 +232,7 @@ export function App() {
   useEffect(()=>installMoonstoneOptics(document),[]);
   const contentRef=useRef<HTMLDivElement>(null);
   const discoveryBackRef=useRef<()=>void>(()=>{});
+  const realHomeBackRef=useRef<()=>void>(()=>{});
   const v2BackRef=useRef<()=>void>(()=>{});
   const activeTheme="dark";
   const patch = useCallback((change:Partial<RegistrationDraft>)=>{
@@ -591,6 +593,10 @@ export function App() {
     ownedUrls.current=[];
   },[]);
   const registerDiscoveryBack=useCallback((handler:()=>void)=>{discoveryBackRef.current=handler;},[]);
+  const registerRealHomeBack=useCallback((handler:(()=>void)|null)=>{
+    realHomeBackRef.current=handler??(()=>{});
+    setRealHomeBackActive(handler!==null);
+  },[]);
   const registerV2Back=useCallback((handler:()=>void)=>{v2BackRef.current=handler;},[]);
   const back=useCallback(()=>{
     setError("");
@@ -605,18 +611,20 @@ export function App() {
    useEffect(()=>{
      const button=window.Telegram?.WebApp?.BackButton;
      if(!button)return;
-     if(auth==="authorized"&&(demoOpen||phase==="form")){
+     const hasInternalBack=realHome?realHomeBackActive:demoOpen||phase==="form";
+     if(auth==="authorized"&&hasInternalBack){
        const handle=()=>{
          if(journey==="error"){setJourney(null);setJourneyError("");return;}
          if(journey!==null)return;
-         if(demoOpen)discoveryBackRef.current();
+         if(realHome)realHomeBackRef.current();
+         else if(demoOpen)discoveryBackRef.current();
          else backActionRef.current();
        };
        button.show();button.onClick(handle);
        return ()=>{button.offClick(handle);button.hide();};
      }
      button.hide();
-   },[phase,auth,demoOpen,journey]);
+   },[phase,auth,demoOpen,journey,realHome,realHomeBackActive]);
   const changeStep=(target:number)=>{
     persistEnabled.current=true;
     setStorageState("dirty");
@@ -1251,6 +1259,7 @@ export function App() {
     <Suspense fallback={null}>
      <RealDiscoveryHome onFirstScreenReady={signalBootReady} draft={draft}
        initialFeed={warmFeed} publishedProfile={publishStatus?.profile} ownerPhotoPreview={readyPhotos}
+       registerBack={registerRealHomeBack}
        onCityChanged={place=>{
         setDraft(current=>({...current,city:place.city,country:place.country,
          countryCode:place.countryCode,placeId:place.id}));
@@ -1505,3 +1514,4 @@ export function App() {
     </section>)}
   </main>;
 }
+

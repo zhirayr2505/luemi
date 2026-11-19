@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {KeyboardEvent,PointerEvent as ReactPointerEvent} from "react";
-import {ArrowLeft,CalendarDays,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,Sparkles,UserRound} from "lucide-react";
+import {CalendarDays,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,Sparkles,UserRound} from "lucide-react";
 import {InterestChip} from "../../ui/InterestCatalog";
 import {goals,type RegistrationDraft} from "../../registration/model";
 import {goalLabel} from "../../ui/PersonalizedCopy";
@@ -17,7 +17,7 @@ const tabs:[OwnerTab,string][]=[["about","О себе"],["photos","Фото"],["
 
 type Props={
  view:ProfileView;ownerDetails?:RegistrationDraft;active?:boolean;
- onBack:()=>void;onEdit:()=>void;onSettings:()=>void;onPreview:()=>void;
+ onEdit:()=>void;onSettings:()=>void;onPreview:()=>void;
  onPhotoOpen:(id:string,element:HTMLImageElement|null)=>void;
  onMotionProgress?:(progress:number,dragging:boolean)=>void;
  gestureArbiter?:GestureArbiter;
@@ -46,7 +46,7 @@ const numericToken=(node:HTMLElement,name:string)=>{
  return Number.isFinite(value)?value:0;
 };
 
-export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit,onSettings,onPreview,
+export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSettings,onPreview,
  onPhotoOpen,onMotionProgress,gestureArbiter}:Props){
  const p=view.profile,photos=view.photos,mainPhoto=photos[0]??null,isOwner=view.mode==="owner";
  const [tab,setTab]=useState<OwnerTab>("about");
@@ -505,12 +505,11 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   <div className="owner-profile-brand" translate="no">
    <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" decoding="async"/>
   </div>
-  <header className="owner-profile-topbar">
-   <button type="button" className="owner-profile-glass owner-profile-back" onClick={onBack} aria-label="Назад"><ArrowLeft/></button>
-   {isOwner&&<button ref={topEdit} type="button" className="owner-profile-glass owner-profile-edit-top" onClick={onEdit} aria-label="Редактировать профиль">
+  {isOwner&&<header className="owner-profile-topbar">
+   <button ref={topEdit} type="button" className="owner-profile-glass owner-profile-edit-top" onClick={onEdit} aria-label="Редактировать профиль">
     <PenLine size={18}/>
-   </button>}
-  </header>
+   </button>
+  </header>}
   <div ref={expandedIdentity} className="owner-profile-expanded-identity">
    <h1>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</h1>
    <p><MapPin size={15} aria-hidden="true"/>{location}</p>
@@ -576,3 +575,4 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   </div>
  </section>;
 }
+
