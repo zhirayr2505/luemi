@@ -68,6 +68,7 @@ try{
   compact.radius>=compact.width/2-1,"compact photo becomes a circle in safe-area coordinates");
  near(compact.x+compact.width/2,393/2,1.5);
  await profile().getByRole("tab",{name:"Фото",exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
  assert.equal(await currentTab().innerText(),"Фото");
 
  // A suspended WebView can change its viewport height before resuming.

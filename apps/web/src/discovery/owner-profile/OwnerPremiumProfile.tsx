@@ -48,6 +48,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const topEdit=useRef<HTMLButtonElement>(null);
  const layout=useRef<OwnerProfileLayout>(createOwnerProfileLayout({width:393,height:852}));
  const paintRaf=useRef(0),lastState=useRef("expanded"),lastPaintedProgress=useRef(0);
+ const compactPinned=useRef(false);
  const motionProgress=useRef(onMotionProgress);
  const tabPrefix=useId();
  const goal=p.goal&&p.goal!=="undecided"?goals.find(item=>item.id===p.goal):null;
@@ -68,6 +69,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   const progress=ownerMorphProgress(scrollTop,layout.current.morphDistance);
   const frame=ownerMorphFrame(layout.current,progress);
   lastPaintedProgress.current=progress;
+  if(progress>=.999)compactPinned.current=true;
+  else if(scrollTop<=1)compactPinned.current=false;
   const surface=mask.current;
   if(surface){
    surface.style.transform=`translate3d(${frame.mask.x}px,${frame.mask.y}px,0)`;
@@ -120,7 +123,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    // Telegram can shrink visualViewport and clamp scrollTop while backgrounded.
    // Preserve the LAST painted morph state before remeasuring; do not reopen
    // a compact portrait just because the WebView height changed.
-   const previousProgress=lastPaintedProgress.current;
+   const previousProgress=compactPinned.current?1:lastPaintedProgress.current;
    layout.current=next;
    host.style.setProperty("--owner-hero-height",`${next.hero.height}px`);
    host.style.setProperty("--owner-hero-top",`${next.hero.y}px`);
@@ -150,7 +153,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  useLayoutEffect(()=>{
   if(!active||!scroller.current)return;
   scroller.current.scrollTop=0;lastState.current="expanded";
-  root.current?.setAttribute("data-morph-state","expanded");setHeroIndex(0);setRenderIndex(0);paint(0);
+  root.current?.setAttribute("data-morph-state","expanded");compactPinned.current=false;setHeroIndex(0);setRenderIndex(0);paint(0);
  },[active,mainPhoto?.id,paint]);
  useEffect(()=>{
   if(!heroPhoto||!heroImage.current)return;
@@ -160,8 +163,16 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  },[heroPhoto]);
 
  const selectTab=(next:OwnerTab,focus=false)=>{
+  // Native scroll extent changes when a short tab replaces a long one.
+  // Preserve the sticky compact avatar; choosing a tab is not an expand gesture.
+  const keepCompact=compactPinned.current||lastState.current==="compact";
   setTab(next);
   requestAnimationFrame(()=>{
+   if(keepCompact&&scroller.current){
+    compactPinned.current=true;
+    scroller.current.scrollTop=Math.max(scroller.current.scrollTop,layout.current.morphDistance);
+    schedulePaint();
+   }
    const button=tablist.current?.querySelector<HTMLButtonElement>(`#${CSS.escape(tabPrefix+"-"+next+"-tab")}`);
    if(focus)button?.focus({preventScroll:true});
    // Do not scroll the entire native viewport when moving between tabs.
