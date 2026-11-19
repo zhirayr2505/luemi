@@ -123,7 +123,12 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    // Telegram can shrink visualViewport and clamp scrollTop while backgrounded.
    // Preserve the LAST painted morph state before remeasuring; do not reopen
    // a compact portrait just because the WebView height changed.
-   const previousProgress=compactPinned.current?1:lastPaintedProgress.current;
+   // A deliberate return to scrollTop=0 must win over a pending resize RAF.
+   // Otherwise a just-collapsed viewport could re-pin the photo after the
+   // user (or native route restoration) has already reopened the profile.
+   const explicitlyExpanded=scroll.scrollTop<=1;
+   if(explicitlyExpanded)compactPinned.current=false;
+   const previousProgress=explicitlyExpanded?0:compactPinned.current?1:lastPaintedProgress.current;
    layout.current=next;
    host.style.setProperty("--owner-hero-height",`${next.hero.height}px`);
    host.style.setProperty("--owner-hero-top",`${next.hero.y}px`);
