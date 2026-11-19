@@ -13,7 +13,7 @@ try{
   outfile:output,bundle:true,platform:"node",format:"esm"
  });
  const {createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,ownerMorphFrame,
-  ownerMorphProgress,ownerRubberPosition,ownerUnresistedPosition}=await import(pathToFileURL(output));
+  ownerMorphDrag,ownerMorphDragOrigin,ownerMorphProgress,ownerRubberPosition,ownerUnresistedPosition}=await import(pathToFileURL(output));
 
  const viewports=[
   {width:360,height:640,brandBottom:65},
@@ -72,9 +72,19 @@ try{
   assert(stretched.mask.y+stretched.mask.height>=stretched.sheetTop,"overpull leaves no uncovered stripe");
 
   assert.equal(ownerAutoSnapTarget(0,distance*.62,distance),null);
-  assert.equal(ownerAutoSnapTarget(0,distance*.65,distance),1,"held touch can collapse");
+  assert.equal(ownerAutoSnapTarget(0,distance*.65,distance),1,"crossing the threshold allows release to compact");
   assert.equal(ownerAutoSnapTarget(1,distance*.90,distance),null);
-  assert.equal(ownerAutoSnapTarget(1,distance*.86,distance),0,"held touch can expand");
+  assert.equal(ownerAutoSnapTarget(1,distance*.86,distance),0,"crossing the threshold allows release to expand");
+  const held=ownerMorphDrag(.78);
+  assert.equal(held,ownerMorphDrag(.82),"both directions share a small range at the medium circle");
+  assert.equal(ownerMorphFrame(layout,held).mask.width,layout.roundDiameter);
+  assert(ownerMorphDrag(.70)<held&&ownerMorphDrag(.92)>held,"continued travel moves past the held circle");
+  assert.equal(ownerMorphDrag(.56),.56,"the sheet still follows the initial pull pixel for pixel");
+  for(let step=0;step<=100;step++){
+   const painted=step/100;
+   assert(Math.abs(ownerMorphDrag(ownerMorphDragOrigin(painted))-painted)<1e-8,
+    "grabbing an interrupted settle preserves the painted position");
+  }
   assert.equal(ownerMorphProgress(-80,distance),0);
   assert.equal(ownerMorphProgress(distance*2,distance),1);
   assert.equal(ownerMorphEndpoint(distance*.49,distance),0);

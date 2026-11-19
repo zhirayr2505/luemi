@@ -55,44 +55,66 @@ try{
   "true","right photo swipe returns to the main photo");
  console.log("PREMIUM_PROFILE_GESTURE_PASS photo left and right");
 
- // Telegram V4.2: the spring must finish WHILE the finger is still held.
- // Deliberately do NOT dispatch touchEnd until after the state changes.
- const autoDistance=hero.width*.36;
+ // A held finger must be able to stop at a medium circle in either direction.
  const held=await context.newCDPSession(page);
  const finger=async(type,x,y)=>held.send("Input.dispatchTouchEvent",{
   type,touchPoints:type==="touchEnd"?[]:[{x,y,id:2}]});
+ const measurePhoto=()=>face.evaluate((node)=>{
+  const rect=node.getBoundingClientRect();
+  return {radius:parseFloat(node.style.borderRadius),width:rect.width,y:rect.y,
+   ambient:Number(node.closest(".owner-premium-profile").querySelector(".owner-profile-ambient").style.opacity)};
+ });
+ const moveUntil=async(x,y,direction,reached)=>{
+  for(let distance=4;distance<=180;distance+=4){
+   await finger("touchMove",x,y+direction*distance);
+   await delay(20);
+   if(reached(await measurePhoto()))return distance;
+  }
+  assert.fail("the drag never reached the expected photo geometry");
+ };
+ const assertHeld=async()=>{
+  const before=await measurePhoto();
+  assert.equal(before.radius,50,"the held photo is a true circle");
+  assert.equal(await root.getAttribute("data-morph-state"),"transition");
+  await delay(380);
+  assert.deepEqual(await measurePhoto(),before,"the medium circle stays in place while the finger is held");
+  return before;
+ };
  try{
   const cards=root.locator(".owner-profile-scroll");
   const cardRect=await cards.boundingBox();
   const hx=cardRect.x+cardRect.width*.5,hy=cardRect.y+70;
-  await root.evaluate(node=>{
-   const picture=node.querySelector(".owner-profile-photo-mask");
-   const ambient=node.querySelector(".owner-profile-ambient");
+  await face.evaluate(node=>{
+   const ambient=node.closest(".owner-premium-profile").querySelector(".owner-profile-ambient");
    const frames=[];
    window.__ownerRoundFrames=frames;
    const observe=new MutationObserver(()=>{
-    frames.push({
-     radius:parseFloat(picture.style.borderRadius),
-     width:picture.getBoundingClientRect().width,
-     ambient:Number(ambient.style.opacity)
-    });
-    if(node.dataset.morphState==="compact")observe.disconnect();
+    frames.push({radius:parseFloat(node.style.borderRadius),ambient:Number(ambient.style.opacity)});
+    if(node.classList.contains("owner-profile-avatar-circle"))observe.disconnect();
    });
-   observe.observe(picture,{attributes:true,attributeFilter:["style"]});
+   observe.observe(node,{attributes:true,attributeFilter:["style"]});
   });
   await finger("touchStart",hx,hy);
-  for(let n=1;n<=4;n++){await finger("touchMove",hx,hy-autoDistance*.75*n/4);await delay(18);}
-  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact",
-   null,{timeout:3500});
-  assert.equal(await root.getAttribute("data-morph-state"),"compact",
-   "a swipe starting on the cards auto-collapses the profile while held");
-  assert.equal(await cards.evaluate(el=>el.scrollTop),0,"card scroll remains at the start through morph");
-  const frames=await page.evaluate(()=>window.__ownerRoundFrames);
-  const rounding=frames.find(frame=>frame.radius>0);
-  assert(rounding&&rounding.ambient>0,"blur appears as soon as the mask starts rounding");
-  assert(frames.some(frame=>Math.abs(frame.radius-50)<.01&&frame.width>126),
-   "the same photo is visibly circular before reaching the compact diameter");
+  const distanceUp=await moveUntil(hx,hy,-1,frame=>frame.radius===50&&frame.width>126);
+  const medium=await assertHeld();
+  assert.equal(await cards.evaluate(el=>el.scrollTop),0,"card scroll stays pinned during the morph");
+  const rounding=(await page.evaluate(()=>window.__ownerRoundFrames)).find(frame=>frame.radius>0);
+  assert(rounding&&rounding.ambient>0,"blur appears as soon as the mask rounds");
+  await finger("touchEnd",hx,hy-distanceUp);
+  await root.locator(".owner-profile-avatar-circle").waitFor();
+  const c=await face.boundingBox();
+  assert(c&&c.width>=94&&c.width<=112&&c.width<medium.width,"release docks the medium circle");
+  const cx=c.x+c.width*.5,cy=c.y+c.height*.5;
+  await finger("touchStart",cx,cy);
+  const distanceDown=await moveUntil(cx,cy,1,frame=>Math.abs(frame.width-medium.width)<.1);
+  assert.deepEqual(await assertHeld(),medium,"opening pauses at the same circle");
+  await finger("touchEnd",cx,cy+distanceDown);
+  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
+
+  await finger("touchStart",hx,hy);
+  await moveUntil(hx,hy,-1,frame=>frame.radius===50&&frame.width>126);
   await finger("touchMove",hx,hy-230);
+  await root.locator(".owner-profile-avatar-circle").waitFor();
   await page.waitForFunction(()=>document.querySelector(".owner-profile-scroll")?.scrollTop>0);
   await finger("touchEnd",hx,hy-230);
 
@@ -100,23 +122,15 @@ try{
   await swipe(hx,scrolledCards.y+75,0,240);
   await page.waitForFunction(()=>document.querySelector(".owner-profile-scroll")?.scrollTop<=.5);
   assert.equal(await root.getAttribute("data-morph-state"),"compact",
-   "the swipe that returned cards to their top cannot also expand the profile");
+   "the gesture that scrolls cards to their top cannot also expand the profile");
   await delay(80);
-  const c=await root.locator(".owner-profile-avatar-circle").boundingBox();
-  assert(c&&c.width>=94&&c.width<=112,"auto-compact shows the smaller true circular avatar");
-  await finger("touchStart",c.x+c.width*.5,c.y+c.height*.5);
-  for(let n=1;n<=4;n++){
-   await finger("touchMove",c.x+c.width*.5,c.y+c.height*.5+autoDistance*.76*n/4);
-   await delay(18);
-  }
-  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded",
-   null,{timeout:3500});
-  assert.equal(await root.getAttribute("data-morph-state"),"expanded",
-   "threshold auto-expand completes while the finger remains pressed");
-  await finger("touchEnd",c.x+c.width*.5,c.y+c.height*.5+autoDistance*.76);
+  await finger("touchStart",cx,cy);
+  await moveUntil(cx,cy,1,frame=>Math.abs(frame.width-medium.width)<.1);
+  await finger("touchMove",cx,cy+210);
+  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
+  await finger("touchEnd",cx,cy+210);
  }finally{await held.detach();}
- console.log("PREMIUM_PROFILE_TELEGRAM_THRESHOLD_PASS auto-collapse/expand before touchEnd");
-
+ console.log("PREMIUM_PROFILE_HELD_MORPH_PASS hold, release and continued drag in both directions");
 
  // A vertical gesture from the hero collapses the profile without opening
  // the viewer or needing to scroll the cards first.
@@ -141,18 +155,26 @@ try{
   {x:touchX,y:touchY}),"visible page receives horizontal gestures");
  const ink=root.locator(".owner-profile-tab-ink");
  const inkBefore=await ink.boundingBox();
+ const nextPanel=root.locator('.owner-profile-panel[aria-label="Фото"]');
+ const nextPanelBefore=await nextPanel.boundingBox();
+ const scrollAtStart=await root.locator(".owner-profile-scroll").evaluate(node=>node.scrollTop);
+ let incomingY;
  await swipe(touchX,touchY,-rect.width*.48,0,12,async step=>{
   if(step!==6)return;
   const shift=rect.width*.24;
   const moving=await pages.boundingBox();
-  const next=await root.locator('.owner-profile-panel[aria-label="Фото"]').boundingBox();
+  const next=await nextPanel.boundingBox();
   assert(Math.abs(moving.x-(rect.x-shift))<2,"the current page tracks mid-gesture displacement 1:1");
   assert(Math.abs(next.x-(moving.x+rect.width))<2,"the next page follows as a neighboring panel");
+  assert.equal(next.height,nextPanelBefore.height,"incoming pane keeps the same layout on the drag frame");
+  assert(Math.abs(next.y-(nextPanelBefore.y+scrollAtStart))<.5,"the incoming page is aligned to the top of the viewport");
+  incomingY=next.y;
   assert((await ink.boundingBox()).x>inkBefore.x+8,"the underline tracks the same swipe");
   assert.equal(await selected().innerText(),"О себе","selection commits after release");
  });
  await root.locator('[role="tab"][data-tab-id="photos"][aria-selected="true"]').waitFor();
  assert.equal(await selected().innerText(),"Фото","page swipe switches to next tab");
+ assert(Math.abs((await nextPanel.boundingBox()).y-incomingY)<.5,"the arriving content doesn't jump on commit");
  const registeredX=(await pages.boundingBox()).x;
  await swipe(touchX,touchY,-25,0,7);
  await root.locator(".owner-profile-pages:not([data-paging])").waitFor();
@@ -169,6 +191,13 @@ try{
  await root.getByRole("tab",{name:"Блики",exact:true}).click();
  assert.equal(await selected().innerText(),"Блики","latest tab tap wins");
  assert.equal(await selected().count(),1);
+ const emptyBackground=await root.locator(".owner-profile-content").evaluate(element=>({
+  image:getComputedStyle(element).backgroundImage,
+  content:element.getBoundingClientRect().height,
+  viewport:element.parentElement.clientHeight
+ }));
+ assert.equal(emptyBackground.image,"none","the empty panel does not end in a second background colour");
+ assert(emptyBackground.content>=emptyBackground.viewport-.5,"the empty panel fills the scroller");
  console.log("PREMIUM_PROFILE_GESTURE_PASS tab pager and interruptions");
 
  assert.deepEqual(errors,[],"no browser exceptions");

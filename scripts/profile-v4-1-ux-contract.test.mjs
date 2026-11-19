@@ -13,8 +13,8 @@ assert.match(component,/className="owner-profile-sheet"[\s\S]*className="owner-p
  "tabs are kept in the sheet above its independent card scroller");
 assert.equal((component.match(/className="owner-profile-photo-mask"/g)??[]).length,1,
  "one mask hosts both the expanded square and the compact circle");
-assert.match(motion,/ownerAutoSnapTarget\(accepted,next,current.distance\)/,
- "the held-finger check can accept an endpoint during movement");
+assert.match(motion,/schedulePaint\(ownerMorphDrag\(next\)\)/,
+ "the held finger renders the interactive circle and can continue past it");
 assert.match(css,/\[data-morph-state="compact"\] .owner-profile-scroll\{[^}]*overflow:hidden auto/s,
  "card scrolling begins when the profile is compact");
 assert.match(css,/\.owner-profile-photo-pager\s*\{[^}]*right:2[0-9]px/s,
@@ -31,7 +31,7 @@ assert.match(component,/import \{Flag\} from "\.\.\/\.\.\/ui\/Flag";/,
  "country indicator must use the shared circular flag component");
 assert.match(component,/countryCode\s*\?\s*<Flag/,
  "country flag must be guarded by an actual code");
-assert.match(motion,/ownerRubberPosition\(Math.min\(raw,/,
+assert.match(motion,/ownerRubberPosition\(raw\)\/current.distance/,
  "photo and sheet derive elastic motion from the same pull");
 assert.match(component,/photos\[loop\(selectedIndex-direction,photos.length\)\]/,
  "photo paging wraps around the available items");
