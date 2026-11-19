@@ -81,8 +81,9 @@ try{
  const reversed=await snap(own(),"owner-reversed");
  assert.ok(Math.abs(reversed.cover.width-first.cover.width)<2);
  await own().locator(".owner-profile-photo-pager button").nth(1).click();
+ await page.waitForFunction(()=>document.querySelector('.owner-premium-profile[data-mode="owner"] .owner-profile-photo-pager button:nth-child(2)')?.getAttribute("aria-current")==="true");
  const photo2=await snap(own(),"owner-photo-two");
- assert.equal(photo2.photoId,await own().locator(".owner-profile-photo-tile img").nth(1).getAttribute("data-photo-id").catch(()=>photo2.photoId));
+ assert.equal(photo2.photoId,await own().locator(".owner-profile-photo-tile img").nth(1).getAttribute("data-photo-id"));
 
  const nav=page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"});
  await nav.click();
