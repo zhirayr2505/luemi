@@ -65,6 +65,10 @@ try{
   assert.equal(compact.expandedAlpha,0);
   assert.equal(compact.compactAlpha,1);
 
+  for(let step=0;step<=100;step++){
+   const f=ownerMorphFrame(layout,step/100);
+   assert(f.expandedAlpha+f.compactAlpha>=.49,"name cannot vanish during the morph");
+  }
   for(const progress of [0,.08,.18,.33,.5,.72,.86,1]){
    const frame=ownerMorphFrame(layout,progress);
    assert.equal(frame.mask.width,frame.mask.height,
