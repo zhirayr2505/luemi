@@ -33,7 +33,7 @@ export function createOwnerProfileLayout(viewport:OwnerProfileViewport):OwnerPro
  const compactAvatar={x:(width-avatarSize)/2,y:avatarY,width:avatarSize,height:avatarSize};
  // Leave enough room for name, city and a quiet gap before the content.
  const compactContentTop=clamp(avatarY+avatarSize+82,avatarY+avatarSize+75,height-bottomInset-112);
- const morphDistance=Math.max(96,heroY+heroHeight-28-compactContentTop);
+ const morphDistance=Math.max(96,heroY+heroHeight-28-compactContentTop+135);
  return {width,height,topInset,bottomInset,
   hero:{x:0,y:heroY,width,height:heroHeight},compactAvatar,compactContentTop,morphDistance};
 }
