@@ -47,7 +47,8 @@ try{
    assert(progress>=previous,"progress is monotonic while scrolling down");
    previous=progress;
   }
-  assert.equal(ownerMorphProgress(layout.morphDistance*.42,layout.morphDistance),.42);
+  assert(Math.abs(ownerMorphProgress(layout.morphDistance*.42,layout.morphDistance)-.42)<1e-10,
+   "fractional scroll progress tolerates floating-point roundoff");
   assert.equal(ownerMorphProgress(layout.morphDistance*2,layout.morphDistance),1);
   assert.equal(ownerMorphProgress(-80,layout.morphDistance),0);
   assert.equal(ownerMorphProgress(layout.morphDistance*.42,layout.morphDistance),
