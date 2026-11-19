@@ -20,6 +20,8 @@
  position:absolute;z-index:5;inset:-17px;pointer-events:none;
  background-image:var(--profile-photo,none);
  background-size:cover;background-position:center;background-repeat:no-repeat;
+ /* Uniform wash across the ENTIRE rounded card, including the top 24px. */
+ box-shadow:inset 0 0 0 999px rgba(15,17,25,.20);
  filter:blur(17px) brightness(.68) saturate(.87);
  transform:translateZ(0) scale(1.04);
  opacity:var(--profile-p);
@@ -32,11 +34,12 @@
  box-shadow:none;
  overflow:visible;
 }
-/* Compact photo scrim dissolves into a borderless header shade as the card opens.
- * Both pseudo-elements are behind the name and blend with the shared photo. */
+/* In collapsed mode the approved photo-info gradient remains.
+ * In expanded mode this one scrim fades OUT and no new header scrim fades IN.
+ * The latter produced the obvious ~40px black strip/seam below the card top. */
 .real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info::before{
- content:"";position:absolute;z-index:-1;inset:0;
- border:0;border-radius:0 0 26px 26px;pointer-events:none;
+ content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;
+ border:0;border-radius:0 0 26px 26px;
  background:linear-gradient(180deg,
   rgba(24,17,29,0),rgba(24,17,29,.21) 18%,
   rgba(23,17,29,.55) 50%,rgba(20,15,27,.83));
@@ -44,13 +47,7 @@
  opacity:calc(1 - var(--profile-p));
 }
 .real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-compact-info::after{
- content:"";position:absolute;z-index:-1;inset:-9px 0 -17px;pointer-events:none;
- border:0;border-radius:0;
- background:linear-gradient(180deg,
-  rgba(20,23,34,.69),rgba(20,23,34,.55) 53%,
-  rgba(20,23,34,.35) 76%,transparent);
- box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
- opacity:var(--profile-p);
+ content:none;
 }
 /* The user-requested fine divider — the only edge between fixed and scrolling. */
 .real-discovery-home[data-feed-visible="true"] .moonstone-profile-divider{
@@ -68,6 +65,11 @@
 /* Keep the outer card radius; remove the inner sheet's fill and outline.
  * Scrolling sections are drawn over the SAME blurred photo as the header. */
 .real-discovery-home[data-feed-visible="true"] .moonstone-profile-drawer{
+ /* Align the scroll layer with the actual card top. Outer border does all clipping. */
+ top:var(--luemi-card-top);
+ bottom:var(--luemi-card-bottom);
+ padding:0;
+ border-radius:27px;
  isolation:auto;
  overflow:hidden;
  background:transparent;

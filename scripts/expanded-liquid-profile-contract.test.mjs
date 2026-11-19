@@ -22,7 +22,7 @@ test("header is pinned over scrolling detail, photo dots and old handle vanish",
  assert.match(card,/--profile-info-y/);
  assert.match(card,/aria-label=\{expanded\?"Свернуть анкету":"Раскрыть анкету"\}/);
  assert.match(styles,/\.moonstone-compact-info::before\{[\s\S]*?opacity:calc\(1 - var\(--profile-p\)\)/);
- assert.match(styles,/\.moonstone-compact-info::after\{[\s\S]*?opacity:var\(--profile-p\)/);
+ assert.match(styles,/\.moonstone-compact-info::after\{[\s\S]*?content:none/);
  assert.match(styles,/\.moonstone-profile-scroll\{[\s\S]*?padding:calc\(var\(--profile-detail-top,172px\) \+ 0px\)/);
  assert.match(styles,/\.moonstone-photo-indicator\{[\s\S]*?opacity:clamp\(0,calc\(1 - var\(--profile-p\) \* 3\),1\)/);
  assert.match(styles,/\.moonstone-profile-gesture-zone\{[\s\S]*?display:none/);
@@ -71,4 +71,14 @@ test("expanded profile is one uninterrupted glass sheet with a thin pinned divid
  assert.match(styles,/\.moonstone-profile-scroll\{[\s\S]*?inset:0/);
  assert.match(styles,/\.moonstone-compact-info::before\{[\s\S]*?backdrop-filter:none/);
  assert.doesNotMatch(styles,/rgba\(43,37,49,\.88\)/);
+});
+
+test("expanded header has no top black band or second glass block",()=>{
+ assert.match(styles,/\.moonstone-person-card::after\{[\s\S]*?box-shadow:inset 0 0 0 999px rgba\(15,17,25,\.20\)/);
+ assert.match(styles,/\.moonstone-compact-info::after\{[\s\S]*?content:none/);
+ assert.match(styles,/\.moonstone-profile-drawer\{[\s\S]*?top:var\(--luemi-card-top\)/);
+ assert.match(styles,/\.moonstone-profile-drawer\{[\s\S]*?padding:0/);
+ assert.match(styles,/\.moonstone-profile-divider\{/);
+ assert.match(card,/className="moonstone-profile-toggle"/);
+ assert.doesNotMatch(styles,/rgba\(20,23,34,\.69\)/);
 });
