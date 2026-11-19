@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {KeyboardEvent,PointerEvent as ReactPointerEvent} from "react";
-import {ArrowLeft,CalendarDays,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,SlidersHorizontal,Sparkles,UserRound} from "lucide-react";
+import {ArrowLeft,CalendarDays,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,Sparkles,UserRound} from "lucide-react";
 import {InterestChip} from "../../ui/InterestCatalog";
 import {goals,type RegistrationDraft} from "../../registration/model";
 import {goalLabel} from "../../ui/PersonalizedCopy";
@@ -29,12 +29,18 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const p=view.profile,photos=view.photos,mainPhoto=photos[0]??null,isOwner=view.mode==="owner";
  const [tab,setTab]=useState<OwnerTab>("about");
  const [heroIndex,setHeroIndex]=useState(0);
- const heroPhoto=photos[Math.min(heroIndex,Math.max(0,photos.length-1))]??mainPhoto;
- const photoSwipe=useRef<{id:number;x:number;y:number;startScroll:number;axis:"horizontal"|"vertical"|null}|null>(null);
+ // The selected tab indicator changes immediately; the still-mounted hero image
+ // only swaps its src once its adjacent photo has finished sliding into place.
+ const [renderIndex,setRenderIndex]=useState(0);
+ const heroPhoto=photos[Math.min(renderIndex,Math.max(0,photos.length-1))]??mainPhoto;
+ const previousPhoto=photos[renderIndex-1]??null,nextPhoto=photos[renderIndex+1]??null;
+ const photoSwipe=useRef<{id:number;x:number;y:number;startScroll:number;width:number;axis:"horizontal"|"vertical"|null}|null>(null);
  const pageSwipe=useRef<{id:number;x:number;y:number}|null>(null);
  const suppressPhotoClick=useRef(false);
  const root=useRef<HTMLElement>(null),scroller=useRef<HTMLDivElement>(null);
  const mask=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null);
+ const prevImage=useRef<HTMLImageElement>(null),nextImage=useRef<HTMLImageElement>(null);
+ const photoSlideTimer=useRef<number|null>(null);
  const shade=useRef<HTMLDivElement>(null),expandedIdentity=useRef<HTMLDivElement>(null);
  const compactIdentity=useRef<HTMLDivElement>(null);
  const tablist=useRef<HTMLDivElement>(null),brandProbe=useRef<HTMLDivElement>(null);
@@ -144,7 +150,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  useLayoutEffect(()=>{
   if(!active||!scroller.current)return;
   scroller.current.scrollTop=0;lastState.current="expanded";
-  root.current?.setAttribute("data-morph-state","expanded");setHeroIndex(0);paint(0);
+  root.current?.setAttribute("data-morph-state","expanded");setHeroIndex(0);setRenderIndex(0);paint(0);
  },[active,mainPhoto?.id,paint]);
  useEffect(()=>{
   if(!heroPhoto||!heroImage.current)return;
@@ -168,13 +174,40 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
    event.key==="ArrowLeft"?Math.max(0,index-1):event.key==="Home"?0:event.key==="End"?tabs.length-1:-1;
   if(next<0)return;event.preventDefault();selectTab(tabs[next][0],true);
  };
+ // Photo swipes keep the existing image element alive. Adjacent photographs
+ // are already mounted, so the finger drags real pixels rather than triggering
+ // a hard src replacement or a second carousel/morph authority.
+ const resetPhotoTrack=()=>{
+  for(const el of [heroImage.current,prevImage.current,nextImage.current]){
+   if(!el)continue;el.style.removeProperty("transition");el.style.removeProperty("transform");
+  }
+ };
+ const stopPhotoTimer=()=>{
+  if(photoSlideTimer.current!==null){window.clearTimeout(photoSlideTimer.current);photoSlideTimer.current=null;}
+ };
+ const movePhotoTrack=(delta:number,width:number,animated:boolean)=>{
+  const transition=animated?"transform 250ms cubic-bezier(.20,.82,.24,1)":"none";
+  for(const [el,x] of [[heroImage.current,delta],[prevImage.current,delta-width],
+   [nextImage.current,delta+width]] as const){
+   if(!el)continue;el.style.transition=transition;
+   el.style.transform="translate3d("+x+"px,0,0)";
+  }
+ };
+ useLayoutEffect(()=>{resetPhotoTrack();},[renderIndex]);
+ useEffect(()=>()=>{if(photoSlideTimer.current!==null)window.clearTimeout(photoSlideTimer.current);},[]);
+ const choosePhoto=(index:number)=>{
+  stopPhotoTimer();resetPhotoTrack();
+  setHeroIndex(index);setRenderIndex(index);
+ };
  // The photo is a floating morph layer (outside the native scroller).
  // Forward vertical finger travel to the scroll authority; otherwise a drag
  // starting on the big picture cannot ever collapse the profile on Android.
  const heroDown=(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(!event.isPrimary||(event.pointerType==="mouse"&&event.button!==0))return;
+  // Interrupt an unfinished slide by settling at its already selected image.
+  if(photoSlideTimer.current!==null){stopPhotoTimer();setRenderIndex(heroIndex);resetPhotoTrack();}
   photoSwipe.current={id:event.pointerId,x:event.clientX,y:event.clientY,
-   startScroll:scroller.current?.scrollTop??0,axis:null};
+   startScroll:scroller.current?.scrollTop??0,width:mask.current?.clientWidth??393,axis:null};
  };
  const heroMove=(event:ReactPointerEvent<HTMLDivElement>)=>{
   const first=photoSwipe.current;
@@ -190,6 +223,9 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   if(first.axis==="vertical"&&scroller.current){
    scroller.current.scrollTop=Math.max(0,first.startScroll-dy);
    schedulePaint();
+  }else if(first.axis==="horizontal"){
+   const available=dx<0?renderIndex<photos.length-1:renderIndex>0;
+   movePhotoTrack(available?dx:dx*.2,first.width,false);
   }
  };
  const heroUp=(event:ReactPointerEvent<HTMLDivElement>)=>{
@@ -199,9 +235,18 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   if(first.axis==="vertical"){
    suppressPhotoClick.current=true;
    if(scroller.current)scroller.current.scrollTop=Math.max(0,first.startScroll-dy);
-  }else if(photos.length>1&&Math.abs(dx)>38&&Math.abs(dx)>Math.abs(dy)*1.25){
+  }else if(first.axis==="horizontal"){
    suppressPhotoClick.current=true;
-   setHeroIndex(i=>Math.max(0,Math.min(photos.length-1,i+(dx<0?1:-1))));
+   const target=renderIndex+(dx<0?1:-1);
+   const valid=target>=0&&target<photos.length&&Math.abs(dx)>38&&Math.abs(dx)>Math.abs(dy)*1.25;
+   if(valid)setHeroIndex(target);
+   movePhotoTrack(valid?(dx<0?-first.width:first.width):0,first.width,true);
+   stopPhotoTimer();
+   photoSlideTimer.current=window.setTimeout(()=>{
+    photoSlideTimer.current=null;
+    if(valid)setRenderIndex(target);
+    else resetPhotoTrack();
+   },250);
   }
   if(suppressPhotoClick.current)requestAnimationFrame(()=>{suppressPhotoClick.current=false;});
  };
@@ -234,7 +279,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   </div>
   <div ref={mask} className="owner-profile-photo-mask" onPointerDown={heroDown}
     onPointerMove={heroMove} onPointerUp={heroUp}
-    onPointerCancel={()=>{photoSwipe.current=null;}}>
+    onPointerCancel={()=>{photoSwipe.current=null;stopPhotoTimer();resetPhotoTrack();}}>
    {heroPhoto?<img ref={heroImage} data-photo-id={heroPhoto.id} src={heroPhoto.src}
     alt={"Фото профиля "+p.name} draggable={false} loading="eager" decoding="async" fetchPriority="high"
     style={{objectPosition:(resolvePhotoFocus(1,2,heroPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,heroPhoto.focalPoint).y*100)+"%"}}
@@ -243,12 +288,18 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
     onClick={()=>{if(!suppressPhotoClick.current)onPhotoOpen(heroPhoto.id,heroImage.current);}}
     onError={event=>{if(heroPhoto.fallback&&event.currentTarget.src!==heroPhoto.fallback)event.currentTarget.src=heroPhoto.fallback;}}/>:
     <div className="owner-profile-photo-empty"><UserRound size={42}/><span>Фото пока нет</span></div>}
+   {previousPhoto&&<img ref={prevImage} className="owner-profile-photo-adjacent previous"
+    src={previousPhoto.src} alt="" draggable={false} decoding="async" loading="eager" aria-hidden="true"
+    onError={event=>{if(previousPhoto.fallback&&event.currentTarget.src!==previousPhoto.fallback)event.currentTarget.src=previousPhoto.fallback;}}/>}
+   {nextPhoto&&<img ref={nextImage} className="owner-profile-photo-adjacent next"
+    src={nextPhoto.src} alt="" draggable={false} decoding="async" loading="eager" aria-hidden="true"
+    onError={event=>{if(nextPhoto.fallback&&event.currentTarget.src!==nextPhoto.fallback)event.currentTarget.src=nextPhoto.fallback;}}/>}
    <div ref={shade} className="owner-profile-photo-shade" aria-hidden="true"/>
   </div>
   {photos.length>1&&<div ref={pager} className="owner-profile-photo-pager" aria-label="Фотографии">
    {photos.map((photo,index)=><button key={photo.id} type="button" className={index===heroIndex?"active":""}
     aria-label={"Показать фото "+(index+1)} aria-current={index===heroIndex?"true":undefined}
-    onClick={()=>setHeroIndex(index)}/>)}
+    onClick={()=>choosePhoto(index)}/>)}
   </div>}
   <div className="owner-profile-brand" aria-label="Luemi">
    <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="luemi" decoding="async"/>
@@ -289,12 +340,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
       {goal&&<div className="owner-profile-goal"><Heart size={16} aria-hidden="true"/>{goalText}</div>}
       {details.length>0&&<dl>{details.map(item=><div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>}</article>
       {p.interests.length>0&&<article><h2>Интересы</h2><div className="owner-profile-interests">{p.interests.map(id=><InterestChip key={id} id={id}/>)}</div></article>}
-      {isOwner&&<div className="owner-profile-actions" aria-label="Действия профиля">
-       <button type="button" className="owner-profile-glass" onClick={onEdit} aria-label="Изменить данные"><PenLine/></button>
-       <button type="button" className="owner-profile-glass" onClick={onPreview} aria-label="Посмотреть анкету глазами других"><Eye/></button>
-       <button type="button" className="owner-profile-glass" onClick={showPhotos} aria-label="Управлять фотографиями"><Images/></button>
-       <button type="button" className="owner-profile-glass" onClick={onSettings} aria-label="Настройки профиля"><Settings2/></button>
-      </div>}
+
       {p.source==="fixture"&&<p className="owner-profile-disclaimer">Демонстрационный профиль, не реальный пользователь.</p>}
      </section>
      <section id={tabPrefix+"-photos-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-photos-tab"}
@@ -306,7 +352,6 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
         onError={event=>{if(photo.fallback&&event.currentTarget.src!==photo.fallback)event.currentTarget.src=photo.fallback;}}/>
        {index===0&&<span>Главное</span>}
       </button>)}</div>:<div className="owner-profile-empty"><Images/><p>Фотографии ещё не добавлены</p></div>}
-      {isOwner&&<button type="button" className="owner-profile-manage" onClick={onEdit}><SlidersHorizontal size={18}/> Управлять фотографиями</button>}
      </section>
      <section id={tabPrefix+"-bliki-panel"} role="tabpanel" aria-labelledby={tabPrefix+"-bliki-tab"}
       aria-label="Блики" hidden={tab!=="bliki"} className="owner-profile-panel">
@@ -317,6 +362,12 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
       <div className="owner-profile-empty"><Gift size={34}/><h2>Подарков пока нет</h2><p>Здесь будут отображаться полученные подарки.</p></div>
      </section>
     </div>
+      {isOwner&&<div className="owner-profile-actions" aria-label="Действия профиля">
+       <button type="button" className="owner-profile-glass" onClick={onEdit} aria-label="Изменить данные"><PenLine/></button>
+       <button type="button" className="owner-profile-glass" onClick={onPreview} aria-label="Посмотреть анкету глазами других"><Eye/></button>
+       <button type="button" className="owner-profile-glass" onClick={showPhotos} aria-label="Управлять фотографиями"><Images/></button>
+       <button type="button" className="owner-profile-glass" onClick={onSettings} aria-label="Настройки профиля"><Settings2/></button>
+      </div>}
    </main>
   </div>
  </section>;
