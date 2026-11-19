@@ -69,7 +69,7 @@ try{
  assert.equal(compact.photoId,initial.photoId,"morph cannot switch to another photo");
  assert(Math.abs((compact.rect.x+compact.rect.width/2)-393/2)<1,"compact avatar is horizontally centered");
  assert(Math.abs(compact.rect.width-compact.rect.height)<1,"compact avatar is square");
- assert(parseFloat(compact.radius)>=compact.rect.width/2-1,"compact avatar is circular");
+ assert((compact.radius.includes("%")?compact.rect.width*parseFloat(compact.radius)/100:parseFloat(compact.radius))>=compact.rect.width/2-1,"compact avatar is circular");
  assert(compact.rect.width>=94&&compact.rect.width<=112,"Telegram-sized avatar leaves minimal header space");
  assert((await root.locator(".owner-profile-compact-backdrop").evaluate(el=>Number(getComputedStyle(el).opacity)))>.95,
   "compact photograph is backed by its blurred original image");
