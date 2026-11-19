@@ -185,16 +185,18 @@
 }
 .owner-profile-content{
  position:relative;pointer-events:auto;
- min-height:calc(100% - var(--owner-expanded-tabs-top) + var(--owner-morph-distance) + 48px);
- margin:0;padding:0 13px calc(120px + var(--bottom-safe,0px));
- border-radius:32px 32px 0 0;
+ /* The rounded cap is the sibling tab rail. The content sits seamlessly
+    below it; keeping it out of the sticky containing block avoids drift. */
+ min-height:calc(100% - var(--owner-expanded-tabs-top) + var(--owner-morph-distance) - 4px);
+ margin:0;padding:13px 13px calc(120px + var(--bottom-safe,0px));
+ border-radius:0;
  background:linear-gradient(180deg,var(--luemi-bg-deep),var(--luemi-bg-deep) 126px,var(--luemi-bg));
  box-shadow:0 -8px 24px rgba(7,5,14,.25);
 }
 .owner-profile-tabs{
  position:sticky;z-index:16;top:var(--owner-compact-top);
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
- height:52px;align-items:stretch;margin:0 -13px 13px;padding:0 13px;
+ height:52px;align-items:stretch;margin:0;padding:0 13px;
  touch-action:pan-y;overscroll-behavior-x:contain;
  border:0;border-bottom:1px solid var(--luemi-border);
  border-radius:32px 32px 0 0;background:var(--luemi-bg-deep);
@@ -298,7 +300,7 @@
 .owner-profile-disclaimer{text-align:center;color:var(--luemi-text-muted);font-size:12px}
 @media(max-width:360px){
  .owner-profile-content{padding-inline:10px}
- .owner-profile-tabs{margin-left:-10px;margin-right:-10px;padding-inline:10px}
+ .owner-profile-tabs{padding-inline:10px}
  .owner-profile-expanded-identity{left:18px;right:18px}
  .owner-profile-about article{padding:15px}
  .owner-profile-tabs{height:49px}
