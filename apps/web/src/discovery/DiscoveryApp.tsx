@@ -530,7 +530,7 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
    data-profile-renderer={androidWebView?"android":"standard"}
    data-profile-mode={profileMode?"true":"false"}>
    <div className="discovery-ambient" aria-hidden="true"/>
-   <GlobalHeader ref={globalHeader} mode={backgroundHeaderMode}/>
+   {mainTab!=="profile"&&<GlobalHeader ref={globalHeader} mode={backgroundHeaderMode}/>}
    <div className="discovery-main-panels">
      <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
        <div className="discovery-top-tabs" ref={topTabsSurface} role="tablist" aria-label="Разделы знакомств"
@@ -615,7 +615,9 @@ export function DiscoveryApp({draft,photos,onExit,registerBack}:Props){
        {import.meta.env.VITE_LUEMI_REAL_CHATS==="1"?<RealChats/>:import.meta.env.VITE_LUEMI_DEMO_CHATS==="1"?<ChatsPreview/>:<Placeholder title="Чаты" text="Реальные переписки будут доступны после взаимного мэтча."/>}
      </section>
      <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
-       {profilePrepared&&<ProfileMaster data={ownProfile} mode="owner" onEdit={onExit} registerBack={registerProfileBack} active={mainTab==="profile"&&!selectedPerson} onMotionProgress={reportProfileMotion}/>}
+       {profilePrepared&&<ProfileMaster data={ownProfile} mode="owner" onClose={()=>selectMainTab("discover")}
+        onEdit={onExit} onSettings={onExit} registerBack={registerProfileBack}
+        active={mainTab==="profile"&&!selectedPerson} onMotionProgress={reportProfileMotion}/>}
      </section>
    </div>
    {selectedPerson&&selectedProfile&&<QaProfiler id="VisitorProfileRoute"><VisitorProfileRoute key={selectedPerson.id} data={selectedProfile}

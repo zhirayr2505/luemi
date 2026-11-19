@@ -46,29 +46,31 @@ assert.deepEqual(preview.profile.photos.map(p=>p.id),[],"nested public preview c
 assert.equal(Object.hasOwn(m.projectProfile({...base,privateToken:"secret"},"visitor").profile,"privateToken"),false,
  "unknown future private fields cannot spread through public profile");
 
-const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
+const profile=read("apps/web/src/discovery/ProfileMasterV3.tsx");
+const ownerSurface=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
+const ownerGeometry=read("apps/web/src/discovery/owner-profile/OwnerProfileGeometry.ts");
 const viewer=read("apps/web/src/discovery/PhotoViewer.tsx");
-const css=read("apps/web/src/discovery/profile-morph-a2.css");
+const css=read("apps/web/src/discovery/owner-profile/owner-premium-profile.css");
 const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const visitorRoute=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 const previewSource=read("apps/web/src/registration/Preview.tsx");
-assert.ok(profile.includes('projectProfile(data,mode)'),"canonical projection stays in A2");
+assert.ok(profile.includes('projectProfile(data,mode)'),"canonical projection stays in ProfileMaster");
 assert.ok(profile.includes('mode={data.source==="local-draft"?"local-self-preview":"preview"}'),
  "self preview retains private local-only capability");
-assert.ok(profile.includes('mode==="owner"')&&profile.includes('onClick={onEdit}'),
- "only owner can render editing actions");
-assert.ok(profile.includes('["about","О себе"')&&profile.includes('["bliki","Блики"')&&
- profile.includes('["photos","Фото"')&&profile.includes('["meta","Аккаунт"')&&
- profile.includes('["gifts","Подарки"'),"approved five tabs and A2 order");
-assert.ok(profile.includes('useState<"compact"|"expanded">("compact")')&&
- profile.includes("morphFrame(geometry.current,p)"),"A2 compact first, one geometric morph");
+assert.ok(profile.includes('mode==="owner"')&&ownerSurface.includes("onClick={onEdit}"),
+ "only the owner surface renders editing actions");
+assert.ok(ownerSurface.includes('["photos","Фото"]')&&ownerSurface.includes('["about","О себе"]')&&
+ ownerSurface.includes('["interests","Интересы"]'),"approved owner profile tabs and order");
+assert.ok(ownerSurface.includes('data-morph-state="expanded"')&&
+ ownerSurface.includes("ownerMorphFrame(layout.current,progress)"),"owner opens expanded and uses one geometric morph");
 assert.ok(profile.includes("PhotoViewer")&&profile.includes("initialPhotoId={viewer.photoId}")&&
  viewer.includes("createPortal"),"existing fullscreen viewer and active photo ID retained");
 assert.ok(profile.includes("reconcilePhotoId")&&profile.includes("resourceIdentity"),
  "media identity preserved on reorder and viewer return");
-assert.ok(css.includes(".pm-a2-backing")&&css.includes("isolation:isolate")&&
- css.includes(".pm-a2-sheet"),"opaque backing masks underlying feed throughout morph");
-// Accepted V3 is the default across origins; explicit A2 remains diagnostic.
+assert.ok(css.includes(".owner-premium-profile")&&css.includes("isolation:isolate")&&
+ css.includes(".owner-profile-photo-mask"),"opaque owner backing masks the feed throughout morph");
+assert.ok(ownerGeometry.includes("ownerMorphProgress")&&ownerGeometry.includes("compactAvatar"),
+ "owner geometry normalizes native scroll and centers the compact avatar");
 const gateway=read("apps/web/src/discovery/ProfileV3Gateway.tsx");
 const v3=read("apps/web/src/discovery/ProfileMasterV3.tsx");
 const v3Surface=read("apps/web/src/discovery/profile-v3/rendering/IntegratedProfileV3.tsx");
@@ -80,7 +82,7 @@ assert.ok(discovery.includes('from "./ProfileV3Gateway"')&&
 assert.ok(gateway.includes('return <ProfileV3 {...props}/>')&&
  !gateway.includes("ProfileA2")&&
  !gateway.includes("window.location.hostname"),
- "Approved V3 alone must render on every origin; retired A2 cannot be reactivated by stale Telegram URLs");
+ "approved gateway cannot reactivate a retired profile through stale Telegram URLs");
 assert.ok(v3.includes("projectProfile(data,mode)")&&
  v3.includes("PhotoViewer")&&v3.includes("initialPhotoId={viewer.photoId}")&&
  v3.includes("mode={data.source===")&&v3.includes("reconcilePhotoId")&&
@@ -88,4 +90,4 @@ assert.ok(v3.includes("projectProfile(data,mode)")&&
  "V3 must retain permissions, viewer source identity, draft-only preview and owner-only edits");
 assert.ok(!profile.includes("ProfileSheetMotion")&&!css.includes("pm-sheet-viewport"),
  "old sheet motion engine absent");
-console.log("PROFILE_A2_SOURCE_AND_PRIVACY_CONTRACT_PASS; browser/GPU validation separate");
+console.log("OWNER_PREMIUM_PROFILE_SOURCE_AND_PRIVACY_CONTRACT_PASS; browser/GPU validation separate");

@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {ReactNode} from "react";
 import type {CSSProperties} from "react";
-import {ChevronDown,CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Settings2,Sparkles,LockKeyhole} from "lucide-react";
+import {ChevronDown,CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan,Sparkles,LockKeyhole} from "lucide-react";
 import type {RegistrationDraft,Gender,SearchScope} from "../registration/model";
 import {gendered} from "../ui/PersonalizedCopy";
 import type {DemoKind,DemoPerson} from "./model";
@@ -883,7 +883,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
    <div className="discovery-photo-ambient-next"/>
    <div className="discovery-photo-ambient-tint"/>
   </div>
-  {!chatThreadOpen&&<GlobalHeader ref={header} mode={mainTab==="profile"?"profile":mainTab==="chats"?"chats":"browse"}/>}
+  {!chatThreadOpen&&mainTab!=="profile"&&<GlobalHeader ref={header} mode={mainTab==="chats"?"chats":"browse"}/>}
   <div className="discovery-main-panels">
    <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
     <div className="discovery-top-tabs" ref={topTabsSurface} role="tablist" aria-label="Разделы знакомств"
@@ -936,15 +936,14 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     {mainTab==="chats"&&<RealChats onThreadChange={setChatThreadOpen} registerThreadBack={handler=>{chatBackRef.current=handler;}}/>}
    </section>
    <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
-    {owner?<ProfileMaster data={owner} mode="owner" ownerDetails={draft} onEdit={()=>setAccountOpen(true)} onReveal={()=>{setAccountOpen(true);onReveal?.();}}
+    {owner?<ProfileMaster data={owner} mode="owner" ownerDetails={draft} onClose={()=>setMainTab("discover")}
+      onEdit={onEdit} onSettings={()=>setAccountOpen(true)} onReveal={()=>{setAccountOpen(true);onReveal?.();}}
       registerBack={registerProfileBack}
       onMotionProgress={(progress,dragging)=>header.current?.setProfileProgress(progress,dragging)}
       active={mainTab==="profile"&&!person&&!demoVisitor}/>:<LuemiEmptyState icon={UserRound} title="Анкета готовится"
       description="Заверши публикацию, чтобы увидеть свой профиль.">
       <button type="button" className="discovery-glass-button" onClick={()=>setAccountOpen(true)}>Открыть настройки</button>
      </LuemiEmptyState>}
-    <button type="button" className="real-discovery-settings" aria-label="Настройки аккаунта" title="Настройки аккаунта"
-     onClick={()=>setAccountOpen(true)}><Settings2 size={20}/></button>
    </section>
   </div>
   {demoVisitor&&<VisitorProfileRoute key={"demo-"+demoVisitor.id} data={fromDemoPerson(demoVisitor)}

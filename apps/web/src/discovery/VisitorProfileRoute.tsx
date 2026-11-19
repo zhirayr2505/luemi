@@ -206,11 +206,11 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
   if(isGestureModalBlocked(target))return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
   const collapsed=shell?.dataset.sheetState==="collapsed";
-  if(!collapsed&&!target.closest(".pm-a2-sheet,.pm-profile-sheet,.v3-int-sheet"))return;
+  if(!collapsed&&!target.closest(".pm-profile-sheet,.v3-int-sheet"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable=true]");
   if(interactive&&!target.closest(".pm-photo-tile"))return;
   const source:RouteDrag["source"]=target.closest(".pm-hero")?"photo":
-   target.closest(".pm-a2-tabs,.pm-tabs")?"tabs":target.closest(".pm-a2-pages,.pm-pages")?"pages":"sheet";
+   target.closest(".pm-tabs")?"tabs":target.closest(".pm-pages")?"pages":"sheet";
   const screenLeft=route.current?.getBoundingClientRect().left??0;
   const page=source==="pages"?target.closest<HTMLElement>('.v3-int-page[data-tab-id="about"]'):null;
   // About cards start after both the page and card padding: their first text

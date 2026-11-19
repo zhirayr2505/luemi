@@ -7,6 +7,7 @@ const shell=src("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const card=src("apps/web/src/discovery/FeedCard.tsx");
 const forYou=src("apps/web/src/discovery/RealForYou.tsx");
 const nearby=src("apps/web/src/discovery/RealNearby.tsx");
+const ownerProfile=src("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
 const sharedUi=src("apps/web/src/ui/LuemiV5.tsx");
 
 test("REAL_ONLY runs the approved LUEMI shell, not the provisional list shell",()=>{
@@ -69,7 +70,8 @@ test("real matches, reports and account actions stay available even when feed is
  assert.match(shell,/getIncomingLikes\(controller\.signal\)/);
  assert.match(shell,/blockPublishedUser\(menu\.id\)/);
  assert.match(shell,/reportPublishedUser\(menu\.id,reason\)/);
- assert.match(shell,/className="real-discovery-settings"/);
+ assert.match(shell,/onSettings={\(\)=>setAccountOpen\(true\)\}/);
+ assert.match(ownerProfile,/aria-label="Настройки профиля"/);
  assert.match(shell,/accountPanel/);
  assert.match(shell,/setMainTab\(id\)/);
 });

@@ -35,16 +35,14 @@ assert.ok([...listeners.values()].every(s=>s.size===0),"no document/window leake
 assert.ok([...telegram.values()].every(s=>s.size===0),"no Telegram leaked subscriptions");
 console.log("REM02D_UNIT_PASS lifecycle suspend/resume idempotent, Telegram/browser listener baseline restored");
 
-const profile=read("apps/web/src/discovery/ProfileMorphA2.tsx");
-const driver=read("apps/web/src/discovery/profile-morph-a2-motion.ts");
+const profile=read("apps/web/src/discovery/ProfileMasterV3.tsx");
+const owner=read("apps/web/src/discovery/owner-profile/OwnerPremiumProfile.tsx");
 const route=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
 for(const x of ["suspendForRoute","rollbackRoute","commitRouteClose","suspendForBackground","resumeFromBackground"])
  assert.ok(profile.includes(x)&&route.includes(x),"profile and route retain lifecycle handoff "+x);
-assert.ok(driver.includes("suspend()")&&driver.includes("resume()")&&driver.includes("dispose()"));
-assert.ok(driver.includes("this.stop()")&&driver.includes("this.generation++"),
- "cancel pending callback on dispose, background and route handoff");
-assert.ok(profile.includes('window.addEventListener("resize",scheduleMeasure)')&&
- profile.includes('window.removeEventListener("resize",scheduleMeasure)')&&
- profile.includes("observer.disconnect()"),"all geometry observers disposed");
+assert.ok(owner.includes('window.visualViewport?.addEventListener("resize",resize)')&&
+ owner.includes('window.visualViewport?.removeEventListener("resize",resize)')&&
+ owner.includes("observer.disconnect()")&&owner.includes("cancelAnimationFrame(paintRaf.current)"),
+ "owner geometry observer, viewport listener and pending RAF are disposed");
 assert.ok(route.includes('routeMotion.current.finish(token')&&route.includes('routeMotion.current.cancel(liveToken.current,"external")'));
-console.log("PROFILE_A2_LIFECYCLE_ADAPTER_PASS");
+console.log("OWNER_PROFILE_LIFECYCLE_ADAPTER_PASS");

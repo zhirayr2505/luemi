@@ -193,7 +193,7 @@ html,body,#root{background:var(--luemi-bg-deep);color:var(--luemi-text)}
 }
 
 /* Dynamic Liquid Glass — stationary top/bottom chrome only.
- * No backdrop-filter on the fullscreen feed, .pm-a2-photo-track, draggable
+ * No backdrop-filter on the fullscreen feed, .owner-profile-photo-mask, draggable
  * registration fields, animated page tracks, or scrollable user tiles. */
 .luemi-shell[data-theme=dark] .real-feed-filter-sheet,
 .luemi-shell[data-theme=dark] .lc-categories-panel,

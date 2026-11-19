@@ -9,7 +9,6 @@ const easeURL=moduleURL(compile(read("apps/web/src/ui/motion.ts")));
 const geom=await import(moduleURL(compile(read("apps/web/src/discovery/geometry-motion.ts"))
  .replaceAll('from "../ui/motion"','from "'+easeURL+'"')
  .replaceAll('from "../ui/motion-controller"','from "'+motionURL+'"')));
-const geometry=await import(moduleURL(compile(read("apps/web/src/discovery/profile-morph-a2-geometry.ts"))));
 const close=(a,b,eps=1)=>assert.ok(Math.abs(a-b)<=eps,`Expected | ${a}-${b} | <= ${eps}`);
 
 function clockFixture(kind="sheet",initial=385){
@@ -86,36 +85,4 @@ for(const percent of [.25,.5,.9]){
  assert.equal(effects.filter(x=>x==="current").length,1);
  console.log("REM02B_UNIT_PASS rapid reversal, cancellation, stale callbacks never repaint/commit");
 }
-{
- for(const [w,h] of [[320,580],[393,852],[412,915],[700,650]]){
-  const g=geometry.profileMorphGeometry(w,h,92);
-  assert.ok(g.compactTop>=g.avatarY+g.avatarSize+20,"compact avatar is not sheet-clipped");
-  assert.ok(g.expandedTop>g.compactTop,"expanded sheet below compact");
-  assert.ok(g.span>=120,"physical handoff span");
-  const a=geometry.morphFrame(g,0),b=geometry.morphFrame(g,1);
-  close(a.sheetY,0,.001);close(b.sheetY,g.span,.001);
-  close(a.photoX,g.avatarX,.001);close(b.photoX,0,.001);
-  for(let i=0;i<=100;i++){
-   const p=i/100,f=geometry.morphFrame(g,p);
-   assert.ok(f.sheetY>=0&&f.sheetY<=g.span);
-   assert.ok(f.scaleX>0&&f.scaleY>0,"finite nonzero bitmap transforms");
-  }
- }
- for(const [w,h] of [[393,425],[852,393],[700,460]]){
-  const g=geometry.profileMorphGeometry(w,h,92);
-  assert.ok(g.avatarSize<=82,"short viewport limits portrait to a usable area");
-  assert.ok(g.compactTop>=g.avatarY+g.avatarSize-5,"compact portrait remains visible in landscape");
-  assert.ok(g.expandedTop>g.compactTop,"expanded photo must remain reachable");
-  assert.ok(g.expandedTop<=h-120,"landscape leaves room for handle + tabs + minimal content");
- }
- console.log("PROFILE_A2_LANDSCAPE_PASS 393x425, 852x393, 700x460");
- console.log("PROFILE_A2_GEOMETRY_PASS compact/expanded and 101 samples x 4 viewports");
-}
-{
- const a2=read("apps/web/src/discovery/ProfileMorphA2.tsx");
- assert.ok(a2.includes("profileMorphGeometry(")&&a2.includes("morphFrame(geometry.current,p)"));
- assert.ok(a2.includes("observer.disconnect()")&&a2.includes("engine.sample()"));
- assert.ok(!a2.includes("style.top=")&&!a2.includes("remapSheetPixel"),"legacy top writer gone");
- console.log("PROFILE_A2_VIEWPORT_WIRING_PASS");
-}
-console.log("REM-02B shared viewer geometry and Profile Morph A2 geometry QA PASS");
+console.log("REM-02B shared motion geometry QA PASS; owner geometry has a dedicated contract");
