@@ -65,7 +65,7 @@ try{
  await scroll().evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
  const compact=await portrait();
- assert.ok(compact.width<135&&Math.abs(compact.width-compact.height)<1.5&&
+ assert.ok(compact.width>=120&&compact.width<=150&&Math.abs(compact.width-compact.height)<1.5&&
   compact.radius>=compact.width/2-1,"compact photo becomes a circle in safe-area coordinates");
  near(compact.x+compact.width/2,393/2,1.5);
  await profile().getByRole("tab",{name:"Фото",exact:true}).click();
@@ -88,7 +88,7 @@ try{
   morphDistance:await profile().evaluate(el=>getComputedStyle(el).getPropertyValue("--owner-morph-distance")),
   rootState:await profile().getAttribute("data-morph-state")}));
  assert.ok(Number.isFinite(after.y)&&Number.isFinite(after.width)&&
-  after.width>60&&after.width<135,"portrait geometry remains bounded after resume");
+  after.width>=120&&after.width<=150,"portrait geometry remains bounded after resume");
  near(after.x+after.width/2,393/2,1.5);
  assert.equal(await currentTab().innerText(),"Фото","tab selection survives Telegram background/resume");
  near(await getTranslation(),0);
