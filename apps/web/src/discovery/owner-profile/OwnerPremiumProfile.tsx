@@ -39,7 +39,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  const suppressPhotoClick=useRef(false);
  const root=useRef<HTMLElement>(null),scroller=useRef<HTMLDivElement>(null);
  const mask=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null);
- const prevImage=useRef<HTMLImageElement>(null),nextImage=useRef<HTMLImageElement>(null);
+ const prevImage=useRef<HTMLDivElement>(null),nextImage=useRef<HTMLDivElement>(null);
  const photoSlideTimer=useRef<number|null>(null);
  const shade=useRef<HTMLDivElement>(null),expandedIdentity=useRef<HTMLDivElement>(null);
  const compactIdentity=useRef<HTMLDivElement>(null);
@@ -194,6 +194,15 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
   }
  };
  useLayoutEffect(()=>{resetPhotoTrack();},[renderIndex]);
+ // Preload the neighboring images without adding duplicate <img> nodes:
+ // accessibility, the photo viewer, and GPU/image identity still see one hero.
+ useEffect(()=>{
+  for(const photo of [previousPhoto,nextPhoto]){
+   if(!photo)continue;
+   const image=new Image();image.src=photo.src;
+   void image.decode?.().catch(()=>{/* the visible hero retains its own fallback */});
+  }
+ },[previousPhoto?.src,nextPhoto?.src]);
  useEffect(()=>()=>{if(photoSlideTimer.current!==null)window.clearTimeout(photoSlideTimer.current);},[]);
  const choosePhoto=(index:number)=>{
   stopPhotoTimer();resetPhotoTrack();
@@ -288,12 +297,12 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
     onClick={()=>{if(!suppressPhotoClick.current)onPhotoOpen(heroPhoto.id,heroImage.current);}}
     onError={event=>{if(heroPhoto.fallback&&event.currentTarget.src!==heroPhoto.fallback)event.currentTarget.src=heroPhoto.fallback;}}/>:
     <div className="owner-profile-photo-empty"><UserRound size={42}/><span>Фото пока нет</span></div>}
-   {previousPhoto&&<img ref={prevImage} className="owner-profile-photo-adjacent previous"
-    src={previousPhoto.src} alt="" draggable={false} decoding="async" loading="eager" aria-hidden="true"
-    onError={event=>{if(previousPhoto.fallback&&event.currentTarget.src!==previousPhoto.fallback)event.currentTarget.src=previousPhoto.fallback;}}/>}
-   {nextPhoto&&<img ref={nextImage} className="owner-profile-photo-adjacent next"
-    src={nextPhoto.src} alt="" draggable={false} decoding="async" loading="eager" aria-hidden="true"
-    onError={event=>{if(nextPhoto.fallback&&event.currentTarget.src!==nextPhoto.fallback)event.currentTarget.src=nextPhoto.fallback;}}/>}
+   {previousPhoto&&<div ref={prevImage} className="owner-profile-photo-adjacent previous" aria-hidden="true"
+    style={{backgroundImage:"url("+JSON.stringify(previousPhoto.src)+")",
+     backgroundPosition:(resolvePhotoFocus(1,2,previousPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,previousPhoto.focalPoint).y*100)+"%"}}/>}
+   {nextPhoto&&<div ref={nextImage} className="owner-profile-photo-adjacent next" aria-hidden="true"
+    style={{backgroundImage:"url("+JSON.stringify(nextPhoto.src)+")",
+     backgroundPosition:(resolvePhotoFocus(1,2,nextPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,nextPhoto.focalPoint).y*100)+"%"}}/>}
    <div ref={shade} className="owner-profile-photo-shade" aria-hidden="true"/>
   </div>
   {photos.length>1&&<div ref={pager} className="owner-profile-photo-pager" aria-label="Фотографии">
