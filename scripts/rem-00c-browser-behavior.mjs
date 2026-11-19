@@ -71,6 +71,15 @@ async function profileV3(browser,platform="android"){
    await scroller.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
    await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
    await scroller.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
+   const profileScrollDebug=async()=>scroller.evaluate(el=>{
+    const host=el.closest(".owner-premium-profile");
+    return {scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,
+     distance:Number.parseFloat(getComputedStyle(host).getPropertyValue("--owner-morph-distance")),
+     state:host?.dataset.morphState,progress:getComputedStyle(host).getPropertyValue("--owner-morph-progress")};
+   });
+   console.log("PROFILE_V4_SCROLL_FULL_INITIAL "+JSON.stringify(await profileScrollDebug()));
+   await page.waitForTimeout(280);
+   console.log("PROFILE_V4_SCROLL_FULL_AFTER_SETTLE "+JSON.stringify(await profileScrollDebug()));
    await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
    const compact=await image.boundingBox();
    assert.ok(compact&&Math.abs(compact.width-compact.height)<1.5&&compact.width<130,"owner photo becomes a circle");
