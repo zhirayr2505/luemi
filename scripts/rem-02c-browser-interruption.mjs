@@ -86,6 +86,13 @@ try{
  await swipe(touchX,touchY,-rect.width*.48,0);
  await delay(150);
  assert.equal(await selected().innerText(),"Фото","page swipe switches to next tab");
+ // Swipe the actual underline tab bar as well as the content panel. The
+ // selected button must not steal a directional swipe as a delayed click.
+ const rail=await root.locator(".owner-profile-tabs").boundingBox();
+ assert.ok(rail&&rail.height>40,"tab rail stays reachable");
+ await swipe(rail.x+rail.width*.62,rail.y+rail.height*.5,-rail.width*.46,0);
+ await delay(150);
+ assert.equal(await selected().innerText(),"Блики","tab rail swipe switches to next tab once");
  await root.getByRole("tab",{name:"Подарки",exact:true}).click();
  await root.getByRole("tab",{name:"Блики",exact:true}).click();
  assert.equal(await selected().innerText(),"Блики","latest tab tap wins");
