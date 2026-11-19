@@ -74,12 +74,15 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
  const ambientHost=()=>ambientActive?frame.current:null;
  const photoSource=(i:number):string=>
   photoElement(i)?.currentSrc||photoElement(i)?.src||photos[i]?.src||"";
+ // Ambient activation is keyed by photoSignature, not unstable render closures.
+ const ambientPhotoSource=useRef<()=>string>(()=>"");
+ ambientPhotoSource.current=()=>photoSource(activeRef.current);
  const neighbor=(i:number,direction:-1|1)=>
   cyclic?(i+photos.length+direction)%photos.length:i+direction;
  // Only the active card owns the ambient. No React renders on a photo drag.
  useEffect(()=>{
-  if(ambientActive&&photos.length)activateFeedAmbient(frame.current,photoSource(activeRef.current));
- },[ambientActive,photoSignature]);
+  if(ambientActive&&photos.length)activateFeedAmbient(frame.current,ambientPhotoSource.current());
+ },[ambientActive,photoSignature,photos.length]);
  const paintedVisual=(position:number):boolean=>{
   const image=imageAtVisual(position);
   return !!image?.isConnected&&(image.classList.contains("is-unavailable")||
