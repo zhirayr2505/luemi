@@ -13,7 +13,6 @@ const errors=[];page.on("pageerror",error=>errors.push(error.message));
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=()=>page.locator(".discovery-visitor-route");
 const profile=()=>route().locator(".owner-premium-profile");
-const photo=()=>profile().locator(".owner-profile-photo-mask");
 const scroll=()=>profile().locator(".owner-profile-scroll");
 const currentTab=()=>profile().locator('.owner-profile-tabs [role="tab"][aria-selected="true"]');
 const getTranslation=()=>route().evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node).transform).m41);
