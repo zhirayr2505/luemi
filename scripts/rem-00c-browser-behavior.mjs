@@ -81,9 +81,9 @@ async function profileV3(browser,platform="android"){
    await page.waitForTimeout(280);
    console.log("PROFILE_V4_SCROLL_FULL_AFTER_SETTLE "+JSON.stringify(await profileScrollDebug()));
    await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
-   const compact=await image.boundingBox();
-   assert.ok(compact&&Math.abs(compact.width-compact.height)<1.5&&compact.width>=120&&compact.width<=155,
-    "owner photo becomes the approved larger compact circle");
+   const compact=await ownerProfile.locator(".owner-profile-avatar-circle").boundingBox();
+   assert.ok(compact&&Math.abs(compact.width-compact.height)<1.5&&compact.width>=94&&compact.width<=112,
+    "owner photo becomes the smaller Telegram-style compact circle");
    assert.ok(Math.abs(compact.x+compact.width/2-393/2)<1.5,"compact owner avatar is centered");
    assert.equal(await ownerProfile.locator(".owner-profile-brand img").count(),1,"one original logo overlays the hero");
    assert.equal(await image.evaluate(node=>window.__ownerMorphPhoto===node),true,"morph keeps one image node");
