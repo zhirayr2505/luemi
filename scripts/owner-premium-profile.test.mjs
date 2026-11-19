@@ -28,6 +28,7 @@ try{
    "expanded photo is a full-width square");
   assert.equal(expanded.sheetTop,viewport.width-22,"the rounded sheet overlaps the expanded photo");
   assert.equal(expanded.radius,0);
+  assert.equal(expanded.ambientOpacity,0);
 
   const pull=distance*.56,tracking=ownerMorphFrame(layout,pull/distance);
   assert(Math.abs(expanded.sheetTop-tracking.sheetTop-pull)<1e-8,"the sheet tracks the finger 1:1");
@@ -51,7 +52,15 @@ try{
    if(step>=89)assert.equal(frame.radius,frame.mask.width/2,"the compact phase contains a circle");
   }
   const opening=ownerMorphFrame(layout,.91);
-  assert(opening.mask.width>compact.mask.width,"reverse starts with a small expansion of the same circle");
+  assert(opening.mask.width>=compact.mask.width*1.18,"reverse visibly grows the circle before it opens");
+  const frames=Array.from({length:200},(_,index)=>ownerMorphFrame(layout,(index+1)/200));
+  const round=frames.find(frame=>frame.radius===frame.mask.width/2);
+  assert(round&&round.mask.width>=compact.mask.width*1.28,"the photo becomes circular at an intermediate size");
+  assert(round.identityTop>=round.mask.y+round.mask.height+7,"the larger circle clears the name");
+  assert(round.ambientOpacity>.6,"the blurred backdrop is visible before the avatar docks");
+  const firstCurve=frames.find(frame=>frame.radius>0);
+  assert(firstCurve&&firstCurve.ambientOpacity>0,"the backdrop starts on the first rounding frame");
+  assert(compact.haloOpacity>0,"the docked avatar has a photo-colored halo");
   assert.equal(opening.radius,opening.mask.width/2);
   assert(opening.mask.y>=viewport.brandBottom);
 
