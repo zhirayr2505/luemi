@@ -117,12 +117,14 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   if(expandedIdentity.current){
    expandedIdentity.current.style.opacity=String(frame.expandedAlpha);
    expandedIdentity.current.style.transform=`translate3d(0,${-progress*18}px,0)`;
-   expandedIdentity.current.setAttribute("aria-hidden",progress>.58?"true":"false");
+   const hidden=progress>=.66?"true":"false";
+   if(expandedIdentity.current.getAttribute("aria-hidden")!==hidden)expandedIdentity.current.setAttribute("aria-hidden",hidden);
   }
   if(compactIdentity.current){
    compactIdentity.current.style.opacity=String(frame.compactAlpha);
    compactIdentity.current.style.transform=`translate3d(-50%,${(1-progress)*8}px,0)`;
-   compactIdentity.current.setAttribute("aria-hidden",progress<=.58?"true":"false");
+   const hidden=progress<.66?"true":"false";
+   if(compactIdentity.current.getAttribute("aria-hidden")!==hidden)compactIdentity.current.setAttribute("aria-hidden",hidden);
   }
   if(compactBackdrop.current)compactBackdrop.current.style.opacity=String(Math.max(0,Math.min(1,(progress-.40)/.36)));
   if(glow.current)glow.current.style.opacity=String(Math.max(0,Math.min(.5,(progress-.70)/.3*.5)));
@@ -562,7 +564,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    <div className="owner-profile-hero-spacer" aria-hidden="true"/>
    <main ref={contentRoot} className="owner-profile-content">
     <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля"
-     style={{"--owner-tab-index":tabs.findIndex(([id])=>id===tab)} as CSSProperties}
+     style={{"--owner-tab-offset":`${tabs.findIndex(([id])=>id===tab)*25}%`} as CSSProperties}
      onPointerDown={profileDown("tabs")} onPointerMove={profileMove}
      onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
      onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
