@@ -10,25 +10,30 @@ const feed=read("apps/web/src/discovery/FeedCard.tsx");
 const realClient=read("apps/web/src/registration/real-live-client.ts");
 const css=read("apps/web/src/discovery/deck-v3.css");
 
-test("media readiness can never gate or freeze an accepted feed action",()=>{
+test("photo is predecoded before exit, with a bounded recovery path",()=>{
+ assert.match(live,/const next=cardRows\[page\+1\]/);
+ assert.match(demo,/const next=people\[page\+1\]/);
+ assert.match(live,/readyKeysRef\.current\.has\(key\)/);
+ assert.match(demo,/readyKeysRef\.current\.has\(key\)/);
+ assert.match(live,/window\.setTimeout\(\(\)=>\{[\s\S]*?begin\(\);[\s\S]*?\},2400\)/);
+ assert.match(demo,/window\.setTimeout\(\(\)=>\{[\s\S]*?beginLeave\(\);[\s\S]*?\},2400\)/);
+ assert.match(live,/waitingNext\.current=null;window\.clearTimeout\(waiting\.timer\)/);
+ assert.match(demo,/waitingNext\.current=null;window\.clearTimeout\(waiting\.timer\)/);
  assert.doesNotMatch(prefetch,/ensureMountedCoverReady|querySelector<HTMLImageElement>/);
- assert.doesNotMatch(demo,/ensureMountedCoverReady|coverGate/);
- assert.doesNotMatch(live,/ensureMountedCoverReady|waitingGate|gateDeadline|coverGate/);
- assert.match(demo,/Android WebView may defer image\/timer callbacks[\s\S]*?beginLeave\(\)/);
- assert.match(live,/Never hold the accepted action behind media readiness[\s\S]*?begin\(\)/);
 });
-
-test("one visible card is mounted while upcoming photos prefetch without duplicate actions",()=>{
- assert.match(demo,/const person=current/);
- assert.match(live,/const person=current/);
- assert.doesNotMatch(demo,/people\.slice\(page,page\+3\)\.map|deck-peek-|deck-queued/);
- assert.doesNotMatch(live,/visibleRows\.slice\(page,page\+2\)\.map|deck-peek-|deck-queued/);
- assert.doesNotMatch(css,/deck-queued|deck-entering|deck-peek-|deck-depth-two/);
+test("successor is mounted but not visible until exit; it has no action buttons",()=>{
+ assert.match(live,/visibleRows\.slice\(page,page\+2\)\.map/);
+ assert.match(demo,/people\.slice\(page,page\+2\)\.map/);
+ assert.match(live,/preview=\{queued\}/);
+ assert.match(demo,/preview=\{queued\}/);
+ assert.match(live,/aria-hidden=\{queued\} inert=\{queued\}/);
+ assert.match(demo,/aria-hidden=\{queued\} inert=\{queued\}/);
+ assert.match(css,/\.deck-queued\{[\s\S]*?opacity:0/);
+ assert.match(css,/:has\(>\.deck-leaving\)>\.deck-queued\{[\s\S]*?opacity:1/);
+ assert.match(feed,/\{!preview&&<div className="moonstone-actions/);
+ assert.doesNotMatch(css,/deck-peek-|deck-depth-two/);
  assert.match(feed,/onCoverReady=\{onCoverReady\}/);
  assert.match(photo,/onCoverReadyRef\.current\?\.\(\)/);
- assert.match(photo,/className="feed-carousel-fallback"/);
- assert.match(photo,/image\.classList\.add\("is-unavailable"\)/);
- assert.match(photo,/data-fallback=\{p\.fallback\|\|undefined\}/);
 });
 test("gallery must retain the current image until the requested next image is decoded",()=>{
  assert.match(photo,/const pendingPhoto=useRef<number\|null>\(null\)/);

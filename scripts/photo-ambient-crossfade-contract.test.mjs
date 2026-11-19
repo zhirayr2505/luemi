@@ -64,11 +64,12 @@ test("single full-bleed card, no repeated actions, with flat text tabs and movin
  const real=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
  const demo=read("apps/web/src/discovery/DemoFeedSandbox.tsx");
  const deck=read("apps/web/src/discovery/deck-v3.css");
- assert.match(real,/const person=current/);
- assert.match(demo,/const person=current/);
- assert.doesNotMatch(real,/visibleRows\.slice\(page,page\+2\)\.map|deck-peek-|deck-queued/);
- assert.doesNotMatch(demo,/people\.slice\(page,page\+3\)\.map|deck-peek-|deck-queued/);
- assert.doesNotMatch(deck,/deck-queued|deck-entering|deck-peek-|deck-depth-two/);
+ assert.match(real,/visibleRows\.slice\(page,page\+2\)\.map/);
+ assert.match(demo,/people\.slice\(page,page\+2\)\.map/);
+ assert.match(real,/preview=\{queued\}/);
+ assert.match(demo,/preview=\{queued\}/);
+ assert.match(deck,/:has\(>\.deck-leaving\)>\.deck-queued/);
+ assert.doesNotMatch(deck,/deck-entering|deck-peek-|deck-depth-two/);
  assert.match(css,/\.discovery-top-tabs\{[\s\S]*?border:0;border-radius:0/);
  assert.match(css,/\.discovery-top-tabs>button\.active\{[\s\S]*?background:transparent/);
  assert.match(css,/\.discovery-tab-underline\{[\s\S]*?opacity:1/);

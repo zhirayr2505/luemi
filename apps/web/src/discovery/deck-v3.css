@@ -1,6 +1,6 @@
 /* LUEMI Single Card Deck — one mounted profile at a time.
- * Upcoming photos are prefetched, but there are no queued/peeking cards,
- * duplicate reaction buttons, or second profile layers.
+ * A second hidden and decoded profile can sit behind the current card.
+ * No visible stacked cards, duplicate reaction buttons or peeking layers.
  * The existing accepted action keeps its one compositor-only exit motion. */
 .discovery-app .discovery-deck-stage.has-profiles{
  position:relative;isolation:isolate;overflow:visible;
@@ -12,6 +12,19 @@
 .discovery-app .discovery-deck-stage.has-profiles>.deck-active{
  z-index:4;pointer-events:auto;
  transform:translate3d(0,0,0) scale(1);opacity:1;
+}
+/* Prepared next card: mounted and decoded offscreen, never a visible stack.
+ * Its action row is not rendered until promotion. As the current card exits,
+ * the already painted successor is exposed immediately underneath it. */
+.discovery-app .discovery-deck-stage.has-profiles>.deck-queued{
+ z-index:2;opacity:0;pointer-events:none;
+ transform:translate3d(0,0,0) scale(1);
+}
+.discovery-app .discovery-deck-stage.has-profiles:has(>.deck-leaving)>.deck-queued{
+ opacity:1;
+}
+.discovery-app .discovery-deck-stage.has-profiles>.deck-queued .moonstone-actions{
+ display:none!important;
 }
 .discovery-app .discovery-deck-stage.has-profiles>.deck-leaving{
  z-index:7;pointer-events:none;will-change:transform,opacity;

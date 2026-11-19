@@ -9,7 +9,7 @@ import {fromDemoPerson,type ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
 import {DemoFeedSandbox} from "./DemoFeedSandbox";
 import {selectionHaptic} from "../ui/haptic";
-import {preloadUpcomingFeedPhotos} from "./feed-image-preload";
+import {preloadFeedImage,preloadUpcomingFeedPhotos} from "./feed-image-preload";
 import {warmPublishedPagePhotos} from "../registration/recommendation-warmup";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {GestureArbiter,computedTranslation,fractionalTrack} from "../ui/gesture-arbiter";
@@ -163,12 +163,21 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const mediaReleases=useRef<Array<()=>void>>([]);
  const deckRef=useRef<HTMLDivElement>(null);
  const [readyKeys,setReadyKeys]=useState<ReadonlySet<string>>(()=>new Set<string>());
+ const readyKeysRef=useRef(new Set<string>());
+ const waitingNext=useRef<{key:string;begin:()=>void;timer:number}|null>(null);
  const coverKey=(id:string,src:string)=>id+"::"+src;
  const markReady=useCallback((key:string)=>{
+  readyKeysRef.current.add(key);
   setReadyKeys(keys=>{if(keys.has(key))return keys;
    const next=new Set(keys);next.add(key);return next;});
+  const waiting=waitingNext.current;
+  if(waiting?.key===key){
+   waitingNext.current=null;window.clearTimeout(waiting.timer);
+   waiting.begin();
+  }
  },[]);
  useEffect(()=>()=>{abort.current?.abort();
+  if(waitingNext.current!==null){window.clearTimeout(waitingNext.current.timer);waitingNext.current=null;}
   for(const release of mediaReleases.current)release();
   mediaReleases.current=[];},[]);
  const finishDeck=()=>{
@@ -191,9 +200,21 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)finishDeck();
    else transitionTimer.current=window.setTimeout(finishDeck,570);
   };
-  // Never hold the accepted action behind media readiness. A queued card can
-  // enter on the branded fallback and swap in its decoded photo independently.
-  begin();
+  // A real, mounted next card waits underneath the current one. Hold the
+  // outgoing card on screen until its successor has decoded its cover.
+  // A bounded fallback prevents a broken image/network from locking actions.
+  const next=cardRows[page+1];
+  const source=next?.photos[0]?.src;
+  if(!next||!source){begin();return;}
+  const key=coverKey(next.id,source);
+  if(readyKeysRef.current.has(key)){begin();return;}
+  void preloadFeedImage(source);
+  const waiting={key,begin,timer:0};
+  waiting.timer=window.setTimeout(()=>{
+   if(waitingNext.current!==waiting)return;
+   waitingNext.current=null;begin();
+  },2400);
+  waitingNext.current=waiting;
  };
  useEffect(()=>()=>{if(transitionTimer.current!==null)window.clearTimeout(transitionTimer.current);
   transitionTimer.current=null;pendingCommit.current=null;locked.current=false;requestPending.current=false;},[]);
@@ -384,31 +405,29 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
    <div className={"discovery-deck-stage"+(current?" has-profiles":"")} ref={deckRef}>{current?
-    (()=>{
-     // Exactly one visible card. Upcoming profiles are prefetched above, but
-     // never rendered beneath it (which previously duplicated buttons).
-     const person=current;
-     const key=coverKey(person.id,cardRows[page]?.photos[0]?.src??"");
+    visibleRows.slice(page,page+2).map((person,offset)=>{
+     const queued=offset===1;
+     const key=coverKey(person.id,cardRows[page+offset]?.photos[0]?.src??"");
      const isReady=readyKeys.has(key);
-     const state=(leaving===person.id?
-       " deck-leaving deck-leaving-"+leavingKind:" deck-active")+
-       (!isReady?" deck-photo-pending":"");
+     const state=queued?" deck-queued"+(isReady?" deck-photo-ready":" deck-photo-pending"):
+      (leaving===person.id?" deck-leaving deck-leaving-"+leavingKind:" deck-active");
      return <div key={person.id} className={"discovery-deck-layer"+state}
+      aria-hidden={queued} inert={queued}
       onAnimationEnd={event=>{
-       if(!leaving||event.target!==event.currentTarget)return;
+       if(queued||!leaving||event.target!==event.currentTarget)return;
        if(["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName))
         finishDeck();
       }}>
-      <FeedCard person={cardRows[page]} real viewerInterestIds={draft.interests} saved={saved.has(person.id)}
-       canUndo={undoPage!==null} active={active}
-       busy={busy||!!leaving||locked.current}
-       onAction={kind=>{void act(kind);}}
-       onOpenProfile={()=>onPerson(person)}
-       onInterests={()=>onPerson(person)}
-       onMore={()=>{setMenu(person);setReporting(false);}}
-       onCoverReady={()=>{markReady(key);if(active)onFirstScreenReady?.();}}/>
+      <FeedCard person={cardRows[page+offset]} real viewerInterestIds={draft.interests} saved={saved.has(person.id)}
+       preview={queued} canUndo={!queued&&undoPage!==null} active={!queued&&active}
+       busy={queued||busy||!!leaving||locked.current}
+       onAction={queued?()=>{}:kind=>{void act(kind);}}
+       onOpenProfile={queued?()=>{}:()=>onPerson(person)}
+       onInterests={queued?()=>{}:()=>onPerson(person)}
+       onMore={queued?undefined:()=>{setMenu(person);setReporting(false);}}
+       onCoverReady={()=>{markReady(key);if(!queued&&active)onFirstScreenReady?.();}}/>
      </div>;
-    })():
+    }):
     <div className="discovery-deck-layer deck-active"><LuemiEmptyState className="real-discovery-empty" icon={Heart}
      title="Пока нет анкет" description="Когда появятся новые люди, ты увидишь их здесь.">
       <button type="button" className="discovery-glass-button" onClick={onEditFilters}>Изменить фильтры</button>

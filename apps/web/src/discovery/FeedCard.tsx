@@ -120,9 +120,9 @@ function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onActio
 }
 
 /** Moonstone V6 fullscreen discovery surface. The keyed card remains mounted during deck transitions. */
-export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfile,onInterests:___,
+export function FeedCard({person,saved,canUndo,active,busy,preview=false,onAction,onOpenProfile,onInterests:___,
  onExitDemo,onCoverReady,real=false,onMore,demoDistanceKm,viewerInterestIds=EMPTY_INTERESTS}:{
- person:DemoPerson;saved:boolean;canUndo:boolean;active:boolean;busy:boolean;
+ person:DemoPerson;saved:boolean;canUndo:boolean;active:boolean;busy:boolean;preview?:boolean;
  onAction:(kind:DemoKind|"undo")=>void;onOpenProfile:()=>void;onInterests:()=>void;
  real?:boolean;onMore?:()=>void;onExitDemo?:()=>void;onCoverReady?:()=>void;demoDistanceKm?:number;
  viewerInterestIds?:readonly string[];
@@ -417,13 +417,13 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
     className={`moonstone-action-feedback is-${actionFeedback.kind}`} aria-hidden="true">
     <span>{actionFeedback.kind==="pass"?<X/>:<Heart/>}</span>
    </div>}
-   <div className="moonstone-actions moonstone-actions-vivid" aria-label="Действия с анкетой">
+   {!preview&&<div className="moonstone-actions moonstone-actions-vivid" aria-label="Действия с анкетой">
     <button type="button" className="moonstone-undo-button" disabled={!available||!canUndo} aria-label="Отменить пропуск" onClick={()=>{selectionHaptic();onAction("undo");}}><RotateCcw/></button>
     <button type="button" className="moonstone-pass-button" disabled={!available} aria-label="Пропустить" onClick={()=>performAction("pass")}><X/></button>
     <button type="button" className="moonstone-special-button" disabled={!available} aria-label="Особенная симпатия" onClick={()=>{impactHaptic("medium");performAction("special");}}><Star/></button>
     <LikeSuperButton disabled={!available} onAction={performAction} onPreview={paintSuperPreview}/>
     <button type="button" className={"moonstone-save-button"+(saved?" is-saved":"")} disabled={!available} aria-label={saved?"Убрать из сохранённых":"Сохранить анкету"} aria-pressed={saved} onClick={()=>{selectionHaptic();onAction("save");}}><Bookmark/></button>
-   </div>
+   </div>}
   </article>
  </div>;
 }
