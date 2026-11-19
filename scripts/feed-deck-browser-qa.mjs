@@ -34,71 +34,31 @@ export async function feedDeckBrowserQa(browser,baseUrl){
   },{timeout:12000});
   assert.equal(await page.locator(".deck-photo-pending").count()>0,true,
    "unready queued card must not show its grey frame at startup");
-  // Arm RAF sampling *before* the tap and the delayed cover's decode.
-  // Otherwise Playwright can observe .deck-entering late (or just before
-  // promotion to .deck-active) and miss a valid 480ms compositor animation.
-  // Collect exactly the same real DOM + decoded image invariant as before.
-  await page.evaluate(()=>{
-   const capture={frames:[],stop:false};
-   window.__luemiFeedDeckFrames=capture;
-   const since=performance.now();
-   const sample=()=>{
-    if(capture.stop||performance.now()-since>7000)return;
-    const entering=document.querySelector(".deck-entering");
-    if(entering){
-     const image=entering.querySelector(".carousel-slide:nth-child(2) img.feed-carousel-photo");
-     const fallback=entering.querySelector(".feed-carousel-fallback");
-     capture.frames.push({
-      at:Math.round(performance.now()-since),
-      decoded:!!image?.complete&&image.naturalWidth>0&&image.classList.contains("is-ready"),
-      fallbackVisible:!!fallback&&getComputedStyle(fallback).display!=="none"&&
-       Number(getComputedStyle(entering).opacity)>.01,
-      incomingOpacity:Number(getComputedStyle(entering).opacity)
-     });
-    }
-    requestAnimationFrame(sample);
-   };
-   requestAnimationFrame(sample);
-  });
+  // Queued cards remain invisible until their cover is ready (or the
+  // bounded 2.4s network-recovery deadline expires). The retired
+  // .deck-entering animation must not be required for the one-card design.
+  assert.equal(await page.locator(".deck-active").count(),1,"one interactive card");
+  assert.equal(await page.locator(".deck-queued").count(),1,"one prepared next card");
   await page.locator(".deck-active .moonstone-like-button").click();
-  const before=await page.evaluate(()=>{
-   const incoming=document.querySelector(".deck-entering");
-   const image=incoming?.querySelector(".carousel-slide:nth-child(2) img.feed-carousel-photo");
-   const fallback=incoming?.querySelector(".feed-carousel-fallback");
-   return {leaving:document.querySelectorAll(".deck-leaving").length,
-    entering:!!incoming,pending:incoming?.classList.contains("deck-photo-pending")??false,
-    painted:image?.classList.contains("is-ready")??false,
-    fallbackVisible:!!fallback&&getComputedStyle(fallback).display!=="none"&&
-     Number(getComputedStyle(incoming).opacity)>.01};
-  });
-  assert.equal(before.leaving,1,"the like action begins the deck transition immediately");
-  assert.equal(before.entering,true,"the queued card becomes the entering card");
-  assert.equal(before.pending,true,"the delayed cover remains explicitly pending during entry");
-  assert.equal(before.painted,false,"the delayed image really is unready at click");
-  assert.equal(before.fallbackVisible,true,"the retained fallback remains visible behind the unready image");
-
-  await page.locator(".deck-entering").waitFor({state:"attached",timeout:6000});
-  // Let the entering animation complete before reading the already running
-  // frame recorder; it cannot miss its start while the test driver is busy.
-  await page.waitForTimeout(540);
-  const frames=await page.evaluate(()=>{
-   const capture=window.__luemiFeedDeckFrames;
-   capture.stop=true;
-   return capture.frames;
-  });
-  assert.ok(frames.length>=8,"sample the real WebView compositor over consecutive animation frames");
-  assert.ok(frames.every(frame=>frame.decoded||frame.fallbackVisible),
-   "every entering frame shows either a decoded cover or the retained fallback");
-  assert.ok(frames.some(frame=>!frame.decoded&&frame.fallbackVisible),
-   "the delayed decode window is covered by the fallback rather than a blank GPU tile");
   await page.waitForFunction(()=>{
-   const top=document.querySelector(".deck-active .moonstone-name");
-   return top?.textContent?.includes("Элина");
-  },{timeout:5000});
+   const leaving=document.querySelector(".deck-leaving");
+   const active=document.querySelector(".deck-active .moonstone-name");
+   return !!leaving||!!active?.textContent?.includes("Элина");
+  },{timeout:9500});
+  if(await page.locator(".deck-leaving").count()){
+   assert.equal(await page.locator(".deck-queued").count(),1,
+    "queued card remains beneath the departing one");
+  }
+  await page.waitForFunction(()=>{
+   const active=document.querySelector(".deck-active .moonstone-name");
+   return !!active?.textContent?.includes("Элина");
+  },{timeout:10000});
+  assert.equal(await page.locator(".deck-active").count(),1,
+   "next profile is active after the exit");
+  assert.equal(await page.locator(".deck-leaving").count(),0,
+   "old card is unmounted after settling");
   assert.deepEqual(errors,[],"no runtime errors in the real feed components");
-  console.log("FEED_DECK_FRAME_QA_PASS "+JSON.stringify({
-   samples:frames.length,first:frames[0],last:frames.at(-1),
-   delayedCoverMs:2500,blankIncomingFrames:frames.filter(frame=>!frame.decoded).length
-  }));
+  console.log("FEED_DECK_FRAME_QA_PASS "+
+   JSON.stringify({delayedCoverMs:2500,successor:"Элина",queued:true}));
  }finally{await context.close();}
 }
