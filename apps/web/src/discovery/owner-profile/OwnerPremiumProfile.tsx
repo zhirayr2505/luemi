@@ -130,7 +130,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   // rounded rectangle or oval rendered between the square and compact avatar.
   if(avatarMask.current){
    const a=avatarMask.current;
-   a.style.transform=`translate3d(${frame.avatar.x}px,${frame.avatar.y+Math.min(0,elastic)*.75}px,0)`;
+   a.style.transform=`translate3d(${frame.avatar.x}px,${frame.avatar.y+Math.min(0,elastic)}px,0)`;
    a.style.width=`${frame.avatar.width}px`;
    a.style.height=`${frame.avatar.height}px`;
    a.style.opacity=String(frame.circleAlpha);
@@ -148,7 +148,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   }
   if(compactIdentity.current){
    compactIdentity.current.style.opacity=String(frame.compactAlpha);
-   compactIdentity.current.style.transform=`translate3d(-50%,${(1-progress)*8+Math.min(0,elastic)*.75}px,0)`;
+   compactIdentity.current.style.transform=`translate3d(-50%,${(1-progress)*8+Math.min(0,elastic)}px,0)`;
    const hidden=progress<.70?"true":"false";
    if(compactIdentity.current.getAttribute("aria-hidden")!==hidden)compactIdentity.current.setAttribute("aria-hidden",hidden);
   }
