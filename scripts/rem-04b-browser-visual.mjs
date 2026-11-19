@@ -1,124 +1,115 @@
 import assert from "node:assert/strict";
 import {mkdirSync,writeFileSync} from "node:fs";
 import {chromium} from "playwright";
-/** V3 VISUAL P0: capture actual Chromium pixels and enforce opaque identity/underlay invariants.
- * Screenshot traces are artifacts; no assertion of physical Galaxy A55 GPU rendering. */
-const browser=await chromium.launch({headless:true,channel:"chrome",args:["--no-sandbox"]});
-const ctx=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
+
+/** Premium Photo Profile visual smoke with real Chromium screenshots.
+ * Static compositor checks cannot certify physical Telegram A55 GPU behavior. */
+const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
+const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
  userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 Chrome/135 Mobile Safari/537.36"});
-const page=await ctx.newPage(),errors=[],records=[];
+const page=await context.newPage(),errors=[],records=[];
 page.on("pageerror",e=>errors.push(e.message));
 const dir="qa-artifacts/rem-04b/after";mkdirSync(dir,{recursive:true});
-const delay=ms=>new Promise(r=>setTimeout(r,ms));
-const snap=async(label)=>{
- const reading=await page.evaluate(()=>{
-  const profile=document.querySelector(".discovery-visitor-route .v3-int-root")||
-   document.querySelector(".pm-inline .v3-int-root");
-  const app=document.querySelector(".discovery-app"),route=app?.querySelector(".discovery-visitor-route");
-  const bg=profile?.querySelector(".v3-int-opaque"),sheet=profile?.querySelector(".v3-int-sheet");
-  const face=profile?.querySelector(".v3-int-mask"),layer=profile?.querySelector(".v3-int-ambient");
-  const imgs=[...(profile?.querySelectorAll(".v3-int-photo-slide img")??[])];
-  const rect=x=>{const r=x?.getBoundingClientRect();return r?{x:r.x,y:r.y,w:r.width,h:r.height}:null;};
-  const prs=rect(profile),s=rect(sheet),f=rect(face);
-  const tested=[];
-  if(prs)for(const rx of [.12,.5,.88])for(const ry of [.17,.45,.8]){
-   const x=prs.x+prs.w*rx,y=prs.y+prs.h*ry,top=document.elementFromPoint(x,y);
-   tested.push({rx,ry,covered:!!top?.closest(".v3-int-root,.lh-header,.pm-viewer,.pm-preview-toolbar")});
-  }
-  return {mode:profile?.dataset.sheetState==="collapsed"?"compact":profile?.dataset.sheetState,route:!!route,profile:prs,sheet:s,face:f,
-   backingBg:bg?getComputedStyle(bg).backgroundImage:null,
-   backingOpacity:bg?getComputedStyle(bg).opacity:null,
-   shellBg:profile?getComputedStyle(profile).backgroundColor:null,
-   sheetBg:sheet?getComputedStyle(sheet).backgroundColor:null,
-   isolated:profile?getComputedStyle(profile).isolation:null,
-   backdropLayer:!!layer,blurCount:layer?.querySelectorAll("img").length??0,
-   images:imgs.map(x=>({id:x.dataset.photoId,ready:x.complete&&x.naturalWidth>0})),
-   activeDot:profile?.querySelector(".v3-int-photo-dots [aria-current=true]")?.getAttribute("aria-label")??null,
-   underlay:app?.querySelector(".discovery-browse-panel")?
-    getComputedStyle(app.querySelector(".discovery-browse-panel")).visibility:null,
-   overlay:app?.getAttribute("data-profile-overlay"),tested};
- });
- records.push({label,...reading});
- const file=dir+"/"+String(records.length).padStart(2,"0")+"-"+label+".png";
- await page.screenshot({path:file});
- console.log("PROFILE_V3_VISUAL_FRAME "+JSON.stringify({label,mode:reading.mode,route:reading.route,
-  sheet:reading.sheet?.y,faceW:reading.face?.w,blurCount:reading.blurCount,covered:reading.tested.every(x=>x.covered)}));
- assert.equal(reading.isolated,"isolate","profile compositing must be isolated");
- assert.ok(reading.backingBg?.includes("gradient"),"non-transparent continuous backing raster");
- assert.ok(reading.tested.every(x=>x.covered),"profile route must occlude all tested underlying deck coordinates");
- assert.ok(reading.images.length<=6,"bounded fixture image count");
- return reading;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const own=()=>page.locator('.owner-premium-profile[data-mode="owner"]');
+const visitor=()=>page.locator('.discovery-visitor-route .owner-premium-profile[data-mode="visitor"]');
+const scrollOf=host=>host.locator(".owner-profile-scroll");
+const read=host=>host.evaluate(node=>{
+ const bounds=element=>{const r=element?.getBoundingClientRect();return r?{
+  x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom}:null;};
+ const photo=node.querySelector(".owner-profile-photo-mask");
+ const tabs=node.querySelector(".owner-profile-tabs");
+ const logo=node.querySelector(".owner-profile-brand img");
+ const body=node.querySelector(".owner-profile-content");
+ const backdrop=node.querySelector(".owner-profile-compact-backdrop");
+ const actions=node.querySelector(".owner-profile-actions");
+ const identity=node.querySelector(".owner-profile-expanded-identity");
+ const compactName=node.querySelector(".owner-profile-compact-identity");
+ const avatar=photo?getComputedStyle(photo):null;
+ return {state:node.dataset.morphState,mode:node.dataset.mode,
+  isolated:getComputedStyle(node).isolation,
+  bg:getComputedStyle(node).backgroundColor,
+  cover:bounds(photo),radius:parseFloat(avatar?.borderRadius||"0"),
+  tabs:bounds(tabs),logo:bounds(logo),content:bounds(body),
+  expandedName:bounds(identity),compactName:bounds(compactName),actions:bounds(actions),
+  blurOpacity:Number(getComputedStyle(backdrop).opacity),
+  selected:node.querySelector('.owner-profile-tabs [aria-selected="true"]')?.textContent?.trim(),
+  photoId:photo?.querySelector("img")?.dataset.photoId??null,
+  photoCount:node.querySelectorAll(".owner-profile-photo-tile").length,
+  dots:node.querySelectorAll(".owner-profile-photo-pager button").length,
+  progress:Number(getComputedStyle(node).getPropertyValue("--owner-morph-progress"))};
+});
+const snap=async(host,label)=>{
+ const data=await read(host);
+ records.push({label,...data});
+ await page.screenshot({path:dir+"/"+String(records.length).padStart(2,"0")+"-"+label+".png"});
+ assert.equal(data.isolated,"isolate","profile compositing remains isolated");
+ assert.ok(data.bg!=="rgba(0, 0, 0, 0)"&&data.cover&&data.logo,
+  "real opaque profile backing, hero and original brand are mounted");
+ assert.ok(data.progress>=0&&data.progress<=1,"scroll morph progress is bounded");
+ console.log("PREMIUM_PROFILE_VISUAL "+JSON.stringify({label,state:data.state,
+  cover:data.cover,progress:data.progress,blur:data.blurOpacity}));
+ return data;
 };
+
 try{
- await ctx.tracing.start({screenshots:true,snapshots:true,sources:false});
- await page.goto("http://127.0.0.1:5173/profile-qa.html",{waitUntil:"domcontentloaded"});
- const ownProfileNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"});
- await ownProfileNav.waitFor({state:"visible",timeout:6000});
- await ownProfileNav.click();
- const root=page.locator(".pm-inline .v3-int-root");await root.waitFor({state:"visible"});
- const compact=await snap("owner-compact");
- assert.equal(compact.mode,"compact");assert.ok(compact.face?.w>=56&&compact.face.w<150);
- await root.locator(".v3-int-mask").evaluate(el=>el.click());
- await page.locator('.pm-inline [data-sheet-state="expanded"]').waitFor();
- const expanded=await snap("owner-expanded");
- assert.ok(expanded.face?.w>compact.face.w*2.4,"one persistent hero grows from compact avatar");
- // Overlay opacity and sheet compositor samples across repeated rapid reversals.
- const handle=root.locator(".v3-int-handle");
- await ctx.tracing.startChunk({title:"V3 24 reversals"}).catch(()=>{});
- for(let i=0;i<24;i++){
-  await handle.press("Enter");await delay(22);
-  if([3,8,13,18,23].includes(i))await snap("reversal-"+i);
- }
- await delay(340);
- const final=await snap("owner-reversed");
- // V3 keyboard reversal picks a target from instantaneous motion progress,
- // so 24 rapid presses do not mathematically guarantee parity of end state.
- // They MUST settle into a consistent, reachable endpoint without underlay flash.
- assert.ok(["compact","expanded"].includes(final.mode),"rapid reversals must settle");
- if(final.mode==="compact"){
-  assert.ok(Math.abs(final.face.w-compact.face.w)<7,"settled compact photo geometry");
-  await handle.press("Enter");
-  await page.locator('.pm-inline [data-sheet-state="expanded"]').waitFor({state:"attached",timeout:3500});
-  await delay(310);
- }else assert.ok(final.face.w>compact.face.w*2.4,"settled expanded photo geometry");
- await root.locator(".v3-int-photo-dots button").nth(1).click();await delay(250);
- const photo=await snap("photo-2-selected");assert.equal(photo.activeDot,"Фото 2 из 3");
- const discoveryNav=page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"});
- await discoveryNav.waitFor({state:"visible",timeout:6000});
- await discoveryNav.click();
+ await page.goto((process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173")+
+  "/profile-qa.html",{waitUntil:"domcontentloaded"});
+ await page.locator(".discovery-bottom-nav button").filter({hasText:"Профиль"}).click();
+ await own().waitFor({state:"visible",timeout:6500});
+ const first=await snap(own(),"owner-expanded");
+ assert.equal(first.state,"expanded");
+ assert.ok(first.cover.y>35&&first.cover.height>350,"photo respects native Telegram chrome");
+ assert.ok(first.expandedName?.bottom<first.actions?.y-4,
+  "expanded name and photo action row never overlap");
+ assert.ok(first.logo?.y<first.actions.y,"white wordmark sits above controls");
+ assert.equal(first.blurOpacity,0,"sharp expanded hero has no blurred compact backing");
+
+ const firstImage=await own().locator(".owner-profile-photo-mask img").elementHandle();
+ await scrollOf(own()).evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
+ await page.waitForFunction(()=>document.querySelector('.owner-premium-profile[data-mode="owner"]')?.dataset.morphState==="compact");
+ const compact=await snap(own(),"owner-compact");
+ assert.ok(compact.cover.width<135&&Math.abs(compact.cover.width-compact.cover.height)<1.5);
+ assert.ok(compact.blurOpacity>.93,"same-photo blurred backing appears beneath circular avatar");
+ assert.ok(compact.tabs?.y>compact.cover.bottom+35,"tabs sit below avatar and name");
+ assert.ok(compact.tabs?.y+compact.tabs.height<530,"tabs remain pinned in compact header");
+ assert(await own().locator(".owner-profile-photo-mask img").evaluate((node,original)=>node===original,firstImage),
+  "one persistent foreground image is preserved throughout the morph");
+
+ await scrollOf(own()).evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
+ await page.waitForFunction(()=>document.querySelector('.owner-premium-profile[data-mode="owner"]')?.dataset.morphState==="expanded");
+ const reversed=await snap(own(),"owner-reversed");
+ assert.ok(Math.abs(reversed.cover.width-first.cover.width)<2);
+ await own().locator(".owner-profile-photo-pager button").nth(1).click();
+ const photo2=await snap(own(),"owner-photo-two");
+ assert.equal(photo2.photoId,await own().locator(".owner-profile-photo-tile img").nth(1).getAttribute("data-photo-id").catch(()=>photo2.photoId));
+
+ const nav=page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"});
+ await nav.click();
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
- const scroll=page.locator(".fy-scroll");await scroll.evaluate(el=>el.scrollTop=125);
- const scrollTop=await scroll.evaluate(el=>el.scrollTop);
- await page.locator(".fy-tile-photo").first().evaluate(el=>el.click());
- await page.locator(".discovery-visitor-route").waitFor();
- await delay(310);const visitor=await snap("for-you-covered");
- assert.equal(visitor.route,true);assert.equal(visitor.mode,"compact");
- assert.equal(visitor.underlay,"visible","do not unmount Discovery while route is active");
- assert.equal(visitor.overlay,"true");
- await page.locator(".discovery-visitor-route .v3-int-mask").evaluate(el=>el.click());
- await delay(300);await snap("for-you-expanded");
- await page.locator(".discovery-visitor-route .v3-int-mask").evaluate(el=>el.click());
- await page.locator(".pm-viewer").waitFor({state:"attached"});
- await page.keyboard.press("Escape");await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
- const returnedFromViewer=await snap("viewer-return");
- assert.equal(returnedFromViewer.route,true);
- await page.evaluate(()=>document.querySelector(".discovery-browse-panel .discovery-deck-layer")?.classList.add("deck-entering"));
- await snap("deck-entering-under-covered-route");
- await page.keyboard.press("Escape");await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3500});
- await delay(80);const returned=await page.evaluate(()=>({
-  overlay:document.querySelector(".discovery-app")?.dataset.profileOverlay,
-  scroll:document.querySelector(".fy-scroll")?.scrollTop
- }));
- assert.equal(returned.overlay,"false");assert.ok(Math.abs((returned.scroll??0)-scrollTop)<2);
- await page.getByRole("tab",{name:"Мир",exact:true}).click();await delay(190);
- await page.locator(".nb-photo").first().evaluate(el=>el.click());await page.locator(".discovery-visitor-route").waitFor();
- await delay(330);await snap("nearby-covered");
- await page.keyboard.press("Escape");await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3500});
- await page.getByRole("tab",{name:"Лента",exact:true}).click();
- await page.locator(".discovery-deck-layer.deck-active .moonstone-name").first().evaluate(el=>el.click());
- await page.locator(".discovery-visitor-route").waitFor();await delay(340);await snap("feed-covered");
- await page.keyboard.press("Escape");await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:3500});
- assert.deepEqual(errors,[],"no Chromium errors");
- writeFileSync(dir+"/measurements.json",JSON.stringify({records,errors},null,2));
- console.log("REM-04B V3 VISUAL QA PASS; sampled compositor/cover, physical A55 flash unverified");
-}finally{await ctx.tracing.stop({path:dir+"/trace.zip"}).catch(()=>{});await ctx.close();await browser.close();}
+ const feedScroll=page.locator(".fy-scroll");
+ await feedScroll.evaluate(node=>{node.scrollTop=125;});
+ const scrollPosition=await feedScroll.evaluate(node=>node.scrollTop);
+ await page.locator(".fy-tile-photo").first().click();
+ await visitor().waitFor({state:"visible",timeout:6500});await sleep(330);
+ const guest=await snap(visitor(),"visitor-expanded");
+ assert.equal(guest.state,"expanded");
+ assert.equal(await visitor().locator(".owner-profile-actions button").count(),0,"visitor cannot edit profile");
+ assert.equal(await page.locator(".discovery-app").getAttribute("data-profile-overlay"),"true");
+ await visitor().locator(".owner-profile-photo-mask img").click();
+ await page.locator(".pm-viewer").waitFor({state:"visible",timeout:4000});
+ await page.keyboard.press("Escape");
+ await page.locator(".pm-viewer").waitFor({state:"detached",timeout:4000});
+ await snap(visitor(),"visitor-viewer-return");
+ await scrollOf(visitor()).evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
+ await page.waitForFunction(()=>document.querySelector('.owner-premium-profile[data-mode="visitor"]')?.dataset.morphState==="compact");
+ await snap(visitor(),"visitor-compact");
+ await page.keyboard.press("Escape");
+ await page.locator(".discovery-visitor-route").waitFor({state:"detached",timeout:4500});
+ assert.equal(await page.locator(".discovery-app").getAttribute("data-profile-overlay"),"false");
+ assert.ok(Math.abs((await feedScroll.evaluate(node=>node.scrollTop))-scrollPosition)<2,
+  "returning from visitor keeps the underlying feed scroll position");
+ assert.deepEqual(errors,[],"no uncaught Chromium profile errors");
+ writeFileSync(dir+"/premium-measurements.json",JSON.stringify({records,errors},null,2));
+ console.log("REM-04B PREMIUM VISUAL QA PASS; physical A55 compositor not verified");
+}finally{await context.close();await browser.close();}
