@@ -91,6 +91,13 @@ try{
  assert.ok(Number.isFinite(after.y)&&Number.isFinite(after.width)&&
   after.width>=94&&after.width<=112,"portrait geometry remains bounded after resume");
  near(after.x+after.width/2,393/2,1.5);
+ const railGap=await profile().evaluate(node=>{
+  const avatar=node.querySelector(".owner-profile-avatar-circle")?.getBoundingClientRect();
+  const tabs=node.querySelector(".owner-profile-tabs")?.getBoundingClientRect();
+  if(!avatar||!tabs)throw Error("premium round avatar and attached tabs missing");
+  return tabs.top-avatar.bottom;
+ });
+ assert(railGap>=35,"sticky tab cap must stay below compact avatar on resumed/short viewport: "+railGap);
  assert.equal(await currentTab().innerText(),"Фото","tab selection survives Telegram background/resume");
  near(await getTranslation(),0);
  console.log("PREMIUM_PROFILE_LIFECYCLE_PASS suspended resize, compact geometry, tab retention");
@@ -107,32 +114,7 @@ try{
  await open();
  await scroll().evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
- await route().evaluate(el=>{
-  window.__profileRouteEdgeEvents=[];
-  for(const type of ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture"]){
-   el.addEventListener(type,event=>{
-    if(window.__profileRouteEdgeEvents.length>35)return;
-    window.__profileRouteEdgeEvents.push({
-     type,x:event.clientX,y:event.clientY,target:event.target?.className,
-     transform:getComputedStyle(el).transform,
-     mode:el.querySelector(".owner-premium-profile")?.dataset.morphState,
-     hit:document.elementFromPoint(event.clientX,event.clientY)?.className
-    });
-   },true);
-  }
- });
- console.log("PROFILE_EDGE_HIT_BEFORE "+JSON.stringify(await page.evaluate(()=>{
-  const target=document.elementFromPoint(11,112),r=document.querySelector(".discovery-visitor-route");
-  return {hit:target?.className,markup:target?.outerHTML.slice(0,260),
-   transform:getComputedStyle(r).transform,route:r?.getBoundingClientRect().toJSON(),
-   compact:r?.querySelector(".owner-premium-profile")?.dataset.morphState};
- })));
  await edgeSwipe(212);
- console.log("PROFILE_EDGE_HIT_AFTER "+JSON.stringify(await page.evaluate(()=>{
-  const r=document.querySelector(".discovery-visitor-route");
-  return {events:window.__profileRouteEdgeEvents,route:r?.getBoundingClientRect().toJSON(),
-   transform:r&&getComputedStyle(r).transform};
- })));
  await route().waitFor({state:"detached",timeout:5000});
  await open();
  await page.keyboard.press("Escape");
