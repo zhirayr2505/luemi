@@ -204,7 +204,10 @@ const browse=read("apps/web/src/discovery/DiscoveryApp.tsx");
 assert.ok(owner.includes("ownerMorphProgress")&&owner.includes("ownerMorphFrame")&&
  owner.includes("paintRaf.current=requestAnimationFrame"),"owner profile owns normalized progress and one RAF writer");
 assert.ok(css.includes(".owner-profile-photo-mask")&&css.includes("transform:translate3d")&&
- !css.includes("backdrop-filter"),"owner photo morph stays on bounded compositor-friendly surfaces");
+ /\.owner-profile-photo-mask\{[^}]*touch-action:none/.test(css)&&
+ !/\.owner-profile-photo-mask\{[^}]*backdrop-filter/.test(css)&&
+ css.includes(".owner-profile-glass"),
+ "moving owner portrait stays compositor-safe while requested glass blur is confined to small controls");
 assert.ok(route.includes('motionAuthority.current.run("route",PROFILE_MOTION_WRITER_TABLE.route'));
 assert.ok(browse.includes('motionAuthority.current.run("browse",PROFILE_MOTION_WRITER_TABLE.browse'));
 console.log("OWNER_PROFILE_MOTION_ADAPTER_PASS shared route/browse motion and single-owner profile paint");
