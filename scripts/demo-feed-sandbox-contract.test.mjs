@@ -15,7 +15,7 @@ test("fictional profiles remain isolated and only a server-verified owner can op
  assert.match(shell,/id==="feed"&&demoMode&&qaAllowed\?<DemoFeedSandbox/);
  assert.match(shell,/if\(!qaAllowed\|\|autoDemoShown\.current\)return/);
  assert.match(shell,/<LiveDeck key=\{id\+"-"\+feedDraft\.searchScope/);
- assert.match(shell,/<FeedCard person=\{cardRows\[page\]\} real/);
+ assert.match(shell,/<FeedCard person=\{cardRows\[page\+offset\]\} real/);
  assert.match(shell,/onExit=\{\(\)=>\{setDemoVisitor\(null\);autoDemoShown\.current=true;setDemoMode\(false\);\}\}/);
  assert.match(shell,/initialFeed\?\.profiles\.length===0/);
  assert.match(shell,/onEmptyFeed=\{offerDemoOnEmpty\}/);
@@ -34,7 +34,8 @@ test("synthetic profiles are not inserted into server, likes, matches or convers
  assert.match(card,/className="moonstone-demo-label">Демо<\/span>/);
  assert.match(card,/className="moonstone-demo-label" onClick=\{onExitDemo\}/);
  assert.match(sandbox,/busy=\{queued\|\|leaving\}/);
- assert.match(sandbox,/const person=current/,"Only one visible QA card is mounted");
+ assert.match(sandbox,/people\.slice\(page,page\+2\)\.map/,"Next QA portrait is mounted invisibly and ready before promotion");
+ assert.match(sandbox,/preview=\{queued\}/);
  assert.doesNotMatch(sandbox,/people\.slice\(page,page\+3\)\.map/);
  assert.match(sandbox,/preloadUpcomingFeedPhotos/);
 });
@@ -74,7 +75,8 @@ test("demo reactions use existing directional compositor animations with zero ba
  assert.match(sandbox,/luemi-deck-exit-top/);
  assert.match(deck,/@keyframes luemi-deck-exit-left/);
  assert.doesNotMatch(deck,/@keyframes luemi-deck-arrive-/);
- assert.doesNotMatch(sandbox,/deck-queued|deck-entering|deck-peek-/);
+ assert.match(sandbox,/deck-queued/);
+ assert.doesNotMatch(sandbox,/deck-entering|deck-peek-/);
  assert.doesNotMatch(style,/@keyframes luemi-demo-/);
  assert.match(sandbox,/const \[history,setHistory\]/);
  assert.match(sandbox,/setHistory\(h=>h\.slice\(0,-1\)\)/);
