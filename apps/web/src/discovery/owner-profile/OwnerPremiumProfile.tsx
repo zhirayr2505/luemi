@@ -165,6 +165,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    topEdit.current.toggleAttribute("inert",progress>=.29);
   }
   if(flow.current)flow.current.style.transform=`translate3d(0,${frame.contentOffset}px,0)`;
+  if(tablist.current)tablist.current.style.transform=`translate3d(0,${elastic}px,0)`;
   if(contentRoot.current)contentRoot.current.style.transform=`translate3d(0,${elastic}px,0)`;
   const state=progress<=.001?"expanded":progress>=.999?"compact":"transition";
   if(root.current&&lastState.current!==state){root.current.dataset.morphState=state;lastState.current=state;}
@@ -624,7 +625,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   </div>
   <div ref={scroller} className="owner-profile-scroll">
    <div className="owner-profile-hero-spacer" aria-hidden="true"/>
-   <main ref={contentRoot} className="owner-profile-content">
+   {/* The tab cap is a direct scroll sibling: sticky is constrained by the
+        full scrollport, not by a short tab panel. It cannot drift onto the avatar. */}
     <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля"
      style={{"--owner-tab-offset":`${tabs.findIndex(([id])=>id===tab)*25}%`} as CSSProperties}
      onPointerDown={profileDown("tabs")} onPointerMove={profileMove}
@@ -635,6 +637,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
       aria-selected={tab===id} tabIndex={tab===id?0:-1}
       onClick={()=>{if(!suppressTabClick.current)selectTab(id);}} onKeyDown={event=>tabKey(event,index)}>{label}</button>)}
     </div>
+   <main ref={contentRoot} className="owner-profile-content">
     <div ref={flow} className="owner-profile-flow">
     <div className="owner-profile-pages" onPointerDown={profileDown("pages")} onPointerMove={profileMove}
       onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
