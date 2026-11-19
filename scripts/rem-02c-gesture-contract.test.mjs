@@ -141,8 +141,10 @@ assert.ok(profile.includes('addEventListener("scroll",schedulePaint,{passive:tru
  profile.includes("paintRaf.current=requestAnimationFrame"),
  "owner morph follows native scrolling with one coalesced RAF writer");
 assert.ok(css.includes(".owner-profile-scroll")&&css.includes("overflow-y:auto")&&
- css.includes("touch-action:pan-y")&&!css.includes("touch-action:none"),
- "owner profile preserves native vertical scrolling without a competing gesture handle");
+ /\.owner-profile-scroll\{[^}]*touch-action:pan-y/.test(css)&&
+ /\.owner-profile-photo-mask\{[^}]*touch-action:none/.test(css)&&
+ profile.includes("onPointerMove={heroMove}"),
+ "native content scroll remains untouched; floating photo exclusively forwards its pointer gestures");
 assert.ok(route.includes('gestureArbiter={gestures}')&&route.includes('if(isGestureModalBlocked(target))return;'),
  "Telegram modal and route arbitration preserved");
 assert.ok(browse.includes("browseMotion.current.schedulePaint")&&
