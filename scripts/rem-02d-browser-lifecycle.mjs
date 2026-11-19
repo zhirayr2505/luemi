@@ -75,6 +75,10 @@ try{
  await page.setViewportSize({width:393,height:765});await sleep(120);
  await setBackground(false);await sleep(320);
  const after=await portrait();
+ console.log("PREMIUM_PROFILE_RESUME_DIAGNOSTIC "+JSON.stringify({after,
+  scroll:await scroll().evaluate(el=>({scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight})),
+  morphDistance:await profile().evaluate(el=>getComputedStyle(el).getPropertyValue("--owner-morph-distance")),
+  rootState:await profile().getAttribute("data-morph-state")}));
  assert.ok(Number.isFinite(after.y)&&Number.isFinite(after.width)&&
   after.width>60&&after.width<135,"portrait geometry remains bounded after resume");
  near(after.x+after.width/2,393/2,1.5);
