@@ -53,7 +53,7 @@ async function profileV3(browser,platform="android"){
    const image=ownerProfile.locator(".owner-profile-photo-mask>img");
    const scroller=ownerProfile.locator(".owner-profile-scroll");
    const expanded=await image.boundingBox();
-   assert.ok(expanded&&expanded.width>300&&expanded.height>430,"owner opens with a large photo");
+   assert.ok(expanded&&expanded.width>300&&expanded.height>430&&expanded.y>35,"owner photo stays below Telegram chrome");
    assert.equal(await ownerProfile.locator(".owner-profile-actions button").count(),4,"four real owner actions");
    const photoNode=await image.elementHandle();
    await page.evaluate(node=>{window.__ownerMorphPhoto=node;},photoNode);
@@ -62,10 +62,11 @@ async function profileV3(browser,platform="android"){
    const compact=await image.boundingBox();
    assert.ok(compact&&Math.abs(compact.width-compact.height)<1.5&&compact.width<130,"owner photo becomes a circle");
    assert.ok(Math.abs(compact.x+compact.width/2-393/2)<1.5,"compact owner avatar is centered");
+   assert.equal(await ownerProfile.locator(".owner-profile-brand img").count(),1,"one original logo overlays the hero");
    assert.equal(await image.evaluate(node=>window.__ownerMorphPhoto===node),true,"morph keeps one image node");
    await scroller.evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event("scroll"));});
    await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
-   for(const label of ["Фото","О себе","Интересы"]){
+   for(const label of ["О себе","Фото","Блики","Подарки"]){
     await ownerProfile.getByRole("tab",{name:label,exact:true}).click();
     assert.equal(await ownerProfile.getByRole("tab",{name:label,exact:true}).getAttribute("aria-selected"),"true");
    }
@@ -74,8 +75,13 @@ async function profileV3(browser,platform="android"){
     await page.locator(".discovery-bottom-nav button").filter({hasText:"Знакомства"}).click();
     await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
     await page.getByRole("button",{name:/Открыть демо-профиль/}).first().click();
-    const visitor=await required(page,".discovery-visitor-route .v3-profile-host","visitor V3");
-    assert.equal((await state(page,".discovery-visitor-route .v3-profile-host")).mode,"compact");
+    const visitor=await required(page,".discovery-visitor-route .owner-premium-profile","shared visitor profile");
+    assert.equal(await visitor.getAttribute("data-mode"),"visitor","visitors use the same premium component");
+    assert.equal(await visitor.locator(".owner-profile-actions button").count(),0,"visitors never see owner edit buttons");
+    assert.equal(await visitor.locator(".owner-profile-edit-top").count(),0,"visitors cannot edit a чужую анкету");
+    assert.deepEqual(await visitor.locator(".owner-profile-tabs [role=tab]").allTextContents(),
+     ["О себе","Фото","Блики","Подарки"],"visitor tabs match the owner");
+    assert.equal(await visitor.locator(".owner-profile-brand img").count(),1,"shared white LUEMI logo");
     await page.keyboard.press("Escape");
     await visitor.waitFor({state:"detached",timeout:4000});
    }
