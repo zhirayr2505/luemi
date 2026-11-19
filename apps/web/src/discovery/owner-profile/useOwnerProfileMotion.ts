@@ -199,7 +199,7 @@ export function useOwnerProfileMotion(options:Options){
     if(target===1)afterCompact?.();
    };
    const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
-   const bounce=notify&&!reduced&&from>=0&&from<=1;
+   const bounce=notify&&!reduced&&from>=0&&from<=1&&!(target===1&&scroll.scrollTop>0);
    if(from===target&&!bounce){finish();return;}
    const landing=target+(bounce?(target===1?4:-5)/distance:0);
    const duration=clamp(110+Math.abs(target-from)*190,110,300);
