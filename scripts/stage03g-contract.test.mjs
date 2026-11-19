@@ -53,6 +53,11 @@ const viewer=read("apps/web/src/discovery/PhotoViewer.tsx");
 const css=read("apps/web/src/discovery/owner-profile/owner-premium-profile.css");
 const discovery=read("apps/web/src/discovery/DiscoveryApp.tsx");
 const visitorRoute=read("apps/web/src/discovery/VisitorProfileRoute.tsx");
+const realHome=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
+const app=read("apps/web/src/App.tsx");
+assert.ok(app.includes("WebApp?.BackButton")&&app.includes("button.show()")&&
+ app.includes("button.offClick(handle)")&&realHome.includes("registerBack?.(canNavigateBack?invokeBack:null)"),
+ "Telegram system BackButton replaces the inner back circle and cleans up its listener");
 const previewSource=read("apps/web/src/registration/Preview.tsx");
 assert.ok(profile.includes('projectProfile(data,mode)'),"canonical projection stays in ProfileMaster");
 assert.ok(profile.includes('mode={data.source==="local-draft"?"local-self-preview":"preview"}'),
@@ -62,7 +67,8 @@ assert.ok(profile.includes('mode==="owner"')&&ownerSurface.includes("onClick={on
 assert.ok(ownerSurface.includes('[["about","О себе"],["photos","Фото"],["bliki","Блики"],["gifts","Подарки"]]'),
  "approved shared premium profile has the requested four tabs in order");
 assert.ok(ownerSurface.includes('isOwner&&<div className="owner-profile-actions"')&&
- ownerSurface.includes('isOwner&&<button ref={topEdit}'),
+ ownerSurface.includes('isOwner&&<header className="owner-profile-topbar"')&&
+ !ownerSurface.includes('className="owner-profile-back"'),
  "visitor profiles cannot access owner action controls");
 assert.ok(ownerSurface.includes('data-morph-state="expanded"')&&
  ownerSurface.includes("ownerMorphFrame(layout.current,progress)"),"owner opens expanded and uses one geometric morph");

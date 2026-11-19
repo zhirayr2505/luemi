@@ -82,8 +82,10 @@ try{
  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="expanded");
  assert.equal(await image.evaluate(element=>element===window.__ownerProfileImage),true,
   "reverse scroll expands the same photo element without remounting");
- for(const action of ["Назад","Редактировать профиль","Посмотреть анкету глазами других","Управлять фотографиями","Настройки профиля"])
+ for(const action of ["Редактировать профиль","Посмотреть анкету глазами других","Управлять фотографиями","Настройки профиля"])
   assert.equal(await root.getByRole("button",{name:action,exact:true}).count(),1,action);
+ assert.equal(await root.getByRole("button",{name:"Назад",exact:true}).count(),0,
+  "no redundant inner back button in V4");
  assert.deepEqual(errors,[],"owner profile has no uncaught browser errors");
  console.log("OWNER_PREMIUM_PROFILE_BROWSER_PASS 393x852 Chromium Android emulation; physical Telegram WebView not tested");
 }finally{

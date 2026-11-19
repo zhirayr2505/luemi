@@ -174,7 +174,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    tabIndex={mode==="visitor"?-1:undefined} data-modal-initial={mode==="visitor"?"true":undefined}
    aria-label={mode==="owner"?"Мой профиль":mode==="visitor"?"Профиль":"Предпросмотр профиля"}>
    {mode!=="local-self-preview"?<OwnerPremiumProfile view={view} ownerDetails={mode==="owner"?ownerDetails:undefined} active={active}
-    onBack={()=>onClose?.()} onEdit={()=>onEdit?.()} onSettings={()=>{if(onSettings)onSettings();else onEdit?.();}}
+    onEdit={()=>onEdit?.()} onSettings={()=>{if(onSettings)onSettings();else onEdit?.();}}
     onPreview={()=>{if(mode==="owner")setPreview(true);}} onPhotoOpen={openPhoto} onMotionProgress={onMotionProgress}
     gestureArbiter={gestureArbiter}/>:
    <IntegratedProfileV3 view={view} photoId={photoId} onPhotoId={choosePhoto}
@@ -194,3 +194,4 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
      active={active} onMotionProgress={onMotionProgress}/>}
   </section>;
 });
+

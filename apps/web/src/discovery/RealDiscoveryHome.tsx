@@ -472,13 +472,14 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  </div>;
 }
 
-export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal,onCityChanged,onFirstScreenReady}:{
+export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPTY_OWNER_PREVIEW,initialFeed,accountPanel,onEdit,onReveal,onCityChanged,onFirstScreenReady,registerBack}:{
  draft:RegistrationDraft;
  publishedProfile:OwnerPublicationStatus["profile"]|undefined;initialFeed?:PublishedFeedPage|null;
  ownerPhotoPreview?:ReadonlyArray<{src:string}>;
  accountPanel:ReactNode;onEdit:()=>void;onReveal?:()=>void;
  onCityChanged?:(place:ObservedCity)=>void;
  onFirstScreenReady?:()=>void;
+ registerBack?:(handler:(()=>void)|null)=>void;
 }){
  const [mainTab,setMainTab]=useState<MainTab>(()=>{
   const route=new URLSearchParams(typeof window==="undefined"?"":window.location.search).get("luemiRoute")??
@@ -872,6 +873,13 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   if(mainTab!=="discover"){setMainTab("discover");return;}
   if(browse!=="feed"){requestBrowseTab(0);return;}
  };
+ const canNavigateBack=chatThreadOpen||filterOpen||!!person||!!demoVisitor||accountOpen||
+  mainTab!=="discover"||browse!=="feed";
+ const invokeBack=useCallback(()=>backRef.current(),[]);
+ useEffect(()=>{
+  registerBack?.(canNavigateBack?invokeBack:null);
+  return()=>registerBack?.(null);
+ },[canNavigateBack,invokeBack,registerBack]);
  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==="Escape")backRef.current();};
   window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key);},[]);
  return <section className="discovery-app real-discovery-home"
@@ -984,3 +992,4 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     }}/>
  </section>;
 }
+
