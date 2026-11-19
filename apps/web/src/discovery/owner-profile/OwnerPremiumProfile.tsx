@@ -200,30 +200,31 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   const position=motion.cancel();
   if(scroller.current){scroller.current.scrollTop=position;paint(position);}
  },[clearScrollEnd,paint]);
- const settleMorph=useCallback((velocity=scrollSample.current.velocity)=>{
+ const settleMorph=useCallback((velocity=scrollSample.current.velocity,forcedTarget?:number)=>{
   const scroll=scroller.current,motion=morphMotion.current;
   if(!scroll||!motion||paused.current)return;
   if(motion.snapshot().phase==="settling")return;
   clearScrollEnd();
   const distance=layout.current.morphDistance,current=scroll.scrollTop;
-  // Once the compact endpoint is crossed, ordinary card scrolling is free.
-  if(current>=distance-.75){paint(current);return;}
-  if(current<=.75){scroll.scrollTop=0;paint(0);return;}
-  const target=ownerMorphEndpoint(current,distance,velocity);
+  // After compact is reached, the list uses genuine native card scrolling.
+  if(current>=distance-.75&&forcedTarget===undefined){paint(current);return;}
+  if(current<=.75&&forcedTarget===undefined){scroll.scrollTop=0;paint(0);return;}
+  const target=forcedTarget??ownerMorphEndpoint(current,distance,velocity);
   settleTarget.current=target;
   const fraction=Math.abs(target-current)/Math.max(1,distance);
   const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const duration=reduce?0:Math.max(120,Math.min(290,150+fraction*140-Math.min(45,Math.abs(velocity)*48)));
+  const duration=reduce?0:Math.max(230,Math.min(365,250+fraction*105-Math.min(35,Math.abs(velocity)*35)));
   motion.start(current,target,duration,MORPH_EASING,value=>{
    if(!scroller.current)return;
    // Mark the RAF writer before its native scroll event.
-   latestSettleWrite.current=value;
-   scroller.current.scrollTop=value;paint(value);
+   const bounded=Math.max(0,Math.min(distance,value));
+   latestSettleWrite.current=bounded;
+   scroller.current.scrollTop=bounded;paint(value);
   },()=>{
    if(!scroller.current)return;
    latestSettleWrite.current=null;
    scroller.current.scrollTop=target;paint(target);
-  },layoutRevision.current);
+  },layoutRevision.current,true);
  },[clearScrollEnd,paint]);
 
  useLayoutEffect(()=>{
@@ -281,6 +282,15 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
     latestSettleWrite.current=null;
     paint(position);
    }else schedulePaint();
+   // Telegram-style snap fires DURING a held gesture. Temporarily pause
+   // native scrolling while the sole motion controller finishes the spring.
+   if(nativeTouchActive.current&&!nativeSnapLocked.current&&!settling){
+    const target=ownerAutoSnapTarget(nativeTouchStart.current,position,layout.current.morphDistance);
+    if(target!==null){
+     nativeSnapLocked.current=true;scroll.style.overflowY="hidden";
+     settleMorph(velocity,target);return;
+    }
+   }
    if(nativeTouchActive.current)return;
    clearScrollEnd();
    if(position>.75&&position<layout.current.morphDistance-.75)
@@ -289,9 +299,16 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   const onScrollEnd=()=>{if(!nativeTouchActive.current)settleMorph(scrollSample.current.velocity);};
   const onTouchStart=()=>{
    nativeTouchActive.current=true;interruptMorph();
+   nativeTouchStart.current=scroll.scrollTop;nativeSnapLocked.current=false;
    scrollSample.current={position:scroll.scrollTop,time:performance.now(),velocity:0};
   };
-  const onTouchEnd=()=>{nativeTouchActive.current=false;settleMorph(scrollSample.current.velocity);};
+  const onTouchEnd=()=>{
+   nativeTouchActive.current=false;
+   if(nativeSnapLocked.current){
+    nativeSnapLocked.current=false;scroll.style.overflowY="auto";return;
+   }
+   settleMorph(scrollSample.current.velocity);
+  };
   const observer=new ResizeObserver(resize);observer.observe(host);
   scroll.addEventListener("scroll",onScroll,{passive:true});
   scroll.addEventListener("scrollend",onScrollEnd,{passive:true});
