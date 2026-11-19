@@ -15,7 +15,7 @@ const scroll=page.locator(".owner-premium-profile .owner-profile-scroll");
 const measure=()=>page.evaluate(()=>{
  const host=document.querySelector(".owner-premium-profile");
  if(!host)throw Error("Premium profile is missing");
- const mask=host.querySelector(".owner-profile-photo-mask");
+ const mask=host.querySelector(host.dataset.morphState==="compact"?".owner-profile-avatar-circle":".owner-profile-photo-mask");
  const tabs=host.querySelector(".owner-profile-tabs");
  const avatar=host.querySelector(".owner-profile-compact-identity");
  if(!mask||!tabs||!avatar)throw Error("Premium photo profile geometry incomplete");
