@@ -46,7 +46,7 @@ try{
    node.style.setProperty("--tg-safe-area-inset-bottom","9px");
   });
   const feed=page.locator(".deck-active .moonstone-feed-card");
-  const image=page.locator(".deck-active .moonstone-photo .carousel-track img.is-ready").first();
+  const image=page.locator('.deck-active .moonstone-photo .carousel-track .carousel-slide:not([aria-hidden="true"]) img.is-ready').first();
   await image.waitFor({timeout:15000});
   await image.evaluate(img=>img.decode());
   await page.waitForTimeout(350);
