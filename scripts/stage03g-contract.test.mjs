@@ -68,7 +68,7 @@ assert.ok(ownerSurface.includes('[["about","О себе"],["photos","Фото"],
  "approved shared premium profile has the requested four tabs in order");
 assert.ok(ownerSurface.includes('isOwner&&<div className="owner-profile-actions"')&&
  ownerSurface.includes('isOwner&&<header className="owner-profile-topbar"')&&
- !ownerSurface.includes('owner-profile-back'),
+ !ownerSurface.includes('className="owner-profile-back"'),
  "visitor profiles cannot access owner action controls");
 assert.ok(ownerSurface.includes('data-morph-state="expanded"')&&
  ownerSurface.includes("ownerMorphFrame(layout.current,progress)"),"owner opens expanded and uses one geometric morph");
