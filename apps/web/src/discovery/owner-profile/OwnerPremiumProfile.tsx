@@ -1,7 +1,8 @@
 import {useCallback,useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from "react";
-import type {KeyboardEvent,PointerEvent as ReactPointerEvent} from "react";
+import type {CSSProperties,KeyboardEvent,PointerEvent as ReactPointerEvent} from "react";
 import {CalendarDays,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,Sparkles,UserRound} from "lucide-react";
 import {InterestChip} from "../../ui/InterestCatalog";
+import {Flag} from "../../ui/Flag";
 import {goals,type RegistrationDraft} from "../../registration/model";
 import {goalLabel} from "../../ui/PersonalizedCopy";
 import {GestureArbiter} from "../../ui/gesture-arbiter";
@@ -68,6 +69,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  const compactIdentity=useRef<HTMLDivElement>(null);
  const tablist=useRef<HTMLDivElement>(null),brandProbe=useRef<HTMLDivElement>(null);
  const compactBackdrop=useRef<HTMLDivElement>(null),pager=useRef<HTMLDivElement>(null);
+ const glow=useRef<HTMLDivElement>(null),contentRoot=useRef<HTMLElement>(null);
+ const ownerElastic=useRef(0),elasticRaf=useRef(0);
  const topEdit=useRef<HTMLButtonElement>(null);
  const flow=useRef<HTMLDivElement>(null);
  const layout=useRef<OwnerProfileLayout>(createOwnerProfileLayout({width:393,height:852}));
@@ -86,7 +89,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  const tabPrefix=useId();
  const goal=p.goal&&p.goal!=="undecided"?goals.find(item=>item.id===p.goal):null;
  const goalText=goal?goalLabel(goal.id,ownerDetails?.gender??p.gender??""):"Цель не указана";
- const location=[p.city,p.country].filter(Boolean).join(", ")||"Город не указан";
+ const location=p.city||p.country||"Город не указан";
+ const countryCode=p.countryCode;
  const details=useMemo(()=>{
   if(!ownerDetails)return [];
   return [
@@ -106,7 +110,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   if(surface){
    surface.style.transform=`translate3d(${frame.mask.x}px,${frame.mask.y}px,0)`;
    surface.style.width=`${frame.mask.width}px`;
-   surface.style.height=`${frame.mask.height}px`;
+   surface.style.height=`${frame.mask.height+(progress<=.001?ownerElastic.current:0)}px`;
    surface.style.borderRadius=`${frame.radius}px`;
   }
   if(shade.current)shade.current.style.opacity=String(frame.photoShadeAlpha);
@@ -121,6 +125,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    compactIdentity.current.setAttribute("aria-hidden",progress<=.58?"true":"false");
   }
   if(compactBackdrop.current)compactBackdrop.current.style.opacity=String(Math.max(0,Math.min(1,(progress-.40)/.36)));
+  if(glow.current)glow.current.style.opacity=String(Math.max(0,Math.min(.5,(progress-.70)/.3*.5)));
   if(pager.current){
    pager.current.style.opacity=String(Math.max(0,Math.min(1,(.43-progress)/.23)));
    pager.current.style.pointerEvents=progress<.31?"auto":"none";
@@ -132,12 +137,31 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    topEdit.current.toggleAttribute("inert",progress>=.29);
   }
   if(flow.current)flow.current.style.transform=`translate3d(0,${frame.contentOffset}px,0)`;
-  root.current?.style.setProperty("--owner-morph-progress",String(progress));
+  if(contentRoot.current)contentRoot.current.style.transform=`translate3d(0,${ownerElastic.current}px,0)`;
   const state=progress<=.001?"expanded":progress>=.999?"compact":"transition";
   if(root.current&&lastState.current!==state){root.current.dataset.morphState=state;lastState.current=state;}
   const moving=gesture.current?.axis==="vertical"||morphMotion.current?.snapshot().phase==="settling";
   motionProgress.current?.(1-progress,moving);
  },[]);
+ const stopElastic=useCallback(()=>{
+  if(elasticRaf.current){cancelAnimationFrame(elasticRaf.current);elasticRaf.current=0;}
+  if(ownerElastic.current!==0){ownerElastic.current=0;paint(scroller.current?.scrollTop??0);}
+ },[paint]);
+ const releaseElastic=useCallback(()=>{
+  const amplitude=ownerElastic.current;
+  if(Math.abs(amplitude)<.1)return;
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches){stopElastic();return;}
+  if(elasticRaf.current)cancelAnimationFrame(elasticRaf.current);
+  const start=performance.now();
+  const frame=(now:number)=>{
+   const elapsed=now-start;
+   const value=amplitude*Math.exp(-elapsed/125)*Math.cos(elapsed/83);
+   ownerElastic.current=elapsed>=510||Math.abs(value)<.12?0:value;
+   paint(scroller.current?.scrollTop??0);
+   elasticRaf.current=ownerElastic.current===0?0:requestAnimationFrame(frame);
+  };
+  elasticRaf.current=requestAnimationFrame(frame);
+ },[paint,stopElastic]);
  const schedulePaint=useCallback(()=>{
   if(paintRaf.current)return;
   paintRaf.current=requestAnimationFrame(()=>{paintRaf.current=0;paint(scroller.current?.scrollTop??0);});
@@ -203,6 +227,9 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    host.style.setProperty("--owner-compact-top",`${next.compactContentTop}px`);
    host.style.setProperty("--owner-compact-name-top",`${next.compactAvatar.y+next.compactAvatar.height+8}px`);
    host.style.setProperty("--owner-morph-distance",`${next.morphDistance}px`);
+   host.style.setProperty("--owner-avatar-x",`${next.compactAvatar.x}px`);
+   host.style.setProperty("--owner-avatar-y",`${next.compactAvatar.y}px`);
+   host.style.setProperty("--owner-avatar-size",`${next.compactAvatar.width}px`);
    host.style.setProperty("--owner-content-shift",`${next.contentOffset}px`);
    const extra=Math.max(0,previousTop-previous.morphDistance);
    const nextTop=previousTop<=1?0:previousTop>=previous.morphDistance-.75?
@@ -262,12 +289,14 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    window.visualViewport?.removeEventListener("resize",resize);
    web?.offEvent?.("viewportChanged",viewportChanged);web?.offEvent?.("safeAreaChanged",resize);web?.offEvent?.("contentSafeAreaChanged",resize);
    clearScrollEnd();morphMotion.current?.dispose();
+   if(elasticRaf.current)cancelAnimationFrame(elasticRaf.current);
+   elasticRaf.current=0;ownerElastic.current=0;
    if(resizeRaf)cancelAnimationFrame(resizeRaf);if(paintRaf.current)cancelAnimationFrame(paintRaf.current);
    resizeRaf=0;paintRaf.current=0;
   };
  },[clearScrollEnd,interruptMorph,paint,schedulePaint,settleMorph]);
  useEffect(()=>bindMotionLifecycle(()=>{
-  paused.current=true;clearScrollEnd();latestSettleWrite.current=null;gesture.current=null;gestures.cancel();
+  paused.current=true;clearScrollEnd();stopElastic();latestSettleWrite.current=null;gesture.current=null;gestures.cancel();
   const motion=morphMotion.current;
   if(motion?.snapshot().phase==="settling"){
    settleTarget.current=motion.snapshot().target;motion.suspend();
@@ -280,7 +309,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    motion.reveal(layoutRevision.current+1,scroller.current?.scrollTop??snapshot.current,settleTarget.current);
    layoutRevision.current++;
   }else paint(scroller.current?.scrollTop??0);
- }),[clearScrollEnd,gestures,paint]);
+ }),[clearScrollEnd,gestures,paint,stopElastic]);
  useEffect(()=>()=>{if(!gestureArbiter)localArbiter.current?.dispose();},[gestureArbiter]);
  useLayoutEffect(()=>{
   if(!active||!scroller.current)return;
@@ -373,11 +402,11 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  };
  const profileDown=(source:ProfileGesture["source"])=>(event:ReactPointerEvent<HTMLDivElement>)=>{
   if(!event.isPrimary){
-   gestures.secondFinger();gesture.current=null;stopPhotoTimer();resetPhotoTrack();settleMorph(0);return;
+   gestures.secondFinger();gesture.current=null;stopElastic();stopPhotoTimer();resetPhotoTrack();settleMorph(0);return;
   }
   if(event.pointerType==="mouse"&&event.button!==0)return;
   if(source==="pages"&&(event.target as HTMLElement).closest("button,a,input,textarea,select"))return;
-  interruptMorph();
+  interruptMorph();stopElastic();
   if(source==="photo"&&photoSlideTimer.current!==null){stopPhotoTimer();setRenderIndex(heroIndex);resetPhotoTrack();}
   const primary=source==="photo"?"hero":"tabs";
   const secondary=source==="photo"?"sheet":"native";
@@ -409,7 +438,10 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   if(current.axis==="vertical"&&current.source==="pages")return;
   if(event.cancelable)event.preventDefault();
   if(current.axis==="vertical"&&scroller.current){
-   const position=Math.max(0,current.startScroll-dy);
+   const raw=current.startScroll-dy;
+   const position=Math.max(0,raw);
+   // The hero and rounded sheet share this bounded rubber-band distance.
+   ownerElastic.current=raw<0?Math.min(26,Math.pow(-raw,.66)*1.2):0;
    scroller.current.scrollTop=position;paint(position);
    current.samples.push({position,time:performance.now()});
   }else if(current.axis==="horizontal"){
@@ -433,6 +465,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    const position=Math.max(0,current.startScroll-dy);
    if(scroller.current)scroller.current.scrollTop=position;
    gestures.finish("sheet",current.serial);
+   releaseElastic();
    settleMorph(cancelled?0:recentVelocity([...current.samples,{position,time:performance.now()}]));
   }else if(current.axis==="horizontal"&&current.source==="photo"){
    suppressPhotoClick.current=true;
@@ -473,6 +506,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    {heroPhoto&&<img src={heroPhoto.src} alt="" draggable={false} decoding="async"/>}
    <div className="owner-profile-compact-tint"/>
   </div>
+  <div ref={glow} className="owner-profile-avatar-glow" aria-hidden="true"
+   style={heroPhoto?{backgroundImage:"url("+JSON.stringify(heroPhoto.src)+")"}:undefined}/>
   <div ref={mask} className="owner-profile-photo-mask" role={heroPhoto?"button":undefined}
     tabIndex={heroPhoto?0:-1} aria-label={heroPhoto?"Открыть фотографию профиля":undefined}
     onKeyDown={event=>{if(heroPhoto&&(event.key==="Enter"||event.key===" ")){
@@ -512,17 +547,18 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   </header>}
   <div ref={expandedIdentity} className="owner-profile-expanded-identity">
    <h1>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</h1>
-   <p><MapPin size={15} aria-hidden="true"/>{location}</p>
+   <p><MapPin size={15} aria-hidden="true"/><span className="owner-profile-location">{location}{countryCode?<Flag code={countryCode} size={17} title={"Флаг "+p.country}/>:null}</span></p>
   </div>
 
   <div ref={compactIdentity} className="owner-profile-compact-identity" aria-hidden="true">
    <strong>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</strong>
-   <span><MapPin size={13} aria-hidden="true"/>{location}</span>
+   <span><MapPin size={13} aria-hidden="true"/><span className="owner-profile-location">{location}{countryCode?<Flag code={countryCode} size={15} title={"Флаг "+p.country}/>:null}</span></span>
   </div>
   <div ref={scroller} className="owner-profile-scroll">
    <div className="owner-profile-hero-spacer" aria-hidden="true"/>
-   <main className="owner-profile-content">
-    <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля">
+   <main ref={contentRoot} className="owner-profile-content">
+    <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля"
+     style={{"--owner-tab-index":tabs.findIndex(([id])=>id===tab)} as CSSProperties}>
      {tabs.map(([id,label],index)=><button type="button" role="tab" key={id}
       id={tabPrefix+"-"+id+"-tab"} aria-controls={tabPrefix+"-"+id+"-panel"}
       aria-selected={tab===id} tabIndex={tab===id?0:-1}
@@ -537,7 +573,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
       <article><h2>О себе</h2><p>{p.about||"Описание пока не заполнено."}</p></article>
       <article><h2>Основное</h2><div className="owner-profile-basics">
        {p.age!==null&&<div><CalendarDays size={18} aria-hidden="true"/><span>{p.age} лет</span></div>}
-       <div><MapPin size={18} aria-hidden="true"/><span>{location}</span></div>
+       <div><MapPin size={18} aria-hidden="true"/><span className="owner-profile-location">{location}{countryCode?<Flag code={countryCode} size={17} title={"Флаг "+p.country}/>:null}</span></div>
       </div>
       {goal&&<div className="owner-profile-goal"><Heart size={16} aria-hidden="true"/>{goalText}</div>}
       {details.length>0&&<dl>{details.map(item=><div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>}</article>
