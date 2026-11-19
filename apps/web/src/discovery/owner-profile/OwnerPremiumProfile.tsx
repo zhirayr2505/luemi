@@ -196,13 +196,14 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onBack,onEdit
  useLayoutEffect(()=>{resetPhotoTrack();},[renderIndex]);
  // Preload the neighboring images without adding duplicate <img> nodes:
  // accessibility, the photo viewer, and GPU/image identity still see one hero.
+ const preloadPrevious=previousPhoto?.src,preloadNext=nextPhoto?.src;
  useEffect(()=>{
-  for(const photo of [previousPhoto,nextPhoto]){
-   if(!photo)continue;
-   const image=new Image();image.src=photo.src;
+  for(const src of [preloadPrevious,preloadNext]){
+   if(!src)continue;
+   const image=new Image();image.src=src;
    void image.decode?.().catch(()=>{/* the visible hero retains its own fallback */});
   }
- },[previousPhoto?.src,nextPhoto?.src]);
+ },[preloadPrevious,preloadNext]);
  useEffect(()=>()=>{if(photoSlideTimer.current!==null)window.clearTimeout(photoSlideTimer.current);},[]);
  const choosePhoto=(index:number)=>{
   stopPhotoTimer();resetPhotoTrack();
