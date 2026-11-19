@@ -41,8 +41,8 @@ try{
   assert(full.photo.y<1.5&&Math.abs(full.photo.width-full.photo.height)<1.5,
    "expanded photo stays full-bleed and square at "+height);
   assert(full.photo.width>380,"expanded picture occupies width at "+height);
-  assert(Math.abs(full.tabTop-(full.photo.y+full.photo.height))<1.5,
-   "expanded tabs begin directly below the square photo at "+height);
+  assert(Math.abs(full.tabTop-(full.photo.y+full.photo.height-22))<1.5,
+   "rounded sheet overlaps the expanded square photo by 22px at "+height);
   await scroll.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact");
   const compact=await measure();
