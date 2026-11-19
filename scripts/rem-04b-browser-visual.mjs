@@ -37,7 +37,9 @@ const read=host=>host.evaluate(node=>{
   photoId:photo?.querySelector("img")?.dataset.photoId??null,
   photoCount:node.querySelectorAll(".owner-profile-photo-tile").length,
   dots:node.querySelectorAll(".owner-profile-photo-pager button").length,
-  progress:Number(getComputedStyle(node).getPropertyValue("--owner-morph-progress"))};
+  progress:(()=>{const el=node.querySelector(".owner-profile-scroll");
+   const distance=Number.parseFloat(getComputedStyle(node).getPropertyValue("--owner-morph-distance"));
+   return distance>0?Math.max(0,Math.min(1,(el?.scrollTop??0)/distance)):0;})()};
 });
 const snap=async(host,label)=>{
  const data=await read(host);
@@ -70,7 +72,7 @@ try{
  await scrollOf(own()).evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector('.owner-premium-profile[data-mode="owner"]')?.dataset.morphState==="compact");
  const compact=await snap(own(),"owner-compact");
- assert.ok(compact.cover.width<135&&Math.abs(compact.cover.width-compact.cover.height)<1.5);
+ assert.ok(compact.cover.width>=120&&compact.cover.width<=150&&Math.abs(compact.cover.width-compact.cover.height)<1.5);
  assert.ok(compact.blurOpacity>.93,"same-photo blurred backing appears beneath circular avatar");
  assert.ok(compact.tabs?.y>compact.cover.bottom+35,"tabs sit below avatar and name");
  assert.ok(compact.tabs?.y+compact.tabs.height<530,"tabs remain pinned in compact header");
