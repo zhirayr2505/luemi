@@ -197,7 +197,7 @@
  position:sticky;z-index:16;top:var(--owner-compact-top);
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
  height:52px;align-items:stretch;margin:0;padding:0 13px;
- touch-action:pan-y;overscroll-behavior-x:contain;
+ pointer-events:auto;touch-action:pan-y;overscroll-behavior-x:contain;
  border:0;border-bottom:1px solid var(--luemi-border);
  border-radius:32px 32px 0 0;background:var(--luemi-bg-deep);
  box-shadow:0 -4px 17px rgba(7,5,14,.1);
