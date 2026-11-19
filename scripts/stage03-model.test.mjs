@@ -12,16 +12,15 @@ const m=await load("apps/web/src/discovery/model.ts");
 const d=await load("apps/web/src/discovery/demo-people.ts");
 const draft={city:"Краснодар",countryCode:"ru",interests:["музыка","путешествия"]};
 const people=d.demoPeople;
-assert.equal(people.length,15,"fifteen fictional demo people for the isolated QA feed");
-assert.equal(new Set(people.map(p=>p.id)).size,15,"no duplicate fake people");
-assert.ok(people.some(p=>p.gender==="man")&&people.some(p=>p.gender==="woman"));
-assert.ok(people.every(p=>p.age>=18&&p.photos.length===3&&
- p.photos[0].src.startsWith("https://cdn.pixabay.com/photo/")&&
- p.photos.slice(1).every(photo=>
-  photo.src.startsWith("https://images.unsplash.com/photo-")&&
-  photo.fallback===p.photos[0].src)&&p.premium===false),
- "Every demo has a photographic AI face, two scenic images, no cartoon fallbacks or fake premium badge");
-assert.equal(m.filterDemoPeople(people,m.defaultFilters,draft).length,15,"worldwide fixture results");
+assert.equal(people.length,6,"six private synthetic QA profiles");
+assert.equal(new Set(people.map(p=>p.id)).size,people.length,"no duplicate fake people");
+assert.ok(people.every(p=>p.gender==="woman"&&p.age>=18&&p.premium===false&&p.verified===false),
+ "all current private QA fixtures are adults, unverified and non-premium");
+assert.ok(people.every(p=>p.photos.length===4&&
+ p.photos.every((photo,index)=>photo.src===
+  "/api/v2/qa/portraits/"+p.id.replace(/^qa-2026-/,"")+"/"+(index+1)+".webp")),
+ "QA photo paths stay private, server-authorized, and never fall back to public CDNs");
+assert.equal(m.filterDemoPeople(people,m.defaultFilters,draft).length,people.length,"worldwide fixture results");
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,scope:"country"},draft).every(p=>p.countryCode==="RU"),true);
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,goal:"serious"},draft).every(p=>p.goal==="serious"),true);
 assert.equal(m.filterDemoPeople(people,{...m.defaultFilters,language:"hy"},draft).every(p=>p.languages.includes("hy")),true);
