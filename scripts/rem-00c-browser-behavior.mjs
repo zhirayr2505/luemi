@@ -94,6 +94,25 @@ async function profileV3(browser,platform="android"){
     assert.deepEqual(await visitor.locator(".owner-profile-tabs [role=tab]").allTextContents(),
      ["О себе","Фото","Блики","Подарки"],"visitor tabs match the owner");
     assert.equal(await visitor.locator(".owner-profile-brand img").count(),1,"shared white LUEMI logo");
+    // Expanded visitor photos must own both horizontal directions, not the
+    // legacy collapsed-shell back recognizer.
+    await page.waitForTimeout(320);
+    const vImage=visitor.locator(".owner-profile-photo-mask img");
+    const vRect=await vImage.boundingBox();
+    assert.ok(vRect,"visitor photo has a visible interactive hitbox");
+    await page.mouse.move(vRect.x+vRect.width*.7,vRect.y+vRect.height*.55);
+    await page.mouse.down();
+    await page.mouse.move(vRect.x+vRect.width*.26,vRect.y+vRect.height*.55,{steps:8});
+    await page.mouse.up();
+    assert.equal(await visitor.locator(".owner-profile-photo-pager button").nth(1).getAttribute("aria-current"),
+     "true","left swipe changes a visitor's photo");
+    await page.mouse.move(vRect.x+vRect.width*.26,vRect.y+vRect.height*.55);
+    await page.mouse.down();
+    await page.mouse.move(vRect.x+vRect.width*.72,vRect.y+vRect.height*.55,{steps:8});
+    await page.mouse.up();
+    assert.equal(await visitor.locator(".owner-profile-photo-pager button").first().getAttribute("aria-current"),
+     "true","right swipe returns visitor photo without closing the route");
+    assert.equal(await page.locator(".discovery-visitor-route").count(),1,"right photo swipe cannot close visitor profile");
     await page.keyboard.press("Escape");
     await visitor.waitFor({state:"detached",timeout:4000});
    }
