@@ -369,7 +369,7 @@ export function FeedCard({person,saved,canUndo,active,busy,onAction,onOpenProfil
    <div className="moonstone-person-card">
     <div className="moonstone-photo">
      <PhotoCarousel ref={photo} photos={person.photos} name={person.name} age={person.age} externalGesture
-      prioritize={active} gpuSafe adaptive loop onCoverReady={onCoverReady} onIndexChange={setActivePhotoIndex}/>
+      prioritize={active} gpuSafe adaptive loop ambientActive={active} onCoverReady={onCoverReady} onIndexChange={setActivePhotoIndex}/>
      <div className="moonstone-photo-shade" aria-hidden="true"/>
      {!real&&(onExitDemo?<button type="button" className="moonstone-demo-label" onClick={onExitDemo}>Демо</button>:<span className="moonstone-demo-label">Демо</span>)}
     </div>

@@ -38,6 +38,8 @@ import "./moonstone-discovery.css";
 import "./real-discovery-layout-repair.css";
 // Card Deck is the final feed paint layer; original gestures remain in FeedCard.
 import "./card-deck-edition.css";
+// Approved Vivid Matte photo atmosphere; loaded last for the approved card layout.
+import "./photo-ambient-edition.css";
 
 // EXACT approved LUEMI navigation / header / profile components. No demo profiles
 // are imported or projected into a real session.
@@ -854,9 +856,14 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==="Escape")backRef.current();};
   window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key);},[]);
  return <section className="discovery-app real-discovery-home"
-  data-feed-visible={mainTab==="discover"?"true":"false"} data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person||!!demoVisitor?"true":"false"}
+  data-feed-visible={mainTab==="discover"?"true":"false"} data-browse-page={browse} data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person||!!demoVisitor?"true":"false"}
   data-chat-thread={chatThreadOpen?"true":"false"}>
   <div className="discovery-ambient" aria-hidden="true"/>
+  <div className="discovery-photo-ambient" aria-hidden="true" data-is-scrubbing="false">
+   <div className="discovery-photo-ambient-current"/>
+   <div className="discovery-photo-ambient-next"/>
+   <div className="discovery-photo-ambient-tint"/>
+  </div>
   {!chatThreadOpen&&<GlobalHeader ref={header} mode={mainTab==="profile"?"profile":mainTab==="chats"?"chats":"browse"}/>}
   <div className="discovery-main-panels">
    <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>

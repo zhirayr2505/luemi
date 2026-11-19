@@ -163,21 +163,20 @@ test("Vivid Matte ships one dark shell, not a dormant legacy light palette",()=>
  assert.doesNotMatch(shell,/\.luemi-shell\[data-theme=dark\]\s*\{/,
   "the old dark-theme override must not duplicate the Vivid Matte source of truth");
 });
-test("feed keeps sharp photo while its identical source blurs behind it",()=>{
+test("the approved inset card keeps original photos sharp, with global color atmosphere",()=>{
  const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
  const card=read("apps/web/src/discovery/FeedCard.tsx");
  const css=read("apps/web/src/discovery/moonstone-discovery.css");
+ const ambient=read("apps/web/src/discovery/feed-photo-ambient.ts");
+ const finish=read("apps/web/src/discovery/photo-ambient-edition.css");
  assert.equal(existsSync("apps/web/src/discovery/adaptive-feed-photo.ts"),false);
- assert.doesNotMatch(carousel,/prepareAdaptiveFeedPhoto|adaptiveFullscreen|canvas\.toBlob|photoAtmosphere/);
+ assert.doesNotMatch(carousel,/prepareAdaptiveFeedPhoto|adaptiveFullscreen|canvas\.toBlob|photoAtmosphere|syncAdaptiveSlide/);
  assert.doesNotMatch(card,/moonstone-blur-photo|onResolvedSource|adaptiveFullscreen/);
- assert.doesNotMatch(css,/\.moonstone-blur-photo\{/);
  assert.match(carousel,/const warmPhoto=/);
- assert.match(carousel,/--photo-backdrop/);
- assert.match(css,/background-image:var\(--photo-backdrop,none\)/);
- assert.match(css,/filter:blur\(11px\) brightness\(\.88\)/);
- assert.match(css,/\.carousel-slide-adaptive::before\{content:none\}/);
- assert.match(carousel,/const full=Math\.abs\(Math\.log\(imageRatio\/frameRatio\)\)<\.075/);
- assert.match(card,/gpuSafe adaptive loop onCoverReady=\{onCoverReady\}/);
+ assert.match(carousel,/scrubFeedAmbient\(/);
+ assert.match(ambient,/backgroundImage=src\?photoUrl\(src\):"none"/);
+ assert.match(finish,/\.discovery-photo-ambient-next/);
+ assert.match(card,/gpuSafe adaptive loop ambientActive=\{active\} onCoverReady=\{onCoverReady\}/);
  assert.match(css,/\.moonstone-photo-shade\{/);
 });
 test("deleted registration language flow and artificial photo cropping stay deleted",()=>{

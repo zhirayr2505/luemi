@@ -10,44 +10,24 @@ const photoCss=read("apps/web/src/discovery/moonstone-discovery.css");
 const repair=read("apps/web/src/discovery/real-discovery-layout-repair.css");
 const card=read("apps/web/src/discovery/FeedCard.tsx");
 const base=read("apps/web/src/styles.css");
-test("feed contains original photo, with no forced cropping for square uploads",()=>{
- assert.match(card,/gpuSafe adaptive loop onCoverReady=\{onCoverReady\}/);
- assert.match(carousel,/const full=Math\.abs\(Math\.log\(imageRatio\/frameRatio\)\)<\.075/);
- assert.match(carousel,/slide\.dataset\.photoFit=full\?"full":imageRatio>frameRatio\?"letterbox":"pillarbox"/);
- assert.match(carousel,/const scale=Math\.min\(width\/image\.naturalWidth,height\/image\.naturalHeight\)/);
- assert.match(carousel,/--photo-width/);
- assert.match(carousel,/--photo-height/);
- assert.match(carousel,/new ResizeObserver/);
- assert.match(photoCss,/\.carousel-slide-adaptive \.feed-carousel-photo\{[\s\S]*?object-fit:contain/);
- assert.match(photoCss,/\[data-photo-fit="full"\] \.feed-carousel-photo\{[\s\S]*?object-fit:cover/);
- assert.match(photoCss,/\[data-photo-fit="pillarbox"\] \.feed-carousel-photo/);
+test("square and portrait uploads are not distorted inside the card",()=>{
+ assert.match(card,/gpuSafe adaptive loop ambientActive=\{active\} onCoverReady=\{onCoverReady\}/);
+ assert.match(photoCss,/\.carousel-slide-adaptive \.feed-carousel-photo\{/);
+ assert.match(photoCss,/object-fit:contain;object-position:center/);
  assert.match(base,/\.carousel-track>\.carousel-slide\{[\s\S]*?flex:0 0 100%/);
+ const newCard=read("apps/web/src/discovery/photo-ambient-edition.css");
+ assert.match(newCard,/\.moonstone-person-card \.moonstone-photo\{/);
+ assert.match(newCard,/\.moonstone-person-card \.moonstone-compact-info\{/);
+ assert.doesNotMatch(newCard,/backdrop-filter:blur\(/);
 });
-test("same-image bleed matches foreground geometry instead of zoomed cover",()=>{
- assert.match(carousel,/slide\.style\.setProperty\("--photo-backdrop",'url\('\+JSON\.stringify\(image\.currentSrc\|\|image\.src\)\+'\)'\)/);
- assert.match(photoCss,/\.carousel-slide-adaptive::before\{content:none\}/);
- assert.match(photoCss,/\.carousel-slide-adaptive::after\{[\s\S]*?left:var\(--photo-left/);
- assert.match(photoCss,/width:var\(--photo-width,100%\);height:var\(--photo-height,100%\)/);
- assert.match(photoCss,/background-size:100% 100%;background-position:center;background-repeat:no-repeat/);
- assert.match(photoCss,/filter:blur\(11px\) brightness\(\.88\)/);
- for(const edge of ["top","bottom","left","right"]){
-  assert.match(carousel,new RegExp("carousel-photo-bleed-"+edge));
-  assert.match(photoCss,new RegExp("carousel-photo-bleed-"+edge));
- }
- assert.match(photoCss,/background-size:100% 800%/);
- assert.match(photoCss,/background-size:800% 100%/);
- for(const edge of ["top","bottom"]){
-  assert.match(photoCss,new RegExp("carousel-photo-bleed-"+edge+"\\{[\\s\\S]*?transform:scaleY\\(-1\\)"));
- }
- for(const edge of ["left","right"]){
-  assert.match(photoCss,new RegExp("carousel-photo-bleed-"+edge+"\\{[\\s\\S]*?transform:scaleX\\(-1\\)"));
- }
- assert.match(photoCss,/black 5%,[\s\S]*?black 95%/);
- assert.match(photoCss,/\[data-photo-fit="full"\]::after/);
- assert.doesNotMatch(photoCss.slice(photoCss.indexOf("/* Adaptive image stage V4:")),/background-size:cover/);
- assert.doesNotMatch(carousel,/photoAtmosphere|atmosphereCache|canvas\.|toDataURL\(/);
- const adaptiveCss=photoCss.slice(photoCss.indexOf("/* Adaptive image stage V4:"));
- assert.doesNotMatch(adaptiveCss,/backdrop-filter:/);
+test("retired fullscreen photo stretching and edge-reflection code are gone",()=>{
+ assert.doesNotMatch(carousel,/photoAtmosphere|atmosphereCache|syncAdaptiveSlide|ResizeObserver|carousel-photo-bleed|--photo-backdrop|canvas\.|toDataURL\(/);
+ assert.doesNotMatch(photoCss,/carousel-photo-bleed|--photo-backdrop|\bblur\(11px\)/);
+ assert.doesNotMatch(photoCss,/\.carousel-slide-adaptive::after\{/);
+ const ambient=read("apps/web/src/discovery/feed-photo-ambient.ts");
+ assert.match(ambient,/scrubFeedAmbient/);
+ assert.match(ambient,/setBase\(current,state,from\)/);
+ assert.match(ambient,/next\.style\.opacity=String\(p\)/);
 });
 test("cyclic swipes animate across duplicated edges and rebase with WebView fallback",()=>{
  assert.match(carousel,/const cyclic=loop&&photos\.length>1/);

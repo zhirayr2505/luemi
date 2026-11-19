@@ -1,9 +1,10 @@
 import {forwardRef,memo,useCallback,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {noteFeedImageDecoded,preloadFeedImage} from "../discovery/feed-image-preload";
+import {activateFeedAmbient,scrubFeedAmbient,settleFeedAmbient} from "../discovery/feed-photo-ambient";
 interface Slide {id:string;src:string;fallback?:string}
 interface Props {photos:Slide[];name:string;age?:number;externalGesture?:boolean;dots?:boolean;
- prioritize?:boolean;gpuSafe?:boolean;adaptive?:boolean;loop?:boolean;onIndexChange?:(index:number)=>void;
+ prioritize?:boolean;gpuSafe?:boolean;adaptive?:boolean;loop?:boolean;ambientActive?:boolean;onIndexChange?:(index:number)=>void;
  onCoverReady?:()=>void}
 interface Tracking {x:number;y:number;t:number;id:number;horizontal:boolean;startIndex:number;width:number}
 export interface PhotoCarouselHandle {
@@ -13,31 +14,7 @@ export interface PhotoCarouselHandle {
  finish:(id:number,x:number,cancelled:boolean)=>void;
  cancel:()=>void;
 }
-/* Match background geometry to the sharp photo's contain-fit bounds.
- * Edge bands then extend the *edge pixels* of that same source instead of
- * enlarging the person's face with a separate full-screen cover. This stays
- * compatible with cross-origin/signed images: only CSS reads the URL. */
-function syncAdaptiveSlide(image:HTMLImageElement,stage:HTMLElement):void{
- if(!image.naturalWidth||!image.naturalHeight)return;
- const slide=image.closest<HTMLElement>(".carousel-slide-adaptive");
- if(!slide)return;
- const width=Math.max(1,stage.clientWidth),height=Math.max(1,stage.clientHeight);
- const imageRatio=image.naturalWidth/image.naturalHeight,frameRatio=width/height;
- const full=Math.abs(Math.log(imageRatio/frameRatio))<.075;
- slide.dataset.photoFit=full?"full":imageRatio>frameRatio?"letterbox":"pillarbox";
- if(full){slide.style.removeProperty("--photo-backdrop");return;}
- const scale=Math.min(width/image.naturalWidth,height/image.naturalHeight);
- const imageWidth=image.naturalWidth*scale,imageHeight=image.naturalHeight*scale;
- const rect={
-  "--photo-left":(width-imageWidth)/2,
-  "--photo-top":(height-imageHeight)/2,
-  "--photo-width":imageWidth,
-  "--photo-height":imageHeight
- };
- for(const [key,value] of Object.entries(rect))slide.style.setProperty(key,value.toFixed(2)+"px");
- slide.style.setProperty("--photo-backdrop",'url('+JSON.stringify(image.currentSrc||image.src)+')');
-}
-const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,prioritize=true,gpuSafe=false,adaptive=false,loop=false,onIndexChange,onCoverReady},ref) {
+const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCarouselImpl({photos,name,age,externalGesture=false,dots=false,prioritize=true,gpuSafe=false,adaptive=false,loop=false,ambientActive=false,onIndexChange,onCoverReady},ref) {
  const [index,setIndex]=useState(0);
  const tracking=useRef<Tracking|null>(null);
  const frame=useRef<HTMLDivElement>(null);
@@ -87,23 +64,22 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(photoTrack.current)photoTrack.current.style.transition="none";
    renderOffset(Math.min(activeRef.current,Math.max(0,photos.length-1))+visualOffset,0);
  },[photoSignature,photos.length,renderOffset,visualOffset]);
- useEffect(()=>{
-  if(!adaptive||typeof ResizeObserver==="undefined")return;
-  const stage=frame.current;
-  if(!stage)return;
-  const observer=new ResizeObserver(()=>{
-   photoTrack.current?.querySelectorAll<HTMLImageElement>(".carousel-slide-adaptive img.is-ready")
-    .forEach(img=>syncAdaptiveSlide(img,stage));
-  });
-  observer.observe(stage);
-  return ()=>observer.disconnect();
- },[adaptive,photoSignature]);
+
  const imageAtVisual=(position:number):HTMLImageElement|null=>{
   const child=photoTrack.current?.children.item(position);
   return child?.querySelector<HTMLImageElement>("img.feed-carousel-photo")??null;
  };
  const photoElement=(i:number):HTMLImageElement|null=>
   i<0||i>=photos.length?null:imageAtVisual(i+visualOffset);
+ const ambientHost=()=>ambientActive?frame.current:null;
+ const photoSource=(i:number):string=>
+  photoElement(i)?.currentSrc||photoElement(i)?.src||photos[i]?.src||"";
+ const neighbor=(i:number,direction:-1|1)=>
+  cyclic?(i+photos.length+direction)%photos.length:i+direction;
+ // Only the active card owns the ambient. No React renders on a photo drag.
+ useEffect(()=>{
+  if(ambientActive&&photos.length)activateFeedAmbient(frame.current,photoSource(activeRef.current));
+ },[ambientActive,photoSignature]);
  const paintedVisual=(position:number):boolean=>{
   const image=imageAtVisual(position);
   return !!image?.isConnected&&(image.classList.contains("is-unavailable")||
@@ -176,6 +152,15 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    frameId.current=window.requestAnimationFrame(()=>{
      frameId.current=null;
      renderOffset(t.startIndex,offset);
+     if(ambientActive&&photos.length>1){
+      const direction=offset<0?1:-1;
+      const current=activeRef.current,next=neighbor(current,direction);
+      const visualNext=Math.round(t.startIndex)+direction;
+      if(next>=0&&next<photos.length&&paintedVisual(visualNext)){
+       scrubFeedAmbient(ambientHost(),photoSource(current),photoSource(next),
+        Math.min(1,Math.abs(offset)/Math.max(1,t.width)));
+      }
+     }
    });
    return true;
  };
@@ -210,6 +195,17 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(photoTrack.current)
      photoTrack.current.style.transition="transform .31s cubic-bezier(.22,.77,.23,1)";
    renderOffset(visualTarget,0);
+   if(ambientActive&&photos.length>1){
+    const from=activeRef.current;
+    const delta=x-t.x;
+    const direction=delta<0?1:-1;
+    const preview=neighbor(from,direction);
+    const visualNext=Math.round(t.startIndex)+direction;
+    const amount=Math.min(1,Math.abs(dragOffset(t,delta))/Math.max(1,t.width));
+    if(t.horizontal&&preview>=0&&preview<photos.length&&paintedVisual(visualNext)){
+     settleFeedAmbient(ambientHost(),photoSource(from),photoSource(preview),target===preview,amount);
+    }else activateFeedAmbient(ambientHost(),photoSource(target));
+   }
    if(target!==activeRef.current){
     activeRef.current=target;setIndex(target);onIndexChange?.(target);
     warmNeighbors(target);
@@ -249,6 +245,7 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
    if(photoTrack.current)photoTrack.current.style.transition=farJump?
     "none":"transform .31s cubic-bezier(.22,.77,.23,1)";
    renderOffset(i+visualOffset,0);activeRef.current=i;setIndex(i);onIndexChange?.(i);
+   if(ambientActive)activateFeedAmbient(ambientHost(),photoSource(i));
    // Once a slide has been requested its DOM src is retained. Warm only the
    // next neighbor so repeated back/forward swipes never detach and reload an
    // already painted image (the source of the Android white/grey flash).
@@ -269,12 +266,6 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
     // inline opacity to zero and replay the photo entrance on promotion.
     noteFeedImageDecoded(source);
     image.classList.add("is-ready");
-    if(adaptive){
-     const slide=image.closest<HTMLElement>(".carousel-slide-adaptive");
-     if(slide){
-      if(frame.current)syncAdaptiveSlide(image,frame.current);
-     }
-    }
     if(photoIndex===0&&!isClone)onCoverReadyRef.current?.();
     if(!isClone&&pendingPhoto.current===photoIndex){
      pendingPhoto.current=null;selectPhoto(photoIndex);
@@ -317,10 +308,6 @@ const PhotoCarouselImpl=forwardRef<PhotoCarouselHandle,Props>(function PhotoCaro
        return adaptive?
         <div key={p.id+"::"+visualIndex} className="carousel-slide carousel-slide-adaptive"
          aria-hidden={isClone} data-photo-fit="pending">
-         <div className="carousel-photo-bleed carousel-photo-bleed-top" aria-hidden="true"/>
-         <div className="carousel-photo-bleed carousel-photo-bleed-bottom" aria-hidden="true"/>
-         <div className="carousel-photo-bleed carousel-photo-bleed-left" aria-hidden="true"/>
-         <div className="carousel-photo-bleed carousel-photo-bleed-right" aria-hidden="true"/>
          {picture}
         </div>:
         <div key={p.id+"::"+visualIndex} className="carousel-slide" aria-hidden={isClone}>{picture}</div>;

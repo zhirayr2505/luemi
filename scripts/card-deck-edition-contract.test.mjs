@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 const read=p=>readFileSync(p,"utf8");
 const card=read("apps/web/src/discovery/FeedCard.tsx");
 const styles=read("apps/web/src/discovery/card-deck-edition.css");
+const ambient=read("apps/web/src/discovery/photo-ambient-edition.css");
 const real=read("apps/web/src/discovery/RealDiscoveryHome.tsx");
 const carousel=read("apps/web/src/ui/PhotoCarousel.tsx");
 test("the real and QA feed use an inset rounded profile card, not a fullscreen photo",()=>{
@@ -17,10 +18,11 @@ test("the real and QA feed use an inset rounded profile card, not a fullscreen p
  assert.match(styles,/--luemi-card-top:calc\(var\(--top-safe,0px\) \+ 99px\)/);
  assert.match(styles,/--luemi-card-bottom:calc\(var\(--moon-actions-bottom\) \+ var\(--moon-actions-height\) \+ 13px\)/);
  assert.match(styles,/\.moonstone-person-card\{[\s\S]*?border-radius:25px/);
- assert.match(styles,/\.moonstone-person-card \.moonstone-photo\{[\s\S]*?bottom:var\(--luemi-card-footer-height\)/);
+ assert.match(styles,/\.moonstone-person-card \.moonstone-photo\{[\s\S]*?bottom:0/);
 });
 test("sharp photo sits inside its frame: no full-screen blur, mask, crop or duplicated face",()=>{
- assert.match(styles,/\.carousel-slide-adaptive::before,[\s\S]*?\.carousel-photo-bleed\{[\s\S]*?display:none!important/);
+ assert.doesNotMatch(styles,/carousel-photo-bleed/);
+ assert.match(ambient,/\.discovery-photo-ambient-next/);
  assert.match(styles,/\.feed-carousel-photo,[\s\S]*?\[data-photo-fit="full"\] \.feed-carousel-photo\{/);
  assert.match(styles,/object-fit:contain;object-position:center/);
  assert.match(styles,/-webkit-mask-image:none;mask-image:none/);
@@ -30,7 +32,7 @@ test("sharp photo sits inside its frame: no full-screen blur, mask, crop or dupl
  assert.match(carousel,/const cyclic=loop&&photos\.length>1/);
 });
 test("footer information and five existing actions stay interactive and outside photo",()=>{
- assert.match(styles,/\.moonstone-compact-info\{[\s\S]*?background:#232D3A/);
+ assert.match(ambient,/\.moonstone-compact-info\{[\s\S]*?background:linear-gradient/);
  assert.match(styles,/\.moonstone-profile-drawer\{[\s\S]*?top:calc\(var\(--luemi-card-top\) \+ 1px\)/);
  assert.match(card,/onPointerDownCapture=\{down\} onPointerMoveCapture=\{move\}/);
  assert.match(card,/onAction\("undo"\)/);
