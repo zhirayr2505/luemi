@@ -11,7 +11,7 @@ jobs:
   android-ux:
     # Avoid an always-on extra runner once LUEMI becomes a private repository.
     # This focused QA is automatic only for its hardening branch; manual afterwards.
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/android-webview-interaction-stability-matrix-20261024' || github.head_ref == 'fix/gesture-scroll-tab-ownership-20261025' || github.head_ref == 'fix/profile-scroll-handoff-theme-preview-20261025' || github.head_ref == 'refactor/architecture-dead-code-motion-20261025' || github.head_ref == 'feature/open-launch-preflight-20261029' || github.head_ref == 'fix/feed-liquid-glass-flicker-20261109' || github.head_ref == 'feat/liquid-glass-v2-optics-20261109' || github.head_ref == 'fix/feed-reference-soft-glass-20261109' || github.head_ref == 'fix/android-feed-compositor-tiles-20261109' || github.head_ref == 'fix/feed-ambient-seam-photo-swipe-20261109'
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/android-webview-interaction-stability-matrix-20261024' || github.head_ref == 'fix/gesture-scroll-tab-ownership-20261025' || github.head_ref == 'fix/profile-scroll-handoff-theme-preview-20261025' || github.head_ref == 'refactor/architecture-dead-code-motion-20261025' || github.head_ref == 'feature/open-launch-preflight-20261029' || github.head_ref == 'fix/feed-liquid-glass-flicker-20261109' || github.head_ref == 'feat/liquid-glass-v2-optics-20261109' || github.head_ref == 'fix/feed-reference-soft-glass-20261109' || github.head_ref == 'fix/android-feed-compositor-tiles-20261109' || github.head_ref == 'fix/feed-ambient-seam-photo-swipe-20261109' || github.head_ref == 'fix/profile-v5-telegram-morph-work'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
@@ -49,10 +49,10 @@ jobs:
             sleep 1
           done
           if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-android-vite.log >&2; exit 1; fi
-          timeout --signal=TERM --kill-after=10s 120s node scripts/feed-liquid-glass-browser.mjs
+          # Current feed and photo-compositor checks use the active Moonstone surface.
+          timeout --signal=TERM --kill-after=10s 180s node scripts/stage03g7-android-visual-qa.mjs
           timeout --signal=TERM --kill-after=10s 260s node scripts/android-profile-ux-matrix.mjs
           timeout --signal=TERM --kill-after=10s 230s node scripts/android-browse-touch-matrix.mjs
-          # The following are accepted V3-specific checks. Historical A2-only
-          # scripts refer to .pm-shell and are not a valid V3 launch gate.
+          # Verify the current profile integration and tab gestures as well.
           timeout --signal=TERM --kill-after=10s 220s node scripts/profile-v3-integration-browser.mjs
           timeout --signal=TERM --kill-after=10s 180s node scripts/discovery-gesture-browser.mjs
