@@ -21,7 +21,7 @@ assert.match(component,/import \{Flag\} from "\.\.\/\.\.\/ui\/Flag";/,
  "country indicator must use the shared circular flag component");
 assert.match(component,/countryCode\s*\?\s*<Flag/,
  "country flag must be guarded by an actual code");
-assert.match(component,/\.owner-profile-avatar-glow/,
+assert.match(component,/className="owner-profile-avatar-glow"/,
  "compact photo must have its subtle image-based glow");
 assert.match(component,/ownerElastic/,
  "photo and content must have one bounded overpull amount");
