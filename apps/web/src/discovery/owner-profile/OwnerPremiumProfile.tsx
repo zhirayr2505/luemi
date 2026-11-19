@@ -116,7 +116,9 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   if(shade.current)shade.current.style.opacity=String(frame.photoShadeAlpha);
   if(expandedIdentity.current){
    expandedIdentity.current.style.opacity=String(frame.expandedAlpha);
-   expandedIdentity.current.style.transform=`translate3d(0,${-progress*18}px,0)`;
+   // The visible identity follows the sheet edge, so it never slips behind the
+   // rising rounded panel before the compact identity takes over.
+   expandedIdentity.current.style.transform=`translate3d(0,${-progress*layout.current.morphDistance}px,0)`;
    const hidden=progress>=.66?"true":"false";
    if(expandedIdentity.current.getAttribute("aria-hidden")!==hidden)expandedIdentity.current.setAttribute("aria-hidden",hidden);
   }
