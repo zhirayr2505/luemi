@@ -2,14 +2,12 @@ import {memo,useLayoutEffect,useRef,useState} from "react";
 import {Heart,Sparkles} from "lucide-react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {ProfileMaster} from "./ProfileV3Gateway";
-import {GlobalHeader} from "./GlobalHeader";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
 import {GestureArbiter,isGestureModalBlocked,fractionalTrack,computedTranslation} from "../ui/gesture-arbiter";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
 import {useModalLayer} from "../ui/modal-layer";
 import type {ProfileRouteMotionHandle} from "./ProfileV3Gateway";
-import type {HeaderMotion} from "./GlobalHeader";
 import type {ProfileMasterData} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
 
@@ -35,7 +33,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
  const gestures=useRef(new GestureArbiter()).current;
  const detachSuppression=useRef<()=>void>(()=>{});
  const attachSuppression=useRef<()=>void>(()=>{});
- const header=useRef<HeaderMotion>(null);
  const gesture=useRef<RouteDrag|null>(null);
  const suppressClickUntil=useRef(0);
  const childMotion=useRef<ProfileRouteMotionHandle|null>(null);
@@ -122,9 +119,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
  // stable ref so a React render cannot detach/reinstall them mid-gesture.
  const motionActions=useRef({moveTo,rollback,onExit});
  motionActions.current={moveTo,rollback,onExit};
- const reportMotion=(progress:number,dragging:boolean)=>{
-  header.current?.setProfileProgress(progress,dragging);
- };
+ const reportMotion=(_progress:number,_dragging:boolean)=>{};
 
  useLayoutEffect(()=>{
   const el=route.current;
@@ -205,12 +200,14 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
   // shared arbiter decides horizontal/vertical ownership from movement.
   if(isGestureModalBlocked(target))return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
-  const collapsed=shell?.dataset.sheetState==="collapsed";
-  if(!collapsed&&!target.closest(".pm-profile-sheet,.v3-int-sheet"))return;
+  const compact=route.current?.querySelector<HTMLElement>(".owner-premium-profile")?.dataset.morphState==="compact";
+  const collapsed=compact||shell?.dataset.sheetState==="collapsed";
+  if(!collapsed&&!target.closest(".owner-profile-scroll,.owner-profile-content,.pm-profile-sheet,.v3-int-sheet"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable=true]");
-  if(interactive&&!target.closest(".pm-photo-tile"))return;
-  const source:RouteDrag["source"]=target.closest(".pm-hero")?"photo":
-   target.closest(".pm-tabs")?"tabs":target.closest(".pm-pages")?"pages":"sheet";
+  if(interactive&&!target.closest(".pm-photo-tile,.owner-profile-photo-tile"))return;
+  const source:RouteDrag["source"]=target.closest(".owner-profile-photo-mask,.pm-hero")?"photo":
+   target.closest(".owner-profile-tabs,.pm-tabs")?"tabs":
+   target.closest(".owner-profile-pages,.pm-pages")?"pages":"sheet";
   const screenLeft=route.current?.getBoundingClientRect().left??0;
   const page=source==="pages"?target.closest<HTMLElement>('.v3-int-page[data-tab-id="about"]'):null;
   // About cards start after both the page and card padding: their first text
@@ -220,7 +217,10 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
   const contentLeft=page?page.getBoundingClientRect().left+
    (Number.parseFloat(getComputedStyle(page).paddingLeft)||0):screenLeft;
   const contentX=e.clientX-contentLeft;
-  const edge=e.clientX-screenLeft<=26||(!!page&&contentX>=0&&contentX<=26);
+  // Pager swipes own the whole content width, including its left edge.
+  // The visible back button remains a reliable way to close the profile.
+  const ownPager=!!target.closest(".owner-profile-pages,.owner-profile-tabs");
+  const edge=!ownPager&&(e.clientX-screenLeft<=26||(!!page&&contentX>=0&&contentX<=26));
   const serial=gestures.begin("pointer",e.pointerId,"route");
   if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
@@ -301,7 +301,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
      onMotionProgress={reportMotion}/></QaProfiler>
-   <GlobalHeader ref={header} mode="profile"/>
    {onLike&&<div className="visitor-like-actions" aria-label="Действия с анкетой">
     <button type="button" disabled={likeBusy} aria-label="Особенная симпатия" onClick={()=>{
      setLikeBusy(true);void onLike("super").finally(()=>setLikeBusy(false));}}><Sparkles size={22}/></button>
