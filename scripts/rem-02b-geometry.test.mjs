@@ -85,4 +85,20 @@ for(const percent of [.25,.5,.9]){
  assert.equal(effects.filter(x=>x==="current").length,1);
  console.log("REM02B_UNIT_PASS rapid reversal, cancellation, stale callbacks never repaint/commit");
 }
+{
+ // V4.2 is the ONLY user-approved profile that opts into a small spring
+ // overrun. The shared controller still clamps legacy motions by default.
+ const spring=clockFixture("sheet",0);let value=0,commits=0;
+ spring.motion.start(0,200,335,[.17,.84,.18,1.13],v=>value=v,()=>commits++,0,true);
+ spring.advance(260);
+ assert(value>200&&value<216,"profile spring overshoots its target by a bounded few pixels");
+ spring.advance(76);
+ close(value,200,.1);
+ assert.equal(commits,1,"elastic settle commits exactly once");
+ const legacy=clockFixture("sheet",0);let legacyValue=0;
+ legacy.motion.start(0,200,335,[.17,.84,.18,1.13],v=>legacyValue=v,()=>{});
+ legacy.advance(260);
+ assert(legacyValue<=200,"other consumers retain non-overshooting motion");
+ console.log("REM02B_UNIT_PASS V4.2 spring overshoot is bounded and opt-in only");
+}
 console.log("REM-02B shared motion geometry QA PASS; owner geometry has a dedicated contract");

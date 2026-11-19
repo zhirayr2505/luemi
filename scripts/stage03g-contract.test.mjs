@@ -71,7 +71,7 @@ assert.ok(ownerSurface.includes('isOwner&&<div className="owner-profile-actions"
  !ownerSurface.includes('className="owner-profile-back"'),
  "visitor profiles cannot access owner action controls");
 assert.ok(ownerSurface.includes('data-morph-state="expanded"')&&
- ownerSurface.includes("ownerMorphFrame(layout.current,progress)"),"owner opens expanded and uses one geometric morph");
+ ownerSurface.includes("ownerMorphFrame(geometry,progress)"),"owner opens expanded and uses one geometric morph");
 assert.ok(profile.includes("gestureArbiter={gestureArbiter}")&&ownerSurface.includes("ownerMorphEndpoint")&&
  ownerSurface.includes('new GeometryMotion("sheet"'),
  "shared owner/visitor profile uses the route arbiter and one endpoint-settle authority");

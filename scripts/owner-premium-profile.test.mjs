@@ -12,7 +12,7 @@ try{
   entryPoints:["apps/web/src/discovery/owner-profile/OwnerProfileGeometry.ts"],
   outfile:output,bundle:true,platform:"node",format:"esm"
  });
- const {createOwnerProfileLayout,ownerMorphEndpoint,ownerMorphFrame,ownerMorphProgress,coverPhoto}=await import(pathToFileURL(output));
+ const {createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,ownerMorphFrame,ownerMorphProgress,coverPhoto}=await import(pathToFileURL(output));
 
  const viewports=[
   {width:360,height:640,topInset:24,bottomInset:20},
@@ -28,8 +28,12 @@ try{
   assert.equal(layout.hero.height,layout.width,"expanded photo is always a 1:1 square");
   assert.equal(layout.expandedTabsTop,layout.hero.y+layout.hero.height-22,
    "rounded bottom sheet overlaps the hero by exactly 22 CSS pixels");
-  assert(layout.compactAvatar.width>=(layout.width>layout.height?96:Math.min(120,layout.width*.35))-.1,
-   "compact avatar is large enough for the approved V4.1 visual");
+  assert(layout.compactAvatar.width>=84&&layout.compactAvatar.width<=112,
+   "Telegram-style compact avatar is 84-112px, not the oversized V4.1 portrait");
+  if(layout.width<=layout.height)assert(layout.compactAvatar.width>=94,
+   "portrait avatar keeps a tappable, recognisable photograph");
+  assert(layout.morphDistance>layout.expandedTabsTop-layout.compactContentTop+80,
+   "photo handoff happens after the panel has already climbed");
   assert(layout.hero.height>layout.compactAvatar.height,"expanded photo must be materially larger than the avatar");
   assert(layout.morphDistance>0,"native scroll must have a positive morph range");
   assert(layout.compactAvatar.y>=viewport.topInset,"compact avatar stays below the Telegram safe area");
@@ -39,42 +43,58 @@ try{
   assert.equal(layout.contentOffset,layout.morphDistance-(layout.expandedTabsTop-layout.compactContentTop),
    "one geometry value keeps cards below tabs after the longer morph travel");
 
-  // Phase A follows the Telegram reference: the sheet moves first, the
-  // photo must stay rectangular until the reserved 18% scroll threshold.
-  const preMorph=ownerMorphFrame(layout,.16);
-  assert.deepEqual(preMorph.mask,layout.hero,"content overlaps the unchanged photo before the round transition");
-  assert.equal(preMorph.radius,0,"photo cannot round before the initial content lift");
-  assert(layout.expandedTabsTop-layout.morphDistance*.16<layout.hero.y+layout.hero.height,
-   "Phase A moves the tabs over the unchanged square photo");
+  // V4.2: photo stays fully square while the sheet covers roughly a third
+  // of it, then a separate ALWAYS circular image fades in quickly.
+  const preMorph=ownerMorphFrame(layout,.58);
+  assert.deepEqual(preMorph.mask,layout.hero,"the large photo stays square until after the sheet climbs");
+  assert.equal(preMorph.squareAlpha,1,"no rounding during the sheet climb");
+  assert.equal(preMorph.circleAlpha,0,"no circle appears before the Telegram handoff");
+  const handoff=ownerMorphFrame(layout,.68);
+  assert.deepEqual(handoff.mask,layout.hero,"square photo never turns into a rounded rectangle");
+  assert(handoff.squareAlpha<1&&handoff.circleAlpha>0,"rapid two-plane switch crossfades photographs");
+  assert.equal(handoff.avatar.width,handoff.avatar.height,"circle plane never becomes an oval");
+  assert.equal(handoff.radius,handoff.avatar.width/2,"circle is geometrically perfect during handoff");
   const rounding=ownerMorphFrame(layout,.72);
-  assert.equal(rounding.mask.width,rounding.mask.height,"photo reaches a circle before the final glide");
-  assert.equal(rounding.radius,rounding.mask.width/2,"rounding phase ends as a true circle");
-  assert(rounding.mask.y>layout.compactAvatar.y,
-   "the already circular photo still has a final upward glide remaining");
+  assert(rounding.avatar.y>layout.compactAvatar.y,
+   "the round image glides gently upward at the end");
 
   const expanded=ownerMorphFrame(layout,0);
-  assert.deepEqual(expanded.mask,layout.hero,"p=0 uses the full expanded photograph");
-  assert.equal(expanded.radius,0,"expanded photograph has no artificial circular crop");
+  assert.deepEqual(expanded.mask,layout.hero,"p=0 uses the full rectangular photograph");
+  assert.equal(expanded.squareAlpha,1);
+  assert.equal(expanded.circleAlpha,0);
   assert.equal(expanded.expandedAlpha,1);
   assert.equal(expanded.compactAlpha,0);
 
   const compact=ownerMorphFrame(layout,1);
-  assert.deepEqual(compact.mask,layout.compactAvatar,"p=1 uses the centered compact avatar rectangle");
-  assert.equal(compact.mask.width,compact.mask.height,"compact avatar is square before clipping");
-  assert.equal(compact.radius,compact.mask.width/2,"compact avatar is a perfect circle");
+  assert.deepEqual(compact.mask,layout.hero,"the same large hero image stays mounted throughout");
+  assert.deepEqual(compact.avatar,layout.compactAvatar,"p=1 uses the centered Telegram-sized circular photo");
+  assert.equal(compact.radius,compact.avatar.width/2,"the final photo is a perfect circle");
+  assert.equal(compact.squareAlpha,0);
+  assert.equal(compact.circleAlpha,1);
   assert.equal(compact.expandedAlpha,0);
   assert.equal(compact.compactAlpha,1);
 
   for(let step=0;step<=100;step++){
    const f=ownerMorphFrame(layout,step/100);
    assert(f.expandedAlpha+f.compactAlpha>=.49,"name cannot vanish during the morph");
+   assert.deepEqual(f.mask,layout.hero,"never mutate the big rectangular photo into an oval");
+   assert.equal(f.avatar.width,f.avatar.height,"photo circle is not an oval at any intermediate step");
+   assert.equal(f.radius,f.avatar.width/2,"photo is circular at every visible intermediate frame");
+   assert(f.contentOffset>=0&&f.contentOffset<=layout.contentOffset,
+    "card compensation follows the same bounded normalized morph coordinate");
   }
   for(const progress of [0,.08,.18,.33,.5,.72,.86,1]){
    const frame=ownerMorphFrame(layout,progress);
-   assert.equal(frame.mask.width,frame.mask.height,
-    "every intermediate photo mask remains square before circular clipping");
-   assert(frame.contentOffset>=0&&frame.contentOffset<=layout.contentOffset,
-    "the card compensation is derived from the same normalized morph progress");
+   assert.equal(frame.mask.width,frame.mask.height,"the original large hero is square");
+  }
+  for(const [start,current,expected] of [
+   [0,layout.morphDistance*.60,null],
+   [0,layout.morphDistance*.62,layout.morphDistance],
+   [layout.morphDistance,layout.morphDistance*.40,null],
+   [layout.morphDistance,layout.morphDistance*.38,0]
+  ]){
+   assert.equal(ownerAutoSnapTarget(start,current,layout.morphDistance),expected,
+    "held-finger Telegram threshold must fire without pointerup");
   }
 
   let previous=-1;
@@ -115,7 +135,7 @@ try{
  assert.deepEqual(short.hero,tall.hero,"tab content or viewport height cannot change square hero geometry");
  assert.deepEqual(short.compactAvatar,tall.compactAvatar,"tab content or viewport height cannot resize the compact avatar");
  assert.equal(short.morphDistance,tall.morphDistance,"tab content height cannot become a morph input");
- console.log("OWNER_PREMIUM_PROFILE_GEOMETRY_PASS 4 viewports, centered circle, reversible scroll progress, aspect-safe cover");
+ console.log("OWNER_PREMIUM_PROFILE_GEOMETRY_PASS 4 viewports, two-plane circle handoff, held-touch thresholds, spring geometry");
 }finally{
  rmSync(directory,{recursive:true,force:true});
 }

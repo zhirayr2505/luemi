@@ -13,18 +13,19 @@ const errors=[];page.on("pageerror",error=>errors.push(error.message));
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=()=>page.locator(".discovery-visitor-route");
 const profile=()=>route().locator(".owner-premium-profile");
-const photo=()=>profile().locator(".owner-profile-photo-mask");
 const scroll=()=>profile().locator(".owner-profile-scroll");
 const currentTab=()=>profile().locator('.owner-profile-tabs [role="tab"][aria-selected="true"]');
 const getTranslation=()=>route().evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node).transform).m41);
 const near=(actual,expected,tolerance=3)=>
  assert.ok(Math.abs(actual-expected)<=tolerance,
   "premium visitor profile moved unexpectedly: "+actual+" versus "+expected);
-const portrait=()=>photo().evaluate(el=>{
+const portrait=()=>profile().evaluate(node=>{
+ const el=node.querySelector(node.dataset.morphState==="compact"?".owner-profile-avatar-circle":".owner-profile-photo-mask");
+ if(!el)throw Error("visible profile photograph missing");
  const rect=el.getBoundingClientRect();
  return {state:el.closest(".owner-premium-profile")?.dataset.morphState,
   x:rect.x,y:rect.y,width:rect.width,height:rect.height,
-  radius:parseFloat(getComputedStyle(el).borderRadius)};
+  radius:(()=>{const css=getComputedStyle(el).borderRadius;return css.includes("%")?rect.width*parseFloat(css)/100:parseFloat(css);})()};
 });
 const setBackground=hidden=>page.evaluate(hidden=>{
  if(!("__premiumHidden" in window)){
@@ -65,7 +66,7 @@ try{
  await scroll().evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
  await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
  const compact=await portrait();
- assert.ok(compact.width>=120&&compact.width<=150&&Math.abs(compact.width-compact.height)<1.5&&
+ assert.ok(compact.width>=94&&compact.width<=112&&Math.abs(compact.width-compact.height)<1.5&&
   compact.radius>=compact.width/2-1,"compact photo becomes a circle in safe-area coordinates");
  near(compact.x+compact.width/2,393/2,1.5);
  await profile().getByRole("tab",{name:"Фото",exact:true}).click();
@@ -88,8 +89,15 @@ try{
   morphDistance:await profile().evaluate(el=>getComputedStyle(el).getPropertyValue("--owner-morph-distance")),
   rootState:await profile().getAttribute("data-morph-state")}));
  assert.ok(Number.isFinite(after.y)&&Number.isFinite(after.width)&&
-  after.width>=120&&after.width<=150,"portrait geometry remains bounded after resume");
+  after.width>=94&&after.width<=112,"portrait geometry remains bounded after resume");
  near(after.x+after.width/2,393/2,1.5);
+ const railGap=await profile().evaluate(node=>{
+  const avatar=node.querySelector(".owner-profile-avatar-circle")?.getBoundingClientRect();
+  const tabs=node.querySelector(".owner-profile-tabs")?.getBoundingClientRect();
+  if(!avatar||!tabs)throw Error("premium round avatar and attached tabs missing");
+  return tabs.top-avatar.bottom;
+ });
+ assert(railGap>=35,"sticky tab cap must stay below compact avatar on resumed/short viewport: "+railGap);
  assert.equal(await currentTab().innerText(),"Фото","tab selection survives Telegram background/resume");
  near(await getTranslation(),0);
  console.log("PREMIUM_PROFILE_LIFECYCLE_PASS suspended resize, compact geometry, tab retention");

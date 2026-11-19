@@ -49,6 +49,23 @@
  -webkit-tap-highlight-color:transparent;
  box-shadow:0 9px 25px rgba(7,5,14,.22);
 }
+/* V4.2: a second lightweight view of the SAME source, clipped as a circle
+   throughout the entire fast handoff; never render oval intermediate masks. */
+.owner-profile-avatar-circle{
+ position:absolute;z-index:14;left:0;top:0;
+ width:102px;height:102px;border-radius:50%;overflow:hidden;
+ opacity:0;pointer-events:none;isolation:isolate;
+ touch-action:none;user-select:none;-webkit-user-select:none;
+ background:var(--luemi-surface-raised);
+ box-shadow:0 8px 20px rgba(7,5,14,.2),0 0 0 1px rgba(255,255,255,.18);
+ transform:translate3d(0,0,0);backface-visibility:hidden;
+ -webkit-tap-highlight-color:transparent;cursor:pointer;
+}
+.owner-profile-avatar-circle>img{
+ display:block;width:100%;height:100%;object-fit:cover;object-position:50% 34%;
+ user-select:none;-webkit-user-select:none;pointer-events:none;
+}
+.owner-profile-avatar-circle:focus-visible{outline:2px solid var(--luemi-focus);outline-offset:3px}
 .owner-profile-photo-mask:focus-visible{outline:2px solid var(--luemi-focus);outline-offset:-4px}
 .owner-profile-photo-mask>img{
  position:absolute;inset:-1px;display:block;width:calc(100% + 2px);height:calc(100% + 2px);
@@ -138,7 +155,7 @@
 .owner-profile-compact-identity{
  position:absolute;z-index:13;left:50%;top:var(--owner-compact-name-top);
  width:min(310px,calc(100% - 32px));
- display:flex;flex-direction:column;align-items:center;gap:8px;
+ display:flex;flex-direction:column;align-items:center;gap:6px;
  opacity:0;pointer-events:none;color:var(--luemi-text);text-align:center;
  transform:translate3d(-50%,8px,0);
  text-shadow:0 2px 8px rgba(0,0,0,.32);
@@ -168,19 +185,22 @@
 }
 .owner-profile-content{
  position:relative;pointer-events:auto;
- min-height:calc(100% - var(--owner-expanded-tabs-top) + var(--owner-morph-distance) + 48px);
- margin:0;padding:0 13px calc(120px + var(--bottom-safe,0px));
- border-radius:27px 27px 0 0;
+ /* The rounded cap is the sibling tab rail. The content sits seamlessly
+    below it; keeping it out of the sticky containing block avoids drift. */
+ min-height:calc(100% - var(--owner-expanded-tabs-top) + var(--owner-morph-distance) - 4px);
+ margin:0;padding:13px 13px calc(120px + var(--bottom-safe,0px));
+ border-radius:0;
  background:linear-gradient(180deg,var(--luemi-bg-deep),var(--luemi-bg-deep) 126px,var(--luemi-bg));
  box-shadow:0 -8px 24px rgba(7,5,14,.25);
 }
 .owner-profile-tabs{
- position:sticky;z-index:16;top:calc(var(--owner-compact-top) + 4px);
+ position:sticky;z-index:16;top:var(--owner-compact-top);
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
- height:52px;align-items:stretch;margin:0 0 13px;padding:0;
- touch-action:pan-y;overscroll-behavior-x:contain;
+ height:52px;align-items:stretch;margin:0;padding:0 13px;
+ pointer-events:auto;touch-action:pan-y;overscroll-behavior-x:contain;
  border:0;border-bottom:1px solid var(--luemi-border);
- border-radius:0;background:var(--luemi-bg-deep);
+ border-radius:32px 32px 0 0;background:var(--luemi-bg-deep);
+ box-shadow:0 -4px 17px rgba(7,5,14,.1);
 }
 .owner-profile-tabs::after{
  content:"";position:absolute;bottom:-1px;
@@ -280,6 +300,7 @@
 .owner-profile-disclaimer{text-align:center;color:var(--luemi-text-muted);font-size:12px}
 @media(max-width:360px){
  .owner-profile-content{padding-inline:10px}
+ .owner-profile-tabs{padding-inline:10px}
  .owner-profile-expanded-identity{left:18px;right:18px}
  .owner-profile-about article{padding:15px}
  .owner-profile-tabs{height:49px}

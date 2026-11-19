@@ -34,9 +34,9 @@ try{
  await scroll.evaluate((el,d)=>{el.scrollTop=d;el.dispatchEvent(new Event("scroll"));},distance);
  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="compact",
   null,{timeout:5000});
- const compact=await photo.boundingBox();
- assert(compact&&compact.width<145&&Math.abs(compact.width-compact.height)<1.5,
-  "square transitions into centered circular avatar");
+ const compact=await owner.locator(".owner-profile-avatar-circle").boundingBox();
+ assert(compact&&compact.width>=94&&compact.width<=112&&Math.abs(compact.width-compact.height)<1.5,
+  "square hands off directly to Telegram-sized perfectly circular avatar");
  assert(Math.abs(compact.x+compact.width/2-196.5)<2,"compact avatar remains centered");
 
  const tabs=["О себе","Фото","Блики","Подарки"];

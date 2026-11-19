@@ -20,8 +20,8 @@ export class GeometryMotion {
  private runId=0;
  private active:{token:MotionToken;from:number;target:number;start:number;duration:number;
   previousProgress:number;progressStart:number;remaining:number;
-  paint:(n:number)=>void;commit:()=>void;velocity:number}|null=null;
- private frozen:{progress:number;remaining:number;duration:number;paint:(n:number)=>void;commit:()=>void}|null=null;
+  paint:(n:number)=>void;commit:()=>void;velocity:number;allowOvershoot:boolean}|null=null;
+ private frozen:{progress:number;remaining:number;duration:number;paint:(n:number)=>void;commit:()=>void;allowOvershoot:boolean}|null=null;
  private current:number;private revision:number;
  private disposed=false;
  constructor(private name:"sheet"|"tabs"|"hero",private clock:()=>number,
@@ -41,7 +41,7 @@ export class GeometryMotion {
   const fraction=a.progressStart+(1-a.progressStart)*p;
   const initial=ease(a.progressStart);
   const advanced=(ease(fraction)-initial)/Math.max(1e-8,1-initial);
-  return a.from+(a.target-a.from)*bounded(advanced,0,1);
+  return a.from+(a.target-a.from)*bounded(advanced,a.allowOvershoot?-.08:0,a.allowOvershoot?1.08:1);
  }
  private easing:Easing|null=null;
  /** Visible pixels per millisecond from the very same unchanged easing curve. */
@@ -67,7 +67,7 @@ export class GeometryMotion {
   return value;
  }
  start(from:number,target:number,duration:number,easing:Easing,
-  paint:(n:number)=>void,commit:()=>void,revision=this.revision):void{
+  paint:(n:number)=>void,commit:()=>void,revision=this.revision,allowOvershoot=false):void{
   if(this.disposed||![from,target,duration].every(finite))return;
   this.cancel();this.current=from;this.easing=easing;
   this.revision=Math.max(this.revision,revision);
@@ -81,7 +81,7 @@ export class GeometryMotion {
    return;
   }
   this.active={token:updated,from,target,start:this.clock(),duration,remaining:duration,
-   previousProgress:0,progressStart:0,paint,commit,velocity:0};
+   previousProgress:0,progressStart:0,paint,commit,velocity:0,allowOvershoot};
   this.queue();
  }
  private queue(){
@@ -117,7 +117,7 @@ export class GeometryMotion {
   this.stopFrame();this.active=null;this.current=value;this.revision=revision;
   this.controller.rebase(revision,value,target);
   if(!callbacks)return;
-  this.frozen={progress:progressStart,remaining,duration,paint:callbacks.paint,commit:callbacks.commit};
+  this.frozen={progress:progressStart,remaining,duration,paint:callbacks.paint,commit:callbacks.commit,allowOvershoot:a?.allowOvershoot??this.frozen?.allowOvershoot??false};
   this.current=value;
   this.resume(target,velocity);
  }
@@ -133,7 +133,7 @@ export class GeometryMotion {
   }
   this.active={token:resumed,from:this.current,target,start:this.clock(),duration:frozen.duration,
    remaining:frozen.remaining,previousProgress:frozen.progress,
-   progressStart:frozen.progress,paint:frozen.paint,commit:frozen.commit,velocity};
+   progressStart:frozen.progress,paint:frozen.paint,commit:frozen.commit,velocity,allowOvershoot:frozen.allowOvershoot};
   this.queue();
  }
  /** Hidden zero-size view: freeze time and keep current snapshot until shown. */
@@ -145,7 +145,7 @@ export class GeometryMotion {
   this.stopFrame();this.active=null;this.current=current;
   const remaining=Math.max(0,a.remaining-(now-a.start));
   this.frozen={progress:a.progressStart+(1-a.progressStart)*p,remaining,
-   duration:a.duration,paint:a.paint,commit:a.commit};
+   duration:a.duration,paint:a.paint,commit:a.commit,allowOvershoot:a.allowOvershoot};
   this.controller.suspend(a.token,"geometry-changed");
  }
  /** Reappear at a measured nonzero size; preserve the unused easing interval. */
