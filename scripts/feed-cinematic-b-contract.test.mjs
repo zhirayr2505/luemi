@@ -23,7 +23,7 @@ test("approved card keeps the sharp gallery under its translucent information ov
  assert.match(cardCss,/\.moonstone-person-card \.moonstone-photo\{[\s\S]*?bottom:0/);
  assert.match(css,/\.carousel-slide-adaptive \.feed-carousel-photo\{[\s\S]*?object-fit:contain/);
  assert.doesNotMatch(carousel,/syncAdaptiveSlide|carousel-photo-bleed/);
- assert.match(real,/visibleRows\.slice\(page,page\+2\)/);
+ assert.match(real,/const person=current/);
  // Queued cards load only the cover; active cards may also warm the next photo.
  assert.match(carousel,/const load=!gpuSafe\|\|i===0\|\|\(i===1&&prioritize\)/);
  assert.match(carousel,/src=\{load\?p\.src:undefined\}/);

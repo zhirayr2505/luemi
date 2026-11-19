@@ -31,7 +31,7 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
   const next=new Set(keys);next.add(key);return next;
  }),[]);
  const coverKey=(person:DemoPerson)=>person.id+"::"+(person.photos[0]?.src??"");
- const current=people[page],next=people[page+1];
+ const current=people[page];
  // Warm covers + gallery photos *while* the member reads the current profile.
  // A 3-card DOM window stays mounted; the following cards are decoded ahead.
  useEffect(()=>{
@@ -97,32 +97,28 @@ export function DemoFeedSandbox({draft,active,onExit,onOpenProfile}:Props){
  };
  return <div className="demo-qa-feed" aria-label="Тестовая лента LUEMI">
   {current?<div className="discovery-deck-stage has-profiles" ref={deckRef}>
-    {people.slice(page,page+3).map((person,offset)=>{
-     const foreground=offset===0,successor=offset===1;
-     const side=(page+offset)%2===1?"right":"left";
+    {(()=>{
+     // QA is the same single-card UI as the live feed. Photos for the next
+     // person are still preloaded, without mounting another interactive card.
+     const person=current;
      const decoded=readyKeys.has(coverKey(person));
-     const state=foreground?(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active"):
-      (leaving&&successor?" deck-entering":" deck-queued")+
-      (successor?" deck-depth-one":" deck-depth-two")+" deck-peek-"+side+
+     const state=(leaving?" deck-leaving deck-leaving-"+leavingKind:" deck-active")+
       (!decoded?" deck-photo-pending":"");
      return <div key={person.id} className={"discovery-deck-layer"+state}
        onAnimationEnd={event=>{
         if(!leaving||event.target!==event.currentTarget)return;
-        const entered=event.animationName==="luemi-deck-arrive-right"||
-         event.animationName==="luemi-deck-arrive-left";
-        const exited=["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName);
-        if((successor&&entered)||(foreground&&!next&&exited))finish();
+        if(["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName))
+         finish();
        }}>
        <FeedCard person={person} viewerInterestIds={draft.interests} saved={saved.has(person.id)}
-        canUndo={foreground&&history.length>0}
-        active={foreground&&active} busy={!foreground||leaving}
-        onAction={foreground?action:()=>{}}
-        onOpenProfile={foreground?()=>onOpenProfile(person):()=>{}}
-        onInterests={foreground?()=>onOpenProfile(person):()=>{}}
-        onExitDemo={foreground?onExit:undefined}
+        canUndo={history.length>0} active={active} busy={leaving}
+        onAction={action}
+        onOpenProfile={()=>onOpenProfile(person)}
+        onInterests={()=>onOpenProfile(person)}
+        onExitDemo={onExit}
         onCoverReady={()=>markReady(coverKey(person))}/>
       </div>;
-    })}
+    })()}
   </div>:<div className="demo-qa-finished">
     <ShieldCheck size={31}/><h3>Все {people.length} анкет просмотрены</h3>
     <p>Можно повторить тест свайпов, фотографий и подсветки сколько угодно раз.</p>

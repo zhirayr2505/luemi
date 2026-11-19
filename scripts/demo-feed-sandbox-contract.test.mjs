@@ -72,15 +72,15 @@ test("demo reactions use existing directional compositor animations with zero ba
  assert.match(sandbox,/luemi-deck-exit-right/);
  assert.match(sandbox,/luemi-deck-exit-top/);
  assert.match(deck,/@keyframes luemi-deck-exit-left/);
- assert.match(deck,/@keyframes luemi-deck-arrive-right/);
- assert.match(deck,/@keyframes luemi-deck-arrive-left/);
+ assert.doesNotMatch(deck,/@keyframes luemi-deck-arrive-/);
+ assert.doesNotMatch(sandbox,/deck-queued|deck-entering|deck-peek-/);
  assert.doesNotMatch(style,/@keyframes luemi-demo-/);
  assert.match(sandbox,/const \[history,setHistory\]/);
  assert.match(sandbox,/setHistory\(h=>h\.slice\(0,-1\)\)/);
  assert.match(sandbox,/setSaved\(before=>/);
  assert.match(sandbox,/onAnimationEnd=/);
- assert.match(sandbox,/event.animationName==="luemi-deck-arrive-right"/,
-  "Successor must complete its entrance before the next page commits");
+ assert.match(sandbox,/if\(\["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"\]\.includes\(event\.animationName\)\)/,
+  "The only visible profile completes its exit before the next page commits");
  assert.match(style,/\.demo-qa-feed/);
  assert.doesNotMatch(style,/backdrop-filter:blur\(/);
 });

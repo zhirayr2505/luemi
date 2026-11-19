@@ -130,9 +130,10 @@ test("real feed continues paging without blocking profile admission on photo pre
  assert.match(shell,/if\(active&&tab==="feed"&&firstLoadSettled&&!loading&&\(!current\|\|!!error\)\)/);
 });
 
-test("real feed restores animated deck, undoable skip and session bookmarks across tabs",()=>{
- assert.match(shell,/visibleRows\.slice\(page,page\+2\)\.map/);
- assert.match(shell,/deck-peek-"\+side/);
+test("real feed presents one animated card, undoable skip and session bookmarks across tabs",()=>{
+ assert.match(shell,/const person=current/);
+ assert.match(shell,/className=\{"discovery-deck-layer"\+state\}/);
+ assert.doesNotMatch(shell,/visibleRows\.slice\(page,page\+2\)\.map|deck-peek-"\+side/);
  assert.match(shell,/className=\{"discovery-deck-layer"\+state\}/);
  assert.match(shell,/preloadUpcomingFeedPhotos/);
  assert.match(shell,/warmPublishedPagePhotos/); // initial first-page preparation only

@@ -20,11 +20,11 @@ test("the real and QA feed use an inset rounded profile card, not a fullscreen p
  assert.match(styles,/\.moonstone-person-card\{[\s\S]*?border-radius:25px/);
  assert.match(styles,/\.moonstone-person-card \.moonstone-photo\{[\s\S]*?bottom:0/);
 });
-test("sharp photo sits inside its frame: no full-screen blur, mask, crop or duplicated face",()=>{
+test("sharp photo fills the card without distortion, duplicated images or internal blur",()=>{
  assert.doesNotMatch(styles,/carousel-photo-bleed/);
  assert.match(ambient,/\.discovery-photo-ambient-next/);
  assert.match(styles,/\.feed-carousel-photo,[\s\S]*?\[data-photo-fit="full"\] \.feed-carousel-photo\{/);
- assert.match(styles,/object-fit:contain;object-position:center/);
+ assert.match(ambient,/object-fit:cover;object-position:center center/);
  assert.match(styles,/-webkit-mask-image:none;mask-image:none/);
  assert.match(styles,/filter:none/);
  assert.match(styles,/\.moonstone-photo-shade\{[\s\S]*?box-shadow:none/);

@@ -384,33 +384,31 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
    <div className={"discovery-deck-stage"+(current?" has-profiles":"")} ref={deckRef}>{current?
-    visibleRows.slice(page,page+2).map((person,offset)=>{
-     const foreground=offset===0,successor=offset===1;
-     const side=(page+offset)%2===1?"right":"left";
-     const key=coverKey(person.id,cardRows[page+offset]?.photos[0]?.src??"");
+    (()=>{
+     // Exactly one visible card. Upcoming profiles are prefetched above, but
+     // never rendered beneath it (which previously duplicated buttons).
+     const person=current;
+     const key=coverKey(person.id,cardRows[page]?.photos[0]?.src??"");
      const isReady=readyKeys.has(key);
-     const state=foreground?(leaving===person.id?
-       " deck-leaving deck-leaving-"+leavingKind:" deck-active"):
-       (leaving&&successor?" deck-entering":" deck-queued")+
-       (successor?" deck-depth-one":" deck-depth-two")+" deck-peek-"+side+
+     const state=(leaving===person.id?
+       " deck-leaving deck-leaving-"+leavingKind:" deck-active")+
        (!isReady?" deck-photo-pending":"");
      return <div key={person.id} className={"discovery-deck-layer"+state}
       onAnimationEnd={event=>{
        if(!leaving||event.target!==event.currentTarget)return;
-       const arrived=["luemi-deck-arrive-left","luemi-deck-arrive-right"].includes(event.animationName);
-       const departed=["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName);
-       if((successor&&arrived)||(foreground&&!visibleRows[page+1]&&departed))finishDeck();
+       if(["luemi-deck-exit-left","luemi-deck-exit-right","luemi-deck-exit-top"].includes(event.animationName))
+        finishDeck();
       }}>
-      <FeedCard person={cardRows[page+offset]} real viewerInterestIds={draft.interests} saved={saved.has(person.id)}
-       canUndo={foreground&&undoPage!==null} active={foreground&&active}
-       busy={!foreground||busy||!!leaving||locked.current}
-       onAction={foreground?kind=>{void act(kind);}:()=>{}}
-       onOpenProfile={foreground?()=>onPerson(person):()=>{}}
-       onInterests={foreground?()=>onPerson(person):()=>{}}
-       onMore={foreground?()=>{setMenu(person);setReporting(false);}:undefined}
-       onCoverReady={()=>{markReady(key);if(foreground&&active)onFirstScreenReady?.();}}/>
+      <FeedCard person={cardRows[page]} real viewerInterestIds={draft.interests} saved={saved.has(person.id)}
+       canUndo={undoPage!==null} active={active}
+       busy={busy||!!leaving||locked.current}
+       onAction={kind=>{void act(kind);}}
+       onOpenProfile={()=>onPerson(person)}
+       onInterests={()=>onPerson(person)}
+       onMore={()=>{setMenu(person);setReporting(false);}}
+       onCoverReady={()=>{markReady(key);if(active)onFirstScreenReady?.();}}/>
      </div>;
-    }):
+    })():
     <div className="discovery-deck-layer deck-active"><LuemiEmptyState className="real-discovery-empty" icon={Heart}
      title="Пока нет анкет" description="Когда появятся новые люди, ты увидишь их здесь.">
       <button type="button" className="discovery-glass-button" onClick={onEditFilters}>Изменить фильтры</button>

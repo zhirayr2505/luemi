@@ -90,10 +90,51 @@
 .real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-profile-toggle{
  filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));
 }
-/* Modal/profile drawer remains the existing matte glass panel. */
+/* Inset card: fill all available pixels without distorting the photograph.
+ * Only the crop changes (cover vs contain), never the original aspect ratio.
+ * The active image is crisp; the external ambient alone is blurred. */
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-photo
+ .carousel-track>.carousel-slide-adaptive .feed-carousel-photo,
+.real-discovery-home[data-feed-visible="true"] .moonstone-person-card .moonstone-photo
+ .carousel-track>.carousel-slide-adaptive[data-photo-fit="full"] .feed-carousel-photo{
+ position:absolute;inset:0;top:0;left:0;
+ width:100%;height:100%;max-width:none;max-height:none;
+ object-fit:cover;object-position:center center;
+ transform:none;-webkit-mask-image:none;mask-image:none;filter:none;
+}
+/* Three plain tab labels; the active one is marked by a single coral rule.
+ * No capsule, border, fill, shadow or glow. */
 .real-discovery-home[data-feed-visible="true"] .discovery-top-tabs{
- background:rgba(30,36,49,.83);border-color:rgba(239,244,252,.22);
- box-shadow:0 5px 18px rgba(4,8,16,.21);
+ width:min(calc(100% - 58px),390px);
+ height:42px;padding:0;
+ border:0;border-radius:0;
+ background:transparent;box-shadow:none;
+ -webkit-backdrop-filter:none;backdrop-filter:none;
+ overflow:visible;
+}
+.real-discovery-home[data-feed-visible="true"] .discovery-top-tabs>button,
+.real-discovery-home[data-feed-visible="true"] .discovery-top-tabs>button.active{
+ height:38px;min-height:38px;
+ padding:0 6px;border:0;border-radius:0;
+ background:transparent;color:#E6E9EF;
+ text-shadow:0 1px 3px rgba(0,0,0,.4);box-shadow:none;
+ font-weight:550;
+}
+.real-discovery-home[data-feed-visible="true"] .discovery-top-tabs>button.active{
+ color:#FFFFFF;font-weight:700
+}
+.real-discovery-home[data-feed-visible="true"] .discovery-tab-underline{
+ display:block;opacity:1;
+ position:absolute;left:0;bottom:0;
+ width:33.333333%;height:3px;
+ background:transparent;box-shadow:none;border:0;pointer-events:none;
+ transform:translate3d(calc(var(--luemi-tab-offset,0%) + var(--luemi-underline-drag,0px)),0,0);
+ transition:transform .28s cubic-bezier(.2,.77,.21,1);
+}
+.real-discovery-home[data-feed-visible="true"] .discovery-tab-underline::after{
+ content:"";display:block;opacity:1;
+ width:36px;height:3px;margin:0 auto;
+ border-radius:999px;background:#E96A86;box-shadow:none;
 }
 .real-discovery-home[data-feed-visible="true"]>.discovery-bottom-nav{
  background:rgba(31,36,49,.88);border-color:rgba(241,247,255,.19);

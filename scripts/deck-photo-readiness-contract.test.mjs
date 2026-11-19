@@ -18,21 +18,18 @@ test("media readiness can never gate or freeze an accepted feed action",()=>{
  assert.match(live,/Never hold the accepted action behind media readiness[\s\S]*?begin\(\)/);
 });
 
-test("queued photo peeks are invisible before decode, then fade without repainting interior",()=>{
- assert.match(demo,/deck-photo-pending/);
- assert.match(live,/deck-photo-pending/);
- assert.match(css,/\.deck-queued\.deck-photo-pending\{\s*opacity:0/);
- assert.match(css,/transition:opacity \.18s ease-out/);
- assert.doesNotMatch(css,/\.deck-queued :is\(/,
-  "whole queued card is composited, without separate hide/show of its buttons");
- assert.doesNotMatch(css,/opacity:0!important/);
+test("one visible card is mounted while upcoming photos prefetch without duplicate actions",()=>{
+ assert.match(demo,/const person=current/);
+ assert.match(live,/const person=current/);
+ assert.doesNotMatch(demo,/people\.slice\(page,page\+3\)\.map|deck-peek-|deck-queued/);
+ assert.doesNotMatch(live,/visibleRows\.slice\(page,page\+2\)\.map|deck-peek-|deck-queued/);
+ assert.doesNotMatch(css,/deck-queued|deck-entering|deck-peek-|deck-depth-two/);
  assert.match(feed,/onCoverReady=\{onCoverReady\}/);
  assert.match(photo,/onCoverReadyRef\.current\?\.\(\)/);
  assert.match(photo,/className="feed-carousel-fallback"/);
  assert.match(photo,/image\.classList\.add\("is-unavailable"\)/);
  assert.match(photo,/data-fallback=\{p\.fallback\|\|undefined\}/);
 });
-
 test("gallery must retain the current image until the requested next image is decoded",()=>{
  assert.match(photo,/const pendingPhoto=useRef<number\|null>\(null\)/);
  assert.match(photo,/const painted=\(i:number\)/);

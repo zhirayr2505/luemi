@@ -1,39 +1,17 @@
-/* LUEMI Discovery Deck V3
- * The real and isolated-demo feeds share this single motion system.
- * Each keyed card stays mounted while another card exits/enters.
- * All moving properties are compositor-only: transform + opacity. */
+/* LUEMI Single Card Deck — one mounted profile at a time.
+ * Upcoming photos are prefetched, but there are no queued/peeking cards,
+ * duplicate reaction buttons, or second profile layers.
+ * The existing accepted action keeps its one compositor-only exit motion. */
 .discovery-app .discovery-deck-stage.has-profiles{
  position:relative;isolation:isolate;overflow:visible;
 }
 .discovery-app .discovery-deck-stage.has-profiles>.discovery-deck-layer{
- position:absolute;inset:4px 0 8px;min-height:0;
+ position:absolute;inset:0;min-height:0;
  transform-origin:50% 74%;backface-visibility:hidden;
 }
 .discovery-app .discovery-deck-stage.has-profiles>.deck-active{
  z-index:4;pointer-events:auto;
  transform:translate3d(0,0,0) scale(1);opacity:1;
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-queued{
- z-index:2;pointer-events:none;opacity:.86;
- transition:opacity .18s ease-out;
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-queued.deck-photo-pending{
- opacity:0;
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-depth-two{
- z-index:1;opacity:.62;
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-right{
- transform:translate3d(18px,8px,0) scale(.975);
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-queued.deck-peek-left{
- transform:translate3d(-18px,8px,0) scale(.975);
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-depth-two.deck-peek-right{
- transform:translate3d(24px,13px,0) scale(.955);
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-depth-two.deck-peek-left{
- transform:translate3d(-24px,13px,0) scale(.955);
 }
 .discovery-app .discovery-deck-stage.has-profiles>.deck-leaving{
  z-index:7;pointer-events:none;will-change:transform,opacity;
@@ -46,15 +24,6 @@
 }
 .discovery-app .discovery-deck-stage.has-profiles>.deck-leaving-special{
  animation:luemi-deck-exit-top .52s cubic-bezier(.18,.76,.2,1) both;
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-entering{
- z-index:3;pointer-events:none;will-change:transform,opacity;
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-entering.deck-peek-right{
- animation:luemi-deck-arrive-right .48s cubic-bezier(.21,.73,.26,1) both;
-}
-.discovery-app .discovery-deck-stage.has-profiles>.deck-entering.deck-peek-left{
- animation:luemi-deck-arrive-left .48s cubic-bezier(.21,.73,.26,1) both;
 }
 @keyframes luemi-deck-exit-left{
  from{transform:translate3d(0,0,0) rotate(0deg) scale(1);opacity:1}
@@ -71,24 +40,8 @@
  22%{transform:translate3d(0,-2.5%,0) scale(1.006);opacity:1}
  to{transform:translate3d(0,-116%,0) scale(.955);opacity:0}
 }
-@keyframes luemi-deck-arrive-right{
- from{transform:translate3d(18px,8px,0) scale(.975);opacity:.86}
- to{transform:translate3d(0,0,0) scale(1);opacity:1}
-}
-@keyframes luemi-deck-arrive-left{
- from{transform:translate3d(-18px,8px,0) scale(.975);opacity:.86}
- to{transform:translate3d(0,0,0) scale(1);opacity:1}
-}
-/* No interior visibility changes between queued/entering/active states.
- * The photo indicators, icons and text remain painted in one retained layer.
- * Only the outer card composites. Actions stay inert via pointer-events and
- * React disabled props, not via sudden opacity flips on promotion. */
-.discovery-app .discovery-deck-stage.has-profiles :is(.deck-queued,.deck-entering)
- :is(.moonstone-pass-button:disabled,.moonstone-like-button:disabled,.moonstone-profile-toggle:disabled){
- opacity:1;
-}
 @media(prefers-reduced-motion:reduce){
- .discovery-app .discovery-deck-stage.has-profiles>.deck-leaving,
- .discovery-app .discovery-deck-stage.has-profiles>.deck-entering{
-  animation:none;will-change:auto}
+ .discovery-app .discovery-deck-stage.has-profiles>.deck-leaving{
+  animation:none;will-change:auto
+ }
 }
