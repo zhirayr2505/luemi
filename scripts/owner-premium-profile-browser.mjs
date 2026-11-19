@@ -56,18 +56,21 @@ try{
  await scroll.evaluate(element=>{element.scrollTop=element.scrollHeight;});
  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.getAttribute("data-morph-state")==="compact");
  const compact=await root.evaluate(node=>{
-  const mask=node.querySelector(".owner-profile-photo-mask");
+  const mask=node.querySelector(".owner-profile-avatar-circle");
   const image=mask?.querySelector("img");
-  if(!mask||!image)throw Error("compact photo surface missing");
+  const original=node.querySelector(".owner-profile-photo-mask img");
+  if(!mask||!image||!original)throw Error("compact circular photo surface missing");
   const rect=mask.getBoundingClientRect();
   return {rect:rect.toJSON(),radius:getComputedStyle(mask).borderRadius,
-   same:image===window.__ownerProfileImage,photoId:image.dataset.photoId};
+   same:original===window.__ownerProfileImage&&image.getAttribute("src")===original.getAttribute("src"),
+   photoId:image.dataset.photoId};
  });
- assert.equal(compact.same,true,"the expanded photo element remains mounted as the compact avatar");
+ assert.equal(compact.same,true,"original square photo is preserved and the compact circle shares its exact source");
  assert.equal(compact.photoId,initial.photoId,"morph cannot switch to another photo");
  assert(Math.abs((compact.rect.x+compact.rect.width/2)-393/2)<1,"compact avatar is horizontally centered");
  assert(Math.abs(compact.rect.width-compact.rect.height)<1,"compact avatar is square");
  assert(parseFloat(compact.radius)>=compact.rect.width/2-1,"compact avatar is circular");
+ assert(compact.rect.width>=94&&compact.rect.width<=112,"Telegram-sized avatar leaves minimal header space");
  assert((await root.locator(".owner-profile-compact-backdrop").evaluate(el=>Number(getComputedStyle(el).opacity)))>.95,
   "compact photograph is backed by its blurred original image");
 
