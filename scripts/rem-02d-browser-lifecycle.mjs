@@ -92,6 +92,8 @@ try{
  await page.keyboard.press("Escape");
  await route().waitFor({state:"detached",timeout:5000});
  await open();
+ await scroll().evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event("scroll"));});
+ await page.waitForFunction(()=>document.querySelector(".discovery-visitor-route .owner-premium-profile")?.dataset.morphState==="compact");
  await edgeSwipe(212);
  await route().waitFor({state:"detached",timeout:5000});
  await open();
