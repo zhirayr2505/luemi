@@ -4,7 +4,7 @@
  position:absolute;inset:0;overflow:hidden;isolation:isolate;
  --owner-hero-height:393px;--owner-hero-bottom:393px;
  --owner-expanded-tabs-top:393px;--owner-compact-top:318px;--owner-compact-name-top:270px;
- --owner-morph-distance:94px;--owner-content-shift:37px;--owner-morph-progress:0;
+ --owner-morph-distance:94px;--owner-content-shift:37px;
  --owner-avatar-x:130px;--owner-avatar-y:142px;--owner-avatar-size:132px;
  --owner-brand-top:max(calc(var(--top-safe,0px) - 9px),34px);
  color:var(--luemi-text);background:var(--luemi-bg-deep);
@@ -184,7 +184,7 @@
 }
 .owner-profile-tabs::after{
  content:"";position:absolute;bottom:-1px;
- left:calc(var(--owner-tab-index,0) * 25% + 12px);
+ left:calc(var(--owner-tab-offset,0%) + 12px);
  width:calc(25% - 24px);height:2px;border-radius:999px;
  pointer-events:none;background:var(--luemi-coral);
  transition:left .27s cubic-bezier(.2,.82,.24,1);
