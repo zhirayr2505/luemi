@@ -224,7 +224,12 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
   // Pager swipes own the whole content width, including its left edge.
   // The visible back button remains a reliable way to close the profile.
   const ownPager=!!target.closest(".owner-profile-pages,.owner-profile-tabs");
-  const edge=!ownPager&&(e.clientX-screenLeft<=26||(!!page&&contentX>=0&&contentX<=26));
+  // The actual left 26px screen gutter always belongs to route navigation,
+  // even when a sticky tab strip reaches it. Else tabs consume a back swipe
+  // after compacting a Premium Profile (especially on short viewports).
+  // Only the *additional* About-card gutter is disabled for independent pagers.
+  const edge=e.clientX-screenLeft<=26||
+   (!ownPager&&!!page&&contentX>=0&&contentX<=26);
   const serial=gestures.begin("pointer",e.pointerId,"route");
   if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
