@@ -200,8 +200,12 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
   // shared arbiter decides horizontal/vertical ownership from movement.
   if(isGestureModalBlocked(target))return;
   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
-  const compact=route.current?.querySelector<HTMLElement>(".owner-premium-profile")?.dataset.morphState==="compact";
-  const collapsed=compact||shell?.dataset.sheetState==="collapsed";
+  const premium=route.current?.querySelector<HTMLElement>(".owner-premium-profile");
+  const compact=premium?.dataset.morphState==="compact";
+  // Legacy shell sheetState is not updated by Premium Photo Profile. Never
+  // treat an expanded premium hero as collapsed, or the back recognizer will
+  // steal the photo's right swipe on visitor profiles.
+  const collapsed=premium?compact:shell?.dataset.sheetState==="collapsed";
   if(!collapsed&&!target.closest(".owner-profile-scroll,.owner-profile-content,.pm-profile-sheet,.v3-int-sheet"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable=true]");
   if(interactive&&!target.closest(".pm-photo-tile,.owner-profile-photo-tile"))return;
