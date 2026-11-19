@@ -25,7 +25,7 @@ type Props={
 };
 
 type ProfileGesture={
- id:number;serial:number;source:"photo"|"pages";axis:"horizontal"|"vertical"|null;
+ id:number;serial:number;source:"photo"|"pages"|"tabs";axis:"horizontal"|"vertical"|null;
  x:number;y:number;startScroll:number;width:number;captured:boolean;
  samples:{position:number;time:number}[];
 };
@@ -60,7 +60,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  const photoSignature=photos.map(photo=>photo.id).join("\u0000");
  const selectedPhotoId=useRef(mainPhoto?.id??null);
  const gesture=useRef<ProfileGesture|null>(null);
- const suppressPhotoClick=useRef(false);
+ const suppressPhotoClick=useRef(false),suppressTabClick=useRef(false);
  const root=useRef<HTMLElement>(null),scroller=useRef<HTMLDivElement>(null);
  const mask=useRef<HTMLDivElement>(null),heroImage=useRef<HTMLImageElement>(null);
  const prevImage=useRef<HTMLDivElement>(null),nextImage=useRef<HTMLDivElement>(null);
@@ -435,7 +435,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
     try{event.currentTarget.setPointerCapture(event.pointerId);current.captured=true;}catch{/* older WebView */}
    }
   }
-  if(current.axis==="vertical"&&current.source==="pages")return;
+  if(current.axis==="vertical"&&current.source!=="photo")return;
   if(event.cancelable)event.preventDefault();
   if(current.axis==="vertical"&&scroller.current){
    const raw=current.startScroll-dy;
@@ -481,16 +481,20 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    photoSlideTimer.current=window.setTimeout(()=>{
     photoSlideTimer.current=null;if(valid)setRenderIndex(target);else resetPhotoTrack();
    },250);
-  }else if(current.axis==="horizontal"&&current.source==="pages"){
+  }else if(current.axis==="horizontal"&&current.source!=="photo"){
    gestures.finish("tabs",current.serial);
-   if(!cancelled&&Math.abs(dx)>48&&Math.abs(dx)>Math.abs(dy)*1.2){
+   if(current.source==="tabs")suppressTabClick.current=true;
+   const velocity=recentVelocity([...current.samples,{position:event.clientX,time:performance.now()}]);
+   if(!cancelled&&(Math.abs(dx)>48||Math.abs(velocity)>.55)&&Math.abs(dx)>Math.abs(dy)*1.2){
     const index=tabs.findIndex(item=>item[0]===tab);
     selectTab(tabs[Math.max(0,Math.min(tabs.length-1,index+(dx<0?1:-1)))][0]);
    }
   }else if(current.axis==="vertical"){
    gestures.finish("native",current.serial);settleMorph(scrollSample.current.velocity);
   }else finishCandidates(current);
-  if(suppressPhotoClick.current)requestAnimationFrame(()=>{suppressPhotoClick.current=false;});
+  if(suppressPhotoClick.current||suppressTabClick.current)requestAnimationFrame(()=>{
+   suppressPhotoClick.current=false;suppressTabClick.current=false;
+  });
  };
  const showPhotos=()=>{
   selectTab("photos");
@@ -558,11 +562,14 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    <div className="owner-profile-hero-spacer" aria-hidden="true"/>
    <main ref={contentRoot} className="owner-profile-content">
     <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля"
-     style={{"--owner-tab-index":tabs.findIndex(([id])=>id===tab)} as CSSProperties}>
+     style={{"--owner-tab-index":tabs.findIndex(([id])=>id===tab)} as CSSProperties}
+     onPointerDown={profileDown("tabs")} onPointerMove={profileMove}
+     onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
+     onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
      {tabs.map(([id,label],index)=><button type="button" role="tab" key={id}
       id={tabPrefix+"-"+id+"-tab"} aria-controls={tabPrefix+"-"+id+"-panel"}
       aria-selected={tab===id} tabIndex={tab===id?0:-1}
-      onClick={()=>selectTab(id)} onKeyDown={event=>tabKey(event,index)}>{label}</button>)}
+      onClick={()=>{if(!suppressTabClick.current)selectTab(id);}} onKeyDown={event=>tabKey(event,index)}>{label}</button>)}
     </div>
     <div ref={flow} className="owner-profile-flow">
     <div className="owner-profile-pages" onPointerDown={profileDown("pages")} onPointerMove={profileMove}
