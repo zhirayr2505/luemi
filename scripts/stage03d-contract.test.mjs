@@ -42,12 +42,12 @@ assert.ok(additions.every(p=>p[2]>=18),"no minors");
 assert.ok(additions.every(p=>p[8].split("|").every(x=>valid.has(x))),"all tags from approved interest catalogue");
 assert.ok(additions.some(p=>p[3]==="man")&&additions.some(p=>p[3]==="woman"),"mixed demo audiences");
 const original=readFileSync(new URL("../apps/web/src/discovery/demo-people.ts",import.meta.url),"utf8");
-assert.ok(original.includes("portraitSources")&&original.includes('id:p[0]'),"original Feed fixtures unchanged");
+assert.ok(original.includes("/api/v2/qa/portraits/")&&original.includes('id:"qa-2026-"+p[0]'),"private QA Feed fixtures retain server-authorized portrait paths");
 const active=readFileSync(new URL("../apps/web/src/discovery/DiscoveryApp.tsx",import.meta.url),"utf8");
 assert.ok(active.includes('<ForYou draft={draft}')&&active.includes('import {FeedCard}'),"new discovery uses unchanged FeedCard");
 assert.ok(active.includes('fy-rail,.fy-expanded,.fy-manage'),"new nested gestures excluded from outer pager");
 assert.ok(active.includes('saved:prev.saved'),"saved people survive filter resets");
-console.log("✓ Stage 03D integration: preserved FeedCard, isolated gestures, valid 16 demo profiles and saved state");
+console.log("✓ Stage 03D integration: preserved FeedCard, isolated gestures, valid additional fixtures and saved state");
 
 // Stage 03D.1 interaction and visual guards.
 const forYou=readFileSync(new URL("../apps/web/src/discovery/ForYou.tsx",import.meta.url),"utf8");
