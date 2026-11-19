@@ -44,7 +44,14 @@ export function createOwnerProfileLayout(viewport:OwnerProfileViewport):OwnerPro
   hero:{x:0,y:heroY,width,height:heroHeight},compactAvatar,compactContentTop,morphDistance};
 }
 export function ownerMorphProgress(scrollTop:number,morphDistance:number):number{
- return clamp(finite(scrollTop,0)/Math.max(1,finite(morphDistance,1)),0,1);
+ const distance=Math.max(1,finite(morphDistance,1));
+ const scroll=Math.max(0,finite(scrollTop,0));
+ // CSS pixel rounding in Android WebView can leave the scroll endpoint less
+ // than a pixel short (e.g. 179px scroll against a 179.33px sticky target).
+ // Treat that native endpoint as fully compact, rather than painting a nearly
+ // circular image forever in the transient morph state.
+ if(scroll>=distance-.75)return 1;
+ return clamp(scroll/distance,0,1);
 }
 export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):OwnerMorphFrame{
  const p=clamp(progress,0,1),from=layout.hero,to=layout.compactAvatar;
