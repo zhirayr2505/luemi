@@ -25,6 +25,8 @@ const COLLAPSE_THRESHOLD=.64;
 const ROUND_START=.75;
 const ROUND_PHOTO=.85;
 const EXPAND_THRESHOLD=.88;
+const ROUND_HOLD_START=.74;
+const ROUND_HOLD_END=.84;
 const PHOTO_PARALLAX=.42;
 const MAX_RUBBER=26;
 const RUBBER_RESISTANCE=50;
@@ -69,7 +71,7 @@ export function ownerMorphEndpoint(position:number,distance:number,velocity=0):n
  return position>=distance*.5?distance:0;
 }
 
-/** Evaluate while the finger is held. A running settle owns input until it ends. */
+/** Choose the endpoint when a touch is released or a wheel gesture crosses a threshold. */
 export function ownerAutoSnapTarget(accepted:0|1,position:number,distance:number):0|1|null{
  if(accepted===0&&position>=distance*COLLAPSE_THRESHOLD)return 1;
  if(accepted===1&&position<=distance*EXPAND_THRESHOLD)return 0;
@@ -79,6 +81,23 @@ export function ownerAutoSnapTarget(accepted:0|1,position:number,distance:number
 /** A coalesced move can skip past the boundary. Animate from the reached threshold. */
 export function ownerSnapFrom(origin:number,target:0|1):number{
  return target===1?Math.max(origin,COLLAPSE_THRESHOLD):Math.min(origin,EXPAND_THRESHOLD);
+}
+
+/** Keep a perfectly round photo at a usable range of finger positions in both directions. */
+export function ownerMorphDrag(raw:number):number{
+ if(raw<=COLLAPSE_THRESHOLD)return raw;
+ if(raw<ROUND_HOLD_START)
+  return mix(COLLAPSE_THRESHOLD,ROUND_PHOTO,(raw-COLLAPSE_THRESHOLD)/(ROUND_HOLD_START-COLLAPSE_THRESHOLD));
+ if(raw<=ROUND_HOLD_END)return ROUND_PHOTO;
+ return mix(ROUND_PHOTO,1,(raw-ROUND_HOLD_END)/(1-ROUND_HOLD_END));
+}
+
+export function ownerMorphDragOrigin(position:number):number{
+ if(position<=COLLAPSE_THRESHOLD)return position;
+ if(position<ROUND_PHOTO)
+  return mix(COLLAPSE_THRESHOLD,ROUND_HOLD_START,(position-COLLAPSE_THRESHOLD)/(ROUND_PHOTO-COLLAPSE_THRESHOLD));
+ if(position===ROUND_PHOTO)return (ROUND_HOLD_START+ROUND_HOLD_END)/2;
+ return mix(ROUND_HOLD_END,1,(position-ROUND_PHOTO)/(1-ROUND_PHOTO));
 }
 
 export function ownerRubberPosition(position:number):number{

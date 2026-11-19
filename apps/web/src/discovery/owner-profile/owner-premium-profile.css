@@ -151,22 +151,23 @@
 .owner-premium-profile[data-morph-state="compact"] .owner-profile-scroll{overflow:hidden auto;touch-action:pan-y}
 .owner-profile-scroll::-webkit-scrollbar{display:none}
 .owner-profile-content{
- position:relative;margin:0;padding:13px 13px calc(120px + var(--bottom-safe,0px));
- overflow-x:clip;
- background:linear-gradient(180deg,var(--luemi-bg-deep),var(--luemi-bg-deep) 126px,var(--luemi-bg));
+ position:relative;box-sizing:border-box;min-height:100%;
+ margin:0;padding:13px 13px calc(120px + var(--bottom-safe,0px));
+ overflow:clip;
 }
-.owner-profile-pages{position:relative;min-height:295px}
+.owner-profile-pages{
+ position:relative;min-height:295px;
+ transform:translate3d(0,0,0);
+}
 .owner-profile-panel{
  position:relative;left:calc(var(--owner-panel-index)*100%);
  min-height:290px;width:100%;box-sizing:border-box;padding:0 1px 30px;
 }
+/* Keep the neighboring page ready to paint without changing the native scroll range. */
 .owner-profile-panel[aria-hidden="true"]{
- position:absolute;top:0;height:0;min-height:0;padding-bottom:0;
- visibility:hidden;overflow:hidden;
-}
-.owner-profile-pages[data-paging] .owner-profile-panel[aria-hidden="true"]{
- top:var(--owner-page-scroll,0px);height:var(--owner-page-peek,0px);
- visibility:visible;
+ position:absolute;top:0;height:var(--owner-page-viewport,0px);min-height:0;
+ overflow:clip;
+ transform:translate3d(0,var(--owner-page-scroll,0px),0);
 }
 .owner-profile-about{display:flex;flex-direction:column;gap:11px}
 .owner-profile-about article{
