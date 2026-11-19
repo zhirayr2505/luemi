@@ -87,8 +87,9 @@ export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):Owner
  // as width/height change together during the Android WebView morph.
  const radius=p<=.18?0:p<.72?mask.width*rounding/2:mask.width/2;
  return {mask,radius,
-  expandedAlpha:clamp((.54-p)/.24,0,1),
-  compactAlpha:clamp((p-.66)/.20,0,1),
+  // A narrow crossfade replaces the invisible interval in the old identity morph.
+  expandedAlpha:clamp((.66-p)/.10,0,1),
+  compactAlpha:clamp((p-.60)/.12,0,1),
   actionsAlpha:clamp((.38-p)/.20,0,1),
   photoShadeAlpha:1-clamp((p-.20)/.56,0,1)*.65,
   contentOffset:mix(0,layout.contentOffset,soften(p))};
