@@ -594,7 +594,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    onPointerDown={profileDown("photo")} onPointerMove={profileMove}
    onPointerUp={event=>profileEnd(event)} onPointerCancel={event=>profileEnd(event,true)}
    onLostPointerCapture={event=>{if(event.target===event.currentTarget)profileEnd(event,true);}}>
-   <img ref={avatarImage} src={heroPhoto.src} alt="" draggable={false} loading="eager"
+   <img ref={avatarImage} src={heroPhoto.src} data-photo-id={heroPhoto.id} alt="" draggable={false} loading="eager"
     decoding="async" style={{objectPosition:(resolvePhotoFocus(1,2,heroPhoto.focalPoint).x*100)+"% "+(resolvePhotoFocus(1,2,heroPhoto.focalPoint).y*100)+"%"}}
     onLoad={event=>{const point=resolvePhotoFocus(event.currentTarget.naturalWidth,event.currentTarget.naturalHeight,heroPhoto.focalPoint);
      event.currentTarget.style.objectPosition=(point.x*100)+"% "+(point.y*100)+"%";}}
