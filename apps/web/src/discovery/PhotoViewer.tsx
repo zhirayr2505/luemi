@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useRef,useState} from "react";
 import "./profile-viewer.css";
 import type {PointerEvent as ReactPointerEvent} from "react";
-import {createPortal} from "react-dom";
+import {createPortal,flushSync} from "react-dom";
 import {X,MoreHorizontal,ChevronLeft,ChevronRight,Lock,Star,Share2,Link2,Flag as ReportIcon} from "lucide-react";
 import type {ProfilePhoto,ProfileView} from "./ProfileModel";
 import {canMakeMain,displayPhotoDate} from "./ProfileModel";
@@ -168,6 +168,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   gestureArbiter.current?.cancel();
  };
  const cancelPinchSession=(animate=false)=>{
+  if(closing.current)return;
   clearTap();
   const wasTracking=pinchSession.current||pointer.current.size>0;
   releasePointers();resetMedia(animate);restoreVertical(animate);
@@ -276,7 +277,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const photo=fitImage(box,{width:node.naturalWidth,height:node.naturalHeight},"contain");
   return photo?{photo,clip:"inset(0px 0px 0px 0px round 0px)"}:null;
  };
- const prepareMorph=(candidate:SharedPhoto)=>{
+ const prepareMorph=(candidate:SharedPhoto,closingPhase:boolean)=>{
   const clip=morphClip.current,pixels=morphImage.current;
   if(!clip||!pixels)return;
   const {geometry:m,source:el}=candidate;
@@ -285,8 +286,12 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   clip.style.display="block";clip.style.opacity="1";
   morphActive.current=true;
   if(modal.current)modal.current.dataset.morphActive="true";
-  visibleSource.current={node:el,visibility:el.style.visibility};
-  el.style.visibility="hidden";
+  // The opening shade covers the hidden original. On return the shade is
+  // fading, so the destination must already be painted under the flight.
+  if(!closingPhase){
+   visibleSource.current={node:el,visibility:el.style.visibility};
+   el.style.visibility="hidden";
+  }
  };
  const morphCleanup=useRef<()=>void>(()=>{});
  morphCleanup.current=clearMorph;
@@ -355,7 +360,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    if(modal.current)modal.current.dataset.presented="true";
    animate(shade,"opacity",shade.style.opacity||"0",targetOpacity);
    if(shared&&clip&&pixels){
-    prepareMorph(shared);
+    prepareMorph(shared,closingPhase);
     // One visible photo during the flight; the stage needs no opening fade.
     outer.style.opacity=targetOpacity;
     const fullClip="inset(0px 0px 0px 0px round 0px)";
@@ -467,7 +472,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   // Any actual background movement invalidates captured source geometry;
   // never animate back to a now-moved/occluded thumbnail. Passive read only.
   const sourceMoved=()=>{
-   if(!morphActive.current||!openSourceRect.current)return;
+   if(closing.current||!morphActive.current||!openSourceRect.current)return;
    const node=visibleSource.current?.node;
    const r=node?.getBoundingClientRect(),old=openSourceRect.current;
    if(!r||Math.abs(r.left-old.left)>2||Math.abs(r.top-old.top)>2||
@@ -588,6 +593,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  useEffect(()=>bindMotionLifecycle(()=>{
   // Background and Telegram deactivation terminate all active pointer IDs;
   // a late lostpointercapture cannot reopen a previously disposed session.
+  if(closing.current)return;
   lifecycleActions.current.cancel(false);
   // Background invalidates source hit-testing; unhide the miniature so the
   // retained profile never leaks a hidden original if this viewer is discarded.
@@ -604,7 +610,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    const snap=motion.snapshot();
    motion.reveal(snap.revision+1,snap.current,snap.target);
   }
-  if(gesture.current===null&&phase.current==="draggingY")lifecycleActions.current.reset();
+  if(!closing.current&&gesture.current===null&&phase.current==="draggingY")lifecycleActions.current.reset();
  }),[]);
  const settle=(target:0|-1|1,settleMs=duration)=>{
   const motion=runner.current;if(!motion||closing.current)return;
@@ -622,9 +628,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    if(!valid||valid!==targetPhoto.id){paintTrack(0);phase.current="idle";return;}
    morphCleanup.current();
    if(!sourceRef.current?.resolveReturnElement)sourceRef.current=null;
-   setMenu(false);setMessage("");commitCount.current++;
+   commitCount.current++;
    pendingCommit.current={id:targetPhoto.id,shift:target===-1?-1:1};
-   setCommittedPhotoId(targetPhoto.id);
+   // Move the keyed image and rebase its track in the same paint as the
+   // settle endpoint so a new swipe/close can't sample the outgoing slot.
+   flushSync(()=>{setMenu(false);setMessage("");setCommittedPhotoId(targetPhoto.id);});
   },geometryRevision.current);
  };
  const requestNavigation=(request:NavigationRequest,_origin:NavigationOrigin):boolean=>{

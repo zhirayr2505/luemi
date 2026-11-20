@@ -15,8 +15,10 @@ assert.equal((component.match(/className="owner-profile-photo-mask"/g)??[]).leng
  "one mask hosts both the expanded square and the compact circle");
 assert.match(motion,/schedulePaint\(current.startedCompact\?Math.max\(0,next\):next\)/,
  "the held finger renders the interactive circle and can continue past it");
-assert.match(css,/\[data-morph-state="compact"\] .owner-profile-scroll\{[^}]*overflow:hidden auto/s,
- "card scrolling begins when the profile is compact");
+assert.match(css,/\.owner-profile-scroll\{[^}]*overflow:hidden auto[^}]*touch-action:none/s,
+ "the scroller and clip stay mounted throughout the morph");
+assert.match(css,/\[data-morph-state="compact"\] .owner-profile-scroll\{touch-action:pan-y\}/,
+ "native touch scrolling begins when the profile is compact");
 assert.match(css,/\.owner-profile-photo-pager\s*\{[^}]*right:2[0-9]px/s,
  "photo pager must be right aligned, not centered under the identity");
 assert.match(css,/\.owner-profile-tab-ink\s*\{/,

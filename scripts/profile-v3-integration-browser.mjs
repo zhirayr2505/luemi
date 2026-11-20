@@ -78,9 +78,10 @@ async function checkPhotoViewer(profile,origin){
  await page.evaluate(()=>window.__luemiQaBack());
  await viewer.locator("xpath=self::*[@data-morph-active='true']").waitFor({timeout:1400});
  assert.equal(await other.getAttribute("data-photo-id"),next,"the visible return target matches the current photo");
- assert.equal(await other.evaluate(img=>img.style.visibility),"hidden","the shared morph owns the matching return tile");
+ assert.equal(await other.evaluate(img=>getComputedStyle(img).visibility),"visible",
+  "the matching tile is already painted during the return flight");
  await viewer.waitFor({state:"detached"});
- assert.equal(await other.evaluate(img=>img.style.visibility),"","the destination photo is restored after Back");
+ assert.equal(await other.evaluate(img=>img.style.visibility),"","the destination photo stays visible after Back");
 }
 async function checkAbout(profile){
  const about=profile.getByRole("tabpanel",{name:"О себе",exact:true});

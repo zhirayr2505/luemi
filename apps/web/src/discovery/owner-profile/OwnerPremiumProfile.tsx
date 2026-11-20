@@ -12,7 +12,7 @@ import type {ViewerCarousel} from "../photo-viewer-state";
 import {resolvePhotoFocus} from "../profile-v3/geometry/ProfileGeometry";
 import {clamp} from "./OwnerProfileGeometry";
 import {useOwnerProfileMotion} from "./useOwnerProfileMotion";
-import {canSendProfileReaction,ProfileReactionBadge,ProfileReactionButtons,ProfileReactionIndicator,type ProfileReactionControls} from "./ProfileReactions";
+import {canSendProfileReaction,ProfileReactionButtons,ProfileReactionError,ProfileReactionIndicator,showProfileChat,type ProfileReactionControls} from "./ProfileReactions";
 import "./owner-premium-profile.css";
 import "./profile-reactions.css";
 
@@ -241,7 +241,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    </button>
   </header>}
   {reactions&&<ProfileReactionIndicator controls={reactions}/>}
-  <div className="owner-profile-identity" data-has-reaction-actions={(!reactions?.pendingKind&&canSendProfileReaction(reactions?.state??null))||undefined}>
+  <div className="owner-profile-identity" data-has-reaction-actions={showProfileChat(reactions)?"chat":!reactions?.pendingKind&&canSendProfileReaction(reactions?.state??null)?"like":undefined}>
    <h1>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</h1>
    <p><MapPin size={15} aria-hidden="true"/><span className="owner-profile-location">
     <span className="owner-profile-city">{location}</span>{countryCode?<Flag code={countryCode} size={17} title={"Флаг "+p.country}/>:null}
@@ -252,6 +252,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    </>}
   </div>
 
+  {reactions&&<ProfileReactionError controls={reactions}/>}
   <main className="owner-profile-sheet">
    <div ref={tablist} className="owner-profile-tabs" role="tablist" aria-label="Разделы профиля">
     {tabs.map(([id,label],index)=><button type="button" role="tab" key={id} data-tab-id={id}
@@ -260,7 +261,6 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
      onClick={()=>selectTab(id)} onKeyDown={event=>tabKey(event,index)}>{label}</button>)}
     <span className="owner-profile-tab-ink" aria-hidden="true"/>
    </div>
-   {reactions&&<ProfileReactionBadge controls={reactions}/>}
    <div className="owner-profile-viewport">
     <div className="owner-profile-pages">
      {panel("about","О себе",<>

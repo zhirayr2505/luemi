@@ -22,7 +22,8 @@ for(const x of [-390,-120,-10,0,35,160,390]){
 }
 assert.ok(mod.allowedOffset(120,393,false,true)>0&&mod.allowedOffset(120,393,false,true)<120);
 assert.ok(mod.allowedOffset(-120,393,true,false)<0&&mod.allowedOffset(-120,393,true,false)>-120);
-assert.ok(mod.allowedOffset(500,393,true,true)>393&&mod.allowedOffset(500,393,true,true)<500);
+assert.equal(mod.allowedOffset(500,393,true,true),393,"never drag past the last painted slot");
+assert.equal(mod.allowedOffset(-500,393,true,true),-393,"never expose a strip past the entering photo");
 assert.ok(mod.edgeResistance(100000,393)<393*.32+.001,"finite monotonic overscroll bound");
 assert.equal(mod.destination(-393*.18,393,0,true,true),-1);
 assert.equal(mod.destination(393*.18,393,0,true,true),1);

@@ -119,6 +119,7 @@
  border-radius:32px 32px 0 0;overflow:hidden;
  background:var(--luemi-bg-deep);box-shadow:0 -7px 24px rgba(7,5,14,.20);
  transform:translate3d(0,calc(100vw - 22px),0);
+ backface-visibility:hidden;will-change:transform;
 }
 .owner-profile-tabs{
  position:relative;z-index:1;flex:none;
@@ -150,11 +151,12 @@
  display:flex;width:100%;height:100%;transform:translate3d(0,0,0);
 }
 .owner-profile-scroll{
- flex:0 0 100%;min-width:0;height:100%;overflow:hidden;
+ flex:0 0 100%;min-width:0;height:100%;overflow:hidden auto;
  overscroll-behavior:none;overflow-anchor:none;scrollbar-width:none;touch-action:none;
  background:var(--luemi-bg-deep);
 }
-.owner-premium-profile[data-morph-state="compact"] .owner-profile-scroll{overflow:hidden auto;touch-action:pan-y}
+/* Keep one scroll surface through the morph. Only touch ownership changes. */
+.owner-premium-profile[data-morph-state="compact"] .owner-profile-scroll{touch-action:pan-y}
 .owner-profile-scroll::-webkit-scrollbar{display:none}
 .owner-profile-content{
  box-sizing:border-box;min-height:100%;padding:13px 13px calc(120px + var(--bottom-safe,0px));
