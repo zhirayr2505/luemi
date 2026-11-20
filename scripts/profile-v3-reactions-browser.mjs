@@ -162,15 +162,21 @@ try{
   assert.equal(await badge.isVisible(),true);
   assert.equal(await root.getAttribute("data-morph-state"),"compact");
  }
- const compactPanel=await root.getByRole("tabpanel").boundingBox(),compactY=compactPanel.y+35;
+ // Start on the compact avatar so Chromium's native scroll lock cannot
+ // claim a synthetic swipe on the already tested tab scroller.
+ const currentAvatar=await root.locator(".owner-profile-avatar-circle").boundingBox();
+ const compactY=currentAvatar.y+currentAvatar.height/2;
+ const beforeDrag=await indicator.boundingBox();
  await finger("touchStart",compactY);
+ await finger("touchMove",compactY+9);
+ await delay(24);
  await finger("touchMove",compactY+42);
  const indicatorY=()=>indicator.evaluate(image=>image.getBoundingClientRect().y);
- const compactYAtRest=compactIcon.y;
+ const compactYAtRest=beforeDrag.y;
  await page.waitForFunction(y=>{
   const image=document.querySelector(".profile-reaction-indicator img[data-active]");
   return image&&image.getBoundingClientRect().y>y+8;
- },compactYAtRest);
+ },compactYAtRest,{timeout:3000});
  const heldIconY=await indicatorY();
  await delay(120);
  assert.equal(await indicatorY(),heldIconY,"the indicator stops with the held finger");
@@ -178,7 +184,7 @@ try{
  await page.waitForFunction(y=>{
   const image=document.querySelector(".profile-reaction-indicator img[data-active]");
   return image&&image.getBoundingClientRect().y<y-4;
- },heldIconY);
+ },heldIconY,{timeout:3000});
  for(let offset=28;offset<=196;offset+=14){await finger("touchMove",compactY+offset);await delay(16);}
  await finger("touchEnd");await waitState("expanded");
  assert.equal(await badge.isVisible(),true);
