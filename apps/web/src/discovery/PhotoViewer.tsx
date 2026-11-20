@@ -110,21 +110,21 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const box=(surface.current??stage.current)?.getBoundingClientRect();
   return box?localFromClient(p,box,viewSize()):p;
  };
- const paintMedia=(pose:MediaTransform,animate=false)=>{
+ const paintMedia=useCallback((pose:MediaTransform,animate=false)=>{
   mediaPose.current=pose;
   if(image.current){
    const motion=animate&&!matchMedia("(prefers-reduced-motion: reduce)").matches;
    image.current.style.transition=motion?"transform 210ms cubic-bezier(.2,.75,.2,1)":"none";
    image.current.style.transform="translate3d("+pose.x+"px,"+pose.y+"px,0) scale("+pose.scale+")";
   }
- };
+ },[]);
  const freezeMedia=():MediaTransform=>{
   if(!image.current)return mediaPose.current;
   const pose=matrixTransform(getComputedStyle(image.current).transform);
   paintMedia(pose);
   return pose;
  };
- const resetMedia=(animate=true)=>paintMedia(identityMedia(),animate);
+ const resetMedia=useCallback((animate=true)=>paintMedia(identityMedia(),animate),[paintMedia]);
  const clearTap=()=>{
   if(tap.current)window.clearTimeout(tap.current.timer);
   tap.current=null;
@@ -491,7 +491,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   priorSignature.current=signature;
   previousIds.current=photos.map(p=>p.id);
   if(photoId!==committedPhotoId)setCommittedPhotoId(photoId);
- },[signature,photoId,committedPhotoId,photos]);
+ },[signature,photoId,committedPhotoId,photos,resetMedia]);
  useEffect(()=>{if(photoId===null)handlers.current.close(true);},[photoId,menu]);
  const decodedCallback=useCallback((id:string,key:string,ok:boolean)=>{
   setDecoded(old=>{
@@ -795,8 +795,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    return;
   }
   if(Math.abs(trackX.current)>.1)settle(0);
-  else if(!cancel&&!g.axis&&elapsed<tapDelay)registerTap({x:e.clientX,y:e.clientY});
   resetGesture();
+  if(!cancel&&!g.axis&&elapsed<tapDelay)registerTap({x:e.clientX,y:e.clientY});
  };
  const action=(kind:"main"|"link"|"share"|"report")=>{
   const selected=latest.current;setMenu(false);
