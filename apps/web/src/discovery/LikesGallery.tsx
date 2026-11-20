@@ -88,20 +88,26 @@ export function LikesGallery({active,qaAllowed,queue,onPerson,onDemoPerson,onCha
 
  if(!active)return null;
  return <section className="likes-gallery" aria-label="Симпатии">
-  <div className="likes-gallery-head">
-   <h2>Симпатии</h2>
-   <div className="likes-gallery-tools">
-    {qaAllowed&&<button type="button" className="likes-demo-toggle" aria-pressed={useDemo} onClick={()=>{
-     setDemo(value=>!value);switchTab("incoming");
-    }}>{useDemo?"Тестовый режим":"Демо"}</button>}
-    {!useDemo&&<LuemiIconButton className="likes-gallery-refresh" label="Обновить симпатии"
-     onClick={()=>{setError("");refreshRows(value=>value+1);}}><RefreshCw size={17}/></LuemiIconButton>}
+  <header className="likes-gallery-chrome">
+   <div className="likes-gallery-brand">
+    <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" width="88" height="30"
+     decoding="async" fetchPriority="high"/>
    </div>
-  </div>
-  <div className="likes-gallery-tabs" role="tablist" aria-label="Тип симпатий">
-   {tabs.map(([id,label])=><button type="button" role="tab" aria-controls="likes-gallery-panel" aria-selected={tab===id}
-    id={"likes-gallery-tab-"+id} key={id} onClick={()=>switchTab(id)}>{label}</button>)}
-  </div>
+   <div className="likes-gallery-head">
+    <h2>Симпатии</h2>
+    <div className="likes-gallery-tools">
+     {qaAllowed&&<button type="button" className="likes-demo-toggle" aria-pressed={useDemo} onClick={()=>{
+      setDemo(value=>!value);switchTab("incoming");
+     }}><span>Демо</span></button>}
+     {!useDemo&&<LuemiIconButton className="likes-gallery-refresh" label="Обновить симпатии"
+      onClick={()=>{setError("");refreshRows(value=>value+1);}}><RefreshCw size={16}/></LuemiIconButton>}
+    </div>
+   </div>
+   <div className="likes-gallery-tabs" role="tablist" aria-label="Тип симпатий">
+    {tabs.map(([id,label])=><button type="button" role="tab" aria-controls="likes-gallery-panel" aria-selected={tab===id}
+     id={"likes-gallery-tab-"+id} key={id} onClick={()=>switchTab(id)}>{label}</button>)}
+   </div>
+  </header>
   {chatError&&<span className="likes-gallery-error" role="status">{chatError}</span>}
   <div className="likes-gallery-scroller" id="likes-gallery-panel" key={tab} role="tabpanel" aria-labelledby={"likes-gallery-tab-"+tab}>
    {!useDemo&&error?<LuemiEmptyState icon={Heart} title={error} description="Проверь соединение и обнови галерею.">

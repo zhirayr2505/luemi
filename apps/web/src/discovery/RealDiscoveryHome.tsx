@@ -863,7 +863,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
    <div className="discovery-photo-ambient-next"/>
    <div className="discovery-photo-ambient-tint"/>
   </div>
-  {!chatThreadOpen&&mainTab!=="profile"&&<GlobalHeader ref={header} mode={mainTab==="chats"?"chats":"browse"}/>}
+  {!chatThreadOpen&&mainTab!=="profile"&&mainTab!=="likes"&&<GlobalHeader ref={header} mode={mainTab==="chats"?"chats":"browse"}/>}
   <div className="discovery-main-panels">
    <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
     <div className="discovery-top-tabs" ref={topTabsSurface} role="tablist" aria-label="Разделы знакомств"
@@ -909,7 +909,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
      </div>
     </div>
    </section>
-   <section className="discovery-panel" hidden={mainTab!=="likes"}>
+   <section className="discovery-panel discovery-likes-panel" hidden={mainTab!=="likes"}>
     <LikesGallery active={mainTab==="likes"} qaAllowed={qaAllowed} queue={profileReactions} onPerson={openPersonById}
      onDemoPerson={visitor=>{setDemoLikesProfile(true);setDemoVisitor(visitor);}} onChat={openGalleryChat}/>
    </section>
