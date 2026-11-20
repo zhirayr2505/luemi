@@ -168,7 +168,7 @@
  padding:0 var(--profile-about-inset) 12px;
 }
 .owner-profile-quote{
- margin:0;padding:0 8px 14px;background:url("/assets/profile/about-heart.svg") right top/100% auto no-repeat;
+ margin:0;padding:0 8px 14px;background:url("/assets/profile/about-heart.svg") right top/100% min(100%,100px) no-repeat;
 }
 .owner-profile-quote-mark{
  display:block;height:20px;color:var(--profile-about-accent);
