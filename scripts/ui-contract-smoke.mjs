@@ -168,5 +168,6 @@ assertCheck("premium profile morph settles independently before handing off to n
  ownerMotion.includes('new GeometryMotion("sheet"')&&ownerMotion.includes("ownerAutoSnapTarget(")&&
  ownerMotion.includes("const startScroll=Math.max(0,scroll.scrollTop)")&&
  ownerMotion.includes("!atTop(current.startScroll)")&&ownerMotion.includes("if(target===1)afterCompact?.()")&&
- /\[data-morph-state="compact"\] .owner-profile-scroll\{[^}]*overflow:hidden auto;touch-action:pan-y/.test(ownerCss));
+ /\.owner-profile-scroll\{[^}]*overflow:hidden auto;[^}]*touch-action:none/.test(ownerCss)&&
+ /\[data-morph-state="compact"\] .owner-profile-scroll\{touch-action:pan-y\}/.test(ownerCss));
 console.log("LUEMI Discovery V2 UI contracts PASS");
