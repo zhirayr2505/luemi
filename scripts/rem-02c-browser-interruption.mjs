@@ -62,7 +62,7 @@ try{
  const measurePhoto=()=>face.evaluate((node)=>{
   const rect=node.getBoundingClientRect();
   return {radius:parseFloat(node.style.borderRadius),width:rect.width,y:rect.y,
-   ambient:Number(getComputedStyle(node.closest(".owner-premium-profile").querySelector(".owner-profile-ambient")).opacity)};
+   halo:Number(getComputedStyle(node.closest(".owner-premium-profile").querySelector(".owner-profile-halo")).opacity)};
  });
  const moveUntil=async(x,y,direction,reached)=>{
   for(let distance=4;distance<=180;distance+=4){
