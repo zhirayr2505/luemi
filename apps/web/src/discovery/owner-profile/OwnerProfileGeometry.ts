@@ -11,13 +11,11 @@ export type OwnerProfileLayout={
  initialSheetTravel:number;
  morphDistance:number;
 };
-export type OwnerMorphFrame={
- mask:OwnerProfileRect;
- radius:number;
+export type OwnerPhotoPose={mask:OwnerProfileRect;radius:number;haloOpacity:number};
+export type OwnerMorphFrame=OwnerPhotoPose&{
  sheetTop:number;
  identityTop:number;
  identityCenter:number;
- haloOpacity:number;
 };
 
 const PHOTO_SNAP_PROGRESS=.64;
@@ -110,5 +108,16 @@ export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):Owner
   identityTop:sheetTop-mix(70,56,identityCenter)+stretch-rebound,
   identityCenter,
   haloOpacity:circular?.82:0
+ };
+}
+
+/** Blend from the last visible pose when the gesture crosses the photo boundary. */
+export function interpolateOwnerPhotoPose(from:OwnerPhotoPose,to:OwnerPhotoPose,progress:number):OwnerPhotoPose{
+ const size=mix(from.mask.width,to.mask.width,progress);
+ const radiusRatio=mix(from.radius/from.mask.width,to.radius/to.mask.width,progress);
+ return {
+  mask:{x:mix(from.mask.x,to.mask.x,progress),y:mix(from.mask.y,to.mask.y,progress),width:size,height:size},
+  radius:size*radiusRatio,
+  haloOpacity:mix(from.haloOpacity,to.haloOpacity,progress)
  };
 }

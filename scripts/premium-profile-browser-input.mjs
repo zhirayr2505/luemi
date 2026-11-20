@@ -25,7 +25,12 @@ async function swipeCards(input,page,cards,deltaY){
 // Each touchEnd closes that gesture, even when the next swipe follows
 // immediately. Continuous wheel input can remain in a single scroll burst.
 export async function setPremiumProfileState(page,profile,state){
- if(await profile.getAttribute("data-morph-state")===state)return;
+ const ready=profile.locator(state==="compact"?".owner-profile-avatar-circle":
+  '.owner-profile-photo-mask[style*="border-radius: 0%"]');
+ if(await profile.getAttribute("data-morph-state")===state){
+  await ready.waitFor({state:"visible",timeout:5000});
+  return;
+ }
  const cards=profile.getByRole("tabpanel");
  const readTop=()=>cards.evaluate(list=>new Promise(resolve=>
   requestAnimationFrame(()=>resolve(list.scrollTop))));
@@ -44,6 +49,7 @@ export async function setPremiumProfileState(page,profile,state){
   }
   await swipeCards(input,page,cards,state==="compact"?-240:100);
   await profile.locator("xpath=self::*[@data-morph-state='"+state+"']").waitFor({state:"visible",timeout:5000});
+  await ready.waitFor({state:"visible",timeout:5000});
  }finally{
   await input.detach();
  }
