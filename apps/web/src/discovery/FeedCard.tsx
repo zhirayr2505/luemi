@@ -35,7 +35,7 @@ type ExpandGesture={id:number;x:number;y:number;started:number;axis:"pending"|"p
  startProgress:number;scrollStart:number;samples:Array<{y:number;t:number}>};
 type SettleRun={from:number;to:0|1;started:number;duration:number;frame:number|null};
 type PhotoHold={id:number;x:number;y:number;timer:number|null;active:boolean;host:HTMLElement|null};
-type ActionFeedback={kind:"pass"|"like"|"special";token:number};
+type ActionFeedback={kind:"pass"|"like";token:number};
 
 function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onAction:(kind:"like"|"special")=>void;
  onPreview:(progress:number,armed:boolean)=>void}){
@@ -45,7 +45,7 @@ function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onActio
  const paint=useCallback((value:number)=>{const progress=clamp(value);
   button.current?.style.setProperty("--like-slide-p",String(progress));onPreview(progress,progress>=.72);},[onPreview]);
  useEffect(()=>{if(!disabled){committed.current=false;paint(0);
-  button.current?.classList.remove("is-dragging","is-armed","is-bursting");}},[disabled,paint]);
+  button.current?.classList.remove("is-dragging","is-armed");}},[disabled,paint]);
  useEffect(()=>()=>{if(frame.current!==null)cancelAnimationFrame(frame.current);onPreview(0,false);},[onPreview]);
  const schedule=(value:number)=>{pending.current=value;if(frame.current!==null)return;
   frame.current=requestAnimationFrame(()=>{frame.current=null;paint(pending.current);});};
@@ -53,7 +53,7 @@ function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onActio
   button.current?.classList.remove("is-dragging","is-armed");};
  const commit=(kind:"like"|"special")=>{if(committed.current||disabled)return;
   committed.current=true;
-  if(kind==="special"){button.current?.classList.add("is-bursting");impactHaptic("heavy");}
+  if(kind==="special")impactHaptic("heavy");
   else selectionHaptic();
   onAction(kind);
  };
@@ -107,12 +107,9 @@ function LikeSuperButton({disabled,onAction,onPreview}:{disabled:boolean;onActio
   aria-label="Нравится. Проведи вправо для особенной симпатии"
   onPointerDown={down} onPointerMove={move} onPointerUp={event=>finish(event)}
   onPointerCancel={event=>finish(event,true)} onLostPointerCapture={event=>finish(event,true)}
-  onAnimationEnd={event=>{if(event.animationName==="moonstone-button-star-burst")button.current?.classList.remove("is-bursting");}}
   onClick={event=>{if(event.detail===0)commit("like");}}>
   <span className="moonstone-like-glint" aria-hidden="true"/>
-  <span className="moonstone-like-thumb" aria-hidden="true"><Heart/><Star className="moonstone-super-star"/>
-   <span className="moonstone-super-particles">{Array.from({length:14},(_,index)=><i key={index}><Star/></i>)}</span>
-  </span>
+  <span className="moonstone-like-thumb" aria-hidden="true"><Heart/><Star className="moonstone-super-star"/></span>
  </button>;
 }
 
@@ -128,6 +125,7 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
  const [expanded,setExpanded]=useState(false),[activePhotoIndex,setActivePhotoIndex]=useState(0);
  const [actionFeedback,setActionFeedback]=useState<ActionFeedback|null>(null);
  const card=useRef<HTMLElement>(null),compactInfo=useRef<HTMLDivElement>(null);
+ const superPreview=useRef<HTMLDivElement>(null);
  const drawer=useRef<HTMLDivElement>(null),scroll=useRef<HTMLDivElement>(null);
  const photo=useRef<PhotoCarouselHandle>(null),gesture=useRef<ExpandGesture|null>(null);
  const photoHold=useRef<PhotoHold|null>(null),actionLocked=useRef(false),feedbackTimer=useRef<number|null>(null);
@@ -151,7 +149,7 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
  const profileAnswers=(person.answers??[]).filter(a=>a.question.trim()&&a.answer.trim());
  const paintSuperPreview=useCallback((value:number,armed:boolean)=>{
   const element=card.current;if(!element)return;
-  element.style.setProperty("--super-p",String(clamp(value)));
+  superPreview.current?.style.setProperty("--super-p",String(clamp(value)));
   element.toggleAttribute("data-super-preview",value>.02);
   element.toggleAttribute("data-super-armed",armed);
  },[]);
@@ -180,17 +178,18 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
  const performAction=(kind:"pass"|"like"|"special")=>{
   if(actionLocked.current||!available)return;
   actionLocked.current=true;
-  const feedback={kind,token:performance.now()};setActionFeedback(feedback);
+  const feedback=kind==="special"?null:{kind,token:performance.now()};
+  if(feedback)setActionFeedback(feedback);
   if(kind==="special")card.current?.classList.add("is-super-committing");
   if(feedbackTimer.current!==null)window.clearTimeout(feedbackTimer.current);
   feedbackTimer.current=window.setTimeout(()=>{
-   setActionFeedback(current=>current?.token===feedback.token?null:current);
+   if(feedback)setActionFeedback(current=>current?.token===feedback.token?null:current);
    actionLocked.current=false;feedbackTimer.current=null;
    card.current?.classList.remove("is-super-committing");paintSuperPreview(0,false);
   },900);
   onAction(kind);
  };
- const paint=(next:number)=>{
+ const paint=(next:number,nudge=0)=>{
   const value=progress.current=clamp(next),element=card.current;
   if(element){
    element.style.setProperty("--profile-p",String(value));
@@ -203,9 +202,9 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
    element.style.setProperty("--profile-text-p",String(revealStage(value,.32,.70)));
    element.style.setProperty("--profile-interests-p",String(revealStage(value,.52,.85)));
    element.style.setProperty("--profile-extra-p",String(revealStage(value,.60,.98)));
-   element.style.setProperty("--profile-elastic-y","0px");
+   element.style.setProperty("--profile-elastic-y",nudge+"px");
   }
-  if(drawer.current)drawer.current.inert=value<.98;
+  if(drawer.current&&drawer.current.inert!==(value<.98))drawer.current.inert=value<.98;
  };
  const freeze=()=>{const current=run.current;if(!current)return;if(current.frame!==null)cancelAnimationFrame(current.frame);
   const t=clamp((performance.now()-current.started)/current.duration);run.current=null;
@@ -220,10 +219,11 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
   const motion:SettleRun={from:progress.current,to:next,started:performance.now(),duration:310+Math.abs(next-progress.current)*115,frame:null};
   run.current=motion;
   const tick=(now:number)=>{if(run.current!==motion)return;const t=clamp((now-motion.started)/motion.duration);
-   paint(motion.from+(motion.to-motion.from)*settleEase(t));
-   card.current?.style.setProperty("--profile-elastic-y",settleNudge(t,next)+"px");
    if(t>=1){run.current=null;paint(next);setExpanded(next===1);if(scroll.current)scroll.current.style.overflowY=next?"auto":"hidden";}
-   else motion.frame=requestAnimationFrame(tick);};
+   else{
+    paint(motion.from+(motion.to-motion.from)*settleEase(t),settleNudge(t,next));
+    motion.frame=requestAnimationFrame(tick);
+   }};
   motion.frame=requestAnimationFrame(tick);
  };
  const scheduleFinger=(value:number)=>{fingerValue.current=value;if(fingerFrame.current!==null)return;
@@ -411,9 +411,9 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
      {person.likedYouKind&&<p className="moonstone-liked-you moonstone-reveal-extra">Ты уже понравился(ась) этому человеку</p>}
     </div>
    </section>
-   <div className="moonstone-super-preview" aria-hidden="true"><span className="moonstone-super-core"><Star/></span>
+   <div ref={superPreview} className="moonstone-super-preview" aria-hidden="true"><span className="moonstone-super-core"><Star/></span>
     <span className="moonstone-super-orbit">{Array.from({length:10},(_,index)=><i key={index}><Star/></i>)}</span></div>
-   {actionFeedback&&actionFeedback.kind!=="special"&&<div key={actionFeedback.token}
+   {actionFeedback&&<div key={actionFeedback.token}
     className={`moonstone-action-feedback is-${actionFeedback.kind}`} aria-hidden="true">
     <span>{actionFeedback.kind==="pass"?<X/>:<Heart/>}</span>
    </div>}

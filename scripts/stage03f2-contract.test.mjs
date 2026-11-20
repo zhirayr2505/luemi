@@ -48,7 +48,7 @@ assert.ok(deckStyle.includes("luemi-deck-exit-left")&&
  deckStyle.includes(".deck-queued")&&deckStyle.includes(":has(>.deck-leaving)>.deck-queued")&&
  !style.includes("@keyframes luemi-deck-leave"),
  "single visible card with queued decoded successor and direction-aware compositor exits");
-assert.ok(feed.includes('const paint=(next:number)=>')&&
+assert.ok(feed.includes('const value=progress.current=clamp(next)')&&
  feed.includes('scheduleFinger(current.startProgress-dy/travel.current)')&&
  feed.includes('Math.abs(velocity)>.42?velocity<0')&&
  feedStyle.includes('.moonstone-actions{')&&feedStyle.includes('.moonstone-profile-drawer{'),

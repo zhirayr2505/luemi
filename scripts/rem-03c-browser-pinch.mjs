@@ -190,7 +190,20 @@ try{
  first=p(51,100,350);second=p(52,290,520);await send("touchMove",[first,second]);
  await page.setViewportSize({width:430,height:780});await sleep(80);
  s=await state();bounds(s);near(s.viewport[0],430,.5);
+ await page.setViewportSize({width:430,height:690});await sleep(80);
+ s=await state();bounds(s);near(s.viewport[1],690,.5);
+ await page.evaluate(()=>{
+  const surface=document.querySelector(".pm-viewer-surface");
+  window.__luemiPinchLayoutReads=0;
+  const measure=surface.getBoundingClientRect.bind(surface);
+  surface.getBoundingClientRect=()=>{
+   window.__luemiPinchLayoutReads++;
+   return measure();
+  };
+ });
  first=p(51,104,355);second=p(52,292,525);await send("touchMove",[first,second]);
+ assert.equal(await page.evaluate(()=>window.__luemiPinchLayoutReads),0,
+  "pinch input must not measure the surface on every pointer event");
  bounds(await state());await send("touchEnd",[first,second]);await resetZoom();
  pass("viewport resizing midpinch rebases actual content fit and pointer focal anchor");
  await page.setViewportSize({width:393,height:852});await sleep(65);

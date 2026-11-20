@@ -20,16 +20,6 @@ export function contentFit(view:Viewport,natural:Viewport):FitRect{
  const w=nw*ratio,h=nh*ratio;
  return {x:(width-w)/2,y:(height-h)/2,width:w,height:h,cx:width/2,cy:height/2};
 }
-/** Bind client CSS pixels to the actual transformed surface rect. During an
- * interrupted opening the surface rect may not equal viewport coordinates.
- * Local geometry is in the untransformed surface's own layout units. */
-export function localFromClient(client:Point,rect:{left:number;top:number;width:number;height:number},
- layout:Viewport):Point{
- return {
-  x:(client.x-finite(rect.left))*Math.max(1,layout.width)/Math.max(1,rect.width),
-  y:(client.y-finite(rect.top))*Math.max(1,layout.height)/Math.max(1,rect.height)
- };
-}
 export function midpoint(a:Point,b:Point):Point{return {x:(a.x+b.x)/2,y:(a.y+b.y)/2};}
 export function distance(a:Point,b:Point):number{return Math.hypot(b.x-a.x,b.y-a.y);}
 export function clampPan(t:MediaTransform,view:Viewport,natural:Viewport):MediaTransform{
