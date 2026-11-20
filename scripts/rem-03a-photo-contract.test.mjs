@@ -58,8 +58,10 @@ class FakeImage{
 }
 let signals=0;
 const cache=new media.PhotoReadiness(()=>signals++,()=>new FakeImage());
+cache.prime(b,{src:b.src,width:720,height:960,fallback:false});
 cache.updateWindow(photos,"B");
 assert.equal(cache.size(),3,"only previous/current/next");
+assert.equal(instances.length,2,"opening an already loaded photo only preloads its neighbors");
 await tick();await tick();
 assert.equal(cache.read(b).phase,"ready");
 assert.equal(cache.read(b).width,720);

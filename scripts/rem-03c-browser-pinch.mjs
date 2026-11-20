@@ -40,6 +40,7 @@ const state=()=>page.evaluate(()=>{
  return {open:!!viewer,id:img?.dataset.photoId,scale:s,tx:m?.m41??0,ty:m?.m42??0,
   matrix:m?.toString(),natural:[iw,ih],viewport:[w,h],content:[cw,ch],
   fit:[(w-cw)/2,(h-ch)/2,cw,ch],backdropOpacity:Number(backdrop?getComputedStyle(backdrop).opacity:1),
+  viewerBackground:viewer?getComputedStyle(viewer).backgroundColor:null,
   surfaceY:stageM?.m42??0,offset:Number(track?.dataset.offset??0),
   commits:Number(viewer?.dataset.semanticCommits??0),phase:viewer?.dataset.motionPhase};
 });
@@ -250,33 +251,32 @@ try{
  const base=(await stats()).closeCommits;
  first=p(81,200,410);await send("touchStart",[first]);
  first=p(81,200,470);await send("touchMove",[first]);
- s=await state();near(s.surfaceY,60);assert.ok(s.backdropOpacity<1);
+ s=await state();near(s.surfaceY,60);assert.ok(s.backdropOpacity<.85);
+ assert.equal(s.viewerBackground,"rgba(0, 0, 0, 0)","the fading layer must reveal the real profile");
  await sleep(190);await send("touchEnd",[first]);await sleep(260);
  s=await state();assert.equal(s.open,true);near(s.surfaceY,0,.9);near(s.backdropOpacity,1,.03);
  assert.equal((await stats()).closeCommits,base);
  pass("cancelled vertical dismiss restores surface Y and opacity synchronously at 1x");
- first=p(82,200,510);await send("touchStart",[first]);
- first=p(82,200,350);await send("touchMove",[first]);
- const upwardDuring=await state();
- await send("touchEnd",[first]);
- await sleep(250);
- assert.equal((await state()).open,true,"upward drags cannot dismiss the viewer");
- assert.equal((await stats()).closeCommits,base);
- first=p(83,200,350);await send("touchStart",[first]);
- first=p(83,200,510);await send("touchMove",[first]);
- await send("touchEnd",[first]);
- try{await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});}
- catch(error){
-  console.log("REM03C_DIAG_VERTICAL_CLOSE",JSON.stringify({
-   upwardDuring,after:await state(),stats:await stats(),
-   events:await page.evaluate(()=>window.__rem03cEvents.slice(-27))
-  }));
-  throw error;
+ for(const direction of [-1,1]){
+  const previous=(await stats()).closeCommits;
+  first=p(82,200,425);await send("touchStart",[first]);
+  let opacity=1;
+  for(const distance of [55,135,215]){
+   first=p(82,200,425+distance*direction);
+   await send("touchMove",[first]);
+   const during=await state();
+   near(during.surfaceY,distance*direction,2);
+   assert(during.backdropOpacity<opacity&&during.open,"the profile becomes more visible on every held frame");
+   opacity=during.backdropOpacity;
+  }
+  assert(opacity<.3,"the backdrop is mostly transparent before releasing the finger");
+  await send("touchEnd",[first]);
+  await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});
+  assert.equal((await stats()).closeCommits,previous+1);
+  await open("qa-alpha");await ready("qa-alpha");await sleep(280);
  }
- assert.equal((await stats()).closeCommits,base+1);
- await sleep(320);assert.equal((await stats()).closeCommits,base+1);
- pass("only downward dismiss at 1x commits close once");
- await open("qa-alpha");await ready("qa-alpha");await sleep(280);
+ assert.equal((await stats()).closeCommits,base+2);
+ pass("both vertical directions reveal the profile during the drag and close once");
  // StrictMode QA fixture and reopening can still navigate original 3-slide track.
  await page.keyboard.press("ArrowRight");await ready("qa-beta");
  await page.keyboard.press("ArrowLeft");await ready("qa-alpha");

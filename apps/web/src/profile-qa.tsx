@@ -11,6 +11,7 @@ import "./styles.css";
 // Match production token initialization in the standalone browser QA entry.
 import "./ui/luemi-v5.css";
 import "./ui/liquid-glass.css";
+import "./ui/vivid-routes.css";
 import {installMoonstoneOptics} from "./ui/moonstone-optics";
 
 const base=newDraft("ZHIIIRRO");

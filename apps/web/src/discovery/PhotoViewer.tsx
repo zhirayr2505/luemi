@@ -31,6 +31,8 @@ type Gesture={id:number;x:number;y:number;startX:number;startY:number;time:numbe
  axis:""|"x"|"y";origin:number;serial:number|null;startPhotoId:string|null;
  pinch:boolean;captured:boolean;samples:{x:number;t:number}[];interruptedTarget:number|null};
 const duration=240;
+const sharedDuration=215;
+const sharedEase="cubic-bezier(.22,.72,.24,1)";
 const tapDelay=270;
 const easing=[.2,.8,.2,1] as const;
 const scheduler={frame:(cb:()=>void)=>requestAnimationFrame(cb),cancelFrame:(id:number)=>cancelAnimationFrame(id)};
@@ -59,6 +61,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const modal=useRef<HTMLElement>(null);
  const morphClip=useRef<HTMLDivElement>(null);
  const morphImage=useRef<HTMLImageElement>(null);
+ const decodedMorphSrc=useRef("");
+ const openingSettled=useRef(false);
  const visibleSource=useRef<{node:HTMLElement;visibility:string}|null>(null);
  const openSourceRect=useRef<Rect|null>(null);
  const returnFrame=useRef<number|null>(null);
@@ -91,8 +95,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  if(!surfaceOwner.current||surfaceOwner.current.snapshot().disposed)
   surfaceOwner.current=new MotionController("route",scheduler);
  const commitCount=useRef(0);
- const latest=useRef({photoId,photos,show,index,displayReady,view,onMain,onClose});
- latest.current={photoId,photos,show,index,displayReady,view,onMain,onClose};
+ const mediaFailed=media?.phase==="error";
+ const latest=useRef({photoId,photos,show,index,displayReady,mediaFailed,view,onMain,onClose});
+ latest.current={photoId,photos,show,index,displayReady,mediaFailed,view,onMain,onClose};
  const handlers=useRef<{close:(force?:boolean)=>void;navigate:(target:NavigationRequest,origin:NavigationOrigin)=>boolean}>({
   close:()=>{},navigate:()=>false
  });
@@ -225,8 +230,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const clearMorph=()=>{
   morphActive.current=false;
   if(modal.current)modal.current.dataset.morphActive="false";
-  if(morphClip.current){morphClip.current.style.display="none";morphClip.current.style.transition="none";}
-  if(morphImage.current)morphImage.current.style.transition="none";
+  if(morphClip.current)morphClip.current.style.display="none";
   restoreSource();
  };
  const getMorph=(isClosing:boolean):SharedPhoto|null=>{
@@ -275,47 +279,30 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const photo=fitImage(box,{width:node.naturalWidth,height:node.naturalHeight},"contain");
   return photo?{photo,clip:"inset(0px 0px 0px 0px round 0px)"}:null;
  };
- const prepareMorph=(closingPhase:boolean,frame:SharedFrame|null):SharedPhoto|null=>{
+ const prepareMorph=(candidate:SharedPhoto)=>{
   const clip=morphClip.current,pixels=morphImage.current;
-  if(!clip||!pixels)return null;
-  const candidate=getMorph(closingPhase);
-  if(!candidate){morphCleanup.current();return null;}
+  if(!clip||!pixels)return;
   const {geometry:m,source:el}=candidate;
-  pixels.src=el.currentSrc||el.src;
-  // The source has already loaded; the shared decoded source is used only
-  // for this transitional layer, never as a false media-readiness signal.
   pixels.style.left=m.destination.left+"px";pixels.style.top=m.destination.top+"px";
   pixels.style.width=m.destination.width+"px";pixels.style.height=m.destination.height+"px";
-  pixels.style.transition="none";
-  pixels.style.transform=closingPhase?(frame?photoPlacement(m.destination,frame.photo):"none"):sourceImageTransform(m);
-  clip.style.transition="none";
-  clip.style.clipPath=closingPhase?(frame?.clip??"inset(0px 0px 0px 0px round 0px)"):candidate.clip;
   clip.style.display="block";clip.style.opacity="1";
   morphActive.current=true;
   if(modal.current)modal.current.dataset.morphActive="true";
   visibleSource.current={node:el,visibility:el.style.visibility};
   el.style.visibility="hidden";
-  void pixels.offsetWidth;
-  return candidate;
  };
  const morphCleanup=useRef<()=>void>(()=>{});
  morphCleanup.current=clearMorph;
  const stopSurface=(interrupted=true)=>{
-  const layer=surface.current,outer=stage.current,shade=backdrop.current,owner=surfaceOwner.current;
-  // Freeze actual on-screen matrix before cancelling the CSS transition.
-  if(layer){
-   const computed=getComputedStyle(layer).transform;
-   layer.style.transition="none";
-   layer.style.transform=computed==="none"?"none":computed;
-  }
-  if(outer){
-   const opacity=getComputedStyle(outer).opacity;
-   outer.style.transition="none";outer.style.opacity=opacity;
-  }
-  if(shade){
-   const opacity=getComputedStyle(shade).opacity;
-   shade.style.transition="none";shade.style.opacity=opacity;
-  }
+  const owner=surfaceOwner.current;
+  const frozen:[HTMLElement|null,"opacity"|"transform"|"clipPath"][]=[
+   [surface.current,"transform"],[stage.current,"opacity"],[backdrop.current,"opacity"]
+  ];
+  if(morphActive.current)frozen.push([morphImage.current,"transform"],[morphClip.current,"clipPath"]);
+  const sampled=frozen.map(([node,property])=>node?getComputedStyle(node)[property]:null);
+  frozen.forEach(([node,property],i)=>{
+   if(node&&sampled[i]!==null){node.style.transition="none";node.style[property]=sampled[i];}
+  });
   const t=owner?.token();
   if(t&&interrupted)owner?.interrupt(t,"interrupted");
  };
@@ -323,58 +310,95 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(phase.current!=="opening")return;
   stopSurface();
   morphCleanup.current();
+  if(stage.current)stage.current.style.opacity="1";
+  if(modal.current)modal.current.dataset.presented="true";
   restoreVertical(false);
   phase.current="idle";
  };
  const interruptOpeningRef=useRef<()=>void>(()=>{});
  interruptOpeningRef.current=interruptOpening;
- /** One completion gate for opening/closing: transitionend and timeout
-  * race on the SAME MotionController generation; old callbacks cannot commit.
-  */
+ // Decode the travelling layer before hiding the thumbnail. Keep it at the
+ // fullscreen position until the actual image has decoded and can replace it.
  const surfaceTransition=(closingPhase:boolean,visibleFrame:SharedFrame|null=null)=>{
-  const layer=surface.current,outer=stage.current,shade=backdrop.current,owner=surfaceOwner.current;
-  if(!layer||!outer||!shade||!owner)return;
+  const outer=stage.current,shade=backdrop.current,owner=surfaceOwner.current;
+  if(!outer||!shade||!owner)return;
   const start=owner.begin(closingPhase?1:0);
   if(!start)return;
   if(!owner[closingPhase?"close":"settle"](start,closingPhase?0:1))return;
   const token=owner.token();
   const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const shared=reduce?null:prepareMorph(closingPhase,visibleFrame);
   const clip=morphClip.current,pixels=morphImage.current;
+  const candidate=reduce||(closingPhase&&!visibleFrame)?null:getMorph(closingPhase);
   const targetOpacity=closingPhase?"0":"1";
   const completed=()=>{
    owner.finish(token,{paint:()=>{
-    morphCleanup.current();
-    if(closingPhase){phase.current="disposed";latest.current.onClose(latest.current.photoId??undefined);}
-    else if(!closing.current)phase.current="idle";
+    if(closingPhase){
+     morphCleanup.current();phase.current="disposed";latest.current.onClose(latest.current.photoId??undefined);
+    }else{
+     openingSettled.current=true;phase.current="idle";
+     if(latest.current.displayReady||latest.current.mediaFailed)morphCleanup.current();
+    }
    }});
   };
-  if(reduce){
-   outer.style.opacity=targetOpacity;shade.style.opacity=targetOpacity;
-   completed();return;
-  }
-  const startTransition=()=>{
-   if(!owner.owns(token))return;
-   shade.style.transition="opacity "+duration+"ms ease";
-   shade.style.opacity=targetOpacity;
-   outer.style.transition="opacity "+duration+"ms ease";
-   outer.style.opacity=targetOpacity;
-   if(shared&&clip&&pixels){
-    clip.style.transition="clip-path "+duration+"ms cubic-bezier(.2,.8,.2,1)";
-    pixels.style.transition="transform "+duration+"ms cubic-bezier(.2,.8,.2,1)";
-    clip.style.clipPath=closingPhase?shared.clip:"inset(0px 0px 0px 0px round 0px)";
-    pixels.style.transform=closingPhase?sourceImageTransform(shared.geometry):"none";
-   }
-  };
-  const onEnd=(event:TransitionEvent)=>{
-   if(event.target===shade&&event.propertyName==="opacity")completed();
-  };
-  shade.addEventListener("transitionend",onEnd);
-  const timer=window.setTimeout(completed,duration+40);
-  const frame=requestAnimationFrame(startTransition);
+  let started=false,completeTimer:number|undefined;
+  const animations:Animation[]=[];
   owner.track(token,()=>{
-   shade.removeEventListener("transitionend",onEnd);
-   clearTimeout(timer);cancelAnimationFrame(frame);
+   clearTimeout(completeTimer);
+   for(const animation of animations)animation.cancel();
+  });
+  const animate=(node:HTMLElement,property:"opacity"|"transform"|"clipPath",from:string,to:string)=>{
+   node.style.transition="none";
+   node.style[property]=to;
+   if(!reduce&&from!==to)animations.push(node.animate({[property]:[from,to]},
+    {duration:sharedDuration,easing:sharedEase,fill:"backwards"}));
+  };
+  const startTransition=(shared:SharedPhoto|null)=>{
+   if(started||!owner.owns(token))return;
+   started=true;
+   if(modal.current)modal.current.dataset.presented="true";
+   animate(shade,"opacity",shade.style.opacity||"0",targetOpacity);
+   if(shared&&clip&&pixels){
+    prepareMorph(shared);
+    // One visible photo during the flight; the stage needs no opening fade.
+    outer.style.opacity=targetOpacity;
+    const fullClip="inset(0px 0px 0px 0px round 0px)";
+    const cropped=sourceImageTransform(shared.geometry);
+    animate(clip,"clipPath",closingPhase?(visibleFrame?.clip??fullClip):shared.clip,
+     closingPhase?shared.clip:fullClip);
+    animate(pixels,"transform",closingPhase&&visibleFrame?photoPlacement(shared.geometry.destination,visibleFrame.photo):cropped,
+     closingPhase?cropped:"none");
+   }else{
+    animate(outer,"opacity",outer.style.opacity||"0",targetOpacity);
+    if(closingPhase&&morphActive.current&&clip)animate(clip,"opacity","1","0");
+   }
+   if(!animations.length){completed();return;}
+   completeTimer=window.setTimeout(completed,sharedDuration+55);
+   void Promise.all(animations.map(animation=>animation.finished)).then(completed,()=>{});
+  };
+  if(!candidate||!pixels){startTransition(null);return;}
+  const src=candidate.source.currentSrc||candidate.source.src;
+  const photo=latest.current.show;
+  const resource=photo&&resourceIdentity(photo);
+  const viewport={width:window.innerWidth,height:window.innerHeight};
+  if(!closingPhase&&photo){
+   mediaRef.current?.prime(photo,{src,width:candidate.source.naturalWidth,height:candidate.source.naturalHeight,
+    fallback:src!==new URL(photo.src,document.baseURI).href});
+  }
+  if(decodedMorphSrc.current===src&&pixels.complete&&pixels.naturalWidth>0){startTransition(candidate);return;}
+  decodedMorphSrc.current="";pixels.src=src;
+  const decodeTimer=window.setTimeout(()=>startTransition(null),110);
+  owner.track(token,()=>clearTimeout(decodeTimer));
+  void pixels.decode().then(()=>{
+   clearTimeout(decodeTimer);
+   if(!owner.owns(token))return;
+   decodedMorphSrc.current=src;
+   const current=latest.current.show;
+   const unchanged=candidate.source.isConnected&&(candidate.source.currentSrc||candidate.source.src)===src&&
+    window.innerWidth===viewport.width&&window.innerHeight===viewport.height&&current&&resourceIdentity(current)===resource;
+   startTransition(unchanged?candidate:null);
+  },()=>{
+   clearTimeout(decodeTimer);
+   startTransition(null);
   });
  };
  const surfaceHandler=useRef<(closingPhase:boolean)=>void>(()=>{});
@@ -397,6 +421,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   outer.style.opacity=terminal?"1":"0";outer.style.transition="none";
   shade.style.opacity=terminal?"1":"0";shade.style.transition="none";
   layer.style.transition="none";layer.style.transform="none";
+  openingSettled.current=false;
+  if(modal.current)modal.current.dataset.presented=String(terminal);
   phase.current=terminal?"closing":"opening";
   surfaceHandler.current(terminal);
   const captureLossTimers=pendingCaptureLoss.current;
@@ -412,6 +438,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    surfaceOwner.current?.dispose();
   };
  },[]);
+ useLayoutEffect(()=>{
+  if(openingSettled.current&&!closing.current&&(displayReady||mediaFailed))morphCleanup.current();
+ },[displayReady,mediaFailed]);
  useEffect(()=>{
   // Central modal owner traps Tab and Escape; viewer handles only its own
   // navigation shortcuts and never steals keys from a higher dialog.
@@ -660,6 +689,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  };
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(closing.current||menu||(e.pointerType==="mouse"&&e.button!==0))return;
+  if(morphActive.current&&!latest.current.displayReady)return;
   pointer.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pointer.current.size===1){
    interruptOpening();
@@ -718,7 +748,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    if(g.serial!==null)gestureArbiter.current?.claim("hero",g.serial);
    try{e.currentTarget.setPointerCapture(e.pointerId);g.captured=true;}catch{/* WebView fallback */}
    phase.current=g.axis==="x"?"draggingX":"draggingY";
-   if(g.axis==="y"&&Math.abs(trackX.current)>.1)settle(0);
+   if(g.axis==="y"){
+    if(Math.abs(trackX.current)>.1)settle(0);
+    if(surface.current)surface.current.style.transition="none";
+    if(backdrop.current)backdrop.current.style.transition="none";
+   }
   }
   if(e.cancelable)e.preventDefault();
   if(g.axis==="x"){
@@ -727,17 +761,10 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    const t=performance.now();g.samples.push({x:e.clientX,t});
    if(g.samples.length>10)g.samples.shift();
   }else{
-   // The image follows a downward drag at finger speed. The dark layer
-   // fades independently, so the photo remains solid over the profile.
-   const y=dy>=0?dy:dy*.18,scale=Math.max(.86,1-Math.max(0,dy)/2400);
-   if(surface.current){
-    surface.current.style.transition="none";
-    surface.current.style.transform="translate3d(0,"+y+"px,0) scale("+scale+")";
-   }
-   if(backdrop.current){
-    backdrop.current.style.transition="none";
-    backdrop.current.style.opacity=String(Math.max(.24,1-Math.max(0,dy)/400));
-   }
+   const distance=Math.abs(dy);
+   const scale=Math.max(.88,1-distance/2400);
+   if(surface.current)surface.current.style.transform="translate3d(0,"+dy+"px,0) scale("+scale+")";
+   if(backdrop.current)backdrop.current.style.opacity=String(Math.max(0,1-distance/280));
   }
  };
  const finish=(e:EndPointer,cancel:boolean)=>{
@@ -773,10 +800,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(!g){resetGesture();return;}
   gesture.current=null;gestureArbiter.current?.cancel();
   const dx=e.clientX-g.startX,dy=e.clientY-g.startY;
+  const verticalDistance=Math.abs(dy);
   const elapsed=Math.max(1,performance.now()-g.time);
   // Vertical dismiss is allowed only in pure 1x single-pointer mode.
   if(!cancel&&g.axis==="y"&&mediaPose.current.scale<=1.0001&&
-   (dy>110||(dy>=24&&dy/elapsed>.8))){
+   (verticalDistance>110||(verticalDistance>=24&&verticalDistance/elapsed>.8))){
    requestClose();return;
   }
   if(g.axis==="x"){
@@ -839,7 +867,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  };
  const phaseKey=phase.current;
  return createPortal(<section className="pm-viewer" ref={modal} role="dialog" aria-modal="true" aria-label="Просмотр фото"
-   tabIndex={-1}
+   tabIndex={-1} data-morph-active="false" data-presented="false"
    data-motion-phase={phaseKey} data-semantic-commits={commitCount.current} data-chrome-visible={chromeVisible}>
   <div className="pm-viewer-backdrop" ref={backdrop} aria-hidden="true"/>
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}

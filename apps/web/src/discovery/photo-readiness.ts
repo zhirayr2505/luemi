@@ -71,6 +71,15 @@ export class PhotoReadiness{
    entry.image.removeAttribute("src");entry.image=null;
   }
  }
+ /** A resource already loaded in the opening slot needs no second preloader.
+  * The viewer's actual image still has to decode before it replaces the shared frame. */
+ prime(photo:ProfilePhoto,source:{src:string;width:number;height:number;fallback:boolean}){
+  const key=resourceIdentity(photo);
+  if(this.disposed||this.entries.has(key))return;
+  const state:MediaState={...source,key,photoId:photo.id,phase:"ready",reason:null,generation:++this.revision};
+  this.entries.set(key,{photo,state,image:null,token:0,disposed:false});
+  this.notify();
+ }
  /** Always at most current + one previous + one next. All others are released. */
  updateWindow(photos:readonly ProfilePhoto[],photoId:string|null){
   if(this.disposed)return;
