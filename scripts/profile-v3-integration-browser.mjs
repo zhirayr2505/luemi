@@ -54,6 +54,50 @@ async function checkPager(profile){
   }
  }finally{await input.detach();}
 }
+async function checkVisitorBack(profile){
+ const route=page.locator(".discovery-visitor-route");
+ const xOffset=()=>route.evaluate(el=>el.getBoundingClientRect().left);
+ const input=await context.newCDPSession(page);
+ const swipe=async(x,y,moves,onMove)=>{
+  await input.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y,id:1}]});
+  for(const dx of moves){
+   await input.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:x+dx,y,id:1}]});
+   await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+   await onMove(dx);
+  }
+  await input.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ };
+ try{
+  await setPremiumProfileState(page,profile,"expanded");
+  await profile.getByRole("tab",{name:"Фото",exact:true}).click();
+  const tabs=await profile.locator(".owner-profile-tabs").boundingBox();
+  await swipe(18,tabs.y+tabs.height/2,[45,150],async()=>{
+   assert(Math.abs(await xOffset())<1,"even an edge swipe on Photos must stay in the pager");
+  });
+  await profile.locator('.owner-profile-tabs [aria-selected="true"]').filter({hasText:"О себе"}).waitFor();
+
+  const photo=profile.locator(".owner-profile-photo-mask");
+  const hero=await photo.boundingBox();
+  await swipe(18,hero.y+hero.height*.53,[46,160],async()=>{
+   assert(Math.abs(await xOffset())<1,"the expanded portrait keeps right swipes even from the edge");
+  });
+
+  const body=await profile.locator(".owner-profile-viewport").boundingBox();
+  await swipe(80,body.y+55,[75,20],async dx=>{
+   assert(Math.abs(await xOffset()-dx)<1,"the whole profile follows a drag from About in either direction");
+  });
+  await page.waitForFunction(()=>Math.abs(document.querySelector(".discovery-visitor-route")?.getBoundingClientRect().left??Infinity)<.05);
+  assert.equal(await route.count(),1,"the short swipe returns without closing");
+
+  await setPremiumProfileState(page,profile,"compact");
+  const avatar=await profile.locator(".owner-profile-avatar-circle").boundingBox();
+  await swipe(avatar.x+avatar.width/2,avatar.y+avatar.height/2,[55,153],async dx=>{
+   assert(Math.abs(await xOffset()-dx)<1,"the round avatar can start a one-to-one route drag");
+  });
+  await route.waitFor({state:"detached",timeout:4000});
+ }finally{await input.detach();}
+}
+
 try{
  await page.goto(base+"/profile-qa.html?profileV3=1",{waitUntil:"domcontentloaded"});
  await page.getByRole("button",{name:"Профиль",exact:true}).click();
@@ -122,10 +166,9 @@ try{
  assert.equal(await visitor.locator(".owner-profile-edit-top").count(),0,
   "no owner-only edit button in the visitor hero");
  assert.deepEqual(await visitor.locator(".owner-profile-tabs [role=tab]").allTextContents(),tabs);
- await page.keyboard.press("Escape");
- await visitor.waitFor({state:"detached",timeout:4000});
+ await checkVisitorBack(visitor);
  assert.deepEqual(errors,[],"no unexpected browser errors across owner/visitor transitions");
- console.log("PROFILE_V4_INTEGRATION_CHROMIUM_PASS owner/visitor, square morph, four tabs, dynamic photos, PhotoViewer, permissions; physical Telegram not tested");
+ console.log("PROFILE_V4_INTEGRATION_CHROMIUM_PASS owner/visitor, square morph, four tabs, dynamic photos, PhotoViewer, permissions, contextual back swipe; physical Telegram not tested");
 }finally{
  await context.close();await browser.close();
 }

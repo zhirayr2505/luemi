@@ -18,7 +18,7 @@ type Props={
 };
 type RouteDrag={
  id:number;startX:number;startY:number;started:number;origin:number;span:number;claimed:boolean;serial:number;
- source:"photo"|"pages"|"tabs"|"sheet";edge:boolean;
+ source:"photo"|"pages"|"tabs"|"sheet";edge:boolean;premium:boolean;
 };
 const OPEN_DURATION=260;
 const CLOSE_DURATION=230;
@@ -184,9 +184,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
   }else motionActions.current.rollback();
  }),[gestures]);
 
- // Expanded: only gestures originating on the white sheet may close.
- // Collapsed: the complete profile is a back-swipe surface. The photo hero
- // never becomes a back-swipe surface while expanded, even on photo #1.
+ // The tab pager owns right swipes until it reaches the first page.
  const down=(e:ReactPointerEvent<HTMLDivElement>)=>{
   if(!e.isPrimary){
    const claimed=!!gesture.current?.claimed;
@@ -199,42 +197,38 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
   // Guard only nested interactive layers, never stale scroll offsets. The
   // shared arbiter decides horizontal/vertical ownership from movement.
   if(isGestureModalBlocked(target))return;
-  const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
-  const premium=route.current?.querySelector<HTMLElement>(".owner-premium-profile");
-  const compact=premium?.dataset.morphState==="compact";
-  // Legacy shell sheetState is not updated by Premium Photo Profile. Never
-  // treat an expanded premium hero as collapsed, or the back recognizer will
-  // steal the photo's right swipe on visitor profiles.
-  const collapsed=premium?compact:shell?.dataset.sheetState==="collapsed";
-  if(!collapsed&&!target.closest(".owner-profile-scroll,.owner-profile-content,.pm-profile-sheet,.v3-int-sheet"))return;
-  const interactive=target.closest("button,a,input,textarea,select,[contenteditable=true]");
-  if(interactive&&!target.closest(".pm-photo-tile,.owner-profile-photo-tile"))return;
+  const premium=target.closest(".owner-premium-profile");
   const source:RouteDrag["source"]=target.closest(".owner-profile-photo-mask,.pm-hero")?"photo":
    target.closest(".owner-profile-tabs,.pm-tabs")?"tabs":
    target.closest(".owner-profile-pages,.pm-pages")?"pages":"sheet";
+  const interactive=target.closest("button,a,input,textarea,select,[contenteditable=true]");
   const screenLeft=route.current?.getBoundingClientRect().left??0;
-  const page=source==="pages"?target.closest<HTMLElement>('.v3-int-page[data-tab-id="about"]'):null;
-  // About cards start after both the page and card padding: their first text
-  // pixel is outside the original screen-edge candidate. Keep the 26px
-  // screen edge, and recognize the first 26px of About content only. Gallery
-  // thumbnails in the other pages retain their existing tab-swipe ownership.
-  const contentLeft=page?page.getBoundingClientRect().left+
-   (Number.parseFloat(getComputedStyle(page).paddingLeft)||0):screenLeft;
-  const contentX=e.clientX-contentLeft;
-  // Pager swipes own the whole content width, including its left edge.
-  // The visible back button remains a reliable way to close the profile.
-  const ownPager=!!target.closest(".owner-profile-pages,.owner-profile-tabs");
-  // The actual left 26px screen gutter always belongs to route navigation,
-  // even when a sticky tab strip reaches it. Else tabs consume a back swipe
-  // after compacting a Premium Profile (especially on short viewports).
-  // Only the *additional* About-card gutter is disabled for independent pagers.
-  const edge=e.clientX-screenLeft<=26||
-   (!ownPager&&!!page&&contentX>=0&&contentX<=26);
+  let edge=e.clientX-screenLeft<=26;
+
+  if(premium){
+   if(!premium.querySelector('.owner-profile-tabs [role="tab"]:first-child[aria-selected="true"]')||
+    premium.querySelector(".owner-profile-pages[data-paging]"))return;
+   const compact=!!premium.querySelector(".owner-profile-avatar-circle");
+   if(source==="photo"&&!target.closest(".owner-profile-avatar-circle"))return;
+   if(!compact&&!target.closest(".owner-profile-sheet"))return;
+   if(interactive&&!target.closest('.owner-profile-tabs [role="tab"]'))return;
+  }else{
+   const shell=route.current?.querySelector<HTMLElement>(".pm-shell");
+   const collapsed=shell?.dataset.sheetState==="collapsed";
+   if(!collapsed&&!target.closest(".pm-profile-sheet,.v3-int-sheet"))return;
+   if(interactive&&!target.closest(".pm-photo-tile"))return;
+   const about=source==="pages"?target.closest<HTMLElement>('.v3-int-page[data-tab-id="about"]'):null;
+   if(about){
+    const contentLeft=about.getBoundingClientRect().left+(Number.parseFloat(getComputedStyle(about).paddingLeft)||0);
+    const contentX=e.clientX-contentLeft;
+    edge=edge||(contentX>=0&&contentX<=26);
+   }
+  }
   const serial=gestures.begin("pointer",e.pointerId,"route");
   if(serial===null)return;
   gesture.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,started:performance.now(),
    origin:currentX(),span:width(),claimed:false,source,serial,
-   edge};
+   edge,premium:!!premium};
  };
  const move=(e:ReactPointerEvent<HTMLDivElement>)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
@@ -248,25 +242,20 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
     gestures.finishCandidate(g.serial,"route");
     gesture.current=null;return;
    }
-   // The route sees capture first. At the same 7px recognition threshold as
-   // V3 pages, it can own an edge swipe before the child captures the pointer.
-   if(dx<(g.edge?7:9)||dx<Math.abs(dy)*1.28)return;
-   // Preserve the existing gallery and tab pager until their first item;
-   // a page with remaining content always owns its own right swipe.
-   if(g.source==="photo"){
-    // Premium Profile owns horizontal photo paging across the image. Route
-    // back remains available from the explicit 26px edge and never steals a
-    // central right swipe from the first photograph.
-    if(!g.edge&&route.current?.querySelector(".owner-premium-profile"))return;
-    const track=route.current?.querySelector<HTMLElement>(".pm-photo-track");
-    const hero=route.current?.querySelector<HTMLElement>(".pm-hero");
-    if(fractionalTrack(track??null,hero?.clientWidth??0,0)>.015)return;
+   // Match the Premium Profile's horizontal threshold so capture gets the
+   // first shot at the same move that would otherwise start its tab pager.
+   const horizontalRatio=g.premium?1.2:1.28;
+   if(dx<(g.premium||!g.edge?9:7)||dx<=Math.abs(dy)*horizontalRatio)return;
+   if(!g.premium){
+    if(g.source==="photo"){
+     const track=route.current?.querySelector<HTMLElement>(".pm-photo-track");
+     const hero=route.current?.querySelector<HTMLElement>(".pm-hero");
+     if(fractionalTrack(track??null,hero?.clientWidth??0,0)>.015)return;
+    }
+    if((g.source==="pages"||g.source==="tabs")&&!g.edge)return;
+    const tabStrip=route.current?.querySelector<HTMLElement>(".pm-tabs");
+    if(tabStrip&&tabStrip.scrollLeft>1)return;
    }
-   // Narrow left-edge back has priority over the tab pager. Central page
-   // swipes remain exclusive to the five-tab follow-finger track.
-   if((g.source==="pages"||g.source==="tabs")&&!g.edge)return;
-   const tabStrip=route.current?.querySelector<HTMLElement>(".pm-tabs");
-   if(tabStrip&&tabStrip.scrollLeft>1)return;
    if(!gestures.claim("route",g.serial))return;
    g.claimed=true;
    suppressClickUntil.current=performance.now()+350;
@@ -285,7 +274,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
   if(e.cancelable)e.preventDefault();
   e.stopPropagation();
   // Width stays stable for this gesture; avoid a clientWidth/layout read on every pointermove.
-   setX(Math.max(0,Math.min(g.span,g.origin+dx)));
+  setX(Math.max(0,Math.min(g.span,g.origin+dx)));
  };
  const end=(e:ReactPointerEvent<HTMLDivElement>,cancelled=false)=>{
   const g=gesture.current;if(!g||g.id!==e.pointerId)return;
