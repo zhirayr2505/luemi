@@ -57,6 +57,7 @@ export function useOwnerProfileMotion(options:Options){
   const identity=host.querySelector<HTMLElement>(".owner-profile-identity")!;
   const name=identity.querySelector<HTMLElement>("h1")!;
   const location=identity.querySelector<HTMLElement>("p")!;
+  const reactionIndicator=host.querySelector<HTMLElement>(".profile-reaction-indicator");
   const reactionLayers=identity.querySelectorAll<HTMLElement>("[data-reaction-layout]");
   const pager=host.querySelector<HTMLElement>(".owner-profile-photo-pager")!;
   const sheet=host.querySelector<HTMLElement>(".owner-profile-sheet")!;
@@ -147,6 +148,15 @@ export function useOwnerProfileMotion(options:Options){
   let reactionOrigin:Endpoint=0,outgoingOpacity=1;
   let paintedRadius:number|undefined,paintedHalo:number|undefined,paintedOrigin:number|undefined;
   let visiblePhoto:OwnerPhotoPose=ownerMorphFrame(geometry,0),targetPhoto=visiblePhoto;
+  let expandedReaction={x:0,y:0},compactReaction={x:0,y:0};
+  const paintReactionIndicator=(value:number)=>{
+   if(!reactionIndicator)return;
+   const progress=clamp(value,0,1);
+   const x=expandedReaction.x+(compactReaction.x-expandedReaction.x)*progress;
+   const y=expandedReaction.y+(compactReaction.y-expandedReaction.y)*progress;
+   reactionIndicator.style.transform=translate(x,y);
+   reactionIndicator.style.setProperty("--profile-indicator-compact",String(progress));
+  };
   const paintReactionLayers=(value:number)=>{
    if(!reactionLayers.length)return;
    const dragging=press?.owner==="sheet"&&!press.scrollCards;
@@ -225,6 +235,7 @@ export function useOwnerProfileMotion(options:Options){
    const hideControls=circular;
    if(pager.inert!==hideControls)pager.inert=hideControls;
    const state=settling!==null?"transition":value===0?"expanded":value===1?"compact":"transition";
+   paintReactionIndicator(value);
    paintReactionLayers(value);
    if(host.dataset.morphState!==state)host.dataset.morphState=state;
    syncAvatarClass();
@@ -503,6 +514,12 @@ export function useOwnerProfileMotion(options:Options){
    if(widthChanged)stopPhotoMotion();
    geometry=createOwnerProfileLayout({width:rect.width,height:rect.height,
     brandBottom:brand.getBoundingClientRect().bottom-rect.top});
+   if(reactionIndicator){
+    const expanded=ownerMorphFrame(geometry,0),avatar=ownerMorphFrame(geometry,1).mask;
+    const rim=avatar.width*(.5+Math.SQRT1_2/2);
+    expandedReaction={x:24+name.offsetWidth+19,y:expanded.identityTop+name.offsetHeight/2};
+    compactReaction={x:avatar.x+rim,y:avatar.y+rim};
+   }
    sheet.style.height=`calc(100% - ${geometry.compactContentTop}px)`;
    ambient.style.height=`${Math.max(geometry.width,geometry.roundTop+geometry.roundDiameter+108)}px`;
    halo.style.width=`${geometry.roundDiameter+34}px`;
@@ -518,6 +535,7 @@ export function useOwnerProfileMotion(options:Options){
   };
   const observer=new ResizeObserver(resize);
   observer.observe(host);observer.observe(brand);
+  if(reactionIndicator)observer.observe(name);
   const web=window.Telegram?.WebApp;
   const viewportChanged=(event?:{isStateStable?:boolean})=>{if(event?.isStateStable!==false)resize();};
   window.visualViewport?.addEventListener("resize",resize);

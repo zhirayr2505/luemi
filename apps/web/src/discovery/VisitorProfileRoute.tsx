@@ -1,5 +1,5 @@
 import {memo,useLayoutEffect,useRef} from "react";
-import type {PointerEvent as ReactPointerEvent} from "react";
+import type {PointerEvent as ReactPointerEvent,ReactNode} from "react";
 import {ProfileMaster} from "./ProfileV3Gateway";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
 import {GestureArbiter,isGestureModalBlocked,fractionalTrack,computedTranslation} from "../ui/gesture-arbiter";
@@ -10,6 +10,8 @@ import type {ProfileRouteMotionHandle} from "./profile-route-motion";
 import type {ProfileMasterData} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
 import {useProfileReactions} from "./use-profile-reactions";
+import type {RealLikeKind} from "../registration/real-live-client";
+import type {ProfileReactionAction} from "./use-profile-reaction-queue";
 import type {ProfileReactionControls} from "./owner-profile/ProfileReactions";
 
 type Props={
@@ -17,7 +19,9 @@ type Props={
  registerBack:(handler:(()=>boolean)|null)=>void;
  reactionsEnabled?:boolean;
  demoReactions?:ProfileReactionControls;
- onReactionSent?:()=>void;
+ reactionAction?:ProfileReactionAction;
+ onQueueReaction?:(kind:RealLikeKind)=>void;
+ reactionNotices?:ReactNode;
  onConversation?:(matchId:string,conversationId:string)=>void;
 };
 type RouteDrag={
@@ -30,8 +34,8 @@ const EASING="cubic-bezier(.2,.82,.24,1)";
 
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
 export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,registerBack,
- reactionsEnabled,demoReactions,onReactionSent,onConversation}:Props){
- const liveReactions=useProfileReactions(reactionsEnabled&&data.source==="server"?data.id:null,onReactionSent,onConversation);
+ reactionsEnabled,demoReactions,reactionAction,onQueueReaction,reactionNotices,onConversation}:Props){
+ const liveReactions=useProfileReactions(reactionsEnabled&&data.source==="server"?data.id:null,reactionAction,onQueueReaction,onConversation);
  const reactions=data.source==="fixture"?demoReactions:liveReactions;
  const route=useRef<HTMLDivElement>(null);
  const escapeClose=useRef<()=>void>(()=>{});
@@ -320,5 +324,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
      onMotionProgress={reportMotion} reactions={reactions}/></QaProfiler>
+   {reactionNotices}
   </div>;
 });

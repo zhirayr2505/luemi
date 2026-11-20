@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img">
+  <title>Исходящая симпатия</title>
+  <g fill="none" stroke="#E96A86" stroke-width="2.05" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="4.5" y="7.5" width="23" height="17" rx="2.8" fill="#A93E60" fill-opacity=".48"/>
+  <path d="m5.6 9 7 6.2m13.8-6.2-7 6.2"/>
+  <path fill="#F2A8B8" stroke="none" d="M16 14.8c-1.5-2-4.3-.9-4.3 1.2 0 1.8 2.6 3.6 4.3 5 1.7-1.4 4.3-3.2 4.3-5 0-2.1-2.8-3.2-4.3-1.2Z"/>
+</g>
+</svg>
