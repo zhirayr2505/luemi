@@ -18,6 +18,70 @@ const context=await browser.newContext({
 });
 const page=await context.newPage();
 const errors=[];page.on("pageerror",e=>errors.push(e.message));
+async function checkPhotoViewer(profile,origin){
+ await page.evaluate(()=>{
+  window.Telegram={WebApp:{initData:"qa-viewer",BackButton:{}}};
+ });
+ const gallery=profile.locator(".owner-profile-gallery");
+ const trigger=origin==="grid"?gallery.locator("button").first():profile.locator(".owner-profile-photo-mask");
+ const original=trigger.locator(origin==="grid"?"img":"img[data-slot=current]");
+ await original.evaluate(img=>img.decode());
+ await trigger.click();
+ const viewer=page.getByRole("dialog",{name:"Просмотр фото"});
+ await viewer.waitFor();
+ assert.equal(await viewer.getByRole("button",{name:"Закрыть просмотр"}).count(),0,"Telegram has exactly one Back control");
+ await viewer.locator("xpath=self::*[@data-morph-active='true']").waitFor({timeout:1000});
+ await viewer.locator("xpath=self::*[@data-morph-active='false']").waitFor({timeout:1600});
+ if(origin==="grid"){
+  await page.waitForFunction(()=>document.querySelector(".pm-viewer-image")?.style.opacity==="1");
+  await page.touchscreen.tap(160,415);
+  await viewer.locator("xpath=self::*[@data-chrome-visible='false']").waitFor();
+  await page.touchscreen.tap(160,415);
+  await viewer.locator("xpath=self::*[@data-chrome-visible='true']").waitFor();
+  await page.mouse.dblclick(160,415);
+  const zoomIs=zoom=>page.waitForFunction(zoom=>{
+   const img=document.querySelector(".pm-viewer-image");
+   return img&&Math.abs(new DOMMatrixReadOnly(getComputedStyle(img).transform).a-zoom)<.015;
+  },zoom,{timeout:1600});
+  await zoomIs(2.4);
+  await page.mouse.dblclick(160,415);
+  await zoomIs(1);
+ }
+ const next=await viewer.locator(".pm-viewer-slide[data-slot=next] img").getAttribute("data-photo-id");
+ const input=await context.newCDPSession(page);
+ try{
+  await viewer.locator(".pm-viewer-stage").evaluate(stage=>{
+   stage.addEventListener("pointerdown",event=>{stage.dataset.qaOrigin=String(event.clientX);},{once:true});
+   stage.addEventListener("pointermove",event=>{stage.dataset.qaCurrent=String(event.clientX);});
+  });
+  const finger=(type,x)=>input.send("Input.dispatchTouchEvent",{
+   type,touchPoints:type==="touchEnd"?[]:[{id:1,x,y:430}]
+  });
+  const track=viewer.locator(".pm-viewer-track");
+  await finger("touchStart",275);
+  for(const distance of [70,36,132]){
+   await finger("touchMove",275-distance);
+   await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+   const sample=await track.evaluate(node=>{
+    const stage=node.closest(".pm-viewer-stage");
+    return {position:new DOMMatrixReadOnly(getComputedStyle(node).transform).m41+node.clientWidth,
+     finger:Number(stage.dataset.qaCurrent)-Number(stage.dataset.qaOrigin)};
+   });
+   assert(Math.abs(sample.finger+distance)<12&&Math.abs(sample.position-sample.finger)<1,
+    "the photo track follows the reversing finger: "+JSON.stringify(sample));
+  }
+  await finger("touchEnd");
+  await page.waitForFunction(id=>document.querySelector(".pm-viewer-image")?.dataset.photoId===id,
+   next,{timeout:2000});
+ }finally{await input.detach();}
+ const other=origin==="grid"?gallery.locator("img").nth(1):original;
+ await page.evaluate(()=>window.__luemiQaBack());
+ await viewer.locator("xpath=self::*[@data-morph-active='true']").waitFor({timeout:1400});
+ assert.equal(await other.getAttribute("data-photo-id"),next,"the visible return target matches the current photo");
+ assert.equal(await other.evaluate(img=>img.style.visibility),"hidden","the shared morph owns the matching return tile");
+ await viewer.waitFor({state:"detached"});
+ assert.equal(await other.evaluate(img=>img.style.visibility),"","the destination photo is restored after Back");
+}
 async function checkAbout(profile){
  const about=profile.getByRole("tabpanel",{name:"О себе",exact:true});
  const art=await about.evaluate(async node=>{
@@ -172,6 +236,7 @@ try{
  await page.locator(".pm-viewer").waitFor({state:"visible",timeout:4000});
  await page.keyboard.press("Escape");
  await page.locator(".pm-viewer").waitFor({state:"detached",timeout:4000});
+ await checkPhotoViewer(owner,"grid");
 
  for(const count of [0,1,6,3]){
   await page.evaluate(count=>window.__luemiQaV3.setPhotoCount(count),count);
@@ -183,6 +248,7 @@ try{
   if(count===6)await checkGallery(owner);
  }
  await setPremiumProfileState(page,owner,"expanded");
+ await checkPhotoViewer(owner,"carousel");
 
  await page.getByRole("button",{name:"Знакомства",exact:true}).click();
  await page.getByRole("tab",{name:"Для тебя",exact:true}).click();
@@ -203,7 +269,7 @@ try{
  assert.equal(await visitor.locator(".owner-profile-edit-top").count(),0,
   "no owner-only edit button in the visitor hero");
  assert.deepEqual(await visitor.locator(".owner-profile-tabs [role=tab]").allTextContents(),tabs);
- await page.keyboard.press("Escape");
+ await page.evaluate(()=>window.__luemiQaBack());
  await visitor.waitFor({state:"detached",timeout:4000});
  assert.deepEqual(errors,[],"no unexpected browser errors across owner/visitor transitions");
  console.log("PROFILE_V4_INTEGRATION_CHROMIUM_PASS owner/visitor, square morph, four tabs, dynamic photos, PhotoViewer, permissions; physical Telegram not tested");

@@ -14,21 +14,24 @@ import {GeometryMotion} from "./geometry-motion";
 import {GestureArbiter} from "../ui/gesture-arbiter";
 import {MotionController} from "../ui/motion-controller";
 import {bindMotionLifecycle} from "../ui/motion-lifecycle";
-import {calculateMorph,currentSource,insetClip,isUnoccluded,visibleElementRect,validInViewport,
- morphTransform as sourceImageTransform,type Rect,type CropMorph} from "./photo-viewer-morph";
+import {calculateMorph,currentSource,fitImage,insetClip,isUnoccluded,visibleElementRect,validInViewport,
+ morphTransform as sourceImageTransform,photoPlacement,type Rect,type CropMorph} from "./photo-viewer-morph";
 import {bindViewerViewport} from "./photo-viewer-safe-area";
 import {isTopModal,useModalLayer} from "../ui/modal-layer";
 import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixTransform,
- localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
+ focalContentAt,localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
 
 type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:ViewerSource|null;contextId:string;
  onClose:(photoId?:string)=>void;onMain?:(id:string)=>boolean|Promise<boolean>;
  registerBack?:(handler:(()=>boolean)|null)=>void};
 type EndPointer={pointerId:number;clientX:number;clientY:number;currentTarget:HTMLDivElement};
+type SharedFrame={photo:Rect;clip:string};
+type SharedPhoto={geometry:CropMorph;source:HTMLImageElement;clip:string};
 type Gesture={id:number;x:number;y:number;startX:number;startY:number;time:number;
  axis:""|"x"|"y";origin:number;serial:number|null;startPhotoId:string|null;
  pinch:boolean;captured:boolean;samples:{x:number;t:number}[];interruptedTarget:number|null};
 const duration=240;
+const tapDelay=270;
 const easing=[.2,.8,.2,1] as const;
 const scheduler={frame:(cb:()=>void)=>requestAnimationFrame(cb),cancelFrame:(id:number)=>cancelAnimationFrame(id)};
 export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose,onMain,registerBack}:Props){
@@ -48,17 +51,19 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const displayReady=!!readyKey&&decoded[show?.id??""]===readyKey;
  const [menu,setMenu]=useState(false);
  const [message,setMessage]=useState("");
+ const [chromeVisible,setChromeVisible]=useState(true);
+ const nativeBack=!!(window.Telegram?.WebApp?.initData&&window.Telegram.WebApp.BackButton&&registerBack);
+ const backdrop=useRef<HTMLDivElement>(null);
  const stage=useRef<HTMLDivElement>(null);
  const surface=useRef<HTMLDivElement>(null);
  const modal=useRef<HTMLElement>(null);
- const closeButton=useRef<HTMLButtonElement>(null);
  const morphClip=useRef<HTMLDivElement>(null);
  const morphImage=useRef<HTMLImageElement>(null);
  const visibleSource=useRef<{node:HTMLElement;visibility:string}|null>(null);
  const openSourceRect=useRef<Rect|null>(null);
+ const returnFrame=useRef<number|null>(null);
  const menuRoot=useRef<HTMLDivElement>(null);
  const morphActive=useRef(false);
- const morphGeometry=useRef<CropMorph|null>(null);
  const track=useRef<HTMLDivElement>(null);
  const image=useRef<HTMLImageElement|null>(null);
  const pointer=useRef(new Map<number,{x:number;y:number}>());
@@ -67,7 +72,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const mediaPose=useRef<MediaTransform>(identityMedia());
  const pinchSession=useRef(false);
  const pinch=useRef<PinchAnchor|null>(null);
- const pan=useRef<{id:number;at:Point;pose:MediaTransform}|null>(null);
+ const pan=useRef<{id:number;at:Point;pose:MediaTransform;tapAt?:number}|null>(null);
+ const tap=useRef<{point:Point;timer:number}|null>(null);
  const closing=useRef(false);
  const sourceRef=useRef(source);
  const contextRef=useRef(contextId);contextRef.current=contextId;
@@ -104,10 +110,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const box=(surface.current??stage.current)?.getBoundingClientRect();
   return box?localFromClient(p,box,viewSize()):p;
  };
- const paintMedia=(pose:MediaTransform)=>{
+ const paintMedia=(pose:MediaTransform,animate=false)=>{
   mediaPose.current=pose;
   if(image.current){
-   image.current.style.transition="none";
+   const motion=animate&&!matchMedia("(prefers-reduced-motion: reduce)").matches;
+   image.current.style.transition=motion?"transform 210ms cubic-bezier(.2,.75,.2,1)":"none";
    image.current.style.transform="translate3d("+pose.x+"px,"+pose.y+"px,0) scale("+pose.scale+")";
   }
  };
@@ -117,24 +124,37 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   paintMedia(pose);
   return pose;
  };
- const resetMedia=(animate=true)=>{
-  mediaPose.current=identityMedia();
-  if(image.current){
-   image.current.style.transition=animate?
-    "transform 230ms cubic-bezier(.2,.75,.2,1)":"none";
-   image.current.style.transform="none";
+ const resetMedia=(animate=true)=>paintMedia(identityMedia(),animate);
+ const clearTap=()=>{
+  if(tap.current)window.clearTimeout(tap.current.timer);
+  tap.current=null;
+ };
+ const registerTap=(client:Point)=>{
+  const previous=tap.current;
+  clearTap();
+  if(previous&&Math.hypot(previous.point.x-client.x,previous.point.y-client.y)<30&&latest.current.displayReady){
+   const view=viewSize(),point=localPoint(client),pose=freezeMedia();
+   if(pose.scale>1.0001){resetMedia();return;}
+   const scale=2.4,focal=focalContentAt(point,pose,view);
+   paintMedia(clampPan({scale,x:point.x-view.width/2-focal.x*scale,
+    y:point.y-view.height/2-focal.y*scale},view,naturalSize()),true);
+   return;
   }
+  tap.current={point:client,timer:window.setTimeout(()=>{
+   tap.current=null;setChromeVisible(visible=>!visible);
+  },tapDelay)};
  };
  const restoreVertical=(animate=true)=>{
+  const motion=animate&&!matchMedia("(prefers-reduced-motion: reduce)").matches;
   if(surface.current){
-   surface.current.style.transition=animate?
+   surface.current.style.transition=motion?
     "transform 230ms cubic-bezier(.2,.75,.2,1)":"none";
    surface.current.style.transform="none";
   }
-  if(stage.current){
-   stage.current.style.transition=animate?
+  if(backdrop.current){
+   backdrop.current.style.transition=motion?
     "opacity 230ms cubic-bezier(.2,.75,.2,1)":"none";
-   stage.current.style.opacity="1";
+   backdrop.current.style.opacity="1";
   }
  };
  const releasePointers=()=>{
@@ -145,6 +165,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   gestureArbiter.current?.cancel();
  };
  const cancelPinchSession=(animate=false)=>{
+  clearTap();
   const wasTracking=pinchSession.current||pointer.current.size>0;
   releasePointers();resetMedia(animate);restoreVertical(animate);
   if(wasTracking&&!closing.current&&Math.abs(trackX.current)>.1){
@@ -161,6 +182,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const first=ids[0],second=ids[1];
   const a=pointer.current.get(first),b=pointer.current.get(second);
   if(!a||!b)return;
+  clearTap();
   gestureArbiter.current?.secondFinger();
   if(gesture.current)gesture.current.pinch=true;
   pinchSession.current=true;pan.current=null;
@@ -202,17 +224,22 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  };
  const clearMorph=()=>{
   morphActive.current=false;
-  morphGeometry.current=null;
   if(modal.current)modal.current.dataset.morphActive="false";
   if(morphClip.current){morphClip.current.style.display="none";morphClip.current.style.transition="none";}
   if(morphImage.current)morphImage.current.style.transition="none";
   restoreSource();
  };
- const getMorph=(isClosing:boolean):{geometry:CropMorph;source:HTMLImageElement}|null=>{
-  const photo=latest.current.show,key=photo?resourceIdentity(photo):null;
-  if(!sourceMatches(sourceRef.current,latest.current.photoId,contextRef.current,key)||!photo)return null;
-  const el=sourceRef.current?.resolveElement();
-  if(!(el instanceof HTMLImageElement)||!currentSource(el,photo.src,photo.fallback))return null;
+ const getMorph=(isClosing:boolean):SharedPhoto|null=>{
+  const photo=latest.current.show,origin=sourceRef.current;
+  if(!photo||!origin||origin.contextId!==contextRef.current)return null;
+  const liveReturn=isClosing?origin.resolveReturnElement:undefined;
+  const el=liveReturn?liveReturn(photo.id):
+   sourceMatches(origin,photo.id,contextRef.current,resourceIdentity(photo))?origin.resolveElement():null;
+  if(!(el instanceof HTMLImageElement)||el.dataset.photoId!==photo.id||
+   !currentSource(el,photo.src,photo.fallback))return null;
+  const displayed=image.current;
+  if(isClosing&&latest.current.displayReady&&displayed&&
+   (displayed.currentSrc||displayed.src)!==(el.currentSrc||el.src))return null;
   // Temporarily restore the miniature for hit testing: the viewer is a portal
   // above it, but the first non-viewer painted element must still be our photo.
   restoreSource();
@@ -221,7 +248,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const sourceRect={left:box.left,top:box.top,width:box.width,height:box.height};
   const visible=visibleElementRect(el,viewport);
   if(!visible||!validInViewport(visible,viewport)||!isUnoccluded(el,visible))return null;
-  if(isClosing&&openSourceRect.current&&(
+  if(isClosing&&!liveReturn&&openSourceRect.current&&(
     Math.abs(sourceRect.left-openSourceRect.current.left)>2||
     Math.abs(sourceRect.top-openSourceRect.current.top)>2||
     Math.abs(sourceRect.width-openSourceRect.current.width)>2||
@@ -231,14 +258,28 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const geometry=calculateMorph(sourceRect,{width:el.naturalWidth,height:el.naturalHeight},
    fit,css.objectPosition,visible,viewport);
   if(!geometry)return null;
-  if(!isClosing)openSourceRect.current=sourceRect;
-  return {geometry,source:el};
+  openSourceRect.current=sourceRect;
+  const crop=el.closest("[data-viewer-crop]")??el;
+  const radius=getComputedStyle(crop).borderTopLeftRadius.split(" ")[0];
+  return {geometry,source:el,clip:insetClip(geometry.sourceClip,viewport,radius)};
  };
- const prepareMorph=(closing:boolean):boolean=>{
+ const readSharedFrame=():SharedFrame|null=>{
+  const ghost=morphImage.current,clip=morphClip.current;
+  if(morphActive.current&&ghost&&clip){
+   const box=ghost.getBoundingClientRect();
+   return {photo:box,clip:getComputedStyle(clip).clipPath};
+  }
+  const node=image.current;
+  if(!node||!node.naturalWidth||!node.naturalHeight)return null;
+  const box=node.getBoundingClientRect();
+  const photo=fitImage(box,{width:node.naturalWidth,height:node.naturalHeight},"contain");
+  return photo?{photo,clip:"inset(0px 0px 0px 0px round 0px)"}:null;
+ };
+ const prepareMorph=(closingPhase:boolean,frame:SharedFrame|null):SharedPhoto|null=>{
   const clip=morphClip.current,pixels=morphImage.current;
-  if(!clip||!pixels)return false;
-  const candidate=getMorph(closing);
-  if(!candidate){morphCleanup.current();return false;}
+  if(!clip||!pixels)return null;
+  const candidate=getMorph(closingPhase);
+  if(!candidate){morphCleanup.current();return null;}
   const {geometry:m,source:el}=candidate;
   pixels.src=el.currentSrc||el.src;
   // The source has already loaded; the shared decoded source is used only
@@ -246,22 +287,21 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   pixels.style.left=m.destination.left+"px";pixels.style.top=m.destination.top+"px";
   pixels.style.width=m.destination.width+"px";pixels.style.height=m.destination.height+"px";
   pixels.style.transition="none";
-  pixels.style.transform=closing?"none":sourceImageTransform(m);
+  pixels.style.transform=closingPhase?(frame?photoPlacement(m.destination,frame.photo):"none"):sourceImageTransform(m);
   clip.style.transition="none";
-  clip.style.clipPath=closing?"inset(0px)":insetClip(m.sourceClip,
-   {left:0,top:0,width:window.innerWidth,height:window.innerHeight});
+  clip.style.clipPath=closingPhase?(frame?.clip??"inset(0px 0px 0px 0px round 0px)"):candidate.clip;
   clip.style.display="block";clip.style.opacity="1";
   morphActive.current=true;
-  morphGeometry.current=m;
   if(modal.current)modal.current.dataset.morphActive="true";
   visibleSource.current={node:el,visibility:el.style.visibility};
   el.style.visibility="hidden";
-  return true;
+  void pixels.offsetWidth;
+  return candidate;
  };
  const morphCleanup=useRef<()=>void>(()=>{});
  morphCleanup.current=clearMorph;
  const stopSurface=(interrupted=true)=>{
-  const layer=surface.current,outer=stage.current,owner=surfaceOwner.current;
+  const layer=surface.current,outer=stage.current,shade=backdrop.current,owner=surfaceOwner.current;
   // Freeze actual on-screen matrix before cancelling the CSS transition.
   if(layer){
    const computed=getComputedStyle(layer).transform;
@@ -271,6 +311,10 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(outer){
    const opacity=getComputedStyle(outer).opacity;
    outer.style.transition="none";outer.style.opacity=opacity;
+  }
+  if(shade){
+   const opacity=getComputedStyle(shade).opacity;
+   shade.style.transition="none";shade.style.opacity=opacity;
   }
   const t=owner?.token();
   if(t&&interrupted)owner?.interrupt(t,"interrupted");
@@ -287,20 +331,17 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  /** One completion gate for opening/closing: transitionend and timeout
   * race on the SAME MotionController generation; old callbacks cannot commit.
   */
- const surfaceTransition=(closingPhase:boolean)=>{
-  const layer=surface.current,outer=stage.current,owner=surfaceOwner.current;
-  if(!layer||!outer||!owner)return;
+ const surfaceTransition=(closingPhase:boolean,visibleFrame:SharedFrame|null=null)=>{
+  const layer=surface.current,outer=stage.current,shade=backdrop.current,owner=surfaceOwner.current;
+  if(!layer||!outer||!shade||!owner)return;
   const start=owner.begin(closingPhase?1:0);
   if(!start)return;
   if(!owner[closingPhase?"close":"settle"](start,closingPhase?0:1))return;
   const token=owner.token();
   const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const doMorph=prepareMorph(closingPhase);
-  const target="none";
+  const shared=reduce?null:prepareMorph(closingPhase,visibleFrame);
   const clip=morphClip.current,pixels=morphImage.current;
-  const geom=doMorph?morphGeometry.current:null;
-  const clipFinal=geom?insetClip(geom.sourceClip,
-   {left:0,top:0,width:window.innerWidth,height:window.innerHeight}):"inset(0px)";
+  const targetOpacity=closingPhase?"0":"1";
   const completed=()=>{
    owner.finish(token,{paint:()=>{
     morphCleanup.current();
@@ -309,45 +350,38 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    }});
   };
   if(reduce){
-   layer.style.transition="none";outer.style.transition="none";
-   layer.style.transform=target;outer.style.opacity=closingPhase?"0":"1";
-   if(doMorph&&clip&&pixels){
-    clip.style.clipPath=closingPhase?clipFinal:"inset(0px)";
-    pixels.style.transform=closingPhase?sourceImageTransform(geom!):"none";
-   }
+   outer.style.opacity=targetOpacity;shade.style.opacity=targetOpacity;
    completed();return;
   }
   const startTransition=()=>{
    if(!owner.owns(token))return;
-   layer.style.transition="transform "+duration+"ms cubic-bezier(.2,.8,.2,1)";
+   shade.style.transition="opacity "+duration+"ms ease";
+   shade.style.opacity=targetOpacity;
    outer.style.transition="opacity "+duration+"ms ease";
-   layer.style.transform=target;outer.style.opacity=closingPhase?"0":"1";
-   if(doMorph&&clip&&pixels&&geom){
+   outer.style.opacity=targetOpacity;
+   if(shared&&clip&&pixels){
     clip.style.transition="clip-path "+duration+"ms cubic-bezier(.2,.8,.2,1)";
     pixels.style.transition="transform "+duration+"ms cubic-bezier(.2,.8,.2,1)";
-    clip.style.clipPath=closingPhase?clipFinal:"inset(0px)";
-    pixels.style.transform=closingPhase?sourceImageTransform(geom):"none";
+    clip.style.clipPath=closingPhase?shared.clip:"inset(0px 0px 0px 0px round 0px)";
+    pixels.style.transform=closingPhase?sourceImageTransform(shared.geometry):"none";
    }
   };
   const onEnd=(event:TransitionEvent)=>{
-   if((event.target===layer&&event.propertyName==="transform")||
-    (event.target===outer&&event.propertyName==="opacity"))completed();
+   if(event.target===shade&&event.propertyName==="opacity")completed();
   };
-  layer.addEventListener("transitionend",onEnd);
-  outer.addEventListener("transitionend",onEnd);
+  shade.addEventListener("transitionend",onEnd);
   const timer=window.setTimeout(completed,duration+40);
   const frame=requestAnimationFrame(startTransition);
   owner.track(token,()=>{
-   layer.removeEventListener("transitionend",onEnd);
-   outer.removeEventListener("transitionend",onEnd);
+   shade.removeEventListener("transitionend",onEnd);
    clearTimeout(timer);cancelAnimationFrame(frame);
   });
  };
  const surfaceHandler=useRef<(closingPhase:boolean)=>void>(()=>{});
  surfaceHandler.current=surfaceTransition;
  useLayoutEffect(()=>{
-  const outer=stage.current,layer=surface.current;
-  if(!outer||!layer)return;
+  const outer=stage.current,layer=surface.current,shade=backdrop.current;
+  if(!outer||!layer||!shade)return;
   // React StrictMode may run setup again after a provisional cleanup.
   if(!runner.current||runner.current.isDisposed())
    runner.current=new GeometryMotion("hero",()=>performance.now(),cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id),0);
@@ -361,11 +395,14 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   // terminal motion on the freshly reconstructed owner, never reopen.
   const terminal=closing.current;
   outer.style.opacity=terminal?"1":"0";outer.style.transition="none";
+  shade.style.opacity=terminal?"1":"0";shade.style.transition="none";
   layer.style.transition="none";layer.style.transform="none";
   phase.current=terminal?"closing":"opening";
   surfaceHandler.current(terminal);
   const captureLossTimers=pendingCaptureLoss.current;
   return ()=>{
+   if(returnFrame.current!==null)cancelAnimationFrame(returnFrame.current);
+   if(tap.current)window.clearTimeout(tap.current.timer);
    morphCleanup.current();
    // Capture this exact timer map at effect setup; no stale ref cleanup and
    // no timer can terminate a later StrictMode viewer generation.
@@ -403,7 +440,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   // never animate back to a now-moved/occluded thumbnail. Passive read only.
   const sourceMoved=()=>{
    if(!morphActive.current||!openSourceRect.current)return;
-   const node=sourceRef.current?.resolveElement();
+   const node=visibleSource.current?.node;
    const r=node?.getBoundingClientRect(),old=openSourceRect.current;
    if(!r||Math.abs(r.left-old.left)>2||Math.abs(r.top-old.top)>2||
     Math.abs(r.width-old.width)>2||Math.abs(r.height-old.height)>2)
@@ -448,11 +485,12 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   // Reorder or resource substitution invalidates the original thumbnail
   // even if the committed photoId survived unchanged.
   if(priorSignature.current!==signature){
-   morphCleanup.current();sourceRef.current=null;
+   morphCleanup.current();
+   if(!sourceRef.current?.resolveReturnElement)sourceRef.current=null;
   }
   priorSignature.current=signature;
   previousIds.current=photos.map(p=>p.id);
-  if(photoId!==committedPhotoId){morphCleanup.current();sourceRef.current=null;setCommittedPhotoId(photoId);}
+  if(photoId!==committedPhotoId)setCommittedPhotoId(photoId);
  },[signature,photoId,committedPhotoId,photos]);
  useEffect(()=>{if(photoId===null)handlers.current.close(true);},[photoId,menu]);
  const decodedCallback=useCallback((id:string,key:string,ok:boolean)=>{
@@ -553,7 +591,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    // One semantic commit per settle generation, after painting its endpoint.
    const valid=navigatePhoto(latest.current.photoId,latest.current.photos,{photoId:targetPhoto.id});
    if(!valid||valid!==targetPhoto.id){paintTrack(0);phase.current="idle";return;}
-   morphCleanup.current();sourceRef.current=null;setMenu(false);setMessage("");commitCount.current++;
+   morphCleanup.current();
+   if(!sourceRef.current?.resolveReturnElement)sourceRef.current=null;
+   setMenu(false);setMessage("");commitCount.current++;
    pendingCommit.current={id:targetPhoto.id,shift:target===-1?-1:1};
    setCommittedPhotoId(targetPhoto.id);
   },geometryRevision.current);
@@ -562,13 +602,15 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(closing.current||pinchSession.current)return false;
   const selected=latest.current,target=navigatePhoto(selected.photoId,selected.photos,request);
   if(!target||target===selected.photoId)return false;
+  clearTap();
   if(gesture.current){gesture.current=null;pointer.current.clear();gestureArbiter.current?.cancel();}
   resetMedia(false);
   interruptOpening();
   const nextIndex=photoIndex(selected.photos,target),shift=nextIndex-selected.index;
   if(Math.abs(shift)!==1){
    // Nonadjacent internal navigation is a non-animated, explicit rebase.
-   runner.current?.cancel();paintTrack(0);morphCleanup.current();sourceRef.current=null;
+   runner.current?.cancel();paintTrack(0);morphCleanup.current();
+   if(!sourceRef.current?.resolveReturnElement)sourceRef.current=null;
    setMenu(false);setMessage("");setCommittedPhotoId(target);return true;
   }
   settle(shift===1?-1:1,_origin==="swipe"?duration:0);return true;
@@ -576,14 +618,32 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const requestClose=(force=false)=>{
   if(menu&&!force){setMenu(false);return;}
   if(closing.current)return;
+  const visibleFrame=readSharedFrame();
+  const id=latest.current.photoId,origin=sourceRef.current;
   closing.current=true;phase.current="closing";
-  releasePointers();resetMedia(false);
-  const motion=runner.current;
-  if(motion){
-   const x=freezeTrack();
-   if(Math.abs(x)>.1)motion.start(x,0,duration,easing,paintTrack,()=>{},geometryRevision.current);
+  modal.current?.setAttribute("data-closing","true");
+  clearTap();
+  releasePointers();
+  freezeTrack();
+  stopSurface();
+  if(id&&origin?.selectReturnPhoto&&contextRef.current===origin.contextId&&
+   origin.resolveReturnElement?.(id)?.dataset.photoId!==id){
+   // The carousel updates its keyed image before we measure its new slot.
+   origin.selectReturnPhoto(id);
+   const deadline=performance.now()+75;
+   const waitForCarousel=()=>{
+    const target=origin.resolveReturnElement?.(id);
+    if(performance.now()<deadline&&(!target?.complete||target.dataset.photoId!==id)){
+     returnFrame.current=requestAnimationFrame(waitForCarousel);
+     return;
+    }
+    returnFrame.current=null;
+    surfaceTransition(true,visibleFrame);
+   };
+   returnFrame.current=requestAnimationFrame(waitForCarousel);
+  }else{
+   surfaceTransition(true,visibleFrame);
   }
-  stopSurface();surfaceTransition(true);
  };
  handlers.current={close:requestClose,navigate:requestNavigation};
  useEffect(()=>{
@@ -609,7 +669,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    if(pose.scale>1.0001){
     // Re-touch mid media-reset transition: sample current DOMMatrix.
     pinchSession.current=true;phase.current="pinching";
-    pan.current={id:e.pointerId,at:localPoint({x:e.clientX,y:e.clientY}),pose};
+    pan.current={id:e.pointerId,at:localPoint({x:e.clientX,y:e.clientY}),pose,tapAt:performance.now()};
     gesture.current=null;gestureArbiter.current?.cancel();
     try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* WebView fallback */}
     return;
@@ -640,6 +700,10 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
      paintMedia(pinchFrame(pair,localPoint(a),localPoint(b),viewSize(),naturalSize()));
    }else if(pan.current?.id===e.pointerId){
     const current=localPoint({x:e.clientX,y:e.clientY}),anchor=pan.current;
+    if(Math.hypot(current.x-anchor.at.x,current.y-anchor.at.y)>8){
+     anchor.tapAt=undefined;
+     clearTap();
+    }
     paintMedia(panFrame(anchor.pose,{x:current.x-anchor.at.x,y:current.y-anchor.at.y},
      viewSize(),naturalSize()));
    }
@@ -649,6 +713,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const dx=e.clientX-g.startX,dy=e.clientY-g.startY;
   if(!g.axis){
    if(Math.max(Math.abs(dx),Math.abs(dy))<9)return;
+   clearTap();
    g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";
    if(g.serial!==null)gestureArbiter.current?.claim("hero",g.serial);
    try{e.currentTarget.setPointerCapture(e.pointerId);g.captured=true;}catch{/* WebView fallback */}
@@ -662,15 +727,16 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    const t=performance.now();g.samples.push({x:e.clientX,t});
    if(g.samples.length>10)g.samples.shift();
   }else{
-   // LU-03: same pointer frame writes surface Y and correlated opacity.
-   const y=dy*.78,scale=Math.max(.85,1-Math.abs(dy)/2300);
+   // The image follows a downward drag at finger speed. The dark layer
+   // fades independently, so the photo remains solid over the profile.
+   const y=dy>=0?dy:dy*.18,scale=Math.max(.86,1-Math.max(0,dy)/2400);
    if(surface.current){
     surface.current.style.transition="none";
     surface.current.style.transform="translate3d(0,"+y+"px,0) scale("+scale+")";
    }
-   if(stage.current){
-    stage.current.style.transition="none";
-    stage.current.style.opacity=String(Math.max(.35,1-Math.abs(dy)/700));
+   if(backdrop.current){
+    backdrop.current.style.transition="none";
+    backdrop.current.style.opacity=String(Math.max(.24,1-Math.max(0,dy)/400));
    }
   }
  };
@@ -692,7 +758,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     phase.current="pinching";
     try{if(!e.currentTarget.hasPointerCapture(id))e.currentTarget.setPointerCapture(id);}catch{/* WebView fallback */}
    }else{
-    releasePointers();resetMedia(!cancel);restoreVertical(!cancel);
+    const tapAt=pan.current?.tapAt;
+    releasePointers();
+    if(cancel)resetMedia();
+    else if(tapAt!==undefined&&performance.now()-tapAt<tapDelay)registerTap({x:e.clientX,y:e.clientY});
+    restoreVertical(!cancel);
     if(Math.abs(trackX.current)>.1)settle(0);
     else if(!closing.current)phase.current="idle";
    }
@@ -706,7 +776,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   const elapsed=Math.max(1,performance.now()-g.time);
   // Vertical dismiss is allowed only in pure 1x single-pointer mode.
   if(!cancel&&g.axis==="y"&&mediaPose.current.scale<=1.0001&&
-   (Math.abs(dy)>110||Math.abs(dy)/elapsed>.8)){
+   (dy>110||(dy>=24&&dy/elapsed>.8))){
    requestClose();return;
   }
   if(g.axis==="x"){
@@ -716,9 +786,16 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     latest.current.index>0,latest.current.index<latest.current.photos.length-1);
    const continueTarget=!cancel&&Math.abs(dx)<8&&g.interruptedTarget!==null?
     (g.interruptedTarget<0?-1:g.interruptedTarget>0?1:0):target;
-   settle(continueTarget);return;
+   const remaining=Math.abs(continueTarget*width.current-trackX.current);
+   const settlingTime=Math.max(145,Math.min(duration,remaining/Math.max(1.25,Math.abs(v))));
+   settle(continueTarget,settlingTime);return;
+  }
+  if(!cancel&&!g.axis&&g.interruptedTarget!==null){
+   settle(g.interruptedTarget<-.1?-1:g.interruptedTarget>.1?1:0);
+   return;
   }
   if(Math.abs(trackX.current)>.1)settle(0);
+  else if(!cancel&&!g.axis&&elapsed<tapDelay)registerTap({x:e.clientX,y:e.clientY});
   resetGesture();
  };
  const action=(kind:"main"|"link"|"share"|"report")=>{
@@ -741,6 +818,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    kind==="link"?"Постоянная ссылка пока недоступна":"Публикация и отправка ссылки пока недоступны");
  };
  const onLostPointer=(e:ReactPointerEvent<HTMLDivElement>)=>{
+  // Moving implicit touch capture from a slide to the stage bubbles a loss
+  // from that slide. The stage now owns the finger, so the swipe continues.
+  if(e.target!==e.currentTarget)return;
   if(!pointer.current.has(e.pointerId))return;
   if(e.buttons!==0){finish(e,true);return;}
   // Chromium may dispatch lostpointercapture BEFORE the ordinary pointerup
@@ -760,7 +840,8 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const phaseKey=phase.current;
  return createPortal(<section className="pm-viewer" ref={modal} role="dialog" aria-modal="true" aria-label="Просмотр фото"
    tabIndex={-1}
-   data-motion-phase={phaseKey} data-semantic-commits={commitCount.current}>
+   data-motion-phase={phaseKey} data-semantic-commits={commitCount.current} data-chrome-visible={chromeVisible}>
+  <div className="pm-viewer-backdrop" ref={backdrop} aria-hidden="true"/>
   <div className="pm-viewer-stage" ref={stage} onPointerDown={down} onPointerMove={move}
    onPointerUp={e=>finish(e,false)} onPointerCancel={e=>finish(e,true)}
    onLostPointerCapture={onLostPointer}
@@ -784,11 +865,11 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    <img className="pm-viewer-morph-image" ref={morphImage} alt="" draggable={false}
     onError={()=>morphCleanup.current()}/>
   </div>
-  <header className="pm-viewer-top">
-   <span className="pm-viewer-topspacer"/><span>{index>=0?index+1:0} / {photos.length}</span>
-   <button type="button" ref={closeButton} data-modal-initial onClick={()=>handlers.current.close()} aria-label="Закрыть просмотр"><X size={22}/></button>
+  <header className="pm-viewer-top" inert={!chromeVisible}>
+   <span aria-live="polite">{index>=0?index+1:0} / {photos.length}</span>
+   {!nativeBack&&<button type="button" data-modal-initial onClick={()=>handlers.current.close()} aria-label="Закрыть просмотр"><X size={22}/></button>}
   </header>
-  <footer className="pm-viewer-bottom">
+  <footer className="pm-viewer-bottom" inert={!chromeVisible}>
    <span>{show?displayPhotoDate(show):"Дата не указана"}</span>
    <div className="pm-viewer-actions">
     <button type="button" disabled={index<=0||closing.current} onClick={()=>handlers.current.navigate({direction:-1},"button")}

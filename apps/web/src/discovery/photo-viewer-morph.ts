@@ -93,12 +93,14 @@ export function currentSource(node:HTMLElement|null,photoSrc:string,fallback?:st
  const actual=href(node.currentSrc||node.src);
  return actual===href(photoSrc)||(!!fallback&&actual===href(fallback));
 }
-export function insetClip(rect:Rect,viewport:Rect):string{
+export function insetClip(rect:Rect,viewport:Rect,radius="0px"):string{
  const top=Math.max(0,rect.top-viewport.top);
  const right=Math.max(0,viewport.left+viewport.width-rect.left-rect.width);
  const bottom=Math.max(0,viewport.top+viewport.height-rect.top-rect.height);
  const left=Math.max(0,rect.left-viewport.left);
- return `inset(${top}px ${right}px ${bottom}px ${left}px)`;
+ return `inset(${top}px ${right}px ${bottom}px ${left}px round ${radius})`;
 }
 export const morphTransform=(m:CropMorph):string=>
  `translate3d(${m.translateX}px,${m.translateY}px,0) scale(${m.uniformScale})`;
+export const photoPlacement=(destination:Rect,visible:Rect):string=>
+ `translate3d(${visible.left-destination.left}px,${visible.top-destination.top}px,0) scale(${visible.width/destination.width})`;

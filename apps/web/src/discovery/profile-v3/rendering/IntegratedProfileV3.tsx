@@ -5,6 +5,7 @@ import {Flag} from "../../../ui/Flag";
 import {goals} from "../../../registration/model";
 import type {ProfileView} from "../../ProfileModel";
 import type {ProfileRouteMotionHandle} from "../../profile-route-motion";
+import type {ViewerCarousel} from "../../photo-viewer-state";
 import type {GestureArbiter} from "../../../ui/gesture-arbiter";
 import {createProfileLayout,photoMask,photoOffset,clamp,type MorphLayout} from "../geometry/ProfileGeometry";
 import {ProfileMotionEngine} from "../motion/ProfileMotionEngine";
@@ -14,7 +15,7 @@ export type V3TabId="about"|"bliki"|"photos"|"meta"|"gifts";
 const tabs=[["about","О себе"],["bliki","Блики"],["photos","Фото"],["meta","Аккаунт"],["gifts","Подарки"]] as const;
 type SurfaceProps={
  view:ProfileView;photoId:string|null;onPhotoId:(id:string)=>void;
- onPhotoOpen:(id:string,element:HTMLImageElement|null)=>void;
+ onPhotoOpen:(id:string,element:HTMLImageElement|null,carousel?:ViewerCarousel)=>void;
  onState?:(expanded:boolean)=>void;onMotionProgress?:(progress:number,dragging:boolean)=>void;
  initialExpanded?:boolean;
  onEdit?:()=>void;onShowPreview?:()=>void;
@@ -375,7 +376,10 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
   const id=current.current.photoId;
   if((engine.current?.getProgress()??0)<.95){engine.current?.animateTo(1);return;}
   if(!id)return;
-  current.current.onPhotoOpen(id,refs.current.get(id)??null);
+  current.current.onPhotoOpen(id,refs.current.get(id)??null,{
+   select:current.current.onPhotoId,
+   current:()=>refs.current.get(current.current.photoId??"")??null
+  });
  };
  const imageLoaded=(event:React.SyntheticEvent<HTMLImageElement>)=>{
   if(event.currentTarget.naturalWidth>0){
@@ -404,7 +408,7 @@ export function IntegratedProfileV3({view,photoId,onPhotoId,onPhotoOpen,onState,
     {photos[0]&&<img src={photos[0].src} alt="" draggable={false}/>}
     <span/>
    </div>
-   <div className="v3-int-mask" ref={mask} role="button" tabIndex={0}
+   <div className="v3-int-mask" ref={mask} data-viewer-crop role="button" tabIndex={0}
     aria-label={expanded?"Открыть просмотр фото":"Развернуть фото"}
     onClick={openFace} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openFace();}}}
     onPointerDown={e=>down(e,"photo")} onPointerMove={move}
