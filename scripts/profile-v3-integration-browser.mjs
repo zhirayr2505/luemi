@@ -15,6 +15,29 @@ const context=await browser.newContext({
 });
 const page=await context.newPage();
 const errors=[];page.on("pageerror",e=>errors.push(e.message));
+async function checkAbout(profile){
+ const about=profile.getByRole("tabpanel",{name:"О себе",exact:true});
+ await about.locator(".owner-profile-moonrise").evaluate(image=>image.decode());
+ const design=await about.evaluate(node=>{
+  const quote=node.querySelector("blockquote");
+  const chips=[...node.querySelectorAll(".owner-profile-interests .interest-chip")];
+  return {
+   quote:quote?.textContent.trim(),
+   heart:quote&&getComputedStyle(quote).backgroundImage,
+   goal:node.querySelector(".owner-profile-goal")?.textContent.trim(),
+   count:Number(node.querySelector(".owner-profile-interest-count")?.textContent),
+   chipColors:chips.map(chip=>[chip.style.getPropertyValue("--chip-from"),chip.style.getPropertyValue("--chip-to")].join("/")),
+   cards:node.querySelectorAll("article").length,
+   fits:node.scrollWidth<=node.clientWidth+1
+  };
+ });
+ assert(design.quote&&design.heart?.includes("about-heart.svg"),"the bio is an open quote with warm heart art");
+ assert(design.goal,"the fixture's dating goal is displayed as an inline badge");
+ assert.equal(design.count,design.chipColors.length,"the badge counts rendered interest chips");
+ assert(design.count>1&&new Set(design.chipColors).size>1,"interests keep their catalog colors");
+ assert.equal(design.cards,0,"the About surface contains no boxed cards");
+ assert(design.fits,"the moon and About content fit the screen width");
+}
 async function checkPager(profile){
  const viewport=profile.locator(".owner-profile-viewport");
  const pages=profile.locator(".owner-profile-pages");
@@ -69,6 +92,7 @@ try{
   ["О себе","Фото","Блики","Подарки"],"one approved four-tab strip");
  assert.equal(await owner.getByRole("tabpanel").locator(".owner-profile-actions button").count(),4,"owner tools remain available");
 
+ await checkAbout(owner);
  await checkPager(owner);
  await setPremiumProfileState(page,owner,"compact");
  const compact=await owner.locator(".owner-profile-avatar-circle").boundingBox();
@@ -115,6 +139,7 @@ try{
   const route=document.querySelector(".discovery-visitor-route");
   return route&&Math.abs(route.getBoundingClientRect().left)<.05;
  });
+ await checkAbout(visitor);
  await checkPager(visitor);
  assert.equal(await visitor.getAttribute("data-mode"),"visitor");
  assert.equal(await visitor.locator(".owner-profile-actions button").count(),0,

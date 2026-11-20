@@ -1,7 +1,7 @@
 import {useCallback,useId,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {KeyboardEvent,ReactNode} from "react";
-import {CalendarDays,Eye,Gift,Heart,Images,MapPin,PenLine,Settings2,Sparkles,UserRound} from "lucide-react";
-import {InterestChip} from "../../ui/InterestCatalog";
+import {CalendarDays,Eye,Gift,Heart,Images,Layers3,MapPin,PenLine,Settings2,Sparkles,UserRound} from "lucide-react";
+import {InterestChip,itemOf} from "../../ui/InterestCatalog";
 import {Flag} from "../../ui/Flag";
 import {goals,type RegistrationDraft} from "../../registration/model";
 import {goalLabel} from "../../ui/PersonalizedCopy";
@@ -48,6 +48,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
  const goalText=goal?goalLabel(goal.id,ownerDetails?.gender??p.gender??""):"Цель не указана";
  const location=p.city||p.country||"Город не указан";
  const countryCode=p.countryCode;
+ const interests=p.interests.filter(id=>itemOf(id));
  const details=useMemo(()=>{
   if(!ownerDetails)return [];
   return [
@@ -162,7 +163,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   <section id={tabPrefix+"-"+id+"-panel"} role="tabpanel" aria-label={label}
    aria-labelledby={tabPrefix+"-"+id+"-tab"} aria-hidden={tab!==id} inert={tab!==id}
    className="owner-profile-scroll">
-   <div className="owner-profile-content">
+   <div className={"owner-profile-content"+(id==="about"?" owner-profile-content--about":"")}>
     <div className={"owner-profile-panel"+(id==="about"?" owner-profile-about":"")}>{content}</div>
     {isOwner&&<div className="owner-profile-actions" aria-label="Действия профиля">
        <button type="button" className="owner-profile-glass" onClick={onEdit} aria-label="Изменить данные"><PenLine/></button>
@@ -248,15 +249,25 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    <div className="owner-profile-viewport">
     <div className="owner-profile-pages">
      {panel("about","О себе",<>
-      <article><h2>О себе</h2><p>{p.about||"Описание пока не заполнено."}</p></article>
-      <article><h2>Основное</h2><div className="owner-profile-basics">
-       {p.age!==null&&<div><CalendarDays size={18} aria-hidden="true"/><span>{p.age} лет</span></div>}
-       <div><MapPin size={18} aria-hidden="true"/><span className="owner-profile-location">{location}{countryCode?<Flag code={countryCode} size={17} title={"Флаг "+p.country}/>:null}</span></div>
-      </div>
-      {goal&&<div className="owner-profile-goal"><Heart size={16} aria-hidden="true"/>{goalText}</div>}
-      {details.length>0&&<dl>{details.map(item=><div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>}</article>
-      {p.interests.length>0&&<article><h2>Интересы</h2><div className="owner-profile-interests">{p.interests.map(id=><InterestChip key={id} id={id}/>)}</div></article>}
-
+      <blockquote className="owner-profile-quote">
+       <span className="owner-profile-quote-mark" aria-hidden="true">“</span>
+       <p>{p.about||"Описание пока не заполнено."}</p>
+      </blockquote>
+      <ul className="owner-profile-basics" aria-label="Основное">
+       {p.age!==null&&<li><CalendarDays size={16} aria-hidden="true"/><span>{p.age} лет</span></li>}
+       <li><MapPin size={16} aria-hidden="true"/><span className="owner-profile-location">{location}{countryCode?<Flag code={countryCode} size={15} title={"Флаг "+p.country}/>:null}</span></li>
+       {goal&&<li className="owner-profile-goal"><Heart size={14} aria-hidden="true"/>{goalText}</li>}
+      </ul>
+      {details.length>0&&<dl>{details.map(item=><div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>}
+      {interests.length>0&&<section className="owner-profile-interests-section" aria-labelledby={tabPrefix+"-interests"}>
+       <div className="owner-profile-interests-heading">
+        <h2 id={tabPrefix+"-interests"}><Layers3 size={17} aria-hidden="true"/>Интересы</h2>
+        <span className="owner-profile-interest-count" aria-hidden="true">{interests.length}</span>
+       </div>
+       <div className="owner-profile-interests">{interests.map(id=><InterestChip key={id} id={id}/>)}</div>
+      </section>}
+      <img className="owner-profile-moonrise" src="/assets/profile/about-moonrise.svg"
+       width="800" height="192" alt="" draggable={false} decoding="async"/>
       {p.source==="fixture"&&<p className="owner-profile-disclaimer">Демонстрационный профиль, не реальный пользователь.</p>}
      </>)}
      {panel("photos","Фото",<>
