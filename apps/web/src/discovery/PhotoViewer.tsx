@@ -340,10 +340,10 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     }
    }});
   };
-  let started=false,decodeTimer:number|undefined,completeTimer:number|undefined;
+  let started=false,completeTimer:number|undefined;
   const animations:Animation[]=[];
   owner.track(token,()=>{
-   clearTimeout(decodeTimer);clearTimeout(completeTimer);
+   clearTimeout(completeTimer);
    for(const animation of animations)animation.cancel();
   });
   const animate=(node:HTMLElement,property:"opacity"|"transform"|"clipPath",from:string,to:string)=>{
@@ -354,7 +354,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   };
   const startTransition=(shared:SharedPhoto|null)=>{
    if(started||!owner.owns(token))return;
-   started=true;clearTimeout(decodeTimer);
+   started=true;
    if(modal.current)modal.current.dataset.presented="true";
    animate(shade,"opacity",shade.style.opacity||"0",targetOpacity);
    if(shared&&clip&&pixels){
@@ -386,15 +386,20 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   }
   if(decodedMorphSrc.current===src&&pixels.complete&&pixels.naturalWidth>0){startTransition(candidate);return;}
   decodedMorphSrc.current="";pixels.src=src;
-  decodeTimer=window.setTimeout(()=>startTransition(null),110);
+  const decodeTimer=window.setTimeout(()=>startTransition(null),110);
+  owner.track(token,()=>clearTimeout(decodeTimer));
   void pixels.decode().then(()=>{
+   clearTimeout(decodeTimer);
    if(!owner.owns(token))return;
    decodedMorphSrc.current=src;
    const current=latest.current.show;
    const unchanged=candidate.source.isConnected&&(candidate.source.currentSrc||candidate.source.src)===src&&
     window.innerWidth===viewport.width&&window.innerHeight===viewport.height&&current&&resourceIdentity(current)===resource;
    startTransition(unchanged?candidate:null);
-  },()=>startTransition(null));
+  },()=>{
+   clearTimeout(decodeTimer);
+   startTransition(null);
+  });
  };
  const surfaceHandler=useRef<(closingPhase:boolean)=>void>(()=>{});
  surfaceHandler.current=surfaceTransition;
