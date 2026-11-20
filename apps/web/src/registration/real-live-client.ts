@@ -51,7 +51,7 @@ export async function getSuperlikeBalance(signal?:AbortSignal):Promise<Superlike
  if(!res.ok)throw new Error("superlikes_"+res.status);
  const data:unknown=await res.json();if(!validBalance(data))throw new Error("invalid_superlikes");return data;
 }
-export interface IncomingLike{ id:string;name:string;createdAt:string;kind:RealLikeKind;photoUrl:string|null; }
+export interface IncomingLike{ id:string;name:string;createdAt:string;kind:RealLikeKind;photoUrl:string|null;photos:string[]; }
 export interface IncomingLikesPage{likes:IncomingLike[];premium:boolean;hiddenCount:number}
 export async function getIncomingLikes(signal?:AbortSignal):Promise<IncomingLikesPage>{
  if(!realMatchPilot.enabled)throw new Error("matches_disabled");
@@ -65,11 +65,32 @@ export async function getIncomingLikes(signal?:AbortSignal):Promise<IncomingLike
      typeof item.createdAt!=="string"||!Number.isFinite(Date.parse(item.createdAt))||
      (item.kind!=="ordinary"&&item.kind!=="super")||
      (item.photoUrl!==null&&(typeof item.photoUrl!=="string"||!photoPath.test(item.photoUrl))))return [];
-  return [{id:item.id,name:item.name,createdAt:item.createdAt,kind:item.kind,photoUrl:item.photoUrl}];
+  return [{id:item.id,name:item.name,createdAt:item.createdAt,kind:item.kind,photoUrl:item.photoUrl,
+   photos:Array.isArray(item.photos)?parseGalleryPhotos(item.photos):item.photoUrl?[item.photoUrl]:[]}];
  });
  if(typeof data.premium!=="boolean"||!Number.isInteger(data.hiddenCount)||Number(data.hiddenCount)<0)
   throw new Error("invalid_incoming_likes");
  return {likes:likes as IncomingLike[],premium:data.premium,hiddenCount:Number(data.hiddenCount)};
+}
+const parseGalleryPhotos=(photos:unknown[])=>photos.filter((url):url is string=>
+ typeof url==="string"&&photoPath.test(url)).slice(0,6);
+
+export type LikesGalleryEntry={id:string;name:string;createdAt:string;photos:string[];
+ kind:RealLikeKind|null;matchId:string|null;conversationId:string|null};
+export async function getLikesGallery(signal:AbortSignal):Promise<{outgoing:LikesGalleryEntry[];mutual:LikesGalleryEntry[]}>{
+ const data=await api("/api/v4/matches/gallery","GET",undefined,signal);
+ if(!object(data)||!Array.isArray(data.outgoing)||!Array.isArray(data.mutual))throw new Error("invalid_likes_gallery");
+ const parse=(items:unknown[],isMutual:boolean)=>items.flatMap((item):LikesGalleryEntry[]=>{
+  if(!object(item)||typeof item.id!=="string"||!uuid.test(item.id)||typeof item.name!=="string"||
+     typeof item.createdAt!=="string"||!Number.isFinite(Date.parse(item.createdAt))||!Array.isArray(item.photos)||
+     (item.conversationId!==null&&(typeof item.conversationId!=="string"||!uuid.test(item.conversationId))))return [];
+  const base={id:item.id,name:item.name,createdAt:item.createdAt,photos:parseGalleryPhotos(item.photos)};
+  if(isMutual)return typeof item.matchId==="string"&&uuid.test(item.matchId)?
+   [{...base,kind:null,matchId:item.matchId,conversationId:item.conversationId}]:[];
+  return item.kind==="ordinary"||item.kind==="super"?
+   [{...base,kind:item.kind,matchId:null,conversationId:null}]:[];
+ });
+ return {outgoing:parse(data.outgoing,false),mutual:parse(data.mutual,true)};
 }
 export async function rejectIncomingLike(id:string):Promise<void>{
  if(!uuid.test(id))throw new Error("invalid_target");

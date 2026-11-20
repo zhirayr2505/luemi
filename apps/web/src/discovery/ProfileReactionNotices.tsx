@@ -16,11 +16,11 @@ function ReactionNotice({notice,onUndo}:{notice:PendingProfileReaction;onUndo:()
   return ()=>window.clearTimeout(timer);
  },[deadline]);
  const superlike=kind==="super";
- const message=target.demo?(superlike?"Тестовый суперлайк":"Тестовая симпатия"):
+ const message=kind==="skip"?"Анкета пропущена":target.demo?(superlike?"Тестовый суперлайк":"Тестовая симпатия"):
   superlike?"Вы отправили суперлайк":"Вы отправили симпатию";
  const seconds=Math.ceil(remaining/1000);
  return <div className="profile-reaction-notice">
-  <img className="profile-reaction-notice-glyph" src={profileReactionAsset(superlike?"superlike-outgoing":"like-outgoing")} alt="" width="28" height="28"/>
+  <img className="profile-reaction-notice-glyph" src={profileReactionAsset(kind==="skip"?"like-skipped":superlike?"superlike-outgoing":"like-outgoing")} alt="" width="28" height="28"/>
   <div className="profile-reaction-notice-copy" role="status">
    <span>{message}</span>
    <span className="profile-reaction-notice-name">{target.name}</span>

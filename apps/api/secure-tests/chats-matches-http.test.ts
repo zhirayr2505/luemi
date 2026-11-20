@@ -77,6 +77,9 @@ test("two authenticated actors create one durable conversation and revoke it on 
    assert.deepEqual(await visiblePhotoIds(A),[],"no relation means no photo metadata");
   }finally{await chatReader.end();}
   const profileReaction=(actor:string,target:string)=>inject(actor,"GET","/api/v4/matches/profile/"+target);
+  const gallery=(actor:string)=>inject(actor,"GET","/api/v4/matches/gallery");
+  const skipped=(actor:string,target:string)=>inject(actor,"POST","/api/v4/matches/incoming/"+target+"/reject",{});
+  assert.equal((await gallery("")).status,401);
   const noReaction={outgoing:null,incoming:null,matchId:null};
   assert.deepEqual(await profileReaction(A,B),{status:200,json:noReaction});
   assert.equal((await profileReaction(A,A)).status,404);
@@ -86,7 +89,13 @@ test("two authenticated actors create one durable conversation and revoke it on 
  assert.equal(result.json.superlikes.total,3);
   assert.deepEqual(await profileReaction(A,B),{status:200,json:{...noReaction,outgoing:"ordinary"}});
   assert.deepEqual(await profileReaction(B,A),{status:200,json:noReaction},"profile reads cannot reveal premium-locked incoming likes");
+  assert.equal((await skipped(B,A)).status,404,"a concealed ordinary like cannot be skipped before reveal");
   assert.equal((await inject(B,"GET","/api/v4/matches/incoming")).status,200);
+  const sentGallery=await gallery(A);
+  assert.equal(sentGallery.status,200,JSON.stringify(sentGallery));
+  assert.deepEqual(sentGallery.json.outgoing.map((entry:{id:string;photos:string[]})=>[entry.id,entry.photos]),
+   [[B,["/api/v3/discovery/photo/"+peerPhotoId]]],"sent album includes only the related public profile");
+  assert.deepEqual((await gallery(C)).json,{outgoing:[],mutual:[]},"strangers cannot list another actor's reactions");
   assert.deepEqual(await profileReaction(B,A),{status:200,json:{...noReaction,incoming:"ordinary"}});
   assert.deepEqual(await profileReaction(C,A),{status:200,json:noReaction},"a stranger cannot see the pair's status");
   const special=await inject(C,"POST","/api/v4/matches/like",{targetId:A,kind:"super"});
@@ -96,6 +105,8 @@ test("two authenticated actors create one durable conversation and revoke it on 
   const duplicate=await inject(C,"POST","/api/v4/matches/like",{targetId:A,kind:"ordinary"});
   assert.equal(duplicate.json.kind,"super","a repeat tap reports the actual stored reaction");
   assert.equal(duplicate.json.superlikes.total,special.json.superlikes.total);
+  assert.equal((await skipped(B,C)).status,404,"only the receiving actor may skip");
+  assert.deepEqual(await skipped(A,C),{status:200,json:{rejected:true}},"visible incoming superlike can be skipped");
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});
   assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.matched,true);
  const matchId=result.json.matchId as string;
@@ -104,7 +115,12 @@ test("two authenticated actors create one durable conversation and revoke it on 
   assert.equal((await profileReaction(B,A)).json.matchId,matchId);
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});
  assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.matchId,matchId);
-  const listed=await inject(A,"GET","/api/v4/chats");
+  const mutualGallery=await gallery(A);
+ assert.equal(mutualGallery.status,200,JSON.stringify(mutualGallery));
+ assert.deepEqual(mutualGallery.json.outgoing,[]);
+ assert.equal(mutualGallery.json.mutual[0]?.matchId,matchId);
+ assert.equal((await skipped(B,A)).status,404,"a stale skip cannot remove a mutual reaction");
+ const listed=await inject(A,"GET","/api/v4/chats");
   assert.equal(listed.status,200,JSON.stringify(listed));
  assert.equal(listed.json.conversations.length,0,"a match is not a chat before the first message");
  const newMatches=await inject(A,"GET","/api/v4/matches/new");
@@ -144,7 +160,9 @@ test("two authenticated actors create one durable conversation and revoke it on 
   assert.equal(started.json.conversations[0].peerPhotoUrl,
    "/api/v3/discovery/photo/"+peerPhotoId);
   assert.equal(started.json.conversations[0].matchId,matchId);
-  const noLongerNew=await inject(A,"GET","/api/v4/matches/new");
+  const activeGallery=await gallery(A);
+ assert.equal(activeGallery.json.mutual[0]?.conversationId,conversationId,"a started chat remains accessible in the gallery");
+ const noLongerNew=await inject(A,"GET","/api/v4/matches/new");
   assert.equal(noLongerNew.status,200,JSON.stringify(noLongerNew));
   assert.equal(noLongerNew.json.matches.length,0,"a started chat leaves the new-match rail");
   result=await inject(A,"POST",messagePath,{
@@ -248,6 +266,7 @@ test("two authenticated actors create one durable conversation and revoke it on 
   await admin.query("UPDATE luemi_private.public_profiles SET publication_status='published' WHERE owner_id=$1",[B]);
   await admin.query("INSERT INTO luemi_private.blocks(blocker_id,blocked_id,environment) VALUES($1,$2,$3)",[B,A,ns]);
   assert.equal((await profileReaction(A,B)).status,404,"blocked people cannot read the reaction state");
+  assert.deepEqual((await gallery(A)).json,{outgoing:[],mutual:[]},"blocked peers disappear from both lists");
   result=await inject(A,"GET",messagePath);
   assert.equal(result.status,404,"blocking must immediately revoke access");
   result=await inject(A,"POST",messagePath,{

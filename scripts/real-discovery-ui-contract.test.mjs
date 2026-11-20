@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 const src=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const app=src("apps/web/src/App.tsx");
 const shell=src("apps/web/src/discovery/RealDiscoveryHome.tsx");
+const likes=src("apps/web/src/discovery/LikesGallery.tsx");
 const card=src("apps/web/src/discovery/FeedCard.tsx");
 const forYou=src("apps/web/src/discovery/RealForYou.tsx");
 const nearby=src("apps/web/src/discovery/RealNearby.tsx");
@@ -32,7 +33,7 @@ test("real published discovery preserves four routes and three approved referenc
  assert.match(shell,/<ProfileMaster data=\{owner\} mode="owner"/);
  assert.match(shell,/<VisitorProfileRoute/);
  assert.match(shell,/<RealChats\b/);
- assert.match(shell,/<RealMatches active=/);
+ assert.match(shell,/<LikesGallery active=/);
 });
 
 test("empty real feed retains navigation; QA profiles stay in a separate fixture-only visitor route",()=>{
@@ -40,10 +41,10 @@ test("empty real feed retains navigation; QA profiles stay in a separate fixture
  assert.match(shell,/Пока нет анкет/);
  assert.match(shell,/Анкеты не загрузились/);
  assert.match(nearby,/Сейчас нет других опубликованных анкет/);
- assert.match(shell,/Пока нет взаимных симпатий/);
+ assert.match(likes,/Пока нет взаимных симпатий/);
  assert.match(shell,/refresh/);
  assert.doesNotMatch(shell,/demoPeople|forYouDemoPeople|freshDemoState/);
- assert.match(shell,/onOpenProfile=\{setDemoVisitor\}/);
+ assert.match(shell,/onOpenProfile=\{visitor=>\{setDemoLikesProfile\(false\);setDemoVisitor\(visitor\)/);
  assert.match(shell,/data=\{fromDemoPerson\(demoVisitor\)\}/);
  assert.match(shell,/key=\{"demo-"\+demoVisitor\.id\}/);
  assert.match(shell,/onExit=\{\(\)=>setDemoVisitor\(null\)\}/);
@@ -65,9 +66,9 @@ test("real FeedCard retains canonical photo/sheet gestures and removes demo badg
 });
 
 test("real matches, reports and account actions stay available even when feed is empty",()=>{
- assert.match(shell,/createChatTransport\(csrf\)\.list/);
+ assert.match(likes,/getLikesGallery\(controller\.signal\)/);
  assert.match(shell,/likePublishedUser\(current\.id,kind==="special"\?"super":"ordinary"\)/);
- assert.match(shell,/getIncomingLikes\(controller\.signal\)/);
+ assert.match(likes,/getIncomingLikes\(controller\.signal\)/);
  assert.match(shell,/blockPublishedUser\(menu\.id\)/);
  assert.match(shell,/reportPublishedUser\(menu\.id,reason\)/);
  assert.match(shell,/onSettings={\(\)=>setAccountOpen\(true\)\}/);
