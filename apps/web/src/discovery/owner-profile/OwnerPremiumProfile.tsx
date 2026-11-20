@@ -12,7 +12,7 @@ import type {ViewerCarousel} from "../photo-viewer-state";
 import {resolvePhotoFocus} from "../profile-v3/geometry/ProfileGeometry";
 import {clamp} from "./OwnerProfileGeometry";
 import {useOwnerProfileMotion} from "./useOwnerProfileMotion";
-import {canSendProfileReaction,ProfileReactionBadge,ProfileReactionButtons,type ProfileReactionControls} from "./ProfileReactions";
+import {canSendProfileReaction,ProfileReactionBadge,ProfileReactionButtons,ProfileReactionIndicator,type ProfileReactionControls} from "./ProfileReactions";
 import "./owner-premium-profile.css";
 import "./profile-reactions.css";
 
@@ -240,7 +240,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
     <PenLine size={18}/>
    </button>
   </header>}
-  <div className="owner-profile-identity" data-has-reaction-actions={canSendProfileReaction(reactions?.state??null)||undefined}>
+  {reactions&&<ProfileReactionIndicator controls={reactions}/>}
+  <div className="owner-profile-identity" data-has-reaction-actions={(!reactions?.pendingKind&&canSendProfileReaction(reactions?.state??null))||undefined}>
    <h1>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</h1>
    <p><MapPin size={15} aria-hidden="true"/><span className="owner-profile-location">
     <span className="owner-profile-city">{location}</span>{countryCode?<Flag code={countryCode} size={17} title={"Флаг "+p.country}/>:null}

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img">
+  <title>Входящая симпатия</title>
+  <g fill="none" stroke="#E96A86" stroke-width="2.05" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4.5 15 9.1 12.1m18.4 2.9-4.6-2.9M4.5 15v10a2.5 2.5 0 0 0 2.5 2.5h18a2.5 2.5 0 0 0 2.5-2.5V15L16 22.4Z"/>
+  <path stroke="#F2A8B8" d="M16 9.3c-2.5-3.5-7.3-1.9-7.3 1.7 0 3 4.3 5.6 7.3 8.1 3-2.5 7.3-5.1 7.3-8.1 0-3.6-4.8-5.2-7.3-1.7Z"/>
+</g>
+</svg>

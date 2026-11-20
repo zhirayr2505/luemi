@@ -24,12 +24,14 @@ import {GlobalHeader} from "./GlobalHeader";
 import {RealFeedFilters,realFeedMatches,defaultRealFeedFilter,type RealFeedFilter} from "./RealFeedFilters";
 import {ProfileMaster} from "./ProfileV3Gateway";
 import {VisitorProfileRoute} from "./VisitorProfileRoute";
+import {ProfileReactionNotices} from "./ProfileReactionNotices";
+import {profileReactionKey,useProfileReactionQueue} from "./use-profile-reaction-queue";
 import {RealChats} from "../chats/RealChats";
 import {createChatTransport,type ChatWireConversation} from "../chats/chat-transport";
 import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiGlassPanel,LuemiIconButton,LuemiSkeleton} from "../ui/LuemiV5";
 import {geoCsrf} from "../auth/session-adapter";
 import {getPublishedFeed,getPublishedProfile,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,updateDiscoverySearchScope,realMatchPilot,type PublishedFeedPage,type IncomingLike,type NewMatch} from "../registration/real-live-client";
-import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus,RealLikeKind} from "../registration/real-live-client";
+import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
 import "./discovery.css";
 import "./real-discovery.css";
 import "./deck-v3.css";
@@ -545,7 +547,6 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  // Fictional demo data is projected only to the same real visitor UI route.
  // No server ID, matching or liking capabilities are granted to this state.
  const [demoVisitor,setDemoVisitor]=useState<DemoPerson|null>(null);
- const [demoProfileLikes,setDemoProfileLikes]=useState<Partial<Record<string,RealLikeKind>>>({});
  const [matched,setMatched]=useState<{person:RealPublishedProfile;matchId:string}|null>(null);
  const openPersonById=useCallback((id:string)=>{
   const controller=new AbortController();
@@ -562,6 +563,9 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  const [savedIds,setSavedIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
  const [hiddenIds,setHiddenIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
  const onHide=useCallback((id:string)=>setHiddenIds(existing=>new Set([...existing,id])),[]);
+ const profileReactions=useProfileReactionQueue(onHide);
+ const demoReaction=demoVisitor?profileReactions.actions.get(profileReactionKey({id:demoVisitor.id,demo:true})):undefined;
+ const reactionNotices=<ProfileReactionNotices notices={profileReactions.notices} undo={profileReactions.undo} overProfile/>;
  const onSave=(id:string)=>setSavedIds(previous=>{
   const next=new Set(previous);if(next.has(id))next.delete(id);else next.add(id);return next;
  });
@@ -964,19 +968,26 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   </div>
   {demoVisitor&&qaAllowed&&<VisitorProfileRoute key={"demo-"+demoVisitor.id} data={fromDemoPerson(demoVisitor)}
     onExit={()=>setDemoVisitor(null)} registerBack={registerVisitorBack}
+    reactionNotices={reactionNotices}
     demoReactions={{demo:true,busy:false,error:"",
-     state:{outgoing:demoProfileLikes[demoVisitor.id]??null,incoming:null,matchId:null},
-     send:kind=>setDemoProfileLikes(current=>current[demoVisitor.id]?current:{...current,[demoVisitor.id]:kind})}}/>}
+     state:{outgoing:demoReaction?.phase==="sent"?demoReaction.receipt.kind:null,incoming:null,matchId:null},
+     pendingKind:demoReaction?.phase==="pending"?demoReaction.kind:null,
+     send:kind=>profileReactions.enqueue({id:demoVisitor.id,name:demoVisitor.name,demo:true},kind)}}/>}
   {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)}
    onExit={()=>setPerson(null)} registerBack={registerVisitorBack} reactionsEnabled={realMatchPilot.enabled}
-   onReactionSent={()=>onHide(person.id)} onConversation={(matchId,conversationId)=>{
+   reactionNotices={reactionNotices}
+   reactionAction={profileReactions.actions.get(profileReactionKey(person))}
+   onQueueReaction={kind=>profileReactions.enqueue({id:person.id,name:person.name},kind)}
+   onConversation={(matchId,conversationId)=>{
     setPerson(null);
     if(chatThreadOpen)return;
     setInitialThread({id:matchId,conversationId,peerId:person.id,peerProfileId:person.id,
      peerName:person.name,peerPhotoUrl:person.photos[0]?.url??null,
      createdAt:new Date().toISOString(),interests:[],seen:true});
     setChatThreadOpen(true);setMainTab("chats");
-   }}/>} {matched&&<div className="luemi-match-overlay" role="dialog" aria-modal="true" aria-label="Взаимная симпатия">
+   }}/>}
+  {!person&&!demoVisitor&&<ProfileReactionNotices notices={profileReactions.notices} undo={profileReactions.undo}/>}
+  {matched&&<div className="luemi-match-overlay" role="dialog" aria-modal="true" aria-label="Взаимная симпатия">
    <div className="luemi-match-card"><div className="luemi-match-avatars"><LuemiAvatar name={matched.person.name} src={matched.person.photos[0]?.url}/><Heart size={24}/></div>
     <p className="luemi-match-kicker">Это взаимно</p><h2>Вы понравились друг другу</h2>
     <p>{matched.person.name} появится в новых совпадениях. Переписка начнётся только после первого сообщения.</p>
