@@ -14,6 +14,18 @@ Authoritative source: [docs/PRODUCT_DIRECTION.md](docs/PRODUCT_DIRECTION.md).
 - Support consent-based phone/Telegram geolocation and genuine city resolution; never store exact GPS coordinates in public profiles.
 - Keep approved visual design, Profile Morph and Android WebView motion behavior intact.
 
+## Owner-approved profile baseline (20 November 2026)
+
+**LUEMI Profile V5 · Soft Morph** is the approved profile animation for both the owner's profile and other users' profiles. The reference is [commit `2d37e5c`](https://github.com/zhirayr2505/luemi/commit/2d37e5c7b10002ab3b89ec7c79842d54411f8cca). Keep the baseline branch `baseline/luemi-profile-v5-soft-morph` at that commit.
+
+Preserve this animation during profile work, restyling, refactors and shared gesture changes. A change to the animation requires explicit approval from the owner for that change. The protected behavior includes:
+
+- The square photo while the sheet rises, the shape-change point at 64% of gesture progress, the intermediate circle at approximately 41% of portrait width where it fits, and the final compact avatar position.
+- The 125 ms eased transition in both directions, including size, position, corner radius and photo-colored glow. A reversed gesture continues from the visible frame.
+- One light haptic at each shape change, plus the approved scroll handoff and reduced-motion behavior.
+
+For work that touches the profile or shared gesture logic, verify the behavior against the approved commit in both swipe directions. Use the existing checks in [owner-premium-profile.test.mjs](scripts/owner-premium-profile.test.mjs) and [rem-02c-browser-interruption.mjs](scripts/rem-02c-browser-interruption.mjs).
+
 ## Public launch safety gates
 
 **This mandate does not authorize bypassing security or declaring a launch successful before it is.**
