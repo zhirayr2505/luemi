@@ -3,7 +3,7 @@ import {chromium} from "playwright";
 
 const browser=await chromium.launch({headless:true,args:["--no-sandbox"],
  ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE}:{})});
-const context=await browser.newContext({viewport:{width:393,height:700},isMobile:true,hasTouch:true,
+const context=await browser.newContext({viewport:{width:393,height:650},isMobile:true,hasTouch:true,
  userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 Chrome/135 Mobile Safari/537.36"});
 const page=await context.newPage(),device=await context.newCDPSession(page);
 const actor="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",peer="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -69,6 +69,21 @@ const icon=async(name,file)=>page.waitForFunction(({name,file})=>{
 
 try{
  await open();await hit("София").waitFor();
+ await page.locator(".luemi-shell").evaluate(node=>node.style.setProperty("--viewport-safe-top","43px"));
+ const layout=await scope.evaluate(node=>{
+  const head=node.querySelector(".likes-gallery-chrome");
+  const logo=head?.querySelector('img[alt="LUEMI"]');
+  const bounds=logo?.getBoundingClientRect(),card=node.querySelector(".likes-photo-card").getBoundingClientRect();
+  return {logoX:bounds?bounds.left+bounds.width/2:null,logoTop:bounds?.top,
+   width:node.clientWidth,cardTop:card.top,
+   galleryBg:getComputedStyle(node).backgroundImage,
+   foreignHeader:!!document.querySelector(".real-discovery-home>.lh-header")};
+ });
+ assert(layout.logoX!==null&&Math.abs(layout.logoX-layout.width/2)<1,"original logo is centered");
+ assert(layout.logoTop>=43&&layout.logoTop<=61,"logo sits within the Telegram-safe header");
+ assert(layout.cardTop<185,"the gallery starts immediately below the compact tabs");
+ assert.equal(layout.galleryBg,"none");
+ assert.equal(layout.foreignHeader,false,"likes uses one integrated top surface");
  assert.equal(await scope.getByRole("button",{name:"Демо",exact:true}).count(),0,"QA controls require server authorization");
  assert.equal(await scope.getByLabel("Скрытые симпатии, 1").count(),1);
  assert.equal(await card("София").locator(".likes-photo-slide").count(),3);
