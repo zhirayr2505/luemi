@@ -161,7 +161,8 @@ html,body,#root{background:#10151D}
 }
 /* Profile Morph, visitor route, editing and viewers.
    Never alter translate transforms, photo scale or approved gesture touch-action. */
-.owner-premium-profile,.v3-int-root,.pm-viewer{background:#10151D;color:#FAFCFF}
+.owner-premium-profile,.v3-int-root{background:#10151D;color:#FAFCFF}
+.pm-viewer{--pv-background:#10151D;--pv-foreground:#FAFCFF}
 .pm-card,
 .v3-int-sheet,.v3-int-tabs,.luemi-reveal-entry,.luemi-reveal-editor{
  background-color:rgba(36,44,58,.82);border-color:rgba(238,246,255,.19)

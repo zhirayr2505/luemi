@@ -14,6 +14,7 @@ const touch=(type,points)=>cdp.send("Input.dispatchTouchEvent",{type,touchPoints
  id:x.id,x:x.x,y:x.y,force:1,radiusX:2,radiusY:2
 }))});
 const viewer=()=>page.locator(".pm-viewer");
+const waitForFlight=()=>viewer().locator("xpath=self::*[@data-morph-active='true']").waitFor({timeout:1500});
 const state=()=>page.evaluate(()=>{
  const root=document.querySelector(".pm-viewer"),clip=root?.querySelector(".pm-viewer-morph-clip"),
   image=root?.querySelector(".pm-viewer-morph-image"),source=document.querySelector(".pm-qa-photo-source img"),
@@ -49,16 +50,32 @@ try{
  await page.waitForFunction(()=>!!window.__luemiQaMedia);
  await media("change","aspect-portrait");
  await setSource("hero");
+ await page.evaluate(()=>{
+  const decode=HTMLImageElement.prototype.decode;
+  window.__luemiRestoreDecode=()=>{HTMLImageElement.prototype.decode=decode;};
+  HTMLImageElement.prototype.decode=function(){
+   const frame=decode.call(this);
+   return this.matches(".pm-viewer-image")?
+    Promise.all([frame,new Promise(resolve=>setTimeout(resolve,600))]).then(()=>{}):frame;
+  };
+ });
  const originalOverflow=await page.evaluate(()=>document.body.style.overflow);
  await page.locator(".pm-qa-focus").focus();
  await open("qa-alpha");
+ await waitForFlight();
  let s=await state();
  assert.equal(s.active,"true","hero must start real source crop morph");
  assert.equal(s.sourceVisible,"hidden");
  assert.equal(s.mainVisible,"hidden","no competing live pixels during morph");
  assert.ok(s.clipPath?.startsWith("inset("));
  assert.ok(Math.abs(s.m11-s.m22)<1e-5,"no scaleX/scaleY face stretching");
+ await sleep(320);
+ s=await state();
+ assert.equal(s.active,"true","the opening frame remains visible until the fullscreen image is decoded");
+ assert.equal(s.clipDisplay,"block");
+ assert.equal(s.sourceVisible,"hidden","the same photo cannot flash back in its opening slot");
  await waitReady("qa-alpha");await sleep(280);
+ await page.evaluate(()=>{window.__luemiRestoreDecode();delete window.__luemiRestoreDecode;});
  s=await state();assert.equal(s.active,"false");
  assert.equal(s.sourceVisible,"visible");assert.equal(s.mainVisible,"visible");
  assert.equal(s.focus,"Закрыть просмотр");
@@ -72,10 +89,22 @@ try{
  assert.equal(await source().evaluate(el=>getComputedStyle(el).visibility),"visible");
  assert.equal(await page.locator(".pm-qa-focus").evaluate(el=>document.activeElement===el),true);
  pass("hero cover 22% 70% source morph: clipped pixels, uniform actual DOMMatrix, single visible copy, focus + overflow restored");
+ await setSource("grid");
+ for(const direction of [-1,1]){
+  await open("qa-alpha");await waitForFlight();await waitReady("qa-alpha");
+  await viewer().locator("xpath=self::*[@data-morph-active='false']").waitFor();
+  await page.mouse.move(200,425);await page.mouse.down();
+  await page.mouse.move(200,425+direction*175,{steps:5});await page.mouse.up();
+  await waitForFlight();
+  assert.equal((await state()).sourceVisible,"hidden","the released photo uses the same return flight");
+  await viewer().waitFor({state:"detached"});
+ }
+ pass("the same tile receives the photo after a drag in either vertical direction");
  for(const [aspect,mode] of [["aspect-portrait","grid"],["aspect-landscape","hero"],
     ["aspect-panorama","grid"],["aspect-tall","hero"]]){
   await media("change",aspect);await setSource(mode);
   await open("qa-alpha");
+  await waitForFlight();
   const first=await state();assert.equal(first.active,"true",aspect+" "+mode);
   assert.ok(Math.abs(first.m11-first.m22)<1e-5);
   await waitReady("qa-alpha");await sleep(265);
@@ -124,6 +153,7 @@ try{
  await close();await setSource("hero");
  pass("source outside viewport skips morph and restores image");
  await setSource("hero");await open("qa-alpha");
+ await waitForFlight();
  assert.equal((await state()).active,"true");
  await page.locator(".pm-qa-photo-source").evaluate(el=>{
   el.style.transform="translateY(36px)";

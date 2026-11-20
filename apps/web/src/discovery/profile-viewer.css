@@ -1,6 +1,6 @@
-.pm-viewer{position:fixed;inset:0;z-index:10000;overflow:hidden;isolation:isolate;color:#FFFFFF;touch-action:none}
-.pm-viewer-backdrop{position:absolute;inset:0;background:#160C15;pointer-events:none}
-.pm-viewer-stage{position:absolute;inset:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;opacity:1;transition:opacity 240ms ease}
+.pm-viewer{position:fixed;inset:0;z-index:10000;overflow:hidden;isolation:isolate;color:var(--pv-foreground,#FFFFFF);touch-action:none}
+.pm-viewer-backdrop{position:absolute;inset:0;background:var(--pv-background,#160C15);pointer-events:none}
+.pm-viewer-stage{position:absolute;inset:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 /* REM-03B: three independent viewport-width media slots. Track is the
    ONLY horizontal property writer; surface owns vertical/open/close; IMG owns zoom. */
 .pm-viewer-surface{position:absolute;inset:0;overflow:hidden;transform-origin:center;transform:none;will-change:transform}
@@ -19,7 +19,7 @@
  transform-origin:top left;pointer-events:none;user-select:none;
  -webkit-user-select:none;will-change:transform;
 }
-.pm-viewer[data-morph-active="true"] .pm-viewer-image{visibility:hidden}
+.pm-viewer[data-morph-active="true"] :is(.pm-viewer-image,.pm-viewer-slide[data-slot="current"] .pm-viewer-slide-placeholder,.pm-viewer-media-status){visibility:hidden}
 .pm-viewer-neighbor-image{transition:none}
 .pm-viewer-slide-placeholder{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:13px;text-align:center;color:rgba(255,255,255,.84);pointer-events:none}
 
@@ -35,6 +35,7 @@
 .pm-viewer-top>button{position:absolute;right:max(19px,var(--pv-safe-right,0px),env(safe-area-inset-right,0px));bottom:0}
 .pm-viewer-top,.pm-viewer-bottom{transition:opacity 160ms ease}
 .pm-viewer[data-chrome-visible="false"] :is(.pm-viewer-top,.pm-viewer-bottom),
+.pm-viewer[data-presented="false"] :is(.pm-viewer-top,.pm-viewer-bottom),
 .pm-viewer[data-closing="true"] :is(.pm-viewer-top,.pm-viewer-bottom){opacity:0}
 .pm-viewer[data-closing="true"] :is(.pm-viewer-top,.pm-viewer-bottom) button{pointer-events:none}
 @media(prefers-reduced-motion:reduce){.pm-viewer-top,.pm-viewer-bottom{transition:none}}
