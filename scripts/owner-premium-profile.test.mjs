@@ -34,8 +34,8 @@ try{
   assert(Math.abs(expanded.sheetTop-tracking.sheetTop-pull)<1e-8,"the sheet tracks the finger 1:1");
   assert.equal(tracking.mask.width,expanded.mask.width,"photo remains full-width in the first phase");
   assert.equal(tracking.radius,0,"photo stays square until the sheet has climbed");
-  assert(Math.abs(tracking.mask.y+pull*.42)<1e-8,"photo parallax moves at 42% of the sheet");
-  assert(tracking.mask.y+tracking.mask.height>=tracking.sheetTop,"parallax exposes no seam above the sheet");
+  assert.deepEqual(tracking.mask,expanded.mask,"the square stays in the expanded position while the sheet rises");
+  assert(tracking.mask.height>=tracking.sheetTop,"the rising sheet continues to overlap the photo");
 
   assert.deepEqual(compact.mask,layout.compactAvatar);
   assert.equal(compact.mask.x,(layout.width-compact.mask.width)/2,"compact photo is centered");
@@ -55,8 +55,10 @@ try{
   }
   const opening=ownerMorphFrame(layout,.91);
   assert(opening.mask.width>compact.mask.width,"reverse visibly grows the circle before it opens");
-  const round=ownerMorphFrame(layout,.85);
+  const round=ownerMorphFrame(layout,.64);
   assert(round.mask.width>=compact.mask.width*1.28,"the medium circle is larger than the docked avatar");
+  if(viewport.width<viewport.height)
+   assert(Math.abs(round.mask.width/viewport.width-.41)<.005,"the medium circle matches the reference diameter");
   assert(round.identityTop>=round.mask.y+round.mask.height+7,"the larger circle clears the name");
   assert(compact.haloOpacity>0,"the docked avatar has a photo-colored halo");
   assert.equal(opening.radius,opening.mask.width/2);
@@ -73,15 +75,16 @@ try{
   assert.equal(ownerAutoSnapTarget(0,distance*.65,distance),1,"crossing the threshold allows release to compact");
   assert.equal(ownerAutoSnapTarget(1,distance*.90,distance),null);
   assert.equal(ownerAutoSnapTarget(1,distance*.86,distance),0,"crossing the threshold allows release to expand");
-  const before=ownerMorphFrame(layout,.64),after=ownerMorphFrame(layout,.64001);
+  const before=ownerMorphFrame(layout,.64-.00001);
+  assert.deepEqual(before.mask,expanded.mask,"the final square frame still fills the header");
   assert.equal(before.radius,0);
-  assert.equal(after.radius,after.mask.width/2);
-  assert(Math.abs(after.mask.width-before.mask.width)<.1&&Math.abs(after.mask.y-before.mask.y)<.1,
-   "shape changes without a size or center jump");
-  assert(after.mask.width<before.mask.width,"the first smaller frame is circular");
-  assert(ownerMorphFrame(layout,.849).mask.width>round.mask.width&&
-   ownerMorphFrame(layout,.851).mask.width<round.mask.width,
-   "moving either way through the medium circle has no dead zone");
+  assert.equal(before.haloOpacity,0);
+  assert.equal(round.radius,round.mask.width/2,"the first round frame has the reference diameter");
+  assert(round.haloOpacity>0,"the photo glow appears on the same frame as the circle");
+  assert(Math.abs(round.sheetTop-before.sheetTop)<.1,"the sheet continues smoothly across the snap");
+  const after=ownerMorphFrame(layout,.65);
+  assert(after.mask.width<round.mask.width&&after.mask.width>compact.mask.width,
+   "the circle shrinks smoothly from the snap diameter toward the dock");
   assert.equal(ownerMorphProgress(-80,distance),0);
   assert.equal(ownerMorphProgress(distance*2,distance),1);
   assert.equal(ownerMorphEndpoint(distance*.49,distance),0);
@@ -93,7 +96,7 @@ try{
  const short=createOwnerProfileLayout({width:393,height:640,brandBottom:65});
  const tall=createOwnerProfileLayout({width:393,height:932,brandBottom:65});
  assert.deepEqual(short,tall,"portrait height alone cannot change photos or translate the tabs");
- console.log("OWNER_PREMIUM_PROFILE_GEOMETRY_PASS 4 viewports, parallax, single square mask, safe area and held-touch thresholds");
+ console.log("OWNER_PREMIUM_PROFILE_GEOMETRY_PASS 4 viewports, snap diameter, single square mask, safe area and reversible morph thresholds");
 }finally{
  rmSync(directory,{recursive:true,force:true});
 }

@@ -23,8 +23,8 @@
  filter:blur(24px) brightness(.59) saturate(.92);
 }
 .owner-profile-halo{
- position:absolute;left:50%;top:72px;width:136px;aspect-ratio:1;
- border-radius:50%;opacity:0;transform:translateX(-50%);
+ position:absolute;left:50%;top:0;width:136px;aspect-ratio:1;
+ border-radius:50%;opacity:0;transform-origin:50% 0;
  filter:blur(15px) saturate(1.17) brightness(1.18);
 }
 .owner-profile-brand{

@@ -138,16 +138,22 @@ export function useOwnerProfileMotion(options:Options){
     });
   };
 
-  const paint=(value:number)=>{
+  let paintedCircle=false;
+  const paint=(value:number,feedback=false)=>{
    position=value;
    const distance=geometry.morphDistance;
    const progress=ownerMorphProgress(value*distance,distance);
    const frame=ownerMorphFrame(geometry,value);
    const {mask:photo,identityCenter:center}=frame;
    mask.style.transform=`${translate(photo.x,photo.y)} scale(${photo.width/geometry.width})`;
-   mask.style.borderRadius=`${frame.radius/photo.width*100}%`;
-   shade.style.opacity=String(1-center);
-   halo.style.opacity=String(frame.haloOpacity*.82);
+   const circular=frame.radius>0;
+   mask.style.borderRadius=circular?"50%":"0%";
+   shade.style.opacity=circular?"0":"1";
+   halo.style.opacity=String(frame.haloOpacity);
+   if(circular){
+    const scale=(photo.width+34)/(geometry.roundDiameter+34);
+    halo.style.transform=`translate3d(-50%,${photo.y-17}px,0) scale(${scale})`;
+   }
    sheet.style.transform=translate(0,frame.sheetTop);
    identity.style.transform=translate(0,frame.identityTop);
    const x=24+(geometry.width/2-24)*center;
@@ -156,13 +162,16 @@ export function useOwnerProfileMotion(options:Options){
    name.style.transformOrigin=`${50*center}% 0`;
    location.style.transform=`translateY(${-12*center}px) ${align}`;
    pager.style.transform=translate(0,frame.sheetTop-24);
-   const hideControls=progress>=.64;
+   const hideControls=circular;
    if(pager.inert!==hideControls)pager.inert=hideControls;
    const state=settling!==null?"transition":value===0?"expanded":value===1?"compact":"transition";
    if(host.dataset.morphState!==state){
     host.dataset.morphState=state;
     mask.classList.toggle("owner-profile-avatar-circle",state==="compact");
    }
+   const crossed=paintedCircle!==circular;
+   paintedCircle=circular;
+   if(crossed&&feedback&&!paused())impactHaptic("light");
    latest.current.onMotionProgress?.(1-progress,settling!==null||(press?.owner==="sheet"&&!press.scrollCards));
   };
   const cancelPaint=()=>{
@@ -172,12 +181,12 @@ export function useOwnerProfileMotion(options:Options){
   const schedulePaint=(value:number)=>{
    pendingPaint=value;
    if(paintRaf)return;
-   paintRaf=requestAnimationFrame(()=>{paintRaf=0;paint(pendingPaint);});
+   paintRaf=requestAnimationFrame(()=>{paintRaf=0;paint(pendingPaint,true);});
   };
   const flushPaint=()=>{
    if(!paintRaf)return;
    cancelPaint();
-   paint(pendingPaint);
+   paint(pendingPaint,true);
   };
   const interrupt=()=>{
    if(settling===null)return;
@@ -187,19 +196,18 @@ export function useOwnerProfileMotion(options:Options){
    paint(position);
   };
   const writeCards=(press:Press)=>{scroll.scrollTop=press.remainder;};
-  const settleTo=(target:Endpoint,velocity=0,notify=false,afterCompact?:()=>void)=>{
+  const settleTo=(target:Endpoint,velocity=0,feedback=false,afterCompact?:()=>void)=>{
    flushPaint();
-   if(accepted!==target&&notify)impactHaptic("light");
    accepted=target;
    if(settling===target)return;
    const from=position,distance=geometry.morphDistance;
    const finish=()=>{
     settling=null;
-    paint(target);
+    paint(target,feedback);
     if(target===1)afterCompact?.();
    };
    const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
-   const bounce=notify&&!reduced&&from>=0&&from<=1&&!(target===1&&scroll.scrollTop>0);
+   const bounce=feedback&&!reduced&&from>=0&&from<=1&&!(target===1&&scroll.scrollTop>0);
    if(from===target&&!bounce){finish();return;}
    const landing=target+(bounce?(target===1?4:-5)/distance:0);
    const duration=clamp(110+Math.abs(target-from)*190,110,300);
@@ -207,9 +215,9 @@ export function useOwnerProfileMotion(options:Options){
    const curve:Easing=[.22,clamp(slope*.22,.24,.85),.32,1];
    settling=target;
    paint(from);
-   motion.start(from*distance,landing*distance,duration,curve,value=>paint(value/distance),()=>{
+   motion.start(from*distance,landing*distance,duration,curve,value=>paint(value/distance,feedback),()=>{
     if(!bounce){finish();return;}
-    motion.start(landing*distance,target*distance,115,[.26,.72,.38,1],value=>paint(value/distance),finish);
+    motion.start(landing*distance,target*distance,115,[.26,.72,.38,1],value=>paint(value/distance,feedback),finish);
    });
   };
   const settleRelease=(velocity:number,touch=false)=>{
@@ -272,7 +280,7 @@ export function useOwnerProfileMotion(options:Options){
    current.remainder=Math.max(0,raw-current.distance);
    if(raw>=current.distance){
     cancelPaint();
-    paint(1);
+    paint(1,true);
     writeCards(current);
     return;
    }
@@ -439,8 +447,7 @@ export function useOwnerProfileMotion(options:Options){
     brandBottom:brand.getBoundingClientRect().bottom-rect.top});
    sheet.style.height=`calc(100% - ${geometry.compactContentTop}px)`;
    ambient.style.height=`${Math.max(geometry.width,geometry.roundTop+geometry.roundDiameter+108)}px`;
-   halo.style.top=`${geometry.compactAvatar.y-17}px`;
-   halo.style.width=`${geometry.compactAvatar.width+34}px`;
+   halo.style.width=`${geometry.roundDiameter+34}px`;
    tabWidth=tabPages.clientWidth||rect.width;
    inkStep=tabRail.clientWidth/tabCount;
    paintTabs(tabPosition);

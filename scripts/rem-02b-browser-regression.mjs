@@ -55,7 +55,7 @@ try{
   });
   assert(handoff.cityBottom<=handoff.tabTop+1.5,
    "city label cannot disappear behind the sheet at mid morph "+height);
-  assert(Math.abs(handoff.photoTop+55*.42)<2,"photo follows the sheet at the specified parallax ratio");
+  assert(Math.abs(handoff.photoTop-full.photo.y)<1,"the square stays in place while the panel rises");
   await page.mouse.move(x,y-190,{steps:6});
   await page.mouse.up();
   await root.locator('xpath=self::*[@data-morph-state="compact"]').waitFor({state:"visible",timeout:5000});

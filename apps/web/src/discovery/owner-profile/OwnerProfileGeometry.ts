@@ -20,10 +20,9 @@ export type OwnerMorphFrame={
  haloOpacity:number;
 };
 
-const COLLAPSE_THRESHOLD=.64;
-const MEDIUM_PHOTO_PROGRESS=.85;
+const PHOTO_SNAP_PROGRESS=.64;
+const REFERENCE_DIAMETER_RATIO=.41;
 const EXPAND_THRESHOLD=.88;
-const PHOTO_PARALLAX=.42;
 const MAX_RUBBER=26;
 const RUBBER_RESISTANCE=50;
 
@@ -44,16 +43,15 @@ export function createOwnerProfileLayout(viewport:OwnerProfileViewport):OwnerPro
  const diameter=Math.min(preferredDiameter,Math.max(60,expandedTabsTop-brandBottom-10-8-56-10));
  const compactAvatar={x:(width-diameter)/2,y:brandBottom+10,width:diameter,height:diameter};
  const compactContentTop=compactAvatar.y+diameter+8+56;
- const roundTop=compactAvatar.y-7;
- const roundDiameter=diameter+Math.min(diameter*.42,Math.max(0,expandedTabsTop-compactContentTop)*.44);
+ const preferredRoundDiameter=width>height?diameter*1.42:width*REFERENCE_DIAMETER_RATIO;
+ const availableRoundDiameter=expandedTabsTop-(compactAvatar.y-7)-8-56;
+ const roundDiameter=clamp(preferredRoundDiameter,diameter,Math.max(diameter,availableRoundDiameter));
+ const roundTop=compactAvatar.y-Math.min(7,roundDiameter-diameter);
  const roundContentTop=roundTop+roundDiameter+8+56;
- const panelTravel=Math.max(0,expandedTabsTop-Math.max(roundContentTop,compactContentTop));
- // The first part of the gesture moves the sheet by the same number of pixels.
- // Leave room for the sheet to glide into its compact position during rounding.
- const initialTravel=Math.min(width*.30,panelTravel*.90);
+ const initialTravel=Math.max(0,expandedTabsTop-roundContentTop);
  return {
   width,hero:{x:0,y:0,width,height:width},compactAvatar,roundDiameter,roundTop,
-  expandedTabsTop,compactContentTop,initialSheetTravel:initialTravel,morphDistance:Math.max(44,initialTravel/COLLAPSE_THRESHOLD)
+  expandedTabsTop,compactContentTop,initialSheetTravel:initialTravel,morphDistance:Math.max(44,initialTravel/PHOTO_SNAP_PROGRESS)
  };
 }
 
@@ -69,14 +67,14 @@ export function ownerMorphEndpoint(position:number,distance:number,velocity=0):n
 
 /** Choose the endpoint when a touch is released or a wheel gesture crosses a threshold. */
 export function ownerAutoSnapTarget(accepted:0|1,position:number,distance:number):0|1|null{
- if(accepted===0&&position>=distance*COLLAPSE_THRESHOLD)return 1;
+ if(accepted===0&&position>=distance*PHOTO_SNAP_PROGRESS)return 1;
  if(accepted===1&&position<=distance*EXPAND_THRESHOLD)return 0;
  return null;
 }
 
 /** A coalesced move can skip past the boundary. Animate from the reached threshold. */
 export function ownerSnapFrom(origin:number,target:0|1):number{
- return target===1?Math.max(origin,COLLAPSE_THRESHOLD):Math.min(origin,EXPAND_THRESHOLD);
+ return target===1?Math.max(origin,PHOTO_SNAP_PROGRESS):Math.min(origin,EXPAND_THRESHOLD);
 }
 
 export function ownerRubberPosition(position:number):number{
@@ -94,35 +92,23 @@ export function ownerUnresistedPosition(position:number):number{
 
 export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):OwnerMorphFrame{
  const p=clamp(progress,0,1),avatar=layout.compactAvatar;
- const initialClimb=Math.min(p/COLLAPSE_THRESHOLD,1)*layout.initialSheetTravel;
- const photoMorph=smooth((p-COLLAPSE_THRESHOLD)/(MEDIUM_PHOTO_PROGRESS-COLLAPSE_THRESHOLD));
- const finalSettle=smooth((p-MEDIUM_PHOTO_PROGRESS)/(1-MEDIUM_PHOTO_PROGRESS));
- const roundContentTop=layout.roundTop+layout.roundDiameter+8+56;
- const sheetToCircle=clamp((p-COLLAPSE_THRESHOLD)/(MEDIUM_PHOTO_PROGRESS-COLLAPSE_THRESHOLD),0,1);
- const sheetTop=mix(mix(layout.expandedTabsTop-initialClimb,roundContentTop,sheetToCircle),
-  layout.compactContentTop,finalSettle);
- // Match the slope through the medium diameter. The final segment
- // decelerates to rest at the compact endpoint.
- const t=sheetToCircle;
- const u=clamp((p-MEDIUM_PHOTO_PROGRESS)/(1-MEDIUM_PHOTO_PROGRESS),0,1);
- const throughCircle=(start:number,medium:number,end:number)=>{
-  const slope=2*(end-medium)/(1-MEDIUM_PHOTO_PROGRESS);
-  if(p<MEDIUM_PHOTO_PROGRESS)return mix(start,medium,photoMorph)
-   +t*t*(t-1)*(MEDIUM_PHOTO_PROGRESS-COLLAPSE_THRESHOLD)*slope;
-  return mix(medium,end,u*(2-u));
- };
- const diameter=throughCircle(layout.width,layout.roundDiameter,avatar.width);
- const avatarY=throughCircle(-initialClimb*PHOTO_PARALLAX,layout.roundTop,avatar.y);
+ const circular=p>=PHOTO_SNAP_PROGRESS;
+ const initialClimb=Math.min(p/PHOTO_SNAP_PROGRESS,1)*layout.initialSheetTravel;
+ const dock=smooth((p-PHOTO_SNAP_PROGRESS)/(1-PHOTO_SNAP_PROGRESS));
+ const sheetTop=mix(layout.expandedTabsTop-initialClimb,layout.compactContentTop,dock);
+ const diameter=circular?mix(layout.roundDiameter,avatar.width,dock):layout.width;
+ const avatarY=circular?mix(layout.roundTop,avatar.y,dock):layout.hero.y;
+ const identityCenter=smooth(p/PHOTO_SNAP_PROGRESS);
  const stretch=clamp(-progress*layout.morphDistance,0,MAX_RUBBER);
  const rebound=clamp((progress-1)*layout.morphDistance,0,7);
  const size=diameter*(1+stretch*.001);
- // The photo only uses a square mask at full width or during expanded overpull.
+ // Both directions share the same discontinuity in photo shape and diameter.
  return {
   mask:{x:(layout.width-size)/2,y:avatarY-rebound,width:size,height:size},
-  radius:size<layout.width?size/2:0,
+  radius:circular?size/2:0,
   sheetTop:sheetTop+stretch-rebound,
-  identityTop:sheetTop-mix(70,56,photoMorph)+stretch-rebound,
-  identityCenter:photoMorph,
-  haloOpacity:finalSettle
+  identityTop:sheetTop-mix(70,56,identityCenter)+stretch-rebound,
+  identityCenter,
+  haloOpacity:circular?.82:0
  };
 }
