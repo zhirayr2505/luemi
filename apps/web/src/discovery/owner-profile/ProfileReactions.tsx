@@ -19,7 +19,7 @@ export function canSendProfileReaction(state:ProfileMatchState|null):boolean{
 const reactionGlyphs=["like-incoming","like-outgoing","superlike-incoming","superlike-outgoing","like-mutual"] as const;
 type ReactionGlyph=typeof reactionGlyphs[number];
 
-export function profileReactionAsset(glyph:ReactionGlyph){
+export function profileReactionAsset(glyph:ReactionGlyph|"like-skipped"){
  return "/assets/profile/reactions/"+glyph+".svg";
 }
 
@@ -33,8 +33,8 @@ function reactionGlyph(state:ProfileMatchState|null,pendingKind?:RealLikeKind|nu
 
 export function ProfileReactionIndicator({controls}:{controls:ProfileReactionControls}){
  const glyph=reactionGlyph(controls.state,controls.pendingKind);
- const label=glyph&&(controls.demo?
-  glyph==="superlike-outgoing"?"Тестовый суперлайк поставлен":"Тестовый лайк поставлен":glyphNames[glyph]);
+ const label=glyph&&(controls.demo&&glyph==="superlike-outgoing"?"Тестовый суперлайк поставлен":
+  controls.demo&&glyph==="like-outgoing"?"Тестовый лайк поставлен":glyphNames[glyph]);
  return <span className="profile-reaction-indicator" data-visible={glyph?true:undefined}
   role="img" aria-label={label??undefined} aria-hidden={glyph?undefined:true}>
   {reactionGlyphs.map(icon=><img key={icon} src={profileReactionAsset(icon)} alt="" width="26" height="26"

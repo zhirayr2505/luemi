@@ -215,6 +215,11 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
   const safe={...receipt};delete safe.notifyReceiverId;delete safe.notification;return safe;
  });
 
+ const photoUrls=(ids:string[])=>ids.map(id=>"/api/v3/discovery/photo/"+id);
+ const album=(peer:"l.sender_id"|"p.peer_id")=>`ARRAY(SELECT photo.id FROM luemi_private.media_assets photo
+  WHERE photo.owner_id=${peer} AND photo.environment=$2
+   AND photo.state='approved' AND photo.publication_status='published'
+  ORDER BY photo.position,photo.id LIMIT 6)`;
  app.get("/api/v4/matches/incoming",{preHandler:auth.read},(req,reply)=>transaction(req,reply,async(db,actor)=>{
   const premium=await db.query<{active:boolean}>(`SELECT EXISTS(SELECT 1 FROM luemi_chats.premium_entitlements
    WHERE environment=$2 AND actor_id=$1 AND active_until>clock_timestamp()) AS active`,[actor,cfg.namespace]);
@@ -223,6 +228,8 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
    SELECT candidate.environment,candidate.receiver_id,candidate.sender_id FROM luemi_chats.likes candidate
    WHERE candidate.environment=$2 AND candidate.receiver_id=$1 AND candidate.kind='ordinary'
     AND candidate.status='active'
+    AND NOT EXISTS(SELECT 1 FROM luemi_private.blocks b WHERE b.environment=$2 AND
+     ((b.blocker_id=$1 AND b.blocked_id=candidate.sender_id) OR (b.blocker_id=candidate.sender_id AND b.blocked_id=$1)))
     AND NOT EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.environment=candidate.environment
      AND m.status='active' AND m.actor_low=least(candidate.sender_id,candidate.receiver_id)
      AND m.actor_high=greatest(candidate.sender_id,candidate.receiver_id))
@@ -233,33 +240,78 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
     JOIN luemi_chats.likes active ON active.environment=shown.environment AND active.receiver_id=shown.receiver_id
      AND active.sender_id=shown.sender_id AND active.status='active' AND active.kind='ordinary'
     WHERE shown.environment=$2 AND shown.receiver_id=$1)) ON CONFLICT DO NOTHING`,[actor,cfg.namespace]);
-  const rows=await db.query<{id:string;name:string;created_at:string;kind:LikeKind;photo_id:string|null;revealed:boolean}>(
+  const rows=await db.query<{id:string;name:string;created_at:string;kind:LikeKind;photo_ids:string[];revealed:boolean}>(
    `SELECT l.sender_id AS id,coalesce(p.display_name,'Кто-то') AS name,l.created_at::text,l.kind,
     EXISTS(SELECT 1 FROM luemi_chats.incoming_like_reveals shown WHERE shown.environment=l.environment
      AND shown.receiver_id=l.receiver_id AND shown.sender_id=l.sender_id) AS revealed,
-    (SELECT photo.id FROM luemi_private.media_assets photo WHERE photo.owner_id=l.sender_id
-     AND photo.environment=l.environment AND photo.state='approved' AND photo.publication_status='published'
-     ORDER BY photo.position,photo.id LIMIT 1) AS photo_id
+    CASE WHEN $3::boolean OR l.kind='super' OR EXISTS(SELECT 1 FROM luemi_chats.incoming_like_reveals shown
+      WHERE shown.environment=l.environment AND shown.receiver_id=l.receiver_id AND shown.sender_id=l.sender_id)
+     THEN ${album("l.sender_id")} ELSE ARRAY[]::uuid[] END AS photo_ids
     FROM luemi_chats.likes l JOIN luemi_private.public_profiles p
      ON p.owner_id=l.sender_id AND p.environment=l.environment AND p.publication_status='published'
     JOIN luemi_private.actors a ON a.id=l.sender_id AND a.environment=l.environment AND a.status='active'
     WHERE l.environment=$2 AND l.receiver_id=$1 AND l.status='active'
+    AND NOT EXISTS(SELECT 1 FROM luemi_private.blocks b WHERE b.environment=$2 AND
+     ((b.blocker_id=$1 AND b.blocked_id=l.sender_id) OR (b.blocker_id=l.sender_id AND b.blocked_id=$1)))
     AND NOT EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.environment=l.environment AND m.status='active'
      AND m.actor_low=least(l.sender_id,l.receiver_id) AND m.actor_high=greatest(l.sender_id,l.receiver_id))
-    ORDER BY (l.kind='super') DESC,l.created_at,l.sender_id LIMIT 100`,[actor,cfg.namespace]);
+    ORDER BY (l.kind='super') DESC,l.created_at,l.sender_id LIMIT 100`,[actor,cfg.namespace,premium.rows[0]?.active===true]);
   const ordinary=rows.rows.filter(row=>row.kind==="ordinary"&&row.revealed),special=rows.rows.filter(row=>row.kind==="super");
   const visible=premium.rows[0]?.active?rows.rows:[...special,...ordinary];
   return {premium:premium.rows[0]?.active===true,hiddenCount:Math.max(0,rows.rows.length-visible.length),
-   likes:visible.map(row=>({id:row.id,name:row.name,createdAt:row.created_at,kind:row.kind,
-    photoUrl:row.photo_id?"/api/v3/discovery/photo/"+row.photo_id:null}))};
+   likes:visible.map(row=>{
+    const photos=photoUrls(row.photo_ids);
+    return {id:row.id,name:row.name,createdAt:row.created_at,kind:row.kind,photoUrl:photos[0]??null,photos};
+   })};
+ }));
+
+ app.get("/api/v4/matches/gallery",{preHandler:auth.read},(req,reply)=>transaction(req,reply,async(db,actor)=>{
+  type GalleryRow={id:string;name:string;photo_ids:string[];kind:LikeKind|null;match_id:string|null;
+   conversation_id:string|null;created_at:string};
+  const {rows}=await db.query<GalleryRow>(`WITH mutual AS (
+   SELECT m.id AS match_id,CASE WHEN m.actor_low=$1 THEN m.actor_high ELSE m.actor_low END AS peer_id,m.created_at
+   FROM luemi_chats.matches m WHERE m.environment=$2 AND m.status='active' AND $1 IN (m.actor_low,m.actor_high)
+  ), relationships AS (
+   SELECT m.peer_id,m.match_id,NULL::text AS kind,m.created_at FROM mutual m
+   UNION ALL
+   SELECT l.receiver_id,NULL::uuid,l.kind::text,l.created_at FROM luemi_chats.likes l
+   WHERE l.environment=$2 AND l.sender_id=$1 AND l.status='active'
+    AND NOT EXISTS(SELECT 1 FROM mutual m WHERE m.peer_id=l.receiver_id)
+  ), visible AS (
+   SELECT r.*,p.display_name AS name,row_number() OVER(
+    PARTITION BY (r.match_id IS NOT NULL) ORDER BY r.created_at DESC,r.peer_id) AS position
+   FROM relationships r
+   JOIN luemi_private.public_profiles p ON p.owner_id=r.peer_id AND p.environment=$2 AND p.publication_status='published'
+   JOIN luemi_private.actors a ON a.id=r.peer_id AND a.environment=$2 AND a.status='active'
+   WHERE NOT EXISTS(SELECT 1 FROM luemi_private.blocks b WHERE b.environment=$2 AND
+    ((b.blocker_id=$1 AND b.blocked_id=r.peer_id) OR (b.blocker_id=r.peer_id AND b.blocked_id=$1)))
+  )
+  SELECT p.peer_id AS id,p.name,p.kind,p.match_id,c.id AS conversation_id,p.created_at::text,
+    ${album("p.peer_id")} AS photo_ids
+  FROM visible p LEFT JOIN luemi_chats.conversations c ON c.private_match_id=p.match_id AND c.environment=$2
+  WHERE p.position<=100 ORDER BY p.position`,[actor,cfg.namespace]);
+  const cards=rows.map(row=>({id:row.id,name:row.name,createdAt:row.created_at,photos:photoUrls(row.photo_ids),
+   kind:row.kind,matchId:row.match_id,conversationId:row.conversation_id}));
+  return {outgoing:cards.filter(row=>!row.matchId),mutual:cards.filter(row=>!!row.matchId)};
  }));
 
  app.post<{Params:{id:string}}>("/api/v4/matches/incoming/:id/reject",
  {preHandler:auth.mutation},(req,reply)=>transaction(req,reply,async(db,actor)=>{
-  if(!validId(req.params.id))reject(404,"not_found");
-  const result=await db.query(`UPDATE luemi_chats.likes SET status='rejected',responded_at=clock_timestamp()
-   WHERE environment=$3 AND sender_id=$1 AND receiver_id=$2 AND status='active' RETURNING sender_id`,
-   [req.params.id,actor,cfg.namespace]);
+  const target=req.params.id.toLowerCase();
+  if(!validId(target)||target===actor)reject(404,"not_found");
+  const [left,right]=[actor,target].sort();
+  await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,62016))",[left+":"+right]);
+  await requireVisiblePair(db,actor,target,cfg.namespace);
+  const result=await db.query(`UPDATE luemi_chats.likes l SET status='rejected',responded_at=clock_timestamp()
+   WHERE l.environment=$3 AND l.sender_id=$1 AND l.receiver_id=$2 AND l.status='active'
+    AND (l.kind='super'
+     OR EXISTS(SELECT 1 FROM luemi_chats.premium_entitlements e
+      WHERE e.environment=$3 AND e.actor_id=$2 AND e.active_until>clock_timestamp())
+     OR EXISTS(SELECT 1 FROM luemi_chats.incoming_like_reveals r
+      WHERE r.environment=$3 AND r.sender_id=$1 AND r.receiver_id=$2))
+    AND NOT EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.environment=$3 AND m.status='active'
+     AND m.actor_low=$4 AND m.actor_high=$5)
+   RETURNING sender_id`,[target,actor,cfg.namespace,left,right]);
   if(result.rowCount!==1)reject(404,"not_found");return {rejected:true};
  }));
 

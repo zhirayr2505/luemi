@@ -53,9 +53,11 @@ test("real chat list and thread share V5 without white route surfaces",()=>{
  assert.match(chats,/data-keyboard=open/);
 });
 
-test("likes route uses the shared V5 states and avatar system",()=>{
- for(const component of ["LuemiAvatar","LuemiEmptyState","LuemiGlassPanel","LuemiIconButton","LuemiSkeleton"])
-  assert.match(discovery,new RegExp(component));
+test("likes gallery uses shared V5 states and album cards",()=>{
+ const gallery=read("apps/web/src/discovery/LikesGallery.tsx");
+ for(const component of ["LuemiEmptyState","LuemiIconButton","LuemiSkeleton","LikesGalleryCard"])
+  assert.match(gallery,new RegExp(component));
+ assert.match(discovery,/<LikesGallery/);
  assert.doesNotMatch(discovery,/className="discovery-placeholder"/);
  assert.doesNotMatch(discovery,/Поставил\(а\) тебе симпатию\s*💜/);
  assert.match(tokens,/prefers-reduced-motion:reduce[\s\S]*?\.luemi-v5-skeleton-avatar/);

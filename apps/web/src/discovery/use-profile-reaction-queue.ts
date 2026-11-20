@@ -1,12 +1,14 @@
 import {useEffect,useRef,useState} from "react";
-import {likePublishedUser,type RealLikeKind} from "../registration/real-live-client";
+import {likePublishedUser,rejectIncomingLike,type RealLikeKind} from "../registration/real-live-client";
+import type {LikesAction} from "./likes-gallery-gesture";
 
 export const PROFILE_REACTION_UNDO_MS=5000;
 type Target={id:string;name:string;demo?:true};
-type QueuedReaction={target:Target;kind:RealLikeKind;deadline:number};
+export const isProfileLike=(kind:LikesAction|undefined):kind is RealLikeKind=>kind==="ordinary"||kind==="super";
+type QueuedReaction={target:Target;kind:LikesAction;deadline:number};
 export type PendingProfileReaction=QueuedReaction&{phase:"pending";timer:number};
 export type ProfileReactionAction=PendingProfileReaction|QueuedReaction&(
- {phase:"sending"}|{phase:"sent";receipt:{kind:RealLikeKind;matchId:string|null}}|{phase:"failed";error:string}
+ {phase:"sending"}|{phase:"sent";receipt:{kind:LikesAction;matchId:string|null}}|{phase:"failed";error:string}
 );
 
 export function profileReactionKey(target:Pick<Target,"id"|"demo">){
@@ -35,22 +37,25 @@ export function useProfileReactionQueue(onSent:(profileId:string)=>void){
   try{
    let receipt={kind,matchId:null as string|null};
    if(!target.demo){
-    const sent=await likePublishedUser(target.id,kind);
-    receipt={kind:sent.kind,matchId:sent.matched?sent.matchId??null:null};
+    if(kind==="skip")await rejectIncomingLike(target.id);
+    else {
+     const sent=await likePublishedUser(target.id,kind);
+     receipt={kind:sent.kind,matchId:sent.matched?sent.matchId??null:null};
+    }
    }
    if(entries.current.get(key)!==sending)return;
    entries.current.set(key,{...sending,phase:"sent",receipt});
-   if(!target.demo)onSent(target.id);
+   if(!target.demo&&kind!=="skip")onSent(target.id);
   }catch(cause){
    if(entries.current.get(key)!==sending)return;
    const reason=cause instanceof Error?cause.message:"";
-   const error=reason==="superlikes_empty"?"Суперлайки закончились.":reason==="daily_like_limit"?
+   const error=kind==="skip"?"Не удалось пропустить анкету. Попробуйте снова.":reason==="superlikes_empty"?"Суперлайки закончились.":reason==="daily_like_limit"?
     "Дневной лимит симпатий закончился.":"Не удалось отправить симпатию. Попробуйте снова.";
    entries.current.set(key,{...sending,phase:"failed",error});
   }
   refresh();
  };
- const enqueue=(target:Target,kind:RealLikeKind)=>{
+ const enqueue=(target:Target,kind:LikesAction)=>{
   const key=profileReactionKey(target),existing=entries.current.get(key);
   if(existing&&existing.phase!=="failed")return;
   const deadline=Date.now()+PROFILE_REACTION_UNDO_MS;

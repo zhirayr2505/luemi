@@ -31,6 +31,7 @@ await page.route("**/api/**",async route=>{
  if(path==="/api/v3/discovery/profile/"+peer)return send({profile});
  if(path.startsWith("/api/v3/discovery/photo/")||path.startsWith("/api/v2/qa/portraits/"))return route.fulfill({contentType:"image/svg+xml",
   body:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#893c32"/></svg>'});
+ if(path==="/api/v4/matches/gallery")return send({outgoing:[],mutual:[]});
  if(path==="/api/v4/matches/incoming")return send({likes:[{id:peer,name:profile.name,createdAt:now,
   kind:state.incoming??"ordinary",photoUrl:photos[0].url}],premium:false,hiddenCount:0});
  if(path==="/api/v4/matches/profile/"+peer)return send(state);
@@ -71,7 +72,7 @@ const waitState=state=>page.waitForFunction(state=>document.querySelector(".owne
 const open=async value=>{
  state={...empty,...value};
  await page.goto(base+"/profile-qa.html?profileReactions=1&luemiRoute=likes");
- await page.getByRole("button",{name:/Карина/}).click();
+ await page.getByRole("button",{name:"Открыть анкету "+profile.name,exact:true}).click();
  await root.waitFor();await waitState("expanded");
  await page.waitForFunction(()=>Math.abs(document.querySelector(".discovery-visitor-route")?.getBoundingClientRect().left??100)<1);
 };
@@ -262,3 +263,5 @@ try{
  assert.deepEqual(errors,[]);
  console.log("PROFILE_REACTIONS_BROWSER_PASS layout, indicator hold/reverse, five-second undo, deferred delivery, real and demo reactions, error, chat on Chromium Android emulation");
 }finally{await browser.close();}
+
+await import("./profile-v3-likes-gallery-browser.mjs");

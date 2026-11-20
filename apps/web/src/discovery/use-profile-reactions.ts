@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from "react";
 import {getProfileMatchState,openNewMatch,type ProfileMatchState,type RealLikeKind} from "../registration/real-live-client";
 import {canSendProfileReaction,type ProfileReactionControls} from "./owner-profile/ProfileReactions";
-import type {ProfileReactionAction} from "./use-profile-reaction-queue";
+import {isProfileLike,type ProfileReactionAction} from "./use-profile-reaction-queue";
 
 export function useProfileReactions(profileId:string|null,action:ProfileReactionAction|undefined,
  enqueue:((kind:RealLikeKind)=>void)|undefined,onConversation:((matchId:string,conversationId:string)=>void)|undefined):ProfileReactionControls|undefined{
@@ -27,10 +27,10 @@ export function useProfileReactions(profileId:string|null,action:ProfileReaction
  // Apply a receipt that arrived while this profile was open. On a fresh visit
  // the GET is authoritative, including when a match has since changed.
  const receipt=action?.phase==="sent"&&action!==initialAction?action.receipt:null;
- const state=observed&&receipt&&!observed.outgoing&&!observed.matchId?{...observed,outgoing:receipt.kind,matchId:receipt.matchId}:observed;
- const pendingKind=action?.phase==="pending"||action?.phase==="sending"?action.kind:null;
+ const state=observed&&receipt&&isProfileLike(receipt.kind)&&!observed.outgoing&&!observed.matchId?{...observed,outgoing:receipt.kind,matchId:receipt.matchId}:observed;
+ const pendingKind=(action?.phase==="pending"||action?.phase==="sending")&&isProfileLike(action.kind)?action.kind:null;
  const error=localError||(action?.phase==="failed"?action.error:"");
- return {state,pendingKind,busy:chatBusy||action?.phase==="sending",error,
+ return {state,pendingKind,busy:chatBusy||action?.phase==="sending"||(action?.phase==="pending"&&action.kind==="skip"),error,
   retry:()=>{setLocalError("");setAttempt(value=>value+1);},
   send:kind=>{
    if(pendingKind||!canSendProfileReaction(state))return;
