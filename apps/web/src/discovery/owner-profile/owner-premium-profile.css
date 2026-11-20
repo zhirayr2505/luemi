@@ -168,7 +168,11 @@
  padding:0 var(--profile-about-inset) 12px;
 }
 .owner-profile-quote{
- margin:0;padding:0 8px 14px;background:url("/assets/profile/about-heart.svg") right top/100% min(100%,100px) no-repeat;
+ position:relative;isolation:isolate;margin:0;padding:0 8px 14px;
+}
+.owner-profile-quote-art{
+ position:absolute;z-index:-1;inset:0 0 auto;display:block;
+ width:100%;height:min(100%,92px);object-fit:fill;pointer-events:none;user-select:none;
 }
 .owner-profile-quote-mark{
  display:block;height:20px;color:var(--profile-about-accent);
@@ -220,8 +224,9 @@
 }
 .owner-profile-interests .chip svg{width:14px;height:14px}
 .owner-profile-moonrise{
- display:block;width:calc(100% + var(--profile-about-inset) * 2);height:auto;max-width:none;
+ display:block;width:calc(100% + var(--profile-about-inset) * 2);height:auto;max-width:none;aspect-ratio:5/1;object-fit:fill;
  margin:8px calc(-1 * var(--profile-about-inset)) 0;
+ mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);
  pointer-events:none;user-select:none;
 }
 /* InterestChip owns --chip-from and --chip-to for each interest. */
@@ -235,19 +240,14 @@
 }
 .owner-profile-actions .owner-profile-glass svg{width:19px;height:19px}
 .owner-profile-gallery{
- display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(6px,2.1vw,10px);
+ padding-top:5px;
 }
 .owner-profile-photo-tile{
- position:relative;display:block;aspect-ratio:3/4;overflow:hidden;padding:0;
- border:1px solid var(--luemi-border);border-radius:18px;
- background:var(--luemi-surface);box-shadow:var(--luemi-shadow-contact);
+ display:block;min-width:0;aspect-ratio:4/5;overflow:hidden;padding:0;
+ border:1px solid var(--luemi-border);border-radius:14px;background:var(--luemi-surface);
 }
 .owner-profile-photo-tile img{display:block;width:100%;height:100%;object-fit:cover}
-.owner-profile-photo-tile span{
- position:absolute;left:8px;bottom:8px;padding:5px 8px;
- border:1px solid rgba(255,255,255,.19);border-radius:999px;
- color:#fff;background:rgba(21,18,29,.78);font-size:10px;font-weight:750;
-}
 .owner-profile-manage{
  width:100%;min-height:48px;margin-top:12px;
  display:flex;align-items:center;justify-content:center;gap:8px;

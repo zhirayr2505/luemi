@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {existsSync} from "node:fs";
 import {chromium} from "playwright";
 import {setPremiumProfileState} from "./premium-profile-browser-input.mjs";
 
@@ -8,7 +9,9 @@ import {setPremiumProfileState} from "./premium-profile-browser-input.mjs";
  * visitor no longer render .v3-int-root. Browser emulation != physical A55.
  */
 const base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
-const browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
+const systemChromium=process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+const browser=await chromium.launch({headless:true,args:["--no-sandbox"],
+ ...(systemChromium&&existsSync(systemChromium)?{executablePath:systemChromium}:{})});
 const context=await browser.newContext({
  viewport:{width:393,height:852},isMobile:true,hasTouch:true,
  userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 Chrome/135 Mobile Safari/537.36"
@@ -17,13 +20,39 @@ const page=await context.newPage();
 const errors=[];page.on("pageerror",e=>errors.push(e.message));
 async function checkAbout(profile){
  const about=profile.getByRole("tabpanel",{name:"О себе",exact:true});
- await about.locator(".owner-profile-moonrise").evaluate(image=>image.decode());
+ const art=await about.evaluate(async node=>{
+  const heart=node.querySelector(".owner-profile-quote img");
+  const moon=node.querySelector(".owner-profile-moonrise");
+  if(!heart||!moon)return null;
+  await Promise.all([heart.decode(),moon.decode()]);
+  const moonBox=moon.getBoundingClientRect();
+  const canvas=document.createElement("canvas");
+  canvas.width=384;canvas.height=92;
+  const drawing=canvas.getContext("2d");
+  drawing.drawImage(heart,0,0,384,92);
+  const heartPixels=drawing.getImageData(0,0,384,92).data;
+  let heartEdgeAlpha=0,heartMaxAlpha=0;
+  for(let y=0;y<92;y++)for(let x=0;x<384;x++){
+   const alpha=heartPixels[(y*384+x)*4+3];
+   heartMaxAlpha=Math.max(heartMaxAlpha,alpha);
+   if(x===0||x===383||y===0||y===91)heartEdgeAlpha=Math.max(heartEdgeAlpha,alpha);
+  }
+  drawing.clearRect(0,0,384,92);
+  drawing.drawImage(moon,0,0,384,92);
+  const moonBottomClear=drawing.getImageData(0,91,384,1).data.every((channel,i)=>i%4!==3||channel<=2);
+  return {heartEdgeAlpha,heartMaxAlpha,moonBottomClear,moonWidth:moonBox.width,moonHeight:moonBox.height,
+   moonLeft:moonBox.left-node.getBoundingClientRect().left,panelWidth:node.clientWidth};
+ });
+ assert(art&&art.heartMaxAlpha>40&&art.heartEdgeAlpha<=2,
+  "the heart is visible and its artwork fades completely before the edges");
+ assert(Math.abs(art.moonLeft)<1&&Math.abs(art.moonWidth-art.panelWidth)<1&&art.moonHeight/art.moonWidth<.23,
+  "the mountain panorama is low and extends from edge to edge");
+ assert(art.moonBottomClear,"the mountain artwork fades out before its lower edge");
  const design=await about.evaluate(node=>{
   const quote=node.querySelector("blockquote");
   const chips=[...node.querySelectorAll(".owner-profile-interests .interest-chip")];
   return {
    quote:quote?.textContent.trim(),
-   heart:quote&&getComputedStyle(quote).backgroundImage,
    goal:node.querySelector(".owner-profile-goal")?.textContent.trim(),
    count:Number(node.querySelector(".owner-profile-interest-count")?.textContent),
    chipColors:chips.map(chip=>[chip.style.getPropertyValue("--chip-from"),chip.style.getPropertyValue("--chip-to")].join("/")),
@@ -31,12 +60,32 @@ async function checkAbout(profile){
    fits:node.scrollWidth<=node.clientWidth+1
   };
  });
- assert(design.quote&&design.heart?.includes("about-heart.svg"),"the bio is an open quote with warm heart art");
+ assert(design.quote,"the bio is an open quote");
  assert(design.goal,"the fixture's dating goal is displayed as an inline badge");
  assert.equal(design.count,design.chipColors.length,"the badge counts rendered interest chips");
  assert(design.count>1&&new Set(design.chipColors).size>1,"interests keep their catalog colors");
  assert.equal(design.cards,0,"the About surface contains no boxed cards");
  assert(design.fits,"the moon and About content fit the screen width");
+}
+async function checkGallery(profile){
+ const photos=profile.getByRole("tabpanel",{name:"Фото",exact:true});
+ const tiles=await photos.locator(".owner-profile-photo-tile").evaluateAll(elements=>
+  elements.map(tile=>{
+   const rect=tile.getBoundingClientRect();
+   return {x:rect.x,y:rect.y,width:rect.width,height:rect.height};
+  }));
+ assert(tiles.length>=3,"the fixture has enough photos to fill one row");
+ const first=tiles[0];
+ for(const [index,tile] of tiles.entries()){
+  assert(Math.abs(tile.width-first.width)<1&&Math.abs(tile.height/tile.width-1.25)<.02,
+   "photos use equal 4:5 portrait tiles");
+  const row=tiles[Math.floor(index/3)*3];
+  assert(Math.abs(row.y-tile.y)<1,"each row fits three tiles");
+  if(index>=3)assert(tile.y>tiles[index-3].y&&Math.abs(tile.x-tiles[index-3].x)<1,
+   "later rows keep the same columns");
+  if(index%3>0)assert(tile.x>tiles[index-1].x+tiles[index-1].width,"photos have even separation");
+ }
+ assert.equal(await photos.getByText("Главное",{exact:true}).count(),0,"the tiles display only the photos");
 }
 async function checkPager(profile){
  const viewport=profile.locator(".owner-profile-viewport");
@@ -115,6 +164,7 @@ try{
  await owner.getByRole("tab",{name:"Фото",exact:true}).click();
  const gallery=owner.locator(".owner-profile-photo-tile");
  assert.equal(await gallery.count(),3,"three QA images in real owner gallery");
+ await checkGallery(owner);
  await gallery.first().click();
  await page.locator(".pm-viewer").waitFor({state:"visible",timeout:4000});
  await page.keyboard.press("Escape");
@@ -127,6 +177,7 @@ try{
    count,{timeout:4000});
   assert.equal(await owner.locator(".owner-profile-photo-pager button").count(),count>1?count:0,
    "photo pager corresponds to permitted photos");
+  if(count===6)await checkGallery(owner);
  }
  await setPremiumProfileState(page,owner,"expanded");
 
@@ -141,6 +192,8 @@ try{
  });
  await checkAbout(visitor);
  await checkPager(visitor);
+ await visitor.getByRole("tab",{name:"Фото",exact:true}).click();
+ await checkGallery(visitor);
  assert.equal(await visitor.getAttribute("data-mode"),"visitor");
  assert.equal(await visitor.locator(".owner-profile-actions button").count(),0,
   "no owner actions on a visitor profile");

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 92" preserveAspectRatio="none" fill="none">
+  <defs>
+    <radialGradient id="glow">
+      <stop stop-color="#EEAA92" stop-opacity=".20"/>
+      <stop offset=".44" stop-color="#D39483" stop-opacity=".11"/>
+      <stop offset="1" stop-color="#B97B75" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="heart" x1="319" y1="13" x2="345" y2="79" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4BAAA" stop-opacity=".66"/>
+      <stop offset=".56" stop-color="#E3A695" stop-opacity=".48"/>
+      <stop offset="1" stop-color="#C3877D" stop-opacity=".07"/>
+    </linearGradient>
+    <linearGradient id="ribbon" x1="76" y1="17" x2="374" y2="75" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D29887" stop-opacity="0"/>
+      <stop offset=".67" stop-color="#E6A792" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#D29887" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="232" cy="46" rx="145" ry="32" transform="rotate(5 232 46)" fill="url(#glow)"/>
+  <ellipse cx="321" cy="44" rx="57" ry="38" fill="url(#glow)"/>
+  <path d="M76 17c78-1 143 9 196 32 37 16 69 25 102 26" stroke="url(#ribbon)"/>
+  <path d="M331 73c-12-12-19-31-15-46 2-9 8-15 15-12 6 3 7 12 4 20 8-7 19-11 24-6 6 5 0 14-7 19-7 6-14 10-22 13" stroke="url(#heart)" stroke-linecap="round" stroke-width="1.5"/>
+</svg>
