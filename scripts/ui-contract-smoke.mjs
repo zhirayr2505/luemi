@@ -158,10 +158,10 @@ assertCheck("responsive card motion uses ResizeObserver",feedCard.includes("Resi
 assertCheck("single original LUEMI logo retained without removed global controls",header.includes("wordmark_original_raster_alpha_W06.webp")&&!header.includes("lh-tool-filter")&&!header.includes("lh-tool-saved"));
 assertCheck("feed deck and Telegram back handling retained",discovery.includes("pendingCommit.current")&&discovery.includes("registerBack")&&discoveryCss.includes(".discovery-page"));
 assertCheck("premium profile opens the real PhotoViewer on the selected image",
- ownerProfile.includes("onPhotoOpen(heroPhoto.id,heroImage.current)")&&
+ ownerProfile.includes("onPhotoOpen(heroPhoto.id,heroImage.current,")&&
  profile.includes("onPhotoOpen={openPhoto}")&&profile.includes("setViewer({photoId:id,source})")&&
  profile.includes("<PhotoViewer view={view} photos={photos} initialPhotoId={viewer.photoId}")&&
- profile.includes("source={viewer.source}")&&photoViewer.includes("createPortal("));
+ profile.includes("source={viewer.source}")&&profile.includes("resolveReturnElement:")&&photoViewer.includes("createPortal("));
 assertCheck("premium profile morph settles independently before handing off to native card scroll",
  ownerProfile.includes("useOwnerProfileMotion({")&&
  /className="owner-profile-sheet"[\s\S]*className="owner-profile-tabs"[\s\S]*className="owner-profile-viewport"/.test(ownerProfile)&&
