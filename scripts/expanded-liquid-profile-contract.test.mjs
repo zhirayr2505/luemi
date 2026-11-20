@@ -18,8 +18,7 @@ test("expanded profile is the active photo blurred within the rounded card",()=>
  assert.doesNotMatch(styles,/position:fixed|filter:blur\(70px\)|\.discovery-photo-ambient-current/);
 });
 test("header is pinned over scrolling detail, photo dots and old handle vanish",()=>{
- assert.match(card,/const paint=\(next:number\)=>/);
- assert.match(card,/--profile-info-y/);
+ assert.match(card,/element\.style\.setProperty\("--profile-info-y",value\*infoShift\.current\+"px"\)/);
  assert.match(card,/aria-label=\{expanded\?"Свернуть анкету":"Раскрыть анкету"\}/);
  assert.match(styles,/\.moonstone-compact-info::before\{[\s\S]*?opacity:calc\(1 - var\(--profile-p\)\)/);
  assert.match(styles,/\.moonstone-compact-info::after\{[\s\S]*?content:none/);
