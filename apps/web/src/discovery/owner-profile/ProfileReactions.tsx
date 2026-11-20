@@ -1,4 +1,4 @@
-import {Heart,Star} from "lucide-react";
+import {Heart,MessageCircle,Star} from "lucide-react";
 import type {ProfileMatchState,RealLikeKind} from "../../registration/real-live-client";
 
 export type ProfileReactionControls={
@@ -33,18 +33,35 @@ function reactionGlyph(state:ProfileMatchState|null,pendingKind?:RealLikeKind|nu
 
 export function ProfileReactionIndicator({controls}:{controls:ProfileReactionControls}){
  const glyph=reactionGlyph(controls.state,controls.pendingKind);
- return <span className="profile-reaction-indicator" data-visible={glyph?true:undefined} aria-hidden="true">
+ const label=glyph&&(controls.demo?
+  glyph==="superlike-outgoing"?"Тестовый суперлайк поставлен":"Тестовый лайк поставлен":glyphNames[glyph]);
+ return <span className="profile-reaction-indicator" data-visible={glyph?true:undefined}
+  role="img" aria-label={label??undefined} aria-hidden={glyph?undefined:true}>
   {reactionGlyphs.map(icon=><img key={icon} src={profileReactionAsset(icon)} alt="" width="26" height="26"
    data-active={glyph===icon?true:undefined} draggable={false}/>)}
  </span>;
 }
+
+export function showProfileChat(controls:ProfileReactionControls|undefined):boolean{
+ return !!(controls?.state?.matchId&&controls.openChat);
+}
+
+const glyphNames:Record<ReactionGlyph,string>={
+ "like-incoming":"Вам отправили симпатию",
+ "like-outgoing":"Симпатия отправлена",
+ "superlike-incoming":"Вам отправили суперлайк",
+ "superlike-outgoing":"Суперлайк отправлен",
+ "like-mutual":"Взаимный лайк"
+};
 
 export function ProfileReactionButtons({layout,controls}:{
  layout:"expanded"|"compact";controls:ProfileReactionControls;
 }){
  const show=!controls.pendingKind&&canSendProfileReaction(controls.state);
  return <div className={`profile-reaction-buttons profile-reaction-buttons--${layout}`}
-  data-reaction-layout={layout}>
+  data-reaction-layout={layout} data-chat={showProfileChat(controls)||undefined}>
+  {showProfileChat(controls)&&<button className="profile-reaction-button" type="button" aria-label="Написать"
+   disabled={controls.busy} onClick={controls.openChat}><MessageCircle size={22} aria-hidden="true"/></button>}
   {show&&<>
    <button className="profile-reaction-button" type="button" aria-label="Поставить лайк"
     disabled={controls.busy} onClick={()=>controls.send("ordinary")}><Heart size={22} aria-hidden="true"/></button>
@@ -54,32 +71,11 @@ export function ProfileReactionButtons({layout,controls}:{
  </div>;
 }
 
-export function ProfileReactionBadge({controls}:{controls:ProfileReactionControls}){
- const {state,error,busy,openChat,retry}=controls;
- const kind=state?.outgoing??state?.incoming;
- const mutual=!!state?.matchId;
- const special=kind==="super"&&!mutual;
- const label=controls.demo&&state?.outgoing?
-  special?"Тестовый суперлайк поставлен":"Тестовый лайк поставлен":
-  mutual?"Взаимный лайк":state?.outgoing?
-  special?"Суперлайк отправлен":"Симпатия отправлена":state?.incoming?
-   special?"Вам отправили суперлайк":"Вам отправили симпатию":"";
- if(!label&&!error)return null;
- const glyph=reactionGlyph(state);
- const tone=mutual?"mutual":special?"super":"like";
- return <div className={`profile-reaction-badge profile-reaction-badge--${tone}`}>
-  {label&&<div className="profile-reaction-badge-row">
-   <div className="profile-reaction-status" role="status" aria-live="polite">
-    <span className="profile-reaction-label" key={label}>
-     {glyph&&<img src={profileReactionAsset(glyph)} alt="" width="25" height="25"/>}
-     {label}
-    </span>
-   </div>
-   {mutual&&openChat&&<button type="button" onClick={openChat} disabled={busy}>Написать</button>}
-  </div>}
-  {error&&<div className="profile-reaction-badge-row">
-   <span role="alert">{error}</span>
-   {!state&&retry&&<button type="button" onClick={retry} disabled={busy}>Повторить</button>}
-  </div>}
+export function ProfileReactionError({controls}:{controls:ProfileReactionControls}){
+ const {state,error,busy,retry}=controls;
+ if(!error)return null;
+ return <div className="profile-reaction-error">
+  <span role="alert">{error}</span>
+  {!state&&retry&&<button type="button" onClick={retry} disabled={busy}>Повторить</button>}
  </div>;
 }

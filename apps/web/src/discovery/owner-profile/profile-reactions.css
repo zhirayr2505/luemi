@@ -49,6 +49,10 @@
  padding-inline:12.5%;
  opacity:0;
 }
+.profile-reaction-buttons--compact[data-chat] {justify-content:flex-end}
+.profile-reaction-indicator[data-visible]+.owner-profile-identity[data-has-reaction-actions="chat"] h1 {
+ max-width:min(calc(100% - 122px),calc((75% - 104px) / .75));
+}
 .profile-reaction-buttons:not([inert]) {transition:opacity .16s ease-out}
 .profile-reaction-button {
  display:grid;
@@ -70,44 +74,29 @@
  color:#dfc1f2;
 }
 .profile-reaction-buttons[inert] .profile-reaction-button {pointer-events:none}
-.profile-reaction-button:disabled,.profile-reaction-badge button:disabled {opacity:.65}
-.profile-reaction-button:focus-visible,.profile-reaction-badge button:focus-visible {
+.profile-reaction-button:disabled,.profile-reaction-error button:disabled {opacity:.65}
+.profile-reaction-button:focus-visible,.profile-reaction-error button:focus-visible {
  outline:2px solid var(--luemi-focus,#fff);
  outline-offset:2px;
 }
 .profile-reaction-button:active:not(:disabled) {transform:scale(.94)}
-.profile-reaction-badge {
- flex:none;
- color:#fff2f0;
- background:linear-gradient(105deg,#472c36,#30242f);
- border-block:1px solid rgba(241,159,150,.24);
-}
-.profile-reaction-badge--super {
- background:linear-gradient(105deg,#403047,#302838);
- border-color:rgba(218,183,236,.26);
-}
-.profile-reaction-badge--mutual {
- background:linear-gradient(105deg,#572f3d,#3f2934);
-}
-.profile-reaction-badge-row {
+.profile-reaction-error {
+ position:absolute;
+ z-index:7;
+ inset:auto 12px calc(12px + var(--bottom-safe,0px));
  display:flex;
  align-items:center;
  justify-content:space-between;
- gap:10px;
- min-height:48px;
- padding:4px clamp(14px,5.4vw,24px);
- font-size:clamp(13px,3.8vw,15px);
- font-weight:620;
+ gap:8px;
+ min-height:44px;
+ padding:4px 12px;
+ border:1px solid #e96a8670;
+ border-radius:16px;
+ background:#392332;
+ color:#fff2f0;
+ font-size:13px;
 }
-.profile-reaction-status {min-width:0}
-.profile-reaction-label {
- display:flex;
- align-items:center;
- gap:9px;
- animation:profile-reaction-reveal .18s ease-out both;
-}
-.profile-reaction-label img {flex:none}
-.profile-reaction-badge button {
+.profile-reaction-error button {
  min-height:44px;
  flex:none;
  border:0;
@@ -121,7 +110,7 @@
 @keyframes profile-reaction-reveal {from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce) {
  .profile-reaction-buttons:not([inert]) {transition:none}
- .profile-reaction-label,.profile-reaction-button {animation:none}
+ .profile-reaction-button {animation:none}
  .profile-reaction-indicator,.profile-reaction-indicator img {transition:none}
  .profile-reaction-button:active:not(:disabled) {transform:none}
 }

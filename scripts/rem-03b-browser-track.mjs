@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {chromium} from "playwright";
-const browser=await chromium.launch({headless:true,channel:"chrome",args:["--no-sandbox"]});
+const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE}:{channel:"chrome"}),args:["--no-sandbox"]});
 const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,
  userAgent:"Mozilla/5.0 (Linux; Android 16; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Mobile Safari/537.36"});
 const page=await context.newPage();
@@ -97,12 +97,18 @@ try{
  }
  const next=page.locator(".pm-viewer-slide[data-slot=next] img");
  const arriving=await next.elementHandle();assert.ok(arriving);
+ const paintStyle=node=>node.evaluate(el=>{
+  const css=getComputedStyle(el);
+  return [css.transform,css.transitionProperty,css.backfaceVisibility,css.opacity];
+ });
+ const beforeCommit=await paintStyle(arriving);
  const rect=await page.locator(".pm-viewer-slide[data-slot=next]").boundingBox();
  assert.ok(rect&&rect.x<393&&rect.x>0,"neighbor must progressively enter during same swipe");
  await page.mouse.up();
  await settle("qa-beta");
  assert.equal(await arriving.evaluate(n=>n.isConnected&&n.classList.contains("pm-viewer-image")),true,
   "arriving DOM img retains identity through atomic recenter");
+ assert.deepEqual(await paintStyle(arriving),beforeCommit,"the arriving photo keeps its painted layer through recenter");
  assert.ok(Math.abs((await state()).currentX)<1,"recenter leaves arrival at same viewport point");
  pass("6 photos, real DOM 1:1 measured CSS matrix, progressive neighbor, keyed node preserved through no-jump recenter");
 
@@ -121,9 +127,13 @@ try{
  await change("count-6");await ready("qa-gamma");
  const box=await page.locator(".pm-viewer-stage").boundingBox();
  await page.mouse.move(box.x+300,box.y+350);await page.mouse.down();
- await page.mouse.move(box.x+100,box.y+350);await page.mouse.up();
- await sleep(60);
- const during=await state();assert.ok(during.offset<-.1&&during.offset>-393);
+ await page.mouse.move(box.x+220,box.y+350);
+ await sleep(110); // past the distance threshold, with no release velocity
+ const held=await state();
+ assert.ok(held.offset< -70&&held.offset> -90,JSON.stringify(held));
+ await page.mouse.up();
+ await page.waitForFunction(()=>Number(document.querySelector(".pm-viewer-track")?.dataset.offset)<-100);
+ const during=await state();assert.ok(during.offset<-.1&&during.offset>-393,JSON.stringify(during));
  await page.mouse.move(box.x+270,box.y+350);await page.mouse.down();
  const interrupted=await state();
  assert.ok(interrupted.offset<-.1&&interrupted.offset>-393,

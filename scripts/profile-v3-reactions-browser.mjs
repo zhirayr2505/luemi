@@ -54,7 +54,9 @@ const expanded=root.locator('[data-reaction-layout="expanded"]');
 const compact=root.locator('[data-reaction-layout="compact"]');
 const like=root.getByRole("button",{name:"Поставить лайк"});
 const superlike=root.getByRole("button",{name:"Отправить суперлайк"});
-const badge=root.locator(".profile-reaction-badge");
+const errorBanner=root.locator(".profile-reaction-error");
+const noStatusStrip=()=>root.evaluate(node=>
+ node.querySelector(".owner-profile-tabs")?.nextElementSibling?.classList.contains("owner-profile-viewport"));
 const indicator=root.locator(".profile-reaction-indicator img[data-active]");
 const notice=page.locator(".profile-reaction-notice");
 const undo=notice.getByRole("button",{name:"Отменить"});
@@ -90,6 +92,7 @@ try{
   assert(box.x>name.x+name.width&&Math.abs((box.y+box.height/2)-(name.y+name.height/2))<2);
  }
  const panel=await root.getByRole("tabpanel").boundingBox();
+ assert.equal(await root.getByRole("tabpanel").evaluate(node=>getComputedStyle(node).overflowY),"auto");
  const touch=await context.newCDPSession(page);
  const x=panel.x+panel.width/2,y=panel.y+100;
  const finger=(type,y)=>touch.send("Input.dispatchTouchEvent",{type,touchPoints:type==="touchEnd"?[]:[{x,y,id:1}]});
@@ -100,6 +103,8 @@ try{
   return el&&Number(el.style.opacity)<1&&Number(el.style.opacity)>0;
  });
  const held=await opacity();
+ assert.equal(await root.getByRole("tabpanel").evaluate(node=>getComputedStyle(node).overflowY),"auto",
+  "vertical motion keeps the same scrolling layer");
  assert.equal(await opacity(compact),0,"compact buttons are still hidden during the collapse");
  await delay(180);
  assert.equal(await opacity(),held,"opacity stays under the held finger");
@@ -149,17 +154,14 @@ try{
  await waitIcon("like-outgoing");
  await notice.getByText("1",{exact:true}).waitFor();
  assert.deepEqual(requests,[],"the API still has no request in the last undo second");
- await badge.getByText("Симпатия отправлена",{exact:true}).waitFor();
+ await notice.waitFor({state:"hidden"});
+ await root.getByRole("img",{name:"Симпатия отправлена",exact:true}).waitFor();
  assert.deepEqual(requests,[{targetId:peer,kind:"ordinary"}]);
  assert.equal(await like.count(),0);
- const bounds=await badge.boundingBox(),profileBounds=await root.boundingBox();
- assert.equal(bounds.x,profileBounds.x);
- assert.equal(bounds.width,profileBounds.width);
- const tabBounds=await root.getByRole("tablist").boundingBox();
- assert(Math.abs(bounds.y-tabBounds.y-tabBounds.height)<1);
+ assert.equal(await noStatusStrip(),true,"the content starts right under the tabs");
  for(const label of ["Фото","Блики","Подарки","О себе"]){
   await root.getByRole("tab",{name:label,exact:true}).click();
-  assert.equal(await badge.isVisible(),true);
+  assert.equal(await noStatusStrip(),true);
   assert.equal(await root.getAttribute("data-morph-state"),"compact");
  }
  // Start on the compact avatar so Chromium's native scroll lock cannot
@@ -187,21 +189,21 @@ try{
  },heldIconY,{timeout:3000});
  for(let offset=28;offset<=196;offset+=14){await finger("touchMove",compactY+offset);await delay(16);}
  await finger("touchEnd");await waitState("expanded");
- assert.equal(await badge.isVisible(),true);
+ assert.equal(await noStatusStrip(),true);
  const expandedIcon=await waitIcon("like-outgoing");
  const heading=await root.getByRole("heading",{name:"Карина, 25"}).boundingBox();
  assert(expandedIcon.x>=heading.x+heading.width,"indicator arrives beside the expanded name");
  await touch.detach();
  await open({outgoing:"super"});
- await badge.getByText("Суперлайк отправлен",{exact:true}).waitFor();
+ await root.getByRole("img",{name:"Суперлайк отправлен",exact:true}).waitFor();
  await waitIcon("superlike-outgoing");
  await open({incoming:"super"});
- await badge.getByText("Вам отправили суперлайк",{exact:true}).waitFor();
+ await root.getByRole("img",{name:"Вам отправили суперлайк",exact:true}).waitFor();
  await waitIcon("superlike-incoming");
  likeError=true;
  await superlike.tap();
- await badge.getByRole("alert").getByText("Суперлайки закончились.").waitFor();
- assert.equal(await badge.getByText("Вам отправили суперлайк",{exact:true}).isVisible(),true);
+ await errorBanner.getByRole("alert").getByText("Суперлайки закончились.").waitFor();
+ assert.equal(await root.getByRole("img",{name:"Вам отправили суперлайк",exact:true}).isVisible(),true);
  likeError=false;
  profile.name="Карина Александровна Александрова";
  await open({incoming:"ordinary"});
@@ -210,18 +212,18 @@ try{
  assert(incomingLongName.x+incomingLongName.width<likeBesideLongName.x,"indicator and actions fit beside a long name");
  profile.name="Карина";
  await open({incoming:"ordinary"});
- await badge.getByText("Вам отправили симпатию",{exact:true}).waitFor();
+ await root.getByRole("img",{name:"Вам отправили симпатию",exact:true}).waitFor();
  await waitIcon("like-incoming");
  await superlike.tap();
  await waitIcon("superlike-outgoing");
- assert.equal(await badge.getByText("Взаимный лайк",{exact:true}).count(),0);
+ assert.equal(await root.getByRole("img",{name:"Взаимный лайк",exact:true}).count(),0);
  await undo.tap();
  await waitIcon("like-incoming");
  await superlike.tap();
- await badge.getByText("Взаимный лайк",{exact:true}).waitFor();
+ await root.getByRole("img",{name:"Взаимный лайк",exact:true}).waitFor();
  await waitIcon("like-mutual");
  assert.equal(await like.count(),0);
- await badge.getByRole("button",{name:"Написать"}).tap();
+ await root.getByRole("button",{name:"Написать"}).tap();
  await page.locator(".lc-thread-route").getByText("Карина",{exact:true}).waitFor();
  if(!requests.includes(`/api/v4/chats/${conversationId}/messages`))
   await page.waitForRequest(req=>req.url().endsWith(`/api/v4/chats/${conversationId}/messages`));
@@ -243,7 +245,9 @@ try{
  await undo.waitFor();
  await openDemo("Карина, 25");
  await waitIcon("like-outgoing");
- await badge.getByText("Тестовый лайк поставлен",{exact:true}).waitFor();
+ await notice.waitFor({state:"hidden"});
+ await root.getByRole("img",{name:"Тестовый лайк поставлен",exact:true}).waitFor();
+ assert.equal(await noStatusStrip(),true);
  await page.keyboard.press("Escape");
  await root.waitFor({state:"hidden"});
  await demoFeed.getByRole("button",{name:"Пропустить",exact:true}).tap();
@@ -251,7 +255,9 @@ try{
  await superlike.tap();
  await notice.getByText("Тестовый суперлайк",{exact:true}).waitFor({timeout:4500});
  await waitIcon("superlike-outgoing");
- await badge.getByText("Тестовый суперлайк поставлен",{exact:true}).waitFor();
+ await notice.waitFor({state:"hidden"});
+ await root.getByRole("img",{name:"Тестовый суперлайк поставлен",exact:true}).waitFor();
+ assert.equal(await noStatusStrip(),true);
  assert.deepEqual(demoMatchingRequests,[],"demo profiles never load or write real matching data");
  assert.deepEqual(errors,[]);
  console.log("PROFILE_REACTIONS_BROWSER_PASS layout, indicator hold/reverse, five-second undo, deferred delivery, real and demo reactions, error, chat on Chromium Android emulation");

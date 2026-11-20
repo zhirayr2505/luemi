@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {chromium} from "playwright";
-const browser=await chromium.launch({headless:true,channel:"chrome",args:["--no-sandbox"]});
+const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE}:{channel:"chrome"}),args:["--no-sandbox"]});
 const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true});
 const page=await context.newPage();
 const cdp=await context.newCDPSession(page);
@@ -82,7 +82,7 @@ try{
  await viewer().getByRole("button",{name:"Закрыть просмотр"}).click();
  const closing=await state();
  assert.equal(closing.active,"true","reverse source morph must use same valid thumbnail");
- assert.equal(closing.sourceVisible,"hidden");
+ assert.equal(closing.sourceVisible,"visible","the destination stays painted underneath the fading viewer");
  assert.ok(Math.abs(closing.m11-closing.m22)<1e-5,"closing image must never distort");
  await viewer().waitFor({state:"detached",timeout:3500});
  assert.equal(await page.evaluate(()=>document.body.style.overflow),originalOverflow);
@@ -96,7 +96,10 @@ try{
   await page.mouse.move(200,425);await page.mouse.down();
   await page.mouse.move(200,425+direction*175,{steps:5});await page.mouse.up();
   await waitForFlight();
-  assert.equal((await state()).sourceVisible,"hidden","the released photo uses the same return flight");
+  assert.equal((await state()).sourceVisible,"visible","vertical release keeps its destination painted");
+  const backdrop = viewer().locator(".pm-viewer-backdrop");
+  await viewer().locator(".pm-viewer-stage").dispatchEvent("touchcancel");
+  assert.equal(await backdrop.evaluate(node=>node.style.opacity),"0","late touchcancel cannot bring the backdrop back during close");
   await viewer().waitFor({state:"detached"});
  }
  pass("the same tile receives the photo after a drag in either vertical direction");

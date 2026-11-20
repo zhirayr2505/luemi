@@ -28,8 +28,8 @@ export function PhotoViewerSlide({photo,role,media,onDecoded,onError,currentRef}
  // current image must not travel with it into the neighboring slot.
  useLayoutEffect(()=>{
   if(role!=="current"&&image.current){
-   image.current.style.transition="none";
-   image.current.style.transform="none";
+   image.current.style.removeProperty("transition");
+   image.current.style.removeProperty("transform");
   }
  },[role]);
  useEffect(()=>{

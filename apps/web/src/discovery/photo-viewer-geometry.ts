@@ -25,9 +25,8 @@ export function allowedOffset(x:number,width:number,hasPrevious:boolean,hasNext:
  const w=viewportWidth(width);
  if(x>0&&!hasPrevious)return edgeResistance(x,w);
  if(x<0&&!hasNext)return edgeResistance(x,w);
- if(x>w)return w+edgeResistance(x-w,w);
- if(x< -w)return -w+edgeResistance(x+w,w);
- return x;
+ // Only one incoming slide exists on each side of the current frame.
+ return clamp(x,-w,w);
 }
 /** Recent-velocity is last 80 ms of pointer samples; not long-drag average. */
 export function recentVelocity(samples:readonly {x:number;t:number}[]):number{
