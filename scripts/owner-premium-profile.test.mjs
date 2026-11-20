@@ -50,13 +50,13 @@ try{
    const frame=ownerMorphFrame(layout,step/100);
    assert.equal(frame.mask.width,frame.mask.height,"the same mask always scales uniformly");
    assert(frame.radius===0||frame.radius===frame.mask.width/2,"no intermediate rounded square");
-   if(step>=89)assert.equal(frame.radius,frame.mask.width/2,"the compact phase contains a circle");
+   if(frame.mask.width<expanded.mask.width)
+    assert.equal(frame.radius,frame.mask.width/2,`${viewport.width}px: the mask is circular as soon as the photo shrinks (progress ${step/100})`);
   }
   const opening=ownerMorphFrame(layout,.91);
   assert(opening.mask.width>compact.mask.width,"reverse visibly grows the circle before it opens");
-  const frames=Array.from({length:200},(_,index)=>ownerMorphFrame(layout,(index+1)/200));
-  const round=frames.find(frame=>frame.radius===frame.mask.width/2);
-  assert(round&&round.mask.width>=compact.mask.width*1.28,"the photo becomes circular at an intermediate size");
+  const round=ownerMorphFrame(layout,.85);
+  assert(round.mask.width>=compact.mask.width*1.28,"the medium circle is larger than the docked avatar");
   assert(round.identityTop>=round.mask.y+round.mask.height+7,"the larger circle clears the name");
   assert(compact.haloOpacity>0,"the docked avatar has a photo-colored halo");
   assert.equal(opening.radius,opening.mask.width/2);
@@ -73,13 +73,14 @@ try{
   assert.equal(ownerAutoSnapTarget(0,distance*.65,distance),1,"crossing the threshold allows release to compact");
   assert.equal(ownerAutoSnapTarget(1,distance*.90,distance),null);
   assert.equal(ownerAutoSnapTarget(1,distance*.86,distance),0,"crossing the threshold allows release to expand");
-  const switchAt=frames.indexOf(round)/200+.005;
-  const before=ownerMorphFrame(layout,switchAt-.00001),after=ownerMorphFrame(layout,switchAt+.00001);
+  const before=ownerMorphFrame(layout,.64),after=ownerMorphFrame(layout,.64001);
   assert.equal(before.radius,0);
   assert.equal(after.radius,after.mask.width/2);
   assert(Math.abs(after.mask.width-before.mask.width)<.1&&Math.abs(after.mask.y-before.mask.y)<.1,
    "shape changes without a size or center jump");
-  assert(before.mask.width>round.mask.width&&after.mask.width<round.mask.width,
+  assert(after.mask.width<before.mask.width,"the first smaller frame is circular");
+  assert(ownerMorphFrame(layout,.849).mask.width>round.mask.width&&
+   ownerMorphFrame(layout,.851).mask.width<round.mask.width,
    "moving either way through the medium circle has no dead zone");
   assert.equal(ownerMorphProgress(-80,distance),0);
   assert.equal(ownerMorphProgress(distance*2,distance),1);

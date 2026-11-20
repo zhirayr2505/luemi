@@ -89,24 +89,29 @@ try{
    const frames=[];
    window.__ownerRoundFrames=frames;
    const observe=new MutationObserver(()=>{
-    frames.push({radius:parseFloat(node.style.borderRadius),ambient:Number(getComputedStyle(ambient).opacity)});
+    frames.push({width:node.getBoundingClientRect().width,radius:parseFloat(node.style.borderRadius),
+     ambient:Number(getComputedStyle(ambient).opacity)});
     if(node.classList.contains("owner-profile-avatar-circle"))observe.disconnect();
    });
    observe.observe(node,{attributes:true,attributeFilter:["style"]});
   });
   await finger("touchStart",hx,hy);
-  const distanceUp=await moveUntil(hx,hy,-1,frame=>frame.radius===50&&frame.width>126);
+  const distanceUp=await moveUntil(hx,hy,-1,frame=>frame.radius===50&&frame.width>126&&frame.width<=149);
   const medium=await assertHeld();
   assert.equal(await cards.evaluate(el=>el.scrollTop),0,"card scroll stays pinned during the morph");
   const rounding=(await page.evaluate(()=>window.__ownerRoundFrames)).find(frame=>frame.radius>0);
   assert(rounding&&rounding.ambient>0,"blur appears as soon as the mask rounds");
-  await finger("touchMove",hx,hy-distanceUp+9);
+  await finger("touchMove",hx,hy-10);
   await delay(40);
   assert.equal((await measurePhoto()).radius,0,"reversing before release restores the square");
   await finger("touchMove",hx,hy-distanceUp);
   await delay(40);
   assert.deepEqual(await measurePhoto(),medium,"the same finger position restores the identical frame");
-  assert((await page.evaluate(()=>window.__ownerRoundFrames)).every(f=>f.radius===0||f.radius===50));
+  const frames=await page.evaluate(()=>window.__ownerRoundFrames);
+  assert(frames.some(frame=>frame.width>hero.width*.45&&frame.width<hero.width*.7),
+   "the drag samples the intermediate photo size");
+  assert(frames.filter(frame=>frame.width<hero.width-.1).every(frame=>frame.radius===50),
+   "every shrunken photo frame has a circular mask");
   await finger("touchEnd",hx,hy-distanceUp);
   await root.locator(".owner-profile-avatar-circle").waitFor();
   const c=await face.boundingBox();
@@ -120,7 +125,7 @@ try{
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
 
   await finger("touchStart",hx,hy);
-  await moveUntil(hx,hy,-1,frame=>frame.radius===50&&frame.width>126);
+  await moveUntil(hx,hy,-1,frame=>frame.radius===50&&frame.width>126&&frame.width<=149);
   await finger("touchMove",hx,hy-230);
   await root.locator(".owner-profile-avatar-circle").waitFor();
   await page.waitForFunction(()=>document.querySelector(".owner-profile-scroll")?.scrollTop>0);

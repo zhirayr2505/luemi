@@ -21,7 +21,7 @@ export type OwnerMorphFrame={
 };
 
 const COLLAPSE_THRESHOLD=.64;
-const ROUND_PHOTO=.85;
+const MEDIUM_PHOTO_PROGRESS=.85;
 const EXPAND_THRESHOLD=.88;
 const PHOTO_PARALLAX=.42;
 const MAX_RUBBER=26;
@@ -95,20 +95,20 @@ export function ownerUnresistedPosition(position:number):number{
 export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):OwnerMorphFrame{
  const p=clamp(progress,0,1),avatar=layout.compactAvatar;
  const initialClimb=Math.min(p/COLLAPSE_THRESHOLD,1)*layout.initialSheetTravel;
- const photoMorph=smooth((p-COLLAPSE_THRESHOLD)/(ROUND_PHOTO-COLLAPSE_THRESHOLD));
- const finalSettle=smooth((p-ROUND_PHOTO)/(1-ROUND_PHOTO));
+ const photoMorph=smooth((p-COLLAPSE_THRESHOLD)/(MEDIUM_PHOTO_PROGRESS-COLLAPSE_THRESHOLD));
+ const finalSettle=smooth((p-MEDIUM_PHOTO_PROGRESS)/(1-MEDIUM_PHOTO_PROGRESS));
  const roundContentTop=layout.roundTop+layout.roundDiameter+8+56;
- const sheetToCircle=clamp((p-COLLAPSE_THRESHOLD)/(ROUND_PHOTO-COLLAPSE_THRESHOLD),0,1);
+ const sheetToCircle=clamp((p-COLLAPSE_THRESHOLD)/(MEDIUM_PHOTO_PROGRESS-COLLAPSE_THRESHOLD),0,1);
  const sheetTop=mix(mix(layout.expandedTabsTop-initialClimb,roundContentTop,sheetToCircle),
   layout.compactContentTop,finalSettle);
- // Match the slope on both sides of the shape switch. The final segment
+ // Match the slope through the medium diameter. The final segment
  // decelerates to rest at the compact endpoint.
  const t=sheetToCircle;
- const u=clamp((p-ROUND_PHOTO)/(1-ROUND_PHOTO),0,1);
+ const u=clamp((p-MEDIUM_PHOTO_PROGRESS)/(1-MEDIUM_PHOTO_PROGRESS),0,1);
  const throughCircle=(start:number,medium:number,end:number)=>{
-  const slope=2*(end-medium)/(1-ROUND_PHOTO);
-  if(p<ROUND_PHOTO)return mix(start,medium,photoMorph)
-   +t*t*(t-1)*(ROUND_PHOTO-COLLAPSE_THRESHOLD)*slope;
+  const slope=2*(end-medium)/(1-MEDIUM_PHOTO_PROGRESS);
+  if(p<MEDIUM_PHOTO_PROGRESS)return mix(start,medium,photoMorph)
+   +t*t*(t-1)*(MEDIUM_PHOTO_PROGRESS-COLLAPSE_THRESHOLD)*slope;
   return mix(medium,end,u*(2-u));
  };
  const diameter=throughCircle(layout.width,layout.roundDiameter,avatar.width);
@@ -116,11 +116,10 @@ export function ownerMorphFrame(layout:OwnerProfileLayout,progress:number):Owner
  const stretch=clamp(-progress*layout.morphDistance,0,MAX_RUBBER);
  const rebound=clamp((progress-1)*layout.morphDistance,0,7);
  const size=diameter*(1+stretch*.001);
- // One square mask, scaled uniformly. Once circular, its radius is exactly
- // half its diameter, and both the avatar and the text clear the actual brand.
+ // The photo only uses a square mask at full width or during expanded overpull.
  return {
   mask:{x:(layout.width-size)/2,y:avatarY-rebound,width:size,height:size},
-  radius:p>=ROUND_PHOTO?size/2:0,
+  radius:size<layout.width?size/2:0,
   sheetTop:sheetTop+stretch-rebound,
   identityTop:sheetTop-mix(70,56,photoMorph)+stretch-rebound,
   identityCenter:photoMorph,
