@@ -19,6 +19,16 @@ test("mutual matches refuse missing authenticated guards",async()=>{
    databaseUrl:"postgres://localhost/synthetic",namespace:"luemi"}),/Mutual matches require V2/);
  }finally{await app.close();}
 });
+test("reading profile reactions requires the matching session guard",async()=>{
+ const app=Fastify();
+ const unauthenticated=async(_req:unknown,reply:{code:(status:number)=>{send:()=>void}})=>{reply.code(401).send();};
+ try{
+  registerMatches(app,{read:unauthenticated,mutation:unauthenticated},{enabled:true,
+   databaseUrl:"postgres://localhost/synthetic",namespace:"luemi"});
+  const result=await app.inject({method:"GET",url:"/api/v4/matches/profile/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"});
+  assert.equal(result.statusCode,401);
+ }finally{await app.close();}
+});
 test("mutual matches refuse empty or invalid namespace and database",async()=>{
  const app=Fastify();
  const guard={read:async()=>{},mutation:async()=>{}};

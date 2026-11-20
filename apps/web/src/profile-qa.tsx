@@ -1,8 +1,9 @@
 /** Developer-only Vite HTML entry. Not referenced by production index.html. */
-import React,{useCallback,useRef,useState} from "react";
+import React,{lazy,Suspense,useCallback,useEffect,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {QaProfiler} from "./discovery/qa-profiler";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
+import {authenticateBootstrap} from "./auth/session-adapter";
 import {PhotoViewer} from "./discovery/PhotoViewer";
 import {projectProfile,type ProfileMasterData,type ProfilePhoto} from "./discovery/ProfileModel";
 import {viewerPhotoContext,resourceIdentity,type ViewerSource} from "./discovery/photo-viewer-state";
@@ -167,11 +168,29 @@ function VisualQA(){
 let qaRoot:ReturnType<typeof createRoot>|null=null;
 let cleanupOptics:(()=>void)|null=null;
 const qaWindow=window as Window&{__luemiQaUnmount?:()=>void;__luemiQaRemount?:()=>void};
+const ReactionsApplication=lazy(()=>import("./discovery/RealDiscoveryHome")
+ .then(module=>({default:module.RealDiscoveryHome})));
+function ReactionsQA(){
+ const [ready,setReady]=useState(false);
+ useEffect(()=>{
+  const controller=new AbortController();
+  void authenticateBootstrap("browser-qa",controller.signal).then(result=>{
+   if(result&&!controller.signal.aborted)setReady(true);
+  }).catch(()=>{});
+  return()=>controller.abort();
+ },[]);
+ return ready?<main className="luemi-shell" data-theme="dark" data-phase="form">
+  <Suspense fallback={null}>
+   <ReactionsApplication draft={draft} publishedProfile={undefined} accountPanel={null} onEdit={()=>{}}/>
+  </Suspense>
+ </main>:null;
+}
 const mountFixture=()=>{
  if(qaRoot)return;
  cleanupOptics=installMoonstoneOptics(document);
  qaRoot=createRoot(document.getElementById("root")!);
- qaRoot.render(<React.StrictMode><VisualQA/></React.StrictMode>);
+ const reactions=new URLSearchParams(window.location.search).get("profileReactions")==="1";
+ qaRoot.render(<React.StrictMode>{reactions?<ReactionsQA/>:<VisualQA/>}</React.StrictMode>);
 };
 qaWindow.__luemiQaUnmount=()=>{
  if(!qaRoot)return;

@@ -57,6 +57,7 @@ export function useOwnerProfileMotion(options:Options){
   const identity=host.querySelector<HTMLElement>(".owner-profile-identity")!;
   const name=identity.querySelector<HTMLElement>("h1")!;
   const location=identity.querySelector<HTMLElement>("p")!;
+  const reactionLayers=identity.querySelectorAll<HTMLElement>("[data-reaction-layout]");
   const pager=host.querySelector<HTMLElement>(".owner-profile-photo-pager")!;
   const sheet=host.querySelector<HTMLElement>(".owner-profile-sheet")!;
   const panes=Array.from(host.querySelectorAll<HTMLElement>(".owner-profile-scroll"));
@@ -202,6 +203,15 @@ export function useOwnerProfileMotion(options:Options){
    const hideControls=circular;
    if(pager.inert!==hideControls)pager.inert=hideControls;
    const state=settling!==null?"transition":value===0?"expanded":value===1?"compact":"transition";
+   for(const layer of reactionLayers){
+    const expanded=layer.dataset.reactionLayout==="expanded";
+    layer.style.opacity=String(expanded?1-progress:progress);
+    const inactive=state!==layer.dataset.reactionLayout;
+    if(layer.inert!==inactive){
+     layer.inert=inactive;
+     layer.setAttribute("aria-hidden",String(inactive));
+    }
+   }
    if(host.dataset.morphState!==state)host.dataset.morphState=state;
    syncAvatarClass();
    if(crossed&&feedback&&!paused())impactHaptic("light");

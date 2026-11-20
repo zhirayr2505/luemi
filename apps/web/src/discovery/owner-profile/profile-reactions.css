@@ -1,0 +1,97 @@
+.owner-profile-identity[data-has-reaction-actions] h1 {
+ max-width:min(calc(100% - 154px),calc((75% - 104px) / .75));
+}
+.profile-reaction-buttons {
+ position:absolute;
+ inset-inline:0;
+ top:calc(clamp(27px,7.3vw,35px) * .55);
+ height:44px;
+ display:flex;
+ justify-content:flex-end;
+ align-items:center;
+ gap:8px;
+ padding-inline:16px;
+ transform:translateY(-50%);
+ pointer-events:none;
+}
+.profile-reaction-buttons--compact {
+ top:calc(clamp(27px,7.3vw,35px) * .4125);
+ justify-content:space-between;
+ padding-inline:12.5%;
+ opacity:0;
+}
+.profile-reaction-button {
+ display:grid;
+ place-items:center;
+ width:44px;
+ height:44px;
+ padding:0;
+ border:1px solid rgba(246,174,157,.53);
+ border-radius:50%;
+ background:linear-gradient(145deg,rgba(70,40,40,.84),rgba(29,19,26,.83));
+ color:#f4a38d;
+ pointer-events:auto;
+ -webkit-tap-highlight-color:transparent;
+}
+.profile-reaction-button--super {
+ border-color:rgba(211,178,233,.56);
+ background:linear-gradient(145deg,rgba(63,46,71,.86),rgba(29,20,36,.84));
+ color:#dfc1f2;
+}
+.profile-reaction-buttons[inert] .profile-reaction-button {pointer-events:none}
+.profile-reaction-button:disabled,.profile-reaction-badge button:disabled {opacity:.65}
+.profile-reaction-button:focus-visible,.profile-reaction-badge button:focus-visible {
+ outline:2px solid var(--luemi-focus,#fff);
+ outline-offset:2px;
+}
+.profile-reaction-button:active:not(:disabled) {transform:scale(.94)}
+.profile-reaction-badge {
+ flex:none;
+ color:#fff2f0;
+ background:linear-gradient(105deg,#472c36,#30242f);
+ border-block:1px solid rgba(241,159,150,.24);
+}
+.profile-reaction-badge--super {
+ background:linear-gradient(105deg,#403047,#302838);
+ border-color:rgba(218,183,236,.26);
+}
+.profile-reaction-badge--mutual {
+ background:linear-gradient(105deg,#572f3d,#3f2934);
+}
+.profile-reaction-badge-row {
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ min-height:48px;
+ padding:4px clamp(14px,5.4vw,24px);
+ font-size:clamp(13px,3.8vw,15px);
+ font-weight:620;
+}
+.profile-reaction-status {min-width:0}
+.profile-reaction-label {
+ display:flex;
+ align-items:center;
+ gap:9px;
+ animation:profile-reaction-reveal .18s ease-out both;
+}
+.profile-reaction-label svg {color:#f4aa99;flex:none}
+.profile-reaction-badge--super .profile-reaction-label svg {color:#dfc1f2}
+.profile-reaction-hearts {display:flex;align-items:center;flex:none}
+.profile-reaction-hearts svg+svg {margin-inline-start:-8px;color:#ffddd7}
+.profile-reaction-badge button {
+ min-height:44px;
+ flex:none;
+ border:0;
+ border-radius:999px;
+ padding:0 14px;
+ background:#f28d83;
+ color:#25141b;
+ font:inherit;
+ font-weight:750;
+}
+@keyframes profile-reaction-reveal {from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce) {
+ .profile-reaction-label {animation:none}
+ .profile-reaction-button:active:not(:disabled) {transform:none}
+}
