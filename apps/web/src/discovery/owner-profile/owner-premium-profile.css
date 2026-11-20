@@ -160,31 +160,41 @@
  box-sizing:border-box;min-height:100%;padding:13px 13px calc(120px + var(--bottom-safe,0px));
 }
 .owner-profile-panel{box-sizing:border-box;min-height:295px;padding:0 1px 30px}
-.owner-profile-about{display:flex;flex-direction:column;gap:11px}
-.owner-profile-about article{
- padding:17px 18px;border-radius:22px;
- border:1px solid var(--luemi-border);background:var(--luemi-surface);
- box-shadow:inset 0 1px rgba(255,255,255,.035);
+.owner-profile-content.owner-profile-content--about{padding-inline:0}
+.owner-profile-about{
+ --profile-about-inset:clamp(18px,5.4vw,24px);
+ --profile-about-accent:#E6A895;
+ --profile-about-rule:color-mix(in srgb,var(--luemi-text) 13%,transparent);
+ padding:0 var(--profile-about-inset) 12px;
 }
-.owner-profile-about h2{
- margin:0 0 12px;font-size:17px;font-weight:730;letter-spacing:-.018em;
+.owner-profile-quote{
+ margin:0;padding:0 8px 14px;background:url("/assets/profile/about-heart.svg") right top/100% auto no-repeat;
 }
-.owner-profile-about p{
- margin:0;color:var(--luemi-text-secondary);font-size:13px;
- line-height:1.57;white-space:pre-wrap;overflow-wrap:anywhere;
+.owner-profile-quote-mark{
+ display:block;height:20px;color:var(--profile-about-accent);
+ font-family:Georgia,serif;font-size:40px;line-height:1;
 }
-.owner-profile-basics{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center}
-.owner-profile-basics>div{
- display:flex;align-items:center;gap:9px;min-width:0;max-width:100%;
- color:var(--luemi-text-secondary);font-size:13px;line-height:1.4;
+.owner-profile-quote p{
+ margin:0;padding-inline-start:12px;border-inline-start:2px solid var(--profile-about-accent);
+ color:var(--luemi-text);font-size:14px;line-height:1.48;
+ white-space:pre-wrap;overflow-wrap:anywhere;
 }
-.owner-profile-basics svg,.owner-profile-goal svg{
- flex:none;color:var(--luemi-rose,var(--luemi-coral));
+.owner-profile-basics{
+ display:flex;flex-wrap:wrap;align-items:center;gap:7px 11px;
+ margin:0;padding:10px 8px;border-block:1px solid var(--profile-about-rule);list-style:none;
 }
-.owner-profile-goal{
- display:flex;align-items:center;gap:9px;margin-top:13px;padding-top:12px;
- border-top:1px solid var(--luemi-border);
- color:var(--luemi-text-secondary);font-size:12px;line-height:1.4;
+.owner-profile-basics>li{
+ display:flex;align-items:center;gap:5px;min-width:0;max-width:100%;
+ color:var(--luemi-text-secondary);font-size:12px;line-height:1.35;overflow-wrap:anywhere;
+}
+.owner-profile-basics>li svg,.owner-profile-interests-heading svg{flex:none;color:var(--profile-about-accent)}
+.owner-profile-basics>li+li:not(.owner-profile-goal){
+ border-inline-start:1px solid var(--profile-about-rule);padding-inline-start:10px;
+}
+.owner-profile-basics>.owner-profile-goal{
+ padding:4px 9px;border-radius:999px;
+ background:color-mix(in srgb,var(--profile-about-accent) 12%,transparent);
+ color:var(--luemi-text);
 }
 .owner-profile-about dl{display:flex;flex-direction:column;gap:0;margin:12px 0 0}
 .owner-profile-about dl>div{
@@ -193,9 +203,28 @@
 }
 .owner-profile-about dt{color:var(--luemi-text-muted);font-size:12px}
 .owner-profile-about dd{margin:0;color:var(--luemi-text);font-size:12px;text-align:right;overflow-wrap:anywhere}
-.owner-profile-interests{display:flex;flex-wrap:wrap;gap:8px}
-.owner-profile-interests .chip{max-width:100%}
-/* InterestChip owns --chip-from/--chip-to globally: never recolor by order. */
+.owner-profile-interests-section{padding:12px 8px 0}
+.owner-profile-interests-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.owner-profile-interests-heading h2{
+ display:flex;align-items:center;gap:8px;margin:0;
+ font-size:15px;font-weight:730;letter-spacing:-.014em;
+}
+.owner-profile-interest-count{
+ min-width:25px;padding:2px 6px;border-radius:999px;
+ background:color-mix(in srgb,var(--profile-about-accent) 16%,transparent);
+ color:var(--luemi-text);font-size:11px;line-height:1.5;text-align:center;font-variant-numeric:tabular-nums;
+}
+.owner-profile-interests{display:flex;flex-wrap:wrap;gap:6px 8px}
+.owner-profile-interests .chip{
+ min-width:0;max-width:100%;gap:6px;padding:5px 10px;line-height:1.35;font-size:12px;overflow-wrap:anywhere;
+}
+.owner-profile-interests .chip svg{width:14px;height:14px}
+.owner-profile-moonrise{
+ display:block;width:calc(100% + var(--profile-about-inset) * 2);height:auto;max-width:none;
+ margin:8px calc(-1 * var(--profile-about-inset)) 0;
+ pointer-events:none;user-select:none;
+}
+/* InterestChip owns --chip-from and --chip-to for each interest. */
 .owner-profile-actions{
  display:flex;justify-content:center;align-items:center;gap:13px;
  margin:4px 0 12px;pointer-events:auto;
@@ -233,13 +262,12 @@
 .owner-profile-empty svg{color:var(--luemi-coral)}
 .owner-profile-empty h2{margin:0;color:var(--luemi-text);font-size:17px}
 .owner-profile-empty p{margin:0;font-size:13px;line-height:1.5}
-.owner-profile-disclaimer{text-align:center;color:var(--luemi-text-muted);font-size:12px}
+.owner-profile-disclaimer{margin:2px 0 0;text-align:center;color:var(--luemi-text-muted);font-size:11px;line-height:1.45}
 @media(max-width:360px){
  .owner-profile-content{padding-inline:10px}
  .owner-profile-tabs{height:49px;padding-inline:10px}
- .owner-profile-about article{padding:15px}
  .owner-profile-photo-pager{right:18px}
- .owner-profile-basics{gap:10px}
+ .owner-profile-basics{gap:7px 9px}
 }
 @media(prefers-reduced-transparency:reduce){
  .owner-profile-edit-top{background:var(--luemi-glass-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
