@@ -1,9 +1,8 @@
 /** Developer-only Vite HTML entry. Not referenced by production index.html. */
-import React,{useCallback,useEffect,useRef,useState} from "react";
+import React,{lazy,Suspense,useCallback,useEffect,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {QaProfiler} from "./discovery/qa-profiler";
 import {DiscoveryApp} from "./discovery/DiscoveryApp";
-import {RealDiscoveryHome} from "./discovery/RealDiscoveryHome";
 import {authenticateBootstrap} from "./auth/session-adapter";
 import {PhotoViewer} from "./discovery/PhotoViewer";
 import {projectProfile,type ProfileMasterData,type ProfilePhoto} from "./discovery/ProfileModel";
@@ -169,6 +168,8 @@ function VisualQA(){
 let qaRoot:ReturnType<typeof createRoot>|null=null;
 let cleanupOptics:(()=>void)|null=null;
 const qaWindow=window as Window&{__luemiQaUnmount?:()=>void;__luemiQaRemount?:()=>void};
+const ReactionsApplication=lazy(()=>import("./discovery/RealDiscoveryHome")
+ .then(module=>({default:module.RealDiscoveryHome})));
 function ReactionsQA(){
  const [ready,setReady]=useState(false);
  useEffect(()=>{
@@ -179,7 +180,9 @@ function ReactionsQA(){
   return()=>controller.abort();
  },[]);
  return ready?<main className="luemi-shell" data-theme="dark" data-phase="form">
-  <RealDiscoveryHome draft={draft} publishedProfile={undefined} accountPanel={null} onEdit={()=>{}}/>
+  <Suspense fallback={null}>
+   <ReactionsApplication draft={draft} publishedProfile={undefined} accountPanel={null} onEdit={()=>{}}/>
+  </Suspense>
  </main>:null;
 }
 const mountFixture=()=>{
