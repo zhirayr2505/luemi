@@ -16,6 +16,18 @@ const validId=(value:unknown):value is string=>typeof value==="string"&&uuid.tes
 class MatchError extends Error{constructor(readonly status:number,readonly code:string){super(code);}}
 function reject(status:number,code:string):never{throw new MatchError(status,code);}
 
+async function requireVisiblePair(db:PoolClient,actor:string,target:string,environment:string):Promise<void>{
+ const eligible=await db.query(`SELECT p.owner_id FROM luemi_private.public_profiles p
+  JOIN luemi_private.actors a ON a.id=p.owner_id AND a.environment=p.environment
+  WHERE p.environment=$3 AND p.publication_status='published' AND a.status='active'
+  AND p.owner_id IN ($1,$2)`,[actor,target,environment]);
+ if(eligible.rowCount!==2)reject(404,"not_found");
+ const blocked=await db.query(`SELECT 1 FROM luemi_private.blocks WHERE environment=$3
+  AND ((blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1)) LIMIT 1`,
+  [actor,target,environment]);
+ if(blocked.rowCount)reject(404,"not_found");
+}
+
 /** Monday 00:00 UTC is the single server boundary. Purchased credits never
  * participate in this refill and therefore never expire on Monday. */
 async function readWallet(db:PoolClient,actor:string,environment:string):Promise<Wallet>{
@@ -123,6 +135,27 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
  app.get("/api/v4/matches/superlikes",{preHandler:auth.read},
   (req,reply)=>transaction(req,reply,(db,actor)=>readWallet(db,actor,cfg.namespace)));
 
+ app.get<{Params:{id:string}}>("/api/v4/matches/profile/:id",{preHandler:auth.read},(req,reply)=>
+  transaction(req,reply,async(db,actor)=>{
+   const target=req.params.id.toLowerCase();
+   if(!validId(target)||target===actor)reject(404,"not_found");
+   await requireVisiblePair(db,actor,target,cfg.namespace);
+   const [left,right]=[actor,target].sort();
+   const {rows:[state]}=await db.query<{outgoing:LikeKind|null;incoming:LikeKind|null;matchId:string|null}>(`SELECT
+    (SELECT kind FROM luemi_chats.likes WHERE environment=$3
+      AND sender_id=$1 AND receiver_id=$2) AS outgoing,
+    (SELECT kind FROM luemi_chats.likes WHERE environment=$3 AND sender_id=$2 AND receiver_id=$1
+      AND status='active' AND (kind='super'
+        OR EXISTS(SELECT 1 FROM luemi_chats.premium_entitlements
+          WHERE environment=$3 AND actor_id=$1 AND active_until>clock_timestamp())
+        OR EXISTS(SELECT 1 FROM luemi_chats.incoming_like_reveals
+          WHERE environment=$3 AND sender_id=$2 AND receiver_id=$1))) AS incoming,
+    (SELECT id FROM luemi_chats.matches WHERE environment=$3
+      AND actor_low=$4 AND actor_high=$5 AND status='active') AS "matchId"`,
+    [actor,target,cfg.namespace,left,right]);
+   return state;
+  }));
+
  app.post<{Body:{targetId?:unknown;kind?:unknown}}>("/api/v4/matches/like",
  {preHandler:auth.mutation},async(req,reply)=>{
   const result=await transaction(req,reply,async(db,actor):Promise<LikeReceipt>=>{
@@ -132,15 +165,7 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,62015))",[actor]);
    const [left,right]=[actor,target].sort();
    await db.query("SELECT pg_advisory_xact_lock(hashtextextended($1,62016))",[left+":"+right]);
-   const eligible=await db.query(`SELECT p.owner_id FROM luemi_private.public_profiles p
-    JOIN luemi_private.actors a ON a.id=p.owner_id AND a.environment=p.environment
-    WHERE p.environment=$3 AND p.publication_status='published' AND a.status='active'
-    AND p.owner_id IN ($1,$2)`,[actor,target,cfg.namespace]);
-   if(eligible.rowCount!==2)reject(404,"not_found");
-   const blocked=await db.query(`SELECT 1 FROM luemi_private.blocks WHERE environment=$3
-    AND ((blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1)) LIMIT 1`,
-    [actor,target,cfg.namespace]);
-   if(blocked.rowCount)reject(404,"not_found");
+   await requireVisiblePair(db,actor,target,cfg.namespace);
    const balance=await readWallet(db,actor,cfg.namespace);
    const existing=await db.query<{kind:LikeKind;status:string}>(`SELECT kind,status FROM luemi_chats.likes
     WHERE environment=$3 AND sender_id=$1 AND receiver_id=$2`,[actor,target,cfg.namespace]);
@@ -173,14 +198,15 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
    const reciprocal=await db.query(`SELECT 1 FROM luemi_chats.likes WHERE environment=$3
     AND sender_id=$2 AND receiver_id=$1 AND status='active'`,[actor,target,cfg.namespace]);
    const currentBalance=await readWallet(db,actor,cfg.namespace);
-   if(!reciprocal.rowCount)return {liked:true,kind,matched:false,superlikes:currentBalance,
+   const savedKind=existing.rows[0]?.kind==="super"?"super":kind;
+   if(!reciprocal.rowCount)return {liked:true,kind:savedKind,matched:false,superlikes:currentBalance,
     notifyReceiverId:changed?target:undefined,notification:kind==="super"?"super":"like"};
    await db.query(`INSERT INTO luemi_chats.matches(environment,actor_low,actor_high)
     VALUES($3,$1,$2) ON CONFLICT DO NOTHING`,[left,right,cfg.namespace]);
    const match=await db.query<{id:string}>(`SELECT id FROM luemi_chats.matches
     WHERE environment=$3 AND actor_low=$1 AND actor_high=$2 AND status='active'`,[left,right,cfg.namespace]);
    if(match.rowCount!==1)reject(503,"service_unavailable");
-   return {liked:true,kind,matched:true,matchId:match.rows[0].id,superlikes:currentBalance,
+   return {liked:true,kind:savedKind,matched:true,matchId:match.rows[0].id,superlikes:currentBalance,
     notifyReceiverId:changed?target:undefined,notification:"match"};
   });
   if(reply.sent||!result||typeof result!=="object"||!("liked" in result))return result;

@@ -28,7 +28,7 @@ import {RealChats} from "../chats/RealChats";
 import {createChatTransport,type ChatWireConversation} from "../chats/chat-transport";
 import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiGlassPanel,LuemiIconButton,LuemiSkeleton} from "../ui/LuemiV5";
 import {geoCsrf} from "../auth/session-adapter";
-import {getPublishedFeed,getPublishedProfile,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,updateDiscoverySearchScope,realMatchPilot,type PublishedFeedPage,type IncomingLike} from "../registration/real-live-client";
+import {getPublishedFeed,getPublishedProfile,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,updateDiscoverySearchScope,realMatchPilot,type PublishedFeedPage,type IncomingLike,type NewMatch} from "../registration/real-live-client";
 import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
 import "./discovery.css";
 import "./real-discovery.css";
@@ -552,6 +552,11 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  },[]);
  const [accountOpen,setAccountOpen]=useState(false);
  const [chatThreadOpen,setChatThreadOpen]=useState(false);
+ const [initialThread,setInitialThread]=useState<(NewMatch&{conversationId:string})|undefined>();
+ const onThreadChange=useCallback((open:boolean)=>{
+  setChatThreadOpen(open);
+  if(!open)setInitialThread(undefined);
+ },[]);
  // Session-only bookmarks: the API has no durable saved-profiles endpoint yet.
  const [savedIds,setSavedIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
  const [hiddenIds,setHiddenIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
@@ -586,6 +591,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  const chatBackRef=useRef<(()=>void)|null>(null);
  const registerVisitorBack=useCallback((fn:(()=>boolean)|null)=>{visitorBackRef.current=fn;},[]);
  const registerProfileBack=useCallback((fn:(()=>boolean)|null)=>{profileBackRef.current=fn;},[]);
+ const registerChatBack=useCallback((fn:(()=>void)|null)=>{chatBackRef.current=fn;},[]);
  const onScrollTop=useCallback((tab:BrowseTab,top:number)=>{
   if(tab==="feed")return;
   scrollPositions.current[tab]=top;
@@ -865,9 +871,9 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  useEffect(()=>{if(mainTab!=="discover"||person||demoVisitor||accountOpen)suspendBrowse.current();},[mainTab,person,demoVisitor,accountOpen]);
  const backRef=useRef<()=>void>(()=>{});
  backRef.current=()=>{
-  if(chatThreadOpen){chatBackRef.current?.();return;}
   if(filterOpen){setFilterOpen(false);return;}
   if(person||demoVisitor){if(visitorBackRef.current?.())return;setPerson(null);setDemoVisitor(null);return;}
+  if(chatThreadOpen){chatBackRef.current?.();return;}
   if(accountOpen){setAccountOpen(false);return;}
   if(mainTab==="profile"&&profileBackRef.current?.())return;
   if(mainTab!=="discover"){setMainTab("discover");return;}
@@ -938,10 +944,11 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     </div>
    </section>
    <section className="discovery-panel" hidden={mainTab!=="likes"}>
-    <RealMatches active={mainTab==="likes"} gender={draft.gender} onChat={()=>setMainTab("chats")} onPerson={openPersonById}/>
+    <RealMatches active={mainTab==="likes"&&!person} gender={draft.gender} onChat={()=>setMainTab("chats")} onPerson={openPersonById}/>
    </section>
    <section className="discovery-panel real-discovery-chat-panel" hidden={mainTab!=="chats"}>
-    {mainTab==="chats"&&<RealChats onThreadChange={setChatThreadOpen} registerThreadBack={handler=>{chatBackRef.current=handler;}}/>}
+    {mainTab==="chats"&&<RealChats initialThread={initialThread} onOpenProfile={openPersonById} profileOpen={!!person}
+     onThreadChange={onThreadChange} registerThreadBack={registerChatBack}/>}
    </section>
    <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
     {owner?<ProfileMaster data={owner} mode="owner" ownerDetails={draft} onClose={()=>setMainTab("discover")}
@@ -957,11 +964,14 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   {demoVisitor&&<VisitorProfileRoute key={"demo-"+demoVisitor.id} data={fromDemoPerson(demoVisitor)}
     onExit={()=>setDemoVisitor(null)} registerBack={registerVisitorBack}/>}
   {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)}
-   onExit={()=>setPerson(null)} registerBack={registerVisitorBack} onLike={async kind=>{
-    const result=await likePublishedUser(person.id,kind);
-    const matchedPerson=person;
-    onHide(person.id);setPerson(null);
-    if(result.matched&&result.matchId)setMatched({person:matchedPerson,matchId:result.matchId});
+   onExit={()=>setPerson(null)} registerBack={registerVisitorBack} reactionsEnabled={realMatchPilot.enabled}
+   onReactionSent={()=>onHide(person.id)} onConversation={(matchId,conversationId)=>{
+    setPerson(null);
+    if(chatThreadOpen)return;
+    setInitialThread({id:matchId,conversationId,peerId:person.id,peerProfileId:person.id,
+     peerName:person.name,peerPhotoUrl:person.photos[0]?.url??null,
+     createdAt:new Date().toISOString(),interests:[],seen:true});
+    setChatThreadOpen(true);setMainTab("chats");
    }}/>} {matched&&<div className="luemi-match-overlay" role="dialog" aria-modal="true" aria-label="Взаимная симпатия">
    <div className="luemi-match-card"><div className="luemi-match-avatars"><LuemiAvatar name={matched.person.name} src={matched.person.photos[0]?.url}/><Heart size={24}/></div>
     <p className="luemi-match-kicker">Это взаимно</p><h2>Вы понравились друг другу</h2>
@@ -971,7 +981,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     <button type="button" onClick={()=>setMatched(null)}>Продолжить знакомства</button>
    </div></div>}
   {!chatThreadOpen&&<LuemiBottomNavigation items={navigationItems} value={mainTab}
-   onChange={id=>{setPerson(null);setDemoVisitor(null);setChatThreadOpen(false);setMainTab(id);}}/>}
+   onChange={id=>{setPerson(null);setDemoVisitor(null);setChatThreadOpen(false);setInitialThread(undefined);setMainTab(id);}}/>}
   {accountOpen&&<div className="discovery-modal-backdrop real-discovery-account-modal"
    onClick={()=>setAccountOpen(false)}>
    <section className="real-discovery-account-sheet" role="dialog" aria-modal="true" aria-label="Настройки профиля"

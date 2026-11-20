@@ -14,6 +14,17 @@ export const realMatchPilot={
 export type RealLikeKind="ordinary"|"super";
 export interface SuperlikeBalance{weekly:number;purchased:number;total:number;renewsAt:string}
 export interface LikeReceipt{liked:true;kind:RealLikeKind;matched:boolean;matchId?:string;superlikes:SuperlikeBalance}
+export interface ProfileMatchState{outgoing:RealLikeKind|null;incoming:RealLikeKind|null;matchId:string|null}
+export async function getProfileMatchState(id:string,signal?:AbortSignal):Promise<ProfileMatchState>{
+ if(!realMatchPilot.enabled)throw new Error("matches_disabled");
+ if(!uuid.test(id))throw new Error("invalid_target");
+ const data=await api("/api/v4/matches/profile/"+id,"GET",undefined,signal);
+ if(!object(data)||(data.outgoing!==null&&data.outgoing!=="ordinary"&&data.outgoing!=="super")||
+    (data.incoming!==null&&data.incoming!=="ordinary"&&data.incoming!=="super")||
+    (data.matchId!==null&&(typeof data.matchId!=="string"||!uuid.test(data.matchId))))
+  throw new Error("invalid_profile_match_state");
+ return {outgoing:data.outgoing,incoming:data.incoming,matchId:data.matchId};
+}
 export async function likePublishedUser(id:string,kind:RealLikeKind="ordinary"):Promise<LikeReceipt>{
  if(!realMatchPilot.enabled)throw new Error("matches_disabled");
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
@@ -24,7 +35,7 @@ export async function likePublishedUser(id:string,kind:RealLikeKind="ordinary"):
  try{data=await api("/api/v4/matches/like","POST",{targetId:id,kind},controller.signal);}
  catch(error){if(controller.signal.aborted)throw new Error("like_timeout");throw error;}
  finally{window.clearTimeout(timeout);}
- if(!object(data)||data.liked!==true||data.kind!==kind||typeof data.matched!=="boolean"||
+ if(!object(data)||data.liked!==true||(data.kind!==kind&&data.kind!=="super")||typeof data.matched!=="boolean"||
     (data.matched&&(typeof data.matchId!=="string"||!uuid.test(data.matchId)))||
     !validBalance(data.superlikes))
   throw new Error("invalid_like_receipt");

@@ -12,7 +12,9 @@ import type {ViewerCarousel} from "../photo-viewer-state";
 import {resolvePhotoFocus} from "../profile-v3/geometry/ProfileGeometry";
 import {clamp} from "./OwnerProfileGeometry";
 import {useOwnerProfileMotion} from "./useOwnerProfileMotion";
+import {canSendProfileReaction,ProfileReactionBadge,ProfileReactionButtons,type ProfileReactionControls} from "./ProfileReactions";
 import "./owner-premium-profile.css";
+import "./profile-reactions.css";
 
 type OwnerTab="about"|"photos"|"bliki"|"gifts";
 const tabs:[OwnerTab,string][]=[["about","О себе"],["photos","Фото"],["bliki","Блики"],["gifts","Подарки"]];
@@ -26,10 +28,11 @@ type Props={
  onMotionProgress?:(progress:number,dragging:boolean)=>void;
  gestureArbiter?:GestureArbiter;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
+ reactions?:ProfileReactionControls;
 };
 
 export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSettings,onPreview,
- onPhotoOpen,onMotionProgress,gestureArbiter,registerRouteMotion}:Props){
+ onPhotoOpen,onMotionProgress,gestureArbiter,registerRouteMotion,reactions}:Props){
  const p=view.profile,photos=view.photos,isOwner=view.mode==="owner";
  const [tab,setTab]=useState<OwnerTab>("about");
  const [selectedId,setSelectedId]=useState(photos[0]?.id??null);
@@ -237,11 +240,15 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
     <PenLine size={18}/>
    </button>
   </header>}
-  <div className="owner-profile-identity">
+  <div className="owner-profile-identity" data-has-reaction-actions={canSendProfileReaction(reactions?.state??null)||undefined}>
    <h1>{p.name||"Имя не указано"}{p.age!==null?", "+p.age:""}</h1>
    <p><MapPin size={15} aria-hidden="true"/><span className="owner-profile-location">
     <span className="owner-profile-city">{location}</span>{countryCode?<Flag code={countryCode} size={17} title={"Флаг "+p.country}/>:null}
    </span></p>
+   {reactions&&<>
+    <ProfileReactionButtons layout="expanded" controls={reactions}/>
+    <ProfileReactionButtons layout="compact" controls={reactions}/>
+   </>}
   </div>
 
   <main className="owner-profile-sheet">
@@ -252,6 +259,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
      onClick={()=>selectTab(id)} onKeyDown={event=>tabKey(event,index)}>{label}</button>)}
     <span className="owner-profile-tab-ink" aria-hidden="true"/>
    </div>
+   {reactions&&<ProfileReactionBadge controls={reactions}/>}
    <div className="owner-profile-viewport">
     <div className="owner-profile-pages">
      {panel("about","О себе",<>

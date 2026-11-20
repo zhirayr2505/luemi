@@ -10,6 +10,9 @@ on:
       - 'apps/web/src/discovery/ProfileV3Gateway.tsx'
       - 'apps/web/src/discovery/DiscoveryApp.tsx'
       - 'apps/web/src/discovery/VisitorProfileRoute.tsx'
+      - 'apps/web/src/discovery/RealDiscoveryHome.tsx'
+      - 'apps/web/src/discovery/use-profile-reactions.ts'
+      - 'apps/web/src/profile-qa.tsx'
       - 'apps/web/src/registration/Preview.tsx'
       - 'scripts/profile-v3-*.mjs'
       - 'scripts/discovery-gesture-browser.mjs'
@@ -50,6 +53,15 @@ jobs:
           fi
       - name: Run isolated preview DOM smoke
         shell: bash
+        env:
+          VITE_LUEMI_AUTH_V2: '1'
+          VITE_LUEMI_PRIVATE_DRAFT_UI: '1'
+          VITE_LUEMI_CONSENT_VERSION: browser-qa
+          VITE_LUEMI_PRIVACY_POLICY_PATH: /privacy
+          VITE_LUEMI_PRIVATE_MEDIA_UI: '1'
+          VITE_LUEMI_REAL_DISCOVERY_UI: '1'
+          VITE_LUEMI_REAL_CHATS: '1'
+          VITE_LUEMI_REAL_MATCHES: '1'
         run: |
           set -euo pipefail
           npm run dev -w @luemi/web -- --host 127.0.0.1 --port 5173 > /tmp/luemi-v3-vite.log 2>&1 &
@@ -65,6 +77,7 @@ jobs:
           node scripts/profile-v3-browser-smoke.mjs
           node scripts/profile-v3-integration-browser.mjs
           node scripts/owner-premium-profile-browser.mjs
+          node scripts/profile-v3-reactions-browser.mjs
           node scripts/rem-02c-browser-interruption.mjs
           node scripts/rem-02d-browser-lifecycle.mjs
           node scripts/rem-04b-browser-visual.mjs

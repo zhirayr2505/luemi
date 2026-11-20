@@ -15,6 +15,7 @@ import type {GestureArbiter} from "../ui/gesture-arbiter";
 import type {ProfileRouteMotionHandle} from "./profile-route-motion";
 import {IntegratedProfileV3,type V3TabId} from "./profile-v3/rendering/IntegratedProfileV3";
 import {OwnerPremiumProfile} from "./owner-profile/OwnerPremiumProfile";
+import type {ProfileReactionControls} from "./owner-profile/ProfileReactions";
 import {resolvePhotoFocus} from "./profile-v3/geometry/ProfileGeometry";
 import "./profile-content.css";
 import "./profile-v3/rendering/IntegratedProfileV3.css";
@@ -28,6 +29,7 @@ type Props={
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
  gestureArbiter?:GestureArbiter;
  initialExpanded?:boolean;
+ reactions?:ProfileReactionControls;
 };
 
 function PhotoImage({photo,alt,loading="lazy"}:{photo:ProfilePhoto;alt:string;loading?:"lazy"|"eager"}){
@@ -111,7 +113,7 @@ function Meta({view}:{view:ProfileView}){
 
 
 export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit,onReveal,ownerDetails,registerBack,
- onSettings,active=true,onMotionProgress,registerRouteMotion,gestureArbiter,initialExpanded=false}:Props){
+ onSettings,active=true,onMotionProgress,registerRouteMotion,gestureArbiter,initialExpanded=false,reactions}:Props){
  const view=useMemo(()=>projectProfile(data,mode),[data,mode]),photos=view.photos;
  const [photoId,setPhotoId]=useState<string|null>(photos[0]?.id??null);
  const [viewer,setViewer]=useState<{photoId:string;source:ViewerSource|null}|null>(null);
@@ -178,7 +180,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
    {mode!=="local-self-preview"?<OwnerPremiumProfile view={view} ownerDetails={mode==="owner"?ownerDetails:undefined} active={active}
     onEdit={()=>onEdit?.()} onSettings={()=>{if(onSettings)onSettings();else onEdit?.();}}
     onPreview={()=>{if(mode==="owner")setPreview(true);}} onPhotoOpen={openPhoto} onMotionProgress={onMotionProgress}
-    gestureArbiter={gestureArbiter} registerRouteMotion={registerRouteMotion}/>:
+    gestureArbiter={gestureArbiter} registerRouteMotion={registerRouteMotion} reactions={mode==="visitor"?reactions:undefined}/>:
    <IntegratedProfileV3 view={view} photoId={photoId} onPhotoId={choosePhoto}
     onPhotoOpen={openPhoto} onState={setExpanded} onMotionProgress={onMotionProgress}
     initialExpanded={initialExpanded}

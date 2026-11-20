@@ -1,5 +1,4 @@
-import {memo,useLayoutEffect,useRef,useState} from "react";
-import {Heart,Sparkles} from "lucide-react";
+import {memo,useLayoutEffect,useRef} from "react";
 import type {PointerEvent as ReactPointerEvent} from "react";
 import {ProfileMaster} from "./ProfileV3Gateway";
 import {createProfileMotionAuthority,PROFILE_MOTION_WRITER_TABLE} from "./profile-motion";
@@ -10,11 +9,14 @@ import {useModalLayer} from "../ui/modal-layer";
 import type {ProfileRouteMotionHandle} from "./profile-route-motion";
 import type {ProfileMasterData} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
+import {useProfileReactions} from "./use-profile-reactions";
 
 type Props={
  data:ProfileMasterData;onExit:()=>void;
  registerBack:(handler:(()=>boolean)|null)=>void;
- onLike?:(kind:"ordinary"|"super")=>Promise<void>;
+ reactionsEnabled?:boolean;
+ onReactionSent?:()=>void;
+ onConversation?:(matchId:string,conversationId:string)=>void;
 };
 type RouteDrag={
  id:number;startX:number;startY:number;started:number;origin:number;span:number;claimed:boolean;serial:number;
@@ -25,7 +27,9 @@ const CLOSE_DURATION=230;
 const EASING="cubic-bezier(.2,.82,.24,1)";
 
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
-export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,registerBack,onLike}:Props){
+export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,registerBack,
+ reactionsEnabled,onReactionSent,onConversation}:Props){
+ const reactions=useProfileReactions(reactionsEnabled&&data.source==="server"?data.id:null,onReactionSent,onConversation);
  const route=useRef<HTMLDivElement>(null);
  const escapeClose=useRef<()=>void>(()=>{});
  useModalLayer(true,route,()=>escapeClose.current());
@@ -42,7 +46,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
  }));
  const liveToken=useRef<MotionToken|null>(null),liveTarget=useRef(0);
  const closing=useRef(false);
- const [likeBusy,setLikeBusy]=useState(false);
  const timer=useRef<number|null>(null);
  const entranceFrame=useRef<number|null>(null);
  const finishMotion=useRef<(()=>void)|null>(null);
@@ -313,12 +316,6 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
    <QaProfiler id="ProfileMaster"><ProfileMaster data={data} mode="visitor" onClose={close}
      registerBack={registerBack} gestureArbiter={gestures}
      registerRouteMotion={handle=>{childMotion.current=handle;}}
-     onMotionProgress={reportMotion}/></QaProfiler>
-   {onLike&&<div className="visitor-like-actions" aria-label="Действия с анкетой">
-    <button type="button" disabled={likeBusy} aria-label="Особенная симпатия" onClick={()=>{
-     setLikeBusy(true);void onLike("super").finally(()=>setLikeBusy(false));}}><Sparkles size={22}/></button>
-    <button type="button" disabled={likeBusy} className="visitor-like-main" aria-label="Поставить симпатию" onClick={()=>{
-     setLikeBusy(true);void onLike("ordinary").finally(()=>setLikeBusy(false));}}><Heart size={26}/></button>
-   </div>}
+     onMotionProgress={reportMotion} reactions={reactions}/></QaProfiler>
   </div>;
 });

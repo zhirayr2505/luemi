@@ -76,14 +76,32 @@ test("two authenticated actors create one durable conversation and revoke it on 
   try{
    assert.deepEqual(await visiblePhotoIds(A),[],"no relation means no photo metadata");
   }finally{await chatReader.end();}
+  const profileReaction=(actor:string,target:string)=>inject(actor,"GET","/api/v4/matches/profile/"+target);
+  const noReaction={outgoing:null,incoming:null,matchId:null};
+  assert.deepEqual(await profileReaction(A,B),{status:200,json:noReaction});
+  assert.equal((await profileReaction(A,A)).status,404);
   let result=await inject(A,"POST","/api/v4/matches/like",{targetId:B});
  assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.liked,true);
  assert.equal(result.json.kind,"ordinary");assert.equal(result.json.matched,false);
  assert.equal(result.json.superlikes.total,3);
+  assert.deepEqual(await profileReaction(A,B),{status:200,json:{...noReaction,outgoing:"ordinary"}});
+  assert.deepEqual(await profileReaction(B,A),{status:200,json:noReaction},"profile reads cannot reveal premium-locked incoming likes");
+  assert.equal((await inject(B,"GET","/api/v4/matches/incoming")).status,200);
+  assert.deepEqual(await profileReaction(B,A),{status:200,json:{...noReaction,incoming:"ordinary"}});
+  assert.deepEqual(await profileReaction(C,A),{status:200,json:noReaction},"a stranger cannot see the pair's status");
+  const special=await inject(C,"POST","/api/v4/matches/like",{targetId:A,kind:"super"});
+  assert.equal(special.status,200,JSON.stringify(special));
+  assert.deepEqual(await profileReaction(A,C),{status:200,json:{...noReaction,incoming:"super"}});
+  assert.deepEqual(await profileReaction(C,A),{status:200,json:{...noReaction,outgoing:"super"}});
+  const duplicate=await inject(C,"POST","/api/v4/matches/like",{targetId:A,kind:"ordinary"});
+  assert.equal(duplicate.json.kind,"super","a repeat tap reports the actual stored reaction");
+  assert.equal(duplicate.json.superlikes.total,special.json.superlikes.total);
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});
   assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.matched,true);
  const matchId=result.json.matchId as string;
  assert.match(matchId,/^[0-9a-f-]{36}$/i);
+  assert.equal((await profileReaction(A,B)).json.matchId,matchId);
+  assert.equal((await profileReaction(B,A)).json.matchId,matchId);
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});
  assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.matchId,matchId);
   const listed=await inject(A,"GET","/api/v4/chats");
@@ -229,6 +247,7 @@ test("two authenticated actors create one durable conversation and revoke it on 
   await admin.query("UPDATE luemi_private.actors SET status='active',anonymized_at=NULL WHERE id=$1",[B]);
   await admin.query("UPDATE luemi_private.public_profiles SET publication_status='published' WHERE owner_id=$1",[B]);
   await admin.query("INSERT INTO luemi_private.blocks(blocker_id,blocked_id,environment) VALUES($1,$2,$3)",[B,A,ns]);
+  assert.equal((await profileReaction(A,B)).status,404,"blocked people cannot read the reaction state");
   result=await inject(A,"GET",messagePath);
   assert.equal(result.status,404,"blocking must immediately revoke access");
   result=await inject(A,"POST",messagePath,{
