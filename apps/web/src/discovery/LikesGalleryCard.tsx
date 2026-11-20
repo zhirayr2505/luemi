@@ -108,7 +108,16 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
  useEffect(()=>{if(fan?.manual)popup.current?.querySelector("button")?.focus({preventScroll:true});},[fan]);
 
  const down=(event:PointerEvent<HTMLButtonElement>)=>{
-  if(!event.isPrimary||event.button!==0||menu.current)return;
+  if(!event.isPrimary){
+   const current=press.current;
+   if(current){
+    press.current=null;clearTimeout(current.timer);blockClick.current=performance.now()+360;
+    if(current.mode==="photos")go(0);
+    if(current.mode==="fan")closeMenu();
+   }
+   return;
+  }
+  if(event.button!==0||menu.current)return;
   const node=event.currentTarget;
   const origin={x:event.clientX,y:event.clientY};
   const width=node.clientWidth||1;

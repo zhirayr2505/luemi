@@ -26,7 +26,7 @@ import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {ProfileReactionNotices} from "./ProfileReactionNotices";
 import {isProfileLike,profileReactionKey,useProfileReactionQueue} from "./use-profile-reaction-queue";
 import {RealChats} from "../chats/RealChats";
-import {demoIncomingKind,LikesGallery} from "./LikesGallery";
+import {demoGalleryReaction,LikesGallery} from "./LikesGallery";
 import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiSkeleton} from "../ui/LuemiV5";
 import {geoCsrf} from "../auth/session-adapter";
 import {getPublishedFeed,getPublishedProfile,openNewMatch,likePublishedUser,blockPublishedUser,reportPublishedUser,updateDiscoverySearchScope,realMatchPilot,type PublishedFeedPage,type LikesGalleryEntry,type NewMatch} from "../registration/real-live-client";
@@ -517,7 +517,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  const onHide=useCallback((id:string)=>setHiddenIds(existing=>new Set([...existing,id])),[]);
  const profileReactions=useProfileReactionQueue(onHide);
  const demoReaction=demoVisitor?profileReactions.actions.get(profileReactionKey({id:demoVisitor.id,demo:true})):undefined;
- const demoIncoming=demoVisitor&&demoLikesProfile?demoIncomingKind(demoVisitor.id):null;
+ const demoInitial=demoVisitor&&demoLikesProfile?demoGalleryReaction(demoVisitor.id):null;
  const demoOutgoing=demoReaction?.phase==="sent"&&isProfileLike(demoReaction.receipt.kind)?demoReaction.receipt.kind:null;
  const openGalleryChat=async(match:LikesGalleryEntry)=>{
   if(!match.matchId)return;
@@ -932,7 +932,8 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     onExit={()=>setDemoVisitor(null)} registerBack={registerVisitorBack}
     reactionNotices={reactionNotices}
     demoReactions={{demo:true,busy:false,error:"",
-     state:{outgoing:demoOutgoing,incoming:demoIncoming,matchId:demoIncoming&&demoOutgoing?"fixture-match-"+demoVisitor.id:null},
+     state:{outgoing:demoOutgoing??demoInitial?.outgoing??null,incoming:demoInitial?.incoming??null,
+      matchId:demoInitial?.matchId??(demoInitial?.incoming&&demoOutgoing?"fixture-match-"+demoVisitor.id:null)},
      pendingKind:demoReaction?.phase==="pending"&&isProfileLike(demoReaction.kind)?demoReaction.kind:null,
      send:kind=>profileReactions.enqueue({id:demoVisitor.id,name:demoVisitor.name,demo:true},kind)}}/>}
   {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)}

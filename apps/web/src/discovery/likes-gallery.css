@@ -10,7 +10,7 @@
 }
 .likes-gallery h2 {font-size:24px;letter-spacing:-.035em;line-height:1.15;margin:0}
 .likes-gallery-tools {display:flex;align-items:center;gap:4px}
-.likes-gallery-refresh,.likes-demo-toggle {
+.likes-gallery-tools .likes-gallery-refresh,.likes-demo-toggle {
  min-height:44px;border:0;background:none;color:var(--likes-rose);font:inherit;font-size:12px;padding:5px 8px;
 }
 .likes-demo-toggle {color:#f2a8b8;font-weight:650}

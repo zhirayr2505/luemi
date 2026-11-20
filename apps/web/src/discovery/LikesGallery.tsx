@@ -1,7 +1,7 @@
 import {useEffect,useState} from "react";
 import {Heart,LockKeyhole,RefreshCw} from "lucide-react";
-import {getIncomingLikes,getLikesGallery,realMatchPilot,type IncomingLike,type LikesGalleryEntry,type RealLikeKind} from "../registration/real-live-client";
-import {LuemiEmptyState,LuemiSkeleton} from "../ui/LuemiV5";
+import {getIncomingLikes,getLikesGallery,realMatchPilot,type IncomingLike,type LikesGalleryEntry,type ProfileMatchState,type RealLikeKind} from "../registration/real-live-client";
+import {LuemiEmptyState,LuemiIconButton,LuemiSkeleton} from "../ui/LuemiV5";
 import {LikesGalleryCard} from "./LikesGalleryCard";
 import {demoPeople} from "./demo-people";
 import type {DemoPerson} from "./model";
@@ -25,6 +25,12 @@ const fixtureCards=demoPeople.map((person,index):Entry=>({
  tab:index<4?"incoming":index===4?"outgoing":"mutual",
  kind:index<4?demoIncomingKind(person.id):index===4?"super":null,local:person
 }));
+export function demoGalleryReaction(id:string):ProfileMatchState|null{
+ const entry=fixtureCards.find(item=>item.id===id);
+ if(!entry)return null;
+ return {incoming:entry.tab==="incoming"?entry.kind:null,outgoing:entry.tab==="outgoing"?entry.kind:null,
+  matchId:entry.tab==="mutual"?"fixture-match-"+entry.id:null};
+}
 type Queue=ReturnType<typeof useProfileReactionQueue>;
 type Props={
  active:boolean;qaAllowed:boolean;queue:Queue;onPerson:(id:string)=>void;onDemoPerson:(person:DemoPerson)=>void;
@@ -88,8 +94,8 @@ export function LikesGallery({active,qaAllowed,queue,onPerson,onDemoPerson,onCha
     {qaAllowed&&<button type="button" className="likes-demo-toggle" aria-pressed={useDemo} onClick={()=>{
      setDemo(value=>!value);switchTab("incoming");
     }}>{useDemo?"Тестовый режим":"Демо"}</button>}
-    {!useDemo&&<button type="button" className="likes-gallery-refresh" aria-label="Обновить симпатии"
-     onClick={()=>{setError("");refreshRows(value=>value+1);}}><RefreshCw size={17}/></button>}
+    {!useDemo&&<LuemiIconButton className="likes-gallery-refresh" label="Обновить симпатии"
+     onClick={()=>{setError("");refreshRows(value=>value+1);}}><RefreshCw size={17}/></LuemiIconButton>}
    </div>
   </div>
   <div className="likes-gallery-tabs" role="tablist" aria-label="Тип симпатий">
