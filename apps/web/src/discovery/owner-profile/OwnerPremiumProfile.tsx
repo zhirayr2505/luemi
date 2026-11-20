@@ -8,6 +8,7 @@ import {goalLabel} from "../../ui/PersonalizedCopy";
 import {computedTranslation,type GestureArbiter} from "../../ui/gesture-arbiter";
 import type {ProfileView} from "../ProfileModel";
 import type {ProfileRouteMotionHandle} from "../profile-route-motion";
+import type {ViewerCarousel} from "../photo-viewer-state";
 import {resolvePhotoFocus} from "../profile-v3/geometry/ProfileGeometry";
 import {clamp} from "./OwnerProfileGeometry";
 import {useOwnerProfileMotion} from "./useOwnerProfileMotion";
@@ -21,7 +22,7 @@ const loop=(index:number,count:number)=>(index+count)%count;
 type Props={
  view:ProfileView;ownerDetails?:RegistrationDraft;active?:boolean;
  onEdit:()=>void;onSettings:()=>void;onPreview:()=>void;
- onPhotoOpen:(id:string,element:HTMLImageElement|null)=>void;
+ onPhotoOpen:(id:string,element:HTMLImageElement|null,carousel?:ViewerCarousel)=>void;
  onMotionProgress?:(progress:number,dragging:boolean)=>void;
  gestureArbiter?:GestureArbiter;
  registerRouteMotion?:(handle:ProfileRouteMotionHandle|null)=>void;
@@ -175,7 +176,12 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
   </section>
  );
 
- const openPhoto=()=>{if(heroPhoto)onPhotoOpen(heroPhoto.id,heroImage.current);};
+ const openPhoto=()=>{
+  if(heroPhoto)onPhotoOpen(heroPhoto.id,heroImage.current,{
+   select:id=>{cancelPhoto();setSelectedId(id);},
+   current:()=>heroImage.current
+  });
+ };
  const visiblePhotos=[
   {photo:previousPhoto,slot:"previous"},
   {photo:heroPhoto,slot:"current"},
@@ -192,7 +198,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
    <div className="owner-profile-ambient"/>
    <div className="owner-profile-halo"/>
   </div>
-  <div className="owner-profile-photo-mask" role={heroPhoto?"button":undefined}
+  <div className="owner-profile-photo-mask" data-viewer-crop role={heroPhoto?"button":undefined}
    tabIndex={heroPhoto?0:-1} aria-label={heroPhoto?"Открыть фотографию профиля":undefined}
    onClick={openPhoto} onKeyDown={event=>{
     if(heroPhoto&&(event.key==="Enter"||event.key===" ")){event.preventDefault();openPhoto();}
@@ -272,8 +278,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
       {p.source==="fixture"&&<p className="owner-profile-disclaimer">Демонстрационный профиль, не реальный пользователь.</p>}
      </>)}
      {panel("photos","Фото",<>
-      {photos.length?<div className="owner-profile-gallery">{photos.map((photo,index)=><button type="button" key={photo.id}
-       className="owner-profile-photo-tile" aria-label={"Открыть фото "+(index+1)}
+      {photos.length?<div className="owner-profile-gallery" data-viewer-gallery>{photos.map((photo,index)=><button type="button" key={photo.id}
+       className="owner-profile-photo-tile" data-viewer-crop aria-label={"Открыть фото "+(index+1)}
        onClick={event=>onPhotoOpen(photo.id,event.currentTarget.querySelector("img"))}>
        <img data-photo-id={photo.id} src={photo.src} alt="" draggable={false} loading="lazy" decoding="async"
         onError={event=>{if(photo.fallback&&event.currentTarget.src!==photo.fallback)event.currentTarget.src=photo.fallback;}}/>

@@ -29,7 +29,7 @@ const ready=async id=>{
 };
 const state=()=>page.evaluate(()=>{
  const viewer=document.querySelector(".pm-viewer"),img=viewer?.querySelector(".pm-viewer-image");
- const surface=viewer?.querySelector(".pm-viewer-surface"),stage=viewer?.querySelector(".pm-viewer-stage");
+ const surface=viewer?.querySelector(".pm-viewer-surface"),backdrop=viewer?.querySelector(".pm-viewer-backdrop");
  const track=viewer?.querySelector(".pm-viewer-track");
  const m=img?new DOMMatrixReadOnly(getComputedStyle(img).transform):null;
  const stageM=surface?new DOMMatrixReadOnly(getComputedStyle(surface).transform):null;
@@ -39,7 +39,7 @@ const state=()=>page.evaluate(()=>{
  const cw=iw*k,ch=ih*k,s=m?Math.hypot(m.m11,m.m12):1;
  return {open:!!viewer,id:img?.dataset.photoId,scale:s,tx:m?.m41??0,ty:m?.m42??0,
   matrix:m?.toString(),natural:[iw,ih],viewport:[w,h],content:[cw,ch],
-  fit:[(w-cw)/2,(h-ch)/2,cw,ch],stageOpacity:Number(stage?getComputedStyle(stage).opacity:1),
+  fit:[(w-cw)/2,(h-ch)/2,cw,ch],backdropOpacity:Number(backdrop?getComputedStyle(backdrop).opacity:1),
   surfaceY:stageM?.m42??0,offset:Number(track?.dataset.offset??0),
   commits:Number(viewer?.dataset.semanticCommits??0),phase:viewer?.dataset.motionPhase};
 });
@@ -58,6 +58,14 @@ const q=(f,t)=>({x:(f.x-t.viewport[0]/2-t.tx)/t.scale,
  y:(f.y-t.viewport[1]/2-t.ty)/t.scale});
 const stats=()=>page.evaluate(()=>window.__luemiQaMedia.stats());
 const close=()=>page.evaluate(()=>window.__luemiQaMedia.close());
+const resetZoom=async()=>{
+ if((await state()).scale<=1.001)return;
+ await page.mouse.dblclick(190,425);
+ await page.waitForFunction(()=>{
+  const image=document.querySelector(".pm-viewer-image");
+  return image&&new DOMMatrixReadOnly(getComputedStyle(image).transform).a<=1.001;
+ });
+};
 try{
  await page.goto("http://127.0.0.1:5173/profile-qa.html",{waitUntil:"domcontentloaded"});
  await page.waitForFunction(()=>!!window.__luemiQaMedia);
@@ -116,10 +124,12 @@ try{
  assert.ok(s.scale>=1&&s.scale<=3.2);bounds(s);
  await send("touchEnd",[second]);third=p(14,300,700);
  await send("touchMove",[third]);bounds(await state());
+ const lastPinch=await state();
  await send("touchEnd",[third]);await sleep(280);
- s=await state();near(s.scale,1,.015);near(s.tx,0,.7);near(s.ty,0,.7);
+ s=await state();near(s.scale,lastPinch.scale,.015);near(s.tx,lastPinch.tx,.7);near(s.ty,lastPinch.ty,.7);
  assert.equal(s.id,"qa-alpha");assert.equal(s.commits,commits);
- pass("1→2→1→2, third ignored while first pair intact, first-finger release, pan, final reset");
+ await resetZoom();
+ pass("1→2→1→2, third finger ignored, zoom stays after release, double tap resets");
 
  // Reverse order: second member releases first; first remains pan-eligible.
  first=p(21,160,389);second=p(22,230,464);
@@ -129,7 +139,8 @@ try{
  first=p(21,116,375);await send("touchMove",[first]);const poseAfter=await state();
  assert.ok(Math.abs(poseAfter.tx-poseBefore.tx)+Math.abs(poseAfter.ty-poseBefore.ty)>2);
  await send("touchEnd",[first]);await sleep(280);
- near((await state()).scale,1,.02);
+ near((await state()).scale,poseAfter.scale,.02);
+ await resetZoom();
  pass("second finger released first: primary pointer continues pan, no geometry jump");
 
  // Intrinsic object-fit content sizes differ from viewport; clamp each axis.
@@ -155,7 +166,7 @@ try{
    if(first.x<1||first.x>391||first.y<1||first.y>850)continue;
    await send("touchMove",[first]);bounds(await state());
   }
-  await send("touchEnd",[first]);await sleep(250);
+  await send("touchEnd",[first]);await resetZoom();
  }
  pass("portrait/landscape/panorama/tall: actual natural sizes and zoomed content rect bound pan on both axes");
 
@@ -169,7 +180,7 @@ try{
  first=p(41,60,600);await send("touchMove",[first]);
  s=await state();assert.equal(s.id,"qa-alpha");assert.equal(s.commits,pre.commits);
  assert.equal(s.open,true);
- await send("touchEnd",[first]);await sleep(270);
+ await send("touchEnd",[first]);await resetZoom();
  pass("zoomed pan cannot switch neighbor or initiate vertical dismiss");
 
  // Viewport change while pointer session is active maintains safe fit bounds.
@@ -179,7 +190,7 @@ try{
  await page.setViewportSize({width:430,height:780});await sleep(80);
  s=await state();bounds(s);near(s.viewport[0],430,.5);
  first=p(51,104,355);second=p(52,292,525);await send("touchMove",[first,second]);
- bounds(await state());await send("touchEnd",[first,second]);await sleep(260);
+ bounds(await state());await send("touchEnd",[first,second]);await resetZoom();
  pass("viewport resizing midpinch rebases actual content fit and pointer focal anchor");
  await page.setViewportSize({width:393,height:852});await sleep(65);
 
@@ -239,15 +250,20 @@ try{
  const base=(await stats()).closeCommits;
  first=p(81,200,410);await send("touchStart",[first]);
  first=p(81,200,470);await send("touchMove",[first]);
- s=await state();assert.ok(s.surfaceY>10&&s.stageOpacity<1);
+ s=await state();near(s.surfaceY,60);assert.ok(s.backdropOpacity<1);
  await sleep(190);await send("touchEnd",[first]);await sleep(260);
- s=await state();assert.equal(s.open,true);near(s.surfaceY,0,.9);near(s.stageOpacity,1,.03);
+ s=await state();assert.equal(s.open,true);near(s.surfaceY,0,.9);near(s.backdropOpacity,1,.03);
  assert.equal((await stats()).closeCommits,base);
  pass("cancelled vertical dismiss restores surface Y and opacity synchronously at 1x");
- // Preserve previously accepted either-direction vertical dismiss (upward).
  first=p(82,200,510);await send("touchStart",[first]);
  first=p(82,200,350);await send("touchMove",[first]);
  const upwardDuring=await state();
+ await send("touchEnd",[first]);
+ await sleep(250);
+ assert.equal((await state()).open,true,"upward drags cannot dismiss the viewer");
+ assert.equal((await stats()).closeCommits,base);
+ first=p(83,200,350);await send("touchStart",[first]);
+ first=p(83,200,510);await send("touchMove",[first]);
  await send("touchEnd",[first]);
  try{await page.locator(".pm-viewer").waitFor({state:"detached",timeout:3500});}
  catch(error){
@@ -259,7 +275,7 @@ try{
  }
  assert.equal((await stats()).closeCommits,base+1);
  await sleep(320);assert.equal((await stats()).closeCommits,base+1);
- pass("upward vertical dismiss at 1x commits close once (not down-only)");
+ pass("only downward dismiss at 1x commits close once");
  await open("qa-alpha");await ready("qa-alpha");await sleep(280);
  // StrictMode QA fixture and reopening can still navigate original 3-slide track.
  await page.keyboard.press("ArrowRight");await ready("qa-beta");

@@ -11,7 +11,13 @@ export interface PhotoViewerSession{
 export interface ViewerSource{
  photoId:string;contextId:string;resourceKey:string;
  resolveElement:()=>HTMLElement|null;
+ resolveReturnElement?:(photoId:string)=>HTMLImageElement|null;
+ selectReturnPhoto?:(photoId:string)=>void;
 }
+export type ViewerCarousel={
+ select:(photoId:string)=>void;
+ current:()=>HTMLImageElement|null;
+};
 export const resourceIdentity=(photo:Pick<ProfilePhoto,"id"|"src"> & {version?:string}):string=>
  JSON.stringify([photo.id,photo.src,photo.version??""]);
 export const photoIndex=(photos:readonly ProfilePhoto[],id:string|null):number=>

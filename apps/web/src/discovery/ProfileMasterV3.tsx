@@ -9,7 +9,7 @@ import type {ProfileMasterData,ProfilePhoto,ProfileView} from "./ProfileModel";
 import {projectProfile} from "./ProfileModel";
 import {PhotoViewer} from "./PhotoViewer";
 import {QaProfiler} from "./qa-profiler";
-import {resourceIdentity,viewerPhotoContext,reconcilePhotoId,type ViewerSource} from "./photo-viewer-state";
+import {resourceIdentity,viewerPhotoContext,reconcilePhotoId,type ViewerSource,type ViewerCarousel} from "./photo-viewer-state";
 import {useModalLayer} from "../ui/modal-layer";
 import type {GestureArbiter} from "../ui/gesture-arbiter";
 import type {ProfileRouteMotionHandle} from "./profile-route-motion";
@@ -136,12 +136,17 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
  const choosePhoto=useCallback((id:string)=>{
   if(photos.some(p=>p.id===id)){photoIdLive.current=id;setPhotoId(id);}
  },[photos]);
- const openPhoto=useCallback((id:string,element:HTMLImageElement|null)=>{
+ const openPhoto=useCallback((id:string,element:HTMLImageElement|null,carousel?:ViewerCarousel)=>{
   const photo=photos.find(p=>p.id===id);
   if(!photo)return;
   const contextId=viewerPhotoContext(view);
+  const gallery=element?.closest("[data-viewer-gallery]");
   const source:ViewerSource|null=element?{photoId:id,contextId,
-   resourceKey:resourceIdentity(photo),resolveElement:()=>element}:null;
+   resourceKey:resourceIdentity(photo),resolveElement:()=>element,
+   selectReturnPhoto:carousel?.select,
+   resolveReturnElement:carousel?carousel.current:gallery?returnId=>
+    Array.from(gallery.querySelectorAll<HTMLImageElement>("img[data-photo-id]"))
+     .find(image=>image.dataset.photoId===returnId)??null:undefined}:null;
   setViewer({photoId:id,source});
  },[photos,view]);
  const closeTop=useCallback(():boolean=>{
@@ -157,8 +162,8 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
   if(id==="bliki")return <Bliki/>;
   if(id==="meta")return <Meta view={view}/>;
   if(id==="gifts")return <Gifts view={view}/>;
-  return photos.length?<div className="pm-photos-grid">{photos.map((photo,i)=>
-   <button type="button" className="pm-photo-tile" key={photo.id}
+  return photos.length?<div className="pm-photos-grid" data-viewer-gallery>{photos.map((photo,i)=>
+   <button type="button" className="pm-photo-tile" data-viewer-crop key={photo.id}
     aria-label={"Открыть фото "+(i+1)}
     onClick={e=>openPhoto(photo.id,e.currentTarget.querySelector("img"))}>
     <PhotoImage photo={photo} alt="" loading="lazy"/>
@@ -181,10 +186,7 @@ export const ProfileMaster=memo(function ProfileMaster({data,mode,onClose,onEdit
     onEdit={onEdit} onShowPreview={()=>setPreview(true)} renderPage={renderPage}/>}
    {nested&&<div className="pm-preview-toolbar"><button type="button" data-modal-initial onClick={onClose}>Закрыть предпросмотр</button></div>}
    {viewer&&<QaProfiler id="PhotoViewer"><PhotoViewer view={view} photos={photos} initialPhotoId={viewer.photoId}
-     source={viewer.source} contextId={viewerPhotoContext(view)} onClose={returnId=>{
-      if(returnId)choosePhoto(returnId);
-      setViewer(null);
-     }}
+     source={viewer.source} contextId={viewerPhotoContext(view)} onClose={()=>setViewer(null)}
      registerBack={handler=>{selectedViewerBack.current=handler;}}/></QaProfiler>}
    {preview&&<ProfileMaster data={data} mode={data.source==="local-draft"?"local-self-preview":"preview"}
      onClose={()=>setPreview(false)} registerBack={handler=>{selectedPreviewBack.current=handler;}}
