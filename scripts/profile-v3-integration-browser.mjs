@@ -69,12 +69,15 @@ async function checkAbout(profile){
 }
 async function checkGallery(profile){
  const photos=profile.getByRole("tabpanel",{name:"Фото",exact:true});
+ const columns=await photos.locator(".owner-profile-gallery").evaluate(grid=>
+  getComputedStyle(grid).gridTemplateColumns.split(" ").length);
+ assert.equal(columns,3,"three columns are reserved even on an incomplete row");
  const tiles=await photos.locator(".owner-profile-photo-tile").evaluateAll(elements=>
   elements.map(tile=>{
    const rect=tile.getBoundingClientRect();
    return {x:rect.x,y:rect.y,width:rect.width,height:rect.height};
   }));
- assert(tiles.length>=3,"the fixture has enough photos to fill one row");
+ assert(tiles.length>0,"the fixture has photos in its gallery");
  const first=tiles[0];
  for(const [index,tile] of tiles.entries()){
   assert(Math.abs(tile.width-first.width)<1&&Math.abs(tile.height/tile.width-1.25)<.02,
