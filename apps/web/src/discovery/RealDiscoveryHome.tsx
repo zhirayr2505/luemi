@@ -29,7 +29,7 @@ import {createChatTransport,type ChatWireConversation} from "../chats/chat-trans
 import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiGlassPanel,LuemiIconButton,LuemiSkeleton} from "../ui/LuemiV5";
 import {geoCsrf} from "../auth/session-adapter";
 import {getPublishedFeed,getPublishedProfile,getIncomingLikes,likePublishedUser,blockPublishedUser,reportPublishedUser,updateDiscoverySearchScope,realMatchPilot,type PublishedFeedPage,type IncomingLike,type NewMatch} from "../registration/real-live-client";
-import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
+import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus,RealLikeKind} from "../registration/real-live-client";
 import "./discovery.css";
 import "./real-discovery.css";
 import "./deck-v3.css";
@@ -545,6 +545,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  // Fictional demo data is projected only to the same real visitor UI route.
  // No server ID, matching or liking capabilities are granted to this state.
  const [demoVisitor,setDemoVisitor]=useState<DemoPerson|null>(null);
+ const [demoProfileLikes,setDemoProfileLikes]=useState<Partial<Record<string,RealLikeKind>>>({});
  const [matched,setMatched]=useState<{person:RealPublishedProfile;matchId:string}|null>(null);
  const openPersonById=useCallback((id:string)=>{
   const controller=new AbortController();
@@ -961,8 +962,11 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
      </LuemiEmptyState>}
    </section>
   </div>
-  {demoVisitor&&<VisitorProfileRoute key={"demo-"+demoVisitor.id} data={fromDemoPerson(demoVisitor)}
-    onExit={()=>setDemoVisitor(null)} registerBack={registerVisitorBack}/>}
+  {demoVisitor&&qaAllowed&&<VisitorProfileRoute key={"demo-"+demoVisitor.id} data={fromDemoPerson(demoVisitor)}
+    onExit={()=>setDemoVisitor(null)} registerBack={registerVisitorBack}
+    demoReactions={{demo:true,busy:false,error:"",
+     state:{outgoing:demoProfileLikes[demoVisitor.id]??null,incoming:null,matchId:null},
+     send:kind=>setDemoProfileLikes(current=>current[demoVisitor.id]?current:{...current,[demoVisitor.id]:kind})}}/>}
   {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)}
    onExit={()=>setPerson(null)} registerBack={registerVisitorBack} reactionsEnabled={realMatchPilot.enabled}
    onReactionSent={()=>onHide(person.id)} onConversation={(matchId,conversationId)=>{

@@ -18,15 +18,18 @@ const profile={id:peer,name:"Карина",age:25,city:"Краснодар",coun
  gender:"woman",goal:"serious",interests:["music"],languages:[],photos,likedYouKind:null,publishedAt:now};
 const empty={outgoing:null,incoming:null,matchId:null};
 const requests=[],errors=[];
-let state={...empty},likeError=false;
+const demoMatchingRequests=[];
+let state={...empty},likeError=false,demoAllowed=false;
 page.on("pageerror",error=>errors.push(error.message));
 await page.route("**/api/**",async route=>{
  const req=route.request(),path=new URL(req.url()).pathname;
  const send=(json,status=200)=>route.fulfill({status,json});
+ if(demoAllowed&&path.startsWith("/api/v4/matches"))demoMatchingRequests.push(path);
  if(path==="/api/v2/auth/telegram"||path==="/api/v2/auth/session")
   return send({user:{id:actorId,firstName:"QA"},csrfToken:"qa_csrf_token"});
+ if(path==="/api/v2/qa/fixtures-access")return send({allowed:demoAllowed});
  if(path==="/api/v3/discovery/profile/"+peer)return send({profile});
- if(path.startsWith("/api/v3/discovery/photo/"))return route.fulfill({contentType:"image/svg+xml",
+ if(path.startsWith("/api/v3/discovery/photo/")||path.startsWith("/api/v2/qa/portraits/"))return route.fulfill({contentType:"image/svg+xml",
   body:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#893c32"/></svg>'});
  if(path==="/api/v4/matches/incoming")return send({likes:[{id:peer,name:profile.name,createdAt:now,
   kind:state.incoming??"ordinary",photoUrl:photos[0].url}],premium:false,hiddenCount:0});
@@ -135,6 +138,29 @@ try{
  if(!requests.includes(`/api/v4/chats/${conversationId}/messages`))
   await page.waitForRequest(req=>req.url().endsWith(`/api/v4/chats/${conversationId}/messages`));
  assert(requests.includes(`/api/v4/matches/${matchId}/open`));
+ demoAllowed=true;
+ await page.goto(base+"/profile-qa.html?profileReactions=1&luemiDemo=1");
+ const demoFeed=page.getByLabel("Тестовая лента LUEMI");
+ const openDemo=async name=>{
+  await demoFeed.getByRole("button",{name,exact:true}).click();
+  await root.getByRole("heading",{name,exact:true}).waitFor();
+  await page.waitForFunction(()=>Math.abs(document.querySelector(".discovery-visitor-route")?.getBoundingClientRect().left??100)<1);
+ };
+ await openDemo("Карина, 25");
+ assert.equal(await like.count(),1,"the owner's first demo profile must expose reactions");
+ await like.tap();
+ await badge.getByText("Тестовый лайк поставлен",{exact:true}).waitFor();
+ await page.keyboard.press("Escape");
+ await root.waitFor({state:"hidden"});
+ await openDemo("Карина, 25");
+ await badge.getByText("Тестовый лайк поставлен",{exact:true}).waitFor();
+ await page.keyboard.press("Escape");
+ await root.waitFor({state:"hidden"});
+ await demoFeed.getByRole("button",{name:"Пропустить",exact:true}).tap();
+ await openDemo("Элина, 24");
+ await superlike.tap();
+ await badge.getByText("Тестовый суперлайк поставлен",{exact:true}).waitFor();
+ assert.deepEqual(demoMatchingRequests,[],"demo profiles never load or write real matching data");
  assert.deepEqual(errors,[]);
- console.log("PROFILE_REACTIONS_BROWSER_PASS layout, hold/reverse, all labels, error, chat on Chromium Android emulation");
+ console.log("PROFILE_REACTIONS_BROWSER_PASS layout, hold/reverse, real and demo reactions, error, chat on Chromium Android emulation");
 }finally{await browser.close();}

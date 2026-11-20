@@ -10,11 +10,13 @@ import type {ProfileRouteMotionHandle} from "./profile-route-motion";
 import type {ProfileMasterData} from "./ProfileModel";
 import {QaProfiler} from "./qa-profiler";
 import {useProfileReactions} from "./use-profile-reactions";
+import type {ProfileReactionControls} from "./owner-profile/ProfileReactions";
 
 type Props={
  data:ProfileMasterData;onExit:()=>void;
  registerBack:(handler:(()=>boolean)|null)=>void;
  reactionsEnabled?:boolean;
+ demoReactions?:ProfileReactionControls;
  onReactionSent?:()=>void;
  onConversation?:(matchId:string,conversationId:string)=>void;
 };
@@ -28,8 +30,9 @@ const EASING="cubic-bezier(.2,.82,.24,1)";
 
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
 export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,registerBack,
- reactionsEnabled,onReactionSent,onConversation}:Props){
- const reactions=useProfileReactions(reactionsEnabled&&data.source==="server"?data.id:null,onReactionSent,onConversation);
+ reactionsEnabled,demoReactions,onReactionSent,onConversation}:Props){
+ const liveReactions=useProfileReactions(reactionsEnabled&&data.source==="server"?data.id:null,onReactionSent,onConversation);
+ const reactions=data.source==="fixture"?demoReactions:liveReactions;
  const route=useRef<HTMLDivElement>(null);
  const escapeClose=useRef<()=>void>(()=>{});
  useModalLayer(true,route,()=>escapeClose.current());

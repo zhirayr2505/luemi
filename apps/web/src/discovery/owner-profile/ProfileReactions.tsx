@@ -6,8 +6,9 @@ export type ProfileReactionControls={
  busy:boolean;
  error:string;
  send:(kind:RealLikeKind)=>void;
- openChat:()=>void;
- retry:()=>void;
+ demo?:true;
+ openChat?:()=>void;
+ retry?:()=>void;
 };
 
 export function canSendProfileReaction(state:ProfileMatchState|null):boolean{
@@ -34,7 +35,9 @@ export function ProfileReactionBadge({controls}:{controls:ProfileReactionControl
  const kind=state?.outgoing??state?.incoming;
  const mutual=!!state?.matchId;
  const special=kind==="super"&&!mutual;
- const label=mutual?"Взаимный лайк":state?.outgoing?
+ const label=controls.demo&&state?.outgoing?
+  special?"Тестовый суперлайк поставлен":"Тестовый лайк поставлен":
+  mutual?"Взаимный лайк":state?.outgoing?
   special?"Суперлайк отправлен":"Симпатия отправлена":state?.incoming?
    special?"Вам отправили суперлайк":"Вам отправили симпатию":"";
  if(!label&&!error)return null;
@@ -48,11 +51,11 @@ export function ProfileReactionBadge({controls}:{controls:ProfileReactionControl
      {label}
     </span>
    </div>
-   {mutual&&<button type="button" onClick={openChat} disabled={busy}>Написать</button>}
+   {mutual&&openChat&&<button type="button" onClick={openChat} disabled={busy}>Написать</button>}
   </div>}
   {error&&<div className="profile-reaction-badge-row">
    <span role="alert">{error}</span>
-   {!state&&<button type="button" onClick={retry} disabled={busy}>Повторить</button>}
+   {!state&&retry&&<button type="button" onClick={retry} disabled={busy}>Повторить</button>}
   </div>}
  </div>;
 }
