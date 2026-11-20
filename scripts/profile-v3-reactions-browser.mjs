@@ -63,7 +63,11 @@ const open=async value=>{
  await root.waitFor();await waitState("expanded");
  await page.waitForFunction(()=>Math.abs(document.querySelector(".discovery-visitor-route")?.getBoundingClientRect().left??100)<1);
 };
-const opacity=async()=>expanded.evaluate(node=>Number(getComputedStyle(node).opacity));
+const opacity=(layer=expanded)=>layer.evaluate(node=>Number(getComputedStyle(node).opacity));
+const waitForReactions=layout=>page.waitForFunction(layout=>{
+ const active=document.querySelector(`[data-reaction-layout="${layout}"]`);
+ return active&&Number(getComputedStyle(active).opacity)===1;
+},layout);
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 try{
  await open({});
@@ -86,19 +90,37 @@ try{
   return el&&Number(el.style.opacity)<1&&Number(el.style.opacity)>0;
  });
  const held=await opacity();
+ assert.equal(await opacity(compact),0,"compact buttons are still hidden during the collapse");
  await delay(180);
  assert.equal(await opacity(),held,"opacity stays under the held finger");
  await finger("touchMove",y-20);
  await delay(65);
  assert(await opacity()>held,"reversing immediately reverses the fade");
  for(let offset=28;offset<=196;offset+=14){await finger("touchMove",y-offset);await delay(16);}
+ assert.equal(await opacity(),0,"expanded buttons have fully disappeared");
+ assert.equal(await opacity(compact),0,"compact buttons stay hidden through the drag");
  await finger("touchEnd");await waitState("compact");
  assert.equal(await opacity(),0);
- assert.equal(await compact.evaluate(x=>Number(getComputedStyle(x).opacity)),1);
+ await waitForReactions("compact");
  assert.equal(await like.count(),1);
  const compactName=await root.getByRole("heading",{name:"Карина, 25"}).boundingBox();
  assert((await like.boundingBox()).x<compactName.x);
  assert((await superlike.boundingBox()).x>compactName.x+compactName.width);
+ const reversePanel=await root.getByRole("tabpanel").boundingBox(),reverseY=reversePanel.y+35;
+ await finger("touchStart",reverseY);
+ await finger("touchMove",reverseY+42);
+ await page.waitForFunction(()=>{
+  const layer=document.querySelector('[data-reaction-layout="compact"]');
+  return layer&&Number(layer.style.opacity)<1;
+ });
+ assert.equal(await opacity(),0,"expanded buttons stay hidden while the profile reopens");
+ for(let offset=56;offset<=196;offset+=14){await finger("touchMove",reverseY+offset);await delay(16);}
+ assert.equal(await opacity(compact),0);
+ assert.equal(await opacity(),0,"expanded buttons wait for the gesture to end");
+ await finger("touchEnd");await waitState("expanded");await waitForReactions("expanded");
+ await finger("touchStart",y);
+ for(let offset=14;offset<=196;offset+=14){await finger("touchMove",y-offset);await delay(16);}
+ await finger("touchEnd");await waitState("compact");await waitForReactions("compact");
  await like.tap();
  await badge.getByText("Симпатия отправлена",{exact:true}).waitFor();
  assert.deepEqual(requests,[{targetId:peer,kind:"ordinary"}]);

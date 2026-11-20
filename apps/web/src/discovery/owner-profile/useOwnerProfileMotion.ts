@@ -144,8 +144,30 @@ export function useOwnerProfileMotion(options:Options){
   };
 
   let paintedCircle=false,photoChanging=false;
+  let reactionOrigin:Endpoint=0,outgoingOpacity=1;
   let paintedRadius:number|undefined,paintedHalo:number|undefined,paintedOrigin:number|undefined;
   let visiblePhoto:OwnerPhotoPose=ownerMorphFrame(geometry,0),targetPhoto=visiblePhoto;
+  const paintReactionLayers=(value:number)=>{
+   if(!reactionLayers.length)return;
+   const dragging=press?.owner==="sheet"&&!press.scrollCards;
+   const settled=dragging||settling!==null||photoChanging?null:value===0||value===1?value:null;
+   if(settled!==null){reactionOrigin=settled;outgoingOpacity=1;}
+   const travel=reactionOrigin===0?value:1-value;
+   const fade=clamp(1-travel*2,0,1);
+   for(const layer of reactionLayers){
+    const endpoint=layer.dataset.reactionLayout==="expanded"?0:1;
+    const inactive=endpoint!==settled;
+    if(layer.inert!==inactive){
+     // A fast new gesture can interrupt the arrival fade. Continue from its visible opacity.
+     if(inactive&&settled===null)outgoingOpacity=Number(getComputedStyle(layer).opacity);
+     layer.inert=inactive;
+     layer.setAttribute("aria-hidden",String(inactive));
+    }
+    // Only the departing pair follows the drag. The arriving pair fades in at rest.
+    const opacity=inactive?settled===null&&endpoint===reactionOrigin?Math.min(outgoingOpacity,fade):0:1;
+    if(layer.style.opacity!==String(opacity))layer.style.opacity=String(opacity);
+   }
+  };
   const paintPhoto=(frame:OwnerPhotoPose)=>{
    visiblePhoto=frame;
    const photo=frame.mask;
@@ -185,7 +207,7 @@ export function useOwnerProfileMotion(options:Options){
     photoChanging=true;
     photoMotion.start(0,1,125,[.22,.64,.32,1],
      amount=>paintPhoto(interpolateOwnerPhotoPose(from,targetPhoto,amount)),
-     ()=>{photoChanging=false;paintPhoto(targetPhoto);syncAvatarClass();});
+     ()=>{photoChanging=false;paintPhoto(targetPhoto);syncAvatarClass();paintReactionLayers(position);});
    }else if(!photoChanging){
     paintPhoto(targetPhoto);
    }
@@ -203,15 +225,7 @@ export function useOwnerProfileMotion(options:Options){
    const hideControls=circular;
    if(pager.inert!==hideControls)pager.inert=hideControls;
    const state=settling!==null?"transition":value===0?"expanded":value===1?"compact":"transition";
-   for(const layer of reactionLayers){
-    const expanded=layer.dataset.reactionLayout==="expanded";
-    layer.style.opacity=String(expanded?1-progress:progress);
-    const inactive=state!==layer.dataset.reactionLayout;
-    if(layer.inert!==inactive){
-     layer.inert=inactive;
-     layer.setAttribute("aria-hidden",String(inactive));
-    }
-   }
+   paintReactionLayers(value);
    if(host.dataset.morphState!==state)host.dataset.morphState=state;
    syncAvatarClass();
    if(crossed&&feedback&&!paused())impactHaptic("light");
