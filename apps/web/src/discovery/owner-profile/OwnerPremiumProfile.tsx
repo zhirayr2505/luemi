@@ -250,6 +250,7 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
     <div className="owner-profile-pages">
      {panel("about","О себе",<>
       <blockquote className="owner-profile-quote">
+       <img className="owner-profile-quote-art" src="/assets/profile/about-quote-glow.svg" alt="" draggable={false} decoding="async"/>
        <span className="owner-profile-quote-mark" aria-hidden="true">“</span>
        <p>{p.about||"Описание пока не заполнено."}</p>
       </blockquote>
@@ -266,8 +267,8 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
        </div>
        <div className="owner-profile-interests">{interests.map(id=><InterestChip key={id} id={id}/>)}</div>
       </section>}
-      <img className="owner-profile-moonrise" src="/assets/profile/about-moonrise.svg"
-       width="800" height="192" alt="" draggable={false} decoding="async"/>
+      <img className="owner-profile-moonrise" src="/assets/profile/about-mountain-panorama.svg"
+       width="800" height="160" alt="" draggable={false} decoding="async"/>
       {p.source==="fixture"&&<p className="owner-profile-disclaimer">Демонстрационный профиль, не реальный пользователь.</p>}
      </>)}
      {panel("photos","Фото",<>
@@ -276,7 +277,6 @@ export function OwnerPremiumProfile({view,ownerDetails,active=true,onEdit,onSett
        onClick={event=>onPhotoOpen(photo.id,event.currentTarget.querySelector("img"))}>
        <img data-photo-id={photo.id} src={photo.src} alt="" draggable={false} loading="lazy" decoding="async"
         onError={event=>{if(photo.fallback&&event.currentTarget.src!==photo.fallback)event.currentTarget.src=photo.fallback;}}/>
-       {index===0&&<span>Главное</span>}
       </button>)}</div>:<div className="owner-profile-empty"><Images/><p>Фотографии ещё не добавлены</p></div>}
      </>)}
      {panel("bliki","Блики",<>

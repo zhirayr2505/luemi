@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 192" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 192" preserveAspectRatio="none" fill="none">
   <defs>
-    <radialGradient id="sky" cx="0" cy="0" r="1" gradientTransform="matrix(367 -1 0 78 461 88)" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D58C71" stop-opacity=".52"/>
-      <stop offset=".48" stop-color="#9E6457" stop-opacity=".25"/>
+    <radialGradient id="sky" cx="0" cy="0" r="1" gradientTransform="matrix(418 0 0 78 410 96)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D58C71" stop-opacity=".53"/>
+      <stop offset=".5" stop-color="#A76C5D" stop-opacity=".26"/>
       <stop offset="1" stop-color="#452D36" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="moon" x1="449" y1="30" x2="483" y2="98" gradientUnits="userSpaceOnUse">
@@ -21,10 +21,11 @@
       <stop stop-color="#211E24"/>
       <stop offset="1" stop-color="#17151B"/>
     </linearGradient>
-    <linearGradient id="fade" x1="0" y1="130" x2="0" y2="192" gradientUnits="userSpaceOnUse">
+    <linearGradient id="fade" x1="0" y1="103" x2="0" y2="192" gradientUnits="userSpaceOnUse">
       <stop stop-color="#fff"/>
-      <stop offset=".55" stop-color="#fff" stop-opacity=".52"/>
-      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".72"/>
+      <stop offset=".78" stop-color="#fff" stop-opacity=".15"/>
+      <stop offset=".96" stop-color="#fff" stop-opacity="0"/>
     </linearGradient>
     <mask id="ground-fade" maskUnits="userSpaceOnUse" x="0" y="0" width="800" height="192">
       <path fill="url(#fade)" d="M0 0h800v192H0z"/>
