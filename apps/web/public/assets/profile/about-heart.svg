@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 392 100" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 392 100" preserveAspectRatio="none" fill="none">
   <defs>
-    <linearGradient id="ribbon" x1="267" y1="13" x2="321" y2="105" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#EEAA92" stop-opacity="0"/>
-      <stop offset=".62" stop-color="#EEAA92" stop-opacity=".13"/>
+    <radialGradient id="ribbon" cx="0" cy="0" r="1" gradientTransform="matrix(121 0 0 48 271 48)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEAA92" stop-opacity=".16"/>
+      <stop offset=".56" stop-color="#EEAA92" stop-opacity=".07"/>
       <stop offset="1" stop-color="#A56865" stop-opacity="0"/>
-    </linearGradient>
+    </radialGradient>
     <linearGradient id="heart" x1="335" y1="18" x2="359" y2="86" gradientUnits="userSpaceOnUse">
       <stop stop-color="#F4BAAA" stop-opacity=".65"/>
       <stop offset=".5" stop-color="#E3A695" stop-opacity=".47"/>
@@ -16,7 +16,7 @@
       <stop offset="1" stop-color="#997068" stop-opacity="0"/>
     </linearGradient>
   </defs>
-  <path d="M158 8C212 13 255 22 294 43s63 36 98 42V0H158z" fill="url(#ribbon)"/>
-  <path d="M158 8c54 5 97 14 136 35s63 36 98 42" stroke="url(#edge)" stroke-width="1"/>
+  <path d="M95 2C185 6 247 16 294 43s64 36 98 42V0H95z" fill="url(#ribbon)"/>
+  <path d="M95 2c90 4 152 14 199 41s64 36 98 42" stroke="url(#edge)" stroke-width="1"/>
   <path d="M346 76c-12-12-17-31-13-47 2-8 8-13 14-10 6 3 6 12 4 19 7-6 16-10 21-6 6 4 1 12-5 17-7 6-15 11-22 13" stroke="url(#heart)" stroke-linecap="round" stroke-width="1.4"/>
 </svg>
