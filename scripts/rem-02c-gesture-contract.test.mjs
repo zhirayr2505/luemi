@@ -147,8 +147,10 @@ assert.ok(/\[data-morph-state="compact"\] .owner-profile-scroll\{[^}]*touch-acti
  "compact cards retain native pan-y and custom gestures use the shared arbiter");
 assert.ok(route.includes('gestureArbiter={gestures}')&&route.includes('if(isGestureModalBlocked(target))return;'),
  "Telegram modal and route arbitration preserved");
-assert.ok(route.includes('if(!g.edge&&route.current?.querySelector(".owner-premium-profile"))return;'),
- "visitor route back cannot steal a central Premium Profile photo swipe");
+assert.ok(route.includes('[role="tab"]:first-child[aria-selected="true"]')&&
+ route.includes('target.closest(".owner-profile-avatar-circle")')&&
+ route.includes('.owner-profile-pages[data-paging]'),
+ "visitor route back waits for About and gives the expanded portrait to the photo carousel");
 assert.ok(browse.includes("browseMotion.current.schedulePaint")&&
  !read("apps/web/src/discovery/discovery.css").includes("touch-action:none"),
  "Discovery gesture ownership unchanged");
