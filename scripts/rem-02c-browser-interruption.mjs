@@ -62,7 +62,7 @@ try{
  const measurePhoto=()=>face.evaluate((node)=>{
   const rect=node.getBoundingClientRect();
   return {radius:parseFloat(node.style.borderRadius),width:rect.width,y:rect.y,
-   ambient:Number(getComputedStyle(node.closest(".owner-premium-profile").querySelector(".owner-profile-ambient")).opacity)};
+   halo:Number(getComputedStyle(node.closest(".owner-premium-profile").querySelector(".owner-profile-halo")).opacity)};
  });
  const moveUntil=async(x,y,direction,reached)=>{
   for(let distance=4;distance<=180;distance+=4){
@@ -85,47 +85,59 @@ try{
   const cardRect=await cards.boundingBox();
   const hx=cardRect.x+cardRect.width*.5,hy=cardRect.y+70;
   await face.evaluate(node=>{
-   const ambient=node.closest(".owner-premium-profile").querySelector(".owner-profile-ambient");
-   const frames=[];
-   window.__ownerRoundFrames=frames;
-   const observe=new MutationObserver(()=>{
-    frames.push({width:node.getBoundingClientRect().width,radius:parseFloat(node.style.borderRadius),
-     ambient:Number(getComputedStyle(ambient).opacity)});
-    if(node.classList.contains("owner-profile-avatar-circle"))observe.disconnect();
-   });
-   observe.observe(node,{attributes:true,attributeFilter:["style"]});
+   window.__profileHaptics=[];
+   window.Telegram??={};
+   window.Telegram.WebApp??={};
+   window.Telegram.WebApp.HapticFeedback={impactOccurred(style){
+    window.__profileHaptics.push({style,radius:parseFloat(node.style.borderRadius)});
+   }};
   });
+  const haptics=()=>page.evaluate(()=>window.__profileHaptics);
   await finger("touchStart",hx,hy);
-  const distanceUp=await moveUntil(hx,hy,-1,frame=>frame.radius===50&&frame.width>126&&frame.width<=149);
+  await finger("touchMove",hx,hy-20);
+  await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="transition");
+  const movingSquare=await measurePhoto();
+  assert.equal(movingSquare.width,hero.width);
+  assert.equal(movingSquare.y,hero.y);
+  assert.equal(movingSquare.radius,0);
+  assert.equal(movingSquare.halo,0);
+  assert.deepEqual(await haptics(),[]);
+  assert((await cards.boundingBox()).y<cardRect.y-10,"the sheet rises first");
+  const distanceUp=await moveUntil(hx,hy,-1,frame=>frame.radius===50);
   const medium=await assertHeld();
   assert.equal(await cards.evaluate(el=>el.scrollTop),0,"card scroll stays pinned during the morph");
-  const rounding=(await page.evaluate(()=>window.__ownerRoundFrames)).find(frame=>frame.radius>0);
-  assert(rounding&&rounding.ambient>0,"blur appears as soon as the mask rounds");
+  assert(Math.abs(medium.width/hero.width-.41)<.01,"the photo snaps straight to the reference diameter");
+  assert(medium.halo>0,"the photo-colored halo appears on the snap frame");
+  assert.deepEqual(await haptics(),[{style:"light",radius:50}]);
+
   await finger("touchMove",hx,hy-10);
   await delay(40);
-  assert.equal((await measurePhoto()).radius,0,"reversing before release restores the square");
+  assert.deepEqual(await measurePhoto(),movingSquare,"reversing restores the full-width square and hides the halo");
   await finger("touchMove",hx,hy-distanceUp);
   await delay(40);
-  assert.deepEqual(await measurePhoto(),medium,"the same finger position restores the identical frame");
-  const frames=await page.evaluate(()=>window.__ownerRoundFrames);
-  assert(frames.some(frame=>frame.width>hero.width*.45&&frame.width<hero.width*.7),
-   "the drag samples the intermediate photo size");
-  assert(frames.filter(frame=>frame.width<hero.width-.1).every(frame=>frame.radius===50),
-   "every shrunken photo frame has a circular mask");
+  assert.deepEqual(await measurePhoto(),medium,"the same finger position restores the identical round frame");
+  assert.deepEqual((await haptics()).map(pulse=>pulse.radius),[50,0,50]);
   await finger("touchEnd",hx,hy-distanceUp);
   await root.locator(".owner-profile-avatar-circle").waitFor();
   const c=await face.boundingBox();
   assert(c&&c.width>=94&&c.width<=112&&c.width<medium.width,"release docks the medium circle");
+  assert.equal((await haptics()).length,3,"finishing the collapse emits no extra impact");
   const cx=c.x+c.width*.5,cy=c.y+c.height*.5;
   await finger("touchStart",cx,cy);
-  const distanceDown=await moveUntil(cx,cy,1,frame=>frame.radius===50&&frame.width>medium.width-6);
+  const distanceDown=await moveUntil(cx,cy,1,frame=>frame.radius===50&&frame.width>hero.width*.398);
   const reopening=await assertHeld();
   assert(Math.abs(reopening.width-medium.width)<15,"opening reaches the medium circle with 4px touch samples");
-  await finger("touchEnd",cx,cy+distanceDown);
+  assert.equal((await haptics()).length,3,"growing the circle does not emit an impact");
+  await finger("touchMove",cx,cy+distanceDown+14);
+  await page.waitForFunction(()=>document.querySelector(".owner-profile-photo-mask")?.style.borderRadius==="0%");
+  assert.deepEqual(await measurePhoto(),movingSquare,"opening restores the full-width square at the expanded top");
+  assert.deepEqual((await haptics()).map(pulse=>pulse.radius),[50,0,50,0]);
+  await finger("touchEnd",cx,cy+distanceDown+14);
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
+  assert.equal((await haptics()).length,4,"finishing the expansion emits no extra impact");
 
   await finger("touchStart",hx,hy);
-  await moveUntil(hx,hy,-1,frame=>frame.radius===50&&frame.width>126&&frame.width<=149);
+  await moveUntil(hx,hy,-1,frame=>frame.radius===50);
   await finger("touchMove",hx,hy-230);
   await root.locator(".owner-profile-avatar-circle").waitFor();
   await page.waitForFunction(()=>document.querySelector(".owner-profile-scroll")?.scrollTop>0);
@@ -138,7 +150,7 @@ try{
    "the gesture that scrolls cards to their top cannot also expand the profile");
   await delay(80);
   await finger("touchStart",cx,cy);
-  await moveUntil(cx,cy,1,frame=>frame.radius===50&&frame.width>medium.width-6);
+  await moveUntil(cx,cy,1,frame=>frame.radius===50&&frame.width>hero.width*.398);
   await finger("touchMove",cx,cy+210);
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
   await finger("touchEnd",cx,cy+210);
