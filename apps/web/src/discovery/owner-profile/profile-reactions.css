@@ -20,6 +20,7 @@
  padding-inline:12.5%;
  opacity:0;
 }
+.profile-reaction-buttons:not([inert]) {transition:opacity .16s ease-out}
 .profile-reaction-button {
  display:grid;
  place-items:center;
@@ -92,6 +93,7 @@
 }
 @keyframes profile-reaction-reveal {from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce) {
+ .profile-reaction-buttons:not([inert]) {transition:none}
  .profile-reaction-label {animation:none}
  .profile-reaction-button:active:not(:disabled) {transform:none}
 }
