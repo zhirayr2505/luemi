@@ -13,7 +13,7 @@ try{
   outfile:output,bundle:true,platform:"node",format:"esm"
  });
  const {createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,ownerMorphFrame,
-  ownerMorphProgress,ownerRubberPosition,ownerUnresistedPosition}=await import(pathToFileURL(output));
+  ownerMorphProgress,ownerRubberPosition,ownerUnresistedPosition,interpolateOwnerPhotoPose}=await import(pathToFileURL(output));
 
  const viewports=[
   {width:360,height:640,brandBottom:65},
@@ -81,6 +81,17 @@ try{
   assert.equal(before.haloOpacity,0);
   assert.equal(round.radius,round.mask.width/2,"the first round frame has the reference diameter");
   assert(round.haloOpacity>0,"the photo glow appears on the same frame as the circle");
+  const initialPhoto={mask:before.mask,radius:before.radius,haloOpacity:before.haloOpacity};
+  const roundPhoto={mask:round.mask,radius:round.radius,haloOpacity:round.haloOpacity};
+  for(const [from,to] of [[initialPhoto,roundPhoto],[roundPhoto,initialPhoto]]){
+   assert.deepEqual(interpolateOwnerPhotoPose(from,to,0),from);
+   assert.deepEqual(interpolateOwnerPhotoPose(from,to,1),to);
+   const middle=interpolateOwnerPhotoPose(from,to,.5);
+   assert(middle.mask.width>round.mask.width&&middle.mask.width<before.mask.width,
+    "the visible photo eases its size between both geometries");
+   assert.equal(middle.radius/middle.mask.width,.25,"shape rounds proportionally as its size changes");
+   assert.equal(middle.haloOpacity,round.haloOpacity/2,"the photo glow fades with the shape");
+  }
   assert(Math.abs(round.sheetTop-before.sheetTop)<.1,"the sheet continues smoothly across the snap");
   const after=ownerMorphFrame(layout,.65);
   assert(after.mask.width<round.mask.width&&after.mask.width>compact.mask.width,

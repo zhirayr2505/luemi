@@ -6,7 +6,8 @@ import type {ProfileRouteMotionHandle} from "../profile-route-motion";
 import {GeometryMotion,type Easing} from "../geometry-motion";
 import {
  clamp,createOwnerProfileLayout,ownerAutoSnapTarget,ownerMorphEndpoint,
- ownerMorphFrame,ownerMorphProgress,ownerRubberPosition,ownerSnapFrom,ownerUnresistedPosition
+ interpolateOwnerPhotoPose,ownerMorphFrame,ownerMorphProgress,ownerRubberPosition,ownerSnapFrom,ownerUnresistedPosition,
+ type OwnerPhotoPose
 } from "./OwnerProfileGeometry";
 
 type Endpoint=0|1;
@@ -67,6 +68,9 @@ export function useOwnerProfileMotion(options:Options){
   const gestures=gestureArbiter??new GestureArbiter();
   const motion=new GeometryMotion("sheet",()=>performance.now(),
    callback=>requestAnimationFrame(callback),id=>cancelAnimationFrame(id),0);
+  const photoMotion=new GeometryMotion("hero",()=>performance.now(),
+   callback=>requestAnimationFrame(callback),id=>cancelAnimationFrame(id),0);
+  const reducedMotion=matchMedia("(prefers-reduced-motion: reduce)");
   const tabMotion=new GeometryMotion("tabs",()=>performance.now(),
    callback=>requestAnimationFrame(callback),id=>cancelAnimationFrame(id),0);
 
@@ -138,21 +142,44 @@ export function useOwnerProfileMotion(options:Options){
     });
   };
 
-  let paintedCircle=false;
+  let paintedCircle=false,photoChanging=false;
+  let visiblePhoto:OwnerPhotoPose=ownerMorphFrame(geometry,0),targetPhoto=visiblePhoto;
+  const paintPhoto=(frame:OwnerPhotoPose)=>{
+   visiblePhoto=frame;
+   const photo=frame.mask;
+   const radiusRatio=frame.radius/photo.width;
+   mask.style.transform=`${translate(photo.x,photo.y)} scale(${photo.width/geometry.width})`;
+   mask.style.borderRadius=`${radiusRatio*100}%`;
+   shade.style.opacity=String(1-radiusRatio*2);
+   halo.style.opacity=String(frame.haloOpacity);
+   if(frame.haloOpacity>0){
+    const scale=(photo.width+34)/(geometry.roundDiameter+34);
+    halo.style.transform=`translate3d(-50%,${photo.y-17}px,0) scale(${scale})`;
+   }
+  };
+  const syncAvatarClass=()=>mask.classList.toggle("owner-profile-avatar-circle",
+   host.dataset.morphState==="compact"&&!photoChanging);
+  const stopPhotoMotion=()=>{
+   photoMotion.cancel();
+   photoChanging=false;
+  };
   const paint=(value:number,feedback=false)=>{
    position=value;
    const distance=geometry.morphDistance;
    const progress=ownerMorphProgress(value*distance,distance);
    const frame=ownerMorphFrame(geometry,value);
-   const {mask:photo,identityCenter:center}=frame;
-   mask.style.transform=`${translate(photo.x,photo.y)} scale(${photo.width/geometry.width})`;
-   const circular=frame.radius>0;
-   mask.style.borderRadius=circular?"50%":"0%";
-   shade.style.opacity=circular?"0":"1";
-   halo.style.opacity=String(frame.haloOpacity);
-   if(circular){
-    const scale=(photo.width+34)/(geometry.roundDiameter+34);
-    halo.style.transform=`translate3d(-50%,${photo.y-17}px,0) scale(${scale})`;
+   const center=frame.identityCenter,circular=frame.radius>0;
+   const crossed=paintedCircle!==circular;
+   paintedCircle=circular;
+   targetPhoto=frame;
+   if(crossed&&!reducedMotion.matches&&!paused()){
+    const from=visiblePhoto;
+    photoChanging=true;
+    photoMotion.start(0,1,125,[.22,.64,.32,1],
+     amount=>paintPhoto(interpolateOwnerPhotoPose(from,targetPhoto,amount)),
+     ()=>{photoChanging=false;paintPhoto(targetPhoto);syncAvatarClass();});
+   }else if(!photoChanging){
+    paintPhoto(targetPhoto);
    }
    sheet.style.transform=translate(0,frame.sheetTop);
    identity.style.transform=translate(0,frame.identityTop);
@@ -165,12 +192,8 @@ export function useOwnerProfileMotion(options:Options){
    const hideControls=circular;
    if(pager.inert!==hideControls)pager.inert=hideControls;
    const state=settling!==null?"transition":value===0?"expanded":value===1?"compact":"transition";
-   if(host.dataset.morphState!==state){
-    host.dataset.morphState=state;
-    mask.classList.toggle("owner-profile-avatar-circle",state==="compact");
-   }
-   const crossed=paintedCircle!==circular;
-   paintedCircle=circular;
+   if(host.dataset.morphState!==state)host.dataset.morphState=state;
+   syncAvatarClass();
    if(crossed&&feedback&&!paused())impactHaptic("light");
    latest.current.onMotionProgress?.(1-progress,settling!==null||(press?.owner==="sheet"&&!press.scrollCards));
   };
@@ -206,8 +229,7 @@ export function useOwnerProfileMotion(options:Options){
     paint(target,feedback);
     if(target===1)afterCompact?.();
    };
-   const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
-   const bounce=feedback&&!reduced&&from>=0&&from<=1&&!(target===1&&scroll.scrollTop>0);
+   const bounce=feedback&&!reducedMotion.matches&&from>=0&&from<=1&&!(target===1&&scroll.scrollTop>0);
    if(from===target&&!bounce){finish();return;}
    const landing=target+(bounce?(target===1?4:-5)/distance:0);
    const duration=clamp(110+Math.abs(target-from)*190,110,300);
@@ -327,7 +349,7 @@ export function useOwnerProfileMotion(options:Options){
       current.captured=true;
      }catch{/* The pointer may have already left the WebView. */}
     }
-    if(owner==="hero")latest.current.horizontal.startPhoto(ownerMorphFrame(geometry,position).mask.width,geometry.width);
+    if(owner==="hero")latest.current.horizontal.startPhoto(visiblePhoto.mask.width,geometry.width);
     if(owner==="tabs")startTabs(current.startScroll);
     else if(tabPages.dataset.paging!==undefined)resetTabs(selectedTab);
     // Freeze native inertia only once an exclusive gesture has taken over.
@@ -359,7 +381,7 @@ export function useOwnerProfileMotion(options:Options){
    else if(!owner&&tabPages.dataset.paging!==undefined)endTabs(0,true);
    if(owner==="hero"){
     const dx=current.last.x-current.start.x;
-    const width=ownerMorphFrame(geometry,position).mask.width;
+    const width=visiblePhoto.mask.width;
     const threshold=Math.max(24,width*.18);
     const direction=!cancelled&&(Math.abs(dx)>=threshold||(Math.abs(dx)>=12&&Math.abs(speed)>.48))?
      (dx<0?-1:1):0;
@@ -443,6 +465,8 @@ export function useOwnerProfileMotion(options:Options){
   const measure=()=>{
    const rect=host.getBoundingClientRect();
    if(!rect.width||!rect.height)return;
+   const widthChanged=rect.width!==geometry.width;
+   if(widthChanged)stopPhotoMotion();
    geometry=createOwnerProfileLayout({width:rect.width,height:rect.height,
     brandBottom:brand.getBoundingClientRect().bottom-rect.top});
    sheet.style.height=`calc(100% - ${geometry.compactContentTop}px)`;
@@ -467,7 +491,7 @@ export function useOwnerProfileMotion(options:Options){
   web?.onEvent?.("safeAreaChanged",resize);
   web?.onEvent?.("contentSafeAreaChanged",resize);
 
-  const pause=()=>{cancelInput();interrupt();};
+  const pause=()=>{cancelInput();stopPhotoMotion();interrupt();};
   const resume=()=>{if(!paused())settleTo(accepted);};
   const suspendForBackground=()=>{if(!backgroundPaused){backgroundPaused=true;pause();}};
   const resumeFromBackground=()=>{if(backgroundPaused){backgroundPaused=false;resume();}};
@@ -504,6 +528,7 @@ export function useOwnerProfileMotion(options:Options){
    disposeLifecycle();
    cancelInput();
    motion.dispose();
+   photoMotion.dispose();
    tabMotion.dispose();
    syncTab.current=null;
    observer.disconnect();

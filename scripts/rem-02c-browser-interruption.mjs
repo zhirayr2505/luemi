@@ -68,10 +68,12 @@ try{
   for(let distance=4;distance<=180;distance+=4){
    await finger("touchMove",x,y+direction*distance);
    await delay(20);
-   if(reached(await measurePhoto()))return distance;
+   if(await reached(await measurePhoto()))return distance;
   }
   assert.fail("the drag never reached the expected photo geometry");
  };
+ const waitForRadius=radius=>page.waitForFunction(value=>
+  document.querySelector(".owner-profile-photo-mask")?.style.borderRadius===value+"%",radius);
  const assertHeld=async()=>{
   const before=await measurePhoto();
   assert.equal(before.radius,50,"the held photo is a true circle");
@@ -89,7 +91,14 @@ try{
    window.Telegram??={};
    window.Telegram.WebApp??={};
    window.Telegram.WebApp.HapticFeedback={impactOccurred(style){
-    window.__profileHaptics.push({style,radius:parseFloat(node.style.borderRadius)});
+    const trace={style,frames:[]};
+    window.__profileHaptics.push(trace);
+    const observer=new MutationObserver(()=>{
+     const radius=parseFloat(node.style.borderRadius);
+     trace.frames.push({radius,width:node.getBoundingClientRect().width});
+     if(radius===0||radius===50)observer.disconnect();
+    });
+    observer.observe(node,{attributes:true,attributeFilter:["style"]});
    }};
   });
   const haptics=()=>page.evaluate(()=>window.__profileHaptics);
@@ -103,20 +112,30 @@ try{
   assert.equal(movingSquare.halo,0);
   assert.deepEqual(await haptics(),[]);
   assert((await cards.boundingBox()).y<cardRect.y-10,"the sheet rises first");
-  const distanceUp=await moveUntil(hx,hy,-1,frame=>frame.radius===50);
+  const distanceUp=await moveUntil(hx,hy,-1,async()=> (await haptics()).length===1);
+  await waitForRadius(50);
   const medium=await assertHeld();
   assert.equal(await cards.evaluate(el=>el.scrollTop),0,"card scroll stays pinned during the morph");
-  assert(Math.abs(medium.width/hero.width-.41)<.01,"the photo snaps straight to the reference diameter");
-  assert(medium.halo>0,"the photo-colored halo appears on the snap frame");
-  assert.deepEqual(await haptics(),[{style:"light",radius:50}]);
+  assert(Math.abs(medium.width/hero.width-.41)<.01,"the photo reaches the reference diameter");
+  assert(medium.halo>0,"the settled circle keeps the photo-colored halo");
+  async function assertHandoff(index,endRadius){
+   const pulse=(await haptics())[index];
+   assert.equal(pulse.style,"light");
+   assert(pulse.frames.some(frame=>frame.radius>0&&frame.radius<50&&
+    frame.width>medium.width&&frame.width<hero.width),
+   "the handoff passes through visible intermediate sizes and radii");
+   assert.equal(pulse.frames.at(-1)?.radius,endRadius);
+  }
+  await assertHandoff(0,50);
 
   await finger("touchMove",hx,hy-10);
-  await delay(40);
+  await waitForRadius(0);
   assert.deepEqual(await measurePhoto(),movingSquare,"reversing restores the full-width square and hides the halo");
   await finger("touchMove",hx,hy-distanceUp);
-  await delay(40);
+  await waitForRadius(50);
   assert.deepEqual(await measurePhoto(),medium,"the same finger position restores the identical round frame");
-  assert.deepEqual((await haptics()).map(pulse=>pulse.radius),[50,0,50]);
+  await assertHandoff(1,0);
+  await assertHandoff(2,50);
   await finger("touchEnd",hx,hy-distanceUp);
   await root.locator(".owner-profile-avatar-circle").waitFor();
   const c=await face.boundingBox();
@@ -129,15 +148,16 @@ try{
   assert(Math.abs(reopening.width-medium.width)<15,"opening reaches the medium circle with 4px touch samples");
   assert.equal((await haptics()).length,3,"growing the circle does not emit an impact");
   await finger("touchMove",cx,cy+distanceDown+14);
-  await page.waitForFunction(()=>document.querySelector(".owner-profile-photo-mask")?.style.borderRadius==="0%");
+  await waitForRadius(0);
   assert.deepEqual(await measurePhoto(),movingSquare,"opening restores the full-width square at the expanded top");
-  assert.deepEqual((await haptics()).map(pulse=>pulse.radius),[50,0,50,0]);
+  await assertHandoff(3,0);
   await finger("touchEnd",cx,cy+distanceDown+14);
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
   assert.equal((await haptics()).length,4,"finishing the expansion emits no extra impact");
 
   await finger("touchStart",hx,hy);
-  await moveUntil(hx,hy,-1,frame=>frame.radius===50);
+  await moveUntil(hx,hy,-1,async()=> (await haptics()).length===5);
+  await waitForRadius(50);
   await finger("touchMove",hx,hy-230);
   await root.locator(".owner-profile-avatar-circle").waitFor();
   await page.waitForFunction(()=>document.querySelector(".owner-profile-scroll")?.scrollTop>0);
@@ -153,6 +173,7 @@ try{
   await moveUntil(cx,cy,1,frame=>frame.radius===50&&frame.width>hero.width*.398);
   await finger("touchMove",cx,cy+210);
   await page.waitForFunction(()=>document.querySelector(".owner-premium-profile")?.dataset.morphState==="expanded");
+  await waitForRadius(0);
   await finger("touchEnd",cx,cy+210);
  }finally{await held.detach();}
  console.log("PREMIUM_PROFILE_HELD_MORPH_PASS hold, release and continued drag in both directions");

@@ -64,7 +64,9 @@ async function profileV3(browser,platform="android"){
    await page.mouse.move(expanded.x+expanded.width*.5,expanded.y+expanded.height*.10,{steps:8});
    await page.mouse.up();
    await ownerProfile.locator('xpath=self::*[@data-morph-state="compact"]').waitFor({state:"visible",timeout:5000});
-   const compact=await ownerProfile.locator(".owner-profile-avatar-circle").boundingBox();
+   const circle=ownerProfile.locator(".owner-profile-avatar-circle");
+   await circle.waitFor({state:"visible",timeout:5000});
+   const compact=await circle.boundingBox();
    assert.ok(compact&&Math.abs(compact.width-compact.height)<1.5&&compact.width>=94&&compact.width<=112,
     "owner photo becomes the smaller Telegram-style compact circle");
    assert.ok(Math.abs(compact.x+compact.width/2-393/2)<1.5,"compact owner avatar is centered");

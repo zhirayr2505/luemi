@@ -59,6 +59,7 @@ try{
   await page.mouse.move(x,y-190,{steps:6});
   await page.mouse.up();
   await root.locator('xpath=self::*[@data-morph-state="compact"]').waitFor({state:"visible",timeout:5000});
+  await root.locator(".owner-profile-avatar-circle").waitFor({state:"visible",timeout:5000});
   const compact=await measure();
   assert(Math.abs(compact.photo.width-compact.photo.height)<1.5,
    "avatar is square at "+height);
