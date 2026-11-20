@@ -18,8 +18,8 @@ import {calculateMorph,currentSource,fitImage,insetClip,isUnoccluded,visibleElem
  morphTransform as sourceImageTransform,photoPlacement,type Rect,type CropMorph} from "./photo-viewer-morph";
 import {bindViewerViewport} from "./photo-viewer-safe-area";
 import {isTopModal,useModalLayer} from "../ui/modal-layer";
-import {beginPinch,pinchFrame,panFrame,clampPan,contentFit,identityMedia,matrixTransform,
- focalContentAt,localFromClient,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
+import {beginPinch,pinchFrame,panFrame,clampPan,identityMedia,matrixTransform,
+ focalContentAt,type Point,type PinchAnchor,type MediaTransform} from "./photo-viewer-zoom";
 
 type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:ViewerSource|null;contextId:string;
  onClose:(photoId?:string)=>void;onMain?:(id:string)=>boolean|Promise<boolean>;
@@ -27,9 +27,9 @@ type Props={view:ProfileView;photos:ProfilePhoto[];initialPhotoId:string;source:
 type EndPointer={pointerId:number;clientX:number;clientY:number;currentTarget:HTMLDivElement};
 type SharedFrame={photo:Rect;clip:string};
 type SharedPhoto={geometry:CropMorph;source:HTMLImageElement;clip:string};
-type Gesture={id:number;x:number;y:number;startX:number;startY:number;time:number;
- axis:""|"x"|"y";origin:number;serial:number|null;startPhotoId:string|null;
- pinch:boolean;captured:boolean;samples:{x:number;t:number}[];interruptedTarget:number|null};
+type Gesture={id:number;startX:number;startY:number;time:number;
+ axis:""|"x"|"y";origin:number;serial:number|null;
+ samples:{x:number;t:number}[];interruptedTarget:number|null};
 const duration=240;
 const sharedDuration=215;
 const sharedEase="cubic-bezier(.22,.72,.24,1)";
@@ -82,6 +82,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  const sourceRef=useRef(source);
  const contextRef=useRef(contextId);contextRef.current=contextId;
  const width=useRef(viewportWidth(window.innerWidth));
+ const zoomViewport=useRef<Rect>({left:0,top:0,width:window.innerWidth,height:window.innerHeight});
  const geometryRevision=useRef(0);
  const trackX=useRef(0);
  const pendingCommit=useRef<{id:string;shift:-1|1}|null>(null);
@@ -103,17 +104,14 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  });
  useModalLayer(true,modal,()=>handlers.current.close());
  useModalLayer(menu,menuRoot,()=>setMenu(false));
- const viewSize=()=>({
-  width:Math.max(1,surface.current?.clientWidth??stage.current?.clientWidth??width.current),
-  height:Math.max(1,surface.current?.clientHeight??stage.current?.clientHeight??window.innerHeight)
- });
+ const viewSize=()=>zoomViewport.current;
  const naturalSize=()=>({
   width:Math.max(1,image.current?.naturalWidth??1),
   height:Math.max(1,image.current?.naturalHeight??1)
  });
  const localPoint=(p:Point):Point=>{
-  const box=(surface.current??stage.current)?.getBoundingClientRect();
-  return box?localFromClient(p,box,viewSize()):p;
+  const {left,top}=zoomViewport.current;
+  return {x:p.x-left,y:p.y-top};
  };
  const paintMedia=useCallback((pose:MediaTransform,animate=false)=>{
   mediaPose.current=pose;
@@ -189,7 +187,6 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(!a||!b)return;
   clearTap();
   gestureArbiter.current?.secondFinger();
-  if(gesture.current)gesture.current.pinch=true;
   pinchSession.current=true;pan.current=null;
   const pose=freezeMedia();
   pinch.current=beginPinch([first,second],localPoint(a),localPoint(b),pose,viewSize());
@@ -412,7 +409,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
   if(!surfaceOwner.current||surfaceOwner.current.snapshot().disposed)
    surfaceOwner.current=new MotionController("route",scheduler);
   if(!gestureArbiter.current)gestureArbiter.current=new GestureArbiter();
-  width.current=viewportWidth(outer.getBoundingClientRect().width);
+  const viewport=outer.getBoundingClientRect();
+  zoomViewport.current=viewport;
+  width.current=viewportWidth(viewport.width);
   paintTrack(0);
   // StrictMode provisional cleanup cancels the first terminal timer. If that
   // first effect already requested close (e.g. zero photos), restart its
@@ -543,28 +542,29 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
  useLayoutEffect(()=>{
   const outer=stage.current;if(!outer)return;
   const observer=new ResizeObserver(()=>{
-   const measured=viewportWidth(outer.getBoundingClientRect().width),old=width.current;
-   if(Math.abs(old-measured)<.1)return;
-   width.current=measured;geometryRevision.current++;
-   const motion=runner.current;
-   if(motion?.snapshot().phase==="settling"){
-    const snap=motion.snapshot();
-    const x=resizeOffset(snap.current,old,measured);
-    const target=resizeOffset(snap.target,old,measured);
-    paintTrack(x);motion.rebase(geometryRevision.current,x,target);
-   }else{
-    const x=resizeOffset(trackX.current,old,measured);
-    paintTrack(x);
-    if(gesture.current){gesture.current.origin=resizeOffset(gesture.current.origin,old,measured);}
+   const viewport=outer.getBoundingClientRect(),previous=zoomViewport.current;
+   if(viewport.width<=0||viewport.height<=0)return;
+   zoomViewport.current=viewport;
+   const measured=viewportWidth(viewport.width),old=width.current;
+   if(Math.abs(old-measured)>=.1){
+    width.current=measured;geometryRevision.current++;
+    const motion=runner.current;
+    const snap=motion?.snapshot();
+    if(motion&&snap?.phase==="settling"){
+     const x=resizeOffset(snap.current,old,measured);
+     const target=resizeOffset(snap.target,old,measured);
+     paintTrack(x);motion.rebase(geometryRevision.current,x,target);
+    }else{
+     paintTrack(resizeOffset(trackX.current,old,measured));
+     if(gesture.current)gesture.current.origin=resizeOffset(gesture.current.origin,old,measured);
+    }
+   }else if(Math.abs(viewport.height-previous.height)<.1&&viewport.top===previous.top&&viewport.left===previous.left){
+    return;
    }
    if(mediaPose.current.scale>1.0001||pinchSession.current){
     const view=viewSize(),natural=naturalSize();
     const pose=clampPan(lifecycleActions.current.freeze(),view,natural);
-    // Keep the legacy maxY assertion meaningful, now based on the actual
-    // object-fit:contain content height, not a viewport-only approximation.
-    const fit=contentFit(view,natural);
-    const maxY=Math.max(0,(fit.height*pose.scale-view.height)/2);
-    paintMedia({...pose,y:Math.max(-maxY,Math.min(maxY,pose.y))});
+    paintMedia(pose);
     if(pinch.current){
      const [a,b]=pinch.current.ids.map(id=>pointer.current.get(id));
      if(a&&b)pinch.current=beginPinch(pinch.current.ids,
@@ -705,9 +705,9 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
     return;
    }
    const serial=gestureArbiter.current?.begin("pointer",e.pointerId,"hero")??null;
-   gesture.current={id:e.pointerId,x:e.clientX,y:e.clientY,
+   gesture.current={id:e.pointerId,
     startX:e.clientX,startY:e.clientY,time:performance.now(),axis:"",
-    origin:frozen,serial,startPhotoId:latest.current.photoId,pinch:false,captured:false,
+    origin:frozen,serial,
     samples:[{x:e.clientX,t:performance.now()}],
     interruptedTarget:snap?.phase==="settling"?snap.target:null};
   }else if(pointer.current.size===2){
@@ -746,7 +746,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    clearTap();
    g.axis=Math.abs(dx)>Math.abs(dy)*1.18?"x":"y";
    if(g.serial!==null)gestureArbiter.current?.claim("hero",g.serial);
-   try{e.currentTarget.setPointerCapture(e.pointerId);g.captured=true;}catch{/* WebView fallback */}
+   try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* WebView fallback */}
    phase.current=g.axis==="x"?"draggingX":"draggingY";
    if(g.axis==="y"){
     if(Math.abs(trackX.current)>.1)settle(0);

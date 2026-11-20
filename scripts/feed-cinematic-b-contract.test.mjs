@@ -78,8 +78,8 @@ test("tap likes and 72 percent right drag superlikes through one control",()=>{
  assert.match(card,/impactHaptic\("heavy"\)/);
  assert.match(haptic,/impactOccurred/);
  assert.match(css,/--like-scale:calc\(1 \+ var\(--like-slide-p\) \* \.052\)/);
- assert.match(css,/@keyframes moonstone-button-star-burst/);
- assert.match(card,/moonstone-super-particles/);
+ assert.doesNotMatch(css,/@keyframes moonstone-button-star-burst/);
+ assert.doesNotMatch(card,/moonstone-super-particles/);
  assert.match(card,/onPreview=\{paintSuperPreview\}/);
  assert.match(card,/moonstone-super-preview/);
  assert.match(css,/@keyframes moonstone-super-tremble/);

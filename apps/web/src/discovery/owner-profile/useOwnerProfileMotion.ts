@@ -143,15 +143,22 @@ export function useOwnerProfileMotion(options:Options){
   };
 
   let paintedCircle=false,photoChanging=false;
+  let paintedRadius:number|undefined,paintedHalo:number|undefined,paintedOrigin:number|undefined;
   let visiblePhoto:OwnerPhotoPose=ownerMorphFrame(geometry,0),targetPhoto=visiblePhoto;
   const paintPhoto=(frame:OwnerPhotoPose)=>{
    visiblePhoto=frame;
    const photo=frame.mask;
    const radiusRatio=frame.radius/photo.width;
    mask.style.transform=`${translate(photo.x,photo.y)} scale(${photo.width/geometry.width})`;
-   mask.style.borderRadius=`${radiusRatio*100}%`;
-   shade.style.opacity=String(1-radiusRatio*2);
-   halo.style.opacity=String(frame.haloOpacity);
+   if(paintedRadius!==radiusRatio){
+    paintedRadius=radiusRatio;
+    mask.style.borderRadius=`${radiusRatio*100}%`;
+    shade.style.opacity=String(1-radiusRatio*2);
+   }
+   if(paintedHalo!==frame.haloOpacity){
+    paintedHalo=frame.haloOpacity;
+    halo.style.opacity=String(frame.haloOpacity);
+   }
    if(frame.haloOpacity>0){
     const scale=(photo.width+34)/(geometry.roundDiameter+34);
     halo.style.transform=`translate3d(-50%,${photo.y-17}px,0) scale(${scale})`;
@@ -186,7 +193,10 @@ export function useOwnerProfileMotion(options:Options){
    const x=24+(geometry.width/2-24)*center;
    const align=`translateX(${x}px) translateX(${-50*center}%)`;
    name.style.transform=`${align} scale(${1-.25*center})`;
-   name.style.transformOrigin=`${50*center}% 0`;
+   if(paintedOrigin!==center){
+    paintedOrigin=center;
+    name.style.transformOrigin=`${50*center}% 0`;
+   }
    location.style.transform=`translateY(${-12*center}px) ${align}`;
    pager.style.transform=translate(0,frame.sheetTop-24);
    const hideControls=circular;
