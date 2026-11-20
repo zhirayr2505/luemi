@@ -41,7 +41,7 @@ async function checkPhotoViewer(profile,origin){
   await page.mouse.dblclick(160,415);
   const zoomIs=zoom=>page.waitForFunction(zoom=>{
    const img=document.querySelector(".pm-viewer-image");
-   return img&&Math.abs(new DOMMatrixReadOnly(getComputedStyle(img).transform).a-zoom)<.015;
+   return img&&Math.abs(new DOMMatrixReadOnly(getComputedStyle(img).transform).a-zoom)<.0001;
   },zoom,{timeout:1600});
   await zoomIs(2.4);
   await page.mouse.dblclick(160,415);

@@ -548,7 +548,7 @@ export function PhotoViewer({view,photos,initialPhotoId,source,contextId,onClose
    }
   });
   observer.observe(outer);return ()=>observer.disconnect();
- },[]);
+ },[paintMedia]);
  useEffect(()=>{
   // Window focus loss is not necessarily accompanied by visibilitychange.
   // End only this viewer's pointer session, using the same lifecycle contract.
