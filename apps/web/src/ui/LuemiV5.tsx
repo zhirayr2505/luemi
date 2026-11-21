@@ -1,4 +1,4 @@
-import type {ButtonHTMLAttributes,HTMLAttributes,ReactNode} from "react";
+import type {ButtonHTMLAttributes,ComponentType,HTMLAttributes,ReactNode} from "react";
 import type {LucideIcon} from "lucide-react";
 
 export function LuemiGlassPanel({className="",...props}:HTMLAttributes<HTMLDivElement>){
@@ -48,13 +48,21 @@ export function LuemiSegmentedTabs<T extends string>({items,value,onChange,label
  </div>;
 }
 
-export function LuemiBottomNavigation<T extends string>({items,value,onChange,className=""}:{
- items:ReadonlyArray<{id:T;label:string;icon:LucideIcon}>;value:T;onChange:(id:T)=>void;className?:string;
+export function LuemiBottomNavigation<T extends string>({items,value,onChange,counts}:{
+ items:ReadonlyArray<{id:T;label:string;icon:ComponentType;countLabel?:string}>;value:T;
+ onChange:(id:T)=>void;counts?:Partial<Record<T,number>>;
 }){
- return <nav className={`discovery-bottom-nav luemi-v5-bottom-nav ${className}`.trim()} aria-label="Главная навигация LUEMI">
-  {items.map(item=>{const Icon=item.icon;return <button type="button" key={item.id}
-   className={`discovery-nav-item${value===item.id?" active":""}`}
-   aria-current={value===item.id?"page":undefined} onClick={()=>onChange(item.id)}>
-   <Icon size={22} strokeWidth={1.75}/><span>{item.label}</span></button>;})}
+ return <nav className={`discovery-bottom-nav luemi-v5-bottom-nav`} aria-label="Главная навигация LUEMI">
+  {items.map(({id,label,icon:Icon,countLabel})=>{
+   const count=counts?.[id]??0;
+   return <button type="button" key={id}
+   className={`discovery-nav-item${value===id?" active":""}`}
+   aria-label={label} aria-current={value===id?"page":undefined} aria-description={count>0&&countLabel?`${countLabel}: ${count}`:undefined}
+   onClick={()=>onChange(id)}>
+   <span className="luemi-nav-glyph" aria-hidden="true"><Icon/>
+    {count>0&&<b className="luemi-nav-badge">{count>99?"99+":count}</b>}
+   </span>
+   <span className="luemi-nav-label">{label}</span>
+  </button>;})}
  </nav>;
 }

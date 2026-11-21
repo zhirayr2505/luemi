@@ -107,56 +107,86 @@
  border:0;
  box-shadow:none;
 }
-/* Old lazy Moonstone CSS used to hide nav captions and repaint active purple.
- * These exact high-specificity rules belong to the real route and load last. */
+/* Keep the dock and the feed action rail on the same safe-area geometry. */
+.real-discovery-home.discovery-app{
+ --moon-nav-height:clamp(52px,15.82vw,62px);
+ --moon-nav-bottom:calc(var(--bottom-safe,0px) + 8px);
+}
 .real-discovery-home>.discovery-bottom-nav{
- width:min(calc(100% - 32px),412px);
- height:65px;
- min-height:65px;
- padding:5px 7px;
- border:1px solid rgba(250,252,255,.17);
- border-radius:24px;
- background:rgba(29,38,51,.95);
- box-shadow:0 8px 22px rgba(4,10,18,.23);
+ width:min(calc(100% - max(7px,env(safe-area-inset-left,0px)) - max(7px,env(safe-area-inset-right,0px))),520px);
+ left:max(7px,env(safe-area-inset-left,0px));
+ right:max(7px,env(safe-area-inset-right,0px));
+ margin-inline:auto;
+ transform:none;
+ padding:2px 4px;
+ gap:0;
+ border:1px solid #f3d7e313;
+ border-radius:23px;
+ background:linear-gradient(155deg,#1b181f 0%,#16151c 62%,#19171d 100%);
+ box-shadow:inset 0 1px #ffffff04,0 5px 18px #09080c22;
  -webkit-backdrop-filter:none;
  backdrop-filter:none;
 }
 .real-discovery-home>.discovery-bottom-nav::before{content:none}
 .real-discovery-home>.discovery-bottom-nav .discovery-nav-item{
- display:flex;
- flex-direction:column;
- align-items:center;
- justify-content:center;
- gap:3px;
- min-height:53px;
- border:0;
- border-radius:19px;
- background:transparent;
- box-shadow:none;
- color:#DDE6F0;
-}
-.real-discovery-home>.discovery-bottom-nav .discovery-nav-item span{
- display:block;
- font-size:10px;
- font-weight:560;
- line-height:1.12;
- color:inherit;
- white-space:nowrap;
-}
-.real-discovery-home>.discovery-bottom-nav .discovery-nav-item svg{
- width:22px;
- height:22px;
- color:inherit;
+ display:grid;
+ min-height:44px;
+ border-radius:17px;
+ color:#9e97a6;
+ transition:color .16s ease,transform .16s ease;
 }
 .real-discovery-home>.discovery-bottom-nav .discovery-nav-item.active{
- color:#FFFFFF;
- background:#B84261;
+ color:#f2839a;
+ background:transparent;
  box-shadow:none;
+}
+.real-discovery-home>.discovery-bottom-nav .discovery-nav-item:active{transform:scale(.94)}
+.real-discovery-home>.discovery-bottom-nav .discovery-nav-item .luemi-nav-glyph{
+ position:relative;
+ display:grid;
+ place-items:center;
+ width:clamp(28px,8.2vw,33px);
+ height:clamp(28px,8.2vw,33px);
+}
+.real-discovery-home>.discovery-bottom-nav .luemi-nav-glyph svg{display:block;width:100%;height:100%}
+.real-discovery-home>.discovery-bottom-nav .discovery-nav-item .luemi-nav-label{
+ display:block;
+ position:absolute;
+ width:1px;
+ height:1px;
+ padding:0;
+ margin:-1px;
+ overflow:hidden;
+ clip-path:inset(50%);
+ white-space:nowrap;
+}
+.luemi-nav-badge{
+ position:absolute;
+ top:0;
+ left:calc(100% - 5px);
+ transform:translateY(-29%);
+ display:grid;
+ place-items:center;
+ min-width:17px;
+ height:17px;
+ padding:0 4px;
+ border:1px solid #1b181f;
+ border-radius:999px;
+ background:#f2839a;
+ color:#28121e;
+ font-size:10px;
+ font-weight:750;
+ font-variant-numeric:tabular-nums;
+ line-height:1;
+ pointer-events:none;
+}
+@media(prefers-reduced-motion:reduce){
+ .real-discovery-home>.discovery-bottom-nav .discovery-nav-item{transition:none}
+ .real-discovery-home>.discovery-bottom-nav .discovery-nav-item:active{transform:none}
 }
 /* Keep compact safe-area fits on Galaxy A55 portrait and small devices. */
 @media(max-height:710px){
- .real-discovery-home>.discovery-bottom-nav{height:56px;min-height:56px}
- .real-discovery-home>.discovery-bottom-nav .discovery-nav-item{min-height:45px}
+ .real-discovery-home.discovery-app{--moon-nav-height:52px}
  .real-discovery-home[data-feed-visible="true"] .real-discovery-empty{gap:9px}
  .real-discovery-home[data-feed-visible="true"] .real-discovery-deck .discovery-deck-layer>.real-discovery-empty{
   top:calc(var(--top-safe,0px) + 96px);
@@ -164,11 +194,10 @@
  }
 }
 @media(max-width:360px){
- .real-discovery-home>.discovery-bottom-nav .discovery-nav-item span{font-size:9px}
  .real-discovery-home[data-feed-visible="true"] .discovery-top-tabs>button{font-size:12px}
 }
 @media(prefers-reduced-transparency:reduce){
- .real-discovery-home>.discovery-bottom-nav,
+ .real-discovery-home>.discovery-bottom-nav{background:#19171d}
  .real-discovery-home[data-feed-visible="true"] .discovery-top-tabs{background:#232E3D}
 }
 

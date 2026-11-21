@@ -14,8 +14,9 @@ test("Vivid Matte palette is authoritative and loaded last",()=>{
   assert.ok(tokens.includes(token),token);
  assert.match(entry,/import "\.\/ui\/luemi-v5\.css";[\s\S]*?import "\.\/ui\/vivid-routes\.css";[\s\S]*?import "\.\/ui\/vivid-discovery\.css";/);
 });
-test("the accepted four destinations stay functional and visibly labeled",()=>{
- for(const dest of ['["discover","Знакомства",Images]','["likes","Симпатии",Heart]','["chats","Чаты",MessagesSquare]','["profile","Профиль",UserRound]'])
+test("the four destinations map to their accessible labels and SVG glyphs",()=>{
+ for(const dest of ['{id:"discover",label:"Знакомства",icon:NavigationDiscover','{id:"likes",label:"Симпатии",icon:NavigationLikes',
+  '{id:"chats",label:"Чаты",icon:NavigationChats','{id:"profile",label:"Профиль",icon:NavigationProfile'])
   assert.ok(home.includes(dest),dest);
  assert.match(chats,/disabled:true,hint:"Чаты из бликов/);
  assert.doesNotMatch(home,/\["bliki"/);
