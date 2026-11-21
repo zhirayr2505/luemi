@@ -7,12 +7,15 @@ import {profileReactionAsset} from "./owner-profile/ProfileReactions";
 import {fanSelection,fanTargets,likesDrag,LIKES_HOLD_MS,type LikesAction,type Point} from "./likes-gallery-gesture";
 
 type Fan={origin:Point;targets:ReturnType<typeof fanTargets>;manual:boolean};
+type FanCaption={current:LikesAction|null;previous:LikesAction|null};
 type Press={id:number;origin:Point;width:number;mode:"hold"|"photos"|"fan";timer:number;x:number;offset:number};
 type Props={
  name:string;age?:number;city?:string;photoOwner?:string;photos:string[];indicator:Parameters<typeof profileReactionAsset>[0];
  pending:boolean;react?:(kind:LikesAction)=>void;onOpen:()=>void;onChat?:()=>void;error?:string;
 };
-const labels={skip:"Пропустить",super:"Суперлайк",ordinary:"Лайк"};
+const labels={skip:"Пропустить",super:"Отправить суперлайк",ordinary:"Отправить симпатию"};
+const shortLabels={skip:"Пропустить",super:"Суперлайк",ordinary:"Лайк"};
+const emptyCaption:FanCaption={current:null,previous:null};
 const icons={skip:X,super:Star,ordinary:Heart};
 
 export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pending,react,onOpen,onChat,error}:Props){
@@ -20,6 +23,7 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
  const [dots,setDots]=useState(false);
  const [summary,setSummary]=useState<{age:number;city:string}|null>(null);
  const [fan,setFan]=useState<Fan|null>(null);
+ const [caption,setCaption]=useState(emptyCaption);
  const media=useRef<HTMLButtonElement>(null),track=useRef<HTMLSpanElement>(null),popup=useRef<HTMLDivElement>(null);
  const trigger=useRef<HTMLButtonElement>(null);
  const press=useRef<Press|null>(null),menu=useRef<Fan|null>(null),chosen=useRef<LikesAction|null>(null);
@@ -43,7 +47,7 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
  };
  const closeMenu=()=>{
   const manual=menu.current?.manual;
-  menu.current=null;chosen.current=null;setFan(null);
+  menu.current=null;chosen.current=null;setFan(null);setCaption(emptyCaption);
   if(manual)trigger.current?.focus({preventScroll:true});
  };
  const openMenu=(origin:Point,manual:boolean)=>{
@@ -142,7 +146,7 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
    const target=fanSelection(point,active.origin,active.targets);
    if(target!==chosen.current){
     chosen.current=target;
-    if(popup.current)popup.current.dataset.selected=target??"";
+    setCaption(last=>({current:target,previous:last.current??last.previous}));
     if(target)selectionHaptic();
    }
    return;
@@ -182,6 +186,11 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
  const open=()=>{if(performance.now()>=blockClick.current&&!menu.current)onOpen();};
  const visibleAge=age??summary?.age,visibleCity=city??summary?.city;
  const nav=(direction:number)=>{if(photos.length>1)go(direction);};
+ const captionTarget=fan?.targets.find(({kind})=>kind===(caption.current??caption.previous));
+ const captionX=captionTarget?.x??fan?.origin.x;
+ const fanTop=fan?Math.min(fan.origin.y,...fan.targets.map(({y})=>y)):0;
+ const fanBottom=fan?Math.max(fan.origin.y,...fan.targets.map(({y})=>y)):0;
+ const captionTop=fanTop>=142?fanTop-74:fanBottom+42;
 
  return <article className="likes-photo-card" data-pending={pending||undefined}>
   <div className="likes-photo-wrap">
@@ -225,7 +234,7 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
   </div>
   {onChat&&<button type="button" className="likes-card-chat" aria-label={"Написать "+name} onClick={onChat}><MessageCircle size={15} aria-hidden="true"/>Написать</button>}
   {error&&<small className="likes-card-error" role="alert">{error}</small>}
-  {fan&&createPortal(<div ref={popup} className="likes-fan" data-manual={fan.manual||undefined}
+  {fan&&createPortal(<div ref={popup} className="likes-fan" data-manual={fan.manual||undefined} data-selected={caption.current??undefined}
    role={fan.manual?"dialog":undefined} aria-label={fan.manual?"Действия с симпатией":undefined} aria-hidden={fan.manual?undefined:true}
    onClick={event=>{if(event.target===event.currentTarget&&fan.manual)closeMenu();}}>
    <span className="likes-fan-origin" style={{left:fan.origin.x,top:fan.origin.y}}/>
@@ -235,9 +244,18 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
      aria-label={labels[target.kind]} tabIndex={fan.manual?0:-1}
      style={{left:target.x,top:target.y,"--fan-x":(fan.origin.x-target.x)+"px",
       "--fan-y":(fan.origin.y-target.y)+"px"} as CSSProperties} onClick={()=>choose(target.kind)}>
-     <Icon size={23} aria-hidden="true"/><span>{labels[target.kind]}</span>
+     <Icon size={23} aria-hidden="true"/>{fan.manual&&<span aria-hidden="true">{shortLabels[target.kind]}</span>}
     </button>;
    })}
+   {!fan.manual&&<div className="likes-fan-caption" aria-hidden="true" data-visible={!!caption.current||undefined}
+    style={{"--caption-x":captionX+"px","--caption-y":captionTop+"px"} as CSSProperties}>
+    <div className="likes-fan-caption-window">
+     {fan.targets.map(({kind})=><span key={kind} className="likes-fan-caption-line"
+      data-phase={caption.current===kind?"current":caption.previous===kind?"previous":undefined}>
+      {labels[kind]}
+     </span>)}
+    </div>
+   </div>}
   </div>,document.body)}
  </article>;
 }

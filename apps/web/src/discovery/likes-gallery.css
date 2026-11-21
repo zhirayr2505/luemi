@@ -113,9 +113,32 @@
 .likes-fan[data-selected="super"] [data-kind="super"],
 .likes-fan[data-selected="ordinary"] [data-kind="ordinary"],
 .likes-fan[data-manual] .likes-fan-option:focus-visible {transform:translate(-50%,-50%) scale(1.13);background:#e96a86;color:#271322}
+.likes-fan-caption {
+ position:absolute;left:clamp(var(--caption-inset),var(--caption-x),calc(100% - var(--caption-inset)));
+ --caption-width:204px;--caption-inset:min(calc(var(--caption-width) / 2 + 12px),50%);
+ top:clamp(12px,var(--caption-y),calc(100% - 48px));
+ width:min(var(--caption-width),calc(100% - 24px));height:36px;box-sizing:border-box;
+ display:grid;place-items:center;padding:0 8px;border-radius:18px;
+ border:1px solid #e96a8673;background:#2b1928;color:#fff5f6;box-shadow:0 4px 14px #140a1666;
+ pointer-events:none;opacity:0;transform:translate(-50%,4px);
+ transition:opacity .14s ease,transform .2s cubic-bezier(.2,.75,.23,1),left .18s cubic-bezier(.2,.75,.23,1);
+}
+.likes-fan-caption[data-visible] {opacity:1;transform:translate(-50%,0)}
+.likes-fan-caption-window {display:grid;width:100%;height:24px;overflow:hidden;perspective:100px}
+.likes-fan-caption-line {
+ grid-area:1 / 1;align-self:center;text-align:center;
+ font:650 14px / 20px system-ui,sans-serif;white-space:nowrap;
+ opacity:0;transform:translateY(110%) rotateX(-24deg);
+}
+.likes-fan-caption-line[data-phase="current"],
+.likes-fan-caption-line[data-phase="previous"] {
+ transition:transform .21s cubic-bezier(.2,.75,.23,1),opacity .16s ease-out;
+}
+.likes-fan-caption-line[data-phase="current"] {opacity:1;transform:translateY(0) rotateX(0)}
+.likes-fan-caption-line[data-phase="previous"] {transform:translateY(-110%) rotateX(24deg)}
 @keyframes likes-fan-open {from{opacity:0;transform:translate(calc(-50% + var(--fan-x)),calc(-50% + var(--fan-y))) scale(.5)} to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 @keyframes likes-indicator-in {from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce) {
- .likes-photo-track,.likes-photo-dots,.likes-fan-option {transition:none}
+ .likes-photo-track,.likes-photo-dots,.likes-fan-option,.likes-fan-caption,.likes-fan-caption-line[data-phase] {transition:none}
  .likes-card-indicator,.likes-fan,.likes-fan-option {animation:none}
 }
