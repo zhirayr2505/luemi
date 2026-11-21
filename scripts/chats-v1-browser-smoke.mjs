@@ -53,6 +53,16 @@ try{
  assert(await thread.getByText("Новое демо-сообщение ✨").isVisible());
  await page.getByLabel("Назад",{exact:true}).tap();
  await page.getByRole("heading",{name:"Чаты"}).waitFor();
+ for(const resized of [{width:320,height:568},{width:390,height:402}]){
+  await page.setViewportSize(resized);
+  await page.getByRole("heading",{name:"Чаты"}).waitFor();
+  await page.locator(".lc-chat-row").first().tap();
+  await page.waitForFunction(({width,height})=>{
+   const composer=document.querySelector(".lc-input-row")?.getBoundingClientRect();
+   return !!composer&&composer.width<=width&&composer.bottom<=height+1;
+  },resized,{timeout:5000});
+  await page.getByLabel("Назад",{exact:true}).tap();
+ }
  assert.deepEqual(errors,[]);
  await page.close();
 

@@ -259,7 +259,10 @@ try{
  await gesture(rightName,"ordinary");
  await departure(rightName,"right");
  assert.deepEqual(serverRequests,[],"all demo mutations remain local");
+ // Check the narrow layout as a fresh mobile session, independent of touch viewport offsets.
  await page.setViewportSize({width:320,height:568});
+ await open();
+ await nav.waitFor();
  await checkDock();
  assert.deepEqual(errors,[]);
  console.log("LIKES_GALLERY_BROWSER_PASS authorized demo, album dots, illustrated fan captions, inline undo, exits in both directions, shrink, reflow and mutual handoff");

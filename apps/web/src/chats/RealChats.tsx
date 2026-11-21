@@ -85,7 +85,8 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
   }
   setMessages(old=>{
    const earliest=incoming[0]?.createdAt;
-   const preserved=old.filter(message=>message.localState||(earliest&&message.createdAt<earliest));
+   const preserved=earliest?old.filter(message=>message.localState||message.createdAt<earliest):
+    old.filter(message=>!!message.localState);
    return reconcileMessages(preserved,incoming);
   });
  },[]);
