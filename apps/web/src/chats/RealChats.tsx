@@ -1,12 +1,13 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,Check,CheckCheck,Copy,Heart,ImagePlus,MoreVertical,Pencil,RefreshCw,Search,Send,Trash2,X,MessagesSquare} from "lucide-react";
+import {ArrowLeft,Check,CheckCheck,Copy,Heart,ImagePlus,MoveDown,MoreVertical,Pencil,RefreshCw,Search,Send,Trash2,X,MessagesSquare} from "lucide-react";
 import {createChatTransport,sumUnreadMessages,ChatTransportError,type ChatTransport,type ChatWireConversation} from "./chat-transport.js";
-import {errorText,isNearBottom,prependPage,reconcileMessages,type LocalMessage,validateChatImage} from "./chat-domain.js";
+import {errorText,isNearBottom,messageKey,prependPage,reconcileMessages,type LocalMessage,validateChatImage} from "./chat-domain.js";
 import {ChatPhotoViewer} from "./ChatPhotoViewer.js";
 import {geoCsrf} from "../auth/session-adapter.js";
 import {getNewMatches,openNewMatch,type NewMatch} from "../registration/real-live-client.js";
 import {LuemiAvatar,LuemiEmptyState,LuemiGlassPanel,LuemiIconButton,LuemiSegmentedTabs} from "../ui/LuemiV5.js";
 import "./chats.css";
+import "./surreal-chats.css";
 
 type Action={message:LocalMessage;kind:"menu"|"edit"|"delete"}|null;
 type Attachment={file:File;url:string;progress:number;error:string|null};
@@ -39,7 +40,11 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
  const [searchOpen,setSearchOpen]=useState(false);const [query,setQuery]=useState("");const [category,setCategory]=useState<ChatCategory>("all");
  const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);const hold=useRef<number|null>(null);const pointer=useRef<{x:number;y:number;id:string}|null>(null);
  const threadOpen=active!==null;
- const listPositions=useRef(new Map<string,number>());const autoScroll=useRef(false);
+ const [historyLoaded,setHistoryLoaded]=useState(false);
+ const autoScroll=useRef(false);
+ const renderedMessages=useRef<LocalMessage[]>([]);
+ const messageArrivals=useRef(new Set<string>());
+ const sendField=useRef<HTMLTextAreaElement>(null);
  const releaseAttachment=useCallback(()=>setAttachment(old=>{if(old){URL.revokeObjectURL(old.url);objectUrls.current.delete(old.url);}return null;}),[]);
  const showError=(e:unknown,fallback="Не удалось выполнить действие.")=>setError(e instanceof ChatTransportError?errorText(e.status,e.code):fallback);
  const updateConversations=useCallback((items:ChatWireConversation[])=>{
@@ -69,11 +74,57 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
   onThreadChange?.(true);
   return()=>onThreadChange?.(false);
  },[threadOpen,onThreadChange]);
- const applyIncoming=useCallback((incoming:LocalMessage[])=>{const el=history.current;autoScroll.current=!!el&&isNearBottom(el);if(el)listPositions.current=new Map([...el.querySelectorAll<HTMLElement>("[data-message-id]")].map(node=>[node.dataset.messageId??"",node.getBoundingClientRect().top]));setMessages(old=>{if(el&&!autoScroll.current&&incoming.some(message=>!old.some(current=>current.id===message.id)))setNewBelow(n=>n+1);const earliest=incoming.length?incoming.reduce((min,m)=>m.createdAt<min?m.createdAt:min,incoming[0].createdAt):null;
- const preserved=earliest?old.filter(m=>m.localState||m.createdAt<earliest):old.filter(m=>!!m.localState);
- return reconcileMessages(preserved,incoming);});},[]);
- useLayoutEffect(()=>{const el=history.current;if(!el)return;if(autoScroll.current){el.scrollTop=el.scrollHeight;setNewBelow(0);}else if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){for(const node of el.querySelectorAll<HTMLElement>("[data-message-id]")){const before=listPositions.current.get(node.dataset.messageId??"");if(before===undefined)continue;const delta=before-node.getBoundingClientRect().top;if(Math.abs(delta)>1&&Math.abs(delta)<700)node.animate([{transform:`translateY(${delta}px)`},{transform:"translateY(0)"}],{duration:240,easing:"cubic-bezier(.2,.72,.2,1)"});}}listPositions.current.clear();},[messages]);
- useEffect(()=>{if(!api||!active||!actorId)return;const generation=++requestGeneration.current;activeId.current=active.id;pollAbort.current?.abort();const controller=new AbortController();pollAbort.current=controller;observedVisibility.current=null;setMessages([]);setCursor(null);setError("");nearBottom.current=true;let busy=false;
+ const applyIncoming=useCallback((incoming:LocalMessage[],animate:boolean)=>{
+  const el=history.current;
+  autoScroll.current=!!el&&(!animate||isNearBottom(el));
+  if(animate){
+   const known=new Set(renderedMessages.current.map(messageKey));
+   const arrivals=incoming.map(messageKey).filter(key=>!known.has(key));
+   arrivals.forEach(key=>messageArrivals.current.add(key));
+   if(el&&!autoScroll.current&&arrivals.length)setNewBelow(count=>count+arrivals.length);
+  }
+  setMessages(old=>{
+   const earliest=incoming[0]?.createdAt;
+   const preserved=earliest?old.filter(message=>message.localState||message.createdAt<earliest):
+    old.filter(message=>!!message.localState);
+   return reconcileMessages(preserved,incoming);
+  });
+ },[]);
+ useLayoutEffect(()=>{
+  renderedMessages.current=messages;
+  const el=history.current;
+  if(!el)return;
+  if(autoScroll.current){
+   autoScroll.current=false;
+   el.scrollTop=el.scrollHeight;
+   nearBottom.current=true;
+   setNewBelow(0);
+  }
+  const arrivals=messageArrivals.current;
+  if(arrivals.size&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+   for(const row of el.querySelectorAll<HTMLElement>("[data-chat-message-key]")){
+    if(!arrivals.has(row.dataset.chatMessageKey??""))continue;
+    const bubble=row.querySelector<HTMLElement>(".lc-bubble");
+    if(typeof bubble?.animate!=="function")continue;
+    const direction=row.classList.contains("lc-own")?1:-1;
+    bubble.animate([
+     {opacity:0,transform:`translate3d(${direction*11}px, 14px, 0) scale(.965)`},
+     {opacity:1,transform:"none"}
+    ],{duration:310,easing:"cubic-bezier(.16,1,.3,1)"});
+   }
+  }
+  arrivals.clear();
+ },[messages]);
+ useLayoutEffect(()=>{
+  const el=history.current;
+  if(!threadOpen||!el||typeof ResizeObserver==="undefined")return;
+  const observer=new ResizeObserver(()=>{
+   if(nearBottom.current)el.scrollTop=el.scrollHeight;
+  });
+  observer.observe(el);
+  return()=>observer.disconnect();
+ },[threadOpen]);
+ useEffect(()=>{if(!api||!active||!actorId)return;const generation=++requestGeneration.current;activeId.current=active.id;pollAbort.current?.abort();const controller=new AbortController();pollAbort.current=controller;observedVisibility.current=null;messageArrivals.current.clear();setHistoryLoaded(false);setMessages([]);setCursor(null);setError("");nearBottom.current=true;let busy=false;
   const load=async()=>{if(busy||controller.signal.aborted||document.visibilityState!=="visible")return;busy=true;try{const page=await api.messages(active.id,undefined,controller.signal);if(generation!==requestGeneration.current||controller.signal.aborted)return;const previous=observedVisibility.current;
     if(previous?.id===active.id&&previous.revision!==(page.visibilityRevision??null)){
       // Invalidate every already-loaded page when either peer hides old content.
@@ -82,9 +133,10 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
       setMessages(old=>reconcileMessages(old.filter(m=>!!m.localState),page.messages));
       setCursor(page.nextCursor);
     }else{
-      applyIncoming(page.messages);setCursor(old=>old??page.nextCursor);
+      applyIncoming(page.messages,previous!==null);setCursor(old=>old??page.nextCursor);
     }
     observedVisibility.current={id:active.id,revision:page.visibilityRevision??null};
+    setHistoryLoaded(true);
     const newest=[...page.messages].reverse().find(m=>m.senderId!==actorId&&!m.deletedAt);if(newest)void api.markRead(active.id,newest.id,controller.signal).catch(()=>{});setError("");}catch(e){if(!controller.signal.aborted)showError(e,"Связь прервана.");}finally{busy=false;}};
   void load();const timer=window.setInterval(()=>void load(),3500);return()=>{controller.abort();window.clearInterval(timer);};},[active,api,actorId,applyIncoming]);
  const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setChatMenu(false);setClearDialog(false);setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
@@ -92,15 +144,16 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
   const opened={...match,seen:true,conversationId};setActiveNewMatch(opened);
   setNewMatches(old=>old.map(item=>item.id===match.id?opened:item));open(conversationFromMatch(opened));
  }catch(e){showError(e,"Не удалось открыть новое знакомство.");}};
- const close=useCallback(()=>{pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);setMessages([]);setAction(null);setChatMenu(false);setClearDialog(false);releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[refreshList,refreshMatches,releaseAttachment]);
+ const close=useCallback(()=>{pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);setMessages([]);setNewBelow(0);setAction(null);setChatMenu(false);setClearDialog(false);releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[refreshList,refreshMatches,releaseAttachment]);
  useEffect(()=>{if(!active||profileOpen){registerThreadBack?.(null);return;}registerThreadBack?.(close);
   const button=window.Telegram?.WebApp?.BackButton;button?.show();button?.onClick(close);
   return()=>{registerThreadBack?.(null);button?.offClick(close);button?.hide();};
  },[active,close,registerThreadBack,profileOpen]);
  const loadOlder=async()=>{if(!api||!active||!cursor||loadingOlder)return;const el=history.current;const oldHeight=el?.scrollHeight??0;setLoadingOlder(true);try{const page=await api.messages(active.id,cursor);if(activeId.current!==active.id)return;setMessages(old=>prependPage(old,page.messages));setCursor(page.nextCursor);requestAnimationFrame(()=>{if(el)el.scrollTop+=el.scrollHeight-oldHeight;});}catch(e){showError(e);}finally{setLoadingOlder(false);}};
  const chooseFile=(file:File|undefined)=>{if(!file)return;const problem=validateChatImage(file);if(problem){setError(problem);return;}releaseAttachment();const url=URL.createObjectURL(file);objectUrls.current.add(url);setAttachment({file,url,progress:0,error:null});setError("");};
- const send=async(existing?:LocalMessage)=>{if(!api||!active)return;const body=existing?.body??draft.trim();const clientId=existing?.clientId??crypto.randomUUID();const mediaFile=existing?pendingFiles.current.get(clientId):attachment?.file;if(!body&&!mediaFile)return;const localId=existing?.id??"local:"+clientId;const createdAt=existing?.createdAt??new Date().toISOString();const preview=existing?.localPreviewUrl??attachment?.url;if(mediaFile)pendingFiles.current.set(clientId,mediaFile);const optimistic:LocalMessage={id:localId,conversationId:active.id,senderId:actorId,clientId,body,createdAt,editedAt:null,deletedAt:null,deliveredAt:null,readAt:null,media:[],localState:"sending",localPreviewUrl:preview};
-  autoScroll.current=true;setMessages(old=>reconcileMessages(old.filter(m=>m.id!==localId),[optimistic]));if(!existing){setDraft("");setAttachment(null);}try{let mediaIds:string[]=[];if(mediaFile){const uploaded=await api.createMedia(active.id,mediaFile,clientId);mediaIds=[uploaded.media.id];}const result=await api.send(active.id,body,clientId,mediaIds);if(activeId.current!==active.id)return;pendingFiles.current.delete(clientId);setMessages(old=>reconcileMessages(old,[result.message]));if(preview&&objectUrls.current.has(preview)){URL.revokeObjectURL(preview);objectUrls.current.delete(preview);}setNewMatches(old=>old.filter(match=>match.id!==active.matchId));setActiveNewMatch(null);void Promise.all([refreshList(),refreshMatches()]);}catch(e){if(activeId.current===active.id)setMessages(old=>old.map(m=>m.id===localId?{...m,localState:"failed"}:m));showError(e,"Сообщение не отправлено.");}};
+ const send=async(existing?:LocalMessage)=>{if(!api||!active||!actorId)return;const body=existing?.body??draft.trim();const clientId=existing?.clientId??crypto.randomUUID();const mediaFile=existing?pendingFiles.current.get(clientId):attachment?.file;if(!body&&!mediaFile)return;const localId=existing?.id??"local:"+clientId;const createdAt=existing?.createdAt??new Date().toISOString();const preview=existing?.localPreviewUrl??attachment?.url;if(mediaFile)pendingFiles.current.set(clientId,mediaFile);const optimistic:LocalMessage={id:localId,conversationId:active.id,senderId:actorId,clientId,body,createdAt,editedAt:null,deletedAt:null,deliveredAt:null,readAt:null,media:[],localState:"sending",localPreviewUrl:preview};
+  if(!existing)messageArrivals.current.add(messageKey(optimistic));
+  autoScroll.current=true;setMessages(old=>reconcileMessages(old.filter(m=>m.id!==localId),[optimistic]));if(!existing){setDraft("");setAttachment(null);}try{let mediaIds:string[]=[];if(mediaFile){const uploaded=await api.createMedia(active.id,mediaFile,clientId);mediaIds=[uploaded.media.id];}const result=await api.send(active.id,body,clientId,mediaIds);if(activeId.current!==active.id)return;pendingFiles.current.delete(clientId);setMessages(old=>reconcileMessages(old,[result.message]));if(preview&&objectUrls.current.has(preview)){URL.revokeObjectURL(preview);objectUrls.current.delete(preview);}setNewMatches(old=>old.filter(match=>match.id!==active.matchId));setActiveNewMatch(null);void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});}catch(e){if(activeId.current!==active.id)return;setMessages(old=>old.map(m=>m.id===localId?{...m,localState:"failed"}:m));showError(e,"Сообщение не отправлено.");}};
  const edit=async()=>{if(!api||!active||!action||action.kind!=="edit")return;const body=editValue.trim();if(!body||body.length>4000)return;try{const result=await api.edit(active.id,action.message.id,body);setMessages(old=>reconcileMessages(old,[result.message]));setAction(null);}catch(e){showError(e);}};
  const remove=async()=>{if(!api||!active||!action||action.kind!=="delete")return;try{await api.remove(active.id,action.message.id,deleteScope);const id=action.message.id;setMessages(old=>old.filter(message=>message.id!==id));setAction(null);void refreshList().catch(()=>{});}catch(e){showError(e);}};
  const exportChat=async()=>{if(!api||!active||exportBusy)return;setChatMenu(false);setExportBusy(true);try{
@@ -129,7 +182,7 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
  const normalizedQuery=query.trim().toLocaleLowerCase("ru-RU");
  const filteredConversations=conversations.filter(chat=>(category==="all"||category==="matches")&&
   (!normalizedQuery||chat.peerName.toLocaleLowerCase("ru-RU").includes(normalizedQuery)||(chat.lastMessage??"").toLocaleLowerCase("ru-RU").includes(normalizedQuery)));
- if(!active)return <section className="luemi-chats lc-route lc-list-route" data-real-chats="true">
+ if(!active)return <section className="luemi-chats lc-route lc-list-route" data-real-chats="true" data-chat-theme="eclipse">
   <header className="lc-heading"><h2>Чаты</h2><div className="lc-heading-actions">
    <LuemiIconButton label={searchOpen?"Закрыть поиск":"Найти чат"} onClick={()=>{setSearchOpen(open=>!open);if(searchOpen)setQuery("");}}><Search size={19}/></LuemiIconButton>
    <LuemiIconButton label="Обновить чаты" onClick={()=>void refreshList().catch(showError)}><RefreshCw size={18}/></LuemiIconButton>
@@ -137,20 +190,70 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
   {searchOpen&&<label className="lc-search"><Search size={17}/><input autoFocus value={query} onChange={event=>setQuery(event.target.value)} placeholder="Поиск по чатам"/><button type="button" aria-label="Закрыть поиск" onClick={()=>{setSearchOpen(false);setQuery("");}}><X size={16}/></button></label>}
   {newMatches.length>0&&<section className="lc-new-matches" aria-label="Новые взаимные симпатии"><div className="lc-new-matches-head"><h3>Новые совпадения</h3><span>{newMatches.length}</span></div><div className="lc-match-rail">{newMatches.map(match=><button type="button" key={match.id} className={match.seen?"is-seen":""} onClick={()=>void openMatch(match)}><LuemiAvatar name={match.peerName} src={match.peerPhotoUrl}/><span>{match.peerName}</span></button>)}</div></section>}
   <LuemiGlassPanel className="lc-categories-panel"><LuemiSegmentedTabs items={chatCategories} value={category} onChange={setCategory} label="Категории чатов" className="lc-categories"/></LuemiGlassPanel>
-  {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:error&&conversations.length===0?<LuemiEmptyState icon={MessagesSquare} title="Чаты не загрузились" description={error}><button className="lc-retry-list" onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button></LuemiEmptyState>:filteredConversations.length===0?<LuemiEmptyState icon={normalizedQuery?Search:MessagesSquare} title={normalizedQuery?"Ничего не найдено":"Пока тихо"} description={normalizedQuery?"Попробуй изменить запрос.":"Переписка появится после взаимной симпатии."}/>:<div className="lc-conversations">{filteredConversations.map(chat=><button className="lc-chat-row" key={chat.id} onClick={()=>open(chat)}><LuemiAvatar name={chat.peerName} src={chat.peerPhotoUrl}/><span className="lc-chat-summary"><strong>{chat.peerName}</strong><span>{chat.lastMessage??"Начните разговор"}</span></span><span className="lc-meta"><time>{time(chat.lastActivityAt)}</time>{chat.unreadCount>0&&<b>{Math.min(chat.unreadCount,99)}{chat.unreadCount>99?"+":""}</b>}</span></button>)}</div>}
+  {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:error&&conversations.length===0?<LuemiEmptyState icon={MessagesSquare} title="Чаты не загрузились" description={error}><button className="lc-retry-list" onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button></LuemiEmptyState>:filteredConversations.length===0?<LuemiEmptyState icon={normalizedQuery?Search:MessagesSquare} title={normalizedQuery?"Ничего не найдено":"Пока тихо"} description={normalizedQuery?"Попробуй изменить запрос.":"Переписка появится после взаимной симпатии."}/>:<div className="lc-conversations">{filteredConversations.map(chat=><button className="lc-chat-row" data-unread={chat.unreadCount>0||undefined} key={chat.id} onClick={()=>open(chat)}><LuemiAvatar name={chat.peerName} src={chat.peerPhotoUrl}/><span className="lc-chat-summary"><strong>{chat.peerName}</strong><span>{chat.lastMessage??"Начните разговор"}</span></span><span className="lc-meta"><time>{time(chat.lastActivityAt)}</time>{chat.unreadCount>0&&<b>{Math.min(chat.unreadCount,99)}{chat.unreadCount>99?"+":""}</b>}</span></button>)}</div>}
  </section>;
- return <section className="luemi-chats lc-route lc-thread-route" data-real-chats="true"><header className="lc-chat-header"><LuemiIconButton label="Назад" onClick={close}><ArrowLeft/></LuemiIconButton><button type="button" className="lc-person" disabled={active.peerName==="Удалённый аккаунт"} onClick={()=>{if(active.peerName!=="Удалённый аккаунт")onOpenProfile?.(active.peerProfileId);}}><LuemiAvatar name={active.peerName} src={active.peerPhotoUrl} size="small"/><span><strong>{active.peerName}</strong><small>{active.peerName==="Удалённый аккаунт"?"Профиль недоступен":"Открыть профиль"}</small></span></button><LuemiIconButton label="Меню переписки" onClick={()=>setChatMenu(true)}><MoreVertical/></LuemiIconButton></header>
+ return <section className="luemi-chats lc-route lc-thread-route" data-real-chats="true" data-chat-theme="eclipse"><header className="lc-chat-header"><LuemiIconButton label="Назад" onClick={close}><ArrowLeft/></LuemiIconButton><button type="button" className="lc-person" disabled={active.peerName==="Удалённый аккаунт"} onClick={()=>{if(active.peerName!=="Удалённый аккаунт")onOpenProfile?.(active.peerProfileId);}}><LuemiAvatar name={active.peerName} src={active.peerPhotoUrl} size="small"/><span><strong>{active.peerName}</strong><small>{active.peerName==="Удалённый аккаунт"?"Профиль недоступен":"Открыть профиль"}</small></span></button><LuemiIconButton label="Меню переписки" onClick={()=>setChatMenu(true)}><MoreVertical/></LuemiIconButton></header>
   <div ref={history} className="lc-history" role="log" aria-live="polite" onScroll={e=>{nearBottom.current=isNearBottom(e.currentTarget);if(nearBottom.current)setNewBelow(0);}} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
+   {!activeNewMatch&&messages.length===0&&!historyLoaded&&!error&&
+    <div className="lc-state lc-history-loading" role="status"><span className="lc-spinner"/>Загружаем сообщения…</div>}
    {cursor&&<button className="lc-load-older" disabled={loadingOlder} onClick={()=>void loadOlder()}>{loadingOlder?"Загрузка…":"Показать раньше"}</button>}
-   {activeNewMatch&&messages.length===0&&<div className="lc-match-welcome"><div className="lc-match-heart"><Heart size={25}/></div><h2>У вас взаимная симпатия</h2><p>Начните ваше знакомство — первое сообщение появится в списке чатов только после отправки.</p><div className="lc-match-suggestions">{[
+   {activeNewMatch&&messages.length===0&&<div className="lc-match-welcome"><div className="lc-match-heart" aria-hidden="true"><Heart size={27}/></div><h2>У вас взаимная симпатия</h2><p>Начните ваше знакомство — первое сообщение появится в списке чатов только после отправки.</p><div className="lc-match-suggestions">{[
     `Привет! ${viewerGender==="woman"?"Я увидела":"Я увидел"}, что у нас есть общие интересы.`,
     activeNewMatch.interests[0]?`Привет! Тебе тоже нравится «${activeNewMatch.interests[0]}»?`:`Привет! ${viewerGender==="woman"?"Рада":"Рад"} нашей взаимной симпатии.`,
     "Как проходит твой день?"
-   ].map(text=><button type="button" key={text} onClick={()=>setDraft(text)}>{text}</button>)}</div></div>}
-   {grouped.map(group=><div className="lc-day-group" key={group.day}><div className="lc-day">{group.day}</div>{group.items.map(message=>{const own=message.senderId===actorId;const label=status(message,own);return <div data-message-id={message.id} key={message.id} className={"lc-msg-line "+(own?"lc-own ":"")+(message.localState??"")} onPointerDown={e=>pointerDown(e,message.id)} onContextMenu={e=>{e.preventDefault();if(!message.localState)setAction({message,kind:"menu"});}}><div className="lc-bubble">{message.deletedAt?<em>Сообщение удалено</em>:<>{(message.localPreviewUrl||message.media[0]?.url)&&<button className="lc-photo-open" onClick={()=>setViewer(message.localPreviewUrl||message.media[0]?.url||null)}><img src={message.localPreviewUrl||message.media[0]?.url||""} alt="Фото в сообщении"/></button>}{message.body&&<span>{message.body}</span>}</>}<small><time>{time(message.createdAt)}</time>{message.editedAt&&" · изм."}{label&&<span title={label}>{message.readAt?<CheckCheck size={13}/>:<Check size={13}/>}</span>}</small>{message.localState==="failed"&&<button className="lc-retry" onClick={()=>void send(message)}>Повторить</button>}</div></div>;})}</div>)}
+   ].map(text=><button type="button" key={text} onClick={()=>{setDraft(text);sendField.current?.focus();}}>{text}</button>)}</div></div>}
+   {grouped.map(group=><div className="lc-day-group" key={group.day}>
+    <div className="lc-day">{group.day}</div>
+    {group.items.map((message,index)=>{
+     const own=message.senderId===actorId, label=status(message,own);
+     const key=messageKey(message);
+     const previous=group.items[index-1], next=group.items[index+1];
+     const joined=previous?.senderId===message.senderId;
+     const last=next?.senderId!==message.senderId;
+     const media=message.media[0];
+     const photo=message.localPreviewUrl||media?.url;
+     return <div key={key} data-message-id={message.id} data-chat-message-key={key}
+      data-joined={joined||undefined} data-run-end={last||undefined}
+      className={`lc-msg-line${own?" lc-own":""}${message.localState?" "+message.localState:""}`}
+      onPointerDown={event=>pointerDown(event,message.id)}
+      onContextMenu={event=>{event.preventDefault();if(!message.localState)setAction({message,kind:"menu"});}}>
+      <div className="lc-bubble">
+       {message.deletedAt?<em>Сообщение удалено</em>:<>
+        {photo&&<button type="button" className="lc-photo-open" onClick={()=>setViewer(photo)}><img src={photo} alt="Фото в сообщении" width={media?.width??undefined} height={media?.height??undefined} decoding="async"/></button>}
+        {message.body&&<span>{message.body}</span>}
+       </>}
+       <small><time>{time(message.createdAt)}</time>{message.editedAt&&" · изм."}
+        {label&&<span data-read={!!message.readAt||undefined} title={label} aria-label={label}>
+         {message.readAt?<CheckCheck size={13}/>:<Check size={13}/>}
+        </span>}
+       </small>
+       {message.localState==="failed"&&<button type="button" className="lc-retry" onClick={()=>void send(message)}>Повторить</button>}
+      </div>
+     </div>;
+    })}
+   </div>)}
   </div>
-  {newBelow>0&&<button className="lc-new" onClick={()=>{if(history.current)history.current.scrollTop=history.current.scrollHeight;setNewBelow(0);}}>Новые сообщения · {newBelow}</button>}
-  {active.access==="active"?<footer className="lc-composer">{attachment&&<div className="lc-attachment"><img src={attachment.url} alt="Фото перед отправкой"/><span style={{transform:`scaleX(${attachment.progress/100})`}}/><button onClick={releaseAttachment} aria-label="Убрать фото"><X size={16}/></button></div>}<div className="lc-input-row"><input ref={fileInput} hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{chooseFile(e.target.files?.[0]);e.target.value="";}}/><button type="button" aria-label="Добавить фото" onClick={()=>fileInput.current?.click()}><ImagePlus/></button><textarea rows={1} value={draft} maxLength={4000} placeholder="Сообщение…" aria-label="Сообщение" onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}}}/><button type="button" className="lc-send" disabled={!draft.trim()&&!attachment} onClick={()=>void send()} aria-label="Отправить"><Send size={18}/></button></div></footer>:<div className="lc-state" role="status">Переписка доступна только для чтения. Аккаунт удалён.</div>}
+  {active.access==="active"?<footer className="lc-composer">
+   {newBelow>0&&<button type="button" className="lc-new" onClick={()=>{
+    const el=history.current;
+    if(el)el.scrollTo({top:el.scrollHeight,behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth"});
+    setNewBelow(0);
+   }}><MoveDown size={14} aria-hidden="true"/>Новые сообщения · {newBelow}</button>}
+   {attachment&&<div className="lc-attachment"><img src={attachment.url} alt="Фото перед отправкой"/>
+    <span style={{transform:`scaleX(${attachment.progress/100})`}}/>
+    <button type="button" onClick={releaseAttachment} aria-label="Убрать фото"><X size={16}/></button>
+   </div>}
+   <div className="lc-input-row">
+    <input ref={fileInput} hidden type="file" accept="image/jpeg,image/png,image/webp"
+     onChange={event=>{chooseFile(event.target.files?.[0]);event.target.value="";}}/>
+    <button type="button" aria-label="Добавить фото" onClick={()=>fileInput.current?.click()}><ImagePlus size={22}/></button>
+    <textarea ref={sendField} rows={1} value={draft} maxLength={4000} placeholder="Сообщение…" aria-label="Сообщение"
+     onChange={event=>setDraft(event.target.value)} onKeyDown={event=>{
+      if(event.key==="Enter"&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();void send();}
+     }}/>
+    <button type="button" className="lc-send" disabled={!actorId||!draft.trim()&&!attachment} onClick={()=>void send()} aria-label="Отправить"><Send size={19}/></button>
+   </div>
+  </footer>:<div className="lc-state lc-read-only" role="status">Переписка доступна только для чтения. Аккаунт удалён.</div>}
   {error&&<div className="lc-notice" role="alert">{error}<button onClick={()=>setError("")} aria-label="Закрыть"><X size={15}/></button></div>}
   {action?.kind==="menu"&&<div className="lc-overlay" onClick={e=>{if(e.target===e.currentTarget)setAction(null);}}><div className="lc-menu" role="dialog" aria-modal="true"><button onClick={()=>void navigator.clipboard.writeText(action.message.body).then(()=>setAction(null)).catch(()=>setError("Не удалось скопировать."))}><Copy size={18}/>Копировать</button>{action.message.senderId===actorId&&!action.message.deletedAt&&<button onClick={()=>{setEditValue(action.message.body);setAction({...action,kind:"edit"});}}><Pencil size={18}/>Редактировать</button>}{!action.message.deletedAt&&<button className="danger" onClick={()=>{setDeleteScope("me");setAction({...action,kind:"delete"});}}><Trash2 size={18}/>Удалить</button>}<button onClick={()=>setAction(null)}>Отмена</button></div></div>}
   {action?.kind==="edit"&&<div className="lc-overlay"><form className="lc-dialog" onSubmit={e=>{e.preventDefault();void edit();}}><h3>Редактировать сообщение</h3><textarea autoFocus maxLength={4000} value={editValue} onChange={e=>setEditValue(e.target.value)}/><div><button type="button" onClick={()=>setAction(null)}>Отмена</button><button type="submit" disabled={!editValue.trim()}>Сохранить</button></div></form></div>}

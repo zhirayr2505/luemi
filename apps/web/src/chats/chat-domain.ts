@@ -1,11 +1,13 @@
 import type {ChatMessageContract} from "@luemi/contracts";
 
 export type LocalMessage=ChatMessageContract&{localState?:"sending"|"failed";localPreviewUrl?:string};
+// The sending client ID persists across optimistic and confirmed representations.
+export const messageKey=(message:Pick<ChatMessageContract,"senderId"|"clientId">)=>message.senderId+":"+message.clientId;
 export const sortMessages=(items:LocalMessage[])=>[...items].sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
 export function reconcileMessages(current:LocalMessage[],incoming:ChatMessageContract[]):LocalMessage[]{
  const byId=new Map(current.map(message=>[message.id,message]));
- const optimisticByClient=new Map(current.filter(m=>m.localState).map(m=>[m.clientId,m]));
- for(const message of incoming){const optimistic=optimisticByClient.get(message.clientId);if(optimistic&&optimistic.id!==message.id)byId.delete(optimistic.id);byId.set(message.id,message);}
+ const optimisticByClient=new Map(current.filter(m=>m.localState).map(m=>[messageKey(m),m]));
+ for(const message of incoming){const optimistic=optimisticByClient.get(messageKey(message));if(optimistic&&optimistic.id!==message.id)byId.delete(optimistic.id);byId.set(message.id,message);}
  return sortMessages([...byId.values()]);
 }
 export function prependPage(current:LocalMessage[],older:ChatMessageContract[]){return reconcileMessages(older,current);}
