@@ -7,7 +7,7 @@ export function sumUnreadMessages(conversations:readonly ChatWireConversation[])
 }
 export type ChatWireMessage=ChatMessageContract;
 export type ChatWireMedia=ChatMediaContract;
-export type ChatMessagePage={messages:ChatWireMessage[];nextCursor:string|null;visibilityRevision?:string|null};
+export type ChatMessagePage={messages:ChatWireMessage[];nextCursor:string|null;visibilityRevision?:string|null;typing?:boolean};
 
 export class ChatTransportError extends Error {
  constructor(readonly status:number,readonly code:string,readonly retryAfterMs?:number){super(code);}

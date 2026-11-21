@@ -1,4 +1,4 @@
-import React,{useMemo,useState} from "react";
+import React,{useEffect,useMemo,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {RealChats} from "./RealChats.js";
 import {createDemoChatTransport} from "./demo-transport.js";
@@ -6,6 +6,7 @@ import "../styles.css";
 
 function Demo(){
  const demo=useMemo(()=>createDemoChatTransport(),[]);
+ useEffect(()=>()=>demo.dispose(),[demo]);
  const [offline,setOffline]=useState(false);
  const [key,setKey]=useState(0);
  if(import.meta.env.PROD&&import.meta.env.VITE_LUEMI_CHATS_DEMO!=="1")

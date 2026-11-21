@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
+import {lazy,Suspense,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {ReactNode} from "react";
 import type {CSSProperties} from "react";
 import {ChevronDown,CircleAlert,Heart,Images,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan} from "lucide-react";
@@ -46,6 +46,7 @@ import "./photo-ambient-edition.css";
 // Approved photo-backed expanded profile, rounded SVG flags and soft-interest palette.
 import "./expanded-liquid-profile.css";
 
+const DemoChatSurface=lazy(()=>import("../chats/DemoChatSurface"));
 const navigationItems=[
  {id:"discover",label:"Знакомства",icon:NavigationDiscover},
  {id:"likes",label:"Симпатии",icon:NavigationLikes,countLabel:"Входящие симпатии"},
@@ -510,6 +511,8 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  },[]);
  const [accountOpen,setAccountOpen]=useState(false);
  const [chatThreadOpen,setChatThreadOpen]=useState(false);
+ const [demoChatOpen,setDemoChatOpen]=useState(false);
+ const closeDemoChat=useCallback(()=>setDemoChatOpen(false),[]);
  const [initialThread,setInitialThread]=useState<(NewMatch&{conversationId:string})|undefined>();
  const onThreadChange=useCallback((open:boolean)=>{
   setChatThreadOpen(open);
@@ -846,6 +849,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   if(filterOpen){setFilterOpen(false);return;}
   if(person||demoVisitor){if(visitorBackRef.current?.())return;setPerson(null);setDemoVisitor(null);return;}
   if(chatThreadOpen){chatBackRef.current?.();return;}
+  if(demoChatOpen){closeDemoChat();return;}
   if(accountOpen){setAccountOpen(false);return;}
   if(mainTab==="profile"&&profileBackRef.current?.())return;
   if(mainTab!=="discover"){setMainTab("discover");return;}
@@ -862,14 +866,14 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key);},[]);
  return <section className="discovery-app real-discovery-home"
   data-feed-visible={mainTab==="discover"?"true":"false"} data-browse-page={browse} data-profile-renderer={androidWebView?"android":"standard"} data-profile-mode={mainTab==="profile"||!!person||!!demoVisitor?"true":"false"}
-  data-chat-thread={chatThreadOpen?"true":"false"}>
+  data-main-tab={mainTab} data-chat-thread={chatThreadOpen?"true":"false"}>
   <div className="discovery-ambient" aria-hidden="true"/>
   <div className="discovery-photo-ambient" aria-hidden="true" data-is-scrubbing="false">
    <div className="discovery-photo-ambient-current"/>
    <div className="discovery-photo-ambient-next"/>
    <div className="discovery-photo-ambient-tint"/>
   </div>
-  {!chatThreadOpen&&mainTab!=="profile"&&mainTab!=="likes"&&<GlobalHeader ref={header} mode={mainTab==="chats"?"chats":"browse"}/>}
+  {mainTab==="discover"&&<GlobalHeader ref={header} mode="browse"/>}
   <div className="discovery-main-panels">
    <section className="discovery-panel discovery-browse-panel" hidden={mainTab!=="discover"}>
     <div className="discovery-top-tabs" ref={topTabsSurface} role="tablist" aria-label="Разделы знакомств"
@@ -920,8 +924,14 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
      onDemoPerson={visitor=>{setDemoLikesProfile(true);setDemoVisitor(visitor);}} onChat={openGalleryChat}/>
    </section>
    <section className="discovery-panel real-discovery-chat-panel" hidden={mainTab!=="chats"}>
-    {mainTab==="chats"&&<RealChats initialThread={initialThread} onOpenProfile={openPersonById} profileOpen={!!person}
-     onThreadChange={onThreadChange} registerThreadBack={registerChatBack} onUnreadCount={setChats}/>}
+    {mainTab==="chats"&&(qaAllowed&&demoChatOpen?
+     <Suspense fallback={<div className="lc-state" role="status"><span className="lc-spinner"/>Открываем переписку…</div>}>
+      <DemoChatSurface onExit={closeDemoChat} onThreadChange={onThreadChange}
+      registerThreadBack={registerChatBack}/></Suspense>:
+     <RealChats initialThread={initialThread} onOpenProfile={openPersonById} profileOpen={!!person}
+      onThreadChange={onThreadChange} registerThreadBack={registerChatBack} onUnreadCount={setChats}
+      onDiscover={()=>setMainTab("discover")} onOpenDemo={qaAllowed?()=>setDemoChatOpen(true):undefined}/>)}
+
    </section>
    <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
     {owner?<ProfileMaster data={owner} mode="owner" ownerDetails={draft} onClose={()=>setMainTab("discover")}
@@ -965,7 +975,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     <button type="button" disabled title="Подарки будут подключены после запуска Stars ledger">Подарок · скоро</button>
     <button type="button" onClick={()=>setMatched(null)}>Продолжить знакомства</button>
    </div></div>}
-  {!chatThreadOpen&&<LuemiBottomNavigation items={navigationItems} value={mainTab} counts={{likes,chats}}
+  {!chatThreadOpen&&!demoChatOpen&&<LuemiBottomNavigation items={navigationItems} value={mainTab} counts={{likes,chats}}
    onChange={id=>{setPerson(null);setDemoVisitor(null);setChatThreadOpen(false);setInitialThread(undefined);setMainTab(id);}}/>}
   {accountOpen&&<div className="discovery-modal-backdrop real-discovery-account-modal"
    onClick={()=>setAccountOpen(false)}>

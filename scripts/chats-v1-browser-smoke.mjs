@@ -7,7 +7,69 @@ const viewport={width:412,height:915};
 const mockMatches=page=>page.route("**/api/v4/matches/new",route=>
  route.fulfill({json:{matches:[],viewerGender:"other"}}));
 const url=process.env.CHATS_DEMO_URL??"http://127.0.0.1:5173/chats-demo.html";
+const checkLiveInbox=async()=>{
+ const page=await browser.newPage({viewport:{width:393,height:852},isMobile:true,hasTouch:true});
+ const calls=[];
+ const actorId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+ let qaAllowed=false;
+ await page.route("**/api/**",route=>{
+  const path=new URL(route.request().url()).pathname;
+  calls.push(path);
+  const results={
+   "/api/v2/auth/telegram":{user:{id:actorId,firstName:"QA"},csrfToken:"qa_token"},
+   "/api/v2/auth/session":{user:{id:actorId,firstName:"QA"},csrfToken:"qa_token"},
+   "/api/v2/qa/fixtures-access":{allowed:qaAllowed},
+   "/api/v4/chats":{conversations:[]},
+   "/api/v4/chats/me":{actorId},
+   "/api/v4/matches/new":{matches:[],viewerGender:"man"},
+   "/api/v4/matches/incoming/count":{count:0}
+  };
+  return route.fulfill({json:results[path]??{}});
+ });
+ const base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
+ const open=()=>page.goto(base+"/profile-qa.html?profileReactions=1&luemiRoute=chats");
+ const inbox=page.locator(".lc-list-route");
+ const demo=page.getByRole("button",{name:"Тестовая переписка",exact:true});
+ await open();
+ await inbox.getByRole("heading",{name:"Пока нет переписок",exact:true}).waitFor({timeout:5000});
+ await page.locator(".luemi-shell").evaluate(node=>node.style.setProperty("--viewport-safe-top","66px"));
+ assert.equal(await page.locator(".lh-chats").count(),0,"the inbox owns the entire surface");
+ assert.equal(await inbox.getByRole("tab").count(),0,"the inbox excludes inactive navigation");
+ assert.equal(await demo.count(),0,"the test conversation requires QA access");
+ const brand=await inbox.getByRole("img",{name:"LUEMI",exact:true}).boundingBox();
+ assert(brand&&brand.y>=66&&Math.abs(brand.x+brand.width/2-393/2)<2,"the logo honors Telegram safe area");
+ assert.equal(await inbox.evaluate(node=>getComputedStyle(node,"::before").backgroundImage.includes("chat-eclipse.webp")),false);
+ // The production entry stylesheet must not restore the older dock.
+ await page.addStyleTag({url:base+"/src/ui/vivid-discovery.css"});
+ const dock=page.getByRole("navigation",{name:"Главная навигация LUEMI"});
+ const dockBox=await dock.boundingBox();
+ assert(dockBox&&Math.abs(dockBox.width-(393-14)/1.5)<2&&dockBox.height<=48);
+ const activeIcon=dock.getByRole("button",{name:"Чаты",exact:true});
+ assert.equal(await activeIcon.evaluate(node=>getComputedStyle(node).backgroundColor),"rgba(0, 0, 0, 0)");
+ await inbox.getByRole("button",{name:"Перейти к знакомствам",exact:true}).tap();
+ assert.equal(await page.locator(".real-discovery-home").getAttribute("data-feed-visible"),"true");
+
+ qaAllowed=true;
+ await open();
+ await demo.tap();
+ const before=calls.filter(path=>path.startsWith("/api/v4/chats/")).length;
+ await page.locator(".lc-thread-route").getByText("Алина",{exact:true}).waitFor();
+ await page.getByLabel("Сообщение").fill("Привет! Как дела?");
+ await page.getByLabel("Отправить").tap();
+ await page.getByText("Алина печатает…",{exact:true}).waitFor({timeout:5000});
+ const incoming=page.locator(".lc-msg-line:not(.lc-own)");
+ await incoming.getByText(/Привет! У меня хорошо/).waitFor({timeout:6000});
+ await page.getByLabel("Сообщение").fill("Хочешь кофе?");
+ await page.getByLabel("Отправить").tap();
+ await incoming.getByText(/Я за кофе/).waitFor({timeout:6000});
+ assert.equal(calls.filter(path=>path.startsWith("/api/v4/chats/")).length,before,"the demo never uses real messages or read receipts");
+ await page.locator(".lc-thread-route").getByRole("button",{name:"Назад",exact:true}).tap();
+ await inbox.getByRole("heading",{name:"Пока нет переписок",exact:true}).waitFor();
+ await page.close();
+};
+
 try{
+ await checkLiveInbox();
  const page=await browser.newPage({viewport,deviceScaleFactor:1,hasTouch:true,isMobile:true});
  const errors=[];
  page.on("pageerror",error=>errors.push(error.message));
@@ -76,5 +138,5 @@ try{
  const still=reduced.locator(".lc-msg-line").filter({hasText:"Reduced motion"});
  await still.waitFor();
  assert.equal(await still.locator(".lc-bubble").evaluate(node=>node.getAnimations().length),0);
- console.log("LUEMI chat browser PASS artwork, reading position, send/ACK, older messages and reduced motion");
+ console.log("LUEMI chat browser PASS integrated inbox, owner-only demo with replies, artwork, send/ACK, history and reduced motion");
 }finally{await browser.close();}
