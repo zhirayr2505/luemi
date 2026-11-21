@@ -10,7 +10,7 @@ const actor="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",peer="bbbbbbbb-bbbb-4bbb-8bbb
 const photoIds=["cccccccc-cccc-4ccc-8ccc-cccccccccccc","dddddddd-dddd-4ddd-8ddd-dddddddddddd","eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"];
 const photos=photoIds.map(id=>"/api/v3/discovery/photo/"+id);
 const matchId="ffffffff-ffff-4fff-8fff-ffffffffffff",conversationId="11111111-1111-4111-8111-111111111111";
-let allowed=false,liveMatched=false;
+let allowed=false,liveMatched=false,unread=2;
 const serverRequests=[],errors=[];
 page.on("pageerror",error=>errors.push(error.message));
 await page.route("**/api/**",route=>{
@@ -20,6 +20,7 @@ await page.route("**/api/**",route=>{
  if(path==="/api/v2/qa/fixtures-access")return send({allowed});
  if(path.startsWith("/api/v4/matches")&&req.method()!=="GET")serverRequests.push(path);
  const item={id:peer,name:"София",createdAt:"2026-11-20T15:00:00.000Z",kind:"ordinary",photoUrl:photos[0],photos};
+ if(path==="/api/v4/matches/incoming/count")return send({count:liveMatched?0:2});
  if(path==="/api/v4/matches/incoming")return send({likes:liveMatched?[]:[item],premium:false,hiddenCount:1});
  if(path==="/api/v4/matches/gallery")return send({outgoing:[],mutual:liveMatched?[{...item,kind:null,matchId,conversationId:null}]:[]});
  if(path==="/api/v4/matches/like"){
@@ -28,7 +29,8 @@ await page.route("**/api/**",route=>{
  }
  if(path==="/api/v4/matches/"+matchId+"/open")return send({conversationId});
  if(path==="/api/v4/matches/new")return send({matches:[],viewerGender:"man"});
- if(path==="/api/v4/chats")return send({conversations:[]});
+ if(path==="/api/v4/chats")return send({conversations:[{id:conversationId,peerName:item.name,peerId:peer,peerProfileId:peer,
+  unreadCount:unread,lastActivityAt:item.createdAt,lastMessage:"Привет!",access:"active"}]});
  if(path==="/api/v4/chats/me")return send({actorId:actor});
  if(path==="/api/v4/chats/"+conversationId+"/messages")return send({messages:[],nextCursor:null});
  if(path==="/api/v3/discovery/profile/"+peer)return send({profile:{id:peer,name:item.name,age:25,city:"Краснодар",
@@ -41,6 +43,9 @@ await page.route("**/api/**",route=>{
 const base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 const open=async()=>{await page.goto(base+"/profile-qa.html?profileReactions=1&luemiRoute=likes");};
 const scope=page.getByRole("region",{name:"Симпатии",exact:true});
+const nav=page.getByRole("navigation",{name:"Главная навигация LUEMI"});
+const likesBadge=nav.locator("button").nth(1).locator(".luemi-nav-badge");
+const chatsBadge=nav.locator("button").nth(2).locator(".luemi-nav-badge");
 const card=name=>scope.locator(".likes-photo-card").filter({has:page.locator('.likes-photo-hit[aria-label="Открыть анкету '+name+'"]')});
 const hit=name=>card(name).getByRole("button",{name:"Открыть анкету "+name,exact:true});
 const menu=page.locator(".likes-fan"),notice=page.locator(".profile-reaction-notice");
@@ -81,7 +86,15 @@ const checkCaption=async kind=>{
 };
 const gesture=async(name,kind=null)=>{
  await hit(name).scrollIntoViewIfNeeded();
- const at=await center(hit(name));await touch("touchStart",at);
+ const at=await hit(name).evaluate(node=>{
+  const box=node.getBoundingClientRect();
+  const dock=document.querySelector(".discovery-bottom-nav")?.getBoundingClientRect().top??innerHeight;
+  const scroller=node.closest(".likes-gallery-scroller").getBoundingClientRect();
+  const top=Math.max(box.top,scroller.top);
+  const bottom=Math.min(box.bottom,scroller.bottom,dock);
+  return {x:box.x+box.width/2,y:(top+bottom)/2};
+ });
+ await touch("touchStart",at);
  await menu.waitFor({timeout:3000});
  if(kind){
   const target=menu.locator('[data-kind="'+kind+'"]');
@@ -101,6 +114,22 @@ const icon=async(name,file)=>page.waitForFunction(({name,file})=>{
 
 try{
  await open();await hit("София").waitFor();
+ await likesBadge.waitFor({timeout:5000});
+ await chatsBadge.waitFor({timeout:5000});
+ assert.equal(await likesBadge.textContent(),"2");
+ assert.equal(await chatsBadge.textContent(),"2");
+ assert.equal(await nav.locator("svg").count(),4);
+ const dock=await nav.boundingBox();
+ assert(dock&&dock.x<=10&&dock.width>=373&&dock.height>=48&&dock.height<=64,"the icon dock fits the reference footprint");
+ const active=nav.getByRole("button",{name:"Симпатии",exact:true});
+ assert.equal(await active.getAttribute("aria-current"),"page");
+ assert.equal(await active.evaluate(node=>getComputedStyle(node).backgroundColor),"rgba(0, 0, 0, 0)");
+ assert.equal(await active.getAttribute("aria-description"),"Входящие симпатии: 2");
+ unread=100;
+ await page.evaluate(()=>document.dispatchEvent(new Event("visibilitychange")));
+ await page.waitForFunction(()=>document.querySelector('[aria-description^="Непрочитанные"] .luemi-nav-badge')?.textContent==="99+");
+ unread=0;
+
  await page.locator(".luemi-shell").evaluate(node=>node.style.setProperty("--viewport-safe-top","43px"));
  const layout=await scope.evaluate(node=>{
   const head=node.querySelector(".likes-gallery-chrome");
@@ -147,10 +176,15 @@ try{
  await gesture("София","ordinary");
  await icon("София","like-outgoing");
  await departure("София","left");
+ await likesBadge.waitFor({state:"detached",timeout:5000});
  await pickTab("Взаимно");
  await icon("София","like-mutual");
  await scope.getByRole("button",{name:"Написать София",exact:true}).tap();
  await page.locator(".lc-thread-route").getByText("София",{exact:true}).waitFor();
+ await nav.waitFor({state:"hidden"});
+ await page.locator(".lc-thread-route").getByRole("button",{name:"Назад",exact:true}).tap();
+ await nav.waitFor();
+ await chatsBadge.waitFor({state:"detached",timeout:5000});
  assert.deepEqual(serverRequests,["/api/v4/matches/like","/api/v4/matches/"+matchId+"/open"]);
  serverRequests.length=0;
 
@@ -205,6 +239,7 @@ try{
  await icon("Элина","like-skipped");
  await undo("Элина").tap();
  await icon("Элина","superlike-incoming");
+ await card("Элина").locator(".likes-card-reaction").evaluate(node=>Promise.all(node.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
  await gesture("Элина","skip");
  await departure("Элина","shrink");
  const rightName="Сара";

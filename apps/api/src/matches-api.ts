@@ -220,6 +220,20 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
   WHERE photo.owner_id=${peer} AND photo.environment=$2
    AND photo.state='approved' AND photo.publication_status='published'
   ORDER BY photo.position,photo.id LIMIT 6)`;
+ const incomingLikesProfiles=`luemi_chats.likes l JOIN luemi_private.public_profiles p
+     ON p.owner_id=l.sender_id AND p.environment=l.environment AND p.publication_status='published'
+    JOIN luemi_private.actors a ON a.id=l.sender_id AND a.environment=l.environment AND a.status='active'`;
+ const incomingLikesPredicate=`l.environment=$2 AND l.receiver_id=$1 AND l.status='active'
+    AND NOT EXISTS(SELECT 1 FROM luemi_private.blocks b WHERE b.environment=$2 AND
+     ((b.blocker_id=$1 AND b.blocked_id=l.sender_id) OR (b.blocker_id=l.sender_id AND b.blocked_id=$1)))
+    AND NOT EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.environment=l.environment AND m.status='active'
+     AND m.actor_low=least(l.sender_id,l.receiver_id) AND m.actor_high=greatest(l.sender_id,l.receiver_id))`;
+ app.get("/api/v4/matches/incoming/count",{preHandler:auth.read},(req,reply)=>transaction(req,reply,async(db,actor)=>{
+  const {rows}=await db.query<{count:number}>(`SELECT count(*)::int AS count
+   FROM ${incomingLikesProfiles} WHERE ${incomingLikesPredicate}`,[actor,cfg.namespace]);
+  return {count:rows[0].count};
+ }));
+
  app.get("/api/v4/matches/incoming",{preHandler:auth.read},(req,reply)=>transaction(req,reply,async(db,actor)=>{
   const premium=await db.query<{active:boolean}>(`SELECT EXISTS(SELECT 1 FROM luemi_chats.premium_entitlements
    WHERE environment=$2 AND actor_id=$1 AND active_until>clock_timestamp()) AS active`,[actor,cfg.namespace]);
@@ -247,14 +261,8 @@ export function registerMatches(app:FastifyInstance,guard:Guard|undefined,opts:M
     CASE WHEN $3::boolean OR l.kind='super' OR EXISTS(SELECT 1 FROM luemi_chats.incoming_like_reveals shown
       WHERE shown.environment=l.environment AND shown.receiver_id=l.receiver_id AND shown.sender_id=l.sender_id)
      THEN ${album("l.sender_id")} ELSE ARRAY[]::uuid[] END AS photo_ids
-    FROM luemi_chats.likes l JOIN luemi_private.public_profiles p
-     ON p.owner_id=l.sender_id AND p.environment=l.environment AND p.publication_status='published'
-    JOIN luemi_private.actors a ON a.id=l.sender_id AND a.environment=l.environment AND a.status='active'
-    WHERE l.environment=$2 AND l.receiver_id=$1 AND l.status='active'
-    AND NOT EXISTS(SELECT 1 FROM luemi_private.blocks b WHERE b.environment=$2 AND
-     ((b.blocker_id=$1 AND b.blocked_id=l.sender_id) OR (b.blocker_id=l.sender_id AND b.blocked_id=$1)))
-    AND NOT EXISTS(SELECT 1 FROM luemi_chats.matches m WHERE m.environment=l.environment AND m.status='active'
-     AND m.actor_low=least(l.sender_id,l.receiver_id) AND m.actor_high=greatest(l.sender_id,l.receiver_id))
+    FROM ${incomingLikesProfiles}
+    WHERE ${incomingLikesPredicate}
     ORDER BY (l.kind='super') DESC,l.created_at,l.sender_id LIMIT 100`,[actor,cfg.namespace,premium.rows[0]?.active===true]);
   const ordinary=rows.rows.filter(row=>row.kind==="ordinary"&&row.revealed),special=rows.rows.filter(row=>row.kind==="super");
   const visible=premium.rows[0]?.active?rows.rows:[...special,...ordinary];

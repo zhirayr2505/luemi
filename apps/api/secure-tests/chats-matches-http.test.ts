@@ -79,7 +79,9 @@ test("two authenticated actors create one durable conversation and revoke it on 
   const profileReaction=(actor:string,target:string)=>inject(actor,"GET","/api/v4/matches/profile/"+target);
   const gallery=(actor:string)=>inject(actor,"GET","/api/v4/matches/gallery");
   const skipped=(actor:string,target:string)=>inject(actor,"POST","/api/v4/matches/incoming/"+target+"/reject",{});
+  const incomingCount=(actor:string)=>inject(actor,"GET","/api/v4/matches/incoming/count");
   assert.equal((await gallery("")).status,401);
+  assert.equal((await incomingCount("")).status,401);
   const noReaction={outgoing:null,incoming:null,matchId:null};
   assert.deepEqual(await profileReaction(A,B),{status:200,json:noReaction});
   assert.equal((await profileReaction(A,A)).status,404);
@@ -89,7 +91,9 @@ test("two authenticated actors create one durable conversation and revoke it on 
  assert.equal(result.json.superlikes.total,3);
   assert.deepEqual(await profileReaction(A,B),{status:200,json:{...noReaction,outgoing:"ordinary"}});
   assert.deepEqual(await profileReaction(B,A),{status:200,json:noReaction},"profile reads cannot reveal premium-locked incoming likes");
-  assert.equal((await skipped(B,A)).status,404,"a concealed ordinary like cannot be skipped before reveal");
+  assert.deepEqual(await incomingCount(B),{status:200,json:{count:1}});
+  assert.deepEqual(await incomingCount(C),{status:200,json:{count:0}},"the count is scoped to the receiving actor");
+  assert.equal((await skipped(B,A)).status,404,"reading the count does not reveal a concealed like");
   assert.equal((await inject(B,"GET","/api/v4/matches/incoming")).status,200);
   const sentGallery=await gallery(A);
   assert.equal(sentGallery.status,200,JSON.stringify(sentGallery));
@@ -106,11 +110,14 @@ test("two authenticated actors create one durable conversation and revoke it on 
   assert.equal(duplicate.json.kind,"super","a repeat tap reports the actual stored reaction");
   assert.equal(duplicate.json.superlikes.total,special.json.superlikes.total);
   assert.equal((await skipped(B,C)).status,404,"only the receiving actor may skip");
+  assert.deepEqual(await incomingCount(A),{status:200,json:{count:1}});
   assert.deepEqual(await skipped(A,C),{status:200,json:{rejected:true}},"visible incoming superlike can be skipped");
+  assert.deepEqual(await incomingCount(A),{status:200,json:{count:0}});
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});
   assert.equal(result.status,200,JSON.stringify(result));assert.equal(result.json.matched,true);
  const matchId=result.json.matchId as string;
  assert.match(matchId,/^[0-9a-f-]{36}$/i);
+  assert.deepEqual(await incomingCount(B),{status:200,json:{count:0}},"mutual likes leave the incoming count");
   assert.equal((await profileReaction(A,B)).json.matchId,matchId);
   assert.equal((await profileReaction(B,A)).json.matchId,matchId);
   result=await inject(B,"POST","/api/v4/matches/like",{targetId:A});

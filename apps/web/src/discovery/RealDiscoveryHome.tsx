@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {ReactNode} from "react";
 import type {CSSProperties} from "react";
-import {ChevronDown,CircleAlert,Heart,Images,MessagesSquare,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan} from "lucide-react";
+import {ChevronDown,CircleAlert,Heart,Images,UserRound,RefreshCw,Flag as FlagIcon,ShieldBan} from "lucide-react";
 import type {RegistrationDraft,SearchScope} from "../registration/model";
 import type {DemoKind,DemoPerson} from "./model";
 import {fromDemoPerson,type ProfileMasterData} from "./ProfileModel";
@@ -28,6 +28,8 @@ import {isProfileLike,profileReactionKey,useProfileReactionQueue} from "./use-pr
 import {RealChats} from "../chats/RealChats";
 import {demoGalleryReaction,LikesGallery} from "./LikesGallery";
 import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiSkeleton} from "../ui/LuemiV5";
+import {NavigationDiscover,NavigationLikes,NavigationChats,NavigationProfile} from "../ui/navigation-icons";
+import {useNavigationCounts} from "./use-navigation-counts";
 import {geoCsrf} from "../auth/session-adapter";
 import {getPublishedFeed,getPublishedProfile,openNewMatch,likePublishedUser,blockPublishedUser,reportPublishedUser,updateDiscoverySearchScope,realMatchPilot,type PublishedFeedPage,type LikesGalleryEntry,type NewMatch} from "../registration/real-live-client";
 import type {RealPublishedProfile,PublishedReportReason,OwnerPublicationStatus} from "../registration/real-live-client";
@@ -44,12 +46,14 @@ import "./photo-ambient-edition.css";
 // Approved photo-backed expanded profile, rounded SVG flags and soft-interest palette.
 import "./expanded-liquid-profile.css";
 
-// EXACT approved LUEMI navigation / header / profile components. No demo profiles
-// are imported or projected into a real session.
-const navigation=[["discover","Знакомства",Images],["likes","Симпатии",Heart],["chats","Чаты",MessagesSquare],["profile","Профиль",UserRound]] as const;
-const navigationItems=navigation.map(([id,label,icon])=>({id,label,icon}));
+const navigationItems=[
+ {id:"discover",label:"Знакомства",icon:NavigationDiscover},
+ {id:"likes",label:"Симпатии",icon:NavigationLikes,countLabel:"Входящие симпатии"},
+ {id:"chats",label:"Чаты",icon:NavigationChats,countLabel:"Непрочитанные сообщения"},
+ {id:"profile",label:"Профиль",icon:NavigationProfile}
+] as const;
 const tabs=[["feed","Лента"],["for-you","Для тебя"],["nearby","Мир"]] as const;
-type MainTab=typeof navigation[number][0];
+type MainTab=typeof navigationItems[number]["id"];
 type BrowseTab=typeof tabs[number][0];
 const androidWebView=typeof navigator!=="undefined"&&/Android/i.test(navigator.userAgent);
 const EMPTY_OWNER_PREVIEW:ReadonlyArray<{src:string}>=[];
@@ -516,6 +520,8 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  const [hiddenIds,setHiddenIds]=useState<ReadonlySet<string>>(()=>new Set<string>());
  const onHide=useCallback((id:string)=>setHiddenIds(existing=>new Set([...existing,id])),[]);
  const profileReactions=useProfileReactionQueue(onHide);
+ const confirmedLikesRevision=[...profileReactions.actions.values()].filter(action=>action.phase==="sent"&&!action.target.demo).length;
+ const {likes, chats, setChats}=useNavigationCounts(mainTab,confirmedLikesRevision);
  const demoReaction=demoVisitor?profileReactions.actions.get(profileReactionKey({id:demoVisitor.id,demo:true})):undefined;
  const demoInitial=demoVisitor&&demoLikesProfile?demoGalleryReaction(demoVisitor.id):null;
  const demoOutgoing=demoReaction?.phase==="sent"&&isProfileLike(demoReaction.receipt.kind)?demoReaction.receipt.kind:null;
@@ -915,7 +921,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
    </section>
    <section className="discovery-panel real-discovery-chat-panel" hidden={mainTab!=="chats"}>
     {mainTab==="chats"&&<RealChats initialThread={initialThread} onOpenProfile={openPersonById} profileOpen={!!person}
-     onThreadChange={onThreadChange} registerThreadBack={registerChatBack}/>}
+     onThreadChange={onThreadChange} registerThreadBack={registerChatBack} onUnreadCount={setChats}/>}
    </section>
    <section className="discovery-panel discovery-profile-panel" hidden={mainTab!=="profile"}>
     {owner?<ProfileMaster data={owner} mode="owner" ownerDetails={draft} onClose={()=>setMainTab("discover")}
@@ -959,7 +965,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
     <button type="button" disabled title="Подарки будут подключены после запуска Stars ledger">Подарок · скоро</button>
     <button type="button" onClick={()=>setMatched(null)}>Продолжить знакомства</button>
    </div></div>}
-  {!chatThreadOpen&&<LuemiBottomNavigation items={navigationItems} value={mainTab}
+  {!chatThreadOpen&&<LuemiBottomNavigation items={navigationItems} value={mainTab} counts={{likes,chats}}
    onChange={id=>{setPerson(null);setDemoVisitor(null);setChatThreadOpen(false);setInitialThread(undefined);setMainTab(id);}}/>}
   {accountOpen&&<div className="discovery-modal-backdrop real-discovery-account-modal"
    onClick={()=>setAccountOpen(false)}>

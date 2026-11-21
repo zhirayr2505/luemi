@@ -1,6 +1,10 @@
 import type {ChatConversationContract,ChatMessageContract,ChatMediaContract} from "@luemi/contracts";
 
 export type ChatWireConversation=ChatConversationContract;
+export function sumUnreadMessages(conversations:readonly ChatWireConversation[]):number{
+ return conversations.reduce((total,{unreadCount})=>
+  Number.isSafeInteger(unreadCount)&&unreadCount>0?total+unreadCount:total,0);
+}
 export type ChatWireMessage=ChatMessageContract;
 export type ChatWireMedia=ChatMediaContract;
 export type ChatMessagePage={messages:ChatWireMessage[];nextCursor:string|null;visibilityRevision?:string|null};

@@ -24,6 +24,8 @@ page.on("pageerror",error=>errors.push(error.message));
 await page.route("**/api/**",async route=>{
  const req=route.request(),path=new URL(req.url()).pathname;
  const send=(json,status=200)=>route.fulfill({status,json});
+ // The real account's navigation badge is independent of the demo profile.
+ if(path==="/api/v4/matches/incoming/count")return send({count:0});
  if(demoAllowed&&path.startsWith("/api/v4/matches"))demoMatchingRequests.push(path);
  if(path==="/api/v2/auth/telegram"||path==="/api/v2/auth/session")
   return send({user:{id:actorId,firstName:"QA"},csrfToken:"qa_csrf_token"});

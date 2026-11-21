@@ -53,6 +53,13 @@ export async function getSuperlikeBalance(signal?:AbortSignal):Promise<Superlike
 }
 export interface IncomingLike{ id:string;name:string;createdAt:string;kind:RealLikeKind;photoUrl:string|null;photos:string[]; }
 export interface IncomingLikesPage{likes:IncomingLike[];premium:boolean;hiddenCount:number}
+export async function getIncomingLikeCount(signal:AbortSignal):Promise<number>{
+ if(!realMatchPilot.enabled)throw new Error("matches_disabled");
+ const data=await api("/api/v4/matches/incoming/count","GET",undefined,signal);
+ if(!object(data)||typeof data.count!=="number"||!Number.isSafeInteger(data.count)||data.count<0)
+  throw new Error("invalid_incoming_like_count");
+ return data.count;
+}
 export async function getIncomingLikes(signal?:AbortSignal):Promise<IncomingLikesPage>{
  if(!realMatchPilot.enabled)throw new Error("matches_disabled");
  const res=await fetch("/api/v4/matches/incoming",{credentials:"same-origin",cache:"no-store",signal});

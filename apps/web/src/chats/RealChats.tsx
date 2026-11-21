@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import {ArrowLeft,Check,CheckCheck,Copy,Heart,ImagePlus,MoreVertical,Pencil,RefreshCw,Search,Send,Trash2,X,MessagesSquare} from "lucide-react";
-import {createChatTransport,ChatTransportError,type ChatTransport,type ChatWireConversation} from "./chat-transport.js";
+import {createChatTransport,sumUnreadMessages,ChatTransportError,type ChatTransport,type ChatWireConversation} from "./chat-transport.js";
 import {errorText,isNearBottom,prependPage,reconcileMessages,type LocalMessage,validateChatImage} from "./chat-domain.js";
 import {ChatPhotoViewer} from "./ChatPhotoViewer.js";
 import {geoCsrf} from "../auth/session-adapter.js";
@@ -28,7 +28,7 @@ function conversationFromMatch(match:ProfileThread):ChatWireConversation{
   unreadCount:0,access:"active"};
 }
 
-export function RealChats({transport:provided,onOpenProfile,onThreadChange,registerThreadBack,initialThread,profileOpen=false}:{transport?:ChatTransport;onOpenProfile?:(profileId:string)=>void;onThreadChange?:(open:boolean)=>void;registerThreadBack?:(handler:(()=>void)|null)=>void;initialThread?:ProfileThread;profileOpen?:boolean}={}){
+export function RealChats({transport:provided,onOpenProfile,onThreadChange,registerThreadBack,initialThread,onUnreadCount,profileOpen=false}:{transport?:ChatTransport;onOpenProfile?:(profileId:string)=>void;onThreadChange?:(open:boolean)=>void;registerThreadBack?:(handler:(()=>void)|null)=>void;initialThread?:ProfileThread;onUnreadCount?:(count:number)=>void;profileOpen?:boolean}={}){
  const csrf=geoCsrf();const api=useMemo(()=>provided??(csrf?createChatTransport(csrf):null),[provided,csrf]);
  const [actorId,setActorId]=useState("");const [conversations,setConversations]=useState<ChatWireConversation[]>([]);const [active,setActive]=useState<ChatWireConversation|null>(()=>initialThread?conversationFromMatch(initialThread):null);
  const [newMatches,setNewMatches]=useState<NewMatch[]>([]);const [viewerGender,setViewerGender]=useState<"man"|"woman"|"other">("other");
@@ -38,12 +38,17 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
  const [loading,setLoading]=useState(true);const [loadingOlder,setLoadingOlder]=useState(false);const [error,setError]=useState("");const [action,setAction]=useState<Action>(null);const [editValue,setEditValue]=useState("");const [viewer,setViewer]=useState<string|null>(null);const [newBelow,setNewBelow]=useState(0);
  const [searchOpen,setSearchOpen]=useState(false);const [query,setQuery]=useState("");const [category,setCategory]=useState<ChatCategory>("all");
  const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);const hold=useRef<number|null>(null);const pointer=useRef<{x:number;y:number;id:string}|null>(null);
+ const threadOpen=active!==null;
  const listPositions=useRef(new Map<string,number>());const autoScroll=useRef(false);
  const releaseAttachment=useCallback(()=>setAttachment(old=>{if(old){URL.revokeObjectURL(old.url);objectUrls.current.delete(old.url);}return null;}),[]);
  const showError=(e:unknown,fallback="Не удалось выполнить действие.")=>setError(e instanceof ChatTransportError?errorText(e.status,e.code):fallback);
- const refreshList=useCallback(async(signal?:AbortSignal)=>{if(!api)return;const data=await api.list(signal);setConversations([...data.conversations].sort((a,b)=>b.lastActivityAt.localeCompare(a.lastActivityAt)||a.id.localeCompare(b.id)));},[api]);
+ const updateConversations=useCallback((items:ChatWireConversation[])=>{
+  setConversations([...items].sort((a,b)=>b.lastActivityAt.localeCompare(a.lastActivityAt)||a.id.localeCompare(b.id)));
+  onUnreadCount?.(sumUnreadMessages(items));
+ },[onUnreadCount]);
+ const refreshList=useCallback(async(signal?:AbortSignal)=>{if(!api)return;const data=await api.list(signal);if(!signal?.aborted)updateConversations(data.conversations);},[api,updateConversations]);
  const refreshMatches=useCallback(async(signal?:AbortSignal)=>{const data=await getNewMatches(signal);setNewMatches(data.matches);setViewerGender(data.viewerGender);},[]);
- useEffect(()=>{if(!api){setError("Требуется авторизация Telegram.");setLoading(false);return;}const controller=new AbortController();Promise.all([api.me(controller.signal),api.list(controller.signal),getNewMatches(controller.signal)]).then(([me,data,matches])=>{if(controller.signal.aborted)return;setActorId(me.actorId);setConversations([...data.conversations].sort((a,b)=>b.lastActivityAt.localeCompare(a.lastActivityAt)));setNewMatches(matches.matches);setViewerGender(matches.viewerGender);setError("");}).catch(e=>{if(!controller.signal.aborted)showError(e,"Не удалось загрузить чаты.");}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();},[api]);
+ useEffect(()=>{if(!api){setError("Требуется авторизация Telegram.");setLoading(false);return;}const controller=new AbortController();Promise.all([api.me(controller.signal),api.list(controller.signal),getNewMatches(controller.signal)]).then(([me,data,matches])=>{if(controller.signal.aborted)return;setActorId(me.actorId);updateConversations(data.conversations);setNewMatches(matches.matches);setViewerGender(matches.viewerGender);setError("");}).catch(e=>{if(!controller.signal.aborted)showError(e,"Не удалось загрузить чаты.");}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();},[api,updateConversations]);
  // Discover new mutual matches and unread badges even when the user has not opened a thread.
  useEffect(()=>{
   if(!api||active)return;
@@ -58,7 +63,12 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
   document.addEventListener("visibilitychange",refresh);
   return()=>{controller.abort();window.clearInterval(timer);document.removeEventListener("visibilitychange",refresh);};
  },[api,active,refreshList,refreshMatches]);
- useEffect(()=>()=>{pollAbort.current?.abort();objectUrls.current.forEach(URL.revokeObjectURL);pendingFiles.current.clear();if(hold.current!==null)window.clearTimeout(hold.current);onThreadChange?.(false);},[onThreadChange]);
+ useEffect(()=>()=>{pollAbort.current?.abort();objectUrls.current.forEach(URL.revokeObjectURL);pendingFiles.current.clear();if(hold.current!==null)window.clearTimeout(hold.current);},[]);
+ useLayoutEffect(()=>{
+  if(!threadOpen)return;
+  onThreadChange?.(true);
+  return()=>onThreadChange?.(false);
+ },[threadOpen,onThreadChange]);
  const applyIncoming=useCallback((incoming:LocalMessage[])=>{const el=history.current;autoScroll.current=!!el&&isNearBottom(el);if(el)listPositions.current=new Map([...el.querySelectorAll<HTMLElement>("[data-message-id]")].map(node=>[node.dataset.messageId??"",node.getBoundingClientRect().top]));setMessages(old=>{if(el&&!autoScroll.current&&incoming.some(message=>!old.some(current=>current.id===message.id)))setNewBelow(n=>n+1);const earliest=incoming.length?incoming.reduce((min,m)=>m.createdAt<min?m.createdAt:min,incoming[0].createdAt):null;
  const preserved=earliest?old.filter(m=>m.localState||m.createdAt<earliest):old.filter(m=>!!m.localState);
  return reconcileMessages(preserved,incoming);});},[]);
@@ -77,12 +87,12 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
     observedVisibility.current={id:active.id,revision:page.visibilityRevision??null};
     const newest=[...page.messages].reverse().find(m=>m.senderId!==actorId&&!m.deletedAt);if(newest)void api.markRead(active.id,newest.id,controller.signal).catch(()=>{});setError("");}catch(e){if(!controller.signal.aborted)showError(e,"Связь прервана.");}finally{busy=false;}};
   void load();const timer=window.setInterval(()=>void load(),3500);return()=>{controller.abort();window.clearInterval(timer);};},[active,api,actorId,applyIncoming]);
- const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setChatMenu(false);setClearDialog(false);setActive(chat);onThreadChange?.(true);activeId.current=chat.id;history.current?.scrollTo({top:0});};
+ const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setChatMenu(false);setClearDialog(false);setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
  const openMatch=async(match:NewMatch)=>{if(!api)return;try{const conversationId=await openNewMatch(match.id);
   const opened={...match,seen:true,conversationId};setActiveNewMatch(opened);
   setNewMatches(old=>old.map(item=>item.id===match.id?opened:item));open(conversationFromMatch(opened));
  }catch(e){showError(e,"Не удалось открыть новое знакомство.");}};
- const close=useCallback(()=>{pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);onThreadChange?.(false);setMessages([]);setAction(null);setChatMenu(false);setClearDialog(false);releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[onThreadChange,refreshList,refreshMatches,releaseAttachment]);
+ const close=useCallback(()=>{pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);setMessages([]);setAction(null);setChatMenu(false);setClearDialog(false);releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[refreshList,refreshMatches,releaseAttachment]);
  useEffect(()=>{if(!active||profileOpen){registerThreadBack?.(null);return;}registerThreadBack?.(close);
   const button=window.Telegram?.WebApp?.BackButton;button?.show();button?.onClick(close);
   return()=>{registerThreadBack?.(null);button?.offClick(close);button?.hide();};

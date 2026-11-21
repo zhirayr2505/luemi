@@ -136,10 +136,6 @@
  width:36px;height:3px;margin:0 auto;
  border-radius:999px;background:#E96A86;box-shadow:none;
 }
-.real-discovery-home[data-feed-visible="true"]>.discovery-bottom-nav{
- background:rgba(31,36,49,.88);border-color:rgba(241,247,255,.19);
- box-shadow:0 8px 24px rgba(4,8,15,.31);
-}
 /* Reduced motion and transparency have fully functional static fallbacks. */
 @media(prefers-reduced-motion:reduce){
  .real-discovery-home>.discovery-photo-ambient{

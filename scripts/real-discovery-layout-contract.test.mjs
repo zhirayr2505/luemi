@@ -22,11 +22,12 @@ test("empty feed stays beneath header and above dock on fullscreen Android",()=>
  assert.match(fix,/justify-content:center/);
  assert.match(fix,/\.lh-header \.lh-island::before/);
 });
-test("labels and active rose are not overridden by old purple nav",()=>{
+test("the graphite dock uses icon-only tabs with accessible labels and count badges",()=>{
  assert.match(base,/\.discovery-nav-item span\{display:none\}/);
- assert.match(fix,/\.discovery-bottom-nav \.discovery-nav-item span\{[\s\S]*?display:block/);
- assert.match(fix,/\.discovery-bottom-nav \.discovery-nav-item\.active\{[\s\S]*?background:#B84261/);
- assert.match(nav,/\{item\.label\}/);
+ assert.match(fix,/\.discovery-bottom-nav \.discovery-nav-item \.luemi-nav-label\{[^}]*clip-path:inset\(50%\)/);
+ assert.match(fix,/\.discovery-bottom-nav \.discovery-nav-item\.active\{[^}]*color:#f2839a;[^}]*background:transparent/);
+ assert.match(nav,/className="luemi-nav-label">\{label\}/);
+ assert.match(nav,/className="luemi-nav-badge"/);
 });
 test("private preview stays server-verified and cannot leak into real feed",()=>{
  assert.match(real,/setQaAllowed\(result\?\.allowed===true\)/);
