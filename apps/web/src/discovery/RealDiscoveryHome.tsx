@@ -949,7 +949,8 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
      createdAt:new Date().toISOString(),interests:[],seen:true});
     setChatThreadOpen(true);setMainTab("chats");
    }}/>}
-  {!person&&!demoVisitor&&<ProfileReactionNotices notices={profileReactions.notices} undo={profileReactions.undo}/>}
+  {!person&&!demoVisitor&&<ProfileReactionNotices notices={mainTab==="likes"?
+   profileReactions.notices.filter(notice=>notice.target.surface!=="gallery"):profileReactions.notices} undo={profileReactions.undo}/>}
   {matched&&<div className="luemi-match-overlay" role="dialog" aria-modal="true" aria-label="Взаимная симпатия">
    <div className="luemi-match-card"><div className="luemi-match-avatars"><LuemiAvatar name={matched.person.name} src={matched.person.photos[0]?.url}/><Heart size={24}/></div>
     <p className="luemi-match-kicker">Это взаимно</p><h2>Вы понравились друг другу</h2>

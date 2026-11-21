@@ -37,15 +37,16 @@
  background:var(--likes-rose);border-radius:4px;
 }
 .likes-gallery-scroller {
- flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;
+ flex:1;min-height:0;overflow:auto;overflow-x:hidden;overscroll-behavior:contain;overflow-anchor:none;scrollbar-width:none;
  padding:10px max(12px,env(safe-area-inset-right,0px)) calc(84px + var(--bottom-safe,0px)) max(12px,env(safe-area-inset-left,0px));
 }
-.likes-gallery-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:12px;max-width:650px;margin-inline:auto}
+.likes-gallery-grid {position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:12px;max-width:650px;margin-inline:auto}
 .likes-gallery-grid .luemi-v5-skeleton {min-height:232px;border-radius:20px}
 .likes-photo-card,.likes-locked-card {
  min-width:0;overflow:hidden;border:1px solid #f1acc329;border-radius:19px;
  background:linear-gradient(150deg,#2f202d,#1d1823);box-shadow:0 6px 14px #0a060c5e;
 }
+.likes-photo-card {position:relative}
 .likes-photo-wrap {position:relative;aspect-ratio:4 / 5;background:#372633;overflow:hidden}
 .likes-photo-hit {
  position:absolute;inset:0;width:100%;height:100%;display:grid;place-items:center;
@@ -87,6 +88,29 @@
  border-radius:50%;background:#2d1626;animation:likes-indicator-in .19s ease-out both;
 }
 .likes-photo-card[data-pending] {border-color:#e96a86a3}
+.likes-card-reaction {
+ position:absolute;inset:0;display:grid;place-items:center;
+ background:linear-gradient(180deg,#1b111e70,#1b111ea8);color:var(--likes-ink);
+ opacity:0;pointer-events:none;transition:opacity .2s ease;
+}
+.likes-card-reaction[data-visible] {opacity:1}
+.likes-card-reaction-content {
+ display:grid;justify-items:center;gap:8px;padding:8px;text-align:center;font-size:14px;line-height:1.15;text-shadow:0 1px 4px #170e1c;
+ animation:likes-card-reaction-in .24s cubic-bezier(.2,.75,.25,1) both;
+}
+.likes-card-reaction-content img {filter:drop-shadow(0 3px 9px #e96a863d)}
+.likes-card-reaction-controls {
+ display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;
+}
+.likes-card-reaction-controls .profile-reaction-countdown {height:34px;width:34px}
+.likes-card-reaction-controls .profile-reaction-countdown svg {width:100%;height:100%}
+.likes-card-undo {
+ pointer-events:auto;min-height:44px;border:0;padding:0 6px;border-radius:9px;background:transparent;
+ color:#ffd3de;font:inherit;font-size:13px;font-weight:700;
+}
+.likes-card-undo:disabled {pointer-events:none;opacity:.55}
+.likes-card-undo[data-expired] {visibility:hidden}
+@keyframes likes-card-reaction-in {from{opacity:0;transform:translateY(8px) scale(.94)} to{opacity:1;transform:none}}
 .likes-card-chat {
  display:flex;align-items:center;justify-content:center;gap:5px;width:calc(100% - 16px);min-height:44px;margin:0 8px 8px;
  border:1px solid #e96a8678;border-radius:12px;background:#e96a8610;color:#f2a8b8;font:inherit;font-weight:690;font-size:12px;
@@ -115,7 +139,7 @@
 .likes-fan[data-manual] .likes-fan-option:focus-visible {transform:translate(-50%,-50%) scale(1.13);background:#e96a86;color:#271322}
 .likes-fan-caption {
  position:absolute;left:clamp(var(--caption-inset),var(--caption-x),calc(100% - var(--caption-inset)));
- --caption-width:204px;--caption-inset:min(calc(var(--caption-width) / 2 + 12px),50%);
+ --caption-width:222px;--caption-inset:min(calc(var(--caption-width) / 2 + 12px),50%);
  top:clamp(12px,var(--caption-y),calc(100% - 48px));
  width:min(var(--caption-width),calc(100% - 24px));height:36px;box-sizing:border-box;
  display:grid;place-items:center;padding:0 8px;border-radius:18px;
@@ -126,10 +150,11 @@
 .likes-fan-caption[data-visible] {opacity:1;transform:translate(-50%,0)}
 .likes-fan-caption-window {display:grid;width:100%;height:24px;overflow:hidden;perspective:100px}
 .likes-fan-caption-line {
- grid-area:1 / 1;align-self:center;text-align:center;
+ grid-area:1 / 1;align-self:center;display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;
  font:650 14px / 20px system-ui,sans-serif;white-space:nowrap;
  opacity:0;transform:translateY(110%) rotateX(-24deg);
 }
+.likes-fan-caption-line svg {flex:none;color:#f2a8b8}
 .likes-fan-caption-line[data-phase="current"],
 .likes-fan-caption-line[data-phase="previous"] {
  transition:transform .21s cubic-bezier(.2,.75,.23,1),opacity .16s ease-out;
@@ -139,6 +164,6 @@
 @keyframes likes-fan-open {from{opacity:0;transform:translate(calc(-50% + var(--fan-x)),calc(-50% + var(--fan-y))) scale(.5)} to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 @keyframes likes-indicator-in {from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce) {
- .likes-photo-track,.likes-photo-dots,.likes-fan-option,.likes-fan-caption,.likes-fan-caption-line[data-phase] {transition:none}
- .likes-card-indicator,.likes-fan,.likes-fan-option {animation:none}
+ .likes-photo-track,.likes-photo-dots,.likes-fan-option,.likes-fan-caption,.likes-fan-caption-line[data-phase],.likes-card-reaction {transition:none}
+ .likes-card-indicator,.likes-fan,.likes-fan-option,.likes-card-reaction-content {animation:none}
 }

@@ -3,29 +3,47 @@ import {createPortal} from "react-dom";
 import {ChevronLeft,ChevronRight,Heart,MapPin,MessageCircle,MoreHorizontal,Star,UserRound,X} from "lucide-react";
 import {getPublishedProfile} from "../registration/real-live-client";
 import {selectionHaptic} from "../ui/haptic";
+import {ReactionCountdown,useReactionCountdown} from "./ProfileReactionNotices";
+import type {ProfileReactionAction} from "./use-profile-reaction-queue";
 import {profileReactionAsset} from "./owner-profile/ProfileReactions";
 import {fanSelection,fanTargets,likesDrag,LIKES_HOLD_MS,type LikesAction,type Point} from "./likes-gallery-gesture";
 
 type Fan={origin:Point;targets:ReturnType<typeof fanTargets>;manual:boolean};
 type FanCaption={current:LikesAction|null;previous:LikesAction|null};
 type Press={id:number;origin:Point;width:number;mode:"hold"|"photos"|"fan";timer:number;x:number;offset:number};
+type GalleryReaction=Extract<ProfileReactionAction,{phase:"pending"|"sending"|"sent"}>;
 type Props={
  name:string;age?:number;city?:string;photoOwner?:string;photos:string[];indicator:Parameters<typeof profileReactionAsset>[0];
- pending:boolean;react?:(kind:LikesAction)=>void;onOpen:()=>void;onChat?:()=>void;error?:string;
+ layoutKey:string;pending:boolean;reaction?:GalleryReaction;onUndo:()=>void;onExit:(key:string)=>void;react?:(kind:LikesAction)=>void;onOpen:()=>void;onChat?:()=>void;error?:string;
 };
 const labels={skip:"Пропустить",super:"Отправить суперлайк",ordinary:"Отправить симпатию"};
 const shortLabels={skip:"Пропустить",super:"Суперлайк",ordinary:"Лайк"};
 const emptyCaption:FanCaption={current:null,previous:null};
 const icons={skip:X,super:Star,ordinary:Heart};
+const reactionText={skip:"Анкета пропущена",super:"Суперлайк",ordinary:"Симпатия"};
 
-export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pending,react,onOpen,onChat,error}:Props){
+function CardReaction({reaction,indicator,onUndo}:{reaction:GalleryReaction;indicator:Props["indicator"];onUndo:()=>void}){
+ const {seconds,elapsed}=useReactionCountdown(reaction.deadline);
+ return <div className="likes-card-reaction-content">
+  <img src={profileReactionAsset(indicator)} alt="" width="48" height="48"/>
+  <strong role="status">{reactionText[reaction.kind]}</strong>
+  <div className="likes-card-reaction-controls">
+   <ReactionCountdown seconds={reaction.phase==="pending"?seconds:0} elapsed={elapsed}/>
+   <button type="button" className="likes-card-undo" onClick={onUndo}
+    data-expired={reaction.phase!=="pending"||undefined}
+    disabled={reaction.phase!=="pending"||seconds===0}>Отменить</button>
+  </div>
+ </div>;
+}
+
+export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,layoutKey,pending,reaction,onUndo,onExit,react,onOpen,onChat,error}:Props){
  const [index,setIndex]=useState(0);
  const [dots,setDots]=useState(false);
  const [summary,setSummary]=useState<{age:number;city:string}|null>(null);
  const [fan,setFan]=useState<Fan|null>(null);
  const [caption,setCaption]=useState(emptyCaption);
  const media=useRef<HTMLButtonElement>(null),track=useRef<HTMLSpanElement>(null),popup=useRef<HTMLDivElement>(null);
- const trigger=useRef<HTMLButtonElement>(null);
+ const trigger=useRef<HTMLButtonElement>(null),article=useRef<HTMLElement>(null);
  const press=useRef<Press|null>(null),menu=useRef<Fan|null>(null),chosen=useRef<LikesAction|null>(null);
  const timeout=useRef(0),blockClick=useRef(0),selected=useRef(0);
  const latest=useRef({react,photos});
@@ -111,6 +129,28 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
  },[photoOwner]);
  useEffect(()=>{if(fan?.manual)popup.current?.querySelector("button")?.focus({preventScroll:true});},[fan]);
 
+ const exitKind=reaction?.phase==="sent"?reaction.kind:null;
+ useLayoutEffect(()=>{
+  const node=article.current,grid=node?.parentElement;
+  if(!node||!grid||!exitKind)return;
+  if(window.matchMedia("(prefers-reduced-motion: reduce)").matches||typeof node.animate!=="function"){
+   onExit(layoutKey);
+   return;
+  }
+  const rightColumn=node.offsetLeft+node.offsetWidth/2>grid.clientWidth/2;
+  const direction=exitKind==="skip"?"shrink":rightColumn?"right":"left";
+  const bounds=node.getBoundingClientRect();
+  const distance=rightColumn?document.documentElement.clientWidth-bounds.left+12:-bounds.right-12;
+  node.dataset.exitDirection=direction;
+  const end=exitKind==="skip"?"scale(.55)":`translate3d(${distance}px, 0, 0) scale(.96)`;
+  const animation=node.animate([
+   {transform:"translate3d(0, 0, 0) scale(1)",opacity:1},
+   {transform:end,opacity:0}
+  ],{duration:300,easing:"cubic-bezier(.45,.05,.62,1)",fill:"forwards"});
+  void animation.finished.then(()=>onExit(layoutKey),()=>{});
+  return ()=>{animation.cancel();delete node.dataset.exitDirection;};
+ },[exitKind,layoutKey,onExit]);
+
  const down=(event:PointerEvent<HTMLButtonElement>)=>{
   if(!event.isPrimary){
    const current=press.current;
@@ -192,7 +232,8 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
  const fanBottom=fan?Math.max(fan.origin.y,...fan.targets.map(({y})=>y)):0;
  const captionTop=fanTop>=142?fanTop-74:fanBottom+42;
 
- return <article className="likes-photo-card" data-pending={pending||undefined}>
+ return <article ref={article} className="likes-photo-card" data-pending={pending||undefined}>
+  <div inert={!!reaction||undefined}>
   <div className="likes-photo-wrap">
    <button className="likes-photo-hit" ref={media} type="button" aria-label={"Открыть анкету "+name}
     onPointerDown={down} onPointerMove={move} onPointerUp={event=>finish(event)}
@@ -234,6 +275,10 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
   </div>
   {onChat&&<button type="button" className="likes-card-chat" aria-label={"Написать "+name} onClick={onChat}><MessageCircle size={15} aria-hidden="true"/>Написать</button>}
   {error&&<small className="likes-card-error" role="alert">{error}</small>}
+  </div>
+  <div className="likes-card-reaction" data-visible={!!reaction||undefined}>
+   {reaction&&<CardReaction key={reaction.deadline} reaction={reaction} indicator={indicator} onUndo={onUndo}/>}
+  </div>
   {fan&&createPortal(<div ref={popup} className="likes-fan" data-manual={fan.manual||undefined} data-selected={caption.current??undefined}
    role={fan.manual?"dialog":undefined} aria-label={fan.manual?"Действия с симпатией":undefined} aria-hidden={fan.manual?undefined:true}
    onClick={event=>{if(event.target===event.currentTarget&&fan.manual)closeMenu();}}>
@@ -250,10 +295,13 @@ export function LikesGalleryCard({name,age,city,photoOwner,photos,indicator,pend
    {!fan.manual&&<div className="likes-fan-caption" aria-hidden="true" data-visible={!!caption.current||undefined}
     style={{"--caption-x":captionX+"px","--caption-y":captionTop+"px"} as CSSProperties}>
     <div className="likes-fan-caption-window">
-     {fan.targets.map(({kind})=><span key={kind} className="likes-fan-caption-line"
-      data-phase={caption.current===kind?"current":caption.previous===kind?"previous":undefined}>
-      {labels[kind]}
-     </span>)}
+     {fan.targets.map(({kind})=>{
+      const Icon=icons[kind];
+      return <span key={kind} className="likes-fan-caption-line"
+       data-phase={caption.current===kind?"current":caption.previous===kind?"previous":undefined}>
+       <Icon size={15} aria-hidden="true"/>{labels[kind]}
+      </span>;
+     })}
     </div>
    </div>}
   </div>,document.body)}
