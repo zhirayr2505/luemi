@@ -3,7 +3,7 @@ import {likePublishedUser,rejectIncomingLike,type RealLikeKind} from "../registr
 import type {LikesAction} from "./likes-gallery-gesture";
 
 export const PROFILE_REACTION_UNDO_MS=5000;
-type Target={id:string;name:string;demo?:true};
+type Target={id:string;name:string;demo?:true;surface?:"gallery"};
 export const isProfileLike=(kind:LikesAction|undefined):kind is RealLikeKind=>kind==="ordinary"||kind==="super";
 type QueuedReaction={target:Target;kind:LikesAction;deadline:number};
 export type PendingProfileReaction=QueuedReaction&{phase:"pending";timer:number};

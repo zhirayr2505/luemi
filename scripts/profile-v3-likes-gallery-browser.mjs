@@ -41,9 +41,24 @@ await page.route("**/api/**",route=>{
 const base=process.env.LUEMI_QA_BASE_URL||"http://127.0.0.1:5173";
 const open=async()=>{await page.goto(base+"/profile-qa.html?profileReactions=1&luemiRoute=likes");};
 const scope=page.getByRole("region",{name:"Симпатии",exact:true});
-const card=name=>scope.locator(".likes-photo-card").filter({has:page.getByRole("button",{name:"Открыть анкету "+name,exact:true})});
+const card=name=>scope.locator(".likes-photo-card").filter({has:page.locator('.likes-photo-hit[aria-label="Открыть анкету '+name+'"]')});
 const hit=name=>card(name).getByRole("button",{name:"Открыть анкету "+name,exact:true});
 const menu=page.locator(".likes-fan"),notice=page.locator(".profile-reaction-notice");
+const overlay=name=>card(name).locator('.likes-card-reaction[data-visible]');
+const undo=name=>overlay(name).getByRole("button",{name:"Отменить",exact:true});
+const departure=async(name,direction)=>{
+ await page.waitForFunction(({name,direction})=>{
+  const leaving=[...document.querySelectorAll(".likes-photo-card[data-exit-direction]")].find(node=>
+   node.dataset.exitDirection===direction&&node.querySelector(".likes-photo-hit")?.getAttribute("aria-label")==="Открыть анкету "+name);
+  return leaving?.getAnimations().some(animation=>{
+   const last=animation.effect?.getKeyframes().at(-1)?.transform;
+   if(!last)return false;
+   const matrix=new DOMMatrixReadOnly(last);
+   return direction==="shrink"?matrix.a<1:direction==="left"?matrix.e<0:matrix.e>0;
+  });
+ },{name,direction},{timeout:8000});
+ await card(name).waitFor({state:"detached"});
+};
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 const touch=(type,coords)=>device.send("Input.dispatchTouchEvent",{type,
  touchPoints:coords?[{...coords,id:7,radiusX:2,radiusY:2,force:1}]:[]});
@@ -53,6 +68,8 @@ const captionText={ordinary:"Отправить симпатию",super:"Отп�
 const checkCaption=async kind=>{
  const active=caption.locator('[data-phase="current"]').filter({hasText:captionText[kind]});
  await active.waitFor();
+ const iconClass={ordinary:"lucide-heart",super:"lucide-star",skip:"lucide-x"}[kind];
+ assert.equal(await active.locator("svg."+iconClass).count(),1,"the rolling label includes its reaction icon");
  assert.equal(await menu.getAttribute("data-selected"),kind,"touch continues to reach the fan even along a vertical ray");
  const box=await caption.boundingBox();
  const button=await menu.locator('[data-kind="'+kind+'"]').boundingBox();
@@ -63,6 +80,7 @@ const checkCaption=async kind=>{
  assert(box.y+box.height<button.y||box.y>button.y+button.height,"the label keeps clear of the selected button and finger");
 };
 const gesture=async(name,kind=null)=>{
+ await hit(name).scrollIntoViewIfNeeded();
  const at=await center(hit(name));await touch("touchStart",at);
  await menu.waitFor({timeout:3000});
  if(kind){
@@ -118,14 +136,17 @@ try{
  assert.deepEqual(serverRequests,[],"returning to the center cancels without submitting a reaction");
  await gesture("София","ordinary");
  await icon("София","like-outgoing");
+ await overlay("София").waitFor({timeout:5000});
+ assert.equal(await overlay("София").getByText("5",{exact:true}).count(),1);
+ assert.equal(await notice.count(),0,"gallery countdown and Undo stay on the selected card");
  assert.deepEqual(serverRequests,[]);
- await notice.getByRole("button",{name:"Отменить"}).tap();
+ await undo("София").tap();
  await icon("София","like-incoming");
  assert.deepEqual(serverRequests,[],"Undo cancels before any real network write");
 
  await gesture("София","ordinary");
  await icon("София","like-outgoing");
- await notice.waitFor({state:"hidden",timeout:8000});
+ await departure("София","left");
  await pickTab("Взаимно");
  await icon("София","like-mutual");
  await scope.getByRole("button",{name:"Написать София",exact:true}).tap();
@@ -165,8 +186,14 @@ try{
  await gesture("Карина","super");
  await icon("Карина","superlike-outgoing");
  assert.equal(await card("Карина").getAttribute("data-pending"),"true");
- await notice.waitFor({state:"hidden",timeout:8000});
- await hit("Карина").waitFor({state:"hidden"});
+ const initialElina=await card("Элина").boundingBox();
+ await Promise.all([
+  departure("Карина","left"),
+  page.waitForFunction(()=>document.querySelector(".likes-gallery-grid > :first-child")?.getAnimations()
+   .some(animation=>animation.effect?.getKeyframes().some(frame=>frame.translate&&frame.translate!=="0px")),{},{timeout:8000})
+ ]);
+ await page.waitForFunction(()=>!document.querySelector(".likes-gallery-grid > :first-child")?.getAnimations().length);
+ assert((await card("Элина").boundingBox()).x<initialElina.x,"the next card moves into the vacated slot");
  await pickTab("Взаимно");
  await icon("Карина","like-mutual");
  await scope.getByRole("button",{name:"Написать Карина"}).tap();
@@ -176,12 +203,16 @@ try{
  await icon("Элина","superlike-incoming");
  await gesture("Элина","skip");
  await icon("Элина","like-skipped");
- await notice.getByRole("button",{name:"Отменить"}).tap();
+ await undo("Элина").tap();
  await icon("Элина","superlike-incoming");
  await gesture("Элина","skip");
- await notice.waitFor({state:"hidden",timeout:8000});
- await hit("Элина").waitFor({state:"hidden"});
+ await departure("Элина","shrink");
+ const rightName="Сара";
+ await card(rightName).waitFor();
+ assert.equal(await card(rightName).evaluate(node=>[...node.closest(".likes-gallery-grid").children].indexOf(node)%2),1);
+ await gesture(rightName,"ordinary");
+ await departure(rightName,"right");
  assert.deepEqual(serverRequests,[],"all demo mutations remain local");
  assert.deepEqual(errors,[]);
- console.log("LIKES_GALLERY_BROWSER_PASS authorized demo, two-column gallery, album dots, touch fan, cancel, preview, skip/undo and mutual handoff");
+ console.log("LIKES_GALLERY_BROWSER_PASS authorized demo, album dots, illustrated fan captions, inline undo, exits in both directions, shrink, reflow and mutual handoff");
 }finally{await browser.close();}
