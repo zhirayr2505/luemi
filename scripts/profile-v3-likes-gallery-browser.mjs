@@ -182,6 +182,9 @@ try{
  await scope.getByRole("button",{name:"Написать София",exact:true}).tap();
  await page.locator(".lc-thread-route").getByText("София",{exact:true}).waitFor();
  await nav.waitFor({state:"hidden"});
+ await page.locator(".lc-thread-route").getByRole("button",{name:"Назад",exact:true}).tap();
+ await nav.waitFor();
+ await chatsBadge.waitFor({state:"detached",timeout:5000});
  assert.deepEqual(serverRequests,["/api/v4/matches/like","/api/v4/matches/"+matchId+"/open"]);
  serverRequests.length=0;
 
