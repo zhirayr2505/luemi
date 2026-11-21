@@ -48,6 +48,20 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
 const touch=(type,coords)=>device.send("Input.dispatchTouchEvent",{type,
  touchPoints:coords?[{...coords,id:7,radiusX:2,radiusY:2,force:1}]:[]});
 const center=async locator=>{const b=await locator.boundingBox();assert(b);return {x:b.x+b.width/2,y:b.y+b.height/2};};
+const caption=menu.locator(".likes-fan-caption");
+const captionText={ordinary:"Отправить симпатию",super:"Отправить суперлайк",skip:"Пропустить"};
+const checkCaption=async kind=>{
+ const active=caption.locator('[data-phase="current"]').filter({hasText:captionText[kind]});
+ await active.waitFor();
+ assert.equal(await menu.getAttribute("data-selected"),kind,"touch continues to reach the fan even along a vertical ray");
+ const box=await caption.boundingBox();
+ const button=await menu.locator('[data-kind="'+kind+'"]').boundingBox();
+ const viewport=page.viewportSize();
+ assert(box&&button&&viewport);
+ assert(box.x>=0&&box.x+box.width<=viewport.width&&box.y>=0&&box.y+box.height<=viewport.height,
+  "the label fits in the viewport");
+ assert(box.y+box.height<button.y||box.y>button.y+button.height,"the label keeps clear of the selected button and finger");
+};
 const gesture=async(name,kind=null)=>{
  const at=await center(hit(name));await touch("touchStart",at);
  await menu.waitFor({timeout:3000});
@@ -56,7 +70,7 @@ const gesture=async(name,kind=null)=>{
   await pause(200);
   const end=await center(target);
   for(let i=1;i<=5;i++)await touch("touchMove",{x:at.x+(end.x-at.x)*i/5,y:at.y+(end.y-at.y)*i/5});
-  assert.equal(await menu.getAttribute("data-selected"),kind,"touch continues to reach the fan even along a vertical ray");
+  await checkCaption(kind);
  }
  await touch("touchEnd");
  await menu.waitFor({state:"detached"});
@@ -87,6 +101,21 @@ try{
  assert.equal(await scope.getByRole("button",{name:"Демо",exact:true}).count(),0,"QA controls require server authorization");
  assert.equal(await scope.getByLabel("Скрытые симпатии, 1").count(),1);
  assert.equal(await card("София").locator(".likes-photo-slide").count(),3);
+ const heldAt=await center(hit("София"));
+ await touch("touchStart",heldAt);
+ await menu.waitFor();
+ assert.equal(await caption.getAttribute("data-visible"),null);
+ await pause(200);
+ for(const kind of ["ordinary","super","skip","ordinary"]){
+  await touch("touchMove",await center(menu.locator('[data-kind="'+kind+'"]')));
+  await checkCaption(kind);
+ }
+ assert.equal(await caption.locator('[data-phase="previous"]').textContent().then(text=>text.trim()),captionText.skip);
+ await touch("touchMove",heldAt);
+ await page.waitForFunction(()=>!document.querySelector(".likes-fan-caption").hasAttribute("data-visible"));
+ await touch("touchEnd");
+ await menu.waitFor({state:"detached"});
+ assert.deepEqual(serverRequests,[],"returning to the center cancels without submitting a reaction");
  await gesture("София","ordinary");
  await icon("София","like-outgoing");
  assert.deepEqual(serverRequests,[]);
