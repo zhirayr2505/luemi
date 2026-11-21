@@ -18,7 +18,7 @@ test("the four destinations map to their accessible labels and SVG glyphs",()=>{
  for(const dest of ['{id:"discover",label:"Знакомства",icon:NavigationDiscover','{id:"likes",label:"Симпатии",icon:NavigationLikes',
   '{id:"chats",label:"Чаты",icon:NavigationChats','{id:"profile",label:"Профиль",icon:NavigationProfile'])
   assert.ok(home.includes(dest),dest);
- assert.match(chats,/disabled:true,hint:"Чаты из бликов/);
+ assert.doesNotMatch(chats,/Чаты из бликов|Архив пока не поддерживается/);
  assert.doesNotMatch(home,/\["bliki"/);
  assert.match(discovery,/\.discovery-app>\.discovery-bottom-nav \.discovery-nav-item span/);
 });

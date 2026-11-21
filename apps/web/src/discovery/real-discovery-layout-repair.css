@@ -112,11 +112,13 @@
  --moon-nav-height:clamp(46px,12.3vw,48px);
  --moon-nav-bottom:calc(var(--bottom-safe,0px) + 14px);
 }
-.real-discovery-home>.discovery-bottom-nav{
+.discovery-app.real-discovery-home>.discovery-bottom-nav{
  --dock-left:max(7px,env(safe-area-inset-left,0px));
  --dock-right:max(7px,env(safe-area-inset-right,0px));
  --dock-space:calc(100% - var(--dock-left) - var(--dock-right));
  width:min(var(--dock-space),clamp(200px,calc(var(--dock-space) / 1.5),347px));
+ height:var(--moon-nav-height);
+ min-height:var(--moon-nav-height);
  left:var(--dock-left);
  right:var(--dock-right);
  margin-inline:auto;
@@ -130,29 +132,29 @@
  -webkit-backdrop-filter:none;
  backdrop-filter:none;
 }
-.real-discovery-home>.discovery-bottom-nav::before{content:none}
-.real-discovery-home>.discovery-bottom-nav .discovery-nav-item{
+.discovery-app.real-discovery-home>.discovery-bottom-nav::before{content:none}
+.discovery-app.real-discovery-home>.discovery-bottom-nav .discovery-nav-item{
  display:grid;
  min-height:44px;
  border-radius:17px;
  color:#9e97a6;
  transition:color .16s ease,transform .16s ease;
 }
-.real-discovery-home>.discovery-bottom-nav .discovery-nav-item.active{
+.discovery-app.real-discovery-home>.discovery-bottom-nav .discovery-nav-item.active{
  color:#f2839a;
  background:transparent;
  box-shadow:none;
 }
-.real-discovery-home>.discovery-bottom-nav .discovery-nav-item:active{transform:scale(.94)}
-.real-discovery-home>.discovery-bottom-nav .discovery-nav-item .luemi-nav-glyph{
+.discovery-app.real-discovery-home>.discovery-bottom-nav .discovery-nav-item:active{transform:scale(.94)}
+.discovery-app.real-discovery-home>.discovery-bottom-nav .discovery-nav-item .luemi-nav-glyph{
  position:relative;
  display:grid;
  place-items:center;
  width:clamp(24px,7vw,28px);
  height:clamp(24px,7vw,28px);
 }
-.real-discovery-home>.discovery-bottom-nav .luemi-nav-glyph svg{display:block;width:100%;height:100%}
-.real-discovery-home>.discovery-bottom-nav .discovery-nav-item .luemi-nav-label{
+.discovery-app.real-discovery-home>.discovery-bottom-nav .luemi-nav-glyph svg{display:block;width:100%;height:100%}
+.discovery-app.real-discovery-home>.discovery-bottom-nav .discovery-nav-item .luemi-nav-label{
  display:block;
  position:absolute;
  width:1px;
@@ -184,8 +186,8 @@
  pointer-events:none;
 }
 @media(prefers-reduced-motion:reduce){
- .real-discovery-home>.discovery-bottom-nav .discovery-nav-item{transition:none}
- .real-discovery-home>.discovery-bottom-nav .discovery-nav-item:active{transform:none}
+ .discovery-app.real-discovery-home>.discovery-bottom-nav .discovery-nav-item{transition:none}
+ .discovery-app.real-discovery-home>.discovery-bottom-nav .discovery-nav-item:active{transform:none}
 }
 /* Keep compact safe-area fits on Galaxy A55 portrait and small devices. */
 @media(max-height:710px){
@@ -199,7 +201,7 @@
  .real-discovery-home[data-feed-visible="true"] .discovery-top-tabs>button{font-size:12px}
 }
 @media(prefers-reduced-transparency:reduce){
- .real-discovery-home>.discovery-bottom-nav{background:#19171d}
+ .discovery-app.real-discovery-home>.discovery-bottom-nav{background:#19171d}
  .real-discovery-home[data-feed-visible="true"] .discovery-top-tabs{background:#232E3D}
 }
 

@@ -1,4 +1,4 @@
-/* The eclipse artwork is stationary beneath the independently scrolling chat. */
+/* Wallpaper is limited to the conversation surface. */
 .luemi-chats.lc-route[data-chat-theme=eclipse] {
  --lc-ink:#f9edf2;
  --lc-muted:#c5adb8;
@@ -8,7 +8,7 @@
  background:#150f19;
  color:var(--lc-ink);
 }
-.lc-route[data-chat-theme=eclipse]::before {
+.lc-thread-route[data-chat-theme=eclipse]::before {
  content:"";
  position:absolute;
  z-index:-1;
@@ -18,14 +18,111 @@
   linear-gradient(180deg,#150f1966 0%,#150f1905 48%,#150f19ac 100%),
   url("/assets/chats/chat-eclipse.webp") center 62% / cover no-repeat;
 }
-.lc-list-route[data-chat-theme=eclipse] {
- padding-bottom:calc(var(--bottom-safe,0px) + 73px);
+/* Use the same ink, safe-area logo and rose accent as the likes screen. */
+.discovery-app.real-discovery-home[data-main-tab=chats],
+.luemi-chats.lc-list-route[data-chat-theme=eclipse] {
+ --lc-ink:#fbf4f6;
+ --lc-muted:#b8b1bd;
+ --lc-line:#f6d8e619;
+ --lc-rose:#f29ab0;
+ background:#11151e;
 }
-.lc-list-route[data-chat-theme=eclipse]::before {
- background:
-  linear-gradient(180deg,#150f19bf 0%,#150f1966 44%,#150f1933 72%,#150f19b8 100%),
-  url("/assets/chats/chat-eclipse.webp") center 62% / cover no-repeat;
- opacity:.8;
+.luemi-chats.lc-list-route[data-chat-theme=eclipse] {
+ padding-bottom:calc(var(--bottom-safe,0px) + 77px);
+ background:radial-gradient(ellipse at 50% 58%,#1a1723 0%,#11151e 68%);
+ animation-name:lc-inbox-in;
+}
+.discovery-app.real-discovery-home[data-main-tab=chats]>.discovery-bottom-nav {
+ background:#1c1922;
+ border-color:#efc6dc26;
+}
+.lc-inbox-chrome {
+ width:min(100%,674px);
+ margin-inline:auto;
+ padding:max(12px,calc(var(--top-safe,0px) + 4px)) max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));
+ flex:none;
+}
+.lc-inbox-brand {
+ display:grid;
+ place-items:center;
+ height:34px;
+}
+.lc-inbox-brand img {
+ display:block;
+ width:88px;
+ height:30px;
+ object-fit:contain;
+ filter:brightness(0) invert(1);
+}
+.lc-inbox-empty {
+ display:flex;
+ flex:1 1 auto;
+ min-height:0;
+ flex-direction:column;
+ align-items:center;
+ justify-content:safe center;
+ overflow-y:auto;
+ text-align:center;
+ gap:10px;
+ padding:24px 20px;
+}
+.lc-inbox-mark {
+ display:grid;
+ place-items:center;
+ flex:none;
+ width:66px;
+ height:66px;
+ margin:0 0 5px;
+ border:1px solid #ec9cb840;
+ border-radius:50%;
+ background:radial-gradient(circle at 45% 32%,#3a2b3a,#241d2a 74%);
+ color:#f2a6b9;
+ box-shadow:0 8px 22px #10091155;
+}
+.lc-inbox-empty h3 {
+ margin:0;
+ font-size:20px;
+ letter-spacing:-.022em;
+}
+.lc-inbox-empty p {
+ max-width:260px;
+ margin:0;
+ color:var(--lc-muted);
+ font-size:14px;
+ line-height:1.5;
+ text-wrap:balance;
+}
+.lc-inbox-primary {
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ gap:8px;
+ flex:none;
+ min-height:44px;
+ margin-top:9px;
+ padding:0 16px;
+ border:1px solid #edb4c643;
+ border-radius:16px;
+ background:#f1a0b6;
+ color:#2f1926;
+ font-size:14px;
+ font-weight:680;
+}
+.lc-inbox-primary:active {background:#ffc1d0}
+.lc-demo-link {
+ align-self:center;
+ flex:none;
+ min-height:44px;
+ padding:0 12px;
+ border:0;
+ background:none;
+ color:var(--lc-rose);
+ font-size:13px;
+ font-weight:620;
+}
+@keyframes lc-inbox-in {
+ from {opacity:0}
+ to {opacity:1}
 }
 .lc-route[data-chat-theme=eclipse] button:focus-visible,
 .lc-route[data-chat-theme=eclipse] textarea:focus-visible,
@@ -33,11 +130,16 @@
  outline:2px solid var(--lc-rose);
  outline-offset:2px;
 }
-.lc-route[data-chat-theme=eclipse] .lc-heading {padding:10px 16px 12px}
-.lc-route[data-chat-theme=eclipse] .lc-heading h2 {
+.lc-list-route[data-chat-theme=eclipse] .lc-heading {
+ min-height:46px;
+ padding:0;
+ border-bottom:1px solid var(--lc-line);
+}
+.lc-list-route[data-chat-theme=eclipse] .lc-heading h2 {
  color:var(--lc-ink);
- font-size:clamp(29px,8.7vw,38px);
- letter-spacing:-.045em;
+ font-size:23px;
+ font-weight:730;
+ letter-spacing:-.032em;
 }
 .luemi-chats.lc-route[data-chat-theme=eclipse] .luemi-v5-icon-button {
  width:44px;
@@ -51,21 +153,25 @@
  backdrop-filter:none;
 }
 .luemi-chats.lc-route[data-chat-theme=eclipse] .luemi-v5-icon-button::before,
-.luemi-chats.lc-route[data-chat-theme=eclipse] .luemi-v5-icon-button::after,
-.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-categories-panel::before,
-.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-categories-panel::after {content:none}
-.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-search,
-.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-categories-panel {
+.luemi-chats.lc-route[data-chat-theme=eclipse] .luemi-v5-icon-button::after {content:none}
+.luemi-chats.lc-list-route[data-chat-theme=eclipse] .lc-heading-actions .luemi-v5-icon-button {
+ border:0;
+ background:transparent;
+ box-shadow:none;
+ color:var(--lc-muted);
+}
+.luemi-chats.lc-list-route[data-chat-theme=eclipse] .lc-search {
+ min-height:44px;
+ margin:10px 0 0;
  color:var(--lc-muted);
  border:1px solid var(--lc-line);
- background:#241a25;
+ background:#1c1d27;
  box-shadow:none;
  -webkit-backdrop-filter:none;
  backdrop-filter:none;
 }
 .lc-route[data-chat-theme=eclipse] .lc-search input {color:var(--lc-ink)}
 .lc-route[data-chat-theme=eclipse] .lc-search input::placeholder {color:var(--lc-muted)}
-.lc-route[data-chat-theme=eclipse] .lc-categories-panel {border-radius:20px}
 .lc-route[data-chat-theme=eclipse] .luemi-v5-avatar {
  display:grid;
  place-items:center;
@@ -80,24 +186,7 @@
  font-weight:650;
 }
 .lc-route[data-chat-theme=eclipse] .luemi-v5-avatar img {width:100%;height:100%;object-fit:cover}
-.lc-route[data-chat-theme=eclipse] .lc-categories {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
-.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-categories button {
- min-height:38px;
- min-width:0;
- padding:4px 2px;
- border:1px solid transparent;
- border-radius:15px;
- background:transparent;
- color:var(--lc-muted);
- font-size:12px;
- box-shadow:none;
-}
-.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-categories button.active {
- background:#4b2c3c;
- border-color:#e196b23b;
- color:var(--lc-ink);
-}
-.lc-route[data-chat-theme=eclipse] .lc-new-matches {margin:4px 14px 14px}
+.lc-route[data-chat-theme=eclipse] .lc-new-matches {margin:12px 16px 2px}
 .lc-route[data-chat-theme=eclipse] .lc-new-matches-head h3 {
  color:var(--lc-ink);
  font-size:14px;
@@ -109,7 +198,7 @@
 }
 .lc-route[data-chat-theme=eclipse] .lc-conversations {
  gap:8px;
- padding:2px 14px 14px;
+ padding:10px 16px 14px;
 }
 .luemi-chats.lc-route[data-chat-theme=eclipse] .lc-chat-row {
  position:relative;
@@ -117,13 +206,13 @@
  min-height:70px;
  padding:10px 12px;
  border-color:var(--lc-line);
- border-radius:22px;
- background:linear-gradient(115deg,#2b202bf2,#211923f2);
- box-shadow:inset 0 1px #ffe4f00a,0 6px 14px #0c070d36;
+ border-radius:18px;
+ background:#1b202b;
+ box-shadow:none;
 }
 .luemi-chats.lc-route[data-chat-theme=eclipse] .lc-chat-row[data-unread] {
  border-color:#e69bb947;
- background:linear-gradient(112deg,#362332f5,#251c28f5 72%);
+ background:#23202c;
 }
 .lc-route[data-chat-theme=eclipse] .lc-chat-row:active {transform:scale(.984)}
 .lc-route[data-chat-theme=eclipse] .lc-chat-summary strong {color:var(--lc-ink)}

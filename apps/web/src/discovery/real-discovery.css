@@ -21,10 +21,8 @@
  z-index:9;display:grid;place-items:center;width:40px;height:40px;
  color:var(--ink);border:1px solid rgba(255,255,255,.85);border-radius:50%;
  background:rgba(248,243,251,.9);box-shadow:0 4px 14px rgba(44,27,67,.15)}
-.real-discovery-home .real-discovery-chat-panel{overflow:hidden}
+.real-discovery-home .real-discovery-chat-panel{overflow:hidden;top:0}
 .real-discovery-chat-panel>.luemi-chats{min-height:0;height:100%;width:100%;max-width:none;box-shadow:none}
-.real-discovery-home[data-chat-thread=false] .real-discovery-chat-panel{top:calc(var(--top-safe) + 66px)}
-.real-discovery-home[data-chat-thread=true] .real-discovery-chat-panel{top:0}
 .real-discovery-home .real-discovery-modal{z-index:120}
 .real-discovery-modal-sheet{margin:auto 0 0;width:100%;max-height:75%;display:flex;flex-direction:column;
  padding:20px 18px max(18px,var(--bottom-safe));border-radius:25px 25px 0 0;

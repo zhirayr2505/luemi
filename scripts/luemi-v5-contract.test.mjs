@@ -45,7 +45,8 @@ test("feed compact content follows approved information order",()=>{
 });
 
 test("real chat list and thread share V5 without white route surfaces",()=>{
- assert.match(chatView,/LuemiSegmentedTabs/);
+ assert.match(chatView,/className="lc-inbox-chrome"/);
+ assert.doesNotMatch(chatView,/LuemiSegmentedTabs/);
  assert.match(chatView,/LuemiEmptyState/);
  assert.match(chatView,/onThreadChange/);
  assert.doesNotMatch(chats,/background\s*:\s*(?:#fff(?:fff)?|white)(?:[;}])/i);

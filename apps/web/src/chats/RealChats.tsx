@@ -1,11 +1,11 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,Check,CheckCheck,Copy,Heart,ImagePlus,MoveDown,MoreVertical,Pencil,RefreshCw,Search,Send,Trash2,X,MessagesSquare} from "lucide-react";
+import {ArrowLeft,ArrowRight,Check,CheckCheck,Copy,Heart,ImagePlus,MoveDown,MoreVertical,Pencil,Search,Send,Trash2,X,MessagesSquare} from "lucide-react";
 import {createChatTransport,sumUnreadMessages,ChatTransportError,type ChatTransport,type ChatWireConversation} from "./chat-transport.js";
 import {errorText,isNearBottom,messageKey,prependPage,reconcileMessages,type LocalMessage,validateChatImage} from "./chat-domain.js";
 import {ChatPhotoViewer} from "./ChatPhotoViewer.js";
 import {geoCsrf} from "../auth/session-adapter.js";
 import {getNewMatches,openNewMatch,type NewMatch} from "../registration/real-live-client.js";
-import {LuemiAvatar,LuemiEmptyState,LuemiGlassPanel,LuemiIconButton,LuemiSegmentedTabs} from "../ui/LuemiV5.js";
+import {LuemiAvatar,LuemiEmptyState,LuemiIconButton} from "../ui/LuemiV5.js";
 import "./chats.css";
 import "./surreal-chats.css";
 
@@ -15,13 +15,6 @@ const dayKey=(iso:string)=>new Date(iso).toLocaleDateString("ru-RU",{day:"numeri
 const time=(iso:string)=>new Date(iso).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
 const status=(m:LocalMessage,own:boolean)=>!own?null:m.localState==="failed"?"Ошибка":m.localState==="sending"?"Отправка…":m.readAt?"Прочитано":m.deliveredAt?"Доставлено":"Отправлено";
 
-type ChatCategory="all"|"matches"|"bliki"|"archive";
-const chatCategories=[
- {id:"all" as const,label:"Все"},{id:"matches" as const,label:"Матчи"},
- {id:"bliki" as const,label:"Блики",disabled:true,hint:"Чаты из бликов появятся после серверного запуска модуля"},
- {id:"archive" as const,label:"Архив",disabled:true,hint:"Архив пока не поддерживается сервером"}
-] as const;
-
 type ProfileThread=NewMatch&{conversationId:string};
 function conversationFromMatch(match:ProfileThread):ChatWireConversation{
  return {id:match.conversationId,matchId:match.id,peerId:match.peerId,peerProfileId:match.peerProfileId,
@@ -29,7 +22,23 @@ function conversationFromMatch(match:ProfileThread):ChatWireConversation{
   unreadCount:0,access:"active"};
 }
 
-export function RealChats({transport:provided,onOpenProfile,onThreadChange,registerThreadBack,initialThread,onUnreadCount,profileOpen=false}:{transport?:ChatTransport;onOpenProfile?:(profileId:string)=>void;onThreadChange?:(open:boolean)=>void;registerThreadBack?:(handler:(()=>void)|null)=>void;initialThread?:ProfileThread;onUnreadCount?:(count:number)=>void;profileOpen?:boolean}={}){
+type RealChatsProps={
+ transport?:ChatTransport;
+ onOpenProfile?:(profileId:string)=>void;
+ onThreadChange?:(open:boolean)=>void;
+ registerThreadBack?:(handler:(()=>void)|null)=>void;
+ initialThread?:ProfileThread;
+ onUnreadCount?:(count:number)=>void;
+ onDiscover?:()=>void;
+ onOpenDemo?:()=>void;
+ onExitDemo?:()=>void;
+ profileOpen?:boolean;
+};
+
+export function RealChats({
+ transport:provided,onOpenProfile,onThreadChange,registerThreadBack,initialThread,onUnreadCount,
+ onDiscover,onOpenDemo,onExitDemo,profileOpen=false,
+}:RealChatsProps={}){
  const csrf=geoCsrf();const api=useMemo(()=>provided??(csrf?createChatTransport(csrf):null),[provided,csrf]);
  const [actorId,setActorId]=useState("");const [conversations,setConversations]=useState<ChatWireConversation[]>([]);const [active,setActive]=useState<ChatWireConversation|null>(()=>initialThread?conversationFromMatch(initialThread):null);
  const [newMatches,setNewMatches]=useState<NewMatch[]>([]);const [viewerGender,setViewerGender]=useState<"man"|"woman"|"other">("other");
@@ -37,7 +46,7 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
  const [messages,setMessages]=useState<LocalMessage[]>([]);const [cursor,setCursor]=useState<string|null>(null);const [draft,setDraft]=useState("");const [attachment,setAttachment]=useState<Attachment|null>(null);
  const [deleteScope,setDeleteScope]=useState<"me"|"everyone">("me");const [chatMenu,setChatMenu]=useState(false);const [exportBusy,setExportBusy]=useState(false);const [clearDialog,setClearDialog]=useState(false);
  const [loading,setLoading]=useState(true);const [loadingOlder,setLoadingOlder]=useState(false);const [error,setError]=useState("");const [action,setAction]=useState<Action>(null);const [editValue,setEditValue]=useState("");const [viewer,setViewer]=useState<string|null>(null);const [newBelow,setNewBelow]=useState(0);
- const [searchOpen,setSearchOpen]=useState(false);const [query,setQuery]=useState("");const [category,setCategory]=useState<ChatCategory>("all");
+ const [searchOpen,setSearchOpen]=useState(false);const [query,setQuery]=useState("");const [demoTyping,setDemoTyping]=useState(false);
  const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);const hold=useRef<number|null>(null);const pointer=useRef<{x:number;y:number;id:string}|null>(null);
  const threadOpen=active!==null;
  const [historyLoaded,setHistoryLoaded]=useState(false);
@@ -52,8 +61,30 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
   onUnreadCount?.(sumUnreadMessages(items));
  },[onUnreadCount]);
  const refreshList=useCallback(async(signal?:AbortSignal)=>{if(!api)return;const data=await api.list(signal);if(!signal?.aborted)updateConversations(data.conversations);},[api,updateConversations]);
- const refreshMatches=useCallback(async(signal?:AbortSignal)=>{const data=await getNewMatches(signal);setNewMatches(data.matches);setViewerGender(data.viewerGender);},[]);
- useEffect(()=>{if(!api){setError("Требуется авторизация Telegram.");setLoading(false);return;}const controller=new AbortController();Promise.all([api.me(controller.signal),api.list(controller.signal),getNewMatches(controller.signal)]).then(([me,data,matches])=>{if(controller.signal.aborted)return;setActorId(me.actorId);updateConversations(data.conversations);setNewMatches(matches.matches);setViewerGender(matches.viewerGender);setError("");}).catch(e=>{if(!controller.signal.aborted)showError(e,"Не удалось загрузить чаты.");}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();},[api,updateConversations]);
+ const refreshMatches=useCallback(async(signal?:AbortSignal)=>{
+  if(provided)return;
+  const data=await getNewMatches(signal);
+  if(signal?.aborted)return;
+  setNewMatches(data.matches);
+  setViewerGender(data.viewerGender);
+ },[provided]);
+ useEffect(()=>{
+  if(!api){setError("Требуется авторизация Telegram.");setLoading(false);return;}
+  const controller=new AbortController();
+  const {signal}=controller;
+  void refreshMatches(signal).catch(()=>{});
+  void Promise.all([api.me(signal),api.list(signal)])
+   .then(([me,data])=>{
+    if(signal.aborted)return;
+    setActorId(me.actorId);
+    updateConversations(data.conversations);
+    if(onExitDemo)setActive(data.conversations[0]??null);
+    setError("");
+   })
+   .catch(error=>{if(!signal.aborted)showError(error,"Не удалось загрузить чаты.");})
+   .finally(()=>{if(!signal.aborted)setLoading(false);});
+  return()=>controller.abort();
+ },[api,onExitDemo,refreshMatches,updateConversations]);
  // Discover new mutual matches and unread badges even when the user has not opened a thread.
  useEffect(()=>{
   if(!api||active)return;
@@ -137,14 +168,15 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
     }
     observedVisibility.current={id:active.id,revision:page.visibilityRevision??null};
     setHistoryLoaded(true);
+    if(onExitDemo)setDemoTyping(page.typing===true);
     const newest=[...page.messages].reverse().find(m=>m.senderId!==actorId&&!m.deletedAt);if(newest)void api.markRead(active.id,newest.id,controller.signal).catch(()=>{});setError("");}catch(e){if(!controller.signal.aborted)showError(e,"Связь прервана.");}finally{busy=false;}};
-  void load();const timer=window.setInterval(()=>void load(),3500);return()=>{controller.abort();window.clearInterval(timer);};},[active,api,actorId,applyIncoming]);
+  void load();const timer=window.setInterval(()=>void load(),onExitDemo?350:3500);return()=>{controller.abort();window.clearInterval(timer);};},[active,api,actorId,applyIncoming,onExitDemo]);
  const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setChatMenu(false);setClearDialog(false);setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
  const openMatch=async(match:NewMatch)=>{if(!api)return;try{const conversationId=await openNewMatch(match.id);
   const opened={...match,seen:true,conversationId};setActiveNewMatch(opened);
   setNewMatches(old=>old.map(item=>item.id===match.id?opened:item));open(conversationFromMatch(opened));
  }catch(e){showError(e,"Не удалось открыть новое знакомство.");}};
- const close=useCallback(()=>{pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);setMessages([]);setNewBelow(0);setAction(null);setChatMenu(false);setClearDialog(false);releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[refreshList,refreshMatches,releaseAttachment]);
+ const close=useCallback(()=>{if(onExitDemo){onExitDemo();return;}pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);setMessages([]);setNewBelow(0);setAction(null);setChatMenu(false);setClearDialog(false);releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[onExitDemo,refreshList,refreshMatches,releaseAttachment]);
  useEffect(()=>{if(!active||profileOpen){registerThreadBack?.(null);return;}registerThreadBack?.(close);
   const button=window.Telegram?.WebApp?.BackButton;button?.show();button?.onClick(close);
   return()=>{registerThreadBack?.(null);button?.offClick(close);button?.hide();};
@@ -180,19 +212,69 @@ export function RealChats({transport:provided,onOpenProfile,onThreadChange,regis
  const pointerEnd=()=>{if(hold.current!==null)window.clearTimeout(hold.current);hold.current=null;pointer.current=null;};
  const grouped=messages.reduce<Array<{day:string;items:LocalMessage[]}>>((days,message)=>{const day=dayKey(message.createdAt);const last=days[days.length-1];if(last?.day===day)last.items.push(message);else days.push({day,items:[message]});return days;},[]);
  const normalizedQuery=query.trim().toLocaleLowerCase("ru-RU");
- const filteredConversations=conversations.filter(chat=>(category==="all"||category==="matches")&&
-  (!normalizedQuery||chat.peerName.toLocaleLowerCase("ru-RU").includes(normalizedQuery)||(chat.lastMessage??"").toLocaleLowerCase("ru-RU").includes(normalizedQuery)));
+ const filteredConversations=conversations.filter(chat=>!normalizedQuery||
+  chat.peerName.toLocaleLowerCase("ru-RU").includes(normalizedQuery)||
+  (chat.lastMessage??"").toLocaleLowerCase("ru-RU").includes(normalizedQuery));
+ const hasMatches=newMatches.length>0;
  if(!active)return <section className="luemi-chats lc-route lc-list-route" data-real-chats="true" data-chat-theme="eclipse">
-  <header className="lc-heading"><h2>Чаты</h2><div className="lc-heading-actions">
-   <LuemiIconButton label={searchOpen?"Закрыть поиск":"Найти чат"} onClick={()=>{setSearchOpen(open=>!open);if(searchOpen)setQuery("");}}><Search size={19}/></LuemiIconButton>
-   <LuemiIconButton label="Обновить чаты" onClick={()=>void refreshList().catch(showError)}><RefreshCw size={18}/></LuemiIconButton>
-  </div></header>
-  {searchOpen&&<label className="lc-search"><Search size={17}/><input autoFocus value={query} onChange={event=>setQuery(event.target.value)} placeholder="Поиск по чатам"/><button type="button" aria-label="Закрыть поиск" onClick={()=>{setSearchOpen(false);setQuery("");}}><X size={16}/></button></label>}
-  {newMatches.length>0&&<section className="lc-new-matches" aria-label="Новые взаимные симпатии"><div className="lc-new-matches-head"><h3>Новые совпадения</h3><span>{newMatches.length}</span></div><div className="lc-match-rail">{newMatches.map(match=><button type="button" key={match.id} className={match.seen?"is-seen":""} onClick={()=>void openMatch(match)}><LuemiAvatar name={match.peerName} src={match.peerPhotoUrl}/><span>{match.peerName}</span></button>)}</div></section>}
-  <LuemiGlassPanel className="lc-categories-panel"><LuemiSegmentedTabs items={chatCategories} value={category} onChange={setCategory} label="Категории чатов" className="lc-categories"/></LuemiGlassPanel>
-  {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:error&&conversations.length===0?<LuemiEmptyState icon={MessagesSquare} title="Чаты не загрузились" description={error}><button className="lc-retry-list" onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button></LuemiEmptyState>:filteredConversations.length===0?<LuemiEmptyState icon={normalizedQuery?Search:MessagesSquare} title={normalizedQuery?"Ничего не найдено":"Пока тихо"} description={normalizedQuery?"Попробуй изменить запрос.":"Переписка появится после взаимной симпатии."}/>:<div className="lc-conversations">{filteredConversations.map(chat=><button className="lc-chat-row" data-unread={chat.unreadCount>0||undefined} key={chat.id} onClick={()=>open(chat)}><LuemiAvatar name={chat.peerName} src={chat.peerPhotoUrl}/><span className="lc-chat-summary"><strong>{chat.peerName}</strong><span>{chat.lastMessage??"Начните разговор"}</span></span><span className="lc-meta"><time>{time(chat.lastActivityAt)}</time>{chat.unreadCount>0&&<b>{Math.min(chat.unreadCount,99)}{chat.unreadCount>99?"+":""}</b>}</span></button>)}</div>}
+  <div className="lc-inbox-chrome">
+   <div className="lc-inbox-brand">
+    <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" width="88" height="30" decoding="async"/>
+   </div>
+   <header className="lc-heading">
+    <h2>Чаты</h2>
+    {(conversations.length>0||searchOpen)&&<div className="lc-heading-actions">
+     <LuemiIconButton label={searchOpen?"Закрыть поиск":"Найти чат"} aria-expanded={searchOpen}
+      onClick={()=>{setSearchOpen(open=>!open);if(searchOpen)setQuery("");}}>
+      {searchOpen?<X size={19}/>:<Search size={19}/>}
+     </LuemiIconButton>
+    </div>}
+   </header>
+   {searchOpen&&<label className="lc-search"><Search size={17} aria-hidden="true"/>
+    <input autoFocus value={query} onChange={event=>setQuery(event.target.value)} placeholder="Поиск по чатам" aria-label="Поиск по чатам"/>
+   </label>}
+  </div>
+  {hasMatches&&<section className="lc-new-matches" aria-label="Новые взаимные симпатии">
+   <header className="lc-new-matches-head"><h3>Новые совпадения</h3><span>{newMatches.length}</span></header>
+   <div className="lc-match-rail">{newMatches.map(match=><button type="button" key={match.id} className={match.seen?"is-seen":""}
+    onClick={()=>void openMatch(match)}><LuemiAvatar name={match.peerName} src={match.peerPhotoUrl}/><span>{match.peerName}</span>
+   </button>)}</div>
+  </section>}
+  {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:
+   error&&conversations.length===0?<LuemiEmptyState icon={MessagesSquare} title="Чаты не загрузились" description={error}>
+    <button type="button" className="lc-retry-list"
+     onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button>
+   </LuemiEmptyState>:filteredConversations.length===0?<div className="lc-inbox-empty">
+    <div className="lc-inbox-mark" aria-hidden="true">{normalizedQuery?<Search size={27}/>:<MessagesSquare size={28}/>}</div>
+    <h3>{normalizedQuery?"Ничего не найдено":"Пока нет переписок"}</h3>
+    <p>{normalizedQuery?"Попробуй другой запрос.":hasMatches?"Выбери совпадение выше, чтобы написать.":"После взаимной симпатии здесь появится чат."}</p>
+    {!normalizedQuery&&!hasMatches&&onDiscover&&<button type="button" className="lc-inbox-primary" onClick={onDiscover}>
+     Перейти к знакомствам <ArrowRight size={16} aria-hidden="true"/>
+    </button>}
+    {!normalizedQuery&&onOpenDemo&&<button type="button" className="lc-demo-link" onClick={onOpenDemo}>Тестовая переписка</button>}
+    {onExitDemo&&<button type="button" className="lc-demo-link" onClick={onExitDemo}>Вернуться к чатам</button>}
+   </div>:<div className="lc-conversations">{filteredConversations.map(chat=><button type="button" className="lc-chat-row"
+    data-unread={chat.unreadCount>0||undefined} key={chat.id} onClick={()=>open(chat)}>
+    <LuemiAvatar name={chat.peerName} src={chat.peerPhotoUrl}/>
+    <span className="lc-chat-summary"><strong>{chat.peerName}</strong><span>{chat.lastMessage??"Начните разговор"}</span></span>
+    <span className="lc-meta"><time>{time(chat.lastActivityAt)}</time>{chat.unreadCount>0&&<b>{Math.min(chat.unreadCount,99)}{chat.unreadCount>99?"+":""}</b>}</span>
+   </button>)}</div>}
+  {!loading&&onOpenDemo&&(filteredConversations.length>0||error&&conversations.length===0)&&
+   <button type="button" className="lc-demo-link" onClick={onOpenDemo}>Тестовая переписка</button>}
  </section>;
- return <section className="luemi-chats lc-route lc-thread-route" data-real-chats="true" data-chat-theme="eclipse"><header className="lc-chat-header"><LuemiIconButton label="Назад" onClick={close}><ArrowLeft/></LuemiIconButton><button type="button" className="lc-person" disabled={active.peerName==="Удалённый аккаунт"} onClick={()=>{if(active.peerName!=="Удалённый аккаунт")onOpenProfile?.(active.peerProfileId);}}><LuemiAvatar name={active.peerName} src={active.peerPhotoUrl} size="small"/><span><strong>{active.peerName}</strong><small>{active.peerName==="Удалённый аккаунт"?"Профиль недоступен":"Открыть профиль"}</small></span></button><LuemiIconButton label="Меню переписки" onClick={()=>setChatMenu(true)}><MoreVertical/></LuemiIconButton></header>
+ return <section className="luemi-chats lc-route lc-thread-route" data-real-chats="true" data-chat-theme="eclipse">
+  <header className="lc-chat-header">
+   <LuemiIconButton label="Назад" onClick={close}><ArrowLeft/></LuemiIconButton>
+   {onExitDemo?<div className="lc-person">
+    <LuemiAvatar name={active.peerName} src={active.peerPhotoUrl} size="small"/>
+    <span><strong>{active.peerName}</strong><small role="status">{demoTyping?"Алина печатает…":"Тестовая переписка"}</small></span>
+   </div>:<button type="button" className="lc-person" disabled={active.peerName==="Удалённый аккаунт"}
+    onClick={()=>onOpenProfile?.(active.peerProfileId)}>
+    <LuemiAvatar name={active.peerName} src={active.peerPhotoUrl} size="small"/>
+    <span><strong>{active.peerName}</strong><small>{active.peerName==="Удалённый аккаунт"?"Профиль недоступен":"Открыть профиль"}</small></span>
+   </button>}
+   <LuemiIconButton label="Меню переписки" onClick={()=>setChatMenu(true)}><MoreVertical/></LuemiIconButton>
+  </header>
   <div ref={history} className="lc-history" role="log" aria-live="polite" onScroll={e=>{nearBottom.current=isNearBottom(e.currentTarget);if(nearBottom.current)setNewBelow(0);}} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
    {!activeNewMatch&&messages.length===0&&!historyLoaded&&!error&&
     <div className="lc-state lc-history-loading" role="status"><span className="lc-spinner"/>Загружаем сообщения…</div>}
