@@ -119,8 +119,19 @@ try{
  assert.equal(await likesBadge.textContent(),"2");
  assert.equal(await chatsBadge.textContent(),"2");
  assert.equal(await nav.locator("svg").count(),4);
- const dock=await nav.boundingBox();
- assert(dock&&dock.x<=10&&dock.width>=373&&dock.height>=48&&dock.height<=64,"the icon dock fits the reference footprint");
+ const checkDock=async()=>{
+  const dock=await nav.boundingBox();
+  const viewport=page.viewportSize();
+  assert(dock&&viewport);
+  assert(Math.abs(dock.width-(viewport.width-14)/1.5)<=2,"the dock is about two-thirds of the former width");
+  assert(Math.abs(dock.x+dock.width/2-viewport.width/2)<=1,"the floating dock is centered");
+  assert(dock.height>=46&&dock.height<=48&&viewport.height-dock.y-dock.height>=14,"the compact dock clears the bottom edge");
+  assert(await nav.evaluate(node=>parseFloat(getComputedStyle(node).borderTopLeftRadius)>=node.clientHeight/2),
+   "the dock has fully rounded ends");
+  const targets=await nav.getByRole("button").evaluateAll(buttons=>buttons.map(button=>button.getBoundingClientRect().toJSON()));
+  assert(targets.every(({width,height})=>width>=44&&height>=44),"all four buttons keep comfortable touch targets");
+ };
+ await checkDock();
  const active=nav.getByRole("button",{name:"Симпатии",exact:true});
  assert.equal(await active.getAttribute("aria-current"),"page");
  assert.equal(await active.evaluate(node=>getComputedStyle(node).backgroundColor),"rgba(0, 0, 0, 0)");
@@ -248,6 +259,8 @@ try{
  await gesture(rightName,"ordinary");
  await departure(rightName,"right");
  assert.deepEqual(serverRequests,[],"all demo mutations remain local");
+ await page.setViewportSize({width:320,height:568});
+ await checkDock();
  assert.deepEqual(errors,[]);
  console.log("LIKES_GALLERY_BROWSER_PASS authorized demo, album dots, illustrated fan captions, inline undo, exits in both directions, shrink, reflow and mutual handoff");
 }finally{await browser.close();}
