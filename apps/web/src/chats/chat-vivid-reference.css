@@ -47,7 +47,7 @@
  transition:background-color 160ms ease,color 160ms ease,transform 160ms ease;
 }
 .lc-list-route[data-vivid-reference="v8"] .lc-inbox-tabs button[aria-selected="true"] {
- background:linear-gradient(135deg,#D76D82,#A94F69);color:#FAFCFF;
+ background:var(--luemi-glass-accent-fill);color:var(--luemi-text);
  box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 2px 5px rgba(6,9,16,.14);
  font-weight:690;
 }
@@ -119,7 +119,7 @@
 }
 .luemi-chats.lc-list-route[data-vivid-reference="v8"] .lc-meta b {
  min-width:23px;height:23px;display:grid;place-items:center;
- border-radius:50%;background:var(--luemi-coral);color:#FAFCFF;
+ border-radius:50%;background:var(--luemi-coral);color:var(--luemi-text);
  border:0;font-size:11px;font-weight:750;padding:0 6px;
 }
 .lc-list-route[data-vivid-reference="v8"] .lc-new-matches {
@@ -191,8 +191,8 @@
 .lc-conversation-stack .lc-thread-route[data-vivid-reference="v8"] .lc-own .lc-bubble {
  border-color:rgba(242,168,184,.29);
  border-radius:20px 20px 6px 20px;
- background:linear-gradient(145deg,rgba(156,78,103,.95),rgba(104,56,77,.97));
- color:#FAFCFF;
+ background:linear-gradient(145deg,color-mix(in srgb,var(--luemi-accent) 68%,var(--luemi-surface-raised)),color-mix(in srgb,var(--luemi-accent) 52%,var(--luemi-surface)));
+ color:var(--luemi-text);
 }
 .lc-thread-route[data-vivid-reference="v8"] .lc-bubble>small {
  gap:4px;margin-top:3px;font-size:10px;color:rgba(240,244,250,.74);
@@ -204,7 +204,7 @@
  padding:5px 8px;margin:0 0 5px;width:100%;display:block;
 }
 .lc-thread-route[data-vivid-reference="v8"] .lc-message-quote strong {
- color:#FFD0D9;font-size:11px;
+ color:var(--luemi-coral-light);font-size:11px;
 }
 .lc-thread-route[data-vivid-reference="v8"] .lc-photo-open {
  overflow:hidden;border-radius:14px;max-width:260px;
@@ -231,8 +231,8 @@
  color:var(--luemi-text-muted);
 }
 .lc-thread-route[data-vivid-reference="v8"] .lc-input-row .lc-send:not(:disabled) {
- background:linear-gradient(140deg,#D8758A,#AE536E);
- color:#FAFCFF;
+ background:var(--luemi-glass-accent-fill);
+ color:var(--luemi-text);
  box-shadow:inset 0 1px rgba(255,255,255,.15);
 }
 .lc-thread-route[data-vivid-reference="v8"] .lc-input-row .lc-send:disabled {
@@ -326,7 +326,7 @@
  justify-items:end;background:var(--luemi-coral);
 }
 .lc-thread-route[data-vivid-reference="v8"] .lc-menu-toggle i {
- display:block;width:19px;height:19px;border-radius:50%;background:#FAFCFF;
+ display:block;width:19px;height:19px;border-radius:50%;background:var(--luemi-text);
  box-shadow:0 1px 3px rgba(10,15,22,.22);pointer-events:none;
 }
 .lc-thread-route[data-vivid-reference="v8"] .lc-menu>.lc-sheet-cancel {
@@ -378,7 +378,7 @@
 }
 .lc-thread-route[data-vivid-reference="v8"] .lc-dialog-delete>div:last-child .danger {
  border-color:rgba(242,168,184,.26);
- background:linear-gradient(140deg,#D8758A,#AE536E);color:#FAFCFF;
+ background:var(--luemi-glass-accent-fill);color:var(--luemi-text);
 }
 
 /* Accessibility and Android WebView motion budget. */
