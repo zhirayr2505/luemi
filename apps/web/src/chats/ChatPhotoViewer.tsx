@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import type {PointerEvent} from "react";
 import {ArrowLeft,ArrowRight,X} from "lucide-react";
 
@@ -20,17 +20,16 @@ export function ChatPhotoViewer({src,gallery=[],onClose}:{src:string;gallery?:st
  const moved=useRef(false);
  const img=useRef<HTMLImageElement>(null);
  const activeIndex=Math.min(index,photos.length-1);
- const setTransform=(nextScale:number,nextOffset:Point)=>{
+ const setTransform=useCallback((nextScale:number,nextOffset:Point)=>{
   currentScale.current=nextScale;currentOffset.current=nextOffset;
   setScale(nextScale);setOffset(nextOffset);
- };
- const reset=()=>{setTransform(1,{x:0,y:0});points.current.clear();gesture.current=null;};
- const go=(direction:number)=>{
+ },[]);
+ const reset=useCallback(()=>{setTransform(1,{x:0,y:0});points.current.clear();gesture.current=null;},[setTransform]);
+ const go=useCallback((direction:number)=>{
   const next=activeIndex+direction;
   if(next<0||next>=photos.length)return;
   reset();setIndex(next);
- };
- useEffect(()=>{reset();setIndex(Math.max(0,photos.indexOf(src)));},[src]);
+ },[activeIndex,photos.length,reset]);
  useEffect(()=>{
   const key=(event:KeyboardEvent)=>{
    if(event.key==="Escape")onClose();
@@ -39,7 +38,7 @@ export function ChatPhotoViewer({src,gallery=[],onClose}:{src:string;gallery?:st
   };
   window.addEventListener("keydown",key);
   return()=>window.removeEventListener("keydown",key);
- },[activeIndex,photos.length,onClose]);
+ },[activeIndex,photos.length,onClose,go]);
  const startGesture=()=>{
   const values=[...points.current.values()];
   if(!values.length){gesture.current=null;return;}
