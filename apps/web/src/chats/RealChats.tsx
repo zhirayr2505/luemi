@@ -13,6 +13,7 @@ import {blockPublishedUser,getNewMatches,openNewMatch,type NewMatch} from "../re
 import {LuemiAvatar,LuemiEmptyState,LuemiIconButton} from "../ui/LuemiV5.js";
 import "./chats.css";
 import "./chat-conversation.css";
+import "./chat-vivid-reference.css";
 
 type Action={message:LocalMessage;kind:"edit"|"delete"}|null;
 type ReactionJob={desired:ChatReactionEmoji|null;confirmed:ChatReactionEmoji|null;version:number;tail:Promise<void>};
