@@ -940,7 +940,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
    <section className="discovery-panel real-discovery-chat-panel" hidden={mainTab!=="chats"}>
     {mainTab==="chats"&&(qaAllowed&&demoChatOpen?
      <Suspense fallback={<div className="lc-state" role="status"><span className="lc-spinner"/>Открываем переписку…</div>}>
-      <DemoChatSurface onExit={closeDemoChat} onThreadChange={onThreadChange}
+      <DemoChatSurface onExit={closeDemoChat} profileOpen={!!demoVisitor} onOpenProfile={setDemoVisitor} onThreadChange={onThreadChange}
       registerThreadBack={registerChatBack}/></Suspense>:
      <RealChats initialThread={initialThread} onOpenProfile={openPersonById} profileOpen={!!person}
       onThreadChange={onThreadChange} registerThreadBack={registerChatBack} onUnreadCount={setChats}
@@ -959,15 +959,15 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
    </section>
   </div>
   {demoVisitor&&qaAllowed&&<VisitorProfileRoute key={"demo-"+demoVisitor.id} data={fromDemoPerson(demoVisitor)}
-    onExit={()=>setDemoVisitor(null)} registerBack={registerVisitorBack}
+    onExit={()=>setDemoVisitor(null)} registerBack={registerVisitorBack} chatEdgeBack={chatThreadOpen}
     reactionNotices={reactionNotices}
-    demoReactions={{demo:true,busy:false,error:"",
+    demoReactions={demoChatOpen?undefined:{demo:true,busy:false,error:"",
      state:{outgoing:demoOutgoing??demoInitial?.outgoing??null,incoming:demoInitial?.incoming??null,
       matchId:demoInitial?.matchId??(demoInitial?.incoming&&demoOutgoing?"fixture-match-"+demoVisitor.id:null)},
      pendingKind:demoReaction?.phase==="pending"&&isProfileLike(demoReaction.kind)?demoReaction.kind:null,
      send:kind=>profileReactions.enqueue({id:demoVisitor.id,name:demoVisitor.name,demo:true},kind)}}/>}
   {person&&<VisitorProfileRoute key={person.id} data={visitorToMaster(person)}
-   onExit={()=>setPerson(null)} registerBack={registerVisitorBack} reactionsEnabled={realMatchPilot.enabled}
+   onExit={()=>setPerson(null)} registerBack={registerVisitorBack} chatEdgeBack={chatThreadOpen} reactionsEnabled={realMatchPilot.enabled}
    reactionNotices={reactionNotices}
    reactionAction={profileReactions.actions.get(profileReactionKey(person))}
    onQueueReaction={kind=>profileReactions.enqueue({id:person.id,name:person.name},kind)}

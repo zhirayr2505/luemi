@@ -68,6 +68,7 @@ jobs:
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f db/chats-v3-tombstone-reader.sql
           psql -v ON_ERROR_STOP=1 -f db/chats-v5-interactions.sql
+          psql -v ON_ERROR_STOP=1 -f db/chats-v6-glass-controls.sql
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version

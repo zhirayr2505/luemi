@@ -207,7 +207,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    lastMessage:r.last_message,lastActivityAt:r.last_activity_at,unreadCount:Number(r.unread_count),access:r.access
   }))};
  }));
- app.get<{Params:{id:string};Querystring:{before?:string}}>(
+ app.get<{Params:{id:string};Querystring:{before?:string;photos?:string}}>(
  "/api/v4/chats/:id/messages",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
   if(!validId(req.params.id))deny(404,"not_found");
   if(req.query.before!==undefined&&!validId(req.query.before))deny(422,"invalid_cursor");
@@ -221,10 +221,13 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt",created_at AS "deliveredAt",NULL::timestamptz AS "readAt"
     FROM luemi_chats.messages m WHERE conversation_id=$1 AND environment=$2
     AND ${visibleMessage("m","$4")}
-     AND ($3::uuid IS NULL OR (created_at,id)<(
+    AND (NOT $5::boolean OR (m.deleted_at IS NULL AND EXISTS(
+     SELECT 1 FROM luemi_chats.media photo WHERE photo.message_id=m.id
+      AND photo.conversation_id=m.conversation_id AND photo.environment=m.environment AND photo.state='ready')))
+    AND ($3::uuid IS NULL OR (created_at,id)<(
       SELECT created_at,id FROM luemi_chats.messages WHERE id=$3 AND conversation_id=$1))
     ORDER BY created_at DESC,id DESC LIMIT 51`,
-   [req.params.id,options.namespace,req.query.before??null,actor]);
+   [req.params.id,options.namespace,req.query.before??null,actor,req.query.photos==="1"]);
   const more=q.rows.length>50;const page=q.rows.slice(0,50);
   const nextCursor=more&&page.length?page[page.length-1].id:null;
   const v=await db.query<{revision:string|null}>(`
@@ -314,6 +317,23 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     VALUES($1,$2,now()) ON CONFLICT(environment,actor_id) DO UPDATE SET last_seen_at=excluded.last_seen_at
     WHERE presence.last_seen_at<now()-interval '12 seconds'`,[options.namespace,actor]);
   return {ok:true as const};
+ }));
+ app.get<{Params:{id:string}}>("/api/v4/chats/:id/notifications",{preHandler:auth.read},(req,reply)=>scoped(req,reply,async(db,actor)=>{
+  if(!validId(req.params.id))deny(404,"not_found");
+  const result=await db.query<{notifications_muted:boolean}>(`SELECT notifications_muted FROM luemi_chats.members
+   WHERE conversation_id=$1 AND actor_id=$2 AND environment=$3`,[req.params.id,actor,options.namespace]);
+  if(result.rowCount!==1)deny(404,"not_found");
+  return {muted:result.rows[0].notifications_muted};
+ }));
+ app.put<{Params:{id:string};Body:{muted?:unknown}}>("/api/v4/chats/:id/notifications",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
+  if(!validId(req.params.id))deny(404,"not_found");
+  const muted=req.body?.muted;
+  if(typeof muted!=="boolean")deny(422,"invalid_notifications_preference");
+  const result=await db.query(`UPDATE luemi_chats.members SET notifications_muted=$4
+   WHERE conversation_id=$1 AND actor_id=$2 AND environment=$3 RETURNING conversation_id`,
+   [req.params.id,actor,options.namespace,muted]);
+  if(result.rowCount!==1)deny(404,"not_found");
+  return {muted};
  }));
  app.put<{Params:{id:string;messageId:string};Body:{emoji?:unknown}}>(
  "/api/v4/chats/:id/messages/:messageId/reaction",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{

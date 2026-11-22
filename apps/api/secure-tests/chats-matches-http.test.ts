@@ -155,11 +155,27 @@ test("two authenticated actors create one durable conversation and revoke it on 
     "stranger C must not see A or B media even if published");
   }finally{await sessionPhotoReader.end();}
   const messagePath="/api/v4/chats/"+conversationId+"/messages";
+  const notificationsPath="/api/v4/chats/"+conversationId+"/notifications";
+  assert.deepEqual(await inject(A,"GET",notificationsPath),{status:200,json:{muted:false}});
+  assert.deepEqual(await inject(A,"PUT",notificationsPath,{muted:true}),{status:200,json:{muted:true}});
+  assert.deepEqual(await inject(A,"GET",notificationsPath),{status:200,json:{muted:true}});
+  assert.deepEqual(await inject(B,"GET",notificationsPath),{status:200,json:{muted:false}},"mute is private to the actor");
+  assert.equal((await inject(C,"PUT",notificationsPath,{muted:true})).status,404);
   result=await inject(C,"GET",messagePath);
   assert.equal(result.status,404,"unmatched actor must never read chat");
   const sent=await inject(A,"POST",messagePath,{
    clientId:"dddddddd-dddd-4ddd-8ddd-dddddddddddd",body:"hello real chat"});
   assert.equal(sent.status,200,JSON.stringify(sent));
+  assert.deepEqual((await inject(A,"GET",messagePath+"?photos=1")).json.messages,[]);
+  assert.equal((await inject(C,"GET",messagePath+"?photos=1")).status,404);
+  await admin.query(`INSERT INTO luemi_chats.media
+    (conversation_id,owner_id,environment,message_id,client_id,object_path,mime_type,byte_size,state,content_sha256)
+    VALUES($1,$2,$3,$4,gen_random_uuid(),'synthetic/chat/photo.webp','image/webp',128,'ready',$5)`,
+    [conversationId,A,ns,sent.json.message.id,"a".repeat(64)]);
+  const photos=await inject(B,"GET",messagePath+"?photos=1");
+  assert.equal(photos.status,200);
+  assert.deepEqual(photos.json.messages.map((message:{id:string})=>message.id),[sent.json.message.id]);
+
   const started=await inject(A,"GET","/api/v4/chats");
   assert.equal(started.status,200,JSON.stringify(started));
   assert.equal(started.json.conversations.length,1,"the first message starts the chat");
@@ -201,6 +217,7 @@ test("two authenticated actors create one durable conversation and revoke it on 
   const engagedMessage=engaged.json.messages.find((m:{id:string})=>m.id===sent.json.message.id);
   assert.equal(engagedMessage.readAt,readAt);
   assert.deepEqual(engagedMessage.reactions,[{actorId:B,emoji:"❤️"}]);
+  assert.equal((await inject(B,"PUT",reactionPath,{emoji:"👏"})).status,200,"expanded reactions persist");
   assert.ok(Date.parse(engaged.json.peerLastSeenAt)>0);
   const quoted=await inject(B,"POST",messagePath,{
    clientId:"3d1419bf-2850-47c0-87fe-ccae12fadb70",body:"quoted reply",replyToId:sent.json.message.id});

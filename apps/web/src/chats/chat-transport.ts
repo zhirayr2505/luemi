@@ -36,6 +36,9 @@ export interface ChatTransport {
  me(signal?:AbortSignal):Promise<{actorId:string}>;
  list(signal?:AbortSignal):Promise<{conversations:ChatWireConversation[]}>;
  messages(conversationId:string,before?:string,signal?:AbortSignal):Promise<ChatMessagePage>;
+ photos(conversationId:string,before?:string,signal?:AbortSignal):Promise<ChatMessagePage>;
+ notifications(conversationId:string,signal?:AbortSignal):Promise<{muted:boolean}>;
+ setNotifications(conversationId:string,muted:boolean):Promise<{muted:boolean}>;
  send(conversationId:string,body:string,clientId:string,mediaIds?:string[],signal?:AbortSignal,replyToId?:string):Promise<{message:ChatWireMessage}>;
  setReaction(conversationId:string,messageId:string,emoji:ChatReactionEmoji|null):Promise<{emoji:ChatReactionEmoji|null}>;
  removeMany(conversationId:string,messageIds:string[],scope:"me"|"everyone"):Promise<{removed:true}>;
@@ -56,6 +59,9 @@ export function createChatTransport(csrf:string):ChatTransport{
   me:signal=>request("/me",csrf,{signal}),
   list:signal=>request("",csrf,{signal}),
   messages:(conversationId,before,signal)=>request("/"+id(conversationId)+"/messages"+(before?"?before="+id(before):""),csrf,{signal}),
+  photos:(conversationId,before,signal)=>request("/"+id(conversationId)+"/messages?photos=1"+(before?"&before="+id(before):""),csrf,{signal}),
+  notifications:(conversationId,signal)=>request("/"+id(conversationId)+"/notifications",csrf,{signal}),
+  setNotifications:(conversationId,muted)=>request("/"+id(conversationId)+"/notifications",csrf,{method:"PUT",body:JSON.stringify({muted})}),
   send:(conversationId,body,clientId,mediaIds=[],signal,replyToId)=>request("/"+id(conversationId)+"/messages",csrf,{method:"POST",body:JSON.stringify({body,clientId,mediaIds,replyToId}),signal}),
   setReaction:(conversationId,messageId,emoji)=>request("/"+id(conversationId)+"/messages/"+id(messageId)+"/reaction",csrf,{method:"PUT",body:JSON.stringify({emoji})}),
   removeMany:(conversationId,messageIds,scope)=>request("/"+id(conversationId)+"/messages/visibility",csrf,{method:"POST",body:JSON.stringify({scope,messageIds})}),

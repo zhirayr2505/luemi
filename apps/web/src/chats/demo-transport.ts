@@ -22,8 +22,8 @@ function replyTo(body:string,index:number){
  return conversationStarters[index%conversationStarters.length];
 }
 
-export function createDemoChatTransport({interactive=false}:{interactive?:boolean}={}){
- let offline=false,replyIndex=0;
+export function createDemoChatTransport({interactive=false,peerPhotoUrl=null}:{interactive?:boolean;peerPhotoUrl?:string|null}={}){
+ let offline=false,replyIndex=0,muted=false;
  const messages=interactive?[{
   ...initial[0],body:"Привет! Я Алина. Напиши мне что-нибудь, и я отвечу 🙂",
   createdAt:new Date(Date.now()-1000).toISOString(),deliveredAt:null,readAt:null
@@ -54,12 +54,19 @@ export function createDemoChatTransport({interactive=false}:{interactive?:boolea
    .sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
  };
  const pause=async(signal?:AbortSignal)=>{await new Promise<void>((resolve,reject)=>{const timer=setTimeout(resolve,70);signal?.addEventListener("abort",()=>{clearTimeout(timer);reject(new DOMException("Aborted","AbortError"));},{once:true});});if(offline)throw new ChatTransportError(0,"offline");};
- const conversation=():ChatWireConversation=>({id:CHAT,matchId:"44444444-4444-4444-8444-444444444444",peerId:PEER,peerProfileId:"55555555-5555-4555-8555-555555555555",peerName:"Алина",peerPhotoUrl:null,lastMessage:[...visible()].reverse().find(m=>!m.deletedAt)?.body??null,lastActivityAt:visible().at(-1)?.createdAt??new Date().toISOString(),unreadCount:visible().filter(m=>m.senderId===PEER&&!m.readAt).length,access:"active"});
+ const conversation=():ChatWireConversation=>({id:CHAT,matchId:"44444444-4444-4444-8444-444444444444",peerId:PEER,peerProfileId:"55555555-5555-4555-8555-555555555555",peerName:"Алина",peerPhotoUrl,lastMessage:[...visible()].reverse().find(m=>!m.deletedAt)?.body??null,lastActivityAt:visible().at(-1)?.createdAt??new Date().toISOString(),unreadCount:visible().filter(m=>m.senderId===PEER&&!m.readAt).length,access:"active"});
  const transport:ChatTransport={
   async me(signal){await pause(signal);return {actorId:SELF};},async list(signal){await pause(signal);return {conversations:(localClear||globalClear)&&visible().length===0?[]:[conversation()]};},
   async messages(_conversation,before,signal){await pause(signal);const items=visible();const end=before?Math.max(0,items.findIndex(m=>m.id===before)):items.length;const start=Math.max(0,end-20);const visibleIds=new Set(items.map(m=>m.id));return {messages:items.slice(start,end).map(m=>({...m,
    replyTo:m.replyTo&&visibleIds.has(m.replyTo.id)?m.replyTo:null})),nextCursor:start>0?items[start].id:null,
    typing:interactive&&replies.length>0,visibilityRevision:String(visibilityRevision),peerLastSeenAt:interactive?new Date().toISOString():null};},
+  async photos(_conversation,before,signal){
+   await pause(signal);const items=visible().filter(message=>message.media.length>0);
+   const end=before?Math.max(0,items.findIndex(message=>message.id===before)):items.length;
+   const start=Math.max(0,end-20);return {messages:items.slice(start,end),nextCursor:start>0?items[start].id:null};
+  },
+  async notifications(_conversation,signal){await pause(signal);return {muted};},
+  async setNotifications(_conversation,value){await pause();muted=value;return {muted};},
   async send(_conversation,body,clientId,mediaIds=[],signal,replyToId){await pause(signal);const found=messages.find(m=>m.clientId===clientId);if(found){if(found.body!==body)throw new ChatTransportError(409,"idempotency_conflict");return {message:found};}const replied=visible().find(m=>m.id===replyToId);if(replyToId&&!replied)throw new ChatTransportError(404,"invalid_reply");const created:ChatWireMessage={id:crypto.randomUUID(),conversationId:CHAT,senderId:SELF,clientId,body,createdAt:new Date().toISOString(),editedAt:null,deletedAt:null,deliveredAt:new Date().toISOString(),readAt:null,replyTo:replied?{id:replied.id,senderId:replied.senderId,body:replied.body||"Фото"}:null,media:mediaIds.map(id=>media.get(id)).filter((x):x is ChatWireMedia=>!!x)};messages.push(created);
    if(interactive){
     const after=Math.max(Date.now()+1450,(replies.at(-1)?.after??0)+900);

@@ -17,7 +17,7 @@ import type {ProfileReactionControls} from "./owner-profile/ProfileReactions";
 type Props={
  data:ProfileMasterData;onExit:()=>void;
  registerBack:(handler:(()=>boolean)|null)=>void;
- reactionsEnabled?:boolean;
+ reactionsEnabled?:boolean;chatEdgeBack?:boolean;
  demoReactions?:ProfileReactionControls;
  reactionAction?:ProfileReactionAction;
  onQueueReaction?:(kind:RealLikeKind)=>void;
@@ -34,7 +34,7 @@ const EASING="cubic-bezier(.2,.82,.24,1)";
 
 /** One navigation layer; the profile sheet and its vertical scroll do not translate. */
 export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,registerBack,
- reactionsEnabled,demoReactions,reactionAction,onQueueReaction,reactionNotices,onConversation}:Props){
+ reactionsEnabled,demoReactions,reactionAction,onQueueReaction,reactionNotices,onConversation,chatEdgeBack=false}:Props){
  const liveReactions=useProfileReactions(reactionsEnabled&&data.source==="server"?data.id:null,reactionAction,onQueueReaction,onConversation);
  const reactions=data.source==="fixture"?demoReactions:liveReactions;
  const route=useRef<HTMLDivElement>(null);
@@ -216,13 +216,14 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
   // treat an expanded premium hero as collapsed, or the back recognizer will
   // steal the photo's right swipe on visitor profiles.
   const collapsed=premium?compact:shell?.dataset.sheetState==="collapsed";
-  if(!collapsed&&!target.closest(".owner-profile-scroll,.owner-profile-content,.pm-profile-sheet,.v3-int-sheet"))return;
+  const screenLeft=route.current?.getBoundingClientRect().left??0;
+  const chatEdge=chatEdgeBack&&e.clientX-screenLeft<=26;
+  if(!collapsed&&!chatEdge&&!target.closest(".owner-profile-scroll,.owner-profile-content,.pm-profile-sheet,.v3-int-sheet"))return;
   const interactive=target.closest("button,a,input,textarea,select,[contenteditable=true]");
   if(interactive&&!target.closest(".pm-photo-tile,.owner-profile-photo-tile"))return;
   const source:RouteDrag["source"]=target.closest(".owner-profile-photo-mask,.pm-hero")?"photo":
    target.closest(".owner-profile-tabs,.pm-tabs")?"tabs":
    target.closest(".owner-profile-pages,.pm-pages")?"pages":"sheet";
-  const screenLeft=route.current?.getBoundingClientRect().left??0;
   const page=source==="pages"?target.closest<HTMLElement>('.v3-int-page[data-tab-id="about"]'):null;
   // About cards start after both the page and card padding: their first text
   // pixel is outside the original screen-edge candidate. Keep the 26px
@@ -270,7 +271,7 @@ export const VisitorProfileRoute=memo(function VisitorProfileRoute({data,onExit,
     if(!g.edge&&route.current?.querySelector(".owner-premium-profile"))return;
     const track=route.current?.querySelector<HTMLElement>(".pm-photo-track");
     const hero=route.current?.querySelector<HTMLElement>(".pm-hero");
-    if(fractionalTrack(track??null,hero?.clientWidth??0,0)>.015)return;
+    if(!(chatEdgeBack&&g.edge)&&fractionalTrack(track??null,hero?.clientWidth??0,0)>.015)return;
    }
    // Narrow left-edge back has priority over the tab pager. Central page
    // swipes remain exclusive to the five-tab follow-finger track.
