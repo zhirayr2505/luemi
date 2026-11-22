@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {MouseEvent,PointerEvent} from "react";
-import {ArrowLeft,ArrowRight,Reply,Check,CheckCheck,Copy,Heart,ImagePlus,MoveDown,Menu,Bell,BellOff,ShieldBan,Search,Send,Trash2,X,MessagesSquare} from "lucide-react";
+import {ArrowLeft,ArrowRight,Reply,Check,CheckCheck,Copy,Heart,ImagePlus,MoveDown,Menu,Bell,BellOff,ShieldBan,Search,Send,Trash2,X,MessagesSquare,ListFilter,Images,ChevronUp,ChevronDown} from "lucide-react";
 import {createChatTransport,sumUnreadMessages,ChatTransportError,type ChatTransport,type ChatWireConversation} from "./chat-transport.js";
 import {errorText,isNearBottom,messageKey,prependPage,reconcileMessages,type LocalMessage,validateChatImage} from "./chat-domain.js";
 import type {ChatReactionEmoji,ChatReply} from "@luemi/contracts";
@@ -12,7 +12,6 @@ import {geoCsrf} from "../auth/session-adapter.js";
 import {blockPublishedUser,getNewMatches,openNewMatch,type NewMatch} from "../registration/real-live-client.js";
 import {LuemiAvatar,LuemiEmptyState,LuemiIconButton} from "../ui/LuemiV5.js";
 import "./chats.css";
-import "./surreal-chats.css";
 import "./chat-conversation.css";
 
 type Action={message:LocalMessage;kind:"edit"|"delete"}|null;
@@ -98,7 +97,8 @@ export function RealChats({
  const [deleting,setDeleting]=useState(false);
  const [visibilityRevision,setVisibilityRevision]=useState<string|null>(null);
  const [peerLastSeen,setPeerLastSeen]=useState<string|null>(null);
- const [searchOpen,setSearchOpen]=useState(false);const [query,setQuery]=useState("");const [demoTyping,setDemoTyping]=useState(false);
+ const [searchOpen,setSearchOpen]=useState(false);const [query,setQuery]=useState("");const [unreadOnly,setUnreadOnly]=useState(false);const [demoTyping,setDemoTyping]=useState(false);
+ const [threadSearchOpen,setThreadSearchOpen]=useState(false);const [threadQuery,setThreadQuery]=useState("");const [threadSearchIndex,setThreadSearchIndex]=useState(0);
  const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);
  const threadOpen=active!==null;
  const [historyLoaded,setHistoryLoaded]=useState(false);
@@ -307,12 +307,12 @@ export function RealChats({
     }
     setError("");}catch(e){if(!controller.signal.aborted)showError(e,"Связь прервана.");}finally{busy=false;}};
   void load();const timer=window.setInterval(()=>void load(),onExitDemo?350:3500);return()=>{controller.abort();window.clearInterval(timer);};},[active,api,actorId,applyIncoming,onExitDemo]);
- const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setReplyTo(null);setQuotePreview(null);setMessageMenu(null);setSelected([]);setBulkDelete(false);setChatMenu(false);setClearDialog(false);setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
+ const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setReplyTo(null);setQuotePreview(null);setMessageMenu(null);setSelected([]);setBulkDelete(false);setChatMenu(false);setClearDialog(false);setThreadSearchOpen(false);setThreadQuery("");setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
  const openMatch=async(match:NewMatch)=>{if(!api)return;try{const conversationId=await openNewMatch(match.id);
   const opened={...match,seen:true,conversationId};setActiveNewMatch(opened);
   setNewMatches(old=>old.map(item=>item.id===match.id?opened:item));open(conversationFromMatch(opened));
  }catch(e){showError(e,"Не удалось открыть новое знакомство.");}};
- const close=useCallback(()=>{if(onExitDemo){onExitDemo();return;}pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);setMessages([]);setNewBelow(0);setAction(null);setReplyTo(null);setQuotePreview(null);setMessageMenu(null);setSelected([]);setBulkDelete(false);setChatMenu(false);setClearDialog(false);releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[onExitDemo,refreshList,refreshMatches,releaseAttachment]);
+ const close=useCallback(()=>{if(onExitDemo){onExitDemo();return;}pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);setMessages([]);setNewBelow(0);setAction(null);setReplyTo(null);setQuotePreview(null);setMessageMenu(null);setSelected([]);setBulkDelete(false);setChatMenu(false);setClearDialog(false);setThreadSearchOpen(false);setThreadQuery("");releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[onExitDemo,refreshList,refreshMatches,releaseAttachment]);
  const handleBack=useCallback(()=>{
   if(viewer){setViewer(null);return;}
   if(action){setAction(null);return;}
@@ -323,8 +323,9 @@ export function RealChats({
   if(showAttachments){setShowAttachments(false);return;}
   if(messageMenu){setMessageMenu(null);return;}
   if(selected.length){setSelected([]);return;}
+  if(threadSearchOpen){(document.activeElement as HTMLElement|null)?.blur();setThreadSearchOpen(false);setThreadQuery("");return;}
   close();
- },[viewer,action,bulkDelete,clearDialog,blockDialog,chatMenu,showAttachments,messageMenu,selected.length,close]);
+ },[viewer,action,bulkDelete,clearDialog,blockDialog,chatMenu,showAttachments,messageMenu,selected.length,threadSearchOpen,close]);
  const threadBack=useRef(handleBack);
  useLayoutEffect(()=>{threadBack.current=handleBack;},[handleBack]);
  useEffect(()=>{
@@ -453,7 +454,7 @@ export function RealChats({
  };
  const modalOpen=!!(viewer||action||chatMenu||clearDialog||bulkDelete||messageMenu||profileOpen||showAttachments||blockDialog);
  const gestures=useChatGestures({
-  threadId:active?.id,enabled:threadOpen&&!modalOpen,canBack:!selected.length,
+  threadId:active?.id,enabled:threadOpen&&!modalOpen,canBack:!selected.length&&!threadSearchOpen,
   canReply:active?.access==="active"&&!selected.length&&!demoBlocked,
   onOpen:openMessage,onHeart:target=>{if(selected.length)toggleSelection(target.id);else void applyReaction(target.id,"❤️");},
   onHold:target=>toggleSelection(target.id),onReply:target=>beginReply(target.id),onBack:close,
@@ -461,10 +462,29 @@ export function RealChats({
  const menuMessage=messages.find(message=>message.id===messageMenu?.id);
  const grouped=messages.reduce<Array<{day:string;items:LocalMessage[]}>>((days,message)=>{const day=dayKey(message.createdAt);const last=days[days.length-1];if(last?.day===day)last.items.push(message);else days.push({day,items:[message]});return days;},[]);
  const normalizedQuery=query.trim().toLocaleLowerCase("ru-RU");
- const filteredConversations=conversations.filter(chat=>!normalizedQuery||
+ const filteredConversations=conversations.filter(chat=>(!unreadOnly||chat.unreadCount>0)&&(!normalizedQuery||
   chat.peerName.toLocaleLowerCase("ru-RU").includes(normalizedQuery)||
-  (chat.lastMessage??"").toLocaleLowerCase("ru-RU").includes(normalizedQuery));
+  (chat.lastMessage??"").toLocaleLowerCase("ru-RU").includes(normalizedQuery)));
  const hasMatches=newMatches.length>0;
+ const threadSearchMatches=threadQuery.trim()?messages.filter(message=>!message.deletedAt&&message.body.toLocaleLowerCase("ru-RU").includes(threadQuery.trim().toLocaleLowerCase("ru-RU"))):[];
+ const jumpToMessage=(id:string)=>{
+  const list=history.current;
+  const row=Array.from(list?.querySelectorAll<HTMLElement>(".lc-msg-line[data-message-id]")??[]).find(item=>item.dataset.messageId===id);
+  if(!row||!list){setError("Это сообщение находится в более ранней части истории. Нажми «Показать раньше».");return;}
+  const before=row.getBoundingClientRect(),frame=list.getBoundingClientRect();
+  list.scrollTo({top:list.scrollTop+before.top-frame.top-(list.clientHeight-before.height)/2,
+   behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth"});
+  if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+   row.querySelector<HTMLElement>(".lc-bubble")?.animate([
+    {filter:"brightness(1)"},{filter:"brightness(1.55)"},{filter:"brightness(1)"}
+   ],{duration:850,easing:"ease-out"});
+  }
+ };
+ const navigateThreadSearch=(delta:number)=>{
+  if(!threadSearchMatches.length)return;
+  const index=(threadSearchIndex+delta+threadSearchMatches.length)%threadSearchMatches.length;
+  setThreadSearchIndex(index);jumpToMessage(threadSearchMatches[index].id);
+ };
  const inbox=<section className="luemi-chats lc-route lc-list-route" data-real-chats="true" data-chat-theme="eclipse">
   <div className="lc-inbox-chrome">
    <div className="lc-inbox-brand">
@@ -473,6 +493,8 @@ export function RealChats({
    <header className="lc-heading">
     <h2>Чаты</h2>
     {(conversations.length>0||searchOpen)&&<div className="lc-heading-actions">
+     <LuemiIconButton label={unreadOnly?"Показать все чаты":"Только непрочитанные"} aria-pressed={unreadOnly}
+      onClick={()=>setUnreadOnly(value=>!value)}><ListFilter size={19}/></LuemiIconButton>
      <LuemiIconButton label={searchOpen?"Закрыть поиск":"Найти чат"} aria-expanded={searchOpen}
       onClick={()=>{setSearchOpen(open=>!open);if(searchOpen)setQuery("");}}>
       {searchOpen?<X size={19}/>:<Search size={19}/>}
@@ -495,9 +517,9 @@ export function RealChats({
      onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button>
    </LuemiEmptyState>:filteredConversations.length===0?<div className="lc-inbox-empty">
     <div className="lc-inbox-mark" aria-hidden="true">{normalizedQuery?<Search size={27}/>:<MessagesSquare size={28}/>}</div>
-    <h3>{normalizedQuery?"Ничего не найдено":"Пока нет переписок"}</h3>
-    <p>{normalizedQuery?"Попробуй другой запрос.":hasMatches?"Выбери совпадение выше, чтобы написать.":"После взаимной симпатии здесь появится чат."}</p>
-    {!normalizedQuery&&!hasMatches&&onDiscover&&<button type="button" className="lc-inbox-primary" onClick={onDiscover}>
+    <h3>{normalizedQuery?"Ничего не найдено":unreadOnly?"Нет непрочитанных":"Пока нет переписок"}</h3>
+    <p>{normalizedQuery?"Попробуй другой запрос.":unreadOnly?"Ты прочитал все новые сообщения.":hasMatches?"Выбери совпадение выше, чтобы написать.":"После взаимной симпатии здесь появится чат."}</p>
+    {!unreadOnly&&!normalizedQuery&&!hasMatches&&onDiscover&&<button type="button" className="lc-inbox-primary" onClick={onDiscover}>
      Перейти к знакомствам <ArrowRight size={16} aria-hidden="true"/>
     </button>}
     {!normalizedQuery&&onOpenDemo&&<button type="button" className="lc-demo-link" onClick={onOpenDemo}>Тестовая переписка</button>}
@@ -527,16 +549,28 @@ export function RealChats({
      disabled={!onOpenProfile||active.access!=="active"||demoBlocked} {...touchButton(()=>onOpenProfile?.(active.peerProfileId))}>
      <LuemiAvatar name={active.peerName} src={active.peerPhotoUrl} size="small"/>
     </button>
-    <button type="button" className="lc-peer lc-glass" aria-label="Вложения переписки" {...touchButton(()=>{
-     sendField.current?.blur();setShowAttachments(true);
-    })}>
+    <button type="button" className="lc-peer lc-glass" aria-label={`Открыть профиль · ${active.peerName}`}
+     disabled={!onOpenProfile||active.access!=="active"||demoBlocked}
+     {...touchButton(()=>onOpenProfile?.(active.peerProfileId))}>
      <strong>{active.access==="profile_unavailable"?"Удалённый аккаунт":active.peerName}</strong><small role="status" data-online={describePresence(peerLastSeen)==="В сети"||undefined}>
       {active.access!=="active"?"Профиль недоступен":demoBlocked?"Пользователь заблокирован":demoTyping?"Алина печатает…":describePresence(peerLastSeen)}
      </small>
     </button>
+    <LuemiIconButton className="lc-island lc-glass" label="Вложения переписки"
+     {...touchButton(()=>{sendField.current?.blur();setShowAttachments(true);})}><Images size={19}/></LuemiIconButton>
     <LuemiIconButton className="lc-island lc-glass" label="Меню переписки" {...touchButton(()=>setChatMenu(true))}><Menu size={21}/></LuemiIconButton>
    </div>}
   </header>
+  {threadSearchOpen&&<div className="lc-thread-search lc-glass" role="search">
+   <Search size={17} aria-hidden="true"/><input autoFocus value={threadQuery}
+    onChange={event=>{setThreadQuery(event.target.value);setThreadSearchIndex(0);}}
+    onKeyDown={event=>{if(event.key==="Enter"){event.preventDefault();navigateThreadSearch(event.shiftKey?-1:1);}}}
+    aria-label="Поиск по загруженным сообщениям" placeholder="Найти в переписке…"/>
+   {threadQuery&&<span className="lc-thread-search-count">{threadSearchMatches.length?Math.min(threadSearchIndex+1,threadSearchMatches.length)+" / "+threadSearchMatches.length:"0"}</span>}
+   <button type="button" onClick={()=>navigateThreadSearch(-1)} disabled={!threadSearchMatches.length} aria-label="Предыдущее совпадение"><ChevronUp size={17}/></button>
+   <button type="button" onClick={()=>navigateThreadSearch(1)} disabled={!threadSearchMatches.length} aria-label="Следующее совпадение"><ChevronDown size={17}/></button>
+   <button type="button" onClick={()=>{(document.activeElement as HTMLElement|null)?.blur();setThreadSearchOpen(false);setThreadQuery("");}} aria-label="Закрыть поиск"><X size={17}/></button>
+  </div>}
   <div ref={history} className="lc-history" role="log" aria-live="polite" onScroll={e=>{nearBottom.current=isNearBottom(e.currentTarget);if(nearBottom.current)setNewBelow(0);setMessageMenu(null);}}>
    {!activeNewMatch&&messages.length===0&&!historyLoaded&&!error&&
     <div className="lc-state lc-history-loading" role="status"><span className="lc-spinner"/>Загружаем сообщения…</div>}
@@ -575,8 +609,9 @@ export function RealChats({
          event.preventDefault();openMessage({id:message.id,node:event.currentTarget});
         }
        }} tabIndex={interactive?0:undefined}>
-       {message.replyTo&&<blockquote className="lc-message-quote"><strong>{message.replyTo.senderId===actorId?"Ты":active.peerName}</strong>
-        <span>{message.replyTo.body}</span></blockquote>}
+       {message.replyTo&&<button type="button" className="lc-message-quote" aria-label="Перейти к исходному сообщению"
+        onClick={event=>{event.stopPropagation();jumpToMessage(message.replyTo!.id);}}><strong>{message.replyTo.senderId===actorId?"Ты":active.peerName}</strong>
+        <span>{message.replyTo.body}</span></button>}
        {message.deletedAt?<em>Сообщение удалено</em>:<>
         {photo&&<button type="button" className="lc-photo-open" onClick={()=>setViewer(photo)}><img src={photo} alt="Фото в сообщении" width={media?.width??undefined} height={media?.height??undefined} decoding="async"/></button>}
         {message.body&&<span>{message.body}</span>}
@@ -584,8 +619,9 @@ export function RealChats({
        {!!message.reactions?.length&&<div className="lc-message-reactions">
         {[...new Set(message.reactions.map(item=>item.emoji))].map(emoji=>{
          const matching=message.reactions!.filter(item=>item.emoji===emoji);
-         return <span key={emoji} data-own={matching.some(item=>item.actorId===actorId)||undefined}
-          className="lc-emoji">{emoji}{matching.length>1&&<b>{matching.length}</b>}</span>;
+         return <button type="button" key={emoji} data-own={matching.some(item=>item.actorId===actorId)||undefined}
+          disabled={!interactive||active.access!=="active"||demoBlocked} aria-label={`Реакция ${emoji}`}
+          className="lc-emoji" onClick={event=>{event.stopPropagation();void applyReaction(message.id,emoji);}}>{emoji}{matching.length>1&&<b>{matching.length}</b>}</button>;
         })}
        </div>}
        <small><time dateTime={message.createdAt}>{time(message.createdAt)}</time>{message.editedAt&&" · изм."}
@@ -649,6 +685,8 @@ export function RealChats({
   
   {chatMenu&&<div className="lc-overlay" onClick={e=>{if(e.target===e.currentTarget)setChatMenu(false);}}>
    <div className="lc-menu lc-glass" role="dialog" aria-label="Настройки чата" aria-modal="true">
+    <div className="lc-sheet-handle" aria-hidden="true"/><h3 className="lc-sheet-title">Параметры переписки</h3>
+    <button onClick={()=>{setChatMenu(false);setThreadSearchOpen(true);setThreadSearchIndex(0);}}><Search size={18}/>Найти сообщение</button>
     {active.access==="active"&&!demoBlocked&&<button disabled={muted===null||savingMute} onClick={()=>{void toggleMute();}}>
      {muted?<Bell size={18}/>:<BellOff size={18}/>} {muted?"Включить уведомления":"Отключить уведомления"}
     </button>}
@@ -669,7 +707,9 @@ export function RealChats({
   {clearDialog&&<div className="lc-overlay"><div className="lc-dialog" role="alertdialog" aria-modal="true"><h3>Удалить переписку?</h3><p>Удалить всю историю можно у себя или одновременно у обоих. Это нельзя отменить через интерфейс.</p><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="me"} onChange={()=>setDeleteScope("me")}/> Только у меня</label><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="everyone"} onChange={()=>setDeleteScope("everyone")}/> У меня и собеседника</label><div><button onClick={()=>setClearDialog(false)}>Отмена</button><button className="danger" onClick={()=>void clear()}>Удалить</button></div></div></div>}
  </section>}
  {active&&api&&showAttachments&&<ChatAttachments key={active.id+":"+(visibilityRevision??"")} api={api} threadId={active.id}
-  peerName={active.peerName} viewerOpen={!!viewer} onPhoto={setViewer} onBack={()=>setShowAttachments(false)}/>}
- {viewer&&<ChatPhotoViewer src={viewer} onClose={()=>setViewer(null)}/>}
+  peerName={active.peerName} viewerOpen={!!viewer} nativeBack={nativeBack} onPhoto={setViewer} onBack={()=>setShowAttachments(false)}/>}
+ {viewer&&<ChatPhotoViewer src={viewer} gallery={messages.flatMap(message=>
+  message.localPreviewUrl?[message.localPreviewUrl]:message.media.map(media=>media.url).filter((url):url is string=>!!url))}
+  onClose={()=>setViewer(null)}/>}
  </div>;
 }

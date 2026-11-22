@@ -1,3 +1,4 @@
+import {useState} from "react";
 import type {ButtonHTMLAttributes,ComponentType,HTMLAttributes,ReactNode} from "react";
 import type {LucideIcon} from "lucide-react";
 
@@ -14,8 +15,11 @@ export function LuemiIconButton({label,className="",children,...props}:
 export function LuemiAvatar({name,src,size="medium",activeBlik=false,className=""}:{
  name:string;src?:string|null;size?:"small"|"medium"|"large";activeBlik?:boolean;className?:string;
 }){
+ const [failedSrc,setFailedSrc]=useState<string|null>(null);
+ const imageReady=!!src&&failedSrc!==src;
  return <span className={`luemi-v5-avatar is-${size}${activeBlik?" has-blik":""} ${className}`.trim()}>
-  {src?<img src={src} alt="" loading="lazy" decoding="async"/>:<span aria-hidden="true">{name.trim().slice(0,1).toUpperCase()||"L"}</span>}
+  {imageReady?<img src={src} alt="" loading="lazy" decoding="async" onError={()=>setFailedSrc(src)}/>:
+   <span aria-hidden="true">{name.trim().slice(0,1).toUpperCase()||"L"}</span>}
  </span>;
 }
 

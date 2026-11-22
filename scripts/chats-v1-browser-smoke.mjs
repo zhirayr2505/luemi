@@ -1,5 +1,6 @@
 import {chromium} from "playwright";
 import assert from "node:assert/strict";
+import {mkdir} from "node:fs/promises";
 
 const executablePath=process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
 const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{})});
@@ -53,6 +54,20 @@ const checkLiveInbox=async()=>{
  qaAllowed=true;
  await open();
  await demo.tap();
+ const traceLayout=async(stage)=>console.log("LUEMI_LAYOUT_TRACE",stage,JSON.stringify(await page.evaluate(()=>{
+  const node=document.querySelector(".lc-conversation-stack");
+  const ancestors=[];let el=node;
+  while(el&&ancestors.length<9){const rc=el.getBoundingClientRect(),css=getComputedStyle(el);
+   ancestors.push({tag:el.tagName,cls:String(el.className).slice(0,110),x:rc.x,y:rc.y,
+    w:rc.width,h:rc.height,transform:css.transform,top:css.top,left:css.left,position:css.position});
+   el=el.parentElement;
+  }
+  const shell=document.querySelector(".luemi-shell"),cs=shell?getComputedStyle(shell):null;
+  return {ancestors,active:document.activeElement?.tagName,scrollX,scrollY,
+   vv:visualViewport?{top:visualViewport.offsetTop,left:visualViewport.offsetLeft,width:visualViewport.width,height:visualViewport.height}:null,
+   viewportTop:cs?.getPropertyValue("--viewport-offset-top"),appHeight:cs?.getPropertyValue("--app-height")};
+ })));
+ await traceLayout("initial");
  const before=calls.filter(path=>path.startsWith("/api/v4/chats/")).length;
  await page.locator(".lc-thread-route").getByText("Алина",{exact:true}).waitFor();
  await page.locator(".lc-chat-header").getByText("В сети",{exact:true}).waitFor();
@@ -79,16 +94,44 @@ const checkLiveInbox=async()=>{
  assert(photoBox);
  await backSwipe(12,Math.round(photoBox.y+photoBox.height/2));
  await profile.waitFor({state:"detached"});
+ await traceLayout("after-profile");
  await page.getByRole("button",{name:"Меню переписки"}).tap();
  const settings=page.getByRole("dialog",{name:"Настройки чата"});
  await settings.waitFor();
  await settings.getByRole("button",{name:"Отключить уведомления"}).tap();
  await settings.getByRole("button",{name:"Включить уведомления"}).waitFor();
- await settings.getByRole("button",{name:"Отмена"}).tap();
+ await settings.getByRole("button",{name:"Найти сообщение"}).tap();
+ const search=page.getByRole("search");
+ await search.getByRole("textbox",{name:"Поиск по загруженным сообщениям"}).fill("Алина");
+ await search.getByRole("button",{name:"Следующее совпадение"}).tap();
+ await search.getByRole("button",{name:"Закрыть поиск"}).tap();
+ await traceLayout("after-search");
+ const stable=await page.locator(".lc-conversation-stack").boundingBox();
+ assert(stable&&Math.abs(stable.x)<1&&Math.abs(stable.y)<1,
+  "focused chat search never shifts the fullscreen route "+JSON.stringify(stable));
+ const chatHeader=await page.locator(".lc-chat-header").boundingBox();
+ assert(chatHeader&&chatHeader.y>=0&&chatHeader.height>40,
+  "chat header stays inside the visible viewport "+JSON.stringify(chatHeader));
+ await page.locator(".lc-history").evaluate(node=>node.scrollTop=node.scrollHeight);
+ await mkdir("qa-artifacts/chat-premium",{recursive:true});
+ await page.screenshot({path:"qa-artifacts/chat-premium/conversation-393.png"});
+ console.log("LUEMI_CHAT_GEOMETRY",JSON.stringify(await page.evaluate(()=>({
+  viewport:{width:innerWidth,height:innerHeight,scrollY,visualHeight:visualViewport?.height},
+  items:[".lc-conversation-stack",".lc-thread-route",".lc-chat-header",".lc-thread-logo",".lc-header-islands",".lc-peer",".lc-history",".lc-composer",".lc-inbox-host"]
+   .map(selector=>{
+    const e=document.querySelector(selector),c=e?getComputedStyle(e):null,r=e?.getBoundingClientRect();
+    return {selector,present:!!e,rect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null,
+     display:c?.display,opacity:c?.opacity,visibility:c?.visibility,transform:c?.transform,
+     clipPath:c?.clipPath,zIndex:c?.zIndex};
+   }),
+  topElements:document.elementsFromPoint(196,100).slice(0,7).map(e=>e.tagName+"."+String(e.className).slice(0,80))
+ }))));
  const first=page.locator(".lc-msg-line .lc-bubble").first();
  await first.tap();
  const menu=page.getByRole("dialog",{name:"Действия с сообщением"});
  await menu.waitFor();
+ await page.waitForTimeout(215); // Capture the settled menu, not its entrance transition.
+ await page.screenshot({path:"qa-artifacts/chat-premium/message-menu-393.png"});
  assert.equal(await menu.locator(".lc-emoji-bar button[data-emoji]").count(),6);
  const focused=page.locator(".lc-focus-bubble");
  await focused.waitFor();
@@ -118,16 +161,17 @@ const checkLiveInbox=async()=>{
  await page.getByLabel("Сообщение").fill("Привет! Как дела?");
  await page.getByLabel("Отправить").tap();
  const answered=page.locator(".lc-own .lc-bubble").filter({hasText:"Привет! Как дела?"});
- await answered.locator("blockquote").getByText(/Привет! Я Алина/).waitFor();
+ await answered.locator(".lc-message-quote").getByText(/Привет! Я Алина/).waitFor();
  const keepsFocus=await page.getByLabel("Сообщение").evaluate(node=>document.activeElement===node);
  assert(keepsFocus,"the send button keeps the composer focused");
  const incoming=page.locator(".lc-msg-line:not(.lc-own)");
  await incoming.getByText(/Привет! У меня хорошо/).waitFor({timeout:8000});
  assert.equal(await answered.count(),1,"touch activation never duplicates the message");
- await answered.tap();
+ await answered.locator(":scope > span").tap();
  await menu.getByText("Прочитано",{exact:true}).waitFor();
  assert.ok(await menu.locator("time[datetime]").getAttribute("datetime"));
  await page.getByRole("button",{name:"Закрыть меню сообщения"}).tap({position:{x:5,y:40}});
+ await answered.getByRole("button",{name:"Перейти к исходному сообщению"}).tap();
  await page.getByLabel("Сообщение").fill("Хочешь кофе?");
  await page.getByLabel("Отправить").tap();
  await incoming.getByText(/Я за кофе/).waitFor({timeout:6000});

@@ -82,7 +82,9 @@ export function useChatGestures(callbacks:{
    window.clearTimeout(hold.current);
    const horizontal=Math.abs(dx)>Math.abs(dy)*1.26;
    const options=latest.current;
-   const mode=horizontal&&dx>0&&options.canBack?"back":
+   const frame=route.current?.getBoundingClientRect();
+   const fromEdge=!!frame&&g.x<=frame.left+38;
+   const mode=horizontal&&dx>0&&options.canBack&&fromEdge?"back":
     horizontal&&dx<0&&g.target&&options.canReply?"reply":null;
    if(!mode){
     arbiter.current.nativeScroll(g.serial);
