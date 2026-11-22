@@ -40,7 +40,8 @@ test("empty real feed retains navigation; QA profiles stay in a separate fixture
  assert.match(shell,/getPublishedFeed\(controller\.signal\)/);
  assert.match(shell,/Пока нет анкет/);
  assert.match(shell,/Анкеты не загрузились/);
- assert.match(nearby,/Сейчас нет других опубликованных анкет/);
+ assert.match(nearby,/Пока нет анкет/);
+ assert.match(nearby,/countWord/,"correct Russian declension of published counts");
  assert.match(likes,/Пока нет взаимных симпатий/);
  assert.match(shell,/refresh/);
  assert.doesNotMatch(shell,/demoPeople|forYouDemoPeople|freshDemoState/);

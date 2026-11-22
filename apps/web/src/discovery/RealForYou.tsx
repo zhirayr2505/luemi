@@ -132,7 +132,9 @@ export function RealForYou({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
  const collections=useMemo(()=>Object.fromEntries(topics.map(t=>[t.id,members(t.id,ranked,draft)])) as Record<Topic,RealPublishedProfile[]>,[ranked,draft]);
  const shown=useMemo(()=>prefs.order.filter(id=>!prefs.hidden.includes(id))
   .sort((a,b)=>Number(prefs.favorites.includes(b))-Number(prefs.favorites.includes(a))),[prefs]);
- const visibleChips=chips.filter(([id])=>id==="best"||shown.includes(id));
+ // A chip must always have an actual section to navigate to.
+ const visibleChips=ranked.length?chips.filter(([id])=>id==="best"||
+  shown.includes(id as Topic)&&collections[id as Topic].length>0):[];
  const jump=(id:Collection)=>{
   const root=scroll.current;
   const target=root?.querySelector<HTMLElement>('[data-fy-section="'+id+'"]');
@@ -175,13 +177,13 @@ export function RealForYou({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
  return <div className="fy-root fy-real" data-layout="category-hub">
   <div className="fy-scroll" ref={scroll} inert={!!expanded||manage} aria-hidden={!!expanded||manage}
    onScroll={event=>{if(!expanded&&!manage)onScrollTop?.(event.currentTarget.scrollTop);}}>
-   <nav className="fy-topic-chips" aria-label="Темы рекомендаций">
-    {[visibleChips.slice(0,4),visibleChips.slice(4)].map((group,i)=>
+   {visibleChips.length>0&&<nav className="fy-topic-chips" aria-label="Темы рекомендаций">
+    {[visibleChips.slice(0,4),visibleChips.slice(4)].filter(group=>group.length>0).map((group,i)=>
      <div className="fy-chip-row" key={i} onPointerDown={e=>e.stopPropagation()}>
       {group.map(([id,label,Icon])=><button key={id} className={"fy-chip"+(id==="best"?" fy-chip-active":"")}
        type="button" onClick={()=>jump(id)}><Icon size={15}/><span>{label}</span></button>)}
      </div>)}
-   </nav>
+   </nav>}
    <div className="fy-customize">
     <span><Layers3 size={18}/>Мои подборки</span>
     <button type="button" onClick={()=>setManage(true)}><Settings2 size={16}/>Настроить<ArrowRight size={15}/></button>
@@ -196,20 +198,20 @@ export function RealForYou({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
       <button type="button" className="fy-avatar fy-avatar-all" onClick={()=>setExpanded("best")} aria-label="Все рекомендации">
        <span className="fy-avatar-photo"><Plus size={25}/></span><span className="fy-avatar-name">Все</span>
       </button>
-     </div>:<div className="fy-empty"><Sparkles size={17}/>Пока нет опубликованных анкет для рекомендаций.</div>}
+     </div>:<div className="fy-empty fy-empty-primary"><Sparkles size={21}/><div><strong>Рекомендации появятся здесь</strong><span>Пока нет опубликованных анкет, подходящих для подборок.</span></div></div>}
    </section>
-   <section className="fy-section fy-best" data-fy-section="best" aria-label="Лучшие совпадения">
+   {ranked.length>0&&<section className="fy-section fy-best" data-fy-section="best" aria-label="Лучшие совпадения">
     <div className="fy-section-header"><h3>Лучшие совпадения</h3>
      {ranked.length>0&&<button type="button" onClick={()=>setExpanded("best")}>Все <ArrowRight size={16}/></button>}
     </div>
     {ranked.length?row(ranked,"Лучшие совпадения",false,true):
      <div className="fy-empty"><Sparkles size={17}/>Сейчас нет подходящих анкет. Попробуй изменить фильтры.</div>}
-   </section>
-   {shown.map(section)}
-   {!shown.length&&<div className="fy-empty">Все темы скрыты. Верни их через «Настроить».</div>}
+   </section>}
+   {ranked.length>0&&shown.filter(id=>collections[id].length>0).map(section)}
+   {ranked.length>0&&!shown.length&&<div className="fy-empty">Все темы скрыты. Верни их через «Настроить».</div>}
    {hasMore&&<div className="fy-load-more"><button type="button" disabled={moreBusy} onClick={onMore}>
     {moreBusy?"Загружаем…":"Загрузить ещё анкеты"} <ArrowRight size={16}/></button></div>}
-   <p className="fy-legal">Только реальные опубликованные анкеты. Закладки действуют в течение сессии. Онлайн-статусы и расстояния не выдумываются.</p>
+   {ranked.length>0&&<p className="fy-legal">Показаны опубликованные анкеты LUEMI.</p>}
   </div>
   {expanded&&<section className="fy-expanded" role="region" aria-label={"Подборка: "+expandedTitle}>
    <header><button type="button" className="fy-back" onClick={()=>setExpanded(null)}

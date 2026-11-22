@@ -56,7 +56,7 @@ test("real chat list and thread share V5 without white route surfaces",()=>{
 
 test("likes gallery uses shared V5 states and album cards",()=>{
  const gallery=read("apps/web/src/discovery/LikesGallery.tsx");
- for(const component of ["LuemiEmptyState","LuemiIconButton","LuemiSkeleton","LikesGalleryCard"])
+ for(const component of ["LuemiEmptyState","LuemiIconButton","likes-loading-card","LikesGalleryCard"])
   assert.match(gallery,new RegExp(component));
  assert.match(discovery,/<LikesGallery/);
  assert.doesNotMatch(discovery,/className="discovery-placeholder"/);
