@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useRef,useState} from "react";
 import {Heart,LockKeyhole,RefreshCw} from "lucide-react";
 import {getIncomingLikes,getLikesGallery,realMatchPilot,type IncomingLike,type LikesGalleryEntry,type ProfileMatchState,type RealLikeKind} from "../registration/real-live-client";
-import {LuemiEmptyState,LuemiIconButton,LuemiSkeleton} from "../ui/LuemiV5";
+import {LuemiEmptyState,LuemiIconButton} from "../ui/LuemiV5";
 import {LikesGalleryCard} from "./LikesGalleryCard";
 import {ProfileReactionNotices} from "./ProfileReactionNotices";
 import {demoPeople} from "./demo-people";
@@ -84,6 +84,7 @@ export function LikesGallery({active,qaAllowed,queue,onPerson,onDemoPerson,onCha
  const [tab,setTab]=useState<Tab>("incoming");
  const [demo,setDemo]=useState(false);
  const [rows,setRows]=useState<Entry[]|null>(null);
+ const [loading,setLoading]=useState(false);
  const [locked,setLocked]=useState(0);
  const [error,setError]=useState("");
  const [chatError,setChatError]=useState("");
@@ -96,16 +97,26 @@ export function LikesGallery({active,qaAllowed,queue,onPerson,onDemoPerson,onCha
  const revision=[...queue.actions.values()].filter(action=>action.phase==="sent"&&!action.target.demo).length;
  useEffect(()=>{
   if(!active||useDemo)return;
-  if(!realMatchPilot.enabled)return;
+  if(!realMatchPilot.enabled){setRows([]);setLoading(false);return;}
   const controller=new AbortController();
+  setLoading(true);
+  const timeout=window.setTimeout(()=>{
+   if(controller.signal.aborted)return;
+   controller.abort();
+   setLoading(false);setError("Симпатии загружаются слишком долго. Попробуй обновить.");
+  },12000);
   void Promise.all([getIncomingLikes(controller.signal),getLikesGallery(controller.signal)]).then(([incoming,gallery])=>{
    if(controller.signal.aborted)return;
+   window.clearTimeout(timeout);
    setRows([...incoming.likes.map(liveIncoming),...gallery.outgoing.map(liveOutgoing),...gallery.mutual.map(liveMutual)]);
-   setLocked(incoming.hiddenCount);setError("");
+   setLocked(incoming.hiddenCount);setLoading(false);setError("");
   }).catch(()=>{
-   if(!controller.signal.aborted)setError("Не удалось загрузить симпатии.");
+   if(!controller.signal.aborted){
+    window.clearTimeout(timeout);
+    setLoading(false);setError("Не удалось загрузить симпатии.");
+   }
   });
-  return ()=>controller.abort();
+  return ()=>{window.clearTimeout(timeout);controller.abort();};
  },[active,refresh,revision,useDemo]);
 
  const rowFor=(entry:Entry):DisplayEntry=>{
@@ -175,8 +186,10 @@ export function LikesGallery({active,qaAllowed,queue,onPerson,onDemoPerson,onCha
   <div className="likes-gallery-scroller" id="likes-gallery-panel" key={tab} role="tabpanel" aria-labelledby={"likes-gallery-tab-"+tab}>
    {!useDemo&&error&&!entries.length?<LuemiEmptyState icon={Heart} title={error} description="Проверь соединение и обнови галерею.">
     <button type="button" className="likes-retry" onClick={()=>{setError("");refreshRows(value=>value+1);}}>Повторить</button>
-   </LuemiEmptyState>:!useDemo&&rows===null&&realMatchPilot.enabled?<div className="likes-gallery-grid" aria-label="Загрузка симпатий">
-    <LuemiSkeleton/><LuemiSkeleton/>
+   </LuemiEmptyState>:!useDemo&&loading&&rows===null?<div className="likes-gallery-grid likes-loading-grid" role="status" aria-label="Загружаем симпатии">
+    {[0,1].map(index=><div key={index} className="likes-loading-card" aria-hidden="true">
+     <div className="likes-loading-photo"/><div className="likes-loading-caption"><i/><i/></div>
+    </div>)}
    </div>:!entries.length&&!hiddenCards?<LuemiEmptyState icon={Heart} title={emptyMessage[tab]} description="Новые анкеты появятся здесь."/>:<div ref={grid} className="likes-gallery-grid">
     {entries.map(({entry,key,action})=>{
      const reaction=tab==="incoming"&&action?.target.surface==="gallery"&&action.phase!=="failed"?action:undefined;

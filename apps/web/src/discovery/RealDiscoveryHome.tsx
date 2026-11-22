@@ -190,6 +190,13 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   if(!active||lastRefresh.current===refresh)return;
   lastRefresh.current=refresh;
   const controller=new AbortController();abort.current?.abort();abort.current=controller;
+  // Aborted browser requests and stuck image decoding must settle visibly.
+  const timeout=window.setTimeout(()=>{
+   if(controller.signal.aborted)return;
+   controller.abort();
+   setLoading(false);setFirstLoadSettled(true);
+   setError("Анкеты загружаются слишком долго. Попробуй обновить.");
+  },15000);
   let complete=false;
   setLoading(true);setFirstLoadSettled(false);setError("");setMessage("");
   if(initialFeed&&refresh===0){
@@ -198,6 +205,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    if(initialFeed.searchScope&&initialFeed.searchScope!==draft.searchScope)
     onSearchScopeChange(initialFeed.searchScope);
    setRows(initialFeed.profiles);setCursor(initialFeed.nextCursor);
+   window.clearTimeout(timeout);
    setPage(0);setLoading(false);setFirstLoadSettled(true);complete=true;
    if(tab==="feed"&&initialFeed.profiles.length===0)onEmptyFeed();
    return()=>controller.abort();
@@ -214,13 +222,15 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
    const prepared=warmed?.page??result;
    if(prepared.searchScope&&prepared.searchScope!==draft.searchScope)
     onSearchScopeChange(prepared.searchScope);
+   window.clearTimeout(timeout);
    setRows(prepared.profiles);setCursor(prepared.nextCursor);setPage(0);setLoading(false);setFirstLoadSettled(true);complete=true;
    if(tab==="feed"&&prepared.profiles.length===0)onEmptyFeed();
   }).catch(()=>{if(!controller.signal.aborted){
+   window.clearTimeout(timeout);
    setLoading(false);setFirstLoadSettled(true);setError("Не удалось загрузить анкеты.");complete=true;
-   if(tab==="feed")onEmptyFeed(); // Isolated QA fallback; never fabricated server rows.
   }});
-  return ()=>{if(!complete&&lastRefresh.current===refresh)lastRefresh.current=-1;controller.abort();};
+  return ()=>{window.clearTimeout(timeout);
+   if(!complete&&lastRefresh.current===refresh)lastRefresh.current=-1;controller.abort();};
  },[active,refresh,initialFeed,draft.searchScope,onSearchScopeChange,onEmptyFeed,tab]);
  // Each tab now owns its approved presentation. Only Feed renders a full-screen deck;
  // For You and Nearby sort/filter the complete real server page themselves.
@@ -351,7 +361,11 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  };
  if(tab!=="feed")return <div className="real-discovery-deck real-discovery-collections">
   {message&&<div className="real-discovery-notice" role="status">{message}</div>}
-  {loading?<div className="real-discovery-collection-loading"><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/></div>:
+  {loading?<div className="real-discovery-collection-loading" role="status" aria-label="Загружаем подборки">
+   <div className="real-discovery-collection-skeleton-title"/>
+   <div className="real-discovery-collection-skeleton-card"/>
+   <div className="real-discovery-collection-skeleton-row"/>
+  </div>:
    error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
    tab==="for-you"?
@@ -362,7 +376,12 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  </div>;
  return <div className="real-discovery-deck">
   {message&&<div className="real-discovery-notice" role="status">{message}</div>}
-  {loading?<div className="real-discovery-feed-loading"><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/><LuemiSkeleton lines={3}/></div>:
+  {loading?<div className="real-discovery-feed-loading" role="status" aria-label="Загружаем анкеты">
+   <div className="real-discovery-feed-skeleton">
+    <div className="real-discovery-feed-skeleton-avatar"/>
+    <div className="real-discovery-feed-skeleton-content"><i/><i/><span/></div>
+   </div>
+  </div>:
    error?<LuemiEmptyState icon={CircleAlert} title="Анкеты не загрузились" description={error}>
     <button type="button" className="discovery-glass-button" onClick={()=>setRefresh(n=>n+1)}>Повторить</button></LuemiEmptyState>:
    <div className={"discovery-deck-stage"+(current?" has-profiles":"")} ref={deckRef}>{current?
@@ -870,7 +889,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   if(browse!=="feed"){requestBrowseTab(0);return;}
  };
  const canNavigateBack=chatThreadOpen||filterOpen||!!person||!!demoVisitor||accountOpen||
-  mainTab!=="discover"||browse!=="feed";
+  mainTab!=="discover";
  const invokeBack=useCallback(()=>backRef.current(),[]);
  useEffect(()=>{
   registerBack?.(canNavigateBack?invokeBack:null);
