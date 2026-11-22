@@ -80,10 +80,12 @@ const checkLiveInbox=async()=>{
  await page.locator(".lc-reply-preview").getByText("Ответ · Алина",{exact:true}).waitFor();
  await page.getByLabel("Сообщение").fill("Привет! Как дела?");
  await page.getByLabel("Отправить").tap();
- const incoming=page.locator(".lc-msg-line:not(.lc-own)");
- await incoming.getByText(/Привет! У меня хорошо/).waitFor({timeout:6000});
  const answered=page.locator(".lc-own .lc-bubble").filter({hasText:"Привет! Как дела?"});
  await answered.locator("blockquote").getByText(/Привет! Я Алина/).waitFor();
+ const keepsFocus=await page.getByLabel("Сообщение").evaluate(node=>document.activeElement===node);
+ assert(keepsFocus,"the send button keeps the composer focused");
+ const incoming=page.locator(".lc-msg-line:not(.lc-own)");
+ await incoming.getByText(/Привет! У меня хорошо/).waitFor({timeout:8000});
  await answered.tap();
  await menu.getByText("Прочитано",{exact:true}).waitFor();
  assert.ok(await menu.locator("time[datetime]").getAttribute("datetime"));

@@ -517,7 +517,9 @@ export function RealChats({
      onChange={event=>setDraft(event.target.value)} onKeyDown={event=>{
       if(event.key==="Enter"&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();void send();}
      }}/>
-    <button type="button" className="lc-send" disabled={!actorId||!draft.trim()&&!attachment} onClick={()=>void send()} aria-label="Отправить"><Send size={19}/></button>
+    <button type="button" className="lc-send" disabled={!actorId||!draft.trim()&&!attachment}
+     onPointerDown={event=>{if(document.activeElement===sendField.current)event.preventDefault();}}
+     onClick={()=>void send()} aria-label="Отправить"><Send size={19}/></button>
    </div>
   </footer>:<div className="lc-state lc-read-only" role="status">Переписка доступна только для чтения. Аккаунт удалён.</div>}
   {error&&<div className="lc-notice" role="alert">{error}<button onClick={()=>setError("")} aria-label="Закрыть"><X size={15}/></button></div>}
