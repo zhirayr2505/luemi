@@ -60,6 +60,7 @@ export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
  const explanation=scope==="city"?"Показываем людей из того же указанного города.":
   scope==="country"?"Показываем людей из выбранной страны.":"Опубликованные анкеты людей со всего мира.";
  const hasArea=scope==="world"||(scope==="country"?!!draft.countryCode:!!draft.city&&!!draft.countryCode);
+ const countWord=filtered.length%100>=11&&filtered.length%100<=14?"анкет":filtered.length%10===1?"анкета":filtered.length%10>=2&&filtered.length%10<=4?"анкеты":"анкет";
  return <section className="nb-root" aria-label="Рядом · опубликованные анкеты">
   <div className="nb-scroll" onScroll={e=>onScrollTop?.(e.currentTarget.scrollTop)}>
    <button className="nb-location" type="button" onClick={()=>setSettings(s=>!s)}
@@ -79,19 +80,19 @@ export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
     <div><h2>{scope==="world"?"Люди со всего мира":scope==="country"?
      "Люди из выбранной страны":"Люди из выбранного города"}</h2>
      <p>{explanation}</p></div>
-    <span className="nb-count">{filtered.length} · анкеты</span>
+    <span className="nb-count">{filtered.length} {countWord}</span>
    </div>
    {!hasArea?<div className="nb-empty"><MapPin size={29}/>
     <h3>Выбери место поиска</h3>
     <p>Укажи свой город или страну в анкете либо переключись на поиск по миру.</p>
     <button type="button" onClick={onEditLocation}>Открыть профиль <ArrowRight size={16}/></button>
    </div>:filtered.length===0?<div className="nb-empty"><UsersRound size={30}/>
-    <h3>Здесь пока никого не нашли</h3>
-    <p>Сейчас нет других опубликованных анкет в этой области. Попробуй выбрать страну или весь мир.</p>
+    <h3>Пока нет анкет</h3>
+    <p>{scope==="world"?"Новые анкеты появятся здесь после публикации.":"Попробуй изменить область поиска."}</p>
     {scope==="city"&&draft.searchScope==="city"&&!hasMore?
      <button type="button" disabled={scopeBusy} onClick={onExpandWorld}>
       {scopeBusy?"Расширяем поиск…":"Искать по всему миру"} <ArrowRight size={16}/></button>:
-     <button type="button" onClick={()=>setSettings(true)}>Изменить место поиска <ArrowRight size={16}/></button>}
+     <button type="button" onClick={()=>setSettings(true)}>Изменить поиск <ArrowRight size={16}/></button>}
    </div>:<>
     <div className="nb-grid">{filtered.slice(0,visible).map((person,i)=>
      <Tile key={person.id} person={person} draft={draft} saved={saved.has(person.id)}
@@ -102,7 +103,7 @@ export function RealNearby({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
    </>}
    {hasMore&&<div className="nb-more"><button type="button" disabled={moreBusy} onClick={onMore}>
     {moreBusy?"Загружаем…":"Загрузить другие анкеты"} <ArrowRight size={16}/></button></div>}
-   <p className="nb-footer">Только реальные опубликованные анкеты · без выдуманных расстояний и онлайн-статусов. Закладки временные.</p>
+   {filtered.length>0&&<p className="nb-footer">Показаны опубликованные анкеты LUEMI.</p>}
   </div>
  </section>;
 }

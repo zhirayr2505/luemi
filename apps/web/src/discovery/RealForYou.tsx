@@ -196,20 +196,20 @@ export function RealForYou({draft,people,onPerson,saved,onSave,onMore,hasMore,mo
       <button type="button" className="fy-avatar fy-avatar-all" onClick={()=>setExpanded("best")} aria-label="Все рекомендации">
        <span className="fy-avatar-photo"><Plus size={25}/></span><span className="fy-avatar-name">Все</span>
       </button>
-     </div>:<div className="fy-empty"><Sparkles size={17}/>Пока нет опубликованных анкет для рекомендаций.</div>}
+     </div>:<div className="fy-empty fy-empty-primary"><Sparkles size={21}/><div><strong>Рекомендации появятся здесь</strong><span>Пока нет опубликованных анкет, подходящих для подборок.</span></div></div>}
    </section>
-   <section className="fy-section fy-best" data-fy-section="best" aria-label="Лучшие совпадения">
+   {ranked.length>0&&<section className="fy-section fy-best" data-fy-section="best" aria-label="Лучшие совпадения">
     <div className="fy-section-header"><h3>Лучшие совпадения</h3>
      {ranked.length>0&&<button type="button" onClick={()=>setExpanded("best")}>Все <ArrowRight size={16}/></button>}
     </div>
     {ranked.length?row(ranked,"Лучшие совпадения",false,true):
      <div className="fy-empty"><Sparkles size={17}/>Сейчас нет подходящих анкет. Попробуй изменить фильтры.</div>}
-   </section>
-   {shown.map(section)}
-   {!shown.length&&<div className="fy-empty">Все темы скрыты. Верни их через «Настроить».</div>}
+   </section>}
+   {ranked.length>0&&shown.filter(id=>collections[id].length>0).map(section)}
+   {ranked.length>0&&!shown.length&&<div className="fy-empty">Все темы скрыты. Верни их через «Настроить».</div>}
    {hasMore&&<div className="fy-load-more"><button type="button" disabled={moreBusy} onClick={onMore}>
     {moreBusy?"Загружаем…":"Загрузить ещё анкеты"} <ArrowRight size={16}/></button></div>}
-   <p className="fy-legal">Только реальные опубликованные анкеты. Закладки действуют в течение сессии. Онлайн-статусы и расстояния не выдумываются.</p>
+   {ranked.length>0&&<p className="fy-legal">Показаны опубликованные анкеты LUEMI.</p>}
   </div>
   {expanded&&<section className="fy-expanded" role="region" aria-label={"Подборка: "+expandedTitle}>
    <header><button type="button" className="fy-back" onClick={()=>setExpanded(null)}
