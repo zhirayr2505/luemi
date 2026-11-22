@@ -92,6 +92,17 @@ const checkLiveInbox=async()=>{
  await search.getByRole("button",{name:"Закрыть поиск"}).tap();
  await mkdir("qa-artifacts/chat-premium",{recursive:true});
  await page.screenshot({path:"qa-artifacts/chat-premium/conversation-393.png"});
+ console.log("LUEMI_CHAT_GEOMETRY",JSON.stringify(await page.evaluate(()=>({
+  viewport:{width:innerWidth,height:innerHeight,scrollY,visualHeight:visualViewport?.height},
+  items:[".lc-conversation-stack",".lc-thread-route",".lc-chat-header",".lc-thread-logo",".lc-header-islands",".lc-peer",".lc-history",".lc-composer",".lc-inbox-host"]
+   .map(selector=>{
+    const e=document.querySelector(selector),c=e?getComputedStyle(e):null,r=e?.getBoundingClientRect();
+    return {selector,present:!!e,rect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null,
+     display:c?.display,opacity:c?.opacity,visibility:c?.visibility,transform:c?.transform,
+     clipPath:c?.clipPath,zIndex:c?.zIndex};
+   }),
+  topElements:document.elementsFromPoint(196,100).slice(0,7).map(e=>e.tagName+"."+String(e.className).slice(0,80))
+ }))));
  const first=page.locator(".lc-msg-line .lc-bubble").first();
  await first.tap();
  const menu=page.getByRole("dialog",{name:"Действия с сообщением"});
