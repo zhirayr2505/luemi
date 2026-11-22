@@ -1,13 +1,15 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,Reply,Check,CheckCheck,Copy,Heart,ImagePlus,MoveDown,MoreVertical,Search,Send,Trash2,X,MessagesSquare} from "lucide-react";
+import type {MouseEvent,PointerEvent} from "react";
+import {ArrowLeft,ArrowRight,Reply,Check,CheckCheck,Copy,Heart,ImagePlus,MoveDown,Menu,Bell,BellOff,ShieldBan,Search,Send,Trash2,X,MessagesSquare} from "lucide-react";
 import {createChatTransport,sumUnreadMessages,ChatTransportError,type ChatTransport,type ChatWireConversation} from "./chat-transport.js";
 import {errorText,isNearBottom,messageKey,prependPage,reconcileMessages,type LocalMessage,validateChatImage} from "./chat-domain.js";
 import type {ChatReactionEmoji,ChatReply} from "@luemi/contracts";
 import {ChatMessageMenu} from "./ChatMessageMenu.js";
 import {useChatGestures} from "./chat-gestures.js";
+import {ChatAttachments} from "./ChatAttachments.js";
 import {ChatPhotoViewer} from "./ChatPhotoViewer.js";
 import {geoCsrf} from "../auth/session-adapter.js";
-import {getNewMatches,openNewMatch,type NewMatch} from "../registration/real-live-client.js";
+import {blockPublishedUser,getNewMatches,openNewMatch,type NewMatch} from "../registration/real-live-client.js";
 import {LuemiAvatar,LuemiEmptyState,LuemiIconButton} from "../ui/LuemiV5.js";
 import "./chats.css";
 import "./surreal-chats.css";
@@ -20,7 +22,7 @@ const reactionSet=(message:LocalMessage,actorId:string,emoji:ChatReactionEmoji|n
 ];
 type MessageAnchor={id:string;node:HTMLElement};
 const describePresence=(at:string|null)=>{
- if(!at)return "Открыть профиль";
+ if(!at)return "Не в сети";
  const age=Date.now()-Date.parse(at);
  if(age<40000)return "В сети";
  if(age<900000)return "Недавно в сети";
@@ -28,6 +30,12 @@ const describePresence=(at:string|null)=>{
 };
 type Attachment={file:File;url:string;progress:number;error:string|null};
 const dayKey=(iso:string)=>new Date(iso).toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"});
+const dayLabel=(day:string)=>{
+ const now=new Date();
+ if(day===dayKey(now.toISOString()))return "Сегодня";
+ now.setDate(now.getDate()-1);
+ return day===dayKey(now.toISOString())?"Вчера":day;
+};
 const time=(iso:string)=>new Date(iso).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
 const status=(m:LocalMessage,own:boolean)=>!own?null:m.localState==="failed"?"Ошибка":m.localState==="sending"?"Отправка…":m.readAt?"Прочитано":m.deliveredAt?"Доставлено":"Отправлено";
 
@@ -63,10 +71,32 @@ export function RealChats({
  const [deleteScope,setDeleteScope]=useState<"me"|"everyone">("me");const [chatMenu,setChatMenu]=useState(false);const [exportBusy,setExportBusy]=useState(false);const [clearDialog,setClearDialog]=useState(false);
  const [loading,setLoading]=useState(true);const [loadingOlder,setLoadingOlder]=useState(false);const [error,setError]=useState("");const [action,setAction]=useState<Action>(null);const [editValue,setEditValue]=useState("");const [viewer,setViewer]=useState<string|null>(null);const [newBelow,setNewBelow]=useState(0);
  const [replyTo,setReplyTo]=useState<ChatReply|null>(null);
+ const [quotePreview,setQuotePreview]=useState<ChatReply|null>(null);
+ const [showAttachments,setShowAttachments]=useState(false);
+ const [muted,setMuted]=useState<boolean|null>(null);
+ const [savingMute,setSavingMute]=useState(false);
+ const [blockDialog,setBlockDialog]=useState(false);
+ const [blocking,setBlocking]=useState(false);
+ const [demoBlocked,setDemoBlocked]=useState(false);
+ const quoteAnchor=useRef<{node:HTMLElement;top:number}|null>(null);
+ const quoteMotion=useRef(false);
+ const quoteTimer=useRef(0);
+ const animateQuote=()=>{
+  const el=history.current;
+  if(!el)return;
+  const top=el.getBoundingClientRect().top;
+  const node=Array.from(el.querySelectorAll<HTMLElement>(".lc-msg-line")).find(row=>row.getBoundingClientRect().bottom>top+4);
+  quoteAnchor.current=node?{node,top:node.getBoundingClientRect().top}:null;
+  quoteMotion.current=true;
+  window.clearTimeout(quoteTimer.current);
+  quoteTimer.current=window.setTimeout(()=>{quoteAnchor.current=null;quoteMotion.current=false;},250);
+ };
+ useEffect(()=>()=>window.clearTimeout(quoteTimer.current),[]);
  const [messageMenu,setMessageMenu]=useState<MessageAnchor|null>(null);
  const [selected,setSelected]=useState<string[]>([]);
  const [bulkDelete,setBulkDelete]=useState(false);
  const [deleting,setDeleting]=useState(false);
+ const [visibilityRevision,setVisibilityRevision]=useState<string|null>(null);
  const [peerLastSeen,setPeerLastSeen]=useState<string|null>(null);
  const [searchOpen,setSearchOpen]=useState(false);const [query,setQuery]=useState("");const [demoTyping,setDemoTyping]=useState(false);
  const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);
@@ -91,8 +121,40 @@ export function RealChats({
   oldPositions.current=positions;
  },[]);
  const sendField=useRef<HTMLTextAreaElement>(null);
- const sendPress=useRef<{id:number;x:number;y:number}|null>(null);
- const lastTouchSend=useRef(-Infinity);
+ const buttonPress=useRef<{id:number;x:number;y:number;button:HTMLButtonElement}|null>(null);
+ const lastTouch=useRef<{button:HTMLButtonElement;at:number}|null>(null);
+ const touchFallback=useRef<number>(0);
+ useEffect(()=>()=>window.clearTimeout(touchFallback.current),[]);
+ const touchButton=(action:()=>void,keepKeyboard=false)=>({
+  onPointerDown:(event:PointerEvent<HTMLButtonElement>)=>{
+   if(keepKeyboard&&document.activeElement===sendField.current)event.preventDefault();
+   if(event.pointerType==="touch"&&event.isPrimary){
+    buttonPress.current={id:event.pointerId,x:event.clientX,y:event.clientY,button:event.currentTarget};
+   }
+  },
+  onPointerCancel:()=>{buttonPress.current=null;},
+  onPointerUp:(event:PointerEvent<HTMLButtonElement>)=>{
+   const press=buttonPress.current;
+   buttonPress.current=null;
+   if(!press||press.id!==event.pointerId||press.button!==event.currentTarget||
+     Math.hypot(event.clientX-press.x,event.clientY-press.y)>14||
+     !press.button.contains(document.elementFromPoint(event.clientX,event.clientY)))return;
+   // A click, when dispatched, handles activation before opening a new overlay.
+   // Complete the tap when WebView suppresses that click.
+   window.clearTimeout(touchFallback.current);
+   touchFallback.current=window.setTimeout(()=>{
+    if(!press.button.isConnected||press.button.disabled)return;
+    lastTouch.current={button:press.button,at:performance.now()};
+    action();
+   },75);
+  },
+  onClick:(event:MouseEvent<HTMLButtonElement>)=>{
+   window.clearTimeout(touchFallback.current);
+   const last=lastTouch.current;
+   if(event.detail!==0&&last?.button===event.currentTarget&&performance.now()-last.at<=450)return;
+   action();
+  }
+ });
  const releaseAttachment=useCallback(()=>setAttachment(old=>{if(old){URL.revokeObjectURL(old.url);objectUrls.current.delete(old.url);}return null;}),[]);
  const showError=(e:unknown,fallback="Не удалось выполнить действие.")=>setError(e instanceof ChatTransportError?errorText(e.status,e.code):fallback);
  const updateConversations=useCallback((items:ChatWireConversation[])=>{
@@ -208,6 +270,11 @@ export function RealChats({
   const el=history.current;
   if(!threadOpen||!el||typeof ResizeObserver==="undefined")return;
   const observer=new ResizeObserver(()=>{
+   if(quoteMotion.current){
+    const anchor=quoteAnchor.current;
+    if(anchor?.node.isConnected)el.scrollTop+=anchor.node.getBoundingClientRect().top-anchor.top;
+    return;
+   }
    if(nearBottom.current)el.scrollTop=el.scrollHeight;
   });
   observer.observe(el);
@@ -228,7 +295,7 @@ export function RealChats({
     }else{
       applyIncoming(page.messages,previous!==null);setCursor(old=>old??page.nextCursor);
     }
-    observedVisibility.current={id:active.id,revision:page.visibilityRevision??null};
+    observedVisibility.current={id:active.id,revision:page.visibilityRevision??null};setVisibilityRevision(page.visibilityRevision??null);
     setHistoryLoaded(true);
     if(onExitDemo)setDemoTyping(page.typing===true);
     setPeerLastSeen(page.peerLastSeenAt??null);
@@ -240,22 +307,24 @@ export function RealChats({
     }
     setError("");}catch(e){if(!controller.signal.aborted)showError(e,"Связь прервана.");}finally{busy=false;}};
   void load();const timer=window.setInterval(()=>void load(),onExitDemo?350:3500);return()=>{controller.abort();window.clearInterval(timer);};},[active,api,actorId,applyIncoming,onExitDemo]);
- const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setReplyTo(null);setMessageMenu(null);setSelected([]);setBulkDelete(false);setChatMenu(false);setClearDialog(false);setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
+ const open=(chat:ChatWireConversation)=>{releaseAttachment();setDraft("");setAction(null);setReplyTo(null);setQuotePreview(null);setMessageMenu(null);setSelected([]);setBulkDelete(false);setChatMenu(false);setClearDialog(false);setActive(chat);activeId.current=chat.id;history.current?.scrollTo({top:0});};
  const openMatch=async(match:NewMatch)=>{if(!api)return;try{const conversationId=await openNewMatch(match.id);
   const opened={...match,seen:true,conversationId};setActiveNewMatch(opened);
   setNewMatches(old=>old.map(item=>item.id===match.id?opened:item));open(conversationFromMatch(opened));
  }catch(e){showError(e,"Не удалось открыть новое знакомство.");}};
- const close=useCallback(()=>{if(onExitDemo){onExitDemo();return;}pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);setMessages([]);setNewBelow(0);setAction(null);setReplyTo(null);setMessageMenu(null);setSelected([]);setBulkDelete(false);setChatMenu(false);setClearDialog(false);releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[onExitDemo,refreshList,refreshMatches,releaseAttachment]);
+ const close=useCallback(()=>{if(onExitDemo){onExitDemo();return;}pollAbort.current?.abort();requestGeneration.current++;activeId.current=null;setActive(null);setActiveNewMatch(null);setMessages([]);setNewBelow(0);setAction(null);setReplyTo(null);setQuotePreview(null);setMessageMenu(null);setSelected([]);setBulkDelete(false);setChatMenu(false);setClearDialog(false);releaseAttachment();void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});},[onExitDemo,refreshList,refreshMatches,releaseAttachment]);
  const handleBack=useCallback(()=>{
   if(viewer){setViewer(null);return;}
   if(action){setAction(null);return;}
   if(bulkDelete){setBulkDelete(false);return;}
   if(clearDialog){setClearDialog(false);return;}
+  if(blockDialog){setBlockDialog(false);return;}
   if(chatMenu){setChatMenu(false);return;}
+  if(showAttachments){setShowAttachments(false);return;}
   if(messageMenu){setMessageMenu(null);return;}
   if(selected.length){setSelected([]);return;}
   close();
- },[viewer,action,bulkDelete,clearDialog,chatMenu,messageMenu,selected.length,close]);
+ },[viewer,action,bulkDelete,clearDialog,blockDialog,chatMenu,showAttachments,messageMenu,selected.length,close]);
  const threadBack=useRef(handleBack);
  useLayoutEffect(()=>{threadBack.current=handleBack;},[handleBack]);
  useEffect(()=>{
@@ -276,7 +345,7 @@ export function RealChats({
  },[threadOpen,nativeBack,registerThreadBack,profileOpen]);
  const loadOlder=async()=>{if(!api||!active||!cursor||loadingOlder)return;const el=history.current;const oldHeight=el?.scrollHeight??0;setLoadingOlder(true);try{const page=await api.messages(active.id,cursor);if(activeId.current!==active.id)return;setMessages(old=>prependPage(old,page.messages));setCursor(page.nextCursor);requestAnimationFrame(()=>{if(el)el.scrollTop+=el.scrollHeight-oldHeight;});}catch(e){showError(e);}finally{setLoadingOlder(false);}};
  const chooseFile=(file:File|undefined)=>{if(!file)return;const problem=validateChatImage(file);if(problem){setError(problem);return;}releaseAttachment();const url=URL.createObjectURL(file);objectUrls.current.add(url);setAttachment({file,url,progress:0,error:null});setError("");};
- const send=async(existing?:LocalMessage)=>{if(!api||!active||!actorId)return;const body=existing?.body??draft.trim();const clientId=existing?.clientId??crypto.randomUUID();const quoted=existing?existing.replyTo:replyTo;const mediaFile=existing?pendingFiles.current.get(clientId):attachment?.file;if(!body&&!mediaFile)return;const localId=existing?.id??"local:"+clientId;const createdAt=existing?.createdAt??new Date().toISOString();const preview=existing?.localPreviewUrl??attachment?.url;if(mediaFile)pendingFiles.current.set(clientId,mediaFile);const optimistic:LocalMessage={id:localId,conversationId:active.id,senderId:actorId,clientId,body,createdAt,editedAt:null,deletedAt:null,deliveredAt:null,readAt:null,media:[],replyTo:quoted,localState:"sending",localPreviewUrl:preview};
+ const send=async(existing?:LocalMessage)=>{if(!api||!active||!actorId||demoBlocked)return;const body=existing?.body??draft.trim();const clientId=existing?.clientId??crypto.randomUUID();const quoted=existing?existing.replyTo:replyTo;const mediaFile=existing?pendingFiles.current.get(clientId):attachment?.file;if(!body&&!mediaFile)return;const localId=existing?.id??"local:"+clientId;const createdAt=existing?.createdAt??new Date().toISOString();const preview=existing?.localPreviewUrl??attachment?.url;if(mediaFile)pendingFiles.current.set(clientId,mediaFile);const optimistic:LocalMessage={id:localId,conversationId:active.id,senderId:actorId,clientId,body,createdAt,editedAt:null,deletedAt:null,deliveredAt:null,readAt:null,media:[],replyTo:quoted,localState:"sending",localPreviewUrl:preview};
   if(!existing){captureHistory();messageArrivals.current.add(messageKey(optimistic));}
   autoScroll.current=true;setMessages(old=>reconcileMessages(old.filter(m=>m.id!==localId),[optimistic]));if(!existing){setDraft("");setAttachment(null);setReplyTo(null);}try{let mediaIds:string[]=[];if(mediaFile){const uploaded=await api.createMedia(active.id,mediaFile,clientId);mediaIds=[uploaded.media.id];}const result=await api.send(active.id,body,clientId,mediaIds,undefined,quoted?.id);if(activeId.current!==active.id)return;pendingFiles.current.delete(clientId);setMessages(old=>reconcileMessages(old,[result.message]));if(preview&&objectUrls.current.has(preview)){URL.revokeObjectURL(preview);objectUrls.current.delete(preview);}setNewMatches(old=>old.filter(match=>match.id!==active.matchId));setActiveNewMatch(null);void Promise.all([refreshList(),refreshMatches()]).catch(()=>{});}catch(e){if(activeId.current!==active.id)return;setMessages(old=>old.map(m=>m.id===localId?{...m,localState:"failed"}:m));showError(e,"Сообщение не отправлено.");}};
  const edit=async()=>{if(!api||!active||!action||action.kind!=="edit")return;const body=editValue.trim();if(!body||body.length>4000)return;try{const result=await api.edit(active.id,action.message.id,body);setMessages(old=>reconcileMessages(old,[result.message]));setAction(null);}catch(e){showError(e);}};
@@ -304,7 +373,9 @@ export function RealChats({
   const message=renderedMessages.current.find(item=>item.id===id&&!item.localState&&!item.deletedAt);
   if(!message||active?.access!=="active")return;
   setMessageMenu(null);
-  setReplyTo({id,senderId:message.senderId,body:[...message.body].slice(0,160).join("")||"Фото"});
+  animateQuote();
+  const quote={id,senderId:message.senderId,body:[...message.body].slice(0,160).join("")||"Фото"};
+  setQuotePreview(quote);setReplyTo(quote);
   // Keep the keyboard closed during a swipe. The composer is ready for a tap.
  };
  const applyReaction=(id:string,emoji:ChatReactionEmoji)=>{
@@ -353,10 +424,37 @@ export function RealChats({
   }catch(e){showError(e);}
   finally{setDeleting(false);}
  };
- const modalOpen=!!(viewer||action||chatMenu||clearDialog||bulkDelete||messageMenu||profileOpen);
+ useEffect(()=>{
+  if(!chatMenu||!api||!active||active.access!=="active"||demoBlocked)return;
+  const controller=new AbortController();
+  setMuted(null);
+  void api.notifications(active.id,controller.signal).then(result=>{if(!controller.signal.aborted)setMuted(result.muted);}).catch(()=>{
+   if(!controller.signal.aborted)setError("Не удалось загрузить настройки уведомлений.");
+  });
+  return()=>controller.abort();
+ },[chatMenu,api,active,demoBlocked]);
+ const toggleMute=async()=>{
+  if(!api||!active||muted===null||savingMute)return;
+  setSavingMute(true);
+  try{const result=await api.setNotifications(active.id,!muted);setMuted(result.muted);}
+  catch(e){showError(e);}
+  finally{setSavingMute(false);}
+ };
+ const toggleBlock=async()=>{
+  if(!active||blocking)return;
+  setBlocking(true);
+  try{
+   if(onExitDemo){setDemoBlocked(blocked=>!blocked);setBlockDialog(false);return;}
+   await blockPublishedUser(active.peerProfileId);
+   setBlockDialog(false);
+   close();
+  }catch(e){showError(e);}
+  finally{setBlocking(false);}
+ };
+ const modalOpen=!!(viewer||action||chatMenu||clearDialog||bulkDelete||messageMenu||profileOpen||showAttachments||blockDialog);
  const gestures=useChatGestures({
   threadId:active?.id,enabled:threadOpen&&!modalOpen,canBack:!selected.length,
-  canReply:active?.access==="active"&&!selected.length,
+  canReply:active?.access==="active"&&!selected.length&&!demoBlocked,
   onOpen:openMessage,onHeart:target=>{if(selected.length)toggleSelection(target.id);else void applyReaction(target.id,"❤️");},
   onHold:target=>toggleSelection(target.id),onReply:target=>beginReply(target.id),onBack:close,
  });
@@ -416,24 +514,28 @@ export function RealChats({
  return <div className="lc-conversation-stack">
   <div className="lc-inbox-host" inert={!!active}>{inbox}</div>
   {active&&<section ref={gestures.route} {...gestures.events} data-native-back={nativeBack||undefined}
-   className="luemi-chats lc-route lc-thread-route" data-real-chats="true" data-chat-theme="eclipse">
+   inert={showAttachments} className="luemi-chats lc-route lc-thread-route" data-real-chats="true" data-chat-theme="luemi">
   <header className="lc-chat-header">
-   {selected.length>0?<div className="lc-selection">
-    <LuemiIconButton label="Снять выделение" onClick={()=>setSelected([])}><X size={21}/></LuemiIconButton>
-    <strong>Выбрано: {selected.length}</strong>
-    <LuemiIconButton label="Удалить выбранные" onClick={()=>{setDeleteScope("me");setBulkDelete(true);}}><Trash2 size={20}/></LuemiIconButton>
-   </div>:<>
-   {!nativeBack&&<LuemiIconButton label="Назад" onClick={handleBack}><ArrowLeft/></LuemiIconButton>}
-   {onExitDemo?<div className="lc-person">
-    <LuemiAvatar name={active.peerName} src={active.peerPhotoUrl} size="small"/>
-    <span><strong>{active.peerName}</strong><small role="status">{demoTyping?"Алина печатает…":describePresence(peerLastSeen)}</small></span>
-   </div>:<button type="button" className="lc-person" disabled={active.peerName==="Удалённый аккаунт"}
-    onClick={()=>onOpenProfile?.(active.peerProfileId)}>
-    <LuemiAvatar name={active.peerName} src={active.peerPhotoUrl} size="small"/>
-    <span><strong>{active.peerName}</strong><small data-online={describePresence(peerLastSeen)==="В сети"||undefined}>{active.access!=="active"?"Профиль недоступен":describePresence(peerLastSeen)}</small></span>
-   </button>}
-   <LuemiIconButton label="Меню переписки" onClick={()=>setChatMenu(true)}><MoreVertical/></LuemiIconButton>
-   </>}
+   <div className="lc-thread-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" width="55" height="19"/></div>
+   {selected.length>0?<div className="lc-selection lc-header-islands">
+    <LuemiIconButton className="lc-island lc-glass" label="Снять выделение" onClick={()=>setSelected([])}><X size={21}/></LuemiIconButton>
+    <strong className="lc-glass">Выбрано: {selected.length}</strong>
+    <LuemiIconButton className="lc-island lc-glass" label="Удалить выбранные" onClick={()=>{setDeleteScope("me");setBulkDelete(true);}}><Trash2 size={20}/></LuemiIconButton>
+   </div>:<div className="lc-header-islands">
+    {!nativeBack&&<LuemiIconButton className="lc-island lc-glass" label="Назад" onClick={close}><ArrowLeft size={20}/></LuemiIconButton>}
+    <button type="button" className="lc-island lc-glass lc-peer-avatar" aria-label={`Профиль · ${active.peerName}`}
+     disabled={!onOpenProfile||active.access!=="active"||demoBlocked} {...touchButton(()=>onOpenProfile?.(active.peerProfileId))}>
+     <LuemiAvatar name={active.peerName} src={active.peerPhotoUrl} size="small"/>
+    </button>
+    <button type="button" className="lc-peer lc-glass" aria-label="Вложения переписки" {...touchButton(()=>{
+     sendField.current?.blur();setShowAttachments(true);
+    })}>
+     <strong>{active.peerName}</strong><small role="status" data-online={describePresence(peerLastSeen)==="В сети"||undefined}>
+      {active.access!=="active"?"Профиль недоступен":demoBlocked?"Пользователь заблокирован":demoTyping?"Алина печатает…":describePresence(peerLastSeen)}
+     </small>
+    </button>
+    <LuemiIconButton className="lc-island lc-glass" label="Меню переписки" {...touchButton(()=>setChatMenu(true))}><Menu size={21}/></LuemiIconButton>
+   </div>}
   </header>
   <div ref={history} className="lc-history" role="log" aria-live="polite" onScroll={e=>{nearBottom.current=isNearBottom(e.currentTarget);if(nearBottom.current)setNewBelow(0);setMessageMenu(null);}}>
    {!activeNewMatch&&messages.length===0&&!historyLoaded&&!error&&
@@ -445,7 +547,7 @@ export function RealChats({
     "Как проходит твой день?"
    ].map(text=><button type="button" key={text} onClick={()=>{setDraft(text);sendField.current?.focus();}}>{text}</button>)}</div></div>}
    {grouped.map(group=><div className="lc-day-group" key={group.day}>
-    <div className="lc-day" data-chat-motion-key={"date:"+group.day}>{group.day}</div>
+    <div className="lc-day" data-chat-motion-key={"date:"+group.day}>{dayLabel(group.day)}</div>
     {group.items.map((message,index)=>{
      const own=message.senderId===actorId, label=status(message,own);
      const key=messageKey(message);
@@ -461,8 +563,8 @@ export function RealChats({
       data-joined={joined||undefined} data-run-end={last||undefined}
       className={`lc-msg-line${own?" lc-own":""}${message.localState?" "+message.localState:""}`}
       onContextMenu={event=>event.preventDefault()}>
-      {selected.length>0&&interactive&&<button className="lc-select-mark" type="button" aria-label="Выделить сообщение" aria-pressed={checked}
-       onClick={()=>toggleSelection(message.id)}>{checked&&<Check size={14}/>}</button>}
+      {checked&&interactive&&<button className="lc-select-mark" type="button" aria-label="Снять выделение сообщения" aria-pressed="true"
+       onClick={()=>toggleSelection(message.id)}><Check size={14}/></button>}
       {interactive&&<Reply className="lc-swipe-reply" size={19} aria-hidden="true"/>}
       <div className="lc-bubble" data-interactive={interactive||undefined} data-message-id={message.id}
        onClick={event=>{
@@ -497,16 +599,20 @@ export function RealChats({
     })}
    </div>)}
   </div>
-  {active.access==="active"?<footer className="lc-composer">
+  {active.access==="active"&&!demoBlocked?<footer className="lc-composer lc-glass">
    {newBelow>0&&<button type="button" className="lc-new" onClick={()=>{
     const el=history.current;
     if(el)el.scrollTo({top:el.scrollHeight,behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth"});
     setNewBelow(0);
    }}><MoveDown size={14} aria-hidden="true"/>Новые сообщения · {newBelow}</button>}
-   {replyTo&&<div className="lc-reply-preview">
-    <Reply size={17} aria-hidden="true"/><div><strong>{replyTo.senderId===actorId?"Ответ на своё сообщение":"Ответ · "+active.peerName}</strong>
-    <span>{replyTo.body}</span></div><button type="button" onClick={()=>setReplyTo(null)} aria-label="Отменить ответ"><X size={18}/></button>
-   </div>}
+   <div className="lc-quote-slot" data-open={!!replyTo||undefined} onTransitionEnd={event=>{
+    if(event.target===event.currentTarget&&event.propertyName==="grid-template-rows"&&!replyTo)setQuotePreview(null);
+   }}>
+    <div className="lc-quote-clip" inert={!replyTo}>{quotePreview&&<div className="lc-reply-preview">
+     <Reply size={17} aria-hidden="true"/><div><strong>{quotePreview.senderId===actorId?"Ответ на своё сообщение":"Ответ · "+active.peerName}</strong>
+     <span>{quotePreview.body}</span></div><button type="button" onClick={()=>{animateQuote();setReplyTo(null);}} aria-label="Отменить ответ"><X size={18}/></button>
+    </div>}</div>
+   </div>
    {attachment&&<div className="lc-attachment"><img src={attachment.url} alt="Фото перед отправкой"/>
     <span style={{transform:`scaleX(${attachment.progress/100})`}}/>
     <button type="button" onClick={releaseAttachment} aria-label="Убрать фото"><X size={16}/></button>
@@ -520,30 +626,12 @@ export function RealChats({
       if(event.key==="Enter"&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();void send();}
      }}/>
     <button type="button" className="lc-send" disabled={!actorId||!draft.trim()&&!attachment}
-     onPointerDown={event=>{
-      if(document.activeElement===sendField.current)event.preventDefault();
-      if(event.pointerType==="touch"&&event.isPrimary){
-       sendPress.current={id:event.pointerId,x:event.clientX,y:event.clientY};
-      }
-     }}
-     onPointerCancel={()=>{sendPress.current=null;}}
-     onPointerUp={event=>{
-      const press=sendPress.current;
-      sendPress.current=null;
-      if(!press||press.id!==event.pointerId||Math.hypot(event.clientX-press.x,event.clientY-press.y)>14)return;
-      if(!event.currentTarget.contains(document.elementFromPoint(event.clientX,event.clientY)))return;
-      // Chromium can omit the synthetic click after a touch press that keeps the keyboard open.
-      lastTouchSend.current=performance.now();
-      void send();
-     }}
-     onClick={event=>{
-      if(event.detail===0||performance.now()-lastTouchSend.current>450)void send();
-     }} aria-label="Отправить"><Send size={19} aria-hidden="true" style={{pointerEvents:"none"}}/></button>
+     {...touchButton(()=>{void send();},true)} aria-label="Отправить"><Send size={19} aria-hidden="true" style={{pointerEvents:"none"}}/></button>
    </div>
-  </footer>:<div className="lc-state lc-read-only" role="status">Переписка доступна только для чтения. Аккаунт удалён.</div>}
+  </footer>:<div className="lc-state lc-read-only" role="status">{demoBlocked?"Пользователь заблокирован":"Переписка доступна только для чтения. Аккаунт удалён."}</div>}
   {error&&<div className="lc-notice" role="alert">{error}<button onClick={()=>setError("")} aria-label="Закрыть"><X size={15}/></button></div>}
   {messageMenu&&menuMessage&&<ChatMessageMenu message={menuMessage} anchor={messageMenu.node} actorId={actorId}
-   writable={active.access==="active"} onCancel={()=>setMessageMenu(null)}
+   writable={active.access==="active"&&!demoBlocked} onCancel={()=>setMessageMenu(null)}
    onReply={()=>beginReply(menuMessage.id)}
    onCopy={()=>{void navigator.clipboard.writeText(menuMessage.body).then(()=>setMessageMenu(null)).catch(()=>setError("Не удалось скопировать."));}}
    onEdit={()=>{setEditValue(menuMessage.body);setMessageMenu(null);setAction({message:menuMessage,kind:"edit"});}}
@@ -559,8 +647,29 @@ export function RealChats({
   {action?.kind==="edit"&&<div className="lc-overlay"><form className="lc-dialog" onSubmit={e=>{e.preventDefault();void edit();}}><h3>Редактировать сообщение</h3><textarea autoFocus maxLength={4000} value={editValue} onChange={e=>setEditValue(e.target.value)}/><div><button type="button" onClick={()=>setAction(null)}>Отмена</button><button type="submit" disabled={!editValue.trim()}>Сохранить</button></div></form></div>}
   {action?.kind==="delete"&&<div className="lc-overlay"><div className="lc-dialog" role="alertdialog" aria-modal="true"><h3>Удалить сообщение?</h3><p>Выбери, где убрать сообщение. Оба варианта доступны для своих и полученных сообщений.</p><label className="lc-delete-choice"><input type="radio" name="message-delete-scope" checked={deleteScope==="me"} onChange={()=>setDeleteScope("me")}/> Только у меня</label><label className="lc-delete-choice"><input type="radio" name="message-delete-scope" checked={deleteScope==="everyone"} onChange={()=>setDeleteScope("everyone")}/> У меня и собеседника</label><div><button onClick={()=>setAction(null)}>Отмена</button><button className="danger" onClick={()=>void remove()}>Удалить</button></div></div></div>}
   
-  {chatMenu&&<div className="lc-overlay" onClick={e=>{if(e.target===e.currentTarget)setChatMenu(false);}}><div className="lc-menu" role="dialog" aria-modal="true"><button onClick={()=>void exportChat()} disabled={exportBusy}><Copy size={18}/>Скачать историю переписки</button><button className="danger" onClick={()=>{setChatMenu(false);setDeleteScope("me");setClearDialog(true);}}><Trash2 size={18}/>Удалить переписку</button><button onClick={()=>setChatMenu(false)}>Отмена</button></div></div>}
+  {chatMenu&&<div className="lc-overlay" onClick={e=>{if(e.target===e.currentTarget)setChatMenu(false);}}>
+   <div className="lc-menu lc-glass" role="dialog" aria-label="Настройки чата" aria-modal="true">
+    {active.access==="active"&&!demoBlocked&&<button disabled={muted===null||savingMute} onClick={()=>{void toggleMute();}}>
+     {muted?<Bell size={18}/>:<BellOff size={18}/>} {muted?"Включить уведомления":"Отключить уведомления"}
+    </button>}
+    <button onClick={()=>void exportChat()} disabled={exportBusy}><Copy size={18}/>Скачать историю переписки</button>
+    <button className="danger" onClick={()=>{setChatMenu(false);setDeleteScope("me");setClearDialog(true);}}><Trash2 size={18}/>Удалить переписку</button>
+    {active.access==="active"&&<button className="danger" onClick={()=>{setChatMenu(false);setBlockDialog(true);}}>
+     <ShieldBan size={18}/> {demoBlocked?"Разблокировать пользователя":"Заблокировать пользователя"}
+    </button>}
+    <button onClick={()=>setChatMenu(false)}>Отмена</button>
+   </div>
+  </div>}
+  {blockDialog&&<div className="lc-overlay"><div className="lc-dialog lc-glass" role="alertdialog" aria-modal="true" aria-label="Подтверждение блокировки">
+   <h3>{demoBlocked?"Разблокировать пользователя?":"Заблокировать пользователя?"}</h3>
+   <p>{demoBlocked?"Переписка снова станет доступной.":"После блокировки вы больше не сможете обмениваться сообщениями."}</p>
+   <div><button onClick={()=>setBlockDialog(false)}>Отмена</button>
+    <button className="danger" disabled={blocking} onClick={()=>{void toggleBlock();}}>{demoBlocked?"Разблокировать":"Заблокировать"}</button></div>
+  </div></div>}
   {clearDialog&&<div className="lc-overlay"><div className="lc-dialog" role="alertdialog" aria-modal="true"><h3>Удалить переписку?</h3><p>Удалить всю историю можно у себя или одновременно у обоих. Это нельзя отменить через интерфейс.</p><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="me"} onChange={()=>setDeleteScope("me")}/> Только у меня</label><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="everyone"} onChange={()=>setDeleteScope("everyone")}/> У меня и собеседника</label><div><button onClick={()=>setClearDialog(false)}>Отмена</button><button className="danger" onClick={()=>void clear()}>Удалить</button></div></div></div>}
-  {viewer&&<ChatPhotoViewer src={viewer} onClose={()=>setViewer(null)}/>}
- </section>}</div>;
+ </section>}
+ {active&&api&&showAttachments&&<ChatAttachments key={active.id+":"+(visibilityRevision??"")} api={api} threadId={active.id}
+  peerName={active.peerName} viewerOpen={!!viewer} onPhoto={setViewer} onBack={()=>setShowAttachments(false)}/>}
+ {viewer&&<ChatPhotoViewer src={viewer} onClose={()=>setViewer(null)}/>}
+ </div>;
 }

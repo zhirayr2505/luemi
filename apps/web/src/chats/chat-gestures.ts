@@ -1,11 +1,11 @@
 import {useEffect,useRef} from "react";
 import type {PointerEvent} from "react";
-import {GestureArbiter} from "../ui/gesture-arbiter.js";
+import {computedTranslation,GestureArbiter} from "../ui/gesture-arbiter.js";
 
 type MessageTarget={id:string;node:HTMLElement};
 type Drag={
  pointer:number;serial:number;x:number;y:number;at:number;span:number;
- target:MessageTarget|null;mode:"back"|"reply"|null;held:boolean;
+ origin:number;dx:number;target:MessageTarget|null;mode:"back"|"reply"|null;held:boolean;
 };
 
 export function useChatGestures(callbacks:{
@@ -30,12 +30,12 @@ export function useChatGestures(callbacks:{
   const reset=()=>{
    window.clearTimeout(hold.current);
    window.clearTimeout(tap.current?.timer);
-   cancelAnimationFrame(frame.current);
+   cancelAnimationFrame(frame.current);frame.current=0;
    tap.current=null;
    drag.current?.target?.node.style.removeProperty("--lc-reply-drag");
    drag.current=null;
    arbiter.current.cancel();
-   if(!closing.current)route.current?.style.removeProperty("--lc-back-drag");
+   if(!closing.current){routeMotion.current?.cancel();routeMotion.current=null;route.current?.style.removeProperty("transform");if(route.current)delete route.current.dataset.moving;}
   };
   window.addEventListener("resize",reset);
   document.addEventListener("visibilitychange",reset);
@@ -57,13 +57,14 @@ export function useChatGestures(callbacks:{
   const options=latest.current;
   const node=event.target instanceof Element?event.target:null;
   if(!options.enabled||closing.current||event.button!==0||
-   !node||node.closest("button,textarea,input,[role=dialog],a,.lc-composer"))return;
+   !node||node.closest("textarea,input,[role=dialog],a,.lc-composer")||
+   node.closest("button")&&!node.closest(".lc-attachment-grid"))return;
   const bubble=node.closest<HTMLElement>(".lc-bubble[data-interactive]");
   const target=bubble?.dataset.messageId?{id:bubble.dataset.messageId,node:bubble}:null;
   const serial=arbiter.current.begin("pointer",event.pointerId,"route");
   if(serial===null)return;
   drag.current={pointer:event.pointerId,serial,x:event.clientX,y:event.clientY,at:performance.now(),
-   span:route.current?.clientWidth??window.innerWidth,target,mode:null,held:false};
+   span:route.current?.clientWidth??window.innerWidth,origin:0,dx:0,target,mode:null,held:false};
   if(!target)return;
   hold.current=window.setTimeout(()=>{
    if(!drag.current)return;
@@ -90,16 +91,24 @@ export function useChatGestures(callbacks:{
    }
    if(!arbiter.current.claim("route",g.serial))return;
    g.mode=mode;
+   if(mode==="back"&&route.current)route.current.dataset.moving="true";
+   if(mode==="back"&&routeMotion.current){
+    g.origin=computedTranslation(route.current);
+    routeMotion.current.cancel();routeMotion.current=null;
+   }
    clearTap();
    try{event.currentTarget.setPointerCapture(event.pointerId);}catch{/* Older WebView */}
   }
   if(!arbiter.current.owns("route",g.serial))return;
-  cancelAnimationFrame(frame.current);
+  g.dx=dx;
+  if(frame.current)return;
   frame.current=requestAnimationFrame(()=>{
+   frame.current=0;
+   if(drag.current!==g)return;
    if(g.mode==="back"){
-    routeMotion.current?.cancel();
-    route.current?.style.setProperty("--lc-back-drag",Math.max(0,Math.min(g.span,dx))+"px");
-   }else g.target?.node.style.setProperty("--lc-reply-drag",Math.max(-84,Math.min(0,dx))+"px");
+    const el=route.current;
+    if(el)el.style.transform=`translate3d(${Math.max(0,Math.min(g.span,g.origin+g.dx))}px,0,0)`;
+   }else g.target?.node.style.setProperty("--lc-reply-drag",Math.max(-84,Math.min(0,g.dx))+"px");
   });
  };
  const end=(event:PointerEvent<HTMLElement>|null,cancelled=false)=>{
@@ -107,24 +116,24 @@ export function useChatGestures(callbacks:{
   if(!g||event&&g.pointer!==event.pointerId)return;
   drag.current=null;
   window.clearTimeout(hold.current);
-  cancelAnimationFrame(frame.current);
+  cancelAnimationFrame(frame.current);frame.current=0;
   arbiter.current.cancel();
   const dx=event?event.clientX-g.x:0;
   if(g.mode==="back"&&route.current){
    const el=route.current;
-   const x=Number.parseFloat(el.style.getPropertyValue("--lc-back-drag"))||0;
+   const x=Math.max(0,Math.min(g.span,g.origin+(event?dx:g.dx)));
    const commit=!cancelled&&(dx>g.span*.25||(dx>42&&dx/(performance.now()-g.at)>.58));
    const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-   const finish=()=>{if(commit)latest.current.onBack();};
+   const finish=()=>{delete el.dataset.moving;if(commit)latest.current.onBack();};
    closing.current=commit;
    routeMotion.current?.cancel();
-   el.style.removeProperty("--lc-back-drag");
+   el.style.removeProperty("transform");
    if(reduced){finish();return;}
    routeMotion.current=el.animate([
     {transform:`translate3d(${x}px,0,0)`},
     {transform:`translate3d(${commit?g.span:0}px,0,0)`}
-   ],{duration:commit?210:190,easing:"cubic-bezier(.2,.78,.24,1)",fill:commit?"forwards":"none"});
-   routeMotion.current.onfinish=finish;
+   ],{duration:Math.max(95,Math.round((commit?g.span-x:x)/g.span*(commit?210:180))),easing:"cubic-bezier(.2,.78,.24,1)",fill:commit?"forwards":"none"});
+   routeMotion.current.onfinish=()=>{if(!commit)routeMotion.current=null;finish();};
   }else if(g.mode==="reply"&&g.target){
    g.target.node.style.removeProperty("--lc-reply-drag");
    if(!cancelled&&dx<-48)latest.current.onReply(g.target);

@@ -56,11 +56,48 @@ const checkLiveInbox=async()=>{
  const before=calls.filter(path=>path.startsWith("/api/v4/chats/")).length;
  await page.locator(".lc-thread-route").getByText("Алина",{exact:true}).waitFor();
  await page.locator(".lc-chat-header").getByText("В сети",{exact:true}).waitFor();
+ const nestedTouch=await page.context().newCDPSession(page);
+ const backSwipe=async(x,y)=>{
+  await nestedTouch.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y}]});
+  for(const dx of [24,75,152,208])await nestedTouch.send("Input.dispatchTouchEvent",{
+   type:"touchMove",touchPoints:[{x:x+dx,y}]
+  });
+  await nestedTouch.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+ };
+ await page.getByRole("button",{name:"Вложения переписки"}).tap();
+ const details=page.getByRole("region",{name:"Вложения"});
+ await details.getByRole("tab",{name:"Подарки"}).tap();
+ await details.getByText("Подарков пока нет").waitFor();
+ await backSwipe(18,400);
+ await details.waitFor({state:"detached"});
+ await page.getByRole("button",{name:"Профиль · Алина",exact:true}).tap();
+ const profile=page.locator(".discovery-visitor-route");
+ const hero=profile.locator(".owner-profile-photo-mask");
+ await hero.first().waitFor();
+ await page.waitForFunction(()=>Math.abs(document.querySelector(".discovery-visitor-route").getBoundingClientRect().left)<1);
+ const photoBox=await hero.first().boundingBox();
+ assert(photoBox);
+ await backSwipe(12,Math.round(photoBox.y+photoBox.height/2));
+ await profile.waitFor({state:"detached"});
+ await page.getByRole("button",{name:"Меню переписки"}).tap();
+ const settings=page.getByRole("dialog",{name:"Настройки чата"});
+ await settings.waitFor();
+ await settings.getByRole("button",{name:"Отключить уведомления"}).tap();
+ await settings.getByRole("button",{name:"Включить уведомления"}).waitFor();
+ await settings.getByRole("button",{name:"Отмена"}).tap();
  const first=page.locator(".lc-msg-line .lc-bubble").first();
  await first.tap();
  const menu=page.getByRole("dialog",{name:"Действия с сообщением"});
  await menu.waitFor();
- assert.equal(await menu.locator(".lc-emoji-bar button").count(),8);
+ assert.equal(await menu.locator(".lc-emoji-bar button[data-emoji]").count(),6);
+ const focused=page.locator(".lc-focus-bubble");
+ await focused.waitFor();
+ assert.equal(await page.locator(".lc-message-scrim").evaluate(node=>getComputedStyle(node).backdropFilter.includes("blur")),true);
+ const anchor=await first.boundingBox();
+ assert(anchor&&await focused.evaluate((node,y)=>node.getBoundingClientRect().top<y,anchor.y),"the active bubble lifts above the blurred chat");
+ await menu.getByRole("button",{name:"Все реакции"}).tap();
+ await menu.getByRole("button",{name:"Браво"}).waitFor();
+ await menu.getByRole("button",{name:"Свернуть реакции"}).tap();
  const bubbleBox=await first.boundingBox(),menuBox=await menu.boundingBox();
  assert(bubbleBox&&menuBox&&Math.abs(menuBox.y-(bubbleBox.y-menuBox.height))<24,"the menu anchors next to the message");
  await menu.getByRole("button",{name:"Сердце",exact:true}).tap();
@@ -101,7 +138,7 @@ const checkLiveInbox=async()=>{
  await touchAt("touchStart",{x:lastBox.x+16,y:lastBox.y+12});
  await page.getByText("Выбрано: 1",{exact:true}).waitFor();
  await touchAt("touchEnd");
- await page.locator(".lc-select-mark[aria-pressed=false]").last().tap();
+ await page.locator(".lc-msg-line:not([data-selected]) .lc-bubble").last().tap();
  await page.getByText("Выбрано: 2",{exact:true}).waitFor();
  await page.getByRole("button",{name:"Удалить выбранные"}).tap();
  const confirmation=page.getByRole("alertdialog");
@@ -115,7 +152,7 @@ const checkLiveInbox=async()=>{
  await touchAt("touchMove",{x:edge.x+24,y:edge.y});
  await touchAt("touchMove",{x:edge.x+82,y:edge.y});
  await page.waitForFunction(()=>parseFloat(document.querySelector(".lc-thread-route")
-  ?.style.getPropertyValue("--lc-back-drag")||"0")>=72);
+  ?.style.transform.match(/translate3d\(([\d.]+)/)?.[1]||"0")>=72);
  await touchAt("touchMove",{x:edge.x+172,y:edge.y});
  await touchAt("touchEnd");
  await inbox.getByRole("heading",{name:"Пока нет переписок",exact:true}).waitFor();
@@ -147,9 +184,14 @@ try{
  await page.locator(".lc-chat-row").first().tap();
  const thread=page.locator(".lc-thread-route");
  await thread.locator(".lc-msg-line").first().waitFor();
- assert.equal(await thread.getAttribute("data-chat-theme"),"eclipse");
- await page.waitForFunction(()=>performance.getEntriesByType("resource")
-  .some(resource=>resource.name.endsWith("/chat-eclipse.webp")&&resource.responseStatus===200));
+ assert.equal(await thread.getAttribute("data-chat-theme"),"luemi");
+ assert.equal(await thread.getByRole("img",{name:"LUEMI"}).count(),1);
+ await thread.getByRole("button",{name:"Вложения переписки"}).tap();
+ const attachments=page.getByRole("region",{name:"Вложения"});
+ await attachments.getByRole("tab",{name:"Голосовые"}).tap();
+ await attachments.getByText("Голосовых сообщений пока нет").waitFor();
+ await attachments.getByRole("button",{name:"Назад"}).tap();
+ await attachments.waitFor({state:"detached"});
  const list=thread.locator(".lc-history");
  await page.waitForFunction(()=>{const node=document.querySelector(".lc-history");return node.scrollHeight-node.clientHeight-node.scrollTop<3;});
  assert.equal(await list.locator(".lc-bubble").evaluateAll(nodes=>nodes.some(node=>node.getAnimations().length)),false,

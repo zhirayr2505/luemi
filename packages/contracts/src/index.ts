@@ -36,7 +36,7 @@ export interface ChatMediaContract {
   state:ChatMediaState;
   url:string|null;
 }
-export const chatReactionEmoji = ["❤️","👍","🔥","🥰","😂","😮","😢","✨"] as const;
+export const chatReactionEmoji = ["❤️","👍","🔥","🥰","😂","😮","😢","✨","👏","😍","🤩","🙌","🙏","💯","🎉","🤍","💔","🤔","😎","🥹","🤝","👀","🫶","🌹"] as const;
 export type ChatReactionEmoji = (typeof chatReactionEmoji)[number];
 export type ChatReaction = {actorId:string;emoji:ChatReactionEmoji};
 export type ChatReply = {id:string;senderId:string;body:string};
