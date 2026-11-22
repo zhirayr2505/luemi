@@ -227,6 +227,13 @@ try{
  await mockMatches(page);
  await page.goto(url);
  await page.getByRole("heading",{name:"Чаты"}).waitFor();
+ await page.locator(".lc-chat-row").first().waitFor();
+ await page.waitForTimeout(320);
+ await mkdir("qa-artifacts/chat-premium",{recursive:true});
+ await page.screenshot({path:"qa-artifacts/chat-premium/v8-inbox-412.png"});
+ assert.equal(await page.locator(".lc-inbox-tabs button").count(),4);
+ assert.equal(await page.locator(".lc-inbox-brand img").evaluate(node=>getComputedStyle(node).filter),"none",
+  "brand uses the untouched original raster gradient");
  await page.locator(".lc-chat-row").first().tap();
  const thread=page.locator(".lc-thread-route");
  await thread.locator(".lc-msg-line").first().waitFor();
