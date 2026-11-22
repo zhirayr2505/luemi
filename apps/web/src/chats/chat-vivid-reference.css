@@ -407,3 +407,20 @@
   backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(10,15,23,.92);
  }
 }
+
+/* Chat tab must not inherit an older plum dock surface; keep its approved
+   four-icon geometry, changing only optical materials to Vivid Matte. */
+.discovery-app.real-discovery-home[data-main-tab="chats"]>.discovery-bottom-nav {
+ background:linear-gradient(145deg,rgba(53,65,84,.95),rgba(34,43,57,.98));
+ border-color:rgba(224,234,246,.16);
+ box-shadow:inset 0 1px rgba(248,252,255,.08),0 7px 21px rgba(4,9,16,.24);
+}
+.discovery-app.real-discovery-home[data-main-tab="chats"]>.discovery-bottom-nav .discovery-nav-item {
+ color:var(--luemi-text-muted);
+}
+.discovery-app.real-discovery-home[data-main-tab="chats"]>.discovery-bottom-nav .discovery-nav-item.active {
+ color:var(--luemi-coral-light);
+}
+.discovery-app.real-discovery-home[data-main-tab="chats"]>.discovery-bottom-nav .luemi-nav-badge {
+ background:var(--luemi-coral);color:var(--luemi-text);
+}
