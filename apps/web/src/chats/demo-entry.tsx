@@ -3,6 +3,7 @@ import {createRoot} from "react-dom/client";
 import {RealChats} from "./RealChats.js";
 import {createDemoChatTransport} from "./demo-transport.js";
 import "../styles.css";
+import "../ui/luemi-v5.css";
 
 function Demo(){
  const demo=useMemo(()=>createDemoChatTransport(),[]);
@@ -11,7 +12,7 @@ function Demo(){
  const [key,setKey]=useState(0);
  if(import.meta.env.PROD&&import.meta.env.VITE_LUEMI_CHATS_DEMO!=="1")
   return <main>Chats demo is disabled in production.</main>;
- return <main style={{height:"100dvh",display:"flex",flexDirection:"column",padding:12,background:"#150f19",color:"#f9edf2"}}>
+ return <main style={{height:"100dvh",display:"flex",flexDirection:"column",padding:12,background:"var(--luemi-bg-deep)",color:"var(--luemi-text)"}}>
   <aside style={{display:"flex",flex:"none",flexWrap:"wrap",gap:8,marginBottom:8}}>
    <button type="button" onClick={()=>{
     const next=!offline;

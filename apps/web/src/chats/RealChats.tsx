@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
 import type {MouseEvent,PointerEvent} from "react";
-import {ArrowLeft,ArrowRight,Reply,Check,CheckCheck,Copy,Heart,ImagePlus,MoveDown,Menu,Bell,BellOff,ShieldBan,Search,Send,Trash2,X,MessagesSquare,ListFilter,Images,ChevronUp,ChevronDown} from "lucide-react";
+import {ArrowLeft,ArrowRight,Reply,Check,CheckCheck,Copy,Heart,ImagePlus,MoveDown,Menu,Bell,BellOff,ShieldBan,Search,Send,Trash2,X,MessagesSquare,Images,ChevronUp,ChevronDown} from "lucide-react";
 import {createChatTransport,sumUnreadMessages,ChatTransportError,type ChatTransport,type ChatWireConversation} from "./chat-transport.js";
 import {errorText,isNearBottom,messageKey,prependPage,reconcileMessages,type LocalMessage,validateChatImage} from "./chat-domain.js";
 import type {ChatReactionEmoji,ChatReply} from "@luemi/contracts";
@@ -13,6 +13,7 @@ import {blockPublishedUser,getNewMatches,openNewMatch,type NewMatch} from "../re
 import {LuemiAvatar,LuemiEmptyState,LuemiIconButton} from "../ui/LuemiV5.js";
 import "./chats.css";
 import "./chat-conversation.css";
+import "./chat-vivid-reference.css";
 
 type Action={message:LocalMessage;kind:"edit"|"delete"}|null;
 type ReactionJob={desired:ChatReactionEmoji|null;confirmed:ChatReactionEmoji|null;version:number;tail:Promise<void>};
@@ -97,7 +98,7 @@ export function RealChats({
  const [deleting,setDeleting]=useState(false);
  const [visibilityRevision,setVisibilityRevision]=useState<string|null>(null);
  const [peerLastSeen,setPeerLastSeen]=useState<string|null>(null);
- const [searchOpen,setSearchOpen]=useState(false);const [query,setQuery]=useState("");const [unreadOnly,setUnreadOnly]=useState(false);const [demoTyping,setDemoTyping]=useState(false);
+ const [query,setQuery]=useState("");const [inboxTab,setInboxTab]=useState<"all"|"matches"|"bliki"|"archive">("all");const [demoTyping,setDemoTyping]=useState(false);
  const [threadSearchOpen,setThreadSearchOpen]=useState(false);const [threadQuery,setThreadQuery]=useState("");const [threadSearchIndex,setThreadSearchIndex]=useState(0);
  const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);
  const threadOpen=active!==null;
@@ -462,7 +463,7 @@ export function RealChats({
  const menuMessage=messages.find(message=>message.id===messageMenu?.id);
  const grouped=messages.reduce<Array<{day:string;items:LocalMessage[]}>>((days,message)=>{const day=dayKey(message.createdAt);const last=days[days.length-1];if(last?.day===day)last.items.push(message);else days.push({day,items:[message]});return days;},[]);
  const normalizedQuery=query.trim().toLocaleLowerCase("ru-RU");
- const filteredConversations=conversations.filter(chat=>(!unreadOnly||chat.unreadCount>0)&&(!normalizedQuery||
+ const filteredConversations=conversations.filter(chat=>(inboxTab==="all"||inboxTab==="matches"&&!!chat.matchId)&&(!normalizedQuery||
   chat.peerName.toLocaleLowerCase("ru-RU").includes(normalizedQuery)||
   (chat.lastMessage??"").toLocaleLowerCase("ru-RU").includes(normalizedQuery)));
  const hasMatches=newMatches.length>0;
@@ -485,60 +486,59 @@ export function RealChats({
   const index=(threadSearchIndex+delta+threadSearchMatches.length)%threadSearchMatches.length;
   setThreadSearchIndex(index);jumpToMessage(threadSearchMatches[index].id);
  };
- const inbox=<section className="luemi-chats lc-route lc-list-route" data-real-chats="true" data-chat-theme="eclipse">
+ const inbox=<section className="luemi-chats lc-route lc-list-route" data-real-chats="true" data-chat-theme="eclipse" data-vivid-reference="v8">
   <div className="lc-inbox-chrome">
    <div className="lc-inbox-brand">
     <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" width="88" height="30" decoding="async"/>
    </div>
-   <header className="lc-heading">
-    <h2>Чаты</h2>
-    {(conversations.length>0||searchOpen)&&<div className="lc-heading-actions">
-     <LuemiIconButton label={unreadOnly?"Показать все чаты":"Только непрочитанные"} aria-pressed={unreadOnly}
-      onClick={()=>setUnreadOnly(value=>!value)}><ListFilter size={19}/></LuemiIconButton>
-     <LuemiIconButton label={searchOpen?"Закрыть поиск":"Найти чат"} aria-expanded={searchOpen}
-      onClick={()=>{setSearchOpen(open=>!open);if(searchOpen)setQuery("");}}>
-      {searchOpen?<X size={19}/>:<Search size={19}/>}
-     </LuemiIconButton>
-    </div>}
-   </header>
-   {searchOpen&&<label className="lc-search"><Search size={17} aria-hidden="true"/>
-    <input autoFocus value={query} onChange={event=>setQuery(event.target.value)} placeholder="Поиск по чатам" aria-label="Поиск по чатам"/>
-   </label>}
+   <header className="lc-heading"><h2>Чаты</h2></header>
+   <div className="lc-inbox-tabs" role="tablist" aria-label="Категории чатов">
+    {([["all","Все"],["matches","Матчи"],["bliki","Блики"],["archive","Архив"]] as const).map(([id,label])=>
+     <button key={id} type="button" role="tab" aria-selected={inboxTab===id}
+      aria-controls="lc-chat-category-content" onClick={()=>setInboxTab(id)}>{label}</button>)}
+   </div>
+   <label className="lc-search"><Search size={20} aria-hidden="true"/>
+    <input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Поиск по чатам"
+     aria-label="Поиск по чатам" autoComplete="off"/>
+    {query&&<button type="button" onClick={()=>setQuery("")} aria-label="Очистить поиск"><X size={17}/></button>}
+   </label>
   </div>
-  {hasMatches&&<section className="lc-new-matches" aria-label="Новые взаимные симпатии">
+  {hasMatches&&inboxTab==="all"&&<section className="lc-new-matches" aria-label="Новые взаимные симпатии">
    <header className="lc-new-matches-head"><h3>Новые совпадения</h3><span>{newMatches.length}</span></header>
    <div className="lc-match-rail">{newMatches.map(match=><button type="button" key={match.id} className={match.seen?"is-seen":""}
     onClick={()=>void openMatch(match)}><LuemiAvatar name={match.peerName} src={match.peerPhotoUrl}/><span>{match.peerName}</span>
    </button>)}</div>
   </section>}
+  <div id="lc-chat-category-content" className="lc-inbox-content" role="tabpanel" aria-label={inboxTab==="all"?"Все чаты":inboxTab==="matches"?"Матчи":inboxTab==="bliki"?"Блики":"Архив"}>
   {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:
    error&&conversations.length===0?<LuemiEmptyState icon={MessagesSquare} title="Чаты не загрузились" description={error}>
     <button type="button" className="lc-retry-list"
      onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button>
    </LuemiEmptyState>:filteredConversations.length===0?<div className="lc-inbox-empty">
     <div className="lc-inbox-mark" aria-hidden="true">{normalizedQuery?<Search size={27}/>:<MessagesSquare size={28}/>}</div>
-    <h3>{normalizedQuery?"Ничего не найдено":unreadOnly?"Нет непрочитанных":"Пока нет переписок"}</h3>
-    <p>{normalizedQuery?"Попробуй другой запрос.":unreadOnly?"Ты прочитал все новые сообщения.":hasMatches?"Выбери совпадение выше, чтобы написать.":"После взаимной симпатии здесь появится чат."}</p>
-    {!unreadOnly&&!normalizedQuery&&!hasMatches&&onDiscover&&<button type="button" className="lc-inbox-primary" onClick={onDiscover}>
+    <h3>{normalizedQuery?"Ничего не найдено":inboxTab==="bliki"?"Нет переписок из Бликов":inboxTab==="archive"?"Архив пока пуст":"Пока нет переписок"}</h3>
+    <p>{normalizedQuery?"Попробуй другой запрос.":inboxTab==="bliki"?"Переписки из Бликов появятся после подключения этой категории к чатам.":inboxTab==="archive"?"Архив станет доступен после синхронизации с сервером.":hasMatches?"Выбери совпадение выше, чтобы написать.":"После взаимной симпатии здесь появится чат."}</p>
+    {inboxTab==="all"&&!normalizedQuery&&!hasMatches&&onDiscover&&<button type="button" className="lc-inbox-primary" onClick={onDiscover}>
      Перейти к знакомствам <ArrowRight size={16} aria-hidden="true"/>
     </button>}
-    {!normalizedQuery&&onOpenDemo&&<button type="button" className="lc-demo-link" onClick={onOpenDemo}>Тестовая переписка</button>}
-    {onExitDemo&&<button type="button" className="lc-demo-link" onClick={onExitDemo}>Вернуться к чатам</button>}
+    {inboxTab==="all"&&!normalizedQuery&&onOpenDemo&&<button type="button" className="lc-demo-link" onClick={onOpenDemo}>Тестовая переписка</button>}
+    {inboxTab==="all"&&onExitDemo&&<button type="button" className="lc-demo-link" onClick={onExitDemo}>Вернуться к чатам</button>}
    </div>:<div className="lc-conversations">{filteredConversations.map(chat=><button type="button" className="lc-chat-row"
     data-unread={chat.unreadCount>0||undefined} key={chat.id} onClick={()=>open(chat)}>
     <LuemiAvatar name={chat.peerName} src={chat.peerPhotoUrl}/>
     <span className="lc-chat-summary"><strong>{chat.peerName}</strong><span>{chat.lastMessage??"Начните разговор"}</span></span>
     <span className="lc-meta"><time>{time(chat.lastActivityAt)}</time>{chat.unreadCount>0&&<b>{Math.min(chat.unreadCount,99)}{chat.unreadCount>99?"+":""}</b>}</span>
    </button>)}</div>}
-  {!loading&&onOpenDemo&&(filteredConversations.length>0||error&&conversations.length===0)&&
+  {!loading&&onOpenDemo&&inboxTab==="all"&&(filteredConversations.length>0||error&&conversations.length===0)&&
    <button type="button" className="lc-demo-link" onClick={onOpenDemo}>Тестовая переписка</button>}
+  </div>
  </section>;
  return <div className="lc-conversation-stack">
   <div className="lc-inbox-host" inert={!!active}>{inbox}</div>
   {active&&<section ref={gestures.route} {...gestures.events} data-native-back={nativeBack||undefined}
-   inert={showAttachments} className="luemi-chats lc-route lc-thread-route" data-real-chats="true" data-chat-theme="luemi">
+   inert={showAttachments} className="luemi-chats lc-route lc-thread-route" data-real-chats="true" data-chat-theme="luemi" data-vivid-reference="v8">
   <header className="lc-chat-header">
-   <div className="lc-thread-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" width="55" height="19"/></div>
+   <div className="lc-thread-logo"><img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" width="83" height="29"/></div>
    {selected.length>0?<div className="lc-selection lc-header-islands">
     <LuemiIconButton className="lc-island lc-glass" label="Снять выделение" onClick={()=>setSelected([])}><X size={21}/></LuemiIconButton>
     <strong className="lc-glass">Выбрано: {selected.length}</strong>
@@ -672,8 +672,9 @@ export function RealChats({
    onCopy={()=>{void navigator.clipboard.writeText(menuMessage.body).then(()=>setMessageMenu(null)).catch(()=>setError("Не удалось скопировать."));}}
    onEdit={()=>{setEditValue(menuMessage.body);setMessageMenu(null);setAction({message:menuMessage,kind:"edit"});}}
    onDelete={()=>{setMessageMenu(null);setDeleteScope("me");setAction({message:menuMessage,kind:"delete"});}}
+   onSelect={()=>{setSelected([menuMessage.id]);setMessageMenu(null);}}
    onReaction={emoji=>{setMessageMenu(null);void applyReaction(menuMessage.id,emoji);}}/>}
-  {bulkDelete&&<div className="lc-overlay"><div className="lc-dialog" role="alertdialog" aria-modal="true">
+  {bulkDelete&&<div className="lc-overlay lc-overlay-confirm"><div className="lc-dialog lc-dialog-delete lc-glass" role="alertdialog" aria-modal="true"><div className="lc-dialog-symbol" aria-hidden="true"><Trash2 size={25}/></div>
    <h3>Удалить выбранные сообщения?</h3><p>Выбрано: {selected.length}</p>
    <label className="lc-delete-choice"><input type="radio" name="selected-scope" checked={deleteScope==="me"} onChange={()=>setDeleteScope("me")}/>Только у меня</label>
    <label className="lc-delete-choice"><input type="radio" name="selected-scope" checked={deleteScope==="everyone"} onChange={()=>setDeleteScope("everyone")}/>У меня и собеседника</label>
@@ -681,21 +682,24 @@ export function RealChats({
    <button className="danger" onClick={()=>void deleteSelected()} disabled={deleting||!selected.length}>Удалить</button></div>
   </div></div>}
   {action?.kind==="edit"&&<div className="lc-overlay"><form className="lc-dialog" onSubmit={e=>{e.preventDefault();void edit();}}><h3>Редактировать сообщение</h3><textarea autoFocus maxLength={4000} value={editValue} onChange={e=>setEditValue(e.target.value)}/><div><button type="button" onClick={()=>setAction(null)}>Отмена</button><button type="submit" disabled={!editValue.trim()}>Сохранить</button></div></form></div>}
-  {action?.kind==="delete"&&<div className="lc-overlay"><div className="lc-dialog" role="alertdialog" aria-modal="true"><h3>Удалить сообщение?</h3><p>Выбери, где убрать сообщение. Оба варианта доступны для своих и полученных сообщений.</p><label className="lc-delete-choice"><input type="radio" name="message-delete-scope" checked={deleteScope==="me"} onChange={()=>setDeleteScope("me")}/> Только у меня</label><label className="lc-delete-choice"><input type="radio" name="message-delete-scope" checked={deleteScope==="everyone"} onChange={()=>setDeleteScope("everyone")}/> У меня и собеседника</label><div><button onClick={()=>setAction(null)}>Отмена</button><button className="danger" onClick={()=>void remove()}>Удалить</button></div></div></div>}
+  {action?.kind==="delete"&&<div className="lc-overlay lc-overlay-confirm"><div className="lc-dialog lc-dialog-delete lc-glass" role="alertdialog" aria-modal="true"><div className="lc-dialog-symbol" aria-hidden="true"><Trash2 size={25}/></div><h3>Удалить сообщение?</h3><p>Это действие нельзя отменить. Выбери, у кого удалить сообщение.</p><label className="lc-delete-choice"><input type="radio" name="message-delete-scope" checked={deleteScope==="me"} onChange={()=>setDeleteScope("me")}/> Только у меня</label><label className="lc-delete-choice"><input type="radio" name="message-delete-scope" checked={deleteScope==="everyone"} onChange={()=>setDeleteScope("everyone")}/> У меня и собеседника</label><div><button onClick={()=>setAction(null)}>Отмена</button><button className="danger" onClick={()=>void remove()}>Удалить</button></div></div></div>}
   
   {chatMenu&&<div className="lc-overlay" onClick={e=>{if(e.target===e.currentTarget)setChatMenu(false);}}>
    <div className="lc-menu lc-glass" role="dialog" aria-label="Настройки чата" aria-modal="true">
-    <div className="lc-sheet-handle" aria-hidden="true"/><h3 className="lc-sheet-title">Параметры переписки</h3>
+    <div className="lc-sheet-handle" aria-hidden="true"/><h3 className="lc-sheet-title">Действия чата</h3>
     <button onClick={()=>{setChatMenu(false);setThreadSearchOpen(true);setThreadSearchIndex(0);}}><Search size={18}/>Найти сообщение</button>
-    {active.access==="active"&&!demoBlocked&&<button disabled={muted===null||savingMute} onClick={()=>{void toggleMute();}}>
-     {muted?<Bell size={18}/>:<BellOff size={18}/>} {muted?"Включить уведомления":"Отключить уведомления"}
+    {active.access==="active"&&!demoBlocked&&<button className="lc-menu-notifications" disabled={muted===null||savingMute}
+     aria-label={muted?"Включить уведомления":"Отключить уведомления"}
+     onClick={()=>{void toggleMute();}}>
+     {muted?<BellOff size={19}/>:<Bell size={19}/>}<span>Уведомления</span>
+     <span className="lc-menu-toggle" data-on={muted===false||undefined} aria-hidden="true"><i/></span>
     </button>}
-    <button onClick={()=>void exportChat()} disabled={exportBusy}><Copy size={18}/>Скачать историю переписки</button>
-    <button className="danger" onClick={()=>{setChatMenu(false);setDeleteScope("me");setClearDialog(true);}}><Trash2 size={18}/>Удалить переписку</button>
+    <button onClick={()=>void exportChat()} disabled={exportBusy}><Copy size={19}/>Экспорт чата</button>
+    <button onClick={()=>{setChatMenu(false);setDeleteScope("me");setClearDialog(true);}}><Trash2 size={19}/>Очистить историю</button>
     {active.access==="active"&&<button className="danger" onClick={()=>{setChatMenu(false);setBlockDialog(true);}}>
      <ShieldBan size={18}/> {demoBlocked?"Разблокировать пользователя":"Заблокировать пользователя"}
     </button>}
-    <button onClick={()=>setChatMenu(false)}>Отмена</button>
+    <button className="lc-sheet-cancel" onClick={()=>setChatMenu(false)}>Отмена</button>
    </div>
   </div>}
   {blockDialog&&<div className="lc-overlay"><div className="lc-dialog lc-glass" role="alertdialog" aria-modal="true" aria-label="Подтверждение блокировки">
@@ -704,7 +708,7 @@ export function RealChats({
    <div><button onClick={()=>setBlockDialog(false)}>Отмена</button>
     <button className="danger" disabled={blocking} onClick={()=>{void toggleBlock();}}>{demoBlocked?"Разблокировать":"Заблокировать"}</button></div>
   </div></div>}
-  {clearDialog&&<div className="lc-overlay"><div className="lc-dialog" role="alertdialog" aria-modal="true"><h3>Удалить переписку?</h3><p>Удалить всю историю можно у себя или одновременно у обоих. Это нельзя отменить через интерфейс.</p><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="me"} onChange={()=>setDeleteScope("me")}/> Только у меня</label><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="everyone"} onChange={()=>setDeleteScope("everyone")}/> У меня и собеседника</label><div><button onClick={()=>setClearDialog(false)}>Отмена</button><button className="danger" onClick={()=>void clear()}>Удалить</button></div></div></div>}
+  {clearDialog&&<div className="lc-overlay lc-overlay-confirm"><div className="lc-dialog lc-dialog-delete lc-glass" role="alertdialog" aria-modal="true"><div className="lc-dialog-symbol" aria-hidden="true"><Trash2 size={25}/></div><h3>Удалить переписку?</h3><p>Удалить всю историю можно у себя или одновременно у обоих. Это нельзя отменить через интерфейс.</p><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="me"} onChange={()=>setDeleteScope("me")}/> Только у меня</label><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="everyone"} onChange={()=>setDeleteScope("everyone")}/> У меня и собеседника</label><div><button onClick={()=>setClearDialog(false)}>Отмена</button><button className="danger" onClick={()=>void clear()}>Удалить</button></div></div></div>}
  </section>}
  {active&&api&&showAttachments&&<ChatAttachments key={active.id+":"+(visibilityRevision??"")} api={api} threadId={active.id}
   peerName={active.peerName} viewerOpen={!!viewer} nativeBack={nativeBack} onPhoto={setViewer} onBack={()=>setShowAttachments(false)}/>}

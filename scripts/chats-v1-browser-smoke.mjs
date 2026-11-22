@@ -36,7 +36,9 @@ const checkLiveInbox=async()=>{
  await inbox.getByRole("heading",{name:"Пока нет переписок",exact:true}).waitFor({timeout:5000});
  await page.locator(".luemi-shell").evaluate(node=>node.style.setProperty("--viewport-safe-top","66px"));
  assert.equal(await page.locator(".lh-chats").count(),0,"the inbox owns the entire surface");
- assert.equal(await inbox.getByRole("tab").count(),0,"the inbox excludes inactive navigation");
+ assert.equal(await inbox.getByRole("tablist",{name:"Категории чатов"}).getByRole("tab").count(),4,"inbox tabs match reference");
+ assert.equal(await inbox.getByRole("textbox",{name:"Поиск по чатам"}).count(),1,"search is always visible");
+ assert.equal(await inbox.getByRole("img",{name:"LUEMI"}).getAttribute("src"),"/assets/brand/wordmark_original_raster_alpha_W06.webp","original raster logo is retained");
  assert.equal(await demo.count(),0,"the test conversation requires QA access");
  const brand=await inbox.getByRole("img",{name:"LUEMI",exact:true}).boundingBox();
  assert(brand&&brand.y>=66&&Math.abs(brand.x+brand.width/2-393/2)<2,"the logo honors Telegram safe area");
@@ -45,7 +47,8 @@ const checkLiveInbox=async()=>{
  await page.addStyleTag({url:base+"/src/ui/vivid-discovery.css"});
  const dock=page.getByRole("navigation",{name:"Главная навигация LUEMI"});
  const dockBox=await dock.boundingBox();
- assert(dockBox&&Math.abs(dockBox.width-(393-14)/1.5)<2&&dockBox.height<=48);
+ assert(dockBox&&dockBox.width>=360&&dockBox.height>=68&&dockBox.height<=75,"chats dock matches wide labeled reference "+JSON.stringify(dockBox));
+ assert.equal(await dock.locator(".discovery-nav-item .luemi-nav-label").count(),4,"four visible dock labels");
  const activeIcon=dock.getByRole("button",{name:"Чаты",exact:true});
  assert.equal(await activeIcon.evaluate(node=>getComputedStyle(node).backgroundColor),"rgba(0, 0, 0, 0)");
  await inbox.getByRole("button",{name:"Перейти к знакомствам",exact:true}).tap();
@@ -98,6 +101,8 @@ const checkLiveInbox=async()=>{
  await page.getByRole("button",{name:"Меню переписки"}).tap();
  const settings=page.getByRole("dialog",{name:"Настройки чата"});
  await settings.waitFor();
+ await page.waitForTimeout(230);
+ await page.screenshot({path:"qa-artifacts/chat-premium/v8-actions-393.png"});
  await settings.getByRole("button",{name:"Отключить уведомления"}).tap();
  await settings.getByRole("button",{name:"Включить уведомления"}).waitFor();
  await settings.getByRole("button",{name:"Найти сообщение"}).tap();
@@ -141,8 +146,12 @@ const checkLiveInbox=async()=>{
  await menu.getByRole("button",{name:"Все реакции"}).tap();
  await menu.getByRole("button",{name:"Браво"}).waitFor();
  await menu.getByRole("button",{name:"Свернуть реакции"}).tap();
- const bubbleBox=await first.boundingBox(),menuBox=await menu.boundingBox();
- assert(bubbleBox&&menuBox&&Math.abs(menuBox.y-(bubbleBox.y-menuBox.height))<24,"the menu anchors next to the message");
+ const reactionBox=await menu.locator(".lc-emoji-bar").boundingBox();
+ const focusedBox=await focused.boundingBox();
+ const optionBox=await menu.locator(".lc-message-options").boundingBox();
+ assert(reactionBox&&focusedBox&&optionBox&&reactionBox.y+reactionBox.height<=focusedBox.y+3&&
+  focusedBox.y+focusedBox.height<=optionBox.y+3,
+  "contextual stack keeps reactions above the raised message and actions below");
  await menu.getByRole("button",{name:"Сердце",exact:true}).tap();
  await first.locator(".lc-message-reactions").getByText("❤️",{exact:true}).waitFor();
  await first.dblclick({position:{x:30,y:12}});
@@ -169,7 +178,7 @@ const checkLiveInbox=async()=>{
  assert.equal(await answered.count(),1,"touch activation never duplicates the message");
  await answered.locator(":scope > span").tap();
  await menu.getByText("Прочитано",{exact:true}).waitFor();
- assert.ok(await menu.locator("time[datetime]").getAttribute("datetime"));
+ assert.ok(await menu.locator(".lc-read-time time[datetime]").getAttribute("datetime"));
  await page.getByRole("button",{name:"Закрыть меню сообщения"}).tap({position:{x:5,y:40}});
  await answered.getByRole("button",{name:"Перейти к исходному сообщению"}).tap();
  await page.getByLabel("Сообщение").fill("Хочешь кофе?");
@@ -187,6 +196,11 @@ const checkLiveInbox=async()=>{
  await page.getByRole("button",{name:"Удалить выбранные"}).tap();
  const confirmation=page.getByRole("alertdialog");
  await confirmation.getByText("У меня и собеседника").tap();
+ await page.waitForTimeout(230);
+ await page.screenshot({path:"qa-artifacts/chat-premium/v8-delete-393.png"});
+ const confirmBox=await confirmation.boundingBox();
+ assert(confirmBox&&confirmBox.y>80&&confirmBox.y+confirmBox.height<850,
+  "delete confirmation stays inside the mobile viewport");
  await confirmation.getByRole("button",{name:"Удалить",exact:true}).tap();
  await confirmation.waitFor({state:"hidden"});
  const historyBox=await page.locator(".lc-history").boundingBox();
@@ -225,6 +239,13 @@ try{
  await mockMatches(page);
  await page.goto(url);
  await page.getByRole("heading",{name:"Чаты"}).waitFor();
+ await page.locator(".lc-chat-row").first().waitFor();
+ await page.waitForTimeout(320);
+ await mkdir("qa-artifacts/chat-premium",{recursive:true});
+ await page.screenshot({path:"qa-artifacts/chat-premium/v8-inbox-412.png"});
+ assert.equal(await page.locator(".lc-inbox-tabs button").count(),4);
+ assert.equal(await page.locator(".lc-inbox-brand img").evaluate(node=>getComputedStyle(node).filter),"none",
+  "brand uses the untouched original raster gradient");
  await page.locator(".lc-chat-row").first().tap();
  const thread=page.locator(".lc-thread-route");
  await thread.locator(".lc-msg-line").first().waitFor();
