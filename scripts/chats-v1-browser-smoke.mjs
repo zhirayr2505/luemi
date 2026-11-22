@@ -129,7 +129,6 @@ const checkLiveInbox=async()=>{
  await answered.locator(".lc-message-quote").getByText(/Привет! Я Алина/).waitFor();
  const keepsFocus=await page.getByLabel("Сообщение").evaluate(node=>document.activeElement===node);
  assert(keepsFocus,"the send button keeps the composer focused");
- await answered.getByRole("button",{name:"Перейти к исходному сообщению"}).tap();
  const incoming=page.locator(".lc-msg-line:not(.lc-own)");
  await incoming.getByText(/Привет! У меня хорошо/).waitFor({timeout:8000});
  assert.equal(await answered.count(),1,"touch activation never duplicates the message");
@@ -137,6 +136,7 @@ const checkLiveInbox=async()=>{
  await menu.getByText("Прочитано",{exact:true}).waitFor();
  assert.ok(await menu.locator("time[datetime]").getAttribute("datetime"));
  await page.getByRole("button",{name:"Закрыть меню сообщения"}).tap({position:{x:5,y:40}});
+ await answered.getByRole("button",{name:"Перейти к исходному сообщению"}).tap();
  await page.getByLabel("Сообщение").fill("Хочешь кофе?");
  await page.getByLabel("Отправить").tap();
  await incoming.getByText(/Я за кофе/).waitFor({timeout:6000});
