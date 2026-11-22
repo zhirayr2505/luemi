@@ -324,8 +324,9 @@ export function RealChats({
   if(showAttachments){setShowAttachments(false);return;}
   if(messageMenu){setMessageMenu(null);return;}
   if(selected.length){setSelected([]);return;}
+  if(threadSearchOpen){setThreadSearchOpen(false);setThreadQuery("");return;}
   close();
- },[viewer,action,bulkDelete,clearDialog,blockDialog,chatMenu,showAttachments,messageMenu,selected.length,close]);
+ },[viewer,action,bulkDelete,clearDialog,blockDialog,chatMenu,showAttachments,messageMenu,selected.length,threadSearchOpen,close]);
  const threadBack=useRef(handleBack);
  useLayoutEffect(()=>{threadBack.current=handleBack;},[handleBack]);
  useEffect(()=>{
@@ -457,7 +458,7 @@ export function RealChats({
   threadId:active?.id,enabled:threadOpen&&!modalOpen,canBack:!selected.length,
   canReply:active?.access==="active"&&!selected.length&&!demoBlocked,
   onOpen:openMessage,onHeart:target=>{if(selected.length)toggleSelection(target.id);else void applyReaction(target.id,"❤️");},
-  onHold:target=>toggleSelection(target.id),onReply:target=>beginReply(target.id),onBack:close,
+  onHold:target=>toggleSelection(target.id),onReply:target=>beginReply(target.id),onBack:()=>{if(threadSearchOpen){setThreadSearchOpen(false);setThreadQuery("");}else close();},
  });
  const menuMessage=messages.find(message=>message.id===messageMenu?.id);
  const grouped=messages.reduce<Array<{day:string;items:LocalMessage[]}>>((days,message)=>{const day=dayKey(message.createdAt);const last=days[days.length-1];if(last?.day===day)last.items.push(message);else days.push({day,items:[message]});return days;},[]);
@@ -685,6 +686,8 @@ export function RealChats({
   
   {chatMenu&&<div className="lc-overlay" onClick={e=>{if(e.target===e.currentTarget)setChatMenu(false);}}>
    <div className="lc-menu lc-glass" role="dialog" aria-label="Настройки чата" aria-modal="true">
+    <div className="lc-sheet-handle" aria-hidden="true"/><h3 className="lc-sheet-title">Параметры переписки</h3>
+    <button onClick={()=>{setChatMenu(false);setThreadSearchOpen(true);setThreadSearchIndex(0);}}><Search size={18}/>Найти сообщение</button>
     {active.access==="active"&&!demoBlocked&&<button disabled={muted===null||savingMute} onClick={()=>{void toggleMute();}}>
      {muted?<Bell size={18}/>:<BellOff size={18}/>} {muted?"Включить уведомления":"Отключить уведомления"}
     </button>}
@@ -705,7 +708,9 @@ export function RealChats({
   {clearDialog&&<div className="lc-overlay"><div className="lc-dialog" role="alertdialog" aria-modal="true"><h3>Удалить переписку?</h3><p>Удалить всю историю можно у себя или одновременно у обоих. Это нельзя отменить через интерфейс.</p><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="me"} onChange={()=>setDeleteScope("me")}/> Только у меня</label><label className="lc-delete-choice"><input type="radio" name="chat-delete-scope" checked={deleteScope==="everyone"} onChange={()=>setDeleteScope("everyone")}/> У меня и собеседника</label><div><button onClick={()=>setClearDialog(false)}>Отмена</button><button className="danger" onClick={()=>void clear()}>Удалить</button></div></div></div>}
  </section>}
  {active&&api&&showAttachments&&<ChatAttachments key={active.id+":"+(visibilityRevision??"")} api={api} threadId={active.id}
-  peerName={active.peerName} viewerOpen={!!viewer} onPhoto={setViewer} onBack={()=>setShowAttachments(false)}/>}
- {viewer&&<ChatPhotoViewer src={viewer} onClose={()=>setViewer(null)}/>}
+  peerName={active.peerName} viewerOpen={!!viewer} nativeBack={nativeBack} onPhoto={setViewer} onBack={()=>setShowAttachments(false)}/>}
+ {viewer&&<ChatPhotoViewer src={viewer} gallery={messages.flatMap(message=>
+  message.localPreviewUrl?[message.localPreviewUrl]:message.media.map(media=>media.url).filter((url):url is string=>!!url))}
+  onClose={()=>setViewer(null)}/>}
  </div>;
 }
