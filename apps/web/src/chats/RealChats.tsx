@@ -97,7 +97,7 @@ export function RealChats({
  const [deleting,setDeleting]=useState(false);
  const [visibilityRevision,setVisibilityRevision]=useState<string|null>(null);
  const [peerLastSeen,setPeerLastSeen]=useState<string|null>(null);
- const [searchOpen,setSearchOpen]=useState(false);const [query,setQuery]=useState("");const [unreadOnly,setUnreadOnly]=useState(false);const [demoTyping,setDemoTyping]=useState(false);
+ const [query,setQuery]=useState("");const [inboxTab,setInboxTab]=useState<"all"|"matches"|"bliki"|"archive">("all");const [demoTyping,setDemoTyping]=useState(false);
  const [threadSearchOpen,setThreadSearchOpen]=useState(false);const [threadQuery,setThreadQuery]=useState("");const [threadSearchIndex,setThreadSearchIndex]=useState(0);
  const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);
  const threadOpen=active!==null;
@@ -462,7 +462,7 @@ export function RealChats({
  const menuMessage=messages.find(message=>message.id===messageMenu?.id);
  const grouped=messages.reduce<Array<{day:string;items:LocalMessage[]}>>((days,message)=>{const day=dayKey(message.createdAt);const last=days[days.length-1];if(last?.day===day)last.items.push(message);else days.push({day,items:[message]});return days;},[]);
  const normalizedQuery=query.trim().toLocaleLowerCase("ru-RU");
- const filteredConversations=conversations.filter(chat=>(!unreadOnly||chat.unreadCount>0)&&(!normalizedQuery||
+ const filteredConversations=conversations.filter(chat=>(inboxTab==="all"||inboxTab==="matches"&&!!chat.matchId)&&(!normalizedQuery||
   chat.peerName.toLocaleLowerCase("ru-RU").includes(normalizedQuery)||
   (chat.lastMessage??"").toLocaleLowerCase("ru-RU").includes(normalizedQuery)));
  const hasMatches=newMatches.length>0;
@@ -485,53 +485,52 @@ export function RealChats({
   const index=(threadSearchIndex+delta+threadSearchMatches.length)%threadSearchMatches.length;
   setThreadSearchIndex(index);jumpToMessage(threadSearchMatches[index].id);
  };
- const inbox=<section className="luemi-chats lc-route lc-list-route" data-real-chats="true" data-chat-theme="eclipse">
+ const inbox=<section className="luemi-chats lc-route lc-list-route" data-real-chats="true" data-chat-theme="eclipse" data-vivid-reference="v8">
   <div className="lc-inbox-chrome">
    <div className="lc-inbox-brand">
     <img src="/assets/brand/wordmark_original_raster_alpha_W06.webp" alt="LUEMI" width="88" height="30" decoding="async"/>
    </div>
-   <header className="lc-heading">
-    <h2>Чаты</h2>
-    {(conversations.length>0||searchOpen)&&<div className="lc-heading-actions">
-     <LuemiIconButton label={unreadOnly?"Показать все чаты":"Только непрочитанные"} aria-pressed={unreadOnly}
-      onClick={()=>setUnreadOnly(value=>!value)}><ListFilter size={19}/></LuemiIconButton>
-     <LuemiIconButton label={searchOpen?"Закрыть поиск":"Найти чат"} aria-expanded={searchOpen}
-      onClick={()=>{setSearchOpen(open=>!open);if(searchOpen)setQuery("");}}>
-      {searchOpen?<X size={19}/>:<Search size={19}/>}
-     </LuemiIconButton>
-    </div>}
-   </header>
-   {searchOpen&&<label className="lc-search"><Search size={17} aria-hidden="true"/>
-    <input autoFocus value={query} onChange={event=>setQuery(event.target.value)} placeholder="Поиск по чатам" aria-label="Поиск по чатам"/>
-   </label>}
+   <header className="lc-heading"><h2>Чаты</h2></header>
+   <div className="lc-inbox-tabs" role="tablist" aria-label="Категории чатов">
+    {([["all","Все"],["matches","Матчи"],["bliki","Блики"],["archive","Архив"]] as const).map(([id,label])=>
+     <button key={id} type="button" role="tab" aria-selected={inboxTab===id}
+      aria-controls="lc-chat-category-content" onClick={()=>setInboxTab(id)}>{label}</button>)}
+   </div>
+   <label className="lc-search"><Search size={20} aria-hidden="true"/>
+    <input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Поиск по чатам"
+     aria-label="Поиск по чатам" autoComplete="off"/>
+    {query&&<button type="button" onClick={()=>setQuery("")} aria-label="Очистить поиск"><X size={17}/></button>}
+   </label>
   </div>
-  {hasMatches&&<section className="lc-new-matches" aria-label="Новые взаимные симпатии">
+  {hasMatches&&inboxTab==="all"&&<section className="lc-new-matches" aria-label="Новые взаимные симпатии">
    <header className="lc-new-matches-head"><h3>Новые совпадения</h3><span>{newMatches.length}</span></header>
    <div className="lc-match-rail">{newMatches.map(match=><button type="button" key={match.id} className={match.seen?"is-seen":""}
     onClick={()=>void openMatch(match)}><LuemiAvatar name={match.peerName} src={match.peerPhotoUrl}/><span>{match.peerName}</span>
    </button>)}</div>
   </section>}
+  <div id="lc-chat-category-content" className="lc-inbox-content" role="tabpanel" aria-label={inboxTab==="all"?"Все чаты":inboxTab==="matches"?"Матчи":inboxTab==="bliki"?"Блики":"Архив"}>
   {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:
    error&&conversations.length===0?<LuemiEmptyState icon={MessagesSquare} title="Чаты не загрузились" description={error}>
     <button type="button" className="lc-retry-list"
      onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button>
    </LuemiEmptyState>:filteredConversations.length===0?<div className="lc-inbox-empty">
     <div className="lc-inbox-mark" aria-hidden="true">{normalizedQuery?<Search size={27}/>:<MessagesSquare size={28}/>}</div>
-    <h3>{normalizedQuery?"Ничего не найдено":unreadOnly?"Нет непрочитанных":"Пока нет переписок"}</h3>
-    <p>{normalizedQuery?"Попробуй другой запрос.":unreadOnly?"Ты прочитал все новые сообщения.":hasMatches?"Выбери совпадение выше, чтобы написать.":"После взаимной симпатии здесь появится чат."}</p>
-    {!unreadOnly&&!normalizedQuery&&!hasMatches&&onDiscover&&<button type="button" className="lc-inbox-primary" onClick={onDiscover}>
+    <h3>{normalizedQuery?"Ничего не найдено":inboxTab==="bliki"?"Нет переписок из Бликов":inboxTab==="archive"?"Архив пока пуст":"Пока нет переписок"}</h3>
+    <p>{normalizedQuery?"Попробуй другой запрос.":inboxTab==="bliki"?"Переписки из Бликов появятся после подключения этой категории к чатам.":inboxTab==="archive"?"Архив станет доступен после синхронизации с сервером.":hasMatches?"Выбери совпадение выше, чтобы написать.":"После взаимной симпатии здесь появится чат."}</p>
+    {inboxTab==="all"&&!normalizedQuery&&!hasMatches&&onDiscover&&<button type="button" className="lc-inbox-primary" onClick={onDiscover}>
      Перейти к знакомствам <ArrowRight size={16} aria-hidden="true"/>
     </button>}
-    {!normalizedQuery&&onOpenDemo&&<button type="button" className="lc-demo-link" onClick={onOpenDemo}>Тестовая переписка</button>}
-    {onExitDemo&&<button type="button" className="lc-demo-link" onClick={onExitDemo}>Вернуться к чатам</button>}
+    {inboxTab==="all"&&!normalizedQuery&&onOpenDemo&&<button type="button" className="lc-demo-link" onClick={onOpenDemo}>Тестовая переписка</button>}
+    {inboxTab==="all"&&onExitDemo&&<button type="button" className="lc-demo-link" onClick={onExitDemo}>Вернуться к чатам</button>}
    </div>:<div className="lc-conversations">{filteredConversations.map(chat=><button type="button" className="lc-chat-row"
     data-unread={chat.unreadCount>0||undefined} key={chat.id} onClick={()=>open(chat)}>
     <LuemiAvatar name={chat.peerName} src={chat.peerPhotoUrl}/>
     <span className="lc-chat-summary"><strong>{chat.peerName}</strong><span>{chat.lastMessage??"Начните разговор"}</span></span>
     <span className="lc-meta"><time>{time(chat.lastActivityAt)}</time>{chat.unreadCount>0&&<b>{Math.min(chat.unreadCount,99)}{chat.unreadCount>99?"+":""}</b>}</span>
    </button>)}</div>}
-  {!loading&&onOpenDemo&&(filteredConversations.length>0||error&&conversations.length===0)&&
+  {!loading&&onOpenDemo&&inboxTab==="all"&&(filteredConversations.length>0||error&&conversations.length===0)&&
    <button type="button" className="lc-demo-link" onClick={onOpenDemo}>Тестовая переписка</button>}
+  </div>
  </section>;
  return <div className="lc-conversation-stack">
   <div className="lc-inbox-host" inert={!!active}>{inbox}</div>
