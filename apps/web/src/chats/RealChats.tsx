@@ -530,7 +530,7 @@ export function RealChats({
     <button type="button" className="lc-peer lc-glass" aria-label="Вложения переписки" {...touchButton(()=>{
      sendField.current?.blur();setShowAttachments(true);
     })}>
-     <strong>{active.peerName}</strong><small role="status" data-online={describePresence(peerLastSeen)==="В сети"||undefined}>
+     <strong>{active.access==="profile_unavailable"?"Удалённый аккаунт":active.peerName}</strong><small role="status" data-online={describePresence(peerLastSeen)==="В сети"||undefined}>
       {active.access!=="active"?"Профиль недоступен":demoBlocked?"Пользователь заблокирован":demoTyping?"Алина печатает…":describePresence(peerLastSeen)}
      </small>
     </button>
