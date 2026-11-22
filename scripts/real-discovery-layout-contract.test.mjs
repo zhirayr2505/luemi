@@ -44,7 +44,7 @@ const likesSource=read("apps/web/src/discovery/LikesGallery.tsx");
 const nearSource=read("apps/web/src/discovery/RealNearby.tsx");
 const forYouSource=read("apps/web/src/discovery/RealForYou.tsx");
 test("feed loading skeleton sits under tabs and above navigation, never bottom-aligned",()=>{
- assert.match(feedStyles,/real-discovery-feed-loading\s*\{[^}]*inset:11px 13px calc\(82px/);
+ assert.match(feedStyles,/real-discovery-feed-loading\s*\{[^}]*inset:calc\(var\(--top-safe,0px\) \+ 104px\)/);
  assert.doesNotMatch(feedStyles,/align-content:end/);
  assert.match(feedStyles,/real-discovery-feed-skeleton-content/);
 });

@@ -11,7 +11,7 @@
 /* Skeleton must occupy the actual card area, never align at the bottom of an
    otherwise empty screen or overlap the floating navigation island. */
 .real-discovery-feed-loading {
- position:absolute;inset:11px 13px calc(82px + var(--bottom-safe,0px));
+ position:absolute;inset:calc(var(--top-safe,0px) + 104px) 13px calc(var(--bottom-safe,0px) + 82px);
  display:flex;flex-direction:column;min-height:0;
 }
 .real-discovery-feed-skeleton {
