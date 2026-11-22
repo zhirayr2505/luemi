@@ -1,4 +1,4 @@
-import type {ChatConversationContract,ChatMessageContract,ChatMediaContract} from "@luemi/contracts";
+import type {ChatConversationContract,ChatMessageContract,ChatMediaContract,ChatReactionEmoji} from "@luemi/contracts";
 
 export type ChatWireConversation=ChatConversationContract;
 export function sumUnreadMessages(conversations:readonly ChatWireConversation[]):number{
@@ -7,7 +7,7 @@ export function sumUnreadMessages(conversations:readonly ChatWireConversation[])
 }
 export type ChatWireMessage=ChatMessageContract;
 export type ChatWireMedia=ChatMediaContract;
-export type ChatMessagePage={messages:ChatWireMessage[];nextCursor:string|null;visibilityRevision?:string|null;typing?:boolean};
+export type ChatMessagePage={messages:ChatWireMessage[];nextCursor:string|null;visibilityRevision?:string|null;typing?:boolean;peerLastSeenAt?:string|null};
 
 export class ChatTransportError extends Error {
  constructor(readonly status:number,readonly code:string,readonly retryAfterMs?:number){super(code);}
@@ -36,7 +36,10 @@ export interface ChatTransport {
  me(signal?:AbortSignal):Promise<{actorId:string}>;
  list(signal?:AbortSignal):Promise<{conversations:ChatWireConversation[]}>;
  messages(conversationId:string,before?:string,signal?:AbortSignal):Promise<ChatMessagePage>;
- send(conversationId:string,body:string,clientId:string,mediaIds?:string[],signal?:AbortSignal):Promise<{message:ChatWireMessage}>;
+ send(conversationId:string,body:string,clientId:string,mediaIds?:string[],signal?:AbortSignal,replyToId?:string):Promise<{message:ChatWireMessage}>;
+ setReaction(conversationId:string,messageId:string,emoji:ChatReactionEmoji|null):Promise<{emoji:ChatReactionEmoji|null}>;
+ removeMany(conversationId:string,messageIds:string[],scope:"me"|"everyone"):Promise<{removed:true}>;
+ presence(signal?:AbortSignal):Promise<{ok:true}>;
  edit(conversationId:string,messageId:string,body:string,signal?:AbortSignal):Promise<{message:ChatWireMessage}>;
  remove(conversationId:string,messageId:string,scope:"me"|"everyone",signal?:AbortSignal):Promise<{removed:true;scope:"me"|"everyone";messageId:string}>;
  clear(conversationId:string,scope:"me"|"everyone",signal?:AbortSignal):Promise<{removed:true;scope:"me"|"everyone";conversationId:string}>;
@@ -53,7 +56,10 @@ export function createChatTransport(csrf:string):ChatTransport{
   me:signal=>request("/me",csrf,{signal}),
   list:signal=>request("",csrf,{signal}),
   messages:(conversationId,before,signal)=>request("/"+id(conversationId)+"/messages"+(before?"?before="+id(before):""),csrf,{signal}),
-  send:(conversationId,body,clientId,mediaIds=[],signal)=>request("/"+id(conversationId)+"/messages",csrf,{method:"POST",body:JSON.stringify({body,clientId,mediaIds}),signal}),
+  send:(conversationId,body,clientId,mediaIds=[],signal,replyToId)=>request("/"+id(conversationId)+"/messages",csrf,{method:"POST",body:JSON.stringify({body,clientId,mediaIds,replyToId}),signal}),
+  setReaction:(conversationId,messageId,emoji)=>request("/"+id(conversationId)+"/messages/"+id(messageId)+"/reaction",csrf,{method:"PUT",body:JSON.stringify({emoji})}),
+  removeMany:(conversationId,messageIds,scope)=>request("/"+id(conversationId)+"/messages/visibility",csrf,{method:"POST",body:JSON.stringify({scope,messageIds})}),
+  presence:signal=>request("/presence",csrf,{method:"POST",body:"{}",signal}),
   edit:(conversationId,messageId,body,signal)=>request("/"+id(conversationId)+"/messages/"+id(messageId),csrf,{method:"PATCH",body:JSON.stringify({body}),signal}),
   remove:(conversationId,messageId,scope,signal)=>request("/"+id(conversationId)+"/messages/"+id(messageId)+"/visibility",csrf,{method:"POST",body:JSON.stringify({scope}),signal}),
   clear:(conversationId,scope,signal)=>request("/"+id(conversationId)+"/clear",csrf,{method:"POST",body:JSON.stringify({scope}),signal}),
