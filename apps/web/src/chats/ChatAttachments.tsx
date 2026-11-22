@@ -9,9 +9,9 @@ const tabs=[
  {id:"gifts",name:"Подарки",empty:"Подарков пока нет",Icon:Gift}
 ] as const;
 
-export function ChatAttachments({api,threadId,peerName,onBack,onPhoto,viewerOpen}:{
+export function ChatAttachments({api,threadId,peerName,onBack,onPhoto,viewerOpen,nativeBack=false}:{
  api:ChatTransport;threadId:string;peerName:string;
- onBack:()=>void;onPhoto:(src:string)=>void;viewerOpen:boolean;
+ onBack:()=>void;onPhoto:(src:string)=>void;viewerOpen:boolean;nativeBack?:boolean;
 }){
  const [section,setSection]=useState<(typeof tabs)[number]["id"]>("photos");
  const [photos,setPhotos]=useState<ChatWireMedia[]>([]);
@@ -51,20 +51,20 @@ export function ChatAttachments({api,threadId,peerName,onBack,onPhoto,viewerOpen
 
  return <section ref={gestures.route} {...gestures.events} className="lc-attachments-route" aria-label="Вложения">
   <header className="lc-attachments-header">
-   <button type="button" className="lc-glass lc-island" aria-label="Назад" onClick={onBack}><ArrowLeft size={20}/></button>
+   {!nativeBack&&<button type="button" className="lc-glass lc-island" aria-label="Назад" onClick={onBack}><ArrowLeft size={20}/></button>}
    <div><h2>Вложения</h2><p>{peerName}</p></div>
   </header>
-  <div role="tablist" aria-label="Тип вложений" className="lc-attachment-tabs lc-glass">{tabs.map(tab=>
+  <div role="tablist" aria-label="Тип вложений" className="lc-attachment-tabs lc-glass" data-section={section}>{tabs.map(tab=>
    <button type="button" key={tab.id} role="tab" id={"lc-tab-"+tab.id} aria-selected={tab.id===section}
     aria-controls="lc-attachment-panel" onClick={()=>setSection(tab.id)}>{tab.name}</button>)}</div>
-  <div role="tabpanel" id="lc-attachment-panel" aria-labelledby={"lc-tab-"+section} className="lc-attachment-panel">
+  <div key={section} role="tabpanel" id="lc-attachment-panel" aria-labelledby={"lc-tab-"+section} className="lc-attachment-panel">
    {section==="photos"&&photos.length>0&&<div className="lc-attachment-grid">
     {photos.map((photo,index)=><button type="button" key={photo.id} aria-label={`Открыть фото ${index+1}`}
      onClick={()=>{void refreshPhoto(photo);}}>
      {photo.url?<img alt="" src={photo.url} loading="lazy"/>:<Image size={23}/>}
     </button>)}
    </div>}
-   {section==="photos"&&pending&&<p className="lc-attachments-state" role="status">Загружаем фото…</p>}
+   {section==="photos"&&pending&&<div className="lc-attachment-skeleton" role="status" aria-label="Загружаем фотографии">{Array.from({length:6},(_,i)=><span key={i}/>)}</div>}
    {section==="photos"&&error&&<button type="button" className="lc-glass lc-attachments-more" onClick={()=>setRetry(value=>value+1)}>Повторить загрузку</button>}
    {(section!=="photos"||!photos.length&&!pending&&!error)&&<div className="lc-attachments-state">
     <active.Icon size={27} aria-hidden="true"/><p>{active.empty}</p>
