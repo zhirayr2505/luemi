@@ -36,7 +36,9 @@ const checkLiveInbox=async()=>{
  await inbox.getByRole("heading",{name:"Пока нет переписок",exact:true}).waitFor({timeout:5000});
  await page.locator(".luemi-shell").evaluate(node=>node.style.setProperty("--viewport-safe-top","66px"));
  assert.equal(await page.locator(".lh-chats").count(),0,"the inbox owns the entire surface");
- assert.equal(await inbox.getByRole("tab").count(),0,"the inbox excludes inactive navigation");
+ assert.equal(await inbox.getByRole("tablist",{name:"Категории чатов"}).getByRole("tab").count(),4,"inbox tabs match reference");
+ assert.equal(await inbox.getByRole("textbox",{name:"Поиск по чатам"}).count(),1,"search is always visible");
+ assert.equal(await inbox.getByRole("img",{name:"LUEMI"}).getAttribute("src"),"/assets/brand/wordmark_original_raster_alpha_W06.webp","original raster logo is retained");
  assert.equal(await demo.count(),0,"the test conversation requires QA access");
  const brand=await inbox.getByRole("img",{name:"LUEMI",exact:true}).boundingBox();
  assert(brand&&brand.y>=66&&Math.abs(brand.x+brand.width/2-393/2)<2,"the logo honors Telegram safe area");

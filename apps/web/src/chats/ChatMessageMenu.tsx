@@ -1,5 +1,5 @@
 import {useLayoutEffect,useRef,useState} from "react";
-import {CheckCheck,ChevronDown,Copy,Pencil,Reply,Trash2} from "lucide-react";
+import {CheckCheck,ChevronDown,Copy,Pencil,Reply,Trash2,CheckCircle2} from "lucide-react";
 import {chatReactionEmoji,type ChatReactionEmoji} from "@luemi/contracts";
 import {useModalLayer} from "../ui/modal-layer";
 import type {LocalMessage} from "./chat-domain.js";
@@ -8,9 +8,9 @@ const names=["Сердце","Нравится","Огонь","Влюблённо�
  "Браво","Восторг","Звёзды в глазах","Ура","Спасибо","Сто баллов","Праздник","Белое сердце",
  "Разбитое сердце","Задумчивость","Круто","Трогательно","Рукопожатие","Глаза","Сердце руками","Роза"];
 
-export function ChatMessageMenu({message,anchor,actorId,writable,onCancel,onReply,onCopy,onEdit,onDelete,onReaction}:{
+export function ChatMessageMenu({message,anchor,actorId,writable,onCancel,onReply,onCopy,onEdit,onDelete,onSelect,onReaction}:{
  message:LocalMessage;anchor:HTMLElement;actorId:string;writable:boolean;
- onCancel:()=>void;onReply:()=>void;onCopy:()=>void;onEdit:()=>void;onDelete:()=>void;
+ onCancel:()=>void;onReply:()=>void;onCopy:()=>void;onEdit:()=>void;onDelete:()=>void;onSelect:()=>void;
  onReaction:(emoji:ChatReactionEmoji)=>void;
 }){
  const menu=useRef<HTMLDivElement>(null);
@@ -84,6 +84,7 @@ export function ChatMessageMenu({message,anchor,actorId,writable,onCancel,onRepl
     {writable&&<button type="button" onClick={onReply}><Reply size={18}/>Ответить</button>}
     {message.body&&<button type="button" onClick={onCopy}><Copy size={18}/>Копировать</button>}
     {writable&&own&&message.body&&<button type="button" onClick={onEdit}><Pencil size={18}/>Редактировать</button>}
+    <button type="button" onClick={onSelect}><CheckCircle2 size={18}/>Выбрать</button>
     <button type="button" className="danger" onClick={onDelete}><Trash2 size={18}/>Удалить</button>
    </div>
   </div>
