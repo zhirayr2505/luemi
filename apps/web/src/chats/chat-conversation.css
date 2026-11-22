@@ -4,7 +4,7 @@
 .lc-inbox-host {position:absolute;inset:0}
 .luemi-chats.lc-thread-route[data-chat-theme=luemi] {
  --lc-rose:var(--luemi-coral);--lc-ink:var(--luemi-text);--lc-muted:var(--luemi-text-muted);
- background:var(--luemi-bg-deep);touch-action:pan-y;animation:none;
+ background:var(--luemi-bg-deep);touch-action:pan-y;animation:lc-thread-premium-enter 260ms cubic-bezier(.2,.75,.2,1) both;
 }
 .lc-thread-route[data-moving="true"] {will-change:transform}
 .lc-conversation-stack .lc-glass,
@@ -85,7 +85,7 @@
 }
 .lc-thread-route .lc-select-mark[aria-pressed=true] {background:var(--luemi-accent);border-color:transparent}
 .lc-thread-route .lc-message-quote,.lc-reply-preview {
- margin:0 0 4px;padding:3px 7px;border-radius:11px;background:var(--luemi-bg);
+ margin:0 0 4px;padding:5px 8px;border:0;border-inline-start:2px solid var(--luemi-coral);border-radius:8px;background:var(--luemi-bg);
  color:var(--luemi-text-secondary);font-size:11px;
 }
 .lc-message-quote strong,.lc-reply-preview strong {display:block;color:var(--luemi-coral-light);font-size:11px}
@@ -205,3 +205,334 @@
 .lc-thread-route .lc-match-heart {background:var(--luemi-glass-accent-fill);color:var(--luemi-ink-on-accent)}
 .lc-thread-route :is(.lc-match-suggestions button,.lc-load-older,.lc-attachment button) {background:var(--luemi-surface-raised);color:var(--luemi-text)}
 .lc-thread-route .lc-retry {color:var(--luemi-coral-light)}
+
+/* The inbox and thread now share one canonical premium stylesheet. */
+/* Inbox styles. The conversation uses the shared LUEMI palette. */
+.luemi-chats.lc-route[data-chat-theme=eclipse] {
+ --lc-ink:var(--luemi-text);
+ --lc-muted:var(--luemi-text-muted);
+ --lc-line:var(--luemi-border);
+ --lc-rose:var(--luemi-coral-light);
+ --lc-panel:var(--luemi-surface);
+ background:var(--luemi-bg-deep);
+ color:var(--lc-ink);
+}
+/* Use the same ink, safe-area logo and rose accent as the likes screen. */
+.discovery-app.real-discovery-home[data-main-tab=chats],
+.luemi-chats.lc-list-route[data-chat-theme=eclipse] {
+ --lc-ink:var(--luemi-text);
+ --lc-muted:var(--luemi-text-muted);
+ --lc-line:var(--luemi-border);
+ --lc-rose:var(--luemi-coral-light);
+ background:var(--luemi-bg-deep);
+}
+.luemi-chats.lc-list-route[data-chat-theme=eclipse] {
+ padding-bottom:calc(var(--bottom-safe,0px) + 77px);
+ background:radial-gradient(ellipse at 50% 58%,var(--luemi-bg) 0%,var(--luemi-bg-deep) 68%);
+ animation-name:lc-inbox-in;
+}
+.discovery-app.real-discovery-home[data-main-tab=chats]>.discovery-bottom-nav {
+ background:var(--luemi-surface);
+ border-color:var(--luemi-border);
+}
+.lc-inbox-chrome {
+ width:min(100%,674px);
+ margin-inline:auto;
+ padding:max(12px,calc(var(--top-safe,0px) + 4px)) max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));
+ flex:none;
+}
+.lc-inbox-brand {
+ display:grid;
+ place-items:center;
+ height:34px;
+}
+.lc-inbox-brand img {
+ display:block;
+ width:88px;
+ height:30px;
+ object-fit:contain;
+ filter:brightness(0) invert(1);
+}
+.lc-inbox-empty {
+ display:flex;
+ flex:1 1 auto;
+ min-height:0;
+ flex-direction:column;
+ align-items:center;
+ justify-content:safe center;
+ overflow-y:auto;
+ text-align:center;
+ gap:10px;
+ padding:24px 20px;
+}
+.lc-inbox-mark {
+ display:grid;
+ place-items:center;
+ flex:none;
+ width:66px;
+ height:66px;
+ margin:0 0 5px;
+ border:1px solid var(--luemi-border-active);
+ border-radius:50%;
+ background:radial-gradient(circle at 45% 32%,var(--luemi-surface-raised),var(--luemi-surface) 74%);
+ color:var(--luemi-coral-light);
+ box-shadow:0 8px 22px rgba(5,10,16,.34);
+}
+.lc-inbox-empty h3 {
+ margin:0;
+ font-size:20px;
+ letter-spacing:-.022em;
+}
+.lc-inbox-empty p {
+ max-width:260px;
+ margin:0;
+ color:var(--lc-muted);
+ font-size:14px;
+ line-height:1.5;
+ text-wrap:balance;
+}
+.lc-inbox-primary {
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ gap:8px;
+ flex:none;
+ min-height:44px;
+ margin-top:9px;
+ padding:0 16px;
+ border:1px solid var(--luemi-border-active);
+ border-radius:16px;
+ background:var(--luemi-coral-light);
+ color:var(--luemi-bg-deep);
+ font-size:14px;
+ font-weight:680;
+}
+.lc-inbox-primary:active {background:var(--luemi-coral-light)}
+.lc-demo-link {
+ align-self:center;
+ flex:none;
+ min-height:44px;
+ padding:0 12px;
+ border:0;
+ background:none;
+ color:var(--lc-rose);
+ font-size:13px;
+ font-weight:620;
+}
+@keyframes lc-inbox-in {
+ from {opacity:0}
+ to {opacity:1}
+}
+.lc-route[data-chat-theme=eclipse] button:focus-visible,
+.lc-route[data-chat-theme=eclipse] textarea:focus-visible,
+.lc-route[data-chat-theme=eclipse] input:focus-visible {
+ outline:2px solid var(--lc-rose);
+ outline-offset:2px;
+}
+.lc-list-route[data-chat-theme=eclipse] .lc-heading {
+ min-height:46px;
+ padding:0;
+ border-bottom:1px solid var(--lc-line);
+}
+.lc-list-route[data-chat-theme=eclipse] .lc-heading h2 {
+ color:var(--lc-ink);
+ font-size:23px;
+ font-weight:730;
+ letter-spacing:-.032em;
+}
+.luemi-chats.lc-route[data-chat-theme=eclipse] .luemi-v5-icon-button {
+ width:44px;
+ height:44px;
+ border:1px solid var(--lc-line);
+ border-radius:50%;
+ background:var(--luemi-surface);
+ box-shadow:inset 0 1px rgba(255,255,255,.035),0 5px 12px rgba(4,9,15,.29);
+ color:var(--lc-ink);
+ -webkit-backdrop-filter:none;
+ backdrop-filter:none;
+}
+.luemi-chats.lc-route[data-chat-theme=eclipse] .luemi-v5-icon-button::before,
+.luemi-chats.lc-route[data-chat-theme=eclipse] .luemi-v5-icon-button::after {content:none}
+.luemi-chats.lc-list-route[data-chat-theme=eclipse] .lc-heading-actions .luemi-v5-icon-button {
+ border:0;
+ background:transparent;
+ box-shadow:none;
+ color:var(--lc-muted);
+}
+.luemi-chats.lc-list-route[data-chat-theme=eclipse] .lc-search {
+ min-height:44px;
+ margin:10px 0 0;
+ color:var(--lc-muted);
+ border:1px solid var(--lc-line);
+ background:var(--luemi-surface);
+ box-shadow:none;
+ -webkit-backdrop-filter:none;
+ backdrop-filter:none;
+}
+.lc-route[data-chat-theme=eclipse] .lc-search input {color:var(--lc-ink)}
+.lc-route[data-chat-theme=eclipse] .lc-search input::placeholder {color:var(--lc-muted)}
+.lc-route[data-chat-theme=eclipse] .luemi-v5-avatar {
+ display:grid;
+ place-items:center;
+ flex:0 0 44px;
+ width:44px;
+ height:44px;
+ overflow:hidden;
+ border-radius:50%;
+ border:1px solid var(--luemi-border-active);
+ background:var(--luemi-surface-raised);
+ color:var(--lc-ink);
+ font-weight:650;
+}
+.lc-route[data-chat-theme=eclipse] .luemi-v5-avatar img {width:100%;height:100%;object-fit:cover}
+.lc-route[data-chat-theme=eclipse] .lc-new-matches {margin:12px 16px 2px}
+.lc-route[data-chat-theme=eclipse] .lc-new-matches-head h3 {
+ color:var(--lc-ink);
+ font-size:14px;
+}
+.lc-route[data-chat-theme=eclipse] .lc-match-rail {padding:6px 3px 5px}
+.lc-route[data-chat-theme=eclipse] .lc-match-rail button:not(.is-seen) .luemi-v5-avatar {
+ outline-color:var(--luemi-border-active);
+ box-shadow:0 0 14px rgba(233,106,134,.14);
+}
+.lc-route[data-chat-theme=eclipse] .lc-conversations {
+ gap:8px;
+ padding:10px 16px 14px;
+}
+.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-chat-row {
+ position:relative;
+ flex:none;
+ min-height:70px;
+ padding:10px 12px;
+ border-color:var(--lc-line);
+ border-radius:18px;
+ background:var(--luemi-surface);
+ box-shadow:none;
+}
+.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-chat-row[data-unread] {
+ border-color:var(--luemi-border-active);
+ background:var(--luemi-surface-raised);
+}
+.lc-route[data-chat-theme=eclipse] .lc-chat-row:active {transform:scale(.984)}
+.lc-route[data-chat-theme=eclipse] .lc-chat-summary strong {color:var(--lc-ink)}
+.lc-route[data-chat-theme=eclipse] .lc-chat-summary>span,
+.lc-route[data-chat-theme=eclipse] .lc-meta {color:var(--lc-muted)}
+.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-meta b,
+.luemi-chats.lc-route[data-chat-theme=eclipse] .lc-new-matches-head span {
+ background:var(--luemi-coral-light);
+ color:var(--luemi-bg-deep);
+}
+.lc-route[data-chat-theme=eclipse] .luemi-v5-empty {color:var(--lc-ink)}
+.lc-route[data-chat-theme=eclipse] .luemi-v5-empty p {color:var(--lc-muted)}
+.lc-route[data-chat-theme=eclipse] .luemi-v5-empty-mark {
+ border-color:var(--lc-line);
+ color:var(--lc-rose);
+ background:var(--luemi-surface-raised);
+ box-shadow:0 0 30px rgba(233,106,134,.09);
+}
+
+
+/* LUEMI Chat Premium V7 — component states, composited movement and accessible controls. */
+@keyframes lc-thread-premium-enter {
+ from {opacity:.72;clip-path:inset(0 0 0 12%)}
+ to {opacity:1;clip-path:inset(0)}
+}
+.luemi-chats.lc-thread-route .lc-chat-header {margin-bottom:7px}
+.lc-conversation-stack .lc-header-islands {gap:6px}
+.lc-conversation-stack .lc-peer {text-align:left;padding-inline:12px}
+.lc-conversation-stack .lc-peer:disabled {opacity:.68}
+.lc-conversation-stack .lc-peer small {font-size:11px}
+.lc-conversation-stack .lc-thread-route .lc-bubble {
+ font-size:14px;line-height:1.48;padding:9px 12px 7px;
+ box-shadow:0 3px 12px rgba(5,9,15,.1);
+}
+.lc-conversation-stack .lc-thread-route .lc-own .lc-bubble {
+ background:color-mix(in srgb,var(--luemi-accent) 53%,var(--luemi-surface-raised));
+}
+.lc-thread-route .lc-message-quote {
+ display:block;width:100%;font:inherit;font-size:11px;text-align:left;cursor:pointer;
+}
+.lc-thread-route .lc-message-quote:active {background:var(--luemi-surface-raised)}
+.lc-thread-route .lc-message-reactions .lc-emoji {
+ cursor:pointer;min-height:22px;transition:transform 145ms cubic-bezier(.2,.85,.2,1),background-color 145ms;
+}
+.lc-thread-route .lc-message-reactions .lc-emoji:active {transform:scale(.9)}
+.lc-thread-route .lc-message-reactions .lc-emoji:disabled {cursor:default;opacity:.72}
+.lc-thread-route .lc-message-reactions .lc-emoji:focus-visible {outline:2px solid var(--luemi-focus)}
+.lc-thread-search {
+ margin:0 11px 7px;padding:5px 7px 5px 11px;border-radius:17px;
+ display:flex;flex:none;align-items:center;gap:5px;min-height:44px;
+ animation:lc-chat-search-enter 180ms cubic-bezier(.18,.86,.2,1) both;
+}
+.lc-thread-search>svg {flex:none;color:var(--luemi-text-muted)}
+.lc-thread-search input {flex:1;min-width:0;padding:8px 3px;border:0;outline:0;background:transparent;color:var(--luemi-text);font-size:13px}
+.lc-thread-search input::placeholder {color:var(--luemi-text-muted)}
+.lc-thread-search-count {flex:none;color:var(--luemi-coral-light);font-size:11px;font-variant-numeric:tabular-nums}
+.lc-thread-search button {display:grid;place-items:center;flex:none;width:30px;height:32px;padding:0;border:0;border-radius:10px;background:transparent;color:var(--luemi-text-secondary)}
+.lc-thread-search button:disabled {opacity:.35}
+.lc-thread-search button:active {background:var(--luemi-surface-raised)}
+@keyframes lc-chat-search-enter {from {opacity:0;translate:0 -6px}to {opacity:1;translate:0 0}}
+.lc-route[data-chat-theme=eclipse] .lc-heading-actions button[aria-pressed=true] {
+ color:var(--luemi-coral-light);background:var(--luemi-surface-raised);
+}
+.lc-conversation-stack .lc-composer {
+ transition:box-shadow 200ms ease,border-color 200ms ease;
+}
+.lc-thread-route .lc-input-row .lc-send:not(:disabled) {
+ transition:transform 170ms cubic-bezier(.2,.85,.2,1),background-color 160ms;
+}
+.lc-thread-route .lc-input-row .lc-send:not(:disabled):active {transform:scale(.89)}
+.lc-thread-route .lc-input-row textarea {field-sizing:content;max-height:126px;line-height:21px}
+.lc-thread-route .lc-attachment {animation:lc-attachment-preview-in 200ms cubic-bezier(.16,1,.3,1) both}
+@keyframes lc-attachment-preview-in {from {opacity:0;transform:translateY(8px) scale(.96)}to {opacity:1;transform:none}}
+.lc-thread-route .lc-message-scrim {background:rgba(12,17,25,.51);backdrop-filter:blur(8px) saturate(.88)}
+.lc-thread-route .lc-message-actions {filter:drop-shadow(0 12px 30px rgba(0,0,0,.22))}
+.lc-thread-route .lc-emoji-bar button:active {transform:scale(.88)}
+.lc-thread-route .lc-emoji-expand svg {transition:transform 180ms cubic-bezier(.16,1,.3,1)}
+.lc-thread-route .lc-message-options button {min-height:43px;font-size:14px}
+.lc-thread-route .lc-message-options button svg {flex:none;color:var(--luemi-text-secondary)}
+.lc-thread-route .lc-message-options .danger svg {color:var(--luemi-danger)}
+.lc-thread-route .lc-attachment-tabs {position:relative;isolation:isolate;overflow:hidden}
+.lc-thread-route .lc-attachment-tabs button {z-index:1;position:relative}
+.lc-attachment-tabs {position:relative;isolation:isolate;overflow:hidden}
+.lc-attachment-tabs:before {
+ content:"";position:absolute;inset:3px auto 3px 3px;
+ width:calc((100% - 6px)/3);border-radius:999px;background:var(--luemi-surface-raised);
+ transition:transform 220ms cubic-bezier(.18,.78,.2,1);
+}
+.lc-attachment-tabs[data-section=voice]:before {transform:translateX(100%)}
+.lc-attachment-tabs[data-section=gifts]:before {transform:translateX(200%)}
+.lc-attachment-tabs button {position:relative;z-index:1}
+.lc-attachment-tabs button[aria-selected=true] {background:transparent}
+.lc-attachment-panel {animation:lc-attachment-panel-enter 180ms cubic-bezier(.2,.8,.2,1) both}
+@keyframes lc-attachment-panel-enter {from {opacity:0;translate:10px 0}to {opacity:1;translate:0 0}}
+.lc-attachment-grid button {transition:transform 150ms cubic-bezier(.2,.75,.2,1);overflow:hidden}
+.lc-attachment-grid button:active {transform:scale(.95)}
+.lc-attachment-skeleton {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.lc-attachment-skeleton span {aspect-ratio:1;border-radius:12px;
+ background:linear-gradient(105deg,var(--luemi-surface) 20%,var(--luemi-surface-raised) 50%,var(--luemi-surface) 80%);
+ background-size:200% 100%;animation:lc-photo-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes lc-photo-shimmer {to {background-position-x:-200%}}
+.lc-conversation-stack .lc-viewer {
+ background:rgba(9,13,20,.97);animation:lc-overlay-in 170ms ease-out both;
+}
+.lc-conversation-stack .lc-viewer img {max-width:100%;max-height:100%;object-fit:contain;transition:none;will-change:transform}
+.lc-viewer-top {position:absolute;z-index:2;left:12px;right:12px;top:max(12px,var(--top-safe,0px));display:flex;align-items:center;justify-content:space-between;pointer-events:none}
+.lc-viewer-counter {padding:8px 12px;border-radius:999px;background:rgba(24,31,41,.82);color:#fff;font-size:12px;font-variant-numeric:tabular-nums}
+.lc-conversation-stack .lc-viewer .lc-viewer-close {position:static;flex:none;background:rgba(24,31,41,.82);border-color:rgba(255,255,255,.14)}
+.lc-viewer-top button {pointer-events:auto}
+.lc-viewer-controls {position:absolute;z-index:2;bottom:max(22px,var(--bottom-safe,0px));left:0;right:0;display:flex;justify-content:space-between;padding:0 20px;pointer-events:none}
+.lc-viewer-controls button {width:44px;height:44px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.12);border-radius:50%;background:rgba(24,31,41,.78);color:#fff;pointer-events:auto}
+.lc-viewer-controls button:disabled {opacity:.2}
+.lc-menu.lc-glass {padding:14px 10px max(12px,var(--bottom-safe,0px));gap:3px;border-radius:26px 26px 20px 20px}
+.lc-sheet-handle {height:4px;width:35px;border-radius:5px;margin:0 auto 8px;background:var(--luemi-border)}
+.lc-sheet-title {margin:0 10px 10px;text-align:center;font-size:15px;font-weight:680;color:var(--luemi-text)}
+.lc-menu.lc-glass button {min-height:48px;border-radius:14px}
+.lc-menu.lc-glass button.danger {color:var(--luemi-danger)}
+.lc-menu.lc-glass button:active {background:var(--luemi-surface-raised)}
+@media(prefers-reduced-motion:reduce) {
+ .luemi-chats.lc-thread-route {animation:none}
+ .lc-thread-search,.lc-attachment-panel,.lc-attachment-skeleton span,.lc-thread-route .lc-attachment {animation:none}
+ .lc-attachment-tabs:before,.lc-thread-route .lc-input-row .lc-send {transition:none}
+}

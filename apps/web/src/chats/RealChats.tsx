@@ -12,7 +12,6 @@ import {geoCsrf} from "../auth/session-adapter.js";
 import {blockPublishedUser,getNewMatches,openNewMatch,type NewMatch} from "../registration/real-live-client.js";
 import {LuemiAvatar,LuemiEmptyState,LuemiIconButton} from "../ui/LuemiV5.js";
 import "./chats.css";
-import "./surreal-chats.css";
 import "./chat-conversation.css";
 
 type Action={message:LocalMessage;kind:"edit"|"delete"}|null;
