@@ -106,6 +106,12 @@ const checkLiveInbox=async()=>{
  await search.getByRole("button",{name:"Следующее совпадение"}).tap();
  await search.getByRole("button",{name:"Закрыть поиск"}).tap();
  await traceLayout("after-search");
+ const stable=await page.locator(".lc-conversation-stack").boundingBox();
+ assert(stable&&Math.abs(stable.x)<1&&Math.abs(stable.y)<1,
+  "focused chat search never shifts the fullscreen route "+JSON.stringify(stable));
+ const chatHeader=await page.locator(".lc-chat-header").boundingBox();
+ assert(chatHeader&&chatHeader.y>=0&&chatHeader.height>40,
+  "chat header stays inside the visible viewport "+JSON.stringify(chatHeader));
  await page.locator(".lc-history").evaluate(node=>node.scrollTop=node.scrollHeight);
  await mkdir("qa-artifacts/chat-premium",{recursive:true});
  await page.screenshot({path:"qa-artifacts/chat-premium/conversation-393.png"});

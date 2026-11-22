@@ -536,3 +536,12 @@
  .lc-thread-search,.lc-attachment-panel,.lc-attachment-skeleton span,.lc-thread-route .lc-attachment {animation:none}
  .lc-attachment-tabs:before,.lc-thread-route .lc-input-row .lc-send {transition:none}
 }
+
+/* A focused chat search field must never scroll the outer fullscreen panels.
+   overflow:hidden creates a programmatically scrollable box in Chromium;
+   overflow:clip preserves clipping without allowing scroll-to-focus to pan it. */
+.discovery-app.real-discovery-home[data-main-tab=chats],
+.discovery-app.real-discovery-home[data-main-tab=chats] .discovery-main-panels,
+.discovery-app.real-discovery-home[data-main-tab=chats] .real-discovery-chat-panel {
+ overflow:clip;
+}
