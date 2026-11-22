@@ -28,7 +28,7 @@ import {isProfileLike,profileReactionKey,useProfileReactionQueue} from "./use-pr
 import {RealChats} from "../chats/RealChats";
 import {createChatTransport} from "../chats/chat-transport";
 import {demoGalleryReaction,LikesGallery} from "./LikesGallery";
-import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiSkeleton} from "../ui/LuemiV5";
+import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState} from "../ui/LuemiV5";
 import {NavigationDiscover,NavigationLikes,NavigationChats,NavigationProfile} from "../ui/navigation-icons";
 import {useNavigationCounts} from "./use-navigation-counts";
 import {geoCsrf} from "../auth/session-adapter";
