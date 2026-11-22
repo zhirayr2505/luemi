@@ -78,10 +78,29 @@ const checkLiveInbox=async()=>{
  await touchAt("touchMove",{x:start.x-74,y:start.y});
  await touchAt("touchEnd");
  await page.locator(".lc-reply-preview").getByText("Ответ · Алина",{exact:true}).waitFor();
+ const pointerEvidence=await page.evaluateHandle(()=>{
+  const events=[];
+  for(const type of ["pointerdown","pointerup","click","focusout","submit"]){
+   document.addEventListener(type,event=>events.push([
+    event.type,event.target.tagName,event.target.getAttribute("aria-label"),event.clientX,event.clientY
+   ]),{capture:true});
+  }
+  return events;
+ });
  await page.getByLabel("Сообщение").fill("Привет! Как дела?");
  await page.getByLabel("Отправить").tap();
  const answered=page.locator(".lc-own .lc-bubble").filter({hasText:"Привет! Как дела?"});
- await answered.locator("blockquote").getByText(/Привет! Я Алина/).waitFor();
+ await answered.locator("blockquote").getByText(/Привет! Я Алина/).waitFor().catch(async error=>{
+  const frame=await page.locator(".lc-thread-route").evaluate(node=>{
+   const send=node.querySelector(".lc-send");
+   const input=node.querySelector("textarea");
+   const viewport=window.visualViewport;
+   return {thread:node.innerText,draft:input.value,sendDisabled:send.disabled,
+    button:send.getBoundingClientRect().toJSON(),focus:document.activeElement.tagName,
+    viewport:[viewport.scale,viewport.offsetLeft,viewport.offsetTop,window.scrollX,window.scrollY]};
+  });
+  throw new Error(JSON.stringify({frame,events:await pointerEvidence.jsonValue()}),{cause:error});
+ });
  const keepsFocus=await page.getByLabel("Сообщение").evaluate(node=>document.activeElement===node);
  assert(keepsFocus,"the send button keeps the composer focused");
  const incoming=page.locator(".lc-msg-line:not(.lc-own)");
