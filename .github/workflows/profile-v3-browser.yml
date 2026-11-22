@@ -94,6 +94,7 @@ jobs:
         with:
           name: luemi-profile-v3-synthetic-${{ github.run_id }}
           path: |
+            qa-artifacts/chat-premium/**
             qa-artifacts/profile-v3/**
             qa-artifacts/profile-v3-integration/**
             qa-artifacts/feed-reference/**

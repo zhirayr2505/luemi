@@ -1,5 +1,6 @@
 import {chromium} from "playwright";
 import assert from "node:assert/strict";
+import {mkdir} from "node:fs/promises";
 
 const executablePath=process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
 const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{})});
@@ -84,11 +85,18 @@ const checkLiveInbox=async()=>{
  await settings.waitFor();
  await settings.getByRole("button",{name:"Отключить уведомления"}).tap();
  await settings.getByRole("button",{name:"Включить уведомления"}).waitFor();
- await settings.getByRole("button",{name:"Отмена"}).tap();
+ await settings.getByRole("button",{name:"Найти сообщение"}).tap();
+ const search=page.getByRole("search");
+ await search.getByRole("textbox",{name:"Поиск по загруженным сообщениям"}).fill("Алина");
+ await search.getByRole("button",{name:"Следующее совпадение"}).tap();
+ await search.getByRole("button",{name:"Закрыть поиск"}).tap();
+ await mkdir("qa-artifacts/chat-premium",{recursive:true});
+ await page.screenshot({path:"qa-artifacts/chat-premium/conversation-393.png"});
  const first=page.locator(".lc-msg-line .lc-bubble").first();
  await first.tap();
  const menu=page.getByRole("dialog",{name:"Действия с сообщением"});
  await menu.waitFor();
+ await page.screenshot({path:"qa-artifacts/chat-premium/message-menu-393.png"});
  assert.equal(await menu.locator(".lc-emoji-bar button[data-emoji]").count(),6);
  const focused=page.locator(".lc-focus-bubble");
  await focused.waitFor();
@@ -118,7 +126,8 @@ const checkLiveInbox=async()=>{
  await page.getByLabel("Сообщение").fill("Привет! Как дела?");
  await page.getByLabel("Отправить").tap();
  const answered=page.locator(".lc-own .lc-bubble").filter({hasText:"Привет! Как дела?"});
- await answered.locator("blockquote").getByText(/Привет! Я Алина/).waitFor();
+ await answered.locator(".lc-message-quote").getByText(/Привет! Я Алина/).waitFor();
+ await answered.getByRole("button",{name:"Перейти к исходному сообщению"}).tap();
  const keepsFocus=await page.getByLabel("Сообщение").evaluate(node=>document.activeElement===node);
  assert(keepsFocus,"the send button keeps the composer focused");
  const incoming=page.locator(".lc-msg-line:not(.lc-own)");
