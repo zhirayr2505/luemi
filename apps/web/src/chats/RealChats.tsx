@@ -91,6 +91,8 @@ export function RealChats({
   oldPositions.current=positions;
  },[]);
  const sendField=useRef<HTMLTextAreaElement>(null);
+ const sendPress=useRef<{id:number;x:number;y:number}|null>(null);
+ const lastTouchSend=useRef(-Infinity);
  const releaseAttachment=useCallback(()=>setAttachment(old=>{if(old){URL.revokeObjectURL(old.url);objectUrls.current.delete(old.url);}return null;}),[]);
  const showError=(e:unknown,fallback="Не удалось выполнить действие.")=>setError(e instanceof ChatTransportError?errorText(e.status,e.code):fallback);
  const updateConversations=useCallback((items:ChatWireConversation[])=>{
@@ -518,8 +520,25 @@ export function RealChats({
       if(event.key==="Enter"&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();void send();}
      }}/>
     <button type="button" className="lc-send" disabled={!actorId||!draft.trim()&&!attachment}
-     onPointerDown={event=>{if(document.activeElement===sendField.current)event.preventDefault();}}
-     onClick={()=>void send()} aria-label="Отправить"><Send size={19}/></button>
+     onPointerDown={event=>{
+      if(document.activeElement===sendField.current)event.preventDefault();
+      if(event.pointerType==="touch"&&event.isPrimary){
+       sendPress.current={id:event.pointerId,x:event.clientX,y:event.clientY};
+      }
+     }}
+     onPointerCancel={()=>{sendPress.current=null;}}
+     onPointerUp={event=>{
+      const press=sendPress.current;
+      sendPress.current=null;
+      if(!press||press.id!==event.pointerId||Math.hypot(event.clientX-press.x,event.clientY-press.y)>14)return;
+      if(!event.currentTarget.contains(document.elementFromPoint(event.clientX,event.clientY)))return;
+      // Chromium can omit the synthetic click after a touch press that keeps the keyboard open.
+      lastTouchSend.current=performance.now();
+      void send();
+     }}
+     onClick={event=>{
+      if(event.detail===0||performance.now()-lastTouchSend.current>450)void send();
+     }} aria-label="Отправить"><Send size={19} aria-hidden="true" style={{pointerEvents:"none"}}/></button>
    </div>
   </footer>:<div className="lc-state lc-read-only" role="status">Переписка доступна только для чтения. Аккаунт удалён.</div>}
   {error&&<div className="lc-notice" role="alert">{error}<button onClick={()=>setError("")} aria-label="Закрыть"><X size={15}/></button></div>}
