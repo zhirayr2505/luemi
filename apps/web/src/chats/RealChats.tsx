@@ -609,8 +609,9 @@ export function RealChats({
          event.preventDefault();openMessage({id:message.id,node:event.currentTarget});
         }
        }} tabIndex={interactive?0:undefined}>
-       {message.replyTo&&<blockquote className="lc-message-quote"><strong>{message.replyTo.senderId===actorId?"Ты":active.peerName}</strong>
-        <span>{message.replyTo.body}</span></blockquote>}
+       {message.replyTo&&<button type="button" className="lc-message-quote" aria-label="Перейти к исходному сообщению"
+        onClick={event=>{event.stopPropagation();jumpToMessage(message.replyTo!.id);}}><strong>{message.replyTo.senderId===actorId?"Ты":active.peerName}</strong>
+        <span>{message.replyTo.body}</span></button>}
        {message.deletedAt?<em>Сообщение удалено</em>:<>
         {photo&&<button type="button" className="lc-photo-open" onClick={()=>setViewer(photo)}><img src={photo} alt="Фото в сообщении" width={media?.width??undefined} height={media?.height??undefined} decoding="async"/></button>}
         {message.body&&<span>{message.body}</span>}
@@ -618,8 +619,9 @@ export function RealChats({
        {!!message.reactions?.length&&<div className="lc-message-reactions">
         {[...new Set(message.reactions.map(item=>item.emoji))].map(emoji=>{
          const matching=message.reactions!.filter(item=>item.emoji===emoji);
-         return <span key={emoji} data-own={matching.some(item=>item.actorId===actorId)||undefined}
-          className="lc-emoji">{emoji}{matching.length>1&&<b>{matching.length}</b>}</span>;
+         return <button type="button" key={emoji} data-own={matching.some(item=>item.actorId===actorId)||undefined}
+          disabled={!interactive||active.access!=="active"||demoBlocked} aria-label={`Реакция ${emoji}`}
+          className="lc-emoji" onClick={event=>{event.stopPropagation();void applyReaction(message.id,emoji);}}>{emoji}{matching.length>1&&<b>{matching.length}</b>}</button>;
         })}
        </div>}
        <small><time dateTime={message.createdAt}>{time(message.createdAt)}</time>{message.editedAt&&" · изм."}
