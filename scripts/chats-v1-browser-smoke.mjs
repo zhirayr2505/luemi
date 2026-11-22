@@ -144,8 +144,12 @@ const checkLiveInbox=async()=>{
  await menu.getByRole("button",{name:"Все реакции"}).tap();
  await menu.getByRole("button",{name:"Браво"}).waitFor();
  await menu.getByRole("button",{name:"Свернуть реакции"}).tap();
- const bubbleBox=await first.boundingBox(),menuBox=await menu.boundingBox();
- assert(bubbleBox&&menuBox&&Math.abs(menuBox.y-(bubbleBox.y-menuBox.height))<24,"the menu anchors next to the message");
+ const reactionBox=await menu.locator(".lc-emoji-bar").boundingBox();
+ const focusedBox=await focused.boundingBox();
+ const optionBox=await menu.locator(".lc-message-options").boundingBox();
+ assert(reactionBox&&focusedBox&&optionBox&&reactionBox.y+reactionBox.height<=focusedBox.y+3&&
+  focusedBox.y+focusedBox.height<=optionBox.y+3,
+  "contextual stack keeps reactions above the raised message and actions below");
  await menu.getByRole("button",{name:"Сердце",exact:true}).tap();
  await first.locator(".lc-message-reactions").getByText("❤️",{exact:true}).waitFor();
  await first.dblclick({position:{x:30,y:12}});

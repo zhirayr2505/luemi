@@ -460,3 +460,40 @@
 @media(max-width:350px) {
  .discovery-app.real-discovery-home[data-main-tab="chats"][data-chat-thread="false"]>.discovery-bottom-nav .discovery-nav-item .luemi-nav-label {font-size:9px}
 }
+
+
+/* LUEMI V8 contextual stack matches the approved concept:
+   six reactions, elevated selected message, then readable menu actions. */
+.lc-thread-route[data-vivid-reference="v8"] .lc-message-actions[data-vivid-stack] {
+ display:flex;flex-direction:column;align-items:stretch;
+ gap:7px;overflow:auto;overscroll-behavior:contain;
+ transform-origin:center center;
+ padding:0 1px 2px;
+}
+.lc-thread-route[data-vivid-reference="v8"] .lc-message-actions[data-vivid-stack] .lc-focus-bubble {
+ position:relative;z-index:1;display:flex;align-self:flex-start;
+ height:auto;max-height:min(180px,32vh);
+ margin:0;overflow:hidden;flex:none;
+ transform:none;
+ animation:lc-v8-bubble-lift 180ms cubic-bezier(.16,1,.3,1) both;
+}
+.lc-thread-route[data-vivid-reference="v8"] .lc-message-actions[data-vivid-stack] .lc-focus-bubble.lc-own {
+ align-self:flex-end;
+}
+.lc-thread-route[data-vivid-reference="v8"] .lc-message-actions[data-vivid-stack] .lc-focus-bubble .lc-bubble {
+ width:100%;max-width:none;min-width:0;box-sizing:border-box;
+ box-shadow:0 9px 24px rgba(3,8,16,.2);
+}
+.lc-thread-route[data-vivid-reference="v8"] .lc-message-actions[data-vivid-stack] .lc-emoji-bar {
+ flex:none;
+}
+.lc-thread-route[data-vivid-reference="v8"] .lc-message-actions[data-vivid-stack] .lc-message-options {
+ flex:none;
+}
+@keyframes lc-v8-bubble-lift {
+ from {opacity:.7;transform:translateY(9px) scale(.985)}
+ to {opacity:1;transform:none}
+}
+@media(prefers-reduced-motion:reduce) {
+ .lc-thread-route[data-vivid-reference="v8"] .lc-message-actions[data-vivid-stack] .lc-focus-bubble {animation:none}
+}
