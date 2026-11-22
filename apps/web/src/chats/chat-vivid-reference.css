@@ -424,3 +424,39 @@
 .discovery-app.real-discovery-home[data-main-tab="chats"]>.discovery-bottom-nav .luemi-nav-badge {
  background:var(--luemi-coral);color:var(--luemi-text);
 }
+
+/* On the Chats LIST only, display the approved mockup's wide labeled dock.
+   The feed, likes, profile and open conversations keep their own navigation. */
+.discovery-app.real-discovery-home[data-main-tab="chats"][data-chat-thread="false"]>.discovery-bottom-nav {
+ width:calc(100% - 24px);max-width:520px;height:72px;min-height:72px;
+ left:12px;right:12px;bottom:calc(var(--bottom-safe,0px) + 10px);
+ padding:5px 8px;gap:3px;border-radius:29px;
+ background:linear-gradient(155deg,rgba(53,65,84,.97),rgba(31,41,55,.98));
+ border:1px solid rgba(224,234,246,.16);
+ box-shadow:inset 0 1px rgba(255,255,255,.09),0 8px 22px rgba(4,9,16,.22);
+}
+.discovery-app.real-discovery-home[data-main-tab="chats"][data-chat-thread="false"]>.discovery-bottom-nav .discovery-nav-item {
+ display:flex;flex:1 1 25%;flex-direction:column;align-items:center;justify-content:center;
+ gap:4px;min-width:0;height:61px;min-height:61px;
+ border-radius:22px;color:var(--luemi-text-muted);
+}
+.discovery-app.real-discovery-home[data-main-tab="chats"][data-chat-thread="false"]>.discovery-bottom-nav .discovery-nav-item.active {
+ background:linear-gradient(150deg,rgba(169,62,96,.43),rgba(169,62,96,.18));
+ color:var(--luemi-coral-light);
+ box-shadow:inset 0 1px rgba(248,252,255,.06);
+}
+.discovery-app.real-discovery-home[data-main-tab="chats"][data-chat-thread="false"]>.discovery-bottom-nav .discovery-nav-item .luemi-nav-glyph {
+ width:24px;height:24px;flex:0 0 24px;
+}
+.discovery-app.real-discovery-home[data-main-tab="chats"][data-chat-thread="false"]>.discovery-bottom-nav .discovery-nav-item .luemi-nav-label {
+ position:static;display:block;clip:auto;clip-path:none;
+ width:auto;height:auto;min-width:0;max-width:100%;overflow:hidden;
+ padding:0;margin:0;white-space:nowrap;text-overflow:ellipsis;
+ color:inherit;font-size:10px;line-height:1.1;font-weight:590;
+}
+.luemi-chats.lc-list-route[data-vivid-reference="v8"] {
+ padding-bottom:calc(var(--bottom-safe,0px) + 91px);
+}
+@media(max-width:350px) {
+ .discovery-app.real-discovery-home[data-main-tab="chats"][data-chat-thread="false"]>.discovery-bottom-nav .discovery-nav-item .luemi-nav-label {font-size:9px}
+}

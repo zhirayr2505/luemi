@@ -47,7 +47,8 @@ const checkLiveInbox=async()=>{
  await page.addStyleTag({url:base+"/src/ui/vivid-discovery.css"});
  const dock=page.getByRole("navigation",{name:"Главная навигация LUEMI"});
  const dockBox=await dock.boundingBox();
- assert(dockBox&&Math.abs(dockBox.width-(393-14)/1.5)<2&&dockBox.height<=48);
+ assert(dockBox&&dockBox.width>=360&&dockBox.height>=68&&dockBox.height<=75,"chats dock matches wide labeled reference "+JSON.stringify(dockBox));
+ assert.equal(await dock.locator(".discovery-nav-item .luemi-nav-label").count(),4,"four visible dock labels");
  const activeIcon=dock.getByRole("button",{name:"Чаты",exact:true});
  assert.equal(await activeIcon.evaluate(node=>getComputedStyle(node).backgroundColor),"rgba(0, 0, 0, 0)");
  await inbox.getByRole("button",{name:"Перейти к знакомствам",exact:true}).tap();
