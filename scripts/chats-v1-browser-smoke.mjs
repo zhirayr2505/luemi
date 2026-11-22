@@ -101,6 +101,8 @@ const checkLiveInbox=async()=>{
  await page.getByRole("button",{name:"Меню переписки"}).tap();
  const settings=page.getByRole("dialog",{name:"Настройки чата"});
  await settings.waitFor();
+ await page.waitForTimeout(230);
+ await page.screenshot({path:"qa-artifacts/chat-premium/v8-actions-393.png"});
  await settings.getByRole("button",{name:"Отключить уведомления"}).tap();
  await settings.getByRole("button",{name:"Включить уведомления"}).waitFor();
  await settings.getByRole("button",{name:"Найти сообщение"}).tap();
@@ -194,6 +196,11 @@ const checkLiveInbox=async()=>{
  await page.getByRole("button",{name:"Удалить выбранные"}).tap();
  const confirmation=page.getByRole("alertdialog");
  await confirmation.getByText("У меня и собеседника").tap();
+ await page.waitForTimeout(230);
+ await page.screenshot({path:"qa-artifacts/chat-premium/v8-delete-393.png"});
+ const confirmBox=await confirmation.boundingBox();
+ assert(confirmBox&&confirmBox.y>80&&confirmBox.y+confirmBox.height<850,
+  "delete confirmation stays inside the mobile viewport");
  await confirmation.getByRole("button",{name:"Удалить",exact:true}).tap();
  await confirmation.waitFor({state:"hidden"});
  const historyBox=await page.locator(".lc-history").boundingBox();
