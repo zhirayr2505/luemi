@@ -47,7 +47,7 @@
     "test:motion-chaos": "node scripts/rem-motion-gesture-chaos.test.mjs",
     "test:profile-owner": "node scripts/owner-premium-profile.test.mjs",
     "test:profile-owner:browser": "node scripts/owner-premium-profile-browser.mjs",
-    "test:chats": "node --import tsx --test apps/api/test/chat-domain.test.ts apps/api/test/chat-media.test.ts apps/api/test/chats-gate.test.ts && node scripts/chats-v1-contract.test.mjs",
+    "test:chats": "npm run build -w @luemi/contracts && node --import tsx --test apps/api/test/chat-domain.test.ts apps/api/test/chat-media.test.ts apps/api/test/chats-gate.test.ts && node scripts/chats-v1-contract.test.mjs",
     "test:chats:browser": "node scripts/chats-v1-browser-smoke.mjs",
     "test:beta-bootstrap": "node --test scripts/closed-beta-bootstrap.test.mjs scripts/operator-launch-contract.test.mjs",
     "test:agent-skills": "node scripts/agent-skills-contract.test.mjs"
