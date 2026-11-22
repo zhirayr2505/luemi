@@ -454,10 +454,10 @@ export function RealChats({
  };
  const modalOpen=!!(viewer||action||chatMenu||clearDialog||bulkDelete||messageMenu||profileOpen||showAttachments||blockDialog);
  const gestures=useChatGestures({
-  threadId:active?.id,enabled:threadOpen&&!modalOpen,canBack:!selected.length,
+  threadId:active?.id,enabled:threadOpen&&!modalOpen,canBack:!selected.length&&!threadSearchOpen,
   canReply:active?.access==="active"&&!selected.length&&!demoBlocked,
   onOpen:openMessage,onHeart:target=>{if(selected.length)toggleSelection(target.id);else void applyReaction(target.id,"❤️");},
-  onHold:target=>toggleSelection(target.id),onReply:target=>beginReply(target.id),onBack:()=>{if(threadSearchOpen){setThreadSearchOpen(false);setThreadQuery("");}else close();},
+  onHold:target=>toggleSelection(target.id),onReply:target=>beginReply(target.id),onBack:close,
  });
  const menuMessage=messages.find(message=>message.id===messageMenu?.id);
  const grouped=messages.reduce<Array<{day:string;items:LocalMessage[]}>>((days,message)=>{const day=dayKey(message.createdAt);const last=days[days.length-1];if(last?.day===day)last.items.push(message);else days.push({day,items:[message]});return days;},[]);
