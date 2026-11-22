@@ -323,7 +323,7 @@ export function RealChats({
   if(showAttachments){setShowAttachments(false);return;}
   if(messageMenu){setMessageMenu(null);return;}
   if(selected.length){setSelected([]);return;}
-  if(threadSearchOpen){setThreadSearchOpen(false);setThreadQuery("");return;}
+  if(threadSearchOpen){(document.activeElement as HTMLElement|null)?.blur();setThreadSearchOpen(false);setThreadQuery("");return;}
   close();
  },[viewer,action,bulkDelete,clearDialog,blockDialog,chatMenu,showAttachments,messageMenu,selected.length,threadSearchOpen,close]);
  const threadBack=useRef(handleBack);
@@ -569,7 +569,7 @@ export function RealChats({
    {threadQuery&&<span className="lc-thread-search-count">{threadSearchMatches.length?Math.min(threadSearchIndex+1,threadSearchMatches.length)+" / "+threadSearchMatches.length:"0"}</span>}
    <button type="button" onClick={()=>navigateThreadSearch(-1)} disabled={!threadSearchMatches.length} aria-label="Предыдущее совпадение"><ChevronUp size={17}/></button>
    <button type="button" onClick={()=>navigateThreadSearch(1)} disabled={!threadSearchMatches.length} aria-label="Следующее совпадение"><ChevronDown size={17}/></button>
-   <button type="button" onClick={()=>{setThreadSearchOpen(false);setThreadQuery("");}} aria-label="Закрыть поиск"><X size={17}/></button>
+   <button type="button" onClick={()=>{(document.activeElement as HTMLElement|null)?.blur();setThreadSearchOpen(false);setThreadQuery("");}} aria-label="Закрыть поиск"><X size={17}/></button>
   </div>}
   <div ref={history} className="lc-history" role="log" aria-live="polite" onScroll={e=>{nearBottom.current=isNearBottom(e.currentTarget);if(nearBottom.current)setNewBelow(0);setMessageMenu(null);}}>
    {!activeNewMatch&&messages.length===0&&!historyLoaded&&!error&&

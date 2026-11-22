@@ -54,6 +54,20 @@ const checkLiveInbox=async()=>{
  qaAllowed=true;
  await open();
  await demo.tap();
+ const traceLayout=async(stage)=>console.log("LUEMI_LAYOUT_TRACE",stage,JSON.stringify(await page.evaluate(()=>{
+  const node=document.querySelector(".lc-conversation-stack");
+  const ancestors=[];let el=node;
+  while(el&&ancestors.length<9){const rc=el.getBoundingClientRect(),css=getComputedStyle(el);
+   ancestors.push({tag:el.tagName,cls:String(el.className).slice(0,110),x:rc.x,y:rc.y,
+    w:rc.width,h:rc.height,transform:css.transform,top:css.top,left:css.left,position:css.position});
+   el=el.parentElement;
+  }
+  const shell=document.querySelector(".luemi-shell"),cs=shell?getComputedStyle(shell):null;
+  return {ancestors,active:document.activeElement?.tagName,scrollX,scrollY,
+   vv:visualViewport?{top:visualViewport.offsetTop,left:visualViewport.offsetLeft,width:visualViewport.width,height:visualViewport.height}:null,
+   viewportTop:cs?.getPropertyValue("--viewport-offset-top"),appHeight:cs?.getPropertyValue("--app-height")};
+ })));
+ await traceLayout("initial");
  const before=calls.filter(path=>path.startsWith("/api/v4/chats/")).length;
  await page.locator(".lc-thread-route").getByText("Алина",{exact:true}).waitFor();
  await page.locator(".lc-chat-header").getByText("В сети",{exact:true}).waitFor();
@@ -80,6 +94,7 @@ const checkLiveInbox=async()=>{
  assert(photoBox);
  await backSwipe(12,Math.round(photoBox.y+photoBox.height/2));
  await profile.waitFor({state:"detached"});
+ await traceLayout("after-profile");
  await page.getByRole("button",{name:"Меню переписки"}).tap();
  const settings=page.getByRole("dialog",{name:"Настройки чата"});
  await settings.waitFor();
@@ -90,6 +105,8 @@ const checkLiveInbox=async()=>{
  await search.getByRole("textbox",{name:"Поиск по загруженным сообщениям"}).fill("Алина");
  await search.getByRole("button",{name:"Следующее совпадение"}).tap();
  await search.getByRole("button",{name:"Закрыть поиск"}).tap();
+ await traceLayout("after-search");
+ await page.locator(".lc-history").evaluate(node=>node.scrollTop=node.scrollHeight);
  await mkdir("qa-artifacts/chat-premium",{recursive:true});
  await page.screenshot({path:"qa-artifacts/chat-premium/conversation-393.png"});
  console.log("LUEMI_CHAT_GEOMETRY",JSON.stringify(await page.evaluate(()=>({
