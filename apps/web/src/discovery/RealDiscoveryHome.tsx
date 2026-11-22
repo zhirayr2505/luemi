@@ -6,7 +6,6 @@ import type {RegistrationDraft,SearchScope} from "../registration/model";
 import type {DemoKind,DemoPerson} from "./model";
 import {fromDemoPerson,type ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
-import {demoPeople} from "./demo-people";
 import {DemoFeedSandbox} from "./DemoFeedSandbox";
 import {selectionHaptic} from "../ui/haptic";
 import {preloadFeedImage,preloadUpcomingFeedPhotos} from "./feed-image-preload";
@@ -48,7 +47,6 @@ import "./photo-ambient-edition.css";
 // Approved photo-backed expanded profile, rounded SVG flags and soft-interest palette.
 import "./expanded-liquid-profile.css";
 
-const demoChatPerson:DemoPerson={...demoPeople[0],name:"Алина"};
 const DemoChatSurface=lazy(()=>import("../chats/DemoChatSurface"));
 const navigationItems=[
  {id:"discover",label:"Знакомства",icon:NavigationDiscover},
@@ -942,7 +940,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
    <section className="discovery-panel real-discovery-chat-panel" hidden={mainTab!=="chats"}>
     {mainTab==="chats"&&(qaAllowed&&demoChatOpen?
      <Suspense fallback={<div className="lc-state" role="status"><span className="lc-spinner"/>Открываем переписку…</div>}>
-      <DemoChatSurface onExit={closeDemoChat} profileOpen={!!demoVisitor} onOpenProfile={()=>setDemoVisitor(demoChatPerson)} onThreadChange={onThreadChange}
+      <DemoChatSurface onExit={closeDemoChat} profileOpen={!!demoVisitor} onOpenProfile={setDemoVisitor} onThreadChange={onThreadChange}
       registerThreadBack={registerChatBack}/></Suspense>:
      <RealChats initialThread={initialThread} onOpenProfile={openPersonById} profileOpen={!!person}
       onThreadChange={onThreadChange} registerThreadBack={registerChatBack} onUnreadCount={setChats}
