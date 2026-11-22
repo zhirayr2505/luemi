@@ -178,7 +178,7 @@ const checkLiveInbox=async()=>{
  assert.equal(await answered.count(),1,"touch activation never duplicates the message");
  await answered.locator(":scope > span").tap();
  await menu.getByText("Прочитано",{exact:true}).waitFor();
- assert.ok(await menu.locator("time[datetime]").getAttribute("datetime"));
+ assert.ok(await menu.locator(".lc-read-time time[datetime]").getAttribute("datetime"));
  await page.getByRole("button",{name:"Закрыть меню сообщения"}).tap({position:{x:5,y:40}});
  await answered.getByRole("button",{name:"Перейти к исходному сообщению"}).tap();
  await page.getByLabel("Сообщение").fill("Хочешь кофе?");
