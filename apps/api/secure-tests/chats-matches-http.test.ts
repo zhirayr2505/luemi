@@ -33,7 +33,7 @@ test("two authenticated actors create one durable conversation and revoke it on 
  const app=Fastify();
  registerChats(app,auth,{enabled:true,databaseUrl:url("MATCHES_HTTP_CHAT_URL"),namespace:ns});
  registerMatches(app,auth,{enabled:true,databaseUrl:url("MATCHES_HTTP_MATCH_URL"),namespace:ns});
- const inject=async(actor:string,method:"GET"|"POST"|"PATCH"|"DELETE",path:string,payload?:unknown)=>{
+ const inject=async(actor:string,method:"GET"|"POST"|"PATCH"|"PUT"|"DELETE",path:string,payload?:unknown)=>{
   const res=await app.inject({method,url:path,
    headers:{"x-test-actor":actor,origin:"https://luemi.test"},
    ...(payload===undefined?{}:{payload})});
@@ -188,6 +188,27 @@ test("two authenticated actors create one durable conversation and revoke it on 
 
   result=await inject(B,"POST","/api/v4/chats/"+conversationId+"/read",{messageId:sent.json.message.id});
   assert.equal(result.status,200,JSON.stringify(result));
+  const readAt=result.json.readAt;
+  assert.ok(Date.parse(readAt)>0);
+  const readAgain=await inject(B,"POST","/api/v4/chats/"+conversationId+"/read",{messageId:sent.json.message.id});
+  assert.equal(readAgain.json.readAt,readAt,"repeat polling preserves the first receipt");
+  const reactionPath=messagePath+"/"+sent.json.message.id+"/reaction";
+  assert.equal((await inject(C,"PUT",reactionPath,{emoji:"❤️"})).status,404);
+  assert.equal((await inject(B,"PUT",reactionPath,{emoji:"unknown"})).status,422);
+  assert.equal((await inject(B,"PUT",reactionPath,{emoji:"❤️"})).status,200);
+  assert.equal((await inject(B,"POST","/api/v4/chats/presence",{})).status,200);
+  const engaged=await inject(A,"GET",messagePath);
+  const engagedMessage=engaged.json.messages.find((m:{id:string})=>m.id===sent.json.message.id);
+  assert.equal(engagedMessage.readAt,readAt);
+  assert.deepEqual(engagedMessage.reactions,[{actorId:B,emoji:"❤️"}]);
+  assert.ok(Date.parse(engaged.json.peerLastSeenAt)>0);
+  const quoted=await inject(B,"POST",messagePath,{
+   clientId:"3d1419bf-2850-47c0-87fe-ccae12fadb70",body:"quoted reply",replyToId:sent.json.message.id});
+  assert.equal(quoted.status,200,JSON.stringify(quoted));
+  assert.equal(quoted.json.message.replyTo.body,"hello real chat");
+  assert.equal((await inject(B,"POST",messagePath+"/visibility",{
+   messageIds:[quoted.json.message.id,"00000000-0000-4000-8000-000000000000"],scope:"everyone"})).status,404);
+  assert.ok((await inject(A,"GET",messagePath)).json.messages.some((m:{id:string})=>m.id===quoted.json.message.id));
   result=await inject(C,"POST",messagePath,{
    clientId:"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",body:"stolen"});
   assert.equal(result.status,404);
@@ -217,6 +238,10 @@ test("two authenticated actors create one durable conversation and revoke it on 
    assert.equal(result.status,200);
    assert.ok(!result.json.messages.some((m:{id:string})=>m.id===sent.json.message.id),"globally hidden for each");
   }
+  const hiddenQuote=(await inject(A,"GET",messagePath)).json.messages.find((m:{id:string})=>m.id===quoted.json.message.id);
+  assert.equal(hiddenQuote.replyTo,null,"hidden content is omitted from quote previews");
+  assert.equal((await inject(B,"POST",messagePath+"/visibility",{
+   messageIds:[quoted.json.message.id],scope:"everyone"})).status,200);
   const afterGlobalHide=await inject(A,"GET",exportPath);
   assert.equal(afterGlobalHide.status,200);
   assert.ok(!afterGlobalHide.json.messages.some((m:{id:string})=>m.id===sent.json.message.id),

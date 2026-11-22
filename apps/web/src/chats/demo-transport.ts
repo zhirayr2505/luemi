@@ -38,11 +38,15 @@ export function createDemoChatTransport({interactive=false}:{interactive?:boolea
   const now=Date.now();
   while(replies[0]&&replies[0].after<=now){
    const reply=replies.shift()!;
-   if(!globalHidden.has(reply.sourceId))appendPeer(reply.body,new Date(reply.after).toISOString());
+   const source=messages.find(message=>message.id===reply.sourceId);
+   if(source&&!globalHidden.has(source.id)&&Date.parse(source.createdAt)>globalClear){
+    source.readAt??=new Date(reply.after-450).toISOString();
+    appendPeer(reply.body,new Date(reply.after).toISOString());
+   }
   }
  };
  const localHidden=new Set<string>(),globalHidden=new Set<string>();
- let localClear=0,globalClear=0;
+ let localClear=0,globalClear=0,visibilityRevision=0;
  const visible=()=>{
   flushReplies();
   return messages.filter(m=>!localHidden.has(m.id)&&!globalHidden.has(m.id)&&
@@ -53,16 +57,23 @@ export function createDemoChatTransport({interactive=false}:{interactive?:boolea
  const conversation=():ChatWireConversation=>({id:CHAT,matchId:"44444444-4444-4444-8444-444444444444",peerId:PEER,peerProfileId:"55555555-5555-4555-8555-555555555555",peerName:"Алина",peerPhotoUrl:null,lastMessage:[...visible()].reverse().find(m=>!m.deletedAt)?.body??null,lastActivityAt:visible().at(-1)?.createdAt??new Date().toISOString(),unreadCount:visible().filter(m=>m.senderId===PEER&&!m.readAt).length,access:"active"});
  const transport:ChatTransport={
   async me(signal){await pause(signal);return {actorId:SELF};},async list(signal){await pause(signal);return {conversations:(localClear||globalClear)&&visible().length===0?[]:[conversation()]};},
-  async messages(_conversation,before,signal){await pause(signal);const items=visible();const end=before?Math.max(0,items.findIndex(m=>m.id===before)):items.length;const start=Math.max(0,end-20);return {messages:items.slice(start,end),nextCursor:start>0?items[start].id:null,typing:interactive&&replies.length>0};},
-  async send(_conversation,body,clientId,mediaIds=[],signal){await pause(signal);const found=messages.find(m=>m.clientId===clientId);if(found){if(found.body!==body)throw new ChatTransportError(409,"idempotency_conflict");return {message:found};}const created:ChatWireMessage={id:crypto.randomUUID(),conversationId:CHAT,senderId:SELF,clientId,body,createdAt:new Date().toISOString(),editedAt:null,deletedAt:null,deliveredAt:new Date().toISOString(),readAt:null,media:mediaIds.map(id=>media.get(id)).filter((x):x is ChatWireMedia=>!!x)};messages.push(created);
+  async messages(_conversation,before,signal){await pause(signal);const items=visible();const end=before?Math.max(0,items.findIndex(m=>m.id===before)):items.length;const start=Math.max(0,end-20);const visibleIds=new Set(items.map(m=>m.id));return {messages:items.slice(start,end).map(m=>({...m,
+   replyTo:m.replyTo&&visibleIds.has(m.replyTo.id)?m.replyTo:null})),nextCursor:start>0?items[start].id:null,
+   typing:interactive&&replies.length>0,visibilityRevision:String(visibilityRevision),peerLastSeenAt:interactive?new Date().toISOString():null};},
+  async send(_conversation,body,clientId,mediaIds=[],signal,replyToId){await pause(signal);const found=messages.find(m=>m.clientId===clientId);if(found){if(found.body!==body)throw new ChatTransportError(409,"idempotency_conflict");return {message:found};}const replied=visible().find(m=>m.id===replyToId);if(replyToId&&!replied)throw new ChatTransportError(404,"invalid_reply");const created:ChatWireMessage={id:crypto.randomUUID(),conversationId:CHAT,senderId:SELF,clientId,body,createdAt:new Date().toISOString(),editedAt:null,deletedAt:null,deliveredAt:new Date().toISOString(),readAt:null,replyTo:replied?{id:replied.id,senderId:replied.senderId,body:replied.body||"Фото"}:null,media:mediaIds.map(id=>media.get(id)).filter((x):x is ChatWireMedia=>!!x)};messages.push(created);
    if(interactive){
     const after=Math.max(Date.now()+1450,(replies.at(-1)?.after??0)+900);
     replies.push({after,sourceId:created.id,body:replyTo(body,replyIndex++)});
    }
    return {message:created};},
+  async setReaction(_conversation,id,emoji){await pause();const item=visible().find(m=>m.id===id);if(!item)throw new ChatTransportError(404,"not_found");
+   item.reactions=[...(item.reactions??[]).filter(reaction=>reaction.actorId!==SELF),...(emoji?[{actorId:SELF,emoji}]:[])];return {emoji};},
+  async removeMany(_conversation,ids,scope){await pause();if(!ids.every(id=>messages.some(m=>m.id===id)))throw new ChatTransportError(404,"not_found");
+   ids.forEach(id=>(scope==="me"?localHidden:globalHidden).add(id));visibilityRevision++;return {removed:true};},
+  async presence(){return {ok:true};},
   async edit(_conversation,id,body,signal){await pause(signal);const item=messages.find(m=>m.id===id&&m.senderId===SELF&&!m.deletedAt);if(!item)throw new ChatTransportError(404,"not_found");item.body=body;item.editedAt=new Date().toISOString();return {message:{...item}};},
-  async remove(_conversation,id,scope,signal){await pause(signal);const item=messages.find(m=>m.id===id);if(!item)throw new ChatTransportError(404,"not_found");(scope==="me"?localHidden:globalHidden).add(id);return {removed:true,scope,messageId:id};},
-  async clear(_conversation,scope,signal){await pause(signal);if(scope==="me")localClear=Date.now();else globalClear=Date.now();return {removed:true,scope,conversationId:CHAT};},
+  async remove(_conversation,id,scope,signal){await pause(signal);const item=messages.find(m=>m.id===id);if(!item)throw new ChatTransportError(404,"not_found");(scope==="me"?localHidden:globalHidden).add(id);visibilityRevision++;return {removed:true,scope,messageId:id};},
+  async clear(_conversation,scope,signal){await pause(signal);if(scope==="me")localClear=Date.now();else globalClear=Date.now();visibilityRevision++;return {removed:true,scope,conversationId:CHAT};},
   async exportPage(_conversation,before,signal){await pause(signal);const items=visible();const end=before?Math.max(0,items.findIndex(m=>m.id===before)):items.length;const start=Math.max(0,end-100);return {format:"luemi-chat-export-v1" as const,conversationId:CHAT,generatedAt:new Date().toISOString(),notice:"Только доступная история",messages:items.slice(start,end).map(m=>({id:m.id,own:m.senderId===SELF,body:m.body,createdAt:m.createdAt,editedAt:m.editedAt})),nextCursor:start>0?items[start].id:null};},
   async markRead(_conversation,id,signal){await pause(signal);const at=new Date().toISOString();const target=messages.find(message=>message.id===id);
    if(target)for(const message of messages)if(message.senderId===PEER&&message.createdAt<=target.createdAt&&!message.readAt)message.readAt=at;return {read:true,readAt:at};},

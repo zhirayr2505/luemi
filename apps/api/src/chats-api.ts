@@ -1,7 +1,7 @@
 import {Pool} from "pg";
 import type {PoolClient} from "pg";
 import type {FastifyInstance,FastifyReply,FastifyRequest} from "fastify";
-import type {ChatMessageContract,ChatMediaContract} from "@luemi/contracts";
+import {chatReactionEmoji,type ChatMessageContract,type ChatMediaContract,type ChatReactionEmoji} from "@luemi/contracts";
 import {chatObjectKey,validateChatImageBytes,type ChatMediaStorage} from "./features/chats/chat-media.js";
 
 export interface ChatOptions {enabled:true;databaseUrl:string;namespace:string;mediaStore?:ChatMediaStorage;}
@@ -111,7 +111,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
   if(r.rowCount!==1)deny(404,"not_found");
  }
  // SQL predicate is built only with hard-coded aliases, never user input.
- function visibleMessage(alias:"msg"|"m", actorParameter:"$1"|"$3"|"$4"="$1"):string{
+ function visibleMessage(alias:"msg"|"m", actorParameter:"$1"|"$2"|"$3"|"$4"="$1"):string{
   return `NOT EXISTS (
     SELECT 1 FROM luemi_chats.message_visibility hidden
     WHERE hidden.message_id=${alias}.id AND hidden.environment=${alias}.environment
@@ -124,8 +124,8 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
       AND (cleared.scope='everyone' OR cleared.actor_id=${actorParameter})
    ),'-infinity'::timestamptz)`;
  }
- type MessageRow=Omit<ChatMessageContract,"media">;
- async function hydrate(db:PoolClient,rows:MessageRow[]):Promise<ChatMessageContract[]>{
+ type MessageRow=Omit<ChatMessageContract,"media">&{replyId?:string|null};
+ async function hydrate(db:PoolClient,rows:MessageRow[],actor:string):Promise<ChatMessageContract[]>{
   if(!rows.length)return [];
   const ids=rows.map(row=>row.id);
   const found=await db.query<{id:string;message_id:string;mime_type:ChatMediaContract["mimeType"];byte_size:number;object_path:string}>(`SELECT media.id,media.message_id,media.mime_type,media.byte_size,media.object_path FROM luemi_chats.media media JOIN luemi_chats.messages msg ON msg.id=media.message_id AND msg.conversation_id=media.conversation_id AND msg.environment=media.environment WHERE media.message_id=ANY($1::uuid[]) AND msg.deleted_at IS NULL ORDER BY media.created_at,media.id`,[ids]);
@@ -136,7 +136,29 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    const value:ChatMediaContract={id:item.id,messageId:item.message_id,mimeType:item.mime_type,byteSize:item.byte_size,width:null,height:null,state:url?"ready":"failed",url};
    grouped.set(item.message_id,[...(grouped.get(item.message_id)??[]),value]);
   }
-  return rows.map(row=>({...row,media:grouped.get(row.id)??[]}));
+  const interactions=await db.query<{id:string;replyTo:ChatMessageContract["replyTo"];reactions:ChatMessageContract["reactions"];readAt:string|null}>(`
+   SELECT msg.id,
+    CASE WHEN m.id IS NOT NULL THEN jsonb_build_object('id',m.id,'senderId',m.sender_id,
+     'body',coalesce(nullif(left(m.body,160),''),'Фото')) END AS "replyTo",
+    marks.reactions,
+    CASE WHEN msg.sender_id=$2 THEN marks.read_at END AS "readAt"
+   FROM luemi_chats.messages msg
+   LEFT JOIN luemi_chats.messages m ON m.id=msg.reply_to_id
+    AND m.conversation_id=msg.conversation_id AND m.environment=msg.environment
+    AND m.deleted_at IS NULL AND ${visibleMessage("m","$2")}
+   LEFT JOIN LATERAL (
+    SELECT jsonb_agg(jsonb_build_object('actorId',mark.actor_id,'emoji',mark.emoji) ORDER BY mark.actor_id)
+     FILTER (WHERE mark.emoji IS NOT NULL) AS reactions,
+     min(mark.read_at) FILTER (WHERE mark.actor_id<>msg.sender_id) AS read_at
+    FROM luemi_chats.message_marks mark WHERE mark.message_id=msg.id
+   ) marks ON true
+   WHERE msg.id=ANY($1::uuid[])`,[ids,actor]);
+  const extra=new Map(interactions.rows.map(row=>[row.id,row]));
+  return rows.map(({replyId:_replyId,...row})=>{
+   const value=extra.get(row.id);
+   return {...row,replyTo:value?.replyTo??null,reactions:value?.reactions??[],
+    readAt:value?.readAt??null,media:grouped.get(row.id)??[]};
+  });
  }
  app.get("/api/v4/chats/me",{preHandler:auth.read},async(req,reply)=>{
   if(reply.sent||!req.authActor)return reply;
@@ -213,9 +235,16 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     SELECT created_at FROM luemi_chats.conversation_clear_events
      WHERE conversation_id=$1 AND environment=$2 AND (scope='everyone' OR actor_id=$3)
    ) visibility_changes`,[req.params.id,options.namespace,actor]);
-  return {messages:await hydrate(db,page.reverse()),nextCursor,visibilityRevision:v.rows[0]?.revision??null};
+  const presence=req.query.before?null:await db.query<{last_seen_at:string}>(`
+   SELECT presence.last_seen_at FROM luemi_chats.conversations c
+   JOIN luemi_chats.matches pair ON pair.id=c.private_match_id AND pair.environment=c.environment
+   JOIN luemi_chats.presence presence ON presence.environment=c.environment
+    AND presence.actor_id=CASE WHEN pair.actor_low=$3 THEN pair.actor_high ELSE pair.actor_low END
+   WHERE c.id=$1 AND c.environment=$2`,[req.params.id,options.namespace,actor]);
+  return {messages:await hydrate(db,page.reverse(),actor),nextCursor,
+   visibilityRevision:v.rows[0]?.revision??null,peerLastSeenAt:presence?.rows[0]?.last_seen_at??null};
  }));
- app.post<{Params:{id:string};Body:{body?:unknown;clientId?:unknown;mediaIds?:unknown}}>(
+ app.post<{Params:{id:string};Body:{body?:unknown;clientId?:unknown;mediaIds?:unknown;replyToId?:unknown}}>(
  "/api/v4/chats/:id/messages",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
   if(!validId(req.params.id))deny(404,"not_found");
   const mediaIds=Array.isArray(req.body?.mediaIds)&&req.body.mediaIds.length<=1&&req.body.mediaIds.every(validId)?req.body.mediaIds:[];
@@ -226,41 +255,79 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    "SELECT luemi_chats.live_match($1,$2,$3) AS allowed",
    [req.params.id,actor,options.namespace]);
   if(canWrite.rows[0]?.allowed!==true)deny(403,"conversation_read_only");
-  const q=await db.query(`INSERT INTO luemi_chats.messages(conversation_id,sender_id,environment,client_id,body)
-   VALUES($1,$2,$3,$4,$5)
+  const replyId=req.body.replyToId??null;
+  if(replyId!==null&&!validId(replyId))deny(422,"invalid_reply");
+  const q=await db.query(`INSERT INTO luemi_chats.messages(conversation_id,sender_id,environment,client_id,body,reply_to_id)
+   SELECT $1,$2,$3,$4,$5,$6::uuid
+   WHERE $6::uuid IS NULL OR EXISTS (
+    SELECT 1 FROM luemi_chats.messages WHERE id=$6 AND conversation_id=$1 AND environment=$3
+     AND luemi_chats.visible_interaction_message(id))
    ON CONFLICT(conversation_id,sender_id,client_id) DO NOTHING RETURNING
    id,conversation_id AS "conversationId",sender_id AS "senderId",client_id AS "clientId",body,
    created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt",created_at AS "deliveredAt",NULL::timestamptz AS "readAt"`,
-   [req.params.id,actor,options.namespace,req.body.clientId,validBody(req.body?.body)?req.body.body:""]);
+   [req.params.id,actor,options.namespace,req.body.clientId,validBody(req.body?.body)?req.body.body:"",replyId]);
   if(q.rowCount!==1){
    const existing=await db.query<MessageRow>(`SELECT id,conversation_id AS "conversationId",sender_id AS "senderId",client_id AS "clientId",body,
-   created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt",created_at AS "deliveredAt",NULL::timestamptz AS "readAt"
-   FROM luemi_chats.messages WHERE conversation_id=$1 AND sender_id=$2 AND client_id=$3`,
+   created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt",created_at AS "deliveredAt",NULL::timestamptz AS "readAt",reply_to_id AS "replyId"
+   FROM luemi_chats.messages m WHERE conversation_id=$1 AND sender_id=$2 AND client_id=$3 AND ${visibleMessage("m","$2")}`,
    [req.params.id,actor,req.body.clientId]);
-   if(existing.rowCount!==1||existing.rows[0].body!==(validBody(req.body?.body)?req.body.body:"")||existing.rows[0].deletedAt)deny(409,"idempotency_conflict");
-   return {message:(await hydrate(db,existing.rows))[0]};
+   if(existing.rowCount!==1&&replyId!==null)deny(404,"invalid_reply");
+   if(existing.rowCount!==1||existing.rows[0].replyId!==replyId||existing.rows[0].body!==(validBody(req.body?.body)?req.body.body:"")||existing.rows[0].deletedAt)deny(409,"idempotency_conflict");
+   return {message:(await hydrate(db,existing.rows,actor))[0]};
   }
   if(mediaIds.length){const attached=await db.query(`UPDATE luemi_chats.media SET message_id=$1 WHERE id=ANY($2::uuid[]) AND conversation_id=$3 AND owner_id=$4 AND message_id IS NULL RETURNING id`,[q.rows[0].id,mediaIds,req.params.id,actor]);if(attached.rowCount!==mediaIds.length)deny(409,"media_conflict");}
   await db.query(`UPDATE luemi_chats.matches pair SET started_at=coalesce(pair.started_at,$2)
    FROM luemi_chats.conversations conversation
    WHERE conversation.id=$1 AND conversation.private_match_id=pair.id
     AND pair.environment=$3 AND pair.status='active'`,[req.params.id,q.rows[0].createdAt,options.namespace]);
-  return {message:(await hydrate(db,q.rows as MessageRow[]))[0]};
+  return {message:(await hydrate(db,q.rows as MessageRow[],actor))[0]};
  }));
  app.post<{Params:{id:string};Body:{messageId?:unknown}}>(
  "/api/v4/chats/:id/read",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
   if(!validId(req.params.id)||!validId(req.body?.messageId))deny(422,"invalid_message");
   await member(db,req.params.id,actor);
-  const q=await db.query<{created_at:string}>(`SELECT created_at FROM luemi_chats.messages
-   WHERE conversation_id=$1 AND id=$2 AND environment=$3`,
-   [req.params.id,req.body.messageId,options.namespace]);
+  const q=await db.query<{created_at:string}>(`SELECT created_at::text FROM luemi_chats.messages
+   WHERE conversation_id=$1 AND id=$2 AND environment=$3 AND sender_id<>$4
+    AND luemi_chats.visible_interaction_message(id)`,
+   [req.params.id,req.body.messageId,options.namespace,actor]);
   if(q.rowCount!==1)deny(404,"not_found");
   const updated=await db.query(`UPDATE luemi_chats.members
    SET last_read_at=greatest(coalesce(last_read_at,'epoch'::timestamptz),$4::timestamptz)
    WHERE conversation_id=$1 AND actor_id=$2 AND environment=$3 RETURNING actor_id`,
    [req.params.id,actor,options.namespace,q.rows[0].created_at]);
   if(updated.rowCount!==1)deny(404,"not_found");
-  return {read:true as const,readAt:q.rows[0].created_at};
+  await db.query(`INSERT INTO luemi_chats.message_marks(message_id,actor_id,read_at)
+   SELECT m.id,$2,now() FROM luemi_chats.messages m
+   WHERE m.conversation_id=$1 AND m.environment=$3 AND m.sender_id<>$2 AND (m.created_at,m.id)<=($4::timestamptz,$5::uuid)
+    AND m.deleted_at IS NULL AND ${visibleMessage("m","$2")}
+    AND NOT EXISTS (SELECT 1 FROM luemi_chats.message_marks mark
+     WHERE mark.message_id=m.id AND mark.actor_id=$2 AND mark.read_at IS NOT NULL)
+   ON CONFLICT(message_id,actor_id) DO UPDATE SET read_at=excluded.read_at
+    WHERE message_marks.read_at IS NULL`,[req.params.id,actor,options.namespace,q.rows[0].created_at,req.body.messageId]);
+  const receipt=await db.query<{read_at:string}>(
+   "SELECT read_at FROM luemi_chats.message_marks WHERE message_id=$1 AND actor_id=$2",[req.body.messageId,actor]);
+  if(receipt.rowCount!==1)deny(404,"not_found");
+  return {read:true as const,readAt:receipt.rows[0].read_at};
+ }));
+ app.post("/api/v4/chats/presence",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
+  await db.query(`INSERT INTO luemi_chats.presence(environment,actor_id,last_seen_at)
+    VALUES($1,$2,now()) ON CONFLICT(environment,actor_id) DO UPDATE SET last_seen_at=excluded.last_seen_at
+    WHERE presence.last_seen_at<now()-interval '12 seconds'`,[options.namespace,actor]);
+  return {ok:true as const};
+ }));
+ app.put<{Params:{id:string;messageId:string};Body:{emoji?:unknown}}>(
+ "/api/v4/chats/:id/messages/:messageId/reaction",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
+  if(!validId(req.params.id)||!validId(req.params.messageId))deny(404,"not_found");
+  const emoji=req.body?.emoji;
+  if(emoji!==null&&!chatReactionEmoji.includes(emoji as ChatReactionEmoji))deny(422,"invalid_reaction");
+  await member(db,req.params.id,actor);
+  const result=await db.query(`INSERT INTO luemi_chats.message_marks(message_id,actor_id,emoji)
+   SELECT id,$2,$3 FROM luemi_chats.messages
+   WHERE id=$1 AND conversation_id=$4 AND environment=$5 AND luemi_chats.visible_interaction_message(id)
+   ON CONFLICT(message_id,actor_id) DO UPDATE SET emoji=excluded.emoji RETURNING message_id`,
+   [req.params.messageId,actor,emoji,req.params.id,options.namespace]);
+  if(result.rowCount!==1)deny(404,"not_found");
+  return {emoji};
  }));
  app.patch<{Params:{id:string;messageId:string};Body:{body?:unknown}}>(
  "/api/v4/chats/:id/messages/:messageId",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
@@ -273,7 +340,7 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
    created_at AS "createdAt",edited_at AS "editedAt",deleted_at AS "deletedAt",created_at AS "deliveredAt",NULL::timestamptz AS "readAt"`,
    [req.params.id,req.params.messageId,actor,req.body.body]);
   if(q.rowCount!==1)deny(404,"not_found");
-  return {message:(await hydrate(db,q.rows))[0]};
+  return {message:(await hydrate(db,q.rows,actor))[0]};
  }));
 
  // Display-level erasure never destroys original payloads. A separate lifecycle
@@ -325,6 +392,23 @@ export function registerChats(app:FastifyInstance,guard:Guard|undefined,cfg:Chat
     VALUES($1,$2,$3,$4,$5) ON CONFLICT(message_id,actor_id,scope) DO NOTHING`,
    [req.params.messageId,req.params.id,options.namespace,actor,req.body.scope]);
   return {removed:true as const,scope:req.body.scope,messageId:req.params.messageId};
+ }));
+ app.post<{Params:{id:string};Body:{scope?:unknown;messageIds?:unknown}}>(
+ "/api/v4/chats/:id/messages/visibility",{preHandler:auth.mutation},(req,reply)=>scoped(req,reply,async(db,actor)=>{
+  if(!validId(req.params.id))deny(404,"not_found");
+  const {scope,messageIds}=req.body??{};
+  if(scope!=="me"&&scope!=="everyone")deny(422,"invalid_scope");
+  if(!Array.isArray(messageIds)||!messageIds.length||messageIds.length>100||!messageIds.every(validId))
+   return deny(422,"invalid_message");
+  await member(db,req.params.id,actor);
+  const ids=[...new Set(messageIds)];
+  const found=await db.query("SELECT id FROM luemi_chats.messages WHERE id=ANY($1::uuid[]) AND conversation_id=$2 AND environment=$3",
+   [ids,req.params.id,options.namespace]);
+  if(found.rowCount!==ids.length)deny(404,"not_found");
+  await db.query(`INSERT INTO luemi_chats.message_visibility(message_id,conversation_id,environment,actor_id,scope)
+   SELECT unnest($1::uuid[]),$2,$3,$4,$5 ON CONFLICT(message_id,actor_id,scope) DO NOTHING`,
+   [ids,req.params.id,options.namespace,actor,scope]);
+  return {removed:true as const,scope,messageIds:ids};
  }));
  app.post<{Params:{id:string};Body:{scope?:unknown}}>(
  "/api/v4/chats/:id/clear",{preHandler:auth.mutation},

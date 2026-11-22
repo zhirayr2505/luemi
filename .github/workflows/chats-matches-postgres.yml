@@ -67,6 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f db/chats-v3-tombstone-reader.sql
+          psql -v ON_ERROR_STOP=1 -f db/chats-v5-interactions.sql
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -77,6 +78,7 @@ jobs:
           set -euo pipefail
           npm install --global npm@10.9.2 --no-audit --no-fund
           npm ci --no-audit --no-fund
+          npm run build -w @luemi/contracts
       - name: Provision separate synthetic matching and chat HTTP login roles
         run: |
           set -euo pipefail

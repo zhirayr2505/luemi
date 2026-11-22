@@ -9,6 +9,7 @@ const mockMatches=page=>page.route("**/api/v4/matches/new",route=>
 const url=process.env.CHATS_DEMO_URL??"http://127.0.0.1:5173/chats-demo.html";
 const checkLiveInbox=async()=>{
  const page=await browser.newPage({viewport:{width:393,height:852},isMobile:true,hasTouch:true});
+ page.setDefaultTimeout(8000);
  const calls=[];
  const actorId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
  let qaAllowed=false;
@@ -54,16 +55,83 @@ const checkLiveInbox=async()=>{
  await demo.tap();
  const before=calls.filter(path=>path.startsWith("/api/v4/chats/")).length;
  await page.locator(".lc-thread-route").getByText("Алина",{exact:true}).waitFor();
+ await page.locator(".lc-chat-header").getByText("В сети",{exact:true}).waitFor();
+ const first=page.locator(".lc-msg-line .lc-bubble").first();
+ await first.tap();
+ const menu=page.getByRole("dialog",{name:"Действия с сообщением"});
+ await menu.waitFor();
+ assert.equal(await menu.locator(".lc-emoji-bar button").count(),8);
+ const bubbleBox=await first.boundingBox(),menuBox=await menu.boundingBox();
+ assert(bubbleBox&&menuBox&&Math.abs(menuBox.y-(bubbleBox.y-menuBox.height))<24,"the menu anchors next to the message");
+ await menu.getByRole("button",{name:"Сердце",exact:true}).tap();
+ await first.locator(".lc-message-reactions").getByText("❤️",{exact:true}).waitFor();
+ await first.dblclick({position:{x:30,y:12}});
+ await first.locator(".lc-message-reactions").waitFor({state:"hidden"});
+ assert.equal(await menu.count(),0,"double tap skips the action menu");
+ const touch=await page.context().newCDPSession(page);
+ const point=await first.boundingBox();
+ assert(point);
+ const start={x:Math.round(point.x+point.width/2),y:Math.round(point.y+point.height/2)};
+ const touchAt=(type,point)=>touch.send("Input.dispatchTouchEvent",{type,touchPoints:point?[point]:[]});
+ await touchAt("touchStart",start);
+ await touchAt("touchMove",{x:start.x-26,y:start.y});
+ await touchAt("touchMove",{x:start.x-74,y:start.y});
+ await touchAt("touchEnd");
+ await page.locator(".lc-reply-preview").getByText("Ответ · Алина",{exact:true}).waitFor();
  await page.getByLabel("Сообщение").fill("Привет! Как дела?");
  await page.getByLabel("Отправить").tap();
- await page.getByText("Алина печатает…",{exact:true}).waitFor({timeout:5000});
+ const answered=page.locator(".lc-own .lc-bubble").filter({hasText:"Привет! Как дела?"});
+ await answered.locator("blockquote").getByText(/Привет! Я Алина/).waitFor();
+ const keepsFocus=await page.getByLabel("Сообщение").evaluate(node=>document.activeElement===node);
+ assert(keepsFocus,"the send button keeps the composer focused");
  const incoming=page.locator(".lc-msg-line:not(.lc-own)");
- await incoming.getByText(/Привет! У меня хорошо/).waitFor({timeout:6000});
+ await incoming.getByText(/Привет! У меня хорошо/).waitFor({timeout:8000});
+ assert.equal(await answered.count(),1,"touch activation never duplicates the message");
+ await answered.tap();
+ await menu.getByText("Прочитано",{exact:true}).waitFor();
+ assert.ok(await menu.locator("time[datetime]").getAttribute("datetime"));
+ await page.getByRole("button",{name:"Закрыть меню сообщения"}).tap({position:{x:5,y:40}});
  await page.getByLabel("Сообщение").fill("Хочешь кофе?");
  await page.getByLabel("Отправить").tap();
  await incoming.getByText(/Я за кофе/).waitFor({timeout:6000});
  assert.equal(calls.filter(path=>path.startsWith("/api/v4/chats/")).length,before,"the demo never uses real messages or read receipts");
- await page.locator(".lc-thread-route").getByRole("button",{name:"Назад",exact:true}).tap();
+ const last=page.locator(".lc-msg-line:not(.lc-own) .lc-bubble").last();
+ const lastBox=await last.boundingBox();
+ assert(lastBox);
+ await touchAt("touchStart",{x:lastBox.x+16,y:lastBox.y+12});
+ await page.getByText("Выбрано: 1",{exact:true}).waitFor();
+ await touchAt("touchEnd");
+ await page.locator(".lc-select-mark[aria-pressed=false]").last().tap();
+ await page.getByText("Выбрано: 2",{exact:true}).waitFor();
+ await page.getByRole("button",{name:"Удалить выбранные"}).tap();
+ const confirmation=page.getByRole("alertdialog");
+ await confirmation.getByText("У меня и собеседника").tap();
+ await confirmation.getByRole("button",{name:"Удалить",exact:true}).tap();
+ await confirmation.waitFor({state:"hidden"});
+ const historyBox=await page.locator(".lc-history").boundingBox();
+ assert(historyBox);
+ const edge={x:22,y:Math.round(historyBox.y+50)};
+ await touchAt("touchStart",edge);
+ await touchAt("touchMove",{x:edge.x+24,y:edge.y});
+ await touchAt("touchMove",{x:edge.x+82,y:edge.y});
+ await page.waitForFunction(()=>parseFloat(document.querySelector(".lc-thread-route")
+  ?.style.getPropertyValue("--lc-back-drag")||"0")>=72);
+ await touchAt("touchMove",{x:edge.x+172,y:edge.y});
+ await touchAt("touchEnd");
+ await inbox.getByRole("heading",{name:"Пока нет переписок",exact:true}).waitFor();
+ await open();
+ await demo.waitFor();
+ await page.evaluate(()=>{
+  window.Telegram={WebApp:{initData:"browser-native-back",BackButton:{show(){},hide(){},onClick(){},offClick(){}}}};
+  document.querySelector(".luemi-shell").style.setProperty("--viewport-safe-top","68px");
+ });
+ await demo.tap();
+ const nativeThread=page.locator(".lc-thread-route[data-native-back]");
+ await nativeThread.waitFor();
+ assert.equal(await nativeThread.getByRole("button",{name:"Назад",exact:true}).count(),0);
+ const nativeHeader=await nativeThread.locator(".lc-chat-header").boundingBox();
+ assert(nativeHeader&&nativeHeader.y>=77.5,"Telegram navigation clears the header "+JSON.stringify(nativeHeader)+" "+await nativeThread.locator(".lc-chat-header").evaluate(node=>getComputedStyle(node).marginTop));
+ await page.keyboard.press("Escape");
  await inbox.getByRole("heading",{name:"Пока нет переписок",exact:true}).waitFor();
  await page.close();
 };
@@ -91,6 +159,9 @@ try{
   page.waitForFunction(()=>[...document.querySelectorAll(".lc-own .lc-bubble")].some(bubble=>
    bubble.textContent.includes("Browser smoke 💜")&&bubble.getAnimations().some(animation=>
     animation.effect?.getKeyframes().some(frame=>Number(frame.opacity)===0)))),
+  page.waitForFunction(()=>[...document.querySelectorAll(".lc-msg-line")].some(row=>
+   row.getAnimations().some(animation=>animation.effect?.getKeyframes().some(frame=>
+    typeof frame.translate==="string"&&frame.translate!=="0 0")))),
   page.getByLabel("Отправить").tap()
  ]);
  const sent=thread.locator(".lc-msg-line").filter({hasText:"Browser smoke 💜"});
@@ -138,5 +209,5 @@ try{
  const still=reduced.locator(".lc-msg-line").filter({hasText:"Reduced motion"});
  await still.waitFor();
  assert.equal(await still.locator(".lc-bubble").evaluate(node=>node.getAnimations().length),0);
- console.log("LUEMI chat browser PASS integrated inbox, owner-only demo with replies, artwork, send/ACK, history and reduced motion");
+ console.log("LUEMI chat browser PASS integrated inbox, owner-only demo with replies, native back layout, replies, anchored reactions, selection, send/ACK, swipe and reduced motion");
 }finally{await browser.close();}

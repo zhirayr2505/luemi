@@ -26,6 +26,7 @@ import {VisitorProfileRoute} from "./VisitorProfileRoute";
 import {ProfileReactionNotices} from "./ProfileReactionNotices";
 import {isProfileLike,profileReactionKey,useProfileReactionQueue} from "./use-profile-reaction-queue";
 import {RealChats} from "../chats/RealChats";
+import {createChatTransport} from "../chats/chat-transport";
 import {demoGalleryReaction,LikesGallery} from "./LikesGallery";
 import {LuemiAvatar,LuemiBottomNavigation,LuemiEmptyState,LuemiSkeleton} from "../ui/LuemiV5";
 import {NavigationDiscover,NavigationLikes,NavigationChats,NavigationProfile} from "../ui/navigation-icons";
@@ -449,6 +450,19 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  const autoDemoShown=useRef(false);
  const [qaAllowed,setQaAllowed]=useState(false);
  const [demoMode,setDemoMode]=useState(false);
+ useEffect(()=>{
+  const csrf=geoCsrf();
+  if(!csrf||!window.Telegram?.WebApp?.initData||import.meta.env.VITE_LUEMI_REAL_CHATS!=="1")return;
+  const controller=new AbortController();
+  const transport=createChatTransport(csrf);
+  const heartbeat=()=>{
+   if(document.visibilityState==="visible")void transport.presence(controller.signal).catch(()=>{});
+  };
+  heartbeat();
+  const timer=window.setInterval(heartbeat,18000);
+  document.addEventListener("visibilitychange",heartbeat);
+  return()=>{controller.abort();window.clearInterval(timer);document.removeEventListener("visibilitychange",heartbeat);};
+ },[]);
  useEffect(()=>{
   const csrf=geoCsrf();if(!csrf)return;
   const controller=new AbortController();
