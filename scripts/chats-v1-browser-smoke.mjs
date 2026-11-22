@@ -130,6 +130,7 @@ const checkLiveInbox=async()=>{
  await first.tap();
  const menu=page.getByRole("dialog",{name:"Действия с сообщением"});
  await menu.waitFor();
+ await page.waitForTimeout(215); // Capture the settled menu, not its entrance transition.
  await page.screenshot({path:"qa-artifacts/chat-premium/message-menu-393.png"});
  assert.equal(await menu.locator(".lc-emoji-bar button[data-emoji]").count(),6);
  const focused=page.locator(".lc-focus-bubble");
