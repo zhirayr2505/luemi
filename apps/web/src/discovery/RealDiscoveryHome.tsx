@@ -8,6 +8,7 @@ import {fromDemoPerson,type ProfileMasterData} from "./ProfileModel";
 import {FeedCard} from "./FeedCard";
 import {DemoFeedSandbox} from "./DemoFeedSandbox";
 import {selectionHaptic} from "../ui/haptic";
+import {useModalLayer} from "../ui/modal-layer";
 import {preloadFeedImage,preloadUpcomingFeedPhotos} from "./feed-image-preload";
 import {warmPublishedPagePhotos} from "../registration/recommendation-warmup";
 import {MotionController,type MotionToken} from "../ui/motion-controller";
@@ -46,6 +47,8 @@ import "./card-deck-edition.css";
 import "./photo-ambient-edition.css";
 // Approved photo-backed expanded profile, rounded SVG flags and soft-interest palette.
 import "./expanded-liquid-profile.css";
+// Paint-only modal layer; original photo and gesture engine are unchanged.
+import "./real-discovery-v10-modals.css";
 
 const DemoChatSurface=lazy(()=>import("../chats/DemoChatSurface"));
 const navigationItems=[
@@ -91,7 +94,7 @@ const toCard=(p:RealPublishedProfile):DemoPerson=>({
  distanceKm:p.distanceKm,publishedAt:p.publishedAt
 });
 
-function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onTryDemo,qaAllowed,onEmptyFeed,onSearchScopeChange,hiddenIds,onHide,onFirstScreenReady}:{
+function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,onEditLocation,onScrollTop,filters,onEditFilters,onTryDemo,qaAllowed,onEmptyFeed,onSearchScopeChange,hiddenIds,onHide,onFirstScreenReady,registerActionMenuBack}:{
  active:boolean;tab:BrowseTab;draft:RegistrationDraft;initialFeed?:PublishedFeedPage|null;
  onPerson:(p:RealPublishedProfile)=>void;onMatched:(person:RealPublishedProfile,matchId:string)=>void;
  saved:ReadonlySet<string>;onSave:(id:string)=>void;onEditLocation:()=>void;
@@ -99,7 +102,8 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  onEmptyFeed:()=>void;
  onSearchScopeChange:(scope:SearchScope)=>void;
  hiddenIds:ReadonlySet<string>;onHide:(id:string)=>void;
- onFirstScreenReady?:()=>void
+ onFirstScreenReady?:()=>void;
+ registerActionMenuBack?:(handler:(()=>void)|null)=>void;
 }){
  const [rows,setRows]=useState<RealPublishedProfile[]>([]);
  const rowsRef=useRef(rows);rowsRef.current=rows;
@@ -114,6 +118,15 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
  const [message,setMessage]=useState("");
  const [menu,setMenu]=useState<RealPublishedProfile|null>(null);
  const [reporting,setReporting]=useState(false),[reason,setReason]=useState<PublishedReportReason>("spam");
+ const actionMenuLayer=useRef<HTMLElement>(null);
+ const closeActionMenu=()=>{if(!busy){setMenu(null);setReporting(false);}};
+ useModalLayer(!!menu,actionMenuLayer,closeActionMenu);
+ useEffect(()=>{
+  if(!active||!menu)return;
+  const close=()=>{if(!busy){setMenu(null);setReporting(false);}};
+  registerActionMenuBack?.(close);
+  return()=>registerActionMenuBack?.(null);
+ },[active,menu,busy,registerActionMenuBack]);
  const [page,setPage]=useState(0);
  const [undoPage,setUndoPage]=useState<number|null>(null);
  const [leaving,setLeaving]=useState<string|null>(null);
@@ -427,9 +440,9 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
   {!!current&&cursor&&page>=visibleRows.length-1&&<button type="button"
    className="real-discovery-more" disabled={moreBusy} onClick={()=>{autoEmptyPages.current=0;setAutoLoadPaused(false);void more();}}>
    {moreBusy?"Загружаем…":"Загрузить ещё анкеты"}</button>}
-  {menu&&<div className="discovery-modal-backdrop real-discovery-modal" onClick={()=>{if(!busy){setMenu(null);setReporting(false);}}}>
-   <section className="real-discovery-modal-sheet" role="dialog" aria-modal="true" aria-label="Действия с анкетой"
-    onClick={event=>event.stopPropagation()}>
+  {menu&&<div className="discovery-modal-backdrop real-discovery-modal" onClick={closeActionMenu}>
+   <section ref={actionMenuLayer} tabIndex={-1} className="real-discovery-modal-sheet" role="dialog" aria-modal="true"
+    aria-label={reporting?"Пожаловаться на анкету":"Действия с анкетой"} onClick={event=>event.stopPropagation()}>
     <h2>{reporting?"Пожаловаться":"Действия с анкетой"}</h2>
     {!reporting?<><p>{menu.name}, {menu.age}</p>
       <button type="button" disabled={busy} onClick={()=>{onSave(menu.id);setMenu(null);}}>
@@ -444,7 +457,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
        <option value="minor_suspected">Возможно, нет 18 лет</option>
       </select></label>
       <button type="button" disabled={busy} onClick={()=>{void report();}}>Отправить жалобу</button></>}
-    <button type="button" disabled={busy} onClick={()=>{setMenu(null);setReporting(false);}}>Отмена</button>
+    <button type="button" className="real-discovery-modal-cancel" disabled={busy} onClick={closeActionMenu}>Отмена</button>
    </section>
   </div>}
  </div>;
@@ -543,6 +556,10 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   void getPublishedProfile(id,controller.signal).then(setPerson).catch(()=>{/* Likes screen keeps its retry state. */});
  },[]);
  const [accountOpen,setAccountOpen]=useState(false);
+ const accountDialogRef=useRef<HTMLElement>(null);
+ const matchDialogRef=useRef<HTMLElement>(null);
+ useModalLayer(accountOpen,accountDialogRef,()=>setAccountOpen(false));
+ useModalLayer(!!matched,matchDialogRef,()=>setMatched(null));
  const [chatThreadOpen,setChatThreadOpen]=useState(false);
  const [demoChatOpen,setDemoChatOpen]=useState(false);
  const closeDemoChat=useCallback(()=>setDemoChatOpen(false),[]);
@@ -597,6 +614,11 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  const scrollPositions=useRef({"for-you":0,nearby:0});
  const visitorBackRef=useRef<(()=>boolean)|null>(null),profileBackRef=useRef<(()=>boolean)|null>(null);
  const chatBackRef=useRef<(()=>void)|null>(null);
+ const [feedActionOpen,setFeedActionOpen]=useState(false);
+ const feedActionBackRef=useRef<(()=>void)|null>(null);
+ const registerFeedActionBack=useCallback((handler:(()=>void)|null)=>{
+  feedActionBackRef.current=handler;setFeedActionOpen(!!handler);
+ },[]);
  const registerVisitorBack=useCallback((fn:(()=>boolean)|null)=>{visitorBackRef.current=fn;},[]);
  const registerProfileBack=useCallback((fn:(()=>boolean)|null)=>{profileBackRef.current=fn;},[]);
  const registerChatBack=useCallback((fn:(()=>void)|null)=>{chatBackRef.current=fn;},[]);
@@ -879,6 +901,8 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  useEffect(()=>{if(mainTab!=="discover"||person||demoVisitor||accountOpen)suspendBrowse.current();},[mainTab,person,demoVisitor,accountOpen]);
  const backRef=useRef<()=>void>(()=>{});
  backRef.current=()=>{
+  if(matched){setMatched(null);return;}
+  if(feedActionOpen){feedActionBackRef.current?.();return;}
   if(filterOpen){setFilterOpen(false);return;}
   if(person||demoVisitor){if(visitorBackRef.current?.())return;setPerson(null);setDemoVisitor(null);return;}
   if(chatThreadOpen){chatBackRef.current?.();return;}
@@ -888,7 +912,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
   if(mainTab!=="discover"){setMainTab("discover");return;}
   if(browse!=="feed"){requestBrowseTab(0);return;}
  };
- const canNavigateBack=chatThreadOpen||filterOpen||!!person||!!demoVisitor||accountOpen||
+ const canNavigateBack=!!matched||feedActionOpen||chatThreadOpen||filterOpen||!!person||!!demoVisitor||accountOpen||
   mainTab!=="discover";
  const invokeBack=useCallback(()=>backRef.current(),[]);
  useEffect(()=>{
@@ -945,6 +969,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
         onEditFilters={()=>setFilterOpen(true)} qaAllowed={qaAllowed} onTryDemo={()=>{if(qaAllowed)setDemoMode(true);}}
         onEmptyFeed={offerDemoOnEmpty} onSearchScopeChange={setScopeOverride}
         hiddenIds={hiddenIds} onHide={onHide} onFirstScreenReady={onFirstScreenReady}
+        registerActionMenuBack={id==="feed"?registerFeedActionBack:undefined}
         onScrollTop={top=>onScrollTop(id,top)}
         onEditLocation={()=>setMainTab("profile")}
         onPerson={setPerson} onMatched={(matchedPerson,matchId)=>setMatched({person:matchedPerson,matchId})}/> }
@@ -1000,8 +1025,8 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
    }}/>}
   {!person&&!demoVisitor&&<ProfileReactionNotices notices={mainTab==="likes"?
    profileReactions.notices.filter(notice=>notice.target.surface!=="gallery"):profileReactions.notices} undo={profileReactions.undo}/>}
-  {matched&&<div className="luemi-match-overlay" role="dialog" aria-modal="true" aria-label="Взаимная симпатия">
-   <div className="luemi-match-card"><div className="luemi-match-avatars"><LuemiAvatar name={matched.person.name} src={matched.person.photos[0]?.url}/><Heart size={24}/></div>
+  {matched&&<div className="luemi-match-overlay">
+   <div ref={matchDialogRef} tabIndex={-1} className="luemi-match-card" role="dialog" aria-modal="true" aria-label="Взаимная симпатия"><div className="luemi-match-avatars"><LuemiAvatar name={matched.person.name} src={matched.person.photos[0]?.url}/><Heart size={24}/></div>
     <p className="luemi-match-kicker">Это взаимно</p><h2>Вы понравились друг другу</h2>
     <p>{matched.person.name} появится в новых совпадениях. Переписка начнётся только после первого сообщения.</p>
     <button type="button" className="luemi-match-primary" onClick={()=>{setMatched(null);setMainTab("chats");}}>Написать</button>
@@ -1012,9 +1037,9 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
    onChange={id=>{setPerson(null);setDemoVisitor(null);setChatThreadOpen(false);setInitialThread(undefined);setMainTab(id);}}/>}
   {accountOpen&&<div className="discovery-modal-backdrop real-discovery-account-modal"
    onClick={()=>setAccountOpen(false)}>
-   <section className="real-discovery-account-sheet" role="dialog" aria-modal="true" aria-label="Настройки профиля"
+   <section ref={accountDialogRef} tabIndex={-1} className="real-discovery-account-sheet" role="dialog" aria-modal="true" aria-label="Настройки профиля"
     onClick={e=>e.stopPropagation()}>
-    <button className="real-discovery-account-close" type="button" onClick={()=>setAccountOpen(false)}>Закрыть</button>
+    <button data-modal-initial className="real-discovery-account-close" type="button" onClick={()=>setAccountOpen(false)}>Закрыть</button>
     <div>{accountPanel}</div>
     {liveLocation.settings}
     {qaAllowed&&<button className="discovery-glass-button" type="button" onClick={()=>{
