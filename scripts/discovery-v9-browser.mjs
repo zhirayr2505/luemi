@@ -84,6 +84,14 @@ try {
  await screenshot("likes-loading-393");
  await gallery.getByText("Пока нет входящих симпатий",{exact:true}).waitFor({timeout:10000});
  await screenshot("likes-empty-393");
+ const refresh=gallery.getByRole("button",{name:"Обновить симпатии"});
+ await refresh.tap();
+ await gallery.locator(".likes-loading-card").first().waitFor({timeout:7000});
+ assert.equal(await refresh.isDisabled(),true,"Refresh is disabled during a pending fetch");
+ assert.equal(await gallery.getByRole("tabpanel",{name:"Вам"}).getAttribute("aria-busy"),"true");
+ await screenshot("likes-refresh-393");
+ await gallery.getByText("Пока нет входящих симпатий",{exact:true}).waitFor({timeout:10000});
+ assert.equal(await refresh.isDisabled(),false,"Refresh action recovers after loading");
  assert.deepEqual(errors,[],"No page errors across discovery visuals");
  console.log("DISCOVERY_V9_BROWSER_PASS",JSON.stringify({feed:sr,worldEmptyHeight:emptyBox.height,likes:likeBox}));
 }finally{await browser.close();}

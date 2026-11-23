@@ -200,3 +200,11 @@
 @media(prefers-reduced-motion:reduce) {
  .likes-loading-photo:after {animation:none;display:none}
 }
+
+/* V10 stability: visual feedback while old rows remain visible during refresh. */
+.likes-gallery-refresh[data-loading] {opacity:.65;cursor:progress}
+.likes-gallery-refresh[data-loading] svg {animation:likes-v10-refresh 1.3s linear infinite}
+.likes-refresh-note {display:block;flex:none;padding:5px 15px 0;max-width:674px;width:100%;
+ margin-inline:auto;font-size:12px;color:var(--luemi-text-muted)}
+@keyframes likes-v10-refresh {to {transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce) {.likes-gallery-refresh[data-loading] svg {animation:none}}
