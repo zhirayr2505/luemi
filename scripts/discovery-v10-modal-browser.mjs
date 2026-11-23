@@ -49,10 +49,13 @@ try{
  await menu.waitFor();
  assert(await menu.evaluate(node=>node.contains(document.activeElement)),
   "Action menu traps initial focus");
- assert(await menu.evaluate(node=>{
+ const menuGeometry=await menu.evaluate(node=>{
   const r=node.getBoundingClientRect();
-  return r.bottom<=innerHeight+1&&r.top>=0;
- }),"Action menu is inside the Android viewport");
+  return {top:r.top,bottom:r.bottom,height:r.height,viewport:innerHeight};
+ });
+ await screenshot("discovery-actions-393");
+ assert(menuGeometry.bottom<=menuGeometry.viewport+1&&menuGeometry.top>=0,
+  "Action menu must fit Android viewport "+JSON.stringify(menuGeometry));
  assert.equal(await menu.locator(".real-discovery-action-danger").count(),1,
   "Blocking remains a real distinct destructive action");
  await screenshot("discovery-actions-393");

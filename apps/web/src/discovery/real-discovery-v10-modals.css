@@ -10,7 +10,11 @@
 }
 .discovery-app.real-discovery-home .real-discovery-modal {
  align-items:flex-end;justify-content:center;
- padding:0 max(0px,env(safe-area-inset-left,0px)) 0 max(0px,env(safe-area-inset-right,0px));
+ /* The deck can extend behind the floating 4-icon dock. Keep the scrim
+    fullscreen, but lift the action sheet above the dock on Android. */
+ box-sizing:border-box;
+ padding:0 max(0px,env(safe-area-inset-left,0px))
+  calc(82px + var(--bottom-safe,0px)) max(0px,env(safe-area-inset-right,0px));
 }
 .discovery-app.real-discovery-home .real-discovery-modal-sheet {
  width:min(100%,520px);max-height:min(75%,calc(100% - var(--top-safe,0px) - 14px));
