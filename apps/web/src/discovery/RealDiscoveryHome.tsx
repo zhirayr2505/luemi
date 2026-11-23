@@ -447,7 +447,7 @@ function LiveDeck({active,tab,draft,initialFeed,onPerson,onMatched,saved,onSave,
     {!reporting?<><p>{menu.name}, {menu.age}</p>
       <button type="button" disabled={busy} onClick={()=>{onSave(menu.id);setMenu(null);}}>
        {saved.has(menu.id)?"Убрать из закладок":"Сохранить анкету (на эту сессию)"}</button>
-      <button type="button" disabled={busy} onClick={()=>{void block();}}><ShieldBan size={19}/> Заблокировать</button>
+      <button type="button" className="real-discovery-action-danger" disabled={busy} onClick={()=>{void block();}}><ShieldBan size={19}/> Заблокировать</button>
       <button type="button" disabled={busy} onClick={()=>setReporting(true)}><FlagIcon size={19}/> Пожаловаться</button>
     </>:<><label>Причина жалобы
       <select value={reason} onChange={e=>setReason(e.target.value as PublishedReportReason)} disabled={busy}>
