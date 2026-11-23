@@ -1,0 +1,163 @@
+/* LUEMI V10 · modal material + focus/gesture polish.
+   Strictly visual: no profile, API, likes or swipe engines are replaced.
+   GPU-cheap opacity/transform entrance only; no moving backdrop-filter layers. */
+.discovery-app.real-discovery-home .real-discovery-modal,
+.discovery-app.real-discovery-home .real-discovery-account-modal {
+ background:rgba(8,13,22,.66);
+ -webkit-backdrop-filter:none;
+ backdrop-filter:none;
+ animation:luemi-v10-backdrop-in 160ms ease-out both;
+}
+.discovery-app.real-discovery-home .real-discovery-modal {
+ align-items:flex-end;justify-content:center;
+ /* The deck can extend behind the floating 4-icon dock. Keep the scrim
+    fullscreen, but lift the action sheet above the dock on Android. */
+ box-sizing:border-box;
+ padding:0 max(0px,env(safe-area-inset-left,0px))
+  calc(82px + var(--bottom-safe,0px)) max(0px,env(safe-area-inset-right,0px));
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet {
+ width:min(100%,520px);max-height:min(75%,calc(100% - var(--top-safe,0px) - 14px));
+ margin:auto auto 0;overflow-y:auto;overscroll-behavior:contain;
+ padding:17px 17px max(18px,var(--bottom-safe,0px));
+ border:1px solid var(--luemi-border);border-bottom:0;
+ border-radius:28px 28px 0 0;
+ background:linear-gradient(160deg,var(--luemi-surface-raised),var(--luemi-bg-deep));
+ color:var(--luemi-text);
+ box-shadow:inset 0 1px rgba(255,255,255,.07),0 -11px 28px rgba(3,8,16,.28);
+ -webkit-backdrop-filter:none;backdrop-filter:none;
+ animation:luemi-v10-sheet-in 245ms cubic-bezier(.19,.9,.23,1) both;
+ touch-action:pan-y;
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet:before {
+ content:"";display:block;align-self:center;margin:0 auto 6px;
+ width:38px;height:4px;border-radius:99px;background:var(--luemi-border-active);
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet h2 {
+ font-size:19px;font-weight:740;letter-spacing:-.028em;color:var(--luemi-text);
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet p {
+ color:var(--luemi-text-muted);font-size:13px;line-height:1.45;
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet>button,
+.discovery-app.real-discovery-home .real-discovery-modal-sheet label select {
+ display:flex;align-items:center;gap:11px;width:100%;min-height:48px;
+ border:1px solid var(--luemi-border);border-radius:16px;
+ padding:10px 14px;text-align:left;
+ background:var(--luemi-surface);color:var(--luemi-text);
+ font:inherit;font-size:14px;line-height:1.35;
+ box-shadow:inset 0 1px rgba(255,255,255,.04);
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet>button:active:not(:disabled) {
+ transform:scale(.986);background:var(--luemi-surface-raised);
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet>button:disabled {opacity:.52}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet .real-discovery-action-danger {
+ color:var(--luemi-coral-light);border-color:var(--luemi-border-active);
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet .real-discovery-modal-cancel {
+ justify-content:center;border:0;background:transparent;
+ color:var(--luemi-text-muted);font-weight:640;
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet label {
+ color:var(--luemi-text-secondary);font-size:13px;
+}
+.discovery-app.real-discovery-home .real-discovery-modal-sheet label select {
+ appearance:auto;-webkit-appearance:menulist;
+ background:var(--luemi-surface);color:var(--luemi-text);
+}
+.discovery-app.real-discovery-home .real-discovery-account-modal {
+ align-items:stretch;justify-content:center;
+}
+.discovery-app.real-discovery-home .real-discovery-account-sheet {
+ position:absolute;inset:max(14px,var(--top-safe,0px)) max(8px,env(safe-area-inset-right,0px))
+  max(8px,var(--bottom-safe,0px)) max(8px,env(safe-area-inset-left,0px));
+ margin:0 auto;max-width:590px;max-height:none;
+ border:1px solid var(--luemi-border);border-radius:26px;
+ padding:16px 13px 21px;
+ background:linear-gradient(155deg,var(--luemi-surface-raised),var(--luemi-bg-deep));
+ color:var(--luemi-text);
+ box-shadow:0 16px 38px rgba(3,8,16,.32),inset 0 1px rgba(255,255,255,.08);
+ animation:luemi-v10-account-in 215ms cubic-bezier(.19,.9,.23,1) both;
+ -webkit-overflow-scrolling:touch;
+}
+.discovery-app.real-discovery-home .real-discovery-account-close {
+ min-height:44px;border:1px solid var(--luemi-border);border-radius:15px;
+ background:var(--luemi-surface);color:var(--luemi-text-secondary);
+ font:inherit;font-size:14px;
+}
+.discovery-app.real-discovery-home .discovery-filter-sheet {
+ background:linear-gradient(155deg,var(--luemi-surface-raised),var(--luemi-bg-deep));
+ border-color:var(--luemi-border);color:var(--luemi-text);
+ box-shadow:0 -12px 27px rgba(3,8,16,.22);
+}
+.discovery-app.real-discovery-home .real-discovery-notice,
+.discovery-app.real-discovery-home .real-discovery-more {
+ background:var(--luemi-surface-raised);color:var(--luemi-text);
+ border:1px solid var(--luemi-border);
+ box-shadow:0 4px 15px rgba(3,8,16,.13);
+}
+.discovery-app.real-discovery-home .real-discovery-settings {
+ background:var(--luemi-surface-raised);color:var(--luemi-text);
+ border-color:var(--luemi-border);box-shadow:none;
+}
+/* Matching is deliberately coral, never the removed purple and violet gradients. */
+.discovery-app.real-discovery-home .luemi-match-overlay {
+ background:rgba(8,13,22,.82);
+ -webkit-backdrop-filter:none;backdrop-filter:none;
+ animation:luemi-v10-backdrop-in 180ms ease both;
+}
+.discovery-app.real-discovery-home .luemi-match-card {
+ width:min(100%,360px);max-height:calc(100dvh - 42px);
+ overflow-y:auto;overscroll-behavior:contain;
+ border:1px solid var(--luemi-border-active);
+ background:linear-gradient(155deg,var(--luemi-surface-raised),var(--luemi-bg-deep));
+ color:var(--luemi-text);
+ box-shadow:0 20px 42px rgba(3,8,16,.32),inset 0 1px rgba(255,255,255,.1);
+ animation:luemi-v10-match-in 260ms cubic-bezier(.16,1,.3,1) both;
+}
+.discovery-app.real-discovery-home .luemi-match-avatars,
+.discovery-app.real-discovery-home .luemi-match-kicker {color:var(--luemi-coral-light)}
+.discovery-app.real-discovery-home .luemi-match-card>button {
+ background:var(--luemi-surface-raised);border:1px solid var(--luemi-border);
+ color:var(--luemi-text);min-height:46px;
+}
+.discovery-app.real-discovery-home .luemi-match-card>button.luemi-match-primary {
+ background:var(--luemi-glass-accent-fill);
+ border-color:var(--luemi-border-active);
+ color:var(--luemi-ink-on-accent);
+}
+.discovery-app.real-discovery-home .luemi-match-card>button:active:not(:disabled) {
+ transform:scale(.986);
+}
+.discovery-app.real-discovery-home :is(
+ .real-discovery-modal-sheet,.real-discovery-account-sheet,.luemi-match-card
+):focus-visible,
+.discovery-app.real-discovery-home :is(
+ .real-discovery-modal-sheet,.real-discovery-account-sheet,.luemi-match-card
+) :is(button,select):focus-visible {
+ outline:2px solid var(--luemi-focus);outline-offset:2px;
+}
+@keyframes luemi-v10-backdrop-in {from{opacity:0}to{opacity:1}}
+@keyframes luemi-v10-sheet-in {
+ from{opacity:.7;transform:translate3d(0,16px,0)}
+ to{opacity:1;transform:none}
+}
+@keyframes luemi-v10-account-in {
+ from{opacity:.7;transform:translate3d(0,9px,0) scale(.99)}
+ to{opacity:1;transform:none}
+}
+@keyframes luemi-v10-match-in {
+ from{opacity:.4;transform:translate3d(0,15px,0) scale(.97)}
+ to{opacity:1;transform:none}
+}
+@media(prefers-reduced-motion:reduce) {
+ .discovery-app.real-discovery-home .real-discovery-modal,
+ .discovery-app.real-discovery-home .real-discovery-account-modal,
+ .discovery-app.real-discovery-home .real-discovery-modal-sheet,
+ .discovery-app.real-discovery-home .real-discovery-account-sheet,
+ .discovery-app.real-discovery-home .luemi-match-overlay,
+ .discovery-app.real-discovery-home .luemi-match-card {animation:none}
+ .discovery-app.real-discovery-home .real-discovery-modal-sheet>button,
+ .discovery-app.real-discovery-home .luemi-match-card>button {transition:none}
+}

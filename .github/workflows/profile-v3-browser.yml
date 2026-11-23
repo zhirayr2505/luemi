@@ -23,6 +23,8 @@ on:
       - 'apps/web/src/discovery/real-discovery.css'
       - 'apps/web/src/discovery/real-discovery-layout-repair.css'
       - 'scripts/discovery-v9-browser.mjs'
+      - 'scripts/discovery-v10-modal-browser.mjs'
+      - 'apps/web/src/discovery/real-discovery-v10-modals.css'
       - 'apps/web/src/discovery/use-profile-reactions.ts'
       - 'apps/web/src/profile-qa.tsx'
       - 'apps/web/src/registration/Preview.tsx'
@@ -87,6 +89,7 @@ jobs:
           done
           if [[ "$ready" -ne 1 ]]; then cat /tmp/luemi-v3-vite.log; exit 1; fi
           node scripts/discovery-v9-browser.mjs
+          node scripts/discovery-v10-modal-browser.mjs
           node scripts/chats-v1-browser-smoke.mjs
           node scripts/profile-v3-browser-smoke.mjs
           node scripts/profile-v3-integration-browser.mjs
@@ -106,6 +109,7 @@ jobs:
           path: |
             qa-artifacts/chat-premium/**
             qa-artifacts/discovery-v9/**
+            qa-artifacts/discovery-v10/**
             qa-artifacts/profile-v3/**
             qa-artifacts/profile-v3-integration/**
             qa-artifacts/feed-reference/**
