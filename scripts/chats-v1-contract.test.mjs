@@ -13,3 +13,9 @@ assert.doesNotMatch(ui,/window\.(prompt|confirm)/);
 assert.match(ui,/AbortController/);
 assert.match(ui,/isNearBottom/);
 console.log("LUEMI Chats V1 source contracts PASS");
+
+// V10 safety: neither initial chat bootstrap nor retry can spin indefinitely.
+assert.match(ui,/const retryInbox=\(\)=>/);
+assert.match(ui,/Чаты загружаются слишком долго/);
+assert.match(ui,/const timeout=window\.setTimeout\(\(\)=>\{/);
+assert.match(ui,/onClick=\{retryInbox\}>Повторить/);

@@ -97,9 +97,10 @@ export function LikesGallery({active,qaAllowed,queue,onPerson,onDemoPerson,onCha
  const revision=[...queue.actions.values()].filter(action=>action.phase==="sent"&&!action.target.demo).length;
  useEffect(()=>{
   if(!active||useDemo)return;
-  if(!realMatchPilot.enabled){setRows([]);setLoading(false);return;}
+  if(!realMatchPilot.enabled){setRows([]);setLoading(false);setError("");return;}
   const controller=new AbortController();
-  setLoading(true);
+  // Keep previously loaded cards stable while a fresh snapshot is requested.
+  setLoading(true);setError("");
   const timeout=window.setTimeout(()=>{
    if(controller.signal.aborted)return;
    controller.abort();
@@ -173,6 +174,7 @@ export function LikesGallery({active,qaAllowed,queue,onPerson,onDemoPerson,onCha
       setDemo(value=>!value);switchTab("incoming");
      }}><span>Демо</span></button>}
      {!useDemo&&<LuemiIconButton className="likes-gallery-refresh" label="Обновить симпатии"
+      disabled={loading} aria-busy={loading} data-loading={loading||undefined}
       onClick={()=>{setError("");refreshRows(value=>value+1);}}><RefreshCw size={16}/></LuemiIconButton>}
     </div>
    </div>
@@ -183,10 +185,13 @@ export function LikesGallery({active,qaAllowed,queue,onPerson,onDemoPerson,onCha
   </header>
   {(chatError||(!useDemo&&entries.length>0&&error))&&
    <span className="likes-gallery-error" role="status">{chatError||error}</span>}
-  <div className="likes-gallery-scroller" id="likes-gallery-panel" key={tab} role="tabpanel" aria-labelledby={"likes-gallery-tab-"+tab}>
+  {!useDemo&&loading&&rows!==null&&rows.length>0&&
+   <span className="likes-refresh-note" role="status">Обновляем симпатии…</span>}
+  <div className="likes-gallery-scroller" id="likes-gallery-panel" key={tab} role="tabpanel"
+   aria-labelledby={"likes-gallery-tab-"+tab} aria-busy={!useDemo&&loading}>
    {!useDemo&&error&&!entries.length?<LuemiEmptyState icon={Heart} title={error} description="Проверь соединение и обнови галерею.">
     <button type="button" className="likes-retry" onClick={()=>{setError("");refreshRows(value=>value+1);}}>Повторить</button>
-   </LuemiEmptyState>:!useDemo&&loading&&rows===null?<div className="likes-gallery-grid likes-loading-grid" role="status" aria-label="Загружаем симпатии">
+   </LuemiEmptyState>:!useDemo&&loading&&(rows===null||rows.length===0)?<div className="likes-gallery-grid likes-loading-grid" role="status" aria-label="Загружаем симпатии">
     {[0,1].map(index=><div key={index} className="likes-loading-card" aria-hidden="true">
      <div className="likes-loading-photo"/><div className="likes-loading-caption"><i/><i/></div>
     </div>)}

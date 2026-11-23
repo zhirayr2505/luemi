@@ -103,6 +103,8 @@ export function RealChats({
  const history=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);const activeId=useRef<string|null>(null);const requestGeneration=useRef(0);const observedVisibility=useRef<{id:string;revision:string|null}|null>(null);const nearBottom=useRef(true);const objectUrls=useRef(new Set<string>());const pendingFiles=useRef(new Map<string,File>());const pollAbort=useRef<AbortController|null>(null);
  const threadOpen=active!==null;
  const [historyLoaded,setHistoryLoaded]=useState(false);
+ const retryInboxController=useRef<AbortController|null>(null);
+ useEffect(()=>()=>retryInboxController.current?.abort(),[]);
  const autoScroll=useRef(false);
  const renderedMessages=useRef<LocalMessage[]>([]);
  const messageArrivals=useRef(new Set<string>());
@@ -170,10 +172,41 @@ export function RealChats({
   setNewMatches(data.matches);
   setViewerGender(data.viewerGender);
  },[provided]);
+ // Retry the complete authenticated inbox handshake, not just the list.
+ // Bound both initial load and retry so a lost WebView request cannot spin forever.
+ const retryInbox=()=>{
+  if(!api)return;
+  retryInboxController.current?.abort();
+  const controller=new AbortController();
+  retryInboxController.current=controller;
+  setLoading(true);setError("");
+  const timeout=window.setTimeout(()=>{
+   if(controller.signal.aborted)return;
+   controller.abort();setLoading(false);
+   setError("Чаты загружаются слишком долго. Проверь интернет и повтори.");
+  },15000);
+  void Promise.all([api.me(controller.signal),api.list(controller.signal)])
+   .then(([me,data])=>{
+    if(controller.signal.aborted)return;
+    setActorId(me.actorId);updateConversations(data.conversations);
+    if(onExitDemo)setActive(data.conversations[0]??null);
+    setError("");
+   }).catch(error=>{
+    if(!controller.signal.aborted)showError(error,"Не удалось загрузить чаты.");
+   }).finally(()=>{
+    window.clearTimeout(timeout);
+    if(!controller.signal.aborted)setLoading(false);
+   });
+ };
  useEffect(()=>{
   if(!api){setError("Требуется авторизация Telegram.");setLoading(false);return;}
   const controller=new AbortController();
   const {signal}=controller;
+  const timeout=window.setTimeout(()=>{
+   if(signal.aborted)return;
+   controller.abort();setLoading(false);
+   setError("Чаты загружаются слишком долго. Проверь интернет и повтори.");
+  },15000);
   void refreshMatches(signal).catch(()=>{});
   void Promise.all([api.me(signal),api.list(signal)])
    .then(([me,data])=>{
@@ -184,8 +217,8 @@ export function RealChats({
     setError("");
    })
    .catch(error=>{if(!signal.aborted)showError(error,"Не удалось загрузить чаты.");})
-   .finally(()=>{if(!signal.aborted)setLoading(false);});
-  return()=>controller.abort();
+   .finally(()=>{window.clearTimeout(timeout);if(!signal.aborted)setLoading(false);});
+  return()=>{window.clearTimeout(timeout);controller.abort();};
  },[api,onExitDemo,refreshMatches,updateConversations]);
  // Discover new mutual matches and unread badges even when the user has not opened a thread.
  useEffect(()=>{
@@ -513,7 +546,7 @@ export function RealChats({
   {loading?<div className="lc-state" role="status"><span className="lc-spinner"/>Загружаем переписки…</div>:
    error&&conversations.length===0?<LuemiEmptyState icon={MessagesSquare} title="Чаты не загрузились" description={error}>
     <button type="button" className="lc-retry-list"
-     onClick={()=>{setLoading(true);setError("");void refreshList().catch(showError).finally(()=>setLoading(false));}}>Повторить</button>
+     onClick={retryInbox}>Повторить</button>
    </LuemiEmptyState>:filteredConversations.length===0?<div className="lc-inbox-empty">
     <div className="lc-inbox-mark" aria-hidden="true">{normalizedQuery?<Search size={27}/>:<MessagesSquare size={28}/>}</div>
     <h3>{normalizedQuery?"Ничего не найдено":inboxTab==="bliki"?"Нет переписок из Бликов":inboxTab==="archive"?"Архив пока пуст":"Пока нет переписок"}</h3>
