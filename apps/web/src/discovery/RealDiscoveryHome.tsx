@@ -557,7 +557,7 @@ export function RealDiscoveryHome({draft,publishedProfile,ownerPhotoPreview=EMPT
  },[]);
  const [accountOpen,setAccountOpen]=useState(false);
  const accountDialogRef=useRef<HTMLElement>(null);
- const matchDialogRef=useRef<HTMLElement>(null);
+ const matchDialogRef=useRef<HTMLDivElement>(null);
  useModalLayer(accountOpen,accountDialogRef,()=>setAccountOpen(false));
  useModalLayer(!!matched,matchDialogRef,()=>setMatched(null));
  const [chatThreadOpen,setChatThreadOpen]=useState(false);

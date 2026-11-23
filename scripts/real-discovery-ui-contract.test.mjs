@@ -156,12 +156,12 @@ test("real feed presents one animated card, undoable skip and session bookmarks 
 
 test("V10 discovery dialogs use shared focus + back lifecycle and Vivid Matte surfaces",()=>{
  const modalCss=src("apps/web/src/discovery/real-discovery-v10-modals.css");
- assert.match(shell,/useModalLayer\(\!\!menu,actionMenuLayer,closeActionMenu\)/);
+ assert.match(shell,/useModalLayer\(!!menu,actionMenuLayer,closeActionMenu\)/);
  assert.match(shell,/useModalLayer\(accountOpen,accountDialogRef/);
- assert.match(shell,/useModalLayer\(\!\!matched,matchDialogRef/);
+ assert.match(shell,/useModalLayer\(!!matched,matchDialogRef/);
  assert.match(shell,/registerActionMenuBack=\{id==="feed"\?registerFeedActionBack:undefined\}/);
  assert.match(shell,/if\(feedActionOpen\)\{feedActionBackRef.current\?\.\(\);return;\}/);
- assert.match(shell,/const canNavigateBack=\!\!matched\|\|feedActionOpen/);
+ assert.match(shell,/const canNavigateBack=!!matched\|\|feedActionOpen/);
  assert.match(modalCss,/\.luemi-match-card \{/);
  assert.match(modalCss,/background:linear-gradient\(155deg,var\(--luemi-surface-raised\),var\(--luemi-bg-deep\)\)/);
  assert.doesNotMatch(modalCss,/#6E3EFF|rgba\(66,27,107|rgba\(101,61,158/);
