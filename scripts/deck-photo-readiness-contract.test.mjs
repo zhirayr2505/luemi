@@ -89,3 +89,13 @@ test("focus and expanded copy share one retained photo and one progress source",
  assert.doesNotMatch(visual,/@keyframes moonstone-photo-focus-away/);
  assert.match(feed,/current\.max\*\.72/);
 });
+
+test("V11.1 Android measures feed card resize only once per frame and cancels pending work",()=>{
+ assert.match(feed,/const queueMeasure=\(\)=>/);
+ assert.match(feed,/if\(measureFrame!==null\)return/);
+ assert.match(feed,/const observer=new ResizeObserver\(queueMeasure\)/);
+ assert.match(feed,/if\(measureFrame!==null\)cancelAnimationFrame\(measureFrame\)/);
+ assert.doesNotMatch(feed,/new ResizeObserver\(measure\)/);
+ assert.match(prefetch,/if\(image.complete&&image.naturalWidth>0\)imageLoaded\(\)/);
+ assert.doesNotMatch(prefetch,/if\(image.complete&&image.naturalWidth>0\)finish\(true\)/);
+});

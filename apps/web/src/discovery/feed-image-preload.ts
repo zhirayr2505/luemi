@@ -50,7 +50,7 @@ export function preloadFeedImage(url:string,signal?:AbortSignal):Promise<boolean
   try{
    if(signal?.aborted)return false;
    return await new Promise<boolean>(resolve=>{
-    const image=new Image();let done=false;
+    const image=new Image();let done=false,decoding=false;
     const finish=(ok:boolean)=>{
      if(done)return;done=true;
      clearTimeout(timeout);
@@ -60,15 +60,22 @@ export function preloadFeedImage(url:string,signal?:AbortSignal):Promise<boolean
     };
     const timeout=window.setTimeout(()=>finish(false),6500);
     image.decoding="async";
-    image.onload=()=>{
-     if(typeof image.decode==="function"){
-      void image.decode().then(()=>finish(image.naturalWidth>0),
-       ()=>finish(image.naturalWidth>0));
-     }else finish(image.naturalWidth>0);
+    const imageLoaded=()=>{
+     // Cached images can be complete synchronously, before onload fires.
+     // A complete network response is NOT a decoded GPU-ready image.
+     if(done||decoding)return;
+     if(image.naturalWidth<=0){finish(false);return;}
+     if(typeof image.decode!=="function"){finish(true);return;}
+     decoding=true;
+     void Promise.resolve().then(()=>image.decode()).then(
+      ()=>finish(image.naturalWidth>0),
+      ()=>finish(false)
+     );
     };
+    image.onload=imageLoaded;
     image.onerror=()=>finish(false);
     image.src=url;
-    if(image.complete&&image.naturalWidth>0)finish(true);
+    if(image.complete&&image.naturalWidth>0)imageLoaded();
    });
   }finally{releaseSlot();}
  })().finally(()=>inflight.delete(url));
