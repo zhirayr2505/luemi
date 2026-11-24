@@ -264,8 +264,21 @@ export function FeedCard({person,saved,canUndo,active,busy,preview=false,onActio
   // Install the initial drawer displacement before reading translated geometry.
   // Otherwise the first measurement mistakes the fallback (0px) for the RAF position.
   paint(progress.current);measure();
-  const observer=new ResizeObserver(measure);observer.observe(element);
-  return()=>{observer.disconnect();photoController?.cancel();releasePhotoHold();
+  // Android WebView may deliver several ResizeObserver entries for one
+  // viewport/Telegram chrome change. Measure only once in the next frame,
+  // never repeatedly inside the browser's resize notification loop.
+  let measureFrame:number|null=null;
+  const queueMeasure=()=>{
+   if(measureFrame!==null)return;
+   measureFrame=requestAnimationFrame(()=>{
+    measureFrame=null;
+    if(element.isConnected)measure();
+   });
+  };
+  const observer=new ResizeObserver(queueMeasure);observer.observe(element);
+  return()=>{observer.disconnect();
+   if(measureFrame!==null)cancelAnimationFrame(measureFrame);
+   photoController?.cancel();releasePhotoHold();
    if(feedbackTimer.current!==null)window.clearTimeout(feedbackTimer.current);
    if(fingerFrame.current!==null)cancelAnimationFrame(fingerFrame.current);
    stopScrollFling();
