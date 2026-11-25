@@ -43,7 +43,24 @@ export interface ApiConfig {
     safetyOperatorCliConfigured:boolean;
   };
 }
+// Reuse only the existing trusted DB endpoint/TLS configuration, never its identity or password.
+export function adminUsersDatabaseUrl(env: NodeJS.ProcessEnv): string | undefined {
+  if (env.LUEMI_ADMIN_USERS_DATABASE_URL) return env.LUEMI_ADMIN_USERS_DATABASE_URL;
+  const password = env.LUEMI_ADMIN_USERS_DATABASE_PASSWORD;
+  if (!password || !env.REM05B_AUTH_DATABASE_URL) return undefined;
+  try {
+    const url = new URL(env.REM05B_AUTH_DATABASE_URL);
+    if (url.protocol !== "postgresql:" && url.protocol !== "postgres:") return undefined;
+    const pooler = /\.pooler\.supabase\.com$/i.test(url.hostname);
+    const suffix = /\.([a-z0-9]{20})$/.exec(decodeURIComponent(url.username));
+    if (pooler && !suffix) return undefined;
+    url.username = "luemi_admin_users_login" + (pooler && suffix ? "." + suffix[1] : "");
+    url.password = password;
+    return url.toString();
+  } catch { return undefined; }
+}
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
+  const adminDatabaseUrl = adminUsersDatabaseUrl(env);
   const port = Number(env.PORT ?? "3001");
   const origin = env.APP_ORIGIN ?? "";
   const stagingOnly = env.STAGING_BOOTSTRAP_ONLY === "1";
@@ -371,8 +388,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     healthKey: env.HEALTH_CHECK_KEY ?? "",
     webhookSecret: stagingOnly ? "" : (env.TELEGRAM_WEBHOOK_SECRET ?? ""),
     adminUsers: !stagingOnly && /^[1-9]\d{0,15}$/.test(env.LUEMI_ADMIN_TELEGRAM_ID ?? "") &&
-      Number.isSafeInteger(Number(env.LUEMI_ADMIN_TELEGRAM_ID)) && env.LUEMI_ADMIN_USERS_DATABASE_URL
-      ? { telegramId: Number(env.LUEMI_ADMIN_TELEGRAM_ID), databaseUrl: env.LUEMI_ADMIN_USERS_DATABASE_URL } : undefined,
+      Number.isSafeInteger(Number(env.LUEMI_ADMIN_TELEGRAM_ID)) && adminDatabaseUrl
+      ? { telegramId: Number(env.LUEMI_ADMIN_TELEGRAM_ID), databaseUrl: adminDatabaseUrl } : undefined,
     logger: env.NODE_ENV !== "test"
   };
 }
