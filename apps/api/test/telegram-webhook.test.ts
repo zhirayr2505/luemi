@@ -140,3 +140,17 @@ test("admin users command requires signed private owner chat and paginates", asy
     assert.match(response.text,/Назад: \/users 1/);
   } finally { await app.close(); }
 });
+
+test("admin directory derives a distinct database principal without reusing issuer credentials", async () => {
+  const {adminUsersDatabaseUrl}=await import("../src/config.js");
+  const issuer="postgresql://issuer.abcdefghijklmnopqrst:old-secret@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require";
+  const url=adminUsersDatabaseUrl({REM05B_AUTH_DATABASE_URL:issuer,LUEMI_ADMIN_USERS_DATABASE_PASSWORD:"test-only-secret"});
+  assert.ok(url);
+  const db=new URL(url);
+  assert.equal(db.username,"luemi_admin_users_login.abcdefghijklmnopqrst");
+  assert.equal(db.password,"test-only-secret");
+  assert.equal(db.host,new URL(issuer).host);
+  assert.equal(db.searchParams.get("sslmode"),"require");
+  assert.equal(adminUsersDatabaseUrl({REM05B_AUTH_DATABASE_URL:issuer}),undefined);
+  assert.equal(adminUsersDatabaseUrl({REM05B_AUTH_DATABASE_URL:"https://example.com",LUEMI_ADMIN_USERS_DATABASE_PASSWORD:"test"}),undefined);
+});
