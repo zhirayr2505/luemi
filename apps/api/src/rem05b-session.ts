@@ -10,6 +10,7 @@ export interface Rem05bOptions {
  enabled:boolean; issuerDatabaseUrl:string; requestDatabaseUrl:string; pepper:string;
  namespace:string; origin:string; botToken:string; idleMs:number; absoluteMs:number; maxSessions:number;
  inviteOnly?:boolean;
+ captureTelegramUsername?:boolean;
  /** Capacity-bounded self-service test, distinct from global public signup. */
  maxNewActors?:number;
  /** Server-allowlisted identity for isolated preview; unset always denies. */
@@ -266,6 +267,11 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     "ON CONFLICT(environment,telegram_id) DO UPDATE SET updated_at=clock_timestamp() "+
     "WHERE luemi_private.actors.status='active' RETURNING id,first_name",
     [cfg.namespace,String(verified.user.id),verified.user.first_name]);
+   if(result.rowCount===1 && cfg.captureTelegramUsername){
+    const username=verified.user.username;
+    await db.query("UPDATE luemi_private.actors SET telegram_username=$1 WHERE id=$2 AND environment=$3",
+      [typeof username==="string" && /^[A-Za-z0-9_]{1,32}$/.test(username)?username:null,result.rows[0].id,cfg.namespace]);
+   }
    if(result.rowCount!==1){
     const inactive=await db.query<{id:string;status:string}>(
      "SELECT id,status FROM luemi_private.actors WHERE environment=$1 AND telegram_id=$2",

@@ -20,6 +20,7 @@ export interface ApiConfig {
   healthKey: string;
   webhookSecret: string;
   stagingOnly?: boolean;
+  adminUsers?: { telegramId: number; databaseUrl: string };
   serveWeb?: boolean;
   expectedBotUsername?: string;
   setupOnStart?: boolean;
@@ -42,7 +43,24 @@ export interface ApiConfig {
     safetyOperatorCliConfigured:boolean;
   };
 }
+// Reuse only the existing trusted DB endpoint/TLS configuration, never its identity or password.
+export function adminUsersDatabaseUrl(env: NodeJS.ProcessEnv): string | undefined {
+  if (env.LUEMI_ADMIN_USERS_DATABASE_URL) return env.LUEMI_ADMIN_USERS_DATABASE_URL;
+  const password = env.LUEMI_ADMIN_USERS_DATABASE_PASSWORD;
+  if (!password || !env.REM05B_AUTH_DATABASE_URL) return undefined;
+  try {
+    const url = new URL(env.REM05B_AUTH_DATABASE_URL);
+    if (url.protocol !== "postgresql:" && url.protocol !== "postgres:") return undefined;
+    const pooler = /\.pooler\.supabase\.com$/i.test(url.hostname);
+    const suffix = /\.([a-z0-9]{20})$/.exec(decodeURIComponent(url.username));
+    if (pooler && !suffix) return undefined;
+    url.username = "luemi_admin_users_login" + (pooler && suffix ? "." + suffix[1] : "");
+    url.password = password;
+    return url.toString();
+  } catch { return undefined; }
+}
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
+  const adminDatabaseUrl = adminUsersDatabaseUrl(env);
   const port = Number(env.PORT ?? "3001");
   const origin = env.APP_ORIGIN ?? "";
   const stagingOnly = env.STAGING_BOOTSTRAP_ONLY === "1";
@@ -134,6 +152,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     absoluteMs: 7 * 24 * 60 * 60 * 1000,
     maxSessions: 5,
     inviteOnly: betaInvites,
+    captureTelegramUsername: env.LUEMI_CAPTURE_TELEGRAM_USERNAME === "1",
     maxNewActors: selfServiceBeta?selfServiceCap:earlyBeta?earlyBetaCap:undefined,
     qaOwnerActorId:/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(env.REM06_QA_OWNER_ACTOR_ID??"")?
       env.REM06_QA_OWNER_ACTOR_ID:undefined
@@ -368,6 +387,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     botToken: stagingOnly ? "" : (env.TELEGRAM_BOT_TOKEN ?? ""),
     healthKey: env.HEALTH_CHECK_KEY ?? "",
     webhookSecret: stagingOnly ? "" : (env.TELEGRAM_WEBHOOK_SECRET ?? ""),
+    adminUsers: !stagingOnly && /^[1-9]\d{0,15}$/.test(env.LUEMI_ADMIN_TELEGRAM_ID ?? "") &&
+      Number.isSafeInteger(Number(env.LUEMI_ADMIN_TELEGRAM_ID)) && adminDatabaseUrl
+      ? { telegramId: Number(env.LUEMI_ADMIN_TELEGRAM_ID), databaseUrl: adminDatabaseUrl } : undefined,
     logger: env.NODE_ENV !== "test"
   };
 }

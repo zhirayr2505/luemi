@@ -115,3 +115,42 @@ test("private invited friends see accurate enrollment instructions and only thei
    versionedWebAppUrl(betaConfig.origin,process.env.RENDER_GIT_COMMIT));
  }finally{await app.close();}
 });
+
+test("admin users command requires signed private owner chat and paginates", async () => {
+  const {default:Fastify}=await import("fastify");
+  const {registerTelegramWebhook}=await import("../src/telegram-webhook.js");
+  const app=Fastify();
+  let calls=0;
+  registerTelegramWebhook(app,{...config(),adminUsers:{telegramId:12345,databaseUrl:"unused"}},async()=>"unknown",async()=>false,
+    async page=>{calls++;assert.equal(page,2);return {total:21,rows:[{id:"98765",username:"test_person"}]};});
+  const headers={"x-telegram-bot-api-secret-token":"s".repeat(32)};
+  const payload=(id:number,from:number,type="private")=>({message:{text:"/users 2",chat:{id,type},from:{id:from}}});
+  try {
+    const inject=(p:object,h:Record<string,string>=headers)=>app.inject({method:"POST",url:"/api/telegram/webhook",headers:h,payload:p});
+    assert.equal((await inject(payload(12345,12345),{})).statusCode,404);
+    for(const p of [payload(98765,98765),payload(12345,98765),payload(12345,12345,"group")]){
+      assert.deepEqual((await inject(p)).json(),{ok:true});
+    }
+    assert.equal(calls,0);
+    const response=(await inject(payload(12345,12345))).json();
+    assert.equal(calls,1);
+    assert.equal(response.protect_content,true);
+    assert.match(response.text,/Всего: 21/);
+    assert.match(response.text,/98765 · @test_person/);
+    assert.match(response.text,/Назад: \/users 1/);
+  } finally { await app.close(); }
+});
+
+test("admin directory derives a distinct database principal without reusing issuer credentials", async () => {
+  const {adminUsersDatabaseUrl}=await import("../src/config.js");
+  const issuer="postgresql://issuer.abcdefghijklmnopqrst:old-secret@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require";
+  const url=adminUsersDatabaseUrl({REM05B_AUTH_DATABASE_URL:issuer,LUEMI_ADMIN_USERS_DATABASE_PASSWORD:"test-only-secret"});
+  assert.ok(url);
+  const db=new URL(url);
+  assert.equal(db.username,"luemi_admin_users_login.abcdefghijklmnopqrst");
+  assert.equal(db.password,"test-only-secret");
+  assert.equal(db.host,new URL(issuer).host);
+  assert.equal(db.searchParams.get("sslmode"),"require");
+  assert.equal(adminUsersDatabaseUrl({REM05B_AUTH_DATABASE_URL:issuer}),undefined);
+  assert.equal(adminUsersDatabaseUrl({REM05B_AUTH_DATABASE_URL:"https://example.com",LUEMI_ADMIN_USERS_DATABASE_PASSWORD:"test"}),undefined);
+});

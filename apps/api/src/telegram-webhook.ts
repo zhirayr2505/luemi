@@ -6,6 +6,7 @@ import { createWelcomeStatusLookup } from "./telegram-welcome-status.js";
 import type { WelcomeStatusLookup } from "./telegram-welcome-status.js";
 import { sendTelegramWelcomeWidget, welcomeWidgetHtml } from "./telegram-welcome-widget.js";
 import type { WelcomeWidgetSender } from "./telegram-welcome-widget.js";
+import { createAdminUsersLookup, formatAdminUsers, type AdminUsersLookup } from "./telegram-admin-users.js";
 export { versionedWebAppUrl } from "./telegram-web-app-url.js";
 
 function constantTimeMatch(received: unknown, expected: string): boolean {
@@ -26,7 +27,8 @@ interface TelegramUpdate {
 export function registerTelegramWebhook(
   app: FastifyInstance, config: ApiConfig,
   lookup: WelcomeStatusLookup = createWelcomeStatusLookup(app, config),
-  sendWidget: WelcomeWidgetSender = sendTelegramWelcomeWidget
+  sendWidget: WelcomeWidgetSender = sendTelegramWelcomeWidget,
+  adminUsers: AdminUsersLookup = createAdminUsersLookup(app, config)
 ): void {
   app.post<{ Body: TelegramUpdate }>("/api/telegram/webhook", async (request, reply) => {
     const header = request.headers["x-telegram-bot-api-secret-token"];
@@ -38,6 +40,16 @@ export function registerTelegramWebhook(
       return { ok: true };
     const chatId = chat.id;
     const senderId = request.body?.message?.from?.id;
+    const usersCommand = /^\/users(?:@LuemiAppBot)?(?:\s+([1-9]\d{0,5}))?\s*$/i.exec(text);
+    if (usersCommand) {
+      if (!Number.isSafeInteger(senderId) || senderId !== chatId ||
+          !config.adminUsers?.telegramId || senderId !== config.adminUsers.telegramId) return { ok: true };
+      const page = Number(usersCommand[1] ?? 1);
+      reply.header("Cache-Control", "no-store");
+      const result = await adminUsers(page).catch(() => null);
+      return { method: "sendMessage", chat_id: chatId, protect_content: true,
+        text: result ? formatAdminUsers(result, page) : "Список пользователей временно недоступен." };
+    }
     // Private /myid replies expose only the requesting Telegram sender's ID.
     if (/^\/(?:id|myid)(?:@LuemiAppBot)?(?:\s|$)/i.test(text)) {
       if (!Number.isSafeInteger(senderId) || senderId !== chatId) return { ok: true };
