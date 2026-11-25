@@ -131,11 +131,6 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     "AND s.idle_expires_at>clock_timestamp() AND s.absolute_expires_at>clock_timestamp() "+
     "RETURNING s.actor_id,s.id AS session_id,s.absolute_expires_at AS expires_at,a.first_name",
     [h,cfg.namespace,cfg.idleMs]);
-   if(result.rowCount===1 && cfg.captureTelegramUsername){
-    const username=verified.user.username;
-    await db.query("UPDATE luemi_private.actors SET telegram_username=$1 WHERE id=$2 AND environment=$3",
-      [typeof username==="string" && /^[A-Za-z0-9_]{1,32}$/.test(username)?username:null,result.rows[0].id,cfg.namespace]);
-   }
    if(result.rowCount!==1){
     if(cfg.inviteOnly)await db.query("ROLLBACK");
     return{status:401};
@@ -272,6 +267,11 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     "ON CONFLICT(environment,telegram_id) DO UPDATE SET updated_at=clock_timestamp() "+
     "WHERE luemi_private.actors.status='active' RETURNING id,first_name",
     [cfg.namespace,String(verified.user.id),verified.user.first_name]);
+   if(result.rowCount===1 && cfg.captureTelegramUsername){
+    const username=verified.user.username;
+    await db.query("UPDATE luemi_private.actors SET telegram_username=$1 WHERE id=$2 AND environment=$3",
+      [typeof username==="string" && /^[A-Za-z0-9_]{1,32}$/.test(username)?username:null,result.rows[0].id,cfg.namespace]);
+   }
    if(result.rowCount!==1){
     const inactive=await db.query<{id:string;status:string}>(
      "SELECT id,status FROM luemi_private.actors WHERE environment=$1 AND telegram_id=$2",
