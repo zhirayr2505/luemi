@@ -20,6 +20,7 @@ export interface ApiConfig {
   healthKey: string;
   webhookSecret: string;
   stagingOnly?: boolean;
+  adminUsers?: { telegramId: number; databaseUrl: string };
   serveWeb?: boolean;
   expectedBotUsername?: string;
   setupOnStart?: boolean;
@@ -134,6 +135,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     absoluteMs: 7 * 24 * 60 * 60 * 1000,
     maxSessions: 5,
     inviteOnly: betaInvites,
+    captureTelegramUsername: env.LUEMI_CAPTURE_TELEGRAM_USERNAME === "1",
     maxNewActors: selfServiceBeta?selfServiceCap:earlyBeta?earlyBetaCap:undefined,
     qaOwnerActorId:/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(env.REM06_QA_OWNER_ACTOR_ID??"")?
       env.REM06_QA_OWNER_ACTOR_ID:undefined
@@ -368,6 +370,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     botToken: stagingOnly ? "" : (env.TELEGRAM_BOT_TOKEN ?? ""),
     healthKey: env.HEALTH_CHECK_KEY ?? "",
     webhookSecret: stagingOnly ? "" : (env.TELEGRAM_WEBHOOK_SECRET ?? ""),
+    adminUsers: !stagingOnly && /^[1-9]\d{0,15}$/.test(env.LUEMI_ADMIN_TELEGRAM_ID ?? "") &&
+      Number.isSafeInteger(Number(env.LUEMI_ADMIN_TELEGRAM_ID)) && env.LUEMI_ADMIN_USERS_DATABASE_URL
+      ? { telegramId: Number(env.LUEMI_ADMIN_TELEGRAM_ID), databaseUrl: env.LUEMI_ADMIN_USERS_DATABASE_URL } : undefined,
     logger: env.NODE_ENV !== "test"
   };
 }

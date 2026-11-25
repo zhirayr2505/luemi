@@ -10,6 +10,7 @@ export interface Rem05bOptions {
  enabled:boolean; issuerDatabaseUrl:string; requestDatabaseUrl:string; pepper:string;
  namespace:string; origin:string; botToken:string; idleMs:number; absoluteMs:number; maxSessions:number;
  inviteOnly?:boolean;
+ captureTelegramUsername?:boolean;
  /** Capacity-bounded self-service test, distinct from global public signup. */
  maxNewActors?:number;
  /** Server-allowlisted identity for isolated preview; unset always denies. */
@@ -130,6 +131,11 @@ export function registerRem05b(app:FastifyInstance,cfg:Rem05bOptions):{read:(req
     "AND s.idle_expires_at>clock_timestamp() AND s.absolute_expires_at>clock_timestamp() "+
     "RETURNING s.actor_id,s.id AS session_id,s.absolute_expires_at AS expires_at,a.first_name",
     [h,cfg.namespace,cfg.idleMs]);
+   if(result.rowCount===1 && cfg.captureTelegramUsername){
+    const username=verified.user.username;
+    await db.query("UPDATE luemi_private.actors SET telegram_username=$1 WHERE id=$2 AND environment=$3",
+      [typeof username==="string" && /^[A-Za-z0-9_]{1,32}$/.test(username)?username:null,result.rows[0].id,cfg.namespace]);
+   }
    if(result.rowCount!==1){
     if(cfg.inviteOnly)await db.query("ROLLBACK");
     return{status:401};
